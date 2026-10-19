@@ -1,13 +1,17 @@
 import { shallowRef, watch } from 'vue'
 import { getHistoryOperationContext } from '../../history/createHistoryOperation'
-import { operationStepCount, renderOperationRecipe, type OperationRecipe } from '../../history/operationPresentation'
+import {
+    operationStepCount,
+    renderOperationRecipe,
+    type OperationRecipe,
+} from '../../history/operationPresentation'
 import {
     PeekError,
     entryKey,
     leavePeek,
     peekEntry,
-    peekedKey,
     peekSourceGeneration,
+    peekedKey,
     restoreEntry,
     type EntryKey,
 } from '../../history/peek'

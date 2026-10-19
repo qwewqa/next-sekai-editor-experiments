@@ -35,10 +35,17 @@ const load = async (page: Page) => {
     await page.evaluate(async () => {
         const { history } = window.editorTest
         for (let i = 1; i <= 30; i++)
-            history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `Property ${i}`), {
-                ...history.state.value,
-                initialLife: history.state.value.initialLife + 1,
-            })
+            history.pushState(
+                window.editorTest.historySteps.futureInitialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
+                    `Property ${i}`,
+                ),
+                {
+                    ...history.state.value,
+                    initialLife: history.state.value.initialLife + 1,
+                },
+            )
         await window.nseFlushTest!.flusher.flush({ strict: true })
     })
 }
@@ -81,19 +88,28 @@ const seedNativeLifeGroup = async (page: Page, unavailable = false) => {
         const { history, historySteps, appImport } = window.editorTest
         for (let i = 0; i < 2; i++) {
             const before = history.state.value.initialLife
-            history.pushState(historySteps.initialLife(before, before + 1), { ...history.state.value, initialLife: before + 1 })
+            history.pushState(historySteps.initialLife(before, before + 1), {
+                ...history.state.value,
+                initialLife: before + 1,
+            })
         }
         const flusher = window.nseFlushTest!.flusher
         await flusher.flush({ strict: true })
         if (unavailable) {
-            const { damagedEntries, keyOf } = await appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+            const { damagedEntries, keyOf } = await appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
             const seq = flusher.newestSeq(flusher.session!)
-            damagedEntries.value = new Set([seq, seq - 1].map((seq) => keyOf({ sessionId: flusher.session!.id, seq })))
+            damagedEntries.value = new Set(
+                [seq, seq - 1].map((seq) => keyOf({ sessionId: flusher.session!.id, seq })),
+            )
         }
     }, unavailable)
 }
 
-test('treegrid native controls, cell navigation and metadata focus preserve the selected snapshot', async ({ page }) => {
+test('treegrid native controls, cell navigation and metadata focus preserve the selected snapshot', async ({
+    page,
+}) => {
     await seedNativeLifeGroup(page)
     await open(page)
     const group = row(page, 'Changed Initial Life')
@@ -112,7 +128,9 @@ test('treegrid native controls, cell navigation and metadata focus preserve the 
     await page.keyboard.press('ArrowRight')
     await expect(group.locator('[data-history-part="main"]')).toBeFocused()
     await page.keyboard.press('ArrowDown')
-    const child = list(page).getByRole('row', { name: /^Set Initial Life/ }).first()
+    const child = list(page)
+        .getByRole('row', { name: /^Set Initial Life/ })
+        .first()
     await expect(child.locator('[data-history-part="main"]')).toBeFocused()
     expect(await selected(page)).toEqual(before)
     await page.keyboard.press('ArrowLeft')
@@ -130,7 +148,9 @@ test('treegrid native controls, cell navigation and metadata focus preserve the 
     await expect(group).toHaveAttribute('tabindex', '0')
 })
 
-test('unavailable Details is keyboard reachable at Now and source replacement dismisses stale metadata', async ({ page }) => {
+test('unavailable Details is keyboard reachable at Now and source replacement dismisses stale metadata', async ({
+    page,
+}) => {
     await seedNativeLifeGroup(page, true)
     await open(page)
     const group = row(page, 'Changed Initial Life')
@@ -166,19 +186,26 @@ test('unavailable Details is keyboard reachable at Now and source replacement di
     await page.keyboard.press('Enter')
     await expect(details).toBeVisible()
     await page.evaluate(async () => {
-        const { setPeekSource } = await window.editorTest.appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts')
+        const { setPeekSource } =
+            await window.editorTest.appImport<typeof import('../../src/history/peek')>(
+                '/src/history/peek.ts',
+            )
         setPeekSource(undefined)
     })
     await expect(details).toHaveCount(0)
     expect((await selected(page)).requested).toBeUndefined()
 })
 
-test('selected Details keeps exact members and request identity while text relocalizes', async ({ page }) => {
+test('selected Details keeps exact members and request identity while text relocalizes', async ({
+    page,
+}) => {
     await seedNativeLifeGroup(page)
     await open(page)
     await row(page, 'Changed Initial Life').click()
     await page.evaluate(async () => {
-        const { peekedInfo } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        const { peekedInfo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
         ;(window as unknown as { selectedRecipe: unknown }).selectedRecipe = peekedInfo.value
     })
     await row(page, 'Changed Initial Life').click({ button: 'right' })
@@ -186,14 +213,25 @@ test('selected Details keeps exact members and request identity while text reloc
     const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
     await expect(details.locator('[data-operation-children] > details')).toHaveCount(2)
     await details.locator('summary').first().click()
-    await expect(details.locator('[data-operation-children] [data-operation-details]')).toHaveCount(1)
+    await expect(details.locator('[data-operation-children] [data-operation-details]')).toHaveCount(
+        1,
+    )
     const before = await details.locator('[data-operation-description]').first().textContent()
-    await page.evaluate(() => { window.editorTest.settings.locale = 'fr' })
+    await page.evaluate(() => {
+        window.editorTest.settings.locale = 'fr'
+    })
     await expect(page.locator('[data-operation-description]').first()).not.toHaveText(before!)
-    expect(await page.evaluate(async () => {
-        const { peekedInfo } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
-        return peekedInfo.value === (window as unknown as { selectedRecipe: unknown }).selectedRecipe
-    })).toBe(true)
+    expect(
+        await page.evaluate(async () => {
+            const { peekedInfo } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            return (
+                peekedInfo.value ===
+                (window as unknown as { selectedRecipe: unknown }).selectedRecipe
+            )
+        }),
+    ).toBe(true)
     await expect(page.locator('[data-operation-children] > details')).toHaveCount(2)
 })
 
@@ -214,7 +252,20 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
                 return {
                     ...timeline,
                     entries: timeline.entries.map((entry, i) =>
-                        i < 2 ? { ...entry, kind: 'edit', step: window.editorTest.historySteps.editStep(window.editorTest.historySteps.initialLife(window.editorTest.history.liveState.value.initialLife - i - 1, window.editorTest.history.liveState.value.initialLife - i)) } : entry,
+                        i < 2
+                            ? {
+                                  ...entry,
+                                  kind: 'edit',
+                                  step: window.editorTest.historySteps.editStep(
+                                      window.editorTest.historySteps.initialLife(
+                                          window.editorTest.history.liveState.value.initialLife -
+                                              i -
+                                              1,
+                                          window.editorTest.history.liveState.value.initialLife - i,
+                                      ),
+                                  ),
+                              }
+                            : entry,
                     ),
                 }
             },
@@ -258,7 +309,9 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
     )
     await group.locator('[data-history-disclosure]').dispatchEvent('click')
     await expect(group).toHaveAttribute('aria-expanded', 'true')
-    await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top + 36 + 188)
+    await expect
+        .poll(() => list(page).evaluate((element) => element.scrollTop))
+        .toBe(top + 36 + 188)
     expect((await anchor.boundingBox())!.y).toBe(before!.y)
     expect(
         await following.evaluate((element) =>
@@ -289,8 +342,20 @@ test('actual 220px French dock protects partial count and the complete unavailab
                     result as import('../../src/local/worker/timelineHandlers').TimelinePage
                 const first = timeline.entries[0]!
                 const { historySteps, history } = window.editorTest
-                const native = (index: number) => historySteps.editStep(historySteps.initialLife(history.liveState.value.initialLife - index - 1, history.liveState.value.initialLife - index))
-                const foreign = historySteps.editStep(historySteps.futureFixtureOperation('foreign', { extension: true }, 'ノーツを追加'))
+                const native = (index: number) =>
+                    historySteps.editStep(
+                        historySteps.initialLife(
+                            history.liveState.value.initialLife - index - 1,
+                            history.liveState.value.initialLife - index,
+                        ),
+                    )
+                const foreign = historySteps.editStep(
+                    historySteps.futureFixtureOperation(
+                        'foreign',
+                        { extension: true },
+                        'ノーツを追加',
+                    ),
+                )
                 return {
                     ...timeline,
                     entries: [
@@ -298,7 +363,13 @@ test('actual 220px French dock protects partial count and the complete unavailab
                         { ...timeline.entries[1]!, kind: 'edit', step: foreign },
                         { ...timeline.entries[2]!, kind: 'edit', step: native(2), kept: false },
                         { ...timeline.entries[3]!, kind: 'edit', step: native(3), kept: false },
-                        { ...timeline.entries[4]!, sessionId: 'older', kind: 'edit', step: native(4), kept: false },
+                        {
+                            ...timeline.entries[4]!,
+                            sessionId: 'older',
+                            kind: 'edit',
+                            step: native(4),
+                            kept: false,
+                        },
                     ],
                     next: { sessionId: first.sessionId, before: 0 },
                 }
@@ -323,10 +394,14 @@ test('actual 220px French dock protects partial count and the complete unavailab
         .getByRole('row')
         .filter({ has: page.locator('[data-history-group-header]') })
     await expect(parents).toHaveCount(2)
-    await expect(dockList.getByRole('row').filter({ has: page.getByText('ノーツを追加', { exact: true }) })).toHaveCount(2)
+    await expect(
+        dockList.getByRole('row').filter({ has: page.getByText('ノーツを追加', { exact: true }) }),
+    ).toHaveCount(2)
     await expect(parents.first()).toHaveAttribute('aria-label', /2 étapes/)
     await expect(parents.last()).toHaveAttribute('aria-label', /1\+ étape/)
-    await expect(parents.locator('[data-history-group-count]')).toHaveText(['', ''])
+    await expect(parents.first().locator('[data-history-group-count]')).toHaveText('')
+    await expect(parents.last().locator('[data-history-group-count]')).toHaveText(/1\+ étape/)
+    await expect(parents.last().locator('[data-history-group-count]')).toBeVisible()
     await expect(parents.last().locator('[data-history-disclosure]')).toHaveCount(0)
     await expect(parents.locator('[data-history-group-time]')).toHaveCount(2)
     for (const parent of [parents.first(), parents.last()]) {
@@ -357,11 +432,24 @@ for (const width of [1600, 390, 320]) {
         }) => {
             await page.evaluate(async () => {
                 const { history, historySteps, appImport } = window.editorTest
-                const [{ createTransaction }, { addNote, replaceNote }, { noteObjectOf }, { createSlideId }] = await Promise.all([
-                    appImport<typeof import('../../src/state/transaction')>('/src/state/transaction.ts'),
-                    appImport<typeof import('../../src/state/mutations/slides/note')>('/src/state/mutations/slides/note.ts'),
-                    appImport<typeof import('../../src/local/records/extract')>('/src/local/records/extract.ts'),
-                    appImport<typeof import('../../src/state/entities/slides')>('/src/state/entities/slides/index.ts'),
+                const [
+                    { createTransaction },
+                    { addNote, replaceNote },
+                    { noteObjectOf },
+                    { createSlideId },
+                ] = await Promise.all([
+                    appImport<typeof import('../../src/state/transaction')>(
+                        '/src/state/transaction.ts',
+                    ),
+                    appImport<typeof import('../../src/state/mutations/slides/note')>(
+                        '/src/state/mutations/slides/note.ts',
+                    ),
+                    appImport<typeof import('../../src/local/records/extract')>(
+                        '/src/local/records/extract.ts',
+                    ),
+                    appImport<typeof import('../../src/state/entities/slides')>(
+                        '/src/state/entities/slides/index.ts',
+                    ),
                 ])
                 for (const beat of [40, 50]) {
                     const state = history.state.value
@@ -374,11 +462,40 @@ for (const width of [1600, 390, 320]) {
                     const state = history.state.value
                     const transaction = createTransaction(state)
                     const targets = [...state.store.slides.note.values()].flat().slice(0, 3)
-                    for (const note of targets) replaceNote(transaction, note, { ...noteObjectOf(note), left: note.left + 1 })
-                    history.pushState(historySteps.nativeOperation({ id: 'nse.object.move', data: { subject: 'note', targets: targets.length } }, 'Moved notes'), transaction.commit([]))
+                    for (const note of targets)
+                        replaceNote(transaction, note, {
+                            ...noteObjectOf(note),
+                            left: note.left + 1,
+                        })
+                    history.pushState(
+                        historySteps.nativeOperation(
+                            {
+                                id: 'nse.object.move',
+                                data: { subject: 'note', targets: targets.length },
+                            },
+                            'Moved notes',
+                        ),
+                        transaction.commit([]),
+                    )
                 }
-                history.pushState(historySteps.initialLife(history.state.value.initialLife, 1200), { ...history.state.value, initialLife: 1200 })
-                history.pushState(historySteps.nativeOperation({ id: 'nse.header.set', data: { field: 'bgmOffset', before: history.state.value.bgm.offset, after: 0.25 } }, 'Offset'), { ...history.state.value, bgm: { ...history.state.value.bgm, offset: 0.25 } })
+                history.pushState(historySteps.initialLife(history.state.value.initialLife, 1200), {
+                    ...history.state.value,
+                    initialLife: 1200,
+                })
+                history.pushState(
+                    historySteps.nativeOperation(
+                        {
+                            id: 'nse.header.set',
+                            data: {
+                                field: 'bgmOffset',
+                                before: history.state.value.bgm.offset,
+                                after: 0.25,
+                            },
+                        },
+                        'Offset',
+                    ),
+                    { ...history.state.value, bgm: { ...history.state.value.bgm, offset: 0.25 } },
+                )
                 history.undoState()
                 history.undoState()
                 await window.nseFlushTest!.flusher.flush({ strict: true })
@@ -404,7 +521,11 @@ for (const width of [1600, 390, 320]) {
             }
             await capture(page, `${width}-groups`)
             await undo.locator('[data-history-disclosure]').click()
-            await expect(list(page).getByRole('row').filter({ hasText: /^Undo · Set/ })).toHaveCount(2)
+            await expect(
+                list(page)
+                    .getByRole('row')
+                    .filter({ hasText: /^Undo · Set/ }),
+            ).toHaveCount(2)
             await capture(page, `${width}-undo-expanded`)
             if (width === 1600) {
                 await page.emulateMedia({ colorScheme: 'dark' })
@@ -544,8 +665,17 @@ test('View Chart is disabled for the placeholder and for a pending different end
                 }),
             sameSnapshot: (left, right) => left === right,
         })
-        const { captureOperationRecipe } = await window.editorTest.appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts')
-        const recipe = (name: string) => captureOperationRecipe([{ description: window.editorTest.historySteps.editStep(window.editorTest.historySteps.futureFixtureOperation(name)) }])
+        const { captureOperationRecipe } = await window.editorTest.appImport<
+            typeof import('../../src/history/operationPresentation')
+        >('/src/history/operationPresentation/index.ts')
+        const recipe = (name: string) =>
+            captureOperationRecipe([
+                {
+                    description: window.editorTest.historySteps.editStep(
+                        window.editorTest.historySteps.futureFixtureOperation(name),
+                    ),
+                },
+            ])
         target.requestSecond = () => selection.requestPeek({ key: b, recipe: recipe('B'), time: 2 })
         selection.requestPeek({ key: a, recipe: recipe('A'), time: 1 })
     })
@@ -976,7 +1106,14 @@ test('peek-control Escape preserves the live selection and ignores modified or c
     await page.evaluate(async () => {
         const { history, fixtures, show } = window.editorTest
         show(fixtures.notes)
-        history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, 1234, 'Selected notes'), { ...history.state.value, initialLife: 1234 })
+        history.pushState(
+            window.editorTest.historySteps.futureInitialLife(
+                history.state.value.initialLife,
+                1234,
+                'Selected notes',
+            ),
+            { ...history.state.value, initialLife: 1234 },
+        )
         const note = [...history.state.value.store.slides.note.values()].flat()[0]!
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
         await window.nseFlushTest!.flusher.flush({ strict: true })

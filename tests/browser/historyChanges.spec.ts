@@ -66,19 +66,35 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
             const all = [...state.store.slides.note.values()].flat()
             const template = noteObjectOf(all[0]!)
             const transaction = createTransaction(state)
-            let receipt: import('../../src/history/operations').NativeOperationInput = { id: 'nse.externalChange', data: {} }
+            let receipt: import('../../src/history/operations').NativeOperationInput = {
+                id: 'nse.externalChange',
+                data: {},
+            }
             const capture = () => {
                 const operation = historySteps.nativeOperation(receipt, label)
                 return known ? operation : { ...operation, futureFixture: true }
             }
             switch (change.kind) {
                 case 'delete':
-                    receipt = { id: 'nse.object.delete', data: { removed: { note: all.filter((note) => change.beats.includes(note.beat)).length } } }
+                    receipt = {
+                        id: 'nse.object.delete',
+                        data: {
+                            removed: {
+                                note: all.filter((note) => change.beats.includes(note.beat)).length,
+                            },
+                        },
+                    }
                     for (const note of all.filter((note) => change.beats.includes(note.beat)))
                         notes.removeNote(transaction, note)
                     break
                 case 'move':
-                    receipt = { id: 'nse.object.move', data: { subject: 'note', targets: all.filter((note) => change.beats.includes(note.beat)).length } }
+                    receipt = {
+                        id: 'nse.object.move',
+                        data: {
+                            subject: 'note',
+                            targets: all.filter((note) => change.beats.includes(note.beat)).length,
+                        },
+                    }
                     for (const note of all.filter((note) => change.beats.includes(note.beat)))
                         notes.replaceNote(transaction, note, {
                             ...noteObjectOf(note),
@@ -105,7 +121,14 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                     break
                 case 'critical': {
                     const sorted = all.sort((a, b) => a.beat - b.beat)
-                    receipt = { id: 'nse.property.set', data: { subject: 'note', targets: Math.ceil(sorted.length * change.share), assignments: [{ field: 'isCritical', value: { mode: 'varying' } }] } }
+                    receipt = {
+                        id: 'nse.property.set',
+                        data: {
+                            subject: 'note',
+                            targets: Math.ceil(sorted.length * change.share),
+                            assignments: [{ field: 'isCritical', value: { mode: 'varying' } }],
+                        },
+                    }
                     for (const note of sorted.slice(0, Math.ceil(sorted.length * change.share)))
                         notes.replaceNote(transaction, note, {
                             ...noteObjectOf(note),
@@ -120,7 +143,14 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                     break
                 }
                 case 'life':
-                    receipt = { id: 'nse.header.set', data: { field: 'initialLife', before: state.initialLife, after: state.initialLife + 1 } }
+                    receipt = {
+                        id: 'nse.header.set',
+                        data: {
+                            field: 'initialLife',
+                            before: state.initialLife,
+                            after: state.initialLife + 1,
+                        },
+                    }
                     history.pushState(capture(), { ...state, initialLife: state.initialLife + 1 })
                     return
                 case 'same':
@@ -394,10 +424,21 @@ test('an entry whose previous state cannot be read shows its label alone, with n
         const { storageWorker } =
             await appImport<typeof import('../../src/local/start')>('/src/local/start.ts')
         const entry = await storageWorker!.call('readEntry', { sessionId: session.id, seq })
+        const metadata = (
+            await storageWorker!.call('readTimeline', {
+                sessionId: session.id,
+                before: seq + 1,
+                limit: 1,
+            })
+        ).entries[0]!
         requestPeek({
             key: keyOf({ sessionId: session.id, seq }),
             time: entry!.time,
-            recipe: (await appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts')).captureOperationRecipe([{ description: entry! }]),
+            recipe: (
+                await appImport<typeof import('../../src/history/operationPresentation')>(
+                    '/src/history/operationPresentation/index.ts',
+                )
+            ).captureOperationRecipe([{ description: metadata }]),
             snapshot: entry!.snapshot,
             // A previous state whose root is gone.
             previous: {
@@ -563,8 +604,10 @@ test('a notice card stays clear of the adjacent spatial controls', async ({ page
 test('equal-count action groups retain exact group, child and Restore scopes', async ({
     page,
 }, testInfo) => {
-    for (const beat of [40, 50]) await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] }, true)
-    for (const beat of [40, 50]) await edit(page, 'Moved 1 note', { kind: 'move', beats: [beat] }, true)
+    for (const beat of [40, 50])
+        await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] }, true)
+    for (const beat of [40, 50])
+        await edit(page, 'Moved 1 note', { kind: 'move', beats: [beat] }, true)
     for (const beat of [40, 50])
         await edit(page, 'Deleted 1 note', { kind: 'delete', beats: [beat] }, true)
     await stored(page)
@@ -766,10 +809,16 @@ test('net-zero runs retain their real steps and show an equal comparison', async
     await edit(page, 'Adjust', { kind: 'life' }, true)
     await page.evaluate(() => {
         const { history } = window.editorTest
-        history.pushState(window.editorTest.historySteps.initialLife(history.state.value.initialLife, history.state.value.initialLife - 1), {
-            ...history.state.value,
-            initialLife: history.state.value.initialLife - 1,
-        })
+        history.pushState(
+            window.editorTest.historySteps.initialLife(
+                history.state.value.initialLife,
+                history.state.value.initialLife - 1,
+            ),
+            {
+                ...history.state.value,
+                initialLife: history.state.value.initialLife - 1,
+            },
+        )
     })
     await stored(page)
     await openTab(page)
@@ -779,9 +828,13 @@ test('net-zero runs retain their real steps and show an equal comparison', async
     expect((await changes(page)).dimmed).toBe(false)
     await group.locator('[data-history-disclosure]').click()
     await expect(
-        list(page).getByRole('row').filter({ hasText: /^Set Initial Life/ }),
+        list(page)
+            .getByRole('row')
+            .filter({ hasText: /^Set Initial Life/ }),
     ).toHaveCount(2)
-    await list(page).getByRole('row').filter({ hasText: /^Set Initial Life/ })
+    await list(page)
+        .getByRole('row')
+        .filter({ hasText: /^Set Initial Life/ })
         .filter({ hasNot: page.locator('[data-history-group-header]') })
         .first()
         .click()
@@ -807,7 +860,14 @@ test('both footprints of a moved object remain reachable on opposite sides of th
             .flat()
             .find((note) => note.beat === 5)!
         replaceNote(transaction, note, { ...noteObjectOf(note), beat: 11 })
-        history.pushState({ ...window.editorTest.historySteps.nativeOperation({ id: 'nse.object.move', data: { subject: 'note', targets: 1 } }, 'Moved across view'), futureFixture: true }, transaction.commit([]))
+        const futureMove = {
+            ...window.editorTest.historySteps.nativeOperation(
+                { id: 'nse.object.move', data: { subject: 'note', targets: 1 } },
+                'Moved across view',
+            ),
+            futureFixture: true,
+        }
+        history.pushState(futureMove, transaction.commit([]))
         settings.pps = 400
         view.time = 4
     })

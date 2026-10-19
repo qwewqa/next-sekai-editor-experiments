@@ -2,8 +2,8 @@ import { nextTick } from 'vue'
 import type { OperationRecipe } from '../../history/operationPresentation'
 import { peekSourceGeneration } from '../../history/peek'
 import { modals, showModal } from '../../modals'
-import { historyViewGeneration } from './state'
 import { sourceGeneration } from './source'
+import { historyViewGeneration } from './state'
 
 let opening = false
 
@@ -19,10 +19,17 @@ export const openOperationDetails = async (
     const source = sourceGeneration.value
     const peekSource = peekSourceGeneration.value
     const generation = historyViewGeneration()
+    const modalOwner = modals.at(-1)?.id
     const fallback = opener?.closest<HTMLElement>('[data-history-list]')
     try {
         const { default: StepDetailsModal } = await import('./StepDetailsModal.vue')
-        if (source !== sourceGeneration.value || peekSource !== peekSourceGeneration.value || generation !== historyViewGeneration()) return
+        if (
+            source !== sourceGeneration.value ||
+            peekSource !== peekSourceGeneration.value ||
+            generation !== historyViewGeneration() ||
+            modalOwner !== modals.at(-1)?.id
+        )
+            return
         await showModal(StepDetailsModal, { recipe, time, source, peekSource, generation })
         await nextTick()
         const target = opener?.isConnected ? opener : fallback
@@ -30,7 +37,7 @@ export const openOperationDetails = async (
             source === sourceGeneration.value &&
             peekSource === peekSourceGeneration.value &&
             generation === historyViewGeneration() &&
-            !modals.some((modal) => modal.presentation !== 'tool')
+            modalOwner === modals.at(-1)?.id
         ) {
             if (restoreFocus) restoreFocus()
             else if (target?.isConnected && target.getClientRects().length)

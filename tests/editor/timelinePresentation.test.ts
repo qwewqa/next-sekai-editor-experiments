@@ -1,47 +1,107 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { heightOf, isCountedParent, presentRow, recipeOfRow } from '../../src/editor/history/rowPresentation'
+import {
+    heightOf,
+    isCountedParent,
+    presentRow,
+    recipeOfRow,
+} from '../../src/editor/history/rowPresentation'
 import { buildRows, type Entry, type EntryRow } from '../../src/editor/history/rows'
-import { captureOperationRecipe, disambiguateOperationRecipes, operationDetails, renderOperationRecipe, type OperationTextContext } from '../../src/history/operationPresentation'
+import {
+    captureOperationRecipe,
+    disambiguateOperationRecipes,
+    operationDetails,
+    renderOperationRecipe,
+    type OperationTextContext,
+} from '../../src/history/operationPresentation'
 import type { EntryDescription } from '../../src/history/operations'
 import en from '../../src/i18n/en/index.json'
 import fr from '../../src/i18n/fr/index.json'
-import { editStep, futureFixtureOperation, nativeOperation, noteAdd, restoreStep } from '../helpers/historySteps'
+import {
+    editStep,
+    futureFixtureOperation,
+    nativeOperation,
+    noteAdd,
+    restoreStep,
+} from '../helpers/historySteps'
 
 const context: OperationTextContext = { locale: 'en', strings: en, now: 0 }
 const french: OperationTextContext = { locale: 'fr', strings: fr, now: 0 }
-const edit = (created: number): EntryDescription => ({ kind: 'edit', step: editStep(noteAdd(created)) })
+const edit = (created: number): EntryDescription => ({
+    kind: 'edit',
+    step: editStep(noteAdd(created)),
+})
 const rows = (descriptions: EntryDescription[], more = false, kept = true) =>
-    buildRows(descriptions.map((description, index): Entry => ({ ...description, sessionId: 's', seq: descriptions.length - index, time: 0, kept })), { filter: 'all', expanded: new Set(), damaged: new Set(), more, now: 0 }).filter((row): row is EntryRow => row.type === 'entry')
+    buildRows(
+        descriptions.map((description, index): Entry => ({
+            ...description,
+            sessionId: 's',
+            seq: descriptions.length - index,
+            time: 0,
+            kept,
+        })),
+        { filter: 'all', expanded: new Set(), damaged: new Set(), more, now: 0 },
+    ).filter((row): row is EntryRow => row.type === 'entry')
 
 test('Add12 sums actual creations while repeated moves make no unique-target claim', () => {
     const [added] = rows(Array.from({ length: 12 }, () => edit(1)))
-    assert.deepEqual(presentRow(added!, context), { main: 'Added 12 notes', count: '12 steps', full: 'Added 12 notes · 12 steps' })
-    const move: EntryDescription = { kind: 'edit', step: editStep(nativeOperation({ id: 'nse.object.move', data: { subject: 'note', targets: 3 } }, 'stale')) }
+    assert.deepEqual(presentRow(added!, context), {
+        main: 'Added 12 notes',
+        count: '12 steps',
+        full: 'Added 12 notes · 12 steps',
+    })
+    const move: EntryDescription = {
+        kind: 'edit',
+        step: editStep(
+            nativeOperation(
+                { id: 'nse.object.move', data: { subject: 'note', targets: 3 } },
+                'stale',
+            ),
+        ),
+    }
     const [moved] = rows([move, move])
-    assert.deepEqual(presentRow(moved!, context), { main: en.history.summary.movedNotes, count: '2 steps', full: `${en.history.summary.movedNotes} · 2 steps` })
+    assert.deepEqual(presentRow(moved!, context), {
+        main: en.history.summary.movedNotes,
+        count: '2 steps',
+        full: `${en.history.summary.movedNotes} · 2 steps`,
+    })
 })
 
 test('unknown fallback remains plain captured text and never groups', () => {
     const text = '<b>{1} ノーツ | $&</b>'
-    const description: EntryDescription = { kind: 'edit', step: editStep(futureFixtureOperation('unknown', { future: 123 }, text)) }
+    const description: EntryDescription = {
+        kind: 'edit',
+        step: editStep(futureFixtureOperation('unknown', { future: 123 }, text)),
+    }
     const result = rows([description, description])
     assert.equal(result.length, 2)
     assert.equal(presentRow(result[0]!, french).full, text)
-    assert.equal(operationDetails(recipeOfRow(result[0]!), french).explanation, fr.history.details.unsupported)
+    assert.equal(
+        operationDetails(recipeOfRow(result[0]!), french).explanation,
+        fr.history.details.unsupported,
+    )
 })
 
 test('direction groups count crossed steps while children retain original Restore and unknown categories', () => {
     const restored = restoreStep(1)
     const unknown = editStep(futureFixtureOperation('future', {}, 'Foreign action'))
     for (const kind of ['undo', 'redo'] as const) {
-        const [parent] = rows([{ kind, step: restored }, { kind, step: unknown }])
+        const [parent] = rows([
+            { kind, step: restored },
+            { kind, step: unknown },
+        ])
         const recipe = recipeOfRow(parent!)
-        assert.equal(presentRow(parent!, context).main, kind === 'undo' ? 'Undid 2 steps' : 'Redid 2 steps')
+        assert.equal(
+            presentRow(parent!, context).main,
+            kind === 'undo' ? 'Undid 2 steps' : 'Redid 2 steps',
+        )
         assert.equal(presentRow(parent!, context).count, undefined)
         assert.equal(operationDetails(recipe, context).children[1]?.description.kind, kind)
         const child = { ...parent!, child: true, members: [parent!.entry], partial: false }
-        assert.match(presentRow(child, context).main, kind === 'undo' ? /^Undo · Restored/ : /^Redo · Restored/)
+        assert.match(
+            presentRow(child, context).main,
+            kind === 'undo' ? /^Undo · Restored/ : /^Redo · Restored/,
+        )
     }
 })
 
@@ -52,15 +112,36 @@ test('selected recipe stays frozen through page completion, storage replacement 
     assert.equal(presentRow(partial!, context, recipe).full, 'Added 3 notes · 2+ steps')
     const [loaded] = rows([edit(2), edit(1), edit(8)])
     assert.equal(presentRow(loaded!, context, recipe).full, 'Added 3 notes · 2+ steps')
-    assert.notEqual(presentRow(loaded!, french, recipe).main, presentRow(loaded!, context, recipe).main)
+    assert.notEqual(
+        presentRow(loaded!, french, recipe).main,
+        presentRow(loaded!, context, recipe).main,
+    )
     assert.equal(recipe.members, identity)
-    assert.deepEqual(recipe.members.map((member) => member.id), ['s:1', 's:2'])
+    assert.deepEqual(
+        recipe.members.map((member) => member.id),
+        ['s:1', 's:2'],
+    )
     assert.equal(recipe.partial, true)
     assert.ok(Object.isFrozen(recipe) && Object.isFrozen(recipe.members))
 })
 
 test('same-name distinct targets receive immutable qualifiers without merging membership', () => {
-    const rename = (id: number): EntryDescription => ({ kind: 'edit', step: editStep(nativeOperation({ id: 'nse.owner.rename', data: { target: { kind: 'group', id, name: { text: 'After' } }, before: { text: 'Before' }, after: { text: 'After' } } }, 'stale')) })
+    const rename = (id: number): EntryDescription => ({
+        kind: 'edit',
+        step: editStep(
+            nativeOperation(
+                {
+                    id: 'nse.owner.rename',
+                    data: {
+                        target: { kind: 'group', id, name: { text: 'After' } },
+                        before: { text: 'Before' },
+                        after: { text: 'After' },
+                    },
+                },
+                'stale',
+            ),
+        ),
+    })
     const parents = rows([rename(1), rename(2)])
     const qualified = disambiguateOperationRecipes(parents.map(recipeOfRow), context)
     assert.match(renderOperationRecipe(qualified[0]!, context), /#1/)
@@ -95,7 +176,16 @@ test('all unavailable entries reserve the reason while passive count rows remain
 test('standalone unavailable recovery metadata retains its own ordered context once', () => {
     const head = editStep(futureFixtureOperation('head', {}, 'Source'))
     const tail = editStep(futureFixtureOperation('tail', {}, 'Redo tail'))
-    const recipe = captureOperationRecipe([{ description: { kind: 'recovered', operation: futureFixtureOperation('recovered', {}, 'Recovered'), recoveryContext: { head, headIndex: 0, dropped: [tail], omitted: 2 } }, time: 1 }])
+    const recipe = captureOperationRecipe([
+        {
+            description: {
+                kind: 'recovered',
+                operation: futureFixtureOperation('recovered', {}, 'Recovered'),
+                recoveryContext: { head, headIndex: 0, dropped: [tail], omitted: 2 },
+            },
+            time: 1,
+        },
+    ])
     const details = operationDetails(recipe, context)
     assert.equal(details.recovery?.descriptions.length, 2)
     assert.equal(details.recovery?.headIndex, 0)

@@ -1,7 +1,7 @@
 import {
     captureOperationRecipe,
-    renderOperationRecipe,
     operationStepCount,
+    renderOperationRecipe,
     type OperationRecipe,
     type OperationTextContext,
 } from '../../history/operationPresentation'
@@ -32,10 +32,7 @@ export const presentRow = (
     recipe = recipeOfRow(row),
 ) => {
     const main = renderOperationRecipe(recipe, context)
-    const count =
-        recipe.kind === 'group'
-            ? operationStepCount(recipe, context)
-            : undefined
+    const count = recipe.kind === 'group' ? operationStepCount(recipe, context) : undefined
     return { main, count, full: count ? `${main} · ${count}` : main }
 }
 

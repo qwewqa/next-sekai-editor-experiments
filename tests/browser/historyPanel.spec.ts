@@ -35,10 +35,22 @@ const edit = (page: Page, count: number, label = 'Life', known = false) =>
         async ({ count, label, known }) => {
             const { history, historySteps } = window.editorTest
             for (let i = 0; i < count; i++)
-                history.pushState(known ? historySteps.initialLife(history.state.value.initialLife, history.state.value.initialLife + 1) : historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `${label}${count > 1 ? ` ${i + 1}` : ''}`), {
-                    ...history.state.value,
-                    initialLife: history.state.value.initialLife + 1,
-                })
+                history.pushState(
+                    known
+                        ? historySteps.initialLife(
+                              history.state.value.initialLife,
+                              history.state.value.initialLife + 1,
+                          )
+                        : historySteps.futureInitialLife(
+                              history.state.value.initialLife,
+                              history.state.value.initialLife + 1,
+                              `${label}${count > 1 ? ` ${i + 1}` : ''}`,
+                          ),
+                    {
+                        ...history.state.value,
+                        initialLife: history.state.value.initialLife + 1,
+                    },
+                )
         },
         { count, label, known },
     )
@@ -130,8 +142,24 @@ const seedOlder = (page: Page, fixed?: number) =>
             seq: seq--,
             time: at(hoursAgo),
             ...(kind === 'edit'
-                ? { kind, step: window.editorTest.historySteps.editStep(window.editorTest.historySteps.futureFixtureOperation(`seed-${seq}`, {}, label)) }
-                : { kind, operation: window.editorTest.historySteps.futureFixtureOperation(`seed-${seq}`, {}, label) }),
+                ? {
+                      kind,
+                      step: window.editorTest.historySteps.editStep(
+                          window.editorTest.historySteps.futureFixtureOperation(
+                              `seed-${seq}`,
+                              {},
+                              label,
+                          ),
+                      ),
+                  }
+                : {
+                      kind,
+                      operation: window.editorTest.historySteps.futureFixtureOperation(
+                          `seed-${seq}`,
+                          {},
+                          label,
+                      ),
+                  }),
             snapshot: '00',
             noteCount: 40,
             dirty: false,
@@ -628,7 +656,11 @@ test.describe('links', () => {
         await next.getByRole('button', { name: 'Open History' }).click()
         await expect(list(next)).toBeVisible()
         // The continued session's own entries and its parent's are in the one Timeline.
-        await expect(list(next).locator('[data-history-continuation]').filter({ hasText: /Continued from/ })).toHaveCount(1)
+        await expect(
+            list(next)
+                .locator('[data-history-continuation]')
+                .filter({ hasText: /Continued from/ }),
+        ).toHaveCount(1)
         await expect(row(next, 'Life 2')).toBeVisible()
     })
 })
@@ -643,9 +675,9 @@ test.describe('the Timeline', () => {
         await edit(page, 1, 'Branch')
         await openTab(page)
         // Two undos collapse into one row; nothing says "not in undo".
-        await expect(
-            list(page).getByRole('row').filter({ hasText: 'Undid 2 steps' }),
-        ).toHaveCount(1)
+        await expect(list(page).getByRole('row').filter({ hasText: 'Undid 2 steps' })).toHaveCount(
+            1,
+        )
         await expect(list(page)).not.toContainText('not in undo')
         await list(page).focus()
         await list(page).press('ArrowDown')
@@ -682,7 +714,7 @@ test.describe('the Timeline', () => {
         await page.evaluate(() => {
             const { history } = window.editorTest
             history.markSaved('coconut.nxsp', false)
-            history.markExported('coconut.nsld')
+            history.markExported('coconut.nsld', 'download')
         })
         await openTab(page)
         const goTo = surface(page, 'panel').locator('[data-history-goto-button]')
@@ -751,10 +783,17 @@ test.describe('the Timeline', () => {
             const { history } = window.editorTest
             // Different labels, so no group forms.
             for (let i = 0; i < 400; i++)
-                history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `Step ${i}`), {
-                    ...history.state.value,
-                    initialLife: history.state.value.initialLife + 1,
-                })
+                history.pushState(
+                    window.editorTest.historySteps.futureInitialLife(
+                        history.state.value.initialLife,
+                        history.state.value.initialLife + 1,
+                        `Step ${i}`,
+                    ),
+                    {
+                        ...history.state.value,
+                        initialLife: history.state.value.initialLife + 1,
+                    },
+                )
         })
         await openTab(page)
         await expect(list(page).getByRole('row').first()).toBeVisible()
@@ -1021,7 +1060,12 @@ test.describe('after a reload', () => {
                 { sessionId: crypto.randomUUID(), docId: crypto.randomUUID() },
                 [
                     { step: window.editorTest.historySteps.initialStep(), isDirty: false },
-                    { step: window.editorTest.historySteps.editStep(window.editorTest.historySteps.initialLife(1000, 1001)), isDirty: false },
+                    {
+                        step: window.editorTest.historySteps.editStep(
+                            window.editorTest.historySteps.initialLife(1000, 1001),
+                        ),
+                        isDirty: false,
+                    },
                 ],
                 0,
                 history.state.value,
@@ -1046,10 +1090,17 @@ test.describe('after a reload', () => {
         await page.evaluate(() => {
             const { history } = window.editorTest
             for (let i = 0; i < 5100; i++)
-                history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `Step ${i}`), {
-                    ...history.state.value,
-                    initialLife: history.state.value.initialLife + 1,
-                })
+                history.pushState(
+                    window.editorTest.historySteps.futureInitialLife(
+                        history.state.value.initialLife,
+                        history.state.value.initialLife + 1,
+                        `Step ${i}`,
+                    ),
+                    {
+                        ...history.state.value,
+                        initialLife: history.state.value.initialLife + 1,
+                    },
+                )
         })
         await stored(page)
         await page.reload()
@@ -1283,7 +1334,7 @@ test.describe('screenshots', () => {
                 await page.evaluate(() => {
                     const { history } = window.editorTest
                     history.markSaved('coconut.nxsp', false)
-                    history.markExported('coconut.nsld')
+                    history.markExported('coconut.nsld', 'download')
                 })
                 await page.locator('[data-history-goto-button]').click()
                 await page.getByRole('radio', { name: 'Saves and Exports' }).click()
@@ -1338,7 +1389,8 @@ test.describe('touch disclosure', () => {
         await disclosure.tap()
         await expect(group).toHaveAttribute('aria-expanded', 'true')
         await expect(peekBar(page)).toHaveCount(0)
-        const child = list(page).getByRole('row', { name: /^Set Initial Life/ })
+        const child = list(page)
+            .getByRole('row', { name: /^Set Initial Life/ })
             .filter({ hasNot: page.locator('[data-history-group-header]') })
             .first()
         await child.dispatchEvent('pointerdown', {

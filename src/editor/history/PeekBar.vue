@@ -121,7 +121,17 @@ const button =
                     data-peek-details
                     @click="details"
                 >
-                    <svg class="size-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6" /><path d="M8 7v4M8 4.5v1" /></svg>
+                    <svg
+                        class="size-4 shrink-0"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        aria-hidden="true"
+                    >
+                        <circle cx="8" cy="8" r="6" />
+                        <path d="M8 7v4M8 4.5v1" />
+                    </svg>
                     <span v-if="!tiny" class="min-w-0 truncate">{{ text }}</span>
                 </button>
                 <span class="size-4 shrink-0" aria-hidden="true">

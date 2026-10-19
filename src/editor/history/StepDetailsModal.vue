@@ -19,7 +19,12 @@ const emit = defineEmits<{ close: [] }>()
 watch(
     [sourceGeneration, peekSourceGeneration, historyViewGeneration],
     ([source, peekSource, generation]) => {
-        if (source !== props.source || peekSource !== props.peekSource || generation !== props.generation) emit('close')
+        if (
+            source !== props.source ||
+            peekSource !== props.peekSource ||
+            generation !== props.generation
+        )
+            emit('close')
     },
     { flush: 'sync', immediate: true },
 )
