@@ -135,6 +135,98 @@ test('compact History returns to its own row and keeps a virtualized Tab entry p
     await expect(list(page).locator('[data-history-row][tabindex="0"]')).toHaveCount(1)
 })
 
+for (const action of ['Home', 'Tab', 'outside', 'blur'] as const)
+    test(`Details native close preserves newer focus intent: ${action}`, async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await seedNativeLifeGroup(page, true)
+        await open(page)
+        await page.keyboard.press('ArrowDown')
+        const group = row(page, 'Changed Initial Life')
+        await expect(group).toBeFocused()
+        await page.keyboard.press('Enter')
+        const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+        await expect(details).toBeVisible()
+        const closing = await details.evaluate(async (element, action) => {
+            const { modals } =
+                await window.editorTest.appImport<typeof import('../../src/modals')>(
+                    '/src/modals/index.ts',
+                )
+            const owner = modals.at(-1)
+            ;(element as HTMLDialogElement).close()
+            const returned = document.activeElement as HTMLElement
+            const returnedToRow = returned.matches('[data-history-row]')
+            if (action === 'outside')
+                document.querySelector<HTMLElement>('[data-history-close]')!.focus()
+            else if (action === 'blur') returned.blur()
+            else
+                returned.dispatchEvent(
+                    new KeyboardEvent('keydown', { key: action, bubbles: true, cancelable: true }),
+                )
+            return { returnedToRow, stillLogicalOwner: modals.at(-1) === owner }
+        }, action)
+        expect(closing).toEqual({ returnedToRow: true, stillLogicalOwner: true })
+        await expect(details).toHaveCount(0)
+        if (action === 'Home')
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        else if (action === 'Tab')
+            await expect(group.locator('[data-history-part="leading"]')).toBeFocused()
+        else if (action === 'outside')
+            await expect(presentation(page).locator('[data-history-close]')).toBeFocused()
+        else expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true)
+        await expect(list(page).locator('[tabindex="0"]')).toHaveCount(1)
+        await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+    })
+
+test('Details completion leaves a newer modal focused', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await seedNativeLifeGroup(page, true)
+    await open(page)
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Enter')
+    const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+    await expect(details).toBeVisible()
+    await page.evaluate(async () => {
+        const [{ showModal }, { default: InfoModal }] = await Promise.all([
+            window.editorTest.appImport<typeof import('../../src/modals')>('/src/modals/index.ts'),
+            window.editorTest.appImport<typeof import('../../src/modals/InfoModal.vue')>(
+                '/src/modals/InfoModal.vue',
+            ),
+        ])
+        void showModal(InfoModal, {
+            title: () => 'Newer dialog',
+            message: () => 'Focus stays here',
+        })
+    })
+    const newer = page.getByRole('dialog', { name: 'Newer dialog', exact: true })
+    await expect(newer).toBeVisible()
+    await details.evaluate((element) => (element as HTMLDialogElement).close())
+    await expect(details).toHaveCount(0)
+    expect(await newer.evaluate((element) => element.contains(document.activeElement))).toBe(true)
+})
+
+test('Details uses a surviving row when its removed opener has no native return target', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await seedNativeLifeGroup(page, true)
+    await open(page)
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Enter')
+    const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+    await expect(details).toBeVisible()
+    await page.evaluate(async () => {
+        const { historyFilter } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/state')
+        >('/src/editor/history/state.ts')
+        historyFilter.value = 'saves'
+    })
+    await expect(row(page, 'Changed Initial Life')).toHaveCount(0)
+    await details.evaluate((element) => (element as HTMLDialogElement).close())
+    await expect(details).toHaveCount(0)
+    await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+    await expect(list(page).locator('[tabindex="0"]')).toHaveCount(1)
+})
+
 test('filtering out the active peek does not announce Now as selected or replace its request', async ({
     page,
 }) => {
@@ -276,6 +368,10 @@ for (const outcome of [
                 .toBe(outcome === 'keyboard' ? 'Property 249' : 'Property 250')
             if (outcome === 'outside')
                 await expect(presentation(page).locator('[data-history-close]')).toBeFocused()
+            if (outcome === 'filter' || outcome === 'keyboard') {
+                await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+                await expect(list(page).locator('[tabindex="0"]')).toHaveCount(1)
+            }
             if (outcome === 'blur')
                 expect(await page.evaluate(() => document.activeElement === document.body)).toBe(
                     true,

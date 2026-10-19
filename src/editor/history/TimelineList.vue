@@ -321,6 +321,35 @@ const focusPart = ref<FocusPart>('row')
 const focusInside = ref(false)
 let focusToken = 0
 let disposed = false
+type FocusRequest = Readonly<{
+    id: string
+    part: FocusPart
+    token: number
+    source: number
+    peek: number
+    view: number
+    filter: typeof historyFilter.value
+}>
+let latestFocus: FocusRequest | undefined
+let focusHandoff: { request: FocusRequest; outgoing: Element } | undefined
+type DetailsReturn = {
+    dialog?: HTMLDialogElement
+    returned: boolean
+    abandoned: boolean
+    dispose: () => void
+}
+let detailsReturn: DetailsReturn | undefined
+const ownsFocus = (request: FocusRequest) =>
+    !disposed &&
+    request.token === focusToken &&
+    request.source === sourceGeneration.value &&
+    request.peek === peekSourceGeneration.value &&
+    request.view === historyViewGeneration() &&
+    request.filter === historyFilter.value
+const timelineRow = (target: EventTarget | null) => {
+    const row = target instanceof Element ? target.closest('[data-history-row]') : null
+    return row && list.value?.contains(row) ? row : undefined
+}
 const replacing = shallowRef<{ token: number; filter: typeof historyFilter.value }>()
 const finishReplacement = (token: number) => {
     if (replacing.value?.token === token) replacing.value = undefined
@@ -347,34 +376,49 @@ const tabIndex = (row: Row, part: FocusPart) =>
     row.id === cursorId.value && focusPart.value === part ? 0 : -1
 const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = true) => {
     const token = ++focusToken
-    const generation = sourceGeneration.value
-    const peekGeneration = peekSourceGeneration.value
-    const historyGeneration = historyViewGeneration()
     const row = rowById(id)
     if (!row || (row.type !== 'entry' && row.type !== 'now')) return
+    const request: FocusRequest = {
+        id,
+        part: part === 'leading' && !expandable(row) ? 'main' : part,
+        token,
+        source: sourceGeneration.value,
+        peek: peekSourceGeneration.value,
+        view: historyViewGeneration(),
+        filter: historyFilter.value,
+    }
+    latestFocus = request
+    const outgoing = timelineRow(document.activeElement)
+    focusHandoff = outgoing ? { request, outgoing } : undefined
     cursorId.value = id
-    focusPart.value = part === 'leading' && !expandable(row) ? 'main' : part
-    if (scroll) scrollToRow(id)
-    await nextTick()
-    if (
-        disposed ||
-        token !== focusToken ||
-        generation !== sourceGeneration.value ||
-        peekGeneration !== peekSourceGeneration.value ||
-        historyGeneration !== historyViewGeneration() ||
-        menu.value ||
-        !canFocusHistory(props.surface)
-    )
-        return
-    focusElement(id, focusPart.value)?.focus({ preventScroll: true })
+    focusPart.value = request.part
+    try {
+        if (scroll) scrollToRow(id)
+        await nextTick()
+        if (!ownsFocus(request) || menu.value || !canFocusHistory(props.surface)) return
+        focusElement(id, request.part)?.focus({ preventScroll: true })
+    } finally {
+        if (focusHandoff?.request === request) focusHandoff = undefined
+    }
 }
 const onRowFocus = (event: FocusEvent, row: Row) => {
+    if (detailsReturn?.dialog && !detailsReturn.dialog.open) detailsReturn.returned = true
     cursorId.value = row.id
     focusPart.value = focusedPart(event)
     focusInside.value = true
 }
 const onFocusout = (event: FocusEvent) => {
     if (event.relatedTarget instanceof Node && list.value?.contains(event.relatedTarget)) return
+    const outgoing =
+        event.target instanceof Element ? event.target.closest('[data-history-row]') : null
+    if (
+        event.relatedTarget === null &&
+        focusHandoff &&
+        outgoing === focusHandoff.outgoing &&
+        ownsFocus(focusHandoff.request) &&
+        !rows.value.some((row) => domId(row.id) === outgoing.id)
+    )
+        return
     // Removing the owned window's focused row is an internal focus handoff.
     if (
         event.relatedTarget === null &&
@@ -385,6 +429,8 @@ const onFocusout = (event: FocusEvent) => {
         event.target.closest('[data-history-row]')?.id === domId(cursorId.value)
     )
         return
+    if (detailsReturn && (detailsReturn.returned || !detailsReturn.dialog))
+        detailsReturn.abandoned = true
     focusInside.value = false
     focusPart.value = 'row'
     focusToken++
@@ -821,9 +867,43 @@ const showDetails = (
     opener?: HTMLElement,
     part = opener ? openerPart(opener) : focusPart.value,
 ) => {
-    void openOperationDetails(recipeOf(row), row.entry.time, opener, () => {
-        restoreRowFocus(row.id, part)
-    })
+    if (detailsReturn) return
+    const previousRequest = latestFocus
+    const context: DetailsReturn = {
+        returned: false,
+        abandoned: false,
+        dispose: () => {
+            document.removeEventListener('focusin', onDeparture, true)
+            document.removeEventListener('pointerdown', onDeparture, true)
+            if (detailsReturn === context) detailsReturn = undefined
+        },
+    }
+    const onDeparture = (event: Event) => {
+        const target = event.target
+        if (target instanceof Node && context.dialog?.contains(target)) return
+        if (timelineRow(target)) return
+        if (event.type === 'focusin' && target === document.body) return
+        context.abandoned = true
+    }
+    detailsReturn = context
+    document.addEventListener('focusin', onDeparture, true)
+    document.addEventListener('pointerdown', onDeparture, true)
+    void openOperationDetails(recipeOf(row), row.entry.time, opener, {
+        captureDialog: (dialog) => (context.dialog = dialog),
+        restoreFocus: () => {
+            const active = document.activeElement
+            if (
+                context.abandoned ||
+                (active !== document.body && active !== null && !timelineRow(active))
+            )
+                return
+            if (latestFocus !== previousRequest) {
+                if (latestFocus && ownsFocus(latestFocus))
+                    void focusRow(latestFocus.id, latestFocus.part, false)
+            } else if (context.returned) restoreRowFocus(cursorId.value, focusPart.value)
+            else restoreRowFocus(row.id, part)
+        },
+    }).finally(context.dispose)
 }
 // Show Change peeks the row first when it isn't, then brings its nearest change into view.
 const showRowChange = (row: EntryRow) => {
@@ -1133,6 +1213,7 @@ onMounted(() => {
     })
 })
 onBeforeUnmount(() => {
+    detailsReturn?.dispose()
     disposed = true
     focusToken++
     rememberView()

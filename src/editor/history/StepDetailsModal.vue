@@ -14,7 +14,14 @@ const props = defineProps<{
     source: number
     peekSource: number
     generation: number
+    captureDialog?: (dialog: HTMLDialogElement) => void
 }>()
+const vCaptureDialog = {
+    mounted(element: HTMLElement) {
+        const dialog = element.closest('dialog')
+        if (dialog) props.captureDialog?.(dialog)
+    },
+}
 const emit = defineEmits<{ close: [] }>()
 watch(
     [sourceGeneration, peekSourceGeneration, historyViewGeneration],
@@ -32,6 +39,6 @@ watch(
 
 <template>
     <BaseModal :title="i18n.history.details.title" @close="emit('close')">
-        <OperationDetailsContent :recipe="recipe" :time="time" />
+        <OperationDetailsContent v-capture-dialog :recipe="recipe" :time="time" />
     </BaseModal>
 </template>
