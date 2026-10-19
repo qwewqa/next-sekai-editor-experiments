@@ -11,6 +11,7 @@ export const openOperationDetails = async (
     recipe: OperationRecipe,
     time: number,
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : undefined,
+    restoreFocus?: () => void,
 ) => {
     if (opening) return
     opening = true
@@ -26,11 +27,12 @@ export const openOperationDetails = async (
         if (
             source === sourceGeneration.value &&
             generation === historyViewGeneration() &&
-            target?.isConnected &&
-            target.getClientRects().length &&
             !modals.some((modal) => modal.presentation !== 'tool')
-        )
-            target.focus({ preventScroll: true })
+        ) {
+            if (restoreFocus) restoreFocus()
+            else if (target?.isConnected && target.getClientRects().length)
+                target.focus({ preventScroll: true })
+        }
     } finally {
         opening = false
     }

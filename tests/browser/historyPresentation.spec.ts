@@ -15,7 +15,7 @@ const capture = async (page: Page, name: string) => {
 }
 const row = (page: Page, label: string) =>
     list(page)
-        .getByRole('option')
+        .getByRole('row')
         .filter({ has: page.getByText(label, { exact: true }) })
 
 const load = async (page: Page) => {
@@ -35,7 +35,7 @@ const load = async (page: Page) => {
     await page.evaluate(async () => {
         const { history } = window.editorTest
         for (let i = 1; i <= 30; i++)
-            history.pushState(() => `Property ${i}`, {
+            history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `Property ${i}`), {
                 ...history.state.value,
                 initialLife: history.state.value.initialLife + 1,
             })
@@ -66,7 +66,7 @@ const selected = (page: Page) =>
         return {
             requested: peek.peekedKey.value,
             displayed: peek.displayedPeekKey.value,
-            label: selection.peekedInfo.value?.label,
+            label: selection.peekedInfo.value && selection.peekedLabel(selection.peekedInfo.value),
             life: window.editorTest.history.state.value.initialLife,
         }
     })
@@ -93,14 +93,14 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
                 return {
                     ...timeline,
                     entries: timeline.entries.map((entry, i) =>
-                        i < 2 ? { ...entry, label: 'Grouped property' } : entry,
+                        i < 2 ? { ...entry, kind: 'edit', step: window.editorTest.historySteps.editStep(window.editorTest.historySteps.initialLife(window.editorTest.history.liveState.value.initialLife - i - 1, window.editorTest.history.liveState.value.initialLife - i)) } : entry,
                     ),
                 }
             },
         })
     })
     await open(page)
-    const group = row(page, 'Grouped property').filter({
+    const group = row(page, 'Changed Initial Life').filter({
         has: page.locator('[data-history-group-header]'),
     })
     const anchor = row(page, 'Property 26')
@@ -137,7 +137,7 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
     )
     await group.locator('[data-history-disclosure]').dispatchEvent('click')
     await expect(group).toHaveAttribute('aria-expanded', 'true')
-    await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top + 36 + 88)
+    await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top + 36 + 188)
     expect((await anchor.boundingBox())!.y).toBe(before!.y)
     expect(
         await following.evaluate((element) =>
@@ -145,7 +145,7 @@ test('unavailable group height and expansion preserve virtual offsets and the vi
         ),
     ).toBe(
         await group.evaluate(
-            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80 + 88,
+            (element) => Number.parseFloat((element as HTMLElement).style.top) + 80 + 188,
         ),
     )
 })
@@ -167,14 +167,17 @@ test('actual 220px French dock protects partial count and the complete unavailab
                 const timeline =
                     result as import('../../src/local/worker/timelineHandlers').TimelinePage
                 const first = timeline.entries[0]!
+                const { historySteps, history } = window.editorTest
+                const native = (index: number) => historySteps.editStep(historySteps.initialLife(history.liveState.value.initialLife - index - 1, history.liveState.value.initialLife - index))
+                const foreign = historySteps.editStep(historySteps.futureFixtureOperation('foreign', { extension: true }, 'ノーツを追加'))
                 return {
                     ...timeline,
                     entries: [
-                        { ...first, label: 'ノーツを追加' },
-                        { ...timeline.entries[1]!, label: 'ノーツを追加' },
-                        { ...timeline.entries[2]!, label: 'Added 1 note', kept: false },
-                        { ...timeline.entries[3]!, label: 'Added 1 note', kept: false },
-                        { ...timeline.entries[4]!, label: 'Moved 3 notes', kept: false },
+                        { ...first, kind: 'edit', step: foreign },
+                        { ...timeline.entries[1]!, kind: 'edit', step: foreign },
+                        { ...timeline.entries[2]!, kind: 'edit', step: native(2), kept: false },
+                        { ...timeline.entries[3]!, kind: 'edit', step: native(3), kept: false },
+                        { ...timeline.entries[4]!, sessionId: 'older', kind: 'edit', step: native(4), kept: false },
                     ],
                     next: { sessionId: first.sessionId, before: 0 },
                 }
@@ -196,20 +199,16 @@ test('actual 220px French dock protects partial count and the complete unavailab
     await expect(dockList).toBeVisible()
     await expect.poll(() => dockList.evaluate((element) => element.clientWidth)).toBe(220)
     const parents = dockList
-        .getByRole('option')
+        .getByRole('row')
         .filter({ has: page.locator('[data-history-group-header]') })
-    await expect(parents).toHaveCount(3)
-    await expect(parents.first().locator('[data-history-group-action]')).toHaveText('ノーツを追加')
-    await expect(parents.first().locator('[data-history-group-count]')).toHaveText(
-        '2 modifications',
-    )
-    await expect(parents.last().locator('[data-history-group-count]')).toHaveText(
-        '1+ modifications',
-    )
+    await expect(parents).toHaveCount(2)
+    await expect(dockList.getByRole('row').filter({ has: page.getByText('ノーツを追加', { exact: true }) })).toHaveCount(2)
+    await expect(parents.first()).toHaveAttribute('aria-label', /2 étapes/)
+    await expect(parents.last()).toHaveAttribute('aria-label', /1\+ étape/)
+    await expect(parents.locator('[data-history-group-count]')).toHaveText(['', ''])
     await expect(parents.last().locator('[data-history-disclosure]')).toHaveCount(0)
-    await expect(parents.locator('[data-history-group-time]')).toHaveCount(0)
-    await expect(parents.locator('[data-history-group-header] > svg')).toHaveCount(0)
-    for (const parent of [parents.nth(1), parents.last()]) {
+    await expect(parents.locator('[data-history-group-time]')).toHaveCount(2)
+    for (const parent of [parents.first(), parents.last()]) {
         expect((await parent.boundingBox())!.height).toBe(80)
         const reason = parent.locator('[data-history-flag]')
         await expect(reason).toHaveText('supprimé pour libérer de l’espace')
@@ -236,34 +235,44 @@ for (const width of [1600, 390, 320]) {
             page,
         }) => {
             await page.evaluate(async () => {
-                const { history } = window.editorTest
-                for (const label of [
-                    'Added 1 note',
-                    'Added 1 note',
-                    'Moved 3 notes',
-                    'Moved 3 notes',
-                    'Renamed chart',
-                    'Adjusted life',
+                const { history, historySteps, appImport } = window.editorTest
+                const [{ createTransaction }, { addNote, replaceNote }, { noteObjectOf }, { createSlideId }] = await Promise.all([
+                    appImport<typeof import('../../src/state/transaction')>('/src/state/transaction.ts'),
+                    appImport<typeof import('../../src/state/mutations/slides/note')>('/src/state/mutations/slides/note.ts'),
+                    appImport<typeof import('../../src/local/records/extract')>('/src/local/records/extract.ts'),
+                    appImport<typeof import('../../src/state/entities/slides')>('/src/state/entities/slides/index.ts'),
                 ])
-                    history.pushState(() => label, {
-                        ...history.state.value,
-                        initialLife: history.state.value.initialLife + 1,
-                    })
+                for (const beat of [40, 50]) {
+                    const state = history.state.value
+                    const transaction = createTransaction(state)
+                    const template = [...state.store.slides.note.values()].flat()[0]!
+                    addNote(transaction, createSlideId(), { ...noteObjectOf(template), beat })
+                    history.pushState(historySteps.noteAdd(1), transaction.commit([]))
+                }
+                for (let index = 0; index < 2; index++) {
+                    const state = history.state.value
+                    const transaction = createTransaction(state)
+                    const targets = [...state.store.slides.note.values()].flat().slice(0, 3)
+                    for (const note of targets) replaceNote(transaction, note, { ...noteObjectOf(note), left: note.left + 1 })
+                    history.pushState(historySteps.nativeOperation({ id: 'nse.object.move', data: { subject: 'note', targets: targets.length } }, 'Moved notes'), transaction.commit([]))
+                }
+                history.pushState(historySteps.initialLife(history.state.value.initialLife, 1200), { ...history.state.value, initialLife: 1200 })
+                history.pushState(historySteps.nativeOperation({ id: 'nse.header.set', data: { field: 'bgmOffset', before: history.state.value.bgm.offset, after: 0.25 } }, 'Offset'), { ...history.state.value, bgm: { ...history.state.value.bgm, offset: 0.25 } })
                 history.undoState()
                 history.undoState()
                 await window.nseFlushTest!.flusher.flush({ strict: true })
             })
             await open(page)
             const groups = list(page)
-                .getByRole('option')
+                .getByRole('row')
                 .filter({ has: page.locator('[data-history-group-header]') })
             await expect(groups).toHaveCount(3)
             const undo = row(page, 'Undid 2 steps')
-            await expect(undo.locator('[data-history-group-count]')).toHaveCount(0)
-            await expect(undo).not.toContainText('Adjusted life')
-            for (const action of ['Added 1 note', 'Moved 3 notes']) {
+            await expect(undo.locator('[data-history-group-count]')).toHaveText('')
+            await expect(undo).not.toContainText('Initial Life')
+            for (const action of ['Added 2 notes', 'Moved notes']) {
                 const group = row(page, action)
-                await expect(group.locator('[data-history-group-count]')).toHaveText('2 edits')
+                await expect(group.locator('[data-history-group-count]')).toHaveText('2 steps')
                 expect(
                     (await group.locator('[data-history-disclosure]').boundingBox())!.width,
                 ).toBe(44)
@@ -274,8 +283,7 @@ for (const width of [1600, 390, 320]) {
             }
             await capture(page, `${width}-groups`)
             await undo.locator('[data-history-disclosure]').click()
-            await expect(row(page, 'Undo · Adjusted life')).toBeVisible()
-            await expect(row(page, 'Undo · Renamed chart')).toBeVisible()
+            await expect(list(page).getByRole('row').filter({ hasText: /^Undo · Set/ })).toHaveCount(2)
             await capture(page, `${width}-undo-expanded`)
             if (width === 1600) {
                 await page.emulateMedia({ colorScheme: 'dark' })
@@ -415,8 +423,10 @@ test('View Chart is disabled for the placeholder and for a pending different end
                 }),
             sameSnapshot: (left, right) => left === right,
         })
-        target.requestSecond = () => selection.requestPeek({ key: b, label: 'B', time: 2 })
-        selection.requestPeek({ key: a, label: 'A', time: 1 })
+        const { captureOperationRecipe } = await window.editorTest.appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts')
+        const recipe = (name: string) => captureOperationRecipe([{ description: window.editorTest.historySteps.editStep(window.editorTest.historySteps.futureFixtureOperation(name)) }])
+        target.requestSecond = () => selection.requestPeek({ key: b, recipe: recipe('B'), time: 2 })
+        selection.requestPeek({ key: a, recipe: recipe('A'), time: 1 })
     })
     await expect(viewChart(page)).toBeDisabled()
     await page.evaluate(() =>
@@ -482,7 +492,7 @@ test('reopening restores the scroll anchor without selecting again; command clos
     await open(page)
     await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top)
     expect(await selected(page)).toEqual(before)
-    await expect(list(page).getByRole('option', { selected: true })).toContainText(before.label!)
+    await expect(list(page).getByRole('row', { selected: true })).toContainText(before.label!)
     await viewChart(page).focus()
     await page.keyboard.press('Shift+H')
     await expect(presentation(page)).toHaveCount(0)
@@ -606,10 +616,10 @@ test('promotion waits for an interrupted Edits Here scan before restoring its an
     await expect
         .poll(() => page.evaluate(() => (window as unknown as { hereCalls: number }).hereCalls))
         .toBe(3)
-    await expect(list(page).getByRole('option')).toHaveCount(1)
+    await expect(list(page).getByRole('row')).toHaveCount(1)
     await page.evaluate(() => (window as unknown as { releaseHere: () => void }).releaseHere())
     await expect.poll(() => list(page).evaluate((element) => element.scrollTop)).toBe(top)
-    await expect(list(page).getByRole('option', { selected: true })).toContainText(before.label!)
+    await expect(list(page).getByRole('row', { selected: true })).toContainText(before.label!)
     await expect(list(page)).toBeFocused()
     expect(await selected(page)).toEqual(before)
     expect(await pinned()).toEqual(beforePinned)
@@ -666,7 +676,7 @@ test('compact Go To supports pointer filters and keyboard picks inside the nativ
     await page.keyboard.press('Enter')
     await expect(goTo).toHaveCount(0)
     await expect(list(page)).toBeFocused()
-    await expect(list(page).getByRole('option', { selected: true })).toContainText('Now')
+    await expect(list(page).getByRole('row', { selected: true })).toContainText('Now')
 })
 
 test('reset closes an in-progress Go To chooser before a later presentation change', async ({
@@ -845,7 +855,7 @@ test('peek-control Escape preserves the live selection and ignores modified or c
     await page.evaluate(async () => {
         const { history, fixtures, show } = window.editorTest
         show(fixtures.notes)
-        history.pushState(() => 'Selected notes', { ...history.state.value, initialLife: 1234 })
+        history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, 1234, 'Selected notes'), { ...history.state.value, initialLife: 1234 })
         const note = [...history.state.value.store.slides.note.values()].flat()[0]!
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
         await window.nseFlushTest!.flusher.flush({ strict: true })

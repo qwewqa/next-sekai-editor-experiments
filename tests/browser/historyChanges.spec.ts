@@ -1,4 +1,4 @@
-﻿import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
 
 // The change view (Part 1 §1.4.11, §1.4.10.5, Step 5): what a peeked entry changed against the
@@ -39,11 +39,11 @@ type Change =
     | { kind: 'many'; count: number; from: number }
     | { kind: 'critical'; share: number }
 
-/** Pushes an edit as the tools do: one undoable step with a label. */
-const edit = (page: Page, label: string, change: Change) =>
+/** Unknown extensions keep geometry fixtures separate; native groups opt in explicitly. */
+const edit = (page: Page, label: string, change: Change, known = false) =>
     page.evaluate(
-        async ({ label, change }) => {
-            const { appImport, history } = window.editorTest
+        async ({ label, change, known }) => {
+            const { appImport, history, historySteps } = window.editorTest
             const [{ createTransaction }, notes, bpm, { noteObjectOf }, { createSlideId }] =
                 await Promise.all([
                     appImport<typeof import('../../src/state/transaction')>(
@@ -66,12 +66,19 @@ const edit = (page: Page, label: string, change: Change) =>
             const all = [...state.store.slides.note.values()].flat()
             const template = noteObjectOf(all[0]!)
             const transaction = createTransaction(state)
+            let receipt: import('../../src/history/operations').NativeOperationInput = { id: 'nse.externalChange', data: {} }
+            const capture = () => {
+                const operation = historySteps.nativeOperation(receipt, label)
+                return known ? operation : { ...operation, futureFixture: true }
+            }
             switch (change.kind) {
                 case 'delete':
+                    receipt = { id: 'nse.object.delete', data: { removed: { note: all.filter((note) => change.beats.includes(note.beat)).length } } }
                     for (const note of all.filter((note) => change.beats.includes(note.beat)))
                         notes.removeNote(transaction, note)
                     break
                 case 'move':
+                    receipt = { id: 'nse.object.move', data: { subject: 'note', targets: all.filter((note) => change.beats.includes(note.beat)).length } }
                     for (const note of all.filter((note) => change.beats.includes(note.beat)))
                         notes.replaceNote(transaction, note, {
                             ...noteObjectOf(note),
@@ -79,6 +86,7 @@ const edit = (page: Page, label: string, change: Change) =>
                         })
                     break
                 case 'add':
+                    receipt = { id: 'nse.note.add', data: { created: change.beats.length } }
                     for (const beat of change.beats)
                         notes.addNote(transaction, createSlideId(), {
                             ...template,
@@ -87,6 +95,7 @@ const edit = (page: Page, label: string, change: Change) =>
                         })
                     break
                 case 'many':
+                    receipt = { id: 'nse.note.add', data: { created: change.count } }
                     for (let i = 0; i < change.count; i++)
                         notes.addNote(transaction, createSlideId(), {
                             ...template,
@@ -96,6 +105,7 @@ const edit = (page: Page, label: string, change: Change) =>
                     break
                 case 'critical': {
                     const sorted = all.sort((a, b) => a.beat - b.beat)
+                    receipt = { id: 'nse.property.set', data: { subject: 'note', targets: Math.ceil(sorted.length * change.share), assignments: [{ field: 'isCritical', value: { mode: 'varying' } }] } }
                     for (const note of sorted.slice(0, Math.ceil(sorted.length * change.share)))
                         notes.replaceNote(transaction, note, {
                             ...noteObjectOf(note),
@@ -104,20 +114,22 @@ const edit = (page: Page, label: string, change: Change) =>
                     break
                 }
                 case 'bpm': {
+                    receipt = { id: 'nse.object.edit', data: { subject: 'bpm', targets: 1 } }
                     const first = [...state.store.grid.bpm.values()].flatMap((b) => [...b])[0]!
                     bpm.replaceBpm(transaction, first, { beat: 0, bpm: change.bpm, meter: 4 })
                     break
                 }
                 case 'life':
-                    history.pushState(() => label, { ...state, initialLife: state.initialLife + 1 })
+                    receipt = { id: 'nse.header.set', data: { field: 'initialLife', before: state.initialLife, after: state.initialLife + 1 } }
+                    history.pushState(capture(), { ...state, initialLife: state.initialLife + 1 })
                     return
                 case 'same':
-                    history.pushState(() => label, { ...state })
+                    history.pushState(capture(), { ...state })
                     return
             }
-            history.pushState(() => label, transaction.commit([]))
+            history.pushState(capture(), transaction.commit([]))
         },
-        { label, change },
+        { label, change, known },
     )
 
 /** Stores what the tab holds, so the Timeline reads it. */
@@ -150,7 +162,7 @@ const surface = (page: Page) => page.locator('[data-history-surface="panel"]')
 const list = (page: Page) => surface(page).locator('[data-history-list]')
 const row = (page: Page, text: string) =>
     list(page)
-        .getByRole('option')
+        .getByRole('row')
         .filter({ has: page.getByText(text, { exact: true }) })
 const peekLine = (page: Page) => page.locator('[data-peek-change]')
 const arrow = (page: Page, direction: 'up' | 'down') =>
@@ -330,7 +342,7 @@ test('a Restore’s change is against the state just before it', async ({ page }
     await stored(page)
     await row(page, 'Moved A').click()
     const restoreRow = list(page)
-        .getByRole('option')
+        .getByRole('row')
         .filter({ hasText: /^Restored to/ })
     await restoreRow.click()
     await expect(peekLine(page)).toHaveText('1 change')
@@ -385,7 +397,7 @@ test('an entry whose previous state cannot be read shows its label alone, with n
         requestPeek({
             key: keyOf({ sessionId: session.id, seq }),
             time: entry!.time,
-            label: 'Moved 1 note',
+            recipe: (await appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts')).captureOperationRecipe([{ description: entry! }]),
             snapshot: entry!.snapshot,
             // A previous state whose root is gone.
             previous: {
@@ -458,7 +470,7 @@ test('the History sheet counts as covering the chart', async ({ page }) => {
     const sheet = page.locator('[data-tool-dialog][data-sheet]')
     await expect(sheet).toBeVisible()
     await sheet
-        .getByRole('option')
+        .getByRole('row')
         .filter({ has: page.getByText('Added 1 note', { exact: true }) })
         .click()
     await expect(peekLine(page)).toHaveText('1 change')
@@ -551,10 +563,10 @@ test('a notice card stays clear of the adjacent spatial controls', async ({ page
 test('equal-count action groups retain exact group, child and Restore scopes', async ({
     page,
 }, testInfo) => {
-    for (const beat of [40, 50]) await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] })
-    for (const beat of [40, 50]) await edit(page, 'Moved 1 note', { kind: 'move', beats: [beat] })
+    for (const beat of [40, 50]) await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] }, true)
+    for (const beat of [40, 50]) await edit(page, 'Moved 1 note', { kind: 'move', beats: [beat] }, true)
     for (const beat of [40, 50])
-        await edit(page, 'Deleted 1 note', { kind: 'delete', beats: [beat] })
+        await edit(page, 'Deleted 1 note', { kind: 'delete', beats: [beat] }, true)
     await stored(page)
     await page.evaluate(() => {
         window.editorTest.settings.rightDockWidth = 440
@@ -567,15 +579,15 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
         >('/src/editor/history/source.ts')
         return listedEntries.value.slice(0, 7).map(({ sessionId, seq }) => `${sessionId}:${seq}`)
     })
-    const actions = ['Deleted 1 note', 'Moved 1 note', 'Added 1 note']
+    const actions = ['Deleted 2 notes', 'Moved notes', 'Added 2 notes']
     for (const [index, action] of actions.entries()) {
         const group = row(page, action).filter({ has: page.locator('[data-history-group-header]') })
-        await expect(group.locator('[data-history-group-count]')).toHaveText('2 edits')
+        await expect(group.locator('[data-history-group-count]')).toHaveText('2 steps')
         if (index !== 1) {
             await expect(group.locator('.timeline-count')).toHaveText(index === 0 ? '−2' : '+2')
             await expect(group.locator('.timeline-count')).toBeVisible()
         } else await expect(group.locator('.timeline-count')).toHaveCount(0)
-        await expect(group).toHaveAttribute('aria-label', new RegExp(`${action} · 2 edits`))
+        await expect(group).toHaveAttribute('aria-label', new RegExp(`${action} · 2 steps`))
     }
     await page.screenshot({
         path: testInfo.outputPath('440-wide-action-deltas.png'),
@@ -587,7 +599,7 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
         await expect(peekLine(page)).toHaveText('2 changes')
         expect(
             await page.evaluate(async () => {
-                const { peekedInfo } = await window.editorTest.appImport<
+                const { peekedInfo, peekedLabel } = await window.editorTest.appImport<
                     typeof import('../../src/editor/history/selection')
                 >('/src/editor/history/selection.ts')
                 const info = peekedInfo.value!
@@ -595,17 +607,17 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
                     key: info.key,
                     oldest: info.oldest,
                     previous: info.previous?.key,
-                    label: info.label,
+                    label: peekedLabel(info),
                 }
             }),
         ).toEqual({
             key: scopes[index * 2],
             oldest: scopes[index * 2 + 1],
             previous: scopes[index * 2 + 2],
-            label: `${action} · 2 edits`,
+            label: `${action} · 2 steps`,
         })
     }
-    const added = row(page, 'Added 1 note').filter({
+    const added = row(page, 'Added 2 notes').filter({
         has: page.locator('[data-history-group-header]'),
     })
     await added.locator('[data-history-disclosure]').click()
@@ -636,16 +648,16 @@ test('group disclosure preserves scope and selecting its newest child changes th
     page,
 }) => {
     for (const beat of [40, 50, 60])
-        await edit(page, 'Added 1 Note', { kind: 'add', beats: [beat] })
+        await edit(page, 'Added 1 note', { kind: 'add', beats: [beat] }, true)
     await stored(page)
     await openTab(page)
-    const group = row(page, '3 edits')
+    const group = row(page, 'Added 3 notes')
     await group.click()
     await expect(peekLine(page)).toHaveText('3 changes')
     await group.locator('[data-history-disclosure]').click()
     await expect(group).toHaveAttribute('aria-selected', 'true')
     await expect(peekLine(page)).toHaveText('3 changes')
-    const child = row(page, 'Added 1 Note')
+    const child = row(page, 'Added 1 note')
         .filter({ hasNot: page.locator('[data-history-group-header]') })
         .first()
     await child.click()
@@ -658,7 +670,7 @@ test('group disclosure preserves scope and selecting its newest child changes th
 test('a delayed group Show Change cannot scroll a child comparison with the same target', async ({
     page,
 }) => {
-    for (const beat of [40, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] })
+    for (const beat of [40, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] }, true)
     await stored(page)
     await openTab(page)
     await viewAt(page, 6)
@@ -680,7 +692,7 @@ test('a delayed group Show Change cannot scroll a child comparison with the same
             },
         })
     })
-    const group = row(page, '2 edits')
+    const group = row(page, 'Added 2 notes')
     await group.click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Show Change' }).click()
     await expect
@@ -691,7 +703,7 @@ test('a delayed group Show Change cannot scroll a child comparison with the same
     const bounds = await page.locator('[data-peek-main]').boundingBox()
     const lower = await page.locator('[data-peek-navigation]').boundingBox()
     await group.locator('[data-history-disclosure]').click()
-    await row(page, 'Add')
+    await row(page, 'Added 1 note')
         .filter({ hasNot: page.locator('[data-history-group-header]') })
         .first()
         .click()
@@ -711,10 +723,10 @@ test('a delayed group Show Change cannot scroll a child comparison with the same
 })
 
 test('a group at a page boundary reads the predecessor of its oldest member', async ({ page }) => {
-    for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] })
+    for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] }, true)
     await stored(page)
     await openTab(page)
-    await row(page, '3 edits').click()
+    await row(page, 'Added 3 notes').click()
     await expect(peekLine(page)).toHaveText('3 changes')
     await page.evaluate(async () => {
         const { requestPeek, peekedInfo } = await window.editorTest.appImport<
@@ -751,29 +763,29 @@ test('an arrow keeps focus after its last target enters the visible band, and a 
 })
 
 test('net-zero runs retain their real steps and show an equal comparison', async ({ page }) => {
-    await edit(page, 'Adjust', { kind: 'life' })
+    await edit(page, 'Adjust', { kind: 'life' }, true)
     await page.evaluate(() => {
         const { history } = window.editorTest
-        history.pushState(() => 'Adjust', {
+        history.pushState(window.editorTest.historySteps.initialLife(history.state.value.initialLife, history.state.value.initialLife - 1), {
             ...history.state.value,
             initialLife: history.state.value.initialLife - 1,
         })
     })
     await stored(page)
     await openTab(page)
-    const group = row(page, '2 edits')
+    const group = row(page, 'Changed Initial Life')
     await group.click()
     await expect(peekLine(page)).toHaveText('No changes')
     expect((await changes(page)).dimmed).toBe(false)
     await group.locator('[data-history-disclosure]').click()
     await expect(
-        row(page, 'Adjust').filter({ hasNot: page.locator('[data-history-group-header]') }),
+        list(page).getByRole('row').filter({ hasText: /^Set Initial Life/ }),
     ).toHaveCount(2)
-    await row(page, 'Adjust')
+    await list(page).getByRole('row').filter({ hasText: /^Set Initial Life/ })
         .filter({ hasNot: page.locator('[data-history-group-header]') })
         .first()
         .click()
-    await expect(peekLine(page)).toHaveText('Adjust')
+    await expect(peekLine(page)).toHaveText(/^Set Initial Life/)
 })
 
 test('both footprints of a moved object remain reachable on opposite sides of the clear band', async ({
@@ -795,7 +807,7 @@ test('both footprints of a moved object remain reachable on opposite sides of th
             .flat()
             .find((note) => note.beat === 5)!
         replaceNote(transaction, note, { ...noteObjectOf(note), beat: 11 })
-        history.pushState(() => 'Moved across view', transaction.commit([]))
+        history.pushState({ ...window.editorTest.historySteps.nativeOperation({ id: 'nse.object.move', data: { subject: 'note', targets: 1 } }, 'Moved across view'), futureFixture: true }, transaction.commit([]))
         settings.pps = 400
         view.time = 4
     })
@@ -813,7 +825,7 @@ test('both footprints of a moved object remain reachable on opposite sides of th
 test('a selected edge singleton stays separate when an older matching page arrives', async ({
     page,
 }) => {
-    for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] })
+    for (const beat of [40, 50, 60]) await edit(page, 'Add', { kind: 'add', beats: [beat] }, true)
     await stored(page)
     await page.evaluate(async () => {
         const { storageWorker } =
@@ -851,12 +863,12 @@ test('a selected edge singleton stays separate when an older matching page arriv
     await row(page, 'Add').click()
     await expect(peekLine(page)).toHaveText('1 change')
     await page.evaluate(() => (window as unknown as { releasePage: () => void }).releasePage())
-    await expect(row(page, '2 edits')).toHaveCount(1)
+    await expect(row(page, 'Added 2 notes')).toHaveCount(1)
     await expect(
         row(page, 'Add').filter({ hasNot: page.locator('[data-history-group-header]') }),
     ).toHaveAttribute('aria-selected', 'true')
     await expect(peekLine(page)).toHaveText('1 change')
-    await row(page, '2 edits').click({ button: 'right' })
+    await row(page, 'Added 2 notes').click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Show Change' }).click()
     await expect(peekLine(page)).toHaveText('2 changes')
 })

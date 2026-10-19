@@ -29,18 +29,18 @@ test.beforeEach(async ({ page }) => {
     await load(page)
 })
 
-/** Makes edits named after their numbers, each raising the life. */
-const edit = (page: Page, count: number, label = 'Life') =>
+/** Future extensions deliberately keep layout fixture rows separate from native groups. */
+const edit = (page: Page, count: number, label = 'Life', known = false) =>
     page.evaluate(
-        async ({ count, label }) => {
-            const { history } = window.editorTest
+        async ({ count, label, known }) => {
+            const { history, historySteps } = window.editorTest
             for (let i = 0; i < count; i++)
-                history.pushState(() => `${label}${count > 1 ? ` ${i + 1}` : ''}`, {
+                history.pushState(known ? historySteps.initialLife(history.state.value.initialLife, history.state.value.initialLife + 1) : historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `${label}${count > 1 ? ` ${i + 1}` : ''}`), {
                     ...history.state.value,
                     initialLife: history.state.value.initialLife + 1,
                 })
         },
-        { count, label },
+        { count, label, known },
     )
 
 /** The life as shown (the peeked state's while viewing history) and as written (the live one). */
@@ -63,7 +63,7 @@ const list = (page: Page, name: 'panel' | 'dialog' = 'panel') =>
 
 const row = (page: Page, text: string, name: 'panel' | 'dialog' = 'panel'): Locator =>
     list(page, name)
-        .getByRole('option')
+        .getByRole('row')
         .filter({ has: page.getByText(text, { exact: true }) })
 
 const peekBar = (page: Page) => page.locator('[data-peek-bar]')
@@ -122,15 +122,16 @@ const seedOlder = (page: Page, fixed?: number) =>
         let seq = 900
         const entry = (
             hoursAgo: number,
-            kind: string,
+            kind: 'edit' | 'init' | 'continue' | 'save' | 'export',
             label: string,
             extra: Record<string, unknown> = {},
         ) => ({
             sessionId: 'seeded',
             seq: seq--,
             time: at(hoursAgo),
-            kind,
-            label,
+            ...(kind === 'edit'
+                ? { kind, step: window.editorTest.historySteps.editStep(window.editorTest.historySteps.futureFixtureOperation(`seed-${seq}`, {}, label)) }
+                : { kind, operation: window.editorTest.historySteps.futureFixtureOperation(`seed-${seq}`, {}, label) }),
             snapshot: '00',
             noteCount: 40,
             dirty: false,
@@ -174,7 +175,7 @@ test.describe('the tab', () => {
         await expect(tab(page, 'right', 'History')).toHaveAttribute('aria-selected', 'true')
         expect((await getSettings(page, ['showHistory'])).showHistory).toBe(true)
         // The tab does not take focus from the chart.
-        await expect(list(page)).not.toBeFocused()
+        await expect(list(page).locator(':focus')).toHaveCount(0)
 
         // A reload brings it back open, as it brings back Groups.
         await page.reload()
@@ -310,9 +311,9 @@ test.describe('the dialog', () => {
         await page.locator('.chart-pane').click({ position: { x: 300, y: 300 } })
         await page.keyboard.press('Shift+H')
         await expect(sheet(page)).toBeVisible()
-        await expect(list(page, 'dialog')).toBeFocused()
+        await expect(list(page, 'dialog').locator('[data-history-row]:focus')).toHaveCount(1)
         // Now, three edits and the first entry.
-        await expect(list(page, 'dialog').getByRole('option')).toHaveCount(5)
+        await expect(list(page, 'dialog').getByRole('row')).toHaveCount(5)
         await expect(row(page, 'Now · Life 3', 'dialog')).toHaveAttribute('aria-selected', 'true')
         // The tab is still there: two views of one history.
         await expect(surface(page, 'panel')).toBeVisible()
@@ -546,7 +547,7 @@ test.describe('links', () => {
         await expect(page.getByText('Nothing to redo').first()).toBeVisible()
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(surface(page, 'panel')).toBeVisible()
-        await expect(list(page)).toBeFocused()
+        await expect(list(page).locator('[data-history-row]:focus')).toHaveCount(1)
         await expect(sheet(page)).toHaveCount(0)
         await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
             'aria-selected',
@@ -592,7 +593,7 @@ test.describe('links', () => {
         await page.keyboard.press('y')
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(surface(page, 'panel')).toHaveCount(0)
-        await expect(list(page, 'dialog')).toBeFocused()
+        await expect(list(page, 'dialog').locator('[data-history-row]:focus')).toHaveCount(1)
         await page.keyboard.press('Shift+H')
 
         await setSettings(page, { historyPosition: 'disabled' })
@@ -601,7 +602,7 @@ test.describe('links', () => {
         await page.keyboard.press('y')
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(sheet(page)).toBeVisible()
-        await expect(list(page, 'dialog')).toBeFocused()
+        await expect(list(page, 'dialog').locator('[data-history-row]:focus')).toHaveCount(1)
     })
 
     test('the Settings button closes Settings first and opens the tab', async ({ page }) => {
@@ -611,7 +612,7 @@ test.describe('links', () => {
         await dialog.locator('[data-open-history]').click()
         await expect(dialog).toHaveCount(0)
         await expect(surface(page, 'panel')).toBeVisible()
-        await expect(list(page)).toBeFocused()
+        await expect(list(page).locator('[data-history-row]:focus')).toHaveCount(1)
     })
 
     test('the "Continued…" load notice has Open History', async ({ page }) => {
@@ -627,7 +628,7 @@ test.describe('links', () => {
         await next.getByRole('button', { name: 'Open History' }).click()
         await expect(list(next)).toBeVisible()
         // The continued session's own entries and its parent's are in the one Timeline.
-        await expect(list(next).getByRole('option', { name: /Continued from/ })).toHaveCount(1)
+        await expect(list(next).getByRole('note').filter({ hasText: /Continued from/ })).toHaveCount(1)
         await expect(row(next, 'Life 2')).toBeVisible()
     })
 })
@@ -643,21 +644,21 @@ test.describe('the Timeline', () => {
         await openTab(page)
         // Two undos collapse into one row; nothing says "not in undo".
         await expect(
-            list(page).getByRole('option').filter({ hasText: 'Undid 2 steps' }),
+            list(page).getByRole('row').filter({ hasText: 'Undid 2 steps' }),
         ).toHaveCount(1)
         await expect(list(page)).not.toContainText('not in undo')
         await list(page).focus()
         await list(page).press('ArrowDown')
         await list(page).press('ArrowDown')
         await list(page).press('ArrowRight')
-        await expect(list(page).getByRole('option').filter({ hasText: /^Undo/ })).toHaveCount(2)
+        await expect(list(page).getByRole('row').filter({ hasText: /^Undo/ })).toHaveCount(2)
         await shoot(page, 'tab-desktop')
     })
 
-    test('edits with the same label collapse into ×N, and the group opens', async ({ page }) => {
-        for (let i = 0; i < 3; i++) await edit(page, 1, 'Scrub')
+    test('native property edits group by field, and the group opens', async ({ page }) => {
+        for (let i = 0; i < 3; i++) await edit(page, 1, 'Scrub', true)
         await openTab(page)
-        const group = list(page).getByRole('option').filter({ hasText: '3 edits' })
+        const group = list(page).getByRole('row').filter({ hasText: '3 steps' })
         await expect(group).toHaveCount(1)
         await expect(group).toHaveAttribute('aria-expanded', 'false')
         await stored(page)
@@ -666,8 +667,8 @@ test.describe('the Timeline', () => {
         await expect(group).toHaveAttribute('aria-expanded', 'true')
         await expect(
             list(page)
-                .getByRole('option')
-                .filter({ hasText: /^Scrub/ })
+                .getByRole('row')
+                .filter({ hasText: /^Set Initial Life/ })
                 .filter({ hasNot: page.locator('[data-history-group-header]') }),
         ).toHaveCount(3)
         await page.keyboard.press('ArrowLeft')
@@ -750,15 +751,15 @@ test.describe('the Timeline', () => {
             const { history } = window.editorTest
             // Different labels, so no group forms.
             for (let i = 0; i < 400; i++)
-                history.pushState(() => `Step ${i}`, {
+                history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `Step ${i}`), {
                     ...history.state.value,
                     initialLife: history.state.value.initialLife + 1,
                 })
         })
         await openTab(page)
-        await expect(list(page).getByRole('option').first()).toBeVisible()
-        expect(await list(page).getByRole('option').count()).toBeLessThan(60)
-        const first = list(page).getByRole('option').first()
+        await expect(list(page).getByRole('row').first()).toBeVisible()
+        expect(await list(page).getByRole('row').count()).toBeLessThan(60)
+        const first = list(page).getByRole('row').first()
         await expect(first).toHaveAttribute('aria-posinset', '1')
         await expect(first).toHaveAttribute('aria-setsize', /^40[0-9]$/)
         await expect(page.locator('[data-history-pinned]')).toHaveCount(0)
@@ -820,7 +821,7 @@ test.describe('states', () => {
     test('a new session says there are no changes yet', async ({ page }) => {
         await openTab(page)
         await expect(page.locator('[data-history-empty]')).toHaveText('No changes yet')
-        await expect(list(page).getByRole('option')).toHaveCount(1)
+        await expect(list(page).getByRole('row')).toHaveCount(1)
         await shoot(page, 'states-empty')
     })
 
@@ -915,9 +916,9 @@ test.describe('peek', () => {
         await expect(peekBar(page)).toBeVisible()
         await page.keyboard.press('Escape')
         await expect(peekBar(page)).toHaveCount(0)
-        await expect(list(page)).toBeFocused()
+        await expect(list(page).locator('[data-history-row]:focus')).toHaveCount(1)
         await page.keyboard.press('Escape')
-        await expect(list(page)).not.toBeFocused()
+        await expect(list(page).locator(':focus')).toHaveCount(0)
         // A panel cannot close itself with Escape.
         await expect(surface(page, 'panel')).toBeVisible()
     })
@@ -1002,10 +1003,10 @@ test.describe('keys with focus in the list', () => {
         await openTab(page)
         await list(page).focus()
         await page.locator('.chart-pane').click({ position: { x: 300, y: 300 } })
-        await expect(list(page)).not.toBeFocused()
+        await expect(list(page).locator(':focus')).toHaveCount(0)
         await list(page).focus()
         await page.locator('[data-editor-toolbar] button[title="Select"]').first().click()
-        await expect(list(page)).not.toBeFocused()
+        await expect(list(page).locator(':focus')).toHaveCount(0)
     })
 })
 
@@ -1019,8 +1020,8 @@ test.describe('after a reload', () => {
             history.openStoredState(
                 { sessionId: crypto.randomUUID(), docId: crypto.randomUUID() },
                 [
-                    { label: 'Step 1', isDirty: false },
-                    { label: 'Step 2', isDirty: false },
+                    { step: window.editorTest.historySteps.initialStep(), isDirty: false },
+                    { step: window.editorTest.historySteps.editStep(window.editorTest.historySteps.initialLife(1000, 1001)), isDirty: false },
                 ],
                 0,
                 history.state.value,
@@ -1045,7 +1046,7 @@ test.describe('after a reload', () => {
         await page.evaluate(() => {
             const { history } = window.editorTest
             for (let i = 0; i < 5100; i++)
-                history.pushState(() => `Step ${i}`, {
+                history.pushState(window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, `Step ${i}`), {
                     ...history.state.value,
                     initialLife: history.state.value.initialLife + 1,
                 })
@@ -1088,17 +1089,16 @@ test.describe('ARIA', () => {
             'aria-labelledby',
             (await selected.getAttribute('id')) ?? '',
         )
-        const box = page.getByRole('listbox', { name: 'Timeline' })
+        const box = page.getByRole('treegrid', { name: 'Timeline' })
         await expect(box).toBeVisible()
-        const options = box.getByRole('option')
+        const options = box.getByRole('row')
         const count = await options.count()
         for (let i = 0; i < count; i++) {
-            await expect(options.nth(i)).toHaveAttribute('aria-posinset', String(i + 1))
-            await expect(options.nth(i)).toHaveAttribute('aria-setsize', String(count))
+            await expect(options.nth(i)).toHaveAttribute('aria-rowindex', String(i + 1))
         }
         await expect(box.locator('[aria-selected="true"]')).toHaveCount(1)
-        const active = await box.getAttribute('aria-activedescendant')
-        await expect(page.locator(`[id="${active}"]`)).toHaveAttribute('aria-selected', 'true')
+        await expect(box).not.toHaveAttribute('aria-activedescendant')
+        await expect(box.locator('[data-history-row][tabindex="0"]')).toHaveCount(1)
         // The popover is a dialog named Go To, opened by a button that says so.
         const goTo = page.getByRole('button', { name: 'Go To' })
         await expect(goTo).toHaveAttribute('aria-haspopup', 'dialog')
