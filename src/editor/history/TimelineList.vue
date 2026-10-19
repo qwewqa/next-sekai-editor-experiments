@@ -321,6 +321,7 @@ const focusPart = ref<FocusPart>('row')
 const focusInside = ref(false)
 let focusToken = 0
 let disposed = false
+const replacing = shallowRef<{ token: number; filter: typeof historyFilter.value }>()
 
 const selectables = computed(() =>
     rows.value.filter((row) => row.type === 'now' || row.type === 'entry'),
@@ -459,8 +460,13 @@ watch(peekedKey, () => {
     else if (!key && !focusInside.value) cursorId.value = 'now'
 })
 watch(
-    rows,
+    [rows, replacing, historyFilter],
     () => {
+        if (
+            replacing.value?.token === focusToken &&
+            replacing.value.filter === historyFilter.value
+        )
+            return
         if (rowById(cursorId.value)) return
         const parent = rowById(cursorId.value.split('/')[0] ?? '')
         const target = parent?.type === 'entry' ? parent : rows.value[0]
@@ -473,10 +479,15 @@ watch(
 )
 watch(
     [sourceGeneration, peekSourceGeneration, historyViewGeneration],
-    () => {
+    ([, peekGeneration, historyGeneration], [, previousPeek, previousHistory]) => {
         menu.value = undefined
         cancelLongPress()
-        if (replacing) return
+        if (
+            replacing.value &&
+            peekGeneration === previousPeek &&
+            historyGeneration === previousHistory
+        )
+            return
         focusToken++
         if (focusInside.value) void focusRow('now', 'row', false)
     },
@@ -581,8 +592,6 @@ const step = async (delta: number) => {
 }
 
 // --- Jumps: Go To and End read a window at the target, Now and Home go back to the newest.
-let replacing = false
-
 /** Scrolls a row to the top of the list, with its header when one is just above it. */
 const scrollRowToTop = (id: string) => {
     const element = list.value
@@ -597,12 +606,12 @@ const goNow = async () => {
     const token = ++focusToken
     const peekGeneration = peekSourceGeneration.value
     const generation = historyViewGeneration()
-    replacing = true
+    replacing.value = { token, filter: historyFilter.value }
     try {
         await resetToNewest()
         await nextTick()
     } finally {
-        replacing = false
+        if (replacing.value?.token === token) replacing.value = undefined
     }
     if (
         token !== focusToken ||
@@ -622,7 +631,7 @@ const jumpTo = async (target: Target | 'now') => {
     const token = ++focusToken
     const peekGeneration = peekSourceGeneration.value
     const historyGeneration = historyViewGeneration()
-    replacing = true
+    replacing.value = { token, filter: historyFilter.value }
     try {
         const entry = await jumpToEntry(target, historyFilter.value)
         if (!entry) return
@@ -646,7 +655,7 @@ const jumpTo = async (target: Target | 'now') => {
     } catch {
         // The list stays as it was.
     } finally {
-        replacing = false
+        if (replacing.value?.token === token) replacing.value = undefined
     }
 }
 
@@ -661,7 +670,7 @@ const goOldest = async (part?: FocusPart) => {
     const token = ++focusToken
     const peekGeneration = peekSourceGeneration.value
     const historyGeneration = historyViewGeneration()
-    replacing = true
+    replacing.value = { token, filter: historyFilter.value }
     try {
         const entry = await jumpToOldest(historyFilter.value)
         if (!entry) return
@@ -681,7 +690,7 @@ const goOldest = async (part?: FocusPart) => {
     } catch {
         return
     } finally {
-        replacing = false
+        if (replacing.value?.token === token) replacing.value = undefined
     }
 }
 
@@ -701,7 +710,7 @@ watch(
     geometry,
     (next, previous) => {
         const element = list.value
-        if (!element || replacing) return
+        if (!element || replacing.value) return
         const top = element.scrollTop
         if (top <= 0 && !previous.ids.includes('gap')) return
         const index = new Map(next.ids.map((id, i) => [id, i]))
@@ -739,7 +748,7 @@ const gapInView = () => {
     const element = list.value
     const index = rows.value.findIndex((row) => row.type === 'gap')
     const row = rows.value[index]
-    if (!element || !row || replacing || loadingNewer.value) return false
+    if (!element || !row || replacing.value || loadingNewer.value) return false
     const top = geometry.value.offsets[index] ?? 0
     return top < element.scrollTop + element.clientHeight && top + heightOf(row) > element.scrollTop
 }

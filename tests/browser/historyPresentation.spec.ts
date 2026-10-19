@@ -163,6 +163,94 @@ test('filtering out the active peek does not announce Now as selected or replace
     expect(await selected(page)).toEqual(before)
 })
 
+for (const outcome of ['complete', 'failed', 'keyboard', 'filter', 'outside', 'reset'] as const)
+    test(`oldest window replacement preserves navigation ownership: ${outcome}`, async ({ page }) => {
+        await page.evaluate(async () => {
+            const { history, historySteps } = window.editorTest
+            // Future extensions keep this paging fixture's rows individually navigable.
+            for (let i = 31; i <= 250; i++) {
+                const before = history.state.value.initialLife
+                history.pushState(historySteps.futureInitialLife(before, before + 1, `Property ${i}`), {
+                    ...history.state.value,
+                    initialLife: before + 1,
+                })
+            }
+            await window.nseFlushTest!.flusher.flush({ strict: true })
+        })
+        await open(page)
+        await row(page, 'Property 250').click()
+        await expect.poll(async () => (await selected(page)).label).toBe('Property 250')
+        await page.evaluate(async () => {
+            const { storageWorker } = await window.editorTest.appImport<
+                typeof import('../../src/local/start')
+            >('/src/local/start.ts')
+            const control = window as unknown as { releaseOldest?: (fail: boolean) => void }
+            storageWorker!.call = new Proxy(storageWorker!.call, {
+                async apply(target, self, args) {
+                    const result = await Reflect.apply(target, self, args)
+                    if (args[0] === 'readTimeline' && args[1]?.before === 1)
+                        await new Promise<void>((resolve, reject) => {
+                            control.releaseOldest = (fail) => {
+                                control.releaseOldest = undefined
+                                if (fail) reject(new Error('unreadable oldest window'))
+                                else resolve()
+                            }
+                        })
+                    return result
+                },
+            })
+        })
+        await page.keyboard.press('End')
+        await expect.poll(() => page.evaluate(() =>
+            typeof (window as unknown as { releaseOldest?: unknown }).releaseOldest,
+        )).toBe('function')
+        if (outcome === 'keyboard') {
+            await page.keyboard.press('ArrowDown')
+            await expect.poll(async () => (await selected(page)).label).toBe('Property 249')
+        } else if (outcome === 'filter') {
+            await page.evaluate(async () => {
+                const { historyFilter } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/state')
+                >('/src/editor/history/state.ts')
+                historyFilter.value = 'saves'
+            })
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        } else if (outcome === 'outside') {
+            await presentation(page).locator('[data-history-close]').focus()
+        } else if (outcome === 'reset') {
+            await page.evaluate(() => window.editorTest.history.resetState(false))
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        }
+        await page.evaluate((fail) => {
+            ;(window as unknown as { releaseOldest: (fail: boolean) => void }).releaseOldest(fail)
+        }, outcome === 'failed')
+        if (outcome === 'complete') {
+            const oldest = row(page, 'Started a new level')
+            await expect(oldest).toHaveAttribute('aria-selected', 'true')
+            await expect(oldest).toBeFocused()
+            await page.keyboard.press('Home')
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+            await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+        } else if (outcome === 'reset') {
+            await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        } else {
+            if (outcome === 'failed') {
+                await expect(row(page, 'Property 250')).toBeFocused()
+            } else if (outcome === 'filter') {
+                await expect(list(page).getByRole('row')).toHaveCount(1)
+            } else {
+                await expect(row(page, 'Property 250')).toHaveCount(0)
+                await expect(list(page).getByRole('row', { name: /^Now/ })).toHaveAttribute('tabindex', '0')
+            }
+            await expect.poll(async () => (await selected(page)).label).toBe(
+                outcome === 'keyboard' ? 'Property 249' : 'Property 250',
+            )
+            if (outcome === 'outside')
+                await expect(presentation(page).locator('[data-history-close]')).toBeFocused()
+        }
+    })
+
 test('rejected Restore from a reset session cannot damage or leave the newer peek', async ({
     page,
 }) => {
