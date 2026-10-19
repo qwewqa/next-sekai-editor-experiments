@@ -27,8 +27,15 @@ const close = () => {
     current = false
     emit('close')
 }
-const isCurrent = () => current && !isPeeking.value && generation === stackGeneration() && !!expected && groups.value.get(props.groupId) === expected
-const validate = () => { if (!isCurrent()) close() }
+const isCurrent = () =>
+    current &&
+    !isPeeking.value &&
+    generation === stackGeneration() &&
+    !!expected &&
+    groups.value.get(props.groupId) === expected
+const validate = () => {
+    if (!isCurrent()) close()
+}
 const stopState = watch([liveState, isPeeking], validate, { flush: 'sync' })
 const stopActions = onHistoryAction(({ kind }) => {
     if (kind === 'reset' || kind === 'undo' || kind === 'redo' || kind === 'restore') close()
@@ -81,7 +88,10 @@ const forceNoteSpeed = createModel('forceNoteSpeed')
 </script>
 
 <template>
-    <PropertiesModal :title="i18n.commands.manageGroups.modal.properties.modal.title" @close="close">
+    <PropertiesModal
+        :title="i18n.commands.manageGroups.modal.properties.modal.title"
+        @close="close"
+    >
         <NameField v-model="name" />
         <OptionalNumberField
             v-model="forceNoteSpeed"

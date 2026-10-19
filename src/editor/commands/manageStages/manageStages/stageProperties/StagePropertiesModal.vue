@@ -22,15 +22,27 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 const generation = stackGeneration()
 let expected = stages.value.get(props.stageId)
-let last: StageObject = expected ?? { name: '', isFromStart: false, isUntilEnd: false, generateSimLines: 'global' }
+let last: StageObject = expected ?? {
+    name: '',
+    isFromStart: false,
+    isUntilEnd: false,
+    generateSimLines: 'global',
+}
 let current = true
 const close = () => {
     if (!current) return
     current = false
     emit('close')
 }
-const isCurrent = () => current && !isPeeking.value && generation === stackGeneration() && !!expected && stages.value.get(props.stageId) === expected
-const validate = () => { if (!isCurrent()) close() }
+const isCurrent = () =>
+    current &&
+    !isPeeking.value &&
+    generation === stackGeneration() &&
+    !!expected &&
+    stages.value.get(props.stageId) === expected
+const validate = () => {
+    if (!isCurrent()) close()
+}
 const stopState = watch([liveState, isPeeking], validate, { flush: 'sync' })
 const stopActions = onHistoryAction(({ kind }) => {
     if (kind === 'reset' || kind === 'undo' || kind === 'redo' || kind === 'restore') close()
@@ -85,7 +97,10 @@ const generateSimLines = createModel('generateSimLines')
 </script>
 
 <template>
-    <PropertiesModal :title="i18n.commands.manageStages.modal.properties.modal.title" @close="close">
+    <PropertiesModal
+        :title="i18n.commands.manageStages.modal.properties.modal.title"
+        @close="close"
+    >
         <NameField v-model="name" />
         <IsFromStartField v-model="isFromStart" />
         <IsUntilEndField v-model="isUntilEnd" />
