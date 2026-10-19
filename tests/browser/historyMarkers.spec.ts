@@ -17,8 +17,8 @@ const boot = async (page: Page) => {
     const noticeClose = page.locator('[data-notice-close]').first()
     if (await noticeClose.isVisible()) await noticeClose.click()
 }
-const previewLatest = async (page: Page, label = 'Marker changes') => {
-    await page.evaluate(async (label) => {
+const previewLatest = async (page: Page) => {
+    await page.evaluate(async () => {
         const { appImport } = window.editorTest
         const [{ flusher }, { storageWorker }, { requestPeek, keyOf }] = await Promise.all([
             appImport<typeof import('../../src/local/storing')>('/src/local/storing.ts'),
@@ -34,10 +34,10 @@ const previewLatest = async (page: Page, label = 'Marker changes') => {
         requestPeek({
             key: keyOf({ sessionId, seq }),
             time: new Date(2024, 8, 13, 16, 35).getTime(),
-            label,
+            recipe: (await appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts')).captureOperationRecipe([{ description: entry, time: entry.time }]),
             snapshot: entry.snapshot,
         })
-    }, label)
+    })
     await expect(page.locator('[data-peek-change]')).not.toHaveText('')
 }
 const seedNotes = async (page: Page) => {
@@ -46,7 +46,7 @@ const seedNotes = async (page: Page) => {
         const { createState } =
             await appImport<typeof import('../../src/state')>('/src/state/index.ts')
         const chart = structuredClone(fixtures.notes)
-        history.pushState(() => 'Notes', createState(chart, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Notes'), createState(chart, 0))
         const after = structuredClone(chart)
         after.slides = after.slides.map((slide, i) =>
             i % 4 === 0
@@ -57,7 +57,7 @@ const seedNotes = async (page: Page) => {
                       isCritical: !note.isCritical,
                   })),
         )
-        history.pushState(() => 'Changed note shapes', createState(after, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Changed note shapes'), createState(after, 0))
         view.time = 3
         settings.dimUnchangedObjects = true
     })
@@ -71,7 +71,7 @@ test('removed events preserve every native kind and group/stage visibility', asy
         const { createState } =
             await appImport<typeof import('../../src/state')>('/src/state/index.ts')
         const before = structuredClone(fixtures.events)
-        history.pushState(() => 'Events', createState(before, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Events'), createState(before, 0))
         const after = {
             ...before,
             bpms: before.bpms.slice(0, 1),
@@ -82,7 +82,7 @@ test('removed events preserve every native kind and group/stage visibility', asy
             stageStyleEvents: [],
             stageTransformEvents: [],
         }
-        history.pushState(() => 'Removed events', createState(after, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Removed events'), createState(after, 0))
     })
     await previewLatest(page)
     const result = await page.evaluate(async () => {
@@ -232,15 +232,16 @@ for (const width of [1440, 390])
             await boot(page)
             await page.evaluate(() => {
                 const { history } = window.editorTest
-                for (const label of [
+                const labels = [
                     'Added 1 Note',
                     'Moved 2 Notes',
                     'Changed BPM',
                     'Adjusted',
                     'Adjusted',
                     'Adjusted',
-                ])
-                    history.pushState(() => label, {
+                ]
+                for (const [index, label] of labels.entries())
+                    history.pushState(index < 3 ? window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, history.state.value.initialLife + 1, label) : window.editorTest.historySteps.initialLife(history.state.value.initialLife, history.state.value.initialLife + 1), {
                         ...history.state.value,
                         initialLife: history.state.value.initialLife + 1,
                     })
@@ -252,9 +253,9 @@ for (const width of [1440, 390])
             })
             await page.keyboard.press('Shift+H')
             const list = page.locator('[data-history-surface="dialog"] [data-history-list]')
-            await expect(list.getByRole('option', { name: /^Redid 4 steps/ })).toBeVisible()
-            await expect(list.getByRole('option', { name: /^Undid 4 steps/ })).toBeVisible()
-            const group = list.getByRole('option', { name: /^3 edits/ })
+            await expect(list.getByRole('row', { name: /^Redid 4 steps/ })).toBeVisible()
+            await expect(list.getByRole('row', { name: /^Undid 4 steps/ })).toBeVisible()
+            const group = list.getByRole('row', { name: /^Changed Initial Life/ })
             await (width === 390 ? group.tap() : group.click())
             await page.screenshot({ path: `${shots}/groups-${width}-collapsed.png` })
             await (width === 390
@@ -263,10 +264,10 @@ for (const width of [1440, 390])
             await expect(group).toHaveAttribute('aria-selected', 'true')
             await page.screenshot({ path: `${shots}/groups-${width}-expanded.png` })
             await list
-                .getByRole('option', { name: /^Undid 4 steps/ })
+                .getByRole('row', { name: /^Undid 4 steps/ })
                 .locator('[data-history-disclosure]')
                 .click()
-            await list.getByRole('option', { name: /^Undo · Changed BPM/ }).scrollIntoViewIfNeeded()
+            await list.getByRole('row', { name: /^Undo · Changed BPM/ }).scrollIntoViewIfNeeded()
             await page.screenshot({ path: `${shots}/groups-${width}-undo.png` })
         })
     })
@@ -310,10 +311,10 @@ test('same-beat event moves retain old glyphs and Show Change reaches their actu
         const { createState } =
             await appImport<typeof import('../../src/state')>('/src/state/index.ts')
         const before = structuredClone(fixtures.events)
-        history.pushState(() => 'Events', createState(before, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Events'), createState(before, 0))
         const after = structuredClone(before)
         after.timeScales[0]!.editorLane = 30
-        history.pushState(() => 'Moved event', createState(after, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Moved event'), createState(after, 0))
         view.time = 2.25
         settings.maxScrollX = 64
     })
@@ -354,11 +355,11 @@ test('narrow French history keeps removed and damaged reasons readable', async (
             sessionId: 'evidence',
             seq,
             time: Date.now() - seq * 1000,
-            kind: 'edit',
-            label:
+            kind: 'edit' as const,
+            step: window.editorTest.historySteps.editStep(window.editorTest.historySteps.futureFixtureOperation('unavailable-localized', {},
                 seq === 1
                     ? 'Déplacement de nombreuses notes sur plusieurs voies'
-                    : 'Modification du tempo',
+                    : 'Modification du tempo')),
             kept: false,
             snapshot: '00',
             dirty: false,
@@ -380,7 +381,7 @@ test('narrow French history keeps removed and damaged reasons readable', async (
     const sizes = await flags.evaluateAll((flags) =>
         flags.map((flag) => {
             const text = flag.lastElementChild!
-            const row = flag.closest('[role="option"]')!.getBoundingClientRect()
+            const row = flag.closest('[role="row"]')!.getBoundingClientRect()
             const box = text.getBoundingClientRect()
             return {
                 inside: box.top >= row.top && box.bottom <= row.bottom,
@@ -402,15 +403,11 @@ test('header-only and unavailable comparisons have explicit stable summaries', a
         const { history, settings } = window.editorTest
         settings.locale = 'fr'
         history.pushState(
-            () =>
-                'Modification de la vie initiale et des paramètres du niveau conservés dans cet historique',
+            window.editorTest.historySteps.futureInitialLife(history.state.value.initialLife, 1200, 'Modification de la vie initiale et des paramètres du niveau conservés dans cet historique'),
             { ...history.state.value, initialLife: 1200 },
         )
     })
-    await previewLatest(
-        page,
-        'Modification de la vie initiale et des paramètres du niveau conservés dans cet historique',
-    )
+    await previewLatest(page)
     await page.screenshot({ path: `${shots}/phone-fr-header-only.png` })
     await page.evaluate(async () => {
         const { appImport } = window.editorTest
@@ -453,12 +450,12 @@ test('composed stages outline attached ticks and zero-width placeholders', async
             ],
         ]
         before.slides.push([{ ...base, beat: 5, left: 3, size: 0, noteType: 'forceTick' }])
-        history.pushState(() => 'Composed slide', createState(before, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Composed slide'), createState(before, 0))
         const after = structuredClone(before)
         after.slides[0]![1]!.isCritical = true
         after.slides[1]![0]!.isCritical = true
         after.slides[0]![0]!.connectorEase = 'inQuad'
-        history.pushState(() => 'Changed tick and connector', createState(after, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Changed tick and connector'), createState(after, 0))
         view.layout = 'composed'
         view.time = 3.5
         settings.width = 16
@@ -508,9 +505,9 @@ test('Show Change reaches a removed event outside the visible lanes', async ({ p
             await appImport<typeof import('../../src/state')>('/src/state/index.ts')
         const before = structuredClone(fixtures.events)
         before.timeScales = [{ ...before.timeScales[0]!, editorLane: -30 }]
-        history.pushState(() => 'Off-lane event', createState(before, 0))
+        history.pushState(window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Off-lane event'), createState(before, 0))
         history.pushState(
-            () => 'Removed off-lane event',
+            window.editorTest.historySteps.nativeOperation({ id: 'nse.externalChange', data: {} }, 'Removed off-lane event'),
             createState({ ...before, timeScales: [] }, 0),
         )
         view.time = 2.25

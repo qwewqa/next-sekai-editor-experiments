@@ -860,12 +860,12 @@ test('a selected edge singleton stays separate when an older matching page arriv
         })
     })
     await openTab(page)
-    await row(page, 'Add').click()
+    await row(page, 'Added 1 note').click()
     await expect(peekLine(page)).toHaveText('1 change')
     await page.evaluate(() => (window as unknown as { releasePage: () => void }).releasePage())
     await expect(row(page, 'Added 2 notes')).toHaveCount(1)
     await expect(
-        row(page, 'Add').filter({ hasNot: page.locator('[data-history-group-header]') }),
+        row(page, 'Added 1 note').filter({ hasNot: page.locator('[data-history-disclosure]') }),
     ).toHaveAttribute('aria-selected', 'true')
     await expect(peekLine(page)).toHaveText('1 change')
     await row(page, 'Added 2 notes').click({ button: 'right' })

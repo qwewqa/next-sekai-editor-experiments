@@ -628,7 +628,7 @@ test.describe('links', () => {
         await next.getByRole('button', { name: 'Open History' }).click()
         await expect(list(next)).toBeVisible()
         // The continued session's own entries and its parent's are in the one Timeline.
-        await expect(list(next).getByRole('note').filter({ hasText: /Continued from/ })).toHaveCount(1)
+        await expect(list(next).locator('[data-history-continuation]').filter({ hasText: /Continued from/ })).toHaveCount(1)
         await expect(row(next, 'Life 2')).toBeVisible()
     })
 })
@@ -658,7 +658,7 @@ test.describe('the Timeline', () => {
     test('native property edits group by field, and the group opens', async ({ page }) => {
         for (let i = 0; i < 3; i++) await edit(page, 1, 'Scrub', true)
         await openTab(page)
-        const group = list(page).getByRole('row').filter({ hasText: '3 steps' })
+        const group = list(page).getByRole('row', { name: /^Changed Initial Life/ })
         await expect(group).toHaveCount(1)
         await expect(group).toHaveAttribute('aria-expanded', 'false')
         await stored(page)
@@ -1076,7 +1076,7 @@ test.describe('after a reload', () => {
 })
 
 test.describe('ARIA', () => {
-    test('the tabs, the listbox and its options are linked and counted', async ({ page }) => {
+    test('the tabs and treegrid action rows are linked and counted', async ({ page }) => {
         await edit(page, 3)
         await stored(page)
         await openTab(page)
@@ -1330,15 +1330,15 @@ test.describe('touch disclosure', () => {
     test('tap disclosure expands without peeking and scrolling cancels row long press', async ({
         page,
     }) => {
-        for (let i = 0; i < 3; i++) await edit(page, 1, 'Touch edit')
+        for (let i = 0; i < 3; i++) await edit(page, 1, 'Touch edit', true)
         await stored(page)
         await openTab(page, 'top')
-        const group = row(page, '3 edits')
+        const group = row(page, 'Changed Initial Life')
         const disclosure = group.locator('[data-history-disclosure]')
         await disclosure.tap()
         await expect(group).toHaveAttribute('aria-expanded', 'true')
         await expect(peekBar(page)).toHaveCount(0)
-        const child = row(page, 'Touch edit')
+        const child = list(page).getByRole('row', { name: /^Set Initial Life/ })
             .filter({ hasNot: page.locator('[data-history-group-header]') })
             .first()
         await child.dispatchEvent('pointerdown', {
