@@ -37,6 +37,8 @@ const widenedNoteStep = editStep(
     ),
 )
 
+const widenedNoteEntry = { kind: 'edit' as const, step: widenedNoteStep }
+
 const widen = (state: State, n = 0) => {
     const notes = [...state.store.slides.note.values()].flat()
 
@@ -57,14 +59,7 @@ const begin = (page: SplitPage, state: State, origin: 'new' | 'import' = 'import
     })
 
 const edit = (page: SplitPage, state: State) => {
-    page.flusher.append(
-        {
-            kind: 'edit',
-            step: widenedNoteStep,
-        },
-        state,
-        true,
-    )
+    page.flusher.append(widenedNoteEntry, state, true)
 }
 
 /** Every row of every store, as text, to tell whether anything was written. */
@@ -275,14 +270,7 @@ test('a memo learned on another store is checked again, whatever the epoch', asy
     await tab.run(() => core.start())
     ref.handlers = flushHandlers({ core, test: true, emit: () => undefined }, tab.waiter)
     state = widen(state)
-    page.flusher.append(
-        {
-            kind: 'edit',
-            step: widenedNoteStep,
-        },
-        state,
-        true,
-    )
+    page.flusher.append(widenedNoteEntry, state, true)
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     assert.deepEqual(
