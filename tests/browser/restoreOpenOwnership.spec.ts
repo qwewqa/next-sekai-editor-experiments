@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
+import type { CallOptions } from '../../src/local/worker/rpc'
+import type { StorageHandlers } from '../../src/local/worker/storage.worker'
 import { fresh } from '../local/nxsp/chain'
 import { damagedFile } from '../local/open/files'
 import { installTestPlatform, waitForStartup } from './editorFixture'
@@ -33,7 +35,7 @@ const start = async (page: Page) => {
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
     })
-    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' })
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' as const })
     await page.goto('/')
     await waitForStartup(page)
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
@@ -137,8 +139,12 @@ const hold = (page: Page, method: 'readSnapshot' | 'openRead' | 'openStore' | 'r
                 worker.call = original
             },
         }
-        worker.call = async (name, ...args) => {
-            const result = await original(name, ...args)
+        worker.call = async <K extends keyof StorageHandlers>(
+            name: K,
+            arg?: Parameters<StorageHandlers[K]>[0],
+            options?: CallOptions & { current?: () => boolean },
+        ): Promise<Awaited<ReturnType<StorageHandlers[K]>>> => {
+            const result = await original(name, arg, options)
             if (name === 'openDrop') window.switchRace.dropped++
             if (
                 name === 'openRead' &&
