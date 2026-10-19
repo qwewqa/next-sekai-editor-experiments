@@ -1,5 +1,6 @@
 import type {
     AdditiveMetric,
+    EntryDescription,
     GroupDescriptor,
     NativeOperationInput,
     OwnerKind,
@@ -17,7 +18,7 @@ export type OperationTextContext = {
 }
 
 export type OperationMember = {
-    readonly step: UndoableStep
+    readonly description: EntryDescription | UndoableStep
     readonly time?: number
     readonly id?: string
 }

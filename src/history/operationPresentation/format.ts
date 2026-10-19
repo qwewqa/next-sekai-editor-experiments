@@ -3,6 +3,7 @@ import {
     checkedSum,
     decodeOperation,
     subjectOfCounts,
+    type EntryDescription,
     type JsonValue,
     type NativeCounts,
     type NativeOperationInput,
@@ -13,7 +14,8 @@ import {
     type StepDescription,
     type Subject,
 } from '../operations'
-import type { OperationTextContext } from './types'
+import type { OperationMember, OperationTextContext } from './types'
+import { isEntryDescription } from './members'
 import {
     joinSentences,
     message,
@@ -516,3 +518,25 @@ export const describeStep = (step: StepDescription, context: OperationTextContex
         }[step.kind],
         context,
     )
+
+export const describeEntry = (entry: EntryDescription, context: OperationTextContext) => {
+    const t = context.strings
+    if (entry.step) {
+        const description = describeStep(entry.step, context)
+        return entry.kind === 'undo' || entry.kind === 'redo'
+            ? `${t.commands[entry.kind].title} · ${description}`
+            : description
+    }
+    return describeCapturedOperation(entry.operation, {
+        init: t.peek.initialState,
+        continue: t.entry.continued,
+        save: t.commands.save.title,
+        export: t.commands.exportLevel.title,
+        recovered: t.entry.recoveredChanges,
+    }[entry.kind], context)
+}
+
+export const describeMember = ({ description }: OperationMember, context: OperationTextContext) =>
+    isEntryDescription(description)
+        ? describeEntry(description, context)
+        : describeStep(description, context)

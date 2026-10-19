@@ -1,6 +1,5 @@
 import {
     captureOperation,
-    captureStep,
     checkedSum,
     decodeOperation,
     equalJson,
@@ -15,7 +14,7 @@ import {
 } from '../operations'
 import {
     describeOperation,
-    describeStep,
+    describeMember,
     nativeDescription,
     ownerCountsDescription,
     ownerDomain,
@@ -25,7 +24,8 @@ import {
     renameDescription,
 } from './format'
 import type { OperationMember, OperationRecipe, OperationTextContext, OwnerIdentity } from './types'
-import { joinFields, message, ownerFieldLabel, ownerName } from './values'
+import { captureOperationMember, isEntryDescription, memberOperation } from './members'
+import { joinFields, message, numberText, ownerFieldLabel, ownerName } from './values'
 
 export type OperationRecipeOptions = {
     readonly partial?: boolean
@@ -39,7 +39,7 @@ export const equalOperationValue = (a: FieldValue<FieldId>, b: FieldValue<FieldI
         : equalJson(a, b)
 
 const knownOperation = (member: OperationMember) => {
-    const decoded = decodeOperation(member.step.operation)
+    const decoded = decodeOperation(memberOperation(member))
     if (decoded.status !== 'known') throw new Error('Unsupported operation cannot be aggregated')
     return decoded.operation
 }
@@ -71,24 +71,23 @@ export const captureOperationRecipe = (
     options: OperationRecipeOptions = {},
 ): OperationRecipe => {
     if (!input.length) throw new Error('An operation recipe needs a member')
-    const members = Object.freeze(
-        input.map((member) =>
-            Object.freeze({
-                step: captureStep(member.step),
-                ...(member.time === undefined ? {} : { time: member.time }),
-                ...(member.id === undefined ? {} : { id: member.id }),
-            }),
-        ),
-    )
+    const members = Object.freeze(input.map(captureOperationMember))
     const qualifiers = Object.freeze(
         (options.qualifiers ?? []).map((identity) => Object.freeze({ ...identity })),
     )
     const partial = options.partial ?? false
     const base = { members, qualifiers, partial }
-    if (options.direction) return Object.freeze({ ...base, kind: options.direction })
+    if (options.direction) {
+        if (members.some(({ description }) =>
+            isEntryDescription(description)
+                ? description.kind !== options.direction
+                : description.kind === 'init',
+        )) throw new Error('Only matching crossed steps form direction groups')
+        return Object.freeze({ ...base, kind: options.direction })
+    }
     if (members.length === 1 && !partial) return Object.freeze({ ...base, kind: 'single' })
     const operations = members.map((member) => {
-        if (member.step.kind !== 'edit') throw new Error('Only edits form operation groups')
+        if (member.description.kind !== 'edit') throw new Error('Only edits form operation groups')
         return knownOperation(member)
     })
     const first = operations[0]
@@ -150,6 +149,12 @@ export const captureOperationRecipe = (
     })
 }
 
+const stepCountValue = (recipe: OperationRecipe, context: OperationTextContext) =>
+    recipe.partial ? `${numberText(recipe.members.length, context)}+` : recipe.members.length
+
+export const operationStepCount = (recipe: OperationRecipe, context: OperationTextContext) =>
+    message(context, context.strings.history.steps, stepCountValue(recipe, context))
+
 export const renderOperationRecipe = (
     recipe: OperationRecipe,
     inputContext: OperationTextContext,
@@ -158,12 +163,12 @@ export const renderOperationRecipe = (
     const t = context.strings
     const first = recipe.members[0]
     if (!first) throw new Error('Missing recipe member')
-    if (recipe.kind === 'single') return describeStep(first.step, context)
+    if (recipe.kind === 'single') return describeMember(first, context)
     if (recipe.kind === 'undo' || recipe.kind === 'redo')
         return message(
             context,
             recipe.kind === 'undo' ? t.history.undidSteps : t.history.redidSteps,
-            recipe.members.length,
+            stepCountValue(recipe, context),
         )
     const group = recipe.group
     const summary = recipe.summary
@@ -278,7 +283,7 @@ const recipeReferences = (recipe: OperationRecipe): readonly OwnerReference[] =>
     if (recipe.kind === 'undo' || recipe.kind === 'redo') return []
     const first = recipe.members[0]
     const decoded =
-        recipe.kind === 'single' && first ? decodeOperation(first.step.operation) : undefined
+        recipe.kind === 'single' && first ? decodeOperation(memberOperation(first)) : undefined
     const operation = decoded?.status === 'known' ? decoded.operation : recipe.summary
     if (!operation) return []
     if (operation.id === 'nse.property.set') {
