@@ -1331,6 +1331,7 @@
     "viewChart": "Çizelgeyi Görüntüle",
     "details": {
       "title": "Adım ayrıntıları",
+      "named": "Adım ayrıntıları: {0}",
       "action": "Ayrıntılar",
       "unsupported": "Bu editör bu işlemi yorumlayamıyor.",
       "nameShortened": "Ad kısaltılarak gösteriliyor",

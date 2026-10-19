@@ -1331,6 +1331,7 @@
     "viewChart": "Voir la partition",
     "details": {
       "title": "Détails de l’étape",
+      "named": "Détails de l’étape : {0}",
       "action": "Détails",
       "unsupported": "Cet éditeur ne peut pas interpréter cette action.",
       "nameShortened": "Nom affiché en abrégé",

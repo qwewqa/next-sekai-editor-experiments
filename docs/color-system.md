@@ -591,7 +591,7 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 | `[data-show-edits]` (24 px) | `ghost btn-toggle focus-out` with `:aria-pressed`; delete `bg-accent … hover:bg-accent/80 active:bg-button`; on = mint face, off = no face with the hidden eye |
 | `[data-change-options]` (24 px) | `ghost focus-out`; its `aria-haspopup` + `aria-expanded` hold the open look; delete `{ 'bg-header-hover': menuOpen }` |
 | `[data-property-summary]` (24 px) | `ghost focus-out` |
-| arrows | `[control, enabled(direction) ? 'ghost focus-out' : 'focus-out']` (disabled arrows take no hover or press); keep the 40 % child opacity |
+| arrows | An inner face, not `ghost focus-out` on the 48 px button: the button is layout only and its child `.change-face` is a 24 px circle (`size-6 rounded-full`) round the 12 px `centered` chevron, so the fill and ring sit on the glyph. The face takes the ghost tokens: hover `bg-fg/10`, press `bg-ghost-press text-fg-strong`, focus an `outline` on the face, 1 px outside, in `fg`. A disabled arrow (`aria-disabled="true"`) takes no hover or press; keep the 40 % opacity on the chevron and count only, so the focus ring stays full |
 | forced colours | Covered by the recipe (`btn-toggle` on → Highlight); delete the pressed retarget |
 | Go To | `ghost ghost-band`, flat on the band (its `aria-haspopup="dialog"` + `aria-expanded` hold `band-hover` while open) |
 | band tabs | The inner-face pattern on the band: `.history-tab:hover .history-tab-pill { bg-band-hover }`, `:active … { bg-band-press text-fg-strong }`, `:focus-visible … { outline 2px currentColor, offset -4px }`; marker `bg-fg` (unchanged) |
@@ -599,7 +599,7 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 | filter dot | Removed; if kept, `bg-accent-strong` |
 | History dialog footer | View Chart `btn btn-secondary`; close `ghost ghost-band` (BaseModal) |
 | row pill `::before` | Selected `bg-button shadow-md` (the `row-current` tokens on a pseudo-element); hover `bg-button/70` (unchanged) |
-| main-pill press | `bg-ghost-press text-fg-strong` (was `bg-accent text-on-accent`) |
+| main-pill press | A plain row presses its row pill, a group its text pill: `bg-press text-fg-strong shadow-pressed` (was `bg-accent text-on-accent`). Not `bg-ghost-press`: in dark it equals the current row's `bg-button` fill within 1.09:1, so the press would not read |
 | focus | Row pill and main pill take `focus-edge` (replacing `ring-2 ring-inset ring-fg`): the row exception (principle 10), since `fg` contrasts with the pill and the modal |
 | guide line | `bg-fg/30` (unchanged) |
 | disclosure | `ghost` (delete `hover:bg-fg/10 … active:bg-accent … ring-fg`) |

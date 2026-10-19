@@ -1331,6 +1331,7 @@
     "viewChart": "查看谱面",
     "details": {
       "title": "步骤详情",
+      "named": "步骤详情：{0}",
       "action": "详情",
       "unsupported": "此编辑器无法解读此操作。",
       "nameShortened": "名称已缩短显示",

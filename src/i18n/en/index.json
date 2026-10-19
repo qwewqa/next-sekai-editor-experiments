@@ -1331,6 +1331,7 @@
         "viewChart": "View Chart",
         "details": {
             "title": "Step Details",
+            "named": "Step Details: {0}",
             "action": "Details",
             "unsupported": "This editor cannot interpret this action.",
             "nameShortened": "Name shortened for display",
