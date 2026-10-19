@@ -9,7 +9,7 @@ import { webLockService } from '../../../src/local/locks'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { holdSessionLock } from '../../../src/local/sessions'
-import { claimTab } from '../../../src/local/startup/open'
+import { boundElsewhere, claimTab } from '../../../src/local/startup/open'
 import { journalsStep, type RecoveryContext } from '../../../src/local/startup/steps'
 import { claimSessionLock, MARKER_WAIT_MS } from '../../../src/local/startup/tab'
 import { checkStored } from '../../../src/local/testing/invariants'
@@ -561,9 +561,23 @@ test('a new visit whose most recent session’s file is bound in another tab’s
         }
     })
     // The store holds plain values: the reads carry fake handles, one file for both.
-    const file = { isSameEntry: (other: unknown) => Promise.resolve(other === file) }
+    let failBindings = false
+    let failComparison = false
+    let missingHandle = false
+    let handleReads = 0
+    const file = {
+        isSameEntry: (other: unknown) =>
+            failComparison
+                ? Promise.reject(new Error('comparison failed'))
+                : Promise.resolve(other === file),
+    }
     const visit = await load(world, 'visit', storage, {
-        call: (method, result) => (method === 'readHandle' && result ? file : result),
+        call: (method, result) => {
+            if (method === 'readBindings' && failBindings) throw new Error('bindings unavailable')
+            if (method !== 'readHandle') return result
+            handleReads++
+            return missingHandle ? undefined : result ? file : result
+        },
     })
     const copy = openSession(visit)
     assert.notEqual(copy.forkOf, undefined)
@@ -574,6 +588,24 @@ test('a new visit whose most recent session’s file is bound in another tab’s
             kind: 'separateCopy',
             of: { name: 'coconut.nxsp', bound: true },
         },
+    )
+    const target = await readOpen(visit.page, bound.id)
+    failBindings = true
+    const beforeFailure = handleReads
+    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), true)
+    assert.equal(handleReads, beforeFailure, 'failed enumeration must not eagerly read handles')
+    failBindings = false
+    failComparison = true
+    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), true)
+    failComparison = false
+    missingHandle = true
+    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), false)
+    failBindings = true
+    assert.equal(
+        await visit.page.tab.run(() =>
+            boundElsewhere(visit.deps, { ...target, chain: { ...target.chain, file: undefined } }),
+        ),
+        false,
     )
     lock.release()
 })
