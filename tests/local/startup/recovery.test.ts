@@ -1,3 +1,4 @@
+import { equalJson, type JsonValue } from '../../../src/history/operations'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { writeMeta } from '../../../src/local/db'
@@ -174,7 +175,7 @@ test('the migration: a readable slot becomes a session, copied into the legacy s
     assert.equal('file' in chain, false)
     const [entry] = [...rows(world, 'entries').values()]
     assert.equal(entry?.kind, 'init')
-    assert.deepEqual(entry?.operation, originOperation('autoSave'))
+    assert(equalJson(entry?.operation as JsonValue, originOperation('autoSave')))
     // Deduplication by the slot's content hash.
     const meta = rows(world, 'meta').get('migratedHashes')
     assert.deepEqual(meta?.value, [toHex(await sha256(new TextEncoder().encode(text)))])

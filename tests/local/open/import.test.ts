@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { captureEntryDescription, captureName } from '../../../src/history/operations'
 import { DB_NAME, hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { keyText } from '../../../src/local/kv/keys'
@@ -19,6 +20,7 @@ import {
 import type { WorkerContext } from '../../../src/local/worker/handlers'
 import { openHandlers } from '../../../src/local/worker/openHandlers'
 import { peekHandlers } from '../../../src/local/worker/peekHandlers'
+import { initialStep, nativeOperation, originOperation } from '../../helpers/historySteps'
 import { openPage, rows, storedRecords } from '../flush/harness'
 import { fresh } from '../nxsp/chain'
 import { crafted, jsonOf, setJson } from '../nxsp/craft'
@@ -54,7 +56,13 @@ const storeRequest = (id: string, extra: Partial<OpenStoreRequest> = {}): OpenSt
         name: 'Coconut (Master)',
         file: { name: 'coconut.nxsp', event: 'opened', options: { history: true, bgm: true } },
     },
-    labels: { opened: 'Opened coconut.nxsp', changedOutside: 'Changed outside the editor' },
+    operations: {
+        opened: originOperation('import'),
+        changedOutside: nativeOperation(
+            { id: 'nse.externalChange', data: {} },
+            'Changed outside the editor',
+        ),
+    },
     wall: 2_000_000,
     appVersion: '0.6.0',
     ...extra,
@@ -332,10 +340,35 @@ test('a file whose level differs from its history’s head gets "Changed outside
     await runAll(s, reply.id, stored.batches)
     const entries = sessionEntries(s.world)
     assert.deepEqual(
-        entries.slice(4).map((row) => [row.seq, row.kind, row.label, row.dirty]),
+        entries
+            .slice(4)
+            .map((row) => [
+                row.seq,
+                JSON.parse(JSON.stringify(captureEntryDescription(row))),
+                row.dirty,
+            ]),
         [
-            [5, 'edit', 'Changed outside the editor', false],
-            [6, 'continue', 'Opened coconut.nxsp', false],
+            [
+                5,
+                {
+                    kind: 'edit',
+                    step: {
+                        kind: 'edit',
+                        operation: JSON.parse(
+                            JSON.stringify(storeRequest(reply.id).operations.changedOutside),
+                        ),
+                    },
+                },
+                false,
+            ],
+            [
+                6,
+                {
+                    kind: 'continue',
+                    operation: JSON.parse(JSON.stringify(storeRequest(reply.id).operations.opened)),
+                },
+                false,
+            ],
         ],
     )
     // The binding's state is the file's level; the stack holds the history's, then it.
@@ -364,7 +397,13 @@ const longFile = async (count: number) => {
         ...Array.from({ length: count - 2 }, (_, i) => ({
             kind: 'export' as const,
             time: 2000 + i,
-            label: 'Exported LevelData',
+            operation: nativeOperation(
+                {
+                    id: 'nse.file.export',
+                    data: { file: captureName('LevelData'), delivery: 'file' },
+                },
+                'Exported LevelData',
+            ),
             snapshot: head,
             noteCount: 0,
         })),
@@ -378,7 +417,16 @@ const longFile = async (count: number) => {
         history: {
             ...history,
             entries,
-            undoStack: { base: 0, slots: [{ snapshot: head, label: first.label }], index: 0 },
+            undoStack: {
+                base: 0,
+                slots: [
+                    {
+                        snapshot: head,
+                        step: initialStep(history.undoStack.slots[0]!.step.operation),
+                    },
+                ],
+                index: 0,
+            },
         },
     }
     return executePlan(planNxsp(long).plan, new Map())

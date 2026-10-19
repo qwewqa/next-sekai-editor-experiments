@@ -1,10 +1,27 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { captureOperation, equalJson, type JsonValue } from '../../../src/history/operations'
+import {
+    captureEntryDescription,
+    captureOperation,
+    createRecoveryContext,
+    equalJson,
+    type JsonValue,
+} from '../../../src/history/operations'
 import { KeyRange } from '../../../src/local/kv/types'
 import { readNxsp } from '../../../src/local/nxsp/read'
+import type { SaveStore } from '../../../src/local/save/bodies'
+import { buildSave } from '../../../src/local/save/execute'
+import { openHandlers } from '../../../src/local/worker/openHandlers'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
-import { Fixture, heldRows, save, sourceOf } from './fixture'
+import {
+    editStep,
+    futureFixtureOperation,
+    nativeOperation,
+    originOperation,
+} from '../../helpers/historySteps'
+import { openPage } from '../flush/harness'
+import { readOpen } from '../startup/harness'
+import { Fixture, heldRows, save, saveOptions, sourceOf } from './fixture'
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
 
@@ -87,4 +104,125 @@ test('broken structural replay refuses History but chart-only Save uses the veri
     assert.equal(opened.history, undefined)
     assert(!('refused' in chart.built))
     assert.equal(chart.built.saveEntry.snapshot, fixture.head)
+})
+
+test('event-only recovered context survives keep-first, append, import, reload and another Save without changing slots', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1, raw)
+    const slots = fixture.session.slots.map((slot) => slot.step)
+    const context = createRecoveryContext(
+        editStep(raw),
+        [
+            editStep(futureFixtureOperation('dropped-before', { opaque: [1, 2] })),
+            editStep(futureFixtureOperation('dropped-redo', { opaque: { newEnum: 'future' } })),
+        ],
+        1,
+    )
+    fixture.recoverContext(
+        nativeOperation(
+            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 2 } },
+            'Recovered work',
+        ),
+        context,
+    )
+    await fixture.flush()
+    const first = await save(fixture, { kind: 'copy' }, { disk: diskOf })
+    assert(first.file, JSON.stringify(first.built))
+    const replaced = await save(
+        fixture,
+        { kind: 'replace', replaces: 'other-revision' },
+        { binds: false },
+    )
+    assert(replaced.file, JSON.stringify(replaced.built))
+    const appended = await save(
+        fixture,
+        { kind: 'append', source: 'target' },
+        { binds: false, files: [await sourceOf(first.file)] },
+    )
+    assert(appended.file, JSON.stringify(appended.built))
+    for (const file of [first.file, replaced.file, appended.file]) {
+        const saved = await heldRows(file)
+        const entry = saved.history.entries.find((row) => row.kind === 'recovered')
+        assert(entry?.kind === 'recovered')
+        assert(equalJson(entry.recoveryContext, context))
+        assert(
+            equalJson(
+                saved.history.undoStack.slots.map((slot) => slot.step),
+                slots,
+            ),
+        )
+        assert.equal(entry.stack?.push.length, 0)
+    }
+
+    const page = await openPage(fixture.world, fixture.world.tab('import-recovery'))
+    const open = openHandlers(
+        { core: page.core, test: true, emit: () => undefined },
+        page.tab.waiter,
+    )
+    const read = await page.tab.run(() => open.openRead(appended.file))
+    assert(read.kind === 'nxsp')
+    const imported = await page.tab.run(() =>
+        open.openStore({
+            id: read.id,
+            ids: {
+                chainId: 'imported-chain',
+                sessionId: 'imported-session',
+                docId: 'imported-doc',
+                lineageId: 'lineage',
+            },
+            chain: {},
+            operations: {
+                opened: originOperation('import'),
+                changedOutside: nativeOperation(
+                    { id: 'nse.externalChange', data: {} },
+                    'Changed outside',
+                ),
+            },
+            wall: 3000000,
+            appVersion: '0.6.0',
+        }),
+    )
+    assert(imported.kind === 'stored')
+    for (let n = 0; n < imported.batches; n++)
+        await page.tab.run(() => open.openBatch({ id: read.id, n }))
+    const reloadedPage = await openPage(fixture.world, fixture.world.tab('reload-recovery'))
+    const reloaded = await readOpen(reloadedPage, 'imported-session')
+    assert(
+        equalJson(
+            reloaded.stack.slots.map((slot) => slot.step),
+            slots,
+        ),
+    )
+    const store: SaveStore = {
+        read: (stores, fn) => reloadedPage.tab.run(() => reloadedPage.core.read(stores, fn)),
+        write: (stores, fn, options) =>
+            reloadedPage.tab.run(() => reloadedPage.core.write(stores, fn, options)),
+    }
+    const savedAgain = await buildSave(
+        store,
+        'imported-chain',
+        { kind: 'copy' },
+        saveOptions(fixture).options,
+    )
+    assert(!('refused' in savedAgain), JSON.stringify(savedAgain))
+    const after = await heldRows(savedAgain.blob)
+    const event = after.history.entries.find((row) => row.kind === 'recovered')
+    assert(event?.kind === 'recovered')
+    assert(
+        equalJson(
+            captureEntryDescription(event),
+            captureEntryDescription(
+                (await heldRows(first.file)).history.entries.find(
+                    (row) => row.kind === 'recovered',
+                ),
+            ),
+        ),
+    )
+    assert(
+        equalJson(
+            after.history.undoStack.slots.map((slot) => slot.step),
+            slots,
+        ),
+    )
 })
