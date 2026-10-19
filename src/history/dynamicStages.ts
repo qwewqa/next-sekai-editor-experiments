@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import { createAsyncEditGuard } from '../editor/asyncEditGuard'
 import { notify } from '../editor/notification.ts'
 import { i18n } from '../i18n/index.ts'
 import ConfirmModal from '../modals/ConfirmModal.vue'
@@ -15,70 +16,75 @@ import { defaultStageId } from './stages'
 
 export const isDynamicStages = computed(() => state.value.isDynamicStages)
 
-export const checkDynamicStages = async () => {
-    if (isDynamicStages.value) return true
+export type DynamicStagesOutcome = 'enabled' | 'declined' | 'stale'
+
+export const requestDynamicStages = async (
+    isCurrent: () => boolean = () => true,
+): Promise<DynamicStagesOutcome> => {
+    if (!isCurrent()) return 'stale'
+    if (isDynamicStages.value) return 'enabled'
     // Enabling them is an edit, refused while peeking (§1.4.11).
     if (isPeeking.value) {
         refuseWhilePeeking()
-        return false
+        return 'stale'
     }
 
-    const result = await showModal(ConfirmModal, {
-        title: () => i18n.value.history.dynamicStages.title,
-        message: () => i18n.value.history.dynamicStages.message,
-    })
-    if (!result) return false
+    const guard = createAsyncEditGuard()
+    try {
+        const result = await showModal(ConfirmModal, {
+            title: () => i18n.value.history.dynamicStages.title,
+            message: () => i18n.value.history.dynamicStages.message,
+        })
+        if (!guard.isCurrent() || !isCurrent()) return 'stale'
+        if (!result) return 'declined'
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (isDynamicStages.value) return true
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (isPeeking.value) {
-        refuseWhilePeeking()
-        return false
+        const transaction = createTransaction(state.value)
+
+        addStageMaskEventJoint(transaction, {
+            stageId: defaultStageId.value,
+            beat: 0,
+            maskLeft: -6,
+            maskSize: 12,
+            isMaskNotes: false,
+            eventEase: 'linear',
+        })
+        addStagePivotEventJoint(transaction, {
+            stageId: defaultStageId.value,
+            beat: 0,
+            pivotLane: 0,
+            divisionSize: 2,
+            divisionParity: 'even',
+            yOffset: 0,
+            yOffsetBeat: 0,
+            eventEase: 'linear',
+        })
+        addStageStyleEventJoint(transaction, {
+            stageId: defaultStageId.value,
+            beat: 0,
+            editorLane: 0,
+            judgmentLineColor: 'purple',
+            judgmentLineStyle: 'default',
+            leftBorderStyle: 'default',
+            rightBorderStyle: 'default',
+            isFullWidth: false,
+            noteAlpha: 1,
+            laneAlpha: 1,
+            judgmentLineAlpha: 1,
+            divisionLineAlpha: 1,
+            eventEase: 'linear',
+        })
+
+        pushState(createHistoryOperation({ id: 'nse.dynamicStages.enable', data: {} }), {
+            ...transaction.commit([...selectedEntities.value]),
+            isDynamicStages: true,
+        })
+
+        notify(() => i18n.value.history.dynamicStages.enabled)
+
+        return 'enabled'
+    } finally {
+        guard.dispose()
     }
-
-    const transaction = createTransaction(state.value)
-
-    addStageMaskEventJoint(transaction, {
-        stageId: defaultStageId.value,
-        beat: 0,
-        maskLeft: -6,
-        maskSize: 12,
-        isMaskNotes: false,
-        eventEase: 'linear',
-    })
-    addStagePivotEventJoint(transaction, {
-        stageId: defaultStageId.value,
-        beat: 0,
-        pivotLane: 0,
-        divisionSize: 2,
-        divisionParity: 'even',
-        yOffset: 0,
-        yOffsetBeat: 0,
-        eventEase: 'linear',
-    })
-    addStageStyleEventJoint(transaction, {
-        stageId: defaultStageId.value,
-        beat: 0,
-        editorLane: 0,
-        judgmentLineColor: 'purple',
-        judgmentLineStyle: 'default',
-        leftBorderStyle: 'default',
-        rightBorderStyle: 'default',
-        isFullWidth: false,
-        noteAlpha: 1,
-        laneAlpha: 1,
-        judgmentLineAlpha: 1,
-        divisionLineAlpha: 1,
-        eventEase: 'linear',
-    })
-
-    pushState(createHistoryOperation({ id: 'nse.dynamicStages.enable', data: {} }), {
-        ...transaction.commit([...selectedEntities.value]),
-        isDynamicStages: true,
-    })
-
-    notify(() => i18n.value.history.dynamicStages.enabled)
-
-    return true
 }
+
+export const checkDynamicStages = async () => (await requestDynamicStages()) === 'enabled'

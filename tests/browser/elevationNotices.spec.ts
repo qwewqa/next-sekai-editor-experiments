@@ -221,21 +221,38 @@ for (const [kind, prepare, from, to, label] of [
             const { history } = window.editorTest
             return {
                 operation: history.headStep.value?.operation,
-                notes: [...history.state.value.store.slides.note.values()].flat()
+                notes: [...history.state.value.store.slides.note.values()]
+                    .flat()
                     .filter(({ beat }) => beat === 6)
                     .map(({ left, size, elevation }) => ({ left, size, elevation })),
             }
         })
         const targets = kind === 'a resize' ? 1 : 2
         expect(outcome.operation).toMatchObject({
-            id: kind === 'an elevation change' ? 'nse.note.elevation' : kind === 'a resize' ? 'nse.object.edit' : 'nse.object.move',
+            id:
+                kind === 'an elevation change'
+                    ? 'nse.note.elevation'
+                    : kind === 'a resize'
+                      ? 'nse.object.edit'
+                      : 'nse.object.move',
             data: kind === 'an elevation change' ? { targets } : { subject: 'note', targets },
         })
-        expect(outcome.notes).toEqual(kind === 'an elevation change'
-            ? [{ left: -4, size: 2, elevation: 3 }, { left: 2, size: 2, elevation: 5 }]
-            : kind === 'a resize'
-              ? [{ left: -4, size: 2, elevation: 1 }, { left: 2, size: 4, elevation: 3 }]
-              : [{ left: -2, size: 2, elevation: 1 }, { left: 4, size: 2, elevation: 3 }])
+        expect(outcome.notes).toEqual(
+            kind === 'an elevation change'
+                ? [
+                      { left: -4, size: 2, elevation: 3 },
+                      { left: 2, size: 2, elevation: 5 },
+                  ]
+                : kind === 'a resize'
+                  ? [
+                        { left: -4, size: 2, elevation: 1 },
+                        { left: 2, size: 4, elevation: 3 },
+                    ]
+                  : [
+                        { left: -2, size: 2, elevation: 1 },
+                        { left: 4, size: 2, elevation: 3 },
+                    ],
+        )
         await page.keyboard.press('Control+z')
         expect(await notice(page)).toBe(`Undid "${label}"`)
     })

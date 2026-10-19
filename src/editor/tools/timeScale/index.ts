@@ -1,11 +1,9 @@
-import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { countNativeEntities, editOutcomeReceipt, type EditOutcomeReceipt } from '../../../state/operations/historyReceipts'
-import { editTimeScaleWithReceipt } from '../../../state/operations/timeScale'
 import type { Tool } from '..'
 import type { GroupId } from '../../../chart/groups'
 import type { TimeScaleObject } from '../../../chart/timeScale'
 import type { WithEaseEdits } from '../../../ease'
 import { pushState, replaceState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { defaultGroupId } from '../../../history/groups'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { store } from '../../../history/store'
@@ -15,8 +13,14 @@ import type { Entity } from '../../../state/entities'
 import { toTimeScaleEntity, type TimeScaleEntity } from '../../../state/entities/timeScale'
 import { addTimeScale } from '../../../state/mutations/timeScale'
 import {
+    countNativeEntities,
+    editOutcomeReceipt,
+    type EditOutcomeReceipt,
+} from '../../../state/operations/historyReceipts'
+import {
     editTimeScale as applyTimeScaleEdit,
     editSelectedTimeScale,
+    editTimeScaleWithReceipt,
 } from '../../../state/operations/timeScale'
 import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction, type Transaction } from '../../../state/transaction'
@@ -385,7 +389,10 @@ const previewMove = (entity: TimeScaleEntity, object: TimeScaleObject) => {
     }, [entity, object.beat, object.editorLane])
 }
 
-const editMoveOrReplace = (entity: TimeScaleEntity, object: Partial<WithEaseEdits<TimeScaleObject>>) => {
+const editMoveOrReplace = (
+    entity: TimeScaleEntity,
+    object: Partial<WithEaseEdits<TimeScaleObject>>,
+) => {
     const beat = object.beat ?? entity.beat
     update((transaction) => ({
         intent: entity.beat === beat ? 'edit' : 'move',
@@ -402,9 +409,32 @@ const update = (action: (transaction: Transaction) => ToolOutcome) => {
     const transaction = createTransaction(state.value)
     const outcome = action(transaction)
     const result = transaction.commit(outcome.entities)
-    const operation = createHistoryOperation(outcome.intent === 'add'
-        ? { id: 'nse.object.add', data: { subject: 'timeScale', created: countNativeEntities(outcome.entities).timeScale ?? 0 } }
-        : { id: outcome.intent === 'edit' ? 'nse.object.edit' : Object.keys(outcome.receipt.displaced).length ? 'nse.object.replace' : 'nse.object.move', data: { subject: 'timeScale', targets: outcome.receipt.targets, displaced: outcome.receipt.displaced, ...(outcome.receipt.retainedInitialBpm ? { retainedInitialBpm: true as const } : {}) } })
+    const operation = createHistoryOperation(
+        outcome.intent === 'add'
+            ? {
+                  id: 'nse.object.add',
+                  data: {
+                      subject: 'timeScale',
+                      created: countNativeEntities(outcome.entities).timeScale ?? 0,
+                  },
+              }
+            : {
+                  id:
+                      outcome.intent === 'edit'
+                          ? 'nse.object.edit'
+                          : Object.keys(outcome.receipt.displaced).length
+                            ? 'nse.object.replace'
+                            : 'nse.object.move',
+                  data: {
+                      subject: 'timeScale',
+                      targets: outcome.receipt.targets,
+                      displaced: outcome.receipt.displaced,
+                      ...(outcome.receipt.retainedInitialBpm
+                          ? { retainedInitialBpm: true as const }
+                          : {}),
+                  },
+              },
+    )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     notify(() => operation.fallback.text)

@@ -856,7 +856,13 @@ const pasteAtPoint = async (
     if (waits && !(await waitToPaste(updateClipboard, keepsTool))) return false
     if (!mounted || !isElevationEditorOpen.value || !sameBeat(elevationBeat.value, position.beat))
         return false
-    await pasteElevationNotes(position.lane, position.elevation, position.beat, modifiers, keepsTool ? 'pointer' : 'position')
+    await pasteElevationNotes(
+        position.lane,
+        position.elevation,
+        position.beat,
+        modifiers,
+        keepsTool ? 'pointer' : 'position',
+    )
     creating.value = []
     return true
 }

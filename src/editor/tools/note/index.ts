@@ -1,11 +1,10 @@
-import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { countNativeEntities, nativeTargetChanged } from '../../../state/operations/historyReceipts'
 import { computed, ref } from 'vue'
 import type { Tool } from '..'
 import type { NoteObject } from '../../../chart/note'
 import type { StageId } from '../../../chart/stages'
 import { applyEaseEdit, type Ease, type WithEaseEdits } from '../../../ease'
 import { pushState, replaceState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { defaultGroupId } from '../../../history/groups.ts'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { defaultStageId } from '../../../history/stages.ts'
@@ -15,6 +14,7 @@ import type { Entity } from '../../../state/entities'
 import { createSlideId } from '../../../state/entities/slides'
 import { toNoteEntity, type NoteEntity } from '../../../state/entities/slides/note'
 import { addNote } from '../../../state/mutations/slides/note'
+import { countNativeEntities, nativeTargetChanged } from '../../../state/operations/historyReceipts'
 import { editSelectedNote } from '../../../state/operations/note'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
@@ -456,9 +456,17 @@ const update = (
     const entities = action(transaction)
     const result = transaction.commit(entities)
     const after = result.selectedEntities[0]
-    const operation = createHistoryOperation(intent === 'add'
-        ? { id: 'nse.note.add', data: { created: countNativeEntities(entities).note ?? 0 } }
-        : { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data: { subject: 'note', targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0 } })
+    const operation = createHistoryOperation(
+        intent === 'add'
+            ? { id: 'nse.note.add', data: { created: countNativeEntities(entities).note ?? 0 } }
+            : {
+                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
+                  data: {
+                      subject: 'note',
+                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  },
+              },
+    )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     notify(() => operation.fallback.text)
@@ -467,26 +475,15 @@ const update = (
 const add = (object: NoteObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
-    update(
-        'add',
-        (transaction) => addNote(transaction, createSlideId(), object),
-    )
+    update('add', (transaction) => addNote(transaction, createSlideId(), object))
 }
 
 const edit = (entity: NoteEntity, object: Partial<WithEaseEdits<NoteObject>>) => {
-    update(
-        'edit',
-        (transaction) => editSelectedNote(transaction, entity, object),
-        entity,
-    )
+    update('edit', (transaction) => editSelectedNote(transaction, entity, object), entity)
 }
 
 const preview = createEditPreview(editSelectedNote)
 
 const move = (entity: NoteEntity, object: NoteObject) => {
-    update(
-        'move',
-        (transaction) => editSelectedNote(transaction, entity, object),
-        entity,
-    )
+    update('move', (transaction) => editSelectedNote(transaction, entity, object), entity)
 }

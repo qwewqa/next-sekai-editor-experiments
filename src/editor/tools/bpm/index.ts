@@ -1,9 +1,7 @@
-import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { countNativeEntities, editOutcomeReceipt, type EditOutcomeReceipt } from '../../../state/operations/historyReceipts'
-import { editBpmWithReceipt } from '../../../state/operations/bpm'
 import type { Tool } from '..'
 import type { BpmObject } from '../../../chart/bpm'
 import { pushState, replaceState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { store } from '../../../history/store'
 import { i18n } from '../../../i18n'
@@ -12,7 +10,16 @@ import type { Entity } from '../../../state/entities'
 import { toBpmEntity, type BpmEntity } from '../../../state/entities/bpm'
 import { findIntegral } from '../../../state/integrals'
 import { addBpm } from '../../../state/mutations/bpm'
-import { editBpm as applyBpmEdit, editSelectedBpm } from '../../../state/operations/bpm'
+import {
+    editBpm as applyBpmEdit,
+    editBpmWithReceipt,
+    editSelectedBpm,
+} from '../../../state/operations/bpm'
+import {
+    countNativeEntities,
+    editOutcomeReceipt,
+    type EditOutcomeReceipt,
+} from '../../../state/operations/historyReceipts'
 import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
@@ -327,9 +334,29 @@ const update = (action: (transaction: Transaction) => ToolOutcome) => {
     const transaction = createTransaction(state.value)
     const outcome = action(transaction)
     const result = transaction.commit(outcome.entities)
-    const operation = createHistoryOperation(outcome.intent === 'add'
-        ? { id: 'nse.object.add', data: { subject: 'bpm', created: countNativeEntities(outcome.entities).bpm ?? 0 } }
-        : { id: outcome.intent === 'edit' ? 'nse.object.edit' : Object.keys(outcome.receipt.displaced).length ? 'nse.object.replace' : 'nse.object.move', data: { subject: 'bpm', targets: outcome.receipt.targets, displaced: outcome.receipt.displaced, ...(outcome.receipt.retainedInitialBpm ? { retainedInitialBpm: true as const } : {}) } })
+    const operation = createHistoryOperation(
+        outcome.intent === 'add'
+            ? {
+                  id: 'nse.object.add',
+                  data: { subject: 'bpm', created: countNativeEntities(outcome.entities).bpm ?? 0 },
+              }
+            : {
+                  id:
+                      outcome.intent === 'edit'
+                          ? 'nse.object.edit'
+                          : Object.keys(outcome.receipt.displaced).length
+                            ? 'nse.object.replace'
+                            : 'nse.object.move',
+                  data: {
+                      subject: 'bpm',
+                      targets: outcome.receipt.targets,
+                      displaced: outcome.receipt.displaced,
+                      ...(outcome.receipt.retainedInitialBpm
+                          ? { retainedInitialBpm: true as const }
+                          : {}),
+                  },
+              },
+    )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     notify(() => operation.fallback.text)
