@@ -12,6 +12,7 @@ import { editSelectedStageMaskEvent } from '../events/stage/mask'
 import { editSelectedStagePivotEvent } from '../events/stage/pivot'
 import { editSelectedStageStyleEvent } from '../events/stage/style'
 import { editSelectedStageTransformEvent } from '../events/stage/transform'
+import { propertyEditReceipt } from '../historyReceipts'
 import { editSelectedNote } from '../note'
 import { isWithinBeatRange } from '../scaleValues'
 import { editSelectedTimeScale, editTimeScale } from '../timeScale'
@@ -101,7 +102,8 @@ export const planEdit = (
     object: EditableObject,
     { only, single = true, each }: PlanOptions = {},
 ) => {
-    if (!isEditInRange(source, selected, object, only, each)) return { state: source, changed: [] }
+    if (!isEditInRange(source, selected, object, only, each))
+        return { state: source, changed: [], receipt: undefined }
     const objectOf = (entity: EditableEntity) => (each ? each(entity) : object)
     const changed = selected.filter(
         (entity): entity is EditableEntity =>
@@ -116,10 +118,12 @@ export const planEdit = (
         (entity) => entity.beat === 0,
     )
     const results = new Map<Entity, Entity[]>()
+    const requests = new Map<EditableEntity, EditableObject>()
     // Moved same-beat objects land in their stored order, whatever the selection order.
     for (const entity of inStoredOrder(source, changed, (entity) => entity)) {
         if (results.has(entity)) continue
         const own = objectOf(entity)
+        requests.set(entity, { ...own })
         results.set(
             entity,
             entity === lone && entity.type === 'bpm'
@@ -148,6 +152,16 @@ export const planEdit = (
         !getInStoreGrid(transaction.store.grid, 'bpm', 0)?.some((entity) => entity.beat === 0)
     )
         addBpm(transaction, initialBpm)
-    const state = transaction.commit(selected.flatMap((entity) => results.get(entity) ?? [entity]))
-    return { state, changed }
+    const selection = selected.flatMap((entity) => results.get(entity) ?? [entity])
+    const state = transaction.commit(selection)
+    const effective = new Map<Entity, Entity | undefined>()
+    selection.forEach((entity, i) => {
+        if (!effective.has(entity)) effective.set(entity, state.selectedEntities[i])
+    })
+    const targets = [...requests].flatMap(([before, requested]) => {
+        const result = results.get(before)?.[0]
+        const after = result && effective.get(result)
+        return after && isEditableEntity(after) ? [{ before, after, requested }] : []
+    })
+    return { state, changed, receipt: propertyEditReceipt(state, targets) }
 }
