@@ -118,6 +118,7 @@ export const prepareJournal = (batch: JournalApplyBatch, waiter: Waiter = direct
             ends: batch.ends,
             snapshots: [batch.snapshot],
             media: [],
+            entries: [],
         } as unknown as FlushBatch,
         waiter,
     )
@@ -175,6 +176,11 @@ export const writeJournalApply = async (
     { force }: { force?: string } = {},
 ): Promise<JournalApplyResult> => {
     const { sessionId, seq, descriptor, stack } = batch
+    const recoveredStep = captureStep({
+        kind: 'edit',
+        operation: batch.operation,
+        recoveryContext: stack.context,
+    })
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const root = prepared.roots[0]!
 
@@ -284,12 +290,6 @@ export const writeJournalApply = async (
     }
     const time = stamp(now)
     applyHook?.(force)
-    const recoveredStep = captureStep({
-        kind: 'edit',
-        operation: batch.operation,
-        recoveryContext: stack.context,
-    })
-
     if (recoveryWhy) {
         // A new chain copied from the descriptor as a fork is (§1.6.11.2), with no binding.
         const { chainId: newChain, docId, sessionId: newSession } = batch.recovery

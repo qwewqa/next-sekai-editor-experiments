@@ -55,6 +55,8 @@ export type PeekEffects = {
 
 let source: PeekSource | undefined
 let effects: PeekEffects | undefined
+const sourceGeneration = shallowRef(0)
+export const peekSourceGeneration: Readonly<Ref<number>> = computed(() => sourceGeneration.value)
 
 /** Set once storing has started: entries can be peeked from then on. */
 export const setPeekSource = (next: PeekSource | undefined) => {
@@ -62,6 +64,7 @@ export const setPeekSource = (next: PeekSource | undefined) => {
     source = next
     cache.clear()
     loading.clear()
+    sourceGeneration.value++
 }
 
 export const setPeekEffects = (next: PeekEffects | undefined) => {
@@ -273,7 +276,6 @@ export const restoreEntry = async (key: EntryKey): Promise<void> => {
     const entry = await loadEntry(key)
     // A New or an open meanwhile replaced the session it belongs to.
     if (stackGeneration() !== stack) return
-    leavePeek()
     const live = liveState.value
     const restored: State = {
         ...entry.state,
@@ -281,11 +283,14 @@ export const restoreEntry = async (key: EntryKey): Promise<void> => {
         selectedEntities: [],
     }
     if (source?.sameSnapshot(restored, live)) {
+        leavePeek()
         effects?.alreadyMatches()
         return
     }
     if (!effects) throw new Error('Restore operation factory is not installed')
-    pushState(effects.restoredOperation(entry.time), restored, 'restore')
+    const operation = effects.restoredOperation(entry.time)
+    leavePeek()
+    pushState(operation, restored, 'restore')
     effects?.restored(entry.time)
 }
 

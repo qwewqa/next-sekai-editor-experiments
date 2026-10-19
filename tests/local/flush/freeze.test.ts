@@ -3,6 +3,7 @@ import test from 'node:test'
 import { pushState, resetStates } from '../../../src/history/stack'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
+import { initialStep, nativeOperation } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Outside release builds the undo stack freezes what it publishes (the flush's identity memo
@@ -10,7 +11,7 @@ import { goldenChart, stateOf } from '../records/charts'
 
 test('a published state’s maps, sets, arrays and entities refuse a change in place', () => {
     const state = stateOf(goldenChart())
-    resetStates({ isDirty: false, name: () => 'Initialize', state })
+    resetStates({ isDirty: false, step: initialStep(), state })
     const { grid, slides } = state.store
     assert.throws(() => grid.bpm.set(99, new Set()), /changed in place/)
     const [bucket] = grid.note.values()
@@ -32,13 +33,19 @@ test('a published state’s maps, sets, arrays and entities refuse a change in p
 
 test('edits of a published state still work, by copying what they change', () => {
     const state = stateOf(goldenChart())
-    resetStates({ isDirty: false, name: () => 'Initialize', state })
+    resetStates({ isDirty: false, step: initialStep(), state })
     const transaction = createTransaction(state)
     const [note] = [...state.store.slides.note.values()].flat()
     assert.ok(note)
     replaceNote(transaction, note, { ...note, size: note.size + 1 })
     const next = transaction.commit([])
-    pushState(() => 'Changed note', next)
+    pushState(
+        nativeOperation(
+            { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+            'Changed note',
+        ),
+        next,
+    )
     assert.notEqual(next.store.slides.note, state.store.slides.note)
     assert.equal([...state.store.slides.note.values()].flat()[0]?.size, note.size)
 })
