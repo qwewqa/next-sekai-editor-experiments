@@ -28,6 +28,7 @@ import { interpolateRaw } from '../../../utils/interpolate'
 import CopyIcon from '../../commands/copy/CopyIcon.vue'
 import SelectIcon from '../../commands/select/SelectIcon.vue'
 import ResetIcon from '../../commands/reset/ResetIcon.vue'
+import { isCommandChord } from '../../controls/bindings'
 import CloseIcon from '../CloseIcon.vue'
 import OverlayScrollbar from '../OverlayScrollbar.vue'
 import { hasScrollMemory, useScrollMemory } from '../useScrollMemory'
@@ -337,6 +338,9 @@ const onKeydown = (event: KeyboardEvent) => {
     const target = event.target as HTMLElement
     if (target.closest('[data-manager-current]') && event.key !== 'Escape') {
         event.stopPropagation()
+        if (isCommandChord(event) && /^[a-z]$/i.test(event.key) &&
+            (event.shiftKey || !['a', 'c', 'x'].includes(event.key.toLowerCase())))
+            event.preventDefault()
         return
     }
     if (target instanceof HTMLInputElement) return

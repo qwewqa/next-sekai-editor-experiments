@@ -1012,6 +1012,25 @@ test.describe('single-line disclosures', () => {
                 return { selected: getSelection()!.toString(), wrap: getComputedStyle(element).overflowWrap }
             })
             expect(full).toEqual({ selected: expected.path, wrap: 'anywhere' })
+            const defaults = await summary.evaluate((element) => [
+                { key: 'a', ctrlKey: true },
+                { key: 'c', metaKey: true },
+                { key: 'x', ctrlKey: true },
+                { key: 's', ctrlKey: true },
+                { key: 'S', metaKey: true, shiftKey: true },
+                { key: '+', ctrlKey: true },
+                { key: 's', ctrlKey: true, altKey: true },
+                { key: 'Enter' },
+                { key: ' ' },
+                { key: 'Tab' },
+                { key: 'ArrowDown' },
+            ].map((init) => {
+                const event = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true })
+                element.dispatchEvent(event)
+                return event.defaultPrevented
+            }))
+            expect(defaults).toEqual([false, false, false, true, true, false, false, false, false, false, false])
+            expect(await disclosureSnapshot(page)).toEqual(before)
             await summary.press('ControlOrMeta+a')
             await expect(container.locator('.manager-list')).not.toHaveClass(/manager-list-selecting/)
             expect(await page.evaluate(() => getSelection()!.toString())).toContain(expected.path)
