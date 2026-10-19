@@ -81,7 +81,7 @@ const imported = (page: Page) =>
 const snapshot = (page: Page) =>
     page.evaluate(async () => {
         const { session } = await import('/src/history/session.ts')
-        const { liveState, canUndo, canRedo } = await import('/src/history/stack.ts')
+        const { liveState, canUndo, headStep } = await import('/src/history/stack.ts')
         const { readTabRecord } = await import('/src/local/startup/tab.ts')
         const { previousSession } = await import('/src/local/startup/api.ts')
         const { exportMemory } = await import('/src/editor/commands/exportLevel/memory.ts')
@@ -89,7 +89,7 @@ const snapshot = (page: Page) =>
             session: session.value,
             life: liveState.value.initialLife,
             canUndo: canUndo.value,
-            canRedo: canRedo.value,
+            headStep: headStep.value,
             tab: readTabRecord(),
             previous: previousSession.value,
             partial: exportMemory.partial,
