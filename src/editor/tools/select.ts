@@ -8,6 +8,8 @@ import type { StageTransformEventObject } from '../../chart/events/stage/transfo
 import type { NoteObject } from '../../chart/note'
 import type { TimeScaleObject } from '../../chart/timeScale'
 import { pushState, replaceState, state } from '../../history'
+import { createHistoryOperation } from '../../history/createHistoryOperation'
+import { subjectOfCounts } from '../../history/operations'
 import { selectedEntities } from '../../history/selectedEntities'
 import { i18n } from '../../i18n'
 import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
@@ -67,6 +69,7 @@ import {
 import { replaceNote } from '../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale, replaceTimeScale } from '../../state/mutations/timeScale'
 import { editChanges } from '../../state/operations/properties/plan'
+import { changedNativeCounts, countNativeEntities } from '../../state/operations/historyReceipts'
 import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
@@ -517,8 +520,7 @@ export const select: Tool = {
                     beatOffset,
                     plan,
                     rawMove,
-                ).state
-                const selectedEntities = moved.selectedEntities
+                )
                 const focus = isPinned(active.focus, beatOffset)
                     ? undefined
                     : creates[active.focus.type]?.(
@@ -532,19 +534,15 @@ export const select: Tool = {
                           plan,
                       )
 
-                pushState(
-                    interpolate(() => i18n.value.tools.select.moved, `${selectedEntities.length}`),
-                    moved,
-                )
+                const operation = createHistoryOperation({ id: 'nse.object.move', data: moved.receipt })
+                pushState(operation, moved.state)
                 view.entities = {
                     hovered: [],
                     creating: [],
                 }
                 focusEntityAtBeat(focus?.beat ?? active.focus.beat)
 
-                notify(
-                    interpolate(() => i18n.value.tools.select.moved, `${selectedEntities.length}`),
-                )
+                notify(() => operation.fallback.text)
                 break
             }
             case 'select': {
@@ -623,6 +621,8 @@ const moveEntities = (
             rank(a) - rank(b),
     )
     const selectedEntities: Entity[] = []
+    const displaced: Entity[] = []
+    const applied = new Map<Entity, number>()
     let focusIndex = -1
     const placed = new Map<Entity, number>()
     const movingBeats = composed
@@ -656,6 +656,7 @@ const moveEntities = (
                     if (replacement?.type === 'note') destinationNotes?.set(note, replacement)
                 })
             }
+            if (!applied.has(entity)) applied.set(entity, selectedEntities.length)
             selectedEntities.push(
                 ...replaceNote(
                     transaction,
@@ -688,12 +689,26 @@ const moveEntities = (
             selectedEntities,
             rawMove,
             plan,
+            displaced,
         )
-        if (result) selectedEntities.push(...result)
+        if (result) {
+            if (result.length && !applied.has(entity)) applied.set(entity, selectedEntities.length)
+            selectedEntities.push(...result)
+        }
     }
     const result = transaction.commit(selectedEntities)
+    const changed = changedNativeCounts([...applied].flatMap(([before, index]) => {
+        const after = result.selectedEntities[index]
+        return after ? [{ before, after }] : []
+    }))
     return {
         state: result,
+        receipt: {
+            subject: subjectOfCounts(changed),
+            targets: Object.values(changed).reduce((sum, count) => sum + count, 0),
+            displaced: countNativeEntities(displaced),
+            ...(entities.some((entity) => entity.type === 'bpm' && !entity.beat && !isPinned(entity, beatOffset) && toMovedBeat(entity.beat, beatOffset) !== entity.beat) ? { retainedInitialBpm: true as const } : {}),
+        },
         focus: result.selectedEntities[focusIndex],
         // A moved note as committed.
         note: (entity: NoteEntity) => {
@@ -1315,12 +1330,13 @@ type Move<T extends Entity> = (
     batch: readonly Entity[],
     rawMove: RawMove | undefined,
     plan: MovePlan,
+    displaced: Entity[],
 ) => Entity[] | undefined
 
 const moves: {
     [T in Entity as T['type']]: Move<T> | undefined
 } = {
-    bpm: (transaction, onlyType, entity, startLane, lane, beat, focus, batch) => {
+    bpm: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, plan, displaced) => {
         const object = toMovedBpmObject(entity, beat)
         // A move along its beat is an edit: it keeps its place and replaces nothing.
         if (object.beat === entity.beat) return replaceBpm(transaction, entity, object)
@@ -1330,11 +1346,14 @@ const moves: {
         const overlap = getInStoreGrid(transaction.store.grid, 'bpm', object.beat)?.find(
             (entity) => entity.beat === object.beat && !batch.includes(entity),
         )
-        if (overlap) removeBpm(transaction, overlap)
+        if (overlap) {
+            displaced.push(overlap)
+            removeBpm(transaction, overlap)
+        }
 
         return addBpm(transaction, object)
     },
-    timeScale: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove) => {
+    timeScale: (transaction, onlyType, entity, startLane, lane, beat, focus, batch, rawMove, plan, displaced) => {
         const object = toMovedTimeScaleObject(
             onlyType,
             entity,
@@ -1356,8 +1375,10 @@ const moves: {
                 overlap.beat === object.beat &&
                 overlap.groupId === object.groupId &&
                 !batch.includes(overlap)
-            )
+            ) {
+                displaced.push(overlap)
                 removeTimeScale(transaction, overlap)
+            }
 
         return addTimeScale(transaction, object)
     },

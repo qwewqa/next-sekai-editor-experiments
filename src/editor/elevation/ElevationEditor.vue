@@ -12,6 +12,7 @@ import {
 import { interruptsDrags, isAppActive } from '../../activity'
 import { updateClipboard } from '../../clipboard'
 import { isPeeking, pushState, replaceState, state } from '../../history'
+import { createHistoryOperation } from '../../history/createHistoryOperation'
 import { onPeekStart } from '../../history/peek'
 import { defaultGroupId } from '../../history/groups'
 import { i18n } from '../../i18n'
@@ -716,7 +717,7 @@ const editedObject = (active: NonNullable<typeof drag>, note: NoteEntity) => {
     )
 }
 // As the chart's: a width change edits, a lane change moves; else only elevations changed.
-const editMessage = (active: NonNullable<typeof drag>, changed: NoteEntity[]) => {
+const editOperation = (active: NonNullable<typeof drag>, changed: NoteEntity[]) => {
     const store = active.source.store
     const changes = (key: 'left' | 'size') =>
         changed.some((note) => {
@@ -730,15 +731,12 @@ const editMessage = (active: NonNullable<typeof drag>, changed: NoteEntity[]) =>
                 )
             )
         })
-    const tool = noticeTool()
-    const count = `${changed.length}`
+    const targets = changed.length
     if (changes('size'))
-        return interpolate(
-            () => i18n.value.tools[tool === 'slide' ? 'slide' : 'note'].edited,
-            count,
-        )
-    if (changes('left')) return interpolate(() => i18n.value.tools[tool].moved, count)
-    return interpolate(() => i18n.value.elevation.changed, count)
+        return createHistoryOperation({ id: 'nse.object.edit', data: { subject: 'note', targets } })
+    if (changes('left'))
+        return createHistoryOperation({ id: 'nse.object.move', data: { subject: 'note', targets } })
+    return createHistoryOperation({ id: 'nse.note.elevation', data: { targets } })
 }
 const edit = (active: NonNullable<typeof drag>) => {
     const transaction = createTransaction(active.source)
@@ -858,7 +856,7 @@ const pasteAtPoint = async (
     if (waits && !(await waitToPaste(updateClipboard, keepsTool))) return false
     if (!mounted || !isElevationEditorOpen.value || !sameBeat(elevationBeat.value, position.beat))
         return false
-    await pasteElevationNotes(position.lane, position.elevation, position.beat, modifiers)
+    await pasteElevationNotes(position.lane, position.elevation, position.beat, modifiers, keepsTool ? 'pointer' : 'position')
     creating.value = []
     return true
 }
@@ -1336,9 +1334,10 @@ const controls: Pick<
             clearNotification()
             return
         }
-        const message = editMessage(active, changed)
-        pushState(message, edit(active))
-        notify(message)
+        const result = edit(active)
+        const operation = editOperation(active, changed)
+        pushState(operation, result)
+        notify(() => operation.fallback.text)
     },
     dragCancel: cancel,
 }
