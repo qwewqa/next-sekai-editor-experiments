@@ -5,7 +5,7 @@ import { hasSameChartData } from './data'
 const sameMedia = (a: { hash: string } | undefined, b: { hash: string } | undefined) =>
     a?.hash === b?.hash
 
-/** Whether two states hold the same file content. */
+/** Compares file content in structurally shared editor states. */
 export const sameFileContent = (a: State, b: State) =>
     a === b ||
     (hasSameChartData(a, b) &&
