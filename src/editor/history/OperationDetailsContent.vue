@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import {
     captureOperationRecipe,
@@ -19,6 +19,8 @@ const props = defineProps<{ recipe: OperationRecipe; time?: number; summaryProvi
 const PAGE = 20
 const limit = ref(PAGE)
 const recoveryLimit = ref(PAGE)
+const childList = useTemplateRef<HTMLElement>('childList')
+const recoveryList = useTemplateRef<HTMLElement>('recoveryList')
 const expanded = ref<ReadonlySet<number>>(new Set())
 const context = computed(getHistoryOperationContext)
 const memberContext = computed(() => ({ ...context.value, qualifiers: props.recipe.qualifiers }))
@@ -32,6 +34,21 @@ const toggle = (index: number, event: Event) => {
     if ((event.currentTarget as HTMLDetailsElement).open) next.add(index)
     else next.delete(index)
     expanded.value = next
+}
+// Revealing the rest removes the button, so focus moves to the first new entry.
+const showMore = async () => {
+    const first = limit.value
+    limit.value += PAGE
+    if (limit.value < details.value.children.length) return
+    await nextTick()
+    childList.value?.children[first]?.querySelector('summary')?.focus()
+}
+const showMoreRecovery = async () => {
+    const first = recoveryLimit.value
+    recoveryLimit.value += PAGE
+    if (recoveryLimit.value < (details.value.recovery?.descriptions.length ?? 0)) return
+    await nextTick()
+    ;(recoveryList.value?.children[first] as HTMLElement | undefined)?.focus()
 }
 // A step on its group's day shows its clock; the group's own line gives the date.
 const childTime = (at: number) =>
@@ -87,7 +104,7 @@ const childTime = (at: number) =>
         </section>
         <!-- The group's steps: one line each, the chevron leading, the time at the end. -->
         <div v-if="children.length" class="space-y-2" data-operation-children>
-            <div>
+            <div ref="childList">
                 <details
                     v-for="(member, index) in children"
                     :key="member.id ?? index"
@@ -124,15 +141,20 @@ const childTime = (at: number) =>
                 type="button"
                 class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 data-operation-more
-                @click="limit += PAGE"
+                @click="showMore"
             >
                 {{ i18n.historyChanges.showMore }}
             </button>
         </div>
         <section v-if="details.recovery" class="space-y-3" data-operation-recovery>
             <h3 class="font-bold">{{ i18n.history.details.recoveryContext }}</h3>
-            <ol class="space-y-3">
-                <li v-for="(step, index) in recovery" :key="index" class="whitespace-pre-wrap">
+            <ol ref="recoveryList" class="space-y-3">
+                <li
+                    v-for="(step, index) in recovery"
+                    :key="index"
+                    class="focus-edge whitespace-pre-wrap"
+                    tabindex="-1"
+                >
                     <p
                         v-if="index === details.recovery.headIndex"
                         class="text-xs font-bold"
@@ -147,7 +169,7 @@ const childTime = (at: number) =>
                 v-if="(recovery?.length ?? 0) < details.recovery.descriptions.length"
                 type="button"
                 class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                @click="recoveryLimit += PAGE"
+                @click="showMoreRecovery"
             >
                 {{ i18n.historyChanges.showMore }}
             </button>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import {
@@ -19,6 +19,15 @@ watch(
         limit.value = PROPERTY_PAGE_SIZE
     },
 )
+const list = useTemplateRef<HTMLElement>('list')
+// Revealing the rest removes the button, so focus moves to the first new item.
+const showMore = async () => {
+    const first = page.value?.items.length ?? 0
+    limit.value += PROPERTY_PAGE_SIZE
+    await nextTick()
+    if (page.value && page.value.items.length < page.value.total) return
+    ;(list.value?.children[first] as HTMLElement | undefined)?.focus()
+}
 const page = computed(() =>
     props.value.kind === 'list' ? propertyItems(props.value, limit.value) : undefined,
 )
@@ -28,8 +37,13 @@ const page = computed(() =>
     <div class="property-value min-w-0 select-text whitespace-pre-wrap" data-property-value>
         <template v-if="value.kind !== 'list'">{{ propertyValueText(value, field) }}</template>
         <template v-else-if="page">
-            <ol class="list-inside list-decimal space-y-2" data-property-items>
-                <li v-for="(item, index) in page.items" :key="index">
+            <ol ref="list" class="list-inside list-decimal space-y-2" data-property-items>
+                <li
+                    v-for="(item, index) in page.items"
+                    :key="index"
+                    class="focus-edge"
+                    tabindex="-1"
+                >
                     <template v-if="item.kind === 'reference'">{{
                         propertyReferenceText(item)
                     }}</template>
@@ -59,7 +73,7 @@ const page = computed(() =>
                     type="button"
                     class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                     data-property-items-more
-                    @click="limit += PROPERTY_PAGE_SIZE"
+                    @click="showMore"
                 >
                     {{ i18n.historyChanges.showMore }}
                 </button>

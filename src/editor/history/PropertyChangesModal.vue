@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { i18n } from '../../i18n'
 import { formatDateTimeSeconds } from '../../i18n/when'
 import BaseModal from '../../modals/BaseModal.vue'
@@ -40,6 +40,15 @@ watch(
     },
     { immediate: true, flush: 'sync' },
 )
+// Revealing the rest removes the button, so focus moves to the first new row.
+const showMore = async (event: Event) => {
+    const root = (event.currentTarget as HTMLElement).closest('[data-property-comparison]')
+    const first = root?.querySelectorAll('[data-property-row]').length ?? 0
+    limit.value += PROPERTY_PAGE_SIZE
+    await nextTick()
+    if (root?.querySelector('[data-property-more]')) return
+    ;(root?.querySelectorAll('[data-property-row]')[first] as HTMLElement | undefined)?.focus()
+}
 onBeforeUnmount(() => {
     if (propertyInspection.value?.comparison === props.comparison) closePropertyInspection()
 })
@@ -104,7 +113,8 @@ onBeforeUnmount(() => {
                         v-for="row in section.rows"
                         :key="propertyRowKey(section, row)"
                         :data-property-row="row.field"
-                        class="min-w-0 border-t border-fg/15 py-3"
+                        class="focus-edge min-w-0 border-t border-fg/15 py-3"
+                        tabindex="-1"
                     >
                         <h4 class="mb-2 text-sm font-bold text-fg/80">
                             {{ propertyFieldLabel(row.field) }}
@@ -141,7 +151,7 @@ onBeforeUnmount(() => {
                         type="button"
                         class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                         data-property-more
-                        @click="limit += PROPERTY_PAGE_SIZE"
+                        @click="showMore"
                     >
                         {{ i18n.historyChanges.showMore }}
                     </button>
