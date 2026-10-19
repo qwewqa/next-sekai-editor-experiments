@@ -314,6 +314,7 @@ test('selected Details keeps exact members and request identity while text reloc
     await expect(details.locator('[data-operation-children] [data-operation-details]')).toHaveCount(
         1,
     )
+    await capture(page, 'desktop-operation-details')
     const before = await details.locator('[data-operation-description]').first().textContent()
     await page.evaluate(() => {
         window.editorTest.settings.locale = 'fr'
@@ -345,6 +346,7 @@ test.describe('touch metadata actions', () => {
         const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
         await expect(details).toBeVisible()
         expect(await selected(page)).toEqual(before)
+        await capture(page, '390-touch-operation-details')
         await details.getByRole('button', { name: 'Close', exact: true }).tap()
         await expect(details).toHaveCount(0)
         await body.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 2, isPrimary: true, clientX: 150, clientY: 180 })
