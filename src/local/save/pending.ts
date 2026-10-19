@@ -1,3 +1,4 @@
+import type { PendingEntry as FlushPendingEntry } from '../flush'
 import {
     captureEntryDescription,
     captureStep,
@@ -28,6 +29,34 @@ export const addRecords = (records: PendingRecords, state: State) => {
     for (const chunk of [snapshot.header, ...snapshot.chunks])
         records.chunks[toHex(chunk.hash)] = chunk.bytes
     return root
+}
+
+export const pendingFlushRow = (entry: FlushPendingEntry, records: PendingRecords): PendingRow | undefined => {
+    const snapshot = entry.state
+        ? addRecords(records, entry.state)
+        : entry.snapshot && toHex(entry.snapshot)
+    if (!snapshot) return
+    const root = records.roots[snapshot]
+    return {
+        seq: entry.seq,
+        time: entry.wall,
+        ...captureEntryDescription(entry),
+        snapshot,
+        // A stored slot's count isn't known here: display only.
+        noteCount: typeof root?.[3] === 'number' ? root[3] : 0,
+        dirty: entry.dirty,
+        ...(entry.recoveryBaseline
+            ? {
+                  stack: {
+                      keep: 0,
+                      push: [{ snapshot, step: captureStep(entry.recoveryBaseline) }],
+                      index: 0,
+                  },
+              }
+            : {}),
+        ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
+        ...(entry.device ? { device: { ...entry.device } } : {}),
+    }
 }
 
 export type PendingEntry = EntryDescription &

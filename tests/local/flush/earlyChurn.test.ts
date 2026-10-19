@@ -1,3 +1,5 @@
+import { captureEntryDescription } from '../../../src/history/operations'
+import { initialLife, initialStep } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { EARLY_LIMIT, onHistoryAction, type HistoryAction } from '../../../src/history/actions'
@@ -21,8 +23,7 @@ const stackOf = (actions: readonly HistoryAction[]) => {
         new DataView(snapshot.buffer).setUint32(0, ids.get(state) ?? 0)
         return {
             seq: seq + 1,
-            kind: action.kind === 'reset' ? 'init' : action.kind,
-            label: action.name(),
+            ...captureEntryDescription(action.kind === 'reset' ? {kind: 'init', operation: action.step.operation} : action),
             snapshot,
         }
     })
@@ -38,8 +39,8 @@ test('undo and redo churn past the bound is cut to the stack, and later actions 
     // Counts what's emitted without taking the early buffer.
     let emitted = 0
     const counting = onHistoryAction(() => emitted++)
-    resetStates({ isDirty: false, name: () => 'Initialize', state: at(0) })
-    for (let i = 1; i <= 10; i++) pushState(() => `Edit ${i}`, at(i))
+    resetStates({ isDirty: false, step: initialStep(), state: at(0) })
+    for (let i = 1; i <= 10; i++) pushState(initialLife(i - 1, i), at(i))
     for (let i = 0; i < 300; i++) {
         undoState()
         undoState()
@@ -58,7 +59,7 @@ test('undo and redo churn past the bound is cut to the stack, and later actions 
     assert.equal(live.index, 1)
     // Live actions after storing starts follow: an undo, then an edit dropping the redo end.
     undoState()
-    pushState(() => 'Edit 99', at(99))
+    pushState(initialLife(0, 99), at(99))
     stop()
     const after = stackOf(seen)
     assert.deepEqual(after.lives, [...live.lives.slice(0, live.index), 99])

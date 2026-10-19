@@ -1,10 +1,9 @@
 import {
-    captureEntryDescription,
     captureStep,
     type JsonValue,
     type UndoableStep,
 } from '../../history/operations'
-import type { Flusher, FlushSession, PendingEntry } from '../../local/flush'
+import type { Flusher, FlushSession } from '../../local/flush'
 import { fromHex16, toHex } from '../../local/hash'
 import { toRecords } from '../../local/records/records'
 import { encodeSnapshot } from '../../local/records/snapshot'
@@ -12,13 +11,12 @@ import type { PendingRecords } from '../../local/save/bodies'
 import type {
     IdentityInput,
     PendingInput,
-    PendingRow,
     SaveRefusal,
     SaveTarget,
 } from '../../local/save/build'
 import type { BuiltSave, ExecuteRefusal, SaveSourceFile } from '../../local/save/execute'
 import type { HeldMedia } from '../../local/save/media'
-import { addRecords, headInput } from '../../local/save/pending'
+import { addRecords, headInput, pendingFlushRow } from '../../local/save/pending'
 import type { StorageWorker } from '../../local/worker/client'
 import type { BuildSaveOptions } from '../../local/worker/saveHandlers'
 import { appVersion, FileError, type PinnedSource } from '../../platform'
@@ -61,34 +59,6 @@ const heldMedia = (state: State): HeldMedia[] => {
     ]
 }
 
-const rowOf = (entry: PendingEntry, records: PendingRecords): PendingRow | undefined => {
-    const snapshot = entry.state
-        ? addRecords(records, entry.state)
-        : entry.snapshot && toHex(entry.snapshot)
-    if (!snapshot) return
-    const root = records.roots[snapshot]
-    return {
-        seq: entry.seq,
-        time: entry.wall,
-        ...captureEntryDescription(entry),
-        snapshot,
-        // A stored slot's count isn't known here: display only.
-        noteCount: typeof root?.[3] === 'number' ? root[3] : 0,
-        dirty: entry.dirty,
-        ...(entry.recoveryBaseline
-            ? {
-                  stack: {
-                      keep: 0,
-                      push: [{ snapshot, step: captureStep(entry.recoveryBaseline) }],
-                      index: 0,
-                  },
-              }
-            : {}),
-        ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
-        ...(entry.device ? { device: { ...entry.device } } : {}),
-    }
-}
-
 /**
  * This tab's part of the saved session no store holds yet, as the writer takes it (§1.6.11.6):
  * only while a flush didn't take everything (storage paused or full).
@@ -97,7 +67,7 @@ const pendingOf = (env: BuildEnv): PendingInput | undefined => {
     const { entries, stack } = env.flusher.unstored(env.session)
     if (!entries.length) return
     const records: PendingRecords = { roots: {}, nodes: {}, chunks: {} }
-    const rows = entries.flatMap((entry) => rowOf(entry, records) ?? [])
+    const rows = entries.flatMap((entry) => pendingFlushRow(entry, records) ?? [])
     const slots = stack?.slots.map((slot) => {
         const state = slot.entry?.state
         const snapshot = state

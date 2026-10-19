@@ -1,3 +1,4 @@
+import { initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
 import { setImmediate as settleTasks } from 'node:timers/promises'
@@ -77,7 +78,7 @@ const source = (entries: Record<string, PeekedEntry>, fail: string[] = []) => {
 
 const notices: string[] = []
 setPeekEffects({
-    restoredLabel: (time) => () => `Restored to ${time}`,
+    restoredOperation: (time) => nativeOperation({id: 'nse.restore', data: {targetTime: time}}, `Restored to ${time}`),
     restored: (time) => notices.push(`restored ${time}`),
     alreadyMatches: () => notices.push('matches'),
 })
@@ -89,7 +90,7 @@ beforeEach(async () => {
     notices.length = 0
     // Clears the debounce window of an earlier test.
     await wait(110)
-    resetStates({ isDirty: false, name: () => 'live', state: fake('live') })
+    resetStates({ isDirty: false, step: initialStep(), state: fake('live') })
 })
 
 test('entry keys name a session and a seq', () => {
@@ -121,7 +122,7 @@ test('a peek starts with no selection and the live audio', async () => {
     const buffer = {} as AudioBuffer
     resetStates({
         isDirty: false,
-        name: () => 'live',
+        step: initialStep(),
         state: fake('live', 0, { bgm: { offset: 0, buffer } }),
     })
     const selected = [{}] as State['selectedEntities']
@@ -191,7 +192,7 @@ test('leaving runs the leave hooks; a reset ends the peek without them', async (
     assert.equal(left, 1)
     await wait(110)
     await peekEntry(key(1))
-    resetStates({ isDirty: false, name: () => 'new', state: fake('new') })
+    resetStates({ isDirty: false, step: initialStep(), state: fake('new') })
     assert.equal(isPeeking.value, false)
     assert.equal(peekedKey.value, undefined)
     assert.equal(displayedPeekKey.value, undefined)
@@ -273,7 +274,7 @@ test('pushState while peeking throws in tests, and nothing changes', async () =>
     source({ [key(1)]: { state: fake('old'), time: 1 } })
     await peekEntry(key(1))
     assert.throws(() => {
-        pushState(() => 'edit', fake('edit'))
+        pushState(initialLife(0, 1), fake('edit'))
     }, /while viewing history/)
     assert.equal(nameOf(liveState.value), 'live')
 })
@@ -282,7 +283,7 @@ test('Restore pushes a restore entry with the snapshot’s chart and offset and 
     const buffer = {} as AudioBuffer
     resetStates({
         isDirty: false,
-        name: () => 'live',
+        step: initialStep(),
         state: fake('live', 0, { bgm: { offset: 0, buffer, filename: 'song.mp3' } }),
     })
     source({ [key(1)]: { state: fake('old', 3, { bgm: { offset: 3 } }), time: 1234 } })
@@ -300,7 +301,10 @@ test('Restore pushes a restore entry with the snapshot’s chart and offset and 
         actions.map((action) => action.kind),
         ['restore'],
     )
-    assert.equal(actions[0]?.name(), 'Restored to 1234')
+    assert.equal(actions[0]?.kind, 'restore')
+    const action = actions[0]
+    assert(action && 'step' in action)
+    assert.deepEqual(action.step.operation, nativeOperation({id: 'nse.restore', data: {targetTime: 1234}}, 'Restored to 1234'))
     assert.deepEqual(notices, ['restored 1234'])
     // Undoable.
     undoState()
@@ -379,8 +383,32 @@ test('runCommand refuses edits while peeking and says why; Open, New, Undo and R
 test('a Restore whose session a New replaced meanwhile pushes nothing', async () => {
     source({ [key(1)]: { state: fake('old'), time: 1 } })
     const restoring = restoreEntry(key(1))
-    resetStates({ isDirty: false, name: () => 'new', state: fake('new') })
+    resetStates({ isDirty: false, step: initialStep(), state: fake('new') })
     await restoring
     assert.equal(nameOf(liveState.value), 'new')
     assert.deepEqual(notices, [])
+})
+
+
+test('a Restore description failure preserves the current peek and live stack', async () => {
+    source({ [key(1)]: {state: fake('old'), time: 1234} })
+    await peekEntry(key(1))
+    const live = liveState.value
+    setPeekEffects({
+        restoredOperation: () => { throw new Error('Description failed') },
+        restored: () => assert.fail('Restore did not complete'),
+        alreadyMatches: () => undefined,
+    })
+    try {
+        await assert.rejects(restoreEntry(key(1)), /Description failed/)
+        assert.equal(isPeeking.value, true)
+        assert.equal(liveState.value, live)
+        assert.equal(nameOf(state.value), 'old')
+    } finally {
+        setPeekEffects({
+            restoredOperation: (time) => nativeOperation({id: 'nse.restore', data: {targetTime: time}}, 'Restored to ' + time),
+            restored: (time) => notices.push('restored ' + time),
+            alreadyMatches: () => notices.push('matches'),
+        })
+    }
 })

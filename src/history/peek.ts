@@ -273,7 +273,6 @@ export const restoreEntry = async (key: EntryKey): Promise<void> => {
     const entry = await loadEntry(key)
     // A New or an open meanwhile replaced the session it belongs to.
     if (stackGeneration() !== stack) return
-    leavePeek()
     const live = liveState.value
     const restored: State = {
         ...entry.state,
@@ -281,11 +280,14 @@ export const restoreEntry = async (key: EntryKey): Promise<void> => {
         selectedEntities: [],
     }
     if (source?.sameSnapshot(restored, live)) {
+        leavePeek()
         effects?.alreadyMatches()
         return
     }
     if (!effects) throw new Error('Restore operation factory is not installed')
-    pushState(effects.restoredOperation(entry.time), restored, 'restore')
+    const operation = effects.restoredOperation(entry.time)
+    leavePeek()
+    pushState(operation, restored, 'restore')
     effects?.restored(entry.time)
 }
 

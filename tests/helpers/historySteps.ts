@@ -3,6 +3,7 @@ import {
     captureStep,
     createOperation,
     type JsonValue,
+    type NativeOperation,
     type NativeOperationInput,
     type UndoableStep,
 } from '../../src/history/operations'
@@ -19,6 +20,16 @@ export const initialLife = (before: number, after: number) =>
         },
         `Set Initial Life to ${after}`,
     )
+
+export const futureInitialLife = (
+    before: number,
+    after: number,
+    text: string,
+): NativeOperation & { futureFixture: true } => ({
+    ...initialLife(before, after),
+    fallback: { locale: 'en', text },
+    futureFixture: true,
+})
 
 export const noteAdd = (created: number) =>
     nativeOperation(
