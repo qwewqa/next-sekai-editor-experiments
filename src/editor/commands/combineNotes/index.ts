@@ -1,8 +1,8 @@
 import type { Command } from '..'
 import { pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { i18n } from '../../../i18n'
 import { combineNotes as combine } from '../../../state/operations/combineNotes'
-import { interpolate } from '../../../utils/interpolate'
 import { notify } from '../../notification'
 import { view } from '../../view'
 import CombineNotesIcon from './CombineNotesIcon.vue'
@@ -22,9 +22,9 @@ export const combineNotes: Command = {
             return
         }
         const count = combined.selectedEntities.filter((entity) => entity.type === 'note').length
-        const message = interpolate(() => i18n.value.commands.combineNotes.combined, `${count}`)
-        pushState(message, combined)
+        const operation = createHistoryOperation({ id: 'nse.note.combine', data: { notes: count } })
+        pushState(operation, combined)
         view.entities = { hovered: [], creating: [] }
-        notify(message)
+        notify(() => operation.fallback.text)
     },
 }

@@ -1,8 +1,8 @@
 import type { Command } from '..'
 import { pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { i18n } from '../../../i18n'
-import { makeVertical as applyMakeVertical } from '../../../state/operations/makeVertical'
-import { interpolate } from '../../../utils/interpolate'
+import { makeVerticalWithReceipt as applyMakeVertical } from '../../../state/operations/makeVertical'
 import { notify } from '../../notification'
 import { view } from '../../view'
 import MakeVerticalIcon from './MakeVerticalIcon.vue'
@@ -17,7 +17,7 @@ export const makeVertical: Command = {
             notify(() => i18n.value.commands.makeVertical.noSelected)
             return
         }
-        const result = applyMakeVertical(source, source.selectedEntities)
+        const { state: result, counts } = applyMakeVertical(source, source.selectedEntities)
         if (result === source) {
             const beat = [...notes][0]?.beat
             const unchanged = [...notes].every((note) => note.beat === beat)
@@ -28,9 +28,12 @@ export const makeVertical: Command = {
             )
             return
         }
-        const message = interpolate(() => i18n.value.commands.makeVertical.made, `${notes.size}`)
-        pushState(message, result)
+        const operation = createHistoryOperation({
+            id: 'nse.note.vertical',
+            data: { targets: counts.note ?? 0 },
+        })
+        pushState(operation, result)
         view.entities = { hovered: [], creating: [] }
-        notify(message)
+        notify(() => operation.fallback.text)
     },
 }

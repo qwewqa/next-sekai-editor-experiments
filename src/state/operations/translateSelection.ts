@@ -6,19 +6,19 @@ import {
     getTranslatedSelectionValues,
     type ScaleAxis,
 } from './scaleValues'
-import { transformSelection } from './transformSelection'
+import { transformSelectionWithReceipt, type SelectionTransformResult } from './transformSelection'
 
-export const translateSelection = (
+export const translateSelectionWithReceipt = (
     source: State,
     selected: Entity[],
     axis: ScaleAxis,
     delta: number,
     moveBeat = addBeatOffset,
     division = 1,
-): State => {
+): SelectionTransformResult => {
     const values = getTranslatedSelectionValues(selected, axis, delta, source, moveBeat, division)
     return values
-        ? transformSelection(
+        ? transformSelectionWithReceipt(
               source,
               selected,
               new Map(
@@ -28,5 +28,19 @@ export const translateSelection = (
                   ]),
               ),
           )
-        : source
+        : {
+              state: source,
+              counts: {},
+              replacements: new Map(selected.map((entity) => [entity, entity])),
+              applications: new Map<Entity, Entity>(),
+          }
 }
+
+export const translateSelection = (
+    source: State,
+    selected: Entity[],
+    axis: ScaleAxis,
+    delta: number,
+    moveBeat = addBeatOffset,
+    division = 1,
+): State => translateSelectionWithReceipt(source, selected, axis, delta, moveBeat, division).state

@@ -248,8 +248,16 @@ test('notes and stage transforms share an elevation anchor and undo restores the
     page,
 }) => {
     const result = await page.evaluate(async () => {
-        const { scaleSelection } = await import('/src/state/operations/scaleSelection.ts')
-        const { fixtures, show, history } = window.editorTest
+        const { fixtures, show, history, appImport } = window.editorTest
+        const { scaleSelectionWithReceipt } = await appImport<
+            typeof import('../../src/state/operations/scaleSelection')
+        >('/src/state/operations/scaleSelection.ts')
+        const { createHistoryOperation } = await appImport<
+            typeof import('../../src/history/createHistoryOperation')
+        >('/src/history/createHistoryOperation.ts')
+        const { subjectOfCounts } = await appImport<typeof import('../../src/history/operations')>(
+            '/src/history/operations/index.ts',
+        )
         const chart = fixtures.events
         const base = fixtures.interaction.slides[0]![0]!
         const transform = chart.stageTransformEvents[0]!
@@ -269,12 +277,29 @@ test('notes and stage transforms share an elevation anchor and undo restores the
         const camera = [...source.store.grid.cameraEventJoint.values()].flatMap((bucket) => [
             ...bucket,
         ])[0]!
-        const scaled = scaleSelection(source, [note, ...transforms, camera], 'elevation', 2)
+        const result = scaleSelectionWithReceipt(
+            source,
+            [note, ...transforms, camera],
+            'elevation',
+            2,
+        )
+        const scaled = result.state
         const updated = [...scaled.store.slides.note.values()].flat()[0]!
         const stageElevations = [...scaled.store.grid.stageTransformEventJoint.values()]
             .flatMap((bucket) => [...bucket])
             .map((entity) => [entity.beat, entity.elevation])
-        history.pushState(() => 'Scale elevation', scaled)
+        history.pushState(
+            createHistoryOperation({
+                id: 'nse.object.scale',
+                data: {
+                    axis: 'elevation',
+                    subject: subjectOfCounts(result.counts),
+                    targets: Object.values(result.counts).reduce((sum, count) => sum + count, 0),
+                    transform: { mode: 'uniform', factor: 2, pivot: -1 },
+                },
+            }),
+            scaled,
+        )
         const committed = history.state.value === scaled && history.canUndo.value
         history.undoState()
         const undone = history.state.value === source && !history.canUndo.value

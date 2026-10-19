@@ -1,6 +1,7 @@
 import type { State } from '..'
 import type { NoteObject } from '../../chart/note'
 import { complementEase, type Ease, type TimeScaleEase } from '../../ease'
+import type { NativeCounts } from '../../history/operations'
 import { nearlyEqual } from '../../utils/math'
 import type { Entity } from '../entities'
 import type { NoteEntity } from '../entities/slides/note'
@@ -25,6 +26,7 @@ import { getInStoreGrid } from '../store/grid'
 import { createTransaction, type Transaction } from '../transaction'
 import { connectorProperties } from './connectorProperties'
 import { isEditableEntity, type EditableEntity } from './editable'
+import { changedNativeCounts } from './historyReceipts'
 import { addBeatOffset } from './scaleValues'
 import { edit, inStoredOrder } from './transformSelection'
 
@@ -97,20 +99,20 @@ const reverseEases = (source: State, entities: EditableEntity[]) => {
     return eases
 }
 
-export const flipVertical = (
+export const flipVerticalWithReceipt = (
     source: State,
     selected: Entity[],
     moveBeat = addBeatOffset,
-): State => {
+): { state: State; counts: NativeCounts } => {
     const entities = [...new Set(selected.filter(isEditableEntity))]
-    if (!entities.length) return source
+    if (!entities.length) return { state: source, counts: {} }
     let min = Infinity
     let max = -Infinity
     for (const entity of entities) {
         min = Math.min(min, entity.beat)
         max = Math.max(max, entity.beat)
     }
-    if (min === max) return source
+    if (min === max) return { state: source, counts: {} }
 
     const selectedSet = new Set(entities)
     const properties = reverseSlideProperties(source, selectedSet)
@@ -137,7 +139,9 @@ export const flipVertical = (
     const eases = reverseEases(source, entities)
     const placed = new Map<Entity, number>()
     const flipped: Entity[] = []
+    const pairs: { before: Entity; index: number }[] = []
     for (const entity of ordered) {
+        pairs.push({ before: entity, index: flipped.length })
         if (entity.type !== 'note' && stays(entity)) {
             flipped.push(...edit(transaction, entity, eases.get(entity) ?? {}))
             continue
@@ -173,8 +177,20 @@ export const flipVertical = (
     )
         addBpm(transaction, initialBpm)
 
-    return transaction.commit(flipped)
+    const result = transaction.commit(flipped)
+    return {
+        state: result,
+        counts: changedNativeCounts(
+            pairs.flatMap(({ before, index }) => {
+                const after = result.selectedEntities[index]
+                return after ? [{ before, after }] : []
+            }),
+        ),
+    }
 }
+
+export const flipVertical = (source: State, selected: Entity[], moveBeat = addBeatOffset): State =>
+    flipVerticalWithReceipt(source, selected, moveBeat).state
 
 // The same group or stage, where the kind has one.
 const sameTrack = (entity: Entity, other: Entity) =>
