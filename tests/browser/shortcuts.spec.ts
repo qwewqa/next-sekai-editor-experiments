@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { confirmReset } from './resetConfirm'
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -776,6 +777,7 @@ test.describe('saved shortcuts', () => {
             .getByRole('dialog')
             .getByRole('button', { name: 'Reset Shortcuts', exact: true })
             .click()
+        await confirmReset(page, 'Reset Shortcuts')
         expect(
             await page.evaluate(() =>
                 localStorage.getItem('sonolus-next-sekai-editor.keyboardShortcuts'),

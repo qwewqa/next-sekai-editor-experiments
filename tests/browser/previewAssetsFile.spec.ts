@@ -675,8 +675,20 @@ test.describe('the Stored tab', () => {
         await expect(spark.locator('[data-stored-in-use]')).toHaveCount(0)
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(/^Stored: 2 items, /)
 
-        // One that is not in use goes at once.
+        // One that is not in use asks first too, with Cancel as the default.
         await spark.locator('[data-stored-remove]').click()
+        const unused = page.locator('dialog[open]').last()
+        await expect(unused).toContainText('Remove "Spark"?')
+        await expect(unused).not.toContainText('Default is used instead.')
+        await expect(unused.getByRole('button', { name: 'Cancel' })).toBeFocused()
+        await page.waitForTimeout(400)
+        await unused.getByRole('button', { name: 'Cancel' }).click()
+        await expect(page.locator('dialog[open]')).toHaveCount(1)
+        await expect(items).toHaveCount(2)
+        await spark.locator('[data-stored-remove]').click()
+        await expect(page.locator('dialog[open]')).toHaveCount(2)
+        await page.waitForTimeout(400)
+        await page.locator('dialog[open]').last().getByRole('button', { name: 'Remove' }).click()
         await expect(items).toHaveCount(1)
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(/^Stored: 1 item, /)
         expect(await stored(page)).toHaveLength(1)

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
+import { confirmReset } from './resetConfirm'
 
 declare global {
     interface Window {
@@ -140,6 +141,7 @@ test('the preview popup and global settings share the hitbox option', async ({ p
     await field.click()
     await expect(field).toHaveValue('Enabled')
     await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).click()
+    await confirmReset(page, 'Reset Settings')
     await expect(field).toHaveValue('Disabled')
     expect(
         await page.evaluate(() =>

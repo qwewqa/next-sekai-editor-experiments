@@ -505,6 +505,7 @@
       "remove": "Supprimer",
       "inUse": "Utilisé",
       "removeInUse": "Supprimer \"{0}\" ? L’élément par défaut est utilisé à la place.",
+      "removeUnused": "Supprimer \"{0}\" ?",
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
@@ -796,6 +797,8 @@
     "resetSettings": "Réinitialiser les paramètres",
     "resetSettingsHint": "Restaurer les paramètres par défaut en conservant les raccourcis clavier.",
     "resetKeybinds": "Réinitialiser les raccourcis",
+    "resetSettingsMessage": "Restaurer les paramètres par défaut en conservant les raccourcis clavier ?",
+    "resetKeybindsMessage": "Restaurer les raccourcis clavier par défaut ?",
     "editor": {
       "title": "Éditeur",
       "locale": "Langue",
