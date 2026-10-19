@@ -1,11 +1,11 @@
-import { captureEntryDescription } from '../../../src/history/operations'
-import { initialLife, initialStep } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { EARLY_LIMIT, onHistoryAction, type HistoryAction } from '../../../src/history/actions'
+import { captureEntryDescription } from '../../../src/history/operations'
 import { pushState, redoState, resetStates, undoState } from '../../../src/history/stack'
 import { replay } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
+import { initialLife, initialStep } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Early actions on a short stack churned by undo and redo: past the bound they're cut to the
@@ -23,7 +23,11 @@ const stackOf = (actions: readonly HistoryAction[]) => {
         new DataView(snapshot.buffer).setUint32(0, ids.get(state) ?? 0)
         return {
             seq: seq + 1,
-            ...captureEntryDescription(action.kind === 'reset' ? {kind: 'init', operation: action.step.operation} : action),
+            ...captureEntryDescription(
+                action.kind === 'reset'
+                    ? { kind: 'init', operation: action.step.operation }
+                    : action,
+            ),
             snapshot,
         }
     })

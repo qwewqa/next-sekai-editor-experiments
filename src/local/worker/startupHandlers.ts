@@ -119,6 +119,7 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
                     ends: batch.ends,
                     snapshots: [batch.snapshot],
                     media: [],
+                    entries: [],
                 } as unknown as FlushBatch,
                 waiterOf(progress),
             )

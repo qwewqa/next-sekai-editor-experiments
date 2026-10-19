@@ -1,9 +1,9 @@
-import { initialStep, nativeOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { pushState, resetStates } from '../../../src/history/stack'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
+import { initialStep, nativeOperation } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Outside release builds the undo stack freezes what it publishes (the flush's identity memo
@@ -39,7 +39,13 @@ test('edits of a published state still work, by copying what they change', () =>
     assert.ok(note)
     replaceNote(transaction, note, { ...note, size: note.size + 1 })
     const next = transaction.commit([])
-    pushState(nativeOperation({id: 'nse.object.edit', data: {subject: 'note', targets: 1}}, 'Changed note'), next)
+    pushState(
+        nativeOperation(
+            { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+            'Changed note',
+        ),
+        next,
+    )
     assert.notEqual(next.store.slides.note, state.store.slides.note)
     assert.equal([...state.store.slides.note.values()].flat()[0]?.size, note.size)
 })

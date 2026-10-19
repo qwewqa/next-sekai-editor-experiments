@@ -83,8 +83,8 @@ const isIdList = (value: unknown): value is number[] =>
     Array.isArray(value) && value.every((id) => Number.isSafeInteger(id))
 
 export const trimOptionalJournalContext = (value: JournalLike): JournalLike | undefined => {
-    if (!isObject(value) || value.journalVersion !== JOURNAL_VERSION || !isObject(value.stack))
-        return
+    const raw: unknown = value
+    if (!isObject(raw) || raw.journalVersion !== JOURNAL_VERSION || !isObject(raw.stack)) return
     let context: RecoveryContext | undefined
     try {
         context = captureRecoveryContext(raw.stack.context)

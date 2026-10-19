@@ -118,6 +118,7 @@ export const prepareJournal = (batch: JournalApplyBatch, waiter: Waiter = direct
             ends: batch.ends,
             snapshots: [batch.snapshot],
             media: [],
+            entries: [],
         } as unknown as FlushBatch,
         waiter,
     )
@@ -175,7 +176,11 @@ export const writeJournalApply = async (
     { force }: { force?: string } = {},
 ): Promise<JournalApplyResult> => {
     const { sessionId, seq, descriptor, stack } = batch
-    const recoveredStep = captureStep({kind: 'edit', operation: batch.operation, recoveryContext: stack.context})
+    const recoveredStep = captureStep({
+        kind: 'edit',
+        operation: batch.operation,
+        recoveryContext: stack.context,
+    })
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const root = prepared.roots[0]!
 

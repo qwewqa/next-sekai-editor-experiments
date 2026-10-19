@@ -1,4 +1,3 @@
-import { initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
 import { setImmediate as settleTasks } from 'node:timers/promises'
@@ -18,6 +17,7 @@ import {
     peekedKey,
     peekEntry,
     PeekError,
+    peekSourceGeneration,
     resetPeekForTests,
     restoreEntry,
     setPeekEffects,
@@ -34,6 +34,7 @@ import {
     undoState,
 } from '../../src/history/stack'
 import type { State } from '../../src/state'
+import { initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
 
 // Peek's core (Part 1 §1.4.11) in Node: the override, debounced requests, failures, leaving,
 // Restore (§1.4.10.5), the state cache and runCommand's gate with the refusal hook.
@@ -78,7 +79,8 @@ const source = (entries: Record<string, PeekedEntry>, fail: string[] = []) => {
 
 const notices: string[] = []
 setPeekEffects({
-    restoredOperation: (time) => nativeOperation({id: 'nse.restore', data: {targetTime: time}}, `Restored to ${time}`),
+    restoredOperation: (time) =>
+        nativeOperation({ id: 'nse.restore', data: { targetTime: time } }, `Restored to ${time}`),
     restored: (time) => notices.push(`restored ${time}`),
     alreadyMatches: () => notices.push('matches'),
 })
@@ -91,6 +93,21 @@ beforeEach(async () => {
     // Clears the debounce window of an earlier test.
     await wait(110)
     resetStates({ isDirty: false, step: initialStep(), state: fake('live') })
+})
+
+test('source replacement invalidates metadata at Now, including same and absent sources', () => {
+    const start = peekSourceGeneration.value
+    const next = {
+        load: async () => ({ state: fake('entry'), time: 1 }),
+        sameSnapshot: () => false,
+    }
+    setPeekSource(next)
+    setPeekSource(next)
+    setPeekSource(undefined)
+    setPeekSource(undefined)
+    assert.equal(peekSourceGeneration.value, start + 4)
+    assert.equal(isPeeking.value, false)
+    assert.equal(nameOf(liveState.value), 'live')
 })
 
 test('entry keys name a session and a seq', () => {
@@ -304,7 +321,10 @@ test('Restore pushes a restore entry with the snapshot’s chart and offset and 
     assert.equal(actions[0]?.kind, 'restore')
     const action = actions[0]
     assert(action && 'step' in action)
-    assert.deepEqual(action.step.operation, nativeOperation({id: 'nse.restore', data: {targetTime: 1234}}, 'Restored to 1234'))
+    assert.deepEqual(
+        action.step.operation,
+        nativeOperation({ id: 'nse.restore', data: { targetTime: 1234 } }, 'Restored to 1234'),
+    )
     assert.deepEqual(notices, ['restored 1234'])
     // Undoable.
     undoState()
@@ -389,13 +409,14 @@ test('a Restore whose session a New replaced meanwhile pushes nothing', async ()
     assert.deepEqual(notices, [])
 })
 
-
 test('a Restore description failure preserves the current peek and live stack', async () => {
-    source({ [key(1)]: {state: fake('old'), time: 1234} })
+    source({ [key(1)]: { state: fake('old'), time: 1234 } })
     await peekEntry(key(1))
     const live = liveState.value
     setPeekEffects({
-        restoredOperation: () => { throw new Error('Description failed') },
+        restoredOperation: () => {
+            throw new Error('Description failed')
+        },
         restored: () => assert.fail('Restore did not complete'),
         alreadyMatches: () => undefined,
     })
@@ -406,7 +427,11 @@ test('a Restore description failure preserves the current peek and live stack', 
         assert.equal(nameOf(state.value), 'old')
     } finally {
         setPeekEffects({
-            restoredOperation: (time) => nativeOperation({id: 'nse.restore', data: {targetTime: time}}, 'Restored to ' + time),
+            restoredOperation: (time) =>
+                nativeOperation(
+                    { id: 'nse.restore', data: { targetTime: time } },
+                    'Restored to ' + time,
+                ),
             restored: (time) => notices.push('restored ' + time),
             alreadyMatches: () => notices.push('matches'),
         })

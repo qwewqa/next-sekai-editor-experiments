@@ -1,4 +1,3 @@
-import type { PendingEntry as FlushPendingEntry } from '../flush'
 import {
     captureEntryDescription,
     captureStep,
@@ -9,6 +8,7 @@ import { serializeEditorMetadata } from '../../levelData/editorMetadata'
 import { LEVEL_VERSION } from '../../levelData/levelVersion'
 import { serializeToLevelData } from '../../levelData/serialize'
 import type { State } from '../../state'
+import type { PendingEntry as FlushPendingEntry } from '../flush'
 import { toHex } from '../hash'
 import { summaryOf } from '../nxsp/project'
 import { toRecords } from '../records/records'
@@ -31,7 +31,10 @@ export const addRecords = (records: PendingRecords, state: State) => {
     return root
 }
 
-export const pendingFlushRow = (entry: FlushPendingEntry, records: PendingRecords): PendingRow | undefined => {
+export const pendingFlushRow = (
+    entry: FlushPendingEntry,
+    records: PendingRecords,
+): PendingRow | undefined => {
     const snapshot = entry.state
         ? addRecords(records, entry.state)
         : entry.snapshot && toHex(entry.snapshot)

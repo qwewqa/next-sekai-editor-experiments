@@ -55,6 +55,8 @@ export type PeekEffects = {
 
 let source: PeekSource | undefined
 let effects: PeekEffects | undefined
+const sourceGeneration = shallowRef(0)
+export const peekSourceGeneration: Readonly<Ref<number>> = computed(() => sourceGeneration.value)
 
 /** Set once storing has started: entries can be peeked from then on. */
 export const setPeekSource = (next: PeekSource | undefined) => {
@@ -62,6 +64,7 @@ export const setPeekSource = (next: PeekSource | undefined) => {
     source = next
     cache.clear()
     loading.clear()
+    sourceGeneration.value++
 }
 
 export const setPeekEffects = (next: PeekEffects | undefined) => {

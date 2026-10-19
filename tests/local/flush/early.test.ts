@@ -1,11 +1,11 @@
-import { captureEntryDescription } from '../../../src/history/operations'
-import { initialLife, initialStep } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { EARLY_LIMIT, onHistoryAction, type HistoryAction } from '../../../src/history/actions'
+import { captureEntryDescription } from '../../../src/history/operations'
 import { pushState, resetStates, undoState } from '../../../src/history/stack'
 import { replay } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
+import { initialLife, initialStep } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Actions before storing starts are kept for it, but boundedly: a start that never comes mustn't
@@ -24,7 +24,9 @@ const stackOf = (actions: readonly HistoryAction[]) => {
     }
     const entries = actions.map((action, seq) => ({
         seq: seq + 1,
-        ...captureEntryDescription(action.kind === 'reset' ? {kind: 'init', operation: action.step.operation} : action),
+        ...captureEntryDescription(
+            action.kind === 'reset' ? { kind: 'init', operation: action.step.operation } : action,
+        ),
         snapshot: snapshot(action.state),
     }))
     const { slots, index } = replay(entries)
