@@ -92,7 +92,14 @@ export const makeEdits = (
                     const sign = whole % 2 ? -1 : 1
                     const moved = translateSelection(before, all, 'width', sign * 0.25)
                     if (moved === before) throw new Error('The whole-chart move changed nothing')
-                    history.pushState(() => 'Move', moved)
+                    history.pushState(
+                        window.editorTest.historySteps.futureFixtureOperation(
+                            'memory-whole-chart',
+                            { iteration: whole },
+                            'Move',
+                        ),
+                        moved,
+                    )
                     whole++
                     continue
                 }

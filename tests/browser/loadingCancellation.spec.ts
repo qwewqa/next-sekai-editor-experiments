@@ -150,10 +150,17 @@ test('a cancelled open cannot replace edits made after its dialog is dismissed',
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.evaluate(() => {
         const { history } = window.editorTest
-        history.pushState(() => 'Later edit', {
-            ...history.state.value,
-            levelInfo: { ...history.state.value.levelInfo, title: 'later-edit' },
-        })
+        history.pushState(
+            window.editorTest.historySteps.futureFixtureOperation(
+                'loading-stale-identity',
+                { title: 'later-edit' },
+                'Later edit',
+            ),
+            {
+                ...history.state.value,
+                levelInfo: { ...history.state.value.levelInfo, title: 'later-edit' },
+            },
+        )
         window.loadingReview.release()
     })
     await expect.poll(() => page.evaluate(() => window.loadingReview.completed)).toBe(1)

@@ -93,7 +93,11 @@ export const wholeEdits = async (page: Page, n: number) => {
             const all = [...store.getAllEntities()].filter(isEditableEntity)
             const before = history.state.value
             history.pushState(
-                () => 'Move',
+                window.editorTest.historySteps.futureFixtureOperation(
+                    'flush-budget-whole-chart',
+                    { iteration: i },
+                    'Move',
+                ),
                 translateSelection(before, all, 'width', i % 2 ? -0.25 : 0.25),
             )
         }, i)

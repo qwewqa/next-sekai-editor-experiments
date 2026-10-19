@@ -116,7 +116,9 @@ const edit = (page: Page, initialLife: number) =>
     page.evaluate(async (initialLife) => {
         const { pushState, state } =
             (await import('/src/history/index.ts')) as typeof import('../../src/history')
-        pushState(() => `Life ${initialLife}`, { ...state.value, initialLife })
+        const { initialLife: operation } =
+            (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+        pushState(operation(state.value.initialLife, initialLife), { ...state.value, initialLife })
     }, initialLife)
 
 const undo = (page: Page) =>
@@ -1178,7 +1180,13 @@ test.describe('single-line disclosures', () => {
                 (await import('/src/history/index.ts')) as typeof import('../../src/history')
             const groups = new Map(liveState.value.groups)
             groups.set(1002 as never, { ...groups.get(1002 as never)!, name: 'Live Only Name' })
-            pushState(() => 'Live scope rename', { ...liveState.value, groups, initialLife: 980 })
+            const { futureFixtureOperation } =
+                (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+            pushState(futureFixtureOperation('disclosure-live-scope', {}, 'Live scope rename'), {
+                ...liveState.value,
+                groups,
+                initialLife: 980,
+            })
         })
         await settled(page)
         await page.evaluate(async () => {

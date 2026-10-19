@@ -284,7 +284,14 @@ test.describe('the update line', () => {
         await page.evaluate(() => {
             const { history, fixtures, show } = window.editorTest
             show(fixtures.interaction, 3)
-            history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+            history.pushState(
+                window.editorTest.historySteps.futureFixtureOperation(
+                    'notice-dismissal',
+                    {},
+                    'Edit',
+                ),
+                { ...history.state.value, selectedEntities: [] },
+            )
         })
         await expect(pill(page)).toHaveCount(0)
     })
@@ -886,7 +893,14 @@ test.describe('when a card goes by itself', () => {
         await expect(pill(page)).toBeVisible()
         await page.evaluate(() => {
             const { history } = window.editorTest
-            history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+            history.pushState(
+                window.editorTest.historySteps.futureFixtureOperation(
+                    'notice-dismissal',
+                    {},
+                    'Edit',
+                ),
+                { ...history.state.value, selectedEntities: [] },
+            )
         })
         await expect(pill(page)).toHaveCount(0)
     })
@@ -900,7 +914,14 @@ test.describe('when a card goes by itself', () => {
             const raise = (message: string) =>
                 notify(() => message, { action: { label: () => 'Undo', run: () => undefined } })
             const push = () =>
-                history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+                history.pushState(
+                    window.editorTest.historySteps.futureFixtureOperation(
+                        'notice-dismissal',
+                        {},
+                        'Edit',
+                    ),
+                    { ...history.state.value, selectedEntities: [] },
+                )
             raise('Older')
             push()
             raise('Raised after the step')
@@ -912,13 +933,27 @@ test.describe('when a card goes by itself', () => {
             notify(() => 'Raised before the step', {
                 action: { label: () => 'Undo', run: () => undefined },
             })
-            history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+            history.pushState(
+                window.editorTest.historySteps.futureFixtureOperation(
+                    'notice-dismissal',
+                    {},
+                    'Edit',
+                ),
+                { ...history.state.value, selectedEntities: [] },
+            )
         }, notificationPath)
         await expect(pill(page)).toContainText('Raised before the step')
         // The next step, in a task of its own, dismisses it.
         await page.evaluate(() => {
             const { history } = window.editorTest
-            history.pushState(() => 'Edit', { ...history.state.value, selectedEntities: [] })
+            history.pushState(
+                window.editorTest.historySteps.futureFixtureOperation(
+                    'notice-dismissal',
+                    {},
+                    'Edit',
+                ),
+                { ...history.state.value, selectedEntities: [] },
+            )
         })
         await expect(pill(page)).toHaveCount(0)
     })
