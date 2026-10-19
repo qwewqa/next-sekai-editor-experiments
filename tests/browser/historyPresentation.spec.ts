@@ -107,6 +107,99 @@ const seedNativeLifeGroup = async (page: Page, unavailable = false) => {
     }, unavailable)
 }
 
+test('compact History returns to its own row and keeps a virtualized Tab entry point', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await seedNativeLifeGroup(page, true)
+    await open(page)
+    const now = list(page).getByRole('row', { name: /^Now/ })
+    await expect(now).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    const group = row(page, 'Changed Initial Life')
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('dialog', { name: 'Step Details', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(group).toBeFocused()
+    await page.keyboard.press('Home')
+    await expect(now).toBeFocused()
+    await list(page).evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await expect(now).toBeFocused()
+    await presentation(page).locator('[data-history-close]').focus()
+    await expect(now).toHaveAttribute('tabindex', '0')
+    await page.keyboard.press('Tab')
+    await expect(now).toBeFocused()
+    await expect(list(page).locator('[data-history-row][tabindex="0"]')).toHaveCount(1)
+})
+
+test('filtering out the active peek does not announce Now as selected or replace its request', async ({ page }) => {
+    await open(page)
+    await row(page, 'Property 30').click()
+    const before = await selected(page)
+    await page.evaluate(async () => {
+        const { historyFilter } = await window.editorTest.appImport<typeof import('../../src/editor/history/state')>('/src/editor/history/state.ts')
+        historyFilter.value = 'saves'
+    })
+    await expect(list(page).getByRole('row', { selected: true })).toHaveCount(0)
+    await expect(list(page).getByRole('row', { name: /^Now/ })).toHaveAttribute('aria-selected', 'false')
+    expect(await selected(page)).toEqual(before)
+    await page.evaluate(async () => {
+        const { historyFilter } = await window.editorTest.appImport<typeof import('../../src/editor/history/state')>('/src/editor/history/state.ts')
+        historyFilter.value = 'all'
+    })
+    await expect(row(page, 'Property 30')).toHaveAttribute('aria-selected', 'true')
+    expect(await selected(page)).toEqual(before)
+})
+
+test('Details renders exact numbers, literal unknown fallback and one paged recovery context', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'edit', step: historySteps.editStep(historySteps.nativeOperation({ id: 'nse.header.set', data: { field: 'bgmOffset', before: 0, after: 1.2345678901234567 } }, 'Captured offset')) } }]), 1234)
+    })
+    const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+    await expect(details.locator('[data-operation-field="after"] dd')).toHaveText('1,234.5678901234567')
+    await page.keyboard.press('Escape')
+    await expect(details).toHaveCount(0)
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'export', operation: historySteps.futureFixtureOperation('future-export', { futureParameter: 9 }, '<b>Future export</b>') } }]), 1234)
+    })
+    await expect(details.locator('[data-operation-description]')).toHaveText('<b>Future export</b>')
+    await expect(details.locator('[data-operation-unsupported]')).toHaveText('This editor cannot interpret this action.')
+    await expect(details.locator('[data-operation-description] b')).toHaveCount(0)
+    await expect(details.locator('[data-operation-section]')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(details).toHaveCount(0)
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
+            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+        ])
+        const head = historySteps.editStep(historySteps.futureFixtureOperation('recovery-head', {}, 'Source metadata'))
+        const dropped = Array.from({ length: 25 }, (_, i) => historySteps.editStep(historySteps.futureFixtureOperation(`context-${i}`, {}, `Earlier action ${i}`)))
+        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'recovered', operation: historySteps.nativeOperation({ id: 'nse.recovery', data: { source: 'journal', droppedSteps: 25 } }, 'Recovered'), recoveryContext: { head, headIndex: 2, dropped, omitted: 5 } } }]), 1234)
+    })
+    const recovery = details.locator('[data-operation-recovery]')
+    await expect(recovery).toHaveCount(1)
+    await expect(recovery.locator('li')).toHaveCount(20)
+    await expect(recovery.locator('li').nth(2)).toContainText('Source metadata')
+    await expect(recovery.locator('[data-operation-recovery-head]')).toHaveCount(1)
+    await expect(recovery).toContainText('Earlier action descriptions omitted: 5')
+    await expect(details.locator('[data-operation-children]')).toHaveCount(0)
+    await recovery.getByRole('button', { name: 'Show More', exact: true }).click()
+    await expect(recovery.locator('li')).toHaveCount(26)
+    await expect(recovery.getByText('Source metadata', { exact: true })).toHaveCount(1)
+    expect((await selected(page)).requested).toBeUndefined()
+})
+
 test('treegrid native controls, cell navigation and metadata focus preserve the selected snapshot', async ({
     page,
 }) => {
@@ -183,6 +276,11 @@ test('unavailable Details is keyboard reachable at Now and source replacement di
     await expect(page.getByRole('menuitem', { name: 'Show Change', exact: true })).toBeDisabled()
     await page.keyboard.press('Escape')
     await expect(detailsButton).toBeFocused()
+    await page.keyboard.press('Shift+F10')
+    await page.getByRole('menuitem', { name: 'Details', exact: true }).click()
+    await expect(details).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(detailsButton).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(details).toBeVisible()
     await page.evaluate(async () => {
@@ -233,6 +331,36 @@ test('selected Details keeps exact members and request identity while text reloc
         }),
     ).toBe(true)
     await expect(page.locator('[data-operation-children] > details')).toHaveCount(2)
+})
+
+test.describe('touch metadata actions', () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
+    test('unavailable body tap opens Details and long-press release only opens the menu', async ({ page }) => {
+        await seedNativeLifeGroup(page, true)
+        await open(page)
+        const group = row(page, 'Changed Initial Life')
+        const body = group.locator('[data-history-details]')
+        const before = await selected(page)
+        await body.tap()
+        const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+        await expect(details).toBeVisible()
+        expect(await selected(page)).toEqual(before)
+        await details.getByRole('button', { name: 'Close', exact: true }).tap()
+        await expect(details).toHaveCount(0)
+        await body.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 2, isPrimary: true, clientX: 150, clientY: 180 })
+        await expect(page.getByRole('menu')).toBeVisible()
+        await body.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 2, isPrimary: true })
+        await body.dispatchEvent('click')
+        await expect(details).toHaveCount(0)
+        await expect(page.getByRole('menu')).toBeVisible()
+        expect(await selected(page)).toEqual(before)
+        await page.getByRole('menuitem', { name: 'Details', exact: true }).tap()
+        await expect(details).toBeVisible()
+        await details.getByRole('button', { name: 'Close', exact: true }).tap()
+        expect((await group.boundingBox())!.height).toBe(80)
+        expect((await group.locator('[data-history-entry-header]').boundingBox())!.height).toBe(44)
+        expect(await selected(page)).toEqual(before)
+    })
 })
 
 test('unavailable group height and expansion preserve virtual offsets and the visible anchor', async ({

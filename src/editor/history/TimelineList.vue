@@ -336,6 +336,8 @@ const focusElement = (id: string, part: FocusPart) => {
 }
 const focusedPart = (event: Event): FocusPart =>
     ((event.target as HTMLElement).dataset.historyPart as FocusPart | undefined) ?? 'row'
+const openerPart = (element: HTMLElement): FocusPart =>
+    (element.closest<HTMLElement>('[data-history-part]')?.dataset.historyPart as FocusPart | undefined) ?? 'row'
 const tabIndex = (row: Row, part: FocusPart) =>
     row.id === cursorId.value && focusPart.value === part ? 0 : -1
 const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = true) => {
@@ -479,7 +481,10 @@ watch(
     },
     { flush: 'sync' },
 )
-const selectedId = computed(() => rowOf(peekedInfo.value?.key ?? peekedKey.value)?.id ?? 'now')
+const selectedId = computed(() => {
+    const key = peekedInfo.value?.key ?? peekedKey.value
+    return key ? rowOf(key)?.id : 'now'
+})
 
 /** What a peek of an entry names, and what it is compared with: before `oldest`, its run's. */
 const infoOf = (entry: Entry, oldest = entry): PeekedInfo => {
@@ -770,7 +775,11 @@ const restore = async (row: EntryRow) => {
 const menu = shallowRef<{ row: EntryRow; anchor: HTMLElement; touch: boolean; part: FocusPart }>()
 const openMenu = (row: EntryRow, anchor: HTMLElement, touch = false) => {
     if (menu.value?.row.id === row.id) return
-    menu.value = { row, anchor, touch, part: focusPart.value }
+    const part = openerPart(anchor)
+    cursorId.value = row.id
+    focusPart.value = part
+    focusToken++
+    menu.value = { row, anchor, touch, part }
 }
 const closeMenu = (restoreFocus: boolean) => {
     if (!menu.value) return
@@ -787,8 +796,7 @@ const menuItems = computed(() => [
     },
     { key: 'restore', label: i18n.value.peek.restore, disabled: !menu.value?.row.selectable },
 ])
-const showDetails = (row: EntryRow, opener?: HTMLElement) => {
-    const part = focusPart.value
+const showDetails = (row: EntryRow, opener?: HTMLElement, part = opener ? openerPart(opener) : focusPart.value) => {
     void openOperationDetails(recipeOf(row), row.entry.time, opener, () => {
         restoreRowFocus(row.id, part)
     })
@@ -810,7 +818,7 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
     const current = menu.value
     closeMenu(keyboard)
     if (!current) return
-    if (key === 'details') showDetails(current.row, current.anchor)
+    if (key === 'details') showDetails(current.row, current.anchor, current.part)
     else if (current.row.selectable && key === 'restore') void restore(current.row)
     else if (current.row.selectable && key === 'showChange') showRowChange(current.row)
 }
@@ -859,7 +867,10 @@ const onContextMenu = (event: MouseEvent, row: Row) => {
         if (!settings.touchLongPressContextMenu) return
         suppressClick = true
     }
-    openMenu(row, event.currentTarget as HTMLElement, touch)
+    const anchor = event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>('[data-history-part]') ?? event.currentTarget as HTMLElement
+        : event.currentTarget as HTMLElement
+    openMenu(row, anchor, touch)
 }
 
 // --- Pointer
