@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { waitForStartup } from './editorFixture'
+import { closePage, waitForStartup } from './editorFixture'
 import {
     chainById,
     chainOf,
@@ -40,7 +40,7 @@ const savedTo = async (page: Page, name: string) => {
 /** Closes a page as a kill does, with nothing paused for the next one. */
 const kill = async (page: Page) => {
     await unpause(page)
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
 }
 
 /** A new page of the context: a new visit, which continues the most recent session. */

@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { waitForStartup } from './editorFixture'
+import { closePage, waitForStartup } from './editorFixture'
 
 // Startup (Part 1 §1.4.2, §1.11.4's exit): which session a load opens. A same-tab reload keeps
 // its session, decided by the session lock; a Duplicate Tab forks; a new visit continues the most
@@ -212,7 +212,7 @@ test('edit, kill, reload: the reload recovers its own journal in the same sessio
     await next.addInitScript(() => {
         Object.defineProperty(document, 'wasDiscarded', { configurable: true, value: true })
     })
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
     await visit(next)
     expect(await claimOf(next)).toBe('reload')
     expect((await sessionOf(next)).sessionId).toBe(sessionId)
@@ -269,7 +269,7 @@ test('a new visit continues the most recent session with its binding', async ({
     await settled(page)
     const original = await flushSession(page)
     page.on('dialog', (dialog) => void dialog.accept())
-    await page.close({ runBeforeUnload: true })
+    await closePage(page, { runBeforeUnload: true })
     const next = await context.newPage()
     await visit(next)
     expect(await claimOf(next)).toBe('none')
@@ -325,7 +325,7 @@ test('a reload after the session was continued in another tab during the gap for
     const record = await tabRecord(page)
     const original = await flushSession(page)
     page.on('dialog', (dialog) => void dialog.accept())
-    await page.close({ runBeforeUnload: true })
+    await closePage(page, { runBeforeUnload: true })
     // Another tab continues it meanwhile.
     const other = await context.newPage()
     await visit(other)
@@ -351,7 +351,7 @@ test('a reload after the session was deleted in another tab starts blank, with t
     const record = await tabRecord(page)
     const { chainId } = await flushSession(page)
     page.on('dialog', (dialog) => void dialog.accept())
-    await page.close({ runBeforeUnload: true })
+    await closePage(page, { runBeforeUnload: true })
     // Delete's mark, from another tab (Step 7 adds Delete itself).
     const other = await context.newPage()
     await other.goto('/privacy/')
@@ -409,7 +409,7 @@ test('an unedited blank start, the session held elsewhere, continues it with its
     await visit(next)
     expect(await loadEvents(next)).toEqual(['openElsewhere'])
     page.on('dialog', (dialog) => void dialog.accept())
-    await page.close({ runBeforeUnload: true })
+    await closePage(page, { runBeforeUnload: true })
     await next.reload()
     await opened(next)
     expect(await lifeOf(next)).toBe(990)
@@ -600,7 +600,7 @@ test.describe('storage unavailable', () => {
             Object.keys(localStorage).filter((key) => key.includes('.journal.')),
         )
         expect(keys).toHaveLength(2)
-        await page.close({ runBeforeUnload: false })
+        await closePage(page, { runBeforeUnload: false })
         // A later visit: offered in Local Data, never loaded.
         const later = await context.newPage()
         await visit(later)
@@ -630,7 +630,7 @@ test('a journal written while storage was unavailable becomes a session at a loa
     await visit(page)
     await edit(page, 990)
     await hide(page)
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
     const next = await context.newPage()
     await next.addInitScript(() => {
         sessionStorage.setItem('withStorage', 'true')
@@ -657,7 +657,7 @@ test('one load runs the recovery order: the canary, a journal, then the old auto
     await stallFlushes(page)
     await edit(page, 980)
     await hide(page)
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
     // Before the next load: another database's canary, and an old auto save from before the update.
     const other = await context.newPage()
     await other.goto('/privacy/')
@@ -941,7 +941,7 @@ test('Start Blank’s edits while the worker hasn’t answered have a journal: a
     await hide(page)
     const record = await tabRecord(page)
     const next = await withTabRecord(context, record)
-    await page.close({ runBeforeUnload: false })
+    await closePage(page, { runBeforeUnload: false })
     await visit(next)
     expect(await lifeOf(next)).toBe(930)
 })

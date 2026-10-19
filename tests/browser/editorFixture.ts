@@ -549,3 +549,48 @@ if (process.env.NSE_DEV_CSP === '1') {
         if (found.length) throw new Error(`Content Security Policy violations: ${found.join('; ')}`)
     })
 }
+
+/**
+ * Closes a page, as a kill (`runBeforeUnload: false`) or a tab closed (`true`), and waits until
+ * the browser has released its Web Locks. Playwright's close resolves before Chromium drops a
+ * closed page's locks, and the gap reaches about a second under load. A load that meets the session
+ * lock still held takes the session as open in another tab (§1.4.2), as it must for a live tab, so
+ * a spec's next visit waits for the release instead.
+ */
+export const closePage = async (page: Page, { runBeforeUnload }: { runBeforeUnload: boolean }) => {
+    const context = page.context()
+    // This page's client id, as query() lists it: the holder of a probe lock it takes.
+    const clientId = await page.evaluate(async () => {
+        const name = `nse.test.client.${crypto.randomUUID()}`
+        return navigator.locks.request(
+            name,
+            async () =>
+                (await navigator.locks.query()).held?.find((lock) => lock.name === name)?.clientId,
+        )
+    })
+    // With beforeunload handlers, close() returns before the page has gone.
+    await Promise.all([page.waitForEvent('close'), page.close({ runBeforeUnload })])
+    if (clientId === undefined) return
+    const probe = await context.newPage()
+    try {
+        await probe.goto('/privacy/')
+        await expect
+            .poll(
+                () =>
+                    probe.evaluate(
+                        async (clientId) =>
+                            (await navigator.locks.query()).held?.some(
+                                (lock) => lock.clientId === clientId,
+                            ) ?? false,
+                        clientId,
+                    ),
+                {
+                    message: 'the closed page still holds its Web Locks after 10 s',
+                    timeout: 10_000,
+                },
+            )
+            .toBe(false)
+    } finally {
+        await probe.close()
+    }
+}

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { crafted } from '../local/nxsp/craft'
-import { waitForStartup } from './editorFixture'
+import { closePage, waitForStartup } from './editorFixture'
 import {
     chainById,
     chainOf,
@@ -362,7 +362,7 @@ test('a kill after the revocation: the reload is bound to the emptied file, and 
     await reached(a, 'revoked')
     expect(await readFile(a, 'coconut.nxsp')).toEqual([])
     await a.evaluate(() => localStorage.removeItem('nse.test.savePause'))
-    await a.close({ runBeforeUnload: false })
+    await closePage(a, { runBeforeUnload: false })
 
     const next = await context.newPage()
     await next.goto('/')

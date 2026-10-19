@@ -88,17 +88,30 @@ export const removeFile = (page: Page, name: string) =>
         await root.removeEntry(name)
     }, name)
 
-/** The `project.json` of an OPFS `.nxsp`. */
+/**
+ * The `project.json` of an OPFS `.nxsp`. A file a save is writing is not readable for a moment (a
+ * NotReadableError), so a read that fails that way is tried again for up to 5 s.
+ */
 export const projectOf = (page: Page, name: string) =>
     page.evaluate(async (name) => {
         const root = await navigator.storage.getDirectory()
-        const file = await (await root.getFileHandle(name)).getFile()
         const { ZipReader } =
             (await import('/src/zip/reader.ts')) as typeof import('../../src/zip/reader')
-        const reader = await ZipReader.open(file)
-        const entry = reader.get('project.json')!
-        const bytes = await reader.read(entry, { maxSize: 4_000_000 })
-        return JSON.parse(new TextDecoder().decode(bytes)) as Row
+        const until = performance.now() + 5000
+        for (;;) {
+            try {
+                const file = await (await root.getFileHandle(name)).getFile()
+                const reader = await ZipReader.open(file)
+                const entry = reader.get('project.json')!
+                const bytes = await reader.read(entry, { maxSize: 4_000_000 })
+                return JSON.parse(new TextDecoder().decode(bytes)) as Row
+            } catch (error) {
+                if ((error as Error).name !== 'NotReadableError') throw error
+                if (performance.now() > until)
+                    throw new Error(`${name} was still unreadable after 5 s`, { cause: error })
+                await new Promise((resolve) => setTimeout(resolve, 50))
+            }
+        }
     }, name)
 
 /** Queues what the override's next pickers return; null dismisses one. */
