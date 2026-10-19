@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
+import type { CallOptions } from '../../src/local/worker/rpc'
+import type { StorageHandlers } from '../../src/local/worker/storage.worker'
 import { fresh } from '../local/nxsp/chain'
 import { damagedFile } from '../local/open/files'
 import { installTestPlatform, waitForStartup } from './editorFixture'
@@ -8,6 +10,8 @@ type Row = Record<string, unknown>
 declare global {
     interface Window {
         switchRace: {
+            readId?: string
+            fileReads?: number
             held: boolean
             released: boolean
             dropped: number
@@ -31,7 +35,7 @@ const start = async (page: Page) => {
         )
         localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))
     })
-    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' })
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' as const })
     await page.goto('/')
     await waitForStartup(page)
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
@@ -135,9 +139,21 @@ const hold = (page: Page, method: 'readSnapshot' | 'openRead' | 'openStore' | 'r
                 worker.call = original
             },
         }
-        worker.call = async (name, ...args) => {
+        worker.call = async <K extends keyof StorageHandlers>(
+            name: K,
+            arg?: Parameters<StorageHandlers[K]>[0],
+            options?: CallOptions & { current?: () => boolean },
+        ): Promise<Awaited<ReturnType<StorageHandlers[K]>>> => {
+            const result = await original(name, arg, options)
             if (name === 'openDrop') window.switchRace.dropped++
-            const result = await original(name, ...args)
+            if (
+                name === 'openRead' &&
+                result &&
+                typeof result === 'object' &&
+                'id' in result &&
+                typeof result.id === 'string'
+            )
+                window.switchRace.readId = result.id
             if (name !== method || taken) return result
             taken = true
             window.switchRace.result = result
@@ -266,6 +282,48 @@ for (const boundary of ['openRead', 'openStore'] as const) {
         await expect.poll(() => page.evaluate(() => window.switchRace.dropped)).toBeGreaterThan(0)
         await imported(page)
         expect(await snapshot(page)).toEqual(expected)
+        const reader = await page.evaluate(async () => {
+            const { createHistoryOperation } =
+                (await import('/src/history/createHistoryOperation.ts')) as typeof import('../../src/history/createHistoryOperation')
+            const id = window.switchRace.readId
+            if (!id) throw new Error('no captured read')
+            return window.nseStorageTest!.worker.call('openStore', {
+                id,
+                ids: {
+                    sessionId: crypto.randomUUID(),
+                    chainId: crypto.randomUUID(),
+                    docId: crypto.randomUUID(),
+                    lineageId: crypto.randomUUID(),
+                },
+                chain: {},
+                operations: {
+                    opened: createHistoryOperation({
+                        id: 'nse.origin',
+                        data: { origin: 'import' },
+                    }),
+                    changedOutside: createHistoryOperation({ id: 'nse.externalChange', data: {} }),
+                },
+                wall: Date.now(),
+                appVersion: '0.6.0',
+            })
+        })
+        expect(reader).toEqual({ kind: 'notOpened' })
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    async (current) =>
+                        (await navigator.locks.query()).held
+                            ?.filter(
+                                (lock) =>
+                                    lock.name?.startsWith('nse-import:') ||
+                                    (lock.name?.startsWith('nse-session:') &&
+                                        lock.name !== `nse-session:${current}`),
+                            )
+                            .map((lock) => lock.name) ?? [],
+                    expected.session.sessionId,
+                ),
+            )
+            .toEqual([])
         const after = (await rows(page, ['sessions'])).sessions!
         if (boundary === 'openRead') expect(after).toHaveLength(0)
         else {
@@ -346,12 +404,20 @@ test('old read cleanup and batches cannot address a replacement worker read', as
             throw new Error('replacement read did not store')
         const fresh = await worker.call('openBatch', { id: next.id, n: 0 })
         for (let n = 1; n < stored.batches; n++) await worker.call('openBatch', { id: next.id, n })
+        const readback = await worker.call('readSession', String(stored.chain.head))
         await worker.call('openDrop', next.id)
-        return { old: old.id, next: next.id, stale, fresh }
+        return {
+            old: old.id,
+            next: next.id,
+            stale,
+            fresh,
+            readable: readback.kind === 'open' && readback.session.importPending !== true,
+        }
     })
     expect(result.next).not.toBe(result.old)
     expect(result.stale).toEqual({ kind: 'notOpened' })
-    expect(result.fresh).not.toEqual({ kind: 'notOpened' })
+    expect(result.fresh).toEqual({ kind: 'done' })
+    expect(result.readable).toBe(true)
 })
 
 for (const hook of ['edit', 'newer-request', 'throw'] as const) {
@@ -385,11 +451,23 @@ for (const hook of ['edit', 'newer-request', 'throw'] as const) {
                     },
                     context.recovery,
                 )
+                await restoreAsCopy(target)
+                const ordinaryView = view.time
+                const { resetState } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                resetState(false)
+                await window.nseFlushTest!.flusher.outgoing
+                let inside: { session: string; flusher?: string; life: number } | undefined
                 let armed = true
                 let newer: ReturnType<typeof createSwitchRequest> | undefined
                 onResetState(() => {
                     if (!armed) return
                     armed = false
+                    inside = {
+                        session: session.value.sessionId,
+                        flusher: window.nseFlushTest!.flusher.session?.id,
+                        life: liveState.value.initialLife,
+                    }
                     view.time = 123
                     if (hook === 'throw') throw new Error('hook failed after adoption')
                     if (hook === 'newer-request') newer = createSwitchRequest()
@@ -407,7 +485,11 @@ for (const hook of ['edit', 'newer-request', 'throw'] as const) {
                 } catch (error) {
                     failure = String(error)
                 }
+                if (hook === 'edit') await window.nseFlushTest!.flusher.flush({ strict: true })
                 const result = {
+                    ordinaryView,
+                    inside,
+                    life: liveState.value.initialLife,
                     view: view.time,
                     session: session.value.sessionId,
                     flusher: window.nseFlushTest!.flusher.session?.id,
@@ -418,8 +500,20 @@ for (const hook of ['edit', 'newer-request', 'throw'] as const) {
             },
             { target, hook },
         )
+        expect(result.ordinaryView).toBe(7)
         expect(result.view).toBe(123)
+        expect(result.inside?.flusher).toBe(result.inside?.session)
+        expect(result.inside?.session).toBe(result.session)
         expect(result.flusher).toBe(result.session)
+        if (hook === 'edit') {
+            expect(result.life).toBe(result.inside!.life + 1)
+            const entries = (await rows(page, ['entries'])).entries!
+            expect(
+                entries.filter(
+                    (row) => row.value.sessionId === result.session && row.value.kind === 'edit',
+                ),
+            ).toHaveLength(1)
+        }
         if (hook === 'throw') expect(result.failure).toContain('hook failed after adoption')
         else expect(result.failure).toBeUndefined()
     })
@@ -524,12 +618,14 @@ for (const navigate of [false, true]) {
 test('Open Other captures authority before its first lazy flow import', async ({ page }) => {
     await start(page)
     await opened(page)
-    const loaded = await page.evaluate(() =>
-        performance
-            .getEntriesByType('resource')
-            .some((entry) => new URL(entry.name).pathname === '/src/editor/save/flow.ts'),
-    )
-    expect(loaded, 'fixture must exercise the first lazy flow import').toBe(false)
+    expect(
+        await page.evaluate(() =>
+            performance
+                .getEntriesByType('resource')
+                .some((entry) => new URL(entry.name).pathname === '/src/editor/save/flow.ts'),
+        ),
+        'fixture must exercise the first lazy flow import',
+    ).toBe(false)
     let releaseRoute: (() => void) | undefined
     await page.route('**/src/editor/save/flow.ts*', async (route) => {
         await new Promise<void>((resolve) => {
@@ -538,18 +634,49 @@ test('Open Other captures authority before its first lazy flow import', async ({
         await route.continue()
     })
     await page.evaluate(async () => {
+        const { rememberHandle } =
+            (await import('/src/editor/save/env.ts')) as typeof import('../../src/editor/save/env')
+        const handle = await (await navigator.storage.getDirectory()).getFileHandle('race.nxsp')
+        const getFile = handle.getFile.bind(handle)
+        window.switchRace = {
+            held: false,
+            released: false,
+            dropped: 0,
+            done: false,
+            release() {},
+            restore() {},
+        }
+        handle.getFile = async () => {
+            window.switchRace.fileReads = (window.switchRace.fileReads ?? 0) + 1
+            return getFile()
+        }
+        rememberHandle(window.nseFlushTest!.flusher.session!.chainId, handle)
         const { fileActions } =
             (await import('/src/editor/file/actions.ts')) as typeof import('../../src/editor/file/actions')
         fileActions.openOtherVersion?.()
     })
     await expect.poll(() => !!releaseRoute).toBe(true)
-    await newChart(page)
-    const expected = await snapshot(page)
-    releaseRoute!()
-    // Both imports share the same module promise; the earlier action continuation runs first.
     await page.evaluate(async () => {
-        ;(await import('/src/editor/save/flow.ts')) as typeof import('../../src/editor/save/flow')
+        const { liveState, pushState, undoState } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        const { initialLife } =
+            (await import('/tests/helpers/historySteps.ts')) as typeof import('../helpers/historySteps')
+        const state = liveState.value
+        pushState(initialLife(state.initialLife, state.initialLife + 1), {
+            ...state,
+            initialLife: state.initialLife + 1,
+        })
+        undoState()
     })
+    const expected = await snapshot(page)
+    expect(expected.session.file?.name).toBe('race.nxsp')
+    releaseRoute!()
+    // The first import continuation and its cached-handle await precede this real worker barrier.
+    await page.evaluate(async () => {
+        await import('/src/editor/save/flow.ts')
+        await window.nseStorageTest!.worker.call('testGet', 'switch-barrier')
+    })
+    expect(await page.evaluate(() => window.switchRace.fileReads ?? 0)).toBe(0)
     expect(await snapshot(page)).toEqual(expected)
     await expect(page.getByRole('dialog')).toHaveCount(0)
 })
@@ -557,7 +684,7 @@ test('Open Other captures authority before its first lazy flow import', async ({
 for (const boundary of ['readHandle', 'getFile'] as const) {
     test(`Open Other cannot acquire fresh authority after a held ${boundary}`, async ({ page }) => {
         await start(page)
-        await opened(page)
+        const originalSession = await opened(page)
         if (boundary === 'readHandle') await hold(page, 'readHandle')
         await page.evaluate(async (boundary) => {
             const { openOtherVersion } =
@@ -591,6 +718,9 @@ for (const boundary of ['readHandle', 'getFile'] as const) {
                     })
                     return file
                 }
+                window.switchRace.restore = () => {
+                    handle.getFile = getFile
+                }
                 rememberHandle(chainId, handle)
             }
             void openOtherVersion().then(() => {
@@ -604,5 +734,24 @@ for (const boundary of ['readHandle', 'getFile'] as const) {
         await expect.poll(() => page.evaluate(() => window.switchRace.done)).toBe(true)
         expect(await snapshot(page)).toEqual(expected)
         await expect(page.getByRole('dialog')).toHaveCount(0)
+        if (boundary === 'getFile') {
+            const restoredSession = await page.evaluate(async (target) => {
+                window.switchRace.restore()
+                const { restoreSession } =
+                    (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
+                const { openOtherVersion } =
+                    (await import('/src/editor/save/flow.ts')) as typeof import('../../src/editor/save/flow')
+                const { session } =
+                    (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+                await restoreSession(target)
+                const restoredSession = session.value.sessionId
+                await openOtherVersion()
+                return restoredSession
+            }, originalSession)
+            await imported(page)
+            const current = await snapshot(page)
+            expect(current.session.sessionId).not.toBe(restoredSession)
+            expect(current.session.file?.name).toBe('race.nxsp')
+        }
     })
 }
