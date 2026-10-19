@@ -20,6 +20,16 @@ const settle = (page: Page) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
     })
+const expectTool = async (page: Page, name: string, elevation = false) => {
+    const toolbar = page.locator(
+        `${elevation ? '.elevation-editor' : '.chart-pane'} [data-editor-toolbar]`,
+    )
+    const face = toolbar
+        .locator(':scope > div > div > button')
+        .and(page.getByTitle(new RegExp(`^${name}(?: |$)`)))
+    await expect(face).toBeVisible()
+    await expect(face).toHaveAttribute('aria-pressed', 'true')
+}
 const rows = (page: Page) =>
     page.evaluate(() =>
         window.elevationTest.scene.elevationLayout.value.rows.map((row) => ({
@@ -241,7 +251,7 @@ test('elevation mode replaces the chart and opens on Select, which closing keeps
     expect(axis.bottom).toBeLessThanOrEqual(box!.height)
     await page.getByRole('button', { name: 'Close Elevation Editor', exact: true }).click()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await expect(page.locator('.bg-preview > span.flex-grow')).toHaveText(/^Select(?: |$)/)
+    await expectTool(page, 'Select')
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
@@ -1397,9 +1407,7 @@ test('elevation mode remains open when switching the normal editing tools', asyn
         await page.keyboard.press(shortcut)
         await expect(page.locator('.elevation-canvas')).toBeVisible()
         await expect(page.locator('canvas.editor-chart')).toHaveCount(0)
-        await expect(page.locator('.bg-preview > span.flex-grow')).toHaveText(
-            new RegExp(`^${name}(?: |$)`),
-        )
+        await expectTool(page, name, true)
     }
 })
 
@@ -1656,7 +1664,7 @@ test('side-by-side Auto adapts to available width and the explicit options overr
     if (!chartBounds) throw new Error('Missing chart canvas')
     await page.mouse.click(chartBounds.x + 10, chartBounds.y + 100)
     await page.keyboard.press('q')
-    await expect(page.locator('.bg-preview > span.flex-grow')).toHaveText(/^BPM(?: |$)/)
+    await expectTool(page, 'BPM')
     await expect(page.locator('.elevation-canvas')).toBeVisible()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
 })

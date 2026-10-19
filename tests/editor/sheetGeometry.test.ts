@@ -7,38 +7,38 @@ import {
 } from '../../src/editor/sheetGeometry'
 
 test('the History candidate uses the same right-sheet top and bottom insets', () => {
-    assert.deepEqual(getSheetGeometry({ width: 520, height: 212, peekClearance: 112 }), {
+    assert.deepEqual(getSheetGeometry({ width: 520, height: 212, peekClearance: 120 }), {
         side: 'right',
         width: 322.4,
-        height: 88,
-        top: 116,
+        height: 80,
+        top: 124,
     })
 })
 
 test('a History sheet needs 116 pixels after its actual chrome', () => {
-    const input = { width: 667, height: 288, peekClearance: 92 }
-    assert.equal(historySheetFits(input, 69), false)
-    assert.equal(historySheetFits(input, 68), true)
-    assert.equal(historySheetFits(input, 68 + 36), false)
+    const input = { width: 667, height: 288, peekClearance: prospectivePeekClearance(667)! }
+    assert.equal(historySheetFits(input, 61), false)
+    assert.equal(historySheetFits(input, 60), true)
+    assert.equal(historySheetFits(input, 60 + 36), false)
 })
 
 test('short bottom sheets include their CSS minimum, and taller sheets use rem limits', () => {
-    const short = getSheetGeometry({ width: 320, height: 360, peekClearance: 112 })
+    const short = getSheetGeometry({ width: 320, height: 360, peekClearance: 120 })
     assert.equal(short.side, 'bottom')
     assert.equal(short.height, 144)
-    assert.equal(getSheetGeometry({ width: 320, height: 436, peekClearance: 112 }).height, 196)
-    assert.equal(getSheetGeometry({ width: 320, height: 1000, peekClearance: 112 }).height, 480)
+    assert.equal(getSheetGeometry({ width: 320, height: 436, peekClearance: 120 }).height, 188)
+    assert.equal(getSheetGeometry({ width: 320, height: 1000, peekClearance: 120 }).height, 480)
     assert.equal(
-        getSheetGeometry({ width: 320, height: 1000, peekClearance: 112, rem: 20 }).height,
+        getSheetGeometry({ width: 320, height: 1000, peekClearance: 120, rem: 20 }).height,
         550,
     )
 })
 
 test('prospective peek geometry includes top padding and retains measured wrapping', () => {
-    assert.equal(prospectivePeekClearance(520), 112)
-    assert.equal(prospectivePeekClearance(667), 92)
+    assert.equal(prospectivePeekClearance(520), 120)
+    assert.equal(prospectivePeekClearance(667), 100)
     assert.equal(prospectivePeekClearance(280), undefined)
     assert.equal(prospectivePeekClearance(280, 160), 160)
     assert.equal(prospectivePeekClearance(520, 140), 140)
-    assert.equal(prospectivePeekClearance(520, 0, 20), 140)
+    assert.equal(prospectivePeekClearance(520, 0, 20), 150)
 })

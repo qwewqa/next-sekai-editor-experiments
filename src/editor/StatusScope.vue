@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type Component } from 'vue'
 import type { NamePart } from '../chart/folders'
 
 const props = defineProps<{
     compact: boolean
     parts: NamePart[]
-    target: NamePart[]
-    folder?: string
+    path: NamePart[]
+    icon: Component
+    iconsOnly: boolean
     count?: { short: string; label: string }
 }>()
 defineEmits<{ click: [event: MouseEvent] }>()
@@ -27,42 +28,29 @@ const partClass = ({ text, role }: NamePart) =>
 <template>
     <button
         type="button"
-        class="status-chip relative flex items-center px-1"
+        class="status-chip relative flex items-center whitespace-nowrap px-1"
+        :class="compact ? (iconsOnly ? 'justify-center' : 'gap-1') : ''"
         :aria-label="accessibleName"
         @click="$emit('click', $event)"
     >
-        <span v-if="compact" class="flex w-full min-w-0 flex-col" aria-hidden="true">
-            <span class="flex min-w-0" data-status-target>
+        <template v-if="compact">
+            <component :is="icon" class="size-3 shrink-0 fill-current" aria-hidden="true" />
+            <span v-if="!iconsOnly" class="flex min-w-0" aria-hidden="true" data-status-target>
                 <span
-                    v-for="(part, i) in target"
+                    v-for="(part, i) in path"
                     :key="i"
-                    :class="part.role === 'name' ? 'min-w-0 truncate' : 'shrink-0 whitespace-pre'"
+                    :class="
+                        part.role === 'folder'
+                            ? 'status-folder min-w-[2em] truncate'
+                            : part.role === 'name'
+                              ? 'min-w-[2em] truncate'
+                              : 'shrink-0 whitespace-pre'
+                    "
                     :data-status-part="part.role"
                     >{{ part.text }}</span
                 >
             </span>
-            <span
-                v-if="folder || count"
-                class="flex min-w-0 overflow-hidden"
-                :class="folder && count ? 'gap-1' : ''"
-                data-status-metadata
-            >
-                <span
-                    v-if="folder"
-                    class="status-folder min-w-0 flex-1 truncate"
-                    data-status-part="folder"
-                    >{{ folder }}</span
-                >
-                <span
-                    v-if="count"
-                    class="status-count min-w-0 shrink-0 truncate"
-                    :class="folder ? 'max-w-[calc(100%-0.25rem)]' : 'max-w-full'"
-                    :title="count.label"
-                    data-status-count
-                    >· {{ count.short }}</span
-                >
-            </span>
-        </span>
+        </template>
         <template v-else>
             <span class="flex min-w-0" aria-hidden="true">
                 <span

@@ -297,7 +297,9 @@ test('the dialog and the panel remember their scroll positions apart', async ({ 
     const panel = page.locator('#workspace-panel-groups .manager-entries')
     await expect(panel).toBeVisible()
     expect(await panel.evaluate((element) => element.scrollTop)).toBe(0)
+    await expect(panel.locator('[data-manager-current-summary]')).toBeFocused()
 
+    await page.locator('.chart-pane').focus()
     await page.keyboard.press('e')
     await expect
         .poll(() =>

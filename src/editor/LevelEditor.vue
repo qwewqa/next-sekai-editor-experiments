@@ -8,6 +8,8 @@ import { i18n } from '../i18n'
 import { settings } from '../settings'
 import { interpolateRaw } from '../utils/interpolate'
 import LevelEditorCanvas from './canvas/LevelEditorCanvas.vue'
+import ManageGroupsIcon from './commands/manageGroups/ManageGroupsIcon.vue'
+import ManageStagesIcon from './commands/manageStages/ManageStagesIcon.vue'
 import ElevationEditor from './elevation/ElevationEditor.vue'
 import { isElevationEditorOpen, isElevationSideBySide } from './elevation/state'
 import LevelEditorContextMenu from './LevelEditorContextMenu.vue'
@@ -40,12 +42,8 @@ const container: Ref<HTMLDivElement | null> = useTemplateRef('container')
 const host = useTemplateRef<HTMLDivElement>('host')
 const hostWidth = ref(0)
 const compactStatus = computed(() => hostWidth.value < 768)
-const narrowStatus = computed(() => hostWidth.value < 560)
-const statusItems = computed(() =>
-    narrowStatus.value
-        ? (['label', 'warning', 'break', 'tool', 'group', 'stage', 'division'] as const)
-        : (['tool', 'label', 'warning', 'group', 'stage', 'division'] as const),
-)
+const iconStatus = computed(() => hostWidth.value < 320)
+const statusItems = ['tool', 'label', 'warning', 'group', 'stage', 'division'] as const
 watch(host, (element, _, cleanup) => {
     if (!element) return
     const update = () => {
@@ -170,7 +168,7 @@ watch([stages, isDynamicStages, () => brushProperties.value.stageId], () => {
 
 // Chips show the panels; the manage commands open the dialog.
 const onStatusChip = (event: MouseEvent, tab: ManagerTab) => {
-    showManager(tab)
+    showManager(tab, { revealCurrent: true })
     // Pointer clicks return keyboard shortcuts to the editor.
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }
@@ -203,28 +201,26 @@ const stage = computed((): NamePart[] =>
           ]),
 )
 
-const groupTarget = computed(() =>
+const groupPath = computed(() =>
     view.groupId === undefined
         ? group.value
-        : templateParts(i18n.value.statusBar.group.one, [
-              [{ text: groups.value.get(view.groupId)?.name ?? '', role: 'name' }],
-          ]),
+        : folderPathParts(
+              groups.value,
+              groupFolders.value,
+              view.groupId,
+              i18n.value.workspace.folders.path,
+          ),
 )
-const stageTarget = computed(() =>
+const stagePath = computed(() =>
     view.stageId === undefined
         ? stage.value
-        : templateParts(i18n.value.statusBar.stage.one, [
-              [{ text: stages.value.get(view.stageId)?.name ?? '', role: 'name' }],
-          ]),
+        : folderPathParts(
+              stages.value,
+              stageFolders.value,
+              view.stageId,
+              i18n.value.workspace.folders.path,
+          ),
 )
-const groupFolder = computed(() => {
-    const id = view.groupId === undefined ? undefined : groups.value.get(view.groupId)?.folderId
-    return id === undefined ? undefined : groupFolders.value.get(id)?.name
-})
-const stageFolder = computed(() => {
-    const id = view.stageId === undefined ? undefined : stages.value.get(view.stageId)?.folderId
-    return id === undefined ? undefined : stageFolders.value.get(id)?.name
-})
 
 // Shown separately from the authoring target, and only while something is hidden.
 const shownCount = (shown: number, total: number, message: string) => {
@@ -300,32 +296,18 @@ const stageCount = computed(() =>
             </div>
             <LevelEditorContextMenu />
         </div>
-        <!-- Touch-capable rows reserve their full target height before a warning arrives. -->
+        <!-- Status height stays fixed when warnings arrive. -->
         <div
-            class="status-bar z-10 flex shrink-0 bg-preview text-xs text-white/80"
-            :class="[
-                compactStatus ? 'status-bar-compact gap-x-1 px-1' : 'gap-x-4 px-2',
-                narrowStatus ? 'status-bar-narrow flex-wrap' : '',
-            ]"
+            class="status-bar z-10 flex shrink-0 flex-nowrap whitespace-nowrap bg-preview text-xs text-white/80"
+            :class="[compactStatus ? 'status-bar-compact gap-x-1 px-1' : 'gap-x-4 px-2']"
             data-status-bar
         >
             <template v-for="item in statusItems" :key="item">
-                <StatusLabel
-                    v-if="item === 'label'"
-                    :compact="compactStatus"
-                    :narrow="narrowStatus"
-                />
+                <StatusLabel v-if="item === 'label'" :compact="compactStatus" />
                 <FileChip v-else-if="item === 'warning'" :compact="compactStatus" />
                 <span
-                    v-else-if="item === 'break'"
-                    class="h-0 basis-full"
-                    aria-hidden="true"
-                    data-status-break
-                />
-                <span
-                    v-else-if="item === 'tool'"
-                    class="min-w-12 self-center truncate"
-                    :class="narrowStatus ? 'w-12 flex-none' : 'shrink-[1000000] flex-grow'"
+                    v-else-if="item === 'tool' && !compactStatus"
+                    class="min-w-12 flex-grow self-center truncate"
                     data-status-tool
                     >{{ tool.title() }}</span
                 >
@@ -333,15 +315,16 @@ const stageCount = computed(() =>
                     v-else-if="item === 'group' || (item === 'stage' && isDynamicStages)"
                     :compact="compactStatus"
                     :parts="item === 'group' ? group : stage"
-                    :target="item === 'group' ? groupTarget : stageTarget"
-                    :folder="item === 'group' ? groupFolder : stageFolder"
+                    :path="item === 'group' ? groupPath : stagePath"
+                    :icon="item === 'group' ? ManageGroupsIcon : ManageStagesIcon"
+                    :icons-only="iconStatus"
                     :count="item === 'group' ? groupCount : stageCount"
                     :class="
-                        narrowStatus
-                            ? 'min-w-0 flex-1 basis-0'
-                            : compactStatus
-                              ? 'min-w-28'
-                              : 'min-w-0 max-w-[40%]'
+                        compactStatus
+                            ? iconStatus
+                                ? 'w-8 flex-none'
+                                : 'min-w-[5.5rem] flex-1 basis-[5.5rem]'
+                            : 'min-w-0 max-w-[40%]'
                     "
                     :title="
                         item === 'group'
@@ -351,7 +334,7 @@ const stageCount = computed(() =>
                     @click="onStatusChip($event, item === 'group' ? 'groups' : 'stages')"
                 />
                 <span
-                    v-else-if="item === 'division'"
+                    v-else-if="item === 'division' && !compactStatus"
                     class="shrink-0 self-center"
                     data-status-division
                     >1/{{ view.division }}</span
@@ -369,9 +352,5 @@ const stageCount = computed(() =>
 
 .status-bar-compact {
     --status-row-height: 32px;
-}
-
-.status-bar-narrow {
-    height: calc(2 * var(--status-row-height));
 }
 </style>

@@ -60,7 +60,7 @@ const afterGuard = (page: Page) => page.waitForTimeout(400)
 const label = (page: Page) => page.locator('[data-status-text]')
 const button = (page: Page) => page.locator('[data-status-label]')
 const chip = (page: Page) => page.locator('[data-file-chip]')
-/** The chip's text as shown: its full string, or on a phone the short label. */
+/** The chip's visible text, omitted in compact bars. */
 const chipShown = (page: Page) => chip(page).locator('span:visible')
 
 const statusGeometry = (page: Page) =>
@@ -85,11 +85,11 @@ const statusGeometry = (page: Page) =>
             }
             return visible.trim()
         }
-        const title = bar.querySelector<HTMLElement>('[data-status-tool]')!
+        const title = bar.querySelector<HTMLElement>('[data-status-tool]')
         return {
             bar: rect(bar),
             items: [...bar.children].map(rect),
-            title: { ...rect(title), cut: title.scrollWidth > title.clientWidth },
+            title: title ? { ...rect(title), cut: title.scrollWidth > title.clientWidth } : null,
             scopes: [...bar.querySelectorAll<HTMLElement>('.status-chip')].map((scope) => ({
                 ...rect(scope),
                 name: visibleText(scope.querySelector<HTMLElement>('[data-status-part="name"]')!),
@@ -139,6 +139,72 @@ const prompts = (page: Page) =>
         const event = new Event('beforeunload', { cancelable: true })
         window.dispatchEvent(event)
         return event.defaultPrevented
+    })
+
+const installDisclosureScope = async (page: Page, destination: 'panel' | 'modal') =>
+    page.evaluate(async (destination) => {
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        const { liveState, replaceState } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        const { view } =
+            (await import('/src/editor/view.ts')) as typeof import('../../src/editor/view')
+        const { groupScope } =
+            (await import('/src/editor/scope.ts')) as typeof import('../../src/editor/scope')
+        const groups = new Map(liveState.value.groups)
+        for (let i = 0; i < 80; i++)
+            groups.set((1000 + i) as never, {
+                name: i === 1 || i === 2 ? 'Lead Synth Layer With A Long Exact Name' : `Group ${i}`,
+                ...(i === 1 || i === 2 ? { folderId: (i === 1 ? 9001 : 9002) as never } : {}),
+            })
+        const groupFolders = new Map(liveState.value.groupFolders)
+        groupFolders.set(9001 as never, { name: 'Verse Folder With A Long Exact Name', index: 0 })
+        groupFolders.set(9002 as never, { name: 'Chorus Folder With A Long Exact Name', index: 1 })
+        replaceState({ ...liveState.value, groups, groupFolders })
+        view.groupId = 1002 as never
+        settings.groupsPosition = destination === 'panel' ? 'right' : 'disabled'
+        settings.showGroups = false
+        settings.showPreview = false
+        const { i18n } = (await import('/src/i18n/index.ts')) as typeof import('../../src/i18n')
+        return {
+            path: i18n.value.workspace.folders.path
+                .replace('{0}', 'Chorus Folder With A Long Exact Name')
+                .replace('{1}', 'Lead Synth Layer With A Long Exact Name'),
+            count: i18n.value.statusBar.group.shown
+                .replace('{0}', `${groupScope.shownCount.value}`)
+                .replace('{1}', `${groupScope.totalCount.value}`),
+            entries: groups.size,
+        }
+    }, destination)
+
+const openOrdinaryGroups = async (page: Page) =>
+    page.evaluate(async () => {
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        if (settings.groupsPosition !== 'disabled') settings.showGroups = true
+        else {
+            const { showManagerModal } =
+                (await import('/src/editor/workspace/manager/modal.ts')) as typeof import('../../src/editor/workspace/manager/modal')
+            showManagerModal('groups')
+        }
+    })
+
+const disclosureSnapshot = (page: Page) =>
+    page.evaluate(async () => {
+        const { liveState, isPeeking } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        const { view } =
+            (await import('/src/editor/view.ts')) as typeof import('../../src/editor/view')
+        const flusher = window.nseFlushTest!.flusher
+        return {
+            peeking: isPeeking.value,
+            life: liveState.value.initialLife,
+            groups: [...liveState.value.groups],
+            selectedEntities: liveState.value.selectedEntities,
+            target: view.groupId,
+            overrides: [...view.groupVisibility],
+            seq: flusher.session ? flusher.newestSeq(flusher.session) : undefined,
+        }
     })
 
 test.describe('the label and the title', () => {
@@ -280,8 +346,8 @@ test.describe('the label and the title', () => {
             )
             const geometry = await statusGeometry(page)
             expect(geometry.file).toMatch(/^coconut/)
-            expect(geometry.title.width).toBeGreaterThanOrEqual(48)
-            expect(geometry.bar.height).toBe(64)
+            expect(geometry.title).toBeNull()
+            expect(geometry.bar.height).toBe(32)
         })
 
         for (const locale of ['ja', 'tr'])
@@ -311,9 +377,9 @@ test.describe('the label and the title', () => {
                         },
                     }
                     raised.notStored.value = true
-                    return i18n.value.status.separateCopy.replace('{0}', '')
+                    return i18n.value.status.separateCopyShort
                 }, locale)
-                const fixed = page.locator('[data-status-reason-part="fixed"]')
+                const fixed = page.locator('[data-status-state]')
                 await expect(fixed).toHaveText(expected)
                 const metrics = await fixed.evaluate((element) => {
                     const label = element.closest('button')!.getBoundingClientRect()
@@ -364,7 +430,7 @@ test.describe('the label and the title', () => {
             const bar = page.locator('[data-status-bar]')
             const before = await bar.boundingBox()
             const chart = await page.locator('canvas.editor-chart').boundingBox()
-            expect(before!.height).toBe(64)
+            expect(before!.height).toBe(32)
             await finding(page, 'newer')
             await expect(chip(page)).toBeVisible()
             expect(await bar.boundingBox()).toEqual(before)
@@ -403,7 +469,7 @@ test.describe('the label and the title', () => {
                     expect(target.left - targets[index - 1]!.right).toBeGreaterThanOrEqual(4)
             }
             expect(targets[0]!.top).toBe(targets[1]!.top)
-            expect(targets[2]!.top).toBe(targets[0]!.top + 32)
+            expect(targets[2]!.top).toBe(targets[0]!.top)
             expect(targets[3]!.top).toBe(targets[2]!.top)
             const dialogs = [
                 'Level Properties',
@@ -822,7 +888,7 @@ test.describe('the chip', () => {
     test.describe('on a phone', () => {
         test.use({ viewport: { width: 360, height: 700 } })
 
-        test('the short label shows, with the full sentence as its name', async ({
+        test('the compact state icon keeps the full sentence and opens its dialog', async ({
             page,
             context,
         }) => {
@@ -830,7 +896,8 @@ test.describe('the chip', () => {
             await visit(page)
             await bindFile(page, { name: 'coconut.nxsp', event: 'saved' })
             await finding(page, 'changed')
-            await expect(chipShown(page)).toHaveText('Changed')
+            await expect(chipShown(page)).toHaveCount(0)
+            expect((await chip(page).boundingBox())!.width).toBe(24)
             await expect(chip(page)).toHaveAccessibleName(
                 '"coconut.nxsp": changed on disk since you opened or saved it here.',
             )
@@ -838,6 +905,14 @@ test.describe('the chip', () => {
             const bar = (await page.locator('.status-chip').first().boundingBox())!
             expect(box.x + box.width).toBeLessThanOrEqual(360)
             expect(bar.x + bar.width).toBeLessThanOrEqual(360)
+            await chip(page).click()
+            await expect(page.getByRole('dialog')).toContainText('coconut.nxsp')
+            await expect(
+                page.getByRole('button', { name: 'Keep Editing', exact: true }),
+            ).toBeVisible()
+            await page.keyboard.press('Escape')
+            await button(page).click()
+            await expect(page.getByRole('dialog', { name: 'Level Properties' })).toBeVisible()
         })
 
         test('compact spacing preserves useful file and scope names beside a warning', async ({
@@ -855,7 +930,7 @@ test.describe('the chip', () => {
             await finding(page, 'newer')
             await expect(page.locator('.status-chip')).toHaveCount(2)
             const geometry = await statusGeometry(page)
-            expect(geometry.title.width).toBeGreaterThanOrEqual(48)
+            expect(geometry.title).toBeNull()
             expect(geometry.scopes.map((scope) => scope.name)).toEqual(['All Groups', 'All Stages'])
             expect(geometry.file).toMatch(/^coc/)
             expect(geometry.scopes[0]!.width).toBeCloseTo(geometry.scopes[1]!.width, 1)
@@ -865,7 +940,7 @@ test.describe('the chip', () => {
             }
         })
 
-        test('a long localized tool gives way before useful file and scope text', async ({
+        test('a long localized tool is omitted while useful file and scope text stays', async ({
             page,
             context,
         }) => {
@@ -884,10 +959,14 @@ test.describe('the chip', () => {
             })
             await bindFile(page, { name: 'coconut-long-working-copy.nxsp', event: 'saved' })
             await finding(page, 'newer')
-            await expect(chipShown(page)).toHaveText('Plus récent')
+            await expect(chipShown(page)).toHaveCount(0)
+            await expect(chip(page)).toHaveAttribute('data-file-chip', 'newerOnDisk')
+            await expect(chip(page)).toHaveAccessibleName(
+                /une version plus récente est sur le disque\./,
+            )
             const geometry = await statusGeometry(page)
-            expect(geometry.title.cut).toBe(true)
-            expect(geometry.title.width).toBeGreaterThanOrEqual(48)
+            expect(geometry.bar.height).toBe(32)
+            expect(geometry.title).toBeNull()
             expect(geometry.file).toMatch(/^coc/)
             expect(geometry.scopes[0]!.width).toBeCloseTo(geometry.scopes[1]!.width, 1)
             for (const scope of geometry.scopes) {
@@ -898,6 +977,274 @@ test.describe('the chip', () => {
                 expect(item.right).toBeLessThanOrEqual(geometry.bar.right)
             }
         })
+    })
+})
+
+test.describe('single-line disclosures', () => {
+    test('an uninstalled Not stored handler gives a neutral Close-only explanation', async ({
+        page,
+        context,
+    }) => {
+        await page.setViewportSize({ width: 320, height: 568 })
+        await seed(context)
+        await visit(page)
+        await bindFile(page, { name: 'coconut.nxsp', event: 'saved' })
+        await finding(page, 'changed')
+        expect(
+            await page.evaluate(async () => {
+                const { fileActions } =
+                    (await import('/src/editor/file/actions.ts')) as typeof import('../../src/editor/file/actions')
+                const { raised } =
+                    (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+                raised.notStored.value = true
+                return typeof fileActions.openNotStored
+            }),
+        ).toBe('undefined')
+        await chip(page).click()
+        const dialog = page.getByRole('dialog', { name: 'Changes Not Stored' })
+        await expect(dialog).toContainText('Changes are not being stored in this browser.')
+        await expect(dialog).toContainText(
+            '"coconut.nxsp": changed on disk since you opened or saved it here.',
+        )
+        await expect(dialog).not.toContainText('Leaving will discard')
+        await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toHaveCount(2)
+        await expect(dialog.getByRole('button')).toHaveCount(2)
+        await page.keyboard.press('Escape')
+        await page.evaluate(async () => {
+            const { fileActions } =
+                (await import('/src/editor/file/actions.ts')) as typeof import('../../src/editor/file/actions')
+            fileActions.openNotStored = () => {
+                document.body.dataset.statusHandler = 'called'
+            }
+        })
+        await chip(page).click()
+        await expect(page.locator('body')).toHaveAttribute('data-status-handler', 'called')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await button(page).click()
+        await expect(page.getByRole('dialog', { name: 'Level Properties' })).toBeVisible()
+    })
+
+    for (const destination of ['panel', 'modal'] as const) {
+        test(`status reveals exact scope details beyond retained deep ${destination} scroll`, async ({
+            page,
+            context,
+        }) => {
+            await seed(context)
+            await visit(page)
+            const expected = await installDisclosureScope(page, destination)
+            await openOrdinaryGroups(page)
+            const container =
+                destination === 'modal'
+                    ? page.getByRole('dialog')
+                    : page.locator('#workspace-panel-groups')
+            const list = container.locator('.manager-entries')
+            await expect(list).toBeVisible()
+            await expect(container.locator('[data-manager-current]')).not.toHaveAttribute(
+                'open',
+                '',
+            )
+            await list.evaluate((element) => {
+                element.scrollTop = 600
+                element.dispatchEvent(new Event('scroll'))
+            })
+            await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(600)
+            if (destination === 'modal') await page.keyboard.press('Escape')
+            else
+                await page.evaluate(async () => {
+                    const { settings } =
+                        (await import('/src/settings.ts')) as typeof import('../../src/settings')
+                    settings.showGroups = false
+                })
+            const before = await disclosureSnapshot(page)
+            await page.locator('[data-status-bar] .status-chip').first().click()
+            const summary = container.locator('[data-manager-current-summary]')
+            await expect(summary).toBeFocused()
+            await expect(container.locator('[data-manager-current]')).toHaveAttribute('open', '')
+            await expect(container.locator('[data-manager-current-path]')).toHaveText(expected.path)
+            await expect(container.locator('[data-manager-current-count]')).toHaveText(
+                expected.count,
+            )
+            await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(0)
+            await summary.press('Enter')
+            await expect(container.locator('[data-manager-current]')).not.toHaveAttribute(
+                'open',
+                '',
+            )
+            await summary.press('Space')
+            await expect(container.locator('[data-manager-current]')).toHaveAttribute('open', '')
+            const full = await container
+                .locator('[data-manager-current-path]')
+                .evaluate((element) => {
+                    const range = document.createRange()
+                    range.selectNodeContents(element)
+                    getSelection()!.removeAllRanges()
+                    getSelection()!.addRange(range)
+                    return {
+                        selected: getSelection()!.toString(),
+                        wrap: getComputedStyle(element).overflowWrap,
+                    }
+                })
+            expect(full).toEqual({ selected: expected.path, wrap: 'anywhere' })
+            const defaults = await summary.evaluate((element) =>
+                [
+                    { key: 'a', ctrlKey: true },
+                    { key: 'c', metaKey: true },
+                    { key: 'x', ctrlKey: true },
+                    { key: 's', ctrlKey: true },
+                    { key: 'S', metaKey: true, shiftKey: true },
+                    { key: '+', ctrlKey: true },
+                    { key: 's', ctrlKey: true, altKey: true },
+                    { key: 'Enter' },
+                    { key: ' ' },
+                    { key: 'Tab' },
+                    { key: 'ArrowDown' },
+                ].map((init) => {
+                    const event = new KeyboardEvent('keydown', {
+                        ...init,
+                        bubbles: true,
+                        cancelable: true,
+                    })
+                    element.dispatchEvent(event)
+                    return event.defaultPrevented
+                }),
+            )
+            expect(defaults).toEqual([
+                false,
+                false,
+                false,
+                true,
+                true,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+            ])
+            expect(await disclosureSnapshot(page)).toEqual(before)
+            await summary.press('ControlOrMeta+a')
+            await expect(container.locator('.manager-list')).not.toHaveClass(
+                /manager-list-selecting/,
+            )
+            expect(await page.evaluate(() => getSelection()!.toString())).toContain(expected.path)
+            expect(await disclosureSnapshot(page)).toEqual(before)
+            await container.locator('.manager-all .manager-name').focus()
+            await page.keyboard.press('ControlOrMeta+a')
+            await expect(container.locator('.manager-list')).toHaveClass(/manager-list-selecting/)
+            await expect(
+                container.locator('.manager-entry .manager-check[aria-checked="true"]'),
+            ).toHaveCount(expected.entries)
+            await summary.focus()
+            const dialogCount = await page.getByRole('dialog').count()
+            await summary.press('Delete')
+            await summary.press('Backspace')
+            await expect(page.getByRole('dialog')).toHaveCount(dialogCount)
+            await expect(container.locator('.manager-list')).toHaveClass(/manager-list-selecting/)
+            await expect(
+                container.locator('.manager-entry .manager-check[aria-checked="true"]'),
+            ).toHaveCount(expected.entries)
+            expect(await disclosureSnapshot(page)).toEqual(before)
+            await summary.press('Escape')
+            await expect(container.locator('.manager-list')).not.toHaveClass(
+                /manager-list-selecting/,
+            )
+            await expect(summary).toBeFocused()
+            await expect(page.getByRole('dialog')).toHaveCount(dialogCount)
+            await page.evaluate(() => {
+                ;(
+                    document.querySelector('[data-status-bar]')!.parentElement as HTMLElement
+                ).style.width = '390px'
+            })
+            await expect(summary).toBeFocused()
+            await page.emulateMedia({ forcedColors: 'active' })
+            await summary.press('Shift+Tab')
+            await page.keyboard.press('Tab')
+            await expect(summary).toBeFocused()
+            await expect(summary).toHaveCSS('outline-style', 'solid')
+            expect(await disclosureSnapshot(page)).toEqual(before)
+        })
+    }
+
+    test('scope disclosure reads historical names without editing the live target', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        const expected = await installDisclosureScope(page, 'modal')
+        await edit(page, 990)
+        await page.evaluate(async () => {
+            const { pushState, liveState } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history')
+            const groups = new Map(liveState.value.groups)
+            groups.set(1002 as never, { ...groups.get(1002 as never)!, name: 'Live Only Name' })
+            pushState(() => 'Live scope rename', { ...liveState.value, groups, initialLife: 980 })
+        })
+        await settled(page)
+        await page.evaluate(async () => {
+            const flusher = window.nseFlushTest!.flusher
+            const { peekEntry, entryKey } =
+                (await import('/src/history/peek.ts')) as typeof import('../../src/history/peek')
+            await peekEntry(entryKey(flusher.session!.id, flusher.newestSeq(flusher.session!) - 1))
+        })
+        const before = await disclosureSnapshot(page)
+        await page.locator('[data-status-bar] .status-chip').first().click()
+        const dialog = page.getByRole('dialog')
+        await expect(dialog.locator('[data-manager-current-summary]')).toBeFocused()
+        await expect(dialog.locator('[data-manager-current-path]')).toHaveText(expected.path)
+        await expect(dialog.locator('[data-manager-current-path]')).not.toContainText(
+            'Live Only Name',
+        )
+        expect(await disclosureSnapshot(page)).toEqual(before)
+        await page.keyboard.press('Escape')
+        expect((await disclosureSnapshot(page)).peeking).toBe(true)
+    })
+
+    test('a replaced destination and a reset cancel pending disclosure focus', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await installDisclosureScope(page, 'modal')
+        await page.evaluate(async () => {
+            const { showManager } =
+                (await import('/src/editor/workspace/manager/modal.ts')) as typeof import('../../src/editor/workspace/manager/modal')
+            const { properties } =
+                (await import('/src/editor/commands/properties/index.ts')) as typeof import('../../src/editor/commands/properties')
+            showManager('groups', { revealCurrent: true })
+            void properties.execute()
+        })
+        await expect(page.getByRole('dialog', { name: 'Level Properties' })).toBeVisible()
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const { managerDisclosureRequest } =
+                        (await import('/src/editor/workspace/manager/disclosure.ts')) as typeof import('../../src/editor/workspace/manager/disclosure')
+                    return managerDisclosureRequest.value === undefined
+                }),
+            )
+            .toBe(true)
+        await page.keyboard.press('Escape')
+        await page.keyboard.press('Escape')
+        await page.evaluate(async () => {
+            const { showManager } =
+                (await import('/src/editor/workspace/manager/modal.ts')) as typeof import('../../src/editor/workspace/manager/modal')
+            const { resetState } =
+                (await import('/src/history/index.ts')) as typeof import('../../src/history')
+            showManager('groups', { revealCurrent: true })
+            resetState(false)
+        })
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const { managerDisclosureRequest } =
+                        (await import('/src/editor/workspace/manager/disclosure.ts')) as typeof import('../../src/editor/workspace/manager/disclosure')
+                    return managerDisclosureRequest.value === undefined
+                }),
+            )
+            .toBe(true)
+        await expect(page.locator('[data-manager-current-summary]')).not.toBeFocused()
     })
 })
 

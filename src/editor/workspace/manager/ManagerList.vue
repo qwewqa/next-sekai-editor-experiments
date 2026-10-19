@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="T extends number">
 import {
     computed,
+    inject,
     nextTick,
     onMounted,
     onUnmounted,
@@ -27,9 +28,17 @@ import { interpolateRaw } from '../../../utils/interpolate'
 import CopyIcon from '../../commands/copy/CopyIcon.vue'
 import SelectIcon from '../../commands/select/SelectIcon.vue'
 import ResetIcon from '../../commands/reset/ResetIcon.vue'
+import { isCommandChord } from '../../controls/bindings'
 import CloseIcon from '../CloseIcon.vue'
 import OverlayScrollbar from '../OverlayScrollbar.vue'
 import { hasScrollMemory, useScrollMemory } from '../useScrollMemory'
+import { isPanelVisible } from '..'
+import {
+    clearManagerDisclosure,
+    managerDisclosureOwnerKey,
+    managerDisclosureRequest,
+    type ManagerDisclosureRequest,
+} from './disclosure'
 import { isFolderExpanded, setFolderExpanded, type EntryPlace } from './folders'
 import AddIcon from './icons/AddIcon.vue'
 import FolderIcon from './icons/FolderIcon.vue'
@@ -71,7 +80,12 @@ const emit = defineEmits<{
 
 const root = useTemplateRef<HTMLDivElement>('root')
 const list = useTemplateRef<HTMLUListElement>('list')
-useScrollMemory(() => props.scrollKey, list)
+const scrollMemory = useScrollMemory(() => props.scrollKey, list)
+const disclosure = useTemplateRef<HTMLDetailsElement>('disclosure')
+const disclosureSummary = useTemplateRef<HTMLElement>('disclosureSummary')
+const disclosureOwner = inject(managerDisclosureOwnerKey, undefined)
+let ownedDisclosureRequest: ManagerDisclosureRequest | undefined
+let revealGeneration = 0
 const uid = useId()
 
 const entries = computed(() => props.model.entries())
@@ -85,6 +99,95 @@ const focused = computed(() => props.model.focused())
 const counts = computed(() => ownedCounts(props.model.owner))
 
 const allShown = computed(() => scope.value.shownCount.value === scope.value.totalCount.value)
+const disclosureTab = computed(() => (props.model.owner === 'groupId' ? 'groups' : 'stages'))
+const requestedDisclosure = computed(() => {
+    const request = managerDisclosureRequest.value
+    if (
+        request?.tab !== disclosureTab.value ||
+        props.scrollKey !== `${request.destination.kind}:${request.tab}`
+    )
+        return
+    if (request.destination.kind === 'modal' && request !== disclosureOwner) return
+    return request
+})
+const targetAutofocus = computed(() => props.autofocusTarget && !requestedDisclosure.value)
+const disclosureTitle = computed(() =>
+    disclosureTab.value === 'groups'
+        ? i18n.value.workspace.manager.currentGroup
+        : i18n.value.workspace.manager.currentStage,
+)
+const disclosurePath = computed(() =>
+    focused.value === undefined
+        ? strings.value.all
+        : entryTitle(focused.value, names.value.get(focused.value) ?? ''),
+)
+const disclosureCount = computed(() =>
+    label(
+        disclosureTab.value === 'groups'
+            ? i18n.value.statusBar.group.shown
+            : i18n.value.statusBar.stage.shown,
+        `${scope.value.shownCount.value}`,
+        `${scope.value.totalCount.value}`,
+    ),
+)
+const disclosureDestination = (request: ManagerDisclosureRequest) => {
+    const element = root.value
+    if (
+        !element?.isConnected ||
+        !element.getClientRects().length ||
+        !list.value?.isConnected ||
+        !list.value.clientHeight
+    )
+        return false
+    const top = modals.filter((modal) => modal.presentation !== 'tool').at(-1)
+    if (request.destination.kind === 'panel')
+        return !top && isPanelVisible(request.tab) && !element.closest('dialog')
+    const dialog = element.closest('dialog')
+    return (
+        top?.id === request.destination.id &&
+        !!dialog?.open &&
+        [...document.querySelectorAll('dialog[open]')].at(-1) === dialog
+    )
+}
+watch(
+    [
+        requestedDisclosure,
+        root,
+        list,
+        () => modals.at(-1)?.id,
+        () => isPanelVisible(disclosureTab.value),
+    ],
+    async ([request], _, cleanup) => {
+        if (!request || !root.value || !list.value || !disclosure.value) return
+        let current = true
+        cleanup(() => {
+            current = false
+        })
+        const isCurrent = () => current && managerDisclosureRequest.value === request
+        if (!disclosureDestination(request)) {
+            if (ownedDisclosureRequest === request) clearManagerDisclosure(request)
+            return
+        }
+        ownedDisclosureRequest = request
+        revealGeneration++
+        revealOnMeasure = false
+        disclosure.value.open = true
+        await nextTick()
+        if (!isCurrent()) return
+        if (!disclosureDestination(request) || !disclosureSummary.value?.isConnected) {
+            clearManagerDisclosure(request)
+            return
+        }
+        scrollMemory.resetPosition()
+        disclosureSummary.value.focus({ preventScroll: true })
+        clearManagerDisclosure(request)
+    },
+    { flush: 'post', immediate: true },
+)
+onUnmounted(() => {
+    if (ownedDisclosureRequest) clearManagerDisclosure(ownedDisclosureRequest)
+})
+
 // State eyes follow effective visibility. Explicit bulk and solo actions use saved choices.
 // A set containing only the focus cannot change its visible state, so its eye is disabled.
 const canToggleAll = computed(() => entries.value.some(({ id }) => scope.value.canSetShown(id)))
@@ -269,6 +372,16 @@ const selectAllFrom = async (target: HTMLElement) => {
  */
 const onKeydown = (event: KeyboardEvent) => {
     const target = event.target as HTMLElement
+    if (target.closest('[data-manager-current]') && event.key !== 'Escape') {
+        event.stopPropagation()
+        if (
+            isCommandChord(event) &&
+            /^[a-z]$/i.test(event.key) &&
+            (event.shiftKey || !['a', 'c', 'x'].includes(event.key.toLowerCase()))
+        )
+            event.preventDefault()
+        return
+    }
     if (target instanceof HTMLInputElement) return
     noteKeyFocus(target)
     if (selecting.value && ['Escape', 'Delete', 'Backspace'].includes(event.key)) {
@@ -393,13 +506,17 @@ watch(
 // The target's row comes into view when the target changes, e.g. by Next Group,
 // and on opening unless the list remembers where it was.
 const revealTarget = async () => {
+    const generation = revealGeneration
+    const hasDisclosureRequest = () => !!requestedDisclosure.value
+    if (hasDisclosureRequest()) return
     await nextTick()
+    if (generation !== revealGeneration || hasDisclosureRequest()) return
     const id = focused.value
     if (id !== undefined) reveal({ type: 'entry', id })
 }
 watch(focused, revealTarget)
 onMounted(() => {
-    revealOnMeasure = !hasScrollMemory(props.scrollKey)
+    revealOnMeasure = !requestedDisclosure.value && !hasScrollMemory(props.scrollKey)
 })
 
 // Selection and visibility
@@ -1863,7 +1980,7 @@ const entryProps = (id: T, name: string) => ({
             ? label(i18n.value.workspace.manager.target, entryTitle(id, name))
             : entryTitle(id, name),
     current: focused.value === id,
-    autofocusName: props.autofocusTarget && focused.value === id,
+    autofocusName: targetAutofocus.value && focused.value === id,
     shown: scope.value.isShown(id),
     eyeDisabled: !scope.value.canSetShown(id),
     muted: !scope.value.isShown(id),
@@ -1994,7 +2111,7 @@ const folderEyeLabel = (item: FolderItem) =>
                 :name="strings.all"
                 :name-title="strings.all"
                 :current="focused === undefined"
-                :autofocus-name="autofocusTarget && focused === undefined"
+                :autofocus-name="targetAutofocus && focused === undefined"
                 :shown="scope.shownCount.value > 0"
                 :partial="scope.shownCount.value > 0 && !allShown"
                 :grip-space="hasGrip"
@@ -2027,6 +2144,24 @@ const folderEyeLabel = (item: FolderItem) =>
                 :style="{ paddingRight: gutterPadding }"
                 @scroll.passive="onListScroll"
             >
+                <li>
+                    <details ref="disclosure" class="min-w-0" data-manager-current>
+                        <summary
+                            ref="disclosureSummary"
+                            class="cursor-pointer rounded-lg px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg forced-colors:focus-visible:outline forced-colors:focus-visible:outline-2 forced-colors:focus-visible:outline-[Highlight]"
+                            :data-autofocus="requestedDisclosure ? '' : undefined"
+                            data-manager-current-summary
+                        >
+                            {{ disclosureTitle }}
+                        </summary>
+                        <div
+                            class="flex min-w-0 select-text flex-col gap-1 whitespace-pre-wrap px-3 pb-2 text-sm [overflow-wrap:anywhere]"
+                        >
+                            <p data-manager-current-path>{{ disclosurePath }}</p>
+                            <p data-manager-current-count>{{ disclosureCount }}</p>
+                        </div>
+                    </details>
+                </li>
                 <template v-for="item in tree" :key="`${item.type}${item.id}`">
                     <li
                         v-if="item.type === 'entry'"

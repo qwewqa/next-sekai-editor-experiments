@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useId } from 'vue'
-import { templateParts } from '../chart/folders'
 import { session } from '../history/session'
 import { i18n } from '../i18n'
 import { readBrowserFacts } from './settings/storageLine'
@@ -8,7 +7,7 @@ import { openLevelInfoStub } from './levelInfo'
 import { raised } from './file/state'
 import { statusLabel, statusName } from './labelText'
 
-const props = defineProps<{ compact: boolean; narrow: boolean }>()
+const props = defineProps<{ compact: boolean }>()
 
 // The status bar's label (Part 1 §1.3.4): the displayed name, then the bound file or why there is
 // none, and a "•" when the file has changes. It takes the warning colour while changes are not
@@ -28,12 +27,9 @@ const describedBy = useId()
 const compactReason = computed(
     () => props.compact && !statusLabel.value.file && (keepState.value || !!session.value.copyOf),
 )
-const copyParts = computed(() => {
-    const copy = session.value.copyOf
-    return copy
-        ? templateParts(i18n.value.status.separateCopy, [[{ text: copy.name, role: 'name' }]])
-        : undefined
-})
+const shortReason = computed(() =>
+    session.value.copyOf ? i18n.value.status.separateCopyShort : i18n.value.file.short.notSaved,
+)
 const onClick = (event: MouseEvent) => {
     openLevelInfoStub()
     // Pointer clicks return keyboard shortcuts to the editor.
@@ -47,7 +43,6 @@ const onClick = (event: MouseEvent) => {
         class="status-label relative flex shrink-[1000] items-center px-1"
         :class="[
             compact ? 'min-w-0' : 'min-w-[4.5rem] max-w-[60%]',
-            narrow ? 'grow basis-0' : '',
             { 'text-amber-300': raised.notStored.value },
         ]"
         :aria-label="statusName"
@@ -56,21 +51,8 @@ const onClick = (event: MouseEvent) => {
         @click="onClick"
     >
         <span class="flex min-w-0" aria-hidden="true" data-status-text>
-            <span v-if="compactReason" class="min-w-0 text-left" data-status-state>
-                <span v-if="copyParts" class="flex min-w-0 items-center" data-status-copy>
-                    <span
-                        v-for="(part, i) in copyParts"
-                        :key="i"
-                        :class="
-                            part.role === 'name'
-                                ? 'min-w-0 truncate'
-                                : 'max-w-full shrink-0 whitespace-pre-wrap'
-                        "
-                        :data-status-reason-part="part.role ?? 'fixed'"
-                        >{{ part.text }}</span
-                    >
-                </span>
-                <template v-else>{{ i18n.status.notInFile }}</template>
+            <span v-if="compactReason" class="whitespace-nowrap" data-status-state>
+                {{ shortReason }}
             </span>
             <template v-else>
                 <span
