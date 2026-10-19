@@ -211,10 +211,12 @@ test('event-only recovered context survives keep-first, append, import, reload a
     assert(event?.kind === 'recovered')
     assert(
         equalJson(
-            captureEntryDescription(event),
-            captureEntryDescription(
-                (await heldRows(first.file)).history.entries.find(
-                    (row) => row.kind === 'recovered',
+            captureOperation(captureEntryDescription(event)),
+            captureOperation(
+                captureEntryDescription(
+                    (await heldRows(first.file)).history.entries.find(
+                        (row) => row.kind === 'recovered',
+                    ),
                 ),
             ),
         ),
