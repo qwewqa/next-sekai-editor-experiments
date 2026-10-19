@@ -107,7 +107,9 @@ const seedNativeLifeGroup = async (page: Page, unavailable = false) => {
     }, unavailable)
 }
 
-test('compact History returns to its own row and keeps a virtualized Tab entry point', async ({ page }) => {
+test('compact History returns to its own row and keeps a virtualized Tab entry point', async ({
+    page,
+}) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await seedNativeLifeGroup(page, true)
     await open(page)
@@ -122,7 +124,9 @@ test('compact History returns to its own row and keeps a virtualized Tab entry p
     await expect(group).toBeFocused()
     await page.keyboard.press('Home')
     await expect(now).toBeFocused()
-    await list(page).evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await list(page).evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+    })
     await expect(now).toBeFocused()
     await presentation(page).locator('[data-history-close]').focus()
     await expect(now).toHaveAttribute('tabindex', '0')
@@ -131,48 +135,107 @@ test('compact History returns to its own row and keeps a virtualized Tab entry p
     await expect(list(page).locator('[data-history-row][tabindex="0"]')).toHaveCount(1)
 })
 
-test('filtering out the active peek does not announce Now as selected or replace its request', async ({ page }) => {
+test('filtering out the active peek does not announce Now as selected or replace its request', async ({
+    page,
+}) => {
     await open(page)
     await row(page, 'Property 30').click()
     const before = await selected(page)
     await page.evaluate(async () => {
-        const { historyFilter } = await window.editorTest.appImport<typeof import('../../src/editor/history/state')>('/src/editor/history/state.ts')
+        const { historyFilter } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/state')
+        >('/src/editor/history/state.ts')
         historyFilter.value = 'saves'
     })
     await expect(list(page).getByRole('row', { selected: true })).toHaveCount(0)
-    await expect(list(page).getByRole('row', { name: /^Now/ })).toHaveAttribute('aria-selected', 'false')
+    await expect(list(page).getByRole('row', { name: /^Now/ })).toHaveAttribute(
+        'aria-selected',
+        'false',
+    )
     expect(await selected(page)).toEqual(before)
     await page.evaluate(async () => {
-        const { historyFilter } = await window.editorTest.appImport<typeof import('../../src/editor/history/state')>('/src/editor/history/state.ts')
+        const { historyFilter } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/state')
+        >('/src/editor/history/state.ts')
         historyFilter.value = 'all'
     })
     await expect(row(page, 'Property 30')).toHaveAttribute('aria-selected', 'true')
     expect(await selected(page)).toEqual(before)
 })
 
-test('Details renders exact numbers, literal unknown fallback and one paged recovery context', async ({ page }) => {
+test('Details renders exact numbers, literal unknown fallback and one paged recovery context', async ({
+    page,
+}) => {
     await page.evaluate(async () => {
         const { appImport, historySteps } = window.editorTest
         const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
-            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
-            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+            appImport<typeof import('../../src/editor/history/operationDetails')>(
+                '/src/editor/history/operationDetails.ts',
+            ),
+            appImport<typeof import('../../src/history/operationPresentation')>(
+                '/src/history/operationPresentation/index.ts',
+            ),
         ])
-        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'edit', step: historySteps.editStep(historySteps.nativeOperation({ id: 'nse.header.set', data: { field: 'bgmOffset', before: 0, after: 1.2345678901234567 } }, 'Captured offset')) } }]), 1234)
+        void openOperationDetails(
+            captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'edit',
+                        step: historySteps.editStep(
+                            historySteps.nativeOperation(
+                                {
+                                    id: 'nse.header.set',
+                                    data: {
+                                        field: 'bgmOffset',
+                                        before: 0,
+                                        after: 1.2345678901234567,
+                                    },
+                                },
+                                'Captured offset',
+                            ),
+                        ),
+                    },
+                },
+            ]),
+            1234,
+        )
     })
     const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
-    await expect(details.locator('[data-operation-field="after"] dd')).toHaveText('1,234.5678901234567')
+    await expect(details.locator('[data-operation-field="after"] dd')).toHaveText(
+        '1,234.5678901234567',
+    )
     await page.keyboard.press('Escape')
     await expect(details).toHaveCount(0)
     await page.evaluate(async () => {
         const { appImport, historySteps } = window.editorTest
         const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
-            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
-            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+            appImport<typeof import('../../src/editor/history/operationDetails')>(
+                '/src/editor/history/operationDetails.ts',
+            ),
+            appImport<typeof import('../../src/history/operationPresentation')>(
+                '/src/history/operationPresentation/index.ts',
+            ),
         ])
-        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'export', operation: historySteps.futureFixtureOperation('future-export', { futureParameter: 9 }, '<b>Future export</b>') } }]), 1234)
+        void openOperationDetails(
+            captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'export',
+                        operation: historySteps.futureFixtureOperation(
+                            'future-export',
+                            { futureParameter: 9 },
+                            '<b>Future export</b>',
+                        ),
+                    },
+                },
+            ]),
+            1234,
+        )
     })
     await expect(details.locator('[data-operation-description]')).toHaveText('<b>Future export</b>')
-    await expect(details.locator('[data-operation-unsupported]')).toHaveText('This editor cannot interpret this action.')
+    await expect(details.locator('[data-operation-unsupported]')).toHaveText(
+        'This editor cannot interpret this action.',
+    )
     await expect(details.locator('[data-operation-description] b')).toHaveCount(0)
     await expect(details.locator('[data-operation-section]')).toHaveCount(0)
     await page.keyboard.press('Escape')
@@ -180,12 +243,36 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
     await page.evaluate(async () => {
         const { appImport, historySteps } = window.editorTest
         const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
-            appImport<typeof import('../../src/editor/history/operationDetails')>('/src/editor/history/operationDetails.ts'),
-            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+            appImport<typeof import('../../src/editor/history/operationDetails')>(
+                '/src/editor/history/operationDetails.ts',
+            ),
+            appImport<typeof import('../../src/history/operationPresentation')>(
+                '/src/history/operationPresentation/index.ts',
+            ),
         ])
-        const head = historySteps.editStep(historySteps.futureFixtureOperation('recovery-head', {}, 'Source metadata'))
-        const dropped = Array.from({ length: 25 }, (_, i) => historySteps.editStep(historySteps.futureFixtureOperation(`context-${i}`, {}, `Earlier action ${i}`)))
-        void openOperationDetails(captureOperationRecipe([{ description: { kind: 'recovered', operation: historySteps.nativeOperation({ id: 'nse.recovery', data: { source: 'journal', droppedSteps: 25 } }, 'Recovered'), recoveryContext: { head, headIndex: 2, dropped, omitted: 5 } } }]), 1234)
+        const head = historySteps.editStep(
+            historySteps.futureFixtureOperation('recovery-head', {}, 'Source metadata'),
+        )
+        const dropped = Array.from({ length: 25 }, (_, i) =>
+            historySteps.editStep(
+                historySteps.futureFixtureOperation(`context-${i}`, {}, `Earlier action ${i}`),
+            ),
+        )
+        void openOperationDetails(
+            captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'recovered',
+                        operation: historySteps.nativeOperation(
+                            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 25 } },
+                            'Recovered',
+                        ),
+                        recoveryContext: { head, headIndex: 2, dropped, omitted: 5 },
+                    },
+                },
+            ]),
+            1234,
+        )
     })
     const recovery = details.locator('[data-operation-recovery]')
     await expect(recovery).toHaveCount(1)
@@ -336,7 +423,9 @@ test('selected Details keeps exact members and request identity while text reloc
 
 test.describe('touch metadata actions', () => {
     test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } })
-    test('unavailable body tap opens Details and long-press release only opens the menu', async ({ page }) => {
+    test('unavailable body tap opens Details and long-press release only opens the menu', async ({
+        page,
+    }) => {
         await seedNativeLifeGroup(page, true)
         await open(page)
         const group = row(page, 'Changed Initial Life')
@@ -349,9 +438,19 @@ test.describe('touch metadata actions', () => {
         await capture(page, '390-touch-operation-details')
         await details.getByRole('button', { name: 'Close', exact: true }).tap()
         await expect(details).toHaveCount(0)
-        await body.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 2, isPrimary: true, clientX: 150, clientY: 180 })
+        await body.dispatchEvent('pointerdown', {
+            pointerType: 'touch',
+            pointerId: 2,
+            isPrimary: true,
+            clientX: 150,
+            clientY: 180,
+        })
         await expect(page.getByRole('menu')).toBeVisible()
-        await body.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 2, isPrimary: true })
+        await body.dispatchEvent('pointerup', {
+            pointerType: 'touch',
+            pointerId: 2,
+            isPrimary: true,
+        })
         await body.dispatchEvent('click')
         await expect(details).toHaveCount(0)
         await expect(page.getByRole('menu')).toBeVisible()
