@@ -251,7 +251,7 @@ test('dragging notes back to where they started adds no undo step', async ({ pag
 
     // A real move still commits once.
     await drag(page, [4, 7], [4, 8])
-    await expect(page.locator('.notification')).toHaveText('Moved 1 object')
+    await expect(page.locator('.notification')).toHaveText('Moved 1 note')
     expect(await beats(page)).toEqual([3, 5, 8, 9])
     expect(await undoCount(page)).toBe(1)
 })
