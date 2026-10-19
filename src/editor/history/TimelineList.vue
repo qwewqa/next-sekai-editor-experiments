@@ -402,7 +402,7 @@ const focusRow = async (id = cursorId.value, part: FocusPart = 'row', scroll = t
     }
 }
 const onRowFocus = (event: FocusEvent, row: Row) => {
-    if (detailsReturn?.dialog && !detailsReturn.dialog.open) detailsReturn.returned = true
+    if (detailsReturn?.dialog?.open === false) detailsReturn.returned = true
     cursorId.value = row.id
     focusPart.value = focusedPart(event)
     focusInside.value = true
