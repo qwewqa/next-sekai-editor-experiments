@@ -1729,6 +1729,8 @@
       "duplicated": "{0} klasörü çoğaltıldı"
     },
     "manager": {
+      "currentGroup": "Geçerli Grup",
+      "currentStage": "Geçerli Sahne",
       "show": "{0} öğesini göster",
       "hide": "{0} öğesini gizle",
       "actions": "{0} için diğer işlemler",
@@ -1838,6 +1840,8 @@
     "unsupportedParts": "\"{0}\", editörün bu sürümünün desteklemediği kısımlar içeriyor."
   },
   "peek": {
+    "loadingShort": "Yükleniyor…",
+    "unavailableShort": "Kullanılamıyor",
     "settingsChanged": "Ayarlar değiştirildi",
     "initialState": "İlk durum",
     "unavailable": "Değişiklikler kullanılamıyor",
@@ -1991,6 +1995,7 @@
     "leaveAnyway": "Yine de Ayrıl"
   },
   "status": {
+    "separateCopyShort": "Ayrı kopya",
     "notInFile": "Dosyaya kaydedilmedi",
     "separateCopy": "{0} için ayrı kopya",
     "opensLevelInfo": "Seviye bilgisini açar",

@@ -1729,6 +1729,8 @@
             "duplicated": "Duplicated {0} folder"
         },
         "manager": {
+            "currentGroup": "Current Group",
+            "currentStage": "Current Stage",
             "show": "Show {0}",
             "hide": "Hide {0}",
             "actions": "More Actions for {0}",
@@ -1838,6 +1840,8 @@
         "unsupportedParts": "\"{0}\" has parts this version of the editor does not support."
     },
     "peek": {
+        "loadingShort": "Loading…",
+        "unavailableShort": "Unavailable",
         "settingsChanged": "Settings changed",
         "initialState": "Initial state",
         "unavailable": "Changes unavailable",
@@ -1991,6 +1995,7 @@
         "leaveAnyway": "Leave Anyway"
     },
     "status": {
+        "separateCopyShort": "Separate copy",
         "notInFile": "Not saved to a file",
         "separateCopy": "Separate copy of {0}",
         "opensLevelInfo": "Opens Level Info",
