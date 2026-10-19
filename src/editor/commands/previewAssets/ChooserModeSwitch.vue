@@ -15,8 +15,9 @@ const strings = computed(() => i18n.value.commands.previewAssets)
 const name = useId()
 
 // High contrast paints only the outlines: the track's is its edge, the segment's shows focus.
+// The selected segment is the raised pill; a press steps it, as it does a raised button.
 const segment =
-    'flex h-7 items-center justify-center rounded-full px-3 transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-focus-visible:ring-2 peer-focus-visible:ring-fg peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-transparent peer-active:bg-accent peer-active:text-on-accent peer-checked:peer-active:bg-accent forced-colors:peer-focus-visible:outline-[color:Highlight]'
+    'chooser-mode-segment flex h-7 items-center justify-center rounded-full px-3 transition-colors peer-checked:bg-button peer-checked:shadow-md peer-hover:bg-button/50 peer-checked:peer-hover:bg-button peer-active:bg-ghost-press peer-active:text-fg-strong peer-checked:peer-active:bg-press'
 const choice =
     'relative min-w-0 flex-1 rounded-full has-[:checked]:outline has-[:checked]:outline-1 has-[:checked]:outline-transparent'
 </script>
@@ -32,7 +33,7 @@ const choice =
         <label v-for="item in ['file', 'server'] as const" :key="item" :class="choice">
             <input
                 v-model="mode"
-                class="peer absolute inset-0 size-full cursor-pointer opacity-0 focus-visible:outline-none"
+                class="peer absolute inset-0 size-full cursor-pointer opacity-0"
                 type="radio"
                 :name
                 :value="item"
@@ -47,3 +48,12 @@ const choice =
         </label>
     </div>
 </template>
+
+<style scoped>
+/* The face is under 32px, so the focus ring sits 1px outside it, in the surface's ink (the
+   `focus-out` rule, which cannot reach a sibling of the focused radio). */
+.peer:focus-visible + .chooser-mode-segment {
+    outline: 2px solid rgb(var(--color-fg));
+    outline-offset: 1px;
+}
+</style>

@@ -180,8 +180,7 @@ onBeforeUnmount(() => {
     stop()
 })
 
-const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg disabled:pointer-events-none disabled:opacity-40'
+const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
 
 <template>
@@ -209,7 +208,7 @@ const buttonClass =
                     <!-- Wrapped below a long name, it keeps to the right. -->
                     <button
                         type="button"
-                        class="ml-auto bg-button active:bg-accent active:text-on-accent"
+                        class="btn-secondary ml-auto"
                         :class="buttonClass"
                         :disabled="busy"
                         @click="chooseAnother"
@@ -225,7 +224,7 @@ const buttonClass =
                             <input
                                 ref="field"
                                 v-model="value"
-                                class="w-full min-w-0 appearance-none rounded-full bg-button px-4 py-1 shadow-md outline-none transition-colors placeholder:text-fg/50 hover:shadow-accent focus:ring-2 focus:ring-fg"
+                                class="field w-full min-w-0 appearance-none rounded-full px-4 py-1 placeholder:text-fg/50"
                                 type="text"
                                 spellcheck="false"
                                 autocomplete="off"
@@ -255,12 +254,7 @@ const buttonClass =
             </template>
 
             <div class="flex justify-end gap-2">
-                <button
-                    type="button"
-                    class="bg-button active:bg-accent active:text-on-accent"
-                    :class="buttonClass"
-                    @click="cancel"
-                >
+                <button type="button" class="btn-secondary" :class="buttonClass" @click="cancel">
                     {{ i18n.modals.confirm.cancel }}
                 </button>
                 <button
@@ -268,7 +262,7 @@ const buttonClass =
                     ref="downloadButton"
                     type="button"
                     :aria-describedby="`${ids}-preparing`"
-                    class="bg-accent text-on-accent active:bg-button active:text-fg"
+                    class="btn-primary"
                     :class="buttonClass"
                     @click="download"
                 >
@@ -277,7 +271,7 @@ const buttonClass =
                 <button
                     v-else
                     type="submit"
-                    class="bg-accent text-on-accent active:bg-button active:text-fg"
+                    class="btn-primary"
                     :class="buttonClass"
                     :disabled="busy || !!problem"
                     :data-autofocus="target ? true : undefined"

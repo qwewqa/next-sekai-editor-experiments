@@ -218,7 +218,7 @@ const isLoading = computed(() => {
                 <div v-if="canChooseAgain" class="pb-2 pl-[5.75rem] pr-3">
                     <button
                         type="button"
-                        class="inline-flex h-7 items-center rounded-full bg-button px-3 text-sm shadow-md outline-none transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                        class="btn focus-out btn-secondary inline-flex h-7 items-center rounded-full px-3 text-sm"
                         data-asset-choose-again
                         @click="chooseAgain"
                     >
@@ -241,7 +241,7 @@ const isLoading = computed(() => {
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-3">
             <button
                 type="button"
-                class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 :aria-describedby="hasServers ? hintId : undefined"
                 data-asset-choose
                 @click="chooser.show()"

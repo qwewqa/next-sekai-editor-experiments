@@ -55,10 +55,8 @@ onBeforeUnmount(() => {
 const alsoText = (option: (typeof also.value)[number]) =>
     interpolateRaw(strings.value.alsoServerItem, typeNoun(option.type), option.title)
 
-const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40'
-const inputClass =
-    'h-9 min-w-0 appearance-none rounded-full bg-button px-4 shadow-md outline-none transition-colors placeholder:opacity-60 hover:shadow-accent focus:ring-2 focus:ring-fg disabled:opacity-40'
+const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
+const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placeholder:opacity-60'
 </script>
 
 <template>
