@@ -401,6 +401,10 @@ test('selected Details keeps exact members and request identity while text reloc
     await expect(details.locator('[data-operation-children] [data-operation-details]')).toHaveCount(
         1,
     )
+    const childBody = details.locator('[data-operation-children] [data-operation-details]')
+    await expect(childBody.locator('[data-operation-description], [data-operation-time]')).toHaveCount(0)
+    await expect(childBody.locator('[data-operation-field="before"]')).toContainText('1,030')
+    await expect(childBody.locator('[data-operation-field="after"]')).toContainText('1,031')
     await capture(page, 'desktop-operation-details')
     const before = await details.locator('[data-operation-description]').first().textContent()
     await page.evaluate(() => {
@@ -760,6 +764,17 @@ for (const width of [1600, 390, 320]) {
                 await page.emulateMedia({ colorScheme: 'dark' })
                 await capture(page, `${width}-dark`)
             }
+            await row(page, 'Added 2 notes').click()
+            if (await viewChart(page).isVisible()) await viewChart(page).click()
+            await expect(page.locator('[data-peek-main]')).toBeVisible()
+            await expect(page.locator('[data-peek-change]')).toHaveText('2 changes')
+            const geometry = await page.locator('[data-peek-bar]').evaluate((bar) => {
+                const main = bar.querySelector('[data-peek-main]')!.getBoundingClientRect()
+                const navigation = bar.querySelector('[data-peek-navigation]')!.getBoundingClientRect()
+                return { primary: main.height, gap: navigation.top - main.bottom, secondary: navigation.height }
+            })
+            expect(geometry).toEqual({ primary: 52, gap: 8, secondary: 32 })
+            await capture(page, `${width}-active-peek-bars`)
         })
     })
 }

@@ -14,12 +14,13 @@ import {
 import { i18n } from '../../i18n'
 import { formatDateTimeSeconds } from '../../i18n/when'
 
-const props = defineProps<{ recipe: OperationRecipe; time?: number }>()
+const props = defineProps<{ recipe: OperationRecipe; time?: number; summaryProvided?: boolean }>()
 const PAGE = 20
 const limit = ref(PAGE)
 const recoveryLimit = ref(PAGE)
 const expanded = ref<ReadonlySet<number>>(new Set())
 const context = computed(getHistoryOperationContext)
+const memberContext = computed(() => ({ ...context.value, qualifiers: props.recipe.qualifiers }))
 const details = computed(() => operationDetails(props.recipe, context.value))
 const children = computed(() => details.value.children.slice(0, limit.value))
 const recovery = computed(() => details.value.recovery?.descriptions.slice(0, recoveryLimit.value))
@@ -38,7 +39,7 @@ const toggle = (index: number, event: Event) => {
         class="min-w-0 select-text space-y-5 text-sm [overflow-wrap:anywhere]"
         data-operation-details
     >
-        <div class="space-y-1">
+        <div v-if="!summaryProvided" class="space-y-1">
             <p class="whitespace-pre-wrap font-bold" data-operation-description>
                 {{ details.description }}
             </p>
@@ -48,8 +49,8 @@ const toggle = (index: number, event: Event) => {
             <p v-if="recipe.kind !== 'single'" data-operation-count>
                 {{ operationStepCount(recipe, context) }}
             </p>
-            <p v-if="details.explanation" data-operation-unsupported>{{ details.explanation }}</p>
         </div>
+        <p v-if="details.explanation" data-operation-unsupported>{{ details.explanation }}</p>
         <section
             v-for="section in details.sections"
             :key="section.key"
@@ -85,7 +86,7 @@ const toggle = (index: number, event: Event) => {
                 <summary
                     class="min-h-11 cursor-pointer py-3 font-bold outline-offset-2 focus-visible:outline focus-visible:outline-2"
                 >
-                    <span class="whitespace-pre-wrap">{{ describeMember(member, context) }}</span>
+                    <span class="whitespace-pre-wrap">{{ describeMember(member, memberContext) }}</span>
                     <span
                         v-if="member.time !== undefined"
                         class="block pl-4 text-xs font-normal text-fg/75"
@@ -96,6 +97,7 @@ const toggle = (index: number, event: Event) => {
                     v-if="expanded.has(index)"
                     :recipe="childRecipe(member)"
                     :time="member.time"
+                    summary-provided
                     class="pb-4 pl-4"
                 />
             </details>
