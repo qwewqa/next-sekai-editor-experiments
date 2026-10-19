@@ -1,10 +1,9 @@
-import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
-import { countNativeEntities, nativeTargetChanged } from '../../../../../state/operations/historyReceipts'
 import { ref } from 'vue'
 import type { Tool } from '../../..'
 import type { StageMaskEventObject } from '../../../../../chart/events/stage/mask'
 import { applyEaseEdit, cycleEase, type EaseEdit, type WithEaseEdits } from '../../../../../ease'
 import { pushState, replaceState, state } from '../../../../../history'
+import { createHistoryOperation } from '../../../../../history/createHistoryOperation'
 import { selectedEntities } from '../../../../../history/selectedEntities'
 import { defaultStageId } from '../../../../../history/stages.ts'
 import { i18n } from '../../../../../i18n'
@@ -16,6 +15,10 @@ import {
 } from '../../../../../state/entities/events/joints/stage/mask'
 import { addStageMaskEventJoint } from '../../../../../state/mutations/events/stage/mask'
 import { editSelectedStageMaskEvent } from '../../../../../state/operations/events/stage/mask'
+import {
+    countNativeEntities,
+    nativeTargetChanged,
+} from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
 import { interpolate } from '../../../../../utils/interpolate'
 import { shiftComputed } from '../../../../../utils/math'
@@ -477,9 +480,23 @@ const update = (
     const entities = action(transaction)
     const result = transaction.commit(entities)
     const after = result.selectedEntities[0]
-    const operation = createHistoryOperation(intent === 'add'
-        ? { id: 'nse.object.add', data: { subject: 'stageMaskEvent', created: countNativeEntities(entities).stageMaskEvent ?? 0 } }
-        : { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data: { subject: 'stageMaskEvent', targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0 } })
+    const operation = createHistoryOperation(
+        intent === 'add'
+            ? {
+                  id: 'nse.object.add',
+                  data: {
+                      subject: 'stageMaskEvent',
+                      created: countNativeEntities(entities).stageMaskEvent ?? 0,
+                  },
+              }
+            : {
+                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
+                  data: {
+                      subject: 'stageMaskEvent',
+                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  },
+              },
+    )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     notify(() => operation.fallback.text)
@@ -488,27 +505,16 @@ const update = (
 const add = (object: StageMaskEventObject) => {
     // Authoring reveals its target so the new object never vanishes.
     revealAuthoringTarget(object)
-    update(
-        'add',
-        (transaction) => addStageMaskEventJoint(transaction, object),
-    )
+    update('add', (transaction) => addStageMaskEventJoint(transaction, object))
 }
 
 const edit = (
     entity: StageMaskEventJointEntity,
     object: Partial<WithEaseEdits<StageMaskEventObject>>,
 ) => {
-    update(
-        'edit',
-        (transaction) => editSelectedStageMaskEvent(transaction, entity, object),
-        entity,
-    )
+    update('edit', (transaction) => editSelectedStageMaskEvent(transaction, entity, object), entity)
 }
 
 const move = (entity: StageMaskEventJointEntity, object: StageMaskEventObject) => {
-    update(
-        'move',
-        (transaction) => editSelectedStageMaskEvent(transaction, entity, object),
-        entity,
-    )
+    update('move', (transaction) => editSelectedStageMaskEvent(transaction, entity, object), entity)
 }

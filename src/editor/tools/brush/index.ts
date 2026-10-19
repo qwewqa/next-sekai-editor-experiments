@@ -237,7 +237,11 @@ export const applyBrushToEntities = (entities: Entity[]) => {
     }
 
     // The brush writes every key it holds, as it always has, but never to BPM changes.
-    const { state: brushed, changed, receipt } = planEdit(state.value, entities, brushProperties.value, {
+    const {
+        state: brushed,
+        changed,
+        receipt,
+    } = planEdit(state.value, entities, brushProperties.value, {
         only: (entity) => entity.type !== 'bpm',
         single: false,
     })

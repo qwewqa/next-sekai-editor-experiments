@@ -292,7 +292,10 @@ export const applyGeneratedSlideNotes = (notes: NoteEntity[]) => {
         }
     }
 
-    const operation = createHistoryOperation({ id: 'nse.note.generate', data: { created: entities.length } })
+    const operation = createHistoryOperation({
+        id: 'nse.note.generate',
+        data: { created: entities.length },
+    })
     // Nothing to fill adds no undo step.
     if (entities.length) {
         // Authoring reveals its target so generated notes never vanish.
