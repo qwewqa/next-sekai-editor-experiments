@@ -461,7 +461,7 @@ test(
                 writeFileSync(file, bytes)
                 const strict = check(file)
                 assert.equal(strict.status, 0, strict.output)
-                const reader = check('--reader', file)
+                const reader = check('--read', file)
                 assert.equal(reader.status, 0, reader.output)
                 assert.match(reader.output, /"open": "full"/)
                 const opened = await readNxsp(new Blob([bytes]))
@@ -478,7 +478,7 @@ test(
             const file = join(dir, 'bad-carrier.nxsp')
             writeFileSync(file, bad)
             assert.notEqual(check(file).status, 0)
-            const reader = check('--reader', file)
+            const reader = check('--read', file)
             assert.match(reader.output, /"open": "partial"/)
         } finally {
             rmSync(dir, { recursive: true, force: true })

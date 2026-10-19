@@ -1,4 +1,3 @@
-import { futureFixtureOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { deflateRaw, inflateRaw } from 'pako'
@@ -6,6 +5,7 @@ import type { PlannedEntry, WritePlan } from '../../../src/local/nxsp/plan'
 import { setSaveHooksForTests } from '../../../src/local/save/build'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { crc32 } from '../../../src/zip/crc32'
+import { futureFixtureOperation } from '../../helpers/historySteps'
 import { Fixture, save, sourceOf, stateAt } from './fixture'
 
 // The append assertion (§1.6.11.6 step 3; §1.11.6's Exit: "fails a plan whose prefix a test hook
@@ -133,7 +133,10 @@ const alterations: [string, (plan: WritePlan) => WritePlan][] = [
     [
         'a carried row changed',
         manifest((value) => {
-            const rows = value.entries as unknown as { operation?: unknown; step?: {operation:unknown} }[]
+            const rows = value.entries as unknown as {
+                operation?: unknown
+                step?: { operation: unknown }
+            }[]
             const row = rows[0]!
             if (row.step) row.step.operation = futureFixtureOperation('changed-carried-row')
             else row.operation = futureFixtureOperation('changed-carried-row')

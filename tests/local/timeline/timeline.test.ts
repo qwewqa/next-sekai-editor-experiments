@@ -126,7 +126,7 @@ test('replay takes a recovered entry’s stack as it is, and continues from an i
     const longer = replay([
         entry('init', 1),
         entry('recovered', 5, {
-            stack: { keep: 10, push: [{ snapshot: hash(5), step:step(5) }], index: 1 },
+            stack: { keep: 10, push: [{ snapshot: hash(5), step: step(5) }], index: 1 },
         }),
     ])
     assert.equal(longer.slots.length, 2)

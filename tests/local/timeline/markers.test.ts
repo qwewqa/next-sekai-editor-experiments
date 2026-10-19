@@ -9,9 +9,7 @@ import {
     type ExportUi,
 } from '../../../src/editor/commands/exportLevel/flow'
 import { clearExportMemory, exportMemory } from '../../../src/editor/commands/exportLevel/memory'
-import {
-    describeOperation,
-} from '../../../src/history/operationPresentation/format'
+import { describeOperation } from '../../../src/history/operationPresentation/format'
 import type { OperationStrings } from '../../../src/history/operationPresentation/types'
 import { setPlatformForTests } from '../../../src/platform'
 import { levelDataDiskState } from '../../../src/platform/fingerprint'
