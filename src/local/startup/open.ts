@@ -289,9 +289,7 @@ export const openStored = async (
             },
             stack: storedStack(read),
             chain,
-            operation: deps.operations.continued(
-                session.updatedAt as number,
-            ),
+            operation: deps.operations.continued(session.updatedAt as number),
             dirty: edited,
             ...(fork
                 ? { fork: { forkOf: String(chain.chainId), ...(forkName ? { forkName } : {}) } }

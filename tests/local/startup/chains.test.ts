@@ -1,4 +1,3 @@
-import { editStep, futureFixtureOperation, originOperation } from '../../helpers/historySteps'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { FlushSession } from '../../../src/local/flush'
@@ -9,6 +8,7 @@ import { claimSessionLock } from '../../../src/local/startup/tab'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import { replay, stackMismatches } from '../../../src/local/timeline'
+import { editStep, futureFixtureOperation, originOperation } from '../../helpers/historySteps'
 import { openPage, openSplitPage, rows, testId, workerCore, type Page } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { storedEntries, storedStack, widen } from '../timeline/helpers'
@@ -24,7 +24,11 @@ const storedSession = async (world: World, name = 'first') => {
     const a = stateOf(goldenChart())
     const b = widen(a)
     const session = beginIn(page, a)
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Widened')) }, b, true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Widened')) },
+        b,
+        true,
+    )
     await page.flusher.flush({ strict: true })
     assert.deepEqual(page.errors, [])
     return { page, session, states: { a, b } }
@@ -57,7 +61,11 @@ test('a continuation stores nothing until its first edit, which moves the chain�
     assert.equal(await heldShared(page, parent.id), true)
 
     const c = widen(states.b, 1)
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Widened again')) }, c, true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Widened again')) },
+        c,
+        true,
+    )
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     const row = rows(world, 'sessions').get(session.id)
@@ -97,7 +105,11 @@ test('two tabs continuing one session at once: one continues the chain, the othe
         const reads = await Promise.all(pages.map((page) => readOpen(page, parent.id)))
         const sessions = pages.map((page, i) => continueIn(page, reads[i]!))
         pages.forEach((page, i) =>
-            page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) }, widen(states.b, i + 2), true),
+            page.flusher.append(
+                { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
+                widen(states.b, i + 2),
+                true,
+            ),
         )
         await Promise.all(pages.map((page) => page.flusher.flush()))
         for (const page of pages) assert.deepEqual(page.errors, [], `seed ${seed}`)
@@ -133,11 +145,19 @@ test('tab B continues the chain while tab A’s lock was lost: A’s next flush 
     // A's lock was lost (a hung tab): B continues the chain meanwhile.
     const second = await openPage(world, world.tab('b'))
     const continuation = continueIn(second, await readOpen(second, session.id))
-    second.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('B')) }, widen(a, 1), true)
+    second.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('B')) },
+        widen(a, 1),
+        true,
+    )
     await second.flusher.flush()
     assert.equal(rows(world, 'chains').get(session.chainId)?.head, continuation.id)
 
-    first.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('A')) }, widen(a, 2), true)
+    first.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('A')) },
+        widen(a, 2),
+        true,
+    )
     await first.flusher.flush()
     assert.deepEqual(first.errors, [])
     assert.equal(forks.length, 1)
@@ -177,7 +197,11 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
     // A continuation keeps the record as it is, unknown field and binding included.
     const page = await openPage(world, world.tab('next'))
     const continuation = continueIn(page, await readOpen(page, parent.id))
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(states.b, 1), true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) },
+        widen(states.b, 1),
+        true,
+    )
     await page.flusher.flush()
     const chain = rows(world, 'chains').get(parent.chainId)!
     assert.equal(chain.head, continuation.id)
@@ -189,7 +213,11 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
     // A fork copies it by exclusion: the unknown field carries; the binding and its kin don't.
     const third = await openPage(world, world.tab('third'))
     const fork = continueIn(third, await readOpen(third, continuation.id), { asFork: true })
-    third.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(states.b, 2), true)
+    third.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) },
+        widen(states.b, 2),
+        true,
+    )
     await third.flusher.flush()
     assert.deepEqual(third.errors, [])
     const forked = rows(world, 'chains').get(fork.chainId)!
@@ -214,7 +242,11 @@ test('a continuation of a 20,000-step stack copies about 20 block rows', async (
     const b = widen(a)
     const session = beginIn(first, a)
     for (let i = 1; i < 20_000; i++)
-        first.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) }, i % 2 ? b : a, true)
+        first.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
+            i % 2 ? b : a,
+            true,
+        )
     await first.flusher.flush()
     assert.deepEqual(first.errors, [])
 
@@ -223,13 +255,21 @@ test('a continuation of a 20,000-step stack copies about 20 block rows', async (
     assert.equal(read.stack.window.length, 5000)
     assert.equal(read.stack.blocks.length, 21)
     continueIn(page, read)
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('One more')) }, a, true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('One more')) },
+        a,
+        true,
+    )
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     const copied = page.reports.at(-1)!.stats.rowsByStore.stackBlocks ?? 0
     assert.equal(copied, 21)
     // The next edit rewrites one block, as any flush does.
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('And another')) }, b, true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('And another')) },
+        b,
+        true,
+    )
     await page.flusher.flush()
     assert.equal(page.reports.at(-1)!.stats.rowsByStore.stackBlocks, 1)
     assert.deepEqual(checkStored(world.memory), [])
@@ -244,7 +284,11 @@ test('a reload takes its session up again: no new row, and its next entry follow
     assert.equal(resumed.id, session.id)
     await page.flusher.flush()
     assert.equal(page.batches.length, 0)
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('After reload')) }, widen(states.b, 1), true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('After reload')) },
+        widen(states.b, 1),
+        true,
+    )
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     assert.equal(rows(world, 'sessions').size, 1)
@@ -287,7 +331,11 @@ test('chain fields from a session that isn’t the head any more go to a fork', 
     await first.flusher.flush()
     const second = await openPage(world, world.tab('b'))
     continueIn(second, await readOpen(second, session.id))
-    second.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('B')) }, widen(a), true)
+    second.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('B')) },
+        widen(a),
+        true,
+    )
     await second.flusher.flush()
 
     assert.equal(await first.flusher.setChainFields({ exportName: 'Late' }), false)
@@ -315,7 +363,11 @@ test('a worker killed mid-flush in one tab: another tab’s load can’t continu
     const lock = holdSessionLock(page.page.locks, session.id)
     await page.page.run(() => lock.granted)
     await page.flusher.flush()
-    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a), true)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) },
+        widen(a),
+        true,
+    )
     const flushing = page.flusher.flush()
     page.host.worker.kill()
 

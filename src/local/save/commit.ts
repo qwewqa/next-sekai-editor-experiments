@@ -11,7 +11,10 @@ import type { RowKey, SaveIdentity } from './build'
 /** The stores `commitIdentity` writes and reads. */
 export const IDENTITY_STORES = ['chains', 'sessions', 'entries', 'handles'] as const
 
-export const sessionVersionReader = (tx: KvTx, known: readonly (readonly [string, unknown])[] = []) => {
+export const sessionVersionReader = (
+    tx: KvTx,
+    known: readonly (readonly [string, unknown])[] = [],
+) => {
     const rows = new Map(known.map(([id, row]) => [id, Promise.resolve(row)]))
     return (id: string) => {
         let row = rows.get(id)
@@ -24,13 +27,13 @@ export const sessionVersionReader = (tx: KvTx, known: readonly (readonly [string
 }
 
 export const writableSession = (row: unknown) =>
-    typeof row === 'object' && row !== null && isReadableSessionVersion((row as {v?: unknown}).v)
+    typeof row === 'object' && row !== null && isReadableSessionVersion((row as { v?: unknown }).v)
 
 export const marksHaveSupportedSessions = async (
     marks: readonly RowKey[],
     read: ReturnType<typeof sessionVersionReader>,
 ) => {
-    for (const id of new Set(marks.map(mark => mark.sessionId))) {
+    for (const id of new Set(marks.map((mark) => mark.sessionId))) {
         const row = await read(id)
         if (row !== undefined && !writableSession(row)) return false
     }
@@ -69,7 +72,11 @@ export const unitApplies = (chain: Record<string, unknown>, unit: IdentityUnit) 
  * row isn't stored but its session is; a row whose session was deleted needs no mark. The flush
  * that commits a Save's identity unit runs it first (the seam `commitIdentity` shares).
  */
-export const storeMarks = async (tx: KvTx, marks: readonly RowKey[], read = sessionVersionReader(tx)) => {
+export const storeMarks = async (
+    tx: KvTx,
+    marks: readonly RowKey[],
+    read = sessionVersionReader(tx),
+) => {
     if (!(await marksHaveSupportedSessions(marks, read))) return false
     const marked: Record<string, unknown>[] = []
     for (const { sessionId, seq } of marks) {
