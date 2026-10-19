@@ -41,7 +41,7 @@ const page = computed(() =>
                 <li
                     v-for="(item, index) in page.items"
                     :key="index"
-                    class="focus-edge -mx-1 rounded px-1 focus-visible:outline-offset-2"
+                    class="focus-edge rounded focus-visible:outline-offset-2"
                     tabindex="-1"
                 >
                     <template v-if="item.kind === 'reference'">{{

@@ -1406,13 +1406,7 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
                     room: document.documentElement.clientWidth,
                     overflow: [
                         ...element.querySelectorAll<HTMLElement>('[data-property-value]'),
-                    ].some(
-                        // A tag list's items reach 4 px past the value on each side (the -mx-1 room
-                        // for their focus ring), so only that list gets the extra 4 px.
-                        (value) =>
-                            value.scrollWidth >
-                            value.clientWidth + (value.querySelector(':scope > ol') ? 5 : 1),
-                    ),
+                    ].some((value) => value.scrollWidth > value.clientWidth + 1),
                 }
             })
             expect(geometry.before).toBeCloseTo(geometry.after, 1)
