@@ -245,6 +245,8 @@ const identicalToEnglish: Record<string, string[]> = {
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
         // These French labels have the same spelling as English.
+        'history.details.destination',
+        'history.details.source',
         'historyChanges.fields.description',
         'historyChanges.fields.tags',
         'historyChanges.fields.type',

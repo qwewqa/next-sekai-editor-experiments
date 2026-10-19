@@ -4,6 +4,7 @@ import type { TimeScaleEntity } from '../entities/timeScale'
 import { addTimeScale, removeTimeScale, replaceTimeScale } from '../mutations/timeScale'
 import { getInStoreGrid } from '../store/grid'
 import type { Transaction } from '../transaction'
+import { editOutcomeReceipt } from './historyReceipts'
 
 export const editSelectedTimeScale = (
     transaction: Transaction,
@@ -28,18 +29,25 @@ export const editSelectedTimeScale = (
     return addTimeScale(transaction, edited)
 }
 
-export const editTimeScale = (
+export const editTimeScaleWithReceipt = (
     transaction: Transaction,
     entity: TimeScaleEntity,
     object: Partial<WithEaseEdits<TimeScaleObject>>,
 ) => {
     const beat = object.beat ?? entity.beat
     const groupId = object.groupId ?? entity.groupId
+    const displaced: TimeScaleEntity[] = []
     if (beat !== entity.beat) {
         // Replaces every one of its group at the beat, a pair too.
         for (const overlap of getInStoreGrid(transaction.store.grid, 'timeScale', beat) ?? [])
-            if (overlap.beat === beat && overlap.groupId === groupId)
+            if (overlap.beat === beat && overlap.groupId === groupId) {
+                displaced.push(overlap)
                 removeTimeScale(transaction, overlap)
+            }
     }
-    return editSelectedTimeScale(transaction, entity, object)
+    const entities = editSelectedTimeScale(transaction, entity, object)
+    return { entities, receipt: editOutcomeReceipt(entity, entities, displaced) }
 }
+
+export const editTimeScale = (...args: Parameters<typeof editTimeScaleWithReceipt>) =>
+    editTimeScaleWithReceipt(...args).entities
