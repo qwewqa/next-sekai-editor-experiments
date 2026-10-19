@@ -99,8 +99,9 @@ watch(
     },
     { flush: 'sync' },
 )
+// A re-measured fit can flip compact while the menu is open, like a width change.
 watch(
-    () => view.w,
+    () => [view.w, compact.value],
     () => {
         if (menuOpen.value) closeMenu(true)
     },
