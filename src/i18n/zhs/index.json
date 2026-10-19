@@ -505,6 +505,7 @@
       "remove": "移除",
       "inUse": "使用中",
       "removeInUse": "移除“{0}”？将改用默认项。",
+      "removeUnused": "移除“{0}”？",
       "removeFailed": "无法移除此项目。",
       "chooseAgain": "重新选择",
       "noneInFile": "此文件中没有{0}。",
@@ -796,6 +797,8 @@
     "resetSettings": "重置设置",
     "resetSettingsHint": "还原默认设置，保留键盘快捷键。",
     "resetKeybinds": "重置快捷键",
+    "resetSettingsMessage": "要还原默认设置并保留键盘快捷键吗？",
+    "resetKeybindsMessage": "要还原默认键盘快捷键吗？",
     "editor": {
       "title": "编辑器",
       "locale": "语言",

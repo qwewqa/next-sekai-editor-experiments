@@ -20,7 +20,7 @@ import AssetGlyph from './AssetGlyph.vue'
 import { storedThumbnail } from './storedThumbnails'
 
 // The Stored tab (Part 2, 2.6): every stored file and server item, with its size, whether a type
-// uses it, and Remove, which asks first for one in use.
+// uses it, and Remove, which always asks first.
 const strings = computed(() => i18n.value.commands.previewAssets)
 const uid = useId()
 
@@ -45,16 +45,18 @@ const failedKey = shallowRef<string>()
 
 const remove = async (row: (typeof rows.value)[number]) => {
     failedKey.value = undefined
-    if (row.users.length) {
-        const confirmed = await showChoice({
-            title: () => strings.value.remove,
-            message: () => interpolateRaw(strings.value.removeInUse, row.meta.title),
-            choices: [{ value: true, label: () => strings.value.remove, danger: true }],
-            // Nothing is removed by a stray Enter.
-            cancelIsDefault: true,
-        })
-        if (!confirmed) return
-    }
+    const confirmed = await showChoice({
+        title: () => strings.value.remove,
+        message: () =>
+            interpolateRaw(
+                row.users.length ? strings.value.removeInUse : strings.value.removeUnused,
+                row.meta.title,
+            ),
+        choices: [{ value: true, label: () => strings.value.remove, danger: true }],
+        // Nothing is removed by a stray Enter.
+        cancelIsDefault: true,
+    })
+    if (!confirmed) return
     try {
         await workerStore.remove(row.meta.key)
     } catch (error) {
@@ -69,8 +71,7 @@ const remove = async (row: (typeof rows.value)[number]) => {
     await refreshStored()
 }
 
-const buttonClass =
-    'h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent'
+const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
 
 <template>

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { gzipSync } from 'node:zlib'
 import { parseAutoSave } from '../../src/history/autoSave/parse'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
@@ -549,7 +550,11 @@ test('undoing dynamic stages leaves the event tools, whose events it could not s
         >('/src/editor/commands/events/camera/index.ts')
         await cameraEvent.execute()
     })
-    await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await confirmWhenReady(
+        page.getByRole('dialog').getByRole('button', { name: 'Confirm' }),
+        page.getByRole('dialog'),
+    )
     await command
     const tool = () =>
         page.evaluate(async () => {

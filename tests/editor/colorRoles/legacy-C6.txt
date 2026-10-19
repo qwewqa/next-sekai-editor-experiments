@@ -1,0 +1,6 @@
+# Colour package C6: files that still break a rule in tests/editor/colorRoles.test.ts.
+# Delete this file as the package's last commit.
+src/editor/NoticeCard.vue
+src/editor/StatusLabel.vue
+src/editor/StatusScope.vue
+src/editor/file/FileChip.vue

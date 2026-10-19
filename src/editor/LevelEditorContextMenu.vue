@@ -321,10 +321,10 @@ onUnmounted(() => {
                                 aria-hidden="true"
                             />
                             <span class="flex-1">{{ title }}</span>
-                            <!-- Grey on the Delete row too, and dark on the pressed accent. -->
+                            <!-- Grey on the Delete row too; a pressed row sets its own ink. -->
                             <span
                                 v-if="shortcut"
-                                class="text-fg [.popup-item:enabled:active_&]:text-on-accent"
+                                class="text-fg [.popup-item:enabled:active_&]:text-inherit"
                                 :class="
                                     isPunctuationShortcut(shortcut)
                                         ? 'text-sm font-bold leading-4'

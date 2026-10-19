@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { i18n } from '../i18n'
+import { useActivationGuard } from './activationGuard'
 import BaseModal from './BaseModal.vue'
 
 defineProps<{
@@ -11,29 +12,38 @@ defineProps<{
     destructive?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
     close: [result: boolean]
 }>()
+
+// Enter on a menu row opens this dialog with focus on the confirm button: a press within the first
+// moments, or a held key, is not a choice. Closing (×, Esc, outside) stays unguarded.
+const { accidental, onKeydown } = useActivationGuard()
+
+const pick = (result: boolean) => {
+    if (accidental()) return
+    emit('close', result)
+}
 </script>
 
 <template>
-    <BaseModal :title="title()" @close="$emit('close', false)">
+    <BaseModal :title="title()" @close="emit('close', false)">
         <div>{{ message() }}</div>
 
-        <div class="flex justify-end gap-2">
+        <div class="flex justify-end gap-2" @keydown.capture="onKeydown">
             <button
                 type="button"
-                class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
-                @click="$emit('close', false)"
+                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                @click="pick(false)"
             >
                 {{ i18n.modals.confirm.cancel }}
             </button>
             <button
                 type="button"
-                class="h-9 min-w-24 max-w-full truncate rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-button active:text-fg"
-                :class="destructive ? 'bg-danger text-on-danger' : 'bg-accent text-on-accent'"
+                class="btn h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                :class="destructive ? 'btn-danger' : 'btn-primary'"
                 data-autofocus
-                @click="$emit('close', true)"
+                @click="pick(true)"
             >
                 {{ confirm?.() ?? i18n.modals.confirm.confirm }}
             </button>

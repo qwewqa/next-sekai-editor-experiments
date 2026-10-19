@@ -114,8 +114,8 @@
         }
 
         html:not([data-native-lists]) select option:enabled:active {
-            background-color: theme('colors.accent');
-            color: theme('colors.on-accent');
+            background-color: theme('colors.ghost-press');
+            color: theme('colors.fg-strong');
         }
 
         html:not([data-native-lists]) select option:disabled {

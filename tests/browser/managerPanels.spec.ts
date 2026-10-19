@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 const runtimeErrors = new WeakMap<Page, string[]>()
@@ -439,13 +440,22 @@ for (const [device, options] of Object.entries(viewports)) {
             await press(enable)
             const dialog = page.locator('dialog')
             await expect(dialog).toBeVisible()
-            await press(dialog.getByRole('button', { name: 'Cancel' }))
+            await confirmWhenReady(
+                dialog.getByRole('button', { name: 'Cancel' }),
+                dialog,
+                device === 'phone' ? 'tap' : 'click',
+            )
             await expect(dialog).toHaveCount(0)
             expect(await isDynamic()).toBe(false)
             await expect(enable).toBeVisible()
 
             await press(enable)
-            await press(dialog.getByRole('button', { name: 'Confirm' }))
+            await expect(dialog).toBeVisible()
+            await confirmWhenReady(
+                dialog.getByRole('button', { name: 'Confirm' }),
+                dialog,
+                device === 'phone' ? 'tap' : 'click',
+            )
             expect(await isDynamic()).toBe(true)
             await expect(panel.locator('.manager-all .manager-name')).toHaveText('All Stages')
             await expect(panel.locator('.manager-entry')).not.toHaveCount(0)
@@ -938,7 +948,7 @@ test('stages dialog fallback shows the disabled state', async ({ page }) => {
     // Enabling stacks the confirmation over the manager, which then lists stages.
     await dialog.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
     await expect(dialog).toHaveCount(2)
-    await dialog.last().getByRole('button', { name: 'Confirm' }).click()
+    await confirmWhenReady(dialog.nth(1).getByRole('button', { name: 'Confirm' }), dialog.nth(1))
     await expect(dialog).toHaveCount(1)
     expect(await page.evaluate(() => window.editorTest.history.state.value.isDynamicStages)).toBe(
         true,
@@ -1188,7 +1198,11 @@ test('the disabled stages band keeps the heading row layout', async ({ page }) =
     const before = (await label.boundingBox())!
 
     await panel.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
-    await page.locator('dialog').getByRole('button', { name: 'Confirm' }).click()
+    await expect(page.locator('dialog')).toBeVisible()
+    await confirmWhenReady(
+        page.locator('dialog').getByRole('button', { name: 'Confirm' }),
+        page.locator('dialog'),
+    )
     await expect(panel.locator('.manager-entry')).not.toHaveCount(0)
     const after = (await label.boundingBox())!
     expect(after.x).toBe(before.x)
@@ -1780,15 +1794,20 @@ test('the pressed Select Multiple shows keyboard focus as an inner ring on its f
     expect(await mode.evaluate((element) => element.matches(':focus-visible'))).toBe(true)
     // Colours transition.
     await mode.evaluate((element) => Promise.all(element.getAnimations().map((a) => a.finished)))
-    // A ring in the icon's colour shows against the fill.
-    const { fill, rings, icon } = await mode.evaluate((element) => {
+    // A ring in the icon's colour shows against the fill, drawn inside it.
+    const { fill, ring, icon } = await mode.evaluate((element) => {
         const style = getComputedStyle(element)
         return {
             fill: style.backgroundColor,
-            rings: style.boxShadow.match(/rgba?\([^)]*\)/g) ?? [],
+            ring: {
+                style: style.outlineStyle,
+                width: style.outlineWidth,
+                offset: style.outlineOffset,
+                color: style.outlineColor,
+            },
             icon: style.color,
         }
     })
     expect(icon).not.toBe(fill)
-    expect(rings).toContain(icon)
+    expect(ring).toEqual({ style: 'solid', width: '2px', offset: '-4px', color: icon })
 })

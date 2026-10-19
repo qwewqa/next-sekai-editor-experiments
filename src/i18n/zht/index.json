@@ -505,6 +505,7 @@
       "remove": "移除",
       "inUse": "使用中",
       "removeInUse": "移除 \"{0}\"？將改用預設項。",
+      "removeUnused": "移除 \"{0}\"？",
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇",
       "noneInFile": "此檔案中沒有{0}。",
@@ -796,6 +797,8 @@
     "resetSettings": "重置設定",
     "resetSettingsHint": "還原預設設定，保留鍵盤快捷鍵。",
     "resetKeybinds": "重置快捷鍵",
+    "resetSettingsMessage": "要還原預設設定並保留鍵盤快捷鍵嗎？",
+    "resetKeybindsMessage": "要還原預設鍵盤快捷鍵嗎？",
     "editor": {
       "title": "編輯器",
       "locale": "語言",

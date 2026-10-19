@@ -505,6 +505,7 @@
       "remove": "제거",
       "inUse": "사용 중",
       "removeInUse": "\"{0}\"을(를) 제거할까요? 대신 기본 항목을 사용합니다.",
+      "removeUnused": "\"{0}\"을(를) 제거할까요?",
       "removeFailed": "이 항목을 제거하지 못했습니다.",
       "chooseAgain": "다시 선택",
       "noneInFile": "이 파일에 {0}이(가) 없습니다.",
@@ -796,6 +797,8 @@
     "resetSettings": "설정 초기화",
     "resetSettingsHint": "키보드 단축키는 유지하고 설정을 기본값으로 복원합니다.",
     "resetKeybinds": "단축키 초기화",
+    "resetSettingsMessage": "키보드 단축키는 유지하고 설정을 기본값으로 복원할까요?",
+    "resetKeybindsMessage": "키보드 단축키를 기본값으로 복원할까요?",
     "editor": {
       "title": "편집기",
       "locale": "언어",

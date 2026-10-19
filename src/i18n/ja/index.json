@@ -505,6 +505,7 @@
       "remove": "削除",
       "inUse": "使用中",
       "removeInUse": "「{0}」を削除しますか？代わりにデフォルトを使用します。",
+      "removeUnused": "「{0}」を削除しますか？",
       "removeFailed": "この項目を削除できませんでした。",
       "chooseAgain": "もう一度選択",
       "noneInFile": "このファイルに{0}はありません。",
@@ -796,6 +797,8 @@
     "resetSettings": "設定をリセット",
     "resetSettingsHint": "キーボードショートカットを保持して、設定を初期値に戻します。",
     "resetKeybinds": "ショートカットをリセット",
+    "resetSettingsMessage": "キーボードショートカットを保持して、設定を初期値に戻しますか？",
+    "resetKeybindsMessage": "キーボードショートカットを初期値に戻しますか？",
     "editor": {
       "title": "エディター",
       "locale": "言語",

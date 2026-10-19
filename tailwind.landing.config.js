@@ -13,4 +13,5 @@ module.exports = {
             boxShadow,
         },
     },
+    plugins: [require('./tailwind.controls')],
 }

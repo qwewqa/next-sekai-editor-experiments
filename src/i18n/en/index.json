@@ -505,6 +505,7 @@
             "remove": "Remove",
             "inUse": "In use",
             "removeInUse": "Remove \"{0}\"? Default is used instead.",
+            "removeUnused": "Remove \"{0}\"?",
             "removeFailed": "This item could not be removed.",
             "chooseAgain": "Choose Again",
             "noneInFile": "This file has no {0}.",
@@ -796,6 +797,8 @@
         "resetSettings": "Reset Settings",
         "resetSettingsHint": "Restore default settings, keeping keyboard shortcuts.",
         "resetKeybinds": "Reset Shortcuts",
+        "resetSettingsMessage": "Restore default settings, keeping keyboard shortcuts?",
+        "resetKeybindsMessage": "Restore default keyboard shortcuts?",
         "editor": {
             "title": "Editor",
             "locale": "Language",

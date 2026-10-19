@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
+import { confirmReset } from './resetConfirm'
 
 const prefix = 'sonolus-next-sekai-editor.'
 const panelKeys = [
@@ -271,6 +272,7 @@ test('Reset Settings brings back the default', async ({ page }) => {
     await page.keyboard.press(',')
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('button', { name: 'Reset Settings' }).click()
+    await confirmReset(page, 'Reset Settings')
     await page.keyboard.press('Escape')
     await expectShown(page, 'left', { Preview: true, Groups: true, Stages: true })
     expect(await stored(page)).toEqual({})

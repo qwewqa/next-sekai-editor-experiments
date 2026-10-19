@@ -2,17 +2,14 @@ import { showModal } from '.'
 import { i18n } from '../i18n'
 import ChoiceModal from './ChoiceModal.vue'
 
-/** Activations within this long of a dialog opening are ignored (Part 1 §1.4.1). */
-export const GUARD_MS = 300
-
 export type Choice<T> = {
     value: T
     label: () => string
     /** A consequence the label does not show, not a definition of it. */
     description?: () => string
-    /** Destructive or replacing: danger-styled, and never the rightmost. */
+    /** Destructive or replacing: a quiet red label, and never the rightmost. */
     danger?: boolean
-    /** The safe default: rightmost, in the accent colour, with focus. */
+    /** The safe default: rightmost, primary, with focus. */
     default?: boolean
     /** Shown but not offered; its description says why. */
     disabled?: boolean

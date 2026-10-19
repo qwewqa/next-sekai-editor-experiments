@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { GroupId } from '../../src/chart/groups'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 const runtimeErrors = new WeakMap<Page, string[]>()
@@ -226,7 +227,11 @@ test('explicit Add Group remains undoable and deleting every group retains one u
     await panel.getByRole('button', { name: 'Select Multiple', exact: true }).click()
     await panel.getByRole('checkbox', { name: 'Select All', exact: true }).click()
     await panel.locator('.manager-bulk-delete').click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await confirmWhenReady(
+        page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }),
+        page.getByRole('dialog'),
+    )
     expect(await count()).toBe(1)
     await page.evaluate(() => window.editorTest.history.undoState())
     expect(await count()).toBe(2)

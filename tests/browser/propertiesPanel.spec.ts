@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 const panel = (page: Page) => page.locator('#workspace-panel-properties')
@@ -400,7 +401,8 @@ test('view selects return to the current value when a picked command is cancelle
     // Event tools ask to enable dynamic stages first.
     const tool = panel(page).getByRole('combobox', { name: 'Tool', exact: true })
     await tool.selectOption({ label: 'Camera Event' })
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toBeVisible()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     await expect(dialog).toHaveCount(0)
     await expect.poll(() => shown('Tool')).toBe('Select')
     await tool.selectOption({ label: 'Eraser' })

@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
+import { confirmReset } from './resetConfirm'
 
 test.beforeEach(async ({ page }) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
@@ -48,6 +50,7 @@ test('shortcut capture preserves the old binding until replaced or cleared', asy
     await save.press('Tab')
     await expect(save).toHaveText('Unassigned')
     await dialog.getByRole('button', { name: 'Reset Shortcuts', exact: true }).click()
+    await confirmReset(page, 'Reset Shortcuts')
     await expect(save).toHaveText('P')
 })
 
@@ -60,6 +63,8 @@ test('settings and keybind resets are independent and remove saved overrides', a
     })
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('button', { name: 'Reset Shortcuts', exact: true }).click()
+    await confirmReset(page, 'Reset Shortcuts')
+    await expect(page.getByRole('dialog')).toHaveCount(1)
     expect(await page.evaluate(() => window.editorTest.settings.previewNoteSpeed)).toBe(9.25)
     expect(await page.evaluate(() => window.editorTest.settings.previewHighlightSelection)).toBe(
         false,
@@ -76,6 +81,8 @@ test('settings and keybind resets are independent and remove saved overrides', a
         }
     })
     await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).click()
+    await confirmReset(page, 'Reset Settings')
+    await expect(page.getByRole('dialog')).toHaveCount(1)
     expect(await page.evaluate(() => window.editorTest.settings.keyboardShortcuts.save)).toBe('l')
     expect(await page.evaluate(() => window.editorTest.settings.previewHighlightSelection)).toBe(
         true,
@@ -920,3 +927,70 @@ test('on a short screen the section index scrolls away with the sections', async
     await expect(body.locator('[data-settings-index]')).toHaveCount(0)
     await expect(nav).toBeVisible()
 })
+
+for (const reset of [
+    {
+        name: 'Reset Settings',
+        message: 'Restore default settings, keeping keyboard shortcuts?',
+        changed: 'previewNoteSpeed',
+    },
+    {
+        name: 'Reset Shortcuts',
+        message: 'Restore default keyboard shortcuts?',
+        changed: 'save',
+    },
+]) {
+    test(`${reset.name} asks first, with Cancel as the safe default`, async ({ page }) => {
+        // Time is held, so the first moments of the dialog last as long as the checks need.
+        await page.clock.install()
+        await page.clock.pauseAt(new Date(Date.now() + 60_000))
+        await page.evaluate(() => {
+            const { settings } = window.editorTest
+            settings.previewNoteSpeed = 9.25
+            settings.keyboardShortcuts = { ...settings.keyboardShortcuts, save: 'l' }
+        })
+        const read = (key: string) =>
+            page.evaluate((key) => {
+                const { settings } = window.editorTest
+                return key === 'save' ? settings.keyboardShortcuts.save : settings.previewNoteSpeed
+            }, key)
+        const dialog = page.getByRole('dialog')
+        const opener = dialog.getByRole('button', { name: reset.name, exact: true })
+        const before = await read(reset.changed)
+        await opener.click()
+        await expect(page.getByRole('dialog')).toHaveCount(2)
+        const confirm = page.getByRole('dialog').nth(1)
+        await expect(confirm.locator('[data-modal-title]')).toHaveText(reset.name)
+        await expect(confirm).toContainText(reset.message)
+        // Cancel is the filled, focused default, and the reset is the quiet red choice.
+        const cancel = confirm.getByRole('button', { name: 'Cancel', exact: true })
+        await expect(cancel).toBeFocused()
+        await expect(confirm.getByRole('button', { name: reset.name, exact: true })).toHaveClass(
+            /btn-danger-quiet/,
+        )
+        await expect(cancel).toHaveClass(/btn-primary/)
+        // A press in the first moments is not a choice.
+        await page.keyboard.press('Enter')
+        await page.clock.runFor(100)
+        await page.keyboard.press('Enter')
+        await expect(page.getByRole('dialog')).toHaveCount(2)
+        await expect(cancel).toBeFocused()
+        expect(await read(reset.changed)).toBe(before)
+        // After that, Enter takes the default: nothing is reset, and focus returns to the button.
+        await page.clock.runFor(300)
+        await page.keyboard.press('Enter')
+        await expect(page.getByRole('dialog')).toHaveCount(1)
+        await page.clock.resume()
+        expect(await read(reset.changed)).toBe(before)
+        await expect(opener).toBeFocused()
+
+        await opener.click()
+        await expect(page.getByRole('dialog')).toHaveCount(2)
+        await confirmWhenReady(
+            page.getByRole('dialog').nth(1).getByRole('button', { name: reset.name, exact: true }),
+            page.getByRole('dialog').nth(1),
+        )
+        await expect(page.getByRole('dialog')).toHaveCount(1)
+        expect(await read(reset.changed)).not.toBe(before)
+    })
+}

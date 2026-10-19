@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { confirmReset } from './resetConfirm'
 
 const key = 'sonolus-next-sekai-editor.theme'
 const light = 'rgb(64, 68, 100)'
@@ -108,6 +109,7 @@ test('Settings offers the theme after the language', async ({ page }) => {
 
     // Reset Settings returns to System, on this light device.
     await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).click()
+    await confirmReset(page, 'Reset Settings')
     await expect(select).toHaveValue('system')
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
     expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()

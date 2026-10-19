@@ -14,7 +14,7 @@ window.addEventListener(
 </script>
 
 <script setup lang="ts">
-import { nextTick, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import ChevronIcon from '../ChevronIcon.vue'
 import CheckedIcon from './icons/CheckedIcon.vue'
 import GripIcon from './icons/GripIcon.vue'
@@ -162,6 +162,9 @@ const onMenu = (event: MouseEvent) => {
     // An opened menu takes focus itself; a closed one leaves none behind.
     blurAfterPointer(event)
 }
+
+// The recipes of src/controls.css: a ghost, on a band for the heading row.
+const ghost = computed(() => (props.heading ? 'ghost ghost-band' : 'ghost'))
 
 const row = useTemplateRef<HTMLDivElement>('row')
 const more = useTemplateRef<HTMLButtonElement>('more')
@@ -369,6 +372,10 @@ const onRenameBlur = (event: FocusEvent) => {
             'manager-row-indented': indented,
             'manager-row-drop': dropTarget,
             'manager-row-stuck': stuck,
+            // Recipes, combined here because a compound does not survive a scoped @apply.
+            'row-current': current && !heading,
+            'row-checked': selecting && checked === true && !heading,
+            'row-drop': dropTarget,
         }"
         @keydown="onKeydown"
         @contextmenu="onContextMenu"
@@ -379,6 +386,7 @@ const onRenameBlur = (event: FocusEvent) => {
             type="button"
             role="checkbox"
             class="manager-check manager-icon-button"
+            :class="ghost"
             :disabled
             :aria-checked="checked === 'mixed' ? 'mixed' : checked ? 'true' : 'false'"
             :aria-label="checkLabel"
@@ -395,6 +403,7 @@ const onRenameBlur = (event: FocusEvent) => {
             v-else
             type="button"
             class="manager-eye manager-icon-button"
+            :class="ghost"
             :disabled="disabled || eyeDisabled"
             :aria-label="eyeLabel"
             :title="eyeTitle ?? eyeLabel"
@@ -420,7 +429,7 @@ const onRenameBlur = (event: FocusEvent) => {
         <button
             v-else
             type="button"
-            class="manager-name"
+            class="manager-name focus-ring"
             :disabled
             :aria-current="current && !folder ? 'true' : undefined"
             :data-autofocus="autofocusName ? '' : undefined"
@@ -469,7 +478,7 @@ const onRenameBlur = (event: FocusEvent) => {
                     :key="action.key"
                     type="button"
                     class="manager-icon-button manager-inline-button"
-                    :class="`manager-inline-${action.key}`"
+                    :class="[ghost, `manager-inline-${action.key}`]"
                     :aria-label="action.label"
                     :title="action.label"
                     :disabled="action.disabled"
@@ -488,7 +497,7 @@ const onRenameBlur = (event: FocusEvent) => {
             ref="more"
             type="button"
             class="manager-more manager-icon-button"
-            :class="{ 'manager-icon-button-open': menuOpen }"
+            :class="ghost"
             :aria-label="menuLabel"
             :title="menuLabel"
             aria-haspopup="menu"
@@ -501,7 +510,7 @@ const onRenameBlur = (event: FocusEvent) => {
             v-else-if="modeLabel"
             type="button"
             class="manager-mode manager-icon-button"
-            :class="{ 'manager-icon-button-pressed': modeActive }"
+            :class="[ghost, 'btn-toggle']"
             :disabled
             :aria-label="modeLabel"
             :title="modeLabel"
@@ -560,10 +569,11 @@ const onRenameBlur = (event: FocusEvent) => {
     @apply -bottom-0.5;
 }
 
-/* The authoring target reads like a white pill field; the band row has its own marker. */
-.manager-row-current:not(.manager-row-heading) {
-    @apply bg-button shadow-md;
-}
+/*
+ * The authoring target reads like a white pill field (row-current); the band row has its own
+ * marker. Checked rows take row-checked, the target when also checked its ring, and the folder a
+ * drag would join row-drop: all set on the row in the template.
+ */
 
 /* Band rows sit on lavender, where translucent text falls below 4.5:1. */
 .manager-row-heading .manager-meta {
@@ -611,8 +621,9 @@ const onRenameBlur = (event: FocusEvent) => {
     @apply size-4;
 }
 
+/* Colour, state and focus come from the ghost recipes set in the template. */
 .manager-icon-button {
-    @apply relative flex size-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none disabled:opacity-40 forced-colors:disabled:opacity-100;
+    @apply relative flex size-9 shrink-0 items-center justify-center rounded-full forced-colors:disabled:opacity-100;
 }
 
 /* Round buttons and names take their square corners, so neighbours meet. */
@@ -638,54 +649,6 @@ const onRenameBlur = (event: FocusEvent) => {
     @apply -bottom-0.5;
 }
 
-/* A button whose menu is open holds its hover look. */
-.manager-icon-button-open:not(:active) {
-    @apply bg-fg/10;
-}
-
-.manager-row-heading .manager-icon-button-open:not(:active) {
-    @apply bg-band-hover;
-}
-
-/* A toggle that is on, such as the band's Select while selecting. */
-.manager-icon-button-pressed:not(:active) {
-    @apply bg-fg text-header;
-}
-
-/* Its fill hides the usual ring, so focus is an inner ring of its icon's colour, as on the
-   toolbar's tool in use. */
-@media not (forced-colors: active) {
-    .manager-icon-button-pressed:focus-visible:not(:active) {
-        box-shadow:
-            inset 0 0 0 2px theme('colors.fg'),
-            inset 0 0 0 4px theme('colors.header');
-    }
-}
-
-/* High contrast selects it, as the toolbar's tool in use, with focus an inner ring on its fill. */
-@media (forced-colors: active) {
-    .manager-icon-button.manager-icon-button-pressed {
-        forced-color-adjust: none;
-        background-color: Highlight;
-        color: HighlightText;
-        box-shadow: none;
-    }
-
-    .manager-icon-button.manager-icon-button-pressed:focus-visible {
-        outline-color: HighlightText;
-        outline-offset: -6px;
-    }
-}
-
-/* Selected rows while selecting; the target keeps its white pill, ringed. */
-.manager-row-selected:not(.manager-row-current) {
-    @apply bg-selected/40;
-}
-
-.manager-row-selected.manager-row-current {
-    @apply ring-2 ring-inset ring-accent;
-}
-
 .manager-icon-spacer {
     @apply w-9 shrink-0;
 }
@@ -696,7 +659,7 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-name {
-    @apply relative flex h-9 min-w-0 flex-1 items-center rounded-full px-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fg active:bg-accent active:text-on-accent disabled:pointer-events-none;
+    @apply relative flex h-9 min-w-0 flex-1 items-center rounded-full px-2 text-left active:bg-ghost-press active:text-fg-strong disabled:pointer-events-none;
 }
 
 .manager-rename {
@@ -709,7 +672,7 @@ const onRenameBlur = (event: FocusEvent) => {
 }
 
 .manager-name:active .manager-chevron {
-    @apply text-on-accent;
+    @apply text-fg-strong;
 }
 
 /*
@@ -720,11 +683,6 @@ const onRenameBlur = (event: FocusEvent) => {
 .manager-row-indented .manager-name,
 .manager-row-indented .manager-rename {
     @apply ml-5;
-}
-
-/* The folder a dragged entry would join. */
-.manager-row-drop {
-    @apply bg-selected/35 ring-2 ring-inset ring-accent;
 }
 
 /* One trailing column for counts, which inline actions overlay in place; a
@@ -780,15 +738,6 @@ const onRenameBlur = (event: FocusEvent) => {
         @apply bg-header-hover;
     }
 
-    .manager-icon-button:hover:not(:active):not(.manager-icon-button-pressed) {
-        @apply bg-fg/10;
-    }
-
-    /* Icon buttons on a band lighten, like other band buttons. */
-    .manager-row-heading .manager-icon-button:hover:not(:active):not(.manager-icon-button-pressed) {
-        @apply bg-band-hover;
-    }
-
     .manager-row:hover .manager-slot-hover .manager-inline {
         display: flex;
     }
@@ -815,10 +764,11 @@ const onRenameBlur = (event: FocusEvent) => {
     visibility: visible;
 }
 
-/* High contrast: focus rings sit inside their control, clear of the target's edge;
-   last so it outranks the controls' own focus rules. */
+/* High contrast: focus rings sit inside their control, clear of the target's edge. They stay
+   2px, as these controls sit close together; last so it outranks the recipes' own focus rules. */
 @media (forced-colors: active) {
     .manager-row :focus-visible {
+        outline-width: 2px;
         outline-offset: -2px;
     }
 

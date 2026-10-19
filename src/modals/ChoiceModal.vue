@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef } from 'vue'
 import BaseModal from './BaseModal.vue'
-import { GUARD_MS, type ChoiceButton } from './choice'
+import { useActivationGuard } from './activationGuard'
+import type { ChoiceButton } from './choice'
 
 // The shared choice dialog (Part 1 §1.4.1): Cancel, the other choices, then the safe default.
 const props = defineProps<{
@@ -15,7 +16,7 @@ const emit = defineEmits<{
     close: [result: unknown]
 }>()
 
-const openedAt = performance.now()
+const { accidental, onKeydown } = useActivationGuard()
 const ids = useId()
 
 // Descriptions sit under their buttons, so a dialog with any stacks them.
@@ -65,28 +66,14 @@ onBeforeUnmount(() => {
     window.removeEventListener('resize', onResize)
 })
 
-// A press within the first moments, or a held key, is not a choice.
-const accidental = () => performance.now() - openedAt < GUARD_MS
-
 const pick = (button: ChoiceButton) => {
     if (button.disabled || accidental()) return
     emit('close', button.cancel ? undefined : button.value)
 }
 
-// Key repeat is swallowed before it can click the focused button again.
-const onKeydown = (event: KeyboardEvent) => {
-    if (event.repeat && (event.key === 'Enter' || event.key === ' ')) {
-        event.preventDefault()
-        event.stopPropagation()
-    }
-}
-
+// Primary is the safe default; a destructive choice beside it is quiet red.
 const classes = (button: ChoiceButton) =>
-    button.danger
-        ? 'bg-danger text-on-danger active:bg-button active:text-fg'
-        : button.default
-          ? 'bg-accent text-on-accent active:bg-button active:text-fg'
-          : 'bg-button active:bg-accent active:text-on-accent'
+    button.danger ? 'btn-danger-quiet' : button.default ? 'btn-primary' : 'btn-secondary'
 </script>
 
 <template>
@@ -104,12 +91,8 @@ const classes = (button: ChoiceButton) =>
                 <div class="flex shrink-0 flex-col gap-1" :class="{ 'items-stretch': stacked }">
                     <button
                         type="button"
-                        class="h-9 min-w-24 max-w-full rounded-full px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg"
-                        :class="[
-                            classes(button),
-                            stacked ? 'w-full' : 'whitespace-nowrap',
-                            'disabled:pointer-events-none disabled:opacity-40',
-                        ]"
+                        class="btn h-9 min-w-24 max-w-full rounded-full px-4"
+                        :class="[classes(button), stacked ? 'w-full' : 'whitespace-nowrap']"
                         :disabled="button.disabled"
                         :data-autofocus="button.default || undefined"
                         :data-choice="

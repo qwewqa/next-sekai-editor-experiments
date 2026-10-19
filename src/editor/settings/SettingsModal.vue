@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
+import { showChoice } from '../../modals/choice'
 import { resetKeybinds, resetSettings } from '../../settings'
 import { closeSettingsKey } from './closeSettings'
 import { requestedSection } from './openSettings'
@@ -58,6 +59,29 @@ onBeforeUnmount(() => {
     clearTimeout(timer)
 })
 
+// A reset cannot be undone, so each asks first, with Cancel as the safe default.
+const confirmReset = async (title: () => string, message: () => string, reset: () => void) => {
+    const confirmed = await showChoice({
+        title,
+        message,
+        choices: [{ value: true, label: title, danger: true }],
+        cancelIsDefault: true,
+    })
+    if (confirmed) reset()
+}
+const askResetSettings = () =>
+    confirmReset(
+        () => i18n.value.settings.resetSettings,
+        () => i18n.value.settings.resetSettingsMessage,
+        resetSettings,
+    )
+const askResetKeybinds = () =>
+    confirmReset(
+        () => i18n.value.settings.resetKeybinds,
+        () => i18n.value.settings.resetKeybindsMessage,
+        resetKeybinds,
+    )
+
 // A short screen (a landscape phone) lets the index scroll away with the sections.
 const shortQuery = matchMedia('(max-height: 500px)')
 const short = ref(shortQuery.matches)
@@ -83,16 +107,16 @@ onBeforeUnmount(() => {
             <div class="flex flex-wrap gap-2">
                 <button
                     type="button"
-                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
+                    class="btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4"
                     :title="i18n.settings.resetSettingsHint"
-                    @click="resetSettings"
+                    @click="askResetSettings"
                 >
                     {{ i18n.settings.resetSettings }}
                 </button>
                 <button
                     type="button"
-                    class="h-9 min-w-24 max-w-full truncate rounded-full bg-button px-4 shadow-md outline-none -outline-offset-2 transition-colors hover:shadow-accent focus-visible:ring-2 focus-visible:ring-fg active:bg-accent active:text-on-accent"
-                    @click="resetKeybinds"
+                    class="btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                    @click="askResetKeybinds"
                 >
                     {{ i18n.settings.resetKeybinds }}
                 </button>
