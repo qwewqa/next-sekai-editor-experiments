@@ -4,6 +4,7 @@ import { bgm as currentBgm } from '../../../history/live'
 import { refuseWhilePeeking } from '../../../history/peek'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
+import type { Bgm } from '../../../state/bgm'
 import { releaseWaveform } from '../../../waveform'
 import { createAsyncEditGuard } from '../../asyncEditGuard'
 import { bgmOperation } from '../../headerLabels'
@@ -31,7 +32,7 @@ export const changeBgm = async (file?: File) => {
     const guard = createAsyncEditGuard()
     const openingBgm = currentBgm.value
     try {
-        const newBgm = await showModal(BgmModal, {
+        const newBgm: Bgm | undefined = await showModal(BgmModal, {
             bgm: openingBgm,
             file,
         })

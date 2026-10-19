@@ -825,7 +825,9 @@ const bulkHidden = computed(() => selectedIds.value.some((id) => !scope.value.is
 
 /** Deletes the selection; keyboard focus moves to the row taking the first deleted row's place. */
 const editLifetime = new AbortController()
-onUnmounted(() => editLifetime.abort())
+onUnmounted(() => {
+    editLifetime.abort()
+})
 
 const continueDeleteFocus = async (
     model: ManagerModel<T>,
@@ -1931,7 +1933,9 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
             const generation = stackGeneration()
             if (key.type === 'folder') folders.value.ungroup(key.id)
             if (!keyboard) return
-            await continueDeleteFocus(model, generation, () => focusAfterDelete(index))
+            await continueDeleteFocus(model, generation, () => {
+                focusAfterDelete(index)
+            })
             return
         }
         case 'delete': {
@@ -1940,7 +1944,9 @@ const run = async (key: RowKey, action: string, keyboard: boolean, anchor: HTMLE
             if (key.type === 'entry') model.remove(key.id)
             else if (!(await folders.value.remove(key.id, editLifetime.signal))) return
             if (!keyboard) return
-            await continueDeleteFocus(model, generation, () => focusAfterDelete(index))
+            await continueDeleteFocus(model, generation, () => {
+                focusAfterDelete(index)
+            })
             return
         }
     }
