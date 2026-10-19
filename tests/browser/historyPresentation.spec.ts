@@ -163,24 +163,309 @@ test('filtering out the active peek does not announce Now as selected or replace
     expect(await selected(page)).toEqual(before)
 })
 
-test('rejected Restore from a reset session cannot damage or leave the newer peek', async ({ page }) => {
+const seedPagingEntries = async (page: Page) => {
+    await page.evaluate(async () => {
+        const { history, historySteps } = window.editorTest
+        // Future extensions keep this paging fixture's rows individually navigable.
+        for (let i = 31; i <= 250; i++) {
+            const before = history.state.value.initialLife
+            history.pushState(historySteps.futureInitialLife(before, before + 1, `Property ${i}`), {
+                ...history.state.value,
+                initialLife: before + 1,
+            })
+        }
+        await window.nseFlushTest!.flusher.flush({ strict: true })
+    })
+}
+
+for (const outcome of ['complete', 'failed', 'keyboard', 'filter', 'outside', 'reset'] as const)
+    test(`oldest window replacement preserves navigation ownership: ${outcome}`, async ({
+        page,
+    }) => {
+        await seedPagingEntries(page)
+        await open(page)
+        await row(page, 'Property 250').click()
+        await expect.poll(async () => (await selected(page)).label).toBe('Property 250')
+        await page.evaluate(async () => {
+            const { storageWorker } =
+                await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                    '/src/local/start.ts',
+                )
+            const control = window as unknown as { releaseOldest?: (fail: boolean) => void }
+            storageWorker!.call = new Proxy(storageWorker!.call, {
+                async apply(target, self, args) {
+                    const result = await Reflect.apply(target, self, args)
+                    if (args[0] === 'readTimeline' && args[1]?.before === 1)
+                        await new Promise<void>((resolve, reject) => {
+                            control.releaseOldest = (fail) => {
+                                control.releaseOldest = undefined
+                                if (fail) reject(new Error('unreadable oldest window'))
+                                else resolve()
+                            }
+                        })
+                    return result
+                },
+            })
+        })
+        await page.keyboard.press('End')
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => typeof (window as unknown as { releaseOldest?: unknown }).releaseOldest,
+                ),
+            )
+            .toBe('function')
+        if (outcome === 'keyboard') {
+            await page.keyboard.press('ArrowDown')
+            await expect.poll(async () => (await selected(page)).label).toBe('Property 249')
+        } else if (outcome === 'filter') {
+            await page.evaluate(async () => {
+                const { historyFilter } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/state')
+                >('/src/editor/history/state.ts')
+                historyFilter.value = 'saves'
+            })
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        } else if (outcome === 'outside') {
+            await presentation(page).locator('[data-history-close]').focus()
+        } else if (outcome === 'reset') {
+            await page.evaluate(() => window.editorTest.history.resetState(false))
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        }
+        await page.evaluate((fail) => {
+            ;(window as unknown as { releaseOldest: (fail: boolean) => void }).releaseOldest(fail)
+        }, outcome === 'failed')
+        if (outcome === 'complete') {
+            const oldest = row(page, 'Started a new level')
+            await expect(oldest).toHaveAttribute('aria-selected', 'true')
+            await expect(oldest).toBeFocused()
+            await page.keyboard.press('Home')
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+            await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+        } else if (outcome === 'reset') {
+            await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        } else {
+            if (outcome === 'failed') {
+                await expect(row(page, 'Property 250')).toBeFocused()
+            } else if (outcome === 'filter') {
+                await expect(list(page).getByRole('row')).toHaveCount(1)
+            } else {
+                await expect(row(page, 'Property 250')).toHaveCount(0)
+                await expect(list(page).getByRole('row', { name: /^Now/ })).toHaveAttribute(
+                    'tabindex',
+                    '0',
+                )
+            }
+            await expect
+                .poll(async () => (await selected(page)).label)
+                .toBe(outcome === 'keyboard' ? 'Property 249' : 'Property 250')
+            if (outcome === 'outside')
+                await expect(presentation(page).locator('[data-history-close]')).toBeFocused()
+        }
+    })
+
+for (const interruption of ['reset', 'newer jump', 'newest reset'] as const)
+    test(`oldest index request cannot replace the source after ${interruption}`, async ({
+        page,
+    }) => {
+        await seedPagingEntries(page)
+        await open(page)
+        await row(page, 'Property 250').click()
+        await page.evaluate(async () => {
+            const { storageWorker } =
+                await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                    '/src/local/start.ts',
+                )
+            const control = window as unknown as {
+                releaseIndex?: () => void
+                newerJump?: Promise<unknown>
+            }
+            storageWorker!.call = new Proxy(storageWorker!.call, {
+                async apply(target, self, args) {
+                    const result = await Reflect.apply(target, self, args)
+                    if (args[0] === 'readTimelineIndex')
+                        await new Promise<void>((resolve) => {
+                            control.releaseIndex = resolve
+                        })
+                    return result
+                },
+            })
+        })
+        await page.evaluate(async () => {
+            const source = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/source')
+            >('/src/editor/history/source.ts')
+            ;(window as unknown as { pendingEnd: Promise<unknown> }).pendingEnd =
+                source.jumpToOldest('all')
+        })
+        await expect
+            .poll(() =>
+                page.evaluate(
+                    () => typeof (window as unknown as { releaseIndex?: unknown }).releaseIndex,
+                ),
+            )
+            .toBe('function')
+        if (interruption === 'reset') {
+            await page.evaluate(() => window.editorTest.history.resetState(false))
+        } else if (interruption === 'newest reset') {
+            await page.evaluate(async () => {
+                const source = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/source')
+                >('/src/editor/history/source.ts')
+                await source.resetToNewest()
+            })
+        } else {
+            await page.evaluate(async () => {
+                const source = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/source')
+                >('/src/editor/history/source.ts')
+                const sessionId = window.nseFlushTest!.flusher.session!.id
+                ;(window as unknown as { newerJump: Promise<unknown> }).newerJump = source.jumpTo(
+                    { sessionId, seq: 200 },
+                    'all',
+                )
+            })
+        }
+        await page.evaluate(async () => {
+            const control = window as unknown as {
+                releaseIndex: () => void
+                pendingEnd: Promise<unknown>
+            }
+            control.releaseIndex()
+            await control.pendingEnd
+        })
+        if (interruption === 'newer jump') {
+            const target = await page.evaluate(
+                async () =>
+                    (
+                        await (
+                            window as unknown as { newerJump: Promise<{ seq: number } | undefined> }
+                        ).newerJump
+                    )?.seq,
+            )
+            expect(target).toBe(200)
+        }
+        const sourceRows = await page.evaluate(async () => {
+            const source = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/source')
+            >('/src/editor/history/source.ts')
+            return source.entries.value.map(({ seq }) => seq)
+        })
+        if (interruption === 'reset') expect(sourceRows).toEqual([])
+        else {
+            expect(sourceRows).toContain(interruption === 'newer jump' ? 200 : 250)
+            expect(sourceRows).not.toContain(0)
+        }
+        if (interruption === 'reset') {
+            await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+            await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
+        }
+    })
+
+test('refresh rejection affects only its current source generation', async ({ page }) => {
+    await open(page)
+    await page.evaluate(async () => {
+        const [{ storageWorker }, source] = await Promise.all([
+            window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            ),
+            window.editorTest.appImport<typeof import('../../src/editor/history/source')>(
+                '/src/editor/history/source.ts',
+            ),
+        ])
+        const control = window as unknown as {
+            rejectRefresh?: () => void
+            pendingRefresh: Promise<void>
+        }
+        storageWorker!.call = new Proxy(storageWorker!.call, {
+            apply(target, self, args) {
+                if (args[0] === 'readTimeline')
+                    return new Promise((_, reject) => {
+                        control.rejectRefresh = () => reject(new Error('unreadable refresh'))
+                    })
+                return Reflect.apply(target, self, args)
+            },
+        })
+        control.pendingRefresh = source.refresh()
+    })
+    await page.evaluate(async () => {
+        window.editorTest.history.resetState(false)
+        const control = window as unknown as {
+            rejectRefresh: () => void
+            pendingRefresh: Promise<void>
+        }
+        control.rejectRefresh()
+        await control.pendingRefresh
+    })
+    const status = () =>
+        page.evaluate(
+            async () =>
+                (
+                    await window.editorTest.appImport<
+                        typeof import('../../src/editor/history/source')
+                    >('/src/editor/history/source.ts')
+                ).status.value,
+        )
+    expect(await status()).toBe('loading')
+    await page.evaluate(async () => {
+        const source = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/source')
+        >('/src/editor/history/source.ts')
+        const pending = source.refresh()
+        ;(window as unknown as { rejectRefresh: () => void }).rejectRefresh()
+        await pending
+    })
+    expect(await status()).toBe('failed')
+})
+
+test('rejected Restore from a reset session cannot damage or leave the newer peek', async ({
+    page,
+}) => {
     await page.evaluate(async () => {
         const { history, historySteps, appImport } = window.editorTest
         const [peek, selection, presentation] = await Promise.all([
             appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts'),
-            appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts'),
-            appImport<typeof import('../../src/history/operationPresentation')>('/src/history/operationPresentation/index.ts'),
+            appImport<typeof import('../../src/editor/history/selection')>(
+                '/src/editor/history/selection.ts',
+            ),
+            appImport<typeof import('../../src/history/operationPresentation')>(
+                '/src/history/operationPresentation/index.ts',
+            ),
         ])
         const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
         peek.setPeekSource({
-            load: (key) => key === 'newer:1'
-                ? Promise.resolve({ state: { ...history.liveState.value, initialLife: 2000 }, time: 2 })
-                : new Promise((_resolve, reject) => { pending.rejectRestore = () => reject(new peek.PeekError('damaged')) }),
+            load: (key) =>
+                key === 'newer:1'
+                    ? Promise.resolve({
+                          state: { ...history.liveState.value, initialLife: 2000 },
+                          time: 2,
+                      })
+                    : new Promise((_resolve, reject) => {
+                          pending.rejectRestore = () => reject(new peek.PeekError('damaged'))
+                      }),
             sameSnapshot: () => false,
         })
         pending.restoring = selection.requestRestore('older:1')
         history.resetState(false)
-        selection.requestPeek({ key: 'newer:1', time: 2, recipe: presentation.captureOperationRecipe([{ description: { kind: 'edit', step: historySteps.editStep(historySteps.futureInitialLife(history.liveState.value.initialLife, 2000, 'Newer source')) } }]) })
+        selection.requestPeek({
+            key: 'newer:1',
+            time: 2,
+            recipe: presentation.captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'edit',
+                        step: historySteps.editStep(
+                            historySteps.futureInitialLife(
+                                history.liveState.value.initialLife,
+                                2000,
+                                'Newer source',
+                            ),
+                        ),
+                    },
+                },
+            ]),
+        })
     })
     await expect.poll(async () => (await selected(page)).displayed).toBe('newer:1')
     const before = await selected(page)
@@ -190,12 +475,18 @@ test('rejected Restore from a reset session cannot damage or leave the newer pee
         await pending.restoring
     })
     expect(await selected(page)).toEqual(before)
-    expect(await page.evaluate(async () => {
-        const { damagedEntries } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
-        return damagedEntries.value.has('older:1')
-    })).toBe(false)
+    expect(
+        await page.evaluate(async () => {
+            const { damagedEntries } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            return damagedEntries.value.has('older:1')
+        }),
+    ).toBe(false)
     await page.evaluate(async () => {
-        const { requestRestore } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
+        const { requestRestore } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
         const pending = window as unknown as { rejectRestore: () => void; restoring: Promise<void> }
         pending.restoring = requestRestore('ordinary:1')
         window.editorTest.settings.locale = 'fr'
@@ -203,10 +494,14 @@ test('rejected Restore from a reset session cannot damage or leave the newer pee
         pending.rejectRestore()
         await pending.restoring
     })
-    expect(await page.evaluate(async () => {
-        const { damagedEntries } = await window.editorTest.appImport<typeof import('../../src/editor/history/selection')>('/src/editor/history/selection.ts')
-        return damagedEntries.value.has('ordinary:1')
-    })).toBe(true)
+    expect(
+        await page.evaluate(async () => {
+            const { damagedEntries } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            return damagedEntries.value.has('ordinary:1')
+        }),
+    ).toBe(true)
     expect((await selected(page)).requested).toBe('newer:1')
 })
 
@@ -449,7 +744,9 @@ test('selected Details keeps exact members and request identity while text reloc
         1,
     )
     const childBody = details.locator('[data-operation-children] [data-operation-details]')
-    await expect(childBody.locator('[data-operation-description], [data-operation-time]')).toHaveCount(0)
+    await expect(
+        childBody.locator('[data-operation-description], [data-operation-time]'),
+    ).toHaveCount(0)
     await expect(childBody.locator('[data-operation-field="before"]')).toContainText('1,030')
     await expect(childBody.locator('[data-operation-field="after"]')).toContainText('1,031')
     await capture(page, 'desktop-operation-details')
@@ -817,8 +1114,14 @@ for (const width of [1600, 390, 320]) {
             await expect(page.locator('[data-peek-change]')).toHaveText('2 changes')
             const geometry = await page.locator('[data-peek-bar]').evaluate((bar) => {
                 const main = bar.querySelector('[data-peek-main]')!.getBoundingClientRect()
-                const navigation = bar.querySelector('[data-peek-navigation]')!.getBoundingClientRect()
-                return { primary: main.height, gap: navigation.top - main.bottom, secondary: navigation.height }
+                const navigation = bar
+                    .querySelector('[data-peek-navigation]')!
+                    .getBoundingClientRect()
+                return {
+                    primary: main.height,
+                    gap: navigation.top - main.bottom,
+                    secondary: navigation.height,
+                }
             })
             expect(geometry).toEqual({ primary: 52, gap: 8, secondary: 32 })
             await capture(page, `${width}-active-peek-bars`)

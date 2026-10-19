@@ -86,7 +86,9 @@ const toggle = (index: number, event: Event) => {
                 <summary
                     class="min-h-11 cursor-pointer py-3 font-bold outline-offset-2 focus-visible:outline focus-visible:outline-2"
                 >
-                    <span class="whitespace-pre-wrap">{{ describeMember(member, memberContext) }}</span>
+                    <span class="whitespace-pre-wrap">{{
+                        describeMember(member, memberContext)
+                    }}</span>
                     <span
                         v-if="member.time !== undefined"
                         class="block pl-4 text-xs font-normal text-fg/75"

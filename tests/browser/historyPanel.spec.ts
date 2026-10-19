@@ -781,7 +781,7 @@ test.describe('the Timeline', () => {
     }) => {
         await page.evaluate(() => {
             const { history } = window.editorTest
-            // Different labels, so no group forms.
+            // Future extensions intentionally keep these geometry fixtures ungrouped.
             for (let i = 0; i < 400; i++)
                 history.pushState(
                     window.editorTest.historySteps.futureInitialLife(
@@ -799,8 +799,8 @@ test.describe('the Timeline', () => {
         await expect(list(page).getByRole('row').first()).toBeVisible()
         expect(await list(page).getByRole('row').count()).toBeLessThan(60)
         const first = list(page).getByRole('row').first()
-        await expect(first).toHaveAttribute('aria-posinset', '1')
-        await expect(first).toHaveAttribute('aria-setsize', /^40[0-9]$/)
+        await expect(first).toHaveAttribute('aria-rowindex', '1')
+        await expect(list(page)).toHaveAttribute('aria-rowcount', /^40[0-9]$/)
         await expect(page.locator('[data-history-pinned]')).toHaveCount(0)
         await list(page).evaluate((element) => element.scrollTo({ top: 4000 }))
         await expect(row(page, 'Step 300')).toBeVisible()
@@ -849,7 +849,11 @@ test.describe('the Timeline', () => {
         await openTab(page)
         const removed = row(page, 'Removed notes')
         await expect(removed.locator('[data-history-flag]')).toContainText('removed to save space')
-        await expect(removed).toHaveAttribute('aria-disabled', 'true')
+        await expect(removed).not.toHaveAttribute('aria-disabled')
+        await removed.getByRole('button', { name: /^Step Details: Removed notes,/ }).click()
+        await expect(page.getByRole('dialog', { name: 'Step Details', exact: true })).toBeVisible()
+        await expect(peekBar(page)).toHaveCount(0)
+        await page.keyboard.press('Escape')
         await page.setViewportSize({ width: 390, height: 844 })
         await settle(page)
         await expect(removed.locator('[data-history-flag]')).toContainText('removed to save space')

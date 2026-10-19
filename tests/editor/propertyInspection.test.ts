@@ -23,7 +23,12 @@ const comparison = (after = state('After'), before = 1): InspectionComparison =>
         key: entryKey('session', 4),
         time: 1,
         recipe: captureOperationRecipe([
-            { description: { kind: 'edit', step: editStep(futureFixtureOperation('property-inspection')) } },
+            {
+                description: {
+                    kind: 'edit',
+                    step: editStep(futureFixtureOperation('property-inspection')),
+                },
+            },
         ]),
         oldest: entryKey('session', 2),
     },
