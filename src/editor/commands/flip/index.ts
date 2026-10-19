@@ -1,13 +1,15 @@
 import type { Command } from '..'
 import type { FlickDirection } from '../../../chart/note'
 import { pushState, state } from '../../../history'
+import { createHistoryOperation } from '../../../history/createHistoryOperation'
+import { subjectOfCounts } from '../../../history/operations'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import type { EditableEntity, EditableObject } from '../../../state/operations/editable'
+import { changedNativeCounts } from '../../../state/operations/historyReceipts'
 import { editChanges, editEntity } from '../../../state/operations/properties/plan'
 import { createTransaction } from '../../../state/transaction'
-import { interpolate } from '../../../utils/interpolate'
 import { alignComputed } from '../../../utils/math'
 import { notify } from '../../notification'
 import { view } from '../../view'
@@ -41,21 +43,38 @@ export const flip: Command = {
 
         const transaction = createTransaction(state.value)
 
-        const flippedEntities = entities.flatMap((entity) => {
+        const pairs: { before: Entity; index: number }[] = []
+        const flippedEntities: Entity[] = []
+        for (const entity of entities) {
             const object = changes.get(entity)
-            return object ? editEntity(transaction, entity as EditableEntity, object) : [entity]
+            pairs.push({ before: entity, index: flippedEntities.length })
+            flippedEntities.push(
+                ...(object ? editEntity(transaction, entity as EditableEntity, object) : [entity]),
+            )
+        }
+        const result = transaction.commit(flippedEntities)
+        const counts = changedNativeCounts(
+            pairs.flatMap(({ before, index }) => {
+                const after = result.selectedEntities[index]
+                return after ? [{ before, after }] : []
+            }),
+        )
+        const operation = createHistoryOperation({
+            id: 'nse.object.flip',
+            data: {
+                axis: 'horizontal',
+                subject: subjectOfCounts(counts),
+                targets: Object.values(counts).reduce((sum, value) => sum + value, 0),
+            },
         })
 
-        pushState(
-            interpolate(() => i18n.value.commands.flip.flipped, `${entities.length}`),
-            transaction.commit(flippedEntities),
-        )
+        pushState(operation, result)
         view.entities = {
             hovered: [],
             creating: [],
         }
 
-        notify(interpolate(() => i18n.value.commands.flip.flipped, `${entities.length}`))
+        notify(() => operation.fallback.text)
     },
 }
 

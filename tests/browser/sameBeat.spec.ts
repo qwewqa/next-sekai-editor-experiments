@@ -553,20 +553,65 @@ test.describe('flipping, scaling and nudging a pair keeps both', () => {
                     >('/src/editor/commands/flipVertical/index.ts')
                     flipVertical.execute()
                 } else if (operation === 'scale') {
-                    const { scaleSelection } = await appImport<
+                    const { scaleSelectionWithReceipt } = await appImport<
                         typeof import('../../src/state/operations/scaleSelection')
                     >('/src/state/operations/scaleSelection.ts')
+                    const { createHistoryOperation } = await appImport<
+                        typeof import('../../src/history/createHistoryOperation')
+                    >('/src/history/createHistoryOperation.ts')
+                    const { subjectOfCounts } = await appImport<
+                        typeof import('../../src/history/operations')
+                    >('/src/history/operations/index.ts')
+                    const result = scaleSelectionWithReceipt(
+                        history.state.value,
+                        selected,
+                        'beat',
+                        2,
+                        2,
+                    )
                     history.pushState(
-                        () => 'scale',
-                        scaleSelection(history.state.value, selected, 'beat', 2, 2),
+                        createHistoryOperation({
+                            id: 'nse.object.scale',
+                            data: {
+                                axis: 'beats',
+                                subject: subjectOfCounts(result.counts),
+                                targets: Object.values(result.counts).reduce(
+                                    (sum, count) => sum + count,
+                                    0,
+                                ),
+                                transform: { mode: 'uniform', factor: 2, pivot: 2 },
+                            },
+                        }),
+                        result.state,
                     )
                 } else {
-                    const { translateSelection } = await appImport<
+                    const { translateSelectionWithReceipt } = await appImport<
                         typeof import('../../src/state/operations/translateSelection')
                     >('/src/state/operations/translateSelection.ts')
+                    const { createHistoryOperation } = await appImport<
+                        typeof import('../../src/history/createHistoryOperation')
+                    >('/src/history/createHistoryOperation.ts')
+                    const { subjectOfCounts } = await appImport<
+                        typeof import('../../src/history/operations')
+                    >('/src/history/operations/index.ts')
+                    const result = translateSelectionWithReceipt(
+                        history.state.value,
+                        selected,
+                        'beat',
+                        1,
+                    )
                     history.pushState(
-                        () => 'translate',
-                        translateSelection(history.state.value, selected, 'beat', 1),
+                        createHistoryOperation({
+                            id: 'nse.object.move',
+                            data: {
+                                subject: subjectOfCounts(result.counts),
+                                targets: Object.values(result.counts).reduce(
+                                    (sum, count) => sum + count,
+                                    0,
+                                ),
+                            },
+                        }),
+                        result.state,
                     )
                 }
                 await nextTick()
@@ -610,15 +655,24 @@ const transformChosen = (
     page.evaluate(
         async ({ operation, axis, choose }) => {
             const { history, store, appImport } = window.editorTest
-            const { scaleSelection } = await appImport<
+            const { scaleSelectionWithReceipt } = await appImport<
                 typeof import('../../src/state/operations/scaleSelection')
             >('/src/state/operations/scaleSelection.ts')
-            const { translateSelection } = await appImport<
+            const { translateSelectionWithReceipt } = await appImport<
                 typeof import('../../src/state/operations/translateSelection')
             >('/src/state/operations/translateSelection.ts')
-            const { flipVertical } = await appImport<
+            const { flipVerticalWithReceipt } = await appImport<
                 typeof import('../../src/state/operations/flipVertical')
             >('/src/state/operations/flipVertical.ts')
+            const { createHistoryOperation } = await appImport<
+                typeof import('../../src/history/createHistoryOperation')
+            >('/src/history/createHistoryOperation.ts')
+            const { subjectOfCounts } = await appImport<
+                typeof import('../../src/history/operations')
+            >('/src/history/operations/index.ts')
+            const { getScalePivot } = await appImport<
+                typeof import('../../src/state/operations/scaleValues')
+            >('/src/state/operations/scaleValues.ts')
             const all = [...store.getAllEntities()]
             const selected = all.filter(
                 (entity) =>
@@ -634,14 +688,37 @@ const transformChosen = (
                     ),
             )
             const source = { ...history.state.value, selectedEntities: selected }
-            history.pushState(
-                () => operation,
+            const result =
                 operation === 'scale'
-                    ? scaleSelection(source, selected, axis, 2)
+                    ? scaleSelectionWithReceipt(source, selected, axis, 2)
                     : operation === 'translate'
-                      ? translateSelection(source, selected, axis, 1)
-                      : flipVertical(source, selected),
-            )
+                      ? translateSelectionWithReceipt(source, selected, axis, 1)
+                      : flipVerticalWithReceipt(source, selected)
+            const data = {
+                subject: subjectOfCounts(result.counts),
+                targets: Object.values(result.counts).reduce((sum, count) => sum + count, 0),
+            }
+            const pivot = getScalePivot(selected, axis, source)
+            const description =
+                operation === 'scale'
+                    ? createHistoryOperation({
+                          id: 'nse.object.scale',
+                          data: {
+                              ...data,
+                              axis: axis === 'beat' ? 'beats' : axis,
+                              transform:
+                                  pivot === undefined
+                                      ? { mode: 'composed' }
+                                      : { mode: 'uniform', factor: 2, pivot },
+                          },
+                      })
+                    : operation === 'translate'
+                      ? createHistoryOperation({ id: 'nse.object.move', data })
+                      : createHistoryOperation({
+                            id: 'nse.object.flip',
+                            data: { ...data, axis: 'vertical' },
+                        })
+            history.pushState(description, result.state)
         },
         { operation, axis, choose },
     )
@@ -1012,9 +1089,15 @@ const flipSlide = (page: Page, separator: boolean, reversed: boolean) =>
     page.evaluate(
         async ({ notes, reversed }) => {
             const { show, fixtures, history, appImport } = window.editorTest
-            const { flipVertical } = await appImport<
+            const { flipVerticalWithReceipt } = await appImport<
                 typeof import('../../src/state/operations/flipVertical')
             >('/src/state/operations/flipVertical.ts')
+            const { createHistoryOperation } = await appImport<
+                typeof import('../../src/history/createHistoryOperation')
+            >('/src/history/createHistoryOperation.ts')
+            const { subjectOfCounts } = await appImport<
+                typeof import('../../src/history/operations')
+            >('/src/history/operations/index.ts')
             show({
                 ...fixtures.interaction,
                 slides: [
@@ -1040,9 +1123,23 @@ const flipSlide = (page: Page, separator: boolean, reversed: boolean) =>
             const flip = () => {
                 const notes = [...history.state.value.store.slides.note.values()].flat()
                 const selected = reversed ? notes.reverse() : notes
+                const result = flipVerticalWithReceipt(
+                    { ...history.state.value, selectedEntities: selected },
+                    selected,
+                )
                 history.pushState(
-                    () => 'flip',
-                    flipVertical({ ...history.state.value, selectedEntities: selected }, selected),
+                    createHistoryOperation({
+                        id: 'nse.object.flip',
+                        data: {
+                            axis: 'vertical',
+                            subject: subjectOfCounts(result.counts),
+                            targets: Object.values(result.counts).reduce(
+                                (sum, count) => sum + count,
+                                0,
+                            ),
+                        },
+                    }),
+                    result.state,
                 )
             }
             const before = read()

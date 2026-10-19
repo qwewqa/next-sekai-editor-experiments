@@ -105,10 +105,16 @@ const undoLabel = (page: Page) =>
     page.evaluate(async () => {
         const history = window.editorTest.history
         const before = history.state.value
-        const name = history.undoState() as string | (() => string) | undefined
-        if (name !== undefined) history.redoState()
+        const step = history.undoState()
+        if (step !== undefined) history.redoState()
+        const { describeStep } = await window.editorTest.appImport<
+            typeof import('../../src/history/operationPresentation/format')
+        >('/src/history/operationPresentation/format.ts')
+        const { getHistoryOperationContext } = await window.editorTest.appImport<
+            typeof import('../../src/history/createHistoryOperation')
+        >('/src/history/createHistoryOperation.ts')
         return {
-            name: typeof name === 'function' ? name() : name,
+            name: step && describeStep(step, getHistoryOperationContext()),
             same: history.state.value === before,
         }
     })
@@ -128,15 +134,15 @@ test.describe('edit labels', () => {
             })
         })
         await edit(page, { isCritical: true })
-        await expect(page.locator('.notification')).toHaveText('Set Critical on 2 notes')
-        expect((await undoLabel(page)).name).toBe('Set Critical on 2 notes')
+        await expect(page.locator('.notification')).toHaveText('Set Critical to Enabled on 2 notes')
+        expect((await undoLabel(page)).name).toBe('Set Critical to Enabled on 2 notes')
     })
 
     test('say objects when other kinds changed too', async ({ page }) => {
         await showSlides(page, [[{ beat: 0, elevation: 0 }]])
         await selectAll(page)
         await edit(page, { elevation: 3 })
-        await expect(page.locator('.notification')).toHaveText('Set Elevation on 2 objects')
+        await expect(page.locator('.notification')).toHaveText('Set Elevation to 3 on 2 objects')
     })
 
     test('name the one kind of event or change that changed', async ({ page }) => {
@@ -154,13 +160,18 @@ test.describe('edit labels', () => {
         })
         await select('timeScale')
         await edit(page, { hideNotes: true })
-        await expect(page.locator('.notification')).toHaveText('Set Hide Notes on 3 time scales')
-        // Without the label's unit.
+        await expect(page.locator('.notification')).toHaveText(
+            'Set Hide Notes to Enabled on 3 time scales',
+        )
         await edit(page, { skip: 1 })
-        await expect(page.locator('.notification')).toHaveText('Set Skip on 4 time scales')
+        await expect(page.locator('.notification')).toHaveText(
+            'Set Skip (beats) to 1 on 4 time scales',
+        )
         await select('cameraEventJoint')
         await edit(page, { cameraZoom: 2 })
-        await expect(page.locator('.notification')).toHaveText('Set Camera Zoom on 4 camera events')
+        await expect(page.locator('.notification')).toHaveText(
+            'Set Camera Zoom to 2 on 4 camera events',
+        )
         await select('bpm')
         await edit(page, { bpm: 200, meter: 3 })
         await expect(page.locator('.notification')).toHaveText('Edited 2 BPM changes')
@@ -204,7 +215,7 @@ test.describe('edit labels', () => {
                 )
             }, properties)
         await brush({ isCritical: true })
-        await expect(page.locator('.notification')).toHaveText('Brushed 1 object')
+        await expect(page.locator('.notification')).toHaveText('Brushed 1 note')
         await brush({ isCritical: true })
         await expect(page.locator('.notification')).toHaveText('No change')
         expect(
@@ -251,10 +262,10 @@ test.describe('edit labels', () => {
         await run('flip', true)
         await expect(notification).toHaveText('No change')
         await run({ size: 5 }, false)
-        await expect(notification).toHaveText('Brushed 2 objects')
+        await expect(notification).toHaveText('Brushed 2 notes')
         // A stored hidden value still counts.
         await run({ elevation: 3 }, true)
-        await expect(notification).toHaveText('Brushed 1 object')
+        await expect(notification).toHaveText('Brushed 1 note')
     })
 })
 
