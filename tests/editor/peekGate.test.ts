@@ -6,7 +6,7 @@ import { callSites } from './peekCallSites'
 // The enumerated test (Part 1 §1.11.5): every command, read from the registry's source, is on
 // exactly one of §1.4.11's lists and carries the flag the list gives it; every command entry
 // point goes through runCommand; and every direct pushState site is gated (runCommand.test.ts
-// lists them with their gates, and this checks each gate is in place).
+// lists them; Restore's gate is exercised in peek.test.ts, and other gates are inspected here).
 
 const root = new URL('../../', import.meta.url)
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8')
@@ -381,17 +381,15 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
     levelInfo: (path) => {
         asyncModalGate(declaration(path, 'properties') ?? '')
     },
-    // Restore leaves the peek before it pushes.
-    restore: (path) => {
-        assert.match(
-            declaration(path, 'restoreEntry') ?? '',
-            /leavePeek\(\)\s*pushState\(operation, restored, 'restore'\)/,
-        )
-    },
 }
 
-test('every direct pushState site’s gate is in place', () => {
+test('direct pushState sites have inspected gates or Restore runtime coverage', () => {
     for (const [path, { gate }] of Object.entries(callSites)) {
+        if (gate === 'restore') {
+            // peek.test.ts covers Restore from a peek and a newer peek during its leave hook.
+            assert.equal(path, 'src/history/peek.ts', 'Restore runtime coverage is for this writer')
+            continue
+        }
         const check = gateChecks[gate]
         assert.ok(check, `${gate} has no check`)
         check(path, read(path))
