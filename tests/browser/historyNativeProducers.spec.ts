@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { pastGuard } from './pastGuard'
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
@@ -124,6 +125,7 @@ for (const boundary of ['reset', 'undoRedo', 'peek'] as const)
         await expect(dialog).toBeVisible()
         await invalidatePrompt(page, boundary)
         const before = await currentEffects(page)
+        await pastGuard(page)
         await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
         expect(await pending).toBe('stale')
         expect(await currentEffects(page)).toEqual(before)
@@ -144,6 +146,7 @@ test('another successful enable does not make the older Dynamic Stages request c
     await expect(page.getByRole('dialog')).toHaveCount(1)
     const newer = request()
     await expect(page.locator('dialog[open]')).toHaveCount(2)
+    await pastGuard(page)
     await page
         .locator('dialog[open]')
         .last()
@@ -188,6 +191,7 @@ test('the boolean event-tool consumer does not switch tools after its confirmati
     await expect(dialog).toBeVisible()
     await invalidatePrompt(page, 'peek')
     const before = await currentEffects(page)
+    await pastGuard(page)
     await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     await pending
     expect(await currentEffects(page)).toEqual(before)
@@ -213,6 +217,7 @@ for (const at of ['position', 'pointer'] as const)
         await expect(dialog).toBeVisible()
         await invalidatePrompt(page, at === 'position' ? 'reset' : 'undoRedo')
         const before = await currentEffects(page)
+        await pastGuard(page)
         await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
         expect(await pending).toBeUndefined()
         expect(await currentEffects(page)).toEqual(before)
@@ -234,6 +239,7 @@ for (const enable of [false, true])
         const dialog = page.getByRole('dialog')
         await expect(dialog).toBeVisible()
         const before = await currentEffects(page)
+        await pastGuard(page)
         await dialog
             .getByRole('button', { name: enable ? 'Confirm' : 'Cancel', exact: true })
             .click()
@@ -285,6 +291,7 @@ test('a cancelled pointer Paste cannot enable stages or consume a replacement dr
     })
     expect(replacementGhost.length).toBeGreaterThan(0)
     const before = await currentEffects(page)
+    await pastGuard(page)
     await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     await old
     expect(await currentEffects(page)).toEqual(before)
@@ -302,6 +309,7 @@ test('a cancelled pointer Paste cannot enable stages or consume a replacement dr
         return await paste.dragEnd!(at.x, at.y, { ctrl: false, shift: false })
     })
     await expect(dialog).toBeVisible()
+    await pastGuard(page)
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     await replacement
     const after = await currentEffects(page)
@@ -924,6 +932,7 @@ test('declining Dynamic Stages preserves a zero-output Paste step with factual e
     })
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
+    await pastGuard(page)
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     expect(await pending).toEqual({ steps: 1, selected: 0, dynamic: false, events: 0 })
     expect(await headOperation(page)).toMatchObject({

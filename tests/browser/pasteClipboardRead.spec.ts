@@ -6,6 +6,7 @@ import {
     useTool,
     type TouchInput,
 } from './editorFixture'
+import { pastGuard } from './pastGuard'
 
 // The Paste tool reads the system clipboard on a press too, as a hover does for the mouse.
 
@@ -467,6 +468,7 @@ test('the clipboard wait ends before a valid Dynamic Stages enable and Paste', a
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await expect.poll(() => waiting(page)).toBe(false)
+    await pastGuard(page)
     await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect.poll(() => pastedBeats(page)).toEqual([6])
     const after = await pasteEffects(page)

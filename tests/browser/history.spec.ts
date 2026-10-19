@@ -3,6 +3,7 @@ import { gzipSync } from 'node:zlib'
 import { parseAutoSave } from '../../src/history/autoSave/parse'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
+import { pastGuard } from './pastGuard'
 
 // History across loads (Part 1 §1.3.8, §1.8, Step 4's spec migration): today's auto save is
 // retired. The old slot migrates into a session, a closed tab's work comes back through its
@@ -549,6 +550,8 @@ test('undoing dynamic stages leaves the event tools, whose events it could not s
         >('/src/editor/commands/events/camera/index.ts')
         await cameraEvent.execute()
     })
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await pastGuard(page)
     await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
     await command
     const tool = () =>

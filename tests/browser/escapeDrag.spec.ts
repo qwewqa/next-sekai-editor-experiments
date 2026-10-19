@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { CommandName } from '../../src/editor/commands'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { pastGuard } from './pastGuard'
 
 // Escape during a drag cancels only the drag; the release after it does nothing.
 
@@ -294,6 +295,7 @@ test('a paste drag whose release asks to enable dynamic stages still pastes', as
     await page.mouse.up()
     const dialog = page.locator('dialog[open]')
     await expect(dialog).toBeVisible()
+    await pastGuard(page)
     await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     await expect(page.locator('.notification')).toHaveText('Pasted 4 objects')
