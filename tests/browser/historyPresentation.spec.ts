@@ -541,8 +541,14 @@ test('520×320 uses identical fine and coarse History geometry and preserves Sho
                     main: height('[data-peek-main]'),
                     navigation: height('[data-peek-navigation]'),
                     chart: height('.chart-pane'),
-                    gap: document.querySelector('[data-peek-navigation]')!.getBoundingClientRect().top - document.querySelector('[data-peek-main]')!.getBoundingClientRect().bottom,
-                    stack: document.querySelector('[data-peek-navigation]')!.getBoundingClientRect().bottom - document.querySelector('[data-peek-main]')!.getBoundingClientRect().top,
+                    gap:
+                        document.querySelector('[data-peek-navigation]')!.getBoundingClientRect()
+                            .top -
+                        document.querySelector('[data-peek-main]')!.getBoundingClientRect().bottom,
+                    stack:
+                        document.querySelector('[data-peek-navigation]')!.getBoundingClientRect()
+                            .bottom -
+                        document.querySelector('[data-peek-main]')!.getBoundingClientRect().top,
                 }
             })
             expect(chart.main).toBe(52)
@@ -551,15 +557,26 @@ test('520×320 uses identical fine and coarse History geometry and preserves Sho
             expect(chart.stack).toBe(92)
             const clearance = await page.evaluate(async () => {
                 const { appImport, view } = window.editorTest
-                const [{ changeBand }, { peekClearance }, { prospectivePeekClearance }] = await Promise.all([
-                    appImport<typeof import('../../src/editor/history/changes')>('/src/editor/history/changes.ts'),
-                    appImport<typeof import('../../src/editor/toolModals')>('/src/editor/toolModals.ts'),
-                    appImport<typeof import('../../src/editor/sheetGeometry')>('/src/editor/sheetGeometry.ts'),
-                ])
+                const [{ changeBand }, { peekClearance }, { prospectivePeekClearance }] =
+                    await Promise.all([
+                        appImport<typeof import('../../src/editor/history/changes')>(
+                            '/src/editor/history/changes.ts',
+                        ),
+                        appImport<typeof import('../../src/editor/toolModals')>(
+                            '/src/editor/toolModals.ts',
+                        ),
+                        appImport<typeof import('../../src/editor/sheetGeometry')>(
+                            '/src/editor/sheetGeometry.ts',
+                        ),
+                    ])
                 const pane = document.querySelector('.chart-pane')!.getBoundingClientRect()
                 const bar = document.querySelector('[data-peek-bar]')!.getBoundingClientRect()
-                return { actual: bar.bottom - pane.top, published: peekClearance.value,
-                    band: changeBand.value.top, prospective: prospectivePeekClearance(view.w) }
+                return {
+                    actual: bar.bottom - pane.top,
+                    published: peekClearance.value,
+                    band: changeBand.value.top,
+                    prospective: prospectivePeekClearance(view.w),
+                }
             })
             expect(clearance.actual).toBe(120)
             expect(clearance.published).toBe(clearance.actual)

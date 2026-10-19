@@ -164,7 +164,11 @@ const labelOf = (direction: 'up' | 'down') => {
                 ref="eye"
                 type="button"
                 class="change-control pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-md transition-colors active:bg-accent active:text-on-accent"
-                :class="showEdits ? 'bg-accent text-on-accent hover:bg-accent/80' : 'hover:bg-header-hover'"
+                :class="
+                    showEdits
+                        ? 'bg-accent text-on-accent hover:bg-accent/80'
+                        : 'hover:bg-header-hover'
+                "
                 :aria-label="i18n.peek.showEdits"
                 :title="i18n.peek.showEdits"
                 :aria-pressed="showEdits"
@@ -221,7 +225,13 @@ const labelOf = (direction: 'up' | 'down') => {
                 :key="direction"
                 type="button"
                 class="change-arrow change-control pointer-events-auto flex h-8 shrink-0 items-center justify-center rounded-md tabular-nums transition-colors"
-                :class="[narrowArrows ? 'w-11 gap-0.5' : 'w-14 gap-1', { 'hover:bg-header-hover active:bg-accent active:text-on-accent': enabled(direction) }]"
+                :class="[
+                    narrowArrows ? 'w-11 gap-0.5' : 'w-14 gap-1',
+                    {
+                        'hover:bg-header-hover active:bg-accent active:text-on-accent':
+                            enabled(direction),
+                    },
+                ]"
                 :aria-disabled="!enabled(direction)"
                 :aria-label="labelOf(direction)"
                 :title="labelOf(direction)"
@@ -229,10 +239,12 @@ const labelOf = (direction: 'up' | 'down') => {
                 :data-count="countsShown ? countOf(direction) : undefined"
                 @click="enabled(direction) && showChangeToward(direction)"
             >
-                <ChevronIcon :class="narrowArrows ? 'size-3' : 'size-4'" :direction="direction" /><span
-                    class="w-6 text-center"
-                    >{{ countsShown && countOf(direction) ? countOf(direction) : '' }}</span
-                >
+                <ChevronIcon
+                    :class="narrowArrows ? 'size-3' : 'size-4'"
+                    :direction="direction"
+                /><span class="w-6 text-center">{{
+                    countsShown && countOf(direction) ? countOf(direction) : ''
+                }}</span>
             </button>
         </div>
         <ChangeOptionsMenu

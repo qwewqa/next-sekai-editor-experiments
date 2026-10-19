@@ -341,22 +341,59 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
         const styles = await navigation.evaluate((element) => {
             const style = getComputedStyle(element)
             const glyph = element.querySelector('[data-change-arrow] svg')!
-            const controlStyles = [...element.querySelectorAll('[data-change-arrow], [data-property-summary]')].map((control) => {
+            const controlStyles = [
+                ...element.querySelectorAll('[data-change-arrow], [data-property-summary]'),
+            ].map((control) => {
                 const style = getComputedStyle(control)
-                return { background: style.backgroundColor, shadow: style.boxShadow, opacity: style.opacity }
+                return {
+                    background: style.backgroundColor,
+                    shadow: style.boxShadow,
+                    opacity: style.opacity,
+                }
             })
-            const gapTarget = document.elementFromPoint(element.getBoundingClientRect().x + 2, element.getBoundingClientRect().y - 4)
-            const faceTarget = document.elementFromPoint(element.getBoundingClientRect().x + 2, element.getBoundingClientRect().y + 16)
-            return { radius: style.borderRadius, padding: style.paddingLeft, font: style.fontSize, background: style.backgroundColor,
-                glyph: glyph.getBoundingClientRect().width, controls: controlStyles,
-                gapIsChart: !!gapTarget?.closest('.editor'), faceIsStrip: faceTarget === element }
+            const gapTarget = document.elementFromPoint(
+                element.getBoundingClientRect().x + 2,
+                element.getBoundingClientRect().y - 4,
+            )
+            const faceTarget = document.elementFromPoint(
+                element.getBoundingClientRect().x + 2,
+                element.getBoundingClientRect().y + 16,
+            )
+            return {
+                radius: style.borderRadius,
+                padding: style.paddingLeft,
+                font: style.fontSize,
+                background: style.backgroundColor,
+                glyph: glyph.getBoundingClientRect().width,
+                controls: controlStyles,
+                gapIsChart: !!gapTarget?.closest('.editor'),
+                faceIsStrip: faceTarget === element,
+            }
         })
-        expect(styles).toMatchObject({ radius: '8px', padding: '4px', font: '12px', glyph: width < 180 ? 12 : 16, gapIsChart: true, faceIsStrip: true })
+        expect(styles).toMatchObject({
+            radius: '8px',
+            padding: '4px',
+            font: '12px',
+            glyph: width < 180 ? 12 : 16,
+            gapIsChart: true,
+            faceIsStrip: true,
+        })
         expect(styles.background).not.toBe('rgba(0, 0, 0, 0)')
-        for (const style of styles.controls) expect(style).toEqual({ background: 'rgba(0, 0, 0, 0)', shadow: 'none', opacity: '1' })
-        const beforePress = await page.evaluate(() => ({ state: window.editorTest.snapshot(), time: window.editorTest.view.time, lane: window.editorTest.view.lane }))
+        for (const style of styles.controls)
+            expect(style).toEqual({ background: 'rgba(0, 0, 0, 0)', shadow: 'none', opacity: '1' })
+        const beforePress = await page.evaluate(() => ({
+            state: window.editorTest.snapshot(),
+            time: window.editorTest.view.time,
+            lane: window.editorTest.view.lane,
+        }))
         await navigation.click({ position: { x: 2, y: 16 } })
-        expect(await page.evaluate(() => ({ state: window.editorTest.snapshot(), time: window.editorTest.view.time, lane: window.editorTest.view.lane }))).toEqual(beforePress)
+        expect(
+            await page.evaluate(() => ({
+                state: window.editorTest.snapshot(),
+                time: window.editorTest.view.time,
+                lane: window.editorTest.view.lane,
+            })),
+        ).toEqual(beforePress)
         await page.screenshot({ path: testInfo.outputPath(`navigation-${width}.png`) })
         if (width < 320) {
             await page.locator('[data-change-options]').click()
@@ -365,6 +402,81 @@ for (const width of [160, 179, 180, 240, 319, 320, 390]) {
         }
     })
 }
+
+test('the opaque navigation spacer owns wheel input while the transparent gap scrolls the chart', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await seed(page)
+    await page.evaluate(() => {
+        window.editorTest.settings.mouseSmoothScrolling = false
+        window.editorTest.view.time = 10
+        document.documentElement.dataset.historyWheelCount = '0'
+        document.addEventListener(
+            'wheel',
+            () => {
+                const data = document.documentElement.dataset
+                data.historyWheelCount = String(Number(data.historyWheelCount) + 1)
+            },
+            { capture: true },
+        )
+    })
+    const navigation = (await page.locator('[data-peek-navigation]').boundingBox())!
+    const before = await page.evaluate(() => window.editorTest.view.time)
+    await page.mouse.move(navigation.x + 2, navigation.y + 16)
+    await page.mouse.wheel(0, 120)
+    await expect(page.locator('html')).toHaveAttribute('data-history-wheel-count', '1')
+    expect(await page.evaluate(() => window.editorTest.view.time)).toBe(before)
+    await page.mouse.move(navigation.x + 2, navigation.y - 4)
+    await page.mouse.wheel(0, 120)
+    await expect(page.locator('html')).toHaveAttribute('data-history-wheel-count', '2')
+    await expect.poll(() => page.evaluate(() => window.editorTest.view.time)).not.toBe(before)
+    expect(await page.evaluate(() => window.historyInspectionTest.unchanged())).toBe(true)
+})
+
+test('full-app phone and desktop composition keeps passive states in the same strip', async ({
+    page,
+}, testInfo) => {
+    await seed(page)
+    for (const size of [
+        { width: 320, height: 568 },
+        { width: 390, height: 844 },
+        { width: 1440, height: 900 },
+    ]) {
+        await page.setViewportSize(size)
+        await select(page, 1)
+        await expect(page.locator('[data-property-summary]')).toBeVisible()
+        const navigation = page.locator('[data-peek-navigation]')
+        const geometry = await navigation.boundingBox()
+        expect(geometry!.height).toBe(32)
+        await page.screenshot({
+            path: testInfo.outputPath(`composition-property-${size.width}.png`),
+        })
+        await select(page, 3)
+        await expect(page.locator('[data-peek-change]')).toHaveText('No changes')
+        await expect(page.locator('[data-property-summary]')).toHaveCount(0)
+        expect(await navigation.boundingBox()).toEqual(geometry)
+        await page.screenshot({
+            path: testInfo.outputPath(`composition-no-change-${size.width}.png`),
+        })
+        await page.evaluate(async () => {
+            const { requestPeek } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            requestPeek({
+                key: 'inspection:0',
+                time: 1_720_000_000_000,
+                label: 'Initial state',
+                initial: true,
+            })
+        })
+        await expect(page.locator('[data-peek-change]')).toHaveText('Initial state')
+        expect(await navigation.boundingBox()).toEqual(geometry)
+        await page.screenshot({
+            path: testInfo.outputPath(`composition-initial-${size.width}.png`),
+        })
+    }
+})
 
 test('tiny menu takes keyboard focus, holds browser keys and restores its opener', async ({
     page,
@@ -468,7 +580,9 @@ test('pending comparison keeps the fixed row and an explicit Off choice after se
     await page.evaluate(() => window.historyInspectionTest.hold(2))
     await select(page, 2, 1)
     await expect(page.locator('[data-peek-change]')).toHaveText('Loading…')
-    await expect(page.locator('[data-peek-change]').locator('..')).toHaveAccessibleName('Loading changes…')
+    await expect(page.locator('[data-peek-change]').locator('..')).toHaveAccessibleName(
+        'Loading changes…',
+    )
     expect(await bounds()).toEqual(before)
     await expect(page.locator('[data-property-summary]')).toHaveCount(0)
     await expect(page.locator('[data-show-edits]')).toHaveAttribute('aria-pressed', 'false')
@@ -812,18 +926,37 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
         await expect(stateLine.locator('..')).toHaveAccessibleName(messages.peek.loadingChanges)
         await expect(stateLine.locator('..')).toHaveAttribute('title', messages.peek.loadingChanges)
         expect(await page.locator('[data-peek-navigation]').boundingBox()).toEqual(geometry)
-        expect(await stateLine.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
-        await page.screenshot({ path: testInfo.outputPath(`navigation-loading-${locale}-pane320.png`) })
+        expect(
+            await stateLine.evaluate((element) => element.scrollWidth <= element.clientWidth),
+        ).toBe(true)
+        await page.screenshot({
+            path: testInfo.outputPath(`navigation-loading-${locale}-pane320.png`),
+        })
         await page.evaluate(() => window.historyInspectionTest.release(2))
         await expect(stateLine).toHaveText('Undid Metadata')
         await select(page, 1, 99)
         await expect(stateLine).toHaveText(messages.peek.unavailableShort)
         await expect(stateLine.locator('..')).toHaveAccessibleName(messages.peek.unavailable)
         await expect(stateLine.locator('..')).toHaveAttribute('title', messages.peek.unavailable)
-        await expect(page.locator('[data-history-announcement]')).toContainText(messages.peek.unavailable)
+        await expect(page.locator('[data-history-announcement]')).toContainText(
+            messages.peek.unavailable,
+        )
         expect(await page.locator('[data-peek-navigation]').boundingBox()).toEqual(geometry)
-        expect(await stateLine.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
-        await page.screenshot({ path: testInfo.outputPath(`navigation-unavailable-${locale}-pane320.png`) })
+        expect(
+            await stateLine.evaluate((element) => element.scrollWidth <= element.clientWidth),
+        ).toBe(true)
+        await page.screenshot({
+            path: testInfo.outputPath(`navigation-unavailable-${locale}-pane320.png`),
+        })
+        await select(page, 3)
+        await expect(stateLine).toHaveText(messages.peek.noChanges)
+        expect(await page.locator('[data-peek-navigation]').boundingBox()).toEqual(geometry)
+        expect(
+            await stateLine.evaluate((element) => element.scrollWidth <= element.clientWidth),
+        ).toBe(true)
+        await page.screenshot({
+            path: testInfo.outputPath(`navigation-no-change-${locale}-pane320.png`),
+        })
     })
 }
 
