@@ -447,6 +447,28 @@ test('full-app phone and desktop composition keeps passive states in the same st
         await select(page, 1)
         await expect(page.locator('[data-property-summary]')).toBeVisible()
         const navigation = page.locator('[data-peek-navigation]')
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const { workspaceSize } = await window.editorTest.appImport<
+                        typeof import('../../src/editor/workspace')
+                    >('/src/editor/workspace/index.ts')
+                    const pane = document.querySelector('.chart-pane')!.getBoundingClientRect()
+                    const strip = document
+                        .querySelector('[data-peek-navigation]')!
+                        .getBoundingClientRect()
+                    const { view } = window.editorTest
+                    return (
+                        workspaceSize.value.width === innerWidth &&
+                        view.x === pane.x &&
+                        view.y === pane.y &&
+                        view.w === pane.width &&
+                        view.h === pane.height &&
+                        strip.width === Math.min(384, pane.width - 16)
+                    )
+                }),
+            )
+            .toBe(true)
         const geometry = await navigation.boundingBox()
         expect(geometry!.height).toBe(32)
         await page.screenshot({

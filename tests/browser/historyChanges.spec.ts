@@ -558,6 +558,7 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
         window.editorTest.settings.rightDockWidth = 440
     })
     await openTab(page)
+    expect(await list(page).evaluate((element) => element.clientWidth)).toBeGreaterThanOrEqual(340)
     const scopes = await page.evaluate(async () => {
         const { listedEntries } = await window.editorTest.appImport<
             typeof import('../../src/editor/history/source')
@@ -567,9 +568,10 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
     for (const [index, action] of ['Deleted 1 note', 'Moved 1 note', 'Added 1 note'].entries()) {
         const group = row(page, action).filter({ has: page.locator('[data-history-group-header]') })
         await expect(group.locator('[data-history-group-count]')).toHaveText('2 edits')
-        if (index !== 1)
+        if (index !== 1) {
             await expect(group.locator('.timeline-count')).toHaveText(index === 0 ? '−2' : '+2')
-        else await expect(group.locator('.timeline-count')).toHaveCount(0)
+            await expect(group.locator('.timeline-count')).toBeVisible()
+        } else await expect(group.locator('.timeline-count')).toHaveCount(0)
         await expect(group).toHaveAttribute('aria-label', new RegExp(`${action} · 2 edits`))
         await group.click()
         await expect(peekLine(page)).toHaveText('2 changes')
