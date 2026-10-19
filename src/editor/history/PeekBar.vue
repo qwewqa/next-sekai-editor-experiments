@@ -49,6 +49,18 @@ const measure = () => {
     peekWidths.value = measurePeekWidths(document.body, settings.locale, settings.beatDisplay, {
         back: strings.value.backToNow,
         restore: strings.value.restore,
+        states: [
+            strings.value.loadingShort,
+            strings.value.unavailableShort,
+            strings.value.noChanges,
+            strings.value.initialState,
+        ],
+        statesWide: [
+            strings.value.loadingChanges,
+            strings.value.unavailable,
+            strings.value.noChanges,
+            strings.value.initialState,
+        ],
     })
 }
 onMounted(() => {

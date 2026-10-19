@@ -10,6 +10,8 @@ const enWidths: PeekWidths = {
     back: 77.984375,
     restore: 46.375,
     labels: 79.3125,
+    states: 62.96875,
+    statesWide: 108.546875,
     rem: 16,
 }
 const enLayouts: Record<number, ReturnType<typeof peekLayout>> = {
@@ -176,6 +178,8 @@ const frWidths: PeekWidths = {
     back: 131.625,
     restore: 58.078125,
     labels: 79.3125,
+    states: 109.671875,
+    statesWide: 170.65625,
     rem: 16,
 }
 const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
@@ -246,7 +250,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     320: {
-        width: 280,
+        width: 290,
         back: 'icon',
         tiny: false,
         snug: true,
@@ -257,7 +261,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     340: {
-        width: 288,
+        width: 290,
         back: 'icon',
         tiny: false,
         snug: false,
@@ -268,7 +272,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     390: {
-        width: 288,
+        width: 290,
         back: 'icon',
         tiny: false,
         snug: false,
@@ -391,11 +395,15 @@ const jaWidths: PeekWidths = {
     back: 70,
     restore: 28,
     labels: 79.3125,
+    states: 83.40625,
+    statesWide: 119.40625,
     rem: 16,
 }
 
 test('the capsule takes the options button and narrow arrows by fit', () => {
     assert.equal(peekLayout(240, jaWidths).width, 148)
+    // 238 px from the strip's 250 would cut 取得できません (83 px in 70): the strip widens to 264.
+    assert.equal(peekLayout(320, jaWidths).width, 264)
     assert.equal(peekLayout(240, jaWidths).narrowArrows, true)
     assert.equal(peekLayout(300, jaWidths).narrowArrows, false)
     assert.equal(peekLayout(320, jaWidths).compact, false)
@@ -406,4 +414,111 @@ test('the capsule takes the options button and narrow arrows by fit', () => {
     ) as PeekWidths
     assert.equal(peekLayout(390, scaled).tiny, true)
     assert.equal(peekLayout(390, scaled).compact, true)
+})
+
+// Every language's widths at the 16 px root (the strip's other fields as measured; states and
+// statesWide: the widest of loading, unavailable, no changes and the initial state at 12 px, short
+// forms under 480 px panes, long ones from 480).
+const allWidths: Record<string, PeekWidths> = {
+    en: enWidths,
+    fr: frWidths,
+    ja: jaWidths,
+    ko: {
+        today: 83.1875,
+        earlier: 149.046875,
+        compact: 130.953125,
+        back: 101.84375,
+        restore: 28,
+        labels: 79.3125,
+        states: 78.578125,
+        statesWide: 145.15625,
+        rem: 16,
+    },
+    tr: {
+        today: 51.359375,
+        earlier: 100.59375,
+        compact: 88.421875,
+        back: 78.328125,
+        restore: 61.390625,
+        labels: 79.3125,
+        states: 74.578125,
+        statesWide: 140.625,
+        rem: 16,
+    },
+    zhs: {
+        today: 51.359375,
+        earlier: 113.375,
+        compact: 93.25,
+        back: 56,
+        restore: 28,
+        labels: 79.3125,
+        states: 48,
+        statesWide: 80.796875,
+        rem: 16,
+    },
+    zht: {
+        today: 79.359375,
+        earlier: 141.375,
+        compact: 121.25,
+        back: 56,
+        restore: 28,
+        labels: 79.3125,
+        states: 48,
+        statesWide: 80.796875,
+        rem: 16,
+    },
+}
+
+// The strip and capsule widths as the browser drew them (16 px root), and the capsule's room for the
+// state line: the capsule less p-1, the eye, the gaps, px-2 and both arrows (168 px).
+const capsules: Record<string, Record<number, number>> = {
+    en: { 390: 305, 375: 305, 320: 297, 1144: 386 },
+    fr: { 390: 290, 375: 290, 320: 290, 1144: 429 },
+    ja: { 390: 324, 375: 324, 320: 264, 1144: 344 },
+    ko: { 390: 295, 375: 295, 320: 287, 1144: 411 },
+    tr: { 390: 361, 375: 286, 320: 278, 1144: 373 },
+    zhs: { 390: 310, 375: 310, 320: 302, 1144: 330 },
+    zht: { 390: 338, 375: 338, 320: 278, 1144: 358 },
+}
+
+test('every state line fits its capsule from 320 px panes, in every language', () => {
+    for (const [locale, widths] of Object.entries(allWidths))
+        for (const [pane, width] of Object.entries(capsules[locale]!)) {
+            const layout = peekLayout(Number(pane), widths)
+            const line = layout.wide ? widths.statesWide : widths.states
+            assert.equal(layout.width, width, `${locale} ${pane}`)
+            assert.equal(layout.compact, false, `${locale} ${pane}`)
+            assert.equal(layout.narrowArrows, false, `${locale} ${pane}`)
+            assert.ok(layout.width - 12 - 168 >= line, `${locale} ${pane}`)
+        }
+    // Under 320 px panes the options button holds the line, as before.
+    for (const [locale, widths] of Object.entries(allWidths))
+        for (const pane of [319, 300, 240])
+            assert.equal(peekLayout(pane, widths).compact, true, locale)
+})
+
+test('at a 20 px root the state line fits or the options button holds it', () => {
+    // Real 20 px measurements are these × 1.25 (French "Aucune modification": 137.09 px).
+    const at20 = (widths: PeekWidths) =>
+        Object.fromEntries(Object.entries(widths).map(([k, v]) => [k, v * 1.25])) as PeekWidths
+    const expected: Record<string, Record<number, [number, boolean]>> = {
+        en: { 390: [218, true], 375: [218, true], 320: [208, true] },
+        fr: { 390: [363, false], 375: [233, true], 320: [223, true] },
+        ja: { 390: [330, false], 375: [330, false], 320: [185, true] },
+        ko: { 390: [369, false], 375: [195, true], 320: [185, true] },
+        tr: { 390: [358, false], 375: [237, true], 320: [227, true] },
+        zhs: { 390: [322, false], 375: [322, false], 320: [185, true] },
+        zht: { 390: [357, false], 375: [195, true], 320: [185, true] },
+    }
+    for (const [locale, widths] of Object.entries(allWidths))
+        for (const [pane, [width, compact]] of Object.entries(expected[locale]!)) {
+            const scaled = at20(widths)
+            const layout = peekLayout(Number(pane), scaled)
+            assert.equal(layout.width, width, `${locale} ${pane}`)
+            assert.equal(layout.compact, compact, `${locale} ${pane}`)
+            // A tiny strip keeps its size; its capsule takes the options button.
+            if (layout.tiny) assert.equal(layout.compact, true, `${locale} ${pane}`)
+            if (!compact)
+                assert.ok(layout.width - 1.25 * (12 + 168) >= scaled.states, `${locale} ${pane}`)
+        }
 })
