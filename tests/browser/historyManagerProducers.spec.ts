@@ -301,7 +301,10 @@ for (const changed of ['rename', 'reset', 'peekRoundTrip'] as const) {
         if (await prompt.count()) {
             await expect(title).toHaveText(shown.title)
             await expect(message).toHaveText(shown.message)
-            await prompt.getByRole('button', { name: 'Delete', exact: true }).click()
+            await confirmWhenReady(
+                prompt.getByRole('button', { name: 'Delete', exact: true }),
+                prompt,
+            )
         }
         await page.evaluate(() => window.editorTest.nextTick())
         expect(await operations(page)).toEqual([])
@@ -504,7 +507,7 @@ test('bulk Delete cannot remove a selection changed while its confirmation is op
         window.managerOperations = []
         return [...history.state.value.groups.keys()]
     })
-    await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Delete', exact: true }), dialog)
     expect(
         await page.evaluate(() => [...window.editorTest.history.state.value.groups.keys()]),
     ).toEqual(before)

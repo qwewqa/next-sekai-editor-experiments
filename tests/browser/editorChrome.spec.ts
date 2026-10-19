@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { confirmKeyWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 const boot = async (page: Page) => {
@@ -154,9 +155,14 @@ test.describe('dialogs', () => {
             await opener.focus()
             await page.keyboard.press('Enter')
             await expect(dialog, close).toBeVisible()
-            if (close !== 'Escape')
-                await dialog.getByRole('button', { name: close, exact: true }).focus()
-            await page.keyboard.press(close === 'Escape' ? 'Escape' : 'Enter')
+            if (close === 'Escape') await page.keyboard.press('Escape')
+            else {
+                const button = dialog.getByRole('button', { name: close, exact: true })
+                await button.focus()
+                // Cancel and Confirm ignore a press in the dialog's first moments; the × does not.
+                if (close === 'Close') await page.keyboard.press('Enter')
+                else await confirmKeyWhenReady(button, 'Enter', dialog)
+            }
             await expect(dialog, close).toHaveCount(0)
             await expect(opener, close).toBeFocused()
         }
