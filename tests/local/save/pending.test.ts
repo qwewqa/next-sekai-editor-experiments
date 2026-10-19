@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { captureEntryDescription } from '../../../src/history/operations'
 import type { IdentityInput, SaveTarget } from '../../../src/local/save/build'
 import { buildSave, type BuiltSave } from '../../../src/local/save/execute'
 import { pendingInput } from '../../../src/local/save/pending'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
+import { noteAdd } from '../../helpers/historySteps'
 import {
     asFile,
     checkFiles,
@@ -36,7 +38,7 @@ const rowsOf = async (file: Blob) =>
 test('pending rows the bound file already holds are not appended again (major 2)', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
-    await fixture.edit(1)
+    await fixture.edit(1, noteAdd(1))
     await fixture.flush()
     const first = await save(fixture, { kind: 'copy' }, { disk: diskOf })
     assert.ok(!('refused' in first.built) && first.file)
@@ -46,8 +48,7 @@ test('pending rows the bound file already holds are not appended again (major 2)
         {
             seq: old.seq,
             time: old.time,
-            kind: old.kind,
-            label: old.label,
+            ...captureEntryDescription(old),
             state: stateAt(1).state,
             dirty: false,
         },
@@ -67,9 +68,9 @@ test('pending rows the bound file already holds are not appended again (major 2)
 test('a download never writes a stored row twice from pending', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
-    await fixture.edit(1)
+    await fixture.edit(1, noteAdd(1))
     await fixture.flush()
-    await fixture.edit(2)
+    await fixture.edit(2, noteAdd(1))
     // Rows 2 and 3: row 2 is stored, row 3 isn't.
     const pending = fixture.pending(1)
     await fixture.store.write(['entries'], async (tx) => {
@@ -141,13 +142,13 @@ const pausedSave = async (
 test('with storing paused, a second Save appends to the first’s file through the binding in memory (major 4)', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
-    await fixture.edit(1)
+    await fixture.edit(1, noteAdd(1))
     await fixture.flush()
     // Storing pauses: nothing more is stored, the binding included.
     const stored = fixture.session.rows.at(-1)!.seq
-    await fixture.edit(2)
+    await fixture.edit(2, noteAdd(1))
     const first = await pausedSave(fixture, { kind: 'copy' }, { stored })
-    await fixture.edit(3)
+    await fixture.edit(3, noteAdd(1))
     const second = await pausedSave(
         fixture,
         { kind: 'append', source: 'target' },
@@ -178,12 +179,12 @@ test('with storing paused, a second Save appends to the first’s file through t
 test('with storing paused, successive downloads keep their ancestry and carry', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
-    await fixture.edit(1)
+    await fixture.edit(1, noteAdd(1))
     await fixture.flush()
     const stored = fixture.session.rows.at(-1)!.seq
-    await fixture.edit(2)
+    await fixture.edit(2, noteAdd(1))
     const d1 = await pausedSave(fixture, { kind: 'copy' }, { stored, downloaded: true })
-    await fixture.edit(3)
+    await fixture.edit(3, noteAdd(1))
     const d2 = await pausedSave(
         fixture,
         { kind: 'copy' },
@@ -204,12 +205,12 @@ test('with storing paused, successive downloads keep their ancestry and carry', 
 const boundWith = async (history: boolean) => {
     const fixture = await Fixture.create()
     await fixture.start(0)
-    await fixture.edit(1)
+    await fixture.edit(1, noteAdd(1))
     await fixture.flush()
     const first = await save(fixture, { kind: 'copy' }, { disk: diskOf, extra: { history } })
     ok(first.built)
     assert.ok(first.file)
-    await fixture.edit(2)
+    await fixture.edit(2, noteAdd(1))
     await fixture.flush()
     return { fixture, file: first.file }
 }

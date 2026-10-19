@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { captureName } from '../../../src/history/operations'
 import {
     executePlan,
     inspectNxsp,
@@ -10,6 +11,7 @@ import {
 } from '../../../src/local/nxsp'
 import { canonical } from '../../../src/local/records/canonical'
 import { toRecords } from '../../../src/local/records/records'
+import { editStep, nativeOperation, noteAdd } from '../../helpers/historySteps'
 import { stateOf } from '../records/charts'
 import { fresh, NOW } from './chain'
 import {
@@ -42,7 +44,7 @@ test('a fresh write opens fully, with its history, media and unknown keys', asyn
     assert.equal(p.revision?.id, revisionId)
     assert.equal(p.revision?.savedAt, '2026-10-16T05:41:07Z')
     assert.equal(p.revision?.completeFrom, revisionId)
-    assert.equal(p.minor, 0)
+    assert.equal(p.minor, 1)
     assert.deepEqual(read.extra, { zzTop: { kept: true }, metadata: { zzMeta: 1 } })
     assert.deepEqual(p.bgm, {
         file: 'bgm/Coconut-Master.mp3',
@@ -99,6 +101,7 @@ test('a write-back appends: the source’s chunks.bin is the prefix, its rows ca
     const store = first.store
     const d = stateOf(chartWith({ bgm: BGM_2, cover: COVER_2, extraNotes: 2 }))
     const hd = store.add(d)
+    const added = editStep(noteAdd(1))
     const input2: BuildInput = {
         ...first.input,
         context: fixedContext(NOW + 60_000, 's'),
@@ -129,24 +132,46 @@ test('a write-back appends: the source’s chunks.bin is the prefix, its rows ca
         history: {
             append: 't',
             entries: [
-                entry('continue', 5000, 'Continued', first.hashes[2] ?? ''),
-                entry('edit', 6000, 'Added note', hd),
-                entry('save', 7000, 'Saved coconut.nxsp', hd, {
-                    revisionId: 's001-0000-4000-8000-000000000000',
-                    device: { id: 'c3f00000-0000-4000-8000-000000000000', label: 'Web (Chrome)' },
-                }),
+                entry(
+                    {
+                        kind: 'continue',
+                        operation: nativeOperation(
+                            { id: 'nse.continue', data: { fromTime: 1000 } },
+                            'Continued',
+                        ),
+                    },
+                    5000,
+                    first.hashes[2] ?? '',
+                ),
+                entry({ kind: 'edit', step: added }, 6000, hd),
+                entry(
+                    {
+                        kind: 'save',
+                        operation: nativeOperation(
+                            {
+                                id: 'nse.file.save',
+                                data: { file: captureName('coconut.nxsp'), delivery: 'file' },
+                            },
+                            'Saved coconut.nxsp',
+                        ),
+                    },
+                    7000,
+                    hd,
+                    {
+                        revisionId: 's001-0000-4000-8000-000000000000',
+                        device: {
+                            id: 'c3f00000-0000-4000-8000-000000000000',
+                            label: 'Web (Chrome)',
+                        },
+                    },
+                ),
             ],
             roots: store.roots,
             nodes: store.nodes,
             chunks: store.chunks,
             undoStack: {
                 base: 0,
-                slots: [
-                    { snapshot: first.hashes[0] as string, label: 'Imported LevelData' },
-                    { snapshot: first.hashes[1] as string, label: 'Added note' },
-                    { snapshot: first.hashes[2] as string, label: 'Changed BGM' },
-                    { snapshot: hd, label: 'Added note' },
-                ],
+                slots: [...first.input.history!.undoStack.slots, { snapshot: hd, step: added }],
                 index: 3,
             },
         },

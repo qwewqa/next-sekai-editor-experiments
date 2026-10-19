@@ -69,7 +69,20 @@ test('opening elevation during a previewed move preserves committed ghosts and u
             original: before.notes[0]!.elevation,
         }
         edits.clearPreviewEdit()
-        history.pushState(() => 'Move note', draft)
+        history.pushState(
+            window.editorTest.historySteps.nativeOperation(
+                {
+                    id: 'nse.property.set',
+                    data: {
+                        subject: 'note',
+                        targets: 1,
+                        assignments: [{ field: 'elevation', value: { mode: 'uniform', value: 2 } }],
+                    },
+                },
+                'Set Elevation to 2',
+            ),
+            draft,
+        )
         await settle()
         const committed = scene.elevationNotes.value.map((note) => note.elevation)
         history.undoState()

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DB_NAME, writeMeta } from '../../../src/local/db'
+import { DB_NAME, DB_VERSION, writeMeta } from '../../../src/local/db'
 import type { FlushResult } from '../../../src/local/flushWrite'
 import { keyText } from '../../../src/local/kv/keys'
 import { MemoryKv } from '../../../src/local/kv/memory'
@@ -13,6 +13,7 @@ import { flushHandlers } from '../../../src/local/worker/flushHandlers'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
+import { editStep, nativeOperation, originOperation } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 import {
     openPage,
@@ -29,6 +30,15 @@ import {
 // timers run on the world's clock, so each seed replays them in order.
 
 /** The state with its n-th note one quarter wider. */
+const widenedNoteStep = editStep(
+    nativeOperation(
+        { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+        'Changed note',
+    ),
+)
+
+const widenedNoteEntry = { kind: 'edit' as const, step: widenedNoteStep }
+
 const widen = (state: State, n = 0) => {
     const notes = [...state.store.slides.note.values()].flat()
 
@@ -44,12 +54,12 @@ const begin = (page: SplitPage, state: State, origin: 'new' | 'import' = 'import
         docId: testId(),
         origin,
         state,
-        label: () => 'Initialize',
+        operation: originOperation(origin),
         dirty: false,
     })
 
 const edit = (page: SplitPage, state: State) => {
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(widenedNoteEntry, state, true)
 }
 
 /** Every row of every store, as text, to tell whether anything was written. */
@@ -81,7 +91,7 @@ const settle = async (world: World) => {
     await world.idle()
 }
 
-test('a v1 worker that reopens into a newer database writes nothing and is read-only', async () => {
+test('a current worker that reopens into a newer database writes nothing and is read-only', async () => {
     for (const seed of CI_SEEDS) {
         const world = createWorld({ seed })
         const page = await openSplitPage(world, { name: 'old' })
@@ -90,16 +100,16 @@ test('a v1 worker that reopens into a newer database writes nothing and is read-
         await page.flusher.flush()
         assert.deepEqual(page.host.core.status, { mode: 'stored' })
 
-        // The tab is backgrounded: its connection is lost, and it misses the v2 tab's broadcast.
+        // The tab is backgrounded: its connection is lost, and it misses the newer tab's broadcast.
         world.memory.loseConnections(DB_NAME)
         await world.idle()
         const next = world.tab('next')
         const nextCore = workerCore(world, next, {
-            flags: { dbVersion: 2 },
+            flags: { dbVersion: DB_VERSION + 1 },
             channel: next.channel('nobody'),
         })
         await next.run(() => nextCore.start())
-        assert.equal(world.memory.version(DB_NAME), 2)
+        assert.equal(world.memory.version(DB_NAME), DB_VERSION + 1)
         const before = snapshotOf(world.memory)
 
         state = widen(state)
@@ -119,8 +129,8 @@ test('Try Again’s move racing a flush loses no entry and leaves no dangling re
         const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
         await frozen.run(() => frozenCore.start())
 
-        // A v2 tab behind the frozen v1 tab runs in memory.
-        const opening = openSplitPage(world, { flags: { dbVersion: 2 } })
+        // A newer tab behind the frozen current tab runs in memory.
+        const opening = openSplitPage(world, { flags: { dbVersion: DB_VERSION + 1 } })
         await world.clock.run()
         const page = await opening
         assert.deepEqual(page.status, { mode: 'memory', reason: 'olderTabs' })
@@ -172,7 +182,7 @@ test('rows Try Again moves in take the database’s day of use, not the memory s
     const frozen = world.tab('frozen')
     const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
     await frozen.run(() => frozenCore.start())
-    const opening = openSplitPage(world, { flags: { dbVersion: 2 } })
+    const opening = openSplitPage(world, { flags: { dbVersion: DB_VERSION + 1 } })
     await world.clock.run()
     const page = await opening
     let state = stateOf(goldenChart())
@@ -247,7 +257,7 @@ test('a memo learned on another store is checked again, whatever the epoch', asy
         docId: testId(),
         origin: 'import',
         state,
-        label: () => 'Initialize',
+        operation: originOperation('import'),
         dirty: false,
     })
     await page.flusher.flush()
@@ -260,7 +270,7 @@ test('a memo learned on another store is checked again, whatever the epoch', asy
     await tab.run(() => core.start())
     ref.handlers = flushHandlers({ core, test: true, emit: () => undefined }, tab.waiter)
     state = widen(state)
-    page.flusher.append('edit', () => 'Changed note', state, true)
+    page.flusher.append(widenedNoteEntry, state, true)
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     assert.deepEqual(
@@ -359,10 +369,10 @@ for (const when of ['before', 'during'] as const)
             const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
             await frozen.run(() => frozenCore.start())
 
-            // A v2 tab behind the frozen v1 tab, in memory, with a row to move.
-            const tab = world.tab('v2')
-            const newest = world.tab('v3')
-            const newestCore = workerCore(world, newest, { flags: { dbVersion: 3 } })
+            // A newer tab behind the frozen current tab, in memory, with a row to move.
+            const tab = world.tab('next')
+            const newest = world.tab('newest')
+            const newestCore = workerCore(world, newest, { flags: { dbVersion: DB_VERSION + 2 } })
             let armed = false
             let newer: Promise<StorageStatus> | undefined
             const ask = (moment: typeof when) => {
@@ -372,7 +382,7 @@ for (const when of ['before', 'during'] as const)
             }
             const memory = new MemoryKv(world.scheduler)
             const core = workerCore(world, tab, {
-                flags: { dbVersion: 2 },
+                flags: { dbVersion: DB_VERSION + 1 },
                 // The copy reads the memory store whole, then writes the database in one go.
                 memory: () =>
                     watchTransactions(memory.factory(tab.actor), (stores, mode) => {
@@ -398,7 +408,7 @@ for (const when of ['before', 'during'] as const)
             assert.ok(newer, `seed ${seed}`)
             // The newer tab opened its version, never held back by the move's connection.
             assert.deepEqual(await newer, { mode: 'stored' }, `seed ${seed}`)
-            assert.equal(world.memory.version(DB_NAME), 3, `seed ${seed}`)
+            assert.equal(world.memory.version(DB_NAME), DB_VERSION + 2, `seed ${seed}`)
             assert.notDeepEqual(core.status, { mode: 'stored' }, `seed ${seed}`)
             if (when === 'during')
                 assert.deepEqual(core.status, { mode: 'stored', reason: 'upgrading' })
@@ -411,11 +421,11 @@ test('a write held behind Try Again’s move counts the move’s steps as its pr
     const frozen = world.tab('frozen')
     const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
     await frozen.run(() => frozenCore.start())
-    const tab = world.tab('v2')
+    const tab = world.tab('next')
     let held: Promise<unknown> | undefined
     let heldTicks = 0
     const core = workerCore(world, tab, {
-        flags: { dbVersion: 2 },
+        flags: { dbVersion: DB_VERSION + 1 },
         factory: watchTransactions(tab.kv, (stores, mode) => {
             if (held || mode !== 'readwrite' || stores.length === 1) return
             // A flush arriving while the move copies: it waits at the gate.
@@ -481,7 +491,7 @@ test('where no database will ever answer, a replaced session’s in-memory histo
             docId: testId(),
             origin: 'import',
             state,
-            label: () => 'Initialize',
+            operation: originOperation('import'),
             dirty: false,
             done: () => released.push(id),
         })

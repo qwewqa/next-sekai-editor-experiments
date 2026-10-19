@@ -7,6 +7,7 @@ import { setSaveHooksForTests } from '../../../src/local/save/build'
 import { buildSave, setBuiltHookForTests } from '../../../src/local/save/execute'
 import { headInput } from '../../../src/local/save/pending'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
+import { noteAdd } from '../../helpers/historySteps'
 import { unzip, zipItems } from '../nxsp/craft'
 import { Fixture, heldRows, save, saveOptions, sourceOf, stateAt } from './fixture'
 
@@ -24,7 +25,7 @@ const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk
 const chain = async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
-    await fixture.edit(1)
+    await fixture.edit(1, noteAdd(1))
     await fixture.flush()
     return fixture
 }
@@ -34,7 +35,7 @@ const bound = async () => {
     const first = await save(fixture, { kind: 'copy' }, { disk: diskOf })
     ok(first.built)
     assert.ok(first.file)
-    await fixture.edit(2)
+    await fixture.edit(2, noteAdd(1))
     await fixture.flush()
     return { fixture, file: first.file }
 }
@@ -142,7 +143,7 @@ test('a write-back to a file whose completeFrom can’t be placed writes the tar
     ok(second.built)
     const file = second.file
     assert.ok(file)
-    await fixture.edit(3)
+    await fixture.edit(3, noteAdd(1))
     await fixture.flush()
     const { items, modified } = await unzip(file)
     const projectItem = items.find((item) => item.name === 'project.json')
@@ -214,7 +215,7 @@ test('a root of a version this build doesn’t read refuses with "Needs a newer 
 
 test('damage is marked in storage before the plan is final, even when the plan then fails', async () => {
     const fixture = await chain()
-    await fixture.edit(2)
+    await fixture.edit(2, noteAdd(1))
     await fixture.flush()
     // State 1's root is gone: its edit row is damage.
     await fixture.store.write(['nodes'], (tx) =>
@@ -233,6 +234,8 @@ test('damage is marked in storage before the plan is final, even when the plan t
         setSaveHooksForTests({})
     }
     const stored = await fixture.entries()
-    const edit1 = stored.find((row) => row.kind === 'edit' && row.label === 'Edit 1')
+    const edit1 = stored.find(
+        (row) => row.kind === 'edit' && row.seq === fixture.session.rows[1]!.seq,
+    )
     assert.equal(edit1?.kept, false)
 })

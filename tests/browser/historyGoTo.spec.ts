@@ -35,10 +35,17 @@ test.beforeEach(async ({ page }) => {
             const { history } = window.editorTest
             for (let d = 0; d < days; d++)
                 for (let i = 0; i < perDay; i++)
-                    history.pushState(() => `Day ${d + 1} edit ${i + 1}`, {
-                        ...history.state.value,
-                        initialLife: history.state.value.initialLife + 1,
-                    })
+                    history.pushState(
+                        window.editorTest.historySteps.futureInitialLife(
+                            history.state.value.initialLife,
+                            history.state.value.initialLife + 1,
+                            `Day ${d + 1} edit ${i + 1}`,
+                        ),
+                        {
+                            ...history.state.value,
+                            initialLife: history.state.value.initialLife + 1,
+                        },
+                    )
             await window.nseFlushTest!.flusher.flush({ strict: true })
         },
         { days: DAYS, perDay: PER_DAY },
@@ -74,12 +81,12 @@ const dialog = (page: Page) => page.locator('[data-history-surface="dialog"]')
 const list = (page: Page) => dialog(page).locator('[data-history-list]')
 const goTo = (page: Page) => page.locator('[data-history-goto]')
 const items = (page: Page) => goTo(page).locator('[data-goto-item]')
-const selected = (page: Page) => list(page).locator('[role="option"][aria-selected="true"]')
+const selected = (page: Page) => list(page).locator('[role="row"][aria-selected="true"]')
 
 const openDialog = async (page: Page) => {
     await page.locator('.chart-pane').click({ position: { x: 300, y: 300 } })
     await page.keyboard.press('Shift+H')
-    await expect(list(page)).toBeFocused()
+    await expect(selected(page)).toBeFocused()
 }
 
 const openGoTo = async (page: Page) => {
@@ -127,7 +134,7 @@ test('Go To lists Now and each day with its steps, and a day peeks its newest en
     await expect(goTo(page)).toHaveCount(0)
     await expect(selected(page)).toContainText(`Day 1 edit ${PER_DAY}`)
     await expect(page.locator('[data-peek-bar]')).toContainText(dayName(0))
-    await expect(list(page)).toBeFocused()
+    await expect(selected(page)).toBeFocused()
     // Go To now has its check on that day.
     await openGoTo(page)
     await expect(items(page).nth(3)).toHaveAttribute('aria-current', 'location')
@@ -146,13 +153,13 @@ test('the gap row loads newer pages as it comes into view, and the rows on scree
     await list(page).evaluate((element) => (element.scrollTop = 0))
     const gap = list(page).locator('[data-history-gap]')
     await expect(gap).toContainText(`${PER_DAY * 2 - 100} newer steps`)
-    const firstRow = list(page).getByRole('option').nth(2)
+    const firstRow = list(page).getByRole('row').nth(2)
     const label = (await firstRow.textContent()) ?? ''
     const before = await firstRow.boundingBox()
     await page.evaluate(() => (window as unknown as { releaseNewer: () => void }).releaseNewer())
     await expect(gap).not.toBeInViewport()
     const after = await list(page)
-        .getByRole('option')
+        .getByRole('row')
         .filter({ hasText: label.trim() })
         .first()
         .boundingBox()
@@ -177,12 +184,12 @@ test('keys: Up crosses the gap, End reads the oldest entry, Home goes back to No
     await page.keyboard.press('Enter')
     await expect(selected(page)).toContainText(`Day 2 edit ${PER_DAY}`)
     // Up from the top of the window: the next newer entry, read across the gap.
-    await list(page).focus()
+    await selected(page).focus()
     for (let i = 0; i < 101; i++) await page.keyboard.press('ArrowUp')
     await expect(selected(page)).toContainText('Day 3 edit 101')
 
     await page.keyboard.press('End')
-    await expect(selected(page)).toContainText('Initialize')
+    await expect(selected(page)).toContainText('Started a new level')
     await page.keyboard.press('Home')
     await expect(list(page).locator('[data-history-gap]')).toHaveCount(0)
     await expect(selected(page)).toContainText('Now')

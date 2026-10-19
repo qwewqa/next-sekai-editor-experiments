@@ -69,7 +69,20 @@ test('dense guide edits own crowded buckets while retaining source state and und
                     if (!committed.store.grid.connector.get(key)?.has(connector)) return false
                 return true
             })
-        history.pushState(() => 'dense guide edit', committed)
+        history.pushState(
+            window.editorTest.historySteps.nativeOperation(
+                {
+                    id: 'nse.property.set',
+                    data: {
+                        subject: 'note',
+                        targets: notes.length,
+                        assignments: [{ field: 'left', value: { mode: 'uniform', value: -3 } }],
+                    },
+                },
+                'Set Left to -3',
+            ),
+            committed,
+        )
         history.undoState()
         const undoHeads = heads(history.state.value)
         history.redoState()
