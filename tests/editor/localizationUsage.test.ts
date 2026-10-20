@@ -91,8 +91,6 @@ const dynamic: Record<string, string> = {
     'modals.loading.': 'TaskFailureKind',
     'peek.loadingShort': 'fixedLines in history/changes.ts, read through fixedLine',
     'peek.unavailableShort': 'fixedLines in history/changes.ts, read through fixedLine',
-    // The recovered-entry text is decided separately.
-    'entry.recovered': 'the recovered-entry decision',
 }
 
 /**
@@ -152,6 +150,8 @@ const removed = [
     'file.short.notConfirmed',
     'tools.eraser.erased',
     'tools.slide.edited',
+    'entry.recovered',
+    'entry.recoveredDropped',
     'workspace.folders.movedInto',
     'workspace.folders.movedOut',
     'commands.reset.reset',
