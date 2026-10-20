@@ -58,3 +58,24 @@ test('the estimate is within 25% of the written file, with History and without, 
         estimate,
     )
 })
+
+test('the cache is for the BGM the page names: another BGM is a new estimate', async () => {
+    const fixture = await Fixture.create()
+    await fixture.storeMedia([BGM, COVER, PREVIEW])
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.flush()
+    const named = await estimateSaveSize(fixture.store, fixture.chainId, { bgm: BGM.ref.hash })
+    assert.ok(named)
+    assert.equal(named.bgm, BGM.bytes.length)
+    // The same session and `lastSeq`, with another item named: its size is the one reported.
+    const other = await estimateSaveSize(fixture.store, fixture.chainId, { bgm: COVER.ref.hash })
+    assert.ok(other)
+    assert.equal(other.bgm, COVER.bytes.length)
+    assert.notEqual(other.bgm, named.bgm)
+    // Asking for the first again is a fresh estimate for it, and equal.
+    assert.deepEqual(
+        await estimateSaveSize(fixture.store, fixture.chainId, { bgm: BGM.ref.hash }),
+        named,
+    )
+})
