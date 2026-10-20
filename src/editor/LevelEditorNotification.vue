@@ -21,6 +21,7 @@ const host = useTemplateRef<HTMLElement>('host')
 const clearance = ref(0)
 const gap = 8
 let observer: ResizeObserver | undefined
+let children: MutationObserver | undefined
 let observed: Element | undefined
 const measure = () => {
     const toolbar = host.value?.parentElement?.querySelector<HTMLElement>(
@@ -33,10 +34,9 @@ const measure = () => {
         observed = bar ?? undefined
         if (bar) observer?.observe(bar)
     }
-    if (!toolbar || !bar) {
-        clearance.value = 0
-        return
-    }
+    // The toolbar unmounts while the History sheet is open (X-8): keep the last clearance until a
+    // new bar mounts, which the child list observer measures.
+    if (!toolbar || !bar) return
     // While a drag hides the toolbar its size reads 0: keep the last clearance.
     if (bar.getBoundingClientRect().height > 0) {
         const padding = parseFloat(getComputedStyle(toolbar).paddingBottom) || 0
@@ -45,9 +45,16 @@ const measure = () => {
 }
 onMounted(() => {
     observer = new ResizeObserver(measure)
+    // A toolbar that mounts again is a new element: observed through the pane's children, as the
+    // change band does.
+    children = new MutationObserver(measure)
+    if (host.value?.parentElement) children.observe(host.value.parentElement, { childList: true })
     measure()
 })
-onBeforeUnmount(() => observer?.disconnect())
+onBeforeUnmount(() => {
+    observer?.disconnect()
+    children?.disconnect()
+})
 watch(
     () => [noticeCard.value?.id, top.value],
     () => void nextTick(measure),

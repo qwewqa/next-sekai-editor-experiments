@@ -330,6 +330,46 @@ test.describe('load notices in the start-up pill', () => {
         })
     })
 
+    test.describe('on a touch tablet', () => {
+        test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true })
+
+        test('the card goes back above the toolbar when the History sheet closes (X-8)', async ({
+            page,
+        }) => {
+            await visit(page)
+            await addEvent(page, { kind: 'storageCleared' })
+            await expect(pill(page)).toBeVisible()
+            // Held, so it stays while the sheet opens and closes.
+            await page.evaluate(async () => {
+                const { holdNotice } =
+                    (await import('/src/editor/notification.ts')) as typeof import('../../src/editor/notification')
+                holdNotice('focus', true)
+            })
+            const toolbar = page.locator('[data-editor-toolbar] > div')
+            // The card's foot, against the bar's top: 8 px above it once the card has risen in.
+            const space = async () =>
+                (await toolbar.boundingBox())!.y -
+                (await pill(page).evaluate((card) => card.getBoundingClientRect().bottom))
+            await expect.poll(space).toBe(8)
+            // The sheet unmounts the toolbar while it is open; closing it mounts a new one.
+            await run(page, 'history')
+            const sheet = page.locator('[data-tool-dialog][data-sheet]')
+            await expect(sheet).toBeVisible()
+            await expect(toolbar).toHaveCount(0)
+            await page.keyboard.press('Escape')
+            await expect(sheet).toHaveCount(0)
+            await expect(toolbar).toBeVisible()
+            await expect.poll(space).toBe(8)
+            const bar = (await toolbar.boundingBox())!
+            // A tap on the toolbar's centre lands on the toolbar.
+            const hit = await page.evaluate(
+                ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-editor-toolbar]'),
+                { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 },
+            )
+            expect(hit).toBe(true)
+        })
+    })
+
     test('every line is read by the one live region', async ({ page }) => {
         await visit(page)
         await addEvent(page, { kind: 'storageCleared' })
