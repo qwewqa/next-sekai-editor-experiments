@@ -2212,6 +2212,8 @@
     },
     "unsavedChanges": "已開啟 {0}。你在 {1} 對它有未儲存的變更。",
     "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",
+    "unsavedEarlierMaybe": "對 {0} 早期版本的未儲存變更（{1}）可能在「最近工作階段」中。",
+    "unsavedChangesMaybe": "已開啟 {0}。你在 {1} 對它可能有未儲存的變更。",
     "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在「最近工作階段」中。",
     "restoreIt": "還原工作階段",
     "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"

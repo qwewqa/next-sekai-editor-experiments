@@ -2212,6 +2212,8 @@
         },
         "unsavedChanges": "Opened {0}. You have unsaved changes to it from {1}.",
         "unsavedEarlier": "Unsaved changes to an earlier version of {0} ({1}) are in Recent Sessions.",
+        "unsavedEarlierMaybe": "There may be unsaved changes to an earlier version of {0} ({1}) in Recent Sessions.",
+        "unsavedChangesMaybe": "Opened {0}. You may have unsaved changes to it from {1}.",
         "olderVersion": "This is an older version of {0}. A newer one from {1} is in Recent Sessions.",
         "restoreIt": "Restore Session",
         "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."

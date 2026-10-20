@@ -2212,6 +2212,8 @@
     },
     "unsavedChanges": "已打开 {0}。你在 {1} 对它有未保存的更改。",
     "unsavedEarlier": "对 {0} 早期版本的未保存更改（{1}）在“最近会话”中。",
+    "unsavedEarlierMaybe": "对 {0} 早期版本的未保存更改（{1}）可能在“最近会话”中。",
+    "unsavedChangesMaybe": "已打开 {0}。你在 {1} 对它可能有未保存的更改。",
     "olderVersion": "这是 {0} 的旧版本。{1} 的较新版本在“最近会话”中。",
     "restoreIt": "还原会话",
     "damagedHistory": "“{0}”的历史记录已损坏。保存时会创建单独的文件。"

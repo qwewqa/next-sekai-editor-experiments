@@ -2212,6 +2212,8 @@
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz var.",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
+    "unsavedEarlierMaybe": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da olabilir.",
+    "unsavedChangesMaybe": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz olabilir.",
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. {1} tarihli daha yeni bir sürüm Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
     "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."

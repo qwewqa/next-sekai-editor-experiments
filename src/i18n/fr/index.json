@@ -2212,6 +2212,8 @@
     },
     "unsavedChanges": "{0} ouvert. Ce fichier a des modifications du {1} non sauvegardées.",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans Sessions récentes.",
+    "unsavedEarlierMaybe": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont peut-être dans Sessions récentes.",
+    "unsavedChangesMaybe": "{0} ouvert. Ce fichier a peut-être des modifications du {1} non sauvegardées.",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans Sessions récentes.",
     "restoreIt": "Restaurer la session",
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
