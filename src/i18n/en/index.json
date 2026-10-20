@@ -2275,8 +2275,6 @@
         "folder": "Folder",
         "groupFolder": "Group Folder",
         "stageFolder": "Stage Folder",
-        "groupFolders": "Group Folders",
-        "stageFolders": "Stage Folders",
         "levelInfo": "Level Info",
         "fields": {
             "title": "Title",

@@ -2275,8 +2275,6 @@
     "folder": "文件夹",
     "groupFolder": "群组文件夹",
     "stageFolder": "舞台文件夹",
-    "groupFolders": "群组文件夹",
-    "stageFolders": "舞台文件夹",
     "levelInfo": "关卡信息",
     "fields": {
       "title": "标题",

@@ -80,9 +80,7 @@ onBeforeUnmount(() => {
                     <h3
                         class="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-bold [overflow-wrap:anywhere]"
                     >
-                        <span>{{
-                            propertySectionLabel(section.kind, section.id !== undefined)
-                        }}</span>
+                        <span>{{ propertySectionLabel(section.kind) }}</span>
                         <span v-if="section.beforeName" class="min-w-0 whitespace-pre-wrap">{{
                             propertyReferenceText(section.beforeName)
                         }}</span>
