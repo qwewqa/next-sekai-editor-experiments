@@ -1,6 +1,8 @@
 import { reactive } from 'vue'
 import { isPeeking } from '../../history'
+import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import { i18n } from '../../i18n'
+import { formatDate } from '../../i18n/when'
 import type { SaveSizeEstimate } from '../../local/save/estimate'
 import type { MediaKind } from '../../local/save/media'
 import { showModal } from '../../modals'
@@ -10,6 +12,7 @@ import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
 import { confirmFile, downloadNotConfirmed } from '../file'
+import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
 import SaveDialog from './SaveDialog.vue'
@@ -68,7 +71,7 @@ export type Preparing = {
     readonly signal: AbortSignal
     /** The import's progress while the Save waits for it. */
     importing: (progress: { done: number; total: number }) => void
-    /** The built file's size, once known. */
+    /** The file's size: the estimate while it builds, the built size once known. */
     built: (size: number) => void
     /**
      * The build outlasted the press: the button becomes `[Download]` or `[Save]` (focused), whose
@@ -91,12 +94,13 @@ export type DiskVersion =
     | {
           kind: 'saved'
           device: { id: string; label: string }
-          /** Saved in this browser: "Saved in the web editor (Chrome)" names it the same way. */
-          thisDevice: boolean
           savedAt: number
           notes: number
       }
-    | { kind: 'otherProject'; name: string }
+    /** A file of another project; `name` when its `project.json` has one. */
+    | { kind: 'otherProject'; name?: string }
+    /** Our project's file that went back: its revision is one of ours, from before our base. */
+    | { kind: 'notDescendant'; savedAt: number }
     /** A file whose `project.json` doesn't read: only the title and body show. */
     | { kind: 'unknown' }
 
@@ -172,18 +176,20 @@ const describe = (disk: DiskVersion) => {
     switch (disk.kind) {
         case 'saved': {
             const notes = interpolate(() => i18n.value.peek.notes, formatCount(disk.notes))()
-            const when = formatTime(disk.savedAt)
-            return disk.device.label.startsWith('Web')
-                ? interpolate(
-                      () => conflict.savedWeb,
-                      disk.device.label.replace(/^Web \((.*)\)$/, '$1'),
-                      when,
-                      notes,
-                  )()
-                : interpolate(() => conflict.savedOn, disk.device.label, when, notes)()
+            // The device is worded as the Timeline words it, once (Part 0 §0.9.3).
+            return interpolate(
+                () => conflict.saved,
+                savedOnText(getHistoryOperationContext(), disk.device.label),
+                formatTime(disk.savedAt),
+                notes,
+            )()
         }
         case 'otherProject':
-            return interpolate(() => conflict.otherProject, disk.name)()
+            return disk.name === undefined
+                ? conflict.otherProjectUnnamed
+                : interpolate(() => conflict.otherProject, disk.name)()
+        case 'notDescendant':
+            return interpolate(() => conflict.notDescendant, formatDate(disk.savedAt))()
         case 'unknown':
             return ''
     }
@@ -374,17 +380,23 @@ export const defaultSaveUi: SaveUi = {
             feedback.kind === 'saved' && isPeeking.value && simple(feedback)
                 ? interpolate(() => i18n.value.notice.savedCurrent, feedback.name)
                 : () => savedText(feedback)
+        const announced = unconfirmed
+            ? interpolate(
+                  () => i18n.value.confirm.announce,
+                  text,
+                  () => i18n.value.state.notConfirmed,
+              )
+            : undefined
+        // Save to File… of a session another tab has open wrote its stored state: said to
+        // assistive technology with the notice (§1.6.11.6), not shown as another line.
+        const announcement = feedback.committedState
+            ? () => `${(announced ?? text)()} ${i18n.value.save.committedState}`
+            : announced
         notify(text, {
             ...(unconfirmed
-                ? {
-                      action: { label: () => i18n.value.confirm.haveFile, run: confirmFile },
-                      announcement: interpolate(
-                          () => i18n.value.confirm.announce,
-                          text,
-                          () => i18n.value.state.notConfirmed,
-                      ),
-                  }
+                ? { action: { label: () => i18n.value.confirm.haveFile, run: confirmFile } }
                 : {}),
+            ...(announcement ? { announcement } : {}),
         })
     },
     noChanges: (name, event, downloadAgain) => {

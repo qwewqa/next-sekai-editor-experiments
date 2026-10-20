@@ -515,14 +515,12 @@ test.describe('the conflict dialog', () => {
         saved: {
             kind: 'saved',
             device: { id: 'a', label: 'iPad' },
-            thisDevice: false,
             savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
             notes: 1220,
         },
         web: {
             kind: 'saved',
             device: { id: 'a', label: 'Web (Chrome)' },
-            thisDevice: false,
             savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
             notes: 1,
         },
@@ -567,6 +565,19 @@ test.describe('the conflict dialog', () => {
         await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.web } })
         await expect(dialog(page)).toContainText(
             'Saved in the web editor (Chrome), Oct 16, 2:41 PM · 1 note.',
+        )
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Close' }).click()
+        // A web label with no browser reads as the Timeline words it, not "Saved on Web".
+        await open(page, {
+            kind: 'conflict',
+            input: {
+                name: 'coconut.nxsp',
+                disk: { ...disk.web, device: { id: 'a', label: 'Web' } },
+            },
+        })
+        await expect(dialog(page)).toContainText(
+            'Saved in the web editor, Oct 16, 2:41 PM · 1 note.',
         )
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()
