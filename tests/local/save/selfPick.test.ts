@@ -3,9 +3,11 @@ import test from 'node:test'
 import { hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
+import { packHashes } from '../../../src/local/records/rows'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { readReplaceDecision, readSaveNeeds } from '../../../src/local/save/predicate'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
+import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, heldRows, inspectNxsp, save, sourceOf, stateAt } from './fixture'
 
 // A save picker returning the chain's own file (Part 1 §1.4.7 R2, R4; owner decision log D5;
@@ -147,4 +149,62 @@ test('damage no build has found: the self-pick is written from storage, the step
     // The mark is stored (one-way), so no later write claims the step.
     const stored = (await fixture.entries()).find((entry) => entry.kind === 'init')
     assert.equal(stored?.kept, false)
+})
+
+/** Flips the first byte of a stored chunk: once makes it bad, twice makes it whole again. */
+const flip = (fixture: Fixture, hex: string) =>
+    fixture.store.write(['chunks'], async (tx) => {
+        const key = hashKey(fromHex16(hex))
+        const row = (await tx.get('chunks', key)) as { bytes: Uint8Array }
+        const bytes = row.bytes.slice()
+        bytes[0] = (bytes[0] ?? 0) ^ 0x5a
+        await tx.put('chunks', { ...row, bytes }, key)
+    })
+
+test('damage storage knows of under a kept row the base held makes the next write short (SP-1)', async () => {
+    // Bodies are shared between chains: another chain's build found the bad chunk and recorded it
+    // in its `badChunks`, marking only its own rows. This chain's rows of that state stay kept, so
+    // the carry test passes; the known damage makes the write short, and the file is read first.
+    const { fixture, file } = await chainWithFile()
+    const hex = await damageOnly(fixture, 3, [0, 1, 2, 4])
+    await fixture.store.write(['chains'], (tx) =>
+        tx.put('chains', {
+            chainId: 'another',
+            docId: 'another',
+            lineageId: 'lineage',
+            badChunks: packHashes([fromHex16(hex)]),
+        }),
+    )
+    assert.equal(await needsRead(fixture, file), false)
+    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
+    // Stored again whole, the hash is no longer short.
+    await flip(fixture, hex)
+    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, true)
+})
+
+test('a stored BGM a build found bad counts as lacking, so the file holding it is read first (SP-1)', async () => {
+    const { fixture } = await chainWithFile()
+    await fixture.storeMedia([BGM, COVER, PREVIEW])
+    const key = hashKey(fromHex16(BGM.ref.hash))
+    const row = (await fixture.store.read(['media'], (tx) => tx.get('media', key))) as {
+        blob: Blob
+    }
+    const bytes = new Uint8Array(await row.blob.arrayBuffer())
+    bytes[0] = (bytes[0] ?? 0) ^ 0x5a
+    await fixture.store.write(['media'], (tx) =>
+        tx.put('media', { ...row, blob: new Blob([bytes]) }, key),
+    )
+    // The key is there, so before any build it reads as held.
+    assert.deepEqual(
+        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
+        [],
+    )
+    // A download finds it bad and records it.
+    const download = await save(fixture, { kind: 'copy' }, { binds: false })
+    assert.ok(!('refused' in download.built))
+    assert.ok(download.built.damaged.includes(BGM.ref.hash))
+    assert.deepEqual(
+        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
+        [BGM.ref.hash],
+    )
 })

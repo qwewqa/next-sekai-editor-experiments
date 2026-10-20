@@ -28,6 +28,22 @@ export type MediaPlan = {
     damaged?: boolean
 }
 
+/**
+ * Whether the media store holds `hash` whole: its Blob re-hashed as a build takes it. False for a
+ * row missing, unreadable or gone bad.
+ */
+export const isStoredMediaWhole = async (store: SaveStore, hash: string) => {
+    const row = await store.read(['media'], (tx) => tx.get('media', hashKey(fromHex16(hash))))
+    if (!isObject(row) || !(row.blob instanceof Blob)) return false
+    try {
+        const digest = await sha256(new Uint8Array(await row.blob.arrayBuffer()))
+        const stored = row.sha256 instanceof Uint8Array ? row.sha256 : undefined
+        return toHex(digest).startsWith(hash) && (!stored || equalBytes(stored, digest))
+    } catch {
+        return false
+    }
+}
+
 /** The project.json form of an append source's item, by kind. */
 const sourceForm = (source: PinnedSource, kind: MediaKind) => {
     const project = source.projectJson

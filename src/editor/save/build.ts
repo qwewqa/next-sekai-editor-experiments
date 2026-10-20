@@ -157,6 +157,17 @@ export const buildOptions = async (
     }
 }
 
+/** This tab's pending part with the live head's records added, for a head storage can't read. */
+const withHeadRecords = (pending: PendingInput | undefined, state: State): PendingInput => {
+    const records: PendingRecords = {
+        roots: { ...pending?.records.roots },
+        nodes: { ...pending?.records.nodes },
+        chunks: { ...pending?.records.chunks },
+    }
+    addRecords(records, state)
+    return { ...(pending ?? { entries: [] }), records }
+}
+
 /** A build's call can take long on a large chart: the worker reports its progress meanwhile. */
 const BUILD_TIMEOUT_MS = 10 * 60_000
 
@@ -171,21 +182,27 @@ export const runBuild = async (
     sources: readonly (PinnedSource | SaveSourceFile)[] = [],
 ): Promise<BuiltSave> => {
     const options = await buildOptions(env, request)
-    const built = await env.worker.call(
-        'buildSave',
-        {
-            chainId: env.session.chainId,
-            target: request.target,
-            options,
-            sources: sources.map((source) => ({
-                token: source.token,
-                role: source.role,
-                file: source.file,
-                fingerprint: 'disk' in source ? source.disk.fingerprint : source.fingerprint,
-            })),
-        },
-        { timeoutMs: BUILD_TIMEOUT_MS },
-    )
+    const call = (options: BuildSaveOptions) =>
+        env.worker.call(
+            'buildSave',
+            {
+                chainId: env.session.chainId,
+                target: request.target,
+                options,
+                sources: sources.map((source) => ({
+                    token: source.token,
+                    role: source.role,
+                    file: source.file,
+                    fingerprint: 'disk' in source ? source.disk.fingerprint : source.fingerprint,
+                })),
+            },
+            { timeoutMs: BUILD_TIMEOUT_MS },
+        )
+    let built = await call(options)
+    // The head's stored copy failed: an open session's head is always written, from the live
+    // state's records (§1.6.11.6). Save to File… of a session that isn't open refuses.
+    if ('refused' in built && built.refused === 'unreadableHead' && request.sessionId === undefined)
+        built = await call({ ...options, pending: withHeadRecords(options.pending, request.state) })
     if ('refused' in built) {
         if (built.refused === 'conflict' || built.refused === 'notAtBase')
             throw new FileError('conflict', 'The file changed after it was checked')

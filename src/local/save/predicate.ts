@@ -1,10 +1,12 @@
 import { centralDirectoryOf } from '../../platform/fingerprint'
 import { hashKey } from '../db'
-import { fromHex16 } from '../hash'
+import { fromHex16, toHex } from '../hash'
 import { isObject } from '../nxsp/json'
-import type { SaveStore } from './bodies'
+import { unpackHashes } from '../records/rows'
+import { reachedHashes, stillBad, type SaveStore } from './bodies'
 import { CUT_STORES, readCut, type ChainCut } from './cut'
-import { carries, chainRows, ModelError } from './model'
+import { isStoredMediaWhole } from './media'
+import { carries, chainRows, isLater, ModelError } from './model'
 
 // Comparing files (Part 0 §0.9.5; Part 1 §1.6.11.6): the relation of two revisions, the content
 // predicate "N holds O" from `project.json` and the chain record alone, and the web's Replace
@@ -133,9 +135,50 @@ export const readReplaceDecision = async (
     return cut && replaceDecision(cut, fileFacts(projectJson, fingerprint))
 }
 
+/**
+ * Damage storage already knows of: every chain's `badChunks` (bodies are shared between chains,
+ * so another chain's build may have found it), as hex, those still missing or bad (SP-1).
+ */
+const knownDamage = async (store: SaveStore) => {
+    const chains = await store.read(['chains'], (tx) => tx.getAll('chains'))
+    const known = new Set<string>()
+    for (const chain of chains)
+        if (isObject(chain) && chain.badChunks instanceof Uint8Array)
+            for (const hash of unpackHashes(chain.badChunks)) known.add(toHex(hash))
+    return known
+}
+
+/**
+ * Whether a kept row up to the cut needs a body of `bad`: a state the base held that a write from
+ * storage would leave out while the carry test passes, since it counts flags, not bodies (SP-1).
+ */
+export const keptRowsNeed = async (store: SaveStore, cut: ChainCut, bad: ReadonlySet<string>) => {
+    const entry = cut.chain.file?.entry
+    if (!entry || !bad.size) return false
+    let rows
+    try {
+        rows = chainRows(cut)
+    } catch (error) {
+        if (error instanceof ModelError) return false
+        throw error
+    }
+    const roots = new Set<string>()
+    for (const row of rows) {
+        if (!row.entry.kept || isLater(row, entry)) continue
+        roots.add(toHex(row.entry.snapshot))
+        for (const slot of row.entry.stack?.push ?? []) roots.add(toHex(slot.snapshot))
+    }
+    if ([...roots].some((hex) => bad.has(hex))) return true
+    const reached = await reachedHashes(store, roots)
+    return [...bad].some((hex) => reached.has(hex))
+}
+
 /** What a write from storage would leave out that the chain's own file may hold (R2). */
 export type SaveNeeds = {
-    /** The next write from storage carries the base's `completeFrom` (D25's carry test). */
+    /**
+     * The next write from storage carries the base's `completeFrom` (D25's carry test), and no
+     * damage storage knows of is under a kept row the base held.
+     */
     carries: boolean
     /** Of the head's media given (by hash), those the media store doesn't hold. */
     lacking: string[]
@@ -159,5 +202,13 @@ export const readSaveNeeds = async (
                 missing.push(hash)
         return missing
     })
-    return { carries: !cut?.chain.file?.entry || wouldCarry(cut), lacking }
+    // Damage storage already knows of is short too: the carry test and a key can't see it (SP-1).
+    const known = await knownDamage(store)
+    const bad = known.size ? await stillBad(store, [...known]) : new Set<string>()
+    for (const hash of media)
+        if (known.has(hash) && !lacking.includes(hash) && !(await isStoredMediaWhole(store, hash)))
+            lacking.push(hash)
+    const carried =
+        !cut?.chain.file?.entry || (wouldCarry(cut) && !(await keptRowsNeed(store, cut, bad)))
+    return { carries: carried, lacking }
 }

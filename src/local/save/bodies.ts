@@ -222,6 +222,69 @@ export const loadBodies = async (
 }
 
 /**
+ * Every node and chunk hash `roots` reach in storage, read from the root and node rows alone (no
+ * chunk is read or verified): what a state needs, for a check that names known damage (SP-1). A
+ * root or node that doesn't read reaches nothing further.
+ */
+export const reachedHashes = async (store: SaveStore, roots: Iterable<string>) => {
+    const reached = new Set<string>()
+    const rootList = [...new Set(roots)]
+    let nodes: string[] = []
+    for (const [, row] of await readRows(store, 'nodes', rootList)) {
+        const value = row as NodesRow | undefined
+        const json = value?.t === 'root' ? parse(() => rootJsonFromRow(value)) : undefined
+        const parts = json && rootParts(json)
+        if (!parts) continue
+        reached.add(parts.header)
+        nodes.push(...parts.nodes)
+    }
+    // Two levels of nodes at most, as `loadBodies` reads them.
+    for (let level = 0; level < 2 && nodes.length; level++) {
+        const list = [...new Set(nodes)].filter((hex) => !reached.has(hex))
+        nodes = []
+        for (const hex of list) reached.add(hex)
+        for (const [, row] of await readRows(store, 'nodes', list)) {
+            const value = row as NodesRow | undefined
+            const json = value?.t === 'node' ? parse(() => nodeJsonFromRow(value)) : undefined
+            const node = json && nodeChildren(json)
+            if (!node) continue
+            if (node.depth === 0) for (const child of node.children) reached.add(child)
+            else nodes.push(...node.children)
+        }
+    }
+    return reached
+}
+
+/**
+ * Which of `hashes` storage still holds bad or not at all: a chunk row failing its key-bound CRC,
+ * or a root or node row that doesn't hash to its key. A body stored again since is no longer bad.
+ */
+export const stillBad = async (store: SaveStore, hashes: readonly string[]) => {
+    const chunks = await readRows(store, 'chunks', hashes)
+    const nodes = await readRows(store, 'nodes', hashes)
+    const bad = new Set<string>()
+    for (const hex of hashes) {
+        const chunk = chunks.get(hex) as { bytes?: unknown; crc32?: unknown } | undefined
+        if (
+            chunk?.bytes instanceof Uint8Array &&
+            typeof chunk.crc32 === 'number' &&
+            isChunkRowIntact(fromHex16(hex), { bytes: chunk.bytes, crc32: chunk.crc32 })
+        )
+            continue
+        const node = nodes.get(hex) as NodesRow | undefined
+        const json =
+            node?.t === 'root'
+                ? parse(() => rootJsonFromRow(node))
+                : node?.t === 'node'
+                  ? parse(() => nodeJsonFromRow(node))
+                  : undefined
+        if (json && (await hashesTo(json, hex))) continue
+        bad.add(hex)
+    }
+    return bad
+}
+
+/**
  * Adds to `into` each of `roots` that `from` holds whole, with the nodes and chunks it reaches
  * (those the source holds stay out). The rest are left out, never counted as damage.
  */
