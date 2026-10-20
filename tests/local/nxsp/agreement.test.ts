@@ -250,6 +250,9 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         'bgm-size-true': await probe(project((p) => (p.bgm.size = true))),
         'time-float': await probe(manifest((m) => (m.entries[0].time = 1.5))),
         'time-negative': await probe(manifest((m) => (m.entries[0].time = -1))),
+        // An entry's `noteCount` is optional: absent is an unknown count; null is damage.
+        'notecount-absent': await probe(manifest((m) => delete m.entries[1].noteCount)),
+        'notecount-null': await probe(manifest((m) => (m.entries[1].noteCount = null))),
         'kind-unknown': await probe(
             manifest((m) =>
                 Object.assign(m.entries[0], {
@@ -496,6 +499,8 @@ type Opened = { kind: string; open: string | null; reasons: string[] }
  */
 const expectedByPlan: Record<string, Opened> = {
     noop: { kind: 'nxsp', open: 'full', reasons: [] },
+    'notecount-absent': { kind: 'nxsp', open: 'full', reasons: [] },
+    'notecount-null': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     // A newer patch alone is a notice: the open is whole. With anything else unknown it is partial.
     'newer-patch': { kind: 'nxsp', open: 'full', reasons: ['newer-patch'] },
     'newer-patch-entry': {
@@ -603,6 +608,7 @@ test('the reader and the checker open every probe alike', { skip: !hasUv }, asyn
         // A conforming file a writer doesn't make passes the writer checks too.
         for (const name of [
             'noop',
+            'notecount-absent',
             'root-float',
             'big',
             'segmented',

@@ -224,15 +224,21 @@ const fileError = (error: unknown) =>
 type PreparingSlot = {
     dialog?: Preparing
     name: string
+    /** Export's picker waiting for an open's import (SF3-1). */
+    kind?: 'export'
     timer?: ReturnType<typeof setTimeout>
     cancel: AbortController
 }
 
-const preparingFor = (name: string): PreparingSlot => ({ name, cancel: new AbortController() })
+const preparingFor = (name: string, kind?: 'export'): PreparingSlot => ({
+    name,
+    cancel: new AbortController(),
+    ...(kind ? { kind } : {}),
+})
 
 const openPreparing = (slot: PreparingSlot) => {
     if (slot.dialog) return slot.dialog
-    const dialog = saveUi.preparing(slot.name)
+    const dialog = saveUi.preparing(slot.name, slot.kind)
     slot.dialog = dialog
     if (dialog.signal.aborted) slot.cancel.abort()
     else
@@ -297,17 +303,54 @@ const importPendingHere = async (env: Env) =>
         (each) => each.sessionId === env.session.id,
     )
 
+/** How often a dialog counts again while an import is pending that runs nowhere here. */
+const ESTIMATE_POLL_MS = 1000
+
+/** Resolves once `signal` aborts; at once without one. */
+const untilAborted = (signal?: AbortSignal) =>
+    new Promise<void>((resolve) => {
+        if (!signal || signal.aborted) resolve()
+        else
+            signal.addEventListener(
+                'abort',
+                () => {
+                    resolve()
+                },
+                { once: true },
+            )
+    })
+
 /**
- * Waits for the open's import of this session to end, in this tab, or a while when it runs
- * nowhere here yet (a reload's resume); false once `signal` aborts. Its caller counts again.
+ * A dialog's size estimate, never one counted during an open's import (SF2-5, SF3-3): such a count
+ * is low, since the import's batches add rows. While `sessionId`'s import runs here, it waits for
+ * it to end and counts again. While one is pending that runs nowhere here (a reload's resume not
+ * started yet, or another session's import that never ends), it counts again a few times, for
+ * `RESUME_WAIT_MS` in all; then the size stays "Estimating size…" until the dialog closes, with no
+ * more counts. Undefined when a count failed or `signal` aborted.
  */
-const importEnded = async (env: Env, signal?: AbortSignal) => {
-    if (!isImporting(env.session.id)) return pause(2000, signal)
-    try {
-        await whenImported(env.session.id, signal)
-        return true
-    } catch {
-        return false
+const countedWhole = async (
+    sessionId: string,
+    count: () => Promise<SaveSizeEstimate | undefined>,
+    signal?: AbortSignal,
+): Promise<SaveSizeEstimate | undefined> => {
+    for (let waited = 0; ;) {
+        const loaded = await count()
+        if (!loaded || signal?.aborted) return
+        if (!loaded.importing) return loaded
+        if (isImporting(sessionId)) {
+            try {
+                await whenImported(sessionId, signal)
+            } catch {
+                return
+            }
+            continue
+        }
+        if (waited >= RESUME_WAIT_MS) {
+            await untilAborted(signal)
+            return
+        }
+        if (!(await pause(ESTIMATE_POLL_MS, signal))) return
+        waited += ESTIMATE_POLL_MS
     }
 }
 
@@ -551,7 +594,8 @@ const nameTime = (time: number) => formatDateTime(settings.locale, time).replace
 
 // Pre-reading this chain's own file before a picker (R2).
 
-type PreRead = { blob: Blob; disk: DiskState; atBase: boolean }
+/** The chain's own file read before a picker: its bytes, and the handle they were read from. */
+type PreRead = { blob: Blob; disk: DiskState; atBase: boolean; handle: FileSystemFileHandle }
 
 /** The head's media whose bytes this tab doesn't hold, by hash: storage or the file may. */
 const mediaNotHeld = (state: State, options: StoredFile['options']) => {
@@ -610,7 +654,7 @@ const preRead = async (
         const blob = new File([await found.arrayBuffer()], found.name, {
             lastModified: found.lastModified,
         })
-        return { blob, disk, atBase }
+        return { blob, disk, atBase, handle }
     } catch {
         return
     }
@@ -634,6 +678,40 @@ type Picked =
  */
 const same = async (a: FileSystemFileHandle, b: FileSystemFileHandle) =>
     (await sameEntry(a, b)) || sameEntry(b, a)
+
+/** As `same`, and `unsure` when neither side can compare (`isSameEntry` throws both ways). */
+const sameOrUnsure = async (
+    a: FileSystemFileHandle,
+    b: FileSystemFileHandle,
+): Promise<'same' | 'different' | 'unsure'> => {
+    if (a === b) return 'same'
+    let answered = false
+    for (const [x, y] of [
+        [a, b],
+        [b, a],
+    ] as const)
+        try {
+            if (await x.isSameEntry(y)) return 'same'
+            answered = true
+        } catch {
+            // This side can't compare: the other may.
+        }
+    return answered ? 'different' : 'unsure'
+}
+
+/**
+ * A pick `identify` can't place (R8: storage's owners unread, no handle held) that is the file the
+ * bytes in hand were read from, or may be: the chain's own (ADV3-2). So bytes read from what may be
+ * the picked file are appended to or put back, never written over.
+ */
+const placed = async (
+    picked: Picked,
+    handle: FileSystemFileHandle,
+    pre: PreRead | undefined,
+): Promise<Picked> =>
+    picked.kind === 'unknown' && pre && (await sameOrUnsure(handle, pre.handle)) !== 'different'
+        ? { kind: 'own' }
+        : picked
 
 /** Identifies a picked file under `nse-bind` (R3, R7), outside any transaction. */
 const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked> => {
@@ -704,6 +782,8 @@ const targetBytes = async (env: Env, owner: HandleOwner) => {
 /** Writes bytes back into a picked file while it's still empty (R4, R7); true when it holds them. */
 const putBack = async (target: FileTarget, bytes: ArrayBuffer | Blob) => {
     try {
+        // Its size first: a filled file is never read and hashed whole only to learn that (SF3-2).
+        if ((await platform.read(target)).size !== 0) return false
         // Its precondition is the empty file as this write's kind measures it (R9).
         const empty = await platform.inspect(target)
         if (empty === 'missing' || empty.size !== 0) return false
@@ -1029,8 +1109,11 @@ const keepingOwn = async (
     run: (pick: OwnPick) => Promise<Outcome>,
 ): Promise<Outcome> => {
     const pick: OwnPick = {}
-    const own = async () =>
-        pick.own ?? (await identify(env, target.handle).catch(() => undefined))?.kind === 'own'
+    const own = async () => {
+        if (pick.own !== undefined) return pick.own
+        const picked = await identify(env, target.handle).catch(() => undefined)
+        return (picked && (await placed(picked, target.handle, pre)))?.kind === 'own'
+    }
     const name = target.handle.name
     let outcome: Outcome
     try {
@@ -1090,7 +1173,7 @@ const afterPick = async (
     }
     // Written since the pick: by a sync client, or by its owner while this pick waited (R9).
     const filled = found.size !== 0
-    const picked = refusedTarget(env, await identify(env, handle))
+    const picked = refusedTarget(env, await placed(await identify(env, handle), handle, pre))
     pick.own = picked.kind === 'own'
     let built = prebuilt
     let tookOver = false
@@ -2073,36 +2156,35 @@ const dialogInput = async (
             // The worker counts what storage holds: this tab's pending entries go first, so the
             // steps are the ones the file will carry (a flush never rejects).
             load: async (signal) => {
-                for (;;) {
-                    const before = key()
-                    const again = knownEstimate(env.chainId, before)
-                    if (again) {
-                        const known = withHeldBgm(again, state)
-                        noteLoaded(input, known)
-                        return known
-                    }
-                    await env.flusher.flush()
-                    const loaded = await env.worker
-                        .call('estimateSaveSize', {
-                            chainId: env.chainId,
-                            ...(hash ? { bgm: hash } : {}),
-                        })
-                        .catch(failedEstimate)
-                    if (!loaded || signal?.aborted) return
-                    // Counted during an open's import: low, since its batches add rows. The
-                    // dialog shows no count ("Estimating size…") until the import ends, then
-                    // counts again (SF2-5).
-                    if (loaded.importing) {
-                        if (!(await importEnded(env, signal))) return
-                        continue
-                    }
-                    // Kept only when it counted every entry: a flush that left some pending
-                    // (storage paused) counted fewer than `nextSeq` says.
-                    if (!env.flusher.hasPending) rememberEstimate(env.chainId, before, loaded)
-                    const estimate = withHeldBgm(loaded, state)
-                    noteLoaded(input, estimate)
-                    return estimate
-                }
+                let before = key()
+                const counted = { fromCache: false }
+                // Counted during an open's import, it shows no count ("Estimating size…") until
+                // the import ends, then counts again (`countedWhole`).
+                const loaded = await countedWhole(
+                    env.session.id,
+                    async () => {
+                        before = key()
+                        const again = knownEstimate(env.chainId, before)
+                        counted.fromCache = !!again
+                        if (again) return again
+                        await env.flusher.flush()
+                        return env.worker
+                            .call('estimateSaveSize', {
+                                chainId: env.chainId,
+                                ...(hash ? { bgm: hash } : {}),
+                            })
+                            .catch(failedEstimate)
+                    },
+                    signal,
+                )
+                if (!loaded) return
+                // Kept only when it counted every entry: a flush that left some pending
+                // (storage paused) counted fewer than `nextSeq` says.
+                if (!counted.fromCache && !env.flusher.hasPending)
+                    rememberEstimate(env.chainId, before, loaded)
+                const estimate = withHeldBgm(loaded, state)
+                noteLoaded(input, estimate)
+                return estimate
             },
         },
     }
@@ -2397,15 +2479,20 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
         ...(await storageLineOf()),
         peeking: false,
         estimate: {
-            ...(estimate ? { cached: estimate } : {}),
-            load: () =>
-                env.worker
-                    .call('estimateSaveSize', { chainId, sessionId })
-                    .catch(failedEstimate)
-                    .then((loaded) => {
-                        if (loaded) noteLoaded(input, loaded)
-                        return loaded
-                    }),
+            // One counted during an open's import is low: never shown (SF3-3).
+            ...(estimate && !estimate.importing ? { cached: estimate } : {}),
+            load: async (signal) => {
+                const loaded = await countedWhole(
+                    sessionId,
+                    () =>
+                        env.worker
+                            .call('estimateSaveSize', { chainId, sessionId })
+                            .catch(failedEstimate),
+                    signal,
+                )
+                if (loaded) noteLoaded(input, loaded)
+                return loaded
+            },
         },
     }
     const result = await saveUi.saveDialog(input)
@@ -2649,6 +2736,29 @@ export const exportPickerOpening = () => {
         exportRead ??= preRead(env, quickBinding(env), { prompt: false })
 }
 
+/**
+ * Before each of Export's pickers (SF3-1): a picker that returns the chain's own file empties it,
+ * and an open's import still reading that file would stop there, the rows it hadn't copied left
+ * unkept. So Export waits for this session's import as a Save does (`waitForImport`): in
+ * "Preparing…", whose Cancel cancels the Export, then asks for the press the picker needs (R12).
+ * True at once when no import is pending; false when cancelled.
+ */
+export const exportImportWait = async (name: string, size: number) => {
+    const env = environment()
+    if (!env || !platform.pickSaveFile) return true
+    const startedAt = performance.now()
+    const slot = preparingFor(name, 'export')
+    try {
+        if ((await waitForImport(env, slot)) === 'cancelled') return false
+        // Nothing waited for: the picker opens on the press as before.
+        if (!slot.dialog || !activationLapsed(startedAt)) return true
+        slot.dialog.built(size)
+        return await readyIn(slot, 'save', size)
+    } finally {
+        closePreparing(slot)
+    }
+}
+
 /** Export's dialog closed: the bytes read go, unless its flow runs on in a follow-up. */
 export const endExportRead = () => {
     exportOpen = false
@@ -2677,7 +2787,9 @@ export const exportTargetAvailable = async (handle: FileSystemFileHandle) => {
 export const projectPick = async (handle: FileSystemFileHandle): Promise<ProjectPick> => {
     const env = environment()
     if (!env) return
-    const picked = await identify(env, handle)
+    // The read before this picker, of the chain's own file when it is still that file's.
+    const read = await settledNow(exportRead)
+    const picked = await placed(await identify(env, handle), handle, read)
     if (
         picked.kind === 'other' ||
         (picked.kind === 'target' && picked.owner.chainId !== env.chainId)
@@ -2693,7 +2805,7 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
     if (picked.kind !== 'own') return
     const binding = quickBinding(env)
     const file = binding.file
-    const pre = await settledNow(exportRead)
+    const pre = read
     // The picker emptied the file this read was of: the next picker reads it again.
     exportRead = undefined
     const target = { kind: 'handle' as const, handle }

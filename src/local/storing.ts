@@ -487,6 +487,7 @@ export const startStoring = (
             void flows().then((flow) => {
                 flow.exportFlowRunning(running)
             }),
+        importWait: async (name, size) => (await flows()).exportImportWait(name, size),
     })
     setFileActions({
         saveAs: () => void flows().then((flow) => flow.fileSaveAs()),

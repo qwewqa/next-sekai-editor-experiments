@@ -232,8 +232,8 @@ export type OwnSaveBelow = 'pending' | 'stored'
 /**
  * Records our own completed Save (§1.4.7): its `save` entry at its reserved `seq` when the chain
  * doesn't hold one there, its session is stored, nothing below the `seq` is still to store and it
- * lands on the newest stored entry's state (`landsOn`), then the identity unit with its marks;
- * an entry not written is counted out of the unit's cut. A session's `lastSeq` means every entry
+ * lands on the newest stored entry's state (`landsOn`), then the identity unit with its marks
+ * and its cut as the file holds it, the entry written or not. A session's `lastSeq` means every entry
  * at or below it is stored (or covered by a `recovered` entry), so the entry is never written past
  * a lower one a tab still holds. False, writing nothing, when the chain is gone or a mark can't be
  * stored.
@@ -295,20 +295,10 @@ export const finishOwnSave = async (
     const file = { ...unit.file }
     if (isRow(session) && isRow(file.entry) && file.entry.sessionId === entry.sessionId)
         file.entry = { ...file.entry, startedAt: session.startedAt }
-    // The cut counts the file's rows, this entry's among them. Not written, and no tab to store it
-    // later (`pending`), the chain lacks it: counted out, so the cut is what the chain holds and
-    // the next Save's carry test (save/model.ts `carries`) compares like with like.
-    if (
-        !written &&
-        held === undefined &&
-        below !== 'pending' &&
-        isRow(file.entry) &&
-        file.entry.sessionId === entry.sessionId &&
-        file.entry.seq === entry.seq &&
-        typeof file.entry.count === 'number' &&
-        file.entry.count > 1
-    )
-        file.entry = { ...file.entry, count: file.entry.count - 1 }
+    // The cut counts the file's rows, this entry's among them, also when the entry isn't written: a
+    // cut may only under-claim (§1.6.11.6). The next write that isn't an append then fails the
+    // carry test (save/model.ts `carries`) and says "Some earlier steps were not kept." once,
+    // rather than claiming a file whose `save` row it lacks.
     const fields = await splitHandles(tx, chainId, { file })
     const record: Row = {
         ...chain,

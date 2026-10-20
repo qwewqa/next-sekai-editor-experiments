@@ -163,7 +163,12 @@ const entryRow = (
         day,
         ...captureEntryDescription(entry),
         snapshot: fromHex16(entry.snapshot),
-        noteCount: root ? root[3] : entry.noteCount,
+        // The root's count when it's held, else the entry's; absent stays unknown, never 0.
+        ...(root
+            ? { noteCount: root[3] }
+            : entry.noteCount === undefined
+              ? {}
+              : { noteCount: entry.noteCount }),
         dirty: entry.dirty === true,
         kept: entry.kept !== false,
         ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),

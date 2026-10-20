@@ -110,6 +110,7 @@ Operation codecs are strict: a member the codec does not list makes the data fai
 - `durationMs` and `activeMs` carry `Ms`. `summary.durationMs` is derived from the head and used only for its `revisionId`.
 - Beats are beats; lanes are lane units; `initialLife` is the plain number the header holds.
 - Operation owner moves (`fromIndex`, `toIndex`) are **0-based**: positions among a domain's entries in tree order, or among top-level items for a folder. Step Details shows them 1-based, for a reorder only.
+- An entry's `noteCount` in a file is optional: **absent is an unknown count**, never 0. A writer leaves it out when it does not know the count; a reader keeps it absent, and a present value must be a safe integer of at least 0 ([history-format.md](history-format.md) section 3).
 - Counts in operations are safe integers: a scalar count (`created`, `targets`, `added`) is at least 0, and a map of counts (`changed`, `removed`, `displaced`) holds only positive values; a required map may be empty, an optional one is left out instead ([history-format.md](history-format.md) section 4.2).
 - Text in an operation is a `NameText` (`{ text, truncated? }`) of at most 256 code points; `fallback.text` is at most 1,024.
 - Hashes are 32 lowercase hex characters for 16 bytes in files and journals (64 for a full SHA-256), raw 16 bytes in IndexedDB.

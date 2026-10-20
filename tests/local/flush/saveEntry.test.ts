@@ -21,7 +21,7 @@ import {
     originOperation,
 } from '../../helpers/historySteps'
 import { append, beginSession, openJournalPage, replayAll } from '../journal/harness'
-import { goldenChart, stateOf } from '../records/charts'
+import { edgeChart, goldenChart, stateOf } from '../records/charts'
 import { storedEntries, widen as widenBy } from '../timeline/helpers'
 import { openPage, rows, testId, type Page } from './harness'
 
@@ -696,6 +696,144 @@ test('our own completed Save kept while a batch past its `seq` is in flight is s
     assert.deepEqual(checkStored(world.memory), [])
 })
 
+test('our own completed Save stored below `lastSeq` alone leaves the head’s summary (LS3-1)', async () => {
+    const world = createWorld({ seed: 20 })
+    let stall = false
+    let release!: () => void
+    const stalled = new Promise<void>((resolve) => (release = resolve))
+    const page: Page = await openPage(world, world.tab('a'), {
+        transport: async (batch) => {
+            if (stall) await stalled
+            page.batches.push(batch)
+            const result = await page.tab.run(() => page.handlers.flush(batch))
+            page.results.push(result)
+            return result
+        },
+    })
+    const first = stateOf(goldenChart())
+    const session = begin(page, first)
+    await page.flusher.flush()
+    stall = true
+    const second = editNote(page, first)
+    const third = editNote(page, second)
+    const reservation = page.flusher.reserveSave()!
+    assert.equal(reservation.seq, 4)
+    const ended = page.flusher.endSave(reservation, undefined, undefined, true)
+    // The head after the Save is another chart, with another title.
+    const head = stateOf(edgeChart())
+    assert.notEqual(head.levelInfo.title, third.levelInfo.title)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
+                    'Changed note',
+                ),
+            ),
+        },
+        head,
+        true,
+    )
+    for (let i = 0; i < 50; i++) await new Promise((resolve) => setImmediate(resolve))
+    const below = page.flusher.keptSaveBelow(session.id, 4)
+    if (below?.kind !== 'pending') throw new Error('Expected entries pending below the Save')
+    const save = ownSave(page, session.id, session.chainId, 4, third)
+    assert.equal(await save.record(below.kind), true)
+    const kept = page.flusher.keptSave(below, {
+        wall: save.entry.time,
+        operation: save.entry.operation,
+        revisionId: save.entry.revisionId,
+        device: save.entry.device,
+    })
+    release()
+    await ended
+    await kept
+    await page.flusher.flush({ strict: true })
+    assert.deepEqual(page.errors, [])
+    assert.deepEqual(
+        page.batches.map((batch) => batch.entries.map((entry) => entry.seq)),
+        [[1], [2, 3, 5], [4]],
+    )
+    assert.deepEqual(kinds(world).at(-2), [4, 'save'])
+    const chain = rows(world, 'chains').get(session.chainId)!
+    assert.equal((chain.summary as { title?: string }).title, head.levelInfo.title)
+})
+
+test('our own completed Save dropped by a fork leaves a cut that under-claims (LS3-2)', async () => {
+    const world = createWorld({ seed: 21 })
+    let stall = false
+    let release!: () => void
+    const stalled = new Promise<void>((resolve) => (release = resolve))
+    let continued = false
+    const page: Page = await openPage(world, world.tab('a'), {
+        transport: async (batch) => {
+            if (stall) await stalled
+            // Another tab continues the chain before the kept Save's own batch.
+            if (!continued && batch.entries[0]?.seq === 4) {
+                continued = true
+                await page.core.write(['sessions', 'chains'], async (tx) => {
+                    const chain = (await tx.get('chains', batch.session.chainId)) as Record<
+                        string,
+                        unknown
+                    >
+                    await tx.put('sessions', { id: 'continuation', chainId: chain.chainId })
+                    await tx.put('chains', { ...chain, head: 'continuation' })
+                })
+            }
+            page.batches.push(batch)
+            const result = await page.tab.run(() => page.handlers.flush(batch))
+            page.results.push(result)
+            return result
+        },
+    })
+    const first = stateOf(goldenChart())
+    const session = begin(page, first)
+    await page.flusher.flush()
+    stall = true
+    const second = editNote(page, first)
+    const third = editNote(page, second)
+    const reservation = page.flusher.reserveSave()!
+    const ended = page.flusher.endSave(reservation, undefined, undefined, true)
+    editNote(page, third)
+    for (let i = 0; i < 50; i++) await new Promise((resolve) => setImmediate(resolve))
+    const below = page.flusher.keptSaveBelow(session.id, 4)
+    if (below?.kind !== 'pending') throw new Error('Expected entries pending below the Save')
+    // The file's rows: 1, 2, 3 and its `save`.
+    const save = ownSave(page, session.id, session.chainId, 4, third, 4)
+    assert.equal(await save.record(below.kind), true)
+    const kept = page.flusher.keptSave(below, {
+        wall: save.entry.time,
+        operation: save.entry.operation,
+        revisionId: save.entry.revisionId,
+        device: save.entry.device,
+    })
+    release()
+    await ended
+    await kept
+    await page.flusher.flush({ strict: true })
+    assert.deepEqual(page.errors, [])
+    assert.ok(page.results.some((result) => result.kind === 'notHead'))
+    // The fork takes no entry at or below the stored `lastSeq`, so the `save` row is never stored.
+    assert.notEqual(page.flusher.session?.id, session.id)
+    assert.deepEqual(
+        kinds(world).filter(([seq]) => seq === 4),
+        [],
+    )
+    // The chain's cut still counts it: the next write that isn't an append doesn't carry the file.
+    const chain = rows(world, 'chains').get(session.chainId)!
+    const cut = (chain.file as { entry: Parameters<typeof carries>[1] }).entry
+    assert.equal(cut.count, 4)
+    const { startedAt } = rows(world, 'sessions').get(session.id) as { startedAt: number }
+    const chainRows = [...rows(world, 'entries').values()]
+        .filter((row) => row.sessionId === session.id)
+        .map((row) => ({ entry: row as unknown as EntryRow, startedAt }))
+    assert.equal(
+        carries(chainRows, { ...cut, startedAt }, () => false),
+        false,
+    )
+})
+
 /**
  * A Save that reserved 3 over edit 2 still pending, edit 4 made during its build; the file is
  * written and the tab dies before the binding commits. With `journal`, the reload applies the
@@ -753,14 +891,14 @@ test('our own completed Save is stored only where replay lands it: never under a
         const entries = storedEntries(world, session.id)
         assert.doesNotThrow(() => replay(entries))
         assert.deepEqual(checkStored(world.memory), [])
-        // The binding is recorded all the same, its cut without the entry the chain lacks.
+        // The binding is recorded all the same, its cut as the file holds it (it only under-claims).
         const chain = rows(world, 'chains').get(session.chainId)!
         assert.equal((chain.revision as { id: string }).id, 'rev-1')
-        assert.equal((chain.file as { entry: { count: number } }).entry.count, 2)
+        assert.equal((chain.file as { entry: { count: number } }).entry.count, 3)
     }
 })
 
-test('our own completed Save over another kept gap records a cut the next Save’s carry test matches', async () => {
+test('our own completed Save over another kept gap keeps its cut as the file holds it, so the next write never over-claims', async () => {
     const world = createWorld({ seed: 19 })
     const page = await openPage(world, world.tab('a'))
     const first = stateOf(goldenChart())
@@ -785,16 +923,27 @@ test('our own completed Save over another kept gap records a cut the next Save�
         return (chain.file as { entry: Parameters<typeof carries>[1] }).entry
     }
     // A later visit recognises B (the file's rows 1, 2 and B's `save`): the gap 3 below it may be
-    // entries a tab still holds, so no row, and its cut counts only what the chain holds.
+    // entries a tab still holds, so no row. The cut still counts B's row, which the chain lacks, so
+    // the next write that isn't an append doesn't carry B (ADV3-1): it says "Some earlier steps
+    // were not kept." once.
     assert.equal(await ownSave(page, session.id, session.chainId, 4, second, 3).record(), true)
     assert.deepEqual(kinds(world), [
         [1, 'init'],
         [2, 'edit'],
     ])
-    assert.equal(cut().count, 2)
+    assert.equal(cut().count, 3)
     assert.equal(
         carries(chainRows(), cut(), () => false),
-        true,
+        false,
+    )
+    // Nor when a row the file never held is stored below the cut later and the counts agree again:
+    // the chain still lacks the cut's own row.
+    const late = chainRows()[1]!
+    const grown = [...chainRows(), { ...late, entry: { ...late.entry, seq: 3 } }]
+    assert.equal(grown.filter((row) => row.entry.seq <= 4).length, cut().count)
+    assert.equal(
+        carries(grown, cut(), () => false),
+        false,
     )
     // Recognising A, right after the stored entries, writes its row and keeps its cut whole.
     assert.equal(await ownSave(page, session.id, session.chainId, 3, second, 3).record(), true)

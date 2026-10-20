@@ -116,7 +116,10 @@ export const bindingHasHistory = (file: { entry?: { count: number } } | undefine
  * `completeFrom` only when the chain's rows up to the cut still number `entry.count`, and the rows
  * among them that are flagged (stored `kept: false`, or marked by this build) and whose state no
  * unflagged row up to the cut has still number `entry.notKept`. Both sets only grow, and at the
- * bind the first contains the rows the file lacked, so equal counts mean equal sets.
+ * bind the first contains the rows the file lacked, so equal counts mean equal sets. A cut that
+ * counts rows also needs its own row, the file's last (its write's `save`, or an open's last
+ * copied row): a chain that lacks it holds less than the file, whatever the counts say, and
+ * carrying would be an over-claim. A cut only ever under-claims.
  */
 export const carries = (
     rows: readonly ChainRow[],
@@ -129,7 +132,10 @@ export const carries = (
     )
     let lacking = 0
     for (const row of upto) if (flagged(row) && !kept.has(toHex(row.entry.snapshot))) lacking++
-    return upto.length === entry.count && lacking === entry.notKept
+    const own =
+        entry.count === 0 ||
+        upto.some((row) => row.entry.sessionId === entry.sessionId && row.entry.seq === entry.seq)
+    return own && upto.length === entry.count && lacking === entry.notKept
 }
 
 /** The undo stack a write holds: its slots and absolute `base` and `index` (§1.6.11.5). */

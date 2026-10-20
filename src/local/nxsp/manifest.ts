@@ -47,7 +47,8 @@ export type SlotForm = { snapshot: string; step: UndoableStep; x?: ExtensionForm
 export type EntryForm = EntryDescription & {
     time: number
     snapshot: string
-    noteCount: number
+    /** The state's note count; absent when the writer didn't know it (unknown, never 0). */
+    noteCount?: number
     dirty?: true
     kept?: false
     revisionId?: string
@@ -254,7 +255,8 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
         fail('description')
     }
     if (!isHash16Hex(snapshot)) fail('snapshot')
-    if (!isUint(noteCount)) fail('noteCount')
+    // Optional: absent is an unknown count.
+    if (noteCount !== undefined && !isUint(noteCount)) fail('noteCount')
     if (dirty !== undefined && dirty !== true) fail('dirty')
     if (kept !== undefined && kept !== false) fail('kept')
 

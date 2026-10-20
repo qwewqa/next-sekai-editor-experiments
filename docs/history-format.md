@@ -116,7 +116,7 @@ Key `[sessionId, seq]`, `seq` from 1 per session (`EntryRow`, `src/local/save/cu
 | `operation` | `init`, `continue`, `save`, `export`, `recovered`: the operation envelope. |
 | `recoveryContext` | `recovered` only. |
 | `time` | Milliseconds since the epoch, strictly increasing (section 2.10). |
-| `snapshot`, `noteCount` | Root hash of the state the entry produced or landed on; its note count. A row without a `noteCount` has an unknown one, never 0: `readEntryRow` leaves it out (`EntryRow.noteCount` is optional), the worker's `TimelineEntry.noteCount` is optional, and a Timeline delta skips a neighbour without one. Flushes always write it. |
+| `snapshot`, `noteCount` | Root hash of the state the entry produced or landed on; its note count. A row without a `noteCount` has an unknown one, never 0: `readEntryRow` leaves it out (`EntryRow.noteCount` is optional), the worker's `TimelineEntry.noteCount` is optional, and a Timeline delta skips a neighbour without one. Flushes always write it; an import keeps a file entry's absence when the file doesn't hold its root. |
 | `dirty` | Changed since the last file event. |
 | `kept` | `false` when the state is not held whole (section 2.8); flushes write `true`. |
 | `revisionId`, `device {id, label}`, `appVersion` | `save` only (section 2.7). |
@@ -261,7 +261,7 @@ Both may also hold `x`. The history is the concatenation of the parts: `entries`
 | `chunks` | `[[hash32, offset, length], ...]` into `chunks.bin`. All parts' indexes together must tile `chunks.bin` exactly. |
 | `undoStack` | `{base, slots: [{snapshot, step}], index}`: the head session's stack. `base` is the absolute number of `slots[0]`, `base <= index < base + slots.length`, and the head state is `slots[index - base].snapshot`. |
 
-**Entry form.** Keys (`ENTRY_KEYS`): `kind time operation recoveryContext step snapshot noteCount dirty kept revisionId device appVersion stack x`. The writer emits `kind`, then `step` or `operation` (and `recoveryContext`), then `time snapshot noteCount dirty? kept? revisionId? device? appVersion? stack? x?`. `seq`, `day`, renames and session ids are not in files; rows are numbered by position and sessions are separated by `continue` entries.
+**Entry form.** Keys (`ENTRY_KEYS`): `kind time operation recoveryContext step snapshot noteCount dirty kept revisionId device appVersion stack x`. The writer emits `kind`, then `step` or `operation` (and `recoveryContext`), then `time snapshot noteCount? dirty? kept? revisionId? device? appVersion? stack? x?`. `seq`, `day`, renames and session ids are not in files; rows are numbered by position and sessions are separated by `continue` entries.
 
 | Field | Rule |
 | --- | --- |
@@ -271,7 +271,7 @@ Both may also hold `x`. The history is the concatenation of the parts: `entries`
 | `recoveryContext` | Exactly on `recovered`. |
 | `time` | A safe integer of at least 0. |
 | `snapshot` | 32 hex characters, always, even when the file lacks the root. |
-| `noteCount` | A non-negative integer, always required in a file (the entry form has no "unknown"); on import replaced by the root's count when the root is held. A Save writes a stored row's own count, else the count of the root it verified (`countOf`, `src/local/save/build.ts`); a row with neither is written with 0, and its state is then not held, so it is written `kept: false`. |
+| `noteCount` | Optional. A non-negative integer when present; **absent is an unknown count**, never 0, and a reader and the checker accept it (`null` is damage). On import it is replaced by the root's count when the root is held, else kept as the file has it, absent included. A Save writes a stored row's own count, else the count of the root it verified (`countOf`, `src/local/save/build.ts`); a row with neither is written without one, and its state is then not held, so it is written `kept: false`. A `save` entry always has one (the head's). |
 | `dirty`, `kept` | `true` and `false` respectively, present only when set. Every row without `kept: false` must have its root in `roots`; a `kept: false` row may still have it. |
 | `revisionId`, `device`, `appVersion` | `save` only. The first two required; `appVersion` always written, optional on read. |
 | `stack {keep, push: [{snapshot, step}], index}` | `recovered` only, required; numbered as `undoStack`. |
@@ -667,7 +667,7 @@ Each rule says what must never happen, where the code enforces it and the tests 
 | A failed own-file rebuild is tried once more; with nothing read, the build made before the picker is written only when it is a `copy` with the file's History and BGM, else the file stays empty and the failure is shown. | `afterPick` (`own`) | browser `saveReadFirst.spec.ts` |
 | Repair at save stores again only a body that is missing or fails its check, verified against its key (a chunk by inflate and hash, a root or kind node by schema and hash, media by its whole `sha256`), bottom-up and only once everything it reaches is whole; it never clears a mark. | `repairFromSource` | `local/save/selfPick.test.ts` |
 | A Save waits for an open's import by storage's `importPending`, never shows a count counted during it, and says the file is not read completely if the resume never starts. | `waitForImport`, `importEnded`, the Save dialog's estimate `load` | browser `saveOwnFile.spec.ts` (SF2-5, SF2-6) |
-| A stored row without a note count reads without one, never as 0; a Save writes the count of the root it verified. | `readEntryRow`, `countOf` | `local/save/noteCount.test.ts` |
+| A stored row without a note count reads without one, never as 0; a Save writes the count of the root it verified, else none. A file entry without one is read and imported without one, and the checker accepts it. | `readEntryRow`, `countOf`, `checkEntry`, `entryRow` | `local/save/noteCount.test.ts`, `local/open/import.test.ts`, `local/nxsp/agreement.test.ts` |
 | Damage found in storage is marked one-way and the Save goes on with the line; a damaged head refuses. | `markDamaged` | `local/save/model.test.ts` |
 | A built file is verified against its plan before it is handed over. | `src/local/save/verify.ts` | `local/save/model.test.ts` |
 | An open stores its head at once, then imports in batches; a failing chunk marks its rows and, from the chain's own unchanged file, unlinks the chain; an abandoned import never lets a later Save carry the file. | `src/local/open/` | `local/open/import.test.ts`, `decide.test.ts` |
