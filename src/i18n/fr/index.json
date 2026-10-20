@@ -1184,6 +1184,7 @@
     "continued": "Session du {1} reprise : \"{0}\".",
     "continuedUntitled": "Votre session du {0} a été reprise.",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application, où certaines fonctionnalités peuvent ne pas fonctionner et où le travail stocké risque davantage d’être perdu. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "journalKept": "Une modification de \"{0}\" n’a pas pu être appliquée, elle a donc été conservée dans une session séparée.",
     "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
     "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
@@ -1205,12 +1206,16 @@
     "bgmNotLoaded": "La BGM n’est pas chargée.",
     "more": "et {0} autres dans Données locales",
     "localData": "Données locales",
-    "openHistory": "Ouvrir l’historique"
+    "openHistory": "Ouvrir l’historique",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié",
+    "linkNotCopied": "Impossible de copier le lien"
   },
   "storage": {
     "reload": "Rechargez la page pour continuer à stocker les modifications.",
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application, qui peut supprimer le travail stocké. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
     "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
     "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que cette icône soit retirée de l’écran d’accueil. Sauvegardez dans un fichier pour conserver votre travail.",

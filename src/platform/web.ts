@@ -1,7 +1,13 @@
 import { storageJournalStore } from '../local/journal/store'
 import { webLockService } from '../local/locks'
 import { storageKey } from '../storage'
-import { allowsFileSystemAccess, detection, isStandalone, usesOpfsPickers } from './detect'
+import {
+    allowsFileSystemAccess,
+    detection,
+    isLikelyInAppBrowser,
+    isStandalone,
+    usesOpfsPickers,
+} from './detect'
 import {
     diskStateOf,
     fileErrorOf,
@@ -278,6 +284,7 @@ const webCapabilities = (): PlatformCapabilities =>
         mp3Export: true,
         // The web makes no cross-origin requests.
         serverFetch: false,
+        likelyInAppBrowser: isLikelyInAppBrowser(),
     }))
 
 export const platform: Platform = {

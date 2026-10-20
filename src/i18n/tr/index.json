@@ -1184,6 +1184,7 @@
     "continued": "\"{0}\", {1} tarihinden devam ettirildi.",
     "continuedUntitled": "{0} tarihli oturumunuz devam ettirildi.",
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
+    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Burada bazı özellikler çalışmayabilir ve saklanan çalışmanın kaybolma olasılığı daha yüksektir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
     "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
     "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
     "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
@@ -1205,12 +1206,16 @@
     "bgmNotLoaded": "BGM yüklenmedi.",
     "more": "ve {0} tane daha Yerel Veriler’de",
     "localData": "Yerel Veriler",
-    "openHistory": "Geçmişi Aç"
+    "openHistory": "Geçmişi Aç",
+    "copyLink": "Bağlantıyı Kopyala",
+    "linkCopied": "Bağlantı kopyalandı",
+    "linkNotCopied": "Bağlantı kopyalanamadı"
   },
   "storage": {
     "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin.",
     "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor; bu tarayıcı saklanan çalışmayı silebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
     "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "installedWebkit": "Son oturumlar, bu simge Ana Ekran’dan kaldırılana kadar burada tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",

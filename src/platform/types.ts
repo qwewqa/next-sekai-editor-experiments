@@ -22,6 +22,8 @@ export type PlatformCapabilities = {
     readonly mp3Export: boolean
     /** Browsing and downloading from Sonolus servers (Part 2, 2.5.3): the apps only. */
     readonly serverFetch: boolean
+    /** The web found an app’s built-in browser, best effort (Part 1 §1.6.10); never in the apps. */
+    readonly likelyInAppBrowser: boolean
 }
 
 /** An app file reference: a path on desktop, a URI on mobile (Part 3). */

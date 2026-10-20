@@ -870,3 +870,179 @@ test('safe mode opens read-only on purpose, so its pill has no "older than your 
     await expect(page.locator('[data-safe-bar]')).toBeVisible()
     await expect(page.locator('.notification')).not.toContainText('older than your data')
 })
+
+// An app’s built-in browser (Part 1 §1.4.3, §1.4.13, §1.6.10): one more line on the start-up card
+// with Copy Link, and a storage line in Settings › Local Data.
+test.describe('the in-app browser line', () => {
+    const inApp =
+        'This looks like an app’s built-in browser, where some features may not work and stored work is more likely to be lost. To keep your work, open this page in your browser.'
+    const inAppStorage =
+        'This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.'
+    const androidWebView =
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0.6613.127 Mobile Safari/537.36'
+    const iosWebView =
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
+
+    const platformOverride = (context: BrowserContext, override: object) =>
+        context.addInitScript((override) => {
+            if (location.href === 'about:blank') return
+            localStorage.setItem('nse.test.platform', JSON.stringify(override))
+        }, override)
+
+    const openLocalData = async (page: Page) => {
+        await page.evaluate(async () => {
+            const { openSettings } =
+                (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+            void openSettings('localData')
+        })
+        await expect(page.locator('#settings-localData [data-settings-heading]')).toBeFocused()
+    }
+
+    test('the override puts the line on the card, and in Local Data twice', async ({
+        page,
+        context,
+    }) => {
+        await platformOverride(context, { inAppBrowser: true })
+        await visit(page)
+        await expect(pill(page).locator(':scope > div')).toContainText([
+            'Next SEKAI Editor · Version 0.6.0',
+            inApp,
+        ])
+        await expect(pill(page).locator('[data-notice-action]')).toHaveText(['Copy Link'])
+        await openLocalData(page)
+        await expect(page.locator('[data-storage-line]')).toHaveText(inAppStorage)
+        await expect(page.locator('[data-at-load] li')).toHaveText([inApp])
+    })
+
+    test('a WebView user agent is found by the detection itself', async ({ browser }) => {
+        const context = await browser.newContext({ userAgent: androidWebView })
+        await seed(context)
+        const page = await context.newPage()
+        await visit(page)
+        await expect(pill(page)).toContainText(inApp)
+        await context.close()
+    })
+
+    test('it comes after a cleared-storage line and before the later ones', async ({
+        page,
+        context,
+    }) => {
+        await platformOverride(context, { inAppBrowser: true })
+        await visit(page)
+        const name = { name: { kind: 'name', text: 'Coconut (Master)' }, at: Date.now() }
+        // Found in the opposite order of the table's.
+        for (const event of [
+            { kind: 'migrated', name, sessionId: 'a', opened: true },
+            { kind: 'storageCleared' },
+        ])
+            await addEvent(page, event)
+        await expect(pill(page).locator(':scope > div')).toContainText([
+            'Next SEKAI Editor · Version 0.6.0',
+            'Work from earlier visits is missing. The browser cleared this site’s storage.',
+            inApp,
+            'Continued "Coconut (Master)" from auto save.',
+        ])
+    })
+
+    test('a normal load has no such line, and stays the quick toast', async ({ page }) => {
+        await visit(page)
+        await expect(page.locator('.notification')).toHaveText('Next SEKAI Editor\nVersion 0.6.0')
+        await expect(pill(page)).toHaveCount(0)
+        await openLocalData(page)
+        await expect(page.locator('[data-storage-line]')).toContainText('Recent Sessions are kept')
+        await expect(page.locator('[data-at-load] li')).toHaveCount(0)
+    })
+
+    test.describe('on a plain WebKit view', () => {
+        test.use({ userAgent: iosWebView })
+
+        test('it is found without Safari/ in the user agent', async ({ page }) => {
+            await visit(page)
+            await expect(pill(page)).toContainText(inApp)
+        })
+
+        test('a Home Screen web app is never flagged', async ({ page, context }) => {
+            await platformOverride(context, { standalone: true })
+            await visit(page)
+            await expect(page.locator('.notification')).toHaveText(
+                'Next SEKAI Editor\nVersion 0.6.0',
+            )
+            await expect(pill(page)).toHaveCount(0)
+            await openLocalData(page)
+            await expect(page.locator('[data-storage-line]')).not.toContainText('built-in browser')
+        })
+    })
+
+    test.describe('Copy Link', () => {
+        test('copies the page without its query or hash, and says so', async ({
+            page,
+            context,
+        }) => {
+            await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+            await platformOverride(context, { inAppBrowser: true })
+            await page.goto('/?utm_source=chat#section')
+            await expect(page.locator('canvas.editor-chart')).toBeVisible()
+            await opened(page)
+            await pill(page).getByRole('button', { name: 'Copy Link' }).click()
+            await expect(page.locator('.notification:not(.notification-pill)')).toHaveText(
+                'Copied the link',
+            )
+            const url = new URL(page.url())
+            await expect
+                .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+                .toBe(`${url.origin}${url.pathname}`)
+            // The card stays.
+            await expect(pill(page)).toBeVisible()
+        })
+
+        test('falls back to the copy command where the clipboard API is refused', async ({
+            page,
+            context,
+        }) => {
+            await platformOverride(context, { inAppBrowser: true })
+            await context.addInitScript(() => {
+                Object.defineProperty(navigator.clipboard, 'writeText', {
+                    configurable: true,
+                    value: () => Promise.reject(new DOMException('Denied', 'NotAllowedError')),
+                })
+                const copied: string[] = []
+                ;(window as unknown as { copied: string[] }).copied = copied
+                document.execCommand = (command: string) => {
+                    const field = document.activeElement
+                    if (command === 'copy' && field instanceof HTMLTextAreaElement)
+                        copied.push(field.value)
+                    return command === 'copy'
+                }
+            })
+            await visit(page)
+            await pill(page).getByRole('button', { name: 'Copy Link' }).click()
+            await expect(page.locator('.notification:not(.notification-pill)')).toHaveText(
+                'Copied the link',
+            )
+            const url = new URL(page.url())
+            const copied = await page.evaluate(
+                () => (window as unknown as { copied: string[] }).copied,
+            )
+            expect(copied).toEqual([`${url.origin}${url.pathname}`])
+        })
+
+        test('says so when both the clipboard API and the copy command fail', async ({
+            page,
+            context,
+        }) => {
+            await platformOverride(context, { inAppBrowser: true })
+            await context.addInitScript(() => {
+                Object.defineProperty(navigator.clipboard, 'writeText', {
+                    configurable: true,
+                    value: () => Promise.reject(new DOMException('Denied', 'NotAllowedError')),
+                })
+                document.execCommand = () => false
+            })
+            await visit(page)
+            await pill(page).getByRole('button', { name: 'Copy Link' }).click()
+            await expect(page.locator('.notification:not(.notification-pill)')).toHaveText(
+                'Could not copy the link',
+            )
+        })
+    })
+})
