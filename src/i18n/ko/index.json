@@ -2153,6 +2153,8 @@
     "readOnlyPeek": "기록을 보는 중에는 읽기 전용",
     "restoredTo": "{0} 시점으로 복원됨",
     "alreadyMatches": "이미 현재 채보와 같음",
+    "restoreFailed": "복원하지 못함",
+    "peekFailed": "이 단계를 표시하지 못함",
     "openHistory": "기록 열기",
     "earlierInHistory": "이전 단계는 기록에 있습니다",
     "bgmNotLoaded": "BGM을 불러오지 않음",

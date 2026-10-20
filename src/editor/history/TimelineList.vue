@@ -79,6 +79,7 @@ import {
     loadNewer,
     resetToNewest,
     retry,
+    retryHere,
     status,
     sourceGeneration,
     type Target,
@@ -146,7 +147,9 @@ const built = computed(() =>
 // A timeline of only its first state says so, under Now.
 const isEmpty = computed(
     () =>
-        (historyFilter.value === 'here' ? !here.scanning : status.value !== 'loading') &&
+        (historyFilter.value === 'here'
+            ? !here.scanning && !here.failed
+            : status.value !== 'loading') &&
         gap.value === undefined &&
         !built.value.some(
             (row) =>
@@ -226,6 +229,7 @@ const FAILED = computed(() => 132 * k.value)
 const tail = computed(() => {
     // Edits Here: its scan's progress, then what it could not check.
     if (historyFilter.value === 'here') {
+        if (here.failed && !here.scanning) return { kind: 'failed', height: FAILED.value }
         if (isEmpty.value) return { kind: 'empty', height: MESSAGE.value }
         if (here.scanning) return { kind: 'checking', height: rowHeight.value }
         if (here.unreadable) return { kind: 'notChecked', height: rowHeight.value }
@@ -1668,7 +1672,7 @@ defineExpose({
                     <button
                         type="button"
                         class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                        @click="retry"
+                        @click="historyFilter === 'here' ? retryHere() : retry()"
                     >
                         {{ i18n.history.tryAgain }}
                     </button>

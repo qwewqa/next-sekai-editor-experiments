@@ -2153,6 +2153,8 @@
     "readOnlyPeek": "查看历史记录时为只读",
     "restoredTo": "已还原到 {0}",
     "alreadyMatches": "已与当前谱面一致",
+    "restoreFailed": "无法还原",
+    "peekFailed": "无法查看此步",
     "openHistory": "打开历史记录",
     "earlierInHistory": "更早的步骤在历史记录中",
     "bgmNotLoaded": "BGM 未加载",

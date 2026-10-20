@@ -24,7 +24,8 @@ export type TimelineEntry = EntryDescription & {
     time: number
     /** The snapshot's root, as hex. */
     snapshot: string
-    noteCount: number
+    /** Absent when the row does not say: an unknown count is never a zero. */
+    noteCount?: number
     dirty: boolean
     kept: boolean
     /**
@@ -128,7 +129,7 @@ const entryOf = (row: Row): TimelineEntry | undefined => {
         time: row.time,
         ...description,
         snapshot: snapshot instanceof Uint8Array ? toHex(snapshot) : '',
-        noteCount: typeof row.noteCount === 'number' ? row.noteCount : 0,
+        ...(typeof row.noteCount === 'number' ? { noteCount: row.noteCount } : {}),
         dirty: row.dirty === true,
         kept: row.kept !== false,
         ...(typeof row.revisionId === 'string' ? { revisionId: row.revisionId } : {}),
