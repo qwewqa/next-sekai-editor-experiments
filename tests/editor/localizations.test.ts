@@ -246,8 +246,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'export.placeholder',
         // These French labels have the same spelling as English.
         'history.details.counts.note',
-        'history.details.destination',
-        'history.details.source',
         'history.quoted',
         'history.quotedField',
         'historyChanges.fields.description',

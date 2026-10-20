@@ -9,7 +9,6 @@ import {
 import { buildRows, type Entry, type EntryRow } from '../../src/editor/history/rows'
 import {
     captureOperationRecipe,
-    disambiguateOperationRecipes,
     operationDetails,
     renderOperationRecipe,
     type OperationTextContext,
@@ -77,7 +76,7 @@ test('unknown fallback remains plain captured text and never groups', () => {
     assert.equal(result.length, 2)
     assert.equal(presentRow(result[0]!, french).full, text)
     assert.equal(
-        operationDetails(recipeOfRow(result[0]!), french).explanation,
+        operationDetails(recipeOfRow(result[0]!), french).note,
         fr.history.details.unsupported,
     )
 })
@@ -96,7 +95,10 @@ test('direction groups count crossed steps while children retain original Restor
             kind === 'undo' ? 'Undid 2 steps' : 'Redid 2 steps',
         )
         assert.equal(presentRow(parent!, context).count, undefined)
-        assert.equal(operationDetails(recipe, context).children[1]?.description.kind, kind)
+        assert.equal(
+            operationDetails(recipe, context).steps?.members[1]?.member.description.kind,
+            kind,
+        )
         const child = { ...parent!, child: true, members: [parent!.entry], partial: false }
         assert.match(
             presentRow(child, context).main,
@@ -125,7 +127,7 @@ test('selected recipe stays frozen through page completion, storage replacement 
     assert.ok(Object.isFrozen(recipe) && Object.isFrozen(recipe.members))
 })
 
-test('same-name distinct targets receive immutable qualifiers without merging membership', () => {
+test('same-name distinct targets stay separate rows with identical titles and no identity', () => {
     const rename = (id: number): EntryDescription => ({
         kind: 'edit',
         step: editStep(
@@ -143,12 +145,10 @@ test('same-name distinct targets receive immutable qualifiers without merging me
         ),
     })
     const parents = rows([rename(1), rename(2)])
-    const qualified = disambiguateOperationRecipes(parents.map(recipeOfRow), context)
-    assert.match(renderOperationRecipe(qualified[0]!, context), /#1/)
-    assert.match(renderOperationRecipe(qualified[1]!, context), /#2/)
-    const saved = qualified[0]!
-    disambiguateOperationRecipes([saved], french)
-    assert.deepEqual(saved.qualifiers, [{ kind: 'group', id: 1 }])
+    assert.equal(parents.length, 2)
+    const titles = parents.map((row) => renderOperationRecipe(recipeOfRow(row), context))
+    assert.equal(titles[0], titles[1])
+    assert.doesNotMatch(titles[0]!, /#d/)
 })
 
 test('a partial singleton has truthful count but no synthesized child', () => {
@@ -189,5 +189,5 @@ test('standalone unavailable recovery metadata retains its own ordered context o
     assert.equal(details.recovery?.descriptions.length, 2)
     assert.equal(details.recovery?.headIndex, 0)
     assert.equal(details.recovery?.omitted, 2)
-    assert.equal(details.children.length, 0)
+    assert.equal(details.steps, undefined)
 })

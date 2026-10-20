@@ -1353,11 +1353,6 @@
       "retainedInitialBpm": "İlk BPM değişikliği korundu",
       "pivot": "Ölçekleme merkezi",
       "composedTransform": "Birden fazla ayarlama",
-      "destination": "Hedef",
-      "source": "Kaynak",
-      "fromPosition": "Önceki konum",
-      "toPosition": "Yeni konum",
-      "gathered": "Klasöre taşınan",
       "released": "Klasörden çıkarılan",
       "recoveryContext": "Önceki işlemler",
       "recoveryHead": "Kaynak işlem",
@@ -1376,12 +1371,7 @@
       "bgmOffset": "BGM ofseti",
       "pasteLocation": "Yapıştırma konumu",
       "pointer": "İşaretçi",
-      "position": "Seçilen konum",
-      "flipped": "Çevrilmiş",
-      "delivery": "Kaydetme yöntemi",
-      "download": "İndirme",
-      "unsavedChanges": "Kaydedilmemiş değişiklikler",
-      "autoSave": "Otomatik kayıt"
+      "position": "Seçilen konum"
     },
     "operation": {
       "changedHeader": "{0} değiştirildi",

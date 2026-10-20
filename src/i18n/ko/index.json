@@ -1353,11 +1353,6 @@
       "retainedInitialBpm": "초기 BPM 유지됨",
       "pivot": "배율 기준점",
       "composedTransform": "여러 조정",
-      "destination": "대상 위치",
-      "source": "원본",
-      "fromPosition": "이전 위치",
-      "toPosition": "새 위치",
-      "gathered": "폴더로 이동",
       "released": "폴더에서 이동",
       "recoveryContext": "이전 작업",
       "recoveryHead": "원본 작업",
@@ -1376,12 +1371,7 @@
       "bgmOffset": "BGM 오프셋",
       "pasteLocation": "붙여넣기 위치",
       "pointer": "포인터",
-      "position": "지정한 위치",
-      "flipped": "반전",
-      "delivery": "저장 방식",
-      "download": "다운로드",
-      "unsavedChanges": "저장되지 않은 변경 사항",
-      "autoSave": "자동 저장"
+      "position": "지정한 위치"
     },
     "operation": {
       "changedHeader": "{0} 변경됨",

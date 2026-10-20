@@ -16,7 +16,6 @@ import { getHistoryOperationContext } from '../../history/createHistoryOperation
 import {
     captureOperationRecipe,
     describeStep,
-    disambiguateOperationRecipes,
     type OperationRecipe,
 } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
@@ -158,26 +157,7 @@ const headLabel = computed(
 )
 const recipes = computed(() => {
     const result = new Map<string, OperationRecipe>()
-    let adjacent: EntryRow[] = []
-    const flush = () => {
-        const qualified = disambiguateOperationRecipes(
-            adjacent.map(recipeOfRow),
-            operationContext.value,
-        )
-        adjacent.forEach((row, index) => {
-            const recipe = qualified[index]
-            if (recipe) result.set(row.id, recipe)
-        })
-        adjacent = []
-    }
-    for (const row of rows.value) {
-        if (row.type === 'divider' || row.type === 'gap') flush()
-        else if (row.type === 'entry') {
-            if (row.child) result.set(row.id, recipeOfRow(row))
-            else adjacent.push(row)
-        }
-    }
-    flush()
+    for (const row of rows.value) if (row.type === 'entry') result.set(row.id, recipeOfRow(row))
     return result
 })
 const recipeOf = (row: EntryRow) =>

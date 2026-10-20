@@ -1,0 +1,1332 @@
+#note.add.1 en
+T: Added 1 note
+
+#note.add.5 en
+T: Added 5 notes
+
+#note.add.5 fr
+T: 5 notes ajoutées
+
+#note.add.5 ja
+T: 5個のノーツを追加しました
+
+#note.add.0 en
+T: Added notes
+
+#note.add.huge en
+T: Added 1,234,567 notes
+
+#note.generate.12 en
+T: Generated 12 notes
+
+#note.generate.0 en
+T: Generated notes
+
+#object.add.bpm en
+T: Added 1 BPM change
+
+#object.add.timeScale en
+T: Added 2 time scales
+
+#object.add.camera en
+T: Added 1 camera event
+
+#object.add.stageMask en
+T: Added 3 stage mask events
+
+#object.add.bpm.displaced1 en
+T: Added 1 BPM change
+
+#object.add.bpm.displaced1 fr
+T: 1 changement de BPM ajouté
+
+#object.add.bpm.displaced1 ja
+T: 1個のBPMを追加しました
+
+#object.add.bpm.displacedEmpty en
+T: Added 1 BPM change
+
+#object.add.timeScale.displaced2 en
+T: Added 1 time scale
+
+#object.add.created0 en
+T: Added BPM changes
+
+#object.edit.note3 en
+T: Edited 3 notes
+
+#object.edit.note3 fr
+T: 3 notes modifiées
+
+#object.edit.note3 ja
+T: 3個のノーツを編集しました
+
+#object.edit.note.displacedEmpty en
+T: Edited 1 note
+
+#object.edit.bpm.displacedEmpty en
+T: Edited 1 BPM change
+
+#object.edit.bpm.noDisplaced en
+T: Edited 1 BPM change
+
+#object.edit.timeScale.displacedEmpty en
+T: Edited 2 time scales
+
+#object.edit.bpm.retained en
+T: Edited 1 BPM change
+F: Kept the initial BPM change
+
+#object.edit.bpm.displaced1 en
+T: Edited 1 BPM change
+R: Replaced [displaced]: 1 BPM change
+
+#object.edit.camera en
+T: Edited 2 camera events
+
+#object.edit.objects en
+T: Edited 7 objects
+R: Changed [changed]: 4 notes / 3 BPM changes
+
+#object.edit.objects.displacedMixed en
+T: Edited 7 objects
+R: Changed [changed]: 4 notes / 3 BPM changes
+R: Replaced [displaced]: 1 BPM change / 2 time scales
+
+#object.edit.targets0 en
+T: Edited notes
+
+#object.edit.targets0.displacedEmpty en
+T: Edited notes
+
+#object.move.note4 en
+T: Moved 4 notes
+
+#object.move.note4.displacedEmpty en
+T: Moved 4 notes
+
+#object.move.objects.displacedEmpty en
+T: Moved 9 objects
+R: Changed [changed]: 5 notes / 4 BPM changes
+
+#object.move.objects.displacedBpm en
+T: Moved 9 objects
+R: Changed [changed]: 5 notes / 4 BPM changes
+R: Replaced [displaced]: 2 BPM changes
+
+#object.move.bpm.retained en
+T: Moved 1 BPM change
+F: Kept the initial BPM change
+
+#object.move.targets0 en
+T: Moved notes
+
+#object.replace.bpm en
+T: Replaced 1 BPM change
+
+#object.replace.timeScale en
+T: Replaced 2 time scales
+R: Replaced [displaced]: 3 time scales
+
+#object.replace.bpm.retained en
+T: Replaced 1 BPM change
+R: Replaced [displaced]: 2 BPM changes
+F: Kept the initial BPM change
+
+#object.replace.displacedEmpty en
+T: Replaced 1 BPM change
+
+#note.elevation.2 en
+T: Changed elevation of 2 notes
+
+#note.vertical.3 en
+T: Made 3 notes vertical
+
+#paste.note5 en
+T: Pasted 5 objects
+R: Pasted [placed]: 5 notes
+R: Editor Layout [layout]: Basic
+R: Paste Location [at]: Pointer
+
+#paste.note5 fr
+T: 5 objets collés
+R: Collage [placed]: 5 notes
+R: Disposition de l’éditeur [layout]: De base
+R: Emplacement du collage [at]: Pointeur
+
+#paste.note5 ja
+T: 5個のオブジェクトをペーストしました
+R: ペースト [placed]: 5個のノーツ
+R: エディターのレイアウト [layout]: 基本
+R: ペースト位置 [at]: ポインター
+
+#paste.mixed.displaced en
+T: Pasted 6 objects
+R: Pasted [placed]: 3 notes / 1 BPM change / 2 time scales
+R: Replaced [displaced]: 1 BPM change / 1 time scale
+R: Editor Layout [layout]: Composed
+R: Paste Location [at]: Chosen Position
+F: Pasted flipped
+
+#paste.displacedEmpty.flippedFalse en
+T: Pasted 3 objects
+R: Pasted [placed]: 1 note / 2 camera events
+R: Editor Layout [layout]: Composed
+R: Paste Location [at]: Chosen Position
+
+#paste.huge en
+T: Pasted 1,242,567 objects
+R: Pasted [placed]: 1,234,567 notes / 8,000 stage mask events
+R: Editor Layout [layout]: Basic
+R: Paste Location [at]: Pointer
+
+#brush.note.1field en
+T: Brushed 3 notes
+R: Critical [isCritical]: ~Varies > Enabled
+
+#brush.note.many en
+T: Brushed 3 notes
+R: Flick Direction [flickDirection]: ~Varies > Up
+R: Critical [isCritical]: Disabled > Enabled
+R: Note Color [noteStyle]: ~Varies > Red
+R: Size [size]: 1 > 1.5
+
+#property.note.lane en
+T: Set Lane to -2.5 on 1 note
+R: Lane [left]: ~Varies > -2.5
+
+#property.note.lane fr
+T: Voie : valeur -2,5 appliquée à 1 note
+R: Voie [left]: ~Variable > -2,5
+
+#property.note.lane ja
+T: 1個のノーツの「レーン」を-2.5に設定しました
+R: レーン [left]: ~値が異なります > -2.5
+
+#property.note.varying en
+T: Changed Lane on 8 notes
+R: Lane [left]: 0 > ~Varies
+
+#property.note.group en
+T: Set Group to "Main Group" on 2 notes
+R: Group [groupId]: ~Varies > Main Group
+
+#property.note.group.longName en
+T: Set Group to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going ax" on 2 notes
+R: Group [groupId]: ~Varies > A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going ax
+
+#property.note.group.truncated en
+T: Set Group to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…" on 2 notes
+R: Group [groupId]: ~Varies > A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an… [shortened]
+F: Name shortened for display
+
+#property.note.group.emptyName en
+T: Set Group to "" on 2 notes
+R: Group [groupId]: ~Varies > ~Not set
+
+#property.note.stage en
+T: Set Stage to "Left Stage" on 2 notes
+R: Stage [stageId]: ~Varies > Left Stage
+
+#property.note.group.qualified en
+T: Set Group to "Group A" on 2 notes
+R: Group [groupId]: ~Varies > Group A
+
+#property.timeScale.ease en
+T: Set Time Scale Ease to Quad In on 1 time scale
+R: Time Scale Ease [timeScaleEase]: ~Varies > Quad In
+
+#property.timeScale.multi en
+T: Edited 2 time scales
+R: Hide Notes [hideNotes]: ~Varies > Enabled
+R: Time Scale [timeScale]: 1 > 2.25
+R: Time Scale Transition [timeScaleTransition]: ~Varies > Scroll
+
+#property.camera.zoom en
+T: Set Camera Zoom to 1.25 on 3 camera events
+R: Camera Zoom [cameraZoom]: ~Varies > 1.25
+
+#property.stageStyle.color en
+T: Edited 1 stage style event
+R: Judgment Line Color [judgmentLineColor]: ~Varies > Cyan
+R: Border Style (Left) [leftBorderStyle]: Default > Medium
+
+#property.bpm.value en
+T: Set BPM to 187.5 on 1 BPM change
+R: BPM [bpm]: ~Varies > 187.5
+
+#property.note.huge en
+T: Set Lane to 1,234,567.891 on 1,234,567 notes
+R: Lane [left]: ~Varies > 1,234,567.891
+
+#delete.note3 en
+T: Deleted 3 notes
+
+#delete.note3 fr
+T: 3 notes supprimées
+
+#delete.note3 ja
+T: 3個のノーツを削除しました
+
+#delete.mixed en
+T: Deleted 6 objects
+R: Removed [removed]: 3 notes / 1 BPM change / 2 camera events
+
+#delete.empty en
+T: Deleted objects
+
+#cut.note2 en
+T: Cut 2 notes
+
+#cut.mixed en
+T: Cut 7 objects
+R: Removed [removed]: 2 notes / 1 time scale / 4 stage style events
+
+#delete.huge en
+T: Deleted 1,234,567 notes
+
+#flip.horizontal.note en
+T: Flipped 4 objects
+R: Changed [changed]: 4 notes
+
+#flip.vertical.objects en
+T: Flipped 9 objects vertically
+R: Changed [changed]: 5 notes / 4 BPM changes
+
+#flip.targets0 en
+T: Flipped objects horizontally
+
+#scale.beats.uniform en
+T: Scaled beats of 10 objects
+R: Changed [changed]: 5 notes / 5 BPM changes
+R: Scale Factor [factor]: 2
+R: Scale Origin [pivot]: 4
+
+#scale.width.uniform en
+T: Scaled width of 3 objects
+R: Changed [changed]: 3 notes
+R: Scale Factor [factor]: 0.5
+R: Scale Origin [pivot]: -1.25
+
+#scale.elevation.composed en
+T: Scaled elevations of 3 objects
+R: Changed [changed]: 3 notes
+R: Scale Factor [factor]: Multiple Adjustments
+
+#note.combine.3 en
+T: Combined 3 notes into one slide
+
+#note.split.2 en
+T: Split 2 slide connections
+
+#note.split.1 en
+T: Split 1 slide connection
+
+#header.life en
+T: Set Initial Life to 900
+R: Initial Life [life]: 1,000 > 900
+
+#header.life fr
+T: Vie initiale définie sur 900
+R: Vie initiale [life]: 1 000 > 900
+
+#header.life ja
+T: 初期ライフを900に設定しました
+R: 初期ライフ [life]: 1,000 > 900
+
+#header.life.noChange en
+T: Set Initial Life to 1,000
+
+#header.bgmOffset en
+T: Set BGM Offset to 1,234.5678901234567 ms
+R: Offset (ms) [offset]: 0 > 1,234.5678901234567
+
+#header.bgmOffset.negative en
+T: Set BGM Offset to 250 ms
+R: Offset (ms) [offset]: -500 > 250
+
+#bgm.change.file en
+T: Changed BGM file
+R: File [file]: old.mp3 > new song.mp3
+
+#bgm.change.fileAndOffset en
+T: Changed BGM
+R: File [file]: old.mp3 > new.mp3
+R: Offset (ms) [offset]: 0 > -123
+
+#bgm.change.fromNone en
+T: Changed BGM file
+R: File [file]: ~Not set > first.mp3
+
+#bgm.change.toNone en
+T: Changed BGM file
+R: File [file]: old.mp3 > ~Not set
+
+#bgm.change.bothNone en
+T: Changed BGM
+R: File [file]: ~Not set
+R: Offset (ms) [offset]: 0 > 500
+
+#bgm.change.sameFile.offset en
+T: Changed BGM
+R: File [file]: same.mp3
+R: Offset (ms) [offset]: 100 > 200
+
+#bgm.change.longName en
+T: Changed BGM file
+R: File [file]: A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an > A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an… [shortened]
+F: Name shortened for display
+
+#dynamicStages.enable en
+T: Enabled dynamic stages
+R: Added [created]: 1 stage mask event / 1 stage pivot event / 1 stage style event / 1 stage transform event
+
+#owner.create.group en
+T: Added "New Group" group
+
+#owner.create.group fr
+T: Groupe "New Group" ajouté
+
+#owner.create.group ja
+T: 「New Group」 グループを追加しました
+
+#owner.create.stage en
+T: Added "New Stage" stage
+
+#owner.create.group.inFolder en
+T: Added "In Folder" group
+R: Folder [folder]: Folder One
+
+#owner.create.groupFolder.gathered3 en
+T: Created folder "Folder One" with 3 groups
+
+#owner.create.groupFolder.gathered0 en
+T: Added group folder "Folder One"
+
+#owner.create.stageFolder.gathered2 en
+T: Created folder "Stage Folder" with 2 stages
+
+#owner.create.group.emptyName en
+T: Added "" group
+
+#owner.create.group.longName en
+T: Added "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…" group
+F: Name shortened for display
+
+#owner.create.group.newlineName en
+T: Added "Line one
+Line two	tab" group
+
+#owner.rename.group en
+T: Renamed "Alpha" group to "Beta"
+
+#owner.rename.group fr
+T: Groupe "Alpha" renommé en "Beta"
+
+#owner.rename.group ja
+T: グループ「Alpha」の名前を「Beta」に変更しました
+
+#owner.rename.same en
+T: Renamed "Alpha" group to "Alpha"
+
+#owner.rename.fromEmpty en
+T: Renamed "" stage to "Beta"
+
+#owner.rename.toEmpty en
+T: Renamed "Beta" stage to ""
+
+#owner.rename.long en
+T: Renamed "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an" group to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…"
+F: Name shortened for display
+
+#owner.rename.folder en
+T: Renamed group folder "Old Folder" to "New Folder"
+
+#owner.set.group.speed en
+T: Set Force Note Speed of "Alpha" group to 1.5
+R: Force Note Speed [forceNoteSpeed]: ~Not set > 1.5
+
+#owner.set.group.speed fr
+T: Imposer la vitesse des notes : valeur 1,5 appliquée au groupe "Alpha"
+R: Imposer la vitesse des notes [forceNoteSpeed]: ~Non défini > 1,5
+
+#owner.set.group.speed ja
+T: グループ「Alpha」の「ノーツ速度を固定」を1.5に設定しました
+R: ノーツ速度を固定 [forceNoteSpeed]: ~未設定 > 1.5
+
+#owner.set.group.speedCleared en
+T: Cleared Force Note Speed of "Alpha" group
+R: Force Note Speed [forceNoteSpeed]: 1.5 > ~Not set
+
+#owner.set.group.speedNoChange en
+T: Set Force Note Speed of "Alpha" group to 1.5
+
+#owner.set.stage.multi en
+T: Changed Generate Sim Lines, From Start, and Until End for stage "Left"
+R: Generate Sim Lines [generateSimLines]: Global > Isolated
+R: From Start [isFromStart]: Disabled > Enabled
+R: Until End [isUntilEnd]: Enabled > Disabled
+
+#owner.set.stage.qualified en
+T: Set Until End of "Left" stage to Enabled
+R: Until End [isUntilEnd]: Disabled > Enabled
+
+#owner.move.reorder.indexes en
+T: Moved "Alpha" group
+R: Order [order]: 3 > 1
+
+#owner.move.reorder.indexes fr
+T: Groupe "Alpha" déplacé
+R: Ordre [order]: 3 > 1
+
+#owner.move.reorder.indexes ja
+T: 「Alpha」 グループを移動しました
+R: 順序 [order]: 3 > 1
+
+#owner.move.reorder.noIndexes en
+T: Moved "Alpha" group
+
+#owner.move.reorder.fromOnly en
+T: Moved "Alpha" group
+
+#owner.move.reorder.sameIndex en
+T: Moved "Alpha" group
+
+#owner.move.intoFolder en
+T: Moved group "Alpha" into folder "Folder One"
+
+#owner.move.outOfFolder en
+T: Moved stage "Left" out of its folder
+
+#owner.move.folderReorder en
+T: Moved group folder "Folder One"
+R: Order [order]: 2 > 1
+
+#owner.moveMany.groups.into en
+T: Moved 5 groups into folder "Folder One"
+
+#owner.moveMany.stages.out en
+T: Moved 2 stages out of folders
+
+#owner.moveMany.zero en
+T: Moved 0 groups out of folders
+
+#owner.duplicate.group en
+T: Duplicated "Alpha" group
+
+#owner.duplicate.group fr
+T: Groupe "Alpha" dupliqué
+
+#owner.duplicate.group ja
+T: 「Alpha」 グループを複製しました
+
+#owner.duplicate.groups.noSource en
+T: Duplicated 3 groups
+
+#owner.duplicate.folderWith en
+T: Duplicated group folder "Folder One"
+R: Added [added]: 2 groups / 1 group folder
+
+#owner.duplicate.stage en
+T: Duplicated "Left" stage
+
+#owner.delete.group en
+T: Deleted "Alpha" group
+
+#owner.delete.group fr
+T: Groupe "Alpha" supprimé
+
+#owner.delete.group ja
+T: 「Alpha」 グループを削除しました
+
+#owner.delete.groups.noTarget en
+T: Deleted 4 groups
+
+#owner.delete.folderWith en
+T: Deleted stage folder "Folder S"
+R: Removed [removed]: 2 stages / 1 stage folder
+
+#owner.delete.emptyName en
+T: Deleted "" group
+
+#owner.ungroup.3 en
+T: Ungrouped "Folder One" folder
+R: Moved out of Folder [released]: 3 groups
+
+#owner.ungroup.3 fr
+T: Dossier "Folder One" dissous
+R: Sortie du dossier [released]: 3 groupes
+
+#owner.ungroup.3 ja
+T: 「Folder One」フォルダーを解除しました
+R: フォルダーから移動 [released]: 3個のグループ
+
+#owner.ungroup.stage0 en
+T: Ungrouped "Folder S" folder
+
+#origin.new en
+T: Started a new level
+
+#origin.import.source en
+T: Opened My Level.nse
+
+#origin.import.nosource en
+T: Imported a level
+
+#origin.autoSave en
+T: Recovered from auto save
+
+#origin.recovery en
+T: Recovered changes
+
+#origin.import.longSource en
+T: Opened A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…
+F: Name shortened for display
+
+#continue.plain en
+T: Continued from Oct 18, 2:00:00 AM
+
+#continue.source en
+T: Continued from Oct 18, 2:00:00 AM
+
+#file.save.file en
+T: Saved level.nse
+
+#file.save.download en
+T: Downloaded level.nse
+
+#file.export.file en
+T: Exported level.scp
+
+#file.export.download.long en
+T: Exported A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…
+F: Downloaded A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…
+F: Name shortened for display
+
+#file.save.emptyName en
+T: Saved 
+
+#restore.plain en
+T: Restored to Oct 18, 2:00:00 AM
+
+#restore.source en
+T: Restored to Oct 18, 2:00:00 AM
+
+#recovery.journal en
+T: Recovered changes
+F: Undo steps dropped: 3
+E: 1 earlier, head 0, omitted 0
+
+#recovery.autoSave.0 en
+T: Recovered changes
+E: 1 earlier, head 0, omitted 0
+
+#recovery.local.1 en
+T: Recovered changes
+F: Undo steps dropped: 1
+E: 1 earlier, head 0, omitted 0
+
+#external.change en
+T: Changed outside the editor
+
+#recovery.context.small en
+T: Recovered changes
+F: Undo steps dropped: 2
+E: 3 earlier, head 1, omitted 0
+
+#recovery.context.big en
+T: Recovered changes
+F: Undo steps dropped: 64
+E: 65 earlier, head 30, omitted 12
+
+#recovery.context.big fr
+T: Modifications récupérées
+F: Étapes d’annulation supprimées : 64
+E: 65 earlier, head 30, omitted 12
+
+#recovery.context.big ja
+T: 変更を復元しました
+F: 失われた元に戻すステップ：64
+E: 65 earlier, head 30, omitted 12
+
+#recovery.context.unknownSteps en
+T: Recovered changes
+F: Undo steps dropped: 2
+E: 3 earlier, head 0, omitted 0
+
+#unknown.future.fallback en
+T: Did a future thing
+N: This editor cannot read the details of this step.
+
+#unknown.future.noFallback en
+T: Edit
+N: This editor cannot read the details of this step.
+
+#unknown.version2 en
+T: Added 3 notes
+N: This step was recorded by a newer version of the editor.
+
+#unknown.invalidData en
+T: Added -1 notes
+N: This editor cannot read the details of this step.
+
+#unknown.nullOperation en
+T: Edit
+N: This editor cannot read the details of this step.
+
+#unknown.stringOperation en
+T: Edit
+N: This editor cannot read the details of this step.
+
+#unknown.extraKeys en
+T: Added 3 notes
+N: This editor cannot read the details of this step.
+
+#unknown.fallback.html en
+T: <b>Bold</b> <script>x</script>
+Second line
+N: This editor cannot read the details of this step.
+
+#unknown.fallback.long en
+T: Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. Long fallback text. 
+N: This editor cannot read the details of this step.
+
+#unknown.fallback.empty en
+T: Edit
+N: This editor cannot read the details of this step.
+
+#unknown.fallbackOnly.restoreKind en
+T: Future restore
+N: This editor cannot read the details of this step.
+
+#unknown.knownId.invalid.noFallback en
+T: Initial state
+N: This editor cannot read the details of this step.
+
+#undo.single.noteAdd en
+T: Undo · Added 2 notes
+
+#redo.single.delete en
+T: Redo · Deleted 2 notes
+
+#undo.single.ownerRename en
+T: Undo · Renamed "Alpha" group to "Beta"
+
+#undo.group.3 en
+T: Undid 3 steps
+S: 3 steps (no prefix)
+  - Deleted 1 note
+  - Edited 3 notes
+  - Added 2 notes
+
+#undo.group.3 fr
+T: 3 étapes annulées
+S: 3 steps (no prefix)
+  - 1 note supprimée
+  - 3 notes modifiées
+  - 2 notes ajoutées
+
+#undo.group.3 ja
+T: 3 ステップを元に戻しました
+S: 3 steps (no prefix)
+  - 1個のノーツを削除しました
+  - 3個のノーツを編集しました
+  - 2個のノーツを追加しました
+
+#redo.group.2.partial en
+T: Redid 2+ steps
+S: 2+ steps (no prefix)
+  + Set Initial Life to 3
+  + Set Initial Life to 2
+
+#undo.group.unknown en
+T: Undid 2 steps
+S: 2 steps (no prefix)
+  + Edit
+  + Future op
+
+#undo.group.45 en
+T: Undid 45 steps
+S: 45 steps (no prefix)
+  - Added 45 notes
+  - Added 44 notes
+  - Added 43 notes
+  - Added 42 notes
+  - Added 41 notes
+  - Added 40 notes
+  - Added 39 notes
+  - Added 38 notes
+  - Added 37 notes
+  - Added 36 notes
+  - Added 35 notes
+  - Added 34 notes
+  - Added 33 notes
+  - Added 32 notes
+  - Added 31 notes
+  - Added 30 notes
+  - Added 29 notes
+  - Added 28 notes
+  - Added 27 notes
+  - Added 26 notes
+  - Added 25 notes
+  - Added 24 notes
+  - Added 23 notes
+  - Added 22 notes
+  - Added 21 notes
+  - Added 20 notes
+  - Added 19 notes
+  - Added 18 notes
+  - Added 17 notes
+  - Added 16 notes
+  - Added 15 notes
+  - Added 14 notes
+  - Added 13 notes
+  - Added 12 notes
+  - Added 11 notes
+  - Added 10 notes
+  - Added 9 notes
+  - Added 8 notes
+  - Added 7 notes
+  - Added 6 notes
+  - Added 5 notes
+  - Added 4 notes
+  - Added 3 notes
+  - Added 2 notes
+  - Added 1 note
+
+#group.noteAdd.3 en
+T: Added 6 notes
+S: 3 steps
+  - Added 2 notes
+  - Added 2 notes
+  - Added 2 notes
+
+#group.noteAdd.3 fr
+T: 6 notes ajoutées
+S: 3 steps
+  - 2 notes ajoutées
+  - 2 notes ajoutées
+  - 2 notes ajoutées
+
+#group.noteAdd.3 ja
+T: 6個のノーツを追加しました
+S: 3 steps
+  - 2個のノーツを追加しました
+  - 2個のノーツを追加しました
+  - 2個のノーツを追加しました
+
+#group.noteGenerate.2 en
+T: Generated 16 notes
+S: 2 steps
+  - Generated 8 notes
+  - Generated 8 notes
+
+#group.noteAdd.45 en
+T: Added 45 notes
+S: 45 steps
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+
+#group.noteAdd.partial en
+T: Added 20 notes
+S: 20+ steps
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+  - Added 1 note
+
+#group.objectAdd.bpm.3 en
+T: Added 3 BPM changes
+S: 3 steps
+  - Added 1 BPM change
+  - Added 1 BPM change
+  - Added 1 BPM change
+
+#group.objectAdd.replace.3 en
+T: Added 3 BPM changes
+S: 3 steps
+  - Added 1 BPM change
+  - Added 1 BPM change
+  - Added 1 BPM change
+
+#group.objectEdit.note.3 en
+T: Edited notes
+S: 3 steps
+  - Edited 2 notes
+  - Edited 2 notes
+  - Edited 2 notes
+
+#group.objectEdit.bpm.displacedEmpty.3 en
+T: Edited BPM changes
+S: 3 steps
+  - Edited 1 BPM change
+  - Edited 1 BPM change
+  - Edited 1 BPM change
+
+#group.objectMove.note.displacedEmpty.4 en
+T: Moved notes
+S: 4 steps
+  - Moved 4 notes
+  - Moved 4 notes
+  - Moved 4 notes
+  - Moved 4 notes
+
+#group.objectReplace.bpm.2 en
+T: Replaced BPM changes
+S: 2 steps
+  - Replaced 1 BPM change
+  - Replaced 1 BPM change
+
+#group.elevation.2 en
+T: Changed note elevations
+S: 2 steps
+  - Changed elevation of 2 notes
+  - Changed elevation of 2 notes
+
+#group.paste.2 en
+T: Pasted objects
+S: 2 steps
+  + Pasted 4 objects
+  + Pasted 4 objects
+
+#group.brush.2 en
+T: Brushed notes
+S: 2 steps
+  + Brushed 3 notes
+  + Brushed 3 notes
+
+#group.delete.3 en
+T: Deleted 6 notes
+S: 3 steps
+  - Deleted 2 notes
+  - Deleted 2 notes
+  - Deleted 2 notes
+
+#group.cut.2 en
+T: Cut 4 notes
+S: 2 steps
+  - Cut 2 notes
+  - Cut 2 notes
+
+#group.delete.huge en
+T: Deleted notes
+S: 3 steps
+  - Deleted 4,000,000,000,000,000 notes
+  - Deleted 4,000,000,000,000,000 notes
+  - Deleted 4,000,000,000,000,000 notes
+
+#group.flip.2 en
+T: Flipped objects horizontally
+S: 2 steps
+  + Flipped 4 objects
+  + Flipped 4 objects
+
+#group.scale.2 en
+T: Scaled beats
+S: 2 steps
+  + Scaled beats of 4 objects
+  + Scaled beats of 4 objects
+
+#group.combine.2 en
+T: Combined notes into slides
+S: 2 steps
+  - Combined 2 notes into one slide
+  - Combined 2 notes into one slide
+
+#group.split.2 en
+T: Split slide connections
+S: 2 steps
+  - Split 2 slide connections
+  - Split 2 slide connections
+
+#group.vertical.2 en
+T: Made notes vertical
+S: 2 steps
+  - Made 2 notes vertical
+  - Made 2 notes vertical
+
+#group.property.same en
+T: Set Lane to 2 on notes
+S: 3 steps
+  + Set Lane to 2 on 3 notes
+  + Set Lane to 2 on 3 notes
+  + Set Lane to 2 on 3 notes
+
+#group.property.varying en
+T: Changed Lane on notes
+S: 3 steps
+  + Set Lane to 3 on 2 notes
+  + Set Lane to 2 on 2 notes
+  + Set Lane to 1 on 2 notes
+
+#group.property.varying fr
+T: Voie : notes modifiées
+S: 3 steps
+  + Voie : valeur 3 appliquée à 2 notes
+  + Voie : valeur 2 appliquée à 2 notes
+  + Voie : valeur 1 appliquée à 2 notes
+
+#group.property.varying ja
+T: ノーツの「レーン」を変更しました
+S: 3 steps
+  + 2個のノーツの「レーン」を3に設定しました
+  + 2個のノーツの「レーン」を2に設定しました
+  + 2個のノーツの「レーン」を1に設定しました
+
+#group.property.multiField.3 en
+T: Edited notes
+S: 3 steps
+  + Edited 2 notes
+  + Edited 2 notes
+  + Edited 2 notes
+
+#group.header.life.3 en
+T: Changed Initial Life
+R: Initial Life [life]: 1 > 4
+S: 3 steps
+  + Set Initial Life to 4
+  + Set Initial Life to 3
+  + Set Initial Life to 2
+
+#group.header.bgmOffset.2 en
+T: Changed BGM Offset
+R: Offset (ms) [offset]: 0 > 500
+S: 2 steps
+  + Set BGM Offset to 500 ms
+  + Set BGM Offset to 1,000 ms
+
+#group.ownerCreate.group.3 en
+T: Added 3 groups
+S: 3 steps
+  - Added "G" group
+  - Added "G" group
+  - Added "G" group
+
+#group.ownerCreate.stage.2 en
+T: Added 2 stages
+S: 2 steps
+  - Added "S" stage
+  - Added "S" stage
+
+#group.ownerCreate.groupFolder.2 en
+T: Added 2 group folders
+S: 2 steps
+  - Added group folder "F"
+  - Added group folder "F"
+
+#group.ownerRename.chain en
+T: Renamed group "A"
+S: 3 steps
+  - Renamed "C" group to "A"
+  - Renamed "B" group to "C"
+  - Renamed "A" group to "B"
+
+#group.ownerRename.chain fr
+T: Groupe "A" renommé
+S: 3 steps
+  - Groupe "C" renommé en "A"
+  - Groupe "B" renommé en "C"
+  - Groupe "A" renommé en "B"
+
+#group.ownerRename.chain ja
+T: グループ「A」の名前を変更しました
+S: 3 steps
+  - グループ「C」の名前を「A」に変更しました
+  - グループ「B」の名前を「C」に変更しました
+  - グループ「A」の名前を「B」に変更しました
+
+#group.ownerRename.netZero en
+T: Renamed group "A"
+S: 2 steps
+  - Renamed "B" group to "A"
+  - Renamed "A" group to "B"
+
+#group.ownerSet.uniform en
+T: Set Force Note Speed of "Alpha" group to 2
+R: Force Note Speed [forceNoteSpeed]: ~Not set > 2
+S: 2 steps
+  - Set Force Note Speed of "Alpha" group to 2
+  + Set Force Note Speed of "Alpha" group to 2
+
+#group.ownerSet.varying en
+T: Changed Force Note Speed for group "Alpha"
+R: Force Note Speed [forceNoteSpeed]: ~Not set > 2
+S: 2 steps
+  + Set Force Note Speed of "Alpha" group to 2
+  + Set Force Note Speed of "Alpha" group to 1
+
+#group.ownerMove.reorder en
+T: Moved "Alpha" group
+R: Order [order]: 4 > 1
+S: 2 steps
+  + Moved "Alpha" group
+  + Moved "Alpha" group
+
+#group.ownerMove.intoFolder en
+T: Moved group "Alpha" into folder "F1"
+S: 2 steps
+  - Moved group "Alpha" into folder "F1"
+  - Moved group "Alpha" into folder "F1"
+
+#group.ownerDuplicate.2 en
+T: Duplicated 2 groups
+S: 2 steps
+  - Duplicated "Alpha" group
+  - Duplicated "Alpha" group
+
+#group.ownerDelete.group.2 en
+T: Deleted 2 groups
+S: 2 steps
+  - Deleted "Alpha" group
+  - Deleted "Alpha" group
+
+#group.ownerDelete.withFolders en
+T: Deleted stages (4) and folders (2)
+S: 2 steps
+  - Deleted stages (2) and folders (1)
+  - Deleted stages (2) and folders (1)
+
+#group.delete.mixedKinds en
+T: Deleted 5 objects
+R: Removed [removed]: 3 notes / 2 BPM changes
+S: 2 steps
+  + Deleted 2 objects
+  + Deleted 3 objects
+
+#edge.deletedGroupRef en
+T: Set Group to "Deleted Group" on 2 notes
+R: Group [groupId]: ~Varies > Deleted Group
+
+#edge.deletedStageRef en
+T: Set Stage to "Deleted Stage" on 1 stage style event
+R: Stage [stageId]: ~Varies > Deleted Stage
+
+#edge.multiSubject.edit en
+T: Edited 1,234 objects
+R: Changed [changed]: 617 notes / 617 BPM changes
+
+#edge.ownerSet.sameNameQualified en
+T: Renamed "Group A" group to "Group A"
+
+#edge.rtl.name en
+T: Added "مجموعة الأوتار" group
+
+#edge.emoji.name en
+T: Renamed "🎵 Group" group to "🎵 Group 🎶"
+
+#edge.longword.nowrap en
+T: Renamed "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy" group to "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+#edge.countAtSafeMax en
+T: Added 9,007,199,254,740,991 notes
+
+#brush.objects.varying en
+T: Brushed 5 objects
+R: Changed [changed]: 2 notes / 3 camera events
+R: Camera Zoom [cameraZoom]: 1 > 1.5
+R: Size [size]: 1 > 2
+
+#property.note.noop en
+T: Set Lane to 1 on 1 note
+
+#property.note.group.beforeName en
+T: Set Group to "" on 2 notes
+R: Group [groupId]: Old Group > ~Not set
+
+#object.edit.note.empty en
+T: Edited notes
+
+#object.move.objects.empty en
+T: Moved objects
+
+#object.move.bpm.emptyRetained en
+T: Moved BPM changes
+R: Replaced [displaced]: 1 BPM change
+F: Kept the initial BPM change
+
+#object.replace.bpm.moreDisplaced en
+T: Replaced 1 BPM change
+R: Replaced [displaced]: 3 BPM changes
+
+#object.replace.empty en
+T: Replaced time scales
+R: Replaced [displaced]: 1 time scale
+
+#object.edit.mixed.displaced en
+T: Edited 6 objects
+R: Changed [changed]: 3 notes / 1 BPM change / 2 camera events
+R: Replaced [displaced]: 1 BPM change
+F: Kept the initial BPM change
+
+#flip.vertical.collateral en
+T: Flipped 6 objects vertically
+R: Changed [changed]: 4 notes / 2 time scales
+R: Replaced [displaced]: 1 time scale
+
+#flip.empty en
+T: Flipped objects horizontally
+
+#scale.beats.collateral en
+T: Scaled beats of 10 objects
+R: Changed [changed]: 8 notes / 2 BPM changes
+R: Replaced [displaced]: 1 BPM change
+R: Scale Factor [factor]: 0.5
+R: Scale Origin [pivot]: 0
+F: Kept the initial BPM change
+
+#scale.empty en
+T: Scaled width
+R: Scale Factor [factor]: Multiple Adjustments
+
+#delete.empty.nc en
+T: Deleted objects
+
+#cut.empty en
+T: Cut objects
+
+#paste.flipped.noDisplaced en
+T: Pasted 2 objects
+R: Pasted [placed]: 2 notes
+R: Editor Layout [layout]: Composed
+R: Paste Location [at]: Chosen Position
+F: Pasted flipped
+
+#owner.delete.cascade en
+T: Deleted "Alpha" group
+R: Removed [removed]: 1 group / 800 notes / 12 time scales
+F: Added "Group 1" group
+
+#owner.delete.cascade fr
+T: Groupe "Alpha" supprimé
+R: Supprimé [removed]: 1 groupe / 800 notes / 12 échelles de temps
+F: Groupe "Group 1" ajouté
+
+#owner.delete.cascade ja
+T: 「Alpha」 グループを削除しました
+R: 削除 [removed]: 1個のグループ / 800個のノーツ / 12個のハイスピード
+F: 「Group 1」 グループを追加しました
+
+#owner.delete.cascade.stageFolder en
+T: Deleted stage folder "Folder S"
+R: Removed [removed]: 2 stages / 1 stage folder / 4 camera events
+
+#owner.delete.counts.noCascade en
+T: Deleted 4 groups
+
+#owner.delete.folderOnly en
+T: Deleted group folder "Folder One"
+
+#owner.duplicate.cascade en
+T: Duplicated "Alpha" group
+R: Added [added]: 1 group / 120 notes / 1 BPM change
+
+#owner.duplicate.folderOnly en
+T: Duplicated group folder "Folder One"
+
+#owner.set.group.twoFields en
+T: Changed Generate Sim Lines and From Start for stage "Left"
+R: Generate Sim Lines [generateSimLines]: Global > Isolated
+R: From Start [isFromStart]: Disabled > Enabled
+
+#owner.set.group.twoFields fr
+T: Générer les lignes de simultanéité et Depuis le début : propriétés de la scène "Left" modifiées
+R: Générer les lignes de simultanéité [generateSimLines]: Globalement > Par scène
+R: Depuis le début [isFromStart]: Désactivé > Activé
+
+#owner.set.group.twoFields ja
+T: ステージ「Left」の「同時押し線の生成」、「最初から」を変更しました
+R: 同時押し線の生成 [generateSimLines]: 全体 > 個別
+R: 最初から [isFromStart]: 無効 > 有効
+
+#owner.create.stage.inFolder en
+T: Added "In Folder" stage
+R: Folder [folder]: ~Not set
+
+#dynamicStages.enable.empty en
+T: Enabled dynamic stages
+
+#unknown.nseId.newer en
+T: Did a newer thing
+N: This step was recorded by a newer version of the editor.
+
+#unknown.foreignLocale en
+T: Hecho (lang es)
+N: This editor cannot read the details of this step.
+
+#event.export.download en
+T: Exported level.scp
+F: Downloaded level.scp
+
+#group.delete.mixed.three en
+T: Deleted 11 objects
+R: Removed [removed]: 3 notes / 3 BPM changes / 5 time scales
+S: 3 steps
+  + Deleted 6 objects
+  + Deleted 2 objects
+  + Deleted 3 objects
+
+#group.undo.mixed en
+T: Undid 3 steps
+S: 3 steps (no prefix)
+  - Renamed "Alpha" group to "Beta"
+  + Pasted 2 objects
+  - Added 2 notes

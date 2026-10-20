@@ -17,6 +17,7 @@ import {
 import { isEntryDescription } from './members'
 import type { OperationMember, OperationTextContext } from './types'
 import {
+    joinFields,
     joinSentences,
     message,
     nameText,
@@ -111,8 +112,12 @@ export const removalOrBrushDescription = (
     )
 }
 
-/** How many objects a step changed; undefined when the total is unsafe. */
-const changedTotal = (changed: NativeCounts) => checkedSum(Object.values(changed))
+/** How many objects a step changed; undefined when none, so the title uses the quantity-free form. */
+const changedTotal = (changed: NativeCounts) => {
+    const total = checkedSum(Object.values(changed))
+    if (total) return total
+    return undefined
+}
 
 export const propertyDescription = (
     data: PropertyData,
@@ -128,16 +133,18 @@ export const propertyDescription = (
         )
     const assignment = data.assignments[0]
     if (!assignment) throw new Error('Missing property assignment')
-    const field = operationFieldLabel(assignment.field, context)
+    const field = operationFieldLabel(assignment.field, context, { prose: true })
     const suffix = subjectSuffix(data.subject)
     const subtype = eventSubtype(data.subject, context)
+    const total = changedTotal(data.changed)
+    if (total === undefined) aggregate = true
     if (assignment.after.mode === 'varying')
         return aggregate
             ? message(context, context.strings.history.summary[`setOn${suffix}`], field, subtype)
             : message(
                   context,
                   context.strings.history.operation[`changedOn${suffix}`],
-                  changedTotal(data.changed) ?? 0,
+                  total ?? 0,
                   field,
                   subtype,
               )
@@ -153,7 +160,7 @@ export const propertyDescription = (
         : message(
               context,
               context.strings.history.operation[`setValueOn${suffix}`],
-              changedTotal(data.changed) ?? 0,
+              total ?? 0,
               field,
               value,
               subtype,
@@ -256,7 +263,7 @@ export const ownerSetDescription = (
     const name = ownerName(data.target, context)
     return joinSentences(
         data.changes.map((change) => {
-            const field = ownerFieldLabel(change.field, context)
+            const field = ownerFieldLabel(change.field, context, { prose: true })
             return change.after === null
                 ? message(context, t.workspace.groups.propertyCleared, name, field)
                 : message(
@@ -271,6 +278,25 @@ export const ownerSetDescription = (
     )
 }
 
+/** A single step with several changes reads as one sentence about the fields. */
+export const ownerChangedDescription = (
+    data: Extract<NativeOperationInput, { id: 'nse.owner.set' }>['data'],
+    context: OperationTextContext,
+) =>
+    message(
+        context,
+        context.strings.history.operation[
+            ownerDomain(data.target) === 'group'
+                ? 'changedGroupProperties'
+                : 'changedStageProperties'
+        ],
+        ownerName(data.target, context),
+        joinFields(
+            data.changes.map(({ field }) => ownerFieldLabel(field, context, { prose: true })),
+            context,
+        ),
+    )
+
 export const operationTime = (time: number, context: OperationTextContext) =>
     Number.isNaN(new Date(time).getTime())
         ? numberText(time, context)
@@ -283,14 +309,18 @@ export const describeOperation = (
     const t = context.strings
     switch (operation.id) {
         case 'nse.note.add':
-            return message(context, t.tools.note.added, operation.data.created)
+            return operation.data.created
+                ? message(context, t.tools.note.added, operation.data.created)
+                : t.history.summary.addedNotes
         case 'nse.note.generate':
-            return message(context, t.tools.generateSlideNotes.generated, operation.data.created)
+            return operation.data.created
+                ? message(context, t.tools.generateSlideNotes.generated, operation.data.created)
+                : t.history.summary.generatedNotes
         case 'nse.object.add':
             return nativeDescription(
                 'added',
                 operation.data.subject,
-                operation.data.created,
+                operation.data.created || undefined,
                 context,
             )
         case 'nse.object.edit':
@@ -335,28 +365,42 @@ export const describeOperation = (
             return removalOrBrushDescription(
                 operation.id === 'nse.object.delete' ? 'deleted' : 'cut',
                 subjectOfCounts(removed),
-                checkedSum(Object.values(removed)),
+                changedTotal(removed),
                 context,
             )
         }
-        case 'nse.object.flip':
-            return message(
-                context,
-                operation.data.axis === 'horizontal'
-                    ? t.commands.flip.flipped
-                    : t.commands.flipVertical.flipped,
-                changedTotal(operation.data.changed) ?? 0,
-            )
-        case 'nse.object.scale':
-            return message(
-                context,
-                t.commands[
-                    { beats: 'scaleBeat', width: 'scaleWidth', elevation: 'scaleElevation' }[
-                        operation.data.axis
-                    ] as 'scaleBeat' | 'scaleWidth' | 'scaleElevation'
-                ].scaled,
-                changedTotal(operation.data.changed) ?? 0,
-            )
+        case 'nse.object.flip': {
+            const total = changedTotal(operation.data.changed)
+            const horizontal = operation.data.axis === 'horizontal'
+            return total === undefined
+                ? t.history.summary[horizontal ? 'flippedHorizontally' : 'flippedVertically']
+                : message(
+                      context,
+                      horizontal ? t.commands.flip.flipped : t.commands.flipVertical.flipped,
+                      total,
+                  )
+        }
+        case 'nse.object.scale': {
+            const total = changedTotal(operation.data.changed)
+            const { axis } = operation.data
+            return total === undefined
+                ? t.history.summary[
+                      axis === 'beats'
+                          ? 'scaledBeats'
+                          : axis === 'width'
+                            ? 'scaledWidth'
+                            : 'scaledElevations'
+                  ]
+                : message(
+                      context,
+                      t.commands[
+                          { beats: 'scaleBeat', width: 'scaleWidth', elevation: 'scaleElevation' }[
+                              axis
+                          ] as 'scaleBeat' | 'scaleWidth' | 'scaleElevation'
+                      ].scaled,
+                      total,
+                  )
+        }
         case 'nse.note.combine':
             return message(context, t.commands.combineNotes.combined, operation.data.targets)
         case 'nse.note.split':
@@ -399,7 +443,9 @@ export const describeOperation = (
         case 'nse.owner.rename':
             return renameDescription(operation.data, context)
         case 'nse.owner.set':
-            return ownerSetDescription(operation.data, context)
+            return operation.data.changes.length > 1
+                ? ownerChangedDescription(operation.data, context)
+                : ownerSetDescription(operation.data, context)
         case 'nse.owner.move': {
             const { target, category, destination } = operation.data
             if (category === 'reorder') return namedOwnerDescription('moved', target, context)
@@ -505,7 +551,7 @@ export const describeCapturedOperation = (
 ) => {
     const decoded = decodeOperation(operation)
     if (decoded.status === 'known') return describeOperation(decoded.operation, context)
-    if (decoded.fallback) return decoded.fallback.text
+    if (decoded.fallback?.text) return decoded.fallback.text
     return kindLabel
 }
 
@@ -520,11 +566,15 @@ export const describeStep = (step: StepDescription, context: OperationTextContex
         context,
     )
 
-export const describeEntry = (entry: EntryDescription, context: OperationTextContext) => {
+export const describeEntry = (
+    entry: EntryDescription,
+    context: OperationTextContext,
+    prefixless = false,
+) => {
     const t = context.strings
     if (entry.step) {
         const description = describeStep(entry.step, context)
-        return entry.kind === 'undo' || entry.kind === 'redo'
+        return !prefixless && (entry.kind === 'undo' || entry.kind === 'redo')
             ? `${t.commands[entry.kind].title} · ${description}`
             : description
     }
@@ -541,7 +591,12 @@ export const describeEntry = (entry: EntryDescription, context: OperationTextCon
     )
 }
 
-export const describeMember = ({ description }: OperationMember, context: OperationTextContext) =>
+/** A step's line; inside an undo or redo parent the repeated prefix is left out. */
+export const describeMember = (
+    { description }: OperationMember,
+    context: OperationTextContext,
+    { prefixless = false }: { prefixless?: boolean } = {},
+) =>
     isEntryDescription(description)
-        ? describeEntry(description, context)
+        ? describeEntry(description, context, prefixless)
         : describeStep(description, context)

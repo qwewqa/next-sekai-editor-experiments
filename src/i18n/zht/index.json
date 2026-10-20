@@ -1353,11 +1353,6 @@
       "retainedInitialBpm": "已保留初始 BPM",
       "pivot": "縮放基準點",
       "composedTransform": "多項調整",
-      "destination": "目的位置",
-      "source": "來源",
-      "fromPosition": "原位置",
-      "toPosition": "新位置",
-      "gathered": "已移入資料夾",
       "released": "已移出資料夾",
       "recoveryContext": "先前操作",
       "recoveryHead": "來源操作",
@@ -1376,12 +1371,7 @@
       "bgmOffset": "BGM 偏移",
       "pasteLocation": "貼上位置",
       "pointer": "指標位置",
-      "position": "指定位置",
-      "flipped": "翻轉",
-      "delivery": "儲存方式",
-      "download": "下載",
-      "unsavedChanges": "未儲存的變更",
-      "autoSave": "自動儲存"
+      "position": "指定位置"
     },
     "operation": {
       "changedHeader": "已變更{0}",

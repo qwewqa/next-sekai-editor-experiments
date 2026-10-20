@@ -3,18 +3,15 @@ import type {
     EntryDescription,
     GroupDescriptor,
     NativeOperationInput,
-    OwnerKind,
     StepDescription,
     UndoableStep,
 } from '../operations'
 
 export type OperationStrings = typeof import('../../i18n/en/index.json')
-export type OwnerIdentity = { readonly kind: OwnerKind; readonly id: number }
 export type OperationTextContext = {
     readonly locale: string
     readonly strings: OperationStrings
     readonly now: number
-    readonly qualifiers?: readonly OwnerIdentity[]
 }
 
 export type OperationMember = {
@@ -27,7 +24,6 @@ export type OperationRecipe = {
     readonly kind: 'single' | 'group' | 'undo' | 'redo'
     readonly members: readonly OperationMember[]
     readonly partial: boolean
-    readonly qualifiers: readonly OwnerIdentity[]
     readonly group?: GroupDescriptor
     readonly summary?: NativeOperationInput
     readonly metric?: AdditiveMetric
@@ -88,32 +84,6 @@ export type OperationDetails = {
         /** An undo or redo parent: its steps are listed without the repeated prefix. */
         readonly prefixless?: true
     }
-    readonly recovery?: {
-        readonly descriptions: readonly StepDescription[]
-        readonly headIndex: number
-        readonly omitted: number
-    }
-}
-
-// Removed with the old details model.
-export type LegacyOperationDetailRow = {
-    readonly key: string
-    readonly label: string
-    readonly value: string
-    readonly nameShortened?: boolean
-}
-export type LegacyOperationDetailSection = {
-    readonly key: string
-    readonly label: string
-    readonly rows: readonly LegacyOperationDetailRow[]
-}
-export type LegacyOperationDetails = {
-    readonly description: string
-    readonly stepCount: number
-    readonly partial: boolean
-    readonly explanation?: string
-    readonly sections: readonly LegacyOperationDetailSection[]
-    readonly children: readonly OperationMember[]
     readonly recovery?: {
         readonly descriptions: readonly StepDescription[]
         readonly headIndex: number

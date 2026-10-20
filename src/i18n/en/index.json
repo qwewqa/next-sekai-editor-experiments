@@ -1353,11 +1353,6 @@
             "retainedInitialBpm": "Kept the initial BPM change",
             "pivot": "Scale Origin",
             "composedTransform": "Multiple Adjustments",
-            "destination": "Destination",
-            "source": "Source",
-            "fromPosition": "Previous Position",
-            "toPosition": "New Position",
-            "gathered": "Moved into Folder",
             "released": "Moved out of Folder",
             "recoveryContext": "Earlier Actions",
             "recoveryHead": "Source Action",
@@ -1376,12 +1371,7 @@
             "bgmOffset": "BGM Offset",
             "pasteLocation": "Paste Location",
             "pointer": "Pointer",
-            "position": "Chosen Position",
-            "flipped": "Flipped",
-            "delivery": "Save Method",
-            "download": "Download",
-            "unsavedChanges": "Unsaved Changes",
-            "autoSave": "Auto Save"
+            "position": "Chosen Position"
         },
         "operation": {
             "changedHeader": "Changed {0}",

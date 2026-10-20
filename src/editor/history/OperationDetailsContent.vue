@@ -5,6 +5,7 @@ import {
     captureOperationRecipe,
     describeStep,
     message,
+    operationDetails,
     operationStepCount,
     type DetailText,
     type OperationMember,
@@ -13,7 +14,6 @@ import {
 import { i18n } from '../../i18n'
 import { formatClockSeconds, formatDateTimeSeconds } from '../../i18n/when'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
-import { operationDetails } from './detailsAdapter'
 import DetailsHeader from './DetailsHeader.vue'
 import type { Flags } from './rows'
 
