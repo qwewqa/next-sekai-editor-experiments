@@ -7,7 +7,7 @@ import { workspaceDockAttribute } from '../workspace'
 import CheckIcon from './CheckIcon.vue'
 import { filterHere, hereRangeText, takeHereRange } from './editsHere'
 import type { Filter } from './rows'
-import { hereRange, historyFilter } from './state'
+import { historyFilter } from './state'
 import type { GoToView } from './presentation'
 
 // The Go To popover (Part 1 §1.4.10.5): the Show list, All, Saves and Exports or Edits Here with
@@ -47,12 +47,9 @@ const filterTitle = (filter: Filter) =>
         : filter === 'saves'
           ? i18n.value.history.filterSaves
           : i18n.value.history.filterHere
-// The beats Edits Here takes: once on, the range it took, as the banner names it; else the beats it
-// would take now, following the view while the popover is open (X-7).
-const hereText = computed(() => {
-    const range = hereRange.value
-    return hereRangeText(historyFilter.value === 'here' && range ? range : takeHereRange())
-})
+// The beats Edits Here would take now, as choosing it takes them: it follows the view and the
+// selection while the popover is open, so a pick names the range the banner then shows (X-7).
+const hereText = computed(() => hereRangeText(takeHereRange()))
 const hereId = useId()
 
 const margin = 8

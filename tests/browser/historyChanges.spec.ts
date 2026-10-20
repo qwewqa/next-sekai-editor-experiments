@@ -1628,7 +1628,7 @@ test('Edits Here’s range names its first and last beats, for a selection and f
     await expect(range).toHaveText(expected)
 })
 
-test('Go To’s Edits Here line follows the view while open, and names the range taken once on (X-7)', async ({
+test('Go To’s Edits Here line follows the view while open, so a pick matches the banner (X-7)', async ({
     page,
 }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })
@@ -1646,8 +1646,10 @@ test('Go To’s Edits Here line follows the view while open, and names the range
     await page.getByRole('radio', { name: 'Edits Here' }).click()
     await expect(banner).toHaveText(new RegExp(`Edits Here · ${moved}`))
     await expect(range).toHaveText(moved!)
-    // Once on, it names the range the filter took, as the banner does, wherever the view goes.
+    // Moved again, it names what choosing it again would take.
     await viewAt(page, 80)
-    await expect(range).toHaveText(moved!)
-    await expect(banner).toHaveText(new RegExp(`Edits Here · ${moved}`))
+    await expect(range).not.toHaveText(moved!)
+    const again = await range.textContent()
+    await page.getByRole('radio', { name: 'Edits Here' }).click()
+    await expect(banner).toHaveText(new RegExp(`Edits Here · ${again}`))
 })
