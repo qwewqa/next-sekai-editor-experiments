@@ -105,6 +105,7 @@ const defaults = (kind: PlatformKind): PlatformCapabilities =>
               fileAssociations: false,
               mp3Export: true,
               serverFetch: true,
+              likelyInAppBrowser: false,
           }
         : {
               writeBack: true,
@@ -118,6 +119,7 @@ const defaults = (kind: PlatformKind): PlatformCapabilities =>
               fileAssociations: true,
               mp3Export: true,
               serverFetch: true,
+              likelyInAppBrowser: false,
           }
 
 const targetKey = (target: FileTarget) => {

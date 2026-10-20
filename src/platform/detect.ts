@@ -1,3 +1,4 @@
+import { HOST_GLOBALS, looksLikeInAppBrowser } from './inAppBrowser'
 import type { PlatformOs } from './types'
 
 // Detection is for wording and hand-over paths only: nothing stored depends on it (Part 1 §1.6.10).
@@ -16,6 +17,8 @@ export type PlatformOverride = {
     standalone?: boolean
     persisted?: boolean
     privateSuspected?: boolean
+    /** An app’s built-in browser, which changes wording only (§1.6.10). */
+    inAppBrowser?: boolean
     /** False turns the pickers off; 'opfs' makes them return OPFS handles, for Playwright. */
     fileSystemAccess?: boolean | 'opfs'
     activation?: boolean
@@ -74,6 +77,7 @@ const flags = [
     'standalone',
     'persisted',
     'privateSuspected',
+    'inAppBrowser',
     'fileSystemAccess',
     'activation',
 ] as const
@@ -138,17 +142,19 @@ export const platformOverride = (): PlatformOverride => {
 
 let detected: Detection | undefined
 
-export const detection = (): Detection => {
-    if (detected) return detected
-    const env: UaEnv = hasWindow()
+const uaEnv = (): UaEnv =>
+    hasWindow()
         ? {
               userAgent: navigator.userAgent,
               maxTouchPoints: navigator.maxTouchPoints,
               gestureEvent: 'GestureEvent' in window,
           }
         : { userAgent: '', maxTouchPoints: 0, gestureEvent: false }
+
+export const detection = (): Detection => {
+    if (detected) return detected
     const { engine, os } = platformOverride()
-    const ua = detectFromUa(env)
+    const ua = detectFromUa(uaEnv())
     return (detected = { engine: engine ?? ua.engine, os: os ?? ua.os })
 }
 
@@ -177,6 +183,22 @@ const standaloneLatch = () => {
 /** A Home Screen web app the user added (§1.7.5). */
 export const isStandalone = () => platformOverride().standalone ?? standaloneLatch().get()
 
+let inApp: boolean | undefined
+
+/**
+ * Whether this looks like an app’s built-in browser (§1.6.10, best effort): latched at startup
+ * with the rest, the override first. Detection never flags a Home Screen web app.
+ */
+export const isLikelyInAppBrowser = () => {
+    const forced = platformOverride().inAppBrowser
+    if (forced !== undefined) return forced
+    return (inApp ??= looksLikeInAppBrowser(
+        uaEnv(),
+        isStandalone(),
+        hasWindow() && HOST_GLOBALS.some((name) => name in window),
+    ))
+}
+
 /** Whether the page has transient activation, where the browser reports it. */
 export const hasActivation = () =>
     platformOverride().activation ??
@@ -196,4 +218,5 @@ export const reportsActivation = () =>
 export const startDetection = () => {
     detection()
     isStandalone()
+    isLikelyInAppBrowser()
 }

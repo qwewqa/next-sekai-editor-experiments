@@ -5,6 +5,7 @@ import { storageLineKey, type StorageFacts } from '../../src/editor/settings/sto
 const facts = (changes: Partial<StorageFacts> = {}): StorageFacts => ({
     unavailable: false,
     privateSuspected: false,
+    inAppBrowser: false,
     persisted: false,
     os: 'windows',
     engine: 'chromium',
@@ -33,6 +34,16 @@ test('the storage line is the first condition that holds', () => {
         storageLineKey(facts({ unavailable: true, privateSuspected: true })),
         'unavailable',
     )
+})
+
+test('an app’s built-in browser beats the browser lines, and loses to unavailable and private', () => {
+    const inApp = { inAppBrowser: true }
+    assert.equal(storageLineKey(facts(inApp)), 'inAppBrowser')
+    assert.equal(storageLineKey(facts({ ...inApp, persisted: true })), 'inAppBrowser')
+    assert.equal(storageLineKey(facts({ ...inApp, os: 'ios', engine: 'webkit' })), 'inAppBrowser')
+    assert.equal(storageLineKey(facts({ ...inApp, os: 'macos', engine: 'webkit' })), 'inAppBrowser')
+    assert.equal(storageLineKey(facts({ ...inApp, privateSuspected: true })), 'private')
+    assert.equal(storageLineKey(facts({ ...inApp, unavailable: true })), 'unavailable')
 })
 
 test('a persisted grant never hides what a tab on iOS or Safari can lose', () => {

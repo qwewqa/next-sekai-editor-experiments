@@ -1,8 +1,10 @@
 import { i18n } from '../i18n'
 import { formatDateInSentence } from '../i18n/when'
 import { loadEvents, onLoadEvent, type LoadEvent, type ShownName } from '../local/startup/events'
+import { platform } from '../platform'
 import { interpolate, interpolateRaw } from '../utils/interpolate'
 import { changeBgm } from './commands/bgm'
+import { copyPageLink } from './copyLink'
 import { openHistoryAction } from './history/openHistory'
 import { LOAD_ORDER } from './loadOrder'
 import {
@@ -178,3 +180,18 @@ const add = (event: LoadEvent) => {
 // Events found before this module loaded come first.
 for (const event of loadEvents.value) add(event)
 onLoadEvent(add)
+
+// An app’s built-in browser, best effort (§1.4.3, §1.6.10): said at every load it is found, and not
+// a load event, which are what the storage startup found.
+if (platform.capabilities.likelyInAppBrowser)
+    addLoadNotice(
+        () => load().inAppBrowser,
+        {
+            label: () => load().copyLink,
+            run: () => {
+                void copyPageLink()
+            },
+        },
+        LOAD_ORDER.inAppBrowser,
+        'warning',
+    )

@@ -160,6 +160,7 @@ test('the platform override keeps only its known fields', () => {
                 standalone: true,
                 persisted: false,
                 privateSuspected: true,
+                inAppBrowser: true,
                 fileSystemAccess: false,
                 activation: false,
                 extra: 1,
@@ -171,6 +172,7 @@ test('the platform override keeps only its known fields', () => {
             standalone: true,
             persisted: false,
             privateSuspected: true,
+            inAppBrowser: true,
             fileSystemAccess: false,
             activation: false,
         },
@@ -181,6 +183,7 @@ test('the platform override keeps only its known fields', () => {
     })
     assert.deepEqual(parsePlatformOverride(JSON.stringify({ fileSystemAccess: 'native' })), {})
     assert.deepEqual(parsePlatformOverride(JSON.stringify({ engine: 'trident', os: 1 })), {})
+    assert.deepEqual(parsePlatformOverride(JSON.stringify({ inAppBrowser: 'yes' })), {})
     assert.deepEqual(parsePlatformOverride('not json'), {})
     assert.deepEqual(parsePlatformOverride('null'), {})
     assert.deepEqual(parsePlatformOverride(null), {})

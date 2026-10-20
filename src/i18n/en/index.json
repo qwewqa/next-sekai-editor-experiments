@@ -1184,6 +1184,7 @@
         "continued": "Continued \"{0}\" from {1}.",
         "continuedUntitled": "Continued your session from {0}.",
         "cleared": "Work from earlier visits is missing. The browser cleared this site’s storage.",
+        "inAppBrowser": "This looks like an app’s built-in browser, where some features may not work and stored work is more likely to be lost. To keep your work, open this page in your browser.",
         "journalKept": "A change to \"{0}\" could not be applied, so it was kept as a separate session.",
         "fallback": "Recovered unsaved work from an earlier visit.",
         "fallbackLocal": "Unsaved work from an earlier visit is in Local Data.",
@@ -1205,12 +1206,15 @@
         "bgmNotLoaded": "The BGM is not loaded.",
         "more": "and {0} more in Local Data",
         "localData": "Local Data",
-        "openHistory": "Open History"
+        "openHistory": "Open History",
+        "copyLink": "Copy Link",
+        "linkCopied": "Copied the link"
     },
     "storage": {
         "reload": "Reload to keep storing changes.",
         "unavailable": "The editor cannot store changes in this browser. Save to a file to keep your work.",
         "private": "If this is a private window, everything stored here is lost when it closes. Save to a file to keep your work.",
+        "inAppBrowser": "This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.",
         "ios": "This browser deletes stored work after 7 days without a visit. Save to a file to keep your work.",
         "safari": "Safari deletes stored work after 7 days without a visit. Save to a file to keep your work.",
         "installedWebkit": "Recent Sessions are kept here until this icon is removed from the Home Screen. Save to a file to keep your work.",

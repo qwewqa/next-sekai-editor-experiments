@@ -21,6 +21,8 @@ export const platform = {
         fileAssociations: true,
         mp3Export: true,
         serverFetch: true,
+        // Tauri on Android has `; wv)` in its UA, so this is not left to detection.
+        likelyInAppBrowser: false,
     }),
 
     pickFiles: notImplemented,

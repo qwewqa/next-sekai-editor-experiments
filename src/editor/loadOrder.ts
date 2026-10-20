@@ -2,6 +2,8 @@
 export const LOAD_ORDER = {
     continued: 10,
     storageCleared: 20,
+    // Likely an app’s built-in browser (§1.6.10): after a loss that happened, before every other line.
+    inAppBrowser: 25,
     // The handshake's: other tabs hold an upgrade, or the database is newer than this build.
     handshake: 30,
     journalKept: 50,

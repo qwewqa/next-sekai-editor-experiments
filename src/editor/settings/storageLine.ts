@@ -1,3 +1,4 @@
+import { platform } from '../../platform'
 import {
     detection,
     isStandalone,
@@ -11,12 +12,21 @@ import type { PlatformOs } from '../../platform/types'
 // first condition that holds. It never overclaims, and says what can still remove stored work.
 
 export type StorageLineKey =
-    'unavailable' | 'private' | 'ios' | 'safari' | 'installedWebkit' | 'persisted' | 'default'
+    | 'unavailable'
+    | 'private'
+    | 'inAppBrowser'
+    | 'ios'
+    | 'safari'
+    | 'installedWebkit'
+    | 'persisted'
+    | 'default'
 
 export type StorageFacts = {
     /** Storage unavailable, insecure origins included (§1.6.5). */
     unavailable: boolean
     privateSuspected: boolean
+    /** Likely an app’s built-in browser (§1.6.10). */
+    inAppBrowser: boolean
     persisted: boolean
     os: PlatformOs
     engine: Engine
@@ -27,6 +37,7 @@ export type StorageFacts = {
 export const storageLineKey = (facts: StorageFacts): StorageLineKey => {
     if (facts.unavailable) return 'unavailable'
     if (facts.privateSuspected) return 'private'
+    if (facts.inAppBrowser) return 'inAppBrowser'
     if (facts.os === 'ios' && !facts.standalone) return 'ios'
     if (facts.engine === 'webkit' && facts.os === 'macos' && !facts.standalone) return 'safari'
     if (facts.engine === 'webkit' && facts.standalone) return 'installedWebkit'
@@ -55,6 +66,7 @@ export const readBrowserFacts = async () => {
         privateSuspected:
             override.privateSuspected ??
             (quota !== undefined && suspectPrivate({ persisted: persisted === true, quota })),
+        inAppBrowser: platform.capabilities.likelyInAppBrowser,
         os,
         engine,
         standalone: isStandalone(),
