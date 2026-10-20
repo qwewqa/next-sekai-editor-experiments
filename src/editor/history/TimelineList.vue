@@ -1000,7 +1000,12 @@ const passed: CommandName[] = ['history', 'play', 'copy', 'showChange']
 
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
-    if (!(event.target instanceof HTMLElement) || !event.target.closest('[data-history-row]'))
+    // The list itself holds focus for a moment as it opens, until the cursor's row takes it. A key
+    // in that moment acts on the cursor as it would a moment later.
+    if (
+        !(event.target instanceof HTMLElement) ||
+        (event.target !== list.value && !event.target.closest('[data-history-row]'))
+    )
         return
     const row = rowById(cursorId.value)
     const handled = () => {
