@@ -468,6 +468,15 @@ export const describeOperation = (
         case 'nse.owner.moveMany': {
             const { domain, targets, destination } = operation.data
             const suffix = domain === 'group' ? 'Groups' : 'Stages'
+            // Moving none cannot be stored by any producer; if one is read, no count is claimed.
+            if (targets === 0)
+                return destination
+                    ? message(
+                          context,
+                          t.history.summary[`moved${suffix}Into`],
+                          ownerName(destination, context),
+                      )
+                    : t.history.summary[`moved${suffix}Out`]
             return destination
                 ? message(
                       context,

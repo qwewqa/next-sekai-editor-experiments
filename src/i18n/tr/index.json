@@ -298,8 +298,7 @@
       "redid": "\"{0}\" yeniden yapıldı"
     },
     "reset": {
-      "title": "Sıfırla",
-      "reset": "Seviye sıfırlandı"
+      "title": "Sıfırla"
     },
     "save": {
       "title": "Kaydet"
@@ -966,13 +965,7 @@
     "default": {
       "none": "Hiçbir nesne seçilmedi",
       "edited": "{0} nesne düzenlendi",
-      "editedNotes": "{0} nota düzenlendi",
-      "set": "{0} nesnede {1} ayarlandı",
-      "setNotes": "{0} notada {1} ayarlandı",
-      "noChange": "Değişiklik yok",
-      "setBpm": "{0} BPM değişikliğinde {1} ayarlandı",
-      "setTimeScales": "{0} zaman ölçeğinde {1} ayarlandı",
-      "setEvents": "{0} {2} olayında {1} ayarlandı"
+      "noChange": "Değişiklik yok"
     },
     "view": {
       "tool": "Araç",
@@ -1046,8 +1039,7 @@
     "eraser": {
       "title": "Silgi",
       "deselected": "Tüm nesnelerin seçimi kaldırıldı",
-      "erasing": "{0} nesne siliniyor",
-      "erased": "{0} nesne silindi"
+      "erasing": "{0} nesne siliniyor"
     },
     "generateSlideNotes": {
       "title": "Kaydırma Notaları Oluştur",
@@ -1095,7 +1087,6 @@
       "adding": "{0} nota ekleniyor",
       "added": "{0} nota eklendi",
       "editing": "{0} nota düzenleniyor",
-      "edited": "{0} nota düzenlendi",
       "moving": "{0} nota taşınıyor",
       "moved": "{0} nota taşındı",
       "selected": "{0} nota seçildi",
@@ -1247,6 +1238,10 @@
       "movedEvents": "Olaylar taşındı: {0}",
       "editedObjects": "Nesneler düzenlendi",
       "movedObjects": "Nesneler taşındı",
+      "movedGroupsInto": "Gruplar {0} klasörüne taşındı",
+      "movedGroupsOut": "Gruplar klasörlerden çıkarıldı",
+      "movedStagesInto": "Sahneler {0} klasörüne taşındı",
+      "movedStagesOut": "Sahneler klasörlerden çıkarıldı",
       "pastedObjects": "Nesneler yapıştırıldı",
       "brushedObjects": "Nesneler fırçalandı",
       "deletedObjects": "Nesneler silindi",
@@ -1299,10 +1294,8 @@
       "deletedEvents": "Olaylar silindi: {0}",
       "cutEvents": "Olaylar kesildi: {0}"
     },
-    "edits": "{0} düzenleme",
     "undidSteps": "{0} adım geri alındı",
     "redidSteps": "{0} adım yinelendi",
-    "initialize": "Başlat",
     "dynamicStages": {
       "title": "Dinamik Sahneler",
       "message": "Bu özellik dinamik sahneler gerektirir. Dinamik sahneleri etkinleştirmek istiyor musunuz?",
@@ -1829,7 +1822,11 @@
       "ok": "Tamam"
     },
     "loading": {
-      "loading": "Yükleniyor…"
+      "loading": "Yükleniyor…",
+      "audioUnreadable": "Bu ses dosyası okunamadı.",
+      "imageUnreadable": "Bu görsel okunamadı.",
+      "coverFailed": "Kapak oluşturulamadı.",
+      "failed": "İşlem tamamlanamadı."
     }
   },
   "preview": {
@@ -1914,8 +1911,6 @@
       "added": "{0} klasörü eklendi",
       "renamed": "{0} klasörü {1} olarak yeniden adlandırıldı",
       "moved": "{0} klasörü taşındı",
-      "movedInto": "{0}, {1} klasörüne taşındı",
-      "movedOut": "{0}, {1} klasöründen çıkarıldı",
       "ungrouped": "{0} klasörü dağıtıldı",
       "deleted": "{0} klasörü silindi",
       "duplicated": "{0} klasörü çoğaltıldı"
@@ -2041,16 +2036,12 @@
     "addedRemoved": "{0} eklendi · {1} kaldırıldı",
     "exportsCurrent": "Güncel sürümü dışa aktarır.",
     "overlay": "Geçmiş görüntüleniyor · salt okunur",
-    "viewing": "{0} görüntüleniyor · {1} · salt okunur",
-    "viewingShort": "{0} görüntüleniyor · salt okunur",
     "backToNow": "Şimdiye Dön",
     "restore": "Geri Yükle",
     "changeCount": "{0} değişiklik",
     "noChanges": "Değişiklik yok",
     "changedLarge": "Değişenler: {0}",
     "notes": "{0} nota",
-    "notesOf": "{1} notadan {0}",
-    "eventsOf": "{1} olaydan {0}",
     "bpms": "{0} BPM değişikliği",
     "timeScales": "{0} zaman ölçeği",
     "events": "{0} olay",
@@ -2102,6 +2093,7 @@
     "savedWithoutMediaLarge": "{0} dosyasına medya olmadan kaydedildi",
     "someStepsNotKept": "{0} dosyasına kaydedildi. Bazı önceki adımlar korunmadı.",
     "someStepsNotKeptLine": "Bazı önceki adımlar korunmadı.",
+    "committedState": "Bu, başka bir sekmede açık olan oturumun en son saklanan durumudur.",
     "tookOver": "{0} dosyasına kaydedildi. Önceki çalışması Son Oturumlar’da.",
     "noChanges": "{0} indirildiğinden beri değişiklik yok",
     "noChangesSaved": "{0} kaydedildiğinden beri değişiklik yok",
@@ -2131,9 +2123,10 @@
     "replace": "Üzerine Yaz",
     "title": "\"{0}\" Değişti",
     "body": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
-    "savedOn": "{0} üzerinde kaydedildi, {1} · {2}.",
-    "savedWeb": "Web editöründe ({0}) kaydedildi, {1} · {2}.",
+    "saved": "{0}, {1} · {2}.",
     "otherProject": "Farklı bir proje dosyası: \"{0}\".",
+    "otherProjectUnnamed": "Farklı bir proje dosyası.",
+    "notDescendant": "Bu sürüm sizinkinin devamı değil ({0}).",
     "separate": "Ayrı Dosya Olarak Kaydet",
     "openOther": "Diğer Sürümü Aç",
     "openOtherNote": "Değişiklikleriniz kaydedilmemiş olarak kalır.",
@@ -2226,20 +2219,10 @@
   },
   "file": {
     "replacedElsewhere": "\"{0}\" başka bir sekmeden veya pencereden değiştirildi.",
-    "saved": "{0} · {1} kaydedildi",
-    "changedSinceSaved": "{0} · kaydedildikten sonra değişti",
     "downloaded": "{0} · {1} indirildi",
-    "notConfirmed": "onaylanmadı",
-    "changedSinceDownload": "{0} · indirmeden sonra değişti",
     "opened": "{0} · {1} açıldı",
-    "changedSinceOpened": "{0} · açıldıktan sonra değişti",
     "short": {
-      "saved": "kaydedildi",
-      "changed": "değişti",
-      "notSaved": "kaydedilmedi",
-      "downloaded": "indirildi",
-      "notConfirmed": "onaylanmadı",
-      "opened": "açıldı"
+      "notSaved": "kaydedilmedi"
     }
   },
   "state": {

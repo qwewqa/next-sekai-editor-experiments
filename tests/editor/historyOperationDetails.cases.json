@@ -7540,5 +7540,237 @@
                 }
             }
         ]
+    },
+    {
+        "id": "group.ownerDelete.cascade",
+        "cat": "group",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.owner.delete",
+                    "data": {
+                        "domain": "group",
+                        "removed": {
+                            "group": 1
+                        },
+                        "target": {
+                            "kind": "group",
+                            "id": 3,
+                            "name": {
+                                "text": "Alpha"
+                            }
+                        },
+                        "objects": {
+                            "note": 3,
+                            "timeScale": 1
+                        }
+                    }
+                }
+            },
+            {
+                "input": {
+                    "id": "nse.owner.delete",
+                    "data": {
+                        "domain": "group",
+                        "removed": {
+                            "group": 1
+                        },
+                        "target": {
+                            "kind": "group",
+                            "id": 4,
+                            "name": {
+                                "text": "Beta"
+                            }
+                        },
+                        "objects": {
+                            "note": 2
+                        },
+                        "replacement": {
+                            "kind": "group",
+                            "id": 9,
+                            "name": {
+                                "text": "Default"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "input": {
+                    "id": "nse.owner.delete",
+                    "data": {
+                        "domain": "group",
+                        "removed": {
+                            "group": 1
+                        },
+                        "target": {
+                            "kind": "group",
+                            "id": 5,
+                            "name": {
+                                "text": "Gamma"
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "group.ownerDelete.replacementOnly",
+        "cat": "group",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.owner.delete",
+                    "data": {
+                        "domain": "group",
+                        "removed": {
+                            "group": 1
+                        },
+                        "target": {
+                            "kind": "group",
+                            "id": 3,
+                            "name": {
+                                "text": "Alpha"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "input": {
+                    "id": "nse.owner.delete",
+                    "data": {
+                        "domain": "group",
+                        "removed": {
+                            "group": 1
+                        },
+                        "target": {
+                            "kind": "group",
+                            "id": 4,
+                            "name": {
+                                "text": "Beta"
+                            }
+                        },
+                        "replacement": {
+                            "kind": "group",
+                            "id": 9,
+                            "name": {
+                                "text": "Default"
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "group.ownerDuplicate.cascade",
+        "cat": "group",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.owner.duplicate",
+                    "data": {
+                        "domain": "group",
+                        "created": {
+                            "group": 1
+                        },
+                        "source": {
+                            "kind": "group",
+                            "id": 3,
+                            "name": {
+                                "text": "Alpha"
+                            }
+                        },
+                        "objects": {
+                            "note": 120,
+                            "timeScale": 1
+                        }
+                    }
+                }
+            },
+            {
+                "input": {
+                    "id": "nse.owner.duplicate",
+                    "data": {
+                        "domain": "group",
+                        "created": {
+                            "group": 1
+                        },
+                        "source": {
+                            "kind": "group",
+                            "id": 3,
+                            "name": {
+                                "text": "Alpha"
+                            }
+                        },
+                        "objects": {
+                            "note": 5
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "owner.moveMany.zero.into",
+        "cat": "owner",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.owner.moveMany",
+                    "data": {
+                        "domain": "group",
+                        "targets": 0,
+                        "destination": {
+                            "kind": "groupFolder",
+                            "id": 1,
+                            "name": {
+                                "text": "Folder One"
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "owner.moveMany.zero.stages",
+        "cat": "owner",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.owner.moveMany",
+                    "data": {
+                        "domain": "stage",
+                        "targets": 0,
+                        "destination": null
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "owner.moveMany.zero.stagesInto",
+        "cat": "owner",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.owner.moveMany",
+                    "data": {
+                        "domain": "stage",
+                        "targets": 0,
+                        "destination": {
+                            "kind": "stageFolder",
+                            "id": 1,
+                            "name": {
+                                "text": "Folder S"
+                            }
+                        }
+                    }
+                }
+            }
+        ]
     }
 ]

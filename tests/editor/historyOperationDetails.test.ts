@@ -422,9 +422,18 @@ test('titles use the quantity-free form when nothing changed', () => {
     assert.equal(byId('cut.empty').description, 'Cut objects')
     assert.equal(byId('note.add.0').description, 'Added notes')
     assert.equal(byId('note.generate.0').description, 'Generated notes')
+    // A move of zero entries cannot be stored by any producer, but it reads without a count.
+    assert.equal(byId('owner.moveMany.zero').description, 'Moved groups out of folders')
+    assert.equal(
+        byId('owner.moveMany.zero.into').description,
+        'Moved groups into folder "Folder One"',
+    )
+    assert.equal(byId('owner.moveMany.zero.stages').description, 'Moved stages out of folders')
+    assert.equal(
+        byId('owner.moveMany.zero.stagesInto').description,
+        'Moved stages into folder "Folder S"',
+    )
     for (const spec of cases) {
-        // A move of zero groups cannot be stored by any producer, and has no quantity-free form.
-        if (spec.id === 'owner.moveMany.zero') continue
         const { description } = check(spec, 'en').details
         assert(!/(^|\s)0 /.test(description), `${spec.id}: ${description}`)
     }
@@ -441,7 +450,8 @@ test('property steps show the before value, in the editor words', () => {
         ['hideNotes', 'timeScale', 'timeScaleTransition'],
     )
     const group = byId('property.note.group.beforeName')
-    assert.equal(change(group, 'groupId'), 'Old Group > ~Not set')
+    // The new group has an empty name: a group, so its name reads quoted empty, not Not set.
+    assert.equal(change(group, 'groupId'), 'Old Group > ""')
     const objects = byId('brush.objects.varying')
     assert.deepEqual(items(objects, 'changed'), ['2 notes', '3 camera events'])
     assert.equal(rowOf(objects, 'beat'), undefined)
@@ -494,11 +504,13 @@ test('owner records use Not set, one term, and 1-based positions', () => {
     const folder = rowOf(inFolder, 'folder')
     assert(folder?.kind === 'value')
     assert.equal(folder.value.text, 'Folder One')
+    // A folder with an empty name is still a folder: its name reads as an empty name, quoted as
+    // in prose, and is not the placeholder for no folder.
     assert.deepEqual(rowOf(byId('owner.create.stage.inFolder'), 'folder'), {
         kind: 'value',
         key: 'folder',
         label: 'Folder',
-        value: { text: 'Not set', placeholder: true },
+        value: { text: '""' },
     })
     assert.deepEqual(items(byId('owner.ungroup.3'), 'released'), ['3 groups'])
     assert.deepEqual(byId('owner.ungroup.stage0').rows, [])
@@ -522,6 +534,24 @@ test('cascades and replacements are recorded in the dialog only', () => {
     assert.equal(copy.description, 'Duplicated "Alpha" group')
     assert.deepEqual(items(copy, 'added'), ['1 group', '120 notes', '1 time scale'])
     assert.deepEqual(byId('owner.duplicate.folderOnly').rows, [])
+})
+
+test('a group of owner deletes or duplicates shows the cascade its steps carry', () => {
+    // Deleted groups: the owners, then the objects deleted with them, then the replacement.
+    const del = byId('group.ownerDelete.cascade')
+    assert.equal(del.description, 'Deleted 3 groups')
+    assert.deepEqual(items(del, 'removed'), ['3 groups', '5 notes', '1 time scale'])
+    assert.deepEqual(items(del, 'added'), ['1 group'])
+    assert.equal(rowOf(del, 'added')?.label, 'Added')
+    // A replacement alone is a cascade too; without objects the owner total repeats the title.
+    const only = byId('group.ownerDelete.replacementOnly')
+    assert.equal(rowOf(only, 'removed'), undefined)
+    assert.deepEqual(items(only, 'added'), ['1 group'])
+    const copy = byId('group.ownerDuplicate.cascade')
+    assert.equal(copy.description, 'Duplicated 2 groups')
+    assert.deepEqual(items(copy, 'added'), ['2 groups', '125 notes', '1 time scale'])
+    // No objects and no replacement: nothing beyond the title.
+    assert.deepEqual(byId('group.ownerDelete.group.2').rows, [])
 })
 
 test('groups show net rows and totals only where the title lacks them', () => {

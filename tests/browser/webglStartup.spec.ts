@@ -102,11 +102,15 @@ for (const mode of ['sync', 'async'] as const) {
         }, mode)
         await openEditor(page, false)
         const alert = page.locator('.rendering-error')
-        await expect(alert).toContainText(
+        // The headline is localized; the raw message is the detail behind the disclosure.
+        await expect(alert).toContainText('Preview graphics could not be started.')
+        const message =
             mode === 'sync'
                 ? 'Unable to create the editor WebGL2 context'
-                : 'Injected renderer initialization failure',
-        )
+                : 'Injected renderer initialization failure'
+        await expect(alert.getByText(message)).toBeHidden()
+        await alert.getByText('Error Details', { exact: true }).click()
+        await expect(alert.getByText(message)).toBeVisible()
         const before = await page.evaluate(() => window.editorTest.snapshot().notes)
         const previous = await page.locator('.editor-chart').elementHandle()
         await page.evaluate(() => {

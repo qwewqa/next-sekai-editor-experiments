@@ -65,6 +65,7 @@ import {
     selectOwned,
 } from './objects'
 import ManagerRow from './ManagerRow.vue'
+import { formatCount } from '../../../utils/size'
 
 const props = defineProps<{
     model: ManagerModel<T>
@@ -127,8 +128,8 @@ const disclosureCount = computed(() =>
         disclosureTab.value === 'groups'
             ? i18n.value.statusBar.group.shown
             : i18n.value.statusBar.stage.shown,
-        `${scope.value.shownCount.value}`,
-        `${scope.value.totalCount.value}`,
+        formatCount(scope.value.shownCount.value),
+        formatCount(scope.value.totalCount.value),
     ),
 )
 const disclosureDestination = (request: ManagerDisclosureRequest) => {
@@ -789,7 +790,7 @@ const onBulkVisibility = () => {
 }
 
 const selectionCount = computed(() =>
-    label(i18n.value.workspace.manager.selecting, `${selectionSize.value}`),
+    label(i18n.value.workspace.manager.selecting, formatCount(selectionSize.value)),
 )
 
 // The selection bar shortens its count to the number, then drops its visibility
@@ -809,7 +810,7 @@ const measureBar = () => {
     const style = getComputedStyle(count)
     barContext.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
     const text = Math.ceil(barContext.measureText(selectionCount.value).width)
-    const number = Math.ceil(barContext.measureText(`${selectionSize.value}`).width)
+    const number = Math.ceil(barContext.measureText(formatCount(selectionSize.value)).width)
     const barStyle = getComputedStyle(element)
     const button = round.getBoundingClientRect().width + parseFloat(barStyle.columnGap)
     // Beside Move, Delete and More, less the Done button's own chrome.
@@ -870,17 +871,24 @@ const onBulkDelete = async (keyboard = false) => {
             (await showModal(ConfirmModal, {
                 title: () =>
                     folderIds.size
-                        ? label(strings.value.deleteSelectedFoldersTitle, `${folderIds.size}`)
+                        ? label(
+                              strings.value.deleteSelectedFoldersTitle,
+                              formatCount(folderIds.size),
+                          )
                         : strings.value.deleteSelectedTitle,
                 message: () =>
                     folderIds.size
                         ? label(
                               strings.value.deleteSelectedFoldersMessage,
-                              `${folderIds.size}`,
-                              `${ids.size}`,
-                              `${objects}`,
+                              formatCount(folderIds.size),
+                              formatCount(ids.size),
+                              formatCount(objects),
                           )
-                        : label(strings.value.deleteSelectedMessage, `${ids.size}`, `${objects}`),
+                        : label(
+                              strings.value.deleteSelectedMessage,
+                              formatCount(ids.size),
+                              formatCount(objects),
+                          ),
                 confirm: () => i18n.value.modals.confirm.delete,
                 destructive: true,
             }))
@@ -2044,8 +2052,8 @@ const entryProps = (id: T, name: string) => ({
             : i18n.value.workspace.manager.show,
         name,
     )}\n${i18n.value.workspace.manager.soloHint}`,
-    meta: `${counts.value.get(id) ?? 0}`,
-    metaTitle: label(i18n.value.workspace.manager.objects, `${counts.value.get(id) ?? 0}`),
+    meta: formatCount(counts.value.get(id) ?? 0),
+    metaTitle: label(i18n.value.workspace.manager.objects, formatCount(counts.value.get(id) ?? 0)),
     actions: inlineActions.value,
     inline: inlineMode.value,
     menuLabel: label(i18n.value.workspace.manager.actions, name),
@@ -2166,7 +2174,11 @@ const folderEyeLabel = (item: FolderItem) =>
                 :muted="false"
                 :eye-label="allShown ? strings.hideAll : strings.showAll"
                 :eye-disabled="!canToggleAll"
-                :meta="allShown ? undefined : `${scope.shownCount.value}/${scope.totalCount.value}`"
+                :meta="
+                    allShown
+                        ? undefined
+                        : `${formatCount(scope.shownCount.value)}/${formatCount(scope.totalCount.value)}`
+                "
                 :mode-label="i18n.workspace.manager.selectMultiple"
                 :mode-active="selecting"
                 :selecting
@@ -2261,9 +2273,12 @@ const folderEyeLabel = (item: FolderItem) =>
                                         : folderEyeLabel(item)
                                 "
                                 :eye-disabled="!canToggleFolder(item)"
-                                :meta="`${folderCount(item)}`"
+                                :meta="formatCount(folderCount(item))"
                                 :meta-title="
-                                    label(i18n.workspace.manager.objects, `${folderCount(item)}`)
+                                    label(
+                                        i18n.workspace.manager.objects,
+                                        formatCount(folderCount(item)),
+                                    )
                                 "
                                 :menu-label="
                                     label(i18n.workspace.manager.actions, folderName(item.id))

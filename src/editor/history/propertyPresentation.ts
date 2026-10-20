@@ -2,6 +2,7 @@ import { i18n } from '../../i18n'
 import { languageTag } from '../../i18n/plural'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import {
     formatPropertyNumber,
     type PropertyField,
@@ -44,18 +45,16 @@ export const propertyFieldLabel = (field: PropertyField) => {
     }[field]
 }
 
-export const propertyCount = (value: number) =>
-    new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+export const propertyCount = (value: number) => formatCount(value)
+
+/** An empty name, quoted empty as it is in prose. */
+const emptyName = () => interpolateRaw(i18n.value.history.quoted, '')
 
 export const propertyReferenceText = (value: PropertyReference) => {
     const strings = i18n.value
-    const name = (entry: { name?: string; id: number; disambiguate: boolean }) => {
-        const text =
-            entry.name === undefined
-                ? strings.historyChanges.notPresent
-                : entry.name || strings.historyChanges.notSet
-        return entry.disambiguate ? `${text} (#${propertyCount(entry.id)})` : text
-    }
+    // A name is the user's own: never an id, never Not set (which says no name was given).
+    const name = (entry: { name?: string }) =>
+        entry.name === undefined ? strings.historyChanges.notPresent : entry.name || emptyName()
     return value.folder
         ? interpolateRaw(strings.workspace.folders.path, name(value.folder), name(value))
         : name(value)
@@ -73,6 +72,8 @@ export const propertyValueText = (
             return strings.historyChanges.notPresent
         case 'noFolder':
             return strings.workspace.folders.none
+        case 'emptyName':
+            return emptyName()
         case 'text':
             return value.value
         case 'reference':

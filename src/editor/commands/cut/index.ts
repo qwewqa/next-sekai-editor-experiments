@@ -25,6 +25,7 @@ import { inStoredOrder } from '../../../state/operations/transformSelection'
 import { createStore } from '../../../state/store/creates'
 import { createTransaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
+import { formatCount } from '../../../utils/size'
 import { editorNavigation } from '../../navigation'
 import { notify } from '../../notification'
 import { view, xToLane, yToValidBeat } from '../../view'
@@ -109,7 +110,7 @@ export const cut: Command = {
                 hovered: [],
                 creating: [],
             }
-            notify(interpolate(() => i18n.value.commands.copy.copied, `${entities.length}`))
+            notify(interpolate(() => i18n.value.commands.copy.copied, formatCount(entities.length)))
             return
         }
         const transaction = createTransaction(state.value)

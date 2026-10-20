@@ -24,6 +24,7 @@ import { editSelectedNote } from '../../../state/operations/note'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
 import { shiftComputed } from '../../../utils/math'
+import { formatCount } from '../../../utils/size'
 import { getComposedGridOffset, getComposedNoteOffset, getComposedOffset } from '../../composedView'
 import { constrainLaneObject, minimumNoteSize } from '../../laneLimits'
 import { notify } from '../../notification'
@@ -146,7 +147,9 @@ export const note: Tool = {
                 }
                 focusEntityAtBeat(entity.beat)
 
-                notify(interpolate(() => i18n.value.tools.note.selected, `${targets.length}`))
+                notify(
+                    interpolate(() => i18n.value.tools.note.selected, formatCount(targets.length)),
+                )
             } else {
                 if (entities.every((entity) => selectedEntities.value.includes(entity))) {
                     focusEntityAtBeat(entity.beat)
@@ -169,7 +172,12 @@ export const note: Tool = {
                     }
                     focusEntityAtBeat(entity.beat)
 
-                    notify(interpolate(() => i18n.value.tools.note.selected, `${entities.length}`))
+                    notify(
+                        interpolate(
+                            () => i18n.value.tools.note.selected,
+                            formatCount(entities.length),
+                        ),
+                    )
                 }
             }
         } else {

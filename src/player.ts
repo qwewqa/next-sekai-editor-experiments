@@ -17,6 +17,7 @@ import { createSlideInfoLookup } from './state/entities/slides/lookup'
 import { getActiveNoteRole } from './state/entities/slides/semantics'
 import { beatToTime, timeToBeat } from './state/integrals/bpms'
 import { beatToKey } from './state/store/grid'
+import { TaskFailure } from './utils/error'
 import { entries } from './utils/object'
 import { optional } from './utils/optional'
 
@@ -366,7 +367,18 @@ export const getPlayerDisplayTime = () => {
     return Math.max(0, audioTime - current.contextTime) * current.speed + current.bgmTime
 }
 
-export const loadBgm = (data: ArrayBuffer) => context.decodeAudioData(data)
+/** Decodes audio bytes; a file the browser cannot decode is an `audioUnreadable` failure. */
+export const loadBgm = async (data: ArrayBuffer) => {
+    try {
+        return await context.decodeAudioData(data)
+    } catch (error) {
+        throw new TaskFailure(
+            'audioUnreadable',
+            error instanceof Error && error.message ? error.message : 'Unable to decode audio data',
+            { cause: error },
+        )
+    }
+}
 
 export const startPlayer = (bgmTime: number, speed: number, delay = startupDelay) => {
     stopPlayer()

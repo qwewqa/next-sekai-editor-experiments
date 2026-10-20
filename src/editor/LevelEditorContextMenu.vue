@@ -34,6 +34,7 @@ import { toolName } from './tools'
 import { modifyEntities, pointHitsAt } from './tools/utils'
 import { snappingSources, view, yToValidBeat } from './view'
 import { runCommand } from './commands/runCommand'
+import { formatCount } from '../utils/size'
 
 type ActionName = CommandName | 'selectSlideNotes' | 'editElevations' | 'editProperties'
 type Action = {
@@ -172,7 +173,7 @@ const execute = (name: ActionName, byKeyboard = true, byTouch = false) => {
             ...state.value,
             selectedEntities: targets,
         })
-        notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
+        notify(interpolate(() => i18n.value.tools.select.selected, formatCount(targets.length)))
     } else if (name === 'paste') {
         if (point) void pasteAtContextPosition(point.x, point.y, { ctrl: false, shift: false })
     } else void runCommand(commands[name])

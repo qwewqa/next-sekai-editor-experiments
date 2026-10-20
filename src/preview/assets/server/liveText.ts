@@ -1,12 +1,11 @@
 import { formatSize } from '../../../editor/commands/exportLevel/format'
 import { i18n } from '../../../i18n'
-import { languageTag } from '../../../i18n/plural'
-import { settings } from '../../../settings'
+import { formatCount } from '../../../utils/size'
 import type { AssetImportError } from '../files/errors'
 import type { ServerChooserError } from './chooser'
 import { serverErrorText, serverItemMessage, type ServerStrings } from './text'
 
-const number = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+const number = (value: number) => formatCount(value)
 
 const strings = (): ServerStrings => {
     const {

@@ -27,6 +27,7 @@ import {
     type BrushKey,
     type PropertyField,
 } from '../../workspace/properties/fields'
+import { formatCount } from '../../../utils/size'
 
 provide(emptyLabelKey, () => i18n.value.modals.form.unset.unchanged)
 // Rows leave the brush through their remove button.
@@ -146,7 +147,7 @@ const pick = () => {
     notify(
         interpolate(
             () => i18n.value.tools.brush.picked,
-            `${Object.keys(brushProperties.value).length}`,
+            formatCount(Object.keys(brushProperties.value).length),
         ),
     )
 }

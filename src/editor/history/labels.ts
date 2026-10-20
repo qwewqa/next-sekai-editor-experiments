@@ -1,8 +1,7 @@
 import { i18n } from '../../i18n'
-import { languageTag } from '../../i18n/plural'
 import { formatClock, formatDate, formatHour } from '../../i18n/when'
-import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import type { Header } from './rows'
 
 // What a header says: "2:40 PM", "1 PM", "Yesterday · 9 PM", "Oct 2".
@@ -36,7 +35,7 @@ export const pinnedText = (header: Header, now = Date.now()) =>
         ? headerText(header, now)
         : `${dayLabel(header.time, now)} · ${ownLabel(header, now)}`
 
-const count = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+const count = (value: number) => formatCount(value)
 
 /** "58 steps": Go To's counts. */
 export const stepsText = (value: number) => interpolateRaw(i18n.value.history.steps, count(value))

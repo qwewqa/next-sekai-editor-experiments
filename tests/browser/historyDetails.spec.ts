@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { errorsFail, load, noErrors } from './historyJourney'
 
 /*
@@ -14,6 +14,8 @@ type Options = {
     flags?: Flags
     /** Flags of members by index, oldest first. */
     memberFlags?: Record<number, Flags>
+    /** An undo or redo parent, whose members are crossed steps. */
+    direction?: 'undo' | 'redo'
 }
 
 const T0 = new Date(2026, 9, 19, 5, 34, 56).getTime()
@@ -53,7 +55,10 @@ const openDetails = async (page: Page, specs: Spec[], options: Options = {}) => 
                 ]),
             )
             void openOperationDetails(
-                captureOperationRecipe(members),
+                captureOperationRecipe(
+                    members,
+                    options.direction ? { direction: options.direction } : undefined,
+                ),
                 options.time ?? T0,
                 undefined,
                 undefined,
@@ -370,6 +375,211 @@ test('a step of a group shows its own flag after its label', async ({ page }) =>
         'Added 2 notes · removed to save space',
     ])
     await expect(labels.last().locator('span')).toHaveClass(/text-fg\/80/)
+})
+
+test('a step shows its flag only when it differs from the group row’s', async ({ page }) => {
+    const removed = { removed: true, damaged: false }
+    const specs = [
+        op('nse.note.add', { created: 2 }),
+        op('nse.note.add', { created: 2 }),
+        op('nse.note.add', { created: 2 }),
+    ]
+    // Every step of a removed group is removed too: the meta line says so once.
+    await openDetails(page, specs, {
+        flags: removed,
+        memberFlags: { 0: removed, 1: removed, 2: removed },
+    })
+    await expect(root(page).locator('[data-operation-time]')).toHaveText(
+        'Oct 19, 5:34:56 AM · removed to save space',
+    )
+    const labels = details(page).locator('[data-operation-step] > span.flex-1')
+    await expect(labels).toHaveText(['Added 2 notes', 'Added 2 notes', 'Added 2 notes'])
+    await page.keyboard.press('Escape')
+    await expect(details(page)).toHaveCount(0)
+    // A step that differs from the group row keeps its own flag.
+    await openDetails(page, specs, {
+        flags: removed,
+        memberFlags: { 0: removed, 1: { removed: false, damaged: true }, 2: removed },
+    })
+    await expect(labels).toHaveText(['Added 2 notes', 'Added 2 notes · damaged', 'Added 2 notes'])
+})
+
+const laneStep = (before: number, after: number) =>
+    op('nse.property.set', {
+        subject: 'note',
+        changed: { note: 2 },
+        assignments: [
+            {
+                field: 'left',
+                before: { mode: 'uniform', value: before },
+                after: { mode: 'uniform', value: after },
+            },
+        ],
+    })
+
+test('every step row draws a straight rule: the rounded element carries no border', async ({
+    page,
+}) => {
+    const rules = () =>
+        details(page)
+            .locator('[data-operation-children] > div > *')
+            .evaluateAll((rows) =>
+                rows.map((row) => {
+                    const own = getComputedStyle(row)
+                    const inner = getComputedStyle(row.firstElementChild!)
+                    return {
+                        rule: own.borderTopWidth,
+                        radius: own.borderTopLeftRadius + own.borderTopRightRadius,
+                        innerRule: inner.borderTopWidth,
+                        innerRadius: inner.borderTopLeftRadius,
+                    }
+                }),
+            )
+    const straight = { rule: '1px', radius: '0px0px', innerRule: '0px', innerRadius: '8px' }
+    // Rows with a record open: the rule is on the details, the radius on the summary.
+    await openDetails(page, [laneStep(0, 1), laneStep(1, 2)])
+    expect(await rules()).toEqual([straight, straight])
+    await page.keyboard.press('Escape')
+    await expect(details(page)).toHaveCount(0)
+    // Plain rows are built the same way.
+    await openDetails(page, [
+        op('nse.note.add', { created: 2 }),
+        op('nse.note.add', { created: 2 }),
+    ])
+    expect(await rules()).toEqual([straight, straight])
+})
+
+test('a chevron sits on the first line of wrapped content', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 })
+    const long = 'A very long name that keeps going and going '.repeat(3)
+    const speed = (before: number | null, after: number | null) =>
+        op('nse.owner.set', {
+            target: { kind: 'group', id: 3, name: { text: long } },
+            changes: [{ field: 'forceNoteSpeed', before, after }],
+        })
+    // The centre of the glyph below the top of its row.
+    const centre = async (glyph: Locator, row: Locator) => {
+        const [g, r] = [(await glyph.boundingBox())!, (await row.boundingBox())!]
+        return g.y + g.height / 2 - r.y
+    }
+    await openDetails(page, [speed(null, 1), speed(1, 2)])
+    // The step's label wraps over several lines; its chevron stays beside the first: 8 px of
+    // padding, then half of a 24 px line.
+    const summary = details(page).locator('[data-operation-children] summary').first()
+    expect((await summary.boundingBox())!.height).toBeGreaterThan(80)
+    expect(await centre(summary.locator('svg'), summary)).toBeCloseTo(8 + 12, 0)
+    await expect(summary.locator('svg')).toHaveClass(/text-fg\/70/)
+    await page.keyboard.press('Escape')
+    await expect(details(page)).toHaveCount(0)
+    // The same for a change whose after value wraps.
+    await openDetails(page, [
+        op('nse.property.set', {
+            subject: 'note',
+            changed: { note: 2 },
+            assignments: [
+                {
+                    field: 'groupId',
+                    before: {
+                        mode: 'uniform',
+                        value: { kind: 'group', id: 1, name: { text: 'Old' } },
+                    },
+                    after: {
+                        mode: 'uniform',
+                        value: { kind: 'group', id: 3, name: { text: long } },
+                    },
+                },
+            ],
+        }),
+    ])
+    // The after value wraps below the before value; the chevron stays with the first line of it.
+    const dd = details(page).locator('[data-operation-field] dd').first()
+    const after = dd.locator('span.tabular-nums').last()
+    expect((await after.boundingBox())!.height).toBeGreaterThan(70)
+    expect(await centre(dd.locator('svg'), after)).toBeCloseTo(12, 0)
+})
+
+test('an undo or redo parent has no count heading, which its title already carries', async ({
+    page,
+}) => {
+    const specs: Spec[] = [
+        { ...op('nse.note.add', { created: 2 }), kind: 'undo' },
+        { ...op('nse.note.add', { created: 3 }), kind: 'undo' },
+    ]
+    await openDetails(page, specs, { direction: 'undo' })
+    await expect(root(page).locator('[data-operation-description]')).toHaveText('Undid 2 steps')
+    const steps = details(page).locator('[data-operation-children]')
+    await expect(steps.locator('[data-operation-step]')).toHaveCount(2)
+    await expect(steps.locator('h3, [data-operation-count]')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(details(page)).toHaveCount(0)
+    // An edit group's title has no count, so its heading stays.
+    await openDetails(page, [
+        op('nse.note.add', { created: 2 }),
+        op('nse.note.add', { created: 3 }),
+    ])
+    await expect(steps.locator('h3')).toHaveText('2 steps')
+})
+
+test('Earlier Actions is ruled like the steps list', async ({ page }) => {
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const [{ openOperationDetails }, { captureOperationRecipe }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/operationDetails')>(
+                '/src/editor/history/operationDetails.ts',
+            ),
+            appImport<typeof import('../../src/history/operationPresentation')>(
+                '/src/history/operationPresentation/index.ts',
+            ),
+        ])
+        const head = historySteps.editStep(
+            historySteps.futureFixtureOperation('recovery-head', {}, 'Source metadata'),
+        )
+        const dropped = [1, 2].map((i) =>
+            historySteps.editStep(
+                historySteps.futureFixtureOperation(`context-${i}`, {}, `Earlier action ${i}`),
+            ),
+        )
+        void openOperationDetails(
+            captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'recovered',
+                        operation: historySteps.nativeOperation(
+                            { id: 'nse.recovery', data: { droppedSteps: 2 } },
+                            'Recovered',
+                        ),
+                        recoveryContext: { head, headIndex: 1, dropped, omitted: 0 },
+                    },
+                },
+            ]),
+            1234,
+        )
+    })
+    await expect(details(page)).toBeVisible()
+    const rows = await details(page)
+        .locator('[data-operation-recovery] li')
+        .evaluateAll((items) =>
+            items.map((item) => {
+                const own = getComputedStyle(item)
+                const inner = getComputedStyle(item.firstElementChild!)
+                return {
+                    rule: own.borderTopWidth,
+                    radius: own.borderTopLeftRadius,
+                    innerRule: inner.borderTopWidth,
+                    innerRadius: inner.borderTopLeftRadius,
+                    padding: `${inner.paddingTop} ${inner.paddingLeft}`,
+                }
+            }),
+        )
+    expect(rows).toHaveLength(3)
+    for (const row of rows)
+        expect(row).toEqual({
+            rule: '1px',
+            radius: '0px',
+            innerRule: '0px',
+            innerRadius: '8px',
+            padding: '8px 8px',
+        })
 })
 
 test('an unreadable step shows its title and one note', async ({ page }) => {

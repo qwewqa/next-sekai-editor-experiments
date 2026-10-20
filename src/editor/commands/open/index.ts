@@ -24,6 +24,7 @@ import {
 import { showModal } from '../../../modals'
 import { showChoice } from '../../../modals/choice'
 import InfoModal from '../../../modals/InfoModal.vue'
+import { describeFailure } from '../../../modals/loadingFailure'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { levelDataDiskState } from '../../../platform'
 import { createState } from '../../../state'
@@ -105,7 +106,10 @@ export const open: Command = {
                     recordError(error)
                     console.error(error)
                     if (request.isCurrent())
-                        notify(() => errorMessage(error), { card: true, severity: 'error' })
+                        notify(() => describeFailure(error).headline?.() ?? errorMessage(error), {
+                            card: true,
+                            severity: 'error',
+                        })
                 }
                 return
             }

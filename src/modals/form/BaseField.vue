@@ -20,6 +20,7 @@ import { holdsTyping } from './resync'
 import { observeWidth, unobserveWidth } from './widthObserver'
 import { formatNumber } from '../../utils/formatNumber'
 import { mixedValues, useFieldUsage, type MixedValue } from './fieldUsage'
+import { formatCount } from '../../utils/size'
 
 const props = defineProps<{
     label: string
@@ -72,15 +73,15 @@ const description = computed(() => {
             coverage.value &&
                 interpolateRaw(
                     messages.coverage,
-                    `${coverage.value.covered}`,
-                    `${coverage.value.total}`,
+                    formatCount(coverage.value.covered),
+                    formatCount(coverage.value.total),
                 ),
             values.value.length &&
                 interpolateRaw(
                     messages.mixedValues,
                     join(
                         messages.listJoin,
-                        values.value.map(({ label, count }) => `${label} ${count}`),
+                        values.value.map(({ label, count }) => `${label} ${formatCount(count)}`),
                     ),
                 ),
             ...(props.notes ?? []),
@@ -203,7 +204,7 @@ type Chip = {
 const valueChip = (value: MixedValue): Chip => ({
     name: value.label,
     count: value.count,
-    label: interpolateRaw(i18n.value.modals.form.selectOnly, `${value.count}`, value.label),
+    label: interpolateRaw(i18n.value.modals.form.selectOnly, formatCount(value.count), value.label),
     narrow: value.narrow,
 })
 
@@ -215,14 +216,14 @@ const chips = computed((): Chip[] => {
                   {
                       text: interpolateRaw(
                           i18n.value.modals.form.coverageChip,
-                          `${usage.covered}`,
-                          `${usage.total}`,
+                          formatCount(usage.covered),
+                          formatCount(usage.total),
                       ),
                       name: '',
                       label: interpolateRaw(
                           i18n.value.modals.form.selectCovered,
-                          `${usage.covered}`,
-                          `${usage.total}`,
+                          formatCount(usage.covered),
+                          formatCount(usage.total),
                       ),
                       count: usage.covered,
                       coverage: true,

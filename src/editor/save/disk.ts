@@ -18,7 +18,7 @@ const entriesOf = (part: unknown) =>
     isObject(part) && Array.isArray(part.entries) ? (part.entries as unknown[]) : []
 
 /** Reads a `.nxsp`'s facts; a file that doesn't read is `unknown`. */
-export const readDiskFacts = async (file: Blob, deviceId: string): Promise<DiskFacts> => {
+export const readDiskFacts = async (file: Blob): Promise<DiskFacts> => {
     let projectJson: unknown
     let last: unknown
     try {
@@ -52,7 +52,6 @@ export const readDiskFacts = async (file: Blob, deviceId: string): Promise<DiskF
             ? {
                   kind: 'saved',
                   device: { id: device.id, label: device.label },
-                  thisDevice: device.id === deviceId,
                   savedAt,
                   notes,
               }
@@ -64,10 +63,13 @@ export const readDiskFacts = async (file: Blob, deviceId: string): Promise<DiskF
     }
 }
 
-/** A file of another project: its `id` isn't the chain's (§0.9.5). */
+/**
+ * A file of another project: its `id` isn't the chain's (§0.9.5). It carries the project's name
+ * when the file has one; a file whose `project.json` has no `id` is not told apart.
+ */
 export const otherProject = (facts: DiskFacts, docId: string): DiskVersion | undefined => {
     const project = isObject(facts.projectJson) ? facts.projectJson : undefined
-    if (!project || project.id === docId) return
+    if (!project || typeof project.id !== 'string' || project.id === docId) return
     const name = typeof project.name === 'string' && project.name ? project.name : undefined
-    return name ? { kind: 'otherProject', name } : undefined
+    return { kind: 'otherProject', ...(name ? { name } : {}) }
 }

@@ -36,6 +36,7 @@ import {
     operationValueText,
     ownerFieldLabel,
     ownerValueText,
+    quoted,
 } from './values'
 
 type Counts = Readonly<Partial<Record<NativeKind | OwnerKind, number>>>
@@ -49,14 +50,22 @@ type RecordData = {
 const plain = (text: string): DetailText => ({ text })
 const placeholder = (text: string): DetailText => ({ text, placeholder: true })
 
-/** A captured name: bare, with "Not set" for none or an empty name. */
+/**
+ * A captured name: bare, with "Not set" for none. An empty name is a name (an imported group or
+ * folder can have one): it reads quoted empty, as in prose, so it is not mistaken for no entry.
+ * A file has no such thing, so an empty file name reads Not set.
+ */
 const nameDetail = (
     name: NameText | null | undefined,
     context: OperationTextContext,
+    { file = false }: { file?: boolean } = {},
 ): DetailText =>
-    !name || (!name.text && !name.truncated)
+    !name || (file && !name.text && !name.truncated)
         ? placeholder(context.strings.historyChanges.notSet)
-        : { text: nameText(name), ...(name.truncated ? { shortened: true as const } : {}) }
+        : {
+              text: !name.text && !name.truncated ? quoted('', context) : nameText(name),
+              ...(name.truncated ? { shortened: true as const } : {}),
+          }
 
 const sameText = (a: DetailText, b: DetailText) =>
     a.text === b.text && !a.placeholder === !b.placeholder
@@ -301,8 +310,8 @@ const nativeRecord = (
             break
         case 'nse.bgm.change': {
             const { file, offset } = operation.data
-            const before = nameDetail(file.before, context)
-            const after = nameDetail(file.after, context)
+            const before = nameDetail(file.before, context, { file: true })
+            const after = nameDetail(file.after, context, { file: true })
             rows.push(
                 ...(sameText(before, after)
                     ? valueRow('file', t.commands.bgm.modal.file, after)
@@ -575,6 +584,42 @@ const groupRows = (recipe: OperationRecipe, context: OperationTextContext): Deta
                 countItems(recipe.metric.counts, context),
             ),
         )
+    // Owners deleted or copied carry the chart objects that went with them, and a default entry
+    // made when the last one went. The title counts only the owners; the cascade is shown here.
+    if (group.family === 'ownerDelete' || group.family === 'ownerDuplicate') {
+        const deleted = group.family === 'ownerDelete'
+        const objects: Record<string, number> = {}
+        let overflow = false
+        for (const operation of operations) {
+            if (operation.id !== 'nse.owner.delete' && operation.id !== 'nse.owner.duplicate')
+                continue
+            for (const [kind, value] of Object.entries(operation.data.objects ?? {})) {
+                const sum = checkedSum([objects[kind] ?? 0, value])
+                if (sum === undefined) overflow = true
+                else objects[kind] = sum
+            }
+        }
+        // The owners' own total is the title's; it is repeated only beside objects to add to.
+        if (!overflow && recipe.metric && Object.keys(objects).length)
+            rows.push(
+                ...countsRow(
+                    deleted ? 'removed' : 'added',
+                    deleted ? t.historyChanges.removed : t.historyChanges.added,
+                    [...countItems(recipe.metric.counts, context), ...countItems(objects, context)],
+                ),
+            )
+        if (deleted) {
+            const replacements: Record<string, number> = {}
+            for (const operation of operations)
+                if (operation.id === 'nse.owner.delete' && operation.data.replacement) {
+                    const { kind } = operation.data.replacement
+                    replacements[kind] = (replacements[kind] ?? 0) + 1
+                }
+            rows.push(
+                ...countsRow('added', t.historyChanges.added, countItems(replacements, context)),
+            )
+        }
+    }
     if (first.id === 'nse.header.set' && last.id === 'nse.header.set') {
         const offset = first.data.field === 'bgmOffset'
         rows.push(

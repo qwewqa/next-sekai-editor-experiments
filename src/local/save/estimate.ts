@@ -10,7 +10,7 @@ import { chainRows, ModelError } from './model'
 // stored sizes, never inflating or hashing a body. For the rows the write would hold, each
 // distinct root's and node's row `size` and each chunk's stored length; the media rows' sizes;
 // the manifest by a per-entry and per-record estimate, deflated; `level.json` from the head's
-// records the same way. Cached per chain by the saved session and its `lastSeq`.
+// records the same way. Cached per chain by the saved session, its `lastSeq` and the head's BGM.
 
 /** Sizes in bytes; the dialog's total adds `base` and the ticked rows. */
 export type SaveSizeEstimate = {
@@ -24,6 +24,10 @@ export type SaveSizeEstimate = {
     history: number
     /** The head's BGM; absent without one in storage. */
     bgm?: number
+    /** The stored BGM's file name, when its row keeps one. */
+    bgmName?: string
+    /** Media the head references that the media store lacks: not held, so written as metadata. */
+    mediaMissing?: number
     /** What every write holds: `project.json`, `level.json`, the head's cover and preview audio. */
     base: number
 }
@@ -38,8 +42,12 @@ export const ESTIMATE = {
     indexBytes: 52,
     /** How much of the manifest's JSON deflate keeps (its hashes repeat). */
     manifestDeflate: 0.15,
-    /** `level.json` deflated, by the head's canonical record bytes. */
-    levelRatio: 0.21,
+    /**
+     * `level.json` deflated, by the head's chunks as stored (their own deflated length). The
+     * canonical size is no guide: the generated large chart deflates its `level.json` to 0.21 of
+     * it and coconut to 0.16, but the stored lengths track both within 6% (measured 2026-10-20).
+     */
+    levelOverStored: 1.49,
     /** `project.json` without its ancestors, and the ZIP's headers. */
     projectBytes: 700,
     /** Each ancestor id in `revision.ancestors`. */
@@ -48,13 +56,26 @@ export const ESTIMATE = {
 
 const cache = new Map<
     string,
-    { sessionId: string | undefined; lastSeq: number; estimate: SaveSizeEstimate }
+    {
+        sessionId: string | undefined
+        lastSeq: number
+        bgm: string | undefined
+        estimate: SaveSizeEstimate
+    }
 >()
 
-/** The cached estimate of a chain's saved session, when it's still current. */
-export const cachedEstimate = (chainId: string, sessionId: string | undefined, lastSeq: number) => {
+/**
+ * The cached estimate of a chain's saved session, when it's still current. `bgm` is the head's
+ * BGM hash as the page names it: the estimate's `bgm` size follows it, so a swapped BGM misses.
+ */
+export const cachedEstimate = (
+    chainId: string,
+    sessionId: string | undefined,
+    lastSeq: number,
+    bgm?: string,
+) => {
     const known = cache.get(chainId)
-    return known && known.sessionId === sessionId && known.lastSeq === lastSeq
+    return known && known.sessionId === sessionId && known.lastSeq === lastSeq && known.bgm === bgm
         ? known.estimate
         : undefined
 }
@@ -88,7 +109,7 @@ export const estimateSaveSize = async (
     if (!cut) return
     const saved = cut.sessionId
     const lastSeq = cut.sessions.find((session) => session.id === saved)?.lastSeq ?? 0
-    const known = cachedEstimate(chainId, saved, lastSeq)
+    const known = cachedEstimate(chainId, saved, lastSeq, bgmHash)
     if (known) return known
 
     let rows
@@ -171,24 +192,30 @@ export const estimateSaveSize = async (
         level = next
     }
     let chunksBin = 0
-    let headCanonical = 0
+    let headStored = 0
     const headSet = new Set(headChunks)
     for (const [hex, value] of await readMany(store, 'chunks', [...chunks])) {
         const row = value as { bytes?: Uint8Array; size?: number } | undefined
         if (!row?.bytes) continue
         chunksBin += row.bytes.length
         manifest += ESTIMATE.indexBytes
-        if (headSet.has(hex)) headCanonical += row.size ?? row.bytes.length
+        if (headSet.has(hex)) headStored += row.bytes.length
     }
 
     let bgm: number | undefined
+    let bgmName: string | undefined
     let assets = 0
+    let missing = 0
     for (const [hex, value] of await readMany(store, 'media', [...media])) {
-        const row = value as { size?: number; kind?: string } | undefined
-        if (typeof row?.size !== 'number') continue
-        if (bgmHash === undefined ? row.kind === 'bgm' && bgm === undefined : hex === bgmHash)
+        const row = value as { size?: number; kind?: string; filename?: string } | undefined
+        if (typeof row?.size !== 'number') {
+            missing++
+            continue
+        }
+        if (bgmHash === undefined ? row.kind === 'bgm' && bgm === undefined : hex === bgmHash) {
             bgm = row.size
-        else assets += row.size
+            if (typeof row.filename === 'string' && row.filename) bgmName = row.filename
+        } else assets += row.size
     }
 
     const ancestors = cut.chain.revision?.ancestors.length ?? 0
@@ -196,13 +223,15 @@ export const estimateSaveSize = async (
         steps: rows.length,
         history: Math.round(chunksBin + manifest * ESTIMATE.manifestDeflate),
         ...(bgm === undefined ? {} : { bgm }),
+        ...(bgmName === undefined ? {} : { bgmName }),
+        ...(missing ? { mediaMissing: missing } : {}),
         base: Math.round(
             ESTIMATE.projectBytes +
                 ancestors * ESTIMATE.ancestorBytes +
-                headCanonical * ESTIMATE.levelRatio +
+                headStored * ESTIMATE.levelOverStored +
                 assets,
         ),
     }
-    cache.set(chainId, { sessionId: saved, lastSeq, estimate })
+    cache.set(chainId, { sessionId: saved, lastSeq, bgm: bgmHash, estimate })
     return estimate
 }
