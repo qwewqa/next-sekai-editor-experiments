@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
+import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
 import { closePage, waitForStartup } from './editorFixture'
 import {
     chainOf,
@@ -246,4 +247,36 @@ test('the Replace guard: a diverged file is kept first, and the write says what 
     ).toBeVisible({ timeout: 15_000 })
     const { chains } = await rows(page, ['chains'])
     expect(chains!.map((row) => row.value).some((chain) => chain.docId === 'doc')).toBe(true)
+})
+
+test('Replace is offered for a file on disk with a newer patch, and keeps it first as a session with its history', async ({
+    page,
+}) => {
+    await start(page)
+    await savedOnce(page)
+    const file = await crafted((items) => {
+        setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 3 })
+    })
+    await writeFile(page, 'coconut.nxsp', [...new Uint8Array(await file.arrayBuffer())])
+    await edit(page, 2)
+    await pressSave(page)
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    await page.waitForTimeout(350)
+    // A newer patch is not "Made by a newer version": nothing it holds is unread.
+    await expect(dialog.getByRole('button', { name: 'Replace' })).toBeEnabled()
+    await expect(dialog).not.toContainText('Made by a newer version')
+    await dialog.getByRole('button', { name: 'Replace' }).click()
+    await expect
+        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).replaces, {
+            timeout: 15_000,
+        })
+        .toBe('r001-0000-4000-8000-000000000000')
+    expect((await projectOf(page, 'coconut.nxsp')).patch).toBe(0)
+    // The file that was on disk is kept, with its history, as a session of its own.
+    const { chains, sessions } = await rows(page, ['chains', 'sessions'])
+    const kept = chains!.map((row) => row.value).find((chain) => chain.docId === 'doc')!
+    expect(kept.name).toMatch(/^coconut \(replaced .+\)$/)
+    const session = sessions!.map((row) => row.value).find((row) => row.chainId === kept.chainId)!
+    expect(session.origin).toBe('replaced')
 })

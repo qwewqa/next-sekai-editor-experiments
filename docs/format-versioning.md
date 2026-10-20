@@ -21,7 +21,7 @@ The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for t
 | `project.json` `levelVersion` | 1 | every `.nxsp` | The level-data model: an archetype, field or choice value an older parser would drop or replace. | Partial open (`newer-level`); the level parser reports the rest. A parser refusal reads as the newer-version refusal. |
 | engine `revision` (`LATEST_REVISION`) | 2 | level data | What an engine field means. | A warning (`getRevisionWarning`), or a partial open when it is above `LATEST_REVISION`. |
 | manifest `version` | 2 | `history/manifest.json` | The manifest's and a segment's layout. | `newer-history`: history not read, the level opens. |
-| `RECORDS_V` (root `v`; journals' `recordsV`) | 1 | every root; every journal | The snapshot records: positions, the root and node form, the canonical rule. Rises with `levelVersion` and with `LATEST_REVISION`. | A file: `newer-history`. A stored root: the session or entry is "Needs a newer version", never damaged. A journal: left in place. |
+| `RECORDS_V` (root `v`; journals' `recordsV`) | 1 | every root; every journal | The snapshot records: positions, the root and node form, the canonical rule. Rises when a record's positions or values change, and with `LATEST_REVISION`; also with `levelVersion` when level data gains something the records must hold too (a new field or choice value). `levelVersion` can rise alone for a change the records already express (nested folders). | A file: `newer-history`. A stored root: the session or entry is "Needs a newer version", never damaged. A journal: left in place. |
 | `SESSION_V` | 2 | session rows | How a session's stack and entries are read. | Newer: "Needs a newer version" for the session and its whole chain. Older or malformed: not read, and not called newer. |
 | `JOURNAL_VERSION` | 2 | journals | A journal field an older build must not drop or misread. | Newer: left in place for a later build. Older or malformed: its bytes go to the `recovered` store, nothing is lost. |
 | `DB_VERSION` | 2 | IndexedDB | A store or index added; the "stop old tabs" lever. | A newer database opens read-only (Part 1 §1.6.1). |
@@ -29,7 +29,7 @@ The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for t
 | Dump `version` (`DUMP_VERSION`) | 1 | the dump format | The raw-data dump. | Refused. |
 | operation `version`, per id | 1 | the operation envelope | One operation's `data` shape. | An unknown id or version renders its `fallback`; a known id whose `data` fails its codec reads "cannot read the details", never damage. |
 
-The constants are `src/local/nxsp/version.ts`, `src/local/records/version.ts`, `src/levelData/levelVersion.ts`, `src/levelData/revision.ts`, `src/local/journal/format.ts` and `src/local/db.ts`; `tests/local/formatVersions.test.ts` asserts each. The shipped values are not all 1 (manifest 2, minor 1, session 2, journal 2, DB 2 are generation 2 of the History redesign); they stay, because resetting them to 1 would only strand development data.
+The constants are `src/local/nxsp/version.ts`, `src/local/records/version.ts`, `src/levelData/levelVersion.ts`, `src/levelData/revision.ts`, `src/local/journal/format.ts`, `src/local/db.ts` and `src/local/dump.ts` (`DUMP_VERSION`); `tests/local/formatVersions.test.ts` asserts each. The shipped values are not all 1 (manifest 2, minor 1, session 2, journal 2, DB 2 are generation 2 of the History redesign); they stay, because resetting them to 1 would only strand development data.
 
 ### Why `minor` and `patch` are two numbers
 
@@ -66,7 +66,7 @@ Work down the list in order. The first row that fits decides the number.
    | Cannot even open the level from the file; a different container or `project.json` layout | `version` (major) | level only |
    | Changes what existing content means, or adds something an older reader would misread or could not read the history of (a merge revision, a new entry kind, a changed meaning of an existing field) | `minor` | partial, history unread |
    | Adds content an older reader can leave out without misreading what remains (a new ZIP entry kind, a `parts` key, a newly written `x`) | `patch` | opens normally, one line |
-   | A new archetype, field or choice value in level data | `levelVersion` (and `RECORDS_V`) | partial |
+   | A new archetype, field or choice value in level data | `levelVersion`, and `RECORDS_V` when the records hold it too | partial |
    | A record position, the root or node form, the canonical rule; a new `LATEST_REVISION` | `RECORDS_V` | "Needs a newer version" |
    | The manifest's or a segment's layout | manifest `version` (and `minor`) | `newer-history` |
    | How a session's stack or entries are read | `SESSION_V` | "Needs a newer version" |
@@ -80,10 +80,12 @@ Work down the list in order. The first row that fits decides the number.
    - the constant and its table (`MINOR_TABLE` and `PATCH_TABLE` in `src/local/nxsp/version.ts`: a new ZIP entry kind or `parts` key goes in both, `0` in the `minor` table and the `patch` it ships in in the other);
    - `tests/local/formatVersions.test.ts`;
    - the reader (`read.ts`, `project.ts`, `manifest.ts`) and the writer (`build.ts`);
+   - **the four places that hard-code what an older reader does**, which no constant reaches: `partialLine` in `src/local/open/decide.ts` (which reasons give which line, and in what order); `newerFile` and `newerPatch` in `src/editor/commands/open/project.ts` (what reads as a newer file's refusal); `replaceUnavailable` in `src/editor/save/flow.ts` (it reads `NXSP_VERSION` and `NXSP_MINOR`, and rightly not `patch`: Replace is offered for a newer patch); and the checker's literals in `tools/nxsp_check.py` (`minor <= 1`, `patch` present and `<= 0`, `project["patch"] > 0`, `minor > 1`, `levelVersion > 1`, manifest `version == 2`) and its `PROJECT_KEYS`/`ENTRY_KEYS`;
+   - for an `x` a build starts to write: its row in `PATCH_TABLE.carrier`, which is what makes `patchOf` write the new `patch` (the writer scans what it emits and what it carries, with `carriersIn`);
    - the independent checker `tools/nxsp_check.py` (strict mode and `--read`), and `tools/fields-v1.json` through `npm run format:gen` for any record change;
-   - the goldens: `tests/local/nxsp/golden-v1/`, `tests/zip/plan-conformance-v1/`, `tests/local/records/golden-v1/` and `schema-v1/`, and the long-history sample (`npm run samples:long-history`). After the ship a golden is never edited: a new generation adds a new golden;
+   - the goldens, **in this order**: `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts` (the builder golden, `tests/local/nxsp/golden-v1/`), then `NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts` (the conformance cases are built from it), then `uv run python -I tools/nxsp_check.py` over `golden-v1/write-*.nxsp` and every `plan-conformance-v1/*/expected.nxsp`; for a record change `npm run format:gen` and the records goldens (`tests/local/records/golden-v1/`, `schema-v1/`). The long-history sample (`npm run samples:long-history`) lives in the owner's `samples/` folder, outside the repository: regenerate it and run `tests/samples/sampleFormat.test.ts`. After the ship a golden is never edited: a new generation adds a new golden;
    - `tests/local/nxsp/agreement.test.ts` (a plan-derived expectation for the new case, beside the readers' agreement);
-   - the plan (Part 1 §1.6.11.4–§1.6.11.8) and this page;
+   - the plan (Part 1 §1.6.11.4–§1.6.11.8, then rebuild `plan/plan.md` with the README's cat command), the byte-level description `work/nxsp-format.md`, this page, and `CHANGELOG.md` under Unreleased when users see it;
    - the user-facing line, if the open should say something, in all seven locales.
 4. **Run** the reader agreement test (both readers must open every probe alike), the checker over the regenerated goldens, `npm test`, and the open, save and history browser specs.
 5. **Say it in the commit:** which number moved and why, and that readers ship first.
@@ -116,4 +118,4 @@ Operation codecs are strict: a member the codec does not list makes the data fai
 - They do not read the history of a file whose `minor` is newer, or of one that is damaged.
 - They do not carry through a Save any content they do not read, except `extra` and the contents of `x` and an operation.
 - They do not recover a missing or unreadable `level.json` from the history. A later build may; it changes how a build treats damaged files, not what files contain.
-- Nested folders: the record schema keeps `folder.folderId` on purpose. This build never sets it, shows nested folders flat, keeps the link through edits and records, and writes `level.json` flat (`tests/local/records/nestedFolders.test.ts`). A later nesting feature keeps v1 roots and raises only `levelVersion`.
+- Nested folders: the record schema keeps `folder.folderId` on purpose. This build never sets it, shows nested folders flat, keeps the link through edits and records, and writes `level.json` flat (`tests/local/records/nestedFolders.test.ts`). A later nesting feature keeps v1 roots (the lowest-version rule) and raises only `levelVersion`; an older build opens such a file partial, with its history read and the folders shown flat.
