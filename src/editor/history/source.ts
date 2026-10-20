@@ -22,6 +22,8 @@ import { hereRange, historyFilter } from './state'
 // newer ones into the gap between it and Now, until it reaches the newest entries again.
 
 const PAGE = 100
+/** Pages one refresh reads at most to join a burst of new entries to the loaded run. */
+const MAX_BRIDGE_PAGES = 50
 
 type Cursor = { sessionId: string; before: number }
 
@@ -86,12 +88,36 @@ const pendingEntries = (): Entry[] => {
         .reverse()
 }
 
+/**
+ * The open session's entries once shown as waiting, until a read returns them stored. The flusher
+ * forgets an entry when it stores it, a moment before the next read: without these the list
+ * would drop it for that moment.
+ *
+ * A carried entry keeps `pending: true` until a read returns it, so for up to about 1.3 s it says
+ * "waiting" although it is stored. Only this file reads the flag, to give a continuation not read
+ * yet its divider (`entries`); anything that shows "not stored yet" would have to use the
+ * flusher's own list instead.
+ */
+const carried = new Map<string, Entry>()
+let carriedFor: string | undefined
+
 /** Every entry newest first: those waiting to be stored, then the stored ones; after a jump, the window. */
 export const entries = computed((): Entry[] => {
     const read = loadedFor.value === session.value.sessionId ? stored.value : []
     if (newer.value) return [...read]
     const have = new Set(read.map(entryId))
-    const all = [...pendingEntries().filter((entry) => !have.has(entryId(entry))), ...read]
+    // What the flusher holds now joins what it held a moment ago, and what a read has returned,
+    // or has passed, leaves. Only the computed's own memo changes, never a ref.
+    const open = flusher?.session
+    if (carriedFor !== open?.id) {
+        carried.clear()
+        carriedFor = open?.id
+    }
+    for (const entry of pendingEntries()) carried.set(entryId(entry), entry)
+    const top = read.find((entry) => entry.sessionId === open?.id)?.seq ?? 0
+    for (const [id, entry] of carried) if (have.has(id) || entry.seq < top) carried.delete(id)
+    const waiting = [...carried.values()].sort((a, b) => b.seq - a.seq)
+    const all = [...waiting, ...read]
     // A continuation not stored yet divides from the entry it continues: the next older one.
     return all.map((entry, i) =>
         entry.pending && entry.kind === 'continue' && entry.from === undefined && all[i + 1]
@@ -142,8 +168,29 @@ const recount = async () => {
     }
 }
 
-/** Reads the newest page again, keeping the older pages already loaded. */
-export const refresh = async (): Promise<void> => {
+/**
+ * Where a fresh run, newest first, joins the entries loaded: the fresh run's oldest entry that is
+ * loaded already, and its place among them. Undefined when none is.
+ */
+const joinOf = (fresh: readonly Entry[], loaded: readonly Entry[]) => {
+    const places = new Map(loaded.map((entry, i) => [entryId(entry), i] as const))
+    let found: { at: number; place: number } | undefined
+    for (const [at, entry] of fresh.entries()) {
+        const place = places.get(entryId(entry))
+        if (place !== undefined) found = { at, place }
+    }
+    return found
+}
+
+/** Refreshes begun, and the last one that landed: an older one landing later is dropped. */
+let started = 0
+let landed = 0
+
+/**
+ * Reads the newest page again, keeping the older pages already loaded. With `replace` the loaded
+ * run is dropped for the newest page (Now, Home after a jump).
+ */
+export const refresh = async ({ replace = false } = {}): Promise<void> => {
     const worker = storageWorker
     const id = session.value.sessionId
     // Without storage the timeline holds what this tab made.
@@ -159,24 +206,40 @@ export const refresh = async (): Promise<void> => {
         newerCount.value = 0
     }
     const mark = epoch
-    let page
+    const ticket = ++started
+    const fresh: Entry[] = []
+    let next: Cursor | undefined
     try {
-        page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
+        const page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
+        fresh.push(...page.entries.map(entryOf))
+        next = page.next
+        // More than a page can have come in since the last read (a held Undo key stores a burst
+        // between two refreshes): read older pages until the run joins the loaded one, so the
+        // older pages and the reader's place stay.
+        for (let pages = 1; next && pages < MAX_BRIDGE_PAGES; pages++) {
+            if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
+            if (replace || loadedFor.value !== id || !stored.value.length) break
+            if (joinOf(fresh, stored.value)) break
+            const older = await worker.call('readTimeline', { ...next, limit: PAGE })
+            fresh.push(...older.entries.map(entryOf))
+            next = older.next
+        }
     } catch {
         if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
         if (loadedFor.value !== id) status.value = 'failed'
         return
     }
     // The session changed meanwhile: its own refresh follows. A jump replaced the run: it stays.
-    if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
-    const fresh = page.entries.map(entryOf)
-    const oldest = fresh.at(-1)
-    const at = oldest ? stored.value.findIndex((entry) => entryId(entry) === entryId(oldest)) : -1
-    if (loadedFor.value === id && at !== -1) {
-        stored.value = [...fresh, ...stored.value.slice(at + 1)]
+    // A refresh that began before one that has landed holds older entries: it is dropped.
+    if (session.value.sessionId !== id || mark !== epoch || isJumped() || ticket < landed) return
+    landed = ticket
+    // The run joins the loaded one at the oldest fresh entry already loaded; its older pages follow.
+    const join = !replace && loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
+    if (join) {
+        stored.value = [...fresh.slice(0, join.at + 1), ...stored.value.slice(join.place + 1)]
     } else {
         stored.value = fresh
-        cursor = page.next
+        cursor = next
     }
     loadedFor.value = id
     canLoadMore.value = !!cursor
@@ -333,10 +396,12 @@ export const jumpToOldest = async (filter: Filter) => {
 
 /** Back to the newest entries after a jump: Now, Home. */
 export const resetToNewest = async () => {
+    const jumped = isJumped()
     replaceSource()
     newer.value = undefined
     newerCount.value = 0
-    await refresh()
+    // After a jump the window is dropped for the newest page; without one, what is loaded stays.
+    await refresh({ replace: jumped })
 }
 
 /** Entries waiting for the worker. */
@@ -376,6 +441,7 @@ export const followEntries = () => {
     const stop = onHistoryAction((action) => {
         indexes.clear()
         if (action.kind === 'reset') {
+            carried.clear()
             replaceSource()
             stored.value = []
             cursor = undefined

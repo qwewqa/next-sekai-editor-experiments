@@ -1224,8 +1224,9 @@ onMounted(() => {
     observer.observe(element)
     viewport.value = element.clientHeight
     width.value = element.clientWidth
-    // The dialog's list takes focus as it opens; the tab's only for a link that asked.
-    if (props.surface === 'dialog') element.focus({ preventScroll: true })
+    // The dialog's list takes focus as it opens (HistoryDialog, once the dialog is shown: focus
+    // taken here would be the "previous" element the native dialog gives focus back to on close,
+    // and that element is gone by then); the tab's only for a link that asked.
     restoreFrame = requestAnimationFrame(() => {
         restoreReady = true
         if (!savedView || memoryGeneration !== historyViewGeneration()) {
@@ -1431,7 +1432,7 @@ defineExpose({
                         :class="headerClass(row)"
                         :style="{ top: `${top}px`, height: `${HEADER}px` }"
                     >
-                        <span class="min-w-0 truncate">{{ headerText(row) }}</span>
+                        <span class="min-w-0 truncate">{{ headerText(row, clock) }}</span>
                     </div>
 
                     <div
@@ -1685,7 +1686,7 @@ defineExpose({
                 :class="headerClass(pinned)"
                 :style="{ height: `${HEADER}px` }"
             >
-                <span class="truncate">{{ pinnedText(pinned) }}</span>
+                <span class="truncate">{{ pinnedText(pinned, clock) }}</span>
             </div>
         </div>
         <OverlayScrollbar :target="list" />

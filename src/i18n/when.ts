@@ -3,7 +3,8 @@ import * as dateTime from './dateTime'
 
 // The date and time helpers in the app locale.
 
-export const formatDate = (at: number) => dateTime.formatDate(settings.locale, at)
+export const formatDate = (at: number, now?: number) =>
+    dateTime.formatDate(settings.locale, at, now)
 
 /** A date for a notice's sentence, whose parts never wrap apart. */
 export const formatDateInSentence = (at: number) =>

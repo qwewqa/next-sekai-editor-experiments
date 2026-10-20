@@ -14,25 +14,27 @@ export const dayLabel = (time: number, now = Date.now()) => {
     if (sameDay(time, now)) return i18n.value.history.today
     const before = new Date(now)
     before.setDate(before.getDate() - 1)
-    return sameDay(time, before.getTime()) ? i18n.value.history.yesterday : formatDate(time)
+    return sameDay(time, before.getTime()) ? i18n.value.history.yesterday : formatDate(time, now)
 }
 
 /** A header's own label: its day, hour or minute. */
-const ownLabel = (header: Header) =>
+const ownLabel = (header: Header, now: number) =>
     header.level === 'day'
-        ? dayLabel(header.time)
+        ? dayLabel(header.time, now)
         : header.level === 'hour'
           ? formatHour(header.time)
           : formatClock(header.time)
 
-export const headerText = (header: Header) =>
-    header.withDay ? `${dayLabel(header.time)} · ${ownLabel(header)}` : ownLabel(header)
+export const headerText = (header: Header, now = Date.now()) =>
+    header.withDay
+        ? `${dayLabel(header.time, now)} · ${ownLabel(header, now)}`
+        : ownLabel(header, now)
 
 /** The pinned header's text: the header above the list's top, always with its day. */
-export const pinnedText = (header: Header) =>
+export const pinnedText = (header: Header, now = Date.now()) =>
     header.level === 'day' || header.withDay
-        ? headerText(header)
-        : `${dayLabel(header.time)} · ${ownLabel(header)}`
+        ? headerText(header, now)
+        : `${dayLabel(header.time, now)} · ${ownLabel(header, now)}`
 
 const count = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
 
