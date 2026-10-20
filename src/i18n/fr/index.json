@@ -2203,7 +2203,7 @@
       "body": "Ce niveau utilise des valeurs que cette version de l’éditeur ne prend pas en charge. L’ouverture d’une copie séparée remplace ces valeurs par les valeurs par défaut.",
       "openCopy": "Ouvrir une copie"
     },
-    "unsavedChanges": "{0} ouvert. Ce fichier a des modifications non sauvegardées du {1}.",
+    "unsavedChanges": "{0} ouvert. Ce fichier a des modifications du {1} non sauvegardées.",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans Sessions récentes.",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans Sessions récentes.",
     "restoreIt": "Restaurer la session",
