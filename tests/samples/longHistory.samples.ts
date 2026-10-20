@@ -205,13 +205,23 @@ class Session {
     async restore(label: string | RegExp, nth = 0) {
         const list = await this.openHistory()
         await this.act('restore', async () => {
-            const row = list.getByRole('option').filter({ hasText: label }).nth(nth)
+            const row = list.getByRole('row').filter({ hasText: label }).nth(nth)
             // The list is windowed: wheel down until the row is drawn.
             const box = await list.boundingBox()
             if (box) await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
             for (let i = 0; i < 40 && !(await row.count()); i++) {
                 await this.page.mouse.wheel(0, 300)
                 await this.page.waitForTimeout(50)
+            }
+            if (!(await row.count())) {
+                const seen = new Set<string>()
+                for (let i = 0; i < 80; i++) {
+                    for (const text of await list.getByRole('row').allInnerTexts())
+                        seen.add(text.replace(/\s+/g, ' '))
+                    await this.page.mouse.wheel(0, -300)
+                    await this.page.waitForTimeout(50)
+                }
+                throw new Error(`No row ${String(label)}; seen:\n${[...seen].join('\n')}`)
             }
             await row.scrollIntoViewIfNeeded()
             await row.click({ button: 'right' })
