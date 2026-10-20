@@ -57,20 +57,29 @@ const sourceForm = (source: PinnedSource, kind: MediaKind) => {
     return isObject(form) ? form : undefined
 }
 
-const fromSource = (source: PinnedSource, kind: MediaKind, ref: MediaRef) => {
+/**
+ * An append source's item by kind: its one entry and its `sha256`, when that begins with `hash`
+ * (a 16-byte prefix, as a `MediaRef`'s).
+ */
+export const fromSource = (source: PinnedSource, kind: MediaKind, hash: string) => {
     const form = sourceForm(source, kind)
     if (
         !form ||
         typeof form.file !== 'string' ||
         typeof form.sha256 !== 'string' ||
-        !form.sha256.startsWith(ref.hash)
+        !form.sha256.startsWith(hash)
     )
         return
     const name = form.file.normalize('NFC')
     const matching = source.entries.filter((entry) => entry.name.normalize('NFC') === name)
     const [entry] = matching
     if (!entry || matching.length !== 1) return
-    return { entry, sha256: form.sha256 }
+    return {
+        entry,
+        sha256: form.sha256,
+        type: typeof form.type === 'string' ? form.type : '',
+        ...(typeof form.filename === 'string' ? { filename: form.filename } : {}),
+    }
 }
 
 const hex = (bytes: Uint8Array) => toHex(bytes)
@@ -128,7 +137,7 @@ export const planMediaItem = async (
             damaged = true
         }
     }
-    const copied = source && fromSource(source, kind, ref)
+    const copied = source && fromSource(source, kind, ref.hash)
     if (source && copied)
         return {
             input: {
