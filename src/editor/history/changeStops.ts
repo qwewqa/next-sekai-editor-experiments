@@ -7,8 +7,16 @@ export type Place = { time: number; left: number; right: number; id?: number }
 /** Changes close enough to show together: from the first's time to the last's. */
 export type Stop = { from: number; to: number; left: number; right: number }
 
-/** The band in view, in times: `top` is later than `bottom`, as time runs up. */
-export type Band = { top: number; bottom: number }
+/**
+ * The band in view, in times: `top` is later than `bottom`, as time runs up. `floor` is the lowest
+ * time the band can ever show, its bottom at view time 0, as the view never goes below the chart's
+ * start (absent: no limit).
+ */
+export type Band = { top: number; bottom: number; floor?: number }
+
+/** The places a scroll can bring into the band: none earlier than its floor. */
+export const reachable = <T extends Place>(places: readonly T[], floor = -Infinity) =>
+    floor === -Infinity ? places : places.filter(({ time }) => time >= floor)
 
 /** Places in time order grouped into stops, each within 80% of `span` from its first. */
 export const stopsOf = (places: readonly Place[], span: number): Stop[] => {
@@ -27,11 +35,12 @@ export const stopsOf = (places: readonly Place[], span: number): Stop[] => {
     return stops
 }
 
-/** Changes wholly beyond the band's top and its bottom. */
+/** Changes wholly beyond the band's top and its bottom, and a scroll can reach. */
 export const countOff = (places: readonly Place[], band: Band) => {
     const above = new Set<number>()
     const below = new Set<number>()
     for (const [index, { time, id = index }] of places.entries()) {
+        if (time < (band.floor ?? -Infinity)) continue
         if (time > band.top) above.add(id)
         else if (time < band.bottom) below.add(id)
     }

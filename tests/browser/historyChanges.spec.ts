@@ -1627,3 +1627,52 @@ test('Edits Here’s range names its first and last beats, for a selection and f
     await surface(page).locator('[data-history-goto-button]').click()
     await expect(range).toHaveText(expected)
 })
+
+// X-12: the view never goes below the chart's start, so a sheet over more than half the pane leaves a
+// first stretch of the chart that no scroll can bring into the band. A change there is reachable
+// by neither arrow: it counts in neither direction, and no button is enabled for it.
+test('a change under the sheet at the chart’s start counts in neither direction and enables no arrow (X-12)', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    // Beat 0.2 is 0.1 s in, under the sheet at the start; beat 4 is 2 s in; beat 80 is far above.
+    await edit(page, 'Added 3 notes', { kind: 'add', beats: [0.2, 4, 80] })
+    await stored(page)
+    await viewAt(page, 0)
+    await page.evaluate(async () => {
+        const { openHistoryDialog } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/openHistory')
+        >('/src/editor/history/openHistory.ts')
+        void openHistoryDialog('timeline')
+    })
+    const sheet = page.locator('[data-tool-dialog][data-sheet]')
+    await expect(sheet).toBeVisible()
+    await sheet
+        .getByRole('row')
+        .and(page.locator(':not(.timeline-now)'))
+        .filter({ has: page.getByText('Added 3 notes', { exact: true }) })
+        .click()
+    await expect(peekLine(page)).toHaveText('3 changes')
+    // The sheet covers more than half of the pane: the band's bottom at view time 0 is after 0.1 s.
+    const start = await changes(page)
+    const { h, pps } = await page.evaluate(() => ({
+        h: window.editorTest.view.h,
+        pps: window.editorTest.settings.pps,
+    }))
+    expect(start.time).toBe(0)
+    expect((start.band.bottom - 0.5 * h) / pps).toBeGreaterThan(0.1)
+    // Beat 4 is in the band and beat 80 is above it: Down counts nothing and is disabled.
+    expect(start.off).toEqual({ above: 1, below: 0 })
+    await expect(arrow(page, 'down')).toHaveAttribute('data-count', '0')
+    await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
+    await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'false')
+    // Up still works. Then beat 4 lies below the band and can be reached; beat 0.2 still cannot.
+    await arrow(page, 'up').click()
+    await expect.poll(async () => (await changes(page)).time).toBeGreaterThan(5)
+    await expect(arrow(page, 'up')).toHaveAttribute('aria-disabled', 'true')
+    await expect(arrow(page, 'down')).toHaveAttribute('data-count', '1')
+    await arrow(page, 'down').click()
+    await expect.poll(async () => (await changes(page)).off).toEqual({ above: 1, below: 0 })
+    await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
+})
