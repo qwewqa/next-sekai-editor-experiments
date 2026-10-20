@@ -640,7 +640,10 @@ const reloadOwn = async (
     const lastSeq =
         read.kind === 'open' && typeof read.session.lastSeq === 'number' ? read.session.lastSeq : 0
     if (own && journalled && read.kind === 'open' && journalled.seq <= lastSeq) {
-        deps.journal?.remove(own)
+        // The flush that covered it may have been relaxed: the key goes only after a strict
+        // commit, and stays for a later load when none can be made here.
+        const strict = await deps.worker.call('syncStrict').catch(() => false)
+        if (strict) deps.journal?.remove(own)
         unlist(deps, own)
         recovered = undefined
         journal = 'covered'

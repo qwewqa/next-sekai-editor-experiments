@@ -86,20 +86,32 @@ export const startingMeta = (context: CreateContext): MetaValues => ({
     lastPersistFailure: null,
 })
 
-const createV1 = (upgrade: KvUpgrade, context: CreateContext) => {
+/** Creates each store of the set the database lacks, with its indexes. */
+const createMissingStores = (upgrade: KvUpgrade) => {
+    const present = new Set(upgrade.storeNames)
     for (const name of STORE_NAMES) {
+        if (present.has(name)) continue
         const spec: StoreSpec = STORES_V1[name]
         upgrade.createStore(name, spec.keyPath === null ? {} : { keyPath: spec.keyPath })
         for (const [index, keyPath] of Object.entries(spec.indexes))
             upgrade.createIndex(name, index, keyPath)
     }
+}
+
+const createV1 = (upgrade: KvUpgrade, context: CreateContext) => {
+    createMissingStores(upgrade)
     for (const [key, value] of Object.entries(startingMeta(context)))
         upgrade.put('meta', { key, value })
 }
 
-/** Each version's additive step; a version without one (a test's empty upgrade) adds nothing. */
+/**
+ * Each version's additive step; a version without one (a test's empty upgrade) adds nothing.
+ * Version 2 adds any store of the set a version 1 database made before that store joined it
+ * (`handles`), so no store this build writes is missing.
+ */
 const UPGRADES: Record<number, (upgrade: KvUpgrade, context: CreateContext) => void> = {
     1: createV1,
+    2: createMissingStores,
 }
 
 /** The upgrade callback from any older version to the one requested. */

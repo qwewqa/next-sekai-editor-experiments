@@ -229,9 +229,12 @@ export const writeJournalApply = async (
         const entries = await tx.getAll('entries', range)
         if (entries.some((row) => !isRow(row) || !isKnownEntryKind(row.kind)))
             return { kind: 'later', why: 'its session needs a newer version' }
-        // A flush already covered it (§1.6.4 step 3).
-        if (typeof session.lastSeq === 'number' && session.lastSeq >= seq)
+        // A flush already covered it (§1.6.4 step 3). That flush may have been relaxed, so this
+        // transaction writes a row: its strict commit makes it durable before the key goes.
+        if (typeof session.lastSeq === 'number' && session.lastSeq >= seq) {
+            await writeMeta(tx, 'maxSeenTime', (await readMeta(tx, 'maxSeenTime')) ?? 0)
             return { kind: 'covered' }
+        }
     }
 
     // An unstored continuation's journal (§1.3.6): applied as its first write would be, moving
