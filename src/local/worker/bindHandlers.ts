@@ -10,6 +10,7 @@ import {
     readChainRecord,
     readSessionStarts,
     takeOver,
+    type OwnSaveBelow,
     type Revocation,
     type SaveEntryForm,
     type TakeOver,
@@ -89,12 +90,16 @@ export const bindHandlers = (context: WorkerContext) => ({
         chainId,
         entry,
         unit,
+        below,
     }: {
         chainId: string
         entry: SaveEntryForm
         unit: IdentityUnit
+        below?: OwnSaveBelow
     }) =>
-        context.core.write(BIND_STORES, (tx) => finishOwnSave(tx, chainId, entry, unit), {
-            durability: 'strict',
-        }),
+        context.core.write(
+            BIND_STORES,
+            (tx) => finishOwnSave(tx, chainId, entry, unit, Date.now(), below),
+            { durability: 'strict' },
+        ),
 })

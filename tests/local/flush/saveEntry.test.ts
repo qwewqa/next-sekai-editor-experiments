@@ -4,6 +4,7 @@ import { captureName } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
+import { BIND_STORES, finishOwnSave, type OwnSaveBelow } from '../../../src/local/save/bind'
 import { createWorld } from '../../../src/local/testing/world'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import type { State } from '../../../src/state'
@@ -403,4 +404,192 @@ test('new Export metadata commits after a pending Save As identity and survives 
     assert.equal(chain!.exportName, 'New export')
     assert.equal((chain!.exportTarget as Record<string, unknown>).name, 'NewLevelData')
     assert.equal(rows(world, 'handles').size, 1)
+})
+
+// Our own completed Save (§1.4.7) recorded while entries before its kept `seq` are still pending:
+// a session's entries are stored in `seq` order, so its `lastSeq` never passes one not stored.
+
+const editNote = (page: Page, state: State) => {
+    const next = widen(state)
+    page.flusher.append(
+        {
+            kind: 'edit',
+            step: editStep(
+                nativeOperation(
+                    { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
+                    'Changed note',
+                ),
+            ),
+        },
+        next,
+        true,
+    )
+    return next
+}
+
+const SAVE_OPERATION = nativeOperation(
+    { id: 'nse.file.save', data: { file: captureName('coconut.nxsp'), delivery: 'file' } },
+    'Saved coconut.nxsp',
+)
+
+const ownSave = (page: Page, sessionId: string, chainId: string, seq: number, state: State) => {
+    const entry = {
+        sessionId,
+        seq,
+        time: 5,
+        operation: SAVE_OPERATION,
+        snapshot: rootOf(state),
+        noteCount: 1,
+        revisionId: 'rev-1',
+        device: DEVICE,
+    }
+    const unit = {
+        docId: testId(),
+        revision: { id: 'rev-1', n: 1, ancestors: [] },
+        file: {
+            name: 'coconut.nxsp',
+            event: 'saved',
+            at: 5,
+            hash: fromHex16(rootOf(state)),
+            options: { history: true, bgm: true },
+        },
+        marks: [],
+    }
+    return {
+        entry,
+        record: (below?: OwnSaveBelow) =>
+            page.core.write(BIND_STORES, (tx) =>
+                finishOwnSave(tx, chainId, entry, unit, 2_000_000, below),
+            ),
+    }
+}
+
+type TestWorld = ReturnType<typeof createWorld>
+
+const kinds = (world: TestWorld) =>
+    [...rows(world, 'entries').values()].map((row) => [row.seq, row.kind])
+
+const sessionRow = (world: TestWorld) => {
+    const [row] = rows(world, 'sessions').values()
+    return row!
+}
+
+test('our own completed Save with entries before it still pending is stored after them', async () => {
+    const world = createWorld({ seed: 15 })
+    let stall = false
+    let release!: () => void
+    const stalled = new Promise<void>((resolve) => (release = resolve))
+    const page: Page = await openPage(world, world.tab('a'), {
+        transport: async (batch) => {
+            if (stall) await stalled
+            page.batches.push(batch)
+            const result = await page.tab.run(() => page.handlers.flush(batch))
+            page.results.push(result)
+            return result
+        },
+    })
+    const first = stateOf(goldenChart())
+    const session = begin(page, first)
+    await page.flusher.flush()
+    // The flush of the next edits stalls (storage slow or paused).
+    stall = true
+    const second = editNote(page, first)
+    const third = editNote(page, second)
+    const reservation = page.flusher.reserveSave()!
+    assert.equal(reservation.seq, 4)
+    // Its file may hold the entry: the `seq` is kept, and the flush of 2 and 3 waits.
+    const ended = page.flusher.endSave(reservation, undefined, undefined, true)
+
+    const below = page.flusher.keptSaveBelow(session.id, 4)
+    if (below?.kind !== 'pending') throw new Error('Expected entries pending below the Save')
+    const save = ownSave(page, session.id, session.chainId, 4, third)
+    assert.equal(await save.record(below.kind), true)
+    // The binding is recorded; the entry waits for the tab, after 2 and 3.
+    assert.deepEqual(kinds(world), [[1, 'init']])
+    assert.equal(sessionRow(world).lastSeq, 1)
+    const [chain] = rows(world, 'chains').values()
+    assert.equal((chain!.revision as { id: string }).id, 'rev-1')
+
+    const kept = page.flusher.keptSave(below, {
+        wall: save.entry.time,
+        operation: save.entry.operation,
+        revisionId: save.entry.revisionId,
+        device: save.entry.device,
+    })
+    release()
+    await ended
+    await kept
+    assert.deepEqual(page.errors, [])
+    assert.deepEqual(kinds(world), [
+        [1, 'init'],
+        [2, 'edit'],
+        [3, 'edit'],
+        [4, 'save'],
+    ])
+    const stored = [...rows(world, 'entries').values()][3]!
+    assert.equal(toHex(stored.snapshot as Uint8Array), rootOf(third))
+    assert.equal(stored.revisionId, 'rev-1')
+    assert.equal(sessionRow(world).lastSeq, 4)
+    assert.equal(sessionRow(world).entryCount, 4)
+    assert.equal(session.pending.length, 0)
+    assert.equal(session.gaps?.has(4) ?? false, false)
+    assert.equal(page.flusher.newestSeq(session), 4)
+})
+
+test('our own completed Save of a session another tab may hold never passes its stored entries', async () => {
+    const world = createWorld({ seed: 16 })
+    const page = await openPage(world, world.tab('a'))
+    const first = stateOf(goldenChart())
+    const session = begin(page, first)
+    await page.flusher.flush()
+    const second = editNote(page, first)
+    const third = editNote(page, second)
+    const reservation = page.flusher.reserveSave()!
+    const save = ownSave(page, session.id, session.chainId, reservation.seq, third)
+    // Not this tab's to order: written only right after its stored entries.
+    assert.equal(await save.record(), true)
+    assert.deepEqual(kinds(world), [[1, 'init']])
+    assert.equal(sessionRow(world).lastSeq, 1)
+    await page.flusher.endSave(reservation, undefined, undefined, true)
+    assert.deepEqual(page.errors, [])
+    assert.deepEqual(kinds(world), [
+        [1, 'init'],
+        [2, 'edit'],
+        [3, 'edit'],
+    ])
+    assert.equal(session.pending.length, 0)
+    // Once it follows the stored entries, it is written.
+    assert.equal(await save.record(), true)
+    assert.deepEqual(kinds(world).at(-1), [4, 'save'])
+    assert.equal(sessionRow(world).lastSeq, 4)
+})
+
+test('a flush stores pending entries a write put `lastSeq` past, never skipping them', async () => {
+    const world = createWorld({ seed: 17 })
+    const page = await openPage(world, world.tab('a'))
+    const first = stateOf(goldenChart())
+    const session = begin(page, first)
+    await page.flusher.flush()
+    const second = editNote(page, first)
+    const third = editNote(page, second)
+    const reservation = page.flusher.reserveSave()!
+    // A writer that ignores the order: the `save` entry lands first and `lastSeq` passes 2 and 3.
+    const save = ownSave(page, session.id, session.chainId, reservation.seq, third)
+    assert.equal(await save.record('stored'), true)
+    assert.equal(sessionRow(world).lastSeq, 4)
+    await page.flusher.endSave(reservation, undefined, undefined, true)
+    assert.deepEqual(page.errors, [])
+    assert.deepEqual(kinds(world), [
+        [1, 'init'],
+        [2, 'edit'],
+        [3, 'edit'],
+        [4, 'save'],
+    ])
+    const stored = sessionRow(world)
+    assert.equal(stored.lastSeq, 4)
+    assert.equal(stored.entryCount, 4)
+    // The stored stack was after entry 1: behind the entries now, so it went (replay rebuilds it).
+    assert.equal(stored.stack, undefined)
+    assert.equal(rows(world, 'stackBlocks').size, 0)
+    assert.equal(session.pending.length, 0)
 })

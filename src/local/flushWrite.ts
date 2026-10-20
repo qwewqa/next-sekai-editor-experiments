@@ -476,7 +476,33 @@ export const writeFlush = async (
     // last entry: a re-send of stored entries (a lost reply, or a journal replayed since, §1.6.6)
     // leaves the stored stack alone.
     const lastSeq = typeof session?.lastSeq === 'number' ? session.lastSeq : 0
-    const ownsStack = (batch.entries.at(-1)?.seq ?? 0) > lastSeq
+    // Entries at or below `lastSeq` are stored, or covered by the `recovered` entry a replayed
+    // journal wrote over them (§1.6.6), so a re-send skips them. One with neither is stored now:
+    // no entry is acknowledged without being stored.
+    const missing = new Set<number>()
+    if (session)
+        for (const entry of batch.entries)
+            if (
+                entry.seq <= lastSeq &&
+                (await tx.getKey('entries', [batch.session.id, entry.seq])) === undefined
+            )
+                missing.add(entry.seq)
+    if (missing.size) {
+        const from = Math.min(...missing)
+        const later = await tx.getAll(
+            'entries',
+            KeyRange.bound([batch.session.id, from], [batch.session.id, lastSeq]),
+        )
+        const recovered = later
+            .filter((row) => isRow(row) && row.kind === 'recovered')
+            .map((row) => (row as Row).seq as number)
+        for (const seq of missing) if (recovered.some((at) => at > seq)) missing.delete(seq)
+    }
+    const last = batch.entries.at(-1)?.seq ?? 0
+    // The stored stack is the one after `lastSeq`: an entry stored below it leaves that stack
+    // behind the entries, so it goes (replay rebuilds it, §1.3.9) unless the batch reaches it.
+    const ownsStack = last > lastSeq || (missing.size > 0 && last === lastSeq)
+    const behind = missing.size > 0 && last < lastSeq
     let stack = ownsStack ? batch.stack : undefined
     // A late flush reaching past a replayed journal (§1.6.6): its stack is the dead page's, which
     // never saw the recovered entry, so none is kept rather than one that isn't replay's.
@@ -607,7 +633,8 @@ export const writeFlush = async (
         count('media', row, item.hash)
     }
 
-    // Entries a kill after commit already stored are skipped: re-sends are idempotent.
+    // Entries a kill after commit already stored, or a `recovered` entry covers, are skipped:
+    // re-sends are idempotent.
     // A continuation starts after its parent's last entry (§1.6.11.2).
     const parentUpdated =
         isRow(parentRow) && typeof parentRow.updatedAt === 'number' ? parentRow.updatedAt : 0
@@ -621,7 +648,7 @@ export const writeFlush = async (
     let activeMs = typeof session?.activeMs === 'number' ? session.activeMs : 0
     let edited = false
     for (const entry of batch.entries) {
-        if (entry.seq <= newLastSeq) continue
+        if (entry.seq <= lastSeq ? !missing.has(entry.seq) : entry.seq <= newLastSeq) continue
         const root = rootOf(entry.snapshot)
         const time = stamp(entry.wall)
         if (written || session) activeMs += Math.min(Math.max(time - updatedAt, 0), ACTIVE_GAP_MS)
@@ -656,13 +683,13 @@ export const writeFlush = async (
         stats.entries++
         count('entries', row)
         updatedAt = time
-        newLastSeq = entry.seq
+        newLastSeq = Math.max(newLastSeq, entry.seq)
         written++
         if (EDITING_KINDS.includes(entry.kind)) edited = true
     }
 
     // A stack that can't be used leaves none rather than one behind `lastSeq`.
-    const stackRemoved = ownsStack && !stack
+    const stackRemoved = (ownsStack && !stack) || behind
     const blockRows: unknown[] = []
     if (stack) {
         const { first, last } = windowBlocks(stack)
