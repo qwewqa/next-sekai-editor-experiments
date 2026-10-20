@@ -14,7 +14,11 @@ import { chainRows, ModelError } from './model'
 
 /** Sizes in bytes; the dialog's total adds `base` and the ticked rows. */
 export type SaveSizeEstimate = {
-    /** History's rows, the `save` entry included. */
+    /**
+     * History's steps: the chain's rows, as Go To and the Timeline count them (continue entries and
+     * rows not kept included; the write's own `save` entry not yet). A fork's Timeline goes on into
+     * its parent's chain, which a file does not hold: the count is the chain's own.
+     */
     steps: number
     /** The manifest, segments and `chunks.bin`. */
     history: number
@@ -189,7 +193,7 @@ export const estimateSaveSize = async (
 
     const ancestors = cut.chain.revision?.ancestors.length ?? 0
     const estimate: SaveSizeEstimate = {
-        steps: rows.length + 1,
+        steps: rows.length,
         history: Math.round(chunksBin + manifest * ESTIMATE.manifestDeflate),
         ...(bgm === undefined ? {} : { bgm }),
         base: Math.round(

@@ -2108,7 +2108,6 @@
         "fileType": "Next SEKAI project file",
         "unavailable": "Not saved. Use Export Level Data…",
         "include": "Include",
-        "historySteps": "{0} step|{0} steps",
         "historySize": "{0} step · {1}|{0} steps · {1}",
         "historyNote": "Anyone with the file can view its history.",
         "noBgm": "No BGM",

@@ -24,7 +24,7 @@ export type SaveDialogKind = 'save' | 'saveAs' | 'saveToFile'
 /** The History row. */
 export type HistoryRow =
     /** Ticked or not; `locked` when the target file holds history (ticked, disabled). */
-    | { kind: 'available'; ticked: boolean; locked: boolean; steps: number; keptIn?: string }
+    | { kind: 'available'; ticked: boolean; locked: boolean; keptIn?: string }
     /** An insecure origin: "History cannot be included on this connection." */
     | { kind: 'insecure' }
 

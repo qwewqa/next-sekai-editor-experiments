@@ -55,7 +55,7 @@ const base: Input = {
     kind: 'save',
     name: 'Coconut (Master)',
     lines: [],
-    history: { kind: 'available', ticked: true, locked: false, steps: 1840 },
+    history: { kind: 'available', ticked: true, locked: false },
     bgm: { kind: 'held', name: 'coconut.mp3', ticked: true, locked: false },
     exportLine: false,
     downloadNote: false,
@@ -214,7 +214,7 @@ test.describe('the Save dialog', () => {
         expect(await page.evaluate(() => window.saveSeen.done)).toBeUndefined()
     })
 
-    test('the rows show their steps, then their sizes and a total that follows the ticks', async ({
+    test('the History row shows no number until the estimate has its steps, then sizes and a total that follows the ticks', async ({
         page,
         context,
     }) => {
@@ -224,7 +224,8 @@ test.describe('the Save dialog', () => {
         const history = dialog(page).locator('[data-save-row="history"]')
         const bgm = dialog(page).locator('[data-save-row="bgm"]')
         // Opens at once; Save works throughout.
-        await expect(history).toContainText('1,840 steps')
+        // The page cannot count a chain's steps: the estimate does, and until it has, no number.
+        await expect(history).not.toContainText(/\d/)
         await expect(history).not.toContainText(/\d [kM]B/)
         await expect(bgm).toContainText('coconut.mp3')
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Estimating size…')
@@ -256,7 +257,7 @@ test.describe('the Save dialog', () => {
         await seed(context)
         await visit(page)
         await openSave(page, { estimate: 'none' })
-        await expect(dialog(page).locator('[data-save-row="history"]')).toContainText('1,840 steps')
+        await expect(dialog(page).locator('[data-save-row="history"]')).not.toContainText(/\d/)
         await expect(dialog(page).locator('[data-save-total]')).toHaveCount(0)
         await expect(dialog(page).locator('[data-save-row="history"]')).not.toContainText(
             /\d [kM]B/,
@@ -304,7 +305,6 @@ test.describe('the Save dialog', () => {
                 kind: 'available',
                 ticked: true,
                 locked: true,
-                steps: 1840,
                 keptIn: 'coconut.nxsp',
             },
             bgm: {

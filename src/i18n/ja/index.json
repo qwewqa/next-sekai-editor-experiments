@@ -2108,7 +2108,6 @@
     "fileType": "Next SEKAI プロジェクトファイル",
     "unavailable": "保存されませんでした。「レベルデータを出力…」を使ってください。",
     "include": "含める",
-    "historySteps": "{0} 操作",
     "historySize": "{0} 操作 · {1}",
     "historyNote": "ファイルを持つ人は、その履歴を見ることができます。",
     "noBgm": "BGM なし",

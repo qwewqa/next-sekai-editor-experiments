@@ -70,17 +70,14 @@ onMounted(async () => {
     else if (!estimate.value) failed.value = true
 })
 
+// The steps come with the estimate: until it has them the row shows no number, never "0 steps".
 const historyDetail = computed(() => {
-    const row = historyRow.value
-    if (row.kind === 'insecure') return ''
-    const steps = formatCount(row.steps)
-    return estimate.value
-        ? interpolate(
-              () => i18n.value.save.historySize,
-              steps,
-              formatSize(estimate.value.history),
-          )()
-        : interpolate(() => i18n.value.save.historySteps, steps)()
+    if (historyRow.value.kind === 'insecure' || !estimate.value) return ''
+    return interpolate(
+        () => i18n.value.save.historySize,
+        formatCount(estimate.value.steps),
+        formatSize(estimate.value.history),
+    )()
 })
 const bgmDetail = computed(() => {
     const row = bgmRow.value
