@@ -21,6 +21,7 @@ export {
     isPristine,
     liveState,
     peek,
+    pendingMoveOutcome,
     pushState,
     redoState,
     replaceState,

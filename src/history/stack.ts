@@ -118,12 +118,42 @@ const setBusy = (busy: boolean) => {
     else slotLoading.value = false
 }
 
+/**
+ * What became of the moves queued together while their slot loaded: they landed (the net
+ * direction, and the last step crossed), or nothing changed because an edit or a peek cancelled
+ * them or they netted to nothing, or the slot could not be read.
+ */
+export type MoveOutcome =
+    | { kind: 'landed'; direction: -1 | 1; step: UndoableStep }
+    | { kind: 'cancelled' }
+    | { kind: 'failed' }
+
+/** The moves queued together: presses share one outcome, which settles once. */
+let batch: { outcome: Promise<MoveOutcome>; end: (outcome: MoveOutcome) => void } | undefined
+/** The outcome of the latest Undo or Redo request, when it was queued. */
+let requested: Promise<MoveOutcome> | undefined
+
+const endBatch = (outcome: MoveOutcome) => {
+    const ended = batch
+    batch = undefined
+    if (ended && requested === ended.outcome) requested = undefined
+    ended?.end(outcome)
+}
+
+/**
+ * The outcome of the Undo or Redo just requested, when it was queued behind a slot's load; none
+ * when it landed at once or was refused. The caller that must tell the user what happened waits
+ * for it, so the notice is true when it shows (a queued move can still be cancelled or fail).
+ */
+export const pendingMoveOutcome = () => requested
+
 /** Any edit, or entering peek, cancels pending moves (§1.6.4 #6). */
 export const cancelPendingMoves = () => {
-    if (!pendingMove.value) return
+    if (!pendingMove.value && !batch) return
     pendingMove.value = 0
     generation++
     setBusy(false)
+    endBatch({ kind: 'cancelled' })
 }
 
 watch(
@@ -184,7 +214,7 @@ const load = (slot: Slot): Promise<boolean> => {
 }
 
 /** Moves the index one step, as Undo or Redo does, emitting the entry. */
-const step = (direction: -1 | 1) => {
+const step = (direction: -1 | 1): UndoableStep => {
     const crossed = direction < 0 ? current.value.step : states[index.value + 1]?.step
     index.value += direction
     const { state, snapshot, isDirty } = current.value
@@ -193,6 +223,7 @@ const step = (direction: -1 | 1) => {
     if (!landed || !crossed) throw new Error('A move landed on a slot with no state')
     emitHistoryAction({ kind: direction < 0 ? 'undo' : 'redo', ...landed, step: crossed, isDirty })
     if (state && current.value.snapshot) evictRestored(current.value)
+    return crossed
 }
 
 /** Prefetches the head's neighbours when idle (§1.6.4 #6). */
@@ -218,7 +249,11 @@ const settle = async () => {
         }
         if (target.state) break
         if (!(await load(target))) {
-            if (at === generation) cancelPendingMoves()
+            if (at === generation) {
+                // Nothing moved, and the user can try again: the next press reads the slot anew.
+                endBatch({ kind: 'failed' })
+                cancelPendingMoves()
+            }
             return
         }
         if (at !== generation) return
@@ -226,7 +261,14 @@ const settle = async () => {
     const moves = pendingMove.value
     pendingMove.value = 0
     setBusy(false)
-    for (let i = 0; i < Math.abs(moves); i++) step(moves < 0 ? -1 : 1)
+    let last: UndoableStep | undefined
+    for (let i = 0; i < Math.abs(moves); i++) last = step(moves < 0 ? -1 : 1)
+    // Moves that net to nothing changed nothing.
+    endBatch(
+        last
+            ? { kind: 'landed', direction: moves < 0 ? -1 : 1, step: last }
+            : { kind: 'cancelled' },
+    )
     prefetch()
 }
 
@@ -236,6 +278,14 @@ const queue = (direction: -1 | 1) => {
     const crossed = direction < 0 ? states[from]?.step : states[from + 1]?.step
     const first = pendingMove.value === 0
     pendingMove.value += direction
+    if (!batch) {
+        let end!: (outcome: MoveOutcome) => void
+        const outcome = new Promise<MoveOutcome>((resolve) => {
+            end = resolve
+        })
+        batch = { outcome, end }
+    }
+    requested = batch.outcome
     if (first) {
         setBusy(true)
         void settle()
@@ -299,6 +349,7 @@ export const stackMoveRequestGeneration: Readonly<Ref<number>> = computed(
  * the move is queued while the slot loads, and further presses coalesce (§1.6.4 #6).
  */
 export const undoState = () => {
+    requested = undefined
     if (!canUndo.value) return
     moveRequestGeneration.value++
     if (pendingMove.value || !states[index.value - 1]?.state) return queue(-1)
@@ -310,6 +361,7 @@ export const undoState = () => {
 }
 
 export const redoState = () => {
+    requested = undefined
     if (index.value + pendingMove.value >= states.length - 1) return
     moveRequestGeneration.value++
     if (pendingMove.value || !states[index.value + 1]?.state) return queue(1)
