@@ -258,15 +258,21 @@ export const notify = (
         announcement?: () => string
         /** The card's glyph. A quick toast has no glyph, so a severity without `card` or `action` is dropped. */
         severity?: NoticeSeverity
+        /**
+         * A card of several rows, as the start-up card's: a heading line, then a row for each other
+         * line, with its own glyph and action. `message` is then the lines joined.
+         */
+        lines?: NoticeLine[]
     },
 ) => {
     const notice: Notice = {
         id: id++,
         message,
-        action: options?.action,
-        card: options?.card,
+        action: options?.action ?? options?.lines?.find((line) => line.action)?.action,
+        card: options?.card ?? (options?.lines ? true : undefined),
         announcement: options?.announcement,
         severity: options?.severity,
+        ...(options?.lines ? { lines: options.lines } : {}),
     }
     latestNotice.value = notice
     if (isCard(notice)) {

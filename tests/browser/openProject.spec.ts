@@ -3,7 +3,7 @@ import { captureEntryDescription } from '../../src/history/operations'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { buildZip } from '../../src/zip'
 import { fresh } from '../local/nxsp/chain'
-import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
+import { crafted, jsonOf, setJson, type Item } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
@@ -935,4 +935,86 @@ test('any other ZIP is still "not a project file"', async ({ page }) => {
     await expect(page.getByRole('dialog', { name: 'Open' })).toContainText(
         'This ZIP is not a project file.',
     )
+})
+
+// A newer `patch` (Part 1 §1.6.11.8) is a line of its own on a whole open: beside what else the
+// open has to say, and given way only to an earlier session's unsaved-changes notice.
+
+const PATCH_LINE = 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.'
+
+const patchBytes = async (change?: (items: Item[]) => Item[] | void) => {
+    const file = await crafted((items) => {
+        setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 3 })
+        return change?.(items) ?? items
+    })
+    return [...new Uint8Array(await file.arrayBuffer())]
+}
+
+test('a newer patch beside a file bound in another tab: the separate-copy line and the patch line, in one card', async ({
+    page,
+    context,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await patchBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: PATCH_LINE })).toBeVisible()
+    await imported(page)
+    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+    const other = await context.newPage()
+    await start(other)
+    await openFile(other, 'coconut.nxsp')
+    const card = notice(other).filter({
+        hasText: '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
+    })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText(PATCH_LINE)
+    expect((await sessionOf(other)).file).toBeUndefined()
+})
+
+test('a newer patch beside a BGM that is not loaded: both lines, with Choose Audio', async ({
+    page,
+}) => {
+    await start(page)
+    // The file records its BGM and does not hold it: metadata only, as a Save without it writes.
+    await writeFile(
+        page,
+        'coconut.nxsp',
+        await patchBytes((items) => {
+            const project = jsonOf(items, 'project.json')
+            const { filename, type, sha256, size } = project.bgm
+            project.bgm = { filename, type, hash: sha256.slice(0, 32), size }
+            setJson(items, 'project.json', project)
+            return items.filter((item) => !item.name.startsWith('bgm/'))
+        }),
+    )
+    await openFile(page, 'coconut.nxsp')
+    const card = notice(page).filter({ hasText: PATCH_LINE })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText('BGM not loaded')
+    await expect(card.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
+    // Bound, with its history, as a whole open is.
+    await imported(page)
+    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+})
+
+test('a newer patch gives way to an earlier session’s unsaved-changes notice, which keeps the work', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await patchBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: PATCH_LINE })).toBeVisible()
+    await imported(page)
+    await edit(page, 777)
+    await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+    await page.keyboard.press('n')
+    await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
+    await openFile(page, 'coconut.nxsp')
+    await expect(
+        notice(page).filter({
+            hasText: 'Opened coconut.nxsp. You have unsaved changes to it from',
+        }),
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Restore Session' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: PATCH_LINE })).toHaveCount(0)
 })

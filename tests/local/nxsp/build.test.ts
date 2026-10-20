@@ -726,7 +726,8 @@ test('x through the append writer: carried on entries and steps, copied with a s
         m.entries[1].step.x = x
         setJson(items, 'history/manifest.json', m)
     }, first)
-    assert.equal((await readNxsp(withX)).kind === 'nxsp' && (await readNxsp(withX)).open, 'full')
+    const readX = await readNxsp(withX)
+    assert.ok(readX.kind === 'nxsp' && readX.open === 'full')
 
     // Append: the 500-entry manifest becomes a segment, re-serialized from its entries.
     const source = await inspectNxsp(withX, { token: 't', role: 'target', fingerprint: 'f' })
