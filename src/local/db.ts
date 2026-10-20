@@ -1,12 +1,12 @@
 import type { Key, KvTx, KvUpgrade } from './kv/types'
 
-// The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 2, the second generation, whose store set is
-// `STORES_V1` under its first name) and the versioning rules (§1.6.1): upgrades
+// The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 3, whose store set is `STORES_V1`
+// under its first name) and the versioning rules (§1.6.1): upgrades
 // only add stores, indexes and fields; nothing here or in any version deletes a store or the
 // database, and there is no reset path. The upgrade interface has no delete at all.
 
 export const DB_NAME = 'nse-local-data'
-export const DB_VERSION = 2
+export const DB_VERSION = 3
 
 type StoreSpec = {
     keyPath: string | readonly string[] | null
@@ -106,12 +106,14 @@ const createV1 = (upgrade: KvUpgrade, context: CreateContext) => {
 
 /**
  * Each version's additive step; a version without one (a test's empty upgrade) adds nothing.
- * Version 2 adds any store of the set a version 1 database made before that store joined it
- * (`handles`), so no store this build writes is missing.
+ * Versions 2 and 3 add any store of the set the database lacks: a version 1 database made before
+ * `handles` joined the set, and a version 2 one made by the build whose bump had no step (r2
+ * LS2-5), so every database at this version holds every store this build writes.
  */
 const UPGRADES: Record<number, (upgrade: KvUpgrade, context: CreateContext) => void> = {
     1: createV1,
     2: createMissingStores,
+    3: createMissingStores,
 }
 
 /** The upgrade callback from any older version to the one requested. */

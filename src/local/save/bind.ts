@@ -9,8 +9,8 @@ import {
     splitHandles,
     withoutHandles,
 } from '../handleRows'
-import { fromHex16 } from '../hash'
-import type { KvTx } from '../kv/types'
+import { equalBytes, fromHex16 } from '../hash'
+import { KeyRange, type KvTx } from '../kv/types'
 import { isReadableSessionVersion } from '../records/unknownValues'
 import { clampTime, nextTime } from '../time'
 import {
@@ -64,12 +64,6 @@ export const readSessionStarts = async (tx: KvTx, sessionIds: readonly string[])
 /** Every chain's binding and Export target, `deleting` chains included. */
 export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
     const owners: HandleOwner[] = []
-    let hasStore = true
-    try {
-        tx.describe(HANDLES)
-    } catch {
-        hasStore = false
-    }
     for (const value of await tx.getAll('chains')) {
         if (!isRow(value) || typeof value.chainId !== 'string') continue
         const chainId = value.chainId
@@ -81,10 +75,10 @@ export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
                 role,
                 name: field.name,
                 ...(typeof field.at === 'number' ? { at: field.at } : {}),
-                handle: hasStore && (await tx.getKey(HANDLES, [chainId, role])) !== undefined,
+                handle: (await tx.getKey(HANDLES, [chainId, role])) !== undefined,
             })
         }
-        const kept = hasStore ? await readKeptRow(tx, chainId) : undefined
+        const kept = await readKeptRow(tx, chainId)
         if (kept) owners.push({ chainId, role: KEPT_ROLE, name: kept.name, handle: true })
     }
     return owners
@@ -192,6 +186,27 @@ export const applyRevocation = async (tx: KvTx, chainId: string, revoke: Revocat
     return true
 }
 
+/**
+ * Whether a `save` entry at its `seq` lands where replay reaches it (timeline.ts `replay`): the
+ * session's newest stored entry below it has its snapshot. Otherwise it sits on a state the stored
+ * entries never reach (entries below it lost, or folded into a `recovered` one above it), and the
+ * session would no longer replay.
+ */
+const landsOn = async (tx: KvTx, entry: SaveEntryForm) => {
+    const [before] = await tx.entries('entries', {
+        query: KeyRange.bound(
+            [entry.sessionId, -Infinity],
+            [entry.sessionId, entry.seq],
+            false,
+            true,
+        ),
+        direction: 'prev',
+        limit: 1,
+    })
+    const snapshot = isRow(before?.value) ? before.value.snapshot : undefined
+    return snapshot instanceof Uint8Array && equalBytes(snapshot, fromHex16(entry.snapshot))
+}
+
 /** A Save's `save` entry as a marker keeps it (hashes as hex). */
 export type SaveEntryForm = {
     sessionId: string
@@ -216,10 +231,12 @@ export type OwnSaveBelow = 'pending' | 'stored'
 
 /**
  * Records our own completed Save (§1.4.7): its `save` entry at its reserved `seq` when the chain
- * doesn't hold one there, its session is stored and nothing below the `seq` is still to store,
- * then the identity unit with its marks. A session's `lastSeq` means every entry at or below it is
- * stored (or covered by a `recovered` entry), so the entry is never written past a lower one a tab
- * still holds. False, writing nothing, when the chain is gone or a mark can't be stored.
+ * doesn't hold one there, its session is stored, nothing below the `seq` is still to store and it
+ * lands on the newest stored entry's state (`landsOn`), then the identity unit with its marks;
+ * an entry not written is counted out of the unit's cut. A session's `lastSeq` means every entry
+ * at or below it is stored (or covered by a `recovered` entry), so the entry is never written past
+ * a lower one a tab still holds. False, writing nothing, when the chain is gone or a mark can't be
+ * stored.
  */
 export const finishOwnSave = async (
     tx: KvTx,
@@ -239,8 +256,15 @@ export const finishOwnSave = async (
     const operation = captureOperation(entry.operation)
     if (!(await storeMarks(tx, unit.marks, read))) return false
     const lastSeq = isRow(session) && typeof session.lastSeq === 'number' ? session.lastSeq : 0
-    const follows = below === 'stored' || (below === undefined && lastSeq >= entry.seq - 1)
-    if (isRow(session) && session.chainId === chainId && held === undefined && follows) {
+    // Stored in `seq` order: never past an entry a tab may still store below it.
+    const inOrder = below === 'stored' || (below === undefined && lastSeq >= entry.seq - 1)
+    const written =
+        isRow(session) &&
+        session.chainId === chainId &&
+        held === undefined &&
+        inOrder &&
+        (await landsOn(tx, entry))
+    if (written) {
         const maxSeen = (await readMeta(tx, 'maxSeenTime')) ?? 0
         const now = nextTime(maxSeen, wall)
         const time = nextTime(maxSeen, clampTime(entry.time, now))
@@ -271,6 +295,20 @@ export const finishOwnSave = async (
     const file = { ...unit.file }
     if (isRow(session) && isRow(file.entry) && file.entry.sessionId === entry.sessionId)
         file.entry = { ...file.entry, startedAt: session.startedAt }
+    // The cut counts the file's rows, this entry's among them. Not written, and no tab to store it
+    // later (`pending`), the chain lacks it: counted out, so the cut is what the chain holds and
+    // the next Save's carry test (save/model.ts `carries`) compares like with like.
+    if (
+        !written &&
+        held === undefined &&
+        below !== 'pending' &&
+        isRow(file.entry) &&
+        file.entry.sessionId === entry.sessionId &&
+        file.entry.seq === entry.seq &&
+        typeof file.entry.count === 'number' &&
+        file.entry.count > 1
+    )
+        file.entry = { ...file.entry, count: file.entry.count - 1 }
     const fields = await splitHandles(tx, chainId, { file })
     const record: Row = {
         ...chain,

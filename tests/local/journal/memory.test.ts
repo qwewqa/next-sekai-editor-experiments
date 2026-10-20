@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { equalJson, type JsonValue } from '../../../src/history/operations'
+import { DB_VERSION } from '../../../src/local/db'
 import type { Journal } from '../../../src/local/journal/format'
 import type { MemoryStorage } from '../../../src/local/journal/store'
 import { checkStored } from '../../../src/local/testing/invariants'
@@ -97,8 +98,8 @@ test('after Try Again’s move the journal stays until a strict commit, and the 
         const { workerCore } = await import('../flush/harness')
         const frozenCore = workerCore(world, frozen, { flags: { ignoreVersionChange: true } })
         await frozen.run(() => frozenCore.start())
-        // A v2 tab behind the frozen v1 tab runs in memory.
-        const opening = openSplitJournalPage(world, { flags: { dbVersion: 3 } })
+        // A newer tab behind the frozen current one runs in memory.
+        const opening = openSplitJournalPage(world, { flags: { dbVersion: DB_VERSION + 1 } })
         await world.clock.run()
         const page = await opening
         assert.deepEqual(page.status, { mode: 'memory', reason: 'olderTabs' })

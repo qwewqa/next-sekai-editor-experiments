@@ -145,7 +145,7 @@ test.describe('Copy Diagnostic Info…', () => {
             return value
         }
         const first = await text()
-        expect(first).toMatch(/^Database: version 2, format 1$/m)
+        expect(first).toMatch(/^Database: version 3, format 1$/m)
         expect(first).toMatch(/^Storing: on$/m)
         expect(first).toMatch(/^Worker restarts: 0$/m)
         expect(first).toMatch(/^Sessions: \d+, chains: \d+$/m)
