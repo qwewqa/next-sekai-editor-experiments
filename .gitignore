@@ -13,3 +13,5 @@ public/resource/*.scp
 # Local design capture harnesses, never committed
 /tests/design-capture*/
 /playwright.*.local.config.ts
+
+__pycache__/

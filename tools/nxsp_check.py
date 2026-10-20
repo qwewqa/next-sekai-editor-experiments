@@ -415,6 +415,11 @@ def media_form(form, what, prefix, entries_by_name):
 # Stable description carriers are structural; native operation payloads are opaque.
 OP_BYTES = 256 * 1024
 CONTEXT_BYTES = 128 * 1024
+# The limits of an `x` (docs/format-versioning.md, section 3), the same on every carrier: its own byte
+# size and its own nesting depth counted from the `x` itself (the object is level 0). No host cap
+# (a step's depth and bytes, the recovery context's budget) counts what is in an `x`.
+EXT_BYTES = OP_BYTES
+EXT_DEPTH = 32
 
 
 def finite_wire_json(value, path, max_bytes=OP_BYTES, max_depth=16):
@@ -450,10 +455,39 @@ CONTEXT_KEYS = ("head", "headIndex", "dropped", "omitted", "x")
 
 
 def extension_form(value, path):
-    """An `x`, when present, is a JSON object within the operation byte limit."""
+    """An `x`, when present, is a JSON object within the extension byte and depth limits (the one rule)."""
     if "x" in value:
         need(isinstance(value["x"], dict), f"{path}.x: not an object")
-        need(len(js_json(value["x"]).encode("utf-8")) <= OP_BYTES, f"{path}.x: bytes")
+        finite_wire_json(value["x"], f"{path}.x", EXT_BYTES, EXT_DEPTH)
+
+
+def no_x(value):
+    """An item without its `x`, which no host cap counts."""
+    if isinstance(value, dict) and "x" in value:
+        return {k: v for k, v in value.items() if k != "x"}
+    return value
+
+
+def context_no_x(value):
+    """A recovery context without the `x` of itself, its head and its dropped items."""
+    value = no_x(value)
+    if not isinstance(value, dict):
+        return value
+    value = dict(value)
+    if "head" in value:
+        value["head"] = no_x(value["head"])
+    if isinstance(value.get("dropped"), list):
+        value["dropped"] = [no_x(item) for item in value["dropped"]]
+    return value
+
+
+def step_no_x(value):
+    """A step without every `x` in it."""
+    value = no_x(value)
+    if isinstance(value, dict) and "recoveryContext" in value:
+        value = dict(value)
+        value["recoveryContext"] = context_no_x(value["recoveryContext"])
+    return value
 
 
 def strip_keys(value, keys, path, unknown):
@@ -507,7 +541,7 @@ def step_description(value, path):
 
 
 def recovery_context(value, path):
-    finite_wire_json(value, path, OP_BYTES + CONTEXT_BYTES + 2048, 19)
+    finite_wire_json(context_no_x(value), path, OP_BYTES + CONTEXT_BYTES + 2048, 19)
     need(isinstance(value, dict) and set(value) <= set(CONTEXT_KEYS)
          and {"head", "headIndex", "dropped", "omitted"} <= set(value), f"{path}: context keys")
     extension_form(value, path)
@@ -518,11 +552,11 @@ def recovery_context(value, path):
     need(is_uint(value["omitted"]) and value["omitted"] <= SAFE - len(dropped), f"{path}.omitted")
     for i, item in enumerate(dropped):
         step_description(item, f"{path}.dropped[{i}]")
-    need(len(js_json(dropped).encode("utf-8")) <= CONTEXT_BYTES, f"{path}: optional context bytes")
+    need(len(js_json([no_x(item) for item in dropped]).encode("utf-8")) <= CONTEXT_BYTES, f"{path}: optional context bytes")
 
 
 def step_form(value, path):
-    finite_wire_json(value, path, 2 * OP_BYTES + CONTEXT_BYTES + 4096, 20)
+    finite_wire_json(step_no_x(value), path, 2 * OP_BYTES + CONTEXT_BYTES + 4096, 20)
     need(isinstance(value, dict), f"{path}: step object")
     need(set(value) <= set(STEP_KEYS) and "kind" in value and "operation" in value, f"{path}: step keys")
     extension_form(value, path)
@@ -659,8 +693,8 @@ def check_file(path):
     need(isinstance(project, dict), "project.json: not an object")
     need("parts" not in project, "project.json: parts, which v0.6.0 never writes")
     need(project.get("format") == "nxsp" and num_is(project.get("version"), 1), "project.json: format or version")
-    need((is_uint(project.get("minor")) and project["minor"] <= 1) and num_is(project.get("levelVersion"), 1), "project.json: minor or levelVersion")
-    need("patch" in project and is_uint(project["patch"]) and project["patch"] <= 0, "project.json: patch")
+    need(is_uint(project.get("minor")) and num_is(project.get("levelVersion"), 1), "project.json: minor or levelVersion")
+    need("patch" in project and is_uint(project["patch"]), "project.json: patch")
     for key in ("appVersion", "id", "lineageId"):
         need(is_str(project.get(key)) and project[key] != "", f"project.json.{key}")
     for key in ("name", "exportName"):
@@ -728,6 +762,7 @@ def check_file(path):
 
     info = {"path": path, "revision": rev["id"], "ancestors": set(ancestors), "rows": None}
     history = project.get("history")
+    carriers = set()
     if history is None:
         need("completeFrom" not in rev, "revision.completeFrom without history")
     else:
@@ -744,8 +779,13 @@ def check_file(path):
         need(history.get("chunks") == "history/chunks.bin", "history.chunks")
         point(history["manifest"], "history.manifest")
         point(history["chunks"], "history.chunks")
-        info["rows"] = check_history(project, history, segments, by_name, summary, rev)
+        info["rows"] = check_history(project, history, segments, by_name, summary, rev, carriers)
         info["completeFrom"] = rev["completeFrom"]
+
+    # `minor` and `patch` are the lowest the content needs, by the pinned tables (the writer's `minorOf`
+    # and `patchOf`): not just numbers this build can read.
+    need(project["minor"] == expected_minor(history is not None), f"project.json: minor {project['minor']} is not the lowest the content needs")
+    need(project["patch"] == expected_patch(carriers), f"project.json: patch {project['patch']} is not the lowest the content needs")
 
     # Every entry but project.json is named by a pointer, and every pointer names an entry.
     for name in names[1:]:
@@ -765,13 +805,79 @@ def check_file(path):
     return info
 
 
+# `MINOR_TABLE` and `PATCH_TABLE` of src/local/nxsp/version.ts for v1, which this checker pins itself: the
+# only thing that needs a minor above 0 is a manifest `version` 2, that is, a history; every other thing
+# (level version 1, root v 1, each entry kind, each ZIP entry kind) is 0. Every `x` carrier row is 0, since
+# no writer writes one.
+MINOR_BY_MANIFEST_VERSION = {2: 1}
+CARRIER_PATCH = {"entry.x": 0, "step.x": 0, "context.x": 0, "item.x": 0, "slot.x": 0, "stack.x": 0,
+                 "undoStack.x": 0, "part.x": 0}
+
+
+def expected_minor(has_history):
+    return MINOR_BY_MANIFEST_VERSION[2] if has_history else 0
+
+
+def expected_patch(carriers):
+    return max([CARRIER_PATCH[c] for c in carriers] + [0])
+
+
+def carriers_in(part, found):
+    """The `x` carriers a part holds, by the names of CARRIER_PATCH (the editor's carriersIn)."""
+    def context(c):
+        if not isinstance(c, dict):
+            return
+        if "x" in c:
+            found.add("context.x")
+        dropped = c.get("dropped")
+        for item in [c.get("head")] + (dropped if isinstance(dropped, list) else []):
+            if isinstance(item, dict) and "x" in item:
+                found.add("item.x")
+
+    def step(s):
+        if isinstance(s, dict):
+            if "x" in s:
+                found.add("step.x")
+            context(s.get("recoveryContext"))
+
+    def slot(s):
+        if isinstance(s, dict):
+            if "x" in s:
+                found.add("slot.x")
+            step(s.get("step"))
+
+    if not isinstance(part, dict):
+        return
+    if "x" in part:
+        found.add("part.x")
+    for e in part.get("entries") if isinstance(part.get("entries"), list) else []:
+        if not isinstance(e, dict):
+            continue
+        if "x" in e:
+            found.add("entry.x")
+        step(e.get("step"))
+        context(e.get("recoveryContext"))
+        stack = e.get("stack")
+        if isinstance(stack, dict):
+            if "x" in stack:
+                found.add("stack.x")
+            for s in stack.get("push") if isinstance(stack.get("push"), list) else []:
+                slot(s)
+    stack = part.get("undoStack")
+    if isinstance(stack, dict):
+        if "x" in stack:
+            found.add("undoStack.x")
+        for s in stack.get("slots") if isinstance(stack.get("slots"), list) else []:
+            slot(s)
+
+
 def history_order(history):
     if history is None:
         return []
     return list(history.get("segments", [])) + ["history/manifest.json", "history/chunks.bin"]
 
 
-def check_history(project, history, segments, by_name, summary, rev):
+def check_history(project, history, segments, by_name, summary, rev, carriers):
     parts = []
     for name in segments:
         need(len(by_name[name]["data"]) <= CAPS["manifest"], f"{name}: over its cap")
@@ -788,6 +894,8 @@ def check_history(project, history, segments, by_name, summary, rev):
          and num_is(manifest["version"], 2), "manifest: version or a key missing")
     extension_form(manifest, "manifest")
     parts.append(("manifest", manifest))
+    for _, part in parts:
+        carriers_in(part, carriers)
 
     chunks_bin = by_name["history/chunks.bin"]["data"]
     need(len(chunks_bin) <= CAPS["chunks"], "chunks.bin: over its cap")
@@ -1468,9 +1576,12 @@ ENTRY_KEYS = ["kind", "time", "operation", "step", "recoveryContext", "snapshot"
 
 
 def part_extension(value, path, issues):
-    """An `x` is a JSON object within the operation byte limit, on every carrier."""
-    if "x" in value and (not isinstance(value["x"], dict) or len(js_json(value["x"]).encode("utf-8")) > OP_BYTES):
-        issues.add("damaged", f"{path}.x")
+    """An `x` is valid by the one extension rule, on every carrier."""
+    if "x" in value:
+        try:
+            extension_form(value, path)
+        except Fail:
+            issues.add("damaged", f"{path}.x")
 
 
 def part_slot(value, path, issues):
@@ -1572,7 +1683,8 @@ def check_part(value, path, manifest):
         return None, [("damaged", path)]
     if manifest:
         version = value.get("version")
-        if not is_safe_int(version) or version < 1:
+        # Below the current version is damaged (no older manifest generation is supported before the ship).
+        if not is_safe_int(version) or version < 2:
             return None, [("damaged", f"{path}.version")]
         if version != 2:
             return None, [("newer", f"{path}.version")]

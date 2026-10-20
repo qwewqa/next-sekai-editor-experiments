@@ -11,11 +11,14 @@ import {
     createRecoveryContext,
     decodeOperation,
     equalJson,
+    EXTENSION_BYTES,
+    EXTENSION_DEPTH,
     fieldApplies,
     fieldCodecs,
     jsonBytes,
     OPERATION_NATIVE_BYTES,
     OPERATION_WIRE_BYTES,
+    OPERATION_WIRE_DEPTH,
     operationGroup,
     RECOVERY_CONTEXT_BYTES,
     recoverySources,
@@ -734,6 +737,67 @@ test('x must be a JSON object within the operation byte limit; no other key is i
                 },
             }),
         /Invalid History step/,
+    )
+})
+
+// One rule for an `x` on every carrier: its own depth and byte size, measured from the `x` itself.
+// A host's caps (a step's depth and bytes, the recovery context's budget) never count what is in it.
+const nested = (levels: number): JsonValue => {
+    let value: JsonValue = {}
+    for (let i = 1; i < levels; i++) value = { a: value }
+    return value
+}
+
+test('x has its own depth and size limits, the same on every carrier, outside the host caps', () => {
+    const operation = wire('future.action', {})
+    const deep = nested(25)
+    const tooDeep = nested(EXTENSION_DEPTH + 2)
+    const edge = nested(EXTENSION_DEPTH + 1)
+    const item = { kind: 'edit', operation }
+    const contextOf = (x: JsonValue | undefined, at: 'context' | 'head' | 'item') => ({
+        head: at === 'head' ? { ...item, x } : item,
+        headIndex: 0,
+        dropped: [at === 'item' ? { ...item, x } : item],
+        omitted: 0,
+        ...(at === 'context' ? { x } : {}),
+    })
+    const carriers: ((x: JsonValue) => unknown)[] = [
+        (x) => captureStep({ kind: 'edit', operation, x }),
+        (x) => captureStep({ kind: 'edit', operation, recoveryContext: contextOf(x, 'context') }),
+        (x) => captureStep({ kind: 'edit', operation, recoveryContext: contextOf(x, 'head') }),
+        (x) => captureStep({ kind: 'edit', operation, recoveryContext: contextOf(x, 'item') }),
+        (x) => captureRecoveryContext(contextOf(x, 'context')),
+        (x) => captureRecoveryContext(contextOf(x, 'item')),
+        (x) => captureEntryDescription({ kind: 'edit', step: { kind: 'edit', operation, x } }),
+    ]
+    for (const [i, capture] of carriers.entries()) {
+        assert.doesNotThrow(() => capture(deep), `carrier ${i}: 25 deep`)
+        assert.doesNotThrow(() => capture(edge), `carrier ${i}: the last allowed level`)
+        assert.throws(() => capture(tooDeep), `carrier ${i}: past the limit`)
+    }
+    // The step's own depth cap is the operation's alone: an operation at its cap plus a deep x.
+    const atCap = nested(OPERATION_WIRE_DEPTH - 1)
+    assert.doesNotThrow(() =>
+        captureStep({
+            kind: 'edit',
+            operation: atCap,
+            x: deep,
+            recoveryContext: contextOf(deep, 'item'),
+        }),
+    )
+    // The size limit is the x's own too: three of 100 KB sit beside each other in a context whose
+    // budget is 128 KB, since the budget counts no x; one over the limit is refused everywhere.
+    const heavy = { text: 'x'.repeat(100 * 1024) }
+    const context = createRecoveryContext(
+        captureStep({ kind: 'edit', operation }),
+        [0, 1, 2].map(() => captureStep({ kind: 'edit', operation, x: heavy })),
+        3,
+    )
+    assert.equal(context.dropped.length, 3)
+    assert.equal(context.omitted, 0)
+    assert.doesNotThrow(() => captureStep({ kind: 'edit', operation, recoveryContext: context }))
+    assert.throws(() =>
+        captureStep({ kind: 'edit', operation, x: { text: 'x'.repeat(EXTENSION_BYTES) } }),
     )
 })
 
