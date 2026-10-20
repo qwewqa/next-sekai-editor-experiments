@@ -222,7 +222,7 @@ F: Name shortened for display
 
 #property.note.group.emptyName en
 T: Set Group to "" on 2 notes
-R: Group [groupId]: ~Varies > ~Not set
+R: Group [groupId]: ~Varies > ""
 
 #property.note.stage en
 T: Set Stage to "Left Stage" on 2 notes
@@ -509,7 +509,7 @@ T: Moved 5 groups into folder "Folder One"
 T: Moved 2 stages out of folders
 
 #owner.moveMany.zero en
-T: Moved 0 groups out of folders
+T: Moved groups out of folders
 
 #owner.duplicate.group en
 T: Duplicated "Alpha" group
@@ -1190,7 +1190,7 @@ T: Set Lane to 1 on 1 note
 
 #property.note.group.beforeName en
 T: Set Group to "" on 2 notes
-R: Group [groupId]: Old Group > ~Not set
+R: Group [groupId]: Old Group > ""
 
 #object.edit.note.empty en
 T: Edited notes
@@ -1299,7 +1299,7 @@ R: 最初から [isFromStart]: 無効 > 有効
 
 #owner.create.stage.inFolder en
 T: Added "In Folder" stage
-R: Folder [folder]: ~Not set
+R: Folder [folder]: ""
 
 #dynamicStages.enable.empty en
 T: Enabled dynamic stages
@@ -1330,3 +1330,35 @@ S: 3 steps (no prefix)
   - Renamed "Alpha" group to "Beta"
   + Pasted 2 objects
   - Added 2 notes
+
+#group.ownerDelete.cascade en
+T: Deleted 3 groups
+R: Removed [removed]: 3 groups / 5 notes / 1 time scale
+R: Added [added]: 1 group
+S: 3 steps
+  - Deleted "Gamma" group
+  + Deleted "Beta" group
+  + Deleted "Alpha" group
+
+#group.ownerDelete.replacementOnly en
+T: Deleted 2 groups
+R: Added [added]: 1 group
+S: 2 steps
+  + Deleted "Beta" group
+  - Deleted "Alpha" group
+
+#group.ownerDuplicate.cascade en
+T: Duplicated 2 groups
+R: Added [added]: 2 groups / 125 notes / 1 time scale
+S: 2 steps
+  + Duplicated "Alpha" group
+  + Duplicated "Alpha" group
+
+#owner.moveMany.zero.into en
+T: Moved groups into folder "Folder One"
+
+#owner.moveMany.zero.stages en
+T: Moved stages out of folders
+
+#owner.moveMany.zero.stagesInto en
+T: Moved stages into folder "Folder S"

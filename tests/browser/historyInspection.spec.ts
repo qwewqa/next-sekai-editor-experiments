@@ -61,7 +61,10 @@ test.afterEach(({ page }) => {
 })
 
 // Valid imported metadata supplies historical endpoints; every control still uses real pointer/key events.
-const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' | 'folders' = 'basic') => {
+const seed = async (
+    page: Page,
+    mode: 'basic' | 'rows' | 'items' | 'folders' | 'groups' = 'basic',
+) => {
     await page.evaluate(async (mode) => {
         const { appImport, history, historySteps, settings } = window.editorTest
         const { captureOperationRecipe } = await appImport<
@@ -157,6 +160,24 @@ const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' | 'folders' = '
             after.initialLife = before.initialLife
             after.levelInfo = before.levelInfo
             after.bgm = before.bgm
+        } else if (mode === 'groups') {
+            // The only group is deleted and a default one takes its place; a BGM file is chosen
+            // while the offset already has a value.
+            before.groups = new Map([[1 as GroupId, { name: 'Default' }]])
+            after.groups = new Map([[9 as GroupId, { name: 'Default', forceNoteSpeed: 1.5 }]])
+            before.bgm = { ...live.bgm, offset: 0.25, meta: undefined }
+            after.bgm = {
+                ...live.bgm,
+                offset: -0.12,
+                meta: {
+                    hash: '4'.repeat(32),
+                    filename: 'Opening theme (final mix).wav',
+                    size: 2048,
+                    type: 'audio/wav',
+                },
+            }
+            after.initialLife = before.initialLife
+            after.levelInfo = before.levelInfo
         } else if (mode === 'items') {
             after.levelInfo = {
                 ...before.levelInfo,
@@ -573,6 +594,57 @@ test('an added or removed entry shows its one value per row, under a singular fo
     await expect(added.getByText(/^(Before|After)$/)).toHaveCount(0)
     await expect(removed.getByText(/^(Before|After)$/)).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('property-one-sided.png') })
+})
+
+test('an unset value reads Not set, a file with an offset change is not badged, and no name carries an id', async ({
+    page,
+}) => {
+    await seed(page, 'groups')
+    await open(page)
+    // M1: an unset Force Note Speed is Not set, never 0.
+    const removed = dialog(page).locator('[data-property-section="groups:1"]')
+    await expect(removed.locator('[data-property-badge]')).toHaveText('Removed')
+    await expect(
+        removed.locator('[data-property-row="forceNoteSpeed"] [data-property-value]'),
+    ).toHaveText('Not set')
+    const added = dialog(page).locator('[data-property-section="groups:9"]')
+    await expect(
+        added.locator('[data-property-row="forceNoteSpeed"] [data-property-value]'),
+    ).toHaveText('1.5')
+    // L8: the removed and the added group are both "Default", with no id after the name.
+    await expect(removed.locator('h3')).toHaveText(/^Group Propertiess*Defaults*Removed$/)
+    await expect(added.locator('h3')).toHaveText(/^Group Propertiess*Defaults*Added$/)
+    await expect(dialog(page)).not.toContainText('(#')
+    // M2: the BGM section has a row on both sides, so it carries no badge and keeps the before.
+    const bgm = dialog(page).locator('[data-property-section="bgm:all"]')
+    await expect(bgm.locator('[data-property-badge]')).toHaveCount(0)
+    await expect(
+        bgm.locator('[data-property-row="offset"] [data-property-before] [data-property-value]'),
+    ).toHaveText('250')
+    await expect(
+        bgm.locator('[data-property-row="offset"] [data-property-after] [data-property-value]'),
+    ).toHaveText('-120')
+    // L5: the file has one name, the one Step Details shows: without its extension.
+    await expect(
+        bgm.locator('[data-property-row="filename"] [data-property-before] [data-property-value]'),
+    ).toHaveText('Not set')
+    await expect(
+        bgm.locator('[data-property-row="filename"] [data-property-after] [data-property-value]'),
+    ).toHaveText('Opening theme (final mix)')
+    await expect(dialog(page)).not.toContainText('Not present')
+})
+
+test('Property Changes titles a group of steps by its title alone, as Step Details does', async ({
+    page,
+}) => {
+    await seed(page)
+    await page.locator('[data-show-edits]').click()
+    await select(page, 5, 3, [4, 5])
+    await open(page)
+    const title = dialog(page).locator('[data-property-description]')
+    await expect(title).toHaveText('Changed Initial Life')
+    // The strip's own label carries the step count; Step Details lists steps under its own heading.
+    await expect(dialog(page)).not.toContainText('2 steps')
 })
 
 test('a removed media section keeps only its before value, and a placeholder is quieter', async ({

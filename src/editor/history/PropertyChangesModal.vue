@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { getHistoryOperationContext } from '../../history/createHistoryOperation'
+import { renderOperationRecipe } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
 import { formatDateTimeSeconds } from '../../i18n/when'
 import BaseModal from '../../modals/BaseModal.vue'
@@ -26,6 +28,10 @@ import { peekedLabel } from './selection'
 const props = defineProps<{ comparison: InspectionComparison; summary: string }>()
 const emit = defineEmits<{ close: [] }>()
 const limit = ref(PROPERTY_PAGE_SIZE)
+// The step's title alone, as Step Details has it; its step count belongs to a list of steps.
+const title = computed(() =>
+    renderOperationRecipe(props.comparison.request.recipe, getHistoryOperationContext()),
+)
 const inspection = computed(() =>
     propertyInspection.value?.comparison === props.comparison
         ? propertyInspection.value
@@ -60,9 +66,13 @@ onBeforeUnmount(() => {
         <DetailsHeader
             scope="property"
             class="select-text [overflow-wrap:anywhere]"
-            :title="peekedLabel(comparison.request)"
+            :title="title"
             :meta="formatDateTimeSeconds(comparison.request.time)"
-            :summary="summary !== peekedLabel(comparison.request) ? summary : undefined"
+            :summary="
+                summary !== title && summary !== peekedLabel(comparison.request)
+                    ? summary
+                    : undefined
+            "
             data-property-context
         />
         <div class="min-h-24 min-w-0" data-property-comparison>
@@ -92,7 +102,7 @@ onBeforeUnmount(() => {
                                     propertyReferenceText(section.afterName)
                             "
                             direction="right"
-                            class="size-3 shrink-0"
+                            class="size-3 shrink-0 text-fg/70"
                         />
                         <span
                             v-if="
