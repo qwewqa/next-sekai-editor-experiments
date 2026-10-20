@@ -1289,7 +1289,7 @@
       "deletedEvents": "已刪除{0}事件",
       "cutEvents": "已剪下{0}事件"
     },
-    "undidSteps": "復原了 {0} 步",
+    "undidSteps": "撤銷了 {0} 步",
     "redidSteps": "重做了 {0} 步",
     "dynamicStages": {
       "title": "動態舞台",
@@ -1350,7 +1350,7 @@
       "recoveryContext": "先前操作",
       "recoveryHead": "來源操作",
       "omittedDescriptions": "已省略的先前操作說明：{0}",
-      "droppedSteps": "已遺失的復原步驟：{0}",
+      "droppedSteps": "已遺失的撤銷步驟：{0}",
       "counts": {
         "note": "{0} 個音符",
         "bpm": "{0} 個 BPM",

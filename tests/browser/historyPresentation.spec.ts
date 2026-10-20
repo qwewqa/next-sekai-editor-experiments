@@ -13,9 +13,11 @@ const capture = async (page: Page, name: string) => {
     await mkdir(folder, { recursive: true })
     await page.screenshot({ path: join(folder, `${name}.png`), animations: 'disabled' })
 }
+// The Now row repeats the newest entry's text: it is not the stored row.
 const row = (page: Page, label: string) =>
     list(page)
         .getByRole('row')
+        .and(page.locator(':not(.timeline-now)'))
         .filter({ has: page.getByText(label, { exact: true }) })
 
 const load = async (page: Page) => {
