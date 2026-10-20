@@ -988,20 +988,31 @@ test('origin, continue, restore, recovery and the file events carry their own fi
     accepted({ id: 'nse.externalChange', data: {} })
 })
 
-// The owner operations that the manager makes need its Vue components, so a browser spec runs
-// their producers. Each is named here, and the completeness test reads it for the id.
-const browserCovered: Record<string, string> = {
-    'nse.owner.create': 'historyManagerProducers.spec.ts',
-    'nse.owner.move': 'historyManagerProducers.spec.ts',
-    'nse.owner.moveMany': 'historyManagerProducers.spec.ts',
-    'nse.owner.delete': 'historyManagerProducers.spec.ts',
-    'nse.owner.ungroup': 'historyManagerProducers.spec.ts',
-}
+// The owner operations that the manager makes need its Vue components, so they cannot run here.
+// One browser test runs their producers, asserts that each id comes out known and decoded, and
+// fails when the registry holds an owner id that neither it nor a receipt here covers. This file
+// checks that the test is declared, with each of the ids in its body, rather than that an id is
+// mentioned anywhere in a spec.
+const managerSpec = 'historyManagerProducers.spec.ts'
+const managerTest = 'every owner operation id comes out of a manager producer, known and decoded'
+const browserCovered = [
+    'nse.owner.create',
+    'nse.owner.move',
+    'nse.owner.moveMany',
+    'nse.owner.delete',
+    'nse.owner.ungroup',
+]
 
-test('every operation id has a receipt test, in this file or in the browser spec that runs its producer', () => {
-    for (const [id, spec] of Object.entries(browserCovered)) {
-        const text = readFileSync(new URL(`../browser/${spec}`, import.meta.url), 'utf8')
-        assert(text.includes(`'${id}'`), `${spec} does not run ${id}`)
+test('every operation id has a receipt test, in this file or in the browser test that runs its producer', () => {
+    const text = readFileSync(new URL(`../browser/${managerSpec}`, import.meta.url), 'utf8')
+    const declaration = `\ntest('${managerTest}'`
+    const start = text.indexOf(declaration)
+    assert(start >= 0, `${managerSpec} declares no test named "${managerTest}"`)
+    // The test ends where the next top-level statement starts.
+    const end = text.indexOf('\n})\n', start)
+    const body = text.slice(start + 1, end)
+    for (const id of browserCovered) {
+        assert(body.includes(`'${id}'`), `"${managerTest}" does not check ${id}`)
         seen.add(id)
     }
     assert.deepEqual([...seen].sort(), Object.keys(operationCodecs).sort())

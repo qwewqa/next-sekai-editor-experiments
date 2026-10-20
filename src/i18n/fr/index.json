@@ -1349,7 +1349,7 @@
       "changed": "Modification",
       "displaced": "Remplacement",
       "placed": "Collage",
-      "pastedFlipped": "Retourné au collage",
+      "pastedFlipped": "Collé et retourné",
       "retainedInitialBpm": "Changement de BPM initial conservé",
       "pivot": "Origine de mise à l’échelle",
       "composedTransform": "Ajustements multiples",

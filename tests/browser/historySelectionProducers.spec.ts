@@ -80,7 +80,9 @@ test('Cut retains protected BPM and excludes derived connector operands from act
     ).toBe(1)
 })
 
-test('unsupported-only Cut preserves its existing zero-result step', async ({ page }) => {
+// A connector has no remover, so a connector-only Cut removes nothing: it copies, as Cut of the
+// protected initial BPM does, and pushes no step (owner, 2026-10-19: no step for a no-op).
+test('connector-only Cut copies and leaves no step', async ({ page }) => {
     await seed(page, [[{ beat: 2 }, { beat: 4 }]])
     await page.evaluate(async () => {
         const { history, store, appImport } = window.editorTest
@@ -97,8 +99,9 @@ test('unsupported-only Cut preserves its existing zero-result step', async ({ pa
     })
     const result = await summary(page)
     expect(result.notes).toHaveLength(2)
-    expect(result.undo).toBe(true)
-    expect(result.step?.operation).toMatchObject({ id: 'nse.object.cut', data: { removed: {} } })
+    expect(result.undo).toBe(false)
+    expect(result.step?.operation).toMatchObject({ id: 'nse.origin' })
+    await expect(page.locator('.notification')).toHaveText('Copied 1 object')
 })
 
 test('Cut of only the protected initial BPM copies it and leaves no step', async ({ page }) => {
@@ -309,7 +312,9 @@ test('Scale retains displaced principal participation and exact survivor lineage
     })
 })
 
-test('a Scale roundtrip retains the existing accepted zero-result step', async ({ page }) => {
+// Dragging the factor back to where it started leaves the chart as it was: no step (owner,
+// 2026-10-19). The session ends and the selection is as the session left it.
+test('a net-zero Scale Apply pushes no step', async ({ page }) => {
     await seed(page, [[{ beat: 2 }], [{ beat: 4 }]])
     await page.evaluate(async () => {
         const { appImport, history } = window.editorTest
@@ -331,16 +336,11 @@ test('a Scale roundtrip retains the existing accepted zero-result step', async (
     })
     const result = await summary(page)
     expect(result.notes.map((note) => note.beat)).toEqual([2, 4])
-    expect(result.undo).toBe(true)
-    expect(result.step?.operation).toMatchObject({
-        id: 'nse.object.scale',
-        data: { subject: 'objects', changed: {}, transform: { mode: 'composed' } },
-    })
+    expect(result.undo).toBe(false)
+    expect(result.step?.operation).toMatchObject({ id: 'nse.origin' })
 })
 
-test('Scale preserves the existing zero-result Apply after a source-equivalent State replacement', async ({
-    page,
-}) => {
+test('Scale Apply after a source-equivalent State replacement pushes no step', async ({ page }) => {
     await seed(page, [[{ beat: 2 }], [{ beat: 4 }]])
     await page.evaluate(async () => {
         const { appImport, history } = window.editorTest
@@ -353,11 +353,8 @@ test('Scale preserves the existing zero-result Apply after a source-equivalent S
     })
     const result = await summary(page)
     expect(result.notes.map((note) => note.beat)).toEqual([2, 4])
-    expect(result.undo).toBe(true)
-    expect(result.step?.operation).toMatchObject({
-        id: 'nse.object.scale',
-        data: { subject: 'objects', changed: {} },
-    })
+    expect(result.undo).toBe(false)
+    expect(result.step?.operation).toMatchObject({ id: 'nse.origin' })
 })
 
 for (const route of ['drag', 'promotedNumeric'] as const) {

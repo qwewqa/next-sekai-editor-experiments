@@ -40,9 +40,9 @@ export const addGroup = (folder?: FolderId) => {
             gathered: 0,
         },
     })
-    pushState(operation, result)
+    const pushed = pushState(operation, result)
 
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 
     return groupId
 }
@@ -63,12 +63,12 @@ export const renameGroup = (groupId: GroupId, value: string) => {
             after: captureName(name),
         },
     })
-    pushState(operation, {
+    const pushed = pushState(operation, {
         ...state.value,
         groups: newGroups,
     })
 
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 }
 
 export const openGroupProperties = async (groupId: GroupId) => {

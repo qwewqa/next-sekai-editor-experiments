@@ -1349,8 +1349,8 @@ const controls: Pick<
         }
         const result = edit(active)
         const operation = editOperation(active, changed)
-        pushState(operation, result)
-        notify(() => operation.fallback.text)
+        const pushed = pushState(operation, result)
+        if (pushed) notify(() => operation.fallback.text)
     },
     dragCancel: cancel,
 }

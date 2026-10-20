@@ -38,12 +38,12 @@ export const offset: Tool = {
         if (!delta || offset === bgm.value.offset) return
 
         const operation = bgmOffsetOperation(bgm.value.offset, offset)
-        pushState(operation, {
+        const pushed = pushState(operation, {
             ...state.value,
             bgm: { ...bgm.value, offset },
         })
 
-        notify(() => operation.fallback.text)
+        if (pushed) notify(() => operation.fallback.text)
     },
 
     dragCancel() {

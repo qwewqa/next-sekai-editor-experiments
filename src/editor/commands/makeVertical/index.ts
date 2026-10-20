@@ -32,8 +32,8 @@ export const makeVertical: Command = {
             id: 'nse.note.vertical',
             data: { targets: counts.note ?? 0 },
         })
-        pushState(operation, result)
+        const pushed = pushState(operation, result)
         view.entities = { hovered: [], creating: [] }
-        notify(() => operation.fallback.text)
+        if (pushed) notify(() => operation.fallback.text)
     },
 }

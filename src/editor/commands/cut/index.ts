@@ -94,8 +94,10 @@ export const cut: Command = {
             source: clipboardSource(),
         })
 
+        // A type with no remover leaves the chart as it is, so it is copied and never removed.
         const removeEntities = entities.filter(
-            (entity) => canRemoves[entity.type]?.(entity as never) ?? true,
+            (entity) =>
+                removes[entity.type] && (canRemoves[entity.type]?.(entity as never) ?? true),
         )
         if (!removeEntities.length) {
             // Copied but nothing could go, so there is no step to undo.
@@ -123,12 +125,12 @@ export const cut: Command = {
                 removed: countNativeEntities(removedEntities(state.value, result, removeEntities)),
             },
         })
-        pushState(operation, result)
+        const pushed = pushState(operation, result)
         view.entities = {
             hovered: [],
             creating: [],
         }
-        notify(() => operation.fallback.text)
+        if (pushed) notify(() => operation.fallback.text)
     },
 }
 

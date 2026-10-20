@@ -179,8 +179,8 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
     ) => {
         const flat = flattenFolderTree(next, config.entriesOf(base), folders)
         const operation = createHistoryOperation(input)
-        pushState(operation, config.withData(base, flat.entries, flat.folders))
-        notify(() => operation.fallback.text)
+        const pushed = pushState(operation, config.withData(base, flat.entries, flat.folders))
+        if (pushed) notify(() => operation.fallback.text)
     }
 
     /** "#1", "#2", … as new groups and stages are named. */

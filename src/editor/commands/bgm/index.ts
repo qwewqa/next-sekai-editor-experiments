@@ -52,12 +52,12 @@ export const changeBgm = async (file?: File) => {
             return
 
         const operation = bgmOperation(old, newBgm)
-        pushState(operation, {
+        const pushed = pushState(operation, {
             ...liveState.value,
             bgm: newBgm,
         })
 
-        notify(() => operation.fallback.text)
+        if (pushed) notify(() => operation.fallback.text)
     } finally {
         guard.dispose()
     }

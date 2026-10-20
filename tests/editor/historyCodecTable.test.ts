@@ -228,6 +228,24 @@ const table: Record<OperationId, Row> = {
         ],
         invalid: [
             [
+                'displaced without a Beat assignment',
+                {
+                    subject: 'objects',
+                    changed: { note: 1, bpm: 1 },
+                    assignments: [change('isCritical', false, true), change('bpm', 120, 150)],
+                    displaced: { bpm: 1 },
+                },
+            ],
+            [
+                'a retained initial BPM without a Beat assignment',
+                {
+                    subject: 'bpm',
+                    changed: { bpm: 1 },
+                    assignments: [change('bpm', 120, 150)],
+                    retainedInitialBpm: true,
+                },
+            ],
+            [
                 'value is renamed after',
                 {
                     subject: 'note',
@@ -445,6 +463,24 @@ const table: Record<OperationId, Row> = {
         ],
         invalid: [
             [
+                'displaced without a Beat assignment',
+                {
+                    subject: 'objects',
+                    changed: { note: 1, bpm: 1 },
+                    assignments: [change('isCritical', false, true), change('bpm', 120, 150)],
+                    displaced: { bpm: 1 },
+                },
+            ],
+            [
+                'a retained initial BPM without a Beat assignment',
+                {
+                    subject: 'bpm',
+                    changed: { bpm: 1 },
+                    assignments: [change('bpm', 120, 150)],
+                    retainedInitialBpm: true,
+                },
+            ],
+            [
                 'old shape',
                 {
                     subject: 'note',
@@ -576,12 +612,42 @@ const table: Record<OperationId, Row> = {
                     objects: { note: 12, timeScale: 2 },
                 },
             ],
+            [
+                'a stage with its notes and stage events',
+                {
+                    domain: 'stage',
+                    created: { stage: 1 },
+                    objects: {
+                        note: 4,
+                        stageMaskEvent: 1,
+                        stagePivotEvent: 1,
+                        stageStyleEvent: 1,
+                        stageTransformEvent: 1,
+                    },
+                },
+            ],
         ],
         invalid: [
             ['nothing created', { domain: 'group', created: {} }],
             ['zero created', { domain: 'group', created: { group: 0 } }],
             ['empty objects', { domain: 'group', created: { group: 1 }, objects: {} }],
             ['a stage count in a group duplicate', { domain: 'group', created: { stage: 1 } }],
+            [
+                'a camera event among a group’s objects',
+                { domain: 'group', created: { group: 1 }, objects: { note: 1, cameraEvent: 1 } },
+            ],
+            [
+                'a BPM among a group’s objects',
+                { domain: 'group', created: { group: 1 }, objects: { bpm: 1 } },
+            ],
+            [
+                'a time scale among a stage’s objects',
+                { domain: 'stage', created: { stage: 1 }, objects: { timeScale: 1 } },
+            ],
+            [
+                'a camera event among a stage’s objects',
+                { domain: 'stage', created: { stage: 1 }, objects: { cameraEvent: 1 } },
+            ],
         ],
     },
     'nse.owner.delete': {
@@ -597,6 +663,23 @@ const table: Record<OperationId, Row> = {
                     replacement: { kind: 'group', id: 2, name: name('Default') },
                 },
             ],
+            [
+                'a stage with its notes and stage events',
+                {
+                    domain: 'stage',
+                    removed: { stage: 1 },
+                    target: stage,
+                    objects: { note: 4, stageMaskEvent: 2 },
+                },
+            ],
+            [
+                'a group with its notes and time scales',
+                {
+                    domain: 'group',
+                    removed: { group: 1, groupFolder: 1 },
+                    objects: { note: 4, timeScale: 2 },
+                },
+            ],
         ],
         invalid: [
             ['nothing removed', { domain: 'group', removed: {} }],
@@ -608,6 +691,22 @@ const table: Record<OperationId, Row> = {
             [
                 'a replacement that is a folder',
                 { domain: 'group', removed: { group: 1 }, replacement: groupFolder },
+            ],
+            [
+                'a camera event among a group’s objects',
+                { domain: 'group', removed: { group: 1 }, objects: { cameraEvent: 1 } },
+            ],
+            [
+                'a BPM among a group’s objects',
+                { domain: 'group', removed: { group: 1 }, objects: { note: 1, bpm: 1 } },
+            ],
+            [
+                'a time scale among a stage’s objects',
+                { domain: 'stage', removed: { stage: 1 }, objects: { timeScale: 1 } },
+            ],
+            [
+                'a camera event among a stage’s objects',
+                { domain: 'stage', removed: { stage: 1 }, objects: { cameraEvent: 1 } },
             ],
         ],
     },
@@ -621,7 +720,12 @@ const table: Record<OperationId, Row> = {
             ['import with its file', { origin: 'import', source: name('song.sus') }],
             ['recovery', { origin: 'recovery' }],
         ],
-        invalid: [['unknown origin', { origin: 'other' }]],
+        invalid: [
+            ['unknown origin', { origin: 'other' }],
+            ['a source on a new chart', { origin: 'new', source: name('song.sus') }],
+            ['a source on an auto save', { origin: 'autoSave', source: name('song.sus') }],
+            ['a source on a recovery', { origin: 'recovery', source: name('song.sus') }],
+        ],
     },
     'nse.continue': {
         valid: [

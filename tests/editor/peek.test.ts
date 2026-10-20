@@ -222,7 +222,7 @@ test('obsolete Restore cleanup cannot dispose a newer pending owner', async () =
     first.resolve({ state: fake('older'), time: 1 })
     await older
     const live = liveState.value
-    pushState(initialLife(0, 1), live)
+    pushState(initialLife(0, 1), { ...live, initialLife: 1 })
     undoState()
     second.resolve({ state: fake('newer'), time: 2 })
     await newer
@@ -230,11 +230,7 @@ test('obsolete Restore cleanup cannot dispose a newer pending owner', async () =
     assert.deepEqual(notices, [])
 })
 
-for (const change of [
-    'edit and Undo',
-    'equal-content edit',
-    'content replacement and return',
-] as const)
+for (const change of ['edit and Undo', 'content replacement and return'] as const)
     test(`pending Restore stays stale after ${change}`, async () => {
         const held = heldEntry()
         const restoring = restoreEntry(key(1))
@@ -244,14 +240,28 @@ for (const change of [
             replaceState({ ...live, initialLife: 100 })
             replaceState(live)
         } else {
-            pushState(initialLife(0, 1), live)
-            if (change === 'edit and Undo') undoState()
+            pushState(initialLife(0, 1), { ...live, initialLife: 1 })
+            undoState()
         }
         held.resolve({ state: fake('obsolete'), time: 1 })
         await restoring
         assert.equal(liveState.value, live)
         assert.deepEqual(notices, [])
     })
+
+// An edit that leaves the chart as it was is no step (owner, 2026-10-19): nothing changed under
+// the pending Restore, so it still lands.
+test('pending Restore still lands after an edit that changes nothing', async () => {
+    const held = heldEntry()
+    const restoring = restoreEntry(key(1))
+    assert.deepEqual(held.loads, [key(1)])
+    const live = liveState.value
+    assert.equal(pushState(initialLife(0, 1), live), false)
+    held.resolve({ state: fake('obsolete'), time: 1 })
+    await restoring
+    assert.equal(nameOf(liveState.value), 'obsolete')
+    assert.deepEqual(notices, ['restored 1'])
+})
 
 for (const change of ['same-key peek', 'different-key peek', 'leave'] as const)
     test(`pending Restore cannot supersede a newer ${change}`, async () => {

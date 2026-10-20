@@ -92,6 +92,8 @@ const propertyData = codec<PropertyData>((value) => {
     const kinds = Object.keys(value.changed) as NativeKind[]
     const applied = value.assignments
     return (
+        // Only a Beat assignment can displace a destination's object or move the initial BPM.
+        (!hasCollateral(value) || applied.some(({ field }) => field === 'beat')) &&
         applied.every(({ field }) => kinds.some((kind) => fieldApplies(field, kind))) &&
         kinds.every((kind) => applied.some(({ field }) => fieldApplies(field, kind)))
     )
@@ -154,6 +156,13 @@ const inDomain = (domain: 'group' | 'stage', target: OwnerReference) =>
 const domainCounts = (domain: 'group' | 'stage', values: ValueOf<typeof ownerCounts>) =>
     Object.keys(values).every((kind) => kind === domain || kind === `${domain}Folder`) &&
     checkedSum(Object.values(values)) !== undefined
+/** The chart objects an entry owns: a group's notes and time scales, a stage's notes and stage events. */
+const ownedKinds: Record<'group' | 'stage', readonly string[]> = {
+    group: ['note', 'timeScale'],
+    stage: ['note', 'stageMaskEvent', 'stagePivotEvent', 'stageStyleEvent', 'stageTransformEvent'],
+}
+const ownedObjects = (domain: 'group' | 'stage', objects: object | undefined) =>
+    !objects || Object.keys(objects).every((kind) => ownedKinds[domain].includes(kind))
 
 /** A time as a Date takes it: a whole number of milliseconds within ±8.64e15. */
 const time = refine(count, (value) => value <= 8.64e15)
@@ -276,8 +285,10 @@ export const operationCodecs = {
             { domain: ownerDomain, created: ownerCountsPlus },
             { source: ownerReference, objects: nativeCountsPlus },
         ),
-        ({ domain, created, source }) =>
-            domainCounts(domain, created) && (!source || inDomain(domain, source)),
+        ({ domain, created, source, objects }) =>
+            domainCounts(domain, created) &&
+            ownedObjects(domain, objects) &&
+            (!source || inDomain(domain, source)),
     ),
     // `objects` are the chart objects deleted with the entries; `replacement` is the default
     // entry created when the last one went.
@@ -286,15 +297,17 @@ export const operationCodecs = {
             { domain: ownerDomain, removed: ownerCountsPlus },
             { target: ownerReference, objects: nativeCountsPlus, replacement: ownerReference },
         ),
-        ({ domain, removed, target, replacement }) =>
+        ({ domain, removed, target, objects, replacement }) =>
             domainCounts(domain, removed) &&
+            ownedObjects(domain, objects) &&
             (!target || inDomain(domain, target)) &&
             (!replacement || replacement.kind === domain),
     ),
     'nse.owner.ungroup': object({ target: folder, released: count }),
-    'nse.origin': object(
-        { origin: oneOf(['new', 'import', 'autoSave', 'recovery']) },
-        { source: nameText },
+    // The file an import came from; no other origin has one.
+    'nse.origin': refine(
+        object({ origin: oneOf(['new', 'import', 'autoSave', 'recovery']) }, { source: nameText }),
+        ({ origin, source }) => source === undefined || origin === 'import',
     ),
     'nse.continue': object({ fromTime: time }),
     'nse.file.save': object({ file: nameText, delivery: oneOf(['file', 'download']) }),

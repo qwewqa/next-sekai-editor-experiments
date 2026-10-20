@@ -26,8 +26,8 @@ export const combineNotes: Command = {
             id: 'nse.note.combine',
             data: { targets: count },
         })
-        pushState(operation, combined)
+        const pushed = pushState(operation, combined)
         view.entities = { hovered: [], creating: [] }
-        notify(() => operation.fallback.text)
+        if (pushed) notify(() => operation.fallback.text)
     },
 }
