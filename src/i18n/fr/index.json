@@ -1172,7 +1172,7 @@
     "tryAgain": "Réessayer",
     "continued": "Session du {1} reprise : \"{0}\".",
     "continuedUntitled": "Votre session du {0} a été reprise.",
-    "continuedUndated": "Session reprise : \"{0}\".",
+    "continuedUndated": "Session reprise : \"{0}\".",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application, où certaines fonctionnalités peuvent ne pas fonctionner et où le travail stocké risque davantage d’être perdu. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "journalKept": "Une modification de \"{0}\" n’a pas pu être appliquée, elle a donc été conservée dans une session séparée.",
