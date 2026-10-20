@@ -34,6 +34,7 @@ import { isApplePlatform, matchBindings } from '../controls/bindings'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
+import { useRootFontSize } from '../useRootFontSize'
 import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
 import GapArrowIcon from './GapArrowIcon.vue'
@@ -177,15 +178,27 @@ const recipeOf = (row: EntryRow) =>
         : (recipes.value.get(row.id) ?? recipeOfRow(row))
 
 // --- Geometry: rows have fixed heights per kind, so the window needs no measuring. The heights are
-// px at the 16 px rem; k, the root font size / 16 read as the list is set up, scales them as the rows’
-// classes scale (a larger browser text size).
-const k = ref((parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16)
+// px at the 16 px rem; k, the root font size / 16, scales them as the rows’ classes scale (a larger
+// browser text size). It follows a change of the text size while the list is open.
+const rootFontSize = useRootFontSize()
+const k = computed(() => rootFontSize.value / 16)
 const rowHeight = computed(() => 44 * k.value)
 const HEADER = computed(() => 28 * k.value)
 const DIVIDER = computed(() => 32 * k.value)
 // The list's padding: 4 px above the first row, 8 px below the last.
 const PAD_TOP = computed(() => 4 * k.value)
 const PAD_BOTTOM = computed(() => 8 * k.value)
+// A change of the text size rescales the slots; the scroll position scales with them, so the same
+// rows stay in view.
+watch(k, (now, before) => {
+    const element = list.value
+    if (!element || !before) return
+    const top = (element.scrollTop * now) / before
+    void nextTick(() => {
+        element.scrollTop = top
+        scrollTop.value = element.scrollTop
+    })
+})
 const geometry = computed(() => {
     let y = PAD_TOP.value
     const offsets = rows.value.map((row) => {
