@@ -427,6 +427,8 @@ test('L3: Now after a far jump reads the newest page again, and without a jump t
     await pushSteps(page, 250)
     await flush(page)
     await openHistory(page)
+    // The first page has been read before a key goes to the list.
+    await expect(row(page, 'Syn 250')).toBeVisible()
     // End jumps to the oldest entry: a window there, with a gap row above it.
     await page.keyboard.press('End')
     await expect(row(page, 'Imported a level')).toBeVisible()
