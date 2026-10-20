@@ -1,8 +1,8 @@
 import type { LevelData, LevelDataEntity } from '@sonolus/core'
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chcyToUsc, isChcyLevelData } from '../../src/chcy/convert'
 import { ImportRefusal } from '../../src/chart/refusal'
+import { chcyToUsc, isChcyLevelData } from '../../src/chcy/convert'
 
 // Chart Cyanvas level data in the shape its servers serve (e.g.
 // https://cc.milkbun.org/): named entities joined by refs.
