@@ -1432,7 +1432,7 @@ defineExpose({
                         :class="headerClass(row)"
                         :style="{ top: `${top}px`, height: `${HEADER}px` }"
                     >
-                        <span class="min-w-0 truncate">{{ headerText(row) }}</span>
+                        <span class="min-w-0 truncate">{{ headerText(row, clock) }}</span>
                     </div>
 
                     <div
@@ -1686,7 +1686,7 @@ defineExpose({
                 :class="headerClass(pinned)"
                 :style="{ height: `${HEADER}px` }"
             >
-                <span class="truncate">{{ pinnedText(pinned) }}</span>
+                <span class="truncate">{{ pinnedText(pinned, clock) }}</span>
             </div>
         </div>
         <OverlayScrollbar :target="list" />
