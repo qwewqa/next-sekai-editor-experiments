@@ -1350,6 +1350,40 @@ test.describe('the close prompts', () => {
             ios.getByRole('switch', { name: 'Ask Before Closing with Unsaved Changes' }),
         ).toHaveCount(0)
     })
+
+    test('the setting follows the platform capabilities, not the operating system', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        const hidden = async (capabilities: Record<string, boolean>) => {
+            await page.evaluate(async (capabilities) => {
+                const { platform, setPlatformForTests } =
+                    (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
+                setPlatformForTests({
+                    ...platform,
+                    capabilities: { ...platform.capabilities, ...capabilities },
+                })
+                const { openSettings } =
+                    (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+                openSettings('localData')
+            }, capabilities)
+            await expect(page.locator('[data-open-history]')).toBeVisible()
+            const count = await page
+                .getByRole('switch', { name: 'Ask Before Closing with Unsaved Changes' })
+                .count()
+            await page.keyboard.press('Escape')
+            await expect(page.locator('[data-open-history]')).toHaveCount(0)
+            return count === 0
+        }
+        // The web's own values show it, as before.
+        expect(await hidden({})).toBe(false)
+        // Downloads that are never confirmed mean no close prompt to ask about.
+        expect(await hidden({ unconfirmedDownloads: true })).toBe(true)
+        // The setting is the web's own: the apps have their own close handling.
+        expect(await hidden({ browserStorage: false })).toBe(true)
+    })
 })
 
 test.describe('Help', () => {

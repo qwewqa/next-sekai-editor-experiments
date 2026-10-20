@@ -9,7 +9,6 @@ provide(stackLongValuesKey, true)
 
 defineProps<{
     title: string
-    submitLabel?: string
 }>()
 
 defineEmits<{
@@ -29,7 +28,7 @@ defineEmits<{
                 <input
                     class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                     type="submit"
-                    :value="submitLabel ?? i18n.modals.form.confirm"
+                    :value="i18n.modals.form.confirm"
                 />
             </div>
         </form>

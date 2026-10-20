@@ -1,3 +1,4 @@
+import { recordError } from '../../diagnostics'
 import type { JournalFound, JournalStore } from '../../platform/types'
 import type { State } from '../../state'
 import type { Flusher, FlushSession } from '../flush'
@@ -107,6 +108,7 @@ export class JournalWriter {
             verified = this.deps.store.writeWhole(journal)
             if (verified) this.deps.onJournal?.(journal, state)
         } catch (error) {
+            recordError(error)
             console.error('The journal could not be written', error)
         }
         this.written.set(session.id, { seq, verified })

@@ -1,3 +1,4 @@
+import { recordError } from '../../diagnostics'
 import {
     exportMemory,
     KEPT_BYTES_LIMIT,
@@ -471,6 +472,7 @@ export const resumeAfterStartup = (appVersion: string) => {
                 unlinkedSession(sessionId, name, record, first, true, kept)
             },
         }).catch((error: unknown) => {
+            recordError(error)
             console.error('An unfinished import could not be resumed', error)
         })
     }

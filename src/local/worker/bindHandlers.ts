@@ -37,7 +37,10 @@ export const bindHandlers = (context: WorkerContext) => ({
     keepHandle: ({ chainId, name, handle }: { chainId: string; name: string; handle: unknown }) =>
         context.core.write(['chains', HANDLES], (tx) => keepHandle(tx, chainId, name, handle)),
 
-    /** A kept file's handle let go: its session closed (§1.5.4). */
+    /**
+     * A kept file's handle let go: its session closed (§1.5.4). A planned seam for Step 7's
+     * Recent Sessions and sweep, like `listKept`: nothing calls either until then.
+     */
     dropKept: (chainId: string) =>
         context.core.write([HANDLES], (tx) => deleteHandleRow(tx, chainId, KEPT_ROLE)),
 

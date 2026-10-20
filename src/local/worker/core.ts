@@ -144,6 +144,11 @@ export class StorageCore {
         return this.current
     }
 
+    /** The version of the database this worker has open, for Copy Diagnostic Info…. */
+    get dbVersion(): number | undefined {
+        return this.db?.version
+    }
+
     onStatus(listener: (status: StorageStatus) => void) {
         this.listeners.add(listener)
         return () => this.listeners.delete(listener)

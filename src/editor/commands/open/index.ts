@@ -8,6 +8,7 @@ import { parseUscChart } from '../../../chart/parse/usc'
 import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
+import { recordError } from '../../../diagnostics'
 import { detectHead, detectZip } from '../../../files/detect'
 import { resetImportedState } from '../../../history'
 import { captureName } from '../../../history/operations'
@@ -101,6 +102,7 @@ export const open: Command = {
                     if (!request.isCurrent()) return
                     await openProject(file, handle, request)
                 } catch (error) {
+                    recordError(error)
                     console.error(error)
                     if (request.isCurrent())
                         notify(() => errorMessage(error), { card: true, severity: 'error' })
