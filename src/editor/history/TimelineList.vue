@@ -1798,8 +1798,8 @@ defineExpose({
     @apply shrink-0 tabular-nums;
 }
 
-/* One line: the mark, title, count, delta and time share a centre line. The count gives way first,
-   then the title; the delta and the time never shrink. */
+/* One line: the mark, title, count, delta and time share a centre line. The title gives way; the
+   count, the delta and the time never shrink. */
 .timeline-one-line .timeline-entry-header .timeline-entry-text {
     @apply flex-row items-center justify-start gap-2;
 }
@@ -1813,7 +1813,7 @@ defineExpose({
 }
 
 .timeline-one-line .timeline-group-count {
-    @apply flex-[0_1000_auto] text-right;
+    @apply shrink-0 text-right;
 }
 
 /* A member's rail: its slot's mark, from under the parent's disclosure to the run's end, beneath
