@@ -14,7 +14,7 @@ import {
     LEGACY_RECOVERY_KEY,
     toRecoveryFile,
 } from './legacy'
-import { boundElsewhere, holdShared, openStored, type OpenDeps } from './open'
+import { boundElsewhere, copyOfOf, holdShared, openStored, type OpenDeps } from './open'
 import { journalledSession } from './resume'
 import { parseAutoSaveSlot, replaySessionJournal, type RecoveryContext } from './steps'
 import { claimSessionLock, MARKER_WAIT_MS } from './tab'
@@ -115,11 +115,7 @@ const openSession = async (
         const elsewhere =
             !held && hasWebLocks() && (await open.client.heldElsewhere(sessionLock(sessionId)))
         const fork = asCopy || elsewhere || !read.isHead || (await boundElsewhere(open, read))
-        const file = read.chain.file as { name?: unknown } | undefined
-        const copyOf =
-            typeof file?.name === 'string'
-                ? { name: file.name, bound: true }
-                : { name: typeof read.chain.name === 'string' ? read.chain.name : '', bound: false }
+        const copyOf = copyOfOf(read)
         // The exclusive hold taken for the replay stands for the parent's shared one (§1.3.6).
         const parentLock = held ?? (await holdShared(open.locks, sessionId))
         const state = await openStored(

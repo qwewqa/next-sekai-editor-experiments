@@ -19,6 +19,19 @@ export type DisplayName =
     /** The date fallback: the session's start, formatted by the UI. */
     | { kind: 'date' }
 
+/**
+ * What a separate copy was made from (§1.3.1): the bound file's name, or the session's own name.
+ * A chain with no name of its own has an empty `name` and the source's `at`, its start, which
+ * names it as the date fallback is shown, "Untitled · Oct 16, 2:41 PM" (X-13).
+ */
+export type CopyOf = { readonly name: string; readonly bound: boolean; readonly at?: number }
+
+/** The source of a copy of a session that is not bound to a file. */
+export const sessionCopyOf = (name: string | undefined, at: number | undefined): CopyOf =>
+    name
+        ? { name, bound: false }
+        : { name: '', bound: false, ...(at === undefined ? {} : { at }) }
+
 /** A file name without its last extension. */
 export const stemOf = (fileName: string) => {
     const dot = fileName.lastIndexOf('.')

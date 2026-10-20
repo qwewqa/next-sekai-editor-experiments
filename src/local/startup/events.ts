@@ -1,5 +1,5 @@
 import { shallowRef } from 'vue'
-import type { DisplayName } from '../names'
+import type { CopyOf, DisplayName } from '../names'
 import type { StorageStatus } from '../worker/core'
 
 // What this load found (Part 1 §1.4.3's table), as data: the UI turns each into its load notice
@@ -52,7 +52,7 @@ export type LoadEvent =
     /** The reload's session was deleted in the gap: "This session was deleted in another tab or window." */
     | { kind: 'deletedElsewhere' }
     /** A separate copy at load: "{0} is open in another tab or window, so this is a separate copy." */
-    | { kind: 'separateCopy'; of: { name: string; bound: boolean } }
+    | { kind: 'separateCopy'; of: CopyOf }
     /** The session continued or recovered at load has a head whose BGM isn't held. */
     | { kind: 'bgmNotLoaded' }
 

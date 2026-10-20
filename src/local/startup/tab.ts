@@ -2,6 +2,7 @@ import { platform } from '../../platform'
 import type { LockService } from '../../platform/types'
 import { storageKey } from '../../storage'
 import { sessionLock } from '../locks'
+import type { CopyOf } from '../names'
 import type { HeldLock } from '../sessions'
 
 // What a tab remembers across its own reloads (Part 1 §1.4.2): the open session, in
@@ -20,7 +21,7 @@ export type TabRecord = {
     /** An unstored continuation's parent. */
     parent?: string
     /** A separate copy: the file or session it was made from (the status label's). */
-    copyOf?: { name: string; bound: boolean }
+    copyOf?: CopyOf
 }
 
 const TAB_KEY = storageKey('tab')

@@ -14,7 +14,7 @@ import {
     type NoticeSeverity,
 } from './notification'
 import { openSettings } from './settings/openSettings'
-import { shownName } from './shownName'
+import { copySourceName, shownName } from './shownName'
 import { restoreCopy } from './switch'
 
 // What this load found (the events of `local/startup/events.ts`) as the start-up pill's load
@@ -158,7 +158,7 @@ export const loadNoticeOf: Handlers = {
     separateCopy: (event) => ({
         order: LOAD_ORDER.separateCopy,
         severity: 'info',
-        message: interpolate(() => i18n.value.notice.sameFileElsewhere, event.of.name),
+        message: interpolate(() => i18n.value.notice.sameFileElsewhere, () => copySourceName(event.of)),
     }),
     bgmNotLoaded: () => ({
         order: LOAD_ORDER.bgmNotLoaded,

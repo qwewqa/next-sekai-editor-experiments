@@ -422,6 +422,56 @@ test.describe('the status bar label', () => {
         )
     })
 
+    // X-13: an untitled chart has no name of its own, so its copy names it by its date, as the
+    // "open in another tab" notice does, and the label and title never carry an empty name.
+    test('a Duplicate Tab of an untitled chart names its date and leaves no empty name', async ({
+        page,
+        context,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        const record = await page.evaluate((key) => sessionStorage.getItem(key), `${prefix}tab`)
+        const duplicate = await context.newPage()
+        await duplicate.addInitScript(
+            ({ key, record }) => {
+                if (!sessionStorage.getItem('copied')) {
+                    sessionStorage.setItem(key, record)
+                    sessionStorage.setItem('copied', 'true')
+                }
+            },
+            { key: `${prefix}tab`, record: record! },
+        )
+        await visit(duplicate)
+        await expect(pill(duplicate)).toContainText(
+            /"Untitled · [^"]+" is open in another tab or window, so this is a separate copy./,
+        )
+        await expect(pill(duplicate)).not.toContainText('"" is open')
+        await expect(label(duplicate)).toHaveText(/^Untitled · .+ · separate copy$/)
+        await expect(duplicate).toHaveTitle(/^Untitled · .+ · separate copy – Next SEKAI Editor$/)
+        const copyOf = await duplicate.evaluate(async () => {
+            const { session } =
+                (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+            return session.value.copyOf
+        })
+        expect(copyOf).toMatchObject({ name: '', bound: false, at: expect.any(Number) })
+    })
+
+    test('Restore as a Copy of an untitled chart leaves no empty name', async ({
+        page,
+        context,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        const next = await context.newPage()
+        await visit(next)
+        await pill(next).getByRole('button', { name: 'Restore as a Copy' }).click()
+        await expect.poll(() => lifeOf(next)).toBe(990)
+        await expect(label(next)).toHaveText(/^Untitled · .+ · separate copy$/)
+        await expect(next).toHaveTitle(/^Untitled · .+ · separate copy – Next SEKAI Editor$/)
+    })
+
     test('pressing it opens the level’s dialog, and it describes itself', async ({ page }) => {
         await visit(page)
         await expect(button(page)).toHaveAccessibleDescription('Opens Level Info')

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { toHex } from '../../../src/local/hash'
+import { sessionCopyOf } from '../../../src/local/names'
 import { journalState } from '../../../src/local/journal/content'
 import { readJournal } from '../../../src/local/journal/format'
 import { MemoryStorage } from '../../../src/local/journal/store'
@@ -627,6 +628,36 @@ test('Duplicate Tab of an unstored continuation forks what it continued', async 
     assert.notEqual(fork.forkOf, undefined)
     assert.equal(fork.parent?.id, parent.id)
     assert.notEqual(fork.id, continuation.id)
+})
+
+// X-13: a chain with no name of its own is named by its date fallback where a copy says what it is a
+// copy of, so the source carries when it started and no empty name.
+test('a separate copy of an untitled session names its source by when it started', async () => {
+    const world = createWorld({ seed: 16 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const titled = stateOf(goldenChart())
+    // No title, source name or BGM name: nothing but the date names it.
+    const a = { ...titled, levelInfo: { ...titled.levelInfo, title: '' } }
+    const parent = beginSession(first, a)
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const visit = await load(world, 'visit', storage)
+    openSession(visit)
+    const copy = await load(world, 'copy', storage, { tab: new Map(visit.tab) })
+    assert.equal(copy.claim.kind, 'duplicate')
+    const event = copy.events.find((each) => each.kind === 'separateCopy')
+    assert.deepEqual(event, {
+        kind: 'separateCopy',
+        of: { name: '', bound: false, at: parent.startedAt },
+    })
+    assert.equal(typeof parent.startedAt, 'number')
+})
+
+test('a copy’s source is its file, else its own name, else the date it started', () => {
+    assert.deepEqual(sessionCopyOf('Coconut', 5), { name: 'Coconut', bound: false })
+    assert.deepEqual(sessionCopyOf(undefined, 5), { name: '', bound: false, at: 5 })
+    assert.deepEqual(sessionCopyOf('', undefined), { name: '', bound: false })
 })
 
 test('a reload of a session deleted in the gap continues the recovery session its journal became', async () => {
