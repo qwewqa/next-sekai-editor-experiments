@@ -1,13 +1,26 @@
 import { expect, test, type Page } from '@playwright/test'
-import { errorsFail, flush, holdWorker, load, noErrors, release, timeline } from './historyJourney'
+import {
+    chartOf,
+    errorsFail,
+    flush,
+    holdWorker,
+    liveOf,
+    load,
+    noErrors,
+    notice,
+    peekRow,
+    release,
+    row,
+    timeline,
+} from './historyJourney'
+import { submitSave } from './saveFlows'
 
 // Live entries while the Timeline is scrolled (D2 plan §3.3, F5 and F6): the list stays where the
 // reader put it while entries arrive, and a burst of more than one page between two refreshes
 // keeps the older pages already loaded (DEF-3).
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(({ page }) => {
     errorsFail(page)
-    await load(page)
 })
 
 test.afterEach(({ page }) => {
@@ -84,6 +97,7 @@ const topOf = (page: Page, title: string) =>
 test('F6: a burst of more than one page between refreshes keeps the older pages and the position', async ({
     page,
 }) => {
+    await load(page)
     await pushSteps(page, 250)
     await flush(page)
     await openPanel(page)
@@ -96,7 +110,9 @@ test('F6: a burst of more than one page between refreshes keeps the older pages 
     const list = timeline(page, 'panel')
     const title = await list.evaluate((element) => {
         const rows = [...element.querySelectorAll('[data-history-row]')]
-            .map((row) => (row.querySelector('[data-history-group-action]')?.textContent ?? '').trim())
+            .map((row) =>
+                (row.querySelector('[data-history-group-action]')?.textContent ?? '').trim(),
+            )
             .filter((text) => /^Syn \d+$/.test(text))
         return rows[Math.floor(rows.length / 2)]!
     })
@@ -110,7 +126,7 @@ test('F6: a burst of more than one page between refreshes keeps the older pages 
     // reaches the command) and are all stored: the next read finds more than a page of new entries.
     const hold = await holdWorker(page, 'readTimeline')
     try {
-        await page.locator('canvas.editor-chart').focus()
+        await leaveList(page)
         for (let i = 0; i < 130; i++) await page.keyboard.press('z')
         await flush(page)
         await hold.reached()
@@ -126,4 +142,118 @@ test('F6: a burst of more than one page between refreshes keeps the older pages 
     const after = await topOf(page, title)
     expect(after).not.toBeNull()
     expect(Math.abs(after! - top!)).toBeLessThanOrEqual(1)
+})
+
+const peekedKey = (page: Page) =>
+    page.evaluate(async () => {
+        const peek =
+            await window.editorTest.appImport<typeof import('../../src/history/peek')>(
+                '/src/history/peek.ts',
+            )
+        return peek.isPeeking.value ? (peek.peekedKey.value ?? null) : null
+    })
+
+/** Takes the focus off the Timeline, so the editor's keys reach their commands. */
+const leaveList = (page: Page) =>
+    page.evaluate(() => {
+        const active = document.activeElement
+        if (active instanceof HTMLElement && active !== document.body) active.blur()
+    })
+
+/** Scrolls the panel's Timeline down until the row titled `title` is rendered, then onto the screen. */
+const scrollToRow = async (page: Page, title: string) => {
+    const list = timeline(page, 'panel')
+    const target = row(page, title, 'panel')
+    await expect
+        .poll(async () => {
+            if ((await target.count()) > 0) return true
+            await list.evaluate((element) => {
+                element.scrollTop += element.clientHeight
+            })
+            return false
+        })
+        .toBe(true)
+    await target.scrollIntoViewIfNeeded()
+}
+
+test('F5: Save and Export while peeking leave the peek and the rows where they are', async ({
+    page,
+}) => {
+    test.slow()
+    await load(page, { platform: { fileSystemAccess: 'opfs' } })
+    await pushSteps(page, 300)
+    await flush(page)
+    await openPanel(page)
+    await scrollToRow(page, 'Syn 150')
+    await peekRow(page, 'Syn 150', 'panel')
+    const list = timeline(page, 'panel')
+    const peeked = await peekedKey(page)
+    expect(peeked).not.toBeNull()
+    const shown = await chartOf(page)
+    const live = await liveOf(page)
+    expect(shown.initialLife).not.toBe(live.initialLife)
+    const top = await topOf(page, 'Syn 150')
+    expect(top).not.toBeNull()
+
+    // Save with its shortcut, then Export: both write the live chart, and the peek stays.
+    await leaveList(page)
+    await page.keyboard.press('p')
+    await submitSave(page, 'live')
+    await expect(notice(page, 'Saved the current version to live.nxsp')).toBeVisible()
+    await page.keyboard.press('Shift+P')
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByText('Exports the current version.')).toBeVisible()
+    await dialog.getByRole('textbox', { name: 'File Name' }).fill('live')
+    await page.keyboard.press('Enter')
+    await expect(notice(page, 'Exported to live.nsld')).toBeVisible()
+    await expect(dialog).toHaveCount(0)
+
+    // Both file events reach the Timeline; the peeked row has not moved, and the peek is the same.
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const source = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/source')
+                >('/src/editor/history/source.ts')
+                return source.entries.value
+                    .filter((entry) => entry.kind === 'save' || entry.kind === 'export')
+                    .map((entry) => entry.kind)
+            }),
+        )
+        .toEqual(['export', 'save'])
+    await expect.poll(() => topOf(page, 'Syn 150')).not.toBeNull()
+    expect(Math.abs((await topOf(page, 'Syn 150'))! - top!)).toBeLessThanOrEqual(1)
+    expect(await peekedKey(page)).toBe(peeked)
+    expect(await chartOf(page)).toEqual(shown)
+    expect(await liveOf(page)).toEqual(live)
+
+    // At the top, the two rows sit above everything else.
+    await list.evaluate((element) => {
+        element.scrollTop = 0
+    })
+    await expect(row(page, 'Exported live.nsld', 'panel')).toBeVisible()
+    await expect(row(page, 'Saved live.nxsp', 'panel')).toBeVisible()
+    await scrollToRow(page, 'Syn 150')
+    const again = (await topOf(page, 'Syn 150'))!
+    const box = (await list.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + again + 10)
+
+    // A command that leaves the peek (Undo) puts its row on top; the row under the pointer stays.
+    await leaveList(page)
+    await page.keyboard.press('z')
+    await expect.poll(() => peekedKey(page)).toBeNull()
+    await expect(notice(page, 'Undid')).toBeVisible()
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const source = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/source')
+                >('/src/editor/history/source.ts')
+                return source.entries.value[0]?.kind
+            }),
+        )
+        .toBe('undo')
+    await expect.poll(() => topOf(page, 'Syn 150')).not.toBeNull()
+    expect(Math.abs((await topOf(page, 'Syn 150'))! - again)).toBeLessThanOrEqual(1)
 })
