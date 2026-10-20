@@ -1353,11 +1353,6 @@
       "retainedInitialBpm": "最初のBPMを保持しました",
       "pivot": "拡大・縮小の基準",
       "composedTransform": "複数の調整",
-      "destination": "移動先",
-      "source": "元の場所",
-      "fromPosition": "移動前の位置",
-      "toPosition": "移動後の位置",
-      "gathered": "フォルダーに移動",
       "released": "フォルダーから移動",
       "recoveryContext": "以前の操作",
       "recoveryHead": "元の操作",
@@ -1376,12 +1371,7 @@
       "bgmOffset": "BGMのオフセット",
       "pasteLocation": "ペースト位置",
       "pointer": "ポインター",
-      "position": "指定位置",
-      "flipped": "反転",
-      "delivery": "保存方法",
-      "download": "ダウンロード",
-      "unsavedChanges": "未保存の変更",
-      "autoSave": "自動保存"
+      "position": "指定位置"
     },
     "operation": {
       "changedHeader": "{0}を変更しました",

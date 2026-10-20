@@ -23,30 +23,44 @@ export const message = (
 
 export const nameText = (name: NameText) => `${name.text}${name.truncated ? '…' : ''}`
 
+/** A name inside a sentence, quoted the way the locale quotes; an empty name is quoted empty. */
+export const quoted = (text: string, context: OperationTextContext) =>
+    message(context, context.strings.history.quoted, text)
+
+/** A field label inside a sentence; some locales quote it so a trailing particle cannot double. */
+export const quotedField = (label: string, context: OperationTextContext) =>
+    message(context, context.strings.history.quotedField, label)
+
 export const proseName = (name: NameText, context: OperationTextContext) =>
-    name.text || name.truncated ? `"${nameText(name)}"` : context.strings.historyChanges.notSet
+    quoted(nameText(name), context)
 
-export const ownerName = (owner: OwnerReference, context: OperationTextContext, prose = true) => {
-    const name = prose ? proseName(owner.name, context) : nameText(owner.name)
-    return context.qualifiers?.some(({ kind, id }) => kind === owner.kind && id === owner.id)
-        ? `${name} (#${numberText(owner.id, context)})`
-        : name
-}
+export const ownerName = (owner: OwnerReference, context: OperationTextContext, prose = true) =>
+    prose ? proseName(owner.name, context) : nameText(owner.name)
 
-export const operationFieldLabel = (field: FieldId, context: OperationTextContext) => {
+export const operationFieldLabel = (
+    field: FieldId,
+    context: OperationTextContext,
+    { prose = false }: { prose?: boolean } = {},
+) => {
     const definition = propertyField.get(field)
     if (!definition) throw new Error(`Missing operation field label: ${field}`)
-    return definition.qualifiedLabel?.(context.strings) ?? definition.label(context.strings)
+    const label = definition.qualifiedLabel?.(context.strings) ?? definition.label(context.strings)
+    return prose ? quotedField(label, context) : label
 }
 
-export const ownerFieldLabel = (field: OwnerChange['field'], context: OperationTextContext) => {
+export const ownerFieldLabel = (
+    field: OwnerChange['field'],
+    context: OperationTextContext,
+    { prose = false }: { prose?: boolean } = {},
+) => {
     const t = context.strings
-    return {
+    const label = {
         forceNoteSpeed: t.commands.manageGroups.modal.properties.modal.forceNoteSpeed,
         isFromStart: t.modals.form.isFromStart.label,
         isUntilEnd: t.modals.form.isUntilEnd.label,
         generateSimLines: t.modals.form.generateSimLines.label,
     }[field]
+    return prose ? quotedField(label, context) : label
 }
 
 export const ownerValueText = (value: OwnerChange['after'], context: OperationTextContext) => {
