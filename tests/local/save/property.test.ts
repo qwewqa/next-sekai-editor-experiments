@@ -3,6 +3,9 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { hashKey } from '../../../src/local/db'
 import { toHex } from '../../../src/local/hash'
+import { toRecords } from '../../../src/local/records/records'
+import { isChunkRowIntact, type ChunkRow } from '../../../src/local/records/rows'
+import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import type { PendingRecords, SaveStore } from '../../../src/local/save/bodies'
 import type { IdentityInput, SaveTarget } from '../../../src/local/save/build'
 import { commitIdentity, IDENTITY_STORES, type IdentityUnit } from '../../../src/local/save/commit'
@@ -24,6 +27,7 @@ import {
     saveOptions,
     SECOND,
     sourceOf,
+    stateAt,
 } from './fixture'
 
 // The property-based Save test (Part 1 §1.11.6; r12-arch-core M6), as fast-check commands that
@@ -36,10 +40,13 @@ import {
 // - the line shows exactly when the write doesn't carry its base, and only for a loss or D25's
 //   stated remainder (a flagged row whose state the base held through the stack, the head or its
 //   own root): never a repeated line after nothing was lost;
-// - the undo stack is replay's.
+// - the undo stack is replay's;
+// - a self-pick loses no row of the picked file, except, written from storage, a row whose state
+//   needs a chunk storage holds damaged: that row is written `kept: false` and the line shows.
 // Every file passes `tools/nxsp_check.py` at the end of each run. `npm test` runs a few; set
-// NSE_SAVE_RUNS=<n> for more; NSE_SAVE_SEED, NSE_SAVE_PATH and NSE_SAVE_REPLAY (the commands'
-// replayPath) replay a failure fast-check reports.
+// NSE_SAVE_RUNS=<n> for more. Every run is seeded, and a failure prints the NSE_SAVE_SEED that
+// reruns it and the NSE_SAVE_SCRIPT (JSON: the first state and the ops) that replays its shrunk
+// script at once. (fast-check's own path replay can't walk a commands shrink it didn't run.)
 
 type Row = { key: string; kept: boolean; snapshot: string }
 
@@ -120,6 +127,8 @@ class Scenario {
     /** Storing paused: the last stored `seq` of the session, and the binding in memory. */
     pause: { stored: number; unit?: IdentityUnit; file?: IdentityInput['file'] } | undefined
     docs = 0
+    /** Whether the last write showed "Some earlier steps were not kept.". */
+    line = false
     readonly log: string[] = []
 
     constructor(readonly fixture: Fixture) {}
@@ -174,6 +183,7 @@ class Scenario {
         this.check(target, written, built.someStepsNotKept)
         await checkStack(file)
         this.files.push(written)
+        this.line = built.someStepsNotKept
         if (kind === 'none') return
         const disk =
             kind === 'saved' ? { ...(await nxspDiskState(file, file.lastModified)) } : undefined
@@ -203,6 +213,26 @@ class Scenario {
             })
         this.base = written
         this.disk = kind === 'saved' ? file : undefined
+    }
+
+    /** The stored chunks whose bytes fail their CRC, as hex. */
+    private badChunks() {
+        return this.fixture.store.read(['chunks'], async (tx) => {
+            const bad = new Set<string>()
+            for (const key of await tx.getAllKeys('chunks')) {
+                if (!(key instanceof ArrayBuffer)) continue
+                const row = (await tx.get('chunks', key)) as ChunkRow | undefined
+                const hash = new Uint8Array(key)
+                if (!row || !isChunkRowIntact(hash, row)) bad.add(toHex(hash))
+            }
+            return bad
+        })
+    }
+
+    /** The chunks a state's snapshot needs, as hex. */
+    private chunksOf(snapshot: string) {
+        const encoded = encodeSnapshot(toRecords(this.fixture.stateOf(snapshot)))
+        return [encoded.header, ...encoded.chunks].map((chunk) => toHex(chunk.hash))
     }
 
     /** The oracle (§1.6.11.6, D25). */
@@ -369,18 +399,32 @@ class Scenario {
                 )
                 const read = decision?.holdsBase === true
                 if (!read) this.disk = undefined
+                // Chunks whose stored bytes fail their check: damage no build has found yet is
+                // invisible to the carry test, which reads stored rows only (§1.6.11.6).
+                const bad = read ? new Set<string>() : await this.badChunks()
                 await this.write(
                     read ? { kind: 'append', source: 'target' } : { kind: 'copy' },
                     'saved',
                 )
-                // No version is lost: the new file holds every row of the picked one, with its state.
+                // No version is lost: the new file holds every row of the picked one, with its
+                // state. Unread, it's written from storage (R4; D5), so a row whose state needs a
+                // damaged chunk is written `kept: false`, and the write says so (H-2, H-3).
                 const n = this.files.at(-1)
                 assert.ok(n)
-                for (const [row, count] of old.rows)
+                const script = this.log.join('\n')
+                for (const [row, count] of old.rows) {
+                    if ((n.rows.get(row) ?? 0) >= count) continue
+                    const snapshot = row.slice(row.lastIndexOf('|') + 1)
                     assert.ok(
-                        (n.rows.get(row) ?? 0) >= count,
-                        `a self-pick lost ${row}\n${this.log.join('\n')}`,
+                        !read && this.chunksOf(snapshot).some((hex) => bad.has(hex)),
+                        `a self-pick lost ${row}\n${script}`,
                     )
+                    assert.ok(
+                        (n.all.get(row) ?? 0) >= count,
+                        `a self-pick dropped ${row}\n${script}`,
+                    )
+                    assert.equal(this.line, true, `a self-pick lost ${row} silently\n${script}`)
+                }
                 return
             }
             case 'pause':
@@ -454,19 +498,32 @@ const op: fc.Arbitrary<Op> = fc.oneof(
 ) as fc.Arbitrary<Op>
 
 const runs = Number(process.env.NSE_SAVE_RUNS ?? 3)
+// Always seeded, so a failure names the seed that reruns it, whoever ran it.
 const seed = process.env.NSE_SAVE_SEED
-const path = process.env.NSE_SAVE_PATH
-const replayPath = process.env.NSE_SAVE_REPLAY
+    ? Number(process.env.NSE_SAVE_SEED)
+    : (Date.now() ^ (Math.random() * 0x100000000)) | 0
+const script = process.env.NSE_SAVE_SCRIPT
+
+/** One script: the first state, then the commands in order. */
+const runScript = async (start: number, ops: Iterable<Op>) => {
+    const fixture = await Fixture.create()
+    await fixture.storeMedia([BGM, COVER, PREVIEW])
+    await fixture.start(start)
+    const scenario = new Scenario(fixture)
+    for (const each of ops) await scenario.apply(each)
+    await scenario.end()
+}
 
 test('random edits and Saves never lose a version, over-claim or repeat the line', async () => {
-    await fc.assert(
+    if (script) {
+        const { start, ops } = JSON.parse(script) as { start: number; ops: Op[] }
+        await runScript(start, ops)
+        return
+    }
+    const details = await fc.check(
         fc.asyncProperty(
             nat(3),
-            fc.commands([op.map((each) => new Command(each))], {
-                maxCommands: 40,
-                size: 'max',
-                ...(replayPath ? { replayPath } : {}),
-            }),
+            fc.commands([op.map((each) => new Command(each))], { maxCommands: 40, size: 'max' }),
             async (start, commands) => {
                 const fixture = await Fixture.create()
                 await fixture.storeMedia([BGM, COVER, PREVIEW])
@@ -476,10 +533,50 @@ test('random edits and Saves never lose a version, over-claim or repeat the line
                 await scenario.end()
             },
         ),
-        {
-            numRuns: runs,
-            ...(seed ? { seed: Number(seed) } : {}),
-            ...(path ? { path } : {}),
-        },
+        { numRuns: runs, seed },
     )
+    if (!details.failed) return
+    // The shrunk script, as the commands that ran: fast-check's wrappers say which did.
+    const [start, commands] = details.counterexample ?? []
+    const ops = [...((commands ?? []) as unknown as Iterable<{ cmd: Command; hasRan: boolean }>)]
+        .filter((each) => each.hasRan)
+        .map((each) => each.cmd.op)
+    const failure = new Error(
+        [
+            `Rerun with NSE_SAVE_SEED=${details.seed} NSE_SAVE_RUNS=${details.numRuns}, or replay`,
+            `the shrunk script with NSE_SAVE_SCRIPT='${JSON.stringify({ start, ops })}'`,
+            fc.defaultReportMessage(details) ?? '',
+        ].join('\n'),
+    )
+    if (details.errorInstance) failure.cause = details.errorInstance
+    throw failure
+})
+
+test('a self-pick after damage no build has found writes the step kept: false, with the line', async () => {
+    // The counterexample "edit, edit, save, edit, edit, damage, pick" (save-prop): the damaged
+    // chunk is the one only `init`'s state needs, so the carry test (stored rows only) can't see
+    // it, the file isn't read (R2), and the write from storage marks `init` (R4; D5; H-2).
+    const fixture = await Fixture.create()
+    await fixture.storeMedia([BGM, COVER, PREVIEW])
+    await fixture.start(1)
+    const scenario = new Scenario(fixture)
+    for (const k of [2, 3]) await scenario.apply({ t: 'edit', k, second: false })
+    await scenario.apply({ t: 'save' })
+    for (const k of [4, 5]) await scenario.apply({ t: 'edit', k, second: false })
+    await fixture.flush()
+    const chunks = (k: number) => {
+        const encoded = encodeSnapshot(toRecords(stateAt(k).state))
+        return [encoded.header, ...encoded.chunks].map((chunk) => toHex(chunk.hash))
+    }
+    const shared = new Set([2, 3, 4, 5].flatMap(chunks))
+    const own = chunks(1).find((hex) => !shared.has(hex))
+    const keys = await fixture.store.read(['chunks'], (tx) => tx.getAllKeys('chunks'))
+    const i = keys.findIndex(
+        (key) => key instanceof ArrayBuffer && toHex(new Uint8Array(key)) === own,
+    )
+    assert.ok(i >= 0)
+    await scenario.apply({ t: 'damage', i })
+    await scenario.apply({ t: 'pick' })
+    assert.equal(scenario.line, true)
+    await scenario.end()
 })
