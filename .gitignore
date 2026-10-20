@@ -9,3 +9,7 @@ test-results*/
 
 public/resource/*.scp
 .vite-cache
+
+# Local design capture harnesses, never committed
+/tests/design-capture*/
+/playwright.*.local.config.ts
