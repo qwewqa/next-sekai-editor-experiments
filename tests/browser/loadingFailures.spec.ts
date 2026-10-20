@@ -64,5 +64,5 @@ test('the failure is worded in the interface language', async ({ page }) => {
     await openUtility(page, 'coverEditor')
     await chooseFile(page, 'notes.png', 'image/png', text('this is not an image'))
     await expect(failure(page)).toContainText('Cette image n’a pas pu être lue.')
-    await expect(failure(page)).not.toContainText('Failed to decode cover')
+    await expect(failure(page).getByText('Failed to decode cover')).toBeHidden()
 })
