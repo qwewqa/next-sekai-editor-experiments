@@ -320,9 +320,10 @@ const checkChunkIndex = (value: unknown, path: string, issues: Issues) => {
 }
 
 /**
- * Checks a segment, or with `manifest` the manifest, against v1's form. A manifest `version` above
- * the current one is newer and checked no further; one below it is damaged (no older manifest
- * generation is supported before the ship). The value is the part when nothing was found.
+ * Checks a segment, or with `manifest` the manifest, against the .nxsp v1 form. A manifest
+ * `version` above `MANIFEST_VERSION` is newer and checked no further; one below it is damaged (no
+ * older manifest generation is supported before the ship). The value is the part when nothing was
+ * found.
  */
 export const checkPart = (
     value: unknown,

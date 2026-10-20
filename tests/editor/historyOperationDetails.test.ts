@@ -43,10 +43,10 @@ const context = (locale = 'en'): OperationTextContext => {
 const en = context()
 
 // --- The inventory --------------------------------------------------------------------------------
-// The 222 cases of the Step Details inventory, in the stored shapes. Nine cannot be stored any more
-// (the codecs refuse them: zero counts, empty optional maps, a displaced entry on an add, a time out of
-// range, an empty paste); three of those are replaced by the nearest storable shape, and the rest are
-// the point of the change. About thirty cases cover the new records.
+// The cases of the Step Details inventory, in the stored shapes. A case holds what a producer can emit
+// (the codecs refuse zero counts, empty optional maps, a displaced entry on an add, a time out of range
+// and an empty paste). One that holds a shape the codec accepts and no producer emits says so in its
+// note ("Not produced today"); it checks that Step Details reads whatever is stored.
 type Spec = {
     input?: NativeOperationInput
     raw?: unknown
@@ -370,7 +370,7 @@ test('counts appear only when the title lacks them', () => {
         '1 BPM change',
         '2 camera events',
     ])
-    assert.deepEqual(items(byId('object.edit.mixed.displaced'), 'changed'), [
+    assert.deepEqual(items(byId('object.move.objects.collateral'), 'changed'), [
         '3 notes',
         '1 BPM change',
         '2 camera events',
@@ -392,7 +392,6 @@ test('counts appear only when the title lacks them', () => {
         '1 stage mask event',
         '1 stage pivot event',
         '1 stage style event',
-        '1 stage transform event',
     ])
     // a single kind in an edit, move or delete: the title has it
     assert.equal(rowOf(byId('object.edit.note3'), 'changed'), undefined)
@@ -405,8 +404,8 @@ test('counts appear only when the title lacks them', () => {
 
 test('replace shows the replaced count only when it differs from the title', () => {
     assert.deepEqual(byId('object.replace.bpm').rows, [])
-    assert.deepEqual(items(byId('object.replace.bpm.moreDisplaced'), 'displaced'), [
-        '3 BPM changes',
+    assert.deepEqual(items(byId('object.replace.timeScale.moreDisplaced'), 'displaced'), [
+        '2 time scales',
     ])
     assert.deepEqual(items(byId('object.replace.empty'), 'displaced'), ['1 time scale'])
     assert.deepEqual(byId('object.replace.bpm.retained').facts, ['Kept the initial BPM change'])
@@ -453,8 +452,7 @@ test('property steps show the before value, in the editor words', () => {
     // The new group has an empty name: a group, so its name reads quoted empty, not Not set.
     assert.equal(change(group, 'groupId'), 'Old Group > ""')
     const objects = byId('brush.objects.varying')
-    assert.deepEqual(items(objects, 'changed'), ['2 notes', '3 camera events'])
-    assert.equal(rowOf(objects, 'beat'), undefined)
+    assert.deepEqual(items(objects, 'changed'), ['2 notes', '3 time scales'])
     const critical = byId('brush.note.1field')
     assert.equal(change(critical, 'isCritical'), '~Varies > Enabled')
 })
@@ -586,7 +584,7 @@ test('groups show net rows and totals only where the title lacks them', () => {
         'group.ownerMove.intoFolder',
         // Edits, moves, brushes, flips and scales would count one object twice.
         'group.objectEdit.note.3',
-        'group.objectMove.note.displacedEmpty.4',
+        'group.objectMove.note.4',
         'group.objectReplace.bpm.2',
         'group.brush.2',
         'group.flip.2',
@@ -789,7 +787,7 @@ test('the localized notes and facts exist in every locale', () => {
         assert.equal(byId('unknown.future.fallback', locale).note, t.unsupported, locale)
         assert.equal(byId('paste.mixed.displaced', locale).facts[0], t.pastedFlipped, locale)
         assert.equal(
-            byId('object.edit.bpm.retained', locale).facts[0],
+            byId('object.move.bpm.retained', locale).facts[0],
             t.retainedInitialBpm,
             locale,
         )

@@ -1,5 +1,11 @@
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test'
-import { closePage, installEditorFixture, waitForStartup } from './editorFixture'
+import {
+    closePage,
+    installEditorFixture,
+    installTestPlatform,
+    waitForStartup,
+} from './editorFixture'
+import { flushed, notice, pressSave, queuePicks, submitSave } from './saveFlows'
 
 // The History tab and dialog, the Timeline and the peek bar (Part 1 §1.4.10, §1.4.11, Step 5).
 // Entries are made through the undo stack's own `pushState`, as history.spec.ts does.
@@ -19,6 +25,8 @@ const load = async (page: Page) => {
         // The storage test hooks (`nseFlushTest`), in every tab of the context.
         localStorage.setItem('nse.test.storage', '{}')
     }, prefix)
+    // The test pickers a real Save writes through.
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' } as const)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
@@ -54,6 +62,15 @@ const edit = (page: Page, count: number, label = 'Life', known = false) =>
         },
         { count, label, known },
     )
+
+/** A real Save through the test pickers, so the Timeline holds the `save` entry the Save wrote. */
+const saveFile = async (page: Page, stem: string) => {
+    await queuePicks(page, [`${stem}.nxsp`])
+    await pressSave(page)
+    await submitSave(page, stem)
+    await expect(notice(page).filter({ hasText: `Saved to ${stem}.nxsp` })).toBeVisible()
+    await flushed(page)
+}
 
 /** The life as shown (the peeked state's while viewing history) and as written (the live one). */
 const lives = (page: Page) =>
@@ -710,9 +727,9 @@ test.describe('the Timeline', () => {
         page,
     }) => {
         await edit(page, 2)
+        await saveFile(page, 'coconut')
         await page.evaluate(() => {
             const { history } = window.editorTest
-            history.markSaved('coconut.nxsp', false)
             history.markExported('coconut.nsld', 'download')
         })
         await openTab(page)
@@ -1317,6 +1334,7 @@ const launch = async (
         localStorage.setItem(`${prefix}showSidebar`, 'false')
         localStorage.setItem('nse.test.storage', '{}')
     }, prefix)
+    await page.addInitScript(installTestPlatform, { fileSystemAccess: 'opfs' } as const)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
@@ -1378,9 +1396,9 @@ test.describe('screenshots', () => {
                 await expect(page.locator('[data-history-empty]')).toBeVisible()
                 await page.screenshot({ path: `${shots}/states-empty-${name}-${theme}.png` })
                 await edit(page, 2)
+                await saveFile(page, 'coconut')
                 await page.evaluate(() => {
                     const { history } = window.editorTest
-                    history.markSaved('coconut.nxsp', false)
                     history.markExported('coconut.nsld', 'download')
                 })
                 await page.locator('[data-history-goto-button]').click()

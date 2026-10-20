@@ -46,7 +46,10 @@ import {
 type Collateral = {
     /** Chart objects the edit replaced or removed that were not its operands. */
     readonly displaced?: ValueOf<typeof nativeCountsPlus>
-    /** The initial BPM was added back at beat 0 after the edit moved or removed it. */
+    /**
+     * The initial BPM stayed at beat 0: added back after a move, flip or scale took it away, or
+     * (a BPM tool move) kept in place with a copy added at the new beat.
+     */
     readonly retainedInitialBpm?: true
 }
 
@@ -100,7 +103,10 @@ const propertyData = codec<PropertyData>((value) => {
     )
 })
 
-/** Collateral that only a vertical flip or a beat scale can cause. */
+/**
+ * Whether a step carries collateral (`displaced` or `retainedInitialBpm`). Property data and brush
+ * need a Beat assignment for it, a flip the vertical axis and a scale the beats axis.
+ */
 const hasCollateral = (value: Collateral) => !!value.displaced || !!value.retainedInitialBpm
 const agrees = (subject: unknown, changed: ValueOf<typeof nativeCounts>) =>
     !Object.keys(changed).length || subject === subjectOfCounts(changed)

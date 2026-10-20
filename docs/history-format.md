@@ -142,7 +142,7 @@ The page replays its pending entries over the last acknowledged stack (`SessionS
 
 - `stackBlocks` rows are `{sessionId, block, first, hashes, steps}`: `hashes` the slots' roots packed as 16-byte runs, `steps` their complete steps. `BLOCK_SLOTS = 256`; slot numbers are absolute.
 - The session's `stack {base, length, index}` is the stored window: at most `STACK_CAP = 5000` slots, always including the index; normally the newest, and the redo end is cut first when the index sits below them. Blocks outside the window are deleted in the same transaction.
-- A stack the page cannot follow is removed rather than left behind `lastSeq`, and the next flush writes it whole; replay rebuilds a stack where none is stored (`stackRemoved`).
+- A stack the page cannot follow is removed rather than left behind `lastSeq`, and the next flush writes it whole; replay rebuilds a stack where none is stored (`stackRemoved`). A rebuild over parent links follows every one, however long the chain, with a visited set; a session met twice (a cycle in damaged rows) fails, and the session reads as damaged (`rebuild`, `src/local/startup/stored.ts`).
 - A restored stack shorter than its history is marked by `earlierSteps`; Undo past it says so.
 
 ### 2.6 Sessions and chains
@@ -505,7 +505,7 @@ The builders are in `src/editor/headerLabelText.ts`, wrapped by `src/editor/head
 
 **`nse.dynamicStages.enable`** `{created: nativeCounts}`.
 
-- *Produced by:* `requestDynamicStages` (`src/history/dynamicStages.ts`) through `checkDynamicStages`: the event tools' commands, the Stage commands, the Stages panel's "Enable Dynamic Stages" and pasting stage events. A confirm comes first; declining or already enabled pushes nothing.
+- *Produced by:* `requestDynamicStages` (`src/history/dynamicStages.ts`) through `checkDynamicStages`: the event tools' commands, the Stage commands, the Stages panel's "Enable Dynamic Stages" and pasting stage events. A confirm comes first; declining or already enabled pushes nothing. `created` counts the mask, pivot and style events it adds at beat 0 (no transform event).
 - *Apply:* one default mask, pivot and style joint at beat 0 on the default stage, and `isDynamicStages`; `created` is `{stageMaskEvent: 1, stagePivotEvent: 1, stageStyleEvent: 1}`.
 - *Step Details:* "Enabled dynamic stages" and an "Added" row. Never grouped.
 
@@ -548,7 +548,7 @@ Made by the storage side and the file flows; none groups. Step Details shows the
 
 - **`nse.origin`**: `resetState` (`new`, or `import` when a chart is given), `resetImportedState` (`import` with `source`), `openState` (default `recovery`, for Local Data's journal opens; a `.nxsp` open in safe mode passes `import` with `source` and stores nothing) and the auto-save migration (`autoSave`, written directly as an `init` entry by `src/local/startup/migrationWrite.ts`). A `.nxsp` open writes it as the `continue` entry, with the file's name, and as the `init` step of a file without history (`writeOpenHead`).
 - **`nse.continue`**: `Flusher.continueSession`, for a new visit, Reopen, Restore Session, and a reload that finds its own journal unapplied or continues its recovery session. `fromTime` is the parent's `updatedAt`; after a lost head race (`Flusher.fork`) it is the stored head's last entry time.
-- **`nse.file.save`**: `saveOperation` (`src/editor/save/flow.ts`), reserved with `Flusher.reserveSave` and written by `endSave` at the reserved `seq`. `markSaved` (`src/history/markers.ts`) has no caller in `src/`; browser specs use it. **`nse.file.export`**: `markExported` after an Export (`src/editor/commands/exportLevel/`).
+- **`nse.file.save`**: `saveOperation` (`src/editor/save/flow.ts`), reserved with `Flusher.reserveSave` and written by `endSave` at the reserved `seq`. The `save` History action kind (`markFileEvent`) has no producer, so a spec reaches the entry through a real Save with the test pickers. **`nse.file.export`**: `markExported` after an Export (`src/editor/commands/exportLevel/`).
 - **`nse.restore`**: `restoreEntry` through `PeekEffects.restoredOperation` (`src/editor/peek.ts`); it carries the restored entry's time, not its key.
 - **`nse.recovery`**: journal apply (`writeJournalApply`), the journal-only reload and a taken journal (section 2.9). `droppedSteps` counts the undo steps that could not be kept; the operation factory is in `src/local/start.ts`.
 - **`nse.externalChange`**: written by `writeOpenHead` as an `edit` entry before the `continue` entry when a file's `level.json` differs from its history head; the operation comes from `src/editor/commands/open/project.ts`.
@@ -675,7 +675,7 @@ Before the ship an operation changes in place at version 1; after it, any change
 | Where | What to add |
 | --- | --- |
 | `tests/editor/historyCodecTable.test.ts` | Valid and invalid `data`; the table is a `Record<OperationId, Row>`, so a missing id fails to compile. |
-| `tests/editor/historyOperationDetails.cases.json` and `.snap.txt` | Inventory cases (one, many, zero, huge; `locales: true` adds the en, fr and ja snapshot). Every case renders in all seven locales. Regenerate with `UPDATE_SNAPSHOTS=1` and say so in the commit. |
+| `tests/editor/historyOperationDetails.cases.json` and `.snap.txt` | Inventory cases (one, many, zero, huge; `locales: true` adds the en, fr and ja snapshot). Every case renders in all seven locales. A case holds what a producer can emit; one that holds a shape the codec accepts and no producer emits says so in its `note` ("Not produced today"). Regenerate with `UPDATE_SNAPSHOTS=1` and say so in the commit. |
 | `tests/editor/historyOperationPresentation.test.ts` | Its fixture must name every id; add title and Details expectations for special rules. |
 | `tests/editor/historyProducerReceipts.test.ts` | A receipt test of the producer; the last test requires one for every id, here or in the browser spec it names. |
 | `tests/editor/noOpSteps.test.ts` | When the no-op rule changes. |
@@ -699,7 +699,7 @@ Before the ship an operation changes in place at version 1; after it, any change
 
 ## 7. Future work
 
-- **Deleting History (Step 8).** GC, Delete Sessions and space reduction are not built: nothing writes `tombstones`, bumps `meta.epoch` (`bumpEpoch` and `missingHashes` in `db.ts` have no callers) or marks a row `kept: false` for space. When they land, every deleting transaction must bump the epoch, which the flush's closure check depends on.
+- **Deleting History (Step 8).** GC, Delete Sessions and space reduction are not built: nothing writes `tombstones`, bumps `meta.epoch` (`bumpEpoch` and `missingHashes` in `db.ts` and `observeTimes` in `time.ts` have no callers, and each says so) or marks a row `kept: false` for space. When they land, every deleting transaction must bump the epoch, which the flush's closure check depends on.
 - **Level Info (Step 11).** `nse.levelInfo.set` has its codec, presentation, strings and `levelInfoInput`, but no producer until the Level Info dialog. It has no inventory case in `historyOperationDetails.cases.json` yet.
 - **Per-id operation versions.** The envelope has one literal `version: 1`. The first change after the ship needs a per-id version table and the old codec kept for reading.
 - **Native apps.** The apps' reader and writer are not in this repository (Step 7 is paused); the conformance cases and the checker are what they must match.

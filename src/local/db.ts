@@ -149,7 +149,10 @@ export const writeMeta = async <K extends MetaKey>(tx: KvTx, key: K, value: Meta
 /** `meta.epoch`, read inside every flush's transaction (§1.6.6). */
 export const readEpoch = async (tx: KvTx) => (await readMeta(tx, 'epoch')) ?? 0
 
-/** Bumps the epoch: only in a transaction that actually deleted something (§1.6.6). */
+/**
+ * Bumps the epoch: only in a transaction that actually deleted something (§1.6.6). Unwired until
+ * Step 8 GC: every transaction that deletes must call it.
+ */
 export const bumpEpoch = async (tx: KvTx) => {
     const epoch = (await readEpoch(tx)) + 1
     await writeMeta(tx, 'epoch', epoch)
@@ -161,7 +164,8 @@ export const HASH_STORES = ['nodes', 'chunks', 'media'] as const satisfies Store
 
 /**
  * The closure check (§1.6.6, r12-arch-web M5): which of these hashes no store holds. Run in the
- * flush's transaction after an epoch change, over `HASH_STORES` in its scope.
+ * flush's transaction after an epoch change, over `HASH_STORES` in its scope. Unwired until Step 8
+ * GC, the first thing that changes the epoch.
  */
 export const missingHashes = async (tx: KvTx, hashes: Iterable<Uint8Array>) => {
     const missing: Uint8Array[] = []
