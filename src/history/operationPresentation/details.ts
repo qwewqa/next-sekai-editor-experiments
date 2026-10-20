@@ -395,12 +395,13 @@ const nativeRecord = (
                     case 'description':
                     case 'cover':
                     case 'preview':
+                        // An unset field is empty, and reads Not set, as an empty file name does.
                         rows.push(
                             ...changeRow(
                                 change.field,
                                 label,
-                                nameDetail(change.before, context),
-                                nameDetail(change.after, context),
+                                nameDetail(change.before, context, { file: true }),
+                                nameDetail(change.after, context, { file: true }),
                             ),
                         )
                 }
