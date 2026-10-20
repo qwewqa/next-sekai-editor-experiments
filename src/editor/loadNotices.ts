@@ -63,10 +63,17 @@ export const loadNoticeOf: Handlers = {
     continued: ({ name, from }) => ({
         order: LOAD_ORDER.continued,
         message:
-            name.name.kind === 'date'
-                ? () => interpolateRaw(load().continuedUntitled, formatDateInSentence(from))
-                : () =>
-                      interpolateRaw(load().continued, shownName(name), formatDateInSentence(from)),
+            from === undefined
+                ? // Without the time it was continued from, only that it was.
+                  () => interpolateRaw(load().continuedUndated, shownName(name))
+                : name.name.kind === 'date'
+                  ? () => interpolateRaw(load().continuedUntitled, formatDateInSentence(from))
+                  : () =>
+                        interpolateRaw(
+                            load().continued,
+                            shownName(name),
+                            formatDateInSentence(from),
+                        ),
         action: { ...openHistoryAction(), label: () => load().openHistory },
     }),
     storageCleared: () => ({

@@ -259,7 +259,11 @@ test.describe('the Save dialog', () => {
     }) => {
         await seed(context)
         await visit(page)
-        const { bgm: _size, ...unsized } = estimateOf
+        const unsized = {
+            steps: estimateOf.steps,
+            history: estimateOf.history,
+            base: estimateOf.base,
+        }
         await openSave(page, { estimate: { cached: unsized, value: unsized } })
         const total = dialog(page).locator('[data-save-total]')
         await expect(total).toHaveText('Estimating size…')
@@ -610,12 +614,18 @@ test.describe('the conflict dialog', () => {
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()
         // A file with no summary for its revision has no note count to name, not "0 notes".
-        const { notes: _unknown, ...uncounted } = disk.web
+        const uncounted = {
+            kind: disk.web.kind,
+            device: disk.web.device,
+            savedAt: disk.web.savedAt,
+        }
         await open(page, {
             kind: 'conflict',
             input: { name: 'coconut.nxsp', disk: uncounted },
         })
-        await expect(dialog(page)).toContainText('Saved in the web editor (Chrome), Oct 16, 2:41 PM.')
+        await expect(dialog(page)).toContainText(
+            'Saved in the web editor (Chrome), Oct 16, 2:41 PM.',
+        )
         await expect(dialog(page)).not.toContainText('note')
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()

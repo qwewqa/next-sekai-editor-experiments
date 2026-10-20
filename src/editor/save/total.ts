@@ -9,8 +9,7 @@ export const totalOf = (
     estimate: Pick<SaveSizeEstimate, 'base' | 'history' | 'bgm'>,
     ticks: { history: boolean; bgm: boolean },
 ) => {
-    if (ticks.bgm && estimate.bgm === undefined) return
-    return (
-        estimate.base + (ticks.history ? estimate.history : 0) + (ticks.bgm ? estimate.bgm! : 0)
-    )
+    const bgm = ticks.bgm ? estimate.bgm : 0
+    if (bgm === undefined) return
+    return estimate.base + (ticks.history ? estimate.history : 0) + bgm
 }
