@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { toHex } from '../../../src/local/hash'
-import { holdsHistory, readReplaceDecision, relation } from '../../../src/local/save/predicate'
+import type { ChainCut } from '../../../src/local/save/cut'
+import { bindingHasHistory } from '../../../src/local/save/model'
+import {
+    holdsHistory,
+    readReplaceDecision,
+    relation,
+    replaceDecision,
+} from '../../../src/local/save/predicate'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { Fixture, heldRows, save, stateAt } from './fixture'
 
@@ -106,6 +113,92 @@ test('the Replace guard uses the build’s carry test: a flagged row a kept row 
         const stored = (await tx.get('entries', [row.sessionId, row.seq])) as object
         await tx.put('entries', { ...stored, kept: false })
     })
+    assert.deepEqual(
+        await readReplaceDecision(fixture.store, fixture.chainId, descendant, 'zip:1:1:abcdef01'),
+        { holdsBase: false, relation: 'newer' },
+    )
+})
+
+test('a binding has history when its cut counts an entry: no cut and count 0 are none (SF-3, SF-4)', () => {
+    const cut = { sessionId: 's', seq: 3, startedAt: 1, count: 3, notKept: 0 }
+    assert.equal(bindingHasHistory({ entry: cut }), true)
+    // An open of a file without history stores a cut of count 0; a Save without History, none.
+    const opened = { ...cut, seq: 0, count: 0 }
+    assert.equal(bindingHasHistory({ entry: opened }), false)
+    assert.equal(bindingHasHistory({}), false)
+    assert.equal(bindingHasHistory(undefined), false)
+})
+
+test('a base without history holds no earlier steps: Replace stays available (SF-3, SF-4)', () => {
+    const chainCut = (entry?: { count: number }): ChainCut =>
+        ({
+            chain: {
+                chainId: 'c',
+                docId: 'd',
+                lineageId: 'l',
+                revision: { id: 'a', n: 1, ancestors: [] },
+                file: {
+                    disk: { fingerprint: 'zip:1:1:11111111', size: 1, lastModified: 1 },
+                    ...(entry
+                        ? {
+                              entry: {
+                                  sessionId: 's',
+                                  seq: entry.count,
+                                  startedAt: 1,
+                                  notKept: 0,
+                                  ...entry,
+                              },
+                          }
+                        : {}),
+                },
+            },
+            sessions: [],
+            entries: new Map(),
+            unreadable: 0,
+            sessionId: undefined,
+        }) as unknown as ChainCut
+    const disk = {
+        revision: { id: 'b', ancestors: ['a'], completeFrom: 'a' },
+        cd: '22222222',
+        entries: 5,
+    }
+    // A Save without History: no cut.
+    assert.deepEqual(replaceDecision(chainCut(), disk), { holdsBase: false, relation: 'newer' })
+    // An open of a file without history: a cut of count 0.
+    assert.deepEqual(replaceDecision(chainCut({ count: 0 }), disk), {
+        holdsBase: false,
+        relation: 'newer',
+    })
+    // A base with history storage no longer carries is still guarded.
+    assert.deepEqual(replaceDecision(chainCut({ count: 4 }), disk), {
+        holdsBase: true,
+        relation: 'newer',
+    })
+})
+
+test('a chain saved without History meets a descendant on disk: Replace stays available (SF-3)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    fixture.undo()
+    await fixture.edit(2)
+    await fixture.flush()
+    const { built, file } = await save(
+        fixture,
+        { kind: 'copy' },
+        {
+            extra: { history: false },
+            disk: (saved) => nxspDiskState(saved, saved.lastModified).then((disk) => ({ ...disk })),
+        },
+    )
+    assert.ok(!('refused' in built) && file)
+    assert.equal(built.identity.entry, undefined)
+    const baseId = built.identity.revision.id
+    const descendant = {
+        revision: { id: 'other', ancestors: [baseId], completeFrom: baseId },
+        history: { entries: 5 },
+    }
+    assert.equal(await fixture.thin(0, 1), true)
     assert.deepEqual(
         await readReplaceDecision(fixture.store, fixture.chainId, descendant, 'zip:1:1:abcdef01'),
         { holdsBase: false, relation: 'newer' },

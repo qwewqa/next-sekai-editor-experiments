@@ -10,7 +10,8 @@ import { chainRows, ModelError } from './model'
 // stored sizes, never inflating or hashing a body. For the rows the write would hold, each
 // distinct root's and node's row `size` and each chunk's stored length; the media rows' sizes;
 // the manifest by a per-entry and per-record estimate, deflated; `level.json` from the head's
-// records the same way. Cached per chain by the saved session, its `lastSeq` and the head's BGM.
+// records the same way. Cached per chain by the saved session, its `lastSeq` and the head's BGM,
+// once no open's import is still writing the chain's rows.
 
 /** Sizes in bytes; the dialog's total adds `base` and the ticked rows. */
 export type SaveSizeEstimate = {
@@ -30,6 +31,11 @@ export type SaveSizeEstimate = {
     mediaMissing?: number
     /** What every write holds: `project.json`, `level.json`, the head's cover and preview audio. */
     base: number
+    /**
+     * Counted while an open's import still writes the chain's rows: what is stored so far, which
+     * the import's end changes without a new `seq`, so neither the worker nor the page keeps it.
+     */
+    importing?: true
 }
 
 /** Constants fixed on the generated large chart and the golden chart (§1.4.7). */
@@ -109,7 +115,8 @@ export const estimateSaveSize = async (
     if (!cut) return
     const saved = cut.sessionId
     const lastSeq = cut.sessions.find((session) => session.id === saved)?.lastSeq ?? 0
-    const known = cachedEstimate(chainId, saved, lastSeq, bgmHash)
+    const importing = cut.sessions.some((session) => session.importPending)
+    const known = importing ? undefined : cachedEstimate(chainId, saved, lastSeq, bgmHash)
     if (known) return known
 
     let rows
@@ -231,7 +238,8 @@ export const estimateSaveSize = async (
                 headStored * ESTIMATE.levelOverStored +
                 assets,
         ),
+        ...(importing ? { importing: true as const } : {}),
     }
-    cache.set(chainId, { sessionId: saved, lastSeq, bgm: bgmHash, estimate })
+    if (!importing) cache.set(chainId, { sessionId: saved, lastSeq, bgm: bgmHash, estimate })
     return estimate
 }

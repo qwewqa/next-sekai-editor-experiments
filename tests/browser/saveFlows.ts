@@ -259,3 +259,38 @@ export const thinUndone = async (page: Page) => {
         { sessionId: undone!.sessionId as string, seq: undone!.seq as number },
     )
 }
+
+/**
+ * Makes the storage worker's builds (`buildSave`) wait `ms` first, or fail when `ms` is `'fail'`,
+ * as a slow chart or a worker restart would; `undefined` puts the worker's own call back.
+ */
+export const builds = (page: Page, ms: number | 'fail' | undefined) =>
+    page.evaluate((ms) => {
+        type Call = (method: string, ...rest: unknown[]) => Promise<unknown>
+        const worker = window.nseStorageTest!.worker as unknown as { call: Call; ownCall?: Call }
+        worker.ownCall ??= worker.call.bind(worker)
+        const own = worker.ownCall
+        worker.call =
+            ms === null
+                ? own
+                : (method, ...rest) =>
+                      method !== 'buildSave'
+                          ? own(method, ...rest)
+                          : ms === 'fail'
+                            ? Promise.reject(new Error('The storage worker restarted'))
+                            : new Promise((resolve) => setTimeout(resolve, ms)).then(() =>
+                                  own(method, ...rest),
+                              )
+    }, ms ?? null)
+
+/** Whether the open session still holds a Save's reserved `seq` (edits after it wait). */
+export const saveReserved = (page: Page) =>
+    page.evaluate(
+        () =>
+            (window.nseFlushTest?.flusher as unknown as { session?: { reserved?: number } })
+                ?.session?.reserved !== undefined,
+    )
+
+/** The "Preparing…" dialog of a file. */
+export const preparingDialog = (page: Page, name = 'coconut.nxsp') =>
+    page.getByRole('dialog').filter({ hasText: `Preparing ${name}` })

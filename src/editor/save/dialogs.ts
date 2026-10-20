@@ -263,8 +263,13 @@ export const defaultSaveUi: SaveUi = {
             built: (size) => {
                 model.size = size
             },
+            // A dialog already cancelled or closed has no press to wait for.
             ready: (action, size) =>
                 new Promise<boolean>((resolve) => {
+                    if (controller.signal.aborted || model.closed) {
+                        resolve(false)
+                        return
+                    }
                     answer = resolve
                     model.size = size
                     model.ready = action

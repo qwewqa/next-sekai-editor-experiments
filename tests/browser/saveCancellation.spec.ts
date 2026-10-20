@@ -1,5 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
-import { edit, notice, start, submitSave } from './saveFlows'
+import {
+    builds,
+    edit,
+    notice,
+    preparingDialog,
+    pressSave,
+    readFile,
+    saveReserved,
+    start,
+    submitSave,
+} from './saveFlows'
 
 // Save's picker and write paths with the browser's own picker stubbed (Part 1 §1.4.7; Step 6
 // migrated this spec from level data to `.nxsp`): a dismissed picker writes and downloads nothing,
@@ -178,4 +188,26 @@ test('a browser without a save picker downloads, bound by name', async ({ page }
     expect(await page.evaluate(() => window.saveReview.events)).toEqual([])
     await expect(notice(page).filter({ hasText: 'Download started: coconut.nxsp' })).toBeVisible()
     expect(await bound(page)).toBe('coconut.nxsp')
+})
+
+test('Cancel in a slow write-back’s Preparing… writes nothing, and the next Save writes (SF-5)', async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    const before = await readFile(page, 'coconut.nxsp')
+    await edit(page, 2)
+    await builds(page, 2500)
+    await pressSave(page)
+    await preparingDialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await expect(preparingDialog(page)).toHaveCount(0)
+    await page.waitForTimeout(2500)
+    expect(await readFile(page, 'coconut.nxsp')).toEqual(before)
+    await expect.poll(() => saveReserved(page)).toBe(false)
+    await builds(page, undefined)
+    await pressSave(page)
+    await expect.poll(() => readFile(page, 'coconut.nxsp')).not.toEqual(before)
 })

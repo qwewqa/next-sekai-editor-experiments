@@ -1,12 +1,15 @@
 import { expect, test, type Page } from '@playwright/test'
 import { waitForStartup } from './editorFixture'
 import {
+    builds,
     chainOf,
     edit,
     notice,
+    preparingDialog,
     pressSave,
     rows,
     saveDialog,
+    saveReserved,
     sessionOf,
     start,
     submitSave,
@@ -168,4 +171,36 @@ test('a download browser never requests nse-bind', async ({ page }) => {
     const names = await page.evaluate(() => (window as { lockNames?: string[] }).lockNames ?? [])
     expect(names.length).toBeGreaterThan(0)
     expect(names).not.toContain('nse-bind')
+})
+
+test('Cancel in a slow Preparing… ends the Save: nothing asks or downloads, and the next Save runs (SF-2)', async ({
+    page,
+}) => {
+    // Every press's activation has lapsed, so each download asks for its own tap.
+    await start(page, { fileSystemAccess: false, override: { activation: false } })
+    await edit(page, 1)
+    await downloaded(page, async () => {
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+        await preparingDialog(page).getByRole('button', { name: 'Download' }).click()
+    })
+    await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ event: 'downloaded' })
+    await edit(page, 2)
+    await builds(page, 2500)
+    let downloads = 0
+    page.on('download', () => downloads++)
+    await pressSave(page)
+    await preparingDialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await expect(preparingDialog(page)).toHaveCount(0)
+    // The build ends after the Cancel: nothing asks, nothing downloads, nothing stays reserved.
+    await page.waitForTimeout(2500)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(downloads).toBe(0)
+    await expect.poll(() => saveReserved(page)).toBe(false)
+    await builds(page, undefined)
+    const next = await downloaded(page, async () => {
+        await pressSave(page)
+        await preparingDialog(page).getByRole('button', { name: 'Download' }).click()
+    })
+    expect(next).toBe('coconut.nxsp')
 })

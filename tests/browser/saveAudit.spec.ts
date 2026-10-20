@@ -224,6 +224,31 @@ test('the file opened by name keeps its BGM: ticked, disabled, "Already in" it',
     await expect(sizeText(dialog, 'bgm')).toContainText('song.mp3 · 200 kB')
 })
 
+test('a file without history opened by name: History is unticked and can be ticked (SF-4)', async ({
+    page,
+}) => {
+    await start(page, { fileSystemAccess: false })
+    await edit(page, 1)
+    await pressSave(page)
+    await saveDialog(page).locator('[data-save-row="history"]').getByRole('checkbox').uncheck()
+    const downloading = page.waitForEvent('download')
+    await submitSave(page, 'coconut')
+    const download = await downloading
+    const bytes = [...(await import('node:fs')).readFileSync((await download.path())!)]
+    await page.evaluate(async (bytes) => {
+        const { openProject } = await import('/src/editor/commands/open/project.ts')
+        await openProject(new File([new Uint8Array(bytes)], 'coconut.nxsp'), undefined)
+    }, bytes)
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ event: 'opened' })
+    await pressSave(page)
+    const history = saveDialog(page).locator('[data-save-row="history"]')
+    await expect(history).toBeVisible()
+    await expect(history).not.toContainText('Already in')
+    await expect(history.getByRole('checkbox')).toBeEnabled()
+    await expect(history.getByRole('checkbox')).not.toBeChecked()
+})
+
 test.describe('Save to File…', () => {
     const toFile = (page: Page, sessionId: string) =>
         page.evaluate((sessionId) => {

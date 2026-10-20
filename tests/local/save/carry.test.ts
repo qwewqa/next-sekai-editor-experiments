@@ -201,3 +201,31 @@ const onlyChunk = async (fixture: Fixture, k: number) => {
     assert.ok(found, `state ${k} shares every chunk`)
     return found
 }
+
+test('a Save without History reads only the head: a bad state elsewhere on the stack marks nothing (SF-7)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.edit(2)
+    // State 2 stays on the stack as the redo slot; the head is state 1.
+    fixture.undo()
+    await fixture.flush()
+    const chunk = await onlyChunk(fixture, 2)
+    assert.ok(chunk)
+    const row = (await fixture.store.read(['chunks'], (tx) =>
+        tx.get('chunks', hashKey(fromHex16(chunk))),
+    )) as { bytes: Uint8Array }
+    await fixture.store.write(['chunks'], async (tx) => {
+        const bytes = row.bytes.slice()
+        bytes[0] = (bytes[0] ?? 0) ^ 0xff
+        await tx.put('chunks', { ...row, bytes }, hashKey(fromHex16(chunk)))
+    })
+    const bare = ok(
+        (await save(fixture, { kind: 'copy' }, { binds: false, extra: { history: false } })).built,
+    )
+    assert.deepEqual(bare.damaged, [])
+    assert.equal(bare.marked, 0)
+    // With History the state is written, so its damage is found and marked.
+    const full = ok((await save(fixture, { kind: 'copy' }, { binds: false })).built)
+    assert.ok(full.damaged.length > 0)
+})
