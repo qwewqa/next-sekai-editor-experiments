@@ -2057,7 +2057,7 @@ export const saveToFile = (sessionId: string) =>
         // The session's own head, as storage holds it: its BGM row is what a build would write.
         const estimate = await env.worker
             .call('estimateSaveSize', { chainId, sessionId })
-            .catch(() => undefined)
+            .catch(failedEstimate)
         const input: SaveDialogInput = {
             kind: 'saveToFile',
             name,
@@ -2075,15 +2075,11 @@ export const saveToFile = (sessionId: string) =>
                 load: () =>
                     env.worker
                         .call('estimateSaveSize', { chainId, sessionId })
-<<<<<<< HEAD
-                        .catch(() => undefined)
+                        .catch(failedEstimate)
                         .then((loaded) => {
                             if (loaded) noteLoaded(input, loaded)
                             return loaded
                         }),
-=======
-                        .catch(failedEstimate),
->>>>>>> main
             },
         }
         const result = await saveUi.saveDialog(input)
