@@ -243,7 +243,7 @@ export const changeHandlers = (context: WorkerContext) => ({
         while (cursor) {
             const at: FindEditsCursor = cursor
             cursor = await context.core.read(
-                ['sessions', 'entries', 'nodes', 'chunks'],
+                ['sessions', 'entries', 'chains', 'nodes', 'chunks'],
                 (tx) => scanSlice(tx, request, at, page),
                 scope,
             )

@@ -13,10 +13,12 @@ export type Entry = EntryDescription & {
     noteCount?: number
     /** False for a snapshot removed to save space (§1.6.8). */
     kept: boolean
+    /** A `kept: false` entry whose snapshot reaches a part found bad: it reads damaged (§1.4.10.5). */
+    damaged?: boolean
     /** A `continue` entry's time of the entry it continues, for its divider. */
     from?: number
-    /** A save's device, when the revision came from another one (§1.3.7). */
-    device?: { id: string; name?: string }
+    /** A save's device, as stored (§1.3.3): named on its row when it is not this browser's. */
+    device?: { id: string; label: string }
     pending?: boolean
     /** Its snapshot's root, as hex, once stored. */
     snapshot?: string
@@ -135,22 +137,34 @@ export const buildRows = (
     newestFirst: readonly Entry[],
     { filter, expanded, damaged, now = Date.now(), gap, more, pinned }: BuildOptions,
 ): Row[] => {
-    const flagsOf = (entry: Entry): Flags => ({
-        removed: !entry.kept && !damaged.has(entryId(entry)),
-        damaged: damaged.has(entryId(entry)),
-    })
+    // A `kept: false` entry is damaged when the worker found its snapshot reaching a bad part, or
+    // when a peek or Restore of it failed in this tab; else it was removed to save space.
+    const flagsOf = (entry: Entry): Flags => {
+        const bad = damaged.has(entryId(entry)) || (!entry.kept && entry.damaged === true)
+        return { removed: !entry.kept && !bad, damaged: bad }
+    }
+    // The notes in an entry's state. An undo or redo not stored yet holds only the root it lands
+    // on, whose count the entry that made that state has.
+    const counts = new Map<string, number>()
+    for (const entry of newestFirst)
+        if (entry.snapshot && entry.noteCount !== undefined)
+            counts.set(entry.snapshot, entry.noteCount)
+    const noteCountOf = (entry: Entry) =>
+        entry.noteCount ?? (entry.snapshot ? counts.get(entry.snapshot) : undefined)
     // The change each entry made: its notes against the next older entry's, which Edits Here's
     // matches are not.
     const deltas = new Map<string, number>()
     for (const [i, entry] of filter === 'here' ? [] : newestFirst.entries()) {
+        const now = noteCountOf(entry)
         const older = newestFirst[i + 1]
+        const before = older && noteCountOf(older)
         if (
-            entry.noteCount !== undefined &&
-            older?.noteCount !== undefined &&
+            now !== undefined &&
+            before !== undefined &&
             entry.kind !== 'continue' &&
             entry.kind !== 'init'
         )
-            deltas.set(entryId(entry), entry.noteCount - older.noteCount)
+            deltas.set(entryId(entry), now - before)
     }
 
     const items: (EntryRow | { type: 'divider'; id: string; entry: Entry })[] = []
