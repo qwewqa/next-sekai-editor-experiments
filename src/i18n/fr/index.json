@@ -294,6 +294,7 @@
     "redo": {
       "title": "Refaire",
       "noState": "Rien à refaire",
+      "failed": "Impossible de refaire",
       "redid": "\"{0}\" refait"
     },
     "reset": {
@@ -382,6 +383,7 @@
     "undo": {
       "title": "Annuler",
       "noState": "Rien à annuler",
+      "failed": "Impossible d’annuler",
       "undid": "\"{0}\" annulé"
     },
     "utilities": {
@@ -1179,8 +1181,8 @@
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
     "olderVersion": "Cette version est plus ancienne que vos données. Rechargez la page, ou sauvegardez votre travail dans des fichiers.",
     "tryAgain": "Réessayer",
-    "continued": "Reprise de \"{0}\" du {1}.",
-    "continuedUntitled": "Reprise de votre session du {0}.",
+    "continued": "Session du {1} reprise : \"{0}\".",
+    "continuedUntitled": "Votre session du {0} a été reprise.",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
     "journalKept": "Une modification de \"{0}\" n’a pas pu être appliquée, elle a donc été conservée dans une session séparée.",
     "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
@@ -2201,7 +2203,7 @@
       "body": "Ce niveau utilise des valeurs que cette version de l’éditeur ne prend pas en charge. L’ouverture d’une copie séparée remplace ces valeurs par les valeurs par défaut.",
       "openCopy": "Ouvrir une copie"
     },
-    "unsavedChanges": "{0} ouvert. Vous avez des modifications non sauvegardées de ce fichier datant du {1}.",
+    "unsavedChanges": "{0} ouvert. Ce fichier a des modifications du {1} non sauvegardées.",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans Sessions récentes.",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans Sessions récentes.",
     "restoreIt": "Restaurer la session",

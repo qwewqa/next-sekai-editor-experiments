@@ -294,6 +294,7 @@
     "redo": {
       "title": "Yeniden Yap",
       "noState": "Yeniden yapılacak bir şey yok",
+      "failed": "Yeniden yapılamadı",
       "redid": "\"{0}\" yeniden yapıldı"
     },
     "reset": {
@@ -382,6 +383,7 @@
     "undo": {
       "title": "Geri Al",
       "noState": "Geri alınacak hiçbir şey yok",
+      "failed": "Geri alınamadı",
       "undid": "\"{0}\" geri alındı"
     },
     "utilities": {

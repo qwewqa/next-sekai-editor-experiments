@@ -109,7 +109,11 @@ export type LoadOptions = {
     local?: Record<string, string>
     /** Whether the Properties sidebar shows. Default false. */
     sidebar?: boolean
-    /** The chart to show: a blank one (default), the fixture's interaction chart, or the session as stored. */
+    /**
+     * The chart to show: a blank one (default), the fixture's interaction chart, or the session
+     * as stored ('keep': the fixture's `show` is skipped, so `window.editorTest` is the reloaded
+     * one, without `show`, `fixtures` and `point`).
+     */
     chart?: 'blank' | 'interaction' | 'keep'
     /** The viewport; the config's 1600 x 1000 otherwise. */
     viewport?: { width: number; height: number }
@@ -119,7 +123,8 @@ const prefix = 'sonolus-next-sekai-editor.'
 
 /**
  * The init script with the storage hooks (`nseFlushTest`), then `waitForStartup`,
- * `installEditorFixture` and a blank chart at the chart's top. The fixture's settings (width 20,
+ * `installEditorFixture` and a blank chart at the chart's top (`chart: 'keep'` installs the
+ * reloaded `window.editorTest` instead and shows no chart). The fixture's settings (width 20,
  * 120 pixels per second, no smooth scrolling) apply.
  */
 export const load = async (page: Page, opts: LoadOptions = {}) => {
@@ -146,7 +151,8 @@ export const load = async (page: Page, opts: LoadOptions = {}) => {
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
-    await page.evaluate(installEditorFixture)
+    // The fixture ends by showing its interaction chart, which would replace the stored session.
+    await page.evaluate(chart === 'keep' ? installReloaded : installEditorFixture)
     if (chart === 'blank')
         await page.evaluate(async () => {
             const { fixtures, show, nextTick } = window.editorTest

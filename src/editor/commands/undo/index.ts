@@ -1,14 +1,12 @@
 import type { Command } from '..'
-import { earlierSteps, isPristine, undoState } from '../../../history'
-import { getHistoryOperationContext } from '../../../history/createHistoryOperation'
-import { describeStep } from '../../../history/operationPresentation/format'
+import { earlierSteps, isPristine, pendingMoveOutcome, undoState } from '../../../history'
 import { i18n } from '../../../i18n'
 import { previousSession } from '../../../local/startup/events'
-import { interpolate } from '../../../utils/interpolate'
 import { openHistoryAction } from '../../history/openHistory'
 import { notify } from '../../notification'
 import { notifyLeft } from '../../switch'
 import { view } from '../../view'
+import { noticeOnLanding, notifyMove } from './moveNotice'
 import UndoIcon from './UndoIcon.vue'
 
 export const undo: Command = {
@@ -27,12 +25,10 @@ export const undo: Command = {
                 creating: [],
             }
 
-            notify(
-                interpolate(
-                    () => i18n.value.commands.undo.undid,
-                    () => describeStep(step, getHistoryOperationContext()),
-                ),
-            )
+            // A move waiting for its slot is told when it lands (§1.6.4 #6).
+            const queued = pendingMoveOutcome()
+            if (queued) noticeOnLanding(queued)
+            else notifyMove(-1, step)
         } else {
             // Right after New, an open or an import, with Reopen: the habit of pressing Undo
             // after replacing the chart by mistake gets the work back (Part 1 §1.4.1). Else

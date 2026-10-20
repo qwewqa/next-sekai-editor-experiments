@@ -139,7 +139,7 @@ test('a frozen tab leaves the v2 tab with storage unavailable after about 3 s, n
 
     const next = await context.newPage()
     const started = Date.now()
-    await boot(next, { dbVersion: 2 })
+    await boot(next, { dbVersion: 3 })
     await expect
         .poll(() => status(next), { timeout: 15_000 })
         .toEqual({ mode: 'memory', reason: 'olderTabs' })
@@ -147,6 +147,8 @@ test('a frozen tab leaves the v2 tab with storage unavailable after about 3 s, n
     await expect(pill(next)).toContainText(
         'Close other Next SEKAI Editor tabs to open your stored work.',
     )
+    // The load notice is a warning.
+    await expect(pill(next).locator('svg[data-severity="warning"]')).toHaveCount(1)
     // Storage unavailable: the tab still works, in memory.
     expect(await putRow(next, 'inMemory')).toBe('stored')
 
@@ -156,6 +158,12 @@ test('a frozen tab leaves the v2 tab with storage unavailable after about 3 s, n
         'Close other Next SEKAI Editor tabs to open your stored work.',
         { timeout: 10_000 },
     )
+    // Try Again's own result card is a warning too.
+    await expect(
+        next.locator(
+            '[data-notice-card] svg[data-severity="warning"], .notification-pill svg[data-severity="warning"]',
+        ),
+    ).toHaveCount(1)
     expect(await status(next)).toEqual({ mode: 'memory', reason: 'olderTabs' })
     expect(await status(frozen)).toEqual({ mode: 'stored' })
 
@@ -163,7 +171,7 @@ test('a frozen tab leaves the v2 tab with storage unavailable after about 3 s, n
     await frozen.close()
     await pill(next).getByRole('button', { name: 'Try Again' }).click()
     await expect.poll(() => status(next), { timeout: 10_000 }).toEqual({ mode: 'stored' })
-    expect((await database(next)).version).toBe(2)
+    expect((await database(next)).version).toBe(3)
     expect(await putRow(next, 'stored')).toBe('stored')
 })
 
@@ -171,7 +179,7 @@ test('a database newer than this build opens read-only, with its load notice', a
     context,
 }) => {
     const next = await context.newPage()
-    await boot(next, { dbVersion: 2 })
+    await boot(next, { dbVersion: 3 })
     await expect.poll(() => status(next)).toEqual({ mode: 'stored' })
     expect(await putRow(next, 'fromNext')).toBe('stored')
     await next.close()
@@ -184,6 +192,7 @@ test('a database newer than this build opens read-only, with its load notice', a
         'Next SEKAI Editor · Version 0.6.0',
         'This version is older than your data. Reload, or save your work to files.',
     ])
+    await expect(old.locator('.notification-pill svg[data-severity="warning"]')).toHaveCount(1)
     expect(
         await old.evaluate(() => window.nseStorageTest!.worker.call('testGet', 'fromNext')),
     ).toBe('fromNext')

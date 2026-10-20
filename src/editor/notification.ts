@@ -12,10 +12,18 @@ import { noticeDuration, RESUME_MIN_MS } from './noticeTiming'
 /** A card's one button (Part 1 §1.4.1). */
 export type NoticeAction = { label: () => string; run: () => void }
 
+/**
+ * What a card's glyph says (colour system §5.6). Error: what was asked for did not happen. Warning:
+ * work is at risk or was affected. Info: worth knowing, with nothing at risk. A notice without one
+ * is neutral (a confirmation or a route back) and has no glyph.
+ */
+export type NoticeSeverity = 'info' | 'warning' | 'error'
+
 /** One line of the start-up card, with at most one action (Part 1 §1.4.3). */
 export type NoticeLine = {
     message: () => string
     action?: NoticeAction
+    severity?: NoticeSeverity
     /** The name and version, which the card joins into its heading. */
     heading?: boolean
 }
@@ -33,6 +41,7 @@ export type Notice = {
     startup?: boolean
     /** A message that must be read: a card without an action. */
     card?: boolean
+    severity?: NoticeSeverity
 }
 
 let id = 0
@@ -141,7 +150,12 @@ const track = () => {
 track()
 
 /** A load notice (Part 1 §1.4.3): `order` is its place in the table, most important first. */
-export type LoadNotice = { order: number; message: () => string; action?: NoticeAction }
+export type LoadNotice = {
+    order: number
+    message: () => string
+    action?: NoticeAction
+    severity?: NoticeSeverity
+}
 
 /** This page load's load notices in the table's order, for Settings › Local Data › Recovery's "At this load". */
 export const loadNotices = shallowRef<readonly LoadNotice[]>([])
@@ -178,7 +192,7 @@ const pillLines = (): NoticeLine[] => {
             !lines.slice(i + 1).some((later) => later.action && same(later.action, action))
         )
             return line
-        return { message: line.message, heading: line.heading }
+        return { message: line.message, heading: line.heading, severity: line.severity }
     })
 }
 
@@ -211,8 +225,13 @@ watch(
  * stays about 8 s. Once the card has gone (an edit, another card), the line is only kept, since
  * nothing appears at an arbitrary time.
  */
-export const addLoadNotice = (message: () => string, action?: NoticeAction, order = 0) => {
-    const notice: LoadNotice = { order, message, action }
+export const addLoadNotice = (
+    message: () => string,
+    action?: NoticeAction,
+    order = 0,
+    severity?: NoticeSeverity,
+) => {
+    const notice: LoadNotice = { order, message, action, severity }
     // Stable among equal orders: earlier finds first.
     const at = loadNotices.value.findIndex((other) => other.order > order)
     loadNotices.value =
@@ -229,7 +248,13 @@ export const addLoadNotice = (message: () => string, action?: NoticeAction, orde
  */
 export const notify = (
     message: () => string,
-    options?: { action?: NoticeAction; card?: boolean; announcement?: () => string },
+    options?: {
+        action?: NoticeAction
+        card?: boolean
+        announcement?: () => string
+        /** The card's glyph. A quick toast has no glyph, so a severity without `card` or `action` is dropped. */
+        severity?: NoticeSeverity
+    },
 ) => {
     const notice: Notice = {
         id: id++,
@@ -237,6 +262,7 @@ export const notify = (
         action: options?.action,
         card: options?.card,
         announcement: options?.announcement,
+        severity: options?.severity,
     }
     latestNotice.value = notice
     if (isCard(notice)) {

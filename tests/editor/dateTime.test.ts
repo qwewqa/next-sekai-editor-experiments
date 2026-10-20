@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
     formatClock,
     formatDate,
+    formatDateInSentence,
     formatDateTime,
     formatEntryTime,
     formatHour,
@@ -16,6 +17,23 @@ const now = at(10, 16, 9, 0)
 test('a date is the short month and day, with the year only in another year', () => {
     assert.equal(formatDate('en', at(10, 15), now), 'Oct 15')
     assert.equal(formatDate('en', at(10, 15, 14, 41, 2025), now), 'Oct 15, 2025')
+})
+
+test('a date in a sentence joins its parts with no-break spaces', () => {
+    assert.equal(formatDateInSentence('en', at(10, 15), now), 'Oct\u00A015')
+    assert.equal(
+        formatDateInSentence('en', at(10, 15, 14, 41, 2025), now),
+        'Oct\u00A015,\u00A02025',
+    )
+    assert.equal(formatDateInSentence('fr', at(10, 19), now), '19\u00A0oct.')
+    assert.doesNotMatch(formatDateInSentence('ja', at(10, 15), now), / /)
+})
+
+test('the French sentences that carry a date do not end on it, whose abbreviation point would double', async () => {
+    const { default: fr } = await import('../../src/i18n/fr/index.json', { with: { type: 'json' } })
+    assert.match(formatDateInSentence('fr', at(10, 19), now), /\.$/)
+    for (const text of [fr.load.continued, fr.load.continuedUntitled, fr.open.unsavedChanges])
+        assert.doesNotMatch(text, /\{\d\}\.$/)
 })
 
 test('a time of day and a date with a time follow the locale', () => {

@@ -159,6 +159,8 @@ test('a .nxsp opens bound in a new session, with its history imported and Undo w
     await writeFile(page, 'coconut.nxsp', await freshBytes())
     await openFile(page, 'coconut.nxsp')
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    // A confirmation: no severity glyph.
+    await expect(notice(page).locator('svg[data-severity]')).toHaveCount(0)
     await imported(page)
 
     const session = await sessionOf(page)
@@ -225,6 +227,10 @@ test('a file with an unknown entry opens as a separate copy with a new docId and
             hasText: 'Made by a newer version of Next SEKAI Editor. Saving makes a separate file.',
         }),
     ).toBeVisible()
+    await expect(notice(page).locator('svg[data-severity]')).toHaveAttribute(
+        'data-severity',
+        'warning',
+    )
     await imported(page)
     const session = await sessionOf(page)
     expect(session.file).toBeUndefined()
@@ -272,6 +278,10 @@ test('a level with a value this build does not know asks first; Cancel opens not
     await expect(
         notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' }),
     ).toBeVisible()
+    await expect(notice(page).locator('svg[data-severity]')).toHaveAttribute(
+        'data-severity',
+        'warning',
+    )
     const session = await sessionOf(page)
     expect(session.sessionId).not.toBe(before.sessionId)
     expect(session.file).toBeUndefined()
@@ -327,6 +337,10 @@ test('damage found by the import unlinks the session: a new docId, no binding, t
             hasText: '"coconut.nxsp" has damaged history. Saving makes a separate file.',
         }),
     ).toBeVisible()
+    await expect(notice(page).locator('svg[data-severity]')).toHaveAttribute(
+        'data-severity',
+        'warning',
+    )
     await imported(page)
     const session = await sessionOf(page)
     expect(session.file).toBeUndefined()
@@ -535,6 +549,10 @@ test('the same file opened in a second tab opens unbound, as a separate copy', a
             hasText: '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
         }),
     ).toBeVisible()
+    await expect(notice(other).locator('svg[data-severity]')).toHaveAttribute(
+        'data-severity',
+        'info',
+    )
     const session = await sessionOf(other)
     expect(session.file).toBeUndefined()
     expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
@@ -582,6 +600,10 @@ test('opening the same file again: Reopen after editing, Restore after New in be
             hasText: 'Opened coconut.nxsp. You have unsaved changes to it from',
         }),
     ).toBeVisible()
+    await expect(notice(page).locator('svg[data-severity]')).toHaveAttribute(
+        'data-severity',
+        'info',
+    )
     await page.getByRole('button', { name: 'Restore Session' }).click()
     await expect
         .poll(() =>
@@ -748,6 +770,26 @@ test('a newer major version asks first, then opens only the level, unbound', asy
             .filter((row) => row.sessionId === session.sessionId)
             .map((row) => row.kind),
     ).toEqual(['continue'])
+})
+
+test('a newer major version whose level is refused is an error card', async ({ page }) => {
+    await start(page)
+    const bytes = await changedBytes((items) => {
+        const project = jsonOf(items, 'project.json')
+        project.version = 2
+        setJson(items, 'project.json', project)
+        setJson(items, 'level.json', { entities: [] })
+    })
+    await writeFile(page, 'coconut.nxsp', bytes)
+    await openFile(page, 'coconut.nxsp')
+    const dialog = page
+        .getByRole('dialog')
+        .filter({ hasText: 'Only the level can be opened from this file.' })
+    await page.waitForTimeout(400)
+    await dialog.getByRole('button', { name: 'Open the Level' }).click()
+    const card = notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' })
+    await expect(card).toBeVisible()
+    await expect(card.locator('svg[data-severity]')).toHaveAttribute('data-severity', 'error')
 })
 
 test('a re-zipped file, every entry deflated, with a Japanese-named BGM and Thumbs.db, opens whole', async ({

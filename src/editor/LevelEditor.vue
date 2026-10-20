@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch, watchEffect, type Ref } from 'vue'
 import { isDynamicStages } from '../history/dynamicStages.ts'
+import { slotLoading } from '../history'
 import { folderPathParts, templateParts, type NamePart } from '../chart/folders'
 import { groupFolders, groups } from '../history/groups'
 import { stageFolders, stages } from '../history/stages'
@@ -248,7 +249,8 @@ const stageCount = computed(() =>
 
 <template>
     <!-- An own stacking context keeps editor overlays below docks and their popups. -->
-    <div ref="host" class="isolate flex flex-col">
+    <!-- A move waiting about 150 ms for its undo slot shows the busy cursor (§1.6.4 #6). -->
+    <div ref="host" class="isolate flex flex-col" :class="{ 'slot-busy': slotLoading }">
         <div class="relative flex min-h-0 flex-grow select-none overflow-hidden">
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"
@@ -345,6 +347,11 @@ const stageCount = computed(() =>
 </template>
 
 <style scoped>
+.slot-busy,
+.slot-busy :deep(*) {
+    cursor: progress !important;
+}
+
 .status-bar {
     --status-row-height: 24px;
     height: var(--status-row-height);

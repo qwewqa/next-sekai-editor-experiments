@@ -53,6 +53,20 @@ export default defineConfig({
             timeout: 60_000,
             use: { browserName: 'webkit' },
         },
+        // History's focus, keyboard and scrolling in each engine: the dialog's return, the one roving
+        // entry, keys that peek and restore, scroll anchoring and Go To's gap row.
+        {
+            name: 'firefox-history',
+            testMatch: ['historyEngines.spec.ts'],
+            timeout: 60_000,
+            use: { browserName: 'firefox' },
+        },
+        {
+            name: 'webkit-history',
+            testMatch: ['historyEngines.spec.ts'],
+            timeout: 60_000,
+            use: { browserName: 'webkit' },
+        },
         // Firefox-specific keyboard defaults such as quick find and Backspace, and dialog backdrop presses.
         {
             name: 'firefox-chrome',

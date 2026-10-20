@@ -59,6 +59,16 @@ To add one:
 3. Add a capability only if shared code must know whether the feature exists.
 4. Run `npm run build:native` and `npm run check:native-bundle`.
 
+## UI design
+
+Read these before you change the UI and when you review a UI change:
+
+- [docs/design-language.md](docs/design-language.md): surfaces, shape, sizes, spacing and the History surfaces.
+- [docs/color-system.md](docs/color-system.md): colour roles and the control recipes in `src/controls.css`.
+- [docs/ui-review-checklist.md](docs/ui-review-checklist.md): the questions to ask in review, from past defects.
+
+They are principles with reasons. Depart from one when a case needs it, and say why in the change. If a change makes a claim in them false, fix the page in the same change.
+
 ## Built-in assets
 
 `builtin-assets/` makes the Built-in set (`public/builtin/*.scp`) and the app icon renders. Edit a template in `builtin-assets/svg/` or the manifest, then run `npm run build:builtin-assets` and commit the result. `npm run check:builtin-assets` fails when the committed files differ from a rebuild.

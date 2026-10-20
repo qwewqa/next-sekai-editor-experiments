@@ -294,7 +294,8 @@
     "redo": {
       "title": "重做",
       "noState": "没有可重做的操作",
-      "redid": "已重做 “{0}”"
+      "failed": "无法重做",
+      "redid": "已重做“{0}”"
     },
     "reset": {
       "title": "重置",
@@ -382,6 +383,7 @@
     "undo": {
       "title": "撤销",
       "noState": "没有可撤销的操作",
+      "failed": "无法撤销",
       "undid": "已撤销“{0}”"
     },
     "utilities": {
