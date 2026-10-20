@@ -5,6 +5,7 @@ import {
     onBeforeUnmount,
     onMounted,
     ref,
+    shallowRef,
     useId,
     useTemplateRef,
     watch,
@@ -177,6 +178,28 @@ const isLoading = computed(() => {
         choiceKey(slot.choice) !== choiceKey(chosen.value)
     )
 })
+
+// A quick switch shows no "Loading…" and makes no room for it: the line is not in the list at all
+// until the load has run for a while. (A line held back by an animation delay alone would still
+// take its height, and the rows under the chosen one would stand apart from it.)
+const loadingDelay = 500
+const loadingShown = shallowRef(false)
+let loadingTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+    isLoading,
+    (now) => {
+        clearTimeout(loadingTimer)
+        loadingShown.value = false
+        if (now)
+            loadingTimer = setTimeout(() => {
+                loadingShown.value = true
+            }, loadingDelay)
+    },
+    { immediate: true },
+)
+onBeforeUnmount(() => {
+    clearTimeout(loadingTimer)
+})
 </script>
 
 <template>
@@ -227,7 +250,7 @@ const isLoading = computed(() => {
                 </div>
             </template>
             <p
-                v-else-if="row.id === selectedId && isLoading"
+                v-else-if="row.id === selectedId && loadingShown"
                 class="asset-loading pb-2 pl-[5.75rem] pr-3 pt-1 text-sm opacity-75"
                 role="status"
                 data-asset-loading
@@ -260,9 +283,9 @@ const isLoading = computed(() => {
 </template>
 
 <style scoped>
-/* A quick switch shows no "Loading…"; a slow one fades it in. */
+/* A slow switch fades "Loading…" in. */
 .asset-loading {
-    animation: asset-loading-in 0.2s 0.5s both;
+    animation: asset-loading-in 0.2s both;
 }
 
 @keyframes asset-loading-in {
