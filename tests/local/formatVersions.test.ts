@@ -114,3 +114,24 @@ test('the patch table: every additive thing a file can hold, and the patch that 
         /No minor for video\/a\.mp4/,
     )
 })
+
+test('the patch table names every x carrier, and a carrier row raises the written patch', () => {
+    assert.deepEqual(Object.keys(PATCH_TABLE.carrier).sort(), [
+        'context.x',
+        'entry.x',
+        'item.x',
+        'part.x',
+        'slot.x',
+        'stack.x',
+        'step.x',
+        'undoStack.x',
+    ])
+    assert.ok(Object.values(PATCH_TABLE.carrier).every((patch) => patch === 0))
+    assert.equal(patchOf({ zipEntries: ['project.json'], carriers: ['step.x', 'entry.x'] }), 0)
+    assert.throws(() => patchOf({ zipEntries: [], carriers: ['file.x'] }), /No patch for file\.x/)
+    // The first build to write a step `x` raises that row; the writer's patch follows from it.
+    const raised = { ...PATCH_TABLE, carrier: { ...PATCH_TABLE.carrier, 'step.x': 2 } }
+    assert.equal(patchOf({ zipEntries: ['project.json'], carriers: ['step.x'] }, raised), 2)
+    assert.equal(patchOf({ zipEntries: ['project.json'], carriers: ['entry.x'] }, raised), 0)
+    assert.equal(patchOf({ zipEntries: ['project.json'] }, raised), 0)
+})

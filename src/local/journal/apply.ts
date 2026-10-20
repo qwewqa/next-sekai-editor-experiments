@@ -209,24 +209,20 @@ export const writeJournalApply = async (
         }
 
     // Never a recovered entry in a chain this build can't fully read (§1.6.4 step 2). A newer
-    // generation is left for a newer build; an older one is not newer, so its journal is kept
-    // as a separate session.
-    const older = (why: string): JournalApplyResult => ({
-        kind: 'recovery',
-        sessionId: recovery.sessionId,
-        chainId: recovery.chainId,
-        why,
-    })
-    if (session && !isReadableSessionVersion(session.v))
-        return isNewerSessionVersion(session.v)
-            ? { kind: 'later', why: 'its session needs a newer version' }
-            : older('its session is of an unsupported older generation')
+    // generation is left for a newer build. An older one is not newer: the journal is kept as a
+    // separate session through the ordinary recovery write below, never dropped before it.
+    let olderWhy: string | undefined
+    if (session && !isReadableSessionVersion(session.v)) {
+        if (isNewerSessionVersion(session.v))
+            return { kind: 'later', why: 'its session needs a newer version' }
+        olderWhy = 'its session is of an unsupported older generation'
+    }
     if (chain) {
         const sessions = await tx.index('sessions', 'chainId').getAll(chainId)
         if (sessions.some((row) => isRow(row) && isNewerSessionVersion(row.v)))
             return { kind: 'later', why: 'its chain needs a newer version' }
-        if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
-            return older('its chain has a session of an unsupported older generation')
+        if (!olderWhy && sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
+            olderWhy = 'its chain has a session of an unsupported older generation'
     }
     if (session) {
         const range = KeyRange.bound([sessionId, -Infinity], [sessionId, Infinity])
@@ -257,7 +253,8 @@ export const writeJournalApply = async (
     const based = continuing ? parent : session
 
     let recoveryWhy: string | undefined
-    if (tombstone !== undefined) recoveryWhy = 'its session was removed'
+    if (olderWhy) recoveryWhy = olderWhy
+    else if (tombstone !== undefined) recoveryWhy = 'its session was removed'
     else if (chain?.deleting !== undefined) recoveryWhy = CHAIN_DELETING
     else if (chain && chain.head !== sessionId && !continuing)
         recoveryWhy = 'its session was continued'

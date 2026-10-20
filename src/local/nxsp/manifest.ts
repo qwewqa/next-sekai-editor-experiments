@@ -1,6 +1,8 @@
 import {
     captureEntryDescription,
     captureStep,
+    jsonBytes,
+    OPERATION_WIRE_BYTES,
     stripUnknownEntryKeys,
     stripUnknownStepKeys,
     type EntryDescription,
@@ -141,9 +143,65 @@ const ENTRY_KEYS = [
     'x',
 ]
 
-/** An `x`, when present, is a JSON object; what is in it is never read. */
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? (value as unknown[]) : [])
+
+const hasX = (value: Record<string, unknown>) => value.x !== undefined
+
+const stepCarriers = (step: unknown, found: Set<string>) => {
+    if (!isObject(step)) return
+    if (hasX(step)) found.add('step.x')
+    contextCarriers(step.recoveryContext, found)
+}
+
+const contextCarriers = (context: unknown, found: Set<string>) => {
+    if (!isObject(context)) return
+    if (hasX(context)) found.add('context.x')
+    for (const item of [context.head, ...list(context.dropped)])
+        if (isObject(item) && hasX(item)) found.add('item.x')
+}
+
+const slotCarriers = (slot: unknown, found: Set<string>) => {
+    if (!isObject(slot)) return
+    if (hasX(slot)) found.add('slot.x')
+    stepCarriers(slot.step, found)
+}
+
+/**
+ * The `x` carriers a part holds, by the names of `PATCH_TABLE.carrier`: the writer's `patch` is
+ * the highest row among them, so a build that starts to write an `x` (or carries one) raises it
+ * through the table, not by a flag.
+ */
+export const carriersIn = (part: unknown, found = new Set<string>()) => {
+    if (!isObject(part)) return found
+    if (hasX(part)) found.add('part.x')
+    for (const entry of list(part.entries)) {
+        if (!isObject(entry)) continue
+        if (hasX(entry)) found.add('entry.x')
+        stepCarriers(entry.step, found)
+        contextCarriers(entry.recoveryContext, found)
+        const { stack } = entry
+        if (isObject(stack)) {
+            if (hasX(stack)) found.add('stack.x')
+            for (const slot of list(stack.push)) slotCarriers(slot, found)
+        }
+    }
+    const { undoStack } = part
+    if (isObject(undoStack)) {
+        if (hasX(undoStack)) found.add('undoStack.x')
+        for (const slot of list(undoStack.slots)) slotCarriers(slot, found)
+    }
+    return found
+}
+
+/**
+ * An `x`, when present, is a JSON object within the operation byte limit on every carrier; what is
+ * in it is never read.
+ */
 const checkExtension = (value: Record<string, unknown>, path: string, issues: Issues) => {
-    if (value.x !== undefined && !isObject(value.x))
+    if (
+        value.x !== undefined &&
+        (!isObject(value.x) || jsonBytes(value.x as never) > OPERATION_WIRE_BYTES)
+    )
         issues.push({ reason: 'damaged', path: `${path}.x` })
 }
 
@@ -177,19 +235,8 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
         return false
     }
     unknownKeys(value, ENTRY_KEYS, path, issues)
-    const {
-        kind,
-        time,
-        snapshot,
-        noteCount,
-        dirty,
-        kept,
-        revisionId,
-        device,
-        appVersion,
-        stack,
-        x,
-    } = value
+    const { kind, time, snapshot, noteCount, dirty, kept, revisionId, device, appVersion, stack } =
+        value
     // An unknown kind is newer content: its fields are that kind's, so nothing else is checked.
     if (isString(kind) && !(ENTRY_KINDS as readonly string[]).includes(kind)) {
         issues.push({ reason: 'newer', path: `${path}.kind`, detail: kind })
@@ -242,7 +289,7 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
                 checkSlot(slot, `${path}.stack.push[${i}]`, issues)
         }
     } else if (stack !== undefined) foreign('stack')
-    if (x !== undefined && !isObject(x)) fail('x')
+    checkExtension(value, path, issues)
     return issues.length === before
 }
 

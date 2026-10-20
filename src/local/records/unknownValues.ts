@@ -76,7 +76,10 @@ export type EntryKind = (typeof entryKinds)[number]
 /** `entries.kind`: an unknown value makes its session "Needs a newer version". */
 export const isKnownEntryKind = (kind: unknown): kind is EntryKind => known(entryKinds, kind)
 
-/** A root `v` this build reads; above `RECORDS_V`, or not a positive integer, it's newer. */
+/**
+ * A root `v` this build reads. Above `RECORDS_V` it is newer (`isNewerRootVersion`); not a
+ * positive integer, or 0, it is malformed, which is damage, never "newer".
+ */
 export const isReadableRootVersion = (v: unknown) =>
     Number.isSafeInteger(v) && (v as number) >= 1 && (v as number) <= RECORDS_V
 

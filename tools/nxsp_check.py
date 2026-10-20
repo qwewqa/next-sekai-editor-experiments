@@ -578,7 +578,7 @@ def entry_form(e, path):
             slot_form(slot, f"{path}.stack.push[{i}]")
     else:
         need("stack" not in e, f"{path}: stack off a recovered entry")
-    need(isinstance(e.get("x", {}), dict), f"{path}.x: not an object")
+    extension_form(e, path)
 
 
 def slot_form(slot, path):
@@ -1468,7 +1468,8 @@ ENTRY_KEYS = ["kind", "time", "operation", "step", "recoveryContext", "snapshot"
 
 
 def part_extension(value, path, issues):
-    if "x" in value and not isinstance(value["x"], dict):
+    """An `x` is a JSON object within the operation byte limit, on every carrier."""
+    if "x" in value and (not isinstance(value["x"], dict) or len(js_json(value["x"]).encode("utf-8")) > OP_BYTES):
         issues.add("damaged", f"{path}.x")
 
 
@@ -1489,7 +1490,7 @@ def part_slot(value, path, issues):
     try:
         step_form(step, f"{path}.step")
     except Fail:
-        issues.add("damaged", path)
+        issues.add("damaged", f"{path}.step")
 
 
 def part_entry(e, path, issues):
@@ -1562,8 +1563,7 @@ def part_entry(e, path, issues):
                 part_slot(slot, f"{path}.stack.push[{i}]", issues)
     elif "stack" in e:
         foreign("stack")
-    if "x" in e and not isinstance(e["x"], dict):
-        fail("x")
+    part_extension(e, path, issues)
 
 
 def check_part(value, path, manifest):

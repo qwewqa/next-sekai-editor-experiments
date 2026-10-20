@@ -318,6 +318,17 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
             }),
         ),
         'x-not-object': await probe(manifest((m) => (m.undoStack.slots[0].x = [1]))),
+        // The operation byte limit holds on every carrier, not only a step's.
+        'x-slot-oversize': await probe(
+            manifest((m) => (m.undoStack.slots[0].x = { big: 'x'.repeat(300_000) })),
+        ),
+        'x-manifest-oversize': await probe(manifest((m) => (m.x = { big: 'x'.repeat(300_000) }))),
+        'x-entry-oversize': await probe(
+            manifest((m) => (m.entries[0].x = { big: 'x'.repeat(300_000) })),
+        ),
+        'x-undostack-oversize': await probe(
+            manifest((m) => (m.undoStack.x = { big: 'x'.repeat(300_000) })),
+        ),
         // Plan §1.6.11.8: a key no carrier knows, inside a slot or a step, is "unknown-key".
         'step-unknown-key': await probe(manifest((m) => (m.undoStack.slots[0].step.zz = 1))),
         'entry-step-unknown-key': await probe(
@@ -467,6 +478,10 @@ const expectedByPlan: Record<string, Opened> = {
     // `x` is ignorable anywhere; a non-object `x` is damaged history.
     'x-everywhere': { kind: 'nxsp', open: 'full', reasons: [] },
     'x-not-object': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-slot-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-manifest-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-entry-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-undostack-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     // An unknown key in a slot or step is newer content: "Made by a newer version", not damage.
     'step-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },
     'entry-step-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },

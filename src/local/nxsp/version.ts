@@ -82,6 +82,22 @@ export const PATCH_TABLE = {
     } as Readonly<Record<string, number>>,
     /** Keys of `parts`: none in v1. */
     partsKey: {} as Readonly<Record<string, number>>,
+    /**
+     * The `x` carriers a write holds (`carriersIn` in `manifest.ts` names them): the patch from
+     * which a build writes an `x` on that object. Every one is 0 in v1, because no writer writes
+     * one; the first build that does raises its row (and `NXSP_PATCH`) in the same change, which
+     * is what makes `patchOf` write the new `patch` for it. A carried `x` counts too.
+     */
+    carrier: {
+        'entry.x': 0,
+        'step.x': 0,
+        'context.x': 0,
+        'item.x': 0,
+        'slot.x': 0,
+        'stack.x': 0,
+        'undoStack.x': 0,
+        'part.x': 0,
+    } as Readonly<Record<string, number>>,
 } as const
 
 /** What a write uses, for its `minor`. */
@@ -99,17 +115,30 @@ const zipEntryKind = (name: string) =>
     )
 
 /** The lowest `patch` that holds what a write uses; throws on anything the table lacks. */
-export const patchOf = (use: { zipEntries: Iterable<string>; partsKeys?: Iterable<string> }) => {
+export const patchOf = (
+    use: {
+        zipEntries: Iterable<string>
+        partsKeys?: Iterable<string>
+        /** The `x` carriers the write holds, by `carriersIn`'s names. */
+        carriers?: Iterable<string>
+    },
+    table: Pick<typeof PATCH_TABLE, 'zipEntry' | 'partsKey' | 'carrier'> = PATCH_TABLE,
+) => {
     let patch = 0
     for (const name of use.zipEntries) {
         const key = zipEntryKind(name) ?? name
-        const value = PATCH_TABLE.zipEntry[key]
+        const value = table.zipEntry[key]
         if (value === undefined) throw new Error(`No patch for ${key}`)
         patch = Math.max(patch, value)
     }
     for (const key of use.partsKeys ?? []) {
-        const value = PATCH_TABLE.partsKey[key]
+        const value = table.partsKey[key]
         if (value === undefined) throw new Error(`No patch for parts.${key}`)
+        patch = Math.max(patch, value)
+    }
+    for (const key of use.carriers ?? []) {
+        const value = table.carrier[key]
+        if (value === undefined) throw new Error(`No patch for ${key}`)
         patch = Math.max(patch, value)
     }
     return patch

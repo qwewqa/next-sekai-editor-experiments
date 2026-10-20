@@ -12,11 +12,12 @@ import {
     type PinnedSource,
     type WritePlan,
 } from '../../../src/local/nxsp'
+import { carriersIn } from '../../../src/local/nxsp/manifest'
 import { minorOf, patchOf } from '../../../src/local/nxsp/version'
 import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 import { stateOf } from '../records/charts'
 import { fresh, NOW } from './chain'
-import type { Loose } from './craft'
+import { crafted, jsonOf, setJson, unzip, type Loose } from './craft'
 import {
     BGM_2,
     chartWith,
@@ -696,4 +697,116 @@ test('extra keys named __proto__ are written back', () => {
     const text = JSON.stringify(project)
     assert.match(text, /"__proto__":\{"a":1\}/)
     assert.match(text, /"__proto__":2/)
+})
+
+test('x through the append writer: carried on entries and steps, copied with a segment, dropped from a rebuilt manifest and undo stack', async () => {
+    const x = { future: [1, { deep: true }], note: 'kept' }
+    const chain = longChain(500)
+    const head = chain.hashes[0] as string
+    const saveRow = (time: number) =>
+        entry(
+            { kind: 'save', operation: futureFixtureOperation('segmented-save', {}, 'Saved') },
+            time,
+            head,
+            {
+                revisionId: 's001-0000-4000-8000-000000000000',
+                device: DEVICE,
+                appVersion: '0.6.0',
+            },
+        )
+    const first = await executePlan(planNxsp(chain.input).plan, new Map())
+    // The first file as a later build would have written it: `x` on every carrier.
+    const withX = await crafted((items) => {
+        const m = jsonOf(items, 'history/manifest.json')
+        m.x = x
+        m.undoStack.x = x
+        m.undoStack.slots[0].x = x
+        m.undoStack.slots[0].step.x = x
+        m.entries[1].x = x
+        m.entries[1].step.x = x
+        setJson(items, 'history/manifest.json', m)
+    }, first)
+    assert.equal((await readNxsp(withX)).kind === 'nxsp' && (await readNxsp(withX)).open, 'full')
+
+    // Append: the 500-entry manifest becomes a segment, re-serialized from its entries.
+    const source = await inspectNxsp(withX, { token: 't', role: 'target', fingerprint: 'f' })
+    const second = planNxsp(appendInput(chain.input, source, [saveRow(9000)], head), [source])
+    assert.equal(jsonPart(second.plan, 'project.json').patch, 0)
+    const file2 = await executePlan(second.plan, new Map([['t', memorySource(withX, 'f')]]))
+    const written = await unzip(file2)
+    const segment = jsonOf(written.items, 'history/segments/1.json')
+    assert.deepEqual(segment.entries[1].x, x)
+    assert.deepEqual(segment.entries[1].step.x, x)
+    assert.equal(segment.x, undefined)
+    const manifest = jsonOf(written.items, 'history/manifest.json')
+    assert.equal(manifest.x, undefined)
+    assert.equal(manifest.undoStack.x, undefined)
+    assert.equal(manifest.undoStack.slots[0].x, undefined)
+    const read2 = await readNxsp(file2)
+    assert.ok(read2.kind === 'nxsp')
+    assert.deepEqual(read2.report, [])
+    assert.deepEqual(read2.history?.entries[1]?.x, x)
+
+    // A segment is copied whole, so whatever it holds, a part-level `x` included, stays.
+    const withSegmentX = await crafted((items) => {
+        const part = jsonOf(items, 'history/segments/1.json')
+        part.x = x
+        part.entries[2].step.x = x
+        setJson(items, 'history/segments/1.json', part)
+    }, file2)
+    const source2 = await inspectNxsp(withSegmentX, {
+        token: 'u',
+        role: 'target',
+        fingerprint: 'g',
+    })
+    const third = planNxsp(appendInput(chain.input, source2, [saveRow(9100)], head), [source2])
+    assert.equal(
+        third.plan.entries.find((e) => e.name === 'history/segments/1.json')?.parts[0]?.kind,
+        'copy',
+    )
+    const file3 = await executePlan(third.plan, new Map([['u', memorySource(withSegmentX, 'g')]]))
+    const kept = jsonOf((await unzip(file3)).items, 'history/segments/1.json')
+    assert.deepEqual(kept.x, x)
+    assert.deepEqual(kept.entries[2].step.x, x)
+    const read3 = await readNxsp(file3)
+    assert.ok(read3.kind === 'nxsp')
+    assert.deepEqual(read3.report, [])
+    assert.deepEqual(read3.history?.entries[1]?.x, x)
+})
+
+test('the writer finds every x carrier it holds, carried ones too, for the patch table', async () => {
+    const x = { a: 1 }
+    const found = (part: unknown) => [...carriersIn(part)].sort()
+    assert.deepEqual(found({ entries: [], x }), ['part.x'])
+    const step = { kind: 'edit', operation: null, x }
+    assert.deepEqual(
+        found({
+            entries: [
+                { kind: 'edit', step, x },
+                {
+                    kind: 'recovered',
+                    recoveryContext: {
+                        head: { kind: 'edit', operation: null, x },
+                        headIndex: 0,
+                        dropped: [{ kind: 'edit', operation: null }],
+                        omitted: 0,
+                        x,
+                    },
+                    stack: { keep: 0, push: [{ snapshot: 'a', step, x }], index: 0, x },
+                },
+            ],
+            undoStack: {
+                base: 0,
+                slots: [{ snapshot: 'a', step: { ...step, x: undefined }, x }],
+                index: 0,
+                x,
+            },
+        }),
+        ['context.x', 'entry.x', 'item.x', 'slot.x', 'stack.x', 'step.x', 'undoStack.x'],
+    )
+    assert.deepEqual(
+        found({ entries: [{ kind: 'edit', step: { kind: 'edit', operation: null } }] }),
+        [],
+    )
+    assert.deepEqual(found(null), [])
 })
