@@ -90,9 +90,11 @@ const surface = (page: Page, name: 'panel' | 'dialog') =>
 const list = (page: Page, name: 'panel' | 'dialog' = 'panel') =>
     surface(page, name).locator('[data-history-list]')
 
+// The Now row repeats the newest entry's text: it is not the stored row.
 const row = (page: Page, text: string, name: 'panel' | 'dialog' = 'panel'): Locator =>
     list(page, name)
         .getByRole('row')
+        .and(page.locator(':not(.timeline-now)'))
         .filter({ has: page.getByText(text, { exact: true }) })
 
 const peekBar = (page: Page) => page.locator('[data-peek-bar]')
@@ -359,7 +361,9 @@ test.describe('the dialog', () => {
         await expect(list(page, 'dialog').locator('[data-history-row]:focus')).toHaveCount(1)
         // Now, three edits and the first entry.
         await expect(list(page, 'dialog').getByRole('row')).toHaveCount(5)
-        await expect(row(page, 'Now · Life 3', 'dialog')).toHaveAttribute('aria-selected', 'true')
+        await expect(
+            list(page, 'dialog').getByRole('row', { name: 'Now · Life 3', exact: true }),
+        ).toHaveAttribute('aria-selected', 'true')
         // The tab is still there: two views of one history.
         await expect(surface(page, 'panel')).toBeVisible()
         // No scrim: the chart stays live, and the toolbar steps aside.

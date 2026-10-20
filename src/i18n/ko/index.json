@@ -1289,7 +1289,7 @@
       "deletedEvents": "{0} 이벤트 삭제됨",
       "cutEvents": "{0} 이벤트 잘라냄"
     },
-    "undidSteps": "{0}단계 실행 취소",
+    "undidSteps": "{0}단계 되돌림",
     "redidSteps": "{0}단계 다시 실행",
     "dynamicStages": {
       "title": "동적 스테이지",
@@ -1350,7 +1350,7 @@
       "recoveryContext": "이전 작업",
       "recoveryHead": "원본 작업",
       "omittedDescriptions": "생략된 이전 작업 설명: {0}",
-      "droppedSteps": "손실된 실행 취소 단계: {0}",
+      "droppedSteps": "손실된 되돌리기 단계: {0}",
       "counts": {
         "note": "{0}개 노트",
         "bpm": "{0}개 BPM",

@@ -83,6 +83,18 @@ export const formatEntryTime = (locale: string, at: number, now = Date.now()) =>
 export const formatHour = (locale: string, at: number) =>
     formatter(locale, 'hour', { hour: 'numeric' }).format(at)
 
-/** "2:10 – 2:41 PM": a session's stretch of a day in Go To. */
-export const formatClockRange = (locale: string, from: number, to: number) =>
-    formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }).formatRange(from, to)
+/**
+ * "2:10 – 2:41 PM": a session's stretch of a day in Go To. The two times may come in either order
+ * (a system clock change makes the oldest entry later than the newest); the earlier one goes
+ * first. A time that cannot be formatted gives an empty text, never an error.
+ */
+export const formatClockRange = (locale: string, from: number, to: number) => {
+    try {
+        return formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }).formatRange(
+            Math.min(from, to),
+            Math.max(from, to),
+        )
+    } catch {
+        return ''
+    }
+}

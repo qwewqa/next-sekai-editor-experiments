@@ -17,7 +17,7 @@ import {
     type OwnerReference,
 } from '../operations'
 import { renderOperationRecipe } from './aggregate'
-import { describeMember, fallbackLang, memberLang, namedOwnerDescription } from './format'
+import { describeMember, memberLang, namedOwnerDescription } from './format'
 import { memberOperation, memberRecoveryContext } from './members'
 import type {
     DetailRow,
@@ -45,7 +45,6 @@ type RecordData = {
     readonly rows: DetailRow[]
     readonly facts: string[]
     readonly note?: string
-    readonly lang?: string
 }
 
 const plain = (text: string): DetailText => ({ text })
@@ -537,12 +536,10 @@ const memberRecord = (member: OperationMember, context: OperationTextContext) =>
                 : record.facts,
         }
     }
-    const lang = fallbackLang(raw, context)
     return {
         rows: [],
         facts: [],
         note: unreadable(raw, context),
-        ...(lang ? { lang } : {}),
     } satisfies RecordData
 }
 
@@ -706,9 +703,11 @@ export const operationDetails = (
     if (!member) throw new Error('Missing Details member')
     const record = memberRecord(member, context)
     const recovery = memberRecovery(member)
+    // The title of an Undo or Redo mixes the current language with the step's: it names none.
+    const lang = memberLang(member, context)
     return {
         description,
-        ...(record.lang ? { descriptionLang: record.lang } : {}),
+        ...(lang ? { descriptionLang: lang } : {}),
         ...(record.note ? { note: record.note } : {}),
         rows: record.rows,
         facts: record.facts,

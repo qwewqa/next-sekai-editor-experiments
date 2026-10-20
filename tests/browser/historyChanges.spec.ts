@@ -205,9 +205,11 @@ const changes = (page: Page) =>
 
 const surface = (page: Page) => page.locator('[data-history-surface="panel"]')
 const list = (page: Page) => surface(page).locator('[data-history-list]')
+// The Now row repeats the newest entry's text: it is not the stored row.
 const row = (page: Page, text: string) =>
     list(page)
         .getByRole('row')
+        .and(page.locator(':not(.timeline-now)'))
         .filter({ has: page.getByText(text, { exact: true }) })
 const peekLine = (page: Page) => page.locator('[data-peek-change]')
 const arrow = (page: Page, direction: 'up' | 'down') =>
@@ -555,6 +557,7 @@ test('the History sheet counts as covering the chart', async ({ page }) => {
     await expect(sheet).toBeVisible()
     await sheet
         .getByRole('row')
+        .and(page.locator(':not(.timeline-now)'))
         .filter({ has: page.getByText('Added 1 note', { exact: true }) })
         .click()
     await expect(peekLine(page)).toHaveText('1 change')
@@ -1318,6 +1321,54 @@ test('the panel and the dialog both following Edits Here check newer entries onc
     const ids = await hereMatchIds(page)
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids).toHaveLength(2)
+})
+
+test('an edit stored while the Edits Here scan runs is listed once the scan ends', async ({
+    page,
+}) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    // The scan reads the chain at once, but its answer reaches the list only when released: the
+    // chain it saw does not include the edit stored meanwhile.
+    await page.evaluate(async () => {
+        const { storageWorker } =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        const worker = storageWorker!
+        const original = worker.call
+        const win = window as unknown as { releaseScan: () => void }
+        const gate = new Promise<void>((resolve) => {
+            win.releaseScan = () => {
+                worker.call = original
+                resolve()
+            }
+        })
+        worker.call = new Proxy(original, {
+            async apply(target, self, args) {
+                const result = await Reflect.apply(target, self, args)
+                if (args[0] === 'findEdits') await gate
+                return result
+            },
+        })
+    })
+    try {
+        await chooseHere(page)
+        await expect(surface(page).locator('[data-history-scan]')).toHaveAttribute(
+            'data-scan',
+            'checking',
+        )
+        await edit(page, 'Moved again', { kind: 'move', beats: [7] })
+        await stored(page)
+        // The follow timer has fired while the scan is out: its check returned without looking.
+        await page.waitForTimeout(2500)
+    } finally {
+        await page.evaluate(() => (window as unknown as { releaseScan: () => void }).releaseScan())
+    }
+    await expect(row(page, 'Moved near')).toBeVisible()
+    await expect(row(page, 'Moved again')).toBeVisible({ timeout: 10_000 })
 })
 
 test('Edits Here chosen before anything is stored lists the entries stored after', async ({
