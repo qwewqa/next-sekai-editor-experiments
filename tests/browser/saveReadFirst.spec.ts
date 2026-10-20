@@ -127,7 +127,7 @@ test('a pick of the chain’s own file whose append then fails gets the bytes re
     await builds(page, undefined)
 })
 
-test('a pick of the chain’s own file with nothing read first writes the first build when the rebuild fails (SF-1)', async ({
+test('Save As… picking the chain’s own file with nothing read: a rebuild that failed once is tried again, keeping the file’s identity and History (SF2-2, ADV-4)', async ({
     page,
 }) => {
     await start(page)
@@ -135,8 +135,36 @@ test('a pick of the chain’s own file with nothing read first writes the first 
     await pressSave(page)
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    const first = (await projectOf(page, 'coconut.nxsp')).revision as Row
-    // Storage holds everything: nothing is read first.
+    const before = await projectOf(page, 'coconut.nxsp')
+    // Storage holds everything: nothing is read first. Save As… without History.
+    await saveAs(page)
+    const dialog = saveDialog(page, 'Save As')
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('checkbox', { name: 'History' }).uncheck()
+    await queuePicks(page, ['coconut.nxsp'])
+    await pauseAt(page, 'picked')
+    await submitSave(page, undefined, 'Save As')
+    await reached(page, 'picked')
+    await builds(page, 'failOnce')
+    await release(page)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await builds(page, undefined)
+    // The file's own identity, its History, and its revision lineage, never Save As…'s.
+    const after = await projectOf(page, 'coconut.nxsp')
+    expect(after.id).toBe(before.id)
+    expect((after.revision as Row).parent).toBe((before.revision as Row).id)
+    expect((after.history as Row | undefined)?.entries).toBeGreaterThan(0)
+})
+
+test('Save As… picking the chain’s own file with nothing read: a rebuild that keeps failing never writes Save As…’s identity, and the next Save fills it (SF2-2)', async ({
+    page,
+}) => {
+    await start(page)
+    await editPastUndo(page, 1)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    const before = await projectOf(page, 'coconut.nxsp')
     await saveAs(page)
     await expect(saveDialog(page, 'Save As')).toBeVisible()
     await queuePicks(page, ['coconut.nxsp'])
@@ -145,11 +173,16 @@ test('a pick of the chain’s own file with nothing read first writes the first 
     await reached(page, 'picked')
     await builds(page, 'fail')
     await release(page)
-    // Written, never left empty.
-    await expect
-        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).id)
-        .not.toBe(first.id)
+    // Shown as not written; storage holds all the file did, so it's left empty (R9).
+    const failed = page.getByRole('dialog').filter({ hasText: 'coconut.nxsp' })
+    await expect(failed).toBeVisible()
+    expect(await readFile(page, 'coconut.nxsp')).toEqual([])
+    await page.keyboard.press('Escape')
+    await expect(failed).toHaveCount(0)
     await builds(page, undefined)
+    await pressSave(page)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     const after = await projectOf(page, 'coconut.nxsp')
+    expect(after.id).toBe(before.id)
     expect((after.history as Row | undefined)?.entries).toBeGreaterThan(0)
 })

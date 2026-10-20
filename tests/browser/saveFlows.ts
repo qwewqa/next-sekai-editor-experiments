@@ -262,25 +262,31 @@ export const thinUndone = async (page: Page) => {
 
 /**
  * Makes the storage worker's builds (`buildSave`) wait `ms` first, or fail when `ms` is `'fail'`,
- * as a slow chart or a worker restart would; `undefined` puts the worker's own call back.
+ * or fail once and then run (`'failOnce'`), as a slow chart or a worker restart would;
+ * `undefined` puts the worker's own call back.
  */
-export const builds = (page: Page, ms: number | 'fail' | undefined) =>
+export const builds = (page: Page, ms: number | 'fail' | 'failOnce' | undefined) =>
     page.evaluate((ms) => {
         type Call = (method: string, ...rest: unknown[]) => Promise<unknown>
         const worker = window.nseStorageTest!.worker as unknown as { call: Call; ownCall?: Call }
         worker.ownCall ??= worker.call.bind(worker)
         const own = worker.ownCall
+        let failures = ms === 'failOnce' ? 1 : ms === 'fail' ? Infinity : 0
         worker.call =
             ms === null
                 ? own
-                : (method, ...rest) =>
-                      method !== 'buildSave'
-                          ? own(method, ...rest)
-                          : ms === 'fail'
-                            ? Promise.reject(new Error('The storage worker restarted'))
-                            : new Promise((resolve) => setTimeout(resolve, ms)).then(() =>
-                                  own(method, ...rest),
-                              )
+                : (method, ...rest) => {
+                      if (method !== 'buildSave') return own(method, ...rest)
+                      if (failures > 0) {
+                          failures--
+                          return Promise.reject(new Error('The storage worker restarted'))
+                      }
+                      return typeof ms === 'number'
+                          ? new Promise((resolve) => setTimeout(resolve, ms)).then(() =>
+                                own(method, ...rest),
+                            )
+                          : own(method, ...rest)
+                  }
     }, ms ?? null)
 
 /** Whether the open session still holds a Save's reserved `seq` (edits after it wait). */

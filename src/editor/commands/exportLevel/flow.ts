@@ -16,7 +16,14 @@ import {
     replaceExportTarget,
     type ExportTarget,
 } from './memory'
-import { downloadOpened, refusePick, withPickLock, withTargetLock, type RefusedPick } from './pick'
+import {
+    downloadOpened,
+    exportPickerOpening,
+    refusePick,
+    withPickLock,
+    withTargetLock,
+    type RefusedPick,
+} from './pick'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
 
@@ -139,6 +146,8 @@ const choose = async <T extends string>(
     ask: () => Promise<T | 'chooseAnother' | undefined>,
 ): Promise<T | ExportOutcome | undefined> => {
     for (;;) {
+        // Its Choose Another… opens a picker: the chain's own file is read first meanwhile (R2).
+        exportPickerOpening()
         const choice = await ask()
         if (choice !== 'chooseAnother') return choice
         const outcome = await exportByPicker(ctx)
@@ -267,6 +276,9 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
     let refused: RefusedPick | undefined
     let accepted = false as boolean
     let result: SaveResult
+    // Every picker reads the chain's own file first, when it may hold more (R2): not only the
+    // dialog's first.
+    exportPickerOpening()
     try {
         result = await platform.saveFile({
             kind: 'nsld',
