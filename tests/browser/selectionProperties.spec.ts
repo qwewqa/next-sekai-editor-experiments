@@ -625,6 +625,24 @@ test.describe('brush', () => {
         await expect(add).toBeFocused()
     })
 
+    test('Add Property, turned off once every property is set, hands focus to Pick', async ({
+        page,
+    }) => {
+        const add = tool(page).getByRole('button', { name: 'Add Property', exact: true })
+        await add.focus()
+        await page.evaluate(async () => {
+            const { brushProperties } = await import('/src/editor/tools/brush/index.ts')
+            const { brushFields } = await import('/src/editor/workspace/properties/fields.ts')
+            brushProperties.value = Object.fromEntries(
+                brushFields.map((field) => [field.key, 0]),
+            ) as typeof brushProperties.value
+        })
+        await expect(add).toBeDisabled()
+        await expect(
+            tool(page).getByRole('button', { name: 'Pick from Selection', exact: true }),
+        ).toBeFocused()
+    })
+
     test('starts empty and lists only the properties it sets', async ({ page }) => {
         await expect(tool(page).locator('.brush-group')).toHaveCount(0)
         await expect(tool(page).locator('[data-brush-key]')).toHaveCount(0)

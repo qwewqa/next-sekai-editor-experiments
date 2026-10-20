@@ -489,3 +489,26 @@ test('a failed picked write names the picked file, not the suggested one', async
         [['failed', 'Typed.nsld']],
     )
 })
+
+test('the conflict dialog has no modified time when the blob read does not say, never 1970', async () => {
+    const target = await openedTarget()
+    mock.writeFile('LevelData', level(7))
+    let plain = true
+    mock.read = () =>
+        Promise.resolve(
+            plain
+                ? level(5)
+                : new File([level(8)], 'LevelData', { lastModified: 1_700_000_000_000 }),
+        )
+    const first = scriptedUi([undefined])
+    assert.equal(await exportToTarget(context(first.ui), target), 'cancelled')
+    const shown = first.asked[0]?.args[1] as { size: number; lastModified?: number }
+    assert.equal(shown.size, level(5).size)
+    assert.equal(shown.lastModified, undefined)
+    // A File carries its own time.
+    plain = false
+    const second = scriptedUi([undefined])
+    assert.equal(await exportToTarget(context(second.ui), target), 'cancelled')
+    const real = second.asked[0]?.args[1] as { lastModified?: number }
+    assert.equal(real.lastModified, 1_700_000_000_000)
+})

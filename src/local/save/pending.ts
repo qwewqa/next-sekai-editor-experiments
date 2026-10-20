@@ -45,8 +45,9 @@ export const pendingFlushRow = (
         time: entry.wall,
         ...captureEntryDescription(entry),
         snapshot,
-        // A stored slot's count isn't known here: display only.
-        noteCount: typeof root?.[3] === 'number' ? root[3] : 0,
+        // A stored slot's count isn't known here: it is left out, never written as 0, and the
+        // writer takes it from the root it holds.
+        ...(typeof root?.[3] === 'number' ? { noteCount: root[3] } : {}),
         dirty: entry.dirty,
         ...(entry.recoveryBaseline
             ? {

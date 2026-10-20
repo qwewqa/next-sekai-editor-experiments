@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, shallowRef, useId, watch } from 'vue'
+import { vFocusRescue } from '../../../directives/focusRescue'
 import { i18n } from '../../../i18n'
 import type { AssetType } from '../../../preview/assets'
 import { typeNoun } from '../../../preview/assets/fallbackText'
@@ -52,6 +53,12 @@ onBeforeUnmount(() => {
     clearTimeout(timer)
 })
 
+// More goes once the last page is in: focus moves to the list.
+const listedItem = () =>
+    document.querySelector<HTMLElement>(
+        '[data-chooser-list] input:checked, [data-chooser-list] input',
+    )
+
 const alsoText = (option: (typeof also.value)[number]) =>
     interpolateRaw(strings.value.alsoServerItem, typeNoun(option.type), option.title)
 
@@ -68,6 +75,7 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
     >
         <input
             v-model="address"
+            v-focus-rescue:return
             type="text"
             inputmode="url"
             autocomplete="off"
@@ -81,7 +89,13 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
             :disabled="isBusy"
             data-server-address
         />
-        <button type="submit" :class="buttonClass" :disabled="isBusy" data-server-connect>
+        <button
+            v-focus-rescue:return
+            type="submit"
+            :class="buttonClass"
+            :disabled="isBusy"
+            data-server-connect
+        >
             {{ strings.connect }}
         </button>
     </form>
@@ -112,6 +126,7 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
             >
                 <input
                     v-model="searchText"
+                    v-focus-rescue:return
                     type="search"
                     autocomplete="off"
                     spellcheck="false"
@@ -152,6 +167,7 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
         <div v-if="hasMore || loading" class="flex items-center gap-3 px-2">
             <button
                 v-if="hasMore"
+                v-focus-rescue:return="listedItem"
                 type="button"
                 :class="buttonClass"
                 :disabled="loading || phase === 'working'"

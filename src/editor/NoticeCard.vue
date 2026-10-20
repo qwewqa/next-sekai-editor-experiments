@@ -38,7 +38,18 @@ let drag:
 let timer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => {
     clearTimeout(timer)
+    // A card that goes with its dialog gets no pointerleave or focusout: its holds go with it, or
+    // the timeout would never run again.
+    for (const source of held) holdNotice(source, false)
 })
+
+// The holds this instance placed, as other panes may show the same card.
+const held = new Set<'hover' | 'focus'>()
+const hold = (source: 'hover' | 'focus', on: boolean) => {
+    if (on) held.add(source)
+    else held.delete(source)
+    holdNotice(source, on)
+}
 
 const onDown = (event: PointerEvent) => {
     if (event.pointerType === 'mouse' || !event.isPrimary || swipe.value?.animate) return
@@ -163,10 +174,10 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                       ],
             ]"
             :style="style"
-            @pointerenter="holdNotice('hover', true)"
-            @pointerleave="holdNotice('hover', false)"
-            @focusin="holdNotice('focus', true)"
-            @focusout="holdNotice('focus', false)"
+            @pointerenter="hold('hover', true)"
+            @pointerleave="hold('hover', false)"
+            @focusin="hold('focus', true)"
+            @focusout="hold('focus', false)"
             @pointerdown="onDown"
             @pointermove="onMove"
             @pointerup="onUp"

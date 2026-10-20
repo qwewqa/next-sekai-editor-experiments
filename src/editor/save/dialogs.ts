@@ -102,7 +102,8 @@ export type DiskVersion =
           kind: 'saved'
           device: { id: string; label: string }
           savedAt: number
-          notes: number
+          /** Absent when the file has no summary for its revision. */
+          notes?: number
       }
     /** A file of another project; `name` when its `project.json` has one. */
     | { kind: 'otherProject'; name?: string }
@@ -183,14 +184,12 @@ const describe = (disk: DiskVersion) => {
     const { conflict } = i18n.value
     switch (disk.kind) {
         case 'saved': {
-            const notes = interpolate(() => i18n.value.peek.notes, formatCount(disk.notes))()
             // The device is worded as the Timeline words it, once (Part 0 §0.9.3).
-            return interpolate(
-                () => conflict.saved,
-                savedOnText(getHistoryOperationContext(), disk.device.label),
-                formatTime(disk.savedAt),
-                notes,
-            )()
+            const device = savedOnText(getHistoryOperationContext(), disk.device.label)
+            if (disk.notes === undefined)
+                return interpolate(() => conflict.savedNoNotes, device, formatTime(disk.savedAt))()
+            const notes = interpolate(() => i18n.value.peek.notes, formatCount(disk.notes))()
+            return interpolate(() => conflict.saved, device, formatTime(disk.savedAt), notes)()
         }
         case 'otherProject':
             return disk.name === undefined

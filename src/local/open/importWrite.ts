@@ -318,6 +318,10 @@ const putRecords = async (tx: KvTx, records: PreparedRecords, day: number) => {
     return bytes
 }
 
+/** A root's note count when it holds one; undefined otherwise, never 0. */
+export const headCount = (value: unknown): number | undefined =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+
 /**
  * The open's first transaction, strict (§1.5.4 step 3): the chain record with its binding, the
  * session row with `importPending`, the head's root, nodes and chunks with the closure check,
@@ -384,7 +388,11 @@ export const writeOpenHead = async (
     }
     const ownEntries: Row[] = []
     let seq = count
-    const entry = (description: EntryDescription, snapshot: Uint8Array, noteCount: number) => {
+    const entry = (
+        description: EntryDescription,
+        snapshot: Uint8Array,
+        noteCount: number | undefined,
+    ) => {
         ownEntries.push({
             sessionId,
             seq: ++seq,
@@ -392,7 +400,8 @@ export const writeOpenHead = async (
             day,
             ...captureEntryDescription(description),
             snapshot,
-            noteCount,
+            // Absent when unknown, never 0.
+            ...(noteCount === undefined ? {} : { noteCount }),
             // The file holds this state: not changed since the file event.
             dirty: false,
             kept: true,

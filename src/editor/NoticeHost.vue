@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { onHistoryAction } from '../history/actions'
 import { isBlockingModalOpen } from '../modals'
 import { isComposingKey } from '../utils/composition'
+import { focusAfterRemoval } from '../utils/focusFallback'
 import { isTextEntry } from './controls/keyboard'
 import NoticeRegion from './NoticeRegion.vue'
 import { cardInDialog, dismissCardForEdit, dismissNoticeCard, noticeCard } from './notification'
@@ -42,11 +43,8 @@ const onEscape = (event: KeyboardEvent) => {
     if (!event.target.closest('[data-notice-card]')) return
     event.preventDefault()
     event.stopImmediatePropagation()
-    const back = returnTo
-    returnTo = undefined
+    // The card's going hands focus back (the watch below).
     dismissNoticeCard()
-    if (back?.isConnected) back.focus()
-    else if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
 }
 
 // Focus that left the card another way is not owed back.
@@ -56,12 +54,16 @@ const onFocusOut = (event: FocusEvent) => {
     if (!(into instanceof Element && into.closest('[data-notice-card]'))) returnTo = undefined
 }
 
-// A card that goes (or is replaced) while it holds focus may fire no focusout: its return target
-// goes with it, so a later card's Escape does not use it.
+// A card that goes (or is replaced) while it holds focus, by Escape, its close button or action,
+// its timeout or an edit, gives focus back to where Alt+N took it from, else to the chart. It may
+// fire no focusout, so its return target goes with it: a later card's Escape does not use it.
 watch(
     () => noticeCard.value?.id,
     () => {
+        const held = !!document.activeElement?.closest('[data-notice-card]')
+        const back = returnTo
         returnTo = undefined
+        if (held) void focusAfterRemoval(() => back)
     },
     { flush: 'sync' },
 )

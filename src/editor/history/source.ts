@@ -354,12 +354,12 @@ export const readIndex = (filter: Filter): Promise<TimelineIndex> => {
  */
 export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | undefined> => {
     const id = session.value.sessionId
-    const mark = replaceSource()
-    // Edits Here holds all it has found.
+    // Edits Here holds all it has found: nothing is replaced, so no read in flight is dropped.
     if (filter === 'here')
         return here.matches.find(
             (entry) => entry.sessionId === target.sessionId && entry.seq === target.seq,
         )
+    const mark = replaceSource()
     const worker = storageWorker
     if (!worker) return
     const { path } = await readIndex(filter)
