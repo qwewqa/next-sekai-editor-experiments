@@ -358,3 +358,33 @@ test('exact pinned membership survives page arrival at either side of a partial 
         0,
     )
 })
+
+test('a kept: false entry the worker found damaged reads damaged, not removed to save space', () => {
+    const removed = entry(add(), noon, { kept: false })
+    const bad = entry(add(), noon, { kept: false, damaged: true })
+    const whole = entry(add(), noon, { damaged: true })
+    const rows = entryRows(buildRows(newestFirst(removed, bad, whole), options))
+    assert.deepEqual(
+        rows.map((row) => [row.flags, row.selectable]),
+        [
+            // `damaged` only describes a `kept: false` entry.
+            [{ removed: false, damaged: false }, true],
+            [{ removed: false, damaged: true }, false],
+            [{ removed: true, damaged: false }, false],
+        ],
+    )
+})
+
+test('an undo or redo not stored yet takes its note count from the entry holding its root', () => {
+    const made = entry(add(), noon, { noteCount: 10, snapshot: 'aa' })
+    const later = entry(add(), noon, { noteCount: 7, snapshot: 'bb' })
+    // Waiting to be stored: no count of its own, only the root it lands on.
+    const undo = entry({ kind: 'undo', step: editStep(noteAdd(1)) }, noon, {
+        noteCount: undefined,
+        snapshot: 'aa',
+        pending: true,
+    } as Partial<Entry>)
+    const [row] = entryRows(buildRows(newestFirst(made, later, undo), options))
+    assert.equal(row!.entry, undo)
+    assert.equal(row!.delta, 3)
+})
