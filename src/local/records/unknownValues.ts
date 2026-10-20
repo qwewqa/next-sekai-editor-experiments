@@ -83,7 +83,7 @@ export const isKnownEntryKind = (kind: unknown): kind is EntryKind => known(entr
 export const isReadableRootVersion = (v: unknown) =>
     Number.isSafeInteger(v) && (v as number) >= 1 && (v as number) <= RECORDS_V
 
-/** Only the current session generation is supported; older experimental rows remain untouched. */
+/** A session row's `v`: only `SESSION_V` is read. Above it is newer; anything else is malformed. */
 export const isReadableSessionVersion = (v: unknown) => v === SESSION_V
 
 /** A session `v` above this build's: a newer build wrote it, so it "needs a newer version". */
@@ -106,8 +106,8 @@ export type SessionReadability = {
 /**
  * How this build stands to a session (§1.6.11.8): `readable`; `newer`, written by a newer build
  * (a session `v` or root `v` above this build's, an unknown entry kind), which reads as "Needs a
- * newer version"; or `unsupported`, an older or malformed generation that this build does not
- * read either, and says so plainly instead of calling it newer. Newer wins when both are found.
+ * newer version"; or `unsupported`, a malformed `v` that this build does not read either,
+ * and says so plainly instead of calling it newer. Newer wins when both are found.
  */
 export type Readability = 'readable' | 'newer' | 'unsupported'
 

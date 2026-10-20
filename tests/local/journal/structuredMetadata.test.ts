@@ -195,7 +195,7 @@ test('final journal cap trims optional whole descriptions and preserves last-goo
     const base = {
         sessionId: 'budget',
         seq: 1,
-        journalVersion: 2,
+        journalVersion: 1,
         stack: { context },
         levelDataGz: '',
     }

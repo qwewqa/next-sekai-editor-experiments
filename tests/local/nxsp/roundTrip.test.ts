@@ -44,7 +44,7 @@ test('a fresh write opens fully, with its history, media and unknown keys', asyn
     assert.equal(p.revision?.id, revisionId)
     assert.equal(p.revision?.savedAt, '2026-10-16T05:41:07Z')
     assert.equal(p.revision?.completeFrom, revisionId)
-    assert.equal(p.minor, 1)
+    assert.equal(p.minor, 0)
     assert.deepEqual(read.extra, { zzTop: { kept: true }, metadata: { zzMeta: 1 } })
     assert.deepEqual(p.bgm, {
         file: 'bgm/Coconut-Master.mp3',

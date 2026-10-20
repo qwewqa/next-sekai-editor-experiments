@@ -21,7 +21,7 @@ const graph = (repeat: number): ManifestForm => {
     const top: RecordValue[] = ['bpms', 1, Array<string>(repeat).fill(hash(leaf))]
     const root: RecordValue[] = [1, header, [['bpms', hash(top)]], 0]
     return {
-        version: 2,
+        version: 1,
         entries: [],
         roots: { [hash(root)]: root },
         nodes: { [hash(leaf)]: leaf, [hash(top)]: top },

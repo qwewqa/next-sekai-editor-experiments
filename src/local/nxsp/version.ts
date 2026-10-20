@@ -11,7 +11,7 @@ export const NXSP_VERSION = 1
  * `project.json`'s `minor`: the reader generation this build is. A change an older reader would
  * misread (a merge revision) raises it, and an older reader then leaves the history unread.
  */
-export const NXSP_MINOR = 1
+export const NXSP_MINOR = 0
 
 /**
  * `project.json`'s `patch`: the additive generation this build is. Content an older reader can
@@ -22,12 +22,12 @@ export const NXSP_MINOR = 1
 export const NXSP_PATCH = 0
 
 /** `history/manifest.json`'s `version`. */
-export const MANIFEST_VERSION = 2
+export const MANIFEST_VERSION = 1
 
 /**
  * The `minor` that introduced each thing a file can use (§1.6.11.8): the writer writes the
  * maximum over what it writes. A table entry is a `minor` only for what an older reader would
- * MISREAD (the v1 `manifestVersion` 2, a merge revision). Anything it merely cannot show is
+ * MISREAD (a later `manifestVersion`, a merge revision). Anything it merely cannot show is
  * additive: it goes in as 0 here and in `PATCH_TABLE` with the `patch` that introduces it (a new
  * ZIP entry kind, a `parts` key), and `tests/local/formatVersions.test.ts` keeps the two tables'
  * keys equal. In v1 every other thing maps to 0; a later version adds its entries.
@@ -35,7 +35,7 @@ export const MANIFEST_VERSION = 2
 export const MINOR_TABLE = {
     levelVersion: { 1: 0 } as Readonly<Record<number, number>>,
     rootV: { 1: 0 } as Readonly<Record<number, number>>,
-    manifestVersion: { 2: 1 } as Readonly<Record<number, number>>,
+    manifestVersion: { 1: 0 } as Readonly<Record<number, number>>,
     entryKind: {
         init: 0,
         continue: 0,
