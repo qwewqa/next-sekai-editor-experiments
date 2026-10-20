@@ -11,7 +11,7 @@ import type { KvTx } from './kv/types'
  * A count of days of use: what `meta.daysOfUse` and every row's `day` hold. It is not a calendar
  * day (`DayKey`), so the two can't be mixed up: retention counts `UseDay`s, ages shown to the user
  * count `DayKey`s. Only `countDayOfUse`, `NO_USE_DAY` and the row types make one (I-11; the
- * `local/no-local-time` rule bans `as UseDay` elsewhere).
+ * `local/no-use-day-cast` rule bans `as UseDay` elsewhere).
  */
 export type UseDay = number & { readonly __useDay: true }
 

@@ -234,10 +234,24 @@ const historyImports = {
 
 // --- Days of use
 
-/** A type that is, or in a union or intersection holds, `UseDay` by name. */
+/** `UseDay`, or the last name of `D.UseDay`. */
+const lastNameIsUseDay = (name) =>
+    name.type === 'Identifier'
+        ? name.name === 'UseDay'
+        : name.type === 'TSQualifiedName' && name.right.name === 'UseDay'
+
+/**
+ * A type that is, or in a union or intersection holds, `UseDay` by name: `UseDay`, `D.UseDay` and
+ * `import('./days').UseDay`. An alias of it is not seen.
+ */
 const namesUseDay = (type) => {
-    if (type.type === 'TSTypeReference')
-        return type.typeName.type === 'Identifier' && type.typeName.name === 'UseDay'
+    if (type.type === 'TSTypeReference') return lastNameIsUseDay(type.typeName)
+    if (type.type === 'TSImportType')
+        return (
+            type.qualifier !== null &&
+            type.qualifier !== undefined &&
+            lastNameIsUseDay(type.qualifier)
+        )
     if (type.type === 'TSUnionType' || type.type === 'TSIntersectionType')
         return type.types.some(namesUseDay)
     return false
@@ -260,6 +274,11 @@ const noUseDayCast = {
             // <UseDay>x
             TSTypeAssertion(node) {
                 if (namesUseDay(node.typeAnnotation)) context.report({ node, messageId: 'cast' })
+            },
+            // (x): x is UseDay, asserts x is UseDay: a guard makes a UseDay from any value
+            TSTypePredicate(node) {
+                const type = node.typeAnnotation?.typeAnnotation
+                if (type && namesUseDay(type)) context.report({ node, messageId: 'cast' })
             },
         }
         const services = context.sourceCode.parserServices

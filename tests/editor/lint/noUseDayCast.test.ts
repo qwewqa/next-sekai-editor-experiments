@@ -1,5 +1,6 @@
 import { ESLint, RuleTester, type Rule } from 'eslint'
 import assert from 'node:assert/strict'
+import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, test } from 'node:test'
 import { parser as tsParser } from 'typescript-eslint'
@@ -28,6 +29,10 @@ new RuleTester({
         { code: 'const k = time as DayKey', filename: file },
         { code: 'const d = storedDay(old, fallback)', filename: file },
         { code: 'const n = x as Other<UseDay>', filename: file },
+        { code: 'const n = x as D.Other', filename: file },
+        { code: 'const isDay = (x: unknown): x is number => true', filename: file },
+        // Accepted residuals: an alias of UseDay is not seen by name.
+        { code: 'type U = UseDay; const d = value as U', filename: file },
     ],
     invalid: [
         { code: 'const d = value as UseDay', filename: file, errors: [cast] },
@@ -36,6 +41,14 @@ new RuleTester({
         { code: 'const d = <UseDay>value', filename: file, errors: [cast] },
         { code: 'const d = value as UseDay | undefined', filename: file, errors: [cast] },
         { code: 'const d = value as number & UseDay', filename: file, errors: [cast] },
+        { code: 'const d = value as D.UseDay', filename: file, errors: [cast] },
+        { code: "const d = value as import('./days').UseDay", filename: file, errors: [cast] },
+        { code: 'const isDay = (x: unknown): x is UseDay => true', filename: file, errors: [cast] },
+        {
+            code: 'function assertDay(x: unknown): asserts x is UseDay {}',
+            filename: file,
+            errors: [cast],
+        },
     ],
 })
 
@@ -59,6 +72,16 @@ new RuleTester({
             filename: `${root}/src/editor/Zz.vue`,
             errors: [cast],
         },
+        {
+            code: '<script setup lang="ts">const a = 1</script><template><p>{{ a as UseDay }}</p></template>',
+            filename: `${root}/src/editor/Zz.vue`,
+            errors: [cast],
+        },
+        {
+            code: '<script setup lang="ts">const a = 1</script><template><p :title="String(a as UseDay)">x</p></template>',
+            filename: `${root}/src/editor/Zz.vue`,
+            errors: [cast],
+        },
     ],
 })
 
@@ -72,18 +95,22 @@ const enabled = async (name: string) => {
     return level === 2 || level === 'error'
 }
 
-test('the cast ban covers src, apart from days.ts and records/rows.ts', async () => {
-    assert.equal(await enabled('src/local/days.ts'), false)
-    assert.equal(await enabled('src/local/records/rows.ts'), false)
-    for (const name of [
-        'src/local/putChunk.ts',
-        'src/local/save/repair.ts',
-        'src/local/open/importWrite.ts',
-        'src/local/db.ts',
-        'src/editor/history/source.ts',
-        'src/editor/history/GoToList.vue',
-    ])
-        assert.equal(await enabled(name), true, name)
+const filesUnder = (directory: string): string[] =>
+    readdirSync(path.join(root, directory)).flatMap((name) => {
+        const relative = `${directory}/${name}`
+        if (statSync(path.join(root, relative)).isDirectory()) return filesUnder(relative)
+        return ['.ts', '.vue'].includes(path.extname(name)) ? [relative] : []
+    })
+
+test('the cast ban covers every file under src, apart from exactly days.ts and records/rows.ts', async () => {
+    const files = filesUnder('src')
+    assert.ok(files.length > 300)
+    const off: string[] = []
+    for (const name of files) if (!(await enabled(name))) off.push(name)
+    assert.deepEqual(off.sort(), ['src/local/days.ts', 'src/local/records/rows.ts'])
+    // A file that does not exist yet is covered too.
+    assert.equal(await enabled('src/local/zzNew.ts'), true)
+    assert.equal(await enabled('src/editor/history/ZzNew.vue'), true)
 })
 
 test('through the real configuration a cast in src is reported and days.ts may make one', async () => {
