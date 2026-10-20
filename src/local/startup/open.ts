@@ -631,6 +631,7 @@ const reloadOwn = async (
     claim: Claim & { kind: 'reload' },
     read: SessionRead,
     releaseClaim: () => void,
+    passClaim: () => HeldLock,
 ): Promise<{ opened: boolean; journal: 'none' | 'left' | 'shown' | 'covered' }> => {
     const { record } = claim
     const own = deps.ownLeft ? deps.ownJournal : undefined
@@ -669,14 +670,14 @@ const reloadOwn = async (
     if (read.kind === 'open' && read.isHead) {
         if (journal === 'left')
             return said(
-                openStored(deps, read, { mode: 'continue', parentLock: claim.lock }, taking),
+                openStored(deps, read, { mode: 'continue', parentLock: passClaim() }, taking),
             )
-        const opened = !!(await openStored(deps, read, { mode: 'resume', lock: claim.lock }))
+        const opened = !!(await openStored(deps, read, { mode: 'resume', lock: passClaim() }))
         return { opened, journal }
     }
     // Continued in another tab during the gap: a fork (§1.4.2).
     if (read.kind === 'open')
-        return said(forked(deps, read, record.sessionId, claim.lock, undefined, recovered))
+        return said(forked(deps, read, record.sessionId, passClaim(), undefined, recovered))
     releaseClaim()
     if (read.kind === 'deleted') {
         deps.events({ kind: 'deletedElsewhere' })
@@ -723,7 +724,20 @@ export const openedFrom = (deps: Pick<OpenDeps, 'flusher'>) => {
  * migrated auto save's line follows, saying whether it's what opened (§1.4.3).
  */
 export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean> => {
-    const opened = await openSessionAtStart(deps, claim)
+    // A reload's claim is this open's until it passes the lock to what keeps or releases it (the
+    // session opened, `openStored`); every path that returns has done one or the other.
+    const claimed = { passed: false }
+    let opened: boolean
+    try {
+        opened = await openSessionAtStart(deps, claim, () => {
+            claimed.passed = true
+        })
+    } catch (error) {
+        // Rejected before then (a worker call that failed or timed out): the claim goes, so
+        // Restore can continue that session in this tab.
+        if (claim.kind === 'reload' && !claimed.passed) claim.lock.release()
+        throw error
+    }
     if (deps.migrated)
         deps.events({
             kind: 'migrated',
@@ -733,7 +747,11 @@ export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
     return opened
 }
 
-const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean> => {
+const openSessionAtStart = async (
+    deps: OpenDeps,
+    claim: Claim,
+    passed: () => void,
+): Promise<boolean> => {
     const releaseClaim = () => {
         if (claim.kind === 'reload') claim.lock.release()
     }
@@ -746,6 +764,8 @@ const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
     if (deps.status.mode !== 'stored') {
         const own = deps.ownJournal
         if (claim.kind === 'reload' && own) {
+            // Passed before the call: a throw after the session took the lock never releases it.
+            passed()
             if (resumeFromJournal(deps, own, claim.lock)) return true
             // Not loaded: a new session id, and the key stays in Local Data (§1.4.2).
             if (!deps.keptForLocalData?.includes(own)) deps.keptForLocalData?.push(own)
@@ -770,7 +790,10 @@ const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
             return forked(deps, recovered, deps.ownRecovery, parentLock)
         }
         const read = await deps.worker.call('readSession', record.sessionId)
-        const result = await reloadOwn(deps, claim, read, releaseClaim)
+        const result = await reloadOwn(deps, claim, read, releaseClaim, () => {
+            passed()
+            return claim.lock
+        })
         // A failed own journal the reload couldn't show stays in Local Data, and says so.
         if (deps.ownFailed && result.journal === 'left') deps.events({ kind: 'journalFailed' })
         return result.opened

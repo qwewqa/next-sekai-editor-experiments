@@ -27,25 +27,13 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
 
 const isRole = (key: string): key is HandleRole => (HANDLE_ROLES as readonly string[]).includes(key)
 
-/**
- * Whether the transaction has the store. Every database at version 2 has it (version 2's step
- * adds it to a version 1 one made before it joined the set); one without it (the worker leaves it
- * out of every scope then) stores no handle rather than failing.
- */
-const hasStore = (tx: KvTx) => {
-    try {
-        tx.describe(HANDLES)
-        return true
-    } catch {
-        return false
-    }
-}
+// Every database at `DB_VERSION` has the store (its upgrade steps create any store missing). A
+// transaction without it in scope fails: a handle is never dropped silently.
 
 let reads = 0
 
 /** The kept file's handle row of a chain (`KEPT_ROLE`), with the file's name. */
 export const readKeptRow = async (tx: KvTx, chainId: string) => {
-    if (!hasStore(tx)) return
     const row = await tx.get(HANDLES, [chainId, KEPT_ROLE])
     return isRow(row) && typeof row.name === 'string'
         ? { name: row.name, handle: row.handle }
@@ -59,7 +47,6 @@ export const handleReadsForTests = () => reads
 export const readHandleRow = async (tx: KvTx, chainId: string, role: HandleRole) => {
     reads++
     if (role === KEPT_ROLE) return (await readKeptRow(tx, chainId))?.handle
-    if (!hasStore(tx)) return
     const chain = await tx.get('chains', chainId)
     const field = isRow(chain) ? chain[role] : undefined
     if (!isRow(field) || typeof field.name !== 'string') return
@@ -70,7 +57,7 @@ export const readHandleRow = async (tx: KvTx, chainId: string, role: HandleRole)
 
 /** Whether a handle is stored for a chain's field, without reading it. */
 export const hasHandleRow = async (tx: KvTx, chainId: string, role: HandleRole) =>
-    hasStore(tx) && (await tx.getKey(HANDLES, [chainId, role])) !== undefined
+    (await tx.getKey(HANDLES, [chainId, role])) !== undefined
 
 /** Stores a field's handle, or removes it when there is none. */
 export const writeHandleRow = async (
@@ -80,13 +67,12 @@ export const writeHandleRow = async (
     name: string,
     handle: unknown,
 ) => {
-    if (!hasStore(tx)) return
     if (handle === undefined || handle === null) await tx.delete(HANDLES, [chainId, role])
     else await tx.put(HANDLES, { chainId, role, name, handle } satisfies HandleRow)
 }
 
 export const deleteHandleRow = async (tx: KvTx, chainId: string, role: HandleRole) => {
-    if (hasStore(tx)) await tx.delete(HANDLES, [chainId, role])
+    await tx.delete(HANDLES, [chainId, role])
 }
 
 /** Removes every handle of a chain: in the transaction that deletes its record. */

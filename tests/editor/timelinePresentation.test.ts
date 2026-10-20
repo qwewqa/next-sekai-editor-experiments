@@ -11,9 +11,10 @@ import {
     captureOperationRecipe,
     operationDetails,
     renderOperationRecipe,
+    stepLang,
     type OperationTextContext,
 } from '../../src/history/operationPresentation'
-import type { EntryDescription } from '../../src/history/operations'
+import { captureOperation, type EntryDescription } from '../../src/history/operations'
 import en from '../../src/i18n/en/index.json'
 import fr from '../../src/i18n/fr/index.json'
 import {
@@ -79,6 +80,43 @@ test('unknown fallback remains plain captured text and never groups', () => {
         operationDetails(recipeOfRow(result[0]!), french).note,
         fr.history.details.unsupported,
     )
+})
+
+test('a foreign fallback row, group step and recovery line name their language', () => {
+    const foreign = (locale: string) =>
+        editStep(
+            captureOperation({
+                id: 'test.future.lang',
+                version: 1,
+                data: {},
+                fallback: { text: '好', locale },
+            }),
+        )
+    const [row] = rows([{ kind: 'edit', step: foreign('zht') }])
+    // The app locale code zht names Traditional Chinese by its script; English text names none.
+    assert.equal(presentRow(row!, context).lang, 'zh-Hant')
+    assert.equal(presentRow(row!, { ...context, locale: 'zht' }).lang, undefined)
+    const [native] = rows([edit(1)])
+    assert.equal('lang' in presentRow(native!, context), false)
+    const [own] = rows([
+        { kind: 'edit', step: editStep(futureFixtureOperation('same', {}, 'Same')) },
+    ])
+    assert.equal(presentRow(own!, context).lang, undefined)
+    // Undone steps in an undo parent: the step list carries each line's language, unprefixed.
+    const [parent] = rows([
+        { kind: 'undo', step: foreign('zhs') },
+        { kind: 'undo', step: editStep(noteAdd(1)) },
+    ])
+    const steps = operationDetails(recipeOfRow(parent!), context).steps!
+    assert.deepEqual(
+        steps.members.map((member) => member.lang),
+        ['zh-Hans', undefined],
+    )
+    // A prefixed line mixes the current language with the captured one, so it names none.
+    const [single] = rows([{ kind: 'undo', step: foreign('zhs') }])
+    assert.equal(presentRow(single!, context).lang, undefined)
+    assert.equal(stepLang(foreign('zhs'), context), 'zh-Hans')
+    assert.equal(stepLang(editStep(noteAdd(1)), context), undefined)
 })
 
 test('direction groups count crossed steps while children retain original Restore and unknown categories', () => {

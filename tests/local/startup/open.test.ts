@@ -827,6 +827,38 @@ test('starting from a failed own journal keeps the session held until its key go
     lock.release()
 })
 
+test('a reload whose open fails before it opens anything lets the claim go', async () => {
+    const world = createWorld({ seed: 24 })
+    const storage = new MemoryStorage()
+    const tab: TabStorage = new Map()
+    const page = await openJournalPage(world, 'first', storage)
+    const a = stateOf(goldenChart())
+    const session = beginSession(page, a)
+    recordTab(tab, { sessionId: session.id, start: 'stored' })
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('E0')) }, widen(a))
+    await page.flusher.flush({ strict: true })
+    page.tab.kill()
+    // The worker's answer to the reload's read never comes (a timeout).
+    const failing = await quiet(() =>
+        load(world, 'reload', storage, {
+            tab,
+            call: (method, result) => {
+                if (method === 'readSession') throw new Error('The worker did not answer')
+                return result
+            },
+        }).then(
+            () => undefined,
+            (error: unknown) => error,
+        ),
+    )
+    assert.ok(failing instanceof Error)
+    // The session lock is free again: Restore in that tab continues it.
+    const other = world.tab('other')
+    const lock = await other.run(() => claimSessionLock(other.locks, session.id))
+    assert.ok(lock)
+    lock.release()
+})
+
 test('a stored stack whose window starts after slot 0 opens saying earlier steps are in History', async () => {
     for (const base of [0, 1]) {
         const world = createWorld({ seed: 20 + base })

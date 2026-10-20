@@ -1085,14 +1085,9 @@
     "slide": {
       "title": "Slide n° {0}",
       "adding": "Ajout de {0} note|Ajout de {0} notes",
-      "added": "{0} note ajoutée|{0} notes ajoutées",
       "editing": "Modification de {0} note|Modification de {0} notes",
       "moving": "Déplacement de {0} note|Déplacement de {0} notes",
-      "moved": "{0} note déplacée|{0} notes déplacées",
       "selected": "{0} note sélectionnée|{0} notes sélectionnées",
-      "modal": {
-        "title": "Propriétés de note"
-      },
       "sidebar": {
         "title": "Propriétés de slide par défaut"
       }
@@ -2150,7 +2145,7 @@
     "restoredTo": "Restauré à {0}",
     "alreadyMatches": "Correspond déjà à la partition actuelle",
     "restoreFailed": "Impossible de restaurer",
-    "peekFailed": "Impossible d’afficher cette étape",
+    "peekFailed": "Impossible de consulter cette étape",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes précédentes sont dans l’historique",
     "bgmNotLoaded": "BGM non chargée",

@@ -365,6 +365,22 @@ export const summaryOf = (state: State, noteCount: number): ChainSummary => {
     }
 }
 
+/**
+ * Removes exactly the entries a batch sent from `pending`, in place, and returns them in order. By
+ * identity, never by count: an entry joins `pending` between others while a batch is in flight
+ * (`keptSave`, a restart's re-sends), and must stay until a batch of its own stores it.
+ */
+const acknowledge = (pending: PendingEntry[], sent: readonly PendingEntry[]) => {
+    const ids = new Set(sent)
+    const acknowledged: PendingEntry[] = []
+    let kept = 0
+    for (const entry of pending)
+        if (ids.has(entry)) acknowledged.push(entry)
+        else pending[kept++] = entry
+    pending.length = kept
+    return acknowledged
+}
+
 const encoder = new TextEncoder()
 
 /** A batch's new chunks as one buffer of UTF-8 text and each one's end. */
@@ -1377,7 +1393,7 @@ export class Flusher {
                     [...reused.values()].map(({ memo }) => memo),
                     result.known,
                 )
-                const acknowledged = session.pending.splice(0, entries.length)
+                const acknowledged = acknowledge(session.pending, entries)
                 if (this.deps.onRoots) {
                     const roots: (readonly [State, Uint8Array])[] = []
                     for (const [entry, at] of snapshotOf) {
