@@ -287,7 +287,7 @@ const entryForm = (entry: EntryForm): EntryForm => ({
     ...descriptionOf(() => captureEntryDescription(entry)),
     time: entry.time,
     snapshot: entry.snapshot,
-    noteCount: entry.noteCount,
+    ...(entry.noteCount === undefined ? {} : { noteCount: entry.noteCount }),
     ...(entry.dirty ? { dirty: true as const } : {}),
     ...(entry.kept === false ? { kept: false as const } : {}),
     ...(entry.revisionId === undefined ? {} : { revisionId: toWellFormed(entry.revisionId) }),

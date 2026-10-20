@@ -483,6 +483,35 @@ test('a row the file flags kept: false whose root the file holds counts as held 
     assert.equal(binding.entry.notKept, 0)
 })
 
+test('an entry without a note count is written, read and imported without one, never as 0', async () => {
+    const s = await setup(10)
+    const { input } = fresh()
+    const history = input.history!
+    // A flagged row whose state the file doesn't hold, its count unknown.
+    const entries = history.entries.map((entry, i) => {
+        if (i !== 1) return entry
+        const flagged: typeof entry = { ...entry, snapshot: 'ab'.repeat(16), kept: false }
+        delete flagged.noteCount
+        return flagged
+    })
+    const file = await executePlan(
+        planNxsp({ ...input, history: { ...history, entries } }).plan,
+        new Map(),
+    )
+    const read = await historyOf(file)
+    assert.equal('noteCount' in read.entries[1]!, false)
+    assert.equal(read.entries[2]?.noteCount, history.entries[2]?.noteCount)
+    const reply = nxsp(await s.run(() => s.open.openRead(file)))
+    assert.equal(reply.open, 'full')
+    const stored = await s.run(() => s.open.openStore(storeRequest(reply.id)))
+    if (stored.kind !== 'stored') throw new Error('not stored')
+    await runAll(s, reply.id, stored.batches)
+    const rowsOf = sessionEntries(s.world)
+    assert.equal('noteCount' in rowsOf[1]!, false)
+    assert.equal(rowsOf[1]?.kept, false)
+    assert.equal(typeof rowsOf[2]?.noteCount, 'number')
+})
+
 test('an import abandoned before its rows batch never lets a later Save carry the file', async () => {
     const s = await setup(10)
     const file = await longFile(2100)

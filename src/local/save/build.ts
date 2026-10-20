@@ -220,8 +220,8 @@ export type SavePlan = {
     /** Those of `without` this tab holds but that pass the 1 GB media cap: no "which is not loaded". */
     tooLarge: MediaKind[]
     identity: SaveIdentity
-    /** The `save` entry the file ends with. */
-    saveEntry: EntryForm
+    /** The `save` entry the file ends with; it always knows its count, the head's. */
+    saveEntry: EntryForm & { noteCount: number }
     /** Hashes found missing or bad in storage, marked damaged. */
     damaged: string[]
     /** Rows marked `kept: false` in storage by this build. */
@@ -326,6 +326,9 @@ const withShift = (stack: EntryForm['stack'], offset: number): EntryForm['stack'
         : stack
 
 const keyOf = (row: RowKey) => `${row.sessionId}:${row.seq}`
+
+/** An entry form's `noteCount`, left out when it's unknown (never written as 0). */
+const withCount = (noteCount: number | undefined) => (noteCount === undefined ? {} : { noteCount })
 
 /** The chain as this write sees it: its stored identity and binding, or the tab's in memory. */
 const chainOf = (stored: ChainRecord, identity: IdentityInput | undefined): ChainRecord => {
@@ -597,7 +600,7 @@ export const planSave = async (
             : [chain.revision.id, ...chain.revision.ancestors].slice(0, ANCESTOR_LIMIT)
     const n = fresh ? 1 : (chain.revision?.n ?? 0) + 1
 
-    const saveEntry: EntryForm = {
+    const saveEntry: EntryForm & { noteCount: number } = {
         kind: 'save',
         time: options.save.time,
         operation: captureOperation(options.save.operation),
@@ -612,12 +615,14 @@ export const planSave = async (
     if (history) {
         if (!stack || !headSlot) return refuse('unreadableHead')
         // A row that doesn't say its note count takes its state's, from the root this write
-        // verified (PF2-5): a count is never made up as 0 while the root says it. The v1 entry
-        // form needs one, so a row whose root no source holds is written with 0 (DECISIONS-LOG).
+        // verified (PF2-5): a count is never made up as 0. A row whose root no source holds has
+        // an unknown count, and the entry is written without one.
         const countOf = (entry: EntryRow) => {
             if (entry.noteCount !== undefined) return entry.noteCount
             const count = bodies.roots.get(toHex(entry.snapshot))?.[3]
-            return typeof count === 'number' && Number.isSafeInteger(count) ? count : 0
+            return typeof count === 'number' && Number.isSafeInteger(count) && count >= 0
+                ? count
+                : undefined
         }
         const entries: EntryForm[] = []
         for (const { entry } of own)
@@ -625,7 +630,7 @@ export const planSave = async (
                 ...captureEntryDescription(entry),
                 time: entry.time,
                 snapshot: toHex(entry.snapshot),
-                noteCount: countOf(entry),
+                ...withCount(countOf(entry)),
                 ...(entry.dirty ? { dirty: true as const } : {}),
                 ...(flagged(entry) ? { kept: false as const } : {}),
                 ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),

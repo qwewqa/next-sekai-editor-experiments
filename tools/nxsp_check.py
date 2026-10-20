@@ -590,7 +590,8 @@ def entry_form(e, path):
     need(is_uint(e.get("time")), f"{path}.time: not a safe integer of at least 0")
     entry_description(e, path)
     need(is_hash(e.get("snapshot")), f"{path}.snapshot")
-    need(is_uint(e.get("noteCount")), f"{path}.noteCount")
+    # Optional: absent is an unknown count, never 0.
+    need("noteCount" not in e or is_uint(e["noteCount"]), f"{path}.noteCount")
     need(e.get("dirty", True) is True, f"{path}.dirty: only true")
     need(e.get("kept", False) is False, f"{path}.kept: only false")
     if e["kind"] == "save":
@@ -1635,7 +1636,7 @@ def part_entry(e, path, issues):
         fail("description")
     if not is_hash(e.get("snapshot")):
         fail("snapshot")
-    if not is_uint(e.get("noteCount")):
+    if "noteCount" in e and not is_uint(e["noteCount"]):
         fail("noteCount")
     if "dirty" in e and e["dirty"] is not True:
         fail("dirty")
