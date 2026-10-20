@@ -197,3 +197,35 @@ test('a missing chunk makes an entry unknown: readChanges says so, findEdits lea
     assert.equal(result.matches.length, 1)
     assert.equal(result.unreadable, 1)
 })
+
+test('a slice read run again after a lost connection lists its matches once', async () => {
+    const { states, session, page, run } = await stored([8, 8, 12])
+    const own = encodeSnapshot(toRecords(states[2]!)).chunks.find(
+        (chunk) =>
+            !encodeSnapshot(toRecords(states[1]!)).chunks.some(
+                (other) => toHex(other.hash) === toHex(chunk.hash),
+            ),
+    )!
+    await run(() =>
+        page.core.write(['chunks'], (tx) =>
+            tx.delete('chunks', hashKey(fromHex16(toHex(own.hash)))),
+        ),
+    )
+    clearChangeCaches()
+    // The core's one retry after a lost connection runs the read's callback again.
+    const core = page.core
+    const retrying = Object.create(core) as typeof core
+    retrying.read = async (stores, fn, scope) => {
+        await core.read(stores, fn, scope)
+        return core.read(stores, fn, scope)
+    }
+    const handlers = changeHandlers({ core: retrying, test: true, emit: () => undefined })
+    const result = await run(() => handlers.findEdits({ sessionId: session.id, from: 8, to: 8 }))
+    assert.equal(result.cursor, undefined)
+    assert.deepEqual(
+        result.matches.map((match) => match.pos),
+        [2],
+    )
+    // Both pairs with the second edit’s state.
+    assert.equal(result.unreadable, 2)
+})

@@ -161,51 +161,61 @@ const chainEntry = (entry: TimelineEntry): ChainEntry => ({
 const isEntry = (entry: TimelineEntry, at?: { sessionId: string; seq: number }) =>
     !!at && entry.sessionId === at.sessionId && entry.seq === at.seq
 
-/** One slice of the scan, in one transaction. */
+/** What one slice found, merged into the page once its read resolved. */
+type SliceFound = Omit<FindEditsPage, 'cursor'> & { next?: FindEditsCursor }
+
+/**
+ * One slice of the scan, in one transaction. It writes only its own result: the read can run
+ * again after a lost connection, so a slice is merged into the page once, when the read resolves.
+ */
 const scanSlice = async (
     tx: KvTx,
     request: FindEditsRequest,
     cursor: FindEditsCursor,
-    page: FindEditsPage,
-) => {
+): Promise<SliceFound> => {
     const read = await readTimeline(tx, {
         sessionId: cursor.sessionId,
         before: cursor.before,
         limit: SLICE,
     })
     const list = cursor.carry ? [cursor.carry, ...read.entries] : read.entries
-    page.top ??= list[0] && chainEntry(list[0])
+    const found: SliceFound = {
+        matches: [],
+        unreadable: 0,
+        ...(list[0] ? { top: chainEntry(list[0]) } : {}),
+    }
     for (let i = 0; i + 1 < list.length; i++) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const entry = list[i]!
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const older = list[i + 1]!
         if (isEntry(entry, request.until)) {
-            page.reached = cursor.pos + i
-            return
+            found.reached = cursor.pos + i
+            return found
         }
         if (!entry.snapshot || !older.snapshot) {
-            page.unreadable++
+            found.unreadable++
             continue
         }
         const beats = await summaryIn(tx, older.snapshot, entry.snapshot)
-        if (!beats) page.unreadable++
+        if (!beats) found.unreadable++
         else if (touchesBeats(beats, request.from, request.to))
-            page.matches.push({ ...entry, pos: cursor.pos + i, previous: chainEntry(older) })
+            found.matches.push({ ...entry, pos: cursor.pos + i, previous: chainEntry(older) })
     }
     const last = list.at(-1)
     if (last && isEntry(last, request.until)) {
-        page.reached = cursor.pos + list.length - 1
-        return
+        found.reached = cursor.pos + list.length - 1
+        return found
     }
     // The chain's first entry has nothing before it.
-    if (!read.next || !last) return
-    return {
+    if (!read.next || !last) return found
+    found.next = {
         sessionId: read.next.sessionId,
         before: read.next.before,
         carry: last,
         pos: cursor.pos + list.length - 1,
     }
+    return found
 }
 
 export const changeHandlers = (context: WorkerContext) => ({
@@ -242,11 +252,16 @@ export const changeHandlers = (context: WorkerContext) => ({
         const budget = request.budgetMs ?? BUDGET_MS
         while (cursor) {
             const at: FindEditsCursor = cursor
-            cursor = await context.core.read(
+            const found = await context.core.read(
                 ['sessions', 'entries', 'chains', 'nodes', 'chunks'],
-                (tx) => scanSlice(tx, request, at, page),
+                (tx) => scanSlice(tx, request, at),
                 scope,
             )
+            page.matches.push(...found.matches)
+            page.unreadable += found.unreadable
+            page.top ??= found.top
+            if (found.reached !== undefined) page.reached = found.reached
+            cursor = found.next
             if (performance.now() - start >= budget) break
         }
         return cursor ? { ...page, cursor } : page
