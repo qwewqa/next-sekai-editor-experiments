@@ -173,6 +173,24 @@ onResetState(() => {
 
 // --- What the bar says.
 
+/**
+ * Every fixed line the capsule can show (anything else is live text: counts and step labels), so
+ * the strip's fit (peekFit.ts) measures them all. Every such line goes through `fixedLine`, which
+ * takes only these keys: a new one cannot be shown without being measured.
+ */
+export const fixedLines = {
+    /** The passive line under 480 px panes (ChangeArrows' visibleLine). */
+    short: ['loadingShort', 'unavailableShort', 'noChanges', 'initialState'],
+    /** The passive line from 480 px panes. */
+    wide: ['loadingChanges', 'unavailable', 'noChanges', 'initialState'],
+    /** In the summary button at every width: a header-only change of several members. */
+    summary: ['settingsChanged'],
+} as const
+
+export type FixedLine = (typeof fixedLines)[keyof typeof fixedLines][number]
+
+export const fixedLine = (key: FixedLine) => i18n.value.peek[key]
+
 const count = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
 
 const eventKinds: KindName[] = [
@@ -190,7 +208,7 @@ const eventCount = (counts: Record<KindName, number>) =>
 export const changeText = (change: Pick<ChangeView, 'set' | 'totals'>) => {
     const strings = i18n.value.peek
     const { set } = change
-    if (set.layout === 'none') return set.header ? undefined : strings.noChanges
+    if (set.layout === 'none') return set.header ? undefined : fixedLine('noChanges')
     if (set.layout === 'small') {
         const text = interpolateRaw(strings.changeCount, count(set.objects.length))
         return set.header ? `${text} · ${strings.settingsChanged}` : text
@@ -221,11 +239,11 @@ export const changeLine = computed(() => {
         return (
             changeText(change) ??
             ((peekedInfo.value?.members?.length ?? 1) > 1
-                ? i18n.value.peek.settingsChanged
+                ? fixedLine('settingsChanged')
                 : peekedInfo.value && peekedLabel(peekedInfo.value))
         )
-    if (comparisonStatus.value === 'initial') return i18n.value.peek.initialState
-    if (comparisonStatus.value === 'unavailable') return i18n.value.peek.unavailable
+    if (comparisonStatus.value === 'initial') return fixedLine('initialState')
+    if (comparisonStatus.value === 'unavailable') return fixedLine('unavailable')
     return undefined
 })
 
