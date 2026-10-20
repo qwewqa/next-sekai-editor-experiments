@@ -20,6 +20,7 @@ export type GroupDescriptor = {
         | 'generate'
         | 'edit'
         | 'move'
+        | 'resize'
         | 'replace'
         | 'elevation'
         | 'paste'
@@ -100,7 +101,9 @@ export const operationGroup = (operation: NativeOperationInput): GroupDescriptor
                           operation.id === 'nse.object.edit'
                               ? 'edit'
                               : operation.id === 'nse.object.move'
-                                ? 'move'
+                                ? 'resized' in operation.data
+                                    ? 'resize'
+                                    : 'move'
                                 : 'replace',
                       subject: operation.data.subject,
                   })

@@ -81,6 +81,27 @@ export const nativeDescription = (
     return message(context, t.tools.events[action], count, eventSubtype(subject, context))
 }
 
+/**
+ * A Select resize of notes or of camera or stage mask events (only those have an edge to take).
+ * `count` is undefined for the quantity-free summary of a group.
+ */
+export const resizeDescription = (
+    subject: Subject,
+    count: number | undefined,
+    context: OperationTextContext,
+) => {
+    const t = context.strings
+    if (subject === 'note')
+        return count === undefined
+            ? t.history.summary.resizedNotes
+            : message(context, t.tools.note.resized, count)
+    if (subject === 'cameraEvent' || subject === 'stageMaskEvent')
+        return count === undefined
+            ? message(context, t.history.summary.resizedEvents, eventSubtype(subject, context))
+            : message(context, t.tools.events.resized, count, eventSubtype(subject, context))
+    throw new Error('Unsupported resize subject')
+}
+
 export const removalOrBrushDescription = (
     action: 'deleted' | 'cut' | 'brushed',
     subject: Subject,
@@ -332,12 +353,18 @@ export const describeOperation = (
                 context,
             )
         case 'nse.object.move':
-            return nativeDescription(
-                'moved',
-                operation.data.subject,
-                changedTotal(operation.data.changed),
-                context,
-            )
+            return operation.data.resized
+                ? resizeDescription(
+                      operation.data.subject,
+                      changedTotal(operation.data.changed),
+                      context,
+                  )
+                : nativeDescription(
+                      'moved',
+                      operation.data.subject,
+                      changedTotal(operation.data.changed),
+                      context,
+                  )
         case 'nse.object.replace':
             return nativeDescription(
                 'replaced',

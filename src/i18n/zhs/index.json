@@ -1056,6 +1056,7 @@
       "edited": "已编辑 {0} 个音符",
       "moving": "移动 {0} 个音符",
       "moved": "已移动 {0} 个音符",
+      "resized": "已调整 {0} 个音符的大小",
       "selected": "已选择 {0} 个音符",
       "modal": {
         "title": "音符属性"
@@ -1112,6 +1113,7 @@
       "edited": "已编辑 {0} 个{1}事件",
       "moving": "正在移动 {0} 个{1}事件",
       "moved": "已移动 {0} 个{1}事件",
+      "resized": "已调整 {0} 个{1}事件的大小",
       "selected": "已选择 {0} 个{1}事件",
       "modal": {
         "title": "{0}属性"
@@ -1218,6 +1220,7 @@
       "addedNotes": "已添加音符",
       "editedNotes": "已编辑音符",
       "movedNotes": "已移动音符",
+      "resizedNotes": "已调整音符大小",
       "changedNoteElevations": "已更改音符高度",
       "generatedNotes": "已生成音符",
       "addedBpm": "已添加 BPM",
@@ -1231,6 +1234,7 @@
       "addedEvents": "已添加{0}事件",
       "editedEvents": "已编辑{0}事件",
       "movedEvents": "已移动{0}事件",
+      "resizedEvents": "已调整{0}事件的大小",
       "editedObjects": "已编辑对象",
       "movedObjects": "已移动对象",
       "movedGroupsInto": "已将群组移至{0}文件夹",

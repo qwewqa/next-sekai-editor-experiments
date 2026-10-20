@@ -387,7 +387,7 @@ Guarded by `tests/editor/noOpSteps.test.ts`.
 | `nse.note.vertical` | `edit` | Make Vertical | `{targets}` |
 | `nse.object.add` | `edit` | BPM, Time Scale and the five event tools | `{subject, created}` |
 | `nse.object.edit` | `edit` | A tool edit in place; Elevation Editor width change | `{subject, changed, displaced?, retainedInitialBpm?}` |
-| `nse.object.move` | `edit` | A tool or Select drag; Elevation Editor lane change | as `edit` |
+| `nse.object.move` | `edit` | A tool or Select drag; Elevation Editor lane change | as `edit`, plus `resized?` |
 | `nse.object.replace` | `edit` | A BPM or time scale moved onto an occupied beat | `{subject, changed, displaced, retainedInitialBpm?}` |
 | `nse.object.paste` | `edit` | Paste tool, context menu, Elevation Editor | `{placed, variant, flipped, at, displaced?}` |
 | `nse.object.brush` | `edit` | Brush tool | property data |
@@ -449,14 +449,15 @@ Any other id is not native; tests use `test.future.*` for unknown ones.
 | --- | --- | --- |
 | `nse.object.add` | `{subject, created}`; subject `bpm`, `timeScale` or an event kind (`note` and `objects` rejected) | "Added {0} BPM change(s)", "Added {0} {kind} event(s)" and so on |
 | `nse.object.edit` | `{subject, changed}` plus collateral; `changed` counts operands whose principal fields changed | "Edited {0} note(s)"; "Edited objects" for `objects` |
-| `nse.object.move` | as `edit` | "Moved {0} note(s)"; "Moved objects" |
+| `nse.object.move` | as `edit`, plus `resized?: true` (`false` is rejected) | "Moved {0} note(s)"; "Moved objects"; with `resized`, "Resized {0} note(s)", "Resized {0} {kind} event(s)" |
 | `nse.object.replace` | `{subject: bpm \| timeScale, changed, displaced, retainedInitialBpm?}`; every displaced kind is the subject | "Replaced {0} BPM change(s)" |
 
 - **One builder** (`editInput`): intent `move` becomes `replace` when `displaced` is present, the subject is `bpm` or `timeScale` and every displaced object is of that kind. A tap on an occupied BPM edits it. A sidebar edit of a lone BPM or time scale's beat is delegated to its tool and gives `move` or `replace`, not `property.set`.
+- **Resize.** A Select drag that takes an edge of a note, a camera event or a stage mask event changes the extent of its lanes and nothing else, and is a resize, not a move. Select writes `resized: true` into `nse.object.move` by what changed: the drag took an edge (every moving object is of the grabbed object's type), at least one object's width or range changed, and no beat did. A drag that took an edge but only shifted it, or one that took the body, stays a plain move. `resized` needs subject `note`, `cameraEvent` or `stageMaskEvent`, and no `displaced` or `retainedInitialBpm`. The group family is its own (`resize`): resizes group with resizes, quantity-free ("Resized notes", "Resized {0} events"), and never with moves.
 - **Cascades.** A time scale displaces every time scale of its group at the destination beat; a BPM displaces the BPM there; a Select move of a mixed selection counts per kind. Moving the beat-0 BPM with its tool keeps it and adds a copy at the new beat (`retainedInitialBpm`); Select derives the flag from the selection (an unpinned BPM at beat 0 moved).
 - **No-op.** `commitDrop` commits only when an operand changed (`editChanges`); Select returns when nothing moved (`isUnmoved`); then the stack rule. A change that touched no principal field is pushed with `changed: {}` and reads quantity-free ("Edited notes").
 - **Step Details:** the shared rows; `replace` omits "Replaced" when it equals `changed` in one kind.
-- **Groups:** by subject; `add` sums `created`. A multi-assignment `nse.property.set` has the same group key as `nse.object.edit` of its subject, so one group can hold both ids.
+- **Groups:** by subject (a resize is its own family); `add` sums `created`. A multi-assignment `nse.property.set` has the same group key as `nse.object.edit` of its subject, so one group can hold both ids.
 
 #### Paste, brush, delete, cut
 

@@ -15,6 +15,7 @@ import {
     describeMember,
     describeOperation,
     nativeDescription,
+    resizeDescription,
     ownerCountsDescription,
     ownerDomain,
     ownerSetDescription,
@@ -192,6 +193,8 @@ export const renderOperationRecipe = (
             return nativeDescription('edited', subject(), undefined, context)
         case 'move':
             return nativeDescription('moved', subject(), undefined, context)
+        case 'resize':
+            return resizeDescription(subject(), undefined, context)
         case 'replace':
             return nativeDescription('replaced', subject(), undefined, context)
         case 'elevation':

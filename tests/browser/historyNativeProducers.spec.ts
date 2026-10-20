@@ -641,6 +641,67 @@ for (const direction of ['horizontal', 'pinned'] as const)
         expect(head.data).not.toHaveProperty('displaced')
     })
 
+// X-14: a Select drag on a note's edge changes its width and nothing else, so it is a resize.
+for (const mode of ['edge', 'body', 'edge and beat'] as const)
+    test(`Select records a drag of a note's ${mode} as ${mode === 'body' ? 'a move' : 'a resize'}`, async ({
+        page,
+    }) => {
+        const result = await page.evaluate(async (mode) => {
+            const { show, fixtures, history, point, appImport, view } = window.editorTest
+            const { tools, switchToolTo } = await appImport<
+                typeof import('../../src/editor/tools')
+            >('/src/editor/tools/index.ts')
+            const base = fixtures.interaction.slides[0]![0]!
+            show(
+                { ...fixtures.interaction, slides: [[{ ...base, beat: 2, left: -2, size: 2 }]] },
+                1,
+            )
+            view.layout = 'basic'
+            const state = history.state.value
+            const note = [...state.store.slides.note.values()].flat()[0]!
+            history.replaceState({ ...state, selectedEntities: [note] })
+            switchToolTo('select')
+            // The note spans lanes -2 to 0: its right edge is at 0, its middle at -1.
+            const start = point(mode === 'body' ? -1 : -0.1, 2)
+            const end = point(mode === 'body' ? 0 : 1, mode === 'edge and beat' ? 3 : 2)
+            const modifiers = { ctrl: false, shift: false }
+            tools.select.dragStart!(start.x, start.y, modifiers)
+            tools.select.dragUpdate!(end.x, end.y, modifiers)
+            await tools.select.dragEnd!(end.x, end.y, modifiers)
+            return [...history.state.value.store.slides.note.values()]
+                .flat()
+                .map(({ beat, left, size }) => ({ beat, left, size }))
+        }, mode)
+        const head = await headOperation(page)
+        if (mode === 'body') {
+            expect(result).toEqual([{ beat: 2, left: -1, size: 2 }])
+            expect(head).toMatchObject({
+                id: 'nse.object.move',
+                data: { subject: 'note', changed: { note: 1 } },
+            })
+            expect(head.data).not.toHaveProperty('resized')
+        } else {
+            // The edge moved from 0 to 1 and the beat stayed: only the width changed.
+            expect(result).toEqual([{ beat: 2, left: -2, size: 3 }])
+            expect(head).toMatchObject({
+                id: 'nse.object.move',
+                data: { subject: 'note', changed: { note: 1 }, resized: true },
+            })
+        }
+        const titles = await page.evaluate(async () => {
+            const { appImport } = window.editorTest
+            const { describeOperation } = await appImport<
+                typeof import('../../src/history/operationPresentation')
+            >('/src/history/operationPresentation/index.ts')
+            const { i18n } = await appImport<typeof import('../../src/i18n')>('/src/i18n/index.ts')
+            return describeOperation(
+                window.editorTest.history.headStep.value!.operation as never,
+                { locale: 'en', strings: i18n.value, now: Date.now() } as never,
+            )
+        })
+        expect(titles).toBe(mode === 'body' ? 'Moved 1 note' : 'Resized 1 note')
+    })
+
 test('Brush captures coupled Note fields, ignores derived connector operands and preserves its no-op gate', async ({
     page,
 }) => {

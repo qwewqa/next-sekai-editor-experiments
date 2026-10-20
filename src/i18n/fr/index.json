@@ -1056,6 +1056,7 @@
       "edited": "{0} note modifiée|{0} notes modifiées",
       "moving": "Déplacement de {0} note|Déplacement de {0} notes",
       "moved": "{0} note déplacée|{0} notes déplacées",
+      "resized": "{0} note redimensionnée|{0} notes redimensionnées",
       "selected": "{0} note sélectionnée|{0} notes sélectionnées",
       "modal": {
         "title": "Propriétés de note"
@@ -1112,6 +1113,7 @@
       "edited": "{0} événement {1} modifié|{0} événements {1} modifiés",
       "moving": "Déplacement de {0} événement {1}|Déplacement de {0} événements {1}",
       "moved": "{0} événement {1} déplacé|{0} événements {1} déplacés",
+      "resized": "{0} événement {1} redimensionné|{0} événements {1} redimensionnés",
       "selected": "{0} événement {1} sélectionné|{0} événements {1} sélectionnés",
       "modal": {
         "title": "Propriétés : {0}"
@@ -1218,6 +1220,7 @@
       "addedNotes": "Notes ajoutées",
       "editedNotes": "Notes modifiées",
       "movedNotes": "Notes déplacées",
+      "resizedNotes": "Notes redimensionnées",
       "changedNoteElevations": "Élévation des notes modifiée",
       "generatedNotes": "Notes générées",
       "addedBpm": "Changements de BPM ajoutés",
@@ -1231,6 +1234,7 @@
       "addedEvents": "Événements {0} ajoutés",
       "editedEvents": "Événements {0} modifiés",
       "movedEvents": "Événements {0} déplacés",
+      "resizedEvents": "Événements {0} redimensionnés",
       "editedObjects": "Objets modifiés",
       "movedObjects": "Objets déplacés",
       "movedGroupsInto": "Groupes déplacés dans le dossier {0}",

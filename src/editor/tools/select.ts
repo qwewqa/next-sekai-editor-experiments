@@ -710,25 +710,36 @@ export const moveEntities = (
         }
     }
     const result = transaction.commit(selectedEntities)
-    const changed = changedNativeCounts(
-        [...applied].flatMap(([before, index]) => {
-            const after = result.selectedEntities[index]
-            return after ? [{ before, after }] : []
-        }),
-    )
+    const pairs = [...applied].flatMap(([before, index]) => {
+        const after = result.selectedEntities[index]
+        return after ? [{ before, after }] : []
+    })
+    const changed = changedNativeCounts(pairs)
+    // An edge drag is a resize by what it changed: an extent changed and no beat did. One that
+    // only shifted a lane edge is a move.
+    const resized =
+        isSelectResize(active.onlyType, active.focus, active.lane) &&
+        pairs.every(({ before, after }) => before.beat === after.beat) &&
+        pairs.some(({ before, after }) => extentOf(before) !== extentOf(after))
     return {
         state: result,
         // A BPM or time scale moved onto an occupied beat is a Replace, as in its own tool.
-        operation: editInput('move', changed, 'objects', {
-            displaced,
-            retainedInitialBpm: entities.some(
-                (entity) =>
-                    entity.type === 'bpm' &&
-                    !entity.beat &&
-                    !isPinned(entity, beatOffset) &&
-                    toMovedBeat(entity.beat, beatOffset) !== entity.beat,
-            ),
-        }),
+        operation: editInput(
+            'move',
+            changed,
+            'objects',
+            {
+                displaced,
+                retainedInitialBpm: entities.some(
+                    (entity) =>
+                        entity.type === 'bpm' &&
+                        !entity.beat &&
+                        !isPinned(entity, beatOffset) &&
+                        toMovedBeat(entity.beat, beatOffset) !== entity.beat,
+                ),
+            },
+            resized,
+        ),
         focus: result.selectedEntities[focusIndex],
         // A moved note as committed.
         note: (entity: NoteEntity) => {
@@ -738,6 +749,16 @@ export const moveEntities = (
         },
     }
 }
+
+/** The lanes' extent a Select resize changes: a note's width, a camera or mask event's range. */
+const extentOf = (entity: Entity) =>
+    entity.type === 'note'
+        ? entity.size
+        : entity.type === 'cameraEventJoint'
+          ? entity.cameraSize
+          : entity.type === 'stageMaskEventJoint'
+            ? entity.maskSize
+            : undefined
 
 const getRawMove = (
     source: State,
