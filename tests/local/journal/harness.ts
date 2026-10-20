@@ -1,5 +1,5 @@
 import type { EntryDescription } from '../../../src/history/operations'
-import type { Flusher, FlushSession } from '../../../src/local/flush'
+import type { FlushDeps, Flusher, FlushSession } from '../../../src/local/flush'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import { replayJournal, type ReplayDeps } from '../../../src/local/journal/replay'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
@@ -74,6 +74,7 @@ export const openJournalPage = async (
     storage = new MemoryStorage(),
     writer: Partial<JournalWriterDeps> = {},
     coreDeps: Partial<CoreDeps> = {},
+    flushDeps: Partial<FlushDeps> = {},
 ): Promise<JournalPage> => {
     const ref: { writer?: JournalWriter; sync?: { fails: number } } = {}
     const page = await openPage(
@@ -93,6 +94,7 @@ export const openJournalPage = async (
                     }).syncStrict(undefined),
                 )
             },
+            ...flushDeps,
         },
         coreDeps,
     )
