@@ -153,7 +153,7 @@ const onKeydown = (event: KeyboardEvent) => {
                     @click="backToNow"
                 >
                     <template v-if="layout.back === 'label'">{{ strings.backToNow }}</template
-                    ><ChevronIcon v-else direction="left" />
+                    ><ChevronIcon v-else direction="left" centered />
                 </button>
                 <button
                     type="button"
