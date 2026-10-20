@@ -759,7 +759,12 @@ test.describe('Settings › Local Data', () => {
             await expect(row.getByRole('button')).toHaveText(['Open', 'Download', 'Discard…'])
             await row.getByRole('button', { name: 'Open' }).click()
             await expect(page.locator('#settings-localData')).toHaveCount(0)
-            await expect(page.getByText('Opened the old auto save.')).toBeVisible()
+            // The notice shows once; the screen reader's live region repeats its text out of sight.
+            await expect(
+                page
+                    .locator('.notification, .notification-pill')
+                    .filter({ hasText: 'Opened the old auto save.' }),
+            ).toBeVisible()
             expect(
                 await page.evaluate(() =>
                     localStorage.getItem('sonolus-next-sekai-editor.autoSave.levelData'),

@@ -42,6 +42,18 @@ const edit = (page: Page, label: string) =>
         })
     }, label)
 
+/**
+ * Moves the clock on once nothing is in flight to the storage worker. A jump fires every timer
+ * that is due, including the 10 s watchdog of a call still waiting for its answer: the call has
+ * made no progress in the (fake) hour, so the client restarts the worker and the flush logs
+ * "A flush failed". A real worker is not hung then, so a test that is not about that waits for
+ * its flush before the jump.
+ */
+const pass = async (page: Page, clock: SampleClock, ms: number) => {
+    await flush(page)
+    await clock.pass(ms)
+}
+
 type Line = { kind: 'header' | 'row'; text: string }
 
 /** The headers and rows the Timeline shows, top down: a header by its text, a row by its title. */
@@ -110,7 +122,7 @@ test('T1: day buckets follow the zone of the page, far from the host', async ({ 
         expect(zone).toBe('Pacific/Auckland')
         await edit(page, 'Before A')
         await edit(page, 'Before B')
-        await clock.pass(20 * MINUTE)
+        await pass(page, clock, 20 * MINUTE)
         await edit(page, 'After A')
         await edit(page, 'After B')
         await flush(page)
@@ -159,7 +171,7 @@ test('T2: the headers move on at midnight while History is open', async ({ brows
             .poll(async () => textOf(await lines(page)))
             .toEqual([expect.stringMatching(/^Now/), '11:58 PM', 'Late', IMPORTED])
         // The hourly tick at 00:00:01 rebuilds the headers: no reopen is needed.
-        await clock.pass(3 * MINUTE)
+        await pass(page, clock, 3 * MINUTE)
         await expect
             .poll(async () => textOf(await lines(page)))
             .toEqual([expect.stringMatching(/^Now/), 'Yesterday · 11 PM', 'Late', IMPORTED])
@@ -190,7 +202,7 @@ test('T3: after a sleep the headers move a tier and no row is lost', async ({ br
         const before = [expect.stringMatching(/^Now/), '12:00 PM', 'Two', 'One', IMPORTED]
         await expect.poll(async () => textOf(await lines(page))).toEqual(before)
         // The laptop's lid closes and opens three hours later: due timers fire once.
-        await clock.pass(3 * HOUR)
+        await pass(page, clock, 3 * HOUR)
         await expect
             .poll(async () => textOf(await lines(page)))
             .toEqual([expect.stringMatching(/^Now/), '12 PM', 'Two', 'One', IMPORTED])
@@ -211,11 +223,11 @@ test('T4: at a daylight saving fall-back, each row sits under the hour it was ma
     )
     try {
         await edit(page, 'A at 00:50 EDT')
-        await clock.pass(20 * MINUTE)
+        await pass(page, clock, 20 * MINUTE)
         await edit(page, 'B at 01:10 EDT')
-        await clock.pass(HOUR)
+        await pass(page, clock, HOUR)
         await edit(page, 'C at 01:10 EST')
-        await clock.pass(55 * MINUTE)
+        await pass(page, clock, 55 * MINUTE)
         await edit(page, 'D at 02:05 EST')
         await openHistory(page)
         // The two 1 AM hours are two headers over their own rows; no key is used twice (a
@@ -308,7 +320,7 @@ test('T5: stored rows from a clock two hours ahead list with unique ids and End 
         expect(new Set(ids).size).toBe(ids.length)
         // An hour on, every header is rebuilt with the same repeat. Vue checks the keys when rows
         // update (a duplicate fails the test through the error listener).
-        await clock.pass(HOUR)
+        await pass(page, clock, HOUR)
         await expect
             .poll(async () => (await lines(page)).filter((line) => line.text === '12 PM').length)
             .toBe(2)

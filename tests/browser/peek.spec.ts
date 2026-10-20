@@ -423,7 +423,7 @@ test('Restore pushes the entry as an undoable step, and a matching one changes n
     await restore(page, first)
     await expect(notice(page)).toHaveText(/^Restored to \d/)
     expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [3, 5, 7, 9], peeking: false })
-    expect(await newestSeq(page)).toBe(first + 2)
+    await expect.poll(() => newestSeq(page)).toBe(first + 2)
     await restore(page, first)
     await expect(notice(page)).toHaveText('Already matches the current chart')
     expect(await newestSeq(page)).toBe(first + 2)

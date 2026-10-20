@@ -61,6 +61,19 @@ const openLevel = (page: Page) =>
         }
     })
 
+/** How many entries of this tab's session the flusher still holds, not yet stored. */
+const waiting = (page: Page) =>
+    page.evaluate(async () => {
+        const pathname = '/src/local/storing.ts'
+        const url =
+            performance
+                .getEntriesByType('resource')
+                .map((entry) => entry.name)
+                .find((name) => new URL(name).pathname === pathname) ?? pathname
+        const { flusher } = (await import(url)) as typeof import('../../src/local/storing')
+        return flusher?.session?.pending.length ?? 0
+    })
+
 /** A new page in the context, as a new visit. */
 const newVisit = async (page: Page) => {
     const next = await page.context().newPage()
@@ -528,8 +541,12 @@ for (const { label, crash } of [
                 initialLife: 980,
             })
         })
-        // Without handlers, only the flush stores it: about 1 s after the edit.
-        if (crash) await other.waitForTimeout(2500)
+        // Without handlers, only the flush stores it, about 1 s after the edit: wait until the
+        // flusher has nothing waiting. The edit is waiting from the moment it is made.
+        if (crash) {
+            expect(await waiting(other)).toBeGreaterThan(0)
+            await expect.poll(() => waiting(other), { timeout: 15_000 }).toBe(0)
+        }
         other.on('dialog', (dialog) => void dialog.accept())
         await closePage(other, { runBeforeUnload: !crash })
 
@@ -597,8 +614,13 @@ for (const dialog of ['properties', 'bgm'] as const)
         await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
         await command
         await expect(page.getByRole('dialog')).toHaveCount(0)
-        // Let the dialog's result reach the command before checking for an entry.
-        await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)))
+        // The command has finished. Let the page draw twice, so nothing it queued is still to run.
+        await page.evaluate(
+            () =>
+                new Promise((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                ),
+        )
         expect(
             await page.evaluate(() => ({
                 canUndo: window.editorTest.history.canUndo.value,

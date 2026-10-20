@@ -60,6 +60,14 @@ const open = async (page: Page) => {
     await expect(presentation(page)).toBeVisible()
 }
 
+/**
+ * Waits until the first read has put entries under Now. Now takes focus while that read is still
+ * out, and a key pressed then has no row to move to, so it is dropped (as it should be): a test
+ * that presses keys right after opening waits for the rows first.
+ */
+const listed = (page: Page) =>
+    expect.poll(() => list(page).getByRole('row').count()).toBeGreaterThan(1)
+
 const selected = (page: Page) =>
     page.evaluate(async () => {
         const [peek, selection] = await Promise.all([
@@ -113,6 +121,7 @@ test('compact History returns to its own row and keeps a virtualized Tab entry p
     await page.setViewportSize({ width: 390, height: 844 })
     await seedNativeLifeGroup(page, true)
     await open(page)
+    await listed(page)
     const now = list(page).getByRole('row', { name: /^Now/ })
     await expect(now).toBeFocused()
     await page.keyboard.press('ArrowDown')
@@ -140,7 +149,9 @@ for (const action of ['Home', 'Tab', 'outside', 'blur'] as const)
         await page.setViewportSize({ width: 390, height: 844 })
         await seedNativeLifeGroup(page, true)
         await open(page)
-        // Opening lands focus on Now asynchronously; a key sent before that would miss it.
+        // Opening lands focus on Now asynchronously, and the rows come with the first read; a key
+        // sent before either would miss.
+        await listed(page)
         await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
         await page.keyboard.press('ArrowDown')
         const group = row(page, 'Changed Initial Life')
@@ -183,7 +194,9 @@ test('Details completion leaves a newer modal focused', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await seedNativeLifeGroup(page, true)
     await open(page)
-    // Opening lands focus on Now asynchronously; a key sent before that would miss it.
+    // Opening lands focus on Now asynchronously, and the rows come with the first read; a key
+    // sent before either would miss.
+    await listed(page)
     await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
@@ -214,7 +227,9 @@ test('Details uses a surviving row when its removed opener has no native return 
     await page.setViewportSize({ width: 390, height: 844 })
     await seedNativeLifeGroup(page, true)
     await open(page)
-    // Opening lands focus on Now asynchronously; a key sent before that would miss it.
+    // Opening lands focus on Now asynchronously, and the rows come with the first read; a key
+    // sent before either would miss.
+    await listed(page)
     await expect(list(page).getByRole('row', { name: /^Now/ })).toBeFocused()
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('Enter')
@@ -238,6 +253,13 @@ test('filtering out the active peek does not announce Now as selected or replace
 }) => {
     await open(page)
     await row(page, 'Property 30').click()
+    // The request is made at the click; the chart shows it a moment later. Both are the baseline.
+    await expect
+        .poll(async () => {
+            const state = await selected(page)
+            return state.requested !== undefined && state.displayed === state.requested
+        })
+        .toBe(true)
     const before = await selected(page)
     await page.evaluate(async () => {
         const { historyFilter } = await window.editorTest.appImport<
@@ -881,7 +903,9 @@ test('unavailable Details is keyboard reachable at Now and source replacement di
     await open(page)
     const group = row(page, 'Changed Initial Life')
     const now = list(page).getByRole('row', { name: /^Now/ })
-    // Opening lands focus on Now asynchronously; wait for it before moving focus ourselves.
+    // Opening lands focus on Now asynchronously, and the rows come with the first read; wait for
+    // both before moving focus ourselves.
+    await listed(page)
     await expect(now).toBeFocused()
     await now.focus()
     await page.keyboard.press('ArrowDown')
@@ -1571,6 +1595,7 @@ test('reopening restores the scroll anchor without selecting again; command clos
 }) => {
     await page.setViewportSize({ width: 520, height: 320 })
     await open(page)
+    await listed(page)
     await list(page).focus()
     await page.keyboard.press('ArrowDown')
     await page.keyboard.press('PageDown')
