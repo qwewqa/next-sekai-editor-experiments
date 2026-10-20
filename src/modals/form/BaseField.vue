@@ -417,7 +417,8 @@ watchEffect(
                 >
                     <span v-if="chip.text">{{ chip.text }}</span>
                     <span v-else
-                        >{{ chip.name }} <span class="tabular-nums">{{ chip.count }}</span></span
+                        >{{ chip.name }}
+                        <span class="tabular-nums">{{ formatCount(chip.count) }}</span></span
                     >
                 </button>
             </div>

@@ -66,8 +66,8 @@ export const presentRow = (
     const main = device
         ? savedOnText(context, device.label)
         : renderOperationRecipe(recipe, context)
-    const count = recipe.kind === 'group' ? operationStepCount(recipe, context) : undefined
-    return { main, count, full: count ? `${main} · ${count}` : main }
+    const steps = recipe.kind === 'group' ? operationStepCount(recipe, context) : undefined
+    return { main, steps, full: steps ? `${main} · ${steps}` : main }
 }
 
 /**

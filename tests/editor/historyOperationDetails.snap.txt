@@ -218,7 +218,7 @@ R: Group [groupId]: ~Varies > A very long name that keeps going and going A very
 #property.note.group.truncated en
 T: Set Group to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…" on 2 notes
 R: Group [groupId]: ~Varies > A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an… [shortened]
-F: Name shortened for display
+F: Text shortened for display
 
 #property.note.group.emptyName en
 T: Set Group to "" on 2 notes
@@ -375,7 +375,7 @@ R: Offset (ms) [offset]: 100 > 200
 #bgm.change.longName en
 T: Changed BGM file
 R: File [file]: A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an > A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an… [shortened]
-F: Name shortened for display
+F: Text shortened for display
 
 #dynamicStages.enable en
 T: Enabled dynamic stages
@@ -411,7 +411,7 @@ T: Added "" group
 
 #owner.create.group.longName en
 T: Added "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…" group
-F: Name shortened for display
+F: Text shortened for display
 
 #owner.create.group.newlineName en
 T: Added "Line one
@@ -437,7 +437,7 @@ T: Renamed "Beta" stage to ""
 
 #owner.rename.long en
 T: Renamed "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an" group to "A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…"
-F: Name shortened for display
+F: Text shortened for display
 
 #owner.rename.folder en
 T: Renamed group folder "Old Folder" to "New Folder"
@@ -581,7 +581,7 @@ T: Recovered changes
 
 #origin.import.longSource en
 T: Opened A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…
-F: Name shortened for display
+F: Text shortened for display
 
 #continue.plain en
 T: Continued from Oct 18, 2:00:00 AM
@@ -601,10 +601,10 @@ T: Exported level.scp
 #file.export.download.long en
 T: Exported A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…
 F: Downloaded A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going and going A very long name that keeps going an…
-F: Name shortened for display
+F: Text shortened for display
 
 #file.save.emptyName en
-T: Saved 
+T: Saved Untitled
 
 #restore.plain en
 T: Restored to Oct 18, 2:00:00 AM
@@ -727,7 +727,7 @@ S: 3 steps (no prefix)
   - 2 notes ajoutées
 
 #undo.group.3 ja
-T: 3 ステップを元に戻しました
+T: 3 操作を元に戻しました
 S: 3 steps (no prefix)
   - 1個のノーツを削除しました
   - 3個のノーツを編集しました

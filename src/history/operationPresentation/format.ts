@@ -17,10 +17,10 @@ import {
 import { isEntryDescription } from './members'
 import type { OperationMember, OperationTextContext } from './types'
 import {
+    fileNameText,
     joinFields,
     joinSentences,
     message,
-    nameText,
     numberText,
     operationFieldLabel,
     operationValueText,
@@ -517,7 +517,7 @@ export const describeOperation = (
                     return t.history.operation.newLevel
                 case 'import':
                     return source
-                        ? message(context, t.history.openedFile, nameText(source))
+                        ? message(context, t.history.openedFile, fileNameText(source, context))
                         : t.history.operation.importedLevel
                 case 'autoSave':
                     return t.entry.migrated
@@ -536,10 +536,10 @@ export const describeOperation = (
             return message(
                 context,
                 operation.data.delivery === 'download' ? t.entry.downloaded : t.entry.saved,
-                nameText(operation.data.file),
+                fileNameText(operation.data.file, context),
             )
         case 'nse.file.export':
-            return message(context, t.entry.exported, nameText(operation.data.file))
+            return message(context, t.entry.exported, fileNameText(operation.data.file, context))
         case 'nse.restore':
             return message(
                 context,
