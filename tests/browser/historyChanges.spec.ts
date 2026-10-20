@@ -1564,3 +1564,66 @@ test('an outside press that closes Go To or a row’s menu gives focus back to i
         .poll(() => row(page, 'Moved A').evaluate((element) => element.matches(':focus-within')))
         .toBe(true)
 })
+
+test('Edits Here’s range names its first and last beats, for a selection and for the view (X-B 1, 6)', async ({
+    page,
+}) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    const banner = surface(page).locator('[data-history-filter-banner]')
+    const range = page.locator('[data-goto-here-range]')
+    // In the fixture's 4/4, beat 3 is 1.4, 5 is 2.2 and 7 is 2.4: a last beat at a bar's end reads
+    // itself, not the next bar's first.
+    for (const [beats, text] of [
+        [[5], '2.2 – 2.2'],
+        [[5, 7], '2.2 – 2.4'],
+        [[3], '1.4 – 1.4'],
+    ] as const) {
+        await page.evaluate(
+            async (beats) => {
+                const { history, store } = window.editorTest
+                history.replaceState({
+                    ...history.state.value,
+                    selectedEntities: [...store.getAllEntities()].filter(
+                        (entity) => entity.type === 'note' && beats.includes(entity.beat),
+                    ),
+                })
+                await window.editorTest.nextTick()
+            },
+            beats as readonly number[],
+        )
+        await surface(page).locator('[data-history-goto-button]').click()
+        await expect(range).toHaveText(text)
+        await page.getByRole('radio', { name: 'Edits Here' }).click()
+        await page.keyboard.press('Escape')
+        await expect(banner).toHaveText(new RegExp(`Edits Here · ${text}`))
+    }
+    // With nothing selected, the beats of the band in view: the grid beats its bottom and top are in.
+    await page.evaluate(async () => {
+        const { history } = window.editorTest
+        history.replaceState({ ...history.state.value, selectedEntities: [] })
+        await window.editorTest.nextTick()
+    })
+    await viewAt(page, 40)
+    const expected = await page.evaluate(async () => {
+        const { appImport, history } = window.editorTest
+        const [{ bandTimes }, { timeToBeat }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/changes')>(
+                '/src/editor/history/changes.ts',
+            ),
+            appImport<typeof import('../../src/state/integrals/bpms')>(
+                '/src/state/integrals/bpms.ts',
+            ),
+        ])
+        const band = bandTimes()
+        const label = (time: number) => {
+            const beat = Math.floor(timeToBeat(history.state.value.bpms, time))
+            return `${Math.floor(beat / 4) + 1}.${(beat % 4) + 1}`
+        }
+        return `${label(band.bottom)} – ${label(band.top)}`
+    })
+    await surface(page).locator('[data-history-goto-button]').click()
+    await expect(range).toHaveText(expected)
+})
