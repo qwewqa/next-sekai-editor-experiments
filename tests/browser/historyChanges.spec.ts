@@ -165,7 +165,10 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                     history.pushState(capture(), { ...state, initialLife: state.initialLife + 1 })
                     return
                 case 'same':
-                    history.pushState(capture(), { ...state })
+                    // An edit that changes nothing is no step (owner, 2026-10-19), and Restore always is,
+                    // so this is how an entry that changed nothing still reaches the Timeline. Stored
+                    // histories from before the rule hold such entries too.
+                    history.pushState(capture(), { ...state }, 'restore')
                     return
             }
             history.pushState(capture(), transaction.commit([]))
