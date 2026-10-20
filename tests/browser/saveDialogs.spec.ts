@@ -253,6 +253,23 @@ test.describe('the Save dialog', () => {
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 7.6 MB')
     })
 
+    test('a ticked BGM of unknown size leaves the total pending, never counted as 0', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        const { bgm: _size, ...unsized } = estimateOf
+        await openSave(page, { estimate: { cached: unsized, value: unsized } })
+        const total = dialog(page).locator('[data-save-total]')
+        await expect(total).toHaveText('Estimating size…')
+        // Unticked, the total no longer depends on it.
+        await dialog(page).getByRole('checkbox', { name: 'BGM' }).uncheck()
+        await expect(total).toHaveText('Total: about 3.4 MB')
+        await dialog(page).getByRole('checkbox', { name: 'BGM' }).check()
+        await expect(total).toHaveText('Estimating size…')
+    })
+
     test('an estimate that fails shows no sizes and no total', async ({ page, context }) => {
         await seed(context)
         await visit(page)
@@ -590,6 +607,16 @@ test.describe('the conflict dialog', () => {
         await expect(dialog(page)).toContainText(
             'Saved in the web editor, Oct 16, 2:41 PM · 1 note.',
         )
+        await guard(page)
+        await dialog(page).getByRole('button', { name: 'Close' }).click()
+        // A file with no summary for its revision has no note count to name, not "0 notes".
+        const { notes: _unknown, ...uncounted } = disk.web
+        await open(page, {
+            kind: 'conflict',
+            input: { name: 'coconut.nxsp', disk: uncounted },
+        })
+        await expect(dialog(page)).toContainText('Saved in the web editor (Chrome), Oct 16, 2:41 PM.')
+        await expect(dialog(page)).not.toContainText('note')
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Close' }).click()
         await open(page, { kind: 'conflict', input: { name: 'coconut.nxsp', disk: disk.other } })

@@ -2119,6 +2119,7 @@
     "title": "\"{0}\" Değişti",
     "body": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
     "saved": "{0}, {1} · {2}.",
+    "savedNoNotes": "{0}, {1}.",
     "otherProject": "Farklı bir proje dosyası: \"{0}\".",
     "otherProjectUnnamed": "Farklı bir proje dosyası.",
     "notDescendant": "Bu sürüm sizinkinin devamı değil ({0}).",

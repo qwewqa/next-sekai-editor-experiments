@@ -2119,6 +2119,7 @@
     "title": "“{0}”已更改",
     "body": "“{0}”在此处打开或保存后已更改。",
     "saved": "{0}，{1} · {2}。",
+    "savedNoNotes": "{0}，{1}。",
     "otherProject": "另一个项目文件“{0}”。",
     "otherProjectUnnamed": "另一个项目文件。",
     "notDescendant": "此版本并非您版本的后续 ({0})。",

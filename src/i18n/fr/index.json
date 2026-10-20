@@ -2119,6 +2119,7 @@
     "title": "\"{0}\" a changé",
     "body": "\"{0}\" a changé depuis que vous l’avez ouvert ou sauvegardé ici.",
     "saved": "{0}, {1} · {2}.",
+    "savedNoNotes": "{0}, {1}.",
     "otherProject": "Un autre fichier de projet, \"{0}\".",
     "otherProjectUnnamed": "Un autre fichier de projet.",
     "notDescendant": "Cette version ne prolonge pas la vôtre ({0}).",
