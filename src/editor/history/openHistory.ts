@@ -96,6 +96,14 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
     } else {
         backToNow()
         if (reopenAt !== undefined) openElevationEditor(reopenAt)
+        else {
+            // A dialog gives focus back to its opener. An opener that is gone or hidden gets none
+            // (and the sheet's host has already given its own), so the chart takes it.
+            await nextTick()
+            const active = document.activeElement
+            if (at === generation && (!active || active === document.body))
+                document.querySelector<HTMLElement>('.chart-pane')?.focus({ preventScroll: true })
+        }
     }
 }
 

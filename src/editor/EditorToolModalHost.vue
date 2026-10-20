@@ -59,8 +59,10 @@ const toolButtons = (pane: Element | null | undefined) => [
     ...(pane?.querySelectorAll<HTMLElement>('[data-editor-toolbar] > div > div > button') ?? []),
 ]
 
-// A tool the keyboard used to open the dialog; pointer clicks leave tools unfocused.
+// A tool the keyboard used to open the dialog; pointer clicks leave tools unfocused. Any other
+// control that had focus is kept as `openerElement`.
 let opener: { pane: Element; index: number } | undefined
+let openerElement: HTMLElement | undefined
 
 // Read before any render unmounts the toolbar, or the dialog on close.
 watch(
@@ -77,6 +79,12 @@ watch(
         if (pane && active instanceof HTMLElement)
             opener = { pane, index: toolButtons(pane).indexOf(active) }
         else if (!panel.value?.contains(active)) opener = undefined
+        // A control outside the toolbar is the opener itself, when it has focus (not the page).
+        if (!panel.value?.contains(active))
+            openerElement =
+                active instanceof HTMLElement && active !== document.body && !pane
+                    ? active
+                    : undefined
     },
     { flush: 'sync' },
 )
@@ -128,7 +136,15 @@ watch(
         const target = focusReturn
         focusReturn = undefined
         if (modal || !target?.pane.isConnected) return
-        ;(toolButtons(target.pane)[target.index] ?? target.pane).focus({ preventScroll: true })
+        const element = openerElement
+        openerElement = undefined
+        // The tool that opened it; else the control that did, if still on screen; else the chart.
+        const visible = element?.isConnected && element.getClientRects().length > 0
+        ;(
+            toolButtons(target.pane)[target.index] ??
+            (visible ? element : undefined) ??
+            target.pane
+        ).focus({ preventScroll: true })
     },
     { flush: 'post' },
 )
