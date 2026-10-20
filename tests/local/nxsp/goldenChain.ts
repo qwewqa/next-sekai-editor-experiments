@@ -238,7 +238,7 @@ export const secondInput = (
                         operation: nativeOperation(
                             {
                                 id: 'nse.continue',
-                                data: { fromTime: T0 - 1000, source: captureName('golden.nxsp') },
+                                data: { fromTime: T0 - 1000 },
                             },
                             'Opened golden.nxsp',
                         ),

@@ -131,6 +131,10 @@ export const inStoredOrder = <T>(
 export type SelectionTransformResult = {
     state: State
     counts: NativeCounts
+    /** Objects at a destination that the transform removed without moving them. */
+    displaced: readonly Entity[]
+    /** The initial BPM was added back at beat 0. */
+    retainedInitialBpm: boolean
     replacements: ReadonlyMap<Entity, Entity>
     applications: ReadonlyMap<Entity, Entity>
 }
@@ -160,6 +164,8 @@ export const transformSelectionWithReceipt = (
         return {
             state: source,
             counts: {},
+            displaced: [],
+            retainedInitialBpm: false,
             replacements: new Map(selected.map((entity) => [entity, entity])),
             applications: new Map<Entity, Entity>(),
         }
@@ -176,6 +182,7 @@ export const transformSelectionWithReceipt = (
     // A same-beat pair lands in its stored order and stays a pair.
     const ordered = inStoredOrder(source, changed, ([entity]) => entity)
     const placed = new Map<Entity, number>()
+    const displaced = new Set<Entity>()
     for (const [entity, object] of ordered) {
         if (entity.type === 'note') {
             const replaced = editSelectedNote(transaction, entity, object)
@@ -204,6 +211,7 @@ export const transformSelectionWithReceipt = (
                     (!('stageId' in entity) ||
                         ('stageId' in other && other.stageId === entity.stageId))
                 ) {
+                    if (!placed.has(other)) displaced.add(other)
                     remove(transaction, other)
                 }
             }
@@ -212,12 +220,10 @@ export const transformSelectionWithReceipt = (
         for (const other of added) placed.set(other, entity.beat)
         replacements.set(entity, added)
     }
-    if (
-        initialBpm &&
+    const retainedInitialBpm =
+        !!initialBpm &&
         !getInStoreGrid(transaction.store.grid, 'bpm', 0)?.some((entity) => entity.beat === 0)
-    ) {
-        addBpm(transaction, initialBpm)
-    }
+    if (retainedInitialBpm) addBpm(transaction, initialBpm)
     const selection = [...new Set(selected)].flatMap(
         (entity) => replacements.get(entity) ?? [entity],
     )
@@ -241,6 +247,8 @@ export const transformSelectionWithReceipt = (
     return {
         state: result,
         counts: changedNativeCounts([...applied].map(([before, after]) => ({ before, after }))),
+        displaced: [...displaced],
+        retainedInitialBpm,
         replacements: live,
         applications: applied,
     }

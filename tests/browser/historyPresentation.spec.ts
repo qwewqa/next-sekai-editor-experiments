@@ -810,7 +810,7 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
                     description: {
                         kind: 'recovered',
                         operation: historySteps.nativeOperation(
-                            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 25 } },
+                            { id: 'nse.recovery', data: { droppedSteps: 25 } },
                             'Recovered',
                         ),
                         recoveryContext: { head, headIndex: 2, dropped, omitted: 5 },
@@ -1261,7 +1261,7 @@ for (const width of [1600, 390, 320]) {
                         historySteps.nativeOperation(
                             {
                                 id: 'nse.object.move',
-                                data: { subject: 'note', targets: targets.length },
+                                data: { subject: 'note', changed: { note: targets.length } },
                             },
                             'Moved notes',
                         ),

@@ -61,7 +61,11 @@ import { addStageStyleEventJoint } from '../../../state/mutations/events/stage/s
 import { addStageTransformEventJoint } from '../../../state/mutations/events/stage/transform.ts'
 import { addNote } from '../../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale } from '../../../state/mutations/timeScale'
-import { countNativeEntities } from '../../../state/operations/historyReceipts'
+import {
+    countNativeEntities,
+    nonEmpty,
+    optionalCounts,
+} from '../../../state/operations/historyReceipts'
 import { createStore } from '../../../state/store/creates'
 import { getInStoreGrid } from '../../../state/store/grid'
 import type { StoreSlides } from '../../../state/store/slides'
@@ -368,14 +372,15 @@ export const paste: Tool = {
 
         const result = transaction.commit(selectedEntities)
         const operation = pasteOperation(result, 'basic', modifiers.shift, 'pointer', displaced)
-        pushState(operation, result)
+        // Nothing placed, as when the only events were declined, leaves no step to undo.
+        if (operation) pushState(operation, result)
         view.entities = {
             hovered: [],
             creating: [],
         }
         clearPasteGhost()
 
-        notify(() => operation.fallback.text)
+        if (operation) notify(() => operation.fallback.text)
 
         active = undefined
     },
@@ -728,14 +733,14 @@ export const pasteAtPosition = async (
         options.at ?? 'position',
         displaced,
     )
-    pushState(operation, result)
+    if (operation) pushState(operation, result)
     view.entities = {
         hovered: [],
         creating: [],
     }
     clearPasteGhost()
 
-    notify(() => operation.fallback.text)
+    if (operation) notify(() => operation.fallback.text)
     return toMovedBeat(data.beat, shiftedOffset)
 }
 
@@ -1037,17 +1042,21 @@ const pasteOperation = (
     flipped: boolean,
     at: 'pointer' | 'position',
     displaced: Entity[],
-) =>
-    createHistoryOperation({
-        id: 'nse.object.paste',
-        data: {
-            placed: countNativeEntities(result.selectedEntities),
-            displaced: countNativeEntities(displaced),
-            variant,
-            flipped,
-            at,
-        },
-    })
+) => {
+    const placed = nonEmpty(countNativeEntities(result.selectedEntities))
+    return placed
+        ? createHistoryOperation({
+              id: 'nse.object.paste',
+              data: {
+                  placed,
+                  ...optionalCounts('displaced', countNativeEntities(displaced)),
+                  variant,
+                  flipped,
+                  at,
+              },
+          })
+        : undefined
+}
 
 const finishPaste = (
     result: State,
@@ -1056,10 +1065,10 @@ const finishPaste = (
     displaced: Entity[],
 ) => {
     const operation = pasteOperation(result, 'composed', flipped, at, displaced)
-    pushState(operation, result)
+    if (operation) pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
     clearPasteGhost()
-    notify(() => operation.fallback.text)
+    if (operation) notify(() => operation.fallback.text)
 }
 
 // Pastes into the copying chart keep their own groups and stages; others map by position.

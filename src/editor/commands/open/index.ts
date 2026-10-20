@@ -10,6 +10,7 @@ import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { detectHead } from '../../../files/detect'
 import { resetImportedState } from '../../../history'
+import { captureName } from '../../../history/operations'
 import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
@@ -345,6 +346,6 @@ const resetImported = (request: SwitchRequest, chart: Chart, offset: number, fil
     const descriptor = createSessionDescriptor({ sourceName: getFilename(file) })
     const state = createState(chart, offset)
     return request.publish({ state, sessionId: descriptor.sessionId, reset: true }, () => {
-        resetImportedState(state, descriptor)
+        resetImportedState(state, descriptor, captureName(getFilename(file)))
     })
 }

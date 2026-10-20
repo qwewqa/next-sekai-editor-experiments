@@ -121,10 +121,7 @@ test('event-only recovered context survives keep-first, append, import, reload a
         1,
     )
     fixture.recoverContext(
-        nativeOperation(
-            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 2 } },
-            'Recovered work',
-        ),
+        nativeOperation({ id: 'nse.recovery', data: { droppedSteps: 2 } }, 'Recovered work'),
         context,
     )
     await fixture.flush()

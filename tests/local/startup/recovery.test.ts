@@ -70,7 +70,7 @@ const loadIn = async (
         operations: {
             recovered: (droppedSteps) =>
                 nativeOperation(
-                    { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                    { id: 'nse.recovery', data: { droppedSteps } },
                     'Recovered last change',
                 ),
             migrated: originOperation('autoSave'),

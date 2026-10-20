@@ -52,6 +52,7 @@ import type { Entity } from '../../state/entities'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, isSameTempo } from '../../state/integrals/bpms'
 import { nearGridBeat, snapBeat, stepGridBeat } from '../../state/integrals/grid'
+import { editInput, kindCounts } from '../../state/operations/historyReceipts'
 import { editSelectedNote } from '../../state/operations/note'
 import { getNoteFieldsIn } from '../../state/operations/properties/noteFields'
 import { editChanges } from '../../state/operations/properties/plan'
@@ -738,9 +739,9 @@ const editOperation = (active: NonNullable<typeof drag>, changed: NoteEntity[]) 
         })
     const targets = changed.length
     if (changes('size'))
-        return createHistoryOperation({ id: 'nse.object.edit', data: { subject: 'note', targets } })
+        return createHistoryOperation(editInput('edit', kindCounts('note', targets), 'note'))
     if (changes('left'))
-        return createHistoryOperation({ id: 'nse.object.move', data: { subject: 'note', targets } })
+        return createHistoryOperation(editInput('move', kindCounts('note', targets), 'note'))
     return createHistoryOperation({ id: 'nse.note.elevation', data: { targets } })
 }
 const edit = (active: NonNullable<typeof drag>) => {

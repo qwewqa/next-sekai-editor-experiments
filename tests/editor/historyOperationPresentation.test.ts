@@ -67,9 +67,12 @@ const fixture = [
     { id: 'nse.note.add', data: { created: 3 } },
     { id: 'nse.note.generate', data: { created: 4 } },
     { id: 'nse.object.add', data: { subject: 'bpm', created: 2 } },
-    { id: 'nse.object.edit', data: { subject: 'cameraEvent', targets: 1 } },
-    { id: 'nse.object.move', data: { subject: 'timeScale', targets: 2 } },
-    { id: 'nse.object.replace', data: { subject: 'bpm', targets: 1, displaced: { bpm: 1 } } },
+    { id: 'nse.object.edit', data: { subject: 'cameraEvent', changed: { cameraEvent: 1 } } },
+    { id: 'nse.object.move', data: { subject: 'timeScale', changed: { timeScale: 2 } } },
+    {
+        id: 'nse.object.replace',
+        data: { subject: 'bpm', changed: { bpm: 1 }, displaced: { bpm: 1 } },
+    },
     { id: 'nse.note.elevation', data: { targets: 2 } },
     {
         id: 'nse.object.paste',
@@ -85,31 +88,43 @@ const fixture = [
         id: 'nse.object.brush',
         data: {
             subject: 'note',
-            targets: 2,
-            assignments: [{ field: 'isCritical', value: { mode: 'uniform', value: true } }],
+            changed: { note: 2 },
+            assignments: [
+                {
+                    field: 'isCritical',
+                    before: { mode: 'uniform', value: false },
+                    after: { mode: 'uniform', value: true },
+                },
+            ],
         },
     },
     { id: 'nse.object.delete', data: { removed: { note: 3 } } },
     { id: 'nse.object.cut', data: { removed: { bpm: 1 } } },
-    { id: 'nse.object.flip', data: { axis: 'horizontal', subject: 'note', targets: 2 } },
+    { id: 'nse.object.flip', data: { axis: 'horizontal', subject: 'note', changed: { note: 2 } } },
     {
         id: 'nse.object.scale',
         data: {
             axis: 'beats',
             subject: 'note',
-            targets: 2,
+            changed: { note: 2 },
             transform: { mode: 'uniform', factor: 1.0000000000000002, pivot: -0.0000001 },
         },
     },
-    { id: 'nse.note.combine', data: { notes: 3 } },
-    { id: 'nse.note.split', data: { points: 2 } },
+    { id: 'nse.note.combine', data: { targets: 3 } },
+    { id: 'nse.note.split', data: { targets: 2 } },
     { id: 'nse.note.vertical', data: { targets: 2 } },
     {
         id: 'nse.property.set',
         data: {
             subject: 'note',
-            targets: 2,
-            assignments: [{ field: 'left', value: { mode: 'uniform', value: 0 } }],
+            changed: { note: 2 },
+            assignments: [
+                {
+                    field: 'left',
+                    before: { mode: 'uniform', value: 1 },
+                    after: { mode: 'uniform', value: 0 },
+                },
+            ],
         },
     },
     { id: 'nse.header.set', data: { field: 'bgmOffset', before: 0, after: 1.0000000000000002 } },
@@ -117,7 +132,10 @@ const fixture = [
         id: 'nse.bgm.change',
         data: { file: { before: captureName('same.ogg'), after: captureName('same.ogg') } },
     },
-    { id: 'nse.dynamicStages.enable', data: {} },
+    {
+        id: 'nse.dynamicStages.enable',
+        data: { created: { stageMaskEvent: 1, stagePivotEvent: 1, stageStyleEvent: 1 } },
+    },
     { id: 'nse.owner.create', data: { target: owner(), destination: null, gathered: 0 } },
     {
         id: 'nse.owner.rename',
@@ -153,7 +171,7 @@ const fixture = [
     { id: 'nse.file.save', data: { file: captureName('chart.nxsp'), delivery: 'file' } },
     { id: 'nse.file.export', data: { file: captureName('chart.json'), delivery: 'download' } },
     { id: 'nse.restore', data: { targetTime: 1_600_000_000_000 } },
-    { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 2 } },
+    { id: 'nse.recovery', data: { droppedSteps: 2 } },
     { id: 'nse.externalChange', data: {} },
 ] as const satisfies readonly NativeOperationInput[]
 
@@ -264,8 +282,14 @@ test('all 61 fields retain their qualified labels, applicability, typed values a
                     id: 'nse.property.set',
                     data: {
                         subject,
-                        targets: 1,
-                        assignments: [{ field, value: { mode: 'uniform', value: samples[field] } }],
+                        changed: { [subject]: 1 },
+                        assignments: [
+                            {
+                                field,
+                                before: { mode: 'uniform', value: samples[field] },
+                                after: { mode: 'uniform', value: samples[field] },
+                            },
+                        ],
                     },
                 } as NativeOperationInput
                 const details = detail(input, ctx)
@@ -351,10 +375,8 @@ test('creation/removal sums are truthful, overflowing totals preserve groups and
             describeOperation(input, en),
             id.endsWith('delete') ? 'Deleted objects' : 'Cut objects',
         )
-        assert.deepEqual(
-            detail(input).sections[0]?.rows.map(({ value }) => value),
-            ['9,007,199,254,740,991', '9,007,199,254,740,991'],
-        )
+        // No stored operation can carry a total that overflows: the codec refuses it.
+        assert.equal(operationCodecs[id].is(input.data), false)
     }
     assert.equal(
         describeOperation(
@@ -365,7 +387,7 @@ test('creation/removal sums are truthful, overflowing totals preserve groups and
     )
     const zero = {
         id: 'nse.object.move',
-        data: { subject: 'bpm', targets: 0, displaced: { bpm: 1 }, retainedInitialBpm: true },
+        data: { subject: 'bpm', changed: {}, displaced: { bpm: 1 }, retainedInitialBpm: true },
     } as const
     assert.equal(describeOperation(zero, en), 'Moved 0 BPM changes')
     assert(detail(zero).sections.some(({ key }) => key === 'retained'))
@@ -377,8 +399,14 @@ test('uniform values, varying fields, broad brush/multifield families and axis-o
         id: 'nse.property.set',
         data: {
             subject: 'note',
-            targets: 1,
-            assignments: [{ field: 'left', value: { mode: 'uniform', value } }],
+            changed: { note: 1 },
+            assignments: [
+                {
+                    field: 'left',
+                    before: { mode: 'uniform', value: 9 },
+                    after: { mode: 'uniform', value },
+                },
+            ],
         },
     })
     assert.equal(renderOperationRecipe(recipe([set(0), set(0)]), en), 'Set Lane to 0 on notes')
@@ -387,16 +415,28 @@ test('uniform values, varying fields, broad brush/multifield families and axis-o
         id: 'nse.object.brush',
         data: {
             subject: 'note',
-            targets: 1,
-            assignments: [{ field: 'left', value: { mode: 'uniform', value: 1 } }],
+            changed: { note: 1 },
+            assignments: [
+                {
+                    field: 'left',
+                    before: { mode: 'uniform', value: 1 },
+                    after: { mode: 'uniform', value: 1 },
+                },
+            ],
         },
     } as const
     const b = {
         id: 'nse.object.brush',
         data: {
             subject: 'note',
-            targets: 1,
-            assignments: [{ field: 'isFake', value: { mode: 'uniform', value: false } }],
+            changed: { note: 1 },
+            assignments: [
+                {
+                    field: 'isFake',
+                    before: { mode: 'uniform', value: true },
+                    after: { mode: 'uniform', value: false },
+                },
+            ],
         },
     } as const
     assert.equal(renderOperationRecipe(recipe([a, b]), en), 'Brushed notes')
@@ -404,16 +444,27 @@ test('uniform values, varying fields, broad brush/multifield families and axis-o
         id: 'nse.property.set',
         data: {
             subject: 'note',
-            targets: 1,
+            changed: { note: 1 },
             assignments: [
-                { field: 'isFake', value: { mode: 'uniform', value: false } },
-                { field: 'left', value: { mode: 'uniform', value: 1 } },
+                {
+                    field: 'isFake',
+                    before: { mode: 'uniform', value: true },
+                    after: { mode: 'uniform', value: false },
+                },
+                {
+                    field: 'left',
+                    before: { mode: 'uniform', value: 1 },
+                    after: { mode: 'uniform', value: 1 },
+                },
             ],
         },
     } as const
     assert.equal(
         renderOperationRecipe(
-            recipe([multi, { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } }]),
+            recipe([
+                multi,
+                { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
+            ]),
             en,
         ),
         'Edited notes',
@@ -422,7 +473,14 @@ test('uniform values, varying fields, broad brush/multifield families and axis-o
         renderOperationRecipe(
             recipe([
                 fixture[11],
-                { ...fixture[11], data: { ...fixture[11].data, subject: 'objects' } },
+                {
+                    ...fixture[11],
+                    data: {
+                        ...fixture[11].data,
+                        subject: 'objects',
+                        changed: { note: 1, bpm: 1 },
+                    },
+                },
             ]),
             en,
         ),
@@ -437,6 +495,7 @@ test('uniform values, varying fields, broad brush/multifield families and axis-o
                     data: {
                         ...fixture[12].data,
                         subject: 'objects',
+                        changed: { note: 1, bpm: 1 },
                         transform: { mode: 'composed' },
                     },
                 },
@@ -533,8 +592,14 @@ test('singleton named owners and uniform reference values qualify only colliding
             id: 'nse.property.set',
             data: {
                 subject: 'note',
-                targets: 1,
-                assignments: [{ field: 'groupId', value: { mode: 'uniform', value: owner() } }],
+                changed: { note: 1 },
+                assignments: [
+                    {
+                        field: 'groupId',
+                        before: { mode: 'uniform', value: owner() },
+                        after: { mode: 'uniform', value: owner() },
+                    },
+                ],
             },
         },
     ]
@@ -563,7 +628,7 @@ test('singleton named owners and uniform reference values qualify only colliding
     }
     const property = inputs.at(-1)!
     const other: NativeOperationInput = JSON.parse(
-        JSON.stringify(property).replace('"id":1', '"id":2'),
+        JSON.stringify(property).replaceAll('"id":1', '"id":2'),
     )
     const [a, b] = disambiguateOperationRecipes(
         [recipe([property], true), recipe([other], true)],

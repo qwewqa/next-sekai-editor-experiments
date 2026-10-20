@@ -247,8 +247,8 @@ test('Properties relative each-values retain effective varying assignment and ex
     )
     assert.deepEqual(result.receipt, {
         subject: 'note',
-        targets: 2,
-        assignments: [{ field: 'size', value: { mode: 'varying' } }],
+        changed: { note: 2 },
+        assignments: [{ field: 'size', before: { mode: 'varying' }, after: { mode: 'varying' } }],
     })
 })
 
@@ -261,8 +261,14 @@ test('Properties applied ease tokens become effective resulting ease values', ()
     )
     assert.deepEqual(result.receipt, {
         subject: 'note',
-        targets: 2,
-        assignments: [{ field: 'connectorEase', value: { mode: 'uniform', value: 'linear' } }],
+        changed: { note: 2 },
+        assignments: [
+            {
+                field: 'connectorEase',
+                before: { mode: 'varying' },
+                after: { mode: 'uniform', value: 'linear' },
+            },
+        ],
     })
 })
 

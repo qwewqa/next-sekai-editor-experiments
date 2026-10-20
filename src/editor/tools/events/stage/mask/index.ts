@@ -17,6 +17,8 @@ import { addStageMaskEventJoint } from '../../../../../state/mutations/events/st
 import { editSelectedStageMaskEvent } from '../../../../../state/operations/events/stage/mask'
 import {
     countNativeEntities,
+    editInput,
+    kindCounts,
     nativeTargetChanged,
 } from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
@@ -489,13 +491,14 @@ const update = (
                       created: countNativeEntities(entities).stageMaskEvent ?? 0,
                   },
               }
-            : {
-                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
-                  data: {
-                      subject: 'stageMaskEvent',
-                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
-                  },
-              },
+            : editInput(
+                  intent,
+                  kindCounts(
+                      'stageMaskEvent',
+                      before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  ),
+                  'stageMaskEvent',
+              ),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

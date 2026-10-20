@@ -41,7 +41,7 @@ test('edits of a published state still work, by copying what they change', () =>
     const next = transaction.commit([])
     pushState(
         nativeOperation(
-            { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+            { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
             'Changed note',
         ),
         next,

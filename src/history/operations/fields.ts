@@ -9,6 +9,7 @@ import {
     literal,
     object,
     oneOf,
+    positive,
     refine,
     type ValueOf,
 } from './codec'
@@ -239,33 +240,44 @@ export const fieldSubjects = {
 export type FieldFor<S extends NativeKind> = {
     [F in FieldId]: S extends (typeof fieldSubjects)[F][number] ? F : never
 }[FieldId]
+/** One side of an assignment: every object held this value, or they differed. */
+export type AssignedValue<K extends FieldId = FieldId> =
+    { readonly mode: 'varying' } | { readonly mode: 'uniform'; readonly value: FieldValue<K> }
 export type Assignment<F extends FieldId = FieldId> = {
     [K in F]: {
         readonly field: K
-        readonly value:
-            | { readonly mode: 'varying' }
-            | { readonly mode: 'uniform'; readonly value: FieldValue<K> }
+        /** What the objects held before the edit. */
+        readonly before: AssignedValue<K>
+        /** What they hold after it. */
+        readonly after: AssignedValue<K>
     }
 }[F]
 
-export const assignment = codec<Assignment>((value) => {
-    if (
-        !isObject(value) ||
-        Object.keys(value).length !== 2 ||
-        !owns(value, 'field') ||
-        !owns(value, 'value')
-    )
-        return false
-    const field = value.field
-    if (typeof field !== 'string' || !owns(fieldCodecs, field)) return false
-    const data = value.value
+const assignedValue = (field: FieldId, data: unknown) => {
     if (!isObject(data) || !owns(data, 'mode')) return false
     if (data.mode === 'varying') return Object.keys(data).length === 1
     return (
         data.mode === 'uniform' &&
         Object.keys(data).length === 2 &&
         owns(data, 'value') &&
-        fieldCodecs[field as FieldId].is(data.value)
+        fieldCodecs[field].is(data.value)
+    )
+}
+
+export const assignment = codec<Assignment>((value) => {
+    if (
+        !isObject(value) ||
+        Object.keys(value).length !== 3 ||
+        !owns(value, 'field') ||
+        !owns(value, 'before') ||
+        !owns(value, 'after')
+    )
+        return false
+    const field = value.field
+    if (typeof field !== 'string' || !owns(fieldCodecs, field)) return false
+    return (
+        assignedValue(field as FieldId, value.before) &&
+        assignedValue(field as FieldId, value.after)
     )
 })
 
@@ -287,15 +299,26 @@ export const assignments = refine(
 export type NativeCounts = Readonly<Partial<Record<NativeKind, number>>>
 export type OwnerCounts = Readonly<Partial<Record<OwnerKind, number>>>
 
-const countsOf = <const K extends readonly string[]>(keys: K) =>
+/**
+ * A count map: only known keys, every value a positive integer and the sum safe. A required map
+ * may be empty (nothing of that kind happened); an optional one is never stored empty.
+ */
+const countsOf = <const K extends readonly string[]>(keys: K, nonEmpty: boolean) =>
     codec<Readonly<Partial<Record<K[number], number>>>>(
         (value) =>
             isObject(value) &&
-            Object.keys(value).every((key) => keys.includes(key) && count.is(value[key])),
+            Object.keys(value).every((key) => keys.includes(key) && positive.is(value[key])) &&
+            (!nonEmpty || Object.keys(value).length > 0) &&
+            checkedSum(Object.values(value) as number[]) !== undefined,
     )
 
-export const nativeCounts = countsOf(nativeKinds)
-export const ownerCounts = countsOf(ownerKinds)
+/** Native counts that may be empty. */
+export const nativeCounts = countsOf(nativeKinds, false)
+/** Native counts with at least one kind (NC+). */
+export const nativeCountsPlus = countsOf(nativeKinds, true)
+export const ownerCounts = countsOf(ownerKinds, false)
+/** Owner counts with at least one kind (OC+). */
+export const ownerCountsPlus = countsOf(ownerKinds, true)
 
 export const checkedSum = (values: Iterable<number>): number | undefined => {
     let sum = 0

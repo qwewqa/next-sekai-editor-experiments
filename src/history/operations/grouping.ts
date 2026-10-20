@@ -1,4 +1,5 @@
 import {
+    checkedSum,
     subjectOfCounts,
     type FieldId,
     type NativeCounts,
@@ -50,6 +51,8 @@ export type GroupDescriptor = {
 
 const anyCount = (counts: NativeCounts | OwnerCounts) =>
     Object.values(counts).some((value) => value > 0)
+/** Whether a step changed anything: a total above zero (an unsafe total still counts). */
+const anyChanged = (counts: NativeCounts) => (checkedSum(Object.values(counts)) ?? 1) > 0
 const ownerKey = (target: OwnerReference) => [target.kind, target.id]
 const group = (
     descriptor: Omit<GroupDescriptor, 'key'>,
@@ -79,9 +82,7 @@ export const operationGroup = (operation: NativeOperationInput): GroupDescriptor
                   })
                 : undefined
         case 'nse.object.add': {
-            const { subject, created, displaced } = operation.data
-            if (!created) return
-            if (displaced && anyCount(displaced)) return group({ family: 'replace', subject })
+            const { subject, created } = operation.data
             return created
                 ? group({
                       family: 'add',
@@ -93,7 +94,7 @@ export const operationGroup = (operation: NativeOperationInput): GroupDescriptor
         case 'nse.object.edit':
         case 'nse.object.move':
         case 'nse.object.replace':
-            return operation.data.targets
+            return anyChanged(operation.data.changed)
                 ? group({
                       family:
                           operation.id === 'nse.object.edit'
@@ -113,7 +114,7 @@ export const operationGroup = (operation: NativeOperationInput): GroupDescriptor
                 ? group({ family: 'paste', subject: 'objects' })
                 : undefined
         case 'nse.object.brush':
-            return operation.data.targets
+            return anyChanged(operation.data.changed)
                 ? group({ family: 'brush', subject: operation.data.subject })
                 : undefined
         case 'nse.object.delete':
@@ -127,23 +128,25 @@ export const operationGroup = (operation: NativeOperationInput): GroupDescriptor
                 : undefined
         case 'nse.object.flip':
         case 'nse.object.scale':
-            return operation.data.targets
+            return anyChanged(operation.data.changed)
                 ? group({
                       family: operation.id === 'nse.object.flip' ? 'flip' : 'scale',
                       axis: operation.data.axis,
                   })
                 : undefined
         case 'nse.note.combine':
-            return operation.data.notes ? group({ family: 'combine', subject: 'note' }) : undefined
+            return operation.data.targets
+                ? group({ family: 'combine', subject: 'note' })
+                : undefined
         case 'nse.note.split':
-            return operation.data.points ? group({ family: 'split', subject: 'note' }) : undefined
+            return operation.data.targets ? group({ family: 'split', subject: 'note' }) : undefined
         case 'nse.note.vertical':
             return operation.data.targets
                 ? group({ family: 'vertical', subject: 'note' })
                 : undefined
         case 'nse.property.set': {
-            const { subject, targets, assignments } = operation.data
-            if (!targets) return
+            const { subject, changed, assignments } = operation.data
+            if (!anyChanged(changed)) return
             return assignments.length === 1
                 ? group({ family: 'property', subject, field: assignments[0]?.field })
                 : group({ family: 'edit', subject })

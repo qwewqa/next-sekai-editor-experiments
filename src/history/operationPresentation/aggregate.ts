@@ -112,19 +112,25 @@ export const captureOperationRecipe = (
     ) {
         const assignment = last.data.assignments[0]
         if (!assignment) throw new Error('Missing grouped property')
-        const value = assignment.value
+        const value = assignment.after
         const same =
             value.mode === 'uniform' &&
             operations.every((operation) => {
                 if (operation.id !== 'nse.property.set') return false
-                const other = operation.data.assignments[0]?.value
+                const other = operation.data.assignments[0]?.after
                 return other?.mode === 'uniform' && equalOperationValue(value.value, other.value)
             })
         summary = {
             ...last,
             data: {
                 ...last.data,
-                assignments: [{ ...assignment, value: same ? value : { mode: 'varying' } }],
+                assignments: [
+                    {
+                        ...assignment,
+                        before: first.data.assignments[0]?.before ?? assignment.before,
+                        after: same ? value : { mode: 'varying' },
+                    },
+                ],
             },
         } as NativeOperationInput
     } else if (first.id === 'nse.owner.rename' && last.id === 'nse.owner.rename') {
@@ -292,9 +298,9 @@ const recipeReferences = (recipe: OperationRecipe): readonly OwnerReference[] =>
     if (operation.id === 'nse.property.set') {
         const assignment = operation.data.assignments[0]
         return operation.data.assignments.length === 1 &&
-            assignment?.value.mode === 'uniform' &&
-            typeof assignment.value.value === 'object'
-            ? [assignment.value.value]
+            assignment?.after.mode === 'uniform' &&
+            typeof assignment.after.value === 'object'
+            ? [assignment.after.value]
             : []
     }
     if (recipe.kind === 'group')

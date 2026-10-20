@@ -322,7 +322,8 @@ const openRequestedProject = async (
         const descriptor = createSessionDescriptor({ sourceName: file.name })
         if (
             request.publish({ state: live, sessionId: descriptor.sessionId, reset: true }, () => {
-                openState(live, descriptor)
+                // A level opened in safe mode is an import, not a recovery; nothing is stored.
+                openState(live, descriptor, { origin: 'import', source: captureName(name) })
             })
         )
             notifyLeft(interpolate(() => i18n.value.history.openedFile, name))

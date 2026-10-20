@@ -36,7 +36,7 @@ const edit = (state: State, change: (transaction: Transaction) => void) => {
 /** The state with its n-th note one quarter wider. */
 const widenedNoteStep = editStep(
     nativeOperation(
-        { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+        { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
         'Changed note',
     ),
 )
@@ -481,7 +481,7 @@ for (const kind of ['undo', 'redo', 'restore', 'recovered'] as const)
         const world = createWorld({ seed: 15 })
         const crossed = editStep(
             nativeOperation(
-                { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
                 'Changed note',
             ),
         )
@@ -490,7 +490,7 @@ for (const kind of ['undo', 'redo', 'restore', 'recovered'] as const)
                 ? {
                       kind,
                       operation: nativeOperation(
-                          { id: 'nse.recovery', data: { source: 'local', droppedSteps: 0 } },
+                          { id: 'nse.recovery', data: { droppedSteps: 0 } },
                           'Recovered',
                       ),
                       recoveryContext: { head: crossed, headIndex: 0, dropped: [], omitted: 0 },

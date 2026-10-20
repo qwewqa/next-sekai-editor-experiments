@@ -14,7 +14,12 @@ import type { Entity } from '../../../state/entities'
 import { createSlideId } from '../../../state/entities/slides'
 import { toNoteEntity, type NoteEntity } from '../../../state/entities/slides/note'
 import { addNote } from '../../../state/mutations/slides/note'
-import { countNativeEntities, nativeTargetChanged } from '../../../state/operations/historyReceipts'
+import {
+    countNativeEntities,
+    editInput,
+    kindCounts,
+    nativeTargetChanged,
+} from '../../../state/operations/historyReceipts'
 import { editSelectedNote } from '../../../state/operations/note'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
@@ -459,13 +464,14 @@ const update = (
     const operation = createHistoryOperation(
         intent === 'add'
             ? { id: 'nse.note.add', data: { created: countNativeEntities(entities).note ?? 0 } }
-            : {
-                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
-                  data: {
-                      subject: 'note',
-                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
-                  },
-              },
+            : editInput(
+                  intent,
+                  kindCounts(
+                      'note',
+                      before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  ),
+                  'note',
+              ),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

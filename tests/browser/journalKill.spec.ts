@@ -103,7 +103,7 @@ const edit = (page: Page, kind: 'notes' | 'wholeChart' | 'bgm' | 'third' | 'guid
                     window.editorTest.historySteps.nativeOperation(
                         {
                             id: 'nse.object.move',
-                            data: { subject: 'note', targets: notes().length },
+                            data: { subject: 'note', changed: { note: notes().length } },
                         },
                         'Moved notes',
                     ),

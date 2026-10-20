@@ -294,7 +294,7 @@ test('notes and stage transforms share an elevation anchor and undo restores the
                 data: {
                     axis: 'elevation',
                     subject: subjectOfCounts(result.counts),
-                    targets: Object.values(result.counts).reduce((sum, count) => sum + count, 0),
+                    changed: result.counts,
                     transform: { mode: 'uniform', factor: 2, pivot: -1 },
                 },
             }),

@@ -32,7 +32,7 @@ import {
 /** The state with its n-th note one quarter wider. */
 const widenedNoteStep = editStep(
     nativeOperation(
-        { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+        { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
         'Changed note',
     ),
 )

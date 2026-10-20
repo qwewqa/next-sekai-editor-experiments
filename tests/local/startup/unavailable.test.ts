@@ -79,7 +79,7 @@ const recover = async (
         operations: {
             recovered: (droppedSteps) =>
                 nativeOperation(
-                    { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                    { id: 'nse.recovery', data: { droppedSteps } },
                     'Recovered last change',
                 ),
             migrated: originOperation('autoSave'),
@@ -111,7 +111,6 @@ const reloadFromJournal = async (page: JournalPage, storage: MemoryStorage, sess
             {
                 id: 'nse.recovery',
                 data: {
-                    source: 'journal',
                     droppedSteps:
                         session.recoveryContext.dropped.length + session.recoveryContext.omitted,
                 },

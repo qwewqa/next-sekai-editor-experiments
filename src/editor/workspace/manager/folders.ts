@@ -27,8 +27,8 @@ import { pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import {
     captureName,
+    type NativeCounts,
     type NativeOperationInput,
-    type OwnerCounts,
     type OwnerReference,
 } from '../../../history/operations'
 import { onResetState } from '../../../history/resetHooks'
@@ -36,6 +36,7 @@ import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import ConfirmModal from '../../../modals/ConfirmModal.vue'
 import type { State } from '../../../state'
+import { optionalCounts, ownerCountsOf } from '../../../state/operations/historyReceipts'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { createAsyncEditGuard } from '../../asyncEditGuard'
 import { notify } from '../../notification'
@@ -88,6 +89,14 @@ export type FolderOps<K> = ReturnType<typeof createFolderOps<K, FolderMember & {
 
 type FolderReference = Extract<NativeOperationInput, { id: 'nse.owner.ungroup' }>['data']['target']
 
+/** What removing entries took: the state, the chart objects they owned and any default entry made. */
+export type EntryRemoval = {
+    state: State
+    objects: NativeCounts
+    /** The default entry created when the last one went. */
+    replacement?: OwnerReference
+}
+
 // A declaration, so groups and stages can build their ops while this module is still loading.
 export function createFolderOps<K, V extends FolderMember & { name: string }>(config: {
     entries: () => ReadonlyMap<K, V>
@@ -97,12 +106,15 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
     /** The state with these entries and folders. */
     withData: (state: State, entries: Map<K, V>, folders: Folders) => State
     /** The state without these entries and their objects, keeping at least one entry. */
-    removeEntries: (ids: ReadonlySet<K>) => State
+    removeEntries: (ids: ReadonlySet<K>) => EntryRemoval
     entriesOf: (state: State) => ReadonlyMap<K, V>
     /** Adds an entry with this name and data to the map, returning its id. */
     addEntry: (entries: Map<K, V>, name: string, value: V) => K
-    /** The state with copies of these entries' objects, owned by their copies. */
-    duplicateObjects: (state: State, copies: ReadonlyMap<K, K>) => State
+    /** The state with copies of these entries' objects, owned by their copies, and how many. */
+    duplicateObjects: (
+        state: State,
+        copies: ReadonlyMap<K, K>,
+    ) => { state: State; objects: NativeCounts }
     owner: OwnerKey
     strings: () => FolderStrings
 }) {
@@ -122,10 +134,23 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         id: id as unknown as number,
         name: captureName(nameOf(id)),
     })
-    const counts = (entries: number, folders = 0): OwnerCounts => ({
-        ...(entries ? { [domain]: entries } : {}),
-        ...(folders ? { [folderKind]: folders } : {}),
-    })
+    const counts = (entries: number, folders = 0) => ownerCountsOf(domain, entries, folders)
+    /** An entry deletion's data: what went, with its chart objects and any default entry made. */
+    const deletion = (
+        removed: NonNullable<ReturnType<typeof counts>>,
+        removal: Pick<EntryRemoval, 'objects' | 'replacement'>,
+        target?: OwnerReference,
+    ) =>
+        ({
+            id: 'nse.owner.delete',
+            data: {
+                domain,
+                removed,
+                ...(target ? { target } : {}),
+                ...optionalCounts('objects', removal.objects),
+                ...(removal.replacement ? { replacement: removal.replacement } : {}),
+            },
+        }) as const
     const moveInput = (
         id: K,
         before: readonly FolderTreeItem<K>[],
@@ -185,7 +210,10 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
             taken.add(name)
             copies.set(id, config.addEntry(entries, name, value))
         }
-        const base = config.duplicateObjects(
+        const created = counts(copies.size, folderCopies.size)
+        // Nothing was copied, so there is no step.
+        if (!created) return copies
+        const { state: base, objects } = config.duplicateObjects(
             config.withData(state.value, entries, config.folders()),
             copies,
         )
@@ -195,8 +223,9 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                 id: 'nse.owner.duplicate',
                 data: {
                     domain,
-                    created: counts(copies.size, folderCopies.size),
+                    created,
                     ...(source ? { source } : {}),
+                    ...optionalCounts('objects', objects),
                 },
             },
             folders,
@@ -465,16 +494,15 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                     [...ids].filter((member) => config.entries().has(member)).length,
                     config.folders().has(id) ? 1 : 0,
                 )
+                // The folder is checked to exist just above.
+                if (!removed) return false
                 const next = removeEntriesFromTree(removeFolderFromTree(tree(), id), ids)
-                const base = ids.size ? config.removeEntries(ids) : state.value
+                const removal: EntryRemoval = ids.size
+                    ? config.removeEntries(ids)
+                    : { state: state.value, objects: {} }
                 const folders: Folders = new Map(config.folders())
                 folders.delete(id)
-                commit(
-                    next,
-                    { id: 'nse.owner.delete', data: { domain, removed, target } },
-                    folders,
-                    base,
-                )
+                commit(next, deletion(removed, removal, target), folders, removal.state)
                 if (ids.size)
                     view.entities = {
                         hovered: [],
@@ -498,8 +526,15 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
         },
 
         /** Drops deleted entries from the tree, keeping folders in place. */
-        commitRemoval(ids: ReadonlySet<K>, base: State, input: NativeOperationInput) {
-            commit(removeEntriesFromTree(tree(), ids), input, config.folders(), base)
+        commitRemoval(ids: ReadonlySet<K>, removal: EntryRemoval, target: OwnerReference) {
+            const removed = counts(ids.size)
+            if (!removed) return
+            commit(
+                removeEntriesFromTree(tree(), ids),
+                deletion(removed, removal, target),
+                config.folders(),
+                removal.state,
+            )
         },
 
         /**
@@ -520,23 +555,20 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                     : !gone.size && ids.size === 1
                       ? entryReference([...ids][0] as K)
                       : undefined
-            const input = {
-                id: 'nse.owner.delete',
-                data: {
-                    domain,
-                    removed: counts(ids.size, gone.size),
-                    ...(target ? { target } : {}),
-                },
-            } as const
+            const removed = counts(ids.size, gone.size)
+            if (!removed) return
+            const removal: EntryRemoval = ids.size
+                ? config.removeEntries(ids)
+                : { state: state.value, objects: {} }
             const folders: Folders = new Map(config.folders())
             for (const id of gone) folders.delete(id)
             commit(
                 removeEntriesFromTree(tree(), ids).filter(
                     (item) => item.type !== 'folder' || !gone.has(item.id),
                 ),
-                input,
+                deletion(removed, removal, target),
                 folders,
-                ids.size ? config.removeEntries(ids) : state.value,
+                removal.state,
             )
         },
     }

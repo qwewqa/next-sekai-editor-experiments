@@ -73,9 +73,13 @@ test('future IDs, versions, fields and enums retain the full original raw JSON',
         wire('nse.object.move', { subject: 'futureEvent', targets: 1 }),
         wire('nse.property.set', {
             subject: 'note',
-            targets: 1,
+            changed: { note: 1 },
             assignments: [
-                { field: 'flickDirection', value: { mode: 'uniform', value: 'futureDirection' } },
+                {
+                    field: 'flickDirection',
+                    before: { mode: 'uniform', value: 'none' },
+                    after: { mode: 'uniform', value: 'futureDirection' },
+                },
             ],
         }),
         captureOperation({
@@ -200,24 +204,31 @@ test('properties accept effective values only for applicable native subjects', (
     assert(!fieldApplies('groupId', 'cameraEvent'))
     assert(fieldApplies('eventEase', 'stagePivotEvent'))
     assert(!fieldApplies('eventEase', 'note'))
-    const left = { field: 'flickDirection', value: { mode: 'uniform', value: 'upLeft' } } as const
+    const left = {
+        field: 'flickDirection',
+        before: { mode: 'uniform', value: 'none' },
+        after: { mode: 'uniform', value: 'upLeft' },
+    } as const
     assert.equal(
         decodeOperation(
-            wire('nse.property.set', { subject: 'note', targets: 2, assignments: [left] }),
+            wire('nse.property.set', {
+                subject: 'note',
+                changed: { note: 2 },
+                assignments: [left],
+            }),
         ).status,
         'known',
     )
     assert.equal(
         decodeOperation(
-            wire('nse.property.set', { subject: 'bpm', targets: 2, assignments: [left] }),
+            wire('nse.property.set', { subject: 'bpm', changed: { bpm: 2 }, assignments: [left] }),
         ).status,
         'unsupported',
     )
     const mixed = {
         subject: 'objects',
-        subjects: ['note', 'timeScale'],
-        targets: 2,
-        assignments: [{ field: 'beat', value: { mode: 'varying' } }],
+        changed: { note: 1, timeScale: 1 },
+        assignments: [{ field: 'beat', before: { mode: 'varying' }, after: { mode: 'varying' } }],
     }
     assert.equal(decodeOperation(wire('nse.property.set', mixed)).status, 'known')
     assert.equal(
@@ -226,7 +237,11 @@ test('properties accept effective values only for applicable native subjects', (
     )
     assert.equal(
         decodeOperation(
-            wire('nse.property.set', { subject: 'note', targets: 1, assignments: [left, left] }),
+            wire('nse.property.set', {
+                subject: 'note',
+                changed: { note: 1 },
+                assignments: [left, left],
+            }),
         ).status,
         'unsupported',
     )
@@ -234,9 +249,13 @@ test('properties accept effective values only for applicable native subjects', (
         decodeOperation(
             wire('nse.property.set', {
                 subject: 'timeScale',
-                targets: 1,
+                changed: { timeScale: 1 },
                 assignments: [
-                    { field: 'timeScaleEase', value: { mode: 'uniform', value: 'inBack' } },
+                    {
+                        field: 'timeScaleEase',
+                        before: { mode: 'uniform', value: 'inBack' },
+                        after: { mode: 'uniform', value: 'inBack' },
+                    },
                 ],
             }),
         ).status,
@@ -246,9 +265,13 @@ test('properties accept effective values only for applicable native subjects', (
         decodeOperation(
             wire('nse.property.set', {
                 subject: 'note',
-                targets: 1,
+                changed: { note: 1 },
                 assignments: [
-                    { field: 'connectorEase', value: { mode: 'uniform', value: 'type:in' } },
+                    {
+                        field: 'connectorEase',
+                        before: { mode: 'uniform', value: 'type:in' },
+                        after: { mode: 'uniform', value: 'type:in' },
+                    },
                 ],
             }),
         ).status,
@@ -266,8 +289,14 @@ test('native union rejects wrong operation parameters and field value types at c
         id: 'nse.property.set',
         data: {
             subject: 'bpm',
-            targets: 1,
-            assignments: [{ field: 'flickDirection', value: { mode: 'uniform', value: 'up' } }],
+            changed: { bpm: 1 },
+            assignments: [
+                {
+                    field: 'flickDirection',
+                    before: { mode: 'uniform', value: 'none' },
+                    after: { mode: 'uniform', value: 'up' },
+                },
+            ],
         },
     }
     // @ts-expect-error A boolean property is not a numeric value.
@@ -275,8 +304,14 @@ test('native union rejects wrong operation parameters and field value types at c
         id: 'nse.property.set',
         data: {
             subject: 'note',
-            targets: 1,
-            assignments: [{ field: 'isCritical', value: { mode: 'uniform', value: 1 } }],
+            changed: { note: 1 },
+            assignments: [
+                {
+                    field: 'isCritical',
+                    before: { mode: 'uniform', value: false },
+                    after: { mode: 'uniform', value: 1 },
+                },
+            ],
         },
     }
     assert(wrongCount && wrongSubject && wrongValue)
@@ -341,7 +376,7 @@ test('group keys sum only additive units and preserve visible semantic boundarie
     assert.equal(add1?.key, add12?.key)
     assert.deepEqual(add12?.metric, { unit: 'native', counts: { note: 12 } })
     const move = operationGroup(
-        make({ id: 'nse.object.move', data: { subject: 'note', targets: 12 } }),
+        make({ id: 'nse.object.move', data: { subject: 'note', changed: { note: 12 } } }),
     )
     assert.equal(move?.metric, undefined)
     assert.notEqual(move?.key, add12?.key)
@@ -351,8 +386,14 @@ test('group keys sum only additive units and preserve visible semantic boundarie
                 id: 'nse.property.set',
                 data: {
                     subject: 'note',
-                    targets: 1,
-                    assignments: [{ field, value: { mode: 'uniform', value: 1 } }],
+                    changed: { note: 1 },
+                    assignments: [
+                        {
+                            field,
+                            before: { mode: 'uniform', value: 0 },
+                            after: { mode: 'uniform', value: 1 },
+                        },
+                    ],
                 },
             }),
         )
@@ -372,30 +413,26 @@ test('group keys sum only additive units and preserve visible semantic boundarie
     assert.notEqual(rename(1)?.key, rename(2)?.key)
     const replaced = operationGroup(
         make({
-            id: 'nse.object.add',
-            data: { subject: 'timeScale', created: 1, displaced: { timeScale: 2 } },
+            id: 'nse.object.replace',
+            data: {
+                subject: 'timeScale',
+                changed: { timeScale: 1 },
+                displaced: { timeScale: 2 },
+            },
         }),
     )
     assert.equal(replaced?.family, 'replace')
     assert.equal(replaced?.metric, undefined)
+    // A step that created nothing groups with nothing.
     assert.equal(
-        operationGroup(
-            make({
-                id: 'nse.object.add',
-                data: {
-                    subject: 'bpm',
-                    created: 0,
-                    displaced: { bpm: 1 },
-                },
-            }),
-        ),
+        operationGroup(make({ id: 'nse.object.add', data: { subject: 'bpm', created: 0 } })),
         undefined,
     )
     const flip = (subject: 'note' | 'bpm', axis: 'horizontal' | 'vertical') =>
         operationGroup(
             make({
                 id: 'nse.object.flip',
-                data: { subject, axis, targets: 1 },
+                data: { subject, axis, changed: { [subject]: 1 } },
             }),
         )
     assert.equal(flip('note', 'horizontal')?.key, flip('bpm', 'horizontal')?.key)
@@ -445,7 +482,7 @@ test('recovery ordering keeps a new redo tail after 64 older descriptions', () =
         kind: 'edit',
         operation: operationOf({
             id: 'nse.recovery',
-            data: { source: 'journal', droppedSteps: 64 },
+            data: { droppedSteps: 64 },
         }),
         recoveryContext: createRecoveryContext(originalHead, old, old.length),
     })
@@ -468,7 +505,7 @@ test('recovery ordering keeps a new redo tail after 64 older descriptions', () =
 })
 
 test('unknown recovery-like heads stay essential while optional context has byte and count budgets', () => {
-    const rawHead = wire('nse.recovery', { source: 'journal', future: true }, 2)
+    const rawHead = wire('nse.recovery', { droppedSteps: 0, future: true }, 2)
     const oldHead = step(1)
     const recovered = captureStep({
         kind: 'edit',
@@ -513,7 +550,7 @@ test('persisted recovery head position survives demotion and newest-context trim
                     kind: 'edit',
                     operation: operationOf({
                         id: 'nse.recovery',
-                        data: { source: 'journal', droppedSteps: 64 },
+                        data: { droppedSteps: 64 },
                     }),
                     recoveryContext: createRecoveryContext(head, optional, headIndex),
                 }),

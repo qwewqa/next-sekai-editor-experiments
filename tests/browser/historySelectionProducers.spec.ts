@@ -101,6 +101,31 @@ test('unsupported-only Cut preserves its existing zero-result step', async ({ pa
     expect(result.step?.operation).toMatchObject({ id: 'nse.object.cut', data: { removed: {} } })
 })
 
+test('Cut of only the protected initial BPM copies it and leaves no step', async ({ page }) => {
+    await seed(page, [[{ beat: 2 }, { beat: 4 }]])
+    await page.evaluate(async () => {
+        const { history, store, appImport } = window.editorTest
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [
+                [...store.getAllEntities()].find(
+                    (entity) => entity.type === 'bpm' && entity.beat === 0,
+                )!,
+            ],
+        })
+        const { cut } = await appImport<typeof import('../../src/editor/commands/cut')>(
+            '/src/editor/commands/cut/index.ts',
+        )
+        cut.execute()
+    })
+    const result = await summary(page)
+    expect(result.notes).toHaveLength(2)
+    // Before this, a dummy "Cut 0 objects" step was pushed only to carry its notice.
+    expect(result.undo).toBe(false)
+    expect(result.step?.operation).toMatchObject({ id: 'nse.origin' })
+    await expect(page.locator('.notification')).toHaveText('Copied 1 object')
+})
+
 test('horizontal Flip counts only changed operands and a net-zero roundtrip retains two steps', async ({
     page,
 }) => {
@@ -128,9 +153,12 @@ test('horizontal Flip counts only changed operands and a net-zero roundtrip reta
     expect(result.lefts).toEqual([-1, 2])
     expect(result.first?.operation).toMatchObject({
         id: 'nse.object.flip',
-        data: { axis: 'horizontal', subject: 'note', targets: 1 },
+        data: { axis: 'horizontal', subject: 'note', changed: { note: 1 } },
     })
-    expect(result.second?.operation).toMatchObject({ id: 'nse.object.flip', data: { targets: 1 } })
+    expect(result.second?.operation).toMatchObject({
+        id: 'nse.object.flip',
+        data: { changed: { note: 1 } },
+    })
     expect(result.crossed[0]).toBeDefined()
     expect(result.crossed[1]).toBeDefined()
     expect(result.crossed[2]).toBeUndefined()
@@ -157,7 +185,7 @@ test('Scale captures uniform accepted parameters before Apply resets the session
         data: {
             axis: 'beats',
             subject: 'note',
-            targets: 1,
+            changed: { note: 1 },
             transform: { mode: 'uniform', factor: 2, pivot: 2 },
         },
     })
@@ -189,7 +217,7 @@ test('Scale records composed accepted adjustments', async ({ page }) => {
     expect(result.notes.map((note) => note.beat)).toEqual([2, 10])
     expect(result.step?.operation).toMatchObject({
         id: 'nse.object.scale',
-        data: { targets: 1, transform: { mode: 'composed' } },
+        data: { changed: { note: 1 }, transform: { mode: 'composed' } },
     })
 })
 
@@ -220,7 +248,7 @@ test('Scale cancellation restores the prior uniform receipt and accepted outcome
     expect(result.notes.map((note) => note.beat)).toEqual([2, 6])
     expect(result.step?.operation).toMatchObject({
         id: 'nse.object.scale',
-        data: { targets: 1, transform: { mode: 'uniform', factor: 2, pivot: 2 } },
+        data: { changed: { note: 1 }, transform: { mode: 'uniform', factor: 2, pivot: 2 } },
     })
 })
 
@@ -272,7 +300,12 @@ test('Scale retains displaced principal participation and exact survivor lineage
     expect(result.timeScales).toEqual([[144, 3]])
     expect(result.step?.operation).toMatchObject({
         id: 'nse.object.scale',
-        data: { axis: 'beats', subject: 'timeScale', targets: 2, transform: { mode: 'composed' } },
+        data: {
+            axis: 'beats',
+            subject: 'timeScale',
+            changed: { timeScale: 2 },
+            transform: { mode: 'composed' },
+        },
     })
 })
 
@@ -301,7 +334,7 @@ test('a Scale roundtrip retains the existing accepted zero-result step', async (
     expect(result.undo).toBe(true)
     expect(result.step?.operation).toMatchObject({
         id: 'nse.object.scale',
-        data: { subject: 'objects', targets: 0, transform: { mode: 'composed' } },
+        data: { subject: 'objects', changed: {}, transform: { mode: 'composed' } },
     })
 })
 
@@ -323,7 +356,7 @@ test('Scale preserves the existing zero-result Apply after a source-equivalent S
     expect(result.undo).toBe(true)
     expect(result.step?.operation).toMatchObject({
         id: 'nse.object.scale',
-        data: { subject: 'objects', targets: 0 },
+        data: { subject: 'objects', changed: {} },
     })
 })
 
@@ -356,7 +389,7 @@ for (const route of ['drag', 'promotedNumeric'] as const) {
             id: 'nse.object.scale',
             data: {
                 subject: 'note',
-                targets: 1,
+                changed: { note: 1 },
                 transform: { mode: 'uniform', factor: 2, pivot: 2 },
             },
         })
@@ -415,7 +448,7 @@ for (const previewKind of ['numeric', 'pointerClamp'] as const) {
             id: 'nse.object.scale',
             data: {
                 subject: 'note',
-                targets: 1,
+                changed: { note: 1 },
                 transform: { mode: 'uniform', factor: 3, pivot: 2 },
             },
         })
@@ -438,8 +471,10 @@ test('Properties emits changed primary fields with effective relative values', a
         id: 'nse.property.set',
         data: {
             subject: 'note',
-            targets: 2,
-            assignments: [{ field: 'size', value: { mode: 'varying' } }],
+            changed: { note: 2 },
+            assignments: [
+                { field: 'size', before: { mode: 'varying' }, after: { mode: 'varying' } },
+            ],
         },
     })
 })
@@ -469,8 +504,14 @@ test('Properties records coupled primary flags and preserves no-change gating', 
         id: 'nse.property.set',
         data: {
             subject: 'note',
-            targets: 1,
-            assignments: [{ field: 'isCritical', value: { mode: 'uniform', value: false } }],
+            changed: { note: 1 },
+            assignments: [
+                {
+                    field: 'isCritical',
+                    before: { mode: 'uniform', value: false },
+                    after: { mode: 'uniform', value: false },
+                },
+            ],
         },
     })
 })
@@ -535,7 +576,10 @@ test('Combine counts all participating notes and Split counts unique eligible cu
             ),
         }
     })
-    expect(result.combined?.operation).toMatchObject({ id: 'nse.note.combine', data: { notes: 4 } })
-    expect(result.split?.operation).toMatchObject({ id: 'nse.note.split', data: { points: 1 } })
+    expect(result.combined?.operation).toMatchObject({
+        id: 'nse.note.combine',
+        data: { targets: 4 },
+    })
+    expect(result.split?.operation).toMatchObject({ id: 'nse.note.split', data: { targets: 1 } })
     expect(result.lengths.sort()).toEqual([1, 3])
 })

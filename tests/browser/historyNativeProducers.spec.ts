@@ -244,16 +244,18 @@ for (const enable of [false, true])
         expect(after.dynamic).toBe(enable)
         expect(after.notes.map(({ beat }) => beat)).toEqual([0, 4])
         expect(after.events).toEqual(enable ? [4] : [])
-        expect(await headOperation(page)).toMatchObject({
+        const head = await headOperation(page)
+        expect(head).toMatchObject({
             id: 'nse.object.paste',
             data: {
                 placed: enable ? { note: 1, cameraEvent: 1 } : { note: 1 },
-                displaced: {},
                 variant: enable ? 'composed' : 'basic',
                 flipped: false,
                 at: 'position',
             },
         })
+        // Nothing was replaced, so there is no "displaced" at all, not an empty one.
+        expect(head.data).not.toHaveProperty('displaced')
     })
 
 test('a cancelled pointer Paste cannot enable stages or consume a replacement drag and its ghost', async ({
@@ -309,16 +311,12 @@ test('a cancelled pointer Paste cannot enable stages or consume a replacement dr
     expect(after.steps - before.steps).toBe(1)
     expect(after.dynamic).toBe(false)
     expect(after.notes.map(({ beat }) => beat)).toEqual([0, 6])
-    expect(await headOperation(page)).toMatchObject({
+    const head = await headOperation(page)
+    expect(head).toMatchObject({
         id: 'nse.object.paste',
-        data: {
-            placed: { note: 1 },
-            displaced: {},
-            variant: 'basic',
-            flipped: false,
-            at: 'pointer',
-        },
+        data: { placed: { note: 1 }, variant: 'basic', flipped: false, at: 'pointer' },
     })
+    expect(head.data).not.toHaveProperty('displaced')
 })
 
 test('notes-only elevation Paste skips an unrelated event enable prompt', async ({ page }) => {
@@ -334,16 +332,12 @@ test('notes-only elevation Paste skips an unrelated event enable prompt', async 
     expect(effects.dynamic).toBe(false)
     expect(effects.events).toEqual([])
     expect(effects.notes.map(({ beat }) => beat)).toEqual([0, 4])
-    expect(await headOperation(page)).toMatchObject({
+    const head = await headOperation(page)
+    expect(head).toMatchObject({
         id: 'nse.object.paste',
-        data: {
-            placed: { note: 1 },
-            displaced: {},
-            variant: 'basic',
-            flipped: false,
-            at: 'position',
-        },
+        data: { placed: { note: 1 }, variant: 'basic', flipped: false, at: 'position' },
     })
+    expect(head.data).not.toHaveProperty('displaced')
 })
 
 test('twelve actual Note, Slide and elevation Adds capture twelve fresh notes', async ({
@@ -451,7 +445,12 @@ test('BPM producer captures initial anchor and actual first destination replacem
     })
     expect(result.replacement).toMatchObject({
         id: 'nse.object.replace',
-        data: { subject: 'bpm', targets: 1, displaced: { bpm: 1 }, retainedInitialBpm: true },
+        data: {
+            subject: 'bpm',
+            changed: { bpm: 1 },
+            displaced: { bpm: 1 },
+            retainedInitialBpm: true,
+        },
     })
     expect(result.bpms).toEqual([
         [0, 120],
@@ -459,10 +458,12 @@ test('BPM producer captures initial anchor and actual first destination replacem
         [4, 120],
     ])
     expect(result.steps).toBe(2)
-    expect(await headOperation(page)).toMatchObject({
+    const unchanged = await headOperation(page)
+    expect(unchanged).toMatchObject({
         id: 'nse.object.edit',
-        data: { subject: 'bpm', targets: 0, displaced: {} },
+        data: { subject: 'bpm', changed: {} },
     })
+    expect(unchanged.data).not.toHaveProperty('displaced')
 })
 
 test('Time Scale producer captures both actually replaced same-group destination members', async ({
@@ -518,7 +519,7 @@ test('Time Scale producer captures both actually replaced same-group destination
     ])
     expect(await headOperation(page)).toMatchObject({
         id: 'nse.object.replace',
-        data: { subject: 'timeScale', targets: 1, displaced: { timeScale: 2 } },
+        data: { subject: 'timeScale', changed: { timeScale: 1 }, displaced: { timeScale: 2 } },
     })
 })
 
@@ -600,10 +601,12 @@ for (const direction of ['horizontal', 'pinned'] as const)
         expect(result.note).toEqual([
             { beat: direction === 'pinned' ? 1 : 2, left: direction === 'horizontal' ? -1 : -2 },
         ])
-        expect(await headOperation(page)).toMatchObject({
+        const head = await headOperation(page)
+        expect(head).toMatchObject({
             id: 'nse.object.move',
-            data: { subject: 'note', targets: 1, displaced: {} },
+            data: { subject: 'note', changed: { note: 1 } },
         })
+        expect(head.data).not.toHaveProperty('displaced')
     })
 
 test('Brush captures coupled Note fields, ignores derived connector operands and preserves its no-op gate', async ({
@@ -663,18 +666,32 @@ test('Brush captures coupled Note fields, ignores derived connector operands and
         id: 'nse.object.brush',
         data: {
             subject: 'note',
-            targets: 1,
-            assignments: [{ field: 'isFake', value: { mode: 'uniform', value: true } }],
+            changed: { note: 1 },
+            assignments: [
+                {
+                    field: 'isFake',
+                    before: { mode: 'uniform', value: true },
+                    after: { mode: 'uniform', value: true },
+                },
+            ],
         },
     })
     expect(await headOperation(page)).toMatchObject({
         id: 'nse.object.brush',
         data: {
             subject: 'note',
-            targets: 1,
+            changed: { note: 1 },
             assignments: [
-                { field: 'isAttached', value: { mode: 'uniform', value: false } },
-                { field: 'size', value: { mode: 'uniform', value: 5 } },
+                {
+                    field: 'isAttached',
+                    before: { mode: 'uniform', value: true },
+                    after: { mode: 'uniform', value: false },
+                },
+                {
+                    field: 'size',
+                    before: { mode: 'uniform', value: result.originalSize },
+                    after: { mode: 'uniform', value: 5 },
+                },
             ],
         },
     })
@@ -877,7 +894,7 @@ for (const mode of [
         })
     })
 
-test('declining Dynamic Stages preserves a zero-output Paste step with factual empty counts', async ({
+test('declining Dynamic Stages leaves a Paste that places nothing without a step', async ({
     page,
 }) => {
     const pending = page.evaluate(async () => {
@@ -926,9 +943,7 @@ test('declining Dynamic Stages preserves a zero-output Paste step with factual e
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel', exact: true }), dialog)
-    expect(await pending).toEqual({ steps: 1, selected: 0, dynamic: false, events: 0 })
-    expect(await headOperation(page)).toMatchObject({
-        id: 'nse.object.paste',
-        data: { placed: {}, displaced: {}, variant: 'basic', flipped: false, at: 'position' },
-    })
+    // Before this, the declined paste pushed "Pasted 0 objects", a step that changed nothing.
+    expect(await pending).toEqual({ steps: 0, selected: 0, dynamic: false, events: 0 })
+    expect(await headOperation(page)).toMatchObject({ id: 'nse.origin' })
 })

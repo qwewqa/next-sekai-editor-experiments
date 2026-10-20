@@ -1,4 +1,5 @@
 import {
+    checkedSum,
     decodeOperation,
     type NameText,
     type NativeCounts,
@@ -84,12 +85,19 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
     })
     const counts = (key: string, label: string, values: NativeCounts | OwnerCounts) =>
         add(key, label, countRows(values, context))
-    const principal = (subject: Subject, count: number, label = t.history.details.changed) =>
-        subject === 'objects'
+    const principal = (
+        subject: Subject,
+        changed: number | NativeCounts,
+        label = t.history.details.changed,
+    ) => {
+        const count =
+            typeof changed === 'number' ? changed : (checkedSum(Object.values(changed)) ?? 0)
+        return subject === 'objects'
             ? add('principal', label, [
                   row('objects', label, message(context, t.workspace.manager.objects, count)),
               ])
             : counts('principal', label, { [subject]: count })
+    }
     const owner = (
         target: OwnerReference,
         key = 'target',
@@ -128,12 +136,11 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
             counts('created', t.historyChanges.added, {
                 [operation.data.subject]: operation.data.created,
             })
-            collateral(operation.data)
             break
         case 'nse.object.edit':
         case 'nse.object.move':
         case 'nse.object.replace':
-            principal(operation.data.subject, operation.data.targets)
+            principal(operation.data.subject, operation.data.changed)
             collateral(operation.data)
             break
         case 'nse.note.elevation':
@@ -142,7 +149,8 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
             break
         case 'nse.object.paste':
             counts('placed', t.history.details.placed, operation.data.placed)
-            counts('displaced', t.history.details.displaced, operation.data.displaced)
+            if (operation.data.displaced)
+                counts('displaced', t.history.details.displaced, operation.data.displaced)
             add('paste', t.commands.paste.title, [
                 row(
                     'layout',
@@ -163,12 +171,13 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
             break
         case 'nse.object.brush':
         case 'nse.property.set':
-            principal(operation.data.subject, operation.data.targets)
+            principal(operation.data.subject, operation.data.changed)
+            collateral(operation.data)
             add(
                 'properties',
                 t.workspace.panels.properties,
                 operation.data.assignments.map((assignment) => {
-                    const value = assignment.value
+                    const value = assignment.after
                     return {
                         key: assignment.field,
                         label: operationFieldLabel(assignment.field, context),
@@ -192,10 +201,12 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
             counts('removed', t.historyChanges.removed, operation.data.removed)
             break
         case 'nse.object.flip':
-            principal(operation.data.subject, operation.data.targets)
+            principal(operation.data.subject, operation.data.changed)
+            collateral(operation.data)
             break
         case 'nse.object.scale':
-            principal(operation.data.subject, operation.data.targets)
+            principal(operation.data.subject, operation.data.changed)
+            collateral(operation.data)
             add(
                 'scale',
                 t.commands.scaleSelection.factor,
@@ -222,14 +233,14 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
             )
             break
         case 'nse.note.combine':
-            principal('note', operation.data.notes)
+            principal('note', operation.data.targets)
             break
         case 'nse.note.split':
             add('split', t.commands.splitHold.title, [
                 row(
                     'points',
                     t.commands.splitHold.title,
-                    message(context, t.commands.splitHold.split, operation.data.points),
+                    message(context, t.commands.splitHold.split, operation.data.targets),
                 ),
             ])
             break
@@ -347,7 +358,6 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
             source(operation.data.source)
             break
         case 'nse.continue':
-            source(operation.data.source)
             add('fromTime', t.history.details.source, [
                 row(
                     'time',
@@ -372,22 +382,12 @@ const nativeSections = (operation: NativeOperationInput, context: OperationTextC
             ])
             break
         case 'nse.restore':
-            source(operation.data.source)
             add('time', t.peek.restore, [
                 row('time', t.peek.restore, operationTime(operation.data.targetTime, context)),
             ])
             break
         case 'nse.recovery':
             add('recovery', t.entry.recoveredChanges, [
-                row(
-                    'source',
-                    t.history.details.source,
-                    operation.data.source === 'journal'
-                        ? t.history.details.unsavedChanges
-                        : operation.data.source === 'autoSave'
-                          ? t.history.details.autoSave
-                          : t.settings.localData.title,
-                ),
                 row(
                     'dropped',
                     t.commands.undo.title,

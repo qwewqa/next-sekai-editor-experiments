@@ -59,7 +59,7 @@ test('a save entry takes its reserved seq; edits during the build wait and follo
             kind: 'edit',
             step: editStep(
                 nativeOperation(
-                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
                     'Changed note',
                 ),
             ),
@@ -382,7 +382,7 @@ test('new Export metadata commits after a pending Save As identity and survives 
             kind: 'edit',
             step: editStep(
                 nativeOperation(
-                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
                     'Later edit',
                 ),
             ),

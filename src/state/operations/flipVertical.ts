@@ -99,20 +99,29 @@ const reverseEases = (source: State, entities: EditableEntity[]) => {
     return eases
 }
 
+export type FlipVerticalResult = {
+    state: State
+    counts: NativeCounts
+    /** Objects at a destination that the flip removed without moving them. */
+    displaced: readonly Entity[]
+    retainedInitialBpm: boolean
+}
+
 export const flipVerticalWithReceipt = (
     source: State,
     selected: Entity[],
     moveBeat = addBeatOffset,
-): { state: State; counts: NativeCounts } => {
+): FlipVerticalResult => {
     const entities = [...new Set(selected.filter(isEditableEntity))]
-    if (!entities.length) return { state: source, counts: {} }
+    if (!entities.length)
+        return { state: source, counts: {}, displaced: [], retainedInitialBpm: false }
     let min = Infinity
     let max = -Infinity
     for (const entity of entities) {
         min = Math.min(min, entity.beat)
         max = Math.max(max, entity.beat)
     }
-    if (min === max) return { state: source, counts: {} }
+    if (min === max) return { state: source, counts: {}, displaced: [], retainedInitialBpm: false }
 
     const selectedSet = new Set(entities)
     const properties = reverseSlideProperties(source, selectedSet)
@@ -139,6 +148,8 @@ export const flipVerticalWithReceipt = (
     const eases = reverseEases(source, entities)
     const placed = new Map<Entity, number>()
     const flipped: Entity[] = []
+    // What a timing point took from its destination: removed objects that were not flipped ones.
+    const displaced = new Set<Entity>()
     const pairs: { before: Entity; index: number }[] = []
     for (const entity of ordered) {
         pairs.push({ before: entity, index: flipped.length })
@@ -155,8 +166,10 @@ export const flipVerticalWithReceipt = (
                     other.beat === beat &&
                     placed.get(other) !== entity.beat &&
                     sameTrack(entity, other)
-                )
+                ) {
+                    if (!placed.has(other)) displaced.add(other)
                     remove(transaction, other)
+                }
             }
         }
         const added = add(transaction, {
@@ -171,11 +184,10 @@ export const flipVerticalWithReceipt = (
         flipped.push(...added)
     }
     // Moving the initial BPM must not leave the chart without a tempo at zero.
-    if (
-        initialBpm &&
+    const retainedInitialBpm =
+        !!initialBpm &&
         !getInStoreGrid(transaction.store.grid, 'bpm', 0)?.some((bpm) => bpm.beat === 0)
-    )
-        addBpm(transaction, initialBpm)
+    if (retainedInitialBpm) addBpm(transaction, initialBpm)
 
     const result = transaction.commit(flipped)
     return {
@@ -186,6 +198,8 @@ export const flipVerticalWithReceipt = (
                 return after ? [{ before, after }] : []
             }),
         ),
+        displaced: [...displaced],
+        retainedInitialBpm,
     }
 }
 

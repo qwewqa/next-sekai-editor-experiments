@@ -16,6 +16,8 @@ import { addCameraEventJoint } from '../../../../state/mutations/events/camera'
 import { editSelectedCameraEvent } from '../../../../state/operations/events/camera'
 import {
     countNativeEntities,
+    editInput,
+    kindCounts,
     nativeTargetChanged,
 } from '../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../state/transaction'
@@ -504,13 +506,14 @@ const update = (
                       created: countNativeEntities(entities).cameraEvent ?? 0,
                   },
               }
-            : {
-                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
-                  data: {
-                      subject: 'cameraEvent',
-                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
-                  },
-              },
+            : editInput(
+                  intent,
+                  kindCounts(
+                      'cameraEvent',
+                      before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  ),
+                  'cameraEvent',
+              ),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

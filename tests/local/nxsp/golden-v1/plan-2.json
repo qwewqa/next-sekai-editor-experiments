@@ -1590,8 +1590,8 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 1029335288,
-      "uncompressedSize": 7537,
+      "crc32": 3428093092,
+      "uncompressedSize": 7505,
       "parts": [
         {
           "kind": "bytes",
@@ -1701,10 +1701,7 @@
                 "operation": {
                   "id": "nse.continue",
                   "data": {
-                    "fromTime": 1792126799000,
-                    "source": {
-                      "text": "golden.nxsp"
-                    }
+                    "fromTime": 1792126799000
                   },
                   "version": 1,
                   "fallback": {

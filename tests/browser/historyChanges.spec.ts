@@ -92,7 +92,9 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                         id: 'nse.object.move',
                         data: {
                             subject: 'note',
-                            targets: all.filter((note) => change.beats.includes(note.beat)).length,
+                            changed: {
+                                note: all.filter((note) => change.beats.includes(note.beat)).length,
+                            },
                         },
                     }
                     for (const note of all.filter((note) => change.beats.includes(note.beat)))
@@ -125,8 +127,14 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                         id: 'nse.property.set',
                         data: {
                             subject: 'note',
-                            targets: Math.ceil(sorted.length * change.share),
-                            assignments: [{ field: 'isCritical', value: { mode: 'varying' } }],
+                            changed: { note: Math.ceil(sorted.length * change.share) },
+                            assignments: [
+                                {
+                                    field: 'isCritical',
+                                    before: { mode: 'varying' },
+                                    after: { mode: 'varying' },
+                                },
+                            ],
                         },
                     }
                     for (const note of sorted.slice(0, Math.ceil(sorted.length * change.share)))
@@ -137,7 +145,10 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                     break
                 }
                 case 'bpm': {
-                    receipt = { id: 'nse.object.edit', data: { subject: 'bpm', targets: 1 } }
+                    receipt = {
+                        id: 'nse.object.edit',
+                        data: { subject: 'bpm', changed: { bpm: 1 } },
+                    }
                     const first = [...state.store.grid.bpm.values()].flatMap((b) => [...b])[0]!
                     bpm.replaceBpm(transaction, first, { beat: 0, bpm: change.bpm, meter: 4 })
                     break
@@ -878,7 +889,7 @@ test('both footprints of a moved object remain reachable on opposite sides of th
         replaceNote(transaction, note, { ...noteObjectOf(note), beat: 11 })
         const futureMove = {
             ...window.editorTest.historySteps.nativeOperation(
-                { id: 'nse.object.move', data: { subject: 'note', targets: 1 } },
+                { id: 'nse.object.move', data: { subject: 'note', changed: { note: 1 } } },
                 'Moved across view',
             ),
             futureFixture: true,

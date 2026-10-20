@@ -2,12 +2,11 @@ import type { Command } from '..'
 import type { FlickDirection } from '../../../chart/note'
 import { pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { subjectOfCounts } from '../../../history/operations'
 import { selectedEntities } from '../../../history/selectedEntities'
 import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import type { EditableEntity, EditableObject } from '../../../state/operations/editable'
-import { changedNativeCounts } from '../../../state/operations/historyReceipts'
+import { changedData, changedNativeCounts } from '../../../state/operations/historyReceipts'
 import { editChanges, editEntity } from '../../../state/operations/properties/plan'
 import { createTransaction } from '../../../state/transaction'
 import { alignComputed } from '../../../utils/math'
@@ -63,8 +62,7 @@ export const flip: Command = {
             id: 'nse.object.flip',
             data: {
                 axis: 'horizontal',
-                subject: subjectOfCounts(counts),
-                targets: Object.values(counts).reduce((sum, value) => sum + value, 0),
+                ...changedData(counts, 'objects'),
             },
         })
 

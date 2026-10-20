@@ -19,11 +19,13 @@ import {
     fieldApplies,
     nameText,
     nativeCounts,
-    nativeKind,
+    nativeCountsPlus,
     nativeKinds,
     ownerCounts,
+    ownerCountsPlus,
     ownerReference,
     subject,
+    subjectOfCounts,
     type Assignment,
     type FieldFor,
     type NativeKind,
@@ -40,46 +42,54 @@ import {
     type JsonValue,
 } from './json'
 
+type Collateral = {
+    /** Chart objects the edit replaced or removed that were not its operands. */
+    readonly displaced?: ValueOf<typeof nativeCountsPlus>
+    /** The initial BPM was added back at beat 0 after the edit moved or removed it. */
+    readonly retainedInitialBpm?: true
+}
+
 export type PropertyData =
     | {
           [S in NativeKind]: {
               readonly subject: S
-              readonly targets: number
+              readonly changed: ValueOf<typeof nativeCountsPlus>
               readonly assignments: readonly Assignment<FieldFor<S>>[]
-          }
+          } & Collateral
       }[NativeKind]
-    | {
+    | ({
           readonly subject: 'objects'
-          readonly subjects: readonly NativeKind[]
-          readonly targets: number
+          readonly changed: ValueOf<typeof nativeCountsPlus>
           readonly assignments: readonly Assignment[]
-      }
+      } & Collateral)
+
+const collateralKeys = ['displaced', 'retainedInitialBpm']
 
 const propertyData = codec<PropertyData>((value) => {
     if (
         !isObject(value) ||
         !subject.is(value.subject) ||
-        !count.is(value.targets) ||
+        !nativeCountsPlus.is(value.changed) ||
         !assignments.is(value.assignments)
     )
         return false
-    const keys = [
-        'subject',
-        'targets',
-        'assignments',
-        ...(value.subject === 'objects' ? ['subjects'] : []),
-    ]
-    if (Object.keys(value).length !== keys.length || !keys.every((key) => owns(value, key)))
-        return false
-    const kinds = value.subject === 'objects' ? value.subjects : [value.subject]
+    const keys = ['subject', 'changed', 'assignments']
+    const extra = Object.keys(value).filter((key) => !keys.includes(key))
     if (
-        !Array.isArray(kinds) ||
-        kinds.length < (value.subject === 'objects' ? 2 : 1) ||
-        kinds.length > nativeKinds.length ||
-        !kinds.every(nativeKind.is) ||
-        new Set(kinds).size !== kinds.length
+        Object.keys(value).length !== keys.length + extra.length ||
+        !keys.every((key) => owns(value, key)) ||
+        !extra.every((key) => collateralKeys.includes(key)) ||
+        ('displaced' in value && !nativeCountsPlus.is(value.displaced)) ||
+        ('retainedInitialBpm' in value && value.retainedInitialBpm !== true)
     )
         return false
+    // The subject is what the counts say, and a re-added initial BPM needs a BPM among them.
+    if (
+        value.subject !== subjectOfCounts(value.changed) ||
+        (value.retainedInitialBpm && value.subject !== 'bpm' && value.subject !== 'objects')
+    )
+        return false
+    const kinds = Object.keys(value.changed) as NativeKind[]
     const applied = value.assignments
     return (
         applied.every(({ field }) => kinds.some((kind) => fieldApplies(field, kind))) &&
@@ -87,16 +97,22 @@ const propertyData = codec<PropertyData>((value) => {
     )
 })
 
+/** Collateral that only a vertical flip or a beat scale can cause. */
+const hasCollateral = (value: Collateral) => !!value.displaced || !!value.retainedInitialBpm
+const agrees = (subject: unknown, changed: ValueOf<typeof nativeCounts>) =>
+    !Object.keys(changed).length || subject === subjectOfCounts(changed)
+
 const changedTargets = refine(
     object(
-        { subject, targets: count },
+        { subject, changed: nativeCounts },
         {
-            displaced: nativeCounts,
+            displaced: nativeCountsPlus,
             retainedInitialBpm: literal(true),
         },
     ),
-    ({ subject, retainedInitialBpm }) =>
-        !retainedInitialBpm || subject === 'bpm' || subject === 'objects',
+    ({ subject, changed, retainedInitialBpm }) =>
+        agrees(subject, changed) &&
+        (!retainedInitialBpm || subject === 'bpm' || subject === 'objects'),
 )
 const folder = object({ kind: oneOf(['groupFolder', 'stageFolder']), id: count, name: nameText })
 const destination = union(folder, nil)
@@ -139,53 +155,78 @@ const domainCounts = (domain: 'group' | 'stage', values: ValueOf<typeof ownerCou
     Object.keys(values).every((kind) => kind === domain || kind === `${domain}Folder`) &&
     checkedSum(Object.values(values)) !== undefined
 
+/** A time as a Date takes it: a whole number of milliseconds within ±8.64e15. */
+const time = refine(count, (value) => value <= 8.64e15)
+
 export const operationCodecs = {
     'nse.note.add': object({ created: count }),
     'nse.note.generate': object({ created: count }),
-    'nse.object.add': refine(
-        object(
-            { subject: oneOf(nativeKinds.filter((kind) => kind !== 'note')), created: count },
-            { displaced: nativeCounts },
-        ),
-        ({ subject, displaced }) =>
-            !displaced ||
-            ((subject === 'bpm' || subject === 'timeScale') &&
-                Object.keys(displaced).every((kind) => kind === subject)),
-    ),
+    'nse.object.add': object({
+        subject: oneOf(nativeKinds.filter((kind) => kind !== 'note')),
+        created: count,
+    }),
     'nse.object.edit': changedTargets,
     'nse.object.move': changedTargets,
+    // A BPM or time scale moved onto an occupied beat. Both kinds' counts name only the subject.
     'nse.object.replace': refine(
         object(
-            { subject: oneOf(['bpm', 'timeScale']), targets: count, displaced: nativeCounts },
+            {
+                subject: oneOf(['bpm', 'timeScale']),
+                changed: nativeCounts,
+                displaced: nativeCountsPlus,
+            },
             { retainedInitialBpm: literal(true) },
         ),
-        ({ subject, displaced, retainedInitialBpm }) =>
+        ({ subject, changed, displaced, retainedInitialBpm }) =>
+            agrees(subject, changed) &&
             Object.keys(displaced).every((kind) => kind === subject) &&
             (!retainedInitialBpm || subject === 'bpm'),
     ),
     'nse.note.elevation': object({ targets: count }),
-    'nse.object.paste': object({
-        placed: nativeCounts,
-        displaced: nativeCounts,
-        variant: oneOf(['basic', 'composed']),
-        flipped: boolean,
-        at: oneOf(['pointer', 'position']),
-    }),
+    'nse.object.paste': object(
+        {
+            placed: nativeCountsPlus,
+            variant: oneOf(['basic', 'composed']),
+            flipped: boolean,
+            at: oneOf(['pointer', 'position']),
+        },
+        { displaced: nativeCountsPlus },
+    ),
     'nse.object.brush': propertyData,
     'nse.object.delete': object({ removed: nativeCounts }),
     'nse.object.cut': object({ removed: nativeCounts }),
-    'nse.object.flip': object({ axis: oneOf(['horizontal', 'vertical']), subject, targets: count }),
-    'nse.object.scale': object({
-        axis: oneOf(['beats', 'width', 'elevation']),
-        subject,
-        targets: count,
-        transform: union(
-            object({ mode: literal('uniform'), factor: finite, pivot: finite }),
-            object({ mode: literal('composed') }),
+    // Only a vertical flip moves objects onto other beats, so only it can displace.
+    'nse.object.flip': refine(
+        object(
+            { axis: oneOf(['horizontal', 'vertical']), subject, changed: nativeCounts },
+            { displaced: nativeCountsPlus, retainedInitialBpm: literal(true) },
         ),
-    }),
-    'nse.note.combine': object({ notes: count }),
-    'nse.note.split': object({ points: count }),
+        (value) =>
+            agrees(value.subject, value.changed) &&
+            (!hasCollateral(value) || value.axis === 'vertical') &&
+            (!value.retainedInitialBpm || value.subject === 'bpm' || value.subject === 'objects'),
+    ),
+    // Only scaling beats moves objects onto other beats.
+    'nse.object.scale': refine(
+        object(
+            {
+                axis: oneOf(['beats', 'width', 'elevation']),
+                subject,
+                changed: nativeCounts,
+                transform: union(
+                    object({ mode: literal('uniform'), factor: finite, pivot: finite }),
+                    object({ mode: literal('composed') }),
+                ),
+            },
+            { displaced: nativeCountsPlus, retainedInitialBpm: literal(true) },
+        ),
+        (value) =>
+            agrees(value.subject, value.changed) &&
+            (!hasCollateral(value) || value.axis === 'beats') &&
+            (!value.retainedInitialBpm || value.subject === 'bpm' || value.subject === 'objects'),
+    ),
+    'nse.note.combine': object({ targets: count }),
+    'nse.note.split': object({ targets: count }),
     'nse.note.vertical': object({ targets: count }),
     'nse.property.set': propertyData,
     'nse.header.set': object({
@@ -194,7 +235,7 @@ export const operationCodecs = {
         after: finite,
     }),
     'nse.bgm.change': object({ file: fileChange }, { offset: scalarChange }),
-    'nse.dynamicStages.enable': object({}),
+    'nse.dynamicStages.enable': object({ created: nativeCounts }),
     'nse.owner.create': refine(
         object({ target: ownerReference, destination, gathered: count }),
         ({ target, destination: to, gathered }) =>
@@ -205,6 +246,9 @@ export const operationCodecs = {
     ),
     'nse.owner.rename': object({ target: ownerReference, before: nameText, after: nameText }),
     'nse.owner.set': ownerSet,
+    // fromIndex and toIndex are 0-based. For a group or stage they are positions among the
+    // domain's entries in tree order (`entriesInTreeOrder`); for a folder, positions among the
+    // top-level items. Step Details shows them 1-based, for a reorder only.
     'nse.owner.move': refine(
         object(
             {
@@ -226,29 +270,37 @@ export const operationCodecs = {
         object({ domain: ownerDomain, targets: count, destination }),
         ({ domain, destination: to }) => !to || inDomain(domain, to),
     ),
+    // `objects` are the copies of the chart objects the duplicated entries own.
     'nse.owner.duplicate': refine(
-        object({ domain: ownerDomain, created: ownerCounts }, { source: ownerReference }),
+        object(
+            { domain: ownerDomain, created: ownerCountsPlus },
+            { source: ownerReference, objects: nativeCountsPlus },
+        ),
         ({ domain, created, source }) =>
             domainCounts(domain, created) && (!source || inDomain(domain, source)),
     ),
+    // `objects` are the chart objects deleted with the entries; `replacement` is the default
+    // entry created when the last one went.
     'nse.owner.delete': refine(
-        object({ domain: ownerDomain, removed: ownerCounts }, { target: ownerReference }),
-        ({ domain, removed, target }) =>
-            domainCounts(domain, removed) && (!target || inDomain(domain, target)),
+        object(
+            { domain: ownerDomain, removed: ownerCountsPlus },
+            { target: ownerReference, objects: nativeCountsPlus, replacement: ownerReference },
+        ),
+        ({ domain, removed, target, replacement }) =>
+            domainCounts(domain, removed) &&
+            (!target || inDomain(domain, target)) &&
+            (!replacement || replacement.kind === domain),
     ),
     'nse.owner.ungroup': object({ target: folder, released: count }),
     'nse.origin': object(
         { origin: oneOf(['new', 'import', 'autoSave', 'recovery']) },
         { source: nameText },
     ),
-    'nse.continue': object({ fromTime: count }, { source: nameText }),
+    'nse.continue': object({ fromTime: time }),
     'nse.file.save': object({ file: nameText, delivery: oneOf(['file', 'download']) }),
     'nse.file.export': object({ file: nameText, delivery: oneOf(['file', 'download']) }),
-    'nse.restore': object({ targetTime: count }, { source: nameText }),
-    'nse.recovery': object({
-        source: oneOf(['journal', 'local', 'autoSave']),
-        droppedSteps: count,
-    }),
+    'nse.restore': object({ targetTime: time }),
+    'nse.recovery': object({ droppedSteps: count }),
     'nse.externalChange': object({}),
 } as const
 

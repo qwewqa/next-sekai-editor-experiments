@@ -132,11 +132,12 @@ for (const layout of ['basic', 'composed'] as const) {
                                 id: 'nse.property.set',
                                 data: {
                                     subject: 'note',
-                                    targets: 1,
+                                    changed: { note: 1 },
                                     assignments: [
                                         {
                                             field: 'left',
-                                            value: { mode: 'uniform', value: note.left + 0.75 },
+                                            before: { mode: 'uniform', value: note.left },
+                                            after: { mode: 'uniform', value: note.left + 0.75 },
                                         },
                                     ],
                                 },
@@ -169,11 +170,12 @@ for (const layout of ['basic', 'composed'] as const) {
                                 id: 'nse.property.set',
                                 data: {
                                     subject: 'stageTransformEvent',
-                                    targets: 1,
+                                    changed: { stageTransformEvent: 1 },
                                     assignments: [
                                         {
                                             field: 'xTranslation',
-                                            value: {
+                                            before: { mode: 'uniform', value: event.xTranslation },
+                                            after: {
                                                 mode: 'uniform',
                                                 value: event.xTranslation + 1,
                                             },
@@ -215,9 +217,13 @@ for (const layout of ['basic', 'composed'] as const) {
                                 id: 'nse.property.set',
                                 data: {
                                     subject: 'bpm',
-                                    targets: 1,
+                                    changed: { bpm: 1 },
                                     assignments: [
-                                        { field: 'bpm', value: { mode: 'uniform', value: 150 } },
+                                        {
+                                            field: 'bpm',
+                                            before: { mode: 'uniform', value: 60 },
+                                            after: { mode: 'uniform', value: 150 },
+                                        },
                                     ],
                                 },
                             },

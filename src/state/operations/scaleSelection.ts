@@ -42,6 +42,8 @@ export const scaleSelectionWithReceipt = (
         : {
               state: source,
               counts: {},
+              displaced: [],
+              retainedInitialBpm: false,
               replacements: new Map(selected.map((entity) => [entity, entity])),
               applications: new Map<Entity, Entity>(),
           }

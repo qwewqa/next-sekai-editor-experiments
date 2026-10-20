@@ -20,11 +20,11 @@ import { removeStageStyleEventJoint } from '../../../state/mutations/events/stag
 import { removeStageTransformEventJoint } from '../../../state/mutations/events/stage/transform.ts'
 import { removeNote } from '../../../state/mutations/slides/note'
 import { removeTimeScale } from '../../../state/mutations/timeScale'
-import { countNativeEntities } from '../../../state/operations/historyReceipts'
+import { countNativeEntities, removedEntities } from '../../../state/operations/historyReceipts'
 import { inStoredOrder } from '../../../state/operations/transformSelection'
 import { createStore } from '../../../state/store/creates'
-import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction } from '../../../state/transaction'
+import { interpolate } from '../../../utils/interpolate'
 import { editorNavigation } from '../../navigation'
 import { notify } from '../../notification'
 import { view, xToLane, yToValidBeat } from '../../view'
@@ -97,9 +97,8 @@ export const cut: Command = {
         const removeEntities = entities.filter(
             (entity) => canRemoves[entity.type]?.(entity as never) ?? true,
         )
-        let operation: ReturnType<typeof createHistoryOperation>
         if (!removeEntities.length) {
-            operation = createHistoryOperation({ id: 'nse.object.cut', data: { removed: {} } })
+            // Copied but nothing could go, so there is no step to undo.
             replaceState({
                 ...state.value,
                 selectedEntities: [],
@@ -108,33 +107,27 @@ export const cut: Command = {
                 hovered: [],
                 creating: [],
             }
-        } else {
-            const transaction = createTransaction(state.value)
+            notify(interpolate(() => i18n.value.commands.copy.copied, `${entities.length}`))
+            return
+        }
+        const transaction = createTransaction(state.value)
 
-            for (const entity of removeEntities) {
-                removes[entity.type]?.(transaction, entity as never)
-            }
-
-            const result = transaction.commit([])
-            const removed = removeEntities.filter(
-                (entity) =>
-                    removes[entity.type] &&
-                    getInStoreGrid(state.value.store.grid, entity.type, entity.beat)?.includes(
-                        entity,
-                    ) &&
-                    !getInStoreGrid(result.store.grid, entity.type, entity.beat)?.includes(entity),
-            )
-            operation = createHistoryOperation({
-                id: 'nse.object.cut',
-                data: { removed: countNativeEntities(removed) },
-            })
-            pushState(operation, result)
-            view.entities = {
-                hovered: [],
-                creating: [],
-            }
+        for (const entity of removeEntities) {
+            removes[entity.type]?.(transaction, entity as never)
         }
 
+        const result = transaction.commit([])
+        const operation = createHistoryOperation({
+            id: 'nse.object.cut',
+            data: {
+                removed: countNativeEntities(removedEntities(state.value, result, removeEntities)),
+            },
+        })
+        pushState(operation, result)
+        view.entities = {
+            hovered: [],
+            creating: [],
+        }
         notify(() => operation.fallback.text)
     },
 }

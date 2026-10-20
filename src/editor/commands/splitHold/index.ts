@@ -17,7 +17,7 @@ export const splitHold: Command = {
             notify(() => i18n.value.commands.splitHold.noConnections)
             return
         }
-        const operation = createHistoryOperation({ id: 'nse.note.split', data: { points: count } })
+        const operation = createHistoryOperation({ id: 'nse.note.split', data: { targets: count } })
         pushState(operation, split(source, source.selectedEntities))
         view.entities = { hovered: [], creating: [] }
         notify(() => operation.fallback.text)

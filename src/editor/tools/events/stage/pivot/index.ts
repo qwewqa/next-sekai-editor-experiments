@@ -17,6 +17,8 @@ import { addStagePivotEventJoint } from '../../../../../state/mutations/events/s
 import { editSelectedStagePivotEvent } from '../../../../../state/operations/events/stage/pivot'
 import {
     countNativeEntities,
+    editInput,
+    kindCounts,
     nativeTargetChanged,
 } from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
@@ -391,13 +393,14 @@ const update = (
                       created: countNativeEntities(entities).stagePivotEvent ?? 0,
                   },
               }
-            : {
-                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
-                  data: {
-                      subject: 'stagePivotEvent',
-                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
-                  },
-              },
+            : editInput(
+                  intent,
+                  kindCounts(
+                      'stagePivotEvent',
+                      before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  ),
+                  'stagePivotEvent',
+              ),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

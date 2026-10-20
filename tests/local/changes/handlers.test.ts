@@ -66,7 +66,7 @@ const stored = async (beats: number[]) => {
                 kind: 'edit',
                 step: editStep(
                     nativeOperation(
-                        { id: 'nse.object.move', data: { subject: 'note', targets: 1 } },
+                        { id: 'nse.object.move', data: { subject: 'note', changed: { note: 1 } } },
                         `Nudged ${beat}`,
                     ),
                 ),

@@ -75,8 +75,14 @@ test('opening elevation during a previewed move preserves committed ghosts and u
                     id: 'nse.property.set',
                     data: {
                         subject: 'note',
-                        targets: 1,
-                        assignments: [{ field: 'elevation', value: { mode: 'uniform', value: 2 } }],
+                        changed: { note: 1 },
+                        assignments: [
+                            {
+                                field: 'elevation',
+                                before: { mode: 'uniform', value: 0 },
+                                after: { mode: 'uniform', value: 2 },
+                            },
+                        ],
                     },
                 },
                 'Set Elevation to 2',

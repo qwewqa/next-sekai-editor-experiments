@@ -575,10 +575,7 @@ test.describe('flipping, scaling and nudging a pair keeps both', () => {
                             data: {
                                 axis: 'beats',
                                 subject: subjectOfCounts(result.counts),
-                                targets: Object.values(result.counts).reduce(
-                                    (sum, count) => sum + count,
-                                    0,
-                                ),
+                                changed: result.counts,
                                 transform: { mode: 'uniform', factor: 2, pivot: 2 },
                             },
                         }),
@@ -605,10 +602,7 @@ test.describe('flipping, scaling and nudging a pair keeps both', () => {
                             id: 'nse.object.move',
                             data: {
                                 subject: subjectOfCounts(result.counts),
-                                targets: Object.values(result.counts).reduce(
-                                    (sum, count) => sum + count,
-                                    0,
-                                ),
+                                changed: result.counts,
                             },
                         }),
                         result.state,
@@ -696,7 +690,7 @@ const transformChosen = (
                       : flipVerticalWithReceipt(source, selected)
             const data = {
                 subject: subjectOfCounts(result.counts),
-                targets: Object.values(result.counts).reduce((sum, count) => sum + count, 0),
+                changed: result.counts,
             }
             const pivot = getScalePivot(selected, axis, source)
             const description =
@@ -1133,10 +1127,7 @@ const flipSlide = (page: Page, separator: boolean, reversed: boolean) =>
                         data: {
                             axis: 'vertical',
                             subject: subjectOfCounts(result.counts),
-                            targets: Object.values(result.counts).reduce(
-                                (sum, count) => sum + count,
-                                0,
-                            ),
+                            changed: result.counts,
                         },
                     }),
                     result.state,

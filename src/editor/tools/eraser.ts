@@ -13,7 +13,7 @@ import { removeStageStyleEventJoint } from '../../state/mutations/events/stage/s
 import { removeStageTransformEventJoint } from '../../state/mutations/events/stage/transform'
 import { removeNote } from '../../state/mutations/slides/note'
 import { removeTimeScale } from '../../state/mutations/timeScale'
-import { countNativeEntities } from '../../state/operations/historyReceipts'
+import { countNativeEntities, removedEntities } from '../../state/operations/historyReceipts'
 import { createTransaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
 import { clearNotification, notify } from '../notification'
@@ -214,11 +214,14 @@ export const remove = (entities: Entity[]) => {
         removes[entity.type]?.(transaction, entity as never)
     }
 
+    const result = transaction.commit([])
+    // What left the chart, not what was asked to.
+    const removed = countNativeEntities(removedEntities(state.value, result, entities))
     const operation = createHistoryOperation({
         id: 'nse.object.delete',
-        data: { removed: countNativeEntities(entities.filter((entity) => removes[entity.type])) },
+        data: { removed },
     })
-    pushState(operation, transaction.commit([]))
+    pushState(operation, result)
     view.entities = {
         hovered: [],
         creating: [],

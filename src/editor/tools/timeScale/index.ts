@@ -14,6 +14,7 @@ import { toTimeScaleEntity, type TimeScaleEntity } from '../../../state/entities
 import { addTimeScale } from '../../../state/mutations/timeScale'
 import {
     countNativeEntities,
+    editOutcomeInput,
     editOutcomeReceipt,
     type EditOutcomeReceipt,
 } from '../../../state/operations/historyReceipts'
@@ -418,22 +419,7 @@ const update = (action: (transaction: Transaction) => ToolOutcome) => {
                       created: countNativeEntities(outcome.entities).timeScale ?? 0,
                   },
               }
-            : {
-                  id:
-                      outcome.intent === 'edit'
-                          ? 'nse.object.edit'
-                          : Object.keys(outcome.receipt.displaced).length
-                            ? 'nse.object.replace'
-                            : 'nse.object.move',
-                  data: {
-                      subject: 'timeScale',
-                      targets: outcome.receipt.targets,
-                      displaced: outcome.receipt.displaced,
-                      ...(outcome.receipt.retainedInitialBpm
-                          ? { retainedInitialBpm: true as const }
-                          : {}),
-                  },
-              },
+            : editOutcomeInput(outcome.intent, outcome.receipt),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

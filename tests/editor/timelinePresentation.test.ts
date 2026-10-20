@@ -54,7 +54,7 @@ test('Add12 sums actual creations while repeated moves make no unique-target cla
         kind: 'edit',
         step: editStep(
             nativeOperation(
-                { id: 'nse.object.move', data: { subject: 'note', targets: 3 } },
+                { id: 'nse.object.move', data: { subject: 'note', changed: { note: 3 } } },
                 'stale',
             ),
         ),
