@@ -282,3 +282,32 @@ test('a picked BGM is stored with its change, read back whole, and named in the 
         matches: true,
     })
 })
+
+test('a flush that fails is recorded in the diagnostics ring, once however often it retries', async ({
+    page,
+}) => {
+    // Forced full from the start: storing is paused before the first edit.
+    await page.addInitScript(installCanvasCounters)
+    await page.addInitScript(() => {
+        sessionStorage.setItem('nse.test.storage', JSON.stringify({ forceQuota: true }))
+    })
+    await page.goto('/')
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await expect.poll(() => page.evaluate(() => window.nseStartupTest !== undefined)).toBe(true)
+    await addNotes(page, 1)
+    const texts = () =>
+        page.evaluate(async () => {
+            const { ringEntries } =
+                await window.editorTest.appImport<typeof import('../../src/diagnostics')>(
+                    '/src/diagnostics.ts',
+                )
+            return ringEntries().map(({ kind, text }) => `${kind}: ${text}`)
+        })
+    await expect.poll(texts).toContainEqual(expect.stringMatching(/^error: .*paused/i))
+    // More edits fail the same way: the ring keeps the one entry.
+    await addNotes(page, 2, 1)
+    await expect
+        .poll(async () => (await texts()).filter((text) => /paused/i.test(text)).length)
+        .toBe(1)
+})

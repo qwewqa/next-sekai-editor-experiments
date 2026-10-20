@@ -158,7 +158,6 @@ export const shownChange = computed(() => {
 
 const presentation = createShowEdits(isPeeking, () => settings.dimUnchangedObjects)
 export const showEdits = presentation.showEdits
-export const setShowEdits = presentation.set
 export const toggleShowEdits = presentation.toggle
 
 const inspection = createPropertyInspection(shownChange, loadEntryState)

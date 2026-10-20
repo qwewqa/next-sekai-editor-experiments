@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { RING_SIZE, formatDiagnostics, redactPaths, type RingEntry } from '../../src/diagnostics'
+import {
+    RING_SIZE,
+    formatDiagnostics,
+    recordDiagnostic,
+    redactPaths,
+    resetRingForTests,
+    ringEntries,
+    type DiagnosticFields,
+    type RingEntry,
+} from '../../src/diagnostics'
 
-const fields = (entries: RingEntry[]) => ({
+const fields = (entries: RingEntry[]): DiagnosticFields => ({
     productName: 'Next SEKAI Editor',
     appVersion: '0.6.0',
     atTag: true,
@@ -71,6 +80,50 @@ test('without a storage estimate or entries the text says so', () => {
     const text = formatDiagnostics({ ...fields([]), estimate: undefined })
     assert.match(text, /^Storage: unavailable$/m)
     assert.match(text, new RegExp(`Last ${RING_SIZE} errors and CSP violations: none`))
+})
+
+test('without storage facts the text leaves the storage lines out', () => {
+    const text = formatDiagnostics(fields([]))
+    assert.doesNotMatch(text, /^(Database|Storing|Worker restarts|Sessions):/m)
+})
+
+test('the text names the database, whether storing is paused and why, restarts and counts', () => {
+    const text = (storing: NonNullable<DiagnosticFields['storing']>) =>
+        formatDiagnostics({ ...fields([]), storing })
+    const on = text({
+        mode: 'stored',
+        restarts: 0,
+        database: { version: 2, format: 1, sessions: 12, chains: 5 },
+    })
+    assert.match(on, /^Database: version 2, format 1$/m)
+    assert.match(on, /^Storing: on$/m)
+    assert.match(on, /^Worker restarts: 0$/m)
+    assert.match(on, /^Sessions: 12, chains: 5$/m)
+    const full = text({ mode: 'stored', reason: 'full', restarts: 3 })
+    assert.match(full, /^Storing: paused \(full\)$/m)
+    assert.match(full, /^Worker restarts: 3$/m)
+    assert.match(text({ mode: 'readOnly', restarts: 0 }), /^Storing: read-only$/m)
+    assert.match(text({ mode: 'memory', restarts: 1 }), /^Storing: off, in memory only$/m)
+    assert.match(
+        text({ mode: 'memory', reason: 'olderTabs', restarts: 1 }),
+        /^Storing: off, in memory only \(olderTabs\)$/m,
+    )
+    const unknown = text({ restarts: 0 })
+    assert.match(unknown, /^Storing: not started$/m)
+    assert.match(unknown, /^Database: unavailable$/m)
+    assert.match(unknown, /^Sessions: unavailable$/m)
+})
+
+test('the same error twice in a row is recorded once, so a retry loop leaves room for the rest', () => {
+    resetRingForTests()
+    const before = ringEntries().length
+    recordDiagnostic('error', 'A flush failed: quota', 1000)
+    recordDiagnostic('error', 'A flush failed: quota', 2000)
+    recordDiagnostic('csp', 'A flush failed: quota', 3000)
+    recordDiagnostic('error', 'Another', 4000)
+    recordDiagnostic('error', 'A flush failed: quota', 5000)
+    assert.equal(ringEntries().length, before + 4)
+    resetRingForTests()
 })
 
 test('the CSP violation listener writes to the diagnostics ring and calls the test hook', async () => {

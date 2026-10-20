@@ -1,3 +1,4 @@
+import { recordError } from '../diagnostics'
 import {
     setExportHandleReader,
     setExportPersister,
@@ -64,7 +65,7 @@ import { transfer } from './worker/rpc'
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
     interface Window {
-        /** The dev console's tools (§1.6.11.1's debug viewer). */
+        /** The dev console's tools (§1.6.11.1's debug viewer): dev builds and test flags only. */
         nse?: { inspectSnapshot: (hash: string) => Promise<unknown> }
         /** The flusher for specs, when a storage test flag is seeded. */
         nseFlushTest?: {
@@ -311,10 +312,12 @@ export const startStoring = (
         },
         onError: (error) => {
             if (test) errors.push(error)
-            // A dev build's checks (D9, a published state changed in place) fail loudly; a newer
-            // database's refusals are expected.
-            if (import.meta.env.DEV && worker.status?.mode !== 'readOnly')
-                console.error('A flush failed', error)
+            // A newer database's refusals are expected.
+            if (worker.status?.mode === 'readOnly') return
+            // The ring keeps the failure for Copy Diagnostic Info… (§1.4.16).
+            recordError(error)
+            // A dev build's checks (D9, a published state changed in place) fail loudly.
+            if (import.meta.env.DEV) console.error('A flush failed', error)
         },
     })
     flusher = instance
@@ -517,16 +520,18 @@ export const startStoring = (
     // History's entries are peeked from memory or their stored snapshots (§1.4.11).
     setPeekSource(createPeekSource(worker, () => flusher))
 
-    window.nse = {
-        ...window.nse,
-        inspectSnapshot: async (hash: string) => {
-            const parts = await worker.call('readSnapshot', hash.toLowerCase())
-            return inspectSnapshot(parts.root, {
-                node: (hex) => parts.nodes[hex],
-                chunk: (hex) => parts.chunks[hex],
-            })
-        },
-    }
+    // The debug viewer reads, and so only dev builds and a page with a storage test flag have it.
+    if (import.meta.env.DEV || test)
+        window.nse = {
+            ...window.nse,
+            inspectSnapshot: async (hash: string) => {
+                const parts = await worker.call('readSnapshot', hash.toLowerCase())
+                return inspectSnapshot(parts.root, {
+                    node: (hex) => parts.nodes[hex],
+                    chunk: (hex) => parts.chunks[hex],
+                })
+            },
+        }
     if (test && !safe)
         window.nseFlushTest = {
             flusher: instance,

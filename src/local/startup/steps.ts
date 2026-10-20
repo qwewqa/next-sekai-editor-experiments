@@ -1,6 +1,7 @@
 import type { Chart } from '../../chart'
 import { parseLevelDataChart } from '../../chart/parse/levelData'
 import { validateChart } from '../../chart/validate'
+import { recordError } from '../../diagnostics'
 import { parseAutoSave } from '../../history/autoSave/parse'
 import type { JsonValue } from '../../history/operations'
 import { LevelDataReport } from '../../levelData/report'
@@ -19,7 +20,7 @@ import { hasWebLocks, sessionLock } from '../locks'
 import { displayName, namePartsOf } from '../names'
 import { stateBatch } from '../stateBatch'
 import type { StorageStatus } from '../worker/core'
-import { addLoadEvent, type LoadEvent, type ShownName } from './events'
+import type { LoadEvent, ShownName } from './events'
 import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY, writeLegacyRecovery, writesLegacySlot } from './legacy'
 import type { MigrationBatch, MigrationResult } from './migrationWrite'
 import { RecoverySteps } from './recovery'
@@ -197,6 +198,7 @@ export const journalsStep = async (context: RecoveryContext) => {
             // Written by a newer build, before its apply was tried.
             if (outcome.kind === 'later') later = true
             if (outcome.kind === 'failed') {
+                recordError(outcome.error)
                 console.error('A journal could not be replayed', outcome.error)
                 // This tab's own is its reload's to say: it may show that work at once.
                 if (outcome.sessionId === context.own) context.ownFailed = true
@@ -280,6 +282,7 @@ const migrationBatch = (context: RecoveryContext, text: string, hash: string) =>
         return { batch, name: displayName(parts), olderRevision: slot.olderRevision }
     } catch (error) {
         // Read but not storable: a bug, kept in Local Data rather than blocking every load.
+        recordError(error)
         console.error('The old auto save could not be prepared', error)
         return
     }
@@ -314,6 +317,7 @@ export const migrationStep = async (context: RecoveryContext) => {
         try {
             result = await context.worker.migrateAutoSave(made.batch)
         } catch (error) {
+            recordError(error)
             console.error('The old auto save could not be migrated', error)
             context.events({ kind: 'migrationFailed' })
             return
@@ -374,6 +378,3 @@ export const replaySessionJournal = async (context: RecoveryContext, sessionId: 
     context.outcomes.push(outcome)
     return outcome
 }
-
-/** Adds a load event: for the UI's pill and Local Data's "At this load". */
-export const reportLoadEvent = addLoadEvent
