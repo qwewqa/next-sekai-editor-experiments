@@ -2,7 +2,6 @@ import type { LockService } from '../../platform/types'
 import type { Channel } from '../channel'
 import { countDayOfUse } from '../days'
 import { DB_NAME, DB_VERSION, readMeta, STORE_NAMES, upgradeDatabase, writeMeta } from '../db'
-import { HANDLES } from '../handleRows'
 import { answerUpgrades, openWithHandshake, type Opened } from '../handshake'
 import {
     domError,
@@ -277,12 +276,12 @@ export class StorageCore {
         const db = this.db
         if (!db) throw new StorageRefusedError(this.current.reason ?? 'failed')
         try {
-            return await db.transaction(inScope(db, stores), 'readonly', fn)
+            return await db.transaction(stores, 'readonly', fn)
         } catch (error) {
             if (!isConnectionError(error) || this.current.mode !== 'stored') throw error
             await this.reopen()
             if (!this.db) throw error
-            return await this.db.transaction(inScope(this.db, stores), 'readonly', fn)
+            return await this.db.transaction(stores, 'readonly', fn)
         } finally {
             tick?.()
         }
@@ -308,7 +307,7 @@ export class StorageCore {
         const db = this.db
         if (mode === 'memory') {
             if (!db) throw new StorageRefusedError('failed')
-            const writing = db.transaction(inScope(db, stores), 'readwrite', fn, options)
+            const writing = db.transaction(stores, 'readwrite', fn, options)
             this.memoryWrites.add(writing)
             const done = () => {
                 this.memoryWrites.delete(writing)
@@ -369,7 +368,7 @@ export class StorageCore {
         if (db.version !== this.version) throw new StorageRefusedError('readOnly')
         if (this.flags.forceQuota) throw domError('QuotaExceededError', 'Forced by a test')
         if (this.flags.forceUnknownError) throw domError('UnknownError', 'Forced by a test')
-        return db.transaction(inScope(db, stores), 'readwrite', fn, options)
+        return db.transaction(stores, 'readwrite', fn, options)
     }
 
     private async pauseReason(error: unknown): Promise<PauseReason> {
@@ -513,8 +512,8 @@ export class StorageCore {
         const source = this.db
         const rows = new Map<string, { key: unknown; value: unknown }[]>()
         if (source)
-            await source.transaction(inScope(source, STORE_NAMES), 'readonly', async (tx) => {
-                for (const store of inScope(source, STORE_NAMES)) {
+            await source.transaction(STORE_NAMES, 'readonly', async (tx) => {
+                for (const store of STORE_NAMES) {
                     if (store === 'meta') continue
                     const entries = await tx.entries(store)
                     rows.set(
@@ -528,7 +527,7 @@ export class StorageCore {
             : undefined
         const run = () =>
             target.transaction(
-                inScope(target, STORE_NAMES),
+                STORE_NAMES,
                 'readwrite',
                 async (tx) => {
                     const stored = (await readMeta(tx, 'maxSeenTime')) ?? 0
@@ -536,7 +535,6 @@ export class StorageCore {
                     // Moved rows take this database's day of use, not the memory store's (§1.6.8.7).
                     const day = await countDayOfUse(tx, nextTime(seen, Date.now()))
                     for (const [store, list] of rows) {
-                        if (!target.storeNames.includes(store)) continue
                         const inline = tx.describe(store).keyPath !== null
                         for (const { key, value } of list) {
                             this.moveTick(tick)
@@ -561,15 +559,6 @@ export class StorageCore {
         })
     }
 }
-
-/**
- * A transaction's stores as this database has them: one without `handles` (D24; none at version
- * 2, whose step adds it) stores no handle.
- */
-const inScope = (db: KvDatabase, stores: readonly string[]) =>
-    stores.includes(HANDLES) && !db.storeNames.includes(HANDLES)
-        ? stores.filter((store) => store !== HANDLES)
-        : stores
 
 /** A row with its `day` set, when it has one. */
 const withDay = (value: unknown, day: number) =>

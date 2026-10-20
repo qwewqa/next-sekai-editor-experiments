@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { CHANNEL_NAME } from '../../src/local/channel'
 import { DB_NAME, DB_VERSION, hashKey, STORE_NAMES, STORES_V1 } from '../../src/local/db'
+import { writeHandleRow } from '../../src/local/handleRows'
 import { MemoryKv } from '../../src/local/kv/memory'
 import { checkStored } from '../../src/local/testing/invariants'
 import { crashSweep } from '../../src/local/testing/sweep'
@@ -92,12 +93,10 @@ test('the first load creates every current store, index and meta row', async () 
     await world.idle()
 })
 
-test('a version 1 database made before a store joined the set gains it, its rows kept', async () => {
-    const world = createWorld({ seed: 2 })
-    const tab = world.tab('a')
-    // A development profile from before `handles` was added.
-    await tab.run(async () => {
-        const db = await tab.kv.open(DB_NAME, 1, {
+/** A database at `version` with every store but `handles`, as a profile from before it joined. */
+const withoutHandles = (tab: Tab, version: number) =>
+    tab.run(async () => {
+        const db = await tab.kv.open(DB_NAME, version, {
             upgrade: (upgrade) => {
                 for (const name of STORE_NAMES) {
                     if (name === 'handles') continue
@@ -114,14 +113,43 @@ test('a version 1 database made before a store joined the set gains it, its rows
         })
         db.close()
     })
+
+test('a database of any earlier version without a store of the set gains it, its rows kept', async () => {
+    // Version 1 from before `handles` joined the set; version 2 made by the bump with no step.
+    for (const version of [1, 2]) {
+        const world = createWorld({ seed: 2 })
+        const tab = world.tab('a')
+        await withoutHandles(tab, version)
+        const store = core(world, tab)
+        assert.deepEqual(await tab.run(() => store.start()), { mode: 'stored' })
+        assert.equal(world.memory.version(DB_NAME), DB_VERSION)
+        const handles = await tab.run(() =>
+            store.read(['handles'], async (tx) => tx.describe('handles')),
+        )
+        assert.deepEqual(
+            handles,
+            { keyPath: STORES_V1.handles.keyPath, indexes: {} },
+            `v${version}`,
+        )
+        assert.deepEqual(await getRow(tab, store, 'old'), { key: 'old', value: 'kept' })
+        await world.idle()
+    }
+})
+
+test('a write to a store the database lacks fails, never dropping what it would store', async () => {
+    const world = createWorld({ seed: 3 })
+    const tab = world.tab('a')
+    // Made at this version by an upgrade that left a store out (no step runs on it).
+    await withoutHandles(tab, DB_VERSION)
     const store = core(world, tab)
     assert.deepEqual(await tab.run(() => store.start()), { mode: 'stored' })
-    assert.equal(world.memory.version(DB_NAME), DB_VERSION)
-    const handles = await tab.run(() =>
-        store.read(['handles'], async (tx) => tx.describe('handles')),
+    await assert.rejects(
+        tab.run(() =>
+            store.write(['chains', 'handles'], (tx) =>
+                writeHandleRow(tx, 'chain-1', 'file', 'coconut.nxsp', { token: 1 }),
+            ),
+        ),
     )
-    assert.deepEqual(handles, { keyPath: STORES_V1.handles.keyPath, indexes: {} })
-    assert.deepEqual(await getRow(tab, store, 'old'), { key: 'old', value: 'kept' })
     await world.idle()
 })
 

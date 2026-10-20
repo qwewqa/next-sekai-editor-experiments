@@ -274,7 +274,8 @@ export const startStorage = async () => {
         )
     const { status, answered } = await starting
     let open = false
-    // Whether the open at start took the reload's claim, which it releases or keeps.
+    // Whether the open at start took the reload's claim: from its call it releases or passes it
+    // on, a rejection included (`openAtStart`).
     let handed = false
     try {
         await recovered
