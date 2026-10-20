@@ -16,6 +16,7 @@ import { removeTimeScale } from '../../state/mutations/timeScale'
 import { countNativeEntities, removedEntities } from '../../state/operations/historyReceipts'
 import { createTransaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import { clearNotification, notify } from '../notification'
 import {
     focusEntityAtBeat,
@@ -120,7 +121,12 @@ export const eraser: Tool = {
         if (active.count === selectedEntities.length) return
         active.count = selectedEntities.length
 
-        notify(interpolate(() => i18n.value.tools.eraser.erasing, `${selectedEntities.length}`))
+        notify(
+            interpolate(
+                () => i18n.value.tools.eraser.erasing,
+                formatCount(selectedEntities.length),
+            ),
+        )
     },
 
     dragEnd(x, y) {

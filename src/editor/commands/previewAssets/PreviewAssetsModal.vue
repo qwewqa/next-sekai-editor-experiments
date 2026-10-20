@@ -29,6 +29,7 @@ import { serverItemText } from '../../../preview/assets/server/liveText'
 import { storedLine, type StoredSummary } from '../../../preview/assets/stored'
 import type { AssetType } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
+import { interpolateRaw } from '../../../utils/interpolate'
 import { formatSize } from '../exportLevel/format'
 import AssetGlyph from './AssetGlyph.vue'
 import AssetSources from './AssetSources.vue'
@@ -131,7 +132,9 @@ const fallbackOf = (tab: PreviewAssetsTab) =>
 // The mark is for sighted users; the reason is in the tab's name.
 const tabName = (tab: PreviewAssetsTab) => {
     const fallback = fallbackOf(tab)
-    return fallback ? `${label(tab)}. ${reasonText(fallback)}` : label(tab)
+    return fallback
+        ? interpolateRaw(i18n.value.modals.form.sentenceJoin, label(tab), reasonText(fallback))
+        : label(tab)
 }
 
 // The strip scrolls sideways where its tabs do not fit, keeping the shown tab in view.
