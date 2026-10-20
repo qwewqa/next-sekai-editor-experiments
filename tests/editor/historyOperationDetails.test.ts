@@ -511,12 +511,16 @@ test('cascades and replacements are recorded in the dialog only', () => {
     assert.deepEqual(items(del, 'removed'), ['1 group', '800 notes', '12 time scales'])
     assert.deepEqual(del.facts, ['Added "Group 1" group'])
     const folder = byId('owner.delete.cascade.stageFolder')
-    assert.deepEqual(items(folder, 'removed'), ['2 stages', '1 stage folder', '4 camera events'])
+    assert.deepEqual(items(folder, 'removed'), [
+        '2 stages',
+        '1 stage folder',
+        '4 stage transform events',
+    ])
     assert.deepEqual(byId('owner.delete.folderOnly').rows, [])
     assert.deepEqual(byId('owner.delete.counts.noCascade').rows, [])
     const copy = byId('owner.duplicate.cascade')
     assert.equal(copy.description, 'Duplicated "Alpha" group')
-    assert.deepEqual(items(copy, 'added'), ['1 group', '120 notes', '1 BPM change'])
+    assert.deepEqual(items(copy, 'added'), ['1 group', '120 notes', '1 time scale'])
     assert.deepEqual(byId('owner.duplicate.folderOnly').rows, [])
 })
 
