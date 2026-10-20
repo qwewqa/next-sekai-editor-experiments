@@ -1327,6 +1327,7 @@
     "noEditsHere": "此处没有编辑",
     "checking": "正在检查更早的步骤…",
     "notChecked": "有 {0} 步无法检查",
+    "searchFailed": "无法完成搜索。",
     "announceViewingChange": "正在查看 {0}，{1}",
     "openedFile": "已打开 {0}",
     "viewChart": "查看谱面",

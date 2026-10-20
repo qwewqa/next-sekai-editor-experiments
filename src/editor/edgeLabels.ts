@@ -1,5 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import { settings } from '../settings'
+import { extentOf } from '../utils/math'
 import { shownMarkerTime } from './hoverMarker'
 import { hasToolModal } from './toolModals'
 import { view } from './view'
@@ -126,7 +127,7 @@ export const lineSpanAt = (y: number, other?: SideBoxes): LineSpan => {
     // Lines are 2 pixels wide.
     const meets = (box: LabelBox) => box.top - 1 < y && y < box.bottom + 1
     return {
-        left: Math.max(-Infinity, ...left.filter(meets).map((box) => box.right + inset)),
-        right: Math.min(Infinity, ...right.filter(meets).map((box) => box.left - inset)),
+        left: extentOf(left.filter(meets).map((box) => box.right + inset)).max,
+        right: extentOf(right.filter(meets).map((box) => box.left - inset)).min,
     }
 }

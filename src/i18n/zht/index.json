@@ -1327,6 +1327,7 @@
     "noEditsHere": "此處沒有編輯",
     "checking": "正在檢查更早的步驟…",
     "notChecked": "有 {0} 步無法檢查",
+    "searchFailed": "無法完成搜尋。",
     "announceViewingChange": "正在檢視 {0}，{1}",
     "openedFile": "已開啟 {0}",
     "viewChart": "檢視譜面",

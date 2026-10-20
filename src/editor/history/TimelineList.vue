@@ -60,6 +60,7 @@ import {
     keyOf,
     newerEntries,
     peekedInfo,
+    removedEntries,
     requestPeek,
     requestRestore,
     type PeekedInfo,
@@ -136,6 +137,7 @@ const built = computed(() =>
         expanded: expandedGroups.value,
         damaged: damagedEntries.value,
         newer: newerEntries.value,
+        removed: removedEntries.value,
         now: clock.value,
         gap: gap.value,
         // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
@@ -1668,8 +1670,13 @@ defineExpose({
                     :style="{ top: `${geometry.total}px`, height: `${FAILED}px` }"
                     data-history-failed
                 >
-                    <span>{{ i18n.history.loadFailed }}</span>
+                    <span>{{
+                        historyFilter === 'here'
+                            ? i18n.history.searchFailed
+                            : i18n.history.loadFailed
+                    }}</span>
                     <button
+                        v-if="historyFilter !== 'here' || here.canRetry"
                         type="button"
                         class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                         @click="historyFilter === 'here' ? retryHere() : retry()"

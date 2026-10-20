@@ -1327,6 +1327,7 @@
     "noEditsHere": "Aucune modification ici",
     "checking": "Vérification des étapes plus anciennes…",
     "notChecked": "{0} étape n’a pas pu être vérifiée|{0} étapes n’ont pas pu être vérifiées",
+    "searchFailed": "La recherche n’a pas pu être terminée.",
     "announceViewingChange": "Affichage de {0}, {1}",
     "openedFile": "{0} ouvert",
     "viewChart": "Voir la partition",

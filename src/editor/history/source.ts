@@ -434,11 +434,15 @@ export const followEntries = () => {
     followers++
     let timer: ReturnType<typeof setTimeout> | undefined
     let tries = 0
+    // Set when the list goes away: a timer already running then neither reads nor re-arms.
+    let disposed = false
     const follow = () => {
+        if (disposed) return
         clearTimeout(timer)
         timer = setTimeout(async () => {
             const before = waiting()
             await refresh()
+            if (disposed) return
             void checkNewer()
             if (waiting() && tries++ < 8) follow()
             else {
@@ -504,6 +508,7 @@ export const followEntries = () => {
         },
     )
     onScopeDispose(() => {
+        disposed = true
         stop()
         stopEntries?.()
         stopStart?.()
@@ -529,6 +534,8 @@ export const here = shallowReactive({
     unreadable: 0,
     /** The scan, or the check of newer entries, could not be done: what is listed may be partial. */
     failed: false,
+    /** Whether Try Again can help: not without a storage worker, where nothing can be searched. */
+    canRetry: true,
 })
 
 let hereToken = 0
@@ -567,6 +574,7 @@ const scanHere = async () => {
     here.matches = []
     here.unreadable = 0
     here.failed = false
+    here.canRetry = !!worker
     hereTop = undefined
     hereDone = false
     hereFor = hereKey()
@@ -606,13 +614,40 @@ const scanHere = async () => {
     }
 }
 
-/** Entries stored since the scan began: checked down to where it started. */
-const checkNewer = async () => {
+/** The check in flight, and how many were asked for while it ran. */
+let checking: Promise<void> | undefined
+let checkRequests = 0
+
+/**
+ * Entries stored since the scan began: checked down to where it started. One check runs at a time,
+ * for all the lists following (their timers and watches coincide); a request during a check runs
+ * once more after it, so what was stored meanwhile is not missed. Every caller's promise covers
+ * the checks it asked for.
+ */
+const checkNewer = (): Promise<void> => {
+    if (checking) {
+        checkRequests++
+        return checking
+    }
+    const run = (async () => {
+        let seen: number
+        do {
+            seen = checkRequests
+            await checkNewerOnce()
+        } while (seen !== checkRequests)
+    })().finally(() => {
+        checking = undefined
+    })
+    checking = run
+    return run
+}
+
+const checkNewerOnce = async () => {
     const worker = storageWorker
     const range = hereRange.value
+    // Absent when the scan found no entries at all: then every entry stored since is newer.
     const until = hereTop
-    if (!worker || !range || !until || here.scanning || !hereDone || historyFilter.value !== 'here')
-        return
+    if (!worker || !range || here.scanning || !hereDone || historyFilter.value !== 'here') return
     const mark = hereToken
     const start = startOf(session.value.sessionId)
     const found: EditMatch[] = []
@@ -625,7 +660,7 @@ const checkNewer = async () => {
             const page = await worker.call('findEdits', {
                 ...start,
                 ...range,
-                until,
+                ...(until ? { until } : {}),
                 ...(cursor ? { cursor } : {}),
             })
             if (mark !== hereToken) return
@@ -643,8 +678,11 @@ const checkNewer = async () => {
     here.failed = false
     if (top) hereTop = top
     // Places along the chain stay counted from the first scan's newest entry.
-    if (found.length)
-        here.matches = [...found.map((match) => matchOf(match, reached)), ...here.matches]
+    const known = new Set(here.matches.map(entryId))
+    const fresh = found
+        .map((match) => matchOf(match, reached))
+        .filter((entry) => !known.has(entryId(entry)))
+    if (fresh.length) here.matches = [...fresh, ...here.matches]
     here.unreadable += unreadable
 }
 

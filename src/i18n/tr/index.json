@@ -1327,6 +1327,7 @@
     "noEditsHere": "Burada düzenleme yok",
     "checking": "Eski adımlar denetleniyor…",
     "notChecked": "{0} adım denetlenemedi",
+    "searchFailed": "Arama tamamlanamadı.",
     "announceViewingChange": "{0} görüntüleniyor, {1}",
     "openedFile": "{0} açıldı",
     "viewChart": "Çizelgeyi Görüntüle",

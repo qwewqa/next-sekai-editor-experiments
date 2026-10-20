@@ -1247,11 +1247,152 @@ test('a failed Edits Here scan says so, and Try Again scans again', async ({ pag
     }
     // Not "No edits here": the search did not finish.
     const failed = surface(page).locator('[data-history-failed]')
-    await expect(failed).toContainText('The timeline could not be loaded.')
+    await expect(failed).toContainText('The search could not be completed.')
     await expect(surface(page).locator('[data-history-empty]')).toHaveCount(0)
     await failed.getByRole('button', { name: 'Try Again' }).click()
     await expect(row(page, 'Moved near')).toBeVisible()
     await expect(failed).toHaveCount(0)
+})
+
+test('a failed Edits Here with nothing to search offers no Try Again', async ({ page }) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    await chooseHere(page)
+    await expect(row(page, 'Moved near')).toBeVisible()
+    await page.evaluate(async () => {
+        const { here } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/source')
+        >('/src/editor/history/source.ts')
+        here.canRetry = false
+        here.failed = true
+    })
+    const failed = surface(page).locator('[data-history-failed]')
+    await expect(failed).toContainText('The search could not be completed.')
+    await expect(failed.getByRole('button')).toHaveCount(0)
+})
+
+const hereMatchIds = (page: Page) =>
+    page.evaluate(async () => {
+        const { here } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/source')
+        >('/src/editor/history/source.ts')
+        return here.matches.map((entry) => `${entry.sessionId}:${entry.seq}`)
+    })
+
+/** Opens the History dialog over the docked panel, as its command does. */
+const openDialog = async (page: Page) => {
+    await page.evaluate(() => {
+        const active = document.activeElement
+        if (active instanceof HTMLElement) active.blur()
+    })
+    await page.keyboard.press('Shift+H')
+    await expect(page.locator('[data-history-surface="dialog"] [data-history-list]')).toBeVisible()
+}
+
+test('the panel and the dialog both following Edits Here check newer entries once, and list a match once', async ({
+    page,
+}) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    await chooseHere(page)
+    await expect(row(page, 'Moved near')).toBeVisible()
+    await expect(surface(page).locator('[data-history-scan]')).toHaveCount(0)
+    await openDialog(page)
+    const hold = await holdWorker(page, 'findEdits')
+    try {
+        await edit(page, 'Moved again', { kind: 'move', beats: [7] })
+        await stored(page)
+        await hold.reached()
+        // Both lists' timers have fired by now: one check is out, the other waits for it.
+        await page.waitForTimeout(2500)
+        expect(await hold.count()).toBe(1)
+    } finally {
+        await release(page)
+    }
+    await expect.poll(() => hereMatchIds(page).then((ids) => ids.length)).toBe(2)
+    await page.waitForTimeout(1500)
+    const ids = await hereMatchIds(page)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids).toHaveLength(2)
+})
+
+test('Edits Here chosen before anything is stored lists the entries stored after', async ({
+    page,
+}) => {
+    // A new session with nothing stored yet: flushes are held, so the scan reads an empty chain.
+    await page.evaluate(() => {
+        window.nseFlushTest!.stall = true
+        const { show, fixtures } = window.editorTest
+        show(fixtures.interaction, 3)
+    })
+    await viewAt(page, 6)
+    await openTab(page)
+    await chooseHere(page)
+    await expect(surface(page).locator('[data-history-empty]')).toHaveText('No edits here')
+    // The scan read an empty chain: it has no newest entry to continue from.
+    const top = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const [{ storageWorker }, { session }] = await Promise.all([
+            appImport<typeof import('../../src/local/start')>('/src/local/start.ts'),
+            appImport<typeof import('../../src/history/session')>('/src/history/session.ts'),
+        ])
+        const found = await storageWorker!.call('findEdits', {
+            sessionId: session.value.sessionId,
+            from: -1e9,
+            to: 1e9,
+        })
+        return found.top
+    })
+    expect(top).toBeUndefined()
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await page.evaluate(() => {
+        window.nseFlushTest!.stall = false
+    })
+    await stored(page)
+    await expect(row(page, 'Moved near')).toBeVisible({ timeout: 10_000 })
+})
+
+test('a list closed while its follow timer runs does not read again', async ({ page }) => {
+    await page.evaluate(() => {
+        window.nseFlushTest!.stall = true
+    })
+    // Entries waiting for the worker keep a timer re-arming while its list shows.
+    await page.evaluate(async () => {
+        const start =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        const worker = start.storageWorker as unknown as {
+            call: (name: string, ...args: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        const win = window as unknown as { timelineReads: number }
+        win.timelineReads = 0
+        worker.call = (name, ...args) => {
+            if (name === 'readTimeline') win.timelineReads++
+            return call(name, ...args)
+        }
+    })
+    await openDialog(page)
+    const hold = await holdWorker(page, 'readTimeline')
+    try {
+        await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+        await hold.reached()
+        await page.keyboard.press('Escape')
+        await expect(page.locator('[data-history-surface="dialog"]')).toHaveCount(0)
+    } finally {
+        await release(page)
+    }
+    await page.waitForTimeout(500)
+    const reads = () =>
+        page.evaluate(() => (window as unknown as { timelineReads: number }).timelineReads)
+    const settled = await reads()
+    await page.waitForTimeout(4000)
+    expect(await reads()).toBe(settled)
 })
 
 test('Edits Here takes the beats of a very large selection', async ({ page }) => {
