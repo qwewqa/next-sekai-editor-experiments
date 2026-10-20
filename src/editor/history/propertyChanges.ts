@@ -6,6 +6,7 @@ import { headerRecord } from '../../local/records/records'
 import type { State } from '../../state'
 import type { BgmMeta } from '../../state/bgm'
 import type { LevelInfoTag } from '../../state/levelInfo'
+import { getFilename } from '../../utils/file'
 
 export type PropertySectionKind =
     | 'level'
@@ -45,15 +46,14 @@ export type PropertyReference = {
     kind: 'reference'
     id: number
     name?: string
-    disambiguate: boolean
-    folder?: { id: number; name?: string; disambiguate: boolean }
+    folder?: { id: number; name?: string }
 }
 
 export type PropertyItem = PropertyReference | { kind: 'tag'; title: string; icon?: string }
 
 /** Unformatted historical values; no decoded media or chart objects are retained here. */
 export type PropertyValue =
-    | { kind: 'notSet' | 'notPresent' | 'noFolder' }
+    | { kind: 'notSet' | 'notPresent' | 'noFolder' | 'emptyName' }
     | { kind: 'text'; value: string }
     | { kind: 'number'; value: number; unit?: 'ms' | 'bytes'; decimalShift?: number }
     | { kind: 'boolean'; value: boolean }
@@ -91,6 +91,9 @@ const number = (
               ...(unit ? { unit } : {}),
               ...(decimalShift ? { decimalShift } : {}),
           }
+/** A name, which may be empty: an empty name is a name, drawn as one, and not Not set. */
+const nameValue = (value: string): PropertyValue =>
+    value === '' ? { kind: 'emptyName' } : { kind: 'text', value }
 const boolean = (value: boolean): PropertyValue => ({ kind: 'boolean', value })
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -103,27 +106,10 @@ const header = (state: State) =>
         }),
     )
 
-/** Duplicate names are determined by distinct IDs across both endpoints, never by map position. */
-const ambiguousNames = (
-    before: ReadonlyMap<number, { name: string }>,
-    after: ReadonlyMap<number, { name: string }>,
-) => {
-    const ids = new Map<string, number>()
-    const ambiguous = new Set<string>()
-    for (const map of [before, after])
-        for (const [id, { name }] of map) {
-            if (ids.has(name) && ids.get(name) !== id) ambiguous.add(name)
-            else ids.set(name, id)
-        }
-    return ambiguous
-}
-
 const reference = (
     id: number,
     entries: ReadonlyMap<number, { name: string; folderId?: number }>,
-    names: ReadonlySet<string>,
     folders?: ReadonlyMap<number, FolderObject>,
-    folderNames?: ReadonlySet<string>,
 ): PropertyReference => {
     const entry = entries.get(id)
     const folderId = entry?.folderId
@@ -132,16 +118,9 @@ const reference = (
         kind: 'reference',
         id,
         ...(entry ? { name: entry.name } : {}),
-        disambiguate: !entry || names.has(entry.name),
         ...(folderId === undefined
             ? {}
-            : {
-                  folder: {
-                      id: folderId,
-                      ...(folder ? { name: folder.name } : {}),
-                      disambiguate: !folder || !!folderNames?.has(folder.name),
-                  },
-              }),
+            : { folder: { id: folderId, ...(folder ? { name: folder.name } : {}) } }),
     }
 }
 
@@ -174,29 +153,56 @@ export const comparePropertyChanges = (
     const bgm: PropertyRow[] = []
     row(bgm, 'offset', number(before.bgm.offset, 'ms', 3), number(after.bgm.offset, 'ms', 3))
 
+    // A file reads by its name without the extension, the one name Step Details gives it too: the
+    // recorded operations hold names as picked, and the pick takes the extension off.
+    const fileName = (ref: BgmMeta, fallback?: string) =>
+        text(getFilename({ name: ref.filename }) || fallback)
     const media = (
         kind: 'bgm' | 'cover' | 'preview',
         a: BgmMeta | undefined,
         b: BgmMeta | undefined,
         rows: PropertyRow[] = [],
+        names: readonly [string | undefined, string | undefined] = [undefined, undefined],
     ) => {
         const field = (
             key: 'filename' | 'size' | 'type' | 'duration',
-            value: (ref: BgmMeta) => PropertyValue,
+            value: (ref: BgmMeta, fallback?: string) => PropertyValue,
         ) => {
-            row(rows, key, a ? value(a) : notPresent, b ? value(b) : notPresent)
+            row(rows, key, a ? value(a, names[0]) : notPresent, b ? value(b, names[1]) : notPresent)
         }
         if (a || b) {
-            field('filename', (ref) => text(ref.filename))
+            field('filename', fileName)
             field('size', (ref) => number(ref.size, 'bytes'))
             field('type', (ref) => text(ref.type))
             if (kind === 'bgm') field('duration', (ref) => number(ref.durationMs, 'ms'))
             if (a && b && a.hash !== b.hash)
-                rows.push({ field: 'contents', before: text(a.filename), after: text(b.filename) })
+                rows.push({
+                    field: 'contents',
+                    before: fileName(a, names[0]),
+                    after: fileName(b, names[1]),
+                })
         }
-        section(kind, rows, !a && b ? { status: 'added' } : a && !b ? { status: 'removed' } : {})
+        const status = !a && b ? 'added' : a && !b ? 'removed' : undefined
+        // A row that has both sides (the BGM offset belongs to the level, not to the file) would
+        // lose its before value under an Added or Removed badge. Then the section has no badge,
+        // and the file's rows read Not set on the side with no file.
+        const bothSides = rows.some(
+            ({ before, after }) => before.kind !== 'notPresent' && after.kind !== 'notPresent',
+        )
+        const absent = (value: PropertyValue) => (value.kind === 'notPresent' ? notSet : value)
+        section(
+            kind,
+            status && bothSides
+                ? rows.map(({ field, before, after }) => ({
+                      field,
+                      before: absent(before),
+                      after: absent(after),
+                  }))
+                : rows,
+            status && !bothSides ? { status } : {},
+        )
     }
-    media('bgm', before.bgm.meta, after.bgm.meta, bgm)
+    media('bgm', before.bgm.meta, after.bgm.meta, bgm, [before.bgm.filename, after.bgm.filename])
     const info: PropertyRow[] = []
     for (const key of ['title', 'artists', 'author', 'description'] as const)
         row(info, key, text(before.levelInfo[key]), text(after.levelInfo[key]))
@@ -225,14 +231,10 @@ export const comparePropertyChanges = (
         oldFolders: ReadonlyMap<number, FolderObject>,
         newFolders: ReadonlyMap<number, FolderObject>,
     ) => {
-        const names = ambiguousNames(a, b)
-        const folderNames = ambiguousNames(oldFolders, newFolders)
         const ref = (id: number, old: boolean) =>
-            reference(id, old ? a : b, names, old ? oldFolders : newFolders, folderNames)
+            reference(id, old ? a : b, old ? oldFolders : newFolders)
         const folder = (id: number | undefined, old: boolean): PropertyValue =>
-            id === undefined
-                ? { kind: 'noFolder' }
-                : reference(id, old ? oldFolders : newFolders, folderNames)
+            id === undefined ? { kind: 'noFolder' } : reference(id, old ? oldFolders : newFolders)
         for (const id of new Set([...a.keys(), ...b.keys()])) {
             const old = a.get(id),
                 next = b.get(id)
@@ -248,7 +250,7 @@ export const comparePropertyChanges = (
                     next ? get(next, false) : notPresent,
                 )
             }
-            field('name', (entry) => text(entry.name))
+            field('name', (entry) => nameValue(entry.name))
             // An added or removed folder that sits in no folder has no Folder row to show: it would
             // only say that it is not in one.
             const placed =
@@ -259,9 +261,11 @@ export const comparePropertyChanges = (
             if (placed && (!old || !next || old.folderId !== next.folderId))
                 field('folder', (entry, old) => folder(entry.folderId, old))
             if (kind === 'groups')
-                field('forceNoteSpeed', (entry) =>
-                    number((entry as GroupObject).forceNoteSpeed ?? 0),
-                )
+                // Storage holds an unset speed as 0 and reads 0 back as unset, so neither is a speed.
+                field('forceNoteSpeed', (entry) => {
+                    const speed = (entry as GroupObject).forceNoteSpeed
+                    return speed ? number(speed) : notSet
+                })
             else if (kind === 'stages') {
                 field('fromStart', (entry) => boolean((entry as StageObject).isFromStart))
                 field('untilEnd', (entry) => boolean((entry as StageObject).isUntilEnd))

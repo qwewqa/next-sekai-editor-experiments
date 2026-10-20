@@ -225,7 +225,8 @@ test('Step Details recovery focuses the first new entry after the last Show More
     await pressMore(page, more, false)
     await expect(entries).toHaveCount(46)
     await expect(more).toHaveCount(0)
-    await expectFocusedWithRing(entries.nth(40), 'recovery')
+    // The row is a rule over a focusable box.
+    await expectFocusedWithRing(entries.nth(40).locator(':scope > div'), 'recovery')
 })
 
 test('Property Changes rows focus the first new row after the last Show More', async ({ page }) => {
