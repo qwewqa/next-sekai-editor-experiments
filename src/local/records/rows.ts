@@ -1,4 +1,5 @@
 import { crc32 } from '../../zip/crc32'
+import type { UseDay } from '../days'
 import { toHex } from '../hash'
 import type { RecordValue } from './canonical'
 import type { EncodedNode, EncodedRoot } from './snapshot'
@@ -17,7 +18,7 @@ export type RootRow = {
     refs: Uint8Array
     /** The canonical bytes' length. */
     size: number
-    day: number
+    day: UseDay
 }
 
 /** A kind node's row: its JSON form's `hashes` are `refs` in order. */
@@ -27,13 +28,17 @@ export type NodeRow = {
     depth: 0 | 1
     refs: Uint8Array
     size: number
-    day: number
+    day: UseDay
 }
 
 export type NodesRow = RootRow | NodeRow
 
 /** A chunk's row: the stored form, the canonical length, and the CRC-32 of the key and stored bytes. */
-export type ChunkRow = { bytes: Uint8Array; size: number; crc32: number; day: number }
+export type ChunkRow = { bytes: Uint8Array; size: number; crc32: number; day: UseDay }
+
+/** The `day` a stored row holds, or `fallback` when it has none: a row's day is a day of use. */
+export const storedDay = (value: unknown, fallback: UseDay): UseDay =>
+    Number.isSafeInteger(value) ? (value as UseDay) : fallback
 
 /** Hashes packed as one compact array of 16-byte runs. */
 export const packHashes = (hashes: readonly Uint8Array[]) => {
@@ -59,7 +64,7 @@ export const hashKey = (hash: Uint8Array): ArrayBuffer => {
     return hash.slice().buffer
 }
 
-export const rootRow = (root: EncodedRoot, day: number): RootRow => ({
+export const rootRow = (root: EncodedRoot, day: UseDay): RootRow => ({
     t: 'root',
     v: root.v,
     kinds: root.kinds.map(([name]) => name),
@@ -69,7 +74,7 @@ export const rootRow = (root: EncodedRoot, day: number): RootRow => ({
     day,
 })
 
-export const nodeRow = (node: EncodedNode, day: number): NodeRow => ({
+export const nodeRow = (node: EncodedNode, day: UseDay): NodeRow => ({
     t: 'node',
     kind: node.kind,
     depth: node.depth,

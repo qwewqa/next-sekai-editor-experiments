@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { countDayOfUse, localDate } from '../../../src/local/days'
+import { dateText, hostZone } from '../../../src/calendar/calendar'
+import { countDayOfUse } from '../../../src/local/days'
 import { readMeta } from '../../../src/local/db'
 import { sessionLock } from '../../../src/local/locks'
 import { holdParentLock, holdSessionLock, TabClient } from '../../../src/local/sessions'
@@ -105,5 +106,5 @@ test('days of use go up once per calendar day, and never for a clock set back', 
     // A clock jumped forward a year adds one day, not 365.
     assert.equal(await day(noon + 365 * 86_400_000), 3)
     const last = await tab.run(() => core.read(['meta'], (tx) => readMeta(tx, 'lastUseDate')))
-    assert.equal(last, localDate(noon + 365 * 86_400_000))
+    assert.equal(last, dateText(noon + 365 * 86_400_000, hostZone()))
 })

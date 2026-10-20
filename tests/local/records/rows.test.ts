@@ -17,6 +17,7 @@ import {
     type NodesRow,
 } from '../../../src/local/records/rows'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
+import { useDay } from '../../helpers/useDay'
 import { edgeChart, goldenChart, mediaHash, stateOf } from './charts'
 
 const hashOf = (json: Parameters<typeof canonicalBytes>[0]) =>
@@ -25,7 +26,7 @@ const hashOf = (json: Parameters<typeof canonicalBytes>[0]) =>
 test('a root row’s JSON form, rebuilt from its refs and kinds, hashes to its key', () => {
     for (const fixture of [goldenChart(), edgeChart()]) {
         const snapshot = encodeSnapshot(toRecords(stateOf(fixture)))
-        const row = rootRow(snapshot.root, 3)
+        const row = rootRow(snapshot.root, useDay(3))
         assert.equal(hashOf(rootJsonFromRow(row)), toHex(snapshot.root.hash))
         assert.equal(row.size, snapshot.root.bytes.length)
         assert.equal(row.day, 3)
@@ -37,9 +38,9 @@ test('a root row’s JSON form, rebuilt from its refs and kinds, hashes to its k
             snapshot.root.kinds.map(([, hash]) => toHex(hash)),
         )
         for (const node of snapshot.nodes)
-            assert.equal(hashOf(nodeJsonFromRow(nodeRow(node, 0))), toHex(node.hash))
+            assert.equal(hashOf(nodeJsonFromRow(nodeRow(node, useDay(0)))), toHex(node.hash))
     }
-    const golden = rootRow(encodeSnapshot(toRecords(stateOf(goldenChart()))).root, 0)
+    const golden = rootRow(encodeSnapshot(toRecords(stateOf(goldenChart()))).root, useDay(0))
     assert.deepEqual(unpackHashes(golden.refs).slice(-3).map(toHex), [
         mediaHash('cover'),
         mediaHash('preview'),
@@ -70,8 +71,8 @@ test('packed hashes and keys are compact 16-byte runs', () => {
 const nodesStore = (snapshots: ReturnType<typeof encodeSnapshot>[]) => {
     const rows = new Map<string, NodesRow>()
     for (const snapshot of snapshots) {
-        rows.set(toHex(snapshot.root.hash), rootRow(snapshot.root, 0))
-        for (const node of snapshot.nodes) rows.set(toHex(node.hash), nodeRow(node, 0))
+        rows.set(toHex(snapshot.root.hash), rootRow(snapshot.root, useDay(0)))
+        for (const node of snapshot.nodes) rows.set(toHex(node.hash), nodeRow(node, useDay(0)))
     }
     return rows
 }
@@ -115,7 +116,7 @@ test('a chunk row moved under another key fails its CRC', async () => {
         stored: deflateChunk(a.bytes),
         canonical: a.bytes,
     })
-    const row = chunkRowOf(verified, 5)
+    const row = chunkRowOf(verified, useDay(5))
     assert.ok(isChunkRowIntact(a.hash, row))
     assert.equal(isChunkRowIntact(b.hash, row), false)
     assert.equal(row.size, a.bytes.length)
