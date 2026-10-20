@@ -14,7 +14,11 @@ import { beginIn, continueIn, readOpen } from './harness'
 // at a time, on into the session it continued at the entry it continued from.
 
 const read = (page: Page, request: Parameters<typeof readTimeline>[1]) =>
-    page.tab.run(() => page.core.read(['sessions', 'entries'], (tx) => readTimeline(tx, request)))
+    page.tab.run(() =>
+        page.core.read(['sessions', 'entries', 'chains', 'nodes'], (tx) =>
+            readTimeline(tx, request),
+        ),
+    )
 
 /** A stored session of an import and three edits, then a continuation with two of its own. */
 const chain = async (world: World) => {
@@ -296,4 +300,62 @@ test('a jump and the index on a 10,000-entry chain', async () => {
     assert.equal(above.newer?.count, 30 * 250 - 100)
     if (process.env.NSE_MEASURE)
         console.log(`index ${indexTime.toFixed(1)} ms, jump ${jumpTime.toFixed(1)} ms`)
+})
+
+// --- Damaged rows (§1.4.10.5): a `kept: false` row whose root reaches a hash in the chain's
+// `badChunks` through the stored nodes' `refs` reads damaged, also after a reload.
+
+test('a kept: false row that reaches a bad chunk reads damaged; one that does not reads removed', async () => {
+    const world = createWorld({ seed: 1 })
+    const { next, parent, child } = await chain(world)
+    const { unpackHashes, hashKey } = await import('../../../src/local/records/rows')
+    const { toHex } = await import('../../../src/local/hash')
+    const all = await read(next, { sessionId: child.id, limit: 100 })
+    const byText = (text: string) =>
+        all.entries.find((entry) => fallbackOf(entryOperation(entry))?.text === text)!
+    const reach = async (root: string) => {
+        const seen = new Set<string>()
+        const walk = async (hex: string) => {
+            const row = (await next.tab.run(() =>
+                next.core.read(['nodes'], (tx) =>
+                    tx.get('nodes', hashKey(Uint8Array.from(Buffer.from(hex, 'hex')))),
+                ),
+            )) as { t: string; refs: Uint8Array; kinds?: string[] } | undefined
+            if (!row) return
+            const refs = unpackHashes(row.refs).map(toHex)
+            for (const ref of refs) {
+                if (seen.has(ref)) continue
+                seen.add(ref)
+                await walk(ref)
+            }
+        }
+        await walk(root)
+        return seen
+    }
+    const one = await reach(byText('One').snapshot)
+    const two = await reach(byText('Two').snapshot)
+    const onlyTwo = [...two].filter((hash) => !one.has(hash))
+    assert.ok(onlyTwo.length > 0, 'Two has a part One lacks')
+    const bad = Uint8Array.from(Buffer.from(onlyTwo.at(-1)!, 'hex'))
+    const { packHashes } = await import('../../../src/local/records/rows')
+    await next.tab.run(() =>
+        next.core.write(['entries', 'chains'], async (tx) => {
+            for (const text of ['One', 'Two']) {
+                const e = byText(text)
+                const stored = await tx.get('entries', [e.sessionId, e.seq])
+                await tx.put('entries', { ...(stored as object), kept: false })
+            }
+            const chainRow = await tx.get('chains', String(child.chainId))
+            await tx.put('chains', { ...(chainRow as object), badChunks: packHashes([bad]) })
+        }),
+    )
+    void parent
+    const after = await read(next, { sessionId: child.id, limit: 100 })
+    const flag = (text: string) => {
+        const e = after.entries.find((entry) => fallbackOf(entryOperation(entry))?.text === text)!
+        return { kept: e.kept, damaged: e.damaged === true }
+    }
+    assert.deepEqual(flag('Two'), { kept: false, damaged: true })
+    assert.deepEqual(flag('One'), { kept: false, damaged: false })
+    assert.deepEqual(flag('Three'), { kept: true, damaged: false })
 })

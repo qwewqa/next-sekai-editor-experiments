@@ -1,6 +1,7 @@
 import { captureEntryDescription, type EntryDescription } from '../../history/operations'
-import { toHex } from '../hash'
+import { fromHex16, toHex } from '../hash'
 import { KeyRange, type KvTx } from '../kv/types'
+import { hashKey, unpackHashes, type NodesRow } from '../records/rows'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
@@ -20,10 +21,15 @@ export type TimelineEntry = EntryDescription & {
     noteCount: number
     dirty: boolean
     kept: boolean
+    /**
+     * A `kept: false` entry whose snapshot reaches a part found bad (the chain's `badChunks`): it
+     * reads damaged, not removed to save space (§1.4.10.5). Absent otherwise.
+     */
+    damaged?: true
     /** A `continue` entry: the time of the parent's entry it continues, for its divider. */
     from?: number
     revisionId?: string
-    device?: unknown
+    device?: { id: string; label: string }
 }
 
 export type TimelineRequest = {
@@ -107,7 +113,11 @@ const entryOf = (row: Row): TimelineEntry | undefined => {
         dirty: row.dirty === true,
         kept: row.kept !== false,
         ...(typeof row.revisionId === 'string' ? { revisionId: row.revisionId } : {}),
-        ...(row.device === undefined ? {} : { device: row.device }),
+        ...(isRow(row.device) &&
+        typeof row.device.id === 'string' &&
+        typeof row.device.label === 'string'
+            ? { device: { id: row.device.id, label: row.device.label } }
+            : {}),
     }
 }
 
@@ -237,9 +247,61 @@ const readNewer = async (
     return count > 0 ? { entries, newer } : { entries }
 }
 
+/** Whether a root reaches one of the hashes, through the stored rows' direct `refs`. */
+const reaches = async (
+    tx: KvTx,
+    root: string,
+    bad: ReadonlySet<string>,
+    memo: Map<string, boolean>,
+) => {
+    const known = memo.get(root)
+    if (known !== undefined) return known
+    // A cycle in damaged rows ends here as not reaching.
+    memo.set(root, false)
+    const row = (await tx.get('nodes', hashKey(fromHex16(root)))) as NodesRow | undefined
+    let found = false
+    if (row?.t === 'root' || row?.t === 'node') {
+        const refs = unpackHashes(row.refs).map(toHex)
+        // A root's refs are the header, the kind nodes, then media, which hold no records.
+        const below =
+            row.t === 'root' ? refs.slice(1, 1 + row.kinds.length) : row.depth === 1 ? refs : []
+        found = refs.some((hex) => bad.has(hex))
+        for (const hex of below) if (!found && (await reaches(tx, hex, bad, memo))) found = true
+    }
+    memo.set(root, found)
+    return found
+}
+
+/**
+ * Marks the `kept: false` entries that read damaged: their roots reach a hash in the chain's
+ * `badChunks`, which the open's unlink and a Save's marks write (§1.4.10.5, §1.6.11.2).
+ */
+const markDamagedRows = async (tx: KvTx, sessionId: string, entries: readonly TimelineEntry[]) => {
+    const dropped = entries.filter((entry) => !entry.kept && entry.snapshot)
+    if (!dropped.length) return
+    const session = await tx.get('sessions', sessionId)
+    const chainId = isRow(session) ? session.chainId : undefined
+    if (typeof chainId !== 'string') return
+    const chain = await tx.get('chains', chainId)
+    if (!isRow(chain) || !(chain.badChunks instanceof Uint8Array) || !chain.badChunks.length) return
+    let bad: Set<string>
+    try {
+        bad = new Set(unpackHashes(chain.badChunks).map(toHex))
+    } catch {
+        return
+    }
+    const memo = new Map<string, boolean>()
+    for (const entry of dropped)
+        if (await reaches(tx, entry.snapshot, bad, memo)) entry.damaged = true
+}
+
 /** A page of the Timeline: older than `before`, or newer than `after` along the path. */
-export const readTimeline = (tx: KvTx, request: TimelineRequest) =>
-    request.after === undefined ? readOlder(tx, request) : readNewer(tx, request)
+export const readTimeline = async (tx: KvTx, request: TimelineRequest) => {
+    const page =
+        request.after === undefined ? await readOlder(tx, request) : await readNewer(tx, request)
+    await markDamagedRows(tx, request.sessionId, page.entries)
+    return page
+}
 
 /** The start of a time's local day: the worker keeps the page's time zone. */
 const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
@@ -342,7 +404,11 @@ export const readTimelineIndex = async (
 export const timelineHandlers = (context: WorkerContext) => ({
     /** A page of the Timeline (§1.4.10.5): older than `before`, or newer than `after`. */
     readTimeline: (request: TimelineRequest, scope?: CallScope) =>
-        context.core.read(['sessions', 'entries'], (tx) => readTimeline(tx, request), scope),
+        context.core.read(
+            ['sessions', 'entries', 'chains', 'nodes'],
+            (tx) => readTimeline(tx, request),
+            scope,
+        ),
     /** The chain's pieces, a session's entries on one day each, for Go To. */
     readTimelineIndex: (request: TimelineIndexRequest, scope?: CallScope) =>
         context.core.read(['sessions', 'entries'], (tx) => readTimelineIndex(tx, request), scope),
