@@ -31,6 +31,7 @@
     {
         "id": "note.add.0",
         "cat": "notes",
+        "note": "Not produced today: adding a note always creates one.",
         "members": [
             {
                 "input": {
@@ -73,6 +74,7 @@
     {
         "id": "note.generate.0",
         "cat": "notes",
+        "note": "Not produced today: Generate pushes no step when it makes no notes.",
         "members": [
             {
                 "input": {
@@ -108,7 +110,7 @@
                     "id": "nse.object.add",
                     "data": {
                         "subject": "timeScale",
-                        "created": 2
+                        "created": 1
                     }
                 }
             }
@@ -138,14 +140,14 @@
                     "id": "nse.object.add",
                     "data": {
                         "subject": "stageMaskEvent",
-                        "created": 3
+                        "created": 1
                     }
                 }
             }
         ]
     },
     {
-        "id": "object.add.bpm.displaced1",
+        "id": "object.add.bpm.locales",
         "cat": "object",
         "members": [
             {
@@ -161,39 +163,9 @@
         "locales": true
     },
     {
-        "id": "object.add.bpm.displacedEmpty",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.add",
-                    "data": {
-                        "subject": "bpm",
-                        "created": 1
-                    }
-                }
-            }
-        ],
-        "note": "displaced: {} (empty Replaced?)"
-    },
-    {
-        "id": "object.add.timeScale.displaced2",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.add",
-                    "data": {
-                        "subject": "timeScale",
-                        "created": 1
-                    }
-                }
-            }
-        ]
-    },
-    {
         "id": "object.add.created0",
         "cat": "object",
+        "note": "Not produced today: adding an object always creates one.",
         "members": [
             {
                 "input": {
@@ -225,7 +197,7 @@
         "locales": true
     },
     {
-        "id": "object.edit.note.displacedEmpty",
+        "id": "object.edit.note.1",
         "cat": "object",
         "members": [
             {
@@ -235,23 +207,6 @@
                         "subject": "note",
                         "changed": {
                             "note": 1
-                        }
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "id": "object.edit.bpm.displacedEmpty",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.edit",
-                    "data": {
-                        "subject": "bpm",
-                        "changed": {
-                            "bpm": 1
                         }
                     }
                 }
@@ -276,7 +231,7 @@
         ]
     },
     {
-        "id": "object.edit.timeScale.displacedEmpty",
+        "id": "object.edit.timeScale.1",
         "cat": "object",
         "members": [
             {
@@ -285,45 +240,7 @@
                     "data": {
                         "subject": "timeScale",
                         "changed": {
-                            "timeScale": 2
-                        }
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "id": "object.edit.bpm.retained",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.edit",
-                    "data": {
-                        "subject": "bpm",
-                        "retainedInitialBpm": true,
-                        "changed": {
-                            "bpm": 1
-                        }
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "id": "object.edit.bpm.displaced1",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.edit",
-                    "data": {
-                        "subject": "bpm",
-                        "displaced": {
-                            "bpm": 1
-                        },
-                        "changed": {
-                            "bpm": 1
+                            "timeScale": 1
                         }
                     }
                 }
@@ -340,47 +257,7 @@
                     "data": {
                         "subject": "cameraEvent",
                         "changed": {
-                            "cameraEvent": 2
-                        }
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "id": "object.edit.objects",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.edit",
-                    "data": {
-                        "subject": "objects",
-                        "changed": {
-                            "note": 4,
-                            "bpm": 3
-                        }
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "id": "object.edit.objects.displacedMixed",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.edit",
-                    "data": {
-                        "subject": "objects",
-                        "displaced": {
-                            "bpm": 1,
-                            "timeScale": 2
-                        },
-                        "changed": {
-                            "note": 4,
-                            "bpm": 3
+                            "cameraEvent": 1
                         }
                     }
                 }
@@ -404,21 +281,6 @@
         "note": "edit changing nothing"
     },
     {
-        "id": "object.edit.targets0.displacedEmpty",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.edit",
-                    "data": {
-                        "subject": "note",
-                        "changed": {}
-                    }
-                }
-            }
-        ]
-    },
-    {
         "id": "object.move.note4",
         "cat": "object",
         "members": [
@@ -436,25 +298,7 @@
         ]
     },
     {
-        "id": "object.move.note4.displacedEmpty",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.move",
-                    "data": {
-                        "subject": "note",
-                        "changed": {
-                            "note": 4
-                        }
-                    }
-                }
-            }
-        ],
-        "note": "select drag shape"
-    },
-    {
-        "id": "object.move.objects.displacedEmpty",
+        "id": "object.move.objects.mixed",
         "cat": "object",
         "members": [
             {
@@ -575,7 +419,7 @@
                     "data": {
                         "subject": "bpm",
                         "displaced": {
-                            "bpm": 2
+                            "bpm": 1
                         },
                         "retainedInitialBpm": true,
                         "changed": {
@@ -585,27 +429,6 @@
                 }
             }
         ]
-    },
-    {
-        "id": "object.replace.displacedEmpty",
-        "cat": "object",
-        "members": [
-            {
-                "input": {
-                    "id": "nse.object.replace",
-                    "data": {
-                        "subject": "bpm",
-                        "changed": {
-                            "bpm": 1
-                        },
-                        "displaced": {
-                            "bpm": 1
-                        }
-                    }
-                }
-            }
-        ],
-        "note": "codec allows"
     },
     {
         "id": "note.elevation.2",
@@ -681,7 +504,7 @@
         ]
     },
     {
-        "id": "paste.displacedEmpty.flippedFalse",
+        "id": "paste.mixed.flippedFalse",
         "cat": "paste",
         "members": [
             {
@@ -1326,6 +1149,7 @@
     {
         "id": "delete.empty",
         "cat": "delete",
+        "note": "Not produced today: a deletion that removes nothing leaves the state equal, so no step is pushed.",
         "members": [
             {
                 "input": {
@@ -1427,6 +1251,7 @@
     {
         "id": "flip.targets0",
         "cat": "transform",
+        "note": "Not produced today: Flip pushes no step when nothing changes.",
         "members": [
             {
                 "input": {
@@ -1571,6 +1396,7 @@
     {
         "id": "header.life.noChange",
         "cat": "header",
+        "note": "Not produced today: pushState drops a step that changes nothing.",
         "members": [
             {
                 "input": {
@@ -1582,8 +1408,7 @@
                     }
                 }
             }
-        ],
-        "note": "before == after"
+        ]
     },
     {
         "id": "header.bgmOffset",
@@ -1704,6 +1529,7 @@
     {
         "id": "bgm.change.bothNone",
         "cat": "header",
+        "note": "Not produced today: with the same file before and after, the step is a BGM offset change.",
         "members": [
             {
                 "input": {
@@ -1780,8 +1606,7 @@
                         "created": {
                             "stageMaskEvent": 1,
                             "stagePivotEvent": 1,
-                            "stageStyleEvent": 1,
-                            "stageTransformEvent": 1
+                            "stageStyleEvent": 1
                         }
                     }
                 }
@@ -1930,6 +1755,7 @@
     {
         "id": "owner.create.group.emptyName",
         "cat": "owner",
+        "note": "Not produced today: new owners get numbered names.",
         "members": [
             {
                 "input": {
@@ -1947,8 +1773,7 @@
                     }
                 }
             }
-        ],
-        "note": "empty name"
+        ]
     },
     {
         "id": "owner.create.group.longName",
@@ -2025,6 +1850,7 @@
     {
         "id": "owner.rename.same",
         "cat": "owner",
+        "note": "Not produced today: the managers return early on an unchanged name, and the modals rely on pushState.",
         "members": [
             {
                 "input": {
@@ -2046,8 +1872,7 @@
                     }
                 }
             }
-        ],
-        "note": "unchanged name"
+        ]
     },
     {
         "id": "owner.rename.fromEmpty",
@@ -2061,7 +1886,7 @@
                             "kind": "stage",
                             "id": 2,
                             "name": {
-                                "text": "Beta"
+                                "text": ""
                             }
                         },
                         "before": {
@@ -2079,6 +1904,7 @@
     {
         "id": "owner.rename.toEmpty",
         "cat": "owner",
+        "note": "Not produced today: a rename to an empty name returns early.",
         "members": [
             {
                 "input": {
@@ -2088,7 +1914,7 @@
                             "kind": "stage",
                             "id": 2,
                             "name": {
-                                "text": ""
+                                "text": "Beta"
                             }
                         },
                         "before": {
@@ -2100,8 +1926,7 @@
                     }
                 }
             }
-        ],
-        "note": "after empty"
+        ]
     },
     {
         "id": "owner.rename.long",
@@ -2142,7 +1967,7 @@
                             "kind": "groupFolder",
                             "id": 1,
                             "name": {
-                                "text": "New Folder"
+                                "text": "Old Folder"
                             }
                         },
                         "before": {
@@ -2215,6 +2040,7 @@
     {
         "id": "owner.set.group.speedNoChange",
         "cat": "owner",
+        "note": "Not produced today: the modals rely on pushState to drop an unchanged value.",
         "members": [
             {
                 "input": {
@@ -2242,6 +2068,7 @@
     {
         "id": "owner.set.stage.multi",
         "cat": "owner",
+        "note": "Not produced today: the Properties modals push one field per step; the codec allows three.",
         "members": [
             {
                 "input": {
@@ -2331,6 +2158,7 @@
     {
         "id": "owner.move.reorder.noIndexes",
         "cat": "owner",
+        "note": "Not produced today: a move of an entry or folder always stores both indexes.",
         "members": [
             {
                 "input": {
@@ -2348,12 +2176,12 @@
                     }
                 }
             }
-        ],
-        "note": "no from/to"
+        ]
     },
     {
         "id": "owner.move.reorder.fromOnly",
         "cat": "owner",
+        "note": "Not produced today: a move of an entry or folder always stores both indexes.",
         "members": [
             {
                 "input": {
@@ -2517,6 +2345,7 @@
     {
         "id": "owner.moveMany.zero",
         "cat": "owner",
+        "note": "Not produced today: moveEntriesInTree returns nothing, so no step, when no entry changes folder.",
         "members": [
             {
                 "input": {
@@ -2868,21 +2697,6 @@
         ]
     },
     {
-        "id": "continue.source",
-        "cat": "event",
-        "members": [
-            {
-                "kind": "continue",
-                "input": {
-                    "id": "nse.continue",
-                    "data": {
-                        "fromTime": 1792314000000
-                    }
-                }
-            }
-        ]
-    },
-    {
         "id": "file.save.file",
         "cat": "event",
         "members": [
@@ -2975,21 +2789,6 @@
     },
     {
         "id": "restore.plain",
-        "cat": "event",
-        "members": [
-            {
-                "kind": "restore",
-                "input": {
-                    "id": "nse.restore",
-                    "data": {
-                        "targetTime": 1792314000000
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "id": "restore.source",
         "cat": "event",
         "members": [
             {
@@ -4003,7 +3802,7 @@
                             "kind": "group",
                             "id": 3,
                             "name": {
-                                "text": "Beta"
+                                "text": "Alpha"
                             }
                         },
                         "before": {
@@ -5218,7 +5017,7 @@
         "expand": true
     },
     {
-        "id": "group.objectEdit.bpm.displacedEmpty.3",
+        "id": "group.objectEdit.bpm.3",
         "cat": "group",
         "members": [
             {
@@ -5255,11 +5054,10 @@
                 }
             }
         ],
-        "expand": true,
-        "note": "children carry empty Replaced"
+        "expand": true
     },
     {
-        "id": "group.objectMove.note.displacedEmpty.4",
+        "id": "group.objectMove.note.4",
         "cat": "group",
         "members": [
             {
@@ -6157,7 +5955,7 @@
                             "kind": "group",
                             "id": 3,
                             "name": {
-                                "text": "B"
+                                "text": "A"
                             }
                         },
                         "before": {
@@ -6177,7 +5975,7 @@
                             "kind": "group",
                             "id": 3,
                             "name": {
-                                "text": "C"
+                                "text": "B"
                             }
                         },
                         "before": {
@@ -6197,7 +5995,7 @@
                             "kind": "group",
                             "id": 3,
                             "name": {
-                                "text": "A"
+                                "text": "C"
                             }
                         },
                         "before": {
@@ -6223,7 +6021,7 @@
                             "kind": "group",
                             "id": 3,
                             "name": {
-                                "text": "B"
+                                "text": "A"
                             }
                         },
                         "before": {
@@ -6243,7 +6041,7 @@
                             "kind": "group",
                             "id": 3,
                             "name": {
-                                "text": "A"
+                                "text": "B"
                             }
                         },
                         "before": {
@@ -6297,7 +6095,7 @@
                         "changes": [
                             {
                                 "field": "forceNoteSpeed",
-                                "before": 2,
+                                "before": 3,
                                 "after": 2
                             }
                         ]
@@ -6667,12 +6465,12 @@
         "note": "stage 99 does not exist"
     },
     {
-        "id": "edge.multiSubject.edit",
+        "id": "edge.multiSubject.move",
         "cat": "edge",
         "members": [
             {
                 "input": {
-                    "id": "nse.object.edit",
+                    "id": "nse.object.move",
                     "data": {
                         "subject": "objects",
                         "changed": {
@@ -6687,6 +6485,7 @@
     {
         "id": "edge.ownerSet.sameNameQualified",
         "cat": "edge",
+        "note": "Not produced today: the managers return early on an unchanged name.",
         "members": [
             {
                 "input": {
@@ -6744,7 +6543,7 @@
                             "kind": "group",
                             "id": 5,
                             "name": {
-                                "text": "🎵 Group 🎶"
+                                "text": "🎵 Group"
                             }
                         },
                         "before": {
@@ -6770,7 +6569,7 @@
                             "kind": "group",
                             "id": 5,
                             "name": {
-                                "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
                             }
                         },
                         "before": {
@@ -6809,27 +6608,23 @@
                         "subject": "objects",
                         "changed": {
                             "note": 2,
-                            "cameraEvent": 3
+                            "timeScale": 3
                         },
                         "assignments": [
                             {
-                                "field": "beat",
+                                "field": "groupId",
                                 "before": {
                                     "mode": "varying"
                                 },
                                 "after": {
-                                    "mode": "varying"
-                                }
-                            },
-                            {
-                                "field": "cameraZoom",
-                                "before": {
                                     "mode": "uniform",
-                                    "value": 1
-                                },
-                                "after": {
-                                    "mode": "uniform",
-                                    "value": 1.5
+                                    "value": {
+                                        "kind": "group",
+                                        "id": 3,
+                                        "name": {
+                                            "text": "Main Group"
+                                        }
+                                    }
                                 }
                             },
                             {
@@ -6852,7 +6647,7 @@
     {
         "id": "property.note.noop",
         "cat": "property",
-        "note": "before equals after: the row is omitted",
+        "note": "Not produced today: only a coupled connector field can make a field row equal before and after.",
         "members": [
             {
                 "input": {
@@ -6956,6 +6751,7 @@
     {
         "id": "object.move.bpm.emptyRetained",
         "cat": "object",
+        "note": "Not produced today: a move that displaces always changes its operand.",
         "members": [
             {
                 "input": {
@@ -6973,19 +6769,19 @@
         ]
     },
     {
-        "id": "object.replace.bpm.moreDisplaced",
+        "id": "object.replace.timeScale.moreDisplaced",
         "cat": "object",
         "members": [
             {
                 "input": {
                     "id": "nse.object.replace",
                     "data": {
-                        "subject": "bpm",
+                        "subject": "timeScale",
                         "changed": {
-                            "bpm": 1
+                            "timeScale": 1
                         },
                         "displaced": {
-                            "bpm": 3
+                            "timeScale": 2
                         }
                     }
                 }
@@ -6995,6 +6791,7 @@
     {
         "id": "object.replace.empty",
         "cat": "object",
+        "note": "Not produced today: a move onto an occupied beat always changes its operand.",
         "members": [
             {
                 "input": {
@@ -7011,13 +6808,13 @@
         ]
     },
     {
-        "id": "object.edit.mixed.displaced",
+        "id": "object.move.objects.collateral",
         "cat": "object",
         "note": "collateral on a multi-object Beat edit",
         "members": [
             {
                 "input": {
-                    "id": "nse.object.edit",
+                    "id": "nse.object.move",
                     "data": {
                         "subject": "objects",
                         "changed": {
@@ -7059,6 +6856,7 @@
     {
         "id": "flip.empty",
         "cat": "transform",
+        "note": "Not produced today: Flip pushes no step when nothing changes.",
         "members": [
             {
                 "input": {
@@ -7122,6 +6920,7 @@
     {
         "id": "delete.empty.nc",
         "cat": "delete",
+        "note": "Not produced today: a deletion that removes nothing leaves the state equal, so no step is pushed.",
         "members": [
             {
                 "input": {
@@ -7136,6 +6935,7 @@
     {
         "id": "cut.empty",
         "cat": "delete",
+        "note": "Not produced today: a cut that removes nothing leaves the state equal, so no step is pushed.",
         "members": [
             {
                 "input": {
@@ -7326,7 +7126,7 @@
     {
         "id": "owner.set.group.twoFields",
         "cat": "owner",
-        "note": "a step with several changes reads as one sentence",
+        "note": "Not produced today: the Properties modals push one field per step; the codec allows three.",
         "locales": true,
         "members": [
             {
@@ -7360,6 +7160,7 @@
     {
         "id": "owner.create.stage.inFolder",
         "cat": "owner",
+        "note": "Not produced today: folders get numbered names. Tests the quoted empty name.",
         "members": [
             {
                 "input": {
@@ -7527,7 +7328,7 @@
                             "kind": "group",
                             "id": 3,
                             "name": {
-                                "text": "Beta"
+                                "text": "Alpha"
                             }
                         },
                         "before": {
@@ -7716,6 +7517,7 @@
     {
         "id": "owner.moveMany.zero.into",
         "cat": "owner",
+        "note": "Not produced today: moveEntriesInTree returns nothing, so no step, when no entry changes folder.",
         "members": [
             {
                 "input": {
@@ -7738,6 +7540,7 @@
     {
         "id": "owner.moveMany.zero.stages",
         "cat": "owner",
+        "note": "Not produced today: moveEntriesInTree returns nothing, so no step, when no entry changes folder.",
         "members": [
             {
                 "input": {
@@ -7754,6 +7557,7 @@
     {
         "id": "owner.moveMany.zero.stagesInto",
         "cat": "owner",
+        "note": "Not produced today: moveEntriesInTree returns nothing, so no step, when no entry changes folder.",
         "members": [
             {
                 "input": {

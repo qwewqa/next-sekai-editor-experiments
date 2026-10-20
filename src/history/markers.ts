@@ -11,14 +11,3 @@ export const markExported = (fileName: string, delivery: 'file' | 'download') =>
         }),
     )
 }
-
-export const markSaved = (fileName: string, download: boolean) => {
-    markFileEvent(
-        'save',
-        createHistoryOperation({
-            id: 'nse.file.save',
-            data: { file: captureName(fileName), delivery: download ? 'download' : 'file' },
-        }),
-        false,
-    )
-}

@@ -57,9 +57,6 @@ export type SessionRead =
     /** Its rows can't be read as a session: never continued. */
     | { kind: 'damaged'; why: string }
 
-/** Parent links followed at most, rebuilding a stack by replay. */
-const MAX_DEPTH = 256
-
 const entriesOf = async (tx: KvTx, sessionId: string, upto = Infinity) =>
     (await tx.getAll(
         'entries',
@@ -72,17 +69,20 @@ type Rebuilt = { stack: ReplayedStack; floor: number }
 /**
  * A session's stack by replay of its entries over its parent's at `uptoSeq` (§1.3.9). A parent
  * whose stored stack is its stack at `uptoSeq` is taken as stored, so a long chain isn't
- * replayed from its root.
+ * replayed from its root. Every parent link is followed, however long the chain; a session met
+ * twice (a cycle in damaged rows) throws.
  */
 const rebuild = async (
     tx: KvTx,
     sessionId: string,
     upto = Infinity,
-    depth = 0,
     /** Whether a parent's stored stack stands for its replay. */
     stored = true,
+    /** The sessions on the way up. */
+    seen = new Set<string>(),
 ): Promise<Rebuilt> => {
-    if (depth > MAX_DEPTH) throw new Error('Too many parent links')
+    if (seen.has(sessionId)) throw new Error(`Parent cycle at ${sessionId}`)
+    seen.add(sessionId)
     const session = await tx.get('sessions', sessionId)
     if (!isRow(session)) throw new Error(`No session ${sessionId}`)
     if (!isReadableSessionVersion(session.v)) throw new Error(`Unsupported session ${sessionId}`)
@@ -91,7 +91,7 @@ const rebuild = async (
     if (typeof parent?.id === 'string' && typeof parent.uptoSeq === 'number')
         inherited =
             (stored ? await storedAt(tx, parent.id, parent.uptoSeq) : undefined) ??
-            (await rebuild(tx, parent.id, parent.uptoSeq, depth + 1, stored))
+            (await rebuild(tx, parent.id, parent.uptoSeq, stored, seen))
     return {
         stack: replay(await entriesOf(tx, sessionId, upto), inherited?.stack),
         floor: inherited?.floor ?? 0,
@@ -195,7 +195,7 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
             // Over a stored parent, a later entry can keep slots below its window: the whole
             // chain's replay then tells.
             try {
-                stack = fromReplay(await rebuild(tx, sessionId, Infinity, 0, false))
+                stack = fromReplay(await rebuild(tx, sessionId, Infinity, false))
             } catch (error) {
                 return { kind: 'damaged', why: `its stack: ${String(error)}` }
             }

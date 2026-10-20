@@ -305,3 +305,43 @@ test('a newer session anywhere in a chain makes the whole chain newer; an older 
     await setV(2)
     assert.equal((await read(newer.id)).kind, 'open')
 })
+
+/** Sessions of `newer`'s chain, each continuing the one before with no stack or entries of its own. */
+const continuations = async (
+    world: World,
+    from: { id: string; chainId: string },
+    count: number,
+    cycle = false,
+) => {
+    const ids = Array.from({ length: count }, (_, i) => `link-${i}`)
+    await tamper(world, async (tx) => {
+        const base = (await tx.get('sessions', from.id)) as Record<string, unknown>
+        for (const [i, id] of ids.entries()) {
+            const rest = { ...base, id }
+            Reflect.deleteProperty(rest, 'stack')
+            const parent = i === 0 ? (cycle ? ids.at(-1)! : from.id) : ids[i - 1]!
+            await tx.put('sessions', { ...rest, parent: { id: parent, uptoSeq: base.lastSeq } })
+        }
+    })
+    return ids
+}
+
+test('a stack is rebuilt over a chain of more than 256 parent links', async () => {
+    const world = createWorld({ seed: 7 })
+    const { page, newer } = await twoChains(world)
+    const ids = await continuations(world, newer, 300)
+    const read = await page.tab.run(() => handlersOf(page).readSession(ids.at(-1)!))
+    assert.equal(read.kind, 'open')
+    if (read.kind !== 'open') return
+    assert.deepEqual(read.stack.window, { base: 0, length: 2, index: 1 })
+})
+
+test('a cycle of parent links is damaged, not followed for ever', async () => {
+    const world = createWorld({ seed: 8 })
+    const { page, newer } = await twoChains(world)
+    const ids = await continuations(world, newer, 5, true)
+    const read = await page.tab.run(() => handlersOf(page).readSession(ids[2]!))
+    assert.equal(read.kind, 'damaged')
+    if (read.kind !== 'damaged') return
+    assert.match(read.why, /Parent cycle/)
+})

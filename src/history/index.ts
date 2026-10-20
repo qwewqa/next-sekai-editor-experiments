@@ -11,7 +11,7 @@ import { notifyResetState } from './resetHooks'
 import { createSessionDescriptor, session, type SessionDescriptor } from './session'
 import { resetStates, restoreStates, type RestoredSlot } from './stack'
 
-export { markExported, markSaved } from './markers'
+export { markExported } from './markers'
 export {
     canUndo,
     earlierSteps,

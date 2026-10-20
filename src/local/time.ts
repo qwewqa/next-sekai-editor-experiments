@@ -24,7 +24,7 @@ export const stampNow = async (tx: KvTx, wall: number = Date.now()) => {
 
 /**
  * Records times a write stores beyond its own `now` (a continuation's startedAt, a journal's
- * entry times), clamped, so later stamps stay above them.
+ * entry times), clamped, so later stamps stay above them. Unwired until Step 8 GC.
  */
 export const observeTimes = async (
     tx: KvTx,

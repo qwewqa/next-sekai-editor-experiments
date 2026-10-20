@@ -26,28 +26,22 @@ T: Generated notes
 T: Added 1 BPM change
 
 #object.add.timeScale en
-T: Added 2 time scales
+T: Added 1 time scale
 
 #object.add.camera en
 T: Added 1 camera event
 
 #object.add.stageMask en
-T: Added 3 stage mask events
+T: Added 1 stage mask event
 
-#object.add.bpm.displaced1 en
+#object.add.bpm.locales en
 T: Added 1 BPM change
 
-#object.add.bpm.displaced1 fr
+#object.add.bpm.locales fr
 T: 1 changement de BPM ajouté
 
-#object.add.bpm.displaced1 ja
+#object.add.bpm.locales ja
 T: 1個のBPMを追加しました
-
-#object.add.bpm.displacedEmpty en
-T: Added 1 BPM change
-
-#object.add.timeScale.displaced2 en
-T: Added 1 time scale
 
 #object.add.created0 en
 T: Added BPM changes
@@ -61,51 +55,25 @@ T: 3 notes modifiées
 #object.edit.note3 ja
 T: 3個のノーツを編集しました
 
-#object.edit.note.displacedEmpty en
+#object.edit.note.1 en
 T: Edited 1 note
-
-#object.edit.bpm.displacedEmpty en
-T: Edited 1 BPM change
 
 #object.edit.bpm.noDisplaced en
 T: Edited 1 BPM change
 
-#object.edit.timeScale.displacedEmpty en
-T: Edited 2 time scales
-
-#object.edit.bpm.retained en
-T: Edited 1 BPM change
-F: Kept the initial BPM change
-
-#object.edit.bpm.displaced1 en
-T: Edited 1 BPM change
-R: Replaced [displaced]: 1 BPM change
+#object.edit.timeScale.1 en
+T: Edited 1 time scale
 
 #object.edit.camera en
-T: Edited 2 camera events
-
-#object.edit.objects en
-T: Edited 7 objects
-R: Changed [changed]: 4 notes / 3 BPM changes
-
-#object.edit.objects.displacedMixed en
-T: Edited 7 objects
-R: Changed [changed]: 4 notes / 3 BPM changes
-R: Replaced [displaced]: 1 BPM change / 2 time scales
+T: Edited 1 camera event
 
 #object.edit.targets0 en
-T: Edited notes
-
-#object.edit.targets0.displacedEmpty en
 T: Edited notes
 
 #object.move.note4 en
 T: Moved 4 notes
 
-#object.move.note4.displacedEmpty en
-T: Moved 4 notes
-
-#object.move.objects.displacedEmpty en
+#object.move.objects.mixed en
 T: Moved 9 objects
 R: Changed [changed]: 5 notes / 4 BPM changes
 
@@ -130,11 +98,7 @@ R: Replaced [displaced]: 3 time scales
 
 #object.replace.bpm.retained en
 T: Replaced 1 BPM change
-R: Replaced [displaced]: 2 BPM changes
 F: Kept the initial BPM change
-
-#object.replace.displacedEmpty en
-T: Replaced 1 BPM change
 
 #note.elevation.2 en
 T: Changed elevation of 2 notes
@@ -168,7 +132,7 @@ R: Editor Layout [layout]: Composed
 R: Paste Location [at]: Chosen Position
 F: Pasted flipped
 
-#paste.displacedEmpty.flippedFalse en
+#paste.mixed.flippedFalse en
 T: Pasted 3 objects
 R: Pasted [placed]: 1 note / 2 camera events
 R: Editor Layout [layout]: Composed
@@ -379,7 +343,7 @@ F: Text shortened for display
 
 #dynamicStages.enable en
 T: Enabled dynamic stages
-R: Added [created]: 1 stage mask event / 1 stage pivot event / 1 stage style event / 1 stage transform event
+R: Added [created]: 1 stage mask event / 1 stage pivot event / 1 stage style event
 
 #owner.create.group en
 T: Added "New Group" group
@@ -586,9 +550,6 @@ F: Text shortened for display
 #continue.plain en
 T: Continued from Oct 18, 2:00:00 AM
 
-#continue.source en
-T: Continued from Oct 18, 2:00:00 AM
-
 #file.save.file en
 T: Saved level.nse
 
@@ -607,9 +568,6 @@ F: Text shortened for display
 T: Saved Untitled
 
 #restore.plain en
-T: Restored to Oct 18, 2:00:00 AM
-
-#restore.source en
 T: Restored to Oct 18, 2:00:00 AM
 
 #recovery.journal en
@@ -915,14 +873,14 @@ S: 3 steps
   - Edited 2 notes
   - Edited 2 notes
 
-#group.objectEdit.bpm.displacedEmpty.3 en
+#group.objectEdit.bpm.3 en
 T: Edited BPM changes
 S: 3 steps
   - Edited 1 BPM change
   - Edited 1 BPM change
   - Edited 1 BPM change
 
-#group.objectMove.note.displacedEmpty.4 en
+#group.objectMove.note.4 en
 T: Moved notes
 S: 4 steps
   - Moved 4 notes
@@ -1104,7 +1062,7 @@ S: 2 steps
 T: Set Force Note Speed of "Alpha" group to 2
 R: Force Note Speed [forceNoteSpeed]: ~Not set > 2
 S: 2 steps
-  - Set Force Note Speed of "Alpha" group to 2
+  + Set Force Note Speed of "Alpha" group to 2
   + Set Force Note Speed of "Alpha" group to 2
 
 #group.ownerSet.varying en
@@ -1160,8 +1118,8 @@ R: Group [groupId]: ~Varies > Deleted Group
 T: Set Stage to "Deleted Stage" on 1 stage style event
 R: Stage [stageId]: ~Varies > Deleted Stage
 
-#edge.multiSubject.edit en
-T: Edited 1,234 objects
+#edge.multiSubject.move en
+T: Moved 1,234 objects
 R: Changed [changed]: 617 notes / 617 BPM changes
 
 #edge.ownerSet.sameNameQualified en
@@ -1181,8 +1139,8 @@ T: Added 9,007,199,254,740,991 notes
 
 #brush.objects.varying en
 T: Brushed 5 objects
-R: Changed [changed]: 2 notes / 3 camera events
-R: Camera Zoom [cameraZoom]: 1 > 1.5
+R: Changed [changed]: 2 notes / 3 time scales
+R: Group [groupId]: ~Varies > Main Group
 R: Size [size]: 1 > 2
 
 #property.note.noop en
@@ -1203,16 +1161,16 @@ T: Moved BPM changes
 R: Replaced [displaced]: 1 BPM change
 F: Kept the initial BPM change
 
-#object.replace.bpm.moreDisplaced en
-T: Replaced 1 BPM change
-R: Replaced [displaced]: 3 BPM changes
+#object.replace.timeScale.moreDisplaced en
+T: Replaced 1 time scale
+R: Replaced [displaced]: 2 time scales
 
 #object.replace.empty en
 T: Replaced time scales
 R: Replaced [displaced]: 1 time scale
 
-#object.edit.mixed.displaced en
-T: Edited 6 objects
+#object.move.objects.collateral en
+T: Moved 6 objects
 R: Changed [changed]: 3 notes / 1 BPM change / 2 camera events
 R: Replaced [displaced]: 1 BPM change
 F: Kept the initial BPM change

@@ -1020,3 +1020,98 @@ test('every owner operation id comes out of a manager producer, known and decode
     const unit = ['nse.owner.rename', 'nse.owner.set', 'nse.owner.duplicate']
     expect(result.owner.filter((id) => !produced.has(id) && !unit.includes(id))).toEqual([])
 })
+
+test('renaming to the same name pushes no step, for a group, a stage and their folders', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const groupsModule = await appImport<
+            typeof import('../../src/editor/workspace/manager/groups')
+        >('/src/editor/workspace/manager/groups.ts')
+        const stagesModule = await appImport<
+            typeof import('../../src/editor/workspace/manager/stages')
+        >('/src/editor/workspace/manager/stages.ts')
+        const groupId = [...history.state.value.groups.keys()][0]!
+        const stageId = [...history.state.value.stages.keys()][0]!
+        const groupFolder = groupsModule.groupFolderOps.create(new Set([groupId]))
+        const stageFolder = stagesModule.stageFolderOps.create(new Set([stageId]))
+        window.managerOperations = []
+        const live = history.state.value
+        const sameOf = () => history.state.value === live
+        const name = (id: number) => history.state.value.groups.get(id as never)!.name
+        groupsModule.renameGroup(groupId, name(groupId))
+        groupsModule.renameGroup(groupId, `  ${name(groupId)}  `)
+        stagesModule.renameStage(stageId, history.state.value.stages.get(stageId)!.name)
+        groupsModule.groupFolderOps.rename(
+            groupFolder,
+            groupsModule.groupFolderOps.name(groupFolder),
+        )
+        stagesModule.stageFolderOps.rename(
+            stageFolder,
+            stagesModule.stageFolderOps.name(stageFolder),
+        )
+        const unchanged = { sameOf: sameOf(), count: window.managerOperations.length }
+        // A sentinel: a real rename is recorded, so the checks above could have recorded one.
+        groupsModule.renameGroup(groupId, 'Renamed')
+        return { unchanged, after: window.managerOperations.length }
+    })
+    expect(result.unchanged).toEqual({ sameOf: true, count: 0 })
+    expect(result.after).toBe(1)
+})
+
+test('confirming the Group or Stage Properties dialog with no change pushes no step', async ({
+    page,
+}) => {
+    const open = (kind: 'group' | 'stage') =>
+        page.evaluate(async (kind) => {
+            const { appImport, history } = window.editorTest
+            const { showModal } =
+                await appImport<typeof import('../../src/modals')>('/src/modals/index.ts')
+            const group = kind === 'group'
+            const { default: Modal } = group
+                ? await appImport<{ default: never }>(
+                      '/src/editor/commands/manageGroups/manageGroups/groupProperties/GroupPropertiesModal.vue',
+                  )
+                : await appImport<{ default: never }>(
+                      '/src/editor/commands/manageStages/manageStages/stageProperties/StagePropertiesModal.vue',
+                  )
+            window.managerOperations = []
+            const ids = [
+                ...(group ? history.state.value.groups : history.state.value.stages).keys(),
+            ]
+            void showModal(
+                Modal as never,
+                (group ? { groupId: ids[0] } : { stageId: ids[0] }) as never,
+            )
+        }, kind)
+    await open('group')
+    const dialog = page.locator('dialog[open]')
+    const name = dialog.getByRole('textbox', { name: 'Name', exact: true })
+    const speed = dialog.getByRole('spinbutton')
+    await speed.fill('9')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => operations(page).then((list) => list.length)).toBe(1)
+    // The same name and the same speed again, confirmed.
+    await name.focus()
+    await page.keyboard.press('Enter')
+    await speed.fill('9')
+    await page.keyboard.press('Enter')
+    await expect(speed).not.toBeFocused()
+    expect(await operations(page)).toHaveLength(1)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await open('stage')
+    const stageName = dialog.getByRole('textbox', { name: 'Name', exact: true })
+    await stageName.focus()
+    await page.keyboard.press('Enter')
+    await expect(stageName).not.toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    expect(await operations(page)).toEqual([])
+    // A sentinel after the checks: a real change in the stage dialog is recorded.
+    await open('stage')
+    await stageName.fill('Changed')
+    await page.keyboard.press('Enter')
+    await expect.poll(() => operations(page).then((list) => list.length)).toBe(1)
+})
