@@ -524,8 +524,21 @@ for (const scheme of schemes) {
         await expect
             .poll(async () => (await paintOf(hovered, { pseudo: '::before' })).fill.a)
             .toBeGreaterThan(0)
-        const selected = await paintOf(current, { pseudo: '::before' })
-        const hover = await paintOf(hovered, { pseudo: '::before' })
+        // The ::before animates its background and box-shadow, so its paint is read once settled.
+        const settled = async (row: typeof current) => {
+            let last = ''
+            await expect
+                .poll(async () => {
+                    const paint = JSON.stringify(await paintOf(row, { pseudo: '::before' }))
+                    const same = paint === last
+                    last = paint
+                    return same
+                })
+                .toBe(true)
+            return paintOf(row, { pseudo: '::before' })
+        }
+        const selected = await settled(current)
+        const hover = await settled(hovered)
         const edge = insetEdge(selected.shadow)
         expect(edge, `the current row's edge (${selected.shadow})`).toBeDefined()
         expect(insetEdge(hover.shadow), 'a hovered row has none').toBeUndefined()
@@ -548,7 +561,7 @@ for (const scheme of schemes) {
         // Keyboard focus is the 2 px full-fg outline drawn over it, apart from the edge.
         await page.mouse.move(0, 0)
         await focusByKeyboard(page, current)
-        const focused = await paintOf(current, { pseudo: '::before' })
+        const focused = await settled(current)
         expect(focused.width).toBe(2)
         expect(focused.color.a).toBe(1)
         expect(insetEdge(focused.shadow)).toBe(edge)
