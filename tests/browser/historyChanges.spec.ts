@@ -1456,3 +1456,80 @@ test('Edits Here takes the beats of a very large selection', async ({ page }) =>
     })
     expect(span).toEqual({ from: 10, to: 1009 })
 })
+
+test('leaving the peek from the strip gives focus to the chart, by any of its ways (X-2)', async ({
+    page,
+}) => {
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await edit(page, 'Moved B', { kind: 'move', beats: [7] })
+    await stored(page)
+    await openTab(page)
+    const chart = page.locator('.chart-pane')
+    const peek = async () => {
+        await row(page, 'Moved A').click()
+        await expect(page.locator('[data-peek-main]')).toBeVisible()
+    }
+    const gone = async () => {
+        await expect(page.locator('[data-peek-main]')).toHaveCount(0)
+        await expect(chart).toBeFocused()
+    }
+    // Back to Now by keys, then by a click.
+    await peek()
+    await page.locator('[data-peek-back]').focus()
+    await page.keyboard.press('Enter')
+    await gone()
+    await peek()
+    await page.locator('[data-peek-back]').click()
+    await gone()
+    // Escape on a strip control.
+    await peek()
+    await page.locator('[data-peek-restore]').focus()
+    await page.keyboard.press('Escape')
+    await gone()
+    // Restore, then a Restore that already matches, which changes nothing.
+    await peek()
+    await page.locator('[data-peek-restore]').click()
+    await gone()
+    await expect(
+        list(page)
+            .getByRole('row')
+            .filter({ hasText: /^Restored to/ }),
+    ).toHaveCount(1)
+    await peek()
+    await page.locator('[data-peek-restore]').click()
+    await gone()
+    await expect(
+        page.locator('.notification', { hasText: 'Already matches the current chart' }),
+    ).toBeVisible()
+    // Undo pressed while the strip has focus ends the peek too.
+    await peek()
+    await page.locator('[data-peek-restore]').focus()
+    await page.keyboard.press('Control+z')
+    await gone()
+})
+
+test('Try Again and Show All by keys hand focus on as they go (X-2)', async ({ page }) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    const hold = await holdWorker(page, 'findEdits')
+    try {
+        await chooseHere(page)
+        await hold.reached()
+    } finally {
+        await release(page, true)
+    }
+    const failed = surface(page).locator('[data-history-failed]')
+    await failed.getByRole('button', { name: 'Try Again' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(row(page, 'Moved near')).toBeVisible()
+    await expect(failed).toHaveCount(0)
+    // To the cursor's row.
+    await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
+    // Show All goes with the banner: to Go To, where the filter was chosen.
+    await surface(page).getByRole('button', { name: 'Show All' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(surface(page).locator('[data-history-filter-banner]')).toHaveCount(0)
+    await expect(surface(page).locator('[data-history-goto-button]')).toBeFocused()
+})

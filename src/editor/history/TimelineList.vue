@@ -27,6 +27,7 @@ import {
     formatDateTimeSeconds,
 } from '../../i18n/when'
 import { settings } from '../../settings'
+import { focusLost } from '../../utils/focusFallback'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { deviceId } from '../save/env'
@@ -247,6 +248,18 @@ const tail = computed(() => {
     return { kind: 'none', height: 0 }
 })
 const contentHeight = computed(() => geometry.value.total + tail.value.height + PAD_BOTTOM.value)
+// Try Again goes with the failure it answers: focus on it goes to the cursor's row (X-2).
+watch(
+    () => tail.value.kind,
+    (kind, was) => {
+        if (was !== 'failed' || kind === 'failed') return
+        if (!document.activeElement?.closest('[data-history-failed]')) return
+        void nextTick(() => {
+            if (!disposed && focusLost()) void focusRow(cursorId.value, 'row', false)
+        })
+    },
+    { flush: 'sync' },
+)
 
 const OVERSCAN = 12
 /** The last row starting at or above the scroll position. */
