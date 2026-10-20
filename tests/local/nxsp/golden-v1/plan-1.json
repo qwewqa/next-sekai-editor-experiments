@@ -7,8 +7,8 @@
     {
       "name": "project.json",
       "method": 8,
-      "crc32": 2671559493,
-      "uncompressedSize": 1486,
+      "crc32": 194316257,
+      "uncompressedSize": 1496,
       "parts": [
         {
           "kind": "bytes",
@@ -16,6 +16,7 @@
             "format": "nxsp",
             "version": 1,
             "minor": 1,
+            "patch": 0,
             "levelVersion": 1,
             "appVersion": "0.6.0",
             "id": "d0c00000-0000-4000-8000-000000000000",
@@ -1519,8 +1520,8 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 1726286632,
-      "uncompressedSize": 4829,
+      "crc32": 450633765,
+      "uncompressedSize": 4850,
       "parts": [
         {
           "kind": "bytes",
@@ -1623,7 +1624,8 @@
                 "device": {
                   "id": "c3f00000-0000-4000-8000-000000000000",
                   "label": "Web (Chrome)"
-                }
+                },
+                "appVersion": "0.6.0"
               }
             ],
             "roots": {

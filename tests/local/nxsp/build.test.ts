@@ -12,7 +12,7 @@ import {
     type PinnedSource,
     type WritePlan,
 } from '../../../src/local/nxsp'
-import { minorOf } from '../../../src/local/nxsp/version'
+import { minorOf, patchOf } from '../../../src/local/nxsp/version'
 import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 import { stateOf } from '../records/charts'
 import { fresh, NOW } from './chain'
@@ -602,6 +602,52 @@ test('minor is computed from the table; a value it lacks fails', () => {
     )
     assert.throws(() =>
         minorOf({ levelVersion: 1, rootVs: [], entryKinds: [], zipEntries: ['video/a.mp4'] }),
+    )
+})
+
+test('project.json: patch follows minor, written always, from the patch table', () => {
+    const { plan, project } = planNxsp(fresh().input)
+    const written = jsonPart(plan, 'project.json')
+    assert.deepEqual(Object.keys(written).slice(0, 4), ['format', 'version', 'minor', 'patch'])
+    assert.equal(written.patch, 0)
+    assert.equal(project.patch, 0)
+    // A write without history writes it too.
+    const noHistory = { ...fresh().input }
+    Reflect.deleteProperty(noHistory, 'history')
+    assert.equal(jsonPart(planNxsp(noHistory).plan, 'project.json').patch, 0)
+    // A zip entry the patch table lacks is refused, as the minor table's is.
+    assert.throws(() => patchOf({ zipEntries: ['video/a.mp4'] }))
+    assert.equal(patchOf({ zipEntries: ['project.json', 'bgm/a.mp3'] }), 0)
+})
+
+test('a save entry records the app version that wrote it, and only a save entry does', () => {
+    const { plan } = planNxsp(fresh().input)
+    const manifest = jsonPart(plan, 'history/manifest.json')
+    const kinds = manifest.entries.map((e: Loose) => [e.kind, e.appVersion])
+    assert.deepEqual(kinds, [
+        ['init', undefined],
+        ['edit', undefined],
+        ['edit', undefined],
+        ['save', '0.6.0'],
+    ])
+    // Carried as it is held: an entry from before the version was recorded stays without one.
+    const input = fresh().input
+    const entries = (input.history?.entries ?? []).map((e) => {
+        if (e.kind !== 'save') return e
+        const rest = { ...e }
+        Reflect.deleteProperty(rest, 'appVersion')
+        return rest
+    })
+    const old = planNxsp({ ...input, history: { ...(input.history as never), entries } })
+    const oldManifest = jsonPart(old.plan, 'history/manifest.json')
+    assert.equal(oldManifest.entries.at(-1).appVersion, undefined)
+    // On any other kind it is a foreign key, which the builder's own check against the reader refuses.
+    const foreign = (input.history?.entries ?? []).map((e, i) =>
+        i === 1 ? ({ ...e, appVersion: '0.6.0' } as EntryForm) : e,
+    )
+    assert.throws(
+        () => planNxsp({ ...input, history: { ...(input.history as never), entries: foreign } }),
+        /The history breaks v1: manifest\.entries\[1\]\.appVersion/,
     )
 })
 

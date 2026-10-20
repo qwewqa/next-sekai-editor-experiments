@@ -123,6 +123,55 @@ test('the partial open’s line: damage, then history, then newer content, then 
     assert.equal(partialLine([item('newer-version')], undefined), undefined)
 })
 
+test('a newer patch alone has its own line; a partial open never says it twice', () => {
+    const item = (reason: Parameters<typeof partialLine>[0][number]['reason'], media?: 'bgm') => ({
+        reason,
+        path: '',
+        ...(media ? { media } : {}),
+    })
+    assert.deepEqual(partialLine([item('newer-patch')], undefined), { kind: 'newerPatch' })
+    assert.deepEqual(partialLine([item('newer-patch')], new LevelDataReport()), {
+        kind: 'newerPatch',
+    })
+    // Anything else wrong comes first, and its line already says "newer version".
+    assert.deepEqual(partialLine([item('newer-patch'), item('unknown-entry')], undefined), {
+        kind: 'newerVersion',
+    })
+    assert.deepEqual(partialLine([item('newer-patch'), item('unknown-key')], undefined), {
+        kind: 'newerVersion',
+    })
+    const report = new LevelDataReport()
+    report.addArchetype('FutureNote')
+    assert.deepEqual(partialLine([item('newer-patch')], report), { kind: 'newerVersion' })
+    assert.deepEqual(partialLine([item('newer-patch'), item('damaged')], undefined), {
+        kind: 'damaged',
+    })
+    assert.deepEqual(partialLine([item('newer-patch'), item('newer-history')], undefined), {
+        kind: 'historyUnreadable',
+    })
+    assert.deepEqual(
+        partialLine([item('newer-patch'), item('media-unreadable', 'bgm')], undefined),
+        {
+            kind: 'mediaBad',
+            media: 'bgm',
+        },
+    )
+    assert.equal(partialLine([item('newer-patch'), item('newer-version')], undefined), undefined)
+})
+
+test('a file with a newer patch alone opens whole: bound, history read, and one line', async () => {
+    const file = await crafted(
+        (items) => setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 2 }),
+        await freshFile(),
+    )
+    const { read, project, level, head } = await readFile(file)
+    // Whole: the open binds it and keeps its history.
+    assert.equal(read.open, 'full')
+    assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
+    assert.deepEqual(bindingOptions(project, head), { history: true, bgm: true })
+    assert.deepEqual(partialLine(read.report, new LevelDataReport()), { kind: 'newerPatch' })
+})
+
 test('a download binds by the name its revision recorded, without the browser’s suffix', () => {
     assert.equal(bindingName('coconut (3).nxsp', 'coconut.nxsp', false), 'coconut.nxsp')
     assert.equal(bindingName('coconut(3).nxsp', 'coconut.nxsp', false), 'coconut.nxsp')

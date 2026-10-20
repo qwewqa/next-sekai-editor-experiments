@@ -47,6 +47,7 @@ export {
     levelInfoOf,
     mediaRefOf,
     metadataOf,
+    parseSavedAt,
     placedCompleteFrom,
     summaryOf,
     type MediaForm,
@@ -70,6 +71,9 @@ export {
     MINOR_TABLE,
     NXSP_FORMAT,
     NXSP_MINOR,
+    NXSP_PATCH,
     NXSP_VERSION,
+    PATCH_TABLE,
     minorOf,
+    patchOf,
 } from './version'

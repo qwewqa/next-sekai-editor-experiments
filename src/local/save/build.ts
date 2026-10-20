@@ -97,9 +97,10 @@ export type PendingRow = EntryDescription & {
     noteCount: number
     dirty: boolean
     stack?: { keep: number; push: { snapshot: string; step: UndoableStep }[]; index: number }
-    /** A `save` entry's revision and device. */
+    /** A `save` entry's revision, device and writer's app version. */
     revisionId?: string
     device?: { id: string; label: string }
+    appVersion?: string
 }
 
 /** This tab's unflushed part of the saved session: its rows, its live stack and their records. */
@@ -371,6 +372,7 @@ const withPending = (
                 kept: true,
                 ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
                 ...(row.device ? { device: row.device } : {}),
+                ...(row.appVersion === undefined ? {} : { appVersion: row.appVersion }),
                 ...(row.stack
                     ? {
                           stack: {
@@ -601,6 +603,7 @@ export const planSave = async (
         noteCount: headInput.summary.noteCount,
         revisionId,
         device: options.context.device,
+        appVersion: options.context.appVersion,
     }
 
     let historyInput: HistoryInput | undefined
@@ -617,6 +620,7 @@ export const planSave = async (
                 ...(flagged(entry) ? { kept: false as const } : {}),
                 ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
                 ...(entry.device ? { device: entry.device } : {}),
+                ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
                 ...(entry.stack
                     ? {
                           stack: {

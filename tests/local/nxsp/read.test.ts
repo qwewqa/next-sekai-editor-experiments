@@ -802,3 +802,165 @@ test('a crafted file that only reorders entries still opens fully', async () => 
     const file = await crafted((items) => [...items].reverse())
     assert.equal(nxsp(await readNxsp(file)).open, 'full')
 })
+
+// A newer patch (§1.6.11.8): additive content an older reader can leave out
+
+test('a newer patch alone opens whole and keeps its history; absent reads as 0', async () => {
+    const newer = nxsp(
+        await readCrafted((items) => {
+            setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 1 })
+        }),
+    )
+    assert.deepEqual(reasonsOf(newer), ['newer-patch patch'])
+    assert.equal(newer.open, 'full')
+    assert.equal(newer.project?.patch, 1)
+    assert.ok(newer.history)
+
+    const absent = nxsp(
+        await readCrafted((items) => {
+            const project = jsonOf(items, 'project.json')
+            delete project.patch
+            setJson(items, 'project.json', project)
+        }),
+    )
+    assert.equal(absent.open, 'full')
+    assert.equal(absent.project?.patch, 0)
+
+    // Anything else unknown still makes the open partial, and the history is still read.
+    const withEntry = nxsp(
+        await readCrafted((items) => {
+            setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 3 })
+            items.push({ name: 'video/a.mp4', data: encoder.encode('x'), method: 'store' })
+        }),
+    )
+    assert.deepEqual(reasonsOf(withEntry), ['newer-patch patch', 'unknown-entry video/a.mp4'])
+    assert.equal(withEntry.open, 'partial')
+    assert.ok(withEntry.history)
+
+    // A patch that is not a count is an invalid key, not a notice.
+    for (const patch of [-1, 1.5, '1', null, true]) {
+        const read = nxsp(
+            await readCrafted((items) => {
+                setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch })
+            }),
+        )
+        assert.deepEqual(reasonsOf(read), ['invalid-key patch'], JSON.stringify(patch))
+        assert.equal(read.project?.patch, 0)
+    }
+})
+
+// `savedAt` (§1.6.11.4): RFC 3339 only, else absent, never a reason to open partial
+
+test('an odd savedAt reads as absent and does not make the open partial', async () => {
+    for (const savedAt of [
+        'Oct 19 2026',
+        '2026-10-19 05:41:07Z',
+        '2026-10-19t05:41:07z',
+        '2026-10-19T05:41:07',
+        '2026-02-30T00:00:00Z',
+        '2026-10-19T24:00:00Z',
+        '2026-10-19T05:41:60Z',
+        '2026-10-19T05:41:07+24:00',
+        '٢٠٢٦-١٠-١٩T05:41:07Z',
+        '2026-10-19T05:41:07Z\n',
+        1792126800000,
+        null,
+        '',
+    ]) {
+        const read = nxsp(
+            await readCrafted((items) => {
+                const project = jsonOf(items, 'project.json')
+                project.revision.savedAt = savedAt
+                setJson(items, 'project.json', project)
+            }),
+        )
+        assert.equal(read.open, 'full', JSON.stringify(savedAt))
+        assert.equal(read.project?.revision?.savedAt, undefined, JSON.stringify(savedAt))
+        assert.ok(read.project?.revision, 'the revision itself is still read')
+    }
+    const missing = nxsp(
+        await readCrafted((items) => {
+            const project = jsonOf(items, 'project.json')
+            delete project.revision.savedAt
+            setJson(items, 'project.json', project)
+        }),
+    )
+    assert.equal(missing.open, 'full')
+    assert.equal(missing.project?.revision?.savedAt, undefined)
+})
+
+// `x`, the ignorable carrier (§1.6.11.8), and unknown keys in a step
+
+test('x is ignorable on a step, a slot, an undo stack and the manifest, and is carried unread', async () => {
+    const x = { future: [1, { deep: true }], note: 'kept' }
+    const read = nxsp(
+        await changeManifest((m) => {
+            m.x = x
+            m.undoStack.x = x
+            m.undoStack.slots[0].x = x
+            m.undoStack.slots[0].step.x = x
+            for (const entry of m.entries) if (entry.step) entry.step.x = x
+        }),
+    )
+    assert.deepEqual(reasonsOf(read), [])
+    assert.equal(read.open, 'full')
+    assert.deepEqual(read.history?.undoStack.x, x)
+    assert.deepEqual(read.history?.undoStack.slots[0]?.step.x, x)
+    assert.ok(read.history?.entries.some((entry) => entry.step?.x !== undefined))
+
+    // An x that is not a JSON object is damage, wherever it is.
+    for (const [path, change] of [
+        ['manifest.x', (m: Loose) => (m.x = [1])],
+        ['manifest.undoStack.x', (m: Loose) => (m.undoStack.x = 'x')],
+        ['manifest.undoStack.slots[0].x', (m: Loose) => (m.undoStack.slots[0].x = null)],
+    ] as const) {
+        const bad = nxsp(await changeManifest(change))
+        assert.ok(hasReason(bad, 'history-unreadable', path), `${path}: ${reasonsOf(bad).join()}`)
+        assert.equal(bad.history, undefined)
+    }
+    const step = nxsp(await changeManifest((m) => (m.undoStack.slots[0].step.x = [1])))
+    assert.ok(hasReason(step, 'history-unreadable', 'manifest.undoStack.slots[0].step'))
+})
+
+test('a key no carrier knows, inside a step, is newer content: unknown-key, not unreadable', async () => {
+    for (const [path, change] of [
+        ['manifest.undoStack.slots[0].step.zz', (m: Loose) => (m.undoStack.slots[0].step.zz = 1)],
+        [
+            'manifest.entries[1].step.zz',
+            (m: Loose) => (m.entries.find((e: Loose) => e.step).step.zz = { a: 1 }),
+        ],
+    ] as const) {
+        const read = nxsp(await changeManifest(change))
+        assert.ok(
+            reasonsOf(read).some((line) => line.startsWith('unknown-key manifest.')),
+            `${path}: ${reasonsOf(read).join()}`,
+        )
+        assert.ok(!reasonsOf(read).some((line) => line.startsWith('history-unreadable')))
+        assert.equal(read.history, undefined)
+        assert.equal(read.open, 'partial')
+    }
+    // What is wrong beside it is still damage.
+    const both = nxsp(
+        await changeManifest((m) => {
+            m.undoStack.slots[0].step.zz = 1
+            m.undoStack.slots[0].step.kind = 'nope'
+        }),
+    )
+    assert.ok(hasReason(both, 'unknown-key', 'manifest.undoStack.slots[0].step.zz'))
+    assert.ok(hasReason(both, 'history-unreadable', 'manifest.undoStack.slots[0].step'))
+})
+
+test('a save entry’s appVersion is optional on read, a string, and only on a save', async () => {
+    const saved = (m: Loose) => m.entries.find((e: Loose) => e.kind === 'save')
+    const present = nxsp(await changeManifest(() => undefined))
+    assert.equal(
+        present.history?.entries.find((entry) => entry.kind === 'save')?.appVersion,
+        '0.6.0',
+    )
+    const absent = nxsp(await changeManifest((m) => delete saved(m).appVersion))
+    assert.equal(absent.open, 'full')
+    const wrong = nxsp(await changeManifest((m) => (saved(m).appVersion = 6)))
+    assert.ok(hasReason(wrong, 'history-unreadable', 'manifest.entries[3].appVersion'))
+    const foreign = nxsp(await changeManifest((m) => (m.entries[1].appVersion = '0.6.0')))
+    assert.deepEqual(reasonsOf(foreign), ['unknown-key manifest.entries[1].appVersion'])
+})

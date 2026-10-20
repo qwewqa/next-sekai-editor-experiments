@@ -63,6 +63,12 @@ const newerFile = (read: NxspReply) =>
         ['newer-version', 'newer-minor', 'newer-level'].includes(reason),
     )
 
+/**
+ * Whether a newer `patch` was seen: it leaves the open whole (Replace may keep such a file), but a
+ * level that then fails to parse is still a newer file's.
+ */
+const newerPatch = (read: NxspReply) => read.report.some(({ reason }) => reason === 'newer-patch')
+
 /** The level, parsed through the level-data path with its report (§1.5.4 step 2). */
 const parseLevel = (read: NxspReply) => {
     const report = new LevelDataReport()
@@ -79,6 +85,7 @@ const parseLevel = (read: NxspReply) => {
     } catch (error) {
         const newer =
             newerFile(read) ||
+            newerPatch(read) ||
             (error instanceof ImportRefusal &&
                 getLevelDataRevision(
                     (read.level as { entities?: [] } | undefined)?.entities ?? [],
@@ -109,6 +116,8 @@ const partialMessage = (line: PartialLine) => {
             return open.historyUnreadable
         case 'newerVersion':
             return interpolateRaw(open.newerVersion, PRODUCT_NAME)
+        case 'newerPatch':
+            return interpolateRaw(open.newerPatch, PRODUCT_NAME)
         case 'mediaBad':
             return interpolateRaw(open.mediaBad, open.media[line.media])
     }
@@ -432,7 +441,9 @@ const openRequestedProject = async (
             interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
             { card: true, severity: 'info' },
         )
-    else if (line) {
+    // A newer `patch` alone gives way to an earlier session's unsaved changes: that notice has the
+    // action that keeps work, and the open is whole either way.
+    else if (line && !(line.kind === 'newerPatch' && earlier)) {
         const message = partialMessage(line)
         notify(() => message, { card: true, severity: 'warning' })
     } else if (!earlier && bgmMissing) {

@@ -2197,6 +2197,7 @@
     "historyUnreadable": "Bu dosyanın geçmişi okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
     "newerVersion": "Daha yeni bir {0} sürümüyle oluşturuldu. Kaydetmek ayrı bir dosya oluşturur.",
     "newerRefused": "Daha yeni bir {0} sürümüyle oluşturuldu.",
+    "newerPatch": "Daha yeni bir {0} sürümüyle oluşturuldu. Bazı içerikler gösterilmeyebilir.",
     "mediaBad": "Bu dosyanın {0} okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
     "media": {
       "bgm": "BGM’si",

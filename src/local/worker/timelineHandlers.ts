@@ -24,6 +24,7 @@ export type TimelineEntry = EntryDescription & {
     from?: number
     revisionId?: string
     device?: unknown
+    appVersion?: string
 }
 
 export type TimelineRequest = {
@@ -108,6 +109,7 @@ const entryOf = (row: Row): TimelineEntry | undefined => {
         kept: row.kept !== false,
         ...(typeof row.revisionId === 'string' ? { revisionId: row.revisionId } : {}),
         ...(row.device === undefined ? {} : { device: row.device }),
+        ...(typeof row.appVersion === 'string' ? { appVersion: row.appVersion } : {}),
     }
 }
 

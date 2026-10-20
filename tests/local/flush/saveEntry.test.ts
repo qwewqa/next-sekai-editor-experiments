@@ -88,6 +88,7 @@ test('a save entry takes its reserved seq; edits during the build wait and follo
             state: first,
             revisionId: 'rev-1',
             device: DEVICE,
+            appVersion: '0.6.0',
         },
         {
             docId,
@@ -116,6 +117,12 @@ test('a save entry takes its reserved seq; edits during the build wait and follo
     const save = entries[1]!
     assert.equal(save.revisionId, 'rev-1')
     assert.deepEqual(save.device, DEVICE)
+    // The app version that wrote the Save stays on its row; no other row has one.
+    assert.equal(save.appVersion, '0.6.0')
+    assert.deepEqual(
+        entries.filter((row) => 'appVersion' in row).map((row) => row.kind),
+        ['save'],
+    )
     assert.equal(toHex(save.snapshot as Uint8Array), rootOf(first))
 
     const [chain] = rows(world, 'chains').values()

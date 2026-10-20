@@ -89,9 +89,10 @@ export type BatchEntry = EntryDescription & {
         push: { snapshot: number | Uint8Array; step: UndoableStep }[]
         index: number
     }
-    /** A `save` entry's revision and device (§1.6.11.2). */
+    /** A `save` entry's revision, device and writer's app version (§1.6.11.2). */
     revisionId?: string
     device?: { id: string; label: string }
+    appVersion?: string
 }
 
 /** A stack block a batch rewrites (§1.6.4 #6): each slot a snapshot of the batch or a stored root. */
@@ -648,6 +649,7 @@ export const writeFlush = async (
             kept: true,
             ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
             ...(entry.device ? { device: { id: entry.device.id, label: entry.device.label } } : {}),
+            ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
         }
         await tx.put('entries', row)
         entryRows.push(row)

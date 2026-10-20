@@ -2197,6 +2197,7 @@
     "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde crée un fichier séparé.",
     "newerVersion": "Créé par une version plus récente de {0}. La sauvegarde crée un fichier séparé.",
     "newerRefused": "Créé par une version plus récente de {0}.",
+    "newerPatch": "Créé par une version plus récente de {0}. Certains contenus peuvent ne pas s’afficher.",
     "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde crée un fichier séparé.",
     "media": {
       "bgm": "la BGM",

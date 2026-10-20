@@ -98,10 +98,11 @@ export const parseZip64End = (bytes: Uint8Array): ZipEnd => {
 const CP437 =
     'ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■ '
 
+// A name keeps a leading U+FEFF, as Rust's `from_utf8_lossy` does (the default decoder strips it).
 export const decodeName = (raw: Uint8Array, flags: number) => {
-    if (flags & 0x0800) return new TextDecoder().decode(raw)
+    if (flags & 0x0800) return new TextDecoder('utf-8', { ignoreBOM: true }).decode(raw)
     try {
-        return new TextDecoder('utf-8', { fatal: true }).decode(raw)
+        return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(raw)
     } catch {
         let name = ''
         for (const byte of raw)

@@ -1,5 +1,6 @@
 import { inspectNxsp } from '../../local/nxsp/inspect'
 import { isObject } from '../../local/nxsp/json'
+import { currentSummary, parseSavedAt, readProject } from '../../local/nxsp/project'
 import type { DiskVersion } from './dialogs'
 
 // What a `.nxsp` on disk is, read on the page from a `File` the check pinned (Part 0 §0.9.6): its
@@ -36,14 +37,18 @@ export const readDiskFacts = async (file: Blob, deviceId: string): Promise<DiskF
         if (error instanceof DOMException) throw error
         return { version: { kind: 'unknown' } }
     }
-    const project = isObject(projectJson) ? projectJson : undefined
-    const revision = isObject(project?.revision) ? project.revision : undefined
-    const device = isObject(revision?.device) ? revision.device : undefined
-    const savedAt = typeof revision?.savedAt === 'string' ? Date.parse(revision.savedAt) : NaN
-    const summary = isObject(project?.summary) ? project.summary : undefined
-    const notes = typeof summary?.noteCount === 'number' ? summary.noteCount : 0
+    // The reader's rules, not a looser copy: `savedAt` is RFC 3339 or absent, and `summary` counts
+    // only when it was computed for this revision (Part 0 §0.9.10).
+    const project =
+        isObject(projectJson) && projectJson.format === 'nxsp'
+            ? readProject(projectJson).project
+            : undefined
+    const revision = project?.revision
+    const device = revision?.device
+    const savedAt = parseSavedAt(revision?.savedAt)
+    const notes = (project ? currentSummary(project)?.noteCount : undefined) ?? 0
     const version: DiskVersion =
-        device && typeof device.id === 'string' && typeof device.label === 'string' && savedAt
+        device && savedAt !== undefined
             ? {
                   kind: 'saved',
                   device: { id: device.id, label: device.label },

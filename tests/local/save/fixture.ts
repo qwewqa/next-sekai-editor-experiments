@@ -280,6 +280,7 @@ export class Fixture {
                         : {}),
                     ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
                     ...(row.device ? { device: row.device } : {}),
+                    ...(row.appVersion === undefined ? {} : { appVersion: row.appVersion }),
                 })),
             {
                 base: 0,
@@ -365,6 +366,9 @@ export class Fixture {
             kept: true,
             revisionId: built.revisionId,
             device: DEVICE,
+            ...(built.saveEntry.appVersion === undefined
+                ? {}
+                : { appVersion: built.saveEntry.appVersion }),
         })
     }
 

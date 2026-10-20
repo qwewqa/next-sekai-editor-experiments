@@ -112,7 +112,7 @@ const save = (
         },
         time,
         snapshot,
-        { noteCount, revisionId, device: DEVICE },
+        { noteCount, revisionId, device: DEVICE, appVersion: '0.6.0' },
     )
 
 export const firstInput = (

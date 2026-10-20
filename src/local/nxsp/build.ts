@@ -40,7 +40,7 @@ import {
     type RevisionForm,
 } from './project'
 import { NXSP_CAPS, type NxspCaps } from './read'
-import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION } from './version'
+import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION, patchOf } from './version'
 
 // The shared builder (§1.6.11.7), its format half: from what a write holds, already decided by
 // the history model (§1.6.11.6), it lays out `project.json`, `level.json`, the segments, the
@@ -293,6 +293,7 @@ const entryForm = (entry: EntryForm): EntryForm => ({
     ...(entry.device
         ? { device: { id: toWellFormed(entry.device.id), label: toWellFormed(entry.device.label) } }
         : {}),
+    ...(entry.appVersion === undefined ? {} : { appVersion: toWellFormed(entry.appVersion) }),
     ...(entry.stack
         ? {
               stack: {
@@ -651,7 +652,9 @@ export const planNxsp = (
     ]
     const names = ['project.json', 'level.json', ...bodyEntries.map((entry) => entry.name)]
     let minor: number
+    let patch: number
     try {
+        patch = patchOf({ zipEntries: names })
         minor = minorOf({
             levelVersion: input.levelVersion,
             rootVs: laid?.rootVs ?? [],
@@ -673,6 +676,7 @@ export const planNxsp = (
             format: NXSP_FORMAT,
             version: NXSP_VERSION,
             minor,
+            patch,
             levelVersion: input.levelVersion,
             appVersion: context.appVersion,
             id: input.id,

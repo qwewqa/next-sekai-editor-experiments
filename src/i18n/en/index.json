@@ -2197,6 +2197,7 @@
         "historyUnreadable": "This file’s history could not be read. Saving makes a separate file.",
         "newerVersion": "Made by a newer version of {0}. Saving makes a separate file.",
         "newerRefused": "Made by a newer version of {0}.",
+        "newerPatch": "Made by a newer version of {0}. Some content may not be shown.",
         "mediaBad": "This file’s {0} could not be read. Saving makes a separate file.",
         "media": {
             "bgm": "BGM",

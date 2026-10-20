@@ -3,10 +3,13 @@ import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
 import {
     chainOf,
     edit,
+    flushed,
     notice,
     pressSave,
+    projectOf,
     queuePicks,
     readFile,
+    rows,
     start,
     submitSave,
     writeFile,
@@ -46,3 +49,51 @@ for (const where of ['entity', 'data', 'value and ref'])
         )
         expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
     })
+
+test('a newer patch alone opens bound with its history, says so once, and saving writes this build’s patch', async ({
+    page,
+}) => {
+    await start(page)
+    const file = await crafted((items) => {
+        setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 3 })
+    })
+    await writeFile(page, 'coconut.nxsp', [...new Uint8Array(await file.arrayBuffer())])
+    await queuePicks(page, ['coconut.nxsp'])
+    await page.keyboard.press('o')
+    const line = notice(page).filter({
+        hasText: 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.',
+    })
+    await expect(line).toHaveCount(1)
+    // Bound to its file, as a whole open is, and its History kept (the file's own chronology).
+    const chain = await chainOf(page)
+    expect(chain.file).toBeDefined()
+    expect(chain.revision).toBeDefined()
+    expect(chain.docId).toBe('doc')
+    await flushed(page)
+    const { entries } = await rows(page, ['entries'])
+    expect(entries!.length).toBeGreaterThan(1)
+    // The open's line is the only one: not a partial open's "Saving makes a separate file".
+    await expect(notice(page).filter({ hasText: 'Saving makes a separate file' })).toHaveCount(0)
+    // Saving writes the file again, with the patch this build writes.
+    await edit(page, 3)
+    await pressSave(page)
+    await expect.poll(async () => (await projectOf(page, 'coconut.nxsp')).patch).toBe(0)
+    expect((await projectOf(page, 'coconut.nxsp')).minor).toBe(1)
+})
+
+test('a newer patch beside another unknown thing is one line, the partial open’s', async ({
+    page,
+}) => {
+    await start(page)
+    const file = await crafted((items) => {
+        setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 3 })
+        items.push({ name: 'video/a.mp4', data: new TextEncoder().encode('x'), method: 'store' })
+    })
+    await writeFile(page, 'coconut.nxsp', [...new Uint8Array(await file.arrayBuffer())])
+    await queuePicks(page, ['coconut.nxsp'])
+    await page.keyboard.press('o')
+    await expect(notice(page).filter({ hasText: 'Made by a newer version' })).toHaveCount(1)
+    await expect(notice(page).filter({ hasText: 'Saving makes a separate file' })).toBeVisible()
+    const chain = await chainOf(page)
+    expect(chain.file).toBeUndefined()
+})
