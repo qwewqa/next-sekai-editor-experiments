@@ -183,7 +183,7 @@
         "title": "グループ管理",
         "moveUp": "グループを上へ移動",
         "moveDown": "グループを下へ移動",
-        "moved": "{0} グループを移動しました",
+        "moved": "{0}グループを移動しました",
         "properties": {
           "title": "グループの設定を編集",
           "modal": {
@@ -192,8 +192,8 @@
           }
         },
         "delete": "グループを削除",
-        "deleted": "{0} グループを削除しました",
-        "added": "{0} グループを追加しました"
+        "deleted": "{0}グループを削除しました",
+        "added": "{0}グループを追加しました"
       }
     },
     "manageStages": {
@@ -202,7 +202,7 @@
         "title": "ステージ管理",
         "moveUp": "ステージを上へ移動",
         "moveDown": "ステージを下へ移動",
-        "moved": "{0} ステージを移動しました",
+        "moved": "{0}ステージを移動しました",
         "properties": {
           "title": "ステージの設定を編集",
           "modal": {
@@ -210,8 +210,8 @@
           }
         },
         "delete": "ステージを削除",
-        "deleted": "{0} ステージを削除しました",
-        "added": "{0} ステージを追加しました"
+        "deleted": "{0}ステージを削除しました",
+        "added": "{0}ステージを追加しました"
       }
     },
     "note": {
@@ -1962,7 +1962,7 @@
       "deleteSelectedFoldersTitle": "フォルダーとグループを削除",
       "deleteSelectedMessage": "選択した{0}個のグループと、その{1}個のオブジェクトを削除しますか？",
       "deleteSelectedFoldersMessage": "選択した{0}個のフォルダーと{1}個のグループ、その{2}個のオブジェクトを削除しますか？",
-      "duplicated": "{0} グループを複製しました",
+      "duplicated": "{0}グループを複製しました",
       "duplicatedSelected": "選択した{0}個のグループを複製しました",
       "duplicatedSelectedFolders": "選択した{0}個のフォルダーと{1}個のグループを複製しました",
       "propertySet": "グループ{0}の{1}を{2}に設定しました",
@@ -1987,7 +1987,7 @@
       "deleteSelectedFoldersTitle": "フォルダーとステージを削除",
       "deleteSelectedMessage": "選択した{0}個のステージと、その{1}個のオブジェクトを削除しますか？",
       "deleteSelectedFoldersMessage": "選択した{0}個のフォルダーと{1}個のステージ、その{2}個のオブジェクトを削除しますか？",
-      "duplicated": "{0} ステージを複製しました",
+      "duplicated": "{0}ステージを複製しました",
       "duplicatedSelected": "選択した{0}個のステージを複製しました",
       "duplicatedSelectedFolders": "選択した{0}個のフォルダーと{1}個のステージを複製しました",
       "propertySet": "ステージ{0}の{1}を{2}に設定しました"
