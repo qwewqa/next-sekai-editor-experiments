@@ -1341,7 +1341,7 @@
       "action": "세부 정보",
       "unsupported": "이 편집기는 이 단계의 세부 정보를 읽을 수 없습니다.",
       "newer": "이 단계는 최신 버전의 편집기에서 기록되었습니다.",
-      "nameShortened": "이름을 줄여 표시함",
+      "textShortened": "텍스트를 줄여 표시함",
       "varying": "값이 다름",
       "changed": "변경",
       "displaced": "교체",
@@ -1908,12 +1908,7 @@
       "moveDown": "폴더를 아래로 이동",
       "ungroup": "폴더 해제",
       "path": "{0} › {1}",
-      "added": "{0} 폴더 추가됨",
-      "renamed": "{0} 폴더 이름을 {1}(으)로 변경함",
-      "moved": "{0} 폴더 이동됨",
-      "ungrouped": "{0} 폴더 해제됨",
-      "deleted": "{0} 폴더 삭제됨",
-      "duplicated": "{0} 폴더 복제됨"
+      "ungrouped": "{0} 폴더 해제됨"
     },
     "manager": {
       "currentGroup": "현재 그룹",

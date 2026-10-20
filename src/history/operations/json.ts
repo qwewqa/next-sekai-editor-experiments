@@ -4,6 +4,13 @@ export type JsonObject = { readonly [key: string]: JsonValue }
 
 export const OPERATION_WIRE_BYTES = 256 * 1024
 export const OPERATION_WIRE_DEPTH = 16
+/**
+ * The limits of an `x` extension (format-versioning.md, §3), the same on every carrier: its own
+ * byte size, and its own nesting depth counted from the `x` value itself (the object is level 0).
+ * A host's caps never count what is in an `x`.
+ */
+export const EXTENSION_BYTES = OPERATION_WIRE_BYTES
+export const EXTENSION_DEPTH = 32
 export const OPERATION_NATIVE_BYTES = 64 * 1024
 
 export class OperationDataError extends Error {}
@@ -27,11 +34,23 @@ export const isJsonText = (value: unknown): value is string =>
     typeof value === 'string' && wellFormed(value)
 
 // Capture data without invoking getters, toJSON, or prototype setters.
+export type ExtensionTrail = readonly (string | number)[]
+
+/**
+ * `extensions` says, for the object at a path from the root (keys and array indices), that its
+ * `x` is a carrier: that value is captured on its own, with the extension limits and outside the
+ * caller's byte and depth counts.
+ */
 export const captureJson = (
     input: unknown,
-    { bytes = OPERATION_WIRE_BYTES, depth = OPERATION_WIRE_DEPTH } = {},
+    {
+        bytes = OPERATION_WIRE_BYTES,
+        depth = OPERATION_WIRE_DEPTH,
+        extensions,
+    }: { bytes?: number; depth?: number; extensions?: (trail: ExtensionTrail) => boolean } = {},
 ): JsonValue => {
     let size = 0
+    const trail: (string | number)[] = []
     const ancestors = new Set<object>()
     const add = (amount: number) => {
         size += amount
@@ -81,7 +100,9 @@ export const captureJson = (
                 if (!property || !property.enumerable || !('value' in property))
                     throw new OperationDataError('Operation arrays must contain data values')
                 if (i) add(1)
+                if (extensions) trail.push(i)
                 items.push(visit(property.value, level + 1))
+                if (extensions) trail.pop()
             }
             result = Object.freeze(items)
         } else {
@@ -96,7 +117,16 @@ export const captureJson = (
                 if (i) add(1)
                 text(key)
                 add(1)
-                object[key] = visit(property.value, level + 1)
+                if (key === 'x' && extensions?.(trail))
+                    object[key] = captureJson(property.value, {
+                        bytes: EXTENSION_BYTES,
+                        depth: EXTENSION_DEPTH,
+                    })
+                else {
+                    if (extensions) trail.push(key)
+                    object[key] = visit(property.value, level + 1)
+                    if (extensions) trail.pop()
+                }
             }
             result = Object.freeze(object)
         }

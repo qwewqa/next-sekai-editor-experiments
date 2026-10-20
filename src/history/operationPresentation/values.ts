@@ -23,6 +23,10 @@ export const message = (
 
 export const nameText = (name: NameText) => `${name.text}${name.truncated ? '…' : ''}`
 
+/** A file name in a sentence; an empty one reads as the untitled file, so no sentence ends in a space. */
+export const fileNameText = (name: NameText, context: OperationTextContext) =>
+    name.text.trim() || name.truncated ? nameText(name) : context.strings.save.placeholder
+
 /** A name inside a sentence, quoted the way the locale quotes; an empty name is quoted empty. */
 export const quoted = (text: string, context: OperationTextContext) =>
     message(context, context.strings.history.quoted, text)

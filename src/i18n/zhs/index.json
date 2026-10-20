@@ -1341,7 +1341,7 @@
       "action": "详情",
       "unsupported": "此编辑器无法读取此步骤的详情。",
       "newer": "此步骤由较新版本的编辑器记录。",
-      "nameShortened": "名称已缩短显示",
+      "textShortened": "文本已缩短显示",
       "varying": "值不一致",
       "changed": "已修改",
       "displaced": "已替换",
@@ -1908,12 +1908,7 @@
       "moveDown": "下移文件夹",
       "ungroup": "解散文件夹",
       "path": "{0} › {1}",
-      "added": "已添加{0}文件夹",
-      "renamed": "已将文件夹{0}重命名为{1}",
-      "moved": "已移动{0}文件夹",
-      "ungrouped": "已解散{0}文件夹",
-      "deleted": "已删除{0}文件夹",
-      "duplicated": "已为{0}文件夹创建副本"
+      "ungrouped": "已解散{0}文件夹"
     },
     "manager": {
       "currentGroup": "当前群组",

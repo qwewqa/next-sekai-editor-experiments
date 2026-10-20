@@ -188,6 +188,18 @@ const fixture = [
     },
 ] as const satisfies readonly NativeOperationInput[]
 
+/** Every string a Details record shows: labels, counts, both sides of a change, values and facts. */
+const detailTexts = (details: ReturnType<typeof operationDetails>) => [
+    ...details.rows.flatMap((row) =>
+        row.kind === 'counts'
+            ? [row.label, ...row.items]
+            : row.kind === 'change'
+              ? [row.label, row.before.text, row.after.text]
+              : [row.label, row.value.text],
+    ),
+    ...details.facts,
+]
+
 test('all native IDs render current-language singleton descriptions and complete Details', () => {
     assert.deepEqual(fixture.map(({ id }) => id).sort(), Object.keys(operationCodecs).sort())
     for (const locale of locales) {
@@ -205,6 +217,13 @@ test('all native IDs render current-language singleton descriptions and complete
             assert.equal(details.note, undefined)
             assert(details.rows.every((row) => row.label.length && row.key.length))
             assert(details.rows.every((row) => row.kind !== 'counts' || row.items.length))
+            for (const shown of [...detailTexts(details), text]) {
+                assert(shown.length > 0, `${locale} ${input.id}: empty text`)
+                assert(
+                    !/\{\d+\}|undefined|NaN|\[object/.test(shown),
+                    `${locale} ${input.id}: ${shown}`,
+                )
+            }
         }
     }
     assert.equal(describeOperation(fixture[0], en), 'Added 3 notes')
@@ -405,6 +424,29 @@ test('known text relocalizes while unknown text and actual coarse kind remain li
         en,
     )
     assert.equal(foreign.descriptionLang, 'es')
+    // An app locale code is not a language tag: Chinese is named by its script.
+    for (const [locale, tag] of [
+        ['zhs', 'zh-Hans'],
+        ['zht', 'zh-Hant'],
+    ] as const) {
+        const chinese = operationDetails(
+            captureOperationRecipe([
+                {
+                    description: captureStep({
+                        kind: 'edit',
+                        operation: captureOperation({
+                            id: 'future.x',
+                            version: 1,
+                            data: {},
+                            fallback: { text: '好', locale },
+                        }),
+                    }),
+                },
+            ]),
+            en,
+        )
+        assert.equal(chinese.descriptionLang, tag)
+    }
     for (const kind of ['init', 'edit', 'restore'] as const) {
         const malformed = captureStep({ kind, operation: { id: 'future' } })
         assert.equal(
@@ -597,7 +639,7 @@ test('all owner kinds quote literal names once and distinguish numbers, placehol
                 data: { ...input.data, target: owner(kind, 9, '😀'.repeat(257)) },
             }
             assert(describeOperation(long, ctx).includes(quote('😀'.repeat(256) + '…')))
-            assert.deepEqual(detail(long, ctx).facts, [ctx.strings.history.details.nameShortened])
+            assert.deepEqual(detail(long, ctx).facts, [ctx.strings.history.details.textShortened])
             const numeric = { ...input, data: { ...input.data, target: owner(kind, 9, '1') } }
             assert.notEqual(
                 describeOperation(numeric, ctx),
@@ -868,4 +910,53 @@ test('a BGM offset title is in milliseconds, the unit of the field', () => {
         ),
         'Set Initial Life to 900',
     )
+})
+
+test('a Level Info change cut to the same excerpt still shows its row', () => {
+    const long = 'x'.repeat(300)
+    const input = {
+        id: 'nse.levelInfo.set',
+        data: {
+            changes: [
+                {
+                    field: 'description',
+                    before: captureName(long + 'a'),
+                    after: captureName(long + 'b'),
+                },
+            ],
+        },
+    } as const satisfies NativeOperationInput
+    for (const locale of locales) {
+        const details = detail(input, context(locale))
+        assert.equal(details.rows.length, 1, locale)
+        const row = details.rows[0]
+        assert(row?.kind === 'change', locale)
+        assert(row.before.shortened && row.after.shortened, locale)
+        assert.equal(row.before.text, row.after.text)
+    }
+    // A cut name next to a different one is a change too, and an equal short name is not.
+    const same = {
+        id: 'nse.bgm.change',
+        data: { file: { before: captureName('a.mp3'), after: captureName('a.mp3') } },
+    } as const satisfies NativeOperationInput
+    assert.equal(detail(same).rows[0]?.kind, 'value')
+})
+
+test('an empty file name never leaves a dangling space', () => {
+    const empty = captureName('')
+    for (const locale of locales) {
+        const ctx = context(locale)
+        const untitled = ctx.strings.save.placeholder
+        for (const input of [
+            { id: 'nse.file.save', data: { file: empty, delivery: 'file' } },
+            { id: 'nse.file.save', data: { file: empty, delivery: 'download' } },
+            { id: 'nse.file.export', data: { file: empty, delivery: 'download' } },
+            { id: 'nse.origin', data: { origin: 'import', source: empty } },
+        ] as const satisfies readonly NativeOperationInput[]) {
+            const text = describeOperation(input, ctx)
+            assert.equal(text, text.trim(), `${locale} ${input.id}: "${text}"`)
+            assert(!/\s{2}/.test(text), `${locale} ${input.id}: "${text}"`)
+            assert(text.includes(untitled), `${locale} ${input.id}: "${text}"`)
+        }
+    }
 })
