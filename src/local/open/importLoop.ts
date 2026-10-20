@@ -55,6 +55,36 @@ const BATCH_TIMEOUT_MS = 120_000
 
 const running = new Map<string, Promise<ImportOutcome>>()
 
+/** How far an import has come, in batches: what a Save waiting for it shows (§1.4.7). */
+export type ImportProgress = { done: number; total: number }
+
+const progress = new Map<string, ImportProgress>()
+const listeners = new Map<string, Set<(progress: ImportProgress) => void>>()
+
+const report = (sessionId: string, next: ImportProgress) => {
+    progress.set(sessionId, next)
+    for (const listener of listeners.get(sessionId) ?? []) listener(next)
+}
+
+/**
+ * Calls `listener` with the session's import progress now (when one runs) and after each batch;
+ * returns the way to stop listening.
+ */
+export const onImportProgress = (
+    sessionId: string,
+    listener: (progress: ImportProgress) => void,
+) => {
+    const set = listeners.get(sessionId) ?? new Set()
+    set.add(listener)
+    listeners.set(sessionId, set)
+    const known = progress.get(sessionId)
+    if (known) listener(known)
+    return () => {
+        set.delete(listener)
+        if (!set.size && listeners.get(sessionId) === set) listeners.delete(sessionId)
+    }
+}
+
 /** A spec slows the import by this many ms a batch, to act while it runs (§1.11's test hooks). */
 export const IMPORT_DELAY_TEST_KEY = 'nse.test.importDelay'
 
@@ -125,6 +155,7 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
     }
     try {
         for (let n = 0; n < job.batches; n++) {
+            report(sessionId, { done: n, total: job.batches })
             await testDelay()
             if (!(await unchanged(source, false))) return await stop()
             let outcome = await worker.call('openBatch', { id, n }, { timeoutMs: BATCH_TIMEOUT_MS })
@@ -169,6 +200,7 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
                 }
             }
         }
+        report(sessionId, { done: job.batches, total: job.batches })
         return unlinkedAs ? { kind: 'unlinked', docId: unlinkedAs } : { kind: 'done' }
     } finally {
         await worker.call('openDrop', id).catch(() => undefined)
@@ -182,7 +214,10 @@ const track = (sessionId: string, run: Promise<ImportOutcome>) => {
     })
     running.set(sessionId, job)
     void job.then(() => {
-        if (running.get(sessionId) === job) running.delete(sessionId)
+        if (running.get(sessionId) === job) {
+            running.delete(sessionId)
+            progress.delete(sessionId)
+        }
     })
     return job
 }

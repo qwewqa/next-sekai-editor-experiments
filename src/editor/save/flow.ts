@@ -11,7 +11,7 @@ import { handleOf, readableWithoutPrompt, requestRead, storableHandle } from '..
 import { toHex } from '../../local/hash'
 import { displayName, namePartsOf, stemOf } from '../../local/names'
 import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
-import { isImporting, whenImported } from '../../local/open/importLoop'
+import { isImporting, onImportProgress, whenImported } from '../../local/open/importLoop'
 import { readKeptCopy } from '../../local/open/kept'
 import type { HandleOwner } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
@@ -244,11 +244,17 @@ const activationLapsed = (startedAt: number) =>
 const waitForImport = async (env: Env, slot: PreparingSlot) => {
     if (!isImporting(env.session.id)) return 'done'
     const dialog = openPreparing(slot)
+    // The import's progress, from the batches it has run (§1.4.7).
+    const stop = onImportProgress(env.session.id, (progress) => {
+        dialog.importing(progress)
+    })
     try {
         const outcome = await whenImported(env.session.id, dialog.signal)
         return outcome.kind === 'unlinked' ? 'unlinked' : 'done'
     } catch {
         return 'cancelled'
+    } finally {
+        stop()
     }
 }
 
@@ -840,34 +846,8 @@ const pickReserved = async (
     }
     const picked = target
     await savePoint('picked')
-    // The file's own name goes into it: a picker that renamed it needs the build again, outside
-    // the lock, so the `save` entry and `revision.fileName` name the file written.
-    let named = built
-    if (picked.handle.name !== request.fileName) {
-        const pickedName = picked.handle.name
-        slot.timer = undefined
-        whenSlow(slot)
-        try {
-            named = await runBuild(env, {
-                ...buildRequest,
-                fileName: pickedName,
-                save: {
-                    time: buildRequest.save.time,
-                    operation: saveOperation(pickedName, false),
-                },
-            })
-        } catch (error) {
-            closePreparing(slot)
-            await env.flusher.endSave(reservation)
-            if (error instanceof BuildRefused)
-                return { kind: 'error', message: refusalText(error, pickedName) }
-            return { kind: 'failed', error: fileError(error), name: pickedName }
-        }
-        closePreparing(slot)
-    }
-    const ready = named
     return withBind('exclusive', () =>
-        afterPick(env, reservation, ready, state, request, binding, picked, pre),
+        afterPick(env, reservation, built, state, request, binding, picked, pre),
     )
 }
 
@@ -980,6 +960,29 @@ const afterPick = async (
             if (filled && picked.kind === 'other' && !ownersOwn) {
                 await env.flusher.endSave(reservation)
                 return changedWhilePicked(name)
+            }
+            // A picker that renamed the file: its own name goes into the build (`save` entry and
+            // `revision.fileName`). Rebuilt only now, once the file is known to be written, so a
+            // refused pick is put back as soon as it is known, and before anything is revoked.
+            if (built && name !== request.fileName && !(filled && !ownersOwn)) {
+                try {
+                    built = await runBuild(env, {
+                        target:
+                            request.target === 'new'
+                                ? { kind: 'new', docId: built.identity.docId }
+                                : { kind: 'copy' },
+                        history: request.history,
+                        bgm: request.bgm,
+                        fileName: name,
+                        save: { time: reservation.wall, operation: saveOperation(name, false) },
+                        state,
+                    })
+                } catch (error) {
+                    await env.flusher.endSave(reservation)
+                    if (error instanceof BuildRefused)
+                        return { kind: 'error', message: refusalText(error, name) }
+                    return { kind: 'failed', error: fileError(error), name }
+                }
             }
             const preBind = {
                 file: {

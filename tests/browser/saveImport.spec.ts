@@ -172,3 +172,44 @@ test('Undo right after a reload mid-import waits for the resumed import', async 
     await page.keyboard.press('Control+z')
     await expect.poll(notes, { timeout: 15_000 }).toBe(before - 1)
 })
+
+test('a Save waiting for a held, multi-batch import shows its progress, and finishes after it', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    // The import's second batch is held, so the first has committed and the rest has not.
+    await page.evaluate(async () => {
+        const { storageWorker } = await import('/src/local/start.ts')
+        const worker = storageWorker!
+        const call = worker.call.bind(worker)
+        let release = () => {}
+        const gate = new Promise<void>((resolve) => (release = resolve))
+        const seen = window as unknown as { releaseImport: () => void; batches: number[] }
+        seen.releaseImport = release
+        seen.batches = []
+        worker.call = (async (method: string, ...rest: unknown[]) => {
+            if (method === 'openBatch') {
+                const n = (rest[0] as { n: number }).n
+                seen.batches.push(n)
+                if (n === 1) await gate
+            }
+            return (call as (...args: unknown[]) => unknown)(method, ...rest)
+        }) as typeof worker.call
+    })
+    await open(page, 'coconut.nxsp')
+    await edit(page, 9)
+    await pressSave(page)
+    const preparing = page.getByRole('dialog').filter({ hasText: 'Preparing coconut.nxsp' })
+    await expect(preparing).toBeVisible()
+    const bar = preparing.getByRole('progressbar')
+    await expect(bar).toBeVisible()
+    const now = Number(await bar.getAttribute('aria-valuenow'))
+    expect(now).toBeGreaterThan(0)
+    expect(now).toBeLessThan(100)
+    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible({
+        timeout: 15_000,
+    })
+    await expect(preparing).toHaveCount(0)
+})
