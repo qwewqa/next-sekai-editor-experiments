@@ -99,11 +99,12 @@ const store = (page: Page, name: string, base64: string) =>
         { name, base64 },
     )
 
-const keep = async (page: Page, name: string) => {
+/** Keeps the OPFS file `name` in NSE_DUMP_FILES, as `as` (the name it is kept under). */
+const keep = async (page: Page, name: string, as = name) => {
     const dir = process.env.NSE_DUMP_FILES
     if (!dir) return
     mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, name), Buffer.from(await encoded(page, name), 'base64'))
+    writeFileSync(join(dir, as), Buffer.from(await encoded(page, name), 'base64'))
 }
 
 /** A fresh context and page with the platform override: nothing stored, so a file opens as a new chain. */
@@ -248,7 +249,7 @@ test('F1: an operation from a newer editor survives Save, reopen, Restore and an
         ).toBe(JSON.stringify(first.manifest.entries))
         expect(futureOf(second)).toHaveLength(1)
         expect(JSON.stringify(futureOf(second)[0]!.step!.operation)).toBe(pushed)
-        await keep(other, 'f1-appended.nxsp')
+        await keep(other, 'f1.nxsp', 'f1-appended.nxsp')
         noErrors(other)
     } finally {
         await context.close()
@@ -350,7 +351,7 @@ test('F2: a 520-entry file crosses a segment, pages in order, restores and appen
         expect(second.segments).toHaveLength(1)
         expect(second.crcs['history/segments/1.json']).toBe(first.crcs['history/segments/1.json'])
         expect(second.segments[0]).toEqual(first.segments[0])
-        await keep(other, 'f2-appended.nxsp')
+        await keep(other, 'f2.nxsp', 'f2-appended.nxsp')
         noErrors(other)
     } finally {
         await context.close()

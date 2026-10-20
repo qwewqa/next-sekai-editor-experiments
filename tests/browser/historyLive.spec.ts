@@ -8,6 +8,7 @@ import {
     load,
     noErrors,
     notice,
+    openHistory,
     peekRow,
     release,
     row,
@@ -290,12 +291,20 @@ test('L1: rows that were shown stay in every frame while pending entries are sto
     })
 
     // Two steps shown from the pending ones, then stored (the flusher forgets them as pending),
-    // then one more: the list is rebuilt before it has read the stored two back.
-    await pushSteps(page, 2, 'New')
-    await expect(row(page, 'New 2', 'panel')).toBeVisible()
-    await flush(page)
-    await pushSteps(page, 1, 'Later')
-    await expect(row(page, 'Later 1', 'panel')).toBeVisible()
+    // then one more: the list is rebuilt before it has read the stored two back. The Timeline's
+    // reads wait until the end of that, so the stretch lasts as long as the test needs.
+    const hold = await holdWorker(page, 'readTimeline')
+    try {
+        await pushSteps(page, 2, 'New')
+        await expect(row(page, 'New 2', 'panel')).toBeVisible()
+        await flush(page)
+        await pushSteps(page, 1, 'Later')
+        await expect(row(page, 'Later 1', 'panel')).toBeVisible()
+        await expect(row(page, 'New 1', 'panel')).toBeVisible()
+        await hold.reached()
+    } finally {
+        await release(page)
+    }
     // Everything is back, and the read has landed: the stored entries are all in the run.
     await expect
         .poll(() => rowTitles(page, 'panel'))
@@ -325,4 +334,150 @@ test('L1: rows that were shown stay in every frame while pending entries are sto
     }
     expect(lost, 'rows that were shown and then dropped for a while').toEqual([])
     expect(seen).toContain('New 1')
+})
+
+/** The Timeline's source, as the app loaded it. */
+const withSource = <T, A>(
+    page: Page,
+    use: (source: typeof import('../../src/editor/history/source'), arg: A) => T | Promise<T>,
+    arg?: A,
+) =>
+    page.evaluate(
+        async ([use, arg]) => {
+            const source = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/source')
+            >('/src/editor/history/source.ts')
+            return (await (0, eval)(`(${use})`)(source, arg)) as T
+        },
+        [use.toString(), arg] as const,
+    )
+
+test('L2: a refresh that began earlier and lands later does not take back what a newer one showed', async ({
+    page,
+}) => {
+    await load(page)
+    await pushSteps(page, 3)
+    await flush(page)
+    await openPanel(page)
+    await expect(row(page, 'Syn 3', 'panel')).toBeVisible()
+
+    // The first read of the earlier refresh returns after a gate: it read the stored entries as
+    // they are now, and lands after the next refresh has.
+    await page.evaluate(async () => {
+        const start =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        const source = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/source')
+        >('/src/editor/history/source.ts')
+        const worker = start.storageWorker as unknown as {
+            call: (name: string, ...args: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        const control = window as unknown as {
+            lateRefresh?: Promise<void>
+            releaseLate?: () => void
+        }
+        let delayed = false
+        const gate = new Promise<void>((resolve) => (control.releaseLate = resolve))
+        worker.call = async (name, ...args) => {
+            const result = await call(name, ...args)
+            if (name === 'readTimeline' && !delayed) {
+                delayed = true
+                await gate
+            }
+            return result
+        }
+        control.lateRefresh = source.refresh()
+    })
+    // Its read is made (the request is first in line), then one more entry is stored.
+    await pushSteps(page, 1, 'New')
+    await flush(page)
+    // The newer refresh: its reads pass, and it lands first.
+    await withSource(page, (source) => source.refresh())
+    await expect(row(page, 'New 1', 'panel')).toBeVisible()
+    await expect
+        .poll(() =>
+            withSource(page, (source) => source.entries.value.filter((e) => e.pending).length),
+        )
+        .toBe(0)
+
+    // The late one lands now. The entries are read at once, before the debounced refresh that
+    // would put a lost row back.
+    const stored = await page.evaluate(async () => {
+        const source = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/source')
+        >('/src/editor/history/source.ts')
+        const control = window as unknown as { lateRefresh: Promise<void>; releaseLate: () => void }
+        control.releaseLate()
+        await control.lateRefresh
+        return source.entries.value.filter((entry) => !entry.pending).length
+    })
+    // It was dropped: the initialize entry, three steps and the new one are all still there.
+    expect(stored).toBe(5)
+    await expect(row(page, 'New 1', 'panel')).toBeVisible()
+})
+
+test('L3: Now after a far jump reads the newest page again, and without a jump the loaded pages stay', async ({
+    page,
+}) => {
+    test.slow()
+    await load(page)
+    await pushSteps(page, 250)
+    await flush(page)
+    await openHistory(page)
+    // End jumps to the oldest entry: a window there, with a gap row above it.
+    await page.keyboard.press('End')
+    await expect(row(page, 'Imported a level')).toBeVisible()
+    await expect.poll(() => withSource(page, (source) => source.gap.value)).toBeGreaterThan(0)
+    // Home is Now: the window goes, and the run is the newest page.
+    await page.keyboard.press('Home')
+    await expect.poll(() => withSource(page, (source) => source.gap.value)).toBeUndefined()
+    await expect(row(page, 'Syn 250')).toBeVisible()
+    const run = () =>
+        withSource(page, (source) => ({
+            loaded: source.entries.value.length,
+            more: source.canLoadMore.value,
+        }))
+    expect(await run()).toEqual({ loaded: 100, more: true })
+
+    // Every page loaded: Now with no jump keeps them.
+    const list = timeline(page)
+    await expect
+        .poll(async () => {
+            await list.evaluate((element) => {
+                element.scrollTop = element.scrollHeight
+            })
+            return (await run()).more
+        })
+        .toBe(false)
+    expect((await run()).loaded).toBe(251)
+    await withSource(page, (source) => source.resetToNewest())
+    expect(await run()).toEqual({ loaded: 251, more: false })
+})
+
+test('L4: entries carried for one session are gone when a new session begins', async ({ page }) => {
+    await load(page)
+    await pushSteps(page, 2)
+    await flush(page)
+    await openPanel(page)
+    await expect(row(page, 'Syn 2', 'panel')).toBeVisible()
+    // No read lands while the list holds what it carried, so nothing else could clear it.
+    await holdWorker(page, 'readTimeline')
+    try {
+        await pushSteps(page, 2, 'Old')
+        await expect(row(page, 'Old 2', 'panel')).toBeVisible()
+        await flush(page)
+        await page.evaluate(() => {
+            window.editorTest.history.resetState(false)
+        })
+        // Only the new session's own first entry: none of the old session's, carried or stored.
+        await expect
+            .poll(() => rowTitles(page, 'panel'))
+            .toEqual([expect.stringMatching(/^Now/), 'Started a new level'])
+        expect(await withSource(page, (source) => source.entries.value.length)).toBe(1)
+    } finally {
+        await release(page)
+    }
 })
