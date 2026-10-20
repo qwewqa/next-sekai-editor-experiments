@@ -390,11 +390,21 @@ test('a new notice under a stationary pointer is held from the start', async ({ 
     await expect(pill(page)).toHaveCount(0)
 })
 
+/** A button outside the chart, where Alt+N is pressed from: the target a card would return to. */
+const focusOrigin = (page: Page) =>
+    page.evaluate(() => {
+        const origin = document.createElement('button')
+        origin.id = 'origin'
+        origin.textContent = 'Origin'
+        document.body.append(origin)
+        origin.focus()
+    })
+
 test('Escape on the button does not return focus to an element from an earlier Alt+N', async ({
     page,
 }) => {
     await boot(page)
-    await page.locator('.chart-pane').focus()
+    await focusOrigin(page)
     await notifyWithAction(page, 'Nothing to undo')
     await page.keyboard.press('Alt+KeyN')
     const button = pill(page).getByRole('button', { name: 'Open History' })
@@ -409,9 +419,10 @@ test('Escape on the button does not return focus to an element from an earlier A
     // The user comes back to the button by Tab and presses Escape.
     await button.focus()
     await page.keyboard.press('Escape')
-    await expect(page.locator('.chart-pane')).not.toBeFocused()
-    // Escape closes the card as well.
+    // Escape closes the card as well, and focus, owed to no element, goes to the chart.
     await expect(pill(page)).toHaveCount(0)
+    await expect(page.locator('#origin')).not.toBeFocused()
+    await expect(page.locator('.chart-pane')).toBeFocused()
 })
 
 test('Alt+N is ignored in a select and while a blocking dialog is open', async ({ page }) => {
@@ -1059,6 +1070,24 @@ test.describe('over a blocking dialog', () => {
         await expect(page.locator('[data-notice-card]')).not.toHaveClass(/bg-popup/)
     })
 
+    test('a card hovered in a dialog that closes still times out', async ({ page }) => {
+        await boot(page)
+        await page.clock.install()
+        await openBlocking(page)
+        await expect(page.getByRole('dialog')).toBeVisible()
+        await notifyWithAction(page, 'Raised over the dialog')
+        const dialog = page.getByRole('dialog')
+        // The pointer is on the card when the dialog goes: no pointerleave follows.
+        await dialog.locator('[data-notice-card]').dispatchEvent('pointerenter')
+        await expect(async () => {
+            await dialog.getByRole('button', { name: 'Go' }).click({ timeout: 500 })
+            await expect(dialog).toHaveCount(0, { timeout: 500 })
+        }).toPass()
+        await expect(page.locator('[data-notice-card]')).toHaveCount(1)
+        await page.clock.runFor(20_000)
+        await expect(page.locator('[data-notice-card]')).toHaveCount(0)
+    })
+
     test('Esc in the card closes the card, not the dialog', async ({ page }) => {
         await raiseOver(page, 'Raised over the dialog')
         await page.keyboard.press('Alt+KeyN')
@@ -1095,7 +1124,7 @@ test('Escape on a later card does not return focus to the target of an Alt+N who
             if (type !== 'focusout') add(type, ...rest)
         })
     })
-    await page.locator('.chart-pane').focus()
+    await focusOrigin(page)
     await notifyWithAction(page, 'First')
     await page.keyboard.press('Alt+KeyN')
     const button = pill(page).getByRole('button', { name: 'Open History' })
@@ -1108,6 +1137,8 @@ test('Escape on a later card does not return focus to the target of an Alt+N who
         dismissNoticeCard()
     })
     await expect(pill(page)).toHaveCount(0)
+    // The card's going gave focus back to where Alt+N took it from.
+    await expect(page.locator('#origin')).toBeFocused()
     await page.evaluate(() => {
         const input = document.createElement('input')
         input.id = 'elsewhere'
@@ -1119,5 +1150,6 @@ test('Escape on a later card does not return focus to the target of an Alt+N who
     await pill(page).getByRole('button', { name: 'Open History' }).focus()
     await page.keyboard.press('Escape')
     await expect(pill(page)).toHaveCount(0)
-    await expect(page.locator('.chart-pane')).not.toBeFocused()
+    await expect(page.locator('#origin')).not.toBeFocused()
+    await expect(page.locator('.chart-pane')).toBeFocused()
 })

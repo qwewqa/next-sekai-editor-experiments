@@ -384,6 +384,23 @@ test.describe('a large download on a touch device', () => {
             (window as unknown as { releaseBuild: () => void }).releaseBuild(),
         )
     })
+
+    test('“Preparing…” closes when storing the state first fails', async ({ page }) => {
+        await start(page, { fileSystemAccess: false })
+        await edit(page, 1)
+        await setBgm(page, 'song.mp3', 2_500_000)
+        await flushed(page)
+        // The state is stored before the file is built, and that fails (a full disk).
+        await page.evaluate(() => {
+            const flusher = window.nseFlushTest!.flusher
+            flusher.flush = () => Promise.reject(new Error('The disk is full'))
+        })
+        page.on('pageerror', () => undefined)
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+        await expect(page.locator('[data-save-preparing]')).toHaveCount(0)
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+    })
 })
 
 test('our own file gone back to an older revision says it does not continue ours', async ({
