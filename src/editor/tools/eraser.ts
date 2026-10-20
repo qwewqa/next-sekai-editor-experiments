@@ -190,7 +190,9 @@ const removes: {
     connector: undefined,
 }
 
-export const canRemove = (entity: Entity) => canRemoves[entity.type]?.(entity as never) ?? true
+/** Whether Eraser, Delete and Cut can take the entity out: it has a remover and is not protected. */
+export const canRemove = (entity: Entity) =>
+    !!removes[entity.type] && (canRemoves[entity.type]?.(entity as never) ?? true)
 
 export const remove = (entities: Entity[]) => {
     entities = entities.filter(canRemove)
@@ -221,11 +223,11 @@ export const remove = (entities: Entity[]) => {
         id: 'nse.object.delete',
         data: { removed },
     })
-    pushState(operation, result)
+    const pushed = pushState(operation, result)
     view.entities = {
         hovered: [],
         creating: [],
     }
 
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 }

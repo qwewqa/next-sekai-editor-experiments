@@ -191,3 +191,52 @@ test('standalone unavailable recovery metadata retains its own ordered context o
     assert.equal(details.recovery?.omitted, 2)
     assert.equal(details.steps, undefined)
 })
+
+const saved = (
+    device: { id: string; label: string } | undefined,
+    delivery: 'file' | 'download' = 'file',
+) =>
+    buildRows(
+        [
+            {
+                kind: 'save',
+                operation: nativeOperation(
+                    { id: 'nse.file.save', data: { file: { text: 'coconut.nxsp' }, delivery } },
+                    'Saved coconut.nxsp',
+                ),
+                sessionId: 's',
+                seq: 1,
+                time: 0,
+                kept: true,
+                ...(device ? { device } : {}),
+            } as Entry,
+        ],
+        { filter: 'all', expanded: new Set(), damaged: new Set(), now: 0 },
+    ).filter((row): row is EntryRow => row.type === 'entry')[0]!
+
+test('a save from another device names it, and one from this browser does not', () => {
+    const own = { id: 'mine', label: 'Web (Chrome)' }
+    assert.equal(presentRow(saved(own), context, undefined, 'mine').main, 'Saved coconut.nxsp')
+    assert.equal(
+        presentRow(saved(undefined), context, undefined, 'mine').main,
+        'Saved coconut.nxsp',
+    )
+    assert.equal(
+        presentRow(saved({ id: 'ipad', label: 'iPad' }), context, undefined, 'mine').main,
+        'Saved on iPad',
+    )
+    assert.equal(
+        presentRow(saved({ id: 'other', label: 'Web (Firefox)' }), context, undefined, 'mine').main,
+        'Saved in the web editor (Firefox)',
+    )
+    assert.equal(
+        presentRow(saved({ id: 'other', label: 'Web' }), context, undefined, 'mine').main,
+        'Saved in the web editor',
+    )
+    // A download keeps its own wording.
+    assert.equal(
+        presentRow(saved({ id: 'ipad', label: 'iPad' }, 'download'), context, undefined, 'mine')
+            .main,
+        'Downloaded coconut.nxsp',
+    )
+})

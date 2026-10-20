@@ -176,7 +176,7 @@ for (const layout of ['basic', 'composed'] as const)
             const field = dialog.getByRole('spinbutton', { name: 'BPM' })
             await field.fill('150.123456789')
             await field.press('Enter')
-            await expect(notice(page)).toHaveText('Set BPM on 1 BPM change')
+            await expect(notice(page)).toHaveText('Set BPM to 150.123456789 on 1 BPM change')
             await page.keyboard.press('Escape')
             await expect(dialog).toHaveCount(0)
             // Only the label rounds.

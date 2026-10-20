@@ -48,9 +48,9 @@ export const addStage = (folder?: FolderId) => {
             gathered: 0,
         },
     })
-    pushState(operation, result)
+    const pushed = pushState(operation, result)
 
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 
     return stageId
 }
@@ -71,12 +71,12 @@ export const renameStage = (stageId: StageId, value: string) => {
             after: captureName(name),
         },
     })
-    pushState(operation, {
+    const pushed = pushState(operation, {
         ...state.value,
         stages: newStages,
     })
 
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 }
 
 export const openStageProperties = async (stageId: StageId) => {

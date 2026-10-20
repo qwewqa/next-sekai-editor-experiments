@@ -35,6 +35,7 @@ import { PRODUCT_NAME } from '../../../product'
 import { settings } from '../../../settings'
 import type { State } from '../../../state'
 import { storageGet } from '../../../storage'
+import { getFilename } from '../../../utils/file'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
@@ -319,7 +320,7 @@ const openRequestedProject = async (
     const { storageStatus } = await import('../../../local/startup/events')
     if (storageStatus.value?.mode === 'readOnly') {
         cancel()
-        const descriptor = createSessionDescriptor({ sourceName: file.name })
+        const descriptor = createSessionDescriptor({ sourceName: getFilename(file) })
         if (
             request.publish({ state: live, sessionId: descriptor.sessionId, reset: true }, () => {
                 // A level opened in safe mode is an import, not a recovery; nothing is stored.
@@ -366,7 +367,7 @@ const openRequestedProject = async (
                               }
                             : { level: stateBatch(live) }),
                         ...(copyOf ? { copyOf } : {}),
-                        sourceName: file.name,
+                        sourceName: getFilename(file),
                         operations: {
                             opened: createHistoryOperation({
                                 id: 'nse.origin',
@@ -492,7 +493,7 @@ export const keepReplaced = async (file: File, name: string): Promise<Kept> => {
     const kept = await project.storeKept({
         read,
         file,
-        sourceName: file.name,
+        sourceName: getFilename(file),
         name,
         ...(headLive
             ? { summary: summaryOf(live, noteCountOf(history?.headRecords.kinds ?? [])) }

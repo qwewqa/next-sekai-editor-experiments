@@ -181,8 +181,6 @@ const toggleState = computed(() => resolveToggleState())
 
 const panelOpenStates = computed(() => toggleState.value.open)
 
-export const isPanelOpen = (id: PanelId) => panelOpenStates.value[id]
-
 export const workspaceLayout = computed(() => layoutOf(toggleState.value))
 
 /** Saves only what changed, so untouched settings are not rewritten. */

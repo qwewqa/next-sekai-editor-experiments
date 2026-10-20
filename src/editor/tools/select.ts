@@ -120,7 +120,7 @@ import {
     toSelection,
 } from './utils'
 
-type MoveActive = {
+export type MoveActive = {
     type: 'move'
     lane: number
     focus: Entity
@@ -144,12 +144,12 @@ type MoveActive = {
     bases?: { source: State; beatOffset: number; beatSnap: string; bases: Bases }
 }
 
-type RawMove = { delta: number; unconstrained?: boolean }
+export type RawMove = { delta: number; unconstrained?: boolean }
 
 type Bases = ReadonlyMap<NoteEntity, NoteEntity>
 
 /** What the grabbed object gives every moved object, once per pointer update. */
-type MovePlan = {
+export type MovePlan = {
     bases: Bases
     // Lanes snap from it: a tick taken past its slide's end from its gameplay place, a tick within
     // its slide from its moving attach head, else its moving attach tail.
@@ -527,14 +527,14 @@ export const select: Tool = {
                       )
 
                 const operation = createHistoryOperation(moved.operation)
-                pushState(operation, moved.state)
+                const pushed = pushState(operation, moved.state)
                 view.entities = {
                     hovered: [],
                     creating: [],
                 }
                 focusEntityAtBeat(focus?.beat ?? active.focus.beat)
 
-                notify(() => operation.fallback.text)
+                if (pushed) notify(() => operation.fallback.text)
                 break
             }
             case 'select': {
@@ -593,7 +593,7 @@ export const viewSelect: Tool = {
     dragCancel: select.dragCancel,
 }
 
-const moveEntities = (
+export const moveEntities = (
     source: State,
     active: MoveActive,
     lane: number,
@@ -892,7 +892,7 @@ const toPointerMove = (active: MoveActive, x: number, y: number) => ({
     beatOffset: toMoveBeatOffset(active, yToMoveBeatOffset(y, active.focus.beat, active.pressBeat)),
 })
 
-const planMove = (source: State, active: MoveActive, lane: number, beatOffset: number) => {
+export const planMove = (source: State, active: MoveActive, lane: number, beatOffset: number) => {
     const plan = getMovePlan(source, active, beatOffset)
     return { plan, rawMove: getRawMove(source, active, lane, beatOffset, plan) }
 }

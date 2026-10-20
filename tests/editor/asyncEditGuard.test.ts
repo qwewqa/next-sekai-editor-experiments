@@ -50,13 +50,25 @@ test('async edits accept an unchanged scope and ignore Save and Export events', 
     }
 })
 
-test('an edit using the same State object permanently invalidates confirmation', () => {
+test('an edit, Undo and Redo permanently invalidate confirmation', () => {
     const guard = createAsyncEditGuard()
     try {
-        pushState(edit, first)
+        pushState(edit, second)
         undoState()
         redoState()
         assert.equal(guard.isCurrent(), false)
+    } finally {
+        guard.dispose()
+    }
+})
+
+// An edit that leaves the chart as it was is no step (owner, 2026-10-19), so what the user
+// confirmed still holds.
+test('an edit that changes nothing leaves confirmation valid', () => {
+    const guard = createAsyncEditGuard()
+    try {
+        assert.equal(pushState(edit, first), false)
+        assert.equal(guard.isCurrent(), true)
     } finally {
         guard.dispose()
     }

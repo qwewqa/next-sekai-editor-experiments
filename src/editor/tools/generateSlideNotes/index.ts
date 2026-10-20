@@ -297,15 +297,16 @@ export const applyGeneratedSlideNotes = (notes: NoteEntity[]) => {
         data: { created: entities.length },
     })
     // Nothing to fill adds no undo step.
+    let pushed = false
     if (entities.length) {
         // Authoring reveals its target so generated notes never vanish.
         revealAuthoredEntities(entities)
-        pushState(operation, transaction.commit(entities))
+        pushed = pushState(operation, transaction.commit(entities))
     }
     view.entities = {
         hovered: [],
         creating: [],
     }
 
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 }

@@ -407,6 +407,3 @@ export const placeOf = (kind: KindName, record: Rec) => {
                     : 0,
     }
 }
-
-/** An event record's track. */
-export const eventTrack = trackOf

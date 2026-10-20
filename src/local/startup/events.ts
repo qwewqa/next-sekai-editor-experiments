@@ -23,6 +23,8 @@ export type LoadEvent =
     /**
      * "The old auto save could not be restored." [Local Data]: its transaction failed, or with
      * `unreadable`, this build can't read all of it, so it stays in Local Data (§1.8 steps 3–4).
+     * The notice is one string either way (§1.4.3); `unreadable` tells the two apart for the
+     * specs and for a later reader of the load events.
      */
     | { kind: 'migrationFailed'; unreadable?: true }
     /**

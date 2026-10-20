@@ -1,4 +1,5 @@
 import { computed, ref, shallowReactive, shallowRef, watch, type Ref } from 'vue'
+import { recordError } from '../diagnostics'
 import type { State } from '../state'
 import { emitHistoryAction } from './actions'
 import { freezePublished } from './freeze'
@@ -8,6 +9,7 @@ import {
     type NativeOperation,
     type UndoableStep,
 } from './operations'
+import { sameChart } from './sameChart'
 
 export type HistoryEntry = {
     isDirty: boolean
@@ -204,6 +206,7 @@ const load = (slot: Slot): Promise<boolean> => {
             },
             (error: unknown) => {
                 reading.delete(slot)
+                recordError(error)
                 console.error('A stored undo step could not be loaded', error)
                 return false
             },
@@ -294,7 +297,7 @@ const queue = (direction: -1 | 1) => {
 }
 
 /** Replaces the current slot, or only the peeked state, which holds its own selection. */
-export const replaceState = (state: State) => {
+const replaceCurrent = (state: State) => {
     if (peek.value) {
         peek.value = { ...peek.value, state }
         return
@@ -314,19 +317,37 @@ export const replaceState = (state: State) => {
     states[index.value] = slot
 }
 
-/** Pushes a state: an edit, or Restore of a History entry (§1.4.10.5), which leaves the peek first. */
+export const replaceState = replaceCurrent
+
+/** Whether two selections hold the same entities in the same order. */
+const sameSelection = (a: State, b: State) =>
+    a === b ||
+    (a.selectedEntities.length === b.selectedEntities.length &&
+        a.selectedEntities.every((entity, i) => entity === b.selectedEntities[i]))
+
+/**
+ * Pushes a state: an edit, or Restore of a History entry (§1.4.10.5), which leaves the peek first.
+ * An edit that leaves the chart as it was is no step (owner, 2026-10-19): the chart is compared
+ * as its stored records, so it holds however the entities were rebuilt. A selection it changed
+ * still takes effect, as every selection change does, without a step. Returns whether a step
+ * was pushed, so a caller tells the user of an edit only when there was one.
+ */
 export const pushState = (
     operation: NativeOperation,
     state: State,
     kind: 'edit' | 'restore' = 'edit',
-) => {
+): boolean => {
     // Every edit path is gated while peeking, so one that is not fails in development and tests.
     if (peek.value) {
-        if (isProduction()) return
+        if (isProduction()) return false
         throw new Error('pushState while viewing history')
     }
     // Callers built `state` from what's on screen: a queued move can never reorder it.
     const step = captureStep({ kind, operation })
+    if (kind === 'edit' && sameChart(currentState.value, state)) {
+        if (!sameSelection(currentState.value, state)) replaceCurrent(state)
+        return false
+    }
     cancelPendingMoves()
 
     states.splice(index.value + 1, states.length - index.value - 1, {
@@ -336,6 +357,7 @@ export const pushState = (
     })
     index.value++
     emitHistoryAction({ kind, state, step, isDirty: true })
+    return true
 }
 
 const moveRequestGeneration = shallowRef(0)

@@ -1,3 +1,4 @@
+import { recordError } from '../../diagnostics'
 import type { DiskState, LockService } from '../../platform/types'
 import { zipFingerprint } from '../../zip/fingerprint'
 import { handleOf, readableWithoutPrompt } from '../handles'
@@ -89,17 +90,6 @@ export const whenImported = (sessionId: string, signal?: AbortSignal): Promise<I
 /** Whether this tab runs the session's import now. */
 export const isImporting = (sessionId: string) => running.has(sessionId)
 
-/** Whether any tab holds the session's import lock: Delete Sessions… skips it (§1.5.4). */
-export const importHeld = async (locks: LockService, sessionId: string) => {
-    if (!hasWebLocks()) return running.has(sessionId)
-    try {
-        const snapshot = await locks.query()
-        return snapshot.held.some((lock) => lock.name === importLock(sessionId))
-    } catch {
-        return running.has(sessionId)
-    }
-}
-
 /** Whether the file is the one read at the open: size and time, and with `full` its `<cd>`. */
 const unchanged = async (source: ImportSource, full: boolean) => {
     const { handle, disk } = source
@@ -177,6 +167,7 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
 
 const track = (sessionId: string, run: Promise<ImportOutcome>) => {
     const job = run.catch((error: unknown): ImportOutcome => {
+        recordError(error)
         console.error('The import stopped', error)
         return { kind: 'failed' }
     })

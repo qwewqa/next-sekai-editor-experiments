@@ -61,5 +61,3 @@ export const choiceKey = (choice: AssetChoice) =>
     choice.source === 'file' || choice.source === 'server'
         ? `${choice.source}:${choice.key}`
         : choice.source
-
-export const sameChoice = (a: AssetChoice, b: AssetChoice) => choiceKey(a) === choiceKey(b)

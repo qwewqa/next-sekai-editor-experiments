@@ -165,7 +165,10 @@ const edit = (page: Page, label: string, change: Change, known = false) =>
                     history.pushState(capture(), { ...state, initialLife: state.initialLife + 1 })
                     return
                 case 'same':
-                    history.pushState(capture(), { ...state })
+                    // An edit that changes nothing is no step (owner, 2026-10-19), and Restore always is,
+                    // so this is how an entry that changed nothing still reaches the Timeline. Stored
+                    // histories from before the rule hold such entries too.
+                    history.pushState(capture(), { ...state }, 'restore')
                     return
             }
             history.pushState(capture(), transaction.commit([]))
@@ -1143,4 +1146,45 @@ test('inactive History band waits for focus and resumes with current layout at N
             .toBeCloseTo(before.bottom, 0)
         await expect.poll(async () => (await changes(page)).band.top).toBeCloseTo(before.top, 0)
     }
+})
+
+test('Edits Here counts its last group exactly once its scan has finished, whatever the Timeline pages', async ({
+    page,
+}) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] }, true)
+    await edit(page, 'Moved near again', { kind: 'move', beats: [7] }, true)
+    await stored(page)
+    // The ordinary Timeline has older entries it has not loaded: its first page names a next one
+    // and the next read never lands, so `canLoadMore` stays true.
+    await page.evaluate(async () => {
+        const start =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        const worker = start.storageWorker as unknown as {
+            call: (name: string, ...args: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        worker.call = async (name, ...args) => {
+            const request = args[0] as { before?: number; limit?: number }
+            if (name !== 'readTimeline' || (request.limit ?? 0) <= 1) return call(name, ...args)
+            if (request.before !== undefined) return new Promise(() => undefined)
+            const result = (await call(name, ...args)) as object
+            return { ...result, next: { sessionId: 'older', before: 1 } }
+        }
+    })
+    await edit(page, 'Added far', { kind: 'add', beats: [200] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    await surface(page).locator('[data-history-goto-button]').click()
+    await page.getByRole('radio', { name: 'Edits Here' }).click()
+    await page.keyboard.press('Escape')
+    await expect(surface(page).locator('[data-history-filter-banner]')).toContainText(
+        'Edits Here · ',
+    )
+    const group = list(page).locator('[data-history-group-count]').filter({ hasText: /\d/ })
+    await expect(group).toHaveCount(1)
+    await expect(surface(page).locator('[data-history-scan]')).toHaveCount(0)
+    await expect(group).toHaveText('2 steps')
 })

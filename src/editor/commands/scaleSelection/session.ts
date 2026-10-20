@@ -350,8 +350,8 @@ export const applyScalingSession = () => {
     })
     cancelScalingSession()
     if (result === session.source) return true
-    pushState(operation, result)
-    notify(() => operation.fallback.text)
+    const pushed = pushState(operation, result)
+    if (pushed) notify(() => operation.fallback.text)
     return true
 }
 

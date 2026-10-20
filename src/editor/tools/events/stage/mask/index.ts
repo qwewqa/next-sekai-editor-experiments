@@ -500,9 +500,9 @@ const update = (
                   'stageMaskEvent',
               ),
     )
-    pushState(operation, result)
+    const pushed = pushState(operation, result)
     view.entities = { hovered: [], creating: [] }
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 }
 
 const add = (object: StageMaskEventObject) => {

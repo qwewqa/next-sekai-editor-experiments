@@ -167,9 +167,9 @@ export const createElevationNote = (
         id: 'nse.note.add',
         data: { created: countNativeEntities(entities).note ?? 0 },
     })
-    pushState(operation, transaction.commit(entities))
+    const pushed = pushState(operation, transaction.commit(entities))
     view.entities = { hovered: [], creating: [] }
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 }
 
 // A pasted note's shown elevation before the change; an attached one follows its pasted head and tail.

@@ -62,11 +62,11 @@ export const editSelectedEditableEntities = (
     // Moving objects into a hidden group or stage reveals it, like authoring.
     revealAuthoringTarget(object)
     const operation = createHistoryOperation({ id: 'nse.property.set', data: receipt })
-    pushState(operation, edited)
+    const pushed = pushState(operation, edited)
     view.entities = {
         hovered: [],
         creating: [],
     }
 
-    notify(() => operation.fallback.text)
+    if (pushed) notify(() => operation.fallback.text)
 }

@@ -9,7 +9,6 @@ export const matrixOf = (m: DOMMatrix2DInit): Matrix => [
     m.f ?? m.m42 ?? 0,
 ]
 export const matrixObject = ([a, b, c, d, e, f]: Matrix): DOMMatrix2DInit => ({ a, b, c, d, e, f })
-export const skMatrix = ([a, b, c, d, e, f]: Matrix) => [a, c, e, b, d, f, 0, 0, 1]
 export const equalMatrix = (a: Matrix, b: Matrix) => a.every((v, i) => v === b[i])
 export const multiply = (a: Matrix, b: Matrix): Matrix => [
     a[0] * b[0] + a[2] * b[1],
