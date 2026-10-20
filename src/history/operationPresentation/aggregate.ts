@@ -15,13 +15,13 @@ import {
     describeMember,
     describeOperation,
     nativeDescription,
-    resizeDescription,
     ownerCountsDescription,
     ownerDomain,
     ownerSetDescription,
     propertyDescription,
     removalOrBrushDescription,
     renameDescription,
+    resizeDescription,
 } from './format'
 import { captureOperationMember, isEntryDescription, memberOperation } from './members'
 import type { OperationMember, OperationRecipe, OperationTextContext } from './types'

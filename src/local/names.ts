@@ -28,9 +28,7 @@ export type CopyOf = { readonly name: string; readonly bound: boolean; readonly 
 
 /** The source of a copy of a session that is not bound to a file. */
 export const sessionCopyOf = (name: string | undefined, at: number | undefined): CopyOf =>
-    name
-        ? { name, bound: false }
-        : { name: '', bound: false, ...(at === undefined ? {} : { at }) }
+    name ? { name, bound: false } : { name: '', bound: false, ...(at === undefined ? {} : { at }) }
 
 /** A file name without its last extension. */
 export const stemOf = (fileName: string) => {

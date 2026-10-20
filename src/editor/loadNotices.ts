@@ -158,7 +158,10 @@ export const loadNoticeOf: Handlers = {
     separateCopy: (event) => ({
         order: LOAD_ORDER.separateCopy,
         severity: 'info',
-        message: interpolate(() => i18n.value.notice.sameFileElsewhere, () => copySourceName(event.of)),
+        message: interpolate(
+            () => i18n.value.notice.sameFileElsewhere,
+            () => copySourceName(event.of),
+        ),
     }),
     bgmNotLoaded: () => ({
         order: LOAD_ORDER.bgmNotLoaded,
