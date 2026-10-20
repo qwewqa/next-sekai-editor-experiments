@@ -13,6 +13,7 @@ import type {
     TimelinePage,
     TimelinePiece,
 } from '../../local/worker/timelineHandlers'
+import type { State } from '../../state'
 import { entryId, type Entry, type Filter } from './rows'
 import { hereRange, historyFilter } from './state'
 
@@ -66,9 +67,17 @@ const entryOf = (entry: TimelineEntry): Entry => ({
     ...captureEntryDescription(entry),
     noteCount: entry.noteCount,
     kept: entry.kept,
+    ...(entry.damaged ? { damaged: true } : {}),
+    ...(entry.device ? { device: entry.device } : {}),
     ...(entry.from === undefined ? {} : { from: entry.from }),
     ...(entry.snapshot ? { snapshot: entry.snapshot } : {}),
 })
+
+const notesIn = (state: State) => {
+    let count = 0
+    for (const notes of state.store.slides.note.values()) count += notes.length
+    return count
+}
 
 /** The open session's entries the worker has not acknowledged, newest first. */
 const pendingEntries = (): Entry[] => {
@@ -83,6 +92,8 @@ const pendingEntries = (): Entry[] => {
             ...captureEntryDescription(entry),
             kept: true,
             pending: true,
+            ...(entry.state ? { noteCount: notesIn(entry.state) } : {}),
+            ...(entry.device ? { device: { id: entry.device.id, label: entry.device.label } } : {}),
             ...(entry.snapshot && !entry.state ? { snapshot: toHex(entry.snapshot) } : {}),
         }))
         .reverse()

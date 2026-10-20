@@ -115,11 +115,6 @@ export const readOpened = async (file: Blob): Promise<OpenReadReply> => {
 
 export const openedFile = (id: string) => opened.get(id)
 
-/** The opened file whose import fills a session. */
-export const openedForSession = (sessionId: string) => {
-    for (const each of opened.values()) if (each.sessionId === sessionId) return each
-}
-
 export const dropOpened = (id: string) => {
     opened.delete(id)
 }

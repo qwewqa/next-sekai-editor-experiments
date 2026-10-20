@@ -31,8 +31,6 @@ export const isToolDialogOpen = computed(() =>
     modals.some((modal) => modal.presentation === 'tool'),
 )
 
-export const isSheetOpen = computed(() => modals.some((modal) => modal.sheet))
-
 /** Dialogs that hold the editor; tool dialogs float over a live chart instead. */
 export const isBlockingModalOpen = computed(() =>
     modals.some((modal) => modal.presentation !== 'tool'),

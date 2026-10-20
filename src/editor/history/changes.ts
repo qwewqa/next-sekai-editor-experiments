@@ -158,7 +158,6 @@ export const shownChange = computed(() => {
 
 const presentation = createShowEdits(isPeeking, () => settings.dimUnchangedObjects)
 export const showEdits = presentation.showEdits
-export const setShowEdits = presentation.set
 export const toggleShowEdits = presentation.toggle
 
 const inspection = createPropertyInspection(shownChange, loadEntryState)
@@ -489,12 +488,6 @@ export const usableBand = computed(() => changeBand.value.top + changeBand.value
 export const offBand = computed(() =>
     usableBand.value ? countOff(places.value, bandTimes()) : { above: 0, below: 0 },
 )
-
-/** Whether the edge arrows show at all. */
-export const arrowsShown = computed(() => isPeeking.value && hasPlaces.value && !!shownChange.value)
-
-/** How far above the pane's bottom the down arrow's top edge is (0 when it is not shown), in px. */
-export const downArrowClearance = computed(() => 0)
 
 /** Whether the arrows carry counts: not past the limit. */
 export const countsShown = computed(

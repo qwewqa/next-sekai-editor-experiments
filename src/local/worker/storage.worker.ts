@@ -1,6 +1,7 @@
 import { journalHandlers } from '../journal/handlers'
 import { bindHandlers } from './bindHandlers'
 import { changeHandlers } from './changeHandlers'
+import { diagnosticHandlers } from './diagnosticHandlers'
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
 import { openHandlers } from './openHandlers'
@@ -34,6 +35,7 @@ const handlers = {
     ...saveHandlers(context),
     ...bindHandlers(context),
     ...openHandlers(context),
+    ...diagnosticHandlers(context),
 }
 
 export type StorageHandlers = typeof handlers

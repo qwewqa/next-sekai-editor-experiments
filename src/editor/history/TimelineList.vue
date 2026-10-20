@@ -28,6 +28,7 @@ import {
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
+import { deviceId } from '../save/env'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
@@ -134,7 +135,8 @@ const built = computed(() =>
         damaged: damagedEntries.value,
         now: clock.value,
         gap: gap.value,
-        more: canLoadMore.value,
+        // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
+        more: historyFilter.value === 'here' ? here.scanning : canLoadMore.value,
         pinned: peekedInfo.value?.pinned,
     }),
 )
@@ -1261,7 +1263,10 @@ watch(
 // --- Text
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
-const presentationOf = (row: EntryRow) => presentRow(row, operationContext.value, recipeOf(row))
+// A save from another device names it, so this browser's own is known once.
+const thisDevice = deviceId()
+const presentationOf = (row: EntryRow) =>
+    presentRow(row, operationContext.value, recipeOf(row), thisDevice)
 
 const labelOf = (row: EntryRow) => presentationOf(row).full
 

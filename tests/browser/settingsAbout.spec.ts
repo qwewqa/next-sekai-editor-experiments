@@ -126,6 +126,42 @@ test.describe('Copy Diagnostic Info…', () => {
         expect(copied.replace(/\r\n/g, '\n')).toBe(text.replace(/\r\n/g, '\n'))
     })
 
+    test('names the database, whether storing is paused, the worker restarts and the counts', async ({
+        page,
+    }) => {
+        await page.addInitScript(() => {
+            sessionStorage.setItem('nse.test.storage', '{}')
+        })
+        await boot(page)
+        await expect
+            .poll(() => page.evaluate(() => window.nseStorageTest?.status()))
+            .toEqual({ mode: 'stored' })
+        const text = async () => {
+            await about(page).getByRole('button', { name: 'Copy Diagnostic Info…' }).click()
+            const dialog = page.getByRole('dialog', { name: 'Diagnostic Info' })
+            const value = await dialog.getByRole('textbox').inputValue()
+            await dialog.getByRole('button', { name: 'Cancel' }).click()
+            await expect(dialog).toHaveCount(0)
+            return value
+        }
+        const first = await text()
+        expect(first).toMatch(/^Database: version 2, format 1$/m)
+        expect(first).toMatch(/^Storing: on$/m)
+        expect(first).toMatch(/^Worker restarts: 0$/m)
+        expect(first).toMatch(/^Sessions: \d+, chains: \d+$/m)
+        // A crashed worker is restarted, counted, and recorded with its reason.
+        await page.evaluate(() => window.nseStorageTest!.worker.call('testCrash'))
+        await expect
+            .poll(() => page.evaluate(() => window.nseStorageTest!.worker.started.length))
+            .toBe(2)
+        await expect
+            .poll(() => page.evaluate(() => window.nseStorageTest!.status()))
+            .toEqual({ mode: 'stored' })
+        const second = await text()
+        expect(second).toMatch(/^Worker restarts: 1$/m)
+        expect(second).toMatch(/^- \S+ error: The storage worker was restarted \(restart 1\): /m)
+    })
+
     test('Cancel copies nothing', async ({ page }) => {
         await boot(page)
         await page.evaluate(() => navigator.clipboard.writeText('before'))

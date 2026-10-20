@@ -56,7 +56,6 @@ export const nativeKinds = [
     'stageTransformEvent',
 ] as const
 export type NativeKind = (typeof nativeKinds)[number]
-export const nativeKind = oneOf(nativeKinds)
 export const subjects = [...nativeKinds, 'objects'] as const
 export type Subject = (typeof subjects)[number]
 export const subject = oneOf(subjects)

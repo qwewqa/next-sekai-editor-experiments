@@ -30,7 +30,6 @@ const props = defineProps<{
     options: (readonly [string, NoInfer<T>])[]
     /** `multi`: undefined means mixed. `optional`: undefined means not set, with its own option. */
     variant?: 'multi' | 'optional'
-    disabled?: boolean
 }>()
 
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -161,7 +160,7 @@ watch(
     <BaseField v-if="segmented && !unknown" ref="field" :label :label-id="`${id}-label`" :mixed>
         <div
             class="form-field-segmented flex min-w-0 rounded-full bg-recess p-0.5 shadow-track outline-none"
-            :class="{ 'pointer-events-none opacity-40': disabled, 'text-fg/80': isMixed }"
+            :class="{ 'text-fg/80': isMixed }"
             role="radiogroup"
             :aria-labelledby="isMixed ? `${id}-label ${id}-mixed` : `${id}-label`"
         >
@@ -180,7 +179,6 @@ watch(
                     type="radio"
                     :name="id"
                     :value="undefined"
-                    :disabled
                     :aria-label="notSet"
                     @change="resyncRadios($event, () => modelValue)"
                     @click="onClick"
@@ -200,7 +198,6 @@ watch(
                     type="radio"
                     :name="id"
                     :value
-                    :disabled
                     @change="resyncRadios($event, () => modelValue)"
                     @click="onClick"
                 />
@@ -221,7 +218,6 @@ watch(
         v-model="modelValue"
         :label
         :options="selectOptions"
-        :disabled
         :option-glyph="listGlyph"
     >
         <template v-if="selectGlyph && modelValue !== undefined && !unknown" #leading>
@@ -234,12 +230,11 @@ watch(
         v-model="modelValue"
         :label
         :options="selectOptions"
-        :disabled
         :option-glyph="listGlyph"
     >
         <template v-if="selectGlyph && modelValue !== undefined && !unknown" #leading>
             <slot name="glyph" :value="modelValue" />
         </template>
     </MultiSelectField>
-    <SelectField v-else ref="field" v-model="modelValue" :label :options :disabled />
+    <SelectField v-else ref="field" v-model="modelValue" :label :options />
 </template>
