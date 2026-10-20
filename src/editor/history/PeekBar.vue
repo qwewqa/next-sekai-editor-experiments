@@ -6,7 +6,7 @@ import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { isComposingKey } from '../../utils/composition'
 import { formatDateTimeSeconds } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
-import { changeLine, fixedLine, fixedLines } from './changes'
+import { changeLine, countedLines, fixedLine, fixedLines } from './changes'
 import { settings } from '../../settings'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
@@ -52,6 +52,7 @@ const measure = () => {
         states: fixedLines.short.map(fixedLine),
         statesWide: fixedLines.wide.map(fixedLine),
         summary: fixedLines.summary.map(fixedLine),
+        counted: countedLines(),
     })
 }
 onMounted(() => {

@@ -25,6 +25,11 @@ export type PeekWidths = {
      */
     states: number
     statesWide: number
+    /**
+     * The capsule's counted lines' usual widest form at 12 px (changes.ts `countedLines`: a three-digit
+     * count and its unit), which the strip widens for where the pane has room, without going compact.
+     */
+    counted: number
     /** The root font size the widths were measured at: the layout’s fixed sizes scale with it. */
     rem: number
 }
@@ -83,6 +88,7 @@ export const measurePeekWidths = (
         states: string[]
         statesWide: string[]
         summary: string[]
+        counted: string[]
     },
     now = Date.now(),
 ): PeekWidths => {
@@ -119,6 +125,7 @@ export const measurePeekWidths = (
     const states = spans(labels.states, 12)
     const statesWide = spans(labels.statesWide, 12)
     const summary = spans(labels.summary, 12)
+    const counted = spans(labels.counted, 12)
     host.append(box)
     // One layout pass reads them all.
     const widest = (list: HTMLElement[]) =>
@@ -134,6 +141,7 @@ export const measurePeekWidths = (
         labels: widest(corner) + ((4 + 8) / 16) * rem,
         states: Math.max(widest(states), summaryW),
         statesWide: Math.max(widest(statesWide), summaryW),
+        counted: widest(counted),
         rem,
     }
     box.remove()
@@ -191,13 +199,18 @@ export const peekLayout = (pane: number, w: PeekWidths | undefined): PeekLayout 
     // narrower, it widens to hold them when the pane has room, so a state line never truncates; a tiny
     // strip keeps its size. Else compact puts the 24 px options button for the eye and summary, and
     // the menu shows the whole line; narrow arrows are 44 + 4 + 44.
-    const row =
-        (4 + 24 + 8 + 16 + 8 + 104 + 4) * k + Math.max(32 * k, wide ? w.statesWide : w.states)
+    const fixed = (4 + 24 + 8 + 16 + 8 + 104 + 4) * k
+    const row = fixed + Math.max(32 * k, wide ? w.statesWide : w.states)
     if (!tiny && pane >= 320 && width - 12 * k < row && row + 12 * k <= avail)
         width = Math.ceil(row + 12 * k)
-    const capsule = width - 12 * k
-    const compact = pane < 320 || capsule < row
-    const narrowArrows = pane < 180 || capsule < 144 * k
+    const compact = pane < 320 || width - 12 * k < row
+    // The counted line ("Modifications : 160 notes") is the commonest after a large edit and its
+    // form is a count and a unit: the strip widens once more to show it whole where the pane has
+    // room. Only fixed lines decide compact, so the eye stays where it is.
+    const counted = fixed + w.counted
+    if (!compact && !tiny && width - 12 * k < counted && counted + 12 * k <= avail)
+        width = Math.ceil(counted + 12 * k)
+    const narrowArrows = pane < 180 || width - 12 * k < 144 * k
     return {
         width,
         back,

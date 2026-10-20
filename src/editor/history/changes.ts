@@ -174,8 +174,8 @@ onResetState(() => {
 // --- What the bar says.
 
 /**
- * Every fixed line the capsule can show (anything else is live text: counts and step labels), so
- * the strip's fit (peekFit.ts) measures them all. Every such line goes through `fixedLine`, which
+ * Every fixed line the capsule can show (anything else is live text: step labels and multi-part
+ * counts), so the strip's fit (peekFit.ts) measures them all. Every such line goes through `fixedLine`, which
  * takes only these keys: a new one cannot be shown without being measured.
  */
 export const fixedLines = {
@@ -192,6 +192,20 @@ export type FixedLine = (typeof fixedLines)[keyof typeof fixedLines][number]
 export const fixedLine = (key: FixedLine) => i18n.value.peek[key]
 
 const count = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+
+/**
+ * The counted lines' usual widest forms: a count and one unit, with three digits (a large change is
+ * over 150 objects). Built with `changeText`'s own strings and `count`, so the fit measures them
+ * the way they are written; the strip widens for them where the pane has room (peekFit.ts).
+ */
+export const countedLines = () => {
+    const strings = i18n.value.peek
+    const digits = count(888)
+    return [
+        interpolateRaw(strings.changedLarge, interpolateRaw(strings.notes, digits)),
+        interpolateRaw(strings.changeCount, digits),
+    ]
+}
 
 const eventKinds: KindName[] = [
     'cameraEvents',

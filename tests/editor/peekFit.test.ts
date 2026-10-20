@@ -12,6 +12,7 @@ const enWidths: PeekWidths = {
     labels: 79.3125,
     states: 105.578125,
     statesWide: 108.546875,
+    counted: 102.765625,
     rem: 16,
 }
 const enLayouts: Record<number, ReturnType<typeof peekLayout>> = {
@@ -180,6 +181,7 @@ const frWidths: PeekWidths = {
     labels: 79.3125,
     states: 121.578125,
     statesWide: 170.65625,
+    counted: 133.109375,
     rem: 16,
 }
 const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
@@ -261,7 +263,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     340: {
-        width: 302,
+        width: 314,
         back: 'icon',
         tiny: false,
         snug: false,
@@ -272,7 +274,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     390: {
-        width: 302,
+        width: 314,
         back: 'icon',
         tiny: false,
         snug: false,
@@ -397,13 +399,15 @@ const jaWidths: PeekWidths = {
     labels: 79.3125,
     states: 83.40625,
     statesWide: 119.40625,
+    counted: 115.40625,
     rem: 16,
 }
 
 test('the capsule takes the options button and narrow arrows by fit', () => {
     assert.equal(peekLayout(240, jaWidths).width, 148)
-    // 238 px from the strip's 250 would cut 取得できません (83 px in 70): the strip widens to 264.
-    assert.equal(peekLayout(320, jaWidths).width, 264)
+    // 238 px from the strip's 250 would cut 取得できません (83 px in 70): the strip widens to 264, and
+    // to 296 for the counted line "変更：888個のノーツ" (115 px).
+    assert.equal(peekLayout(320, jaWidths).width, 296)
     assert.equal(peekLayout(240, jaWidths).narrowArrows, true)
     assert.equal(peekLayout(300, jaWidths).narrowArrows, false)
     assert.equal(peekLayout(320, jaWidths).compact, false)
@@ -433,6 +437,7 @@ const allWidths: Record<string, PeekWidths> = {
         labels: 79.3125,
         states: 78.578125,
         statesWide: 145.15625,
+        counted: 100.59375,
         rem: 16,
     },
     tr: {
@@ -444,6 +449,7 @@ const allWidths: Record<string, PeekWidths> = {
         labels: 79.3125,
         states: 109.421875,
         statesWide: 140.625,
+        counted: 109.234375,
         rem: 16,
     },
     zhs: {
@@ -455,6 +461,7 @@ const allWidths: Record<string, PeekWidths> = {
         labels: 79.3125,
         states: 74,
         statesWide: 80.796875,
+        counted: 97.984375,
         rem: 16,
     },
     zht: {
@@ -466,6 +473,7 @@ const allWidths: Record<string, PeekWidths> = {
         labels: 79.3125,
         states: 74,
         statesWide: 80.796875,
+        counted: 97.984375,
         rem: 16,
     },
 }
@@ -474,8 +482,8 @@ const allWidths: Record<string, PeekWidths> = {
 // state line: the capsule less p-1, the eye, the gaps, px-2 and both arrows (168 px).
 const capsules: Record<string, Record<number, number>> = {
     en: { 390: 305, 375: 305, 320: 297, 1144: 386 },
-    fr: { 390: 302, 375: 302, 320: 302, 1144: 429 },
-    ja: { 390: 324, 375: 324, 320: 264, 1144: 344 },
+    fr: { 390: 314, 375: 314, 320: 302, 1144: 429 },
+    ja: { 390: 324, 375: 324, 320: 296, 1144: 344 },
     ko: { 390: 295, 375: 295, 320: 287, 1144: 411 },
     tr: { 390: 361, 375: 290, 320: 290, 1144: 373 },
     zhs: { 390: 310, 375: 310, 320: 302, 1144: 330 },
@@ -498,6 +506,27 @@ test('every state line fits its capsule from 320 px panes, in every language', (
             assert.equal(peekLayout(pane, widths).compact, true, locale)
 })
 
+test('the counted line "Modifications : 888 notes" widens the strip without going compact', () => {
+    // French 133 px: 302 → 314 from 330 px panes (320 to 329 have too little room); at 320 px (304 px available) it cannot.
+    assert.equal(peekLayout(329, frWidths).width, 302)
+    assert.equal(peekLayout(330, frWidths).width, 314)
+    assert.equal(peekLayout(320, frWidths).width, 302)
+    assert.equal(peekLayout(320, frWidths).compact, false)
+    // Japanese 115 px: 264 → 296 on 320 px panes (the room is 304).
+    assert.equal(peekLayout(320, jaWidths).width, 296)
+    assert.equal(peekLayout(319, jaWidths).compact, true)
+    // Where the options button holds the line, the counted line does not widen the strip.
+    assert.equal(peekLayout(300, frWidths).width, 280)
+    // English, Korean and Chinese need no more than their fixed lines already take.
+    for (const locale of ['en', 'ko', 'zhs', 'zht']) {
+        const widths = allWidths[locale]!
+        for (const pane of [320, 340, 390]) {
+            const without = peekLayout(pane, { ...widths, counted: 0 })
+            assert.deepEqual(peekLayout(pane, widths), without, `${locale} ${pane}`)
+        }
+    }
+})
+
 test('at a 20 px root the state line fits or the options button holds it', () => {
     // Real 20 px measurements are these × 1.25 (French "Paramètres modifiés": 134.48 px). French on
     // the 390 px phone cannot hold it beside the eye and arrows: the options button.
@@ -506,10 +535,10 @@ test('at a 20 px root the state line fits or the options button holds it', () =>
     const expected: Record<string, Record<number, [number, boolean]>> = {
         en: { 390: [218, true], 375: [218, true], 320: [208, true] },
         fr: { 390: [360, true], 375: [233, true], 320: [223, true] },
-        ja: { 390: [330, false], 375: [330, false], 320: [185, true] },
+        ja: { 390: [370, false], 375: [330, false], 320: [185, true] },
         ko: { 390: [369, false], 375: [195, true], 320: [185, true] },
         tr: { 390: [362, false], 375: [237, true], 320: [227, true] },
-        zhs: { 390: [322, false], 375: [322, false], 320: [185, true] },
+        zhs: { 390: [348, false], 375: [348, false], 320: [185, true] },
         zht: { 390: [357, false], 375: [195, true], 320: [185, true] },
     }
     for (const [locale, widths] of Object.entries(allWidths))
