@@ -17,7 +17,7 @@
         "postinstall": "node scripts/patch-pixi-default-batcher.mjs",
         "fixtures:generated-large": "node scripts/generate-large-chart.mjs",
         "format:gen": "tsx scripts/format-gen.mjs",
-        "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs",
+        "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs",
         "test:browser": "node scripts/test-browser.mjs",
         "test:timing": "playwright test --project=timing --no-deps",
         "test:compatibility": "npm run build && playwright test --config playwright.compatibility.config.ts",
