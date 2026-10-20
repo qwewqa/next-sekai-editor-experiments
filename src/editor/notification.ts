@@ -7,6 +7,7 @@ import { appVersion, platform } from '../platform'
 import { PRODUCT_NAME } from '../product'
 import { startupGate } from '../startup/gate'
 import { interpolate } from '../utils/interpolate'
+import { formatCount } from '../utils/size'
 import { noticeDuration, RESUME_MIN_MS } from './noticeTiming'
 
 /** A card's one button (Part 1 §1.4.1). */
@@ -172,7 +173,10 @@ const pillLines = (): NoticeLine[] => {
     const lines: NoticeLine[] = [...titleLines(), ...shown]
     if (notices.length > shown.length)
         lines.push({
-            message: interpolate(() => i18n.value.load.more, `${notices.length - shown.length}`),
+            message: interpolate(
+                () => i18n.value.load.more,
+                formatCount(notices.length - shown.length),
+            ),
             action: {
                 label: () => i18n.value.load.localData,
                 // The opener itself, so the shown Local Data lines count as this line's twins.

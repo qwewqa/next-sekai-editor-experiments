@@ -11,6 +11,7 @@ import {
 import { settings } from '../settings'
 import { time } from '../time'
 import { interpolate } from '../utils/interpolate'
+import { formatDecimal } from '../utils/size'
 import { audioPreviewRequest } from './audioPreview'
 import { notify } from './notification'
 import { createTransport } from './transport'
@@ -62,7 +63,7 @@ const transport = createTransport({
         notify(() => i18n.value.player.stopped)
     },
     onSpeedChange: (speed) => {
-        notify(interpolate(() => i18n.value.player.changed, `${speed}`))
+        notify(interpolate(() => i18n.value.player.changed, formatDecimal(speed)))
     },
 })
 

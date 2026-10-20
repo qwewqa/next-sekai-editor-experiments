@@ -11,7 +11,6 @@ import {
 import { onResetState } from '../../history/resetHooks'
 import { peek } from '../../history/stack'
 import { i18n } from '../../i18n'
-import { languageTag } from '../../i18n/plural'
 import {
     MARK_LIMIT,
     diffChanges,
@@ -43,6 +42,7 @@ import type { Entity, EntityType } from '../../state/entities'
 import { beatToTime } from '../../state/integrals/bpms'
 import { time } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import { getComposedLayout } from '../composedView'
 import { view } from '../view'
 import {
@@ -190,7 +190,7 @@ export type FixedLine = (typeof fixedLines)[keyof typeof fixedLines][number]
 
 export const fixedLine = (key: FixedLine) => i18n.value.peek[key]
 
-const count = (value: number) => new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+const count = (value: number) => formatCount(value)
 
 /**
  * The counted lines' usual widest forms: a count and one unit, with three digits (a large change is

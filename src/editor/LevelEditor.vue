@@ -34,6 +34,7 @@ import { view } from './view'
 import { workspaceLayout } from './workspace'
 import { showManager, type ManagerTab } from './workspace/manager/modal'
 import ResizeHandle from './workspace/ResizeHandle.vue'
+import { formatCount } from '../utils/size'
 
 useFocusControl()
 useKeyboardControl()
@@ -227,8 +228,8 @@ const stagePath = computed(() =>
 const shownCount = (shown: number, total: number, message: string) => {
     if (shown >= total) return
     return {
-        short: `${shown}/${total}`,
-        label: interpolateRaw(message, `${shown}`, `${total}`),
+        short: `${formatCount(shown)}/${formatCount(total)}`,
+        label: interpolateRaw(message, formatCount(shown), formatCount(total)),
     }
 }
 const groupCount = computed(() =>

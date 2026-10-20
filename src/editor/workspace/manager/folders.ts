@@ -38,6 +38,7 @@ import ConfirmModal from '../../../modals/ConfirmModal.vue'
 import type { State } from '../../../state'
 import { optionalCounts, ownerCountsOf } from '../../../state/operations/historyReceipts'
 import { interpolateRaw } from '../../../utils/interpolate'
+import { formatCount } from '../../../utils/size'
 import { createAsyncEditGuard } from '../../asyncEditGuard'
 import { notify } from '../../notification'
 import { view } from '../../view'
@@ -480,8 +481,8 @@ export function createFolderOps<K, V extends FolderMember & { name: string }>(co
                             interpolateRaw(
                                 config.strings().deleteFolderMessage,
                                 name,
-                                `${ids.size}`,
-                                `${objects}`,
+                                formatCount(ids.size),
+                                formatCount(objects),
                             ),
                         confirm: () => i18n.value.modals.confirm.delete,
                         destructive: true,

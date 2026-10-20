@@ -298,8 +298,7 @@
       "redid": "已重做“{0}”"
     },
     "reset": {
-      "title": "重置",
-      "reset": "已重置关卡"
+      "title": "重置"
     },
     "save": {
       "title": "保存"
@@ -966,13 +965,7 @@
     "default": {
       "none": "未选择对象",
       "edited": "已编辑 {0} 个对象",
-      "editedNotes": "已编辑 {0} 个音符",
-      "set": "已设置 {0} 个对象的{1}",
-      "setNotes": "已设置 {0} 个音符的{1}",
-      "noChange": "没有更改",
-      "setBpm": "已设置 {0} 个 BPM 的{1}",
-      "setTimeScales": "已设置 {0} 个时间尺度的{1}",
-      "setEvents": "已设置 {0} 个{2}事件的{1}"
+      "noChange": "没有更改"
     },
     "view": {
       "tool": "工具",
@@ -1046,8 +1039,7 @@
     "eraser": {
       "title": "橡皮擦",
       "deselected": "已取消选择所有对象",
-      "erasing": "擦除 {0} 个对象",
-      "erased": "已擦除 {0} 个对象"
+      "erasing": "擦除 {0} 个对象"
     },
     "generateSlideNotes": {
       "title": "生成长按节点",
@@ -1095,7 +1087,6 @@
       "adding": "添加 {0} 个音符",
       "added": "已添加 {0} 个音符",
       "editing": "编辑 {0} 个音符",
-      "edited": "已编辑 {0} 个音符",
       "moving": "移动 {0} 个音符",
       "moved": "已移动 {0} 个音符",
       "selected": "已选择 {0} 个音符",
@@ -1299,10 +1290,8 @@
       "deletedEvents": "已删除{0}事件",
       "cutEvents": "已剪切{0}事件"
     },
-    "edits": "{0} 次编辑",
     "undidSteps": "撤销了 {0} 步",
     "redidSteps": "重做了 {0} 步",
-    "initialize": "初始化",
     "dynamicStages": {
       "title": "动态舞台",
       "message": "此功能需要动态舞台。是否启用动态舞台？",
@@ -1827,7 +1816,11 @@
       "ok": "确定"
     },
     "loading": {
-      "loading": "加载中…"
+      "loading": "加载中…",
+      "audioUnreadable": "无法读取此音频文件。",
+      "imageUnreadable": "无法读取此图像。",
+      "coverFailed": "无法生成封面。",
+      "failed": "无法完成此操作。"
     }
   },
   "preview": {
@@ -1912,8 +1905,6 @@
       "added": "已添加{0}文件夹",
       "renamed": "已将文件夹{0}重命名为{1}",
       "moved": "已移动{0}文件夹",
-      "movedInto": "已将{0}移至{1}文件夹",
-      "movedOut": "已将{0}移出{1}文件夹",
       "ungrouped": "已解散{0}文件夹",
       "deleted": "已删除{0}文件夹",
       "duplicated": "已为{0}文件夹创建副本"
@@ -2039,16 +2030,12 @@
     "addedRemoved": "添加 {0} · 删除 {1}",
     "exportsCurrent": "导出当前版本。",
     "overlay": "正在查看历史记录 · 只读",
-    "viewing": "正在查看 {0} · {1} · 只读",
-    "viewingShort": "正在查看 {0} · 只读",
     "backToNow": "返回现在",
     "restore": "还原",
     "changeCount": "{0} 处更改",
     "noChanges": "无更改",
     "changedLarge": "已更改 {0}",
     "notes": "{0} 个音符",
-    "notesOf": "{1} 个音符中的 {0} 个",
-    "eventsOf": "{1} 个事件中的 {0} 个",
     "bpms": "{0} 个 BPM",
     "timeScales": "{0} 个时间尺度",
     "events": "{0} 个事件",
@@ -2225,20 +2212,10 @@
   },
   "file": {
     "replacedElsewhere": "“{0}”已从另一个标签页或窗口被替换。",
-    "saved": "{0} · {1} 已保存",
-    "changedSinceSaved": "{0} · 保存后已更改",
     "downloaded": "{0} · {1} 已下载",
-    "notConfirmed": "未确认",
-    "changedSinceDownload": "{0} · 下载后已更改",
     "opened": "{0} · {1} 已打开",
-    "changedSinceOpened": "{0} · 打开后已更改",
     "short": {
-      "saved": "已保存",
-      "changed": "已更改",
-      "notSaved": "未保存",
-      "downloaded": "已下载",
-      "notConfirmed": "未确认",
-      "opened": "已打开"
+      "notSaved": "未保存"
     }
   },
   "state": {

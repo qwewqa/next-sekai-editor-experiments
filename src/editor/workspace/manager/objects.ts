@@ -6,6 +6,7 @@ import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import type { Store } from '../../../state/store'
 import { interpolate } from '../../../utils/interpolate'
+import { formatCount } from '../../../utils/size'
 import { notify } from '../../notification'
 import { isEntityShown } from '../../scope'
 
@@ -106,7 +107,7 @@ export const selectOwned = (key: OwnerKey, owners: Owners) => {
         ...state.value,
         selectedEntities: entities,
     })
-    notify(interpolate(() => i18n.value.workspace.manager.selected, `${entities.length}`))
+    notify(interpolate(() => i18n.value.workspace.manager.selected, formatCount(entities.length)))
     return entities.length
 }
 

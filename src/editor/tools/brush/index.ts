@@ -28,6 +28,7 @@ import { i18n } from '../../../i18n'
 import type { Entity } from '../../../state/entities'
 import { planEdit } from '../../../state/operations/properties/plan'
 import { interpolate } from '../../../utils/interpolate'
+import { formatCount } from '../../../utils/size'
 import { clearNotification, notify } from '../../notification'
 import { revealAuthoringTarget } from '../../scope'
 import {
@@ -200,7 +201,7 @@ export const brush: Tool = {
         if (active.count === targets.length) return
         active.count = targets.length
 
-        notify(interpolate(() => i18n.value.tools.brush.brushing, `${targets.length}`))
+        notify(interpolate(() => i18n.value.tools.brush.brushing, formatCount(targets.length)))
     },
 
     dragEnd(x, y, modifiers) {

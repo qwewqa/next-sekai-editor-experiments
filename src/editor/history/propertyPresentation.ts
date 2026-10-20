@@ -2,6 +2,7 @@ import { i18n } from '../../i18n'
 import { languageTag } from '../../i18n/plural'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import {
     formatPropertyNumber,
     type PropertyField,
@@ -44,8 +45,7 @@ export const propertyFieldLabel = (field: PropertyField) => {
     }[field]
 }
 
-export const propertyCount = (value: number) =>
-    new Intl.NumberFormat(languageTag(settings.locale)).format(value)
+export const propertyCount = (value: number) => formatCount(value)
 
 export const propertyReferenceText = (value: PropertyReference) => {
     const strings = i18n.value

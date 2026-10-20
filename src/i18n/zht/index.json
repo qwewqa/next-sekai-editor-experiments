@@ -298,8 +298,7 @@
       "redid": "已重做 \"{0}\""
     },
     "reset": {
-      "title": "重置",
-      "reset": "重置關卡"
+      "title": "重置"
     },
     "save": {
       "title": "儲存"
@@ -966,13 +965,7 @@
     "default": {
       "none": "未選取物件",
       "edited": "已編輯 {0} 個物件",
-      "editedNotes": "已編輯 {0} 個音符",
-      "set": "已設定 {0} 個物件的{1}",
-      "setNotes": "已設定 {0} 個音符的{1}",
-      "noChange": "沒有變更",
-      "setBpm": "已設定 {0} 個 BPM 的{1}",
-      "setTimeScales": "已設定 {0} 個時間倍率的{1}",
-      "setEvents": "已設定 {0} 個{2}事件的{1}"
+      "noChange": "沒有變更"
     },
     "view": {
       "tool": "工具",
@@ -1046,8 +1039,7 @@
     "eraser": {
       "title": "橡皮擦",
       "deselected": "已取消選取所有物件",
-      "erasing": "正在刪除 {0} 個物件",
-      "erased": "已刪除 {0} 個物件"
+      "erasing": "正在刪除 {0} 個物件"
     },
     "generateSlideNotes": {
       "title": "生成滑條音符",
@@ -1095,7 +1087,6 @@
       "adding": "正在新增 {0} 個音符",
       "added": "已新增 {0} 個音符",
       "editing": "正在編輯 {0} 個音符",
-      "edited": "已編輯 {0} 個音符",
       "moving": "正在移動 {0} 個音符",
       "moved": "已移動 {0} 個音符",
       "selected": "已選取 {0} 個音符",
@@ -1299,10 +1290,8 @@
       "deletedEvents": "已刪除{0}事件",
       "cutEvents": "已剪下{0}事件"
     },
-    "edits": "{0} 次編輯",
     "undidSteps": "復原了 {0} 步",
     "redidSteps": "重做了 {0} 步",
-    "initialize": "初始化",
     "dynamicStages": {
       "title": "動態舞台",
       "message": "此功能需要動態舞台。要啟用動態舞台嗎？",
@@ -1827,7 +1816,11 @@
       "ok": "確定"
     },
     "loading": {
-      "loading": "載入中…"
+      "loading": "載入中…",
+      "audioUnreadable": "無法讀取此音訊檔案。",
+      "imageUnreadable": "無法讀取此圖像。",
+      "coverFailed": "無法產生封面。",
+      "failed": "無法完成此操作。"
     }
   },
   "preview": {
@@ -1912,8 +1905,6 @@
       "added": "已新增{0}資料夾",
       "renamed": "已將資料夾{0}重新命名為{1}",
       "moved": "已移動{0}資料夾",
-      "movedInto": "已將{0}移至{1}資料夾",
-      "movedOut": "已將{0}移出{1}資料夾",
       "ungrouped": "已解散{0}資料夾",
       "deleted": "已刪除{0}資料夾",
       "duplicated": "已為{0}資料夾建立複本"
@@ -2039,16 +2030,12 @@
     "addedRemoved": "新增 {0} · 刪除 {1}",
     "exportsCurrent": "匯出目前版本。",
     "overlay": "正在檢視歷史記錄 · 唯讀",
-    "viewing": "正在檢視 {0} · {1} · 唯讀",
-    "viewingShort": "正在檢視 {0} · 唯讀",
     "backToNow": "返回現在",
     "restore": "還原",
     "changeCount": "{0} 處變更",
     "noChanges": "無變更",
     "changedLarge": "已變更 {0}",
     "notes": "{0} 個音符",
-    "notesOf": "{1} 個音符中的 {0} 個",
-    "eventsOf": "{1} 個事件中的 {0} 個",
     "bpms": "{0} 個 BPM",
     "timeScales": "{0} 個時間倍率",
     "events": "{0} 個事件",
@@ -2225,20 +2212,10 @@
   },
   "file": {
     "replacedElsewhere": "\"{0}\" 已從另一個分頁或視窗被取代。",
-    "saved": "{0} · {1} 已儲存",
-    "changedSinceSaved": "{0} · 儲存後已變更",
     "downloaded": "{0} · {1} 已下載",
-    "notConfirmed": "未確認",
-    "changedSinceDownload": "{0} · 下載後已變更",
     "opened": "{0} · {1} 已開啟",
-    "changedSinceOpened": "{0} · 開啟後已變更",
     "short": {
-      "saved": "已儲存",
-      "changed": "已變更",
-      "notSaved": "未儲存",
-      "downloaded": "已下載",
-      "notConfirmed": "未確認",
-      "opened": "已開啟"
+      "notSaved": "未儲存"
     }
   },
   "state": {

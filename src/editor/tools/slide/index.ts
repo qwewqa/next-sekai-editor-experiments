@@ -27,6 +27,7 @@ import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
 import { shiftComputed } from '../../../utils/math'
 import { bisect } from '../../../utils/ordered'
+import { formatCount } from '../../../utils/size'
 import {
     getComposedGridOffset,
     getComposedLayout,
@@ -157,7 +158,9 @@ export const slide: Tool = {
                 }
                 focusEntityAtBeat(entity.beat)
 
-                notify(interpolate(() => i18n.value.tools.slide.selected, `${targets.length}`))
+                notify(
+                    interpolate(() => i18n.value.tools.slide.selected, formatCount(targets.length)),
+                )
             } else {
                 if (entities.every((entity) => selectedEntities.value.includes(entity))) {
                     focusEntityAtBeat(entity.beat)
@@ -180,7 +183,12 @@ export const slide: Tool = {
                     }
                     focusEntityAtBeat(entity.beat)
 
-                    notify(interpolate(() => i18n.value.tools.slide.selected, `${entities.length}`))
+                    notify(
+                        interpolate(
+                            () => i18n.value.tools.slide.selected,
+                            formatCount(entities.length),
+                        ),
+                    )
                 }
             }
         } else {
