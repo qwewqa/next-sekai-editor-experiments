@@ -563,8 +563,8 @@ export class StorageCore {
 }
 
 /**
- * A transaction's stores as this database has them: one an earlier Stage 1 build created has no
- * `handles` (D24), and stores no handle.
+ * A transaction's stores as this database has them: one without `handles` (D24; none at version
+ * 2, whose step adds it) stores no handle.
  */
 const inScope = (db: KvDatabase, stores: readonly string[]) =>
     stores.includes(HANDLES) && !db.storeNames.includes(HANDLES)
