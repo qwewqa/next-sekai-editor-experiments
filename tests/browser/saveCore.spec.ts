@@ -262,6 +262,14 @@ test('a reload after close() and before the binding: the next Save records it an
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)
 
+    // A second reload past the marker, with nothing edited: the page journalled nothing, so the
+    // load recovers nothing (the journal names only real entries, I-17).
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await waitForStartup(page)
+    const reloaded = await rows(page, ['entries'])
+    expect(reloaded.entries!.map((row) => row.value.kind)).not.toContain('recovered')
+
     // Unchanged: the earlier Save is recorded, and nothing is written.
     await pressSave(page)
     await expect(
