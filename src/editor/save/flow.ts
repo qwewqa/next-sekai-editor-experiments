@@ -1643,7 +1643,6 @@ const dialogInput = (
                   kind: 'available',
                   ticked: kept || (options?.history ?? true),
                   locked: kept,
-                  steps: 0,
                   ...(kept && binding.file ? { keptIn: binding.file.name } : {}),
               }
             : { kind: 'insecure' },
@@ -1664,13 +1663,17 @@ const dialogInput = (
         downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
         peeking: isPeeking.value,
         estimate: {
-            load: () =>
-                env.worker
+            // The worker counts what storage holds: this tab's pending entries go first, so the
+            // steps are the ones the file will carry (a flush never rejects).
+            load: async () => {
+                await env.flusher.flush()
+                return env.worker
                     .call('estimateSaveSize', {
                         chainId: env.chainId,
                         ...(meta ? { bgm: meta.hash } : {}),
                     })
-                    .catch(() => undefined),
+                    .catch(() => undefined)
+            },
         },
     }
 }
@@ -1913,7 +1916,7 @@ export const saveToFile = (sessionId: string) =>
             name,
             lines: [],
             history: globalThis.isSecureContext
-                ? { kind: 'available', ticked: true, locked: false, steps: 0 }
+                ? { kind: 'available', ticked: true, locked: false }
                 : { kind: 'insecure' },
             bgm: { kind: 'held', name: 'BGM', ticked: true, locked: false },
             exportLine: false,
