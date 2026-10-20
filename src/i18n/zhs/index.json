@@ -2267,7 +2267,6 @@
     "before": "更改前",
     "after": "更改后",
     "notSet": "未设置",
-    "empty": "空",
     "notPresent": "不存在",
     "added": "已添加",
     "removed": "已移除",
@@ -2275,8 +2274,6 @@
     "folder": "文件夹",
     "groupFolder": "群组文件夹",
     "stageFolder": "舞台文件夹",
-    "groupFolders": "群组文件夹",
-    "stageFolders": "舞台文件夹",
     "levelInfo": "关卡信息",
     "fields": {
       "title": "标题",

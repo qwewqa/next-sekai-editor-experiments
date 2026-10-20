@@ -53,7 +53,7 @@ export type PropertyItem = PropertyReference | { kind: 'tag'; title: string; ico
 
 /** Unformatted historical values; no decoded media or chart objects are retained here. */
 export type PropertyValue =
-    | { kind: 'notSet' | 'empty' | 'notPresent' | 'noFolder' }
+    | { kind: 'notSet' | 'notPresent' | 'noFolder' }
     | { kind: 'text'; value: string }
     | { kind: 'number'; value: number; unit?: 'ms' | 'bytes'; decimalShift?: number }
     | { kind: 'boolean'; value: boolean }
@@ -76,12 +76,8 @@ export type PropertyChanges = { sections: readonly PropertySection[]; rowCount: 
 
 const notSet: PropertyValue = { kind: 'notSet' }
 const notPresent: PropertyValue = { kind: 'notPresent' }
-const text = (value: string | undefined, optional = false): PropertyValue =>
-    value === undefined
-        ? notSet
-        : value === ''
-          ? { kind: optional ? 'empty' : 'notSet' }
-          : { kind: 'text', value }
+const text = (value: string | undefined): PropertyValue =>
+    value === undefined || value === '' ? notSet : { kind: 'text', value }
 const number = (
     value: number | undefined,
     unit?: 'ms' | 'bytes',
@@ -253,7 +249,14 @@ export const comparePropertyChanges = (
                 )
             }
             field('name', (entry) => text(entry.name))
-            if (!old || !next || old.folderId !== next.folderId)
+            // An added or removed folder that sits in no folder has no Folder row to show: it would
+            // only say that it is not in one.
+            const placed =
+                kind === 'groups' ||
+                kind === 'stages' ||
+                (old !== undefined && next !== undefined) ||
+                (old ?? next)?.folderId !== undefined
+            if (placed && (!old || !next || old.folderId !== next.folderId))
                 field('folder', (entry, old) => folder(entry.folderId, old))
             if (kind === 'groups')
                 field('forceNoteSpeed', (entry) =>
@@ -340,5 +343,5 @@ export const propertyItems = (
 
 export { formatPropertyNumber } from '../../utils/formatPropertyNumber'
 
-/** A tag's optional icon distinguishes absence from an explicitly empty string. */
-export const propertyTagIcon = (tag: Extract<PropertyItem, { kind: 'tag' }>) => text(tag.icon, true)
+/** A tag's icon, or Not set when it has none or an empty one. */
+export const propertyTagIcon = (tag: Extract<PropertyItem, { kind: 'tag' }>) => text(tag.icon)

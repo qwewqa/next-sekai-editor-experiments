@@ -2,6 +2,7 @@ import { nextTick } from 'vue'
 import type { OperationRecipe } from '../../history/operationPresentation'
 import { peekSourceGeneration } from '../../history/peek'
 import { modals, showModal } from '../../modals'
+import type { Flags } from './rows'
 import { sourceGeneration } from './source'
 import { historyViewGeneration } from './state'
 
@@ -13,6 +14,8 @@ export const openOperationDetails = async (
     time: number,
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : undefined,
     focusPolicy?: { captureDialog: (dialog: HTMLDialogElement) => void; restoreFocus: () => void },
+    /** The opener row's flags, and a group's by member id. The peek strip has none. */
+    flags?: { row?: Flags; members?: ReadonlyMap<string, Flags> },
 ) => {
     if (opening) return
     opening = true
@@ -33,6 +36,8 @@ export const openOperationDetails = async (
         await showModal(StepDetailsModal, {
             recipe,
             time,
+            flags: flags?.row,
+            memberFlags: flags?.members,
             source,
             peekSource,
             generation,

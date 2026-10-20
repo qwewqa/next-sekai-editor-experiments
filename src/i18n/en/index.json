@@ -2267,7 +2267,6 @@
         "before": "Before",
         "after": "After",
         "notSet": "Not set",
-        "empty": "Empty",
         "notPresent": "Not present",
         "added": "Added",
         "removed": "Removed",
@@ -2275,8 +2274,6 @@
         "folder": "Folder",
         "groupFolder": "Group Folder",
         "stageFolder": "Stage Folder",
-        "groupFolders": "Group Folders",
-        "stageFolders": "Stage Folders",
         "levelInfo": "Level Info",
         "fields": {
             "title": "Title",

@@ -34,7 +34,11 @@ const page = computed(() =>
 </script>
 
 <template>
-    <div class="property-value min-w-0 select-text whitespace-pre-wrap" data-property-value>
+    <div
+        class="property-value min-w-0 select-text whitespace-pre-wrap"
+        :class="value.kind === 'notSet' || value.kind === 'notPresent' ? 'text-fg/80' : undefined"
+        data-property-value
+    >
         <template v-if="value.kind !== 'list'">{{ propertyValueText(value, field) }}</template>
         <template v-else-if="page">
             <ol ref="list" class="list-inside list-decimal space-y-2" data-property-items>
@@ -48,7 +52,9 @@ const page = computed(() =>
                         propertyReferenceText(item)
                     }}</template>
                     <template v-else>
-                        <span>{{ item.title || i18n.historyChanges.notSet }}</span>
+                        <span :class="item.title ? undefined : 'text-fg/80'">{{
+                            item.title || i18n.historyChanges.notSet
+                        }}</span>
                         <div class="mt-1 flex flex-wrap gap-x-2 text-xs text-fg/80">
                             <span>{{ i18n.historyChanges.fields.icon }}</span>
                             <PropertyChangeValue :value="propertyTagIcon(item)" />

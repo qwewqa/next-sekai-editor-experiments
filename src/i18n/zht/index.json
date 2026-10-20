@@ -2267,7 +2267,6 @@
     "before": "變更前",
     "after": "變更後",
     "notSet": "未設定",
-    "empty": "空白",
     "notPresent": "不存在",
     "added": "已新增",
     "removed": "已移除",
@@ -2275,8 +2274,6 @@
     "folder": "資料夾",
     "groupFolder": "圖層資料夾",
     "stageFolder": "舞台資料夾",
-    "groupFolders": "圖層資料夾",
-    "stageFolders": "舞台資料夾",
     "levelInfo": "關卡資訊",
     "fields": {
       "title": "標題",

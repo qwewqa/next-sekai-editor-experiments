@@ -43,7 +43,15 @@ import { showChangeOf } from './changes'
 import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
 import { openOperationDetails } from './operationDetails'
 import { canFocusHistory } from './openHistory'
-import { buildRows, previousOf, type Entry, type EntryRow, type Header, type Row } from './rows'
+import {
+    buildRows,
+    entryId,
+    previousOf,
+    type Entry,
+    type EntryRow,
+    type Header,
+    type Row,
+} from './rows'
 import {
     backToNow,
     damagedEntries,
@@ -888,22 +896,32 @@ const showDetails = (
     detailsReturn = context
     document.addEventListener('focusin', onDeparture, true)
     document.addEventListener('pointerdown', onDeparture, true)
-    void openOperationDetails(recipeOf(row), row.entry.time, opener, {
-        captureDialog: (dialog) => (context.dialog = dialog),
-        restoreFocus: () => {
-            const active = document.activeElement
-            if (
-                context.abandoned ||
-                (active !== document.body && active !== null && !timelineRow(active))
-            )
-                return
-            if (latestFocus !== previousRequest) {
-                if (latestFocus && ownsFocus(latestFocus))
-                    void focusRow(latestFocus.id, latestFocus.part, false)
-            } else if (context.returned) restoreRowFocus(cursorId.value, focusPart.value)
-            else restoreRowFocus(row.id, part)
+    void openOperationDetails(
+        recipeOf(row),
+        row.entry.time,
+        opener,
+        {
+            captureDialog: (dialog) => (context.dialog = dialog),
+            restoreFocus: () => {
+                const active = document.activeElement
+                if (
+                    context.abandoned ||
+                    (active !== document.body && active !== null && !timelineRow(active))
+                )
+                    return
+                if (latestFocus !== previousRequest) {
+                    if (latestFocus && ownsFocus(latestFocus))
+                        void focusRow(latestFocus.id, latestFocus.part, false)
+                } else if (context.returned) restoreRowFocus(cursorId.value, focusPart.value)
+                else restoreRowFocus(row.id, part)
+            },
         },
-    }).finally(context.dispose)
+        {
+            row: row.flags,
+            // A group holds entries of one availability only, so its steps share the row's flags.
+            members: new Map(row.members.map((member) => [entryId(member), row.flags])),
+        },
+    ).finally(context.dispose)
 }
 // Show Change peeks the row first when it isn't, then brings its nearest change into view.
 const showRowChange = (row: EntryRow) => {

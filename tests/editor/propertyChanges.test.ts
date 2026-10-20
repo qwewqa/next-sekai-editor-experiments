@@ -263,7 +263,8 @@ test('normalization, required empty strings, whitespace, false and zero remain d
     })
     assert.equal(changes.rowCount, 2)
     assert.deepEqual(propertyTagIcon({ kind: 'tag', title: '' }), { kind: 'notSet' })
-    assert.deepEqual(propertyTagIcon({ kind: 'tag', title: '', icon: '' }), { kind: 'empty' })
+    // An empty icon reads as Not set, the one empty word.
+    assert.deepEqual(propertyTagIcon({ kind: 'tag', title: '', icon: '' }), { kind: 'notSet' })
     assert.deepEqual(propertyTagIcon({ kind: 'tag', title: '', icon: ' ' }), {
         kind: 'text',
         value: ' ',
@@ -358,7 +359,8 @@ test('removed stages and added folders expose zero, false, empty names and paren
     assert.ok(removed.rows.every(({ after }) => after.kind === 'notPresent'))
     const added = section(changes, 'stageFolders', 9)
     assert.equal(added.status, 'added')
-    assert.equal(added.rows.length, 3)
+    // Name and Order: an added folder that is in no folder has no Folder row.
+    assert.equal(added.rows.length, 2)
     assert.deepEqual(row(changes, 'stageFolders', 'order', 9).after, { kind: 'number', value: 0 })
 })
 

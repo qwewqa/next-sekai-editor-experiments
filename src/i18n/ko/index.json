@@ -2267,7 +2267,6 @@
     "before": "이전",
     "after": "이후",
     "notSet": "설정되지 않음",
-    "empty": "빈 값",
     "notPresent": "없음",
     "added": "추가됨",
     "removed": "삭제됨",
@@ -2275,8 +2274,6 @@
     "folder": "폴더",
     "groupFolder": "그룹 폴더",
     "stageFolder": "스테이지 폴더",
-    "groupFolders": "그룹 폴더",
-    "stageFolders": "스테이지 폴더",
     "levelInfo": "레벨 정보",
     "fields": {
       "title": "제목",

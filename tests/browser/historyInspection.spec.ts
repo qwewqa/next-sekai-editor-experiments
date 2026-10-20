@@ -61,7 +61,7 @@ test.afterEach(({ page }) => {
 })
 
 // Valid imported metadata supplies historical endpoints; every control still uses real pointer/key events.
-const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' = 'basic') => {
+const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' | 'folders' = 'basic') => {
     await page.evaluate(async (mode) => {
         const { appImport, history, historySteps, settings } = window.editorTest
         const { captureOperationRecipe } = await appImport<
@@ -146,6 +146,14 @@ const seed = async (page: Page, mode: 'basic' | 'rows' | 'items' = 'basic') => {
                     id >= 1000 ? { ...group, forceNoteSpeed: 2 } : group,
                 ]),
             )
+            after.initialLife = before.initialLife
+            after.levelInfo = before.levelInfo
+            after.bgm = before.bgm
+        } else if (mode === 'folders') {
+            // One folder appears and one goes: sections with a single side.
+            before.stageFolders = new Map([[600 as never, { name: 'Removed folder', index: 0 }]])
+            after.stageFolders = new Map()
+            after.groupFolders = new Map([[500 as never, { name: 'Added folder', index: 0 }]])
             after.initialLife = before.initialLife
             after.levelInfo = before.levelInfo
             after.bgm = before.bgm
@@ -540,6 +548,53 @@ for (const hasTouch of [false, true]) {
         })
     })
 }
+
+test('an added or removed entry shows its one value per row, under a singular folder label', async ({
+    page,
+}, testInfo) => {
+    await seed(page, 'folders')
+    await open(page)
+    const added = dialog(page).locator('[data-property-section="groupFolders:500"]')
+    await expect(added.locator('h3 > span').first()).toHaveText('Group Folder')
+    await expect(added.locator('[data-property-badge]')).toHaveText('Added')
+    await expect(added.locator('[data-property-row]')).toHaveCount(2)
+    await expect(added.locator('[data-property-after]')).toHaveCount(2)
+    await expect(added.locator('[data-property-before]')).toHaveCount(0)
+    await expect(added.locator('[data-property-row="name"] [data-property-value]')).toHaveText(
+        'Added folder',
+    )
+    const removed = dialog(page).locator('[data-property-section="stageFolders:600"]')
+    await expect(removed.locator('h3 > span').first()).toHaveText('Stage Folder')
+    await expect(removed.locator('[data-property-badge]')).toHaveText('Removed')
+    await expect(removed.locator('[data-property-before]')).toHaveCount(2)
+    await expect(removed.locator('[data-property-after]')).toHaveCount(0)
+    // The empty side is not spelled out, and no Before or After caption stands over one value.
+    await expect(dialog(page)).not.toContainText('Not present')
+    await expect(added.getByText(/^(Before|After)$/)).toHaveCount(0)
+    await expect(removed.getByText(/^(Before|After)$/)).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('property-one-sided.png') })
+})
+
+test('a removed media section keeps only its before value, and a placeholder is quieter', async ({
+    page,
+}) => {
+    await seed(page)
+    await page.locator('[data-show-edits]').click()
+    await select(page, 2, 1)
+    await open(page)
+    const cover = dialog(page).locator('[data-property-section="cover:all"]')
+    await expect(cover.locator('[data-property-badge]')).toHaveText('Removed')
+    await expect(cover.locator('[data-property-before]')).not.toHaveCount(0)
+    await expect(cover.locator('[data-property-after]')).toHaveCount(0)
+    await expect(dialog(page)).not.toContainText('Not present')
+    // A tag without an icon, and one with an empty icon, both read Not set, quietly.
+    const tags = row(page, 'tags').locator('[data-property-before]')
+    for (const index of [0, 1]) {
+        const icon = tags.locator('li').nth(index).locator('[data-property-value]')
+        await expect(icon).toHaveText('Not set')
+        await expect(icon).toHaveClass(/text-fg\/80/)
+    }
+})
 
 test('property inspection keeps exact chronological values, whitespace and the live chart', async ({
     page,
@@ -1384,7 +1439,8 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
         )
         const tags = modal.locator('[data-property-row="tags"] [data-property-before]')
         await expect(tags.locator('li').nth(0)).toContainText(messages.historyChanges.notSet)
-        await expect(tags.locator('li').nth(1)).toContainText(messages.historyChanges.empty)
+        // An empty icon reads as Not set too: Step Details uses one empty word.
+        await expect(tags.locator('li').nth(1)).toContainText(messages.historyChanges.notSet)
         expect(await tags.locator('li').nth(2).locator('[data-property-value]').textContent()).toBe(
             '  ',
         )

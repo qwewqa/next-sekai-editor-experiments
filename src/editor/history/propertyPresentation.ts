@@ -20,8 +20,8 @@ export const propertySectionLabel = (kind: PropertySectionKind) => {
         preview: strings.historyChanges.fields.previewAudio,
         groups: strings.commands.manageGroups.modal.properties.modal.title,
         stages: strings.commands.manageStages.modal.properties.modal.title,
-        groupFolders: strings.historyChanges.groupFolders,
-        stageFolders: strings.historyChanges.stageFolders,
+        groupFolders: strings.historyChanges.groupFolder,
+        stageFolders: strings.historyChanges.stageFolder,
     }[kind]
 }
 
@@ -69,8 +69,6 @@ export const propertyValueText = (
     switch (value.kind) {
         case 'notSet':
             return strings.historyChanges.notSet
-        case 'empty':
-            return strings.historyChanges.empty
         case 'notPresent':
             return strings.historyChanges.notPresent
         case 'noFolder':

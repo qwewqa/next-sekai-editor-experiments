@@ -2267,7 +2267,6 @@
     "before": "変更前",
     "after": "変更後",
     "notSet": "未設定",
-    "empty": "空",
     "notPresent": "存在しない",
     "added": "追加",
     "removed": "削除",
@@ -2275,8 +2274,6 @@
     "folder": "フォルダー",
     "groupFolder": "グループフォルダー",
     "stageFolder": "ステージフォルダー",
-    "groupFolders": "グループフォルダー",
-    "stageFolders": "ステージフォルダー",
     "levelInfo": "レベル情報",
     "fields": {
       "title": "タイトル",
