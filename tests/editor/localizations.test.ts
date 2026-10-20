@@ -245,8 +245,11 @@ const identicalToEnglish: Record<string, string[]> = {
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
         // These French labels have the same spelling as English.
+        'history.details.counts.note',
         'history.details.destination',
         'history.details.source',
+        'history.quoted',
+        'history.quotedField',
         'historyChanges.fields.description',
         'historyChanges.fields.tags',
         'historyChanges.fields.type',
@@ -339,6 +342,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        'history.quoted',
+        'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -374,6 +379,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        'history.quoted',
+        'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -407,6 +414,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -441,6 +449,8 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
+        'history.quoted',
+        'history.quotedField',
         'modals.form.bpm.label',
         'modals.form.key.names.alt',
         'modals.form.key.names.backspace',
@@ -545,4 +555,36 @@ test('Turkish command titles use Title Case', () => {
             const first = word.match(/\p{L}/u)?.[0]
             if (first) assert.equal(first, first.toLocaleUpperCase('tr'), `tr ${key}: ${text}`)
         }
+})
+
+test('Step Details quoting wrappers and count phrases exist in every locale', () => {
+    for (const locale of readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name)) {
+        const messages = read(locale)
+        for (const key of ['history.quoted', 'history.quotedField'])
+            assert.equal(placeholders(messages[key]!).join(), '{0}', `${locale} ${key}`)
+        // A name is always quoted; only Japanese also quotes a field label (to end a doubled を).
+        assert.match(messages['history.quoted']!, /^["“「]\{0\}["”」]$/, locale)
+        assert.equal(messages['history.quotedField'] !== '{0}', locale === 'ja', locale)
+        for (const kind of [
+            'note',
+            'bpm',
+            'timeScale',
+            'event',
+            'group',
+            'stage',
+            'groupFolder',
+            'stageFolder',
+        ]) {
+            const text = messages[`history.details.counts.${kind}`]!
+            assert.ok(text.includes('{0}'), `${locale} ${kind}`)
+            // English and French count 0 and 1 apart from the rest; the other locales have one form.
+            assert.equal(
+                forms(text).length,
+                locale === 'en' || locale === 'fr' ? 2 : 1,
+                `${locale} ${kind}`,
+            )
+        }
+    }
 })

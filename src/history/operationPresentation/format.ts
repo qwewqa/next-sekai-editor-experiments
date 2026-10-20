@@ -374,7 +374,11 @@ export const describeOperation = (
                 operation.data.field === 'initialLife'
                     ? t.commands.properties.lifeSet
                     : t.commands.bgm.offsetSet,
-                numberText(operation.data.after, context),
+                numberText(
+                    operation.data.after,
+                    context,
+                    operation.data.field === 'bgmOffset' ? 3 : 0,
+                ),
             )
         case 'nse.bgm.change':
             return operation.data.offset ? t.commands.bgm.changed : t.commands.bgm.fileChanged

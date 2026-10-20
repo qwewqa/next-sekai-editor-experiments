@@ -780,7 +780,7 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
     })
     await expect(details.locator('[data-operation-description]')).toHaveText('<b>Future export</b>')
     await expect(details.locator('[data-operation-unsupported]')).toHaveText(
-        'This editor cannot interpret this action.',
+        'This editor cannot read the details of this step.',
     )
     await expect(details.locator('[data-operation-description] b')).toHaveCount(0)
     await expect(details.locator('[data-operation-section]')).toHaveCount(0)

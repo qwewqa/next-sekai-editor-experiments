@@ -182,7 +182,7 @@ test('all native IDs render current-language singleton descriptions and complete
     assert.equal(describeOperation(fixture[0], en), 'Added 3 notes')
     assert.equal(describeOperation(fixture[7], en), 'Pasted 3 objects')
     assert.equal(describeOperation(fixture[16], en), 'Set Lane to 0 on 2 notes')
-    assert.equal(describeOperation(fixture[18], en), 'Changed BGM File')
+    assert.equal(describeOperation(fixture[18], en), 'Changed BGM file')
     assert.equal(describeOperation(fixture[22], en), 'Set Force Note Speed of "A" group to 0')
 })
 
@@ -775,5 +775,32 @@ test('Details keeps BGM same-name replacements, recovery insertion order and laz
     assert.equal(
         describeMember(undoDetails.children[0]!, context('ja')),
         '3個のノーツを追加しました',
+    )
+})
+
+test('a BGM offset title is in milliseconds, the unit of the field', () => {
+    const input = {
+        id: 'nse.header.set',
+        data: { field: 'bgmOffset', before: 0, after: 0.25 },
+    } as const
+    assert.equal(describeOperation(input, en), 'Set BGM Offset to 250 ms')
+    assert.equal(
+        describeOperation(
+            { id: 'nse.header.set', data: { field: 'bgmOffset', before: 0, after: -1.5 } },
+            en,
+        ),
+        'Set BGM Offset to -1,500 ms',
+    )
+    assert.equal(
+        describeOperation(input, context('ja')),
+        'BGMのオフセットを250ミリ秒に設定しました',
+    )
+    // Initial Life is not an offset and keeps its own scale.
+    assert.equal(
+        describeOperation(
+            { id: 'nse.header.set', data: { field: 'initialLife', before: 1000, after: 900 } },
+            en,
+        ),
+        'Set Initial Life to 900',
     )
 })

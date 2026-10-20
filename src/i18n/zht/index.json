@@ -24,7 +24,7 @@
     },
     "bgm": {
       "title": "BGM",
-      "changed": "已更改BGM",
+      "changed": "已更改 BGM",
       "modal": {
         "file": "檔案",
         "offset": "偏移（毫秒）",
@@ -33,7 +33,7 @@
         "generating": "生成波形…"
       },
       "fileChanged": "已更改 BGM 檔案",
-      "offsetSet": "已將 BGM 偏移設為 {0} 秒"
+      "offsetSet": "已將 BGM 偏移設為 {0} 毫秒"
     },
     "brush": {
       "title": "筆刷",
@@ -1327,6 +1327,8 @@
     "newerSteps": "{0} 個較新的步驟",
     "removedForSpace": "已為節省空間而移除",
     "damaged": "已損毀",
+    "quoted": "\"{0}\"",
+    "quotedField": "{0}",
     "continuedFrom": "從 {0} 繼續",
     "announceViewing": "正在檢視 {0}",
     "filterHere": "此處的編輯",
@@ -1340,12 +1342,14 @@
       "title": "步驟詳細資訊",
       "named": "步驟詳細資訊：{0}",
       "action": "詳細資訊",
-      "unsupported": "此編輯器無法解讀此操作。",
+      "unsupported": "此編輯器無法讀取此步驟的詳細資訊。",
+      "newer": "此步驟由較新版本的編輯器記錄。",
       "nameShortened": "名稱已縮短顯示",
       "varying": "值不一致",
       "changed": "已修改",
       "displaced": "已取代",
       "placed": "已貼上",
+      "pastedFlipped": "已翻轉貼上",
       "retainedInitialBpm": "已保留初始 BPM",
       "pivot": "縮放基準點",
       "composedTransform": "多項調整",
@@ -1359,6 +1363,16 @@
       "recoveryHead": "來源操作",
       "omittedDescriptions": "已省略的先前操作說明：{0}",
       "droppedSteps": "已遺失的復原步驟：{0}",
+      "counts": {
+        "note": "{0} 個音符",
+        "bpm": "{0} 個 BPM",
+        "timeScale": "{0} 個時間倍率",
+        "event": "{0} 個{1}事件",
+        "group": "{0} 個圖層",
+        "stage": "{0} 個舞台",
+        "groupFolder": "{0} 個圖層資料夾",
+        "stageFolder": "{0} 個舞台資料夾"
+      },
       "bgmOffset": "BGM 偏移",
       "pasteLocation": "貼上位置",
       "pointer": "指標位置",
@@ -2270,6 +2284,8 @@
     "removed": "已移除",
     "order": "順序",
     "folder": "資料夾",
+    "groupFolder": "圖層資料夾",
+    "stageFolder": "舞台資料夾",
     "groupFolders": "圖層資料夾",
     "stageFolders": "舞台資料夾",
     "levelInfo": "關卡資訊",
