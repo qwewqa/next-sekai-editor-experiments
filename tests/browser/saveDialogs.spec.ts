@@ -515,14 +515,12 @@ test.describe('the conflict dialog', () => {
         saved: {
             kind: 'saved',
             device: { id: 'a', label: 'iPad' },
-            thisDevice: false,
             savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
             notes: 1220,
         },
         web: {
             kind: 'saved',
             device: { id: 'a', label: 'Web (Chrome)' },
-            thisDevice: false,
             savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
             notes: 1,
         },
