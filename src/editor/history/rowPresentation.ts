@@ -1,5 +1,6 @@
 import {
     captureOperationRecipe,
+    memberLang,
     operationStepCount,
     renderOperationRecipe,
     type OperationRecipe,
@@ -67,7 +68,12 @@ export const presentRow = (
         ? savedOnText(context, device.label)
         : renderOperationRecipe(recipe, context)
     const steps = recipe.kind === 'group' ? operationStepCount(recipe, context) : undefined
-    return { main, steps, full: steps ? `${main} · ${steps}` : main }
+    // The captured language of a newer or unreadable step's own text, for the `lang` of its element.
+    const lang =
+        !device && recipe.kind === 'single' && recipe.members[0]
+            ? memberLang(recipe.members[0], context)
+            : undefined
+    return { main, steps, ...(lang ? { lang } : {}), full: steps ? `${main} · ${steps}` : main }
 }
 
 /**

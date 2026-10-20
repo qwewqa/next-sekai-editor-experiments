@@ -604,7 +604,7 @@ E: 65 earlier, head 30, omitted 12
 
 #recovery.context.big ja
 T: 変更を復元しました
-F: 失われた元に戻すステップ：64
+F: 失われた元に戻す操作：64
 E: 65 earlier, head 30, omitted 12
 
 #recovery.context.unknownSteps en

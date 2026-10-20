@@ -958,5 +958,14 @@ test('an empty file name never leaves a dangling space', () => {
             assert(!/\s{2}/.test(text), `${locale} ${input.id}: "${text}"`)
             assert(text.includes(untitled), `${locale} ${input.id}: "${text}"`)
         }
+        const exported = detail(
+            { id: 'nse.file.export', data: { file: empty, delivery: 'download' } },
+            ctx,
+        )
+        assert.equal(exported.facts.length, 1, locale)
+        for (const fact of exported.facts) {
+            assert.equal(fact, fact.trim(), `${locale}: "${fact}"`)
+            assert(fact.includes(untitled), `${locale}: "${fact}"`)
+        }
     }
 })

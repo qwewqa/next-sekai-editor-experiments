@@ -816,7 +816,7 @@ test.describe('the phone card', () => {
 
 for (const [locale, title] of [
     ['fr', 'Détails de l’étape'],
-    ['ja', 'ステップの詳細'],
+    ['ja', '操作の詳細'],
 ] as const)
     test(`${locale}: long labels and values wrap inside the card on a phone`, async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 })

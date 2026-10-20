@@ -1085,14 +1085,9 @@
     "slide": {
       "title": "Kaydırma #{0}",
       "adding": "{0} nota ekleniyor",
-      "added": "{0} nota eklendi",
       "editing": "{0} nota düzenleniyor",
       "moving": "{0} nota taşınıyor",
-      "moved": "{0} nota taşındı",
       "selected": "{0} nota seçildi",
-      "modal": {
-        "title": "Nota Özellikleri"
-      },
       "sidebar": {
         "title": "Varsayılan Kaydırma Özellikleri"
       }
