@@ -24,7 +24,12 @@ const storageSpecs = [
 
 export default defineConfig({
     ...config,
-    testMatch: ['playerAudio.spec.ts', 'waveform.spec.ts', 'recordVectors.spec.ts'],
+    testMatch: [
+        'playerAudio.spec.ts',
+        'waveform.spec.ts',
+        'recordVectors.spec.ts',
+        'assetSelectGap.spec.ts',
+    ],
     outputDir: 'test-results-compatibility',
     use: {
         ...config.use,
