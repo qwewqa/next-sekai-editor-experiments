@@ -130,6 +130,8 @@ export type BuildOptions = {
     damaged: ReadonlySet<string>
     /** Entries a newer version wrote, by id: unavailable, not damaged. */
     newer?: ReadonlySet<string>
+    /** Entries a peek or Restore found removed, by id, though they were read as kept. */
+    removed?: ReadonlySet<string>
     /** The clock the headers' ages are measured against. */
     now?: number
     /** After a jump: how many entries lie between Now and the first one given. */
@@ -141,20 +143,31 @@ export type BuildOptions = {
 /** The rows to show for a chain's entries, newest first. */
 export const buildRows = (
     newestFirst: readonly Entry[],
-    { filter, expanded, damaged, newer, now = Date.now(), gap, more, pinned }: BuildOptions,
+    {
+        filter,
+        expanded,
+        damaged,
+        newer,
+        removed,
+        now = Date.now(),
+        gap,
+        more,
+        pinned,
+    }: BuildOptions,
 ): Row[] => {
     // A `kept: false` entry is damaged when the worker found its snapshot reaching a bad part, or
     // when a peek or Restore of it failed in this tab; else it was removed to save space.
     // An entry a newer version wrote is neither: it is unavailable, and never called damaged.
     const flagsOf = (entry: Entry): Flags => {
         const isNewer = newer?.has(entryId(entry)) === true || entry.unreadable === 'newer'
+        const gone = !entry.kept || removed?.has(entryId(entry)) === true
         const bad =
             !isNewer &&
             (damaged.has(entryId(entry)) ||
                 entry.unreadable === 'damaged' ||
                 (!entry.kept && entry.damaged === true))
         return {
-            removed: !entry.kept && !bad && !isNewer,
+            removed: gone && !bad && !isNewer,
             damaged: bad,
             ...(isNewer ? { newer: true } : {}),
         }

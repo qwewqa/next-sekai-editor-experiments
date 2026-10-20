@@ -10,6 +10,7 @@ import {
     getScaleValue,
 } from '../../state/operations/scaleValues'
 import { transformSelection } from '../../state/operations/transformSelection'
+import { extentOf } from '../../utils/math'
 import { dragBpms, gridOf } from '../beatGrid'
 import { getScaleLabels } from '../commands/scaleSelection/labels'
 import {
@@ -195,8 +196,7 @@ export const scalingTool: Tool = {
                 ) {
                     const selected = getScaleEntities(source.selectedEntities, 'elevation', source)
                     const heights = selected.map((item) => getScaleValue(item, 'elevation'))
-                    const min = Math.min(...heights)
-                    const max = Math.max(...heights)
+                    const { min, max } = extentOf(heights)
                     const focus = entity.elevation
                     const endpoint = selected.includes(entity) && (focus === min || focus === max)
                     const anchor = focus === min ? max : min

@@ -450,3 +450,27 @@ test('an undo or redo not stored yet takes its note count from the entry holding
     assert.equal(row!.entry, undo)
     assert.equal(row!.delta, 3)
 })
+
+test('an entry a peek or Restore found removed reads removed and cannot be selected', () => {
+    const gone = entry(add(), noon, { kept: true })
+    const available = entry(add())
+    const rows = buildRows(newestFirst(gone, available), {
+        ...options,
+        removed: new Set([`s:${gone.seq}`]),
+    })
+    assert.deepEqual(
+        entryRows(rows).map((row) => [row.flags, row.selectable]),
+        [
+            [{ removed: false, damaged: false }, true],
+            [{ removed: true, damaged: false }, false],
+        ],
+    )
+    // Damage found on the same entry wins, as for a stored removed entry.
+    const both = buildRows(newestFirst(gone, available), {
+        ...options,
+        removed: new Set([`s:${gone.seq}`]),
+        damaged: new Set([`s:${gone.seq}`]),
+    })
+    assert.equal(entryRows(both).at(-1)?.flags.damaged, true)
+    assert.equal(entryRows(both).at(-1)?.flags.removed, false)
+})

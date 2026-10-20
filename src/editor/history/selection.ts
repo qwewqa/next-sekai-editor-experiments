@@ -15,6 +15,7 @@ import {
     peekedKey,
     restoreEntry,
     type EntryKey,
+    type PeekFailure,
 } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { notify } from '../notification'
@@ -64,14 +65,31 @@ export const damagedEntries = shallowRef<ReadonlySet<string>>(new Set())
 /** Entries whose state a newer version wrote, by key: shown as needing a newer version, never damaged. */
 export const newerEntries = shallowRef<ReadonlySet<string>>(new Set())
 
+/** Entries found removed when a peek or Restore reached them, by key: their rows read removed. */
+export const removedEntries = shallowRef<ReadonlySet<string>>(new Set())
+
+const withKey = (set: ReadonlySet<string>, key: string) => new Set(set).add(key)
+
 /**
- * A peek or Restore that failed for a reason other than the entry itself (a storage read that
- * failed, an exception in the restore): kept in the diagnostics, and told, since the user asked.
+ * A peek or Restore that failed: told, since the user asked. A failure of the entry itself that
+ * its row shows (damaged, needs a newer version) is told by the row alone, and an entry not stored
+ * yet can be tried again (`quiet`: a peek says nothing of it); a failure of the read or the restore
+ * is also kept in the diagnostics.
  */
-const reportFailure = (error: unknown, message: () => string) => {
-    if (error instanceof PeekError) return
-    recordError(error)
+const reportFailure = (error: unknown, message: () => string, quiet: PeekFailure[] = []) => {
+    if (error instanceof PeekError) {
+        if (error.reason === 'damaged' || error.reason === 'newer') return
+        if (quiet.includes(error.reason)) return
+    } else recordError(error)
     notify(message)
+}
+
+/** Marks the row of an entry that a peek or Restore found unreadable. */
+const markFailed = (error: unknown, key: string) => {
+    if (!(error instanceof PeekError)) return
+    if (error.reason === 'damaged') damagedEntries.value = withKey(damagedEntries.value, key)
+    else if (error.reason === 'newer') newerEntries.value = withKey(newerEntries.value, key)
+    else if (error.reason === 'removed') removedEntries.value = withKey(removedEntries.value, key)
 }
 
 /** Peeks an entry; the peek itself waits a moment when requests come close together. */
@@ -80,20 +98,17 @@ export const requestPeek = (info: PeekedInfo) => {
     peekedInfo.value = info
     peekEntry(info.key).catch((error: unknown) => {
         if (generation !== peekSourceGeneration.value) return
-        // Peek has ended it. A state that fails its check reads damaged from then on; a removed
-        // one already reads so from its row, and one not stored yet can be tried again.
-        if (error instanceof PeekError && error.reason === 'damaged')
-            damagedEntries.value = new Set(damagedEntries.value).add(info.key)
-        if (error instanceof PeekError && error.reason === 'newer')
-            newerEntries.value = new Set(newerEntries.value).add(info.key)
-        reportFailure(error, () => i18n.value.notice.peekFailed)
+        // Peek has ended it. A state that fails its check reads damaged from then on, and one
+        // removed since the row was read reads removed; one not stored yet can be tried again.
+        markFailed(error, info.key)
+        reportFailure(error, () => i18n.value.notice.peekFailed, ['missing'])
         if (peekedInfo.value === info) peekedInfo.value = undefined
     })
 }
 
 /**
- * Restores an entry. One that cannot be read is marked damaged, as a failed peek marks it, and the
- * peek ends, so a Restore that fails is never silent.
+ * Restores an entry. One that cannot be read is marked as a failed peek marks it, and the peek
+ * ends, so a Restore that fails is never silent.
  */
 export const requestRestore = async (key: EntryKey) => {
     const generation = peekSourceGeneration.value
@@ -104,10 +119,7 @@ export const requestRestore = async (key: EntryKey) => {
             historyGeneration !== historyViewGeneration()
         )
             return
-        if (error instanceof PeekError && error.reason === 'newer')
-            newerEntries.value = new Set(newerEntries.value).add(key)
-        else if (error instanceof PeekError && error.reason !== 'removed')
-            damagedEntries.value = new Set(damagedEntries.value).add(key)
+        markFailed(error, key)
         reportFailure(error, () => i18n.value.notice.restoreFailed)
         if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()
     })

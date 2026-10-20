@@ -374,7 +374,7 @@ test('a step of a group shows its own flag after its label', async ({ page }) =>
         'Added 2 notes',
         'Added 2 notes · removed to save space',
     ])
-    await expect(labels.last().locator('span')).toHaveClass(/text-fg\/80/)
+    await expect(labels.last().locator('span', { hasText: '·' })).toHaveClass(/text-fg\/80/)
 })
 
 test('a step shows its flag only when it differs from the group row’s', async ({ page }) => {
@@ -816,7 +816,7 @@ test.describe('the phone card', () => {
 
 for (const [locale, title] of [
     ['fr', 'Détails de l’étape'],
-    ['ja', 'ステップの詳細'],
+    ['ja', '操作の詳細'],
 ] as const)
     test(`${locale}: long labels and values wrap inside the card on a phone`, async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 })

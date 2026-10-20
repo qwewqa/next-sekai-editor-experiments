@@ -65,6 +65,7 @@ import {
     selectOwned,
 } from './objects'
 import ManagerRow from './ManagerRow.vue'
+import { extentOf } from '../../../utils/math'
 import { formatCount } from '../../../utils/size'
 
 const props = defineProps<{
@@ -1299,7 +1300,7 @@ const scheduleExpand = (folder: FolderId | undefined) => {
         const topOf = (list: RowInfo[]) =>
             list.find((row) => sameKey(row.key, current.key))?.top ?? 0
         const moved = topOf(rows) - topOf(current.rows)
-        const bottom = (list: RowInfo[]) => Math.max(...list.map((row) => row.top + row.height))
+        const bottom = (list: RowInfo[]) => extentOf(list.map((row) => row.top + row.height)).max
         const next = {
             ...current,
             rows,

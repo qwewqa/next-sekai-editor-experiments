@@ -1,7 +1,10 @@
 import { nextTick } from 'vue'
+import { recordError } from '../../diagnostics'
 import type { OperationRecipe } from '../../history/operationPresentation'
 import { peekSourceGeneration } from '../../history/peek'
+import { i18n } from '../../i18n'
 import { modals, showModal } from '../../modals'
+import { notify } from '../notification'
 import type { Flags } from './rows'
 import { sourceGeneration } from './source'
 import { historyViewGeneration } from './state'
@@ -25,7 +28,15 @@ export const openOperationDetails = async (
     const modalOwner = modals.at(-1)?.id
     const fallback = opener?.closest<HTMLElement>('[data-history-list]')
     try {
-        const { default: StepDetailsModal } = await import('./StepDetailsModal.vue')
+        let StepDetailsModal: Awaited<typeof import('./StepDetailsModal.vue')>['default']
+        try {
+            StepDetailsModal = (await import('./StepDetailsModal.vue')).default
+        } catch (error) {
+            // The chunk did not load: the user, who asked, is told, and nothing else changes.
+            recordError(error)
+            if (source === sourceGeneration.value) notify(() => i18n.value.notice.peekFailed)
+            return
+        }
         if (
             source !== sourceGeneration.value ||
             peekSource !== peekSourceGeneration.value ||

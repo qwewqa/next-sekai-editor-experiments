@@ -1085,14 +1085,9 @@
     "slide": {
       "title": "Kaydırma #{0}",
       "adding": "{0} nota ekleniyor",
-      "added": "{0} nota eklendi",
       "editing": "{0} nota düzenleniyor",
       "moving": "{0} nota taşınıyor",
-      "moved": "{0} nota taşındı",
       "selected": "{0} nota seçildi",
-      "modal": {
-        "title": "Nota Özellikleri"
-      },
       "sidebar": {
         "title": "Varsayılan Kaydırma Özellikleri"
       }
@@ -1332,6 +1327,7 @@
     "noEditsHere": "Burada düzenleme yok",
     "checking": "Eski adımlar denetleniyor…",
     "notChecked": "{0} adım denetlenemedi",
+    "searchFailed": "Arama tamamlanamadı.",
     "announceViewingChange": "{0} görüntüleniyor, {1}",
     "openedFile": "{0} açıldı",
     "viewChart": "Çizelgeyi Görüntüle",

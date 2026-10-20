@@ -1,4 +1,5 @@
 import { formatDateTimeSeconds } from '../../i18n/dateTime'
+import { languageTag } from '../../i18n/plural'
 import {
     checkedSum,
     decodeOperation,
@@ -14,7 +15,7 @@ import {
     type StepDescription,
     type Subject,
 } from '../operations'
-import { isEntryDescription } from './members'
+import { isEntryDescription, memberOperation } from './members'
 import type { OperationMember, OperationTextContext } from './types'
 import {
     fileNameText,
@@ -566,6 +567,19 @@ export const describeCapturedOperation = (
     return kindLabel
 }
 
+/**
+ * The language tag of a description that is another locale's fallback text, for the `lang`
+ * attribute of the element showing it; none for text in the current locale or built here.
+ */
+export const fallbackLang = (operation: JsonValue, context: OperationTextContext) => {
+    const decoded = decodeOperation(operation)
+    return decoded.status !== 'known' &&
+        decoded.fallback?.text &&
+        decoded.fallback.locale !== context.locale
+        ? languageTag(decoded.fallback.locale)
+        : undefined
+}
+
 export const describeStep = (step: StepDescription, context: OperationTextContext) =>
     describeCapturedOperation(
         step.operation,
@@ -602,6 +616,10 @@ export const describeEntry = (
     )
 }
 
+/** The language of a step's description (see `fallbackLang`). */
+export const stepLang = (step: StepDescription, context: OperationTextContext) =>
+    fallbackLang(step.operation, context)
+
 /** A step's line; inside an undo or redo parent the repeated prefix is left out. */
 export const describeMember = (
     { description }: OperationMember,
@@ -611,3 +629,21 @@ export const describeMember = (
     isEntryDescription(description)
         ? describeEntry(description, context, prefixless)
         : describeStep(description, context)
+
+/**
+ * The language of `describeMember`'s line (see `fallbackLang`). An Undo or Redo prefix is in the
+ * current language, so a prefixed line has none to name.
+ */
+export const memberLang = (
+    member: OperationMember,
+    context: OperationTextContext,
+    { prefixless = false }: { prefixless?: boolean } = {},
+) => {
+    const { description } = member
+    const prefixed =
+        isEntryDescription(description) &&
+        !!description.step &&
+        (description.kind === 'undo' || description.kind === 'redo') &&
+        !prefixless
+    return prefixed ? undefined : fallbackLang(memberOperation(member), context)
+}

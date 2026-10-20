@@ -381,7 +381,11 @@ const piecesOf = async (tx: KvTx, { sessionId: id, upto }: PathStep): Promise<Ti
     return pieces
 }
 
-/** One session's pieces of only some kinds: every entry read, as no index holds the kind. */
+/**
+ * One session's pieces of only some kinds: every entry read, as no index holds the kind. Not
+ * bounded: on a very long chain the whole read can outlast the call's timeout, and Go To with a
+ * filter then fails and can be tried again; nothing is written, so nothing is lost (r2 LS2-2).
+ */
 const piecesOfKinds = async (
     tx: KvTx,
     { sessionId: id, upto }: PathStep,

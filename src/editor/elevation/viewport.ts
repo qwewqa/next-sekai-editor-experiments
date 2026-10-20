@@ -1,6 +1,6 @@
 import { ref, shallowReactive, shallowRef } from 'vue'
 import { onResetState } from '../../history/resetHooks'
-import { clamp } from '../../utils/math'
+import { clamp, extentOf } from '../../utils/math'
 import type { ElevationNote } from './layout'
 
 export const elevationViewport = shallowReactive({ center: 2.5, scale: 64 })
@@ -38,8 +38,9 @@ export const fitElevationViewport = (
     if (min > max) min = max = (min + max) / 2
     if (notes.length) {
         const margin = noteMargin / scale
-        const notesMin = Math.max(...notes.map((note) => note.elevation)) - above + margin
-        const notesMax = Math.min(...notes.map((note) => note.elevation)) + below - margin
+        const heights = extentOf(notes.map((note) => note.elevation))
+        const notesMin = heights.max - above + margin
+        const notesMax = heights.min + below - margin
         if (Math.max(min, notesMin) <= Math.min(max, notesMax)) {
             min = Math.max(min, notesMin)
             max = Math.min(max, notesMax)

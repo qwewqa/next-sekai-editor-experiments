@@ -23,11 +23,14 @@ test.beforeEach(async ({ page }) => {
         const live = { ...history.liveState.value, initialLife: 1000 }
         resetStates({ isDirty: false, state: live, step: historySteps.initialStep() })
         selection.damagedEntries.value = new Set()
+        selection.removedEntries.value = new Set()
         selection.peekedInfo.value = undefined
         peek.setPeekSource({
             load: async (key) => {
                 await Promise.resolve()
                 if (key === peek.entryKey('session', 99)) throw new peek.PeekError('damaged')
+                if (key === peek.entryKey('session', 97)) throw new peek.PeekError('removed')
+                if (key === peek.entryKey('session', 96)) throw new peek.PeekError('missing')
                 return { state: { ...live, initialLife: 999 }, time: 1000 }
             },
             sameSnapshot: () => false,
@@ -213,4 +216,84 @@ test('a Peek that fails for a reason other than the entry records it and says so
             return peek.isPeeking.value
         }),
     ).toBe(false)
+})
+
+const peekRequest = (key: string) =>
+    window.editorTest
+        .appImport<typeof import('../../src/editor/history/selection')>(
+            '/src/editor/history/selection.ts',
+        )
+        .then(async (selection) => {
+            const { historySteps } = window.editorTest
+            const { captureOperationRecipe } = await window.editorTest.appImport<
+                typeof import('../../src/history/operationPresentation')
+            >('/src/history/operationPresentation/index.ts')
+            selection.requestPeek({
+                key: key as `${string}:${number}`,
+                time: 1000,
+                recipe: captureOperationRecipe([
+                    {
+                        description: {
+                            kind: 'edit',
+                            step: historySteps.editStep(historySteps.initialLife(1000, 999)),
+                        },
+                        time: 1000,
+                        id: key,
+                    },
+                ]),
+            })
+        })
+
+test('a Restore of an entry found removed marks its row removed and says so', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+        const { appImport, history } = window.editorTest
+        const peek =
+            await appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts')
+        const selection = await appImport<typeof import('../../src/editor/history/selection')>(
+            '/src/editor/history/selection.ts',
+        )
+        await selection.requestRestore(peek.entryKey('session', 97))
+        return {
+            removed: [...selection.removedEntries.value],
+            damaged: [...selection.damagedEntries.value],
+            peeking: peek.isPeeking.value,
+            life: history.liveState.value.initialLife,
+        }
+    })
+    expect(result).toEqual({ removed: ['session:97'], damaged: [], peeking: false, life: 1000 })
+    await expect(page.getByText('Could not restore', { exact: true }).first()).toBeVisible()
+})
+
+test('a peek of an entry found removed marks its row removed and says so', async ({ page }) => {
+    await page.evaluate(peekRequest, 'session:97')
+    await expect(page.getByText('Could not view this step', { exact: true }).first()).toBeVisible()
+    expect(
+        await page.evaluate(async () => {
+            const selection = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/selection')
+            >('/src/editor/history/selection.ts')
+            return [...selection.removedEntries.value, ...selection.damagedEntries.value]
+        }),
+    ).toEqual(['session:97'])
+})
+
+test('a Restore of an entry not stored yet is told, and does not mark it damaged, as a peek does not', async ({
+    page,
+}) => {
+    const result = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const peek =
+            await appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts')
+        const selection = await appImport<typeof import('../../src/editor/history/selection')>(
+            '/src/editor/history/selection.ts',
+        )
+        await selection.requestRestore(peek.entryKey('session', 96))
+        return {
+            removed: [...selection.removedEntries.value],
+            damaged: [...selection.damagedEntries.value],
+            peeking: peek.isPeeking.value,
+        }
+    })
+    expect(result).toEqual({ removed: [], damaged: [], peeking: false })
+    await expect(page.getByText('Could not restore', { exact: true }).first()).toBeVisible()
 })
