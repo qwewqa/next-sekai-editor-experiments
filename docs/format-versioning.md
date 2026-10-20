@@ -2,7 +2,7 @@
 
 How the editor's stored and exchanged formats change, and what each version number does. Read this before changing anything a file, a database row, a journal or an operation holds.
 
-The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms); this page is the working summary with the checklist. `docs/` in the repository holds no other format description. The full byte-level description of `.nxsp` is in the owner's `work/nxsp-format.md`.
+The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms); this page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in the owner's `work/nxsp-format.md`.
 
 ## 1. The ruling
 
@@ -94,6 +94,8 @@ The lowest-version rule applies to the writer: compute each number from the cont
 
 ## 5. Operations: any change to an operation's data raises that id's `version`
 
+The operations, their fields and how to add one are in [history-format.md](history-format.md) sections 4 and 6.
+
 Operation codecs are strict: a member the codec does not list makes the data fail it. So a new field, **even an additive one**, must raise that id's `version`, or an older build shows "cannot read the details of this step" instead of "recorded by a newer version of the editor". After the ship:
 
 - a changed shape of an existing id raises its `version` (2, 3, …); the old codec stays for reading old data;
@@ -108,7 +110,7 @@ Operation codecs are strict: a member the codec does not list makes the data fai
 - `durationMs` and `activeMs` carry `Ms`. `summary.durationMs` is derived from the head and used only for its `revisionId`.
 - Beats are beats; lanes are lane units; `initialLife` is the plain number the header holds.
 - Operation owner moves (`fromIndex`, `toIndex`) are **0-based**: positions among a domain's entries in tree order, or among top-level items for a folder. Step Details shows them 1-based, for a reorder only.
-- Counts in operations (`created`, `removed`, `changed`, `added`) are positive safe integers; a map of counts never holds a zero.
+- Counts in operations are safe integers: a scalar count (`created`, `targets`, `added`) is at least 0, and a map of counts (`changed`, `removed`, `displaced`) holds only positive values; a required map may be empty, an optional one is left out instead ([history-format.md](history-format.md) section 4.2).
 - Text in an operation is a `NameText` (`{ text, truncated? }`) of at most 256 code points; `fallback.text` is at most 1,024.
 - Hashes are 32 lowercase hex characters for 16 bytes in files and journals (64 for a full SHA-256), raw 16 bytes in IndexedDB.
 - `rating` in level info is a plain finite number; no range is enforced.
