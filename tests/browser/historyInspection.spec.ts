@@ -1844,3 +1844,32 @@ test.describe('touch Change Options', () => {
         await expect(opener).toBeFocused()
     })
 })
+
+test('the Property Changes title is whole in a 304 px dialog in every language (X-4)', async ({
+    page,
+}) => {
+    await seed(page)
+    await page.setViewportSize({ width: 320, height: 568 })
+    const cut: string[] = []
+    for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
+        await page.evaluate((locale) => {
+            window.editorTest.settings.locale = locale as never
+        }, locale)
+        await page.locator('[data-property-summary], [data-change-options]').first().click()
+        if (await page.locator('[data-change-options-menu]').count())
+            await page.locator('[data-change-options-menu] [role="menuitem"]').click()
+        const modal = page.locator('dialog[open]').last()
+        const title = modal.locator('[data-modal-title]')
+        await expect(title).toBeVisible()
+        const measure = await title.evaluate((element) => ({
+            text: element.textContent ?? '',
+            dialog: element.closest('dialog')!.getBoundingClientRect().width,
+            whole: element.scrollWidth <= element.clientWidth,
+        }))
+        expect(measure.dialog).toBeLessThanOrEqual(304)
+        if (!measure.whole) cut.push(`${locale}: ${measure.text}`)
+        await page.keyboard.press('Escape')
+        await expect(modal).toHaveCount(0)
+    }
+    expect(cut).toEqual([])
+})

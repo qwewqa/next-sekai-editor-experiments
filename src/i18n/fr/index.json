@@ -2245,8 +2245,8 @@
     "bar": "Les modifications ne sont pas stockées dans ce navigateur."
   },
   "historyChanges": {
-    "title": "Modifications des propriétés",
-    "view": "Voir les modifications des propriétés",
+    "title": "Propriétés modifiées",
+    "view": "Voir les propriétés modifiées",
     "before": "Avant",
     "after": "Après",
     "notSet": "Non défini",
