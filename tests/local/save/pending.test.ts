@@ -3,7 +3,8 @@ import test from 'node:test'
 import { captureEntryDescription } from '../../../src/history/operations'
 import type { IdentityInput, SaveTarget } from '../../../src/local/save/build'
 import { buildSave, type BuiltSave } from '../../../src/local/save/execute'
-import { pendingInput } from '../../../src/local/save/pending'
+import { noteCountOf, toRecords } from '../../../src/local/records/records'
+import { pendingFlushRow, pendingInput } from '../../../src/local/save/pending'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { noteAdd } from '../../helpers/historySteps'
 import {
@@ -246,4 +247,39 @@ test('a write-back with History ticked to a file without history writes none, ne
     const read = await (await import('../../../src/local/nxsp/read')).readNxsp(written)
     assert.ok(read.kind === 'nxsp')
     assert.equal(read.history, undefined)
+})
+
+test('a pending row for a stored slot has no note count of its own, and the file gets the root’s', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.edit(3, noteAdd(1))
+    await fixture.flush()
+    const stored = fixture.session.rows.at(-1)!
+    // An undo that lands on a stored slot: a snapshot and no state, so no records here.
+    const records = { roots: {}, nodes: {}, chunks: {} }
+    const row = pendingFlushRow(
+        {
+            seq: stored.seq + 1,
+            wall: stored.time + 1,
+            ...captureEntryDescription(stored),
+            snapshot: stored.snapshot,
+            dirty: false,
+        },
+        records,
+    )
+    assert.ok(row)
+    assert.ok(!('noteCount' in row), 'an unknown count is absent, not 0')
+    const { built, file } = await save(
+        fixture,
+        { kind: 'copy' },
+        { binds: false, extra: { pending: { entries: [row], records } } },
+    )
+    ok(built)
+    assert.ok(file)
+    const { history } = await heldRows(file)
+    const entry = history.entries.find((held) => held.time === row.time)
+    assert.ok(entry, 'the pending row is written')
+    const count = noteCountOf(toRecords(stateAt(3).state).kinds)
+    assert.ok(count > 0)
+    assert.equal(entry.noteCount, count)
 })
