@@ -59,39 +59,112 @@ const newerSteps = (count: number) =>
 const lifeOf = async (page: Page) => (await chartOf(page)).initialLife
 const liveLifeOf = async (page: Page) => (await liveOf(page)).initialLife
 
-// E1: the native dialog returns focus to its opener when it closes, and the engines differ in how.
+// E1: closing History gives focus back to its opener (the native dialog's return differs by engine).
 test.describe('E1: focus returns to the opener', () => {
-    test('a compact History dialog leaves focus on its opener or the page, and keys still work', async ({
-        page,
-    }) => {
-        errorsFail(page)
-        // A landscape phone: the sheet does not fit, so History is the compact dialog.
-        await load(page, { viewport: { width: 568, height: 320 } })
-        await synthesise(page, 4)
-        const opener = page.locator('[data-status-label]')
-        await opener.focus()
-        await expect(opener).toBeFocused()
-        await page.keyboard.press('Shift+H')
-        await expect(page.locator('[data-history-presentation="compact"]')).toBeVisible()
+    // The sheet is the usual History; a landscape phone has no room for it, so History is the
+    // compact dialog there. Both give focus back to the control that opened them, when that is
+    // still on screen, and to the chart otherwise.
+    const presentations = [
+        { name: 'sheet', viewport: { width: 1600, height: 1000 }, presentation: 'sheet' },
+        { name: 'compact dialog', viewport: { width: 568, height: 320 }, presentation: 'compact' },
+    ] as const
+
+    const isChart = (page: Page) =>
+        page.evaluate(() => document.activeElement?.matches('.chart-pane') === true)
+
+    const closedBy = async (page: Page, presentation: string) => {
+        await expect(page.locator(`[data-history-presentation="${presentation}"]`)).toBeVisible()
         await expect(timeline(page).getByRole('row', { name: /^Now/ })).toBeFocused()
         await page.keyboard.press('Escape')
         await expect(timeline(page)).toHaveCount(0)
-        // The browser returns focus to the opener, or the page keeps it: never to a removed row,
-        // which would swallow the keys.
-        await expect
-            .poll(() =>
-                page.evaluate(() => {
-                    const active = document.activeElement
-                    return (
-                        active === document.body ||
-                        active?.hasAttribute('data-status-label') === true
-                    )
-                }),
-            )
-            .toBe(true)
-        await page.keyboard.press('Shift+H')
-        await expect(timeline(page)).toBeVisible()
-    })
+    }
+
+    for (const { name, viewport, presentation } of presentations) {
+        test(`a ${name} gives focus back to the status label that opened it`, async ({ page }) => {
+            errorsFail(page)
+            await load(page, { viewport })
+            await synthesise(page, 4)
+            const opener = page.locator('[data-status-label]')
+            await opener.focus()
+            await expect(opener).toBeFocused()
+            await page.keyboard.press('Shift+H')
+            await closedBy(page, presentation)
+            await expect(opener).toBeFocused()
+            // Keys still reach the editor from there.
+            await page.keyboard.press('Shift+H')
+            await expect(timeline(page)).toBeVisible()
+        })
+
+        test(`a ${name} opened with nothing focused gives focus to the chart`, async ({ page }) => {
+            errorsFail(page)
+            await load(page, { viewport })
+            await synthesise(page, 4)
+            await page.evaluate(() => {
+                const active = document.activeElement
+                if (active instanceof HTMLElement && active !== document.body) active.blur()
+            })
+            await page.keyboard.press('Shift+H')
+            await closedBy(page, presentation)
+            await expect.poll(() => isChart(page)).toBe(true)
+        })
+
+        test(`a ${name} opened from a notice gives focus back to its button, while it is shown`, async ({
+            page,
+        }) => {
+            errorsFail(page)
+            await load(page, { viewport })
+            // With the History tab off, the notice's Open History runs the dialog.
+            await page.evaluate(() => {
+                window.editorTest.settings.historyPosition = 'disabled'
+            })
+            // One edit, undone: a second Undo has nothing to undo and offers History.
+            await synthesise(page, 1)
+            await page.keyboard.press('z')
+            await expect.poll(() => liveLifeOf(page)).toBe((await liveOf(page)).initialLife)
+            await page.keyboard.press('z')
+            const action = page.getByRole('button', { name: en.notice.openHistory, exact: true })
+            await expect(action).toBeVisible()
+            await action.click()
+            await closedBy(page, presentation)
+            await expect(action).toBeFocused()
+        })
+
+        test(`a ${name} gives focus to the chart when its opener has gone`, async ({ page }) => {
+            errorsFail(page)
+            await load(page, { viewport })
+            await synthesise(page, 4)
+            await page.evaluate(() => {
+                const opener = document.body.appendChild(document.createElement('button'))
+                opener.id = 'opener'
+                opener.textContent = 'Opener'
+                opener.focus()
+            })
+            await expect(page.locator('#opener')).toBeFocused()
+            await page.keyboard.press('Shift+H')
+            await expect(
+                page.locator(`[data-history-presentation="${presentation}"]`),
+            ).toBeVisible()
+            await page.evaluate(() => document.getElementById('opener')?.remove())
+            await closedBy(page, presentation)
+            await expect.poll(() => isChart(page)).toBe(true)
+        })
+
+        test(`a ${name} opened from the toolbar tool with the keyboard gives focus back to its group`, async ({
+            page,
+        }) => {
+            errorsFail(page)
+            await load(page, { viewport })
+            await synthesise(page, 4)
+            // The tool sits in the Undo group's flyout, which opens when the face is hovered.
+            const face = page.locator('[data-editor-toolbar] button[title="Undo"]')
+            await face.hover()
+            await page.locator('[data-editor-toolbar] button[title="History"]').focus()
+            await page.keyboard.press('Enter')
+            await closedBy(page, presentation)
+            // The flyout is closed again, so its tool is not on screen: the group's face is.
+            await expect(face).toBeFocused()
+        })
+    }
 
     test('Step Details returns it to the row that opened it, and to the strip date', async ({
         page,
