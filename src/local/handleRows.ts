@@ -27,8 +27,8 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
 
 const isRole = (key: string): key is HandleRole => (HANDLE_ROLES as readonly string[]).includes(key)
 
-// Every database at `DB_VERSION` has the store (its upgrade steps create any store missing). A
-// transaction without it in scope fails: a handle is never dropped silently.
+// Every database has the store (the creation step makes every store of the set). A transaction
+// without it in scope fails: a handle is never dropped silently.
 
 let reads = 0
 

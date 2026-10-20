@@ -1,8 +1,8 @@
-import { DB_NAME, DB_VERSION, STORE_NAMES, STORES_V1 } from './db'
+import { DB_NAME } from './db'
 import { decodeValue, readDump, type Dump } from './dump'
 import { HANDLES } from './handleRows'
 import { idbFactory } from './kv/idb'
-import type { KeyPath, KvFactory } from './kv/types'
+import type { KvFactory } from './kv/types'
 
 const hasHandle = (value: unknown) =>
     typeof value === 'object' && value !== null && 'handle' in value
@@ -35,11 +35,6 @@ export const seedDump = async (
             // A handle can't be dumped: its row, left without one, isn't seeded (D24).
             .filter(({ value }) => store.name !== HANDLES || hasHandle(value)),
     }))
-    // A dump from before a v1 store existed (Stage 1's `handles`) gets it empty.
-    const added =
-        dump.database.version === DB_VERSION
-            ? STORE_NAMES.filter((name) => !dump.stores.some((store) => store.name === name))
-            : []
     const opened = { created: false }
     let db
     try {
@@ -54,16 +49,6 @@ export const seedDump = async (
                     )
                     for (const index of store.indexes)
                         upgrade.createIndex(store.name, index.name, index.keyPath)
-                }
-                for (const name of added) {
-                    const spec: { keyPath: KeyPath | null; indexes: Record<string, KeyPath> } =
-                        STORES_V1[name]
-                    upgrade.createStore(
-                        name,
-                        spec.keyPath === null ? {} : { keyPath: spec.keyPath },
-                    )
-                    for (const [index, keyPath] of Object.entries(spec.indexes))
-                        upgrade.createIndex(name, index, keyPath)
                 }
                 for (const store of rows)
                     for (const { key, value } of store.records) upgrade.put(store.name, value, key)

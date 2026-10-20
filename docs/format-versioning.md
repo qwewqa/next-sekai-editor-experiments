@@ -24,12 +24,12 @@ The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for t
 | `RECORDS_V` (root `v`; journals' `recordsV`) | 1 | every root; every journal | The snapshot records: positions, the root and node form, the canonical rule. Rises when a record's positions or values change, and with `LATEST_REVISION`; also with `levelVersion` when level data gains something the records must hold too (a new field or choice value). `levelVersion` can rise alone for a change the records already express (nested folders). | A file: `newer-history`. A stored root: the session or entry is "Needs a newer version", never damaged. A journal: left in place. |
 | `SESSION_V` | 2 | session rows | How a session's stack and entries are read. | Newer: "Needs a newer version" for the session and its whole chain. Older or malformed: not read, and not called newer. |
 | `JOURNAL_VERSION` | 2 | journals | A journal field an older build must not drop or misread. | Newer: left in place for a later build. Older or malformed: its bytes go to the `recovered` store, nothing is lost. |
-| `DB_VERSION` | 3 | IndexedDB | A store or index added; the "stop old tabs" lever. Versions 2 and 3 each run the idempotent `createMissingStores`, so a database made before a store joined the set gains it. | A newer database opens read-only (Part 1 §1.6.1). |
+| `DB_VERSION` | 1 | IndexedDB | A store or index added; the "stop old tabs" lever. | A newer database opens read-only (Part 1 §1.6.1). |
 | `meta.formatVersion` (`FORMAT_VERSION`) | 1 | the `meta` store | The rules GC and cleanup use (§1.6.8.6). | An unknown value stops GC and cleanup. |
 | Dump `version` (`DUMP_VERSION`) | 1 | the dump format | The raw-data dump. | Refused. |
 | operation `version`, per id | 1 | the operation envelope | One operation's `data` shape. | An unknown id or version renders its `fallback`; a known id whose `data` fails its codec reads "cannot read the details", never damage. |
 
-The constants are `src/local/nxsp/version.ts`, `src/local/records/version.ts`, `src/levelData/levelVersion.ts`, `src/levelData/revision.ts`, `src/local/journal/format.ts`, `src/local/db.ts` and `src/local/dump.ts` (`DUMP_VERSION`); `tests/local/formatVersions.test.ts` asserts each. The shipped values are not all 1 (manifest 2, minor 1, session 2, journal 2, DB 3 are generation 2 of the History redesign, DB 3 being the one bump the in-place ruling could not avoid: IndexedDB creates a store only in a version change, and a version 2 database made by a build whose bump had no step lacked `handles`); they stay, because resetting them to 1 would only strand development data.
+The constants are `src/local/nxsp/version.ts`, `src/local/records/version.ts`, `src/levelData/levelVersion.ts`, `src/levelData/revision.ts`, `src/local/journal/format.ts`, `src/local/db.ts` and `src/local/dump.ts` (`DUMP_VERSION`); `tests/local/formatVersions.test.ts` asserts each. The values are not all 1 (manifest 2, session 2 and journal 2 are generation 2 of the History redesign); they stay as the plan pins them. The database is at 1: nothing has shipped, so there are no upgrade steps for earlier test builds, and a change to the schema before Stage 1 is made in place.
 
 ### Why `minor` and `patch` are two numbers
 
@@ -71,7 +71,7 @@ Work down the list in order. The first row that fits decides the number.
    | The manifest's or a segment's layout | manifest `version` (and `minor`) | `newer-history` |
    | How a session's stack or entries are read | `SESSION_V` | "Needs a newer version" |
    | A journal field an older build must not drop | `JOURNAL_VERSION` | left in place |
-   | A store or index | `DB_VERSION`, with an idempotent step that creates what is missing | read-only |
+   | A store or index | `DB_VERSION`, with a step that adds it | read-only |
    | An operation's `data` | that id's `version` (§5) | "cannot read the details" |
    | A new operation | a new id | fallback text |
 

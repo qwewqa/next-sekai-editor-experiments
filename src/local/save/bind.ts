@@ -217,7 +217,7 @@ export type SaveEntryForm = {
     noteCount: number
     revisionId: string
     device: { id: string; label: string }
-    /** The app version that wrote it; absent in a marker an earlier build kept. */
+    /** The app version that wrote it (optional on read, as in the entry form). */
     appVersion?: string
 }
 
