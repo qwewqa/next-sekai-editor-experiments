@@ -269,12 +269,65 @@ const closePreparing = (slot: PreparingSlot) => {
 const activationLapsed = (startedAt: number) =>
     reportsActivation() ? !hasActivation() : performance.now() - startedAt > PREPARING_MS
 
+/** How long a Save waits for a reload's import resume to start (§1.5.4), as a slot load does. */
+const RESUME_WAIT_MS = 4000
+const RESUME_POLL_MS = 250
+
+/** Resolves true after `ms`, or false at once when `signal` aborts. */
+const pause = (ms: number, signal?: AbortSignal) =>
+    new Promise<boolean>((resolve) => {
+        if (signal?.aborted) {
+            resolve(false)
+            return
+        }
+        const stop = () => {
+            clearTimeout(timer)
+            resolve(false)
+        }
+        const timer = setTimeout(() => {
+            signal?.removeEventListener('abort', stop)
+            resolve(true)
+        }, ms)
+        signal?.addEventListener('abort', stop, { once: true })
+    })
+
+/** Whether storage says the open's import of this session hasn't ended (`importPending`). */
+const importPendingHere = async (env: Env) =>
+    (await env.worker.call('openPendingImports').catch(() => [])).some(
+        (each) => each.sessionId === env.session.id,
+    )
+
+/**
+ * Waits for the open's import of this session to end, in this tab, or a while when it runs
+ * nowhere here yet (a reload's resume); false once `signal` aborts. Its caller counts again.
+ */
+const importEnded = async (env: Env, signal?: AbortSignal) => {
+    if (!isImporting(env.session.id)) return pause(2000, signal)
+    try {
+        await whenImported(env.session.id, signal)
+        return true
+    } catch {
+        return false
+    }
+}
+
 /**
  * Waits for the open's import of this session (§1.4.7): inside "Preparing…", whose Cancel
- * cancels the Save only. `unlinked` when the import found damage meanwhile.
+ * cancels the Save only. `unlinked` when the import found damage meanwhile. After a reload the
+ * import resumes after startup, so a Save storage says has one pending waits for it to start
+ * (SF2-6); one that never starts is refused as `importing`, which says the file isn't read whole.
  */
 const waitForImport = async (env: Env, slot: PreparingSlot) => {
-    if (!isImporting(env.session.id)) return 'done'
+    if (!isImporting(env.session.id)) {
+        if (!(await importPendingHere(env))) return 'done'
+        openPreparing(slot)
+        for (let waited = 0; !isImporting(env.session.id); waited += RESUME_POLL_MS) {
+            if (waited >= RESUME_WAIT_MS) return 'done'
+            if (!(await pause(RESUME_POLL_MS, slot.cancel.signal))) return 'cancelled'
+            // Ended meanwhile (its resume found the file gone or changed): nothing to wait for.
+            if (waited % 1000 === 0 && !(await importPendingHere(env))) return 'done'
+        }
+    }
     const dialog = openPreparing(slot)
     // The import's progress, from the batches it has run (§1.4.7).
     const stop = onImportProgress(env.session.id, (progress) => {
@@ -400,7 +453,8 @@ const bindWrite = async (
     file: Row,
 ) => {
     const name = String(file.name)
-    await env.flusher.endSave(
+    await endSave(
+        env,
         reservation,
         {
             wall: reservation.wall,
@@ -445,9 +499,14 @@ const feedback = (built: BuiltSave, kind: 'saved' | 'download', name: string, to
     saveUi.saved(savedOf(built, kind, name, tookOver))
 }
 
-/** A refusal's message (§1.4.7): a reader cap, a newer version, damage, or a bug. */
-const refusalText = (refusal: BuildRefused, name: string) => {
+/**
+ * A refusal's message (§1.4.7): a reader cap, a newer version, damage, an open's import not
+ * finished (`source`: the file it reads), or a bug.
+ */
+const refusalText = (refusal: BuildRefused, name: string, source = name) => {
     const { refused } = refusal.refusal
+    // The import the Save waited for didn't start or end (SF2-6): the file is not read whole yet.
+    if (refused === 'importing') return interpolate(() => i18n.value.save.notKept, source)
     if (refused === 'needsNewer')
         return () => interpolateRaw(i18n.value.conflict.replaceNewer, PRODUCT_NAME)
     if (refused === 'unreadableHead') return interpolate(() => i18n.value.save.unreadable, name)
@@ -518,12 +577,13 @@ const preRead = async (
     /**
      * `damaged`: a build just found damage in storage (SP-1), so the file is read whatever
      * storage says, but only with a grant already held: a prompt would spend the press the
-     * picker needs.
+     * picker needs. `prompt: false`: a read just before a picker opens, on the same press, also
+     * only with a grant already held.
      */
-    { damaged = false }: { damaged?: boolean } = {},
+    { damaged = false, prompt = true }: { damaged?: boolean; prompt?: boolean } = {},
 ): Promise<PreRead | undefined> => {
     const file = binding.file
-    if (!file) return
+    if (!file || binding.replaced) return
     const handle = await bindingHandle(env, file)
     if (!handle) return
     const needs = damaged
@@ -536,7 +596,7 @@ const preRead = async (
               .catch(() => undefined)
     const short = damaged || !needs?.carries || needs.lacking.length > 0
     let readable = await readableWithoutPrompt(handle)
-    if (!readable && short && !damaged) readable = await requestRead(handle)
+    if (!readable && short && !damaged && prompt) readable = await requestRead(handle)
     if (!readable) return
     try {
         const found = await handle.getFile()
@@ -747,6 +807,11 @@ type Outcome =
     | { kind: 'conflict'; handle: FileSystemFileHandle; binding: Binding }
     | { kind: 'failed'; error: FileError; name: string }
     | { kind: 'error'; message: () => string }
+    /**
+     * The chain's own file was filled by another write before what it held could go back: those
+     * bytes are offered as a download, then `then` is shown.
+     */
+    | { kind: 'notPutBack'; name: string; bytes: Blob; then: Outcome }
 
 let running: Promise<void> | undefined
 let queued = false
@@ -781,10 +846,25 @@ const largeDownload = (estimated: number | undefined): estimated is number =>
     estimated > LARGE_BUILD_BYTES &&
     isTouchDevice()
 
-/** Ends a reservation no path ended (a throw): its `seq` kept, since the write may have landed. */
+/** Reservations a path here has ended, by identity: a later one may reuse the same `seq`. */
+const ended = new WeakSet<SaveReservation>()
+
+/** Ends a reservation (the flusher's `endSave`), remembered as ended. */
+const endSave = (env: Env, reservation: SaveReservation, ...rest: EndSaveRest) => {
+    ended.add(reservation)
+    return env.flusher.endSave(reservation, ...rest)
+}
+
+type EndSaveRest = Parameters<Env['flusher']['endSave']> extends [unknown, ...infer R] ? R : never
+
+/**
+ * Ends a reservation no path ended (a throw): its `seq` kept, since the write may have landed.
+ * Matched by identity (ADV-5): once this Save ended its own, a session's `reserved` holding the
+ * same `seq` is a later Save's, never this one's.
+ */
 const release = async (env: Env, reservation: SaveReservation) => {
-    if (reservation.session.reserved === reservation.seq)
-        await env.flusher.endSave(reservation, undefined, undefined, true)
+    if (!ended.has(reservation) && reservation.session.reserved === reservation.seq)
+        await endSave(env, reservation, undefined, undefined, true)
 }
 
 /** A read before the picker, as it stands now: one that hasn't finished is dropped (R2). */
@@ -796,9 +876,16 @@ const settledNow = <T>(promise: Promise<T | undefined> | undefined) =>
  * first (D5), then picked, identified under `nse-bind` exclusive, written over the emptied file
  * (its empty state the precondition, R9) and bound.
  */
-const pickAndWrite = async (env: Env, request: PickRequest): Promise<Outcome> => {
-    const slot = preparingFor(request.fileName)
+const pickAndWrite = async (env: Env, given: PickRequest): Promise<Outcome> => {
+    const slot = preparingFor(given.fileName)
     const startedAt = performance.now()
+    // R2 per picker, never per dialog: every picker that may return the chain's own file has its
+    // read first. The dialog's, started at its opening, or else one starting now, on this press,
+    // with a grant already held (a prompt would spend the press the picker needs).
+    const pre =
+        given.pre ??
+        (platform.pickSaveFile ? preRead(env, quickBinding(env), { prompt: false }) : undefined)
+    const request: PickRequest = { ...given, ...(pre ? { pre } : {}) }
     // A large download on a touch device would outlast the tap: "Preparing…" opens at once, with
     // the estimated size (§1.4.7).
     if (largeDownload(request.estimated)) openPreparing(slot).built(request.estimated)
@@ -848,16 +935,19 @@ const pickReserved = async (
         built = await runBuild(env, buildRequest)
     } catch (error) {
         closePreparing(slot)
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         if (error instanceof BuildRefused)
-            return { kind: 'error', message: refusalText(error, request.fileName) }
+            return {
+                kind: 'error',
+                message: refusalText(error, request.fileName, binding.file?.name),
+            }
         return { kind: 'failed', error: fileError(error), name: request.fileName }
     }
     clearTimeout(slot.timer)
     slot.dialog?.built(built.blob.size)
     if (cancelled(slot)) {
         closePreparing(slot)
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'cancelled' }
     }
 
@@ -877,7 +967,7 @@ const pickReserved = async (
         clearTimeout(slot.timer)
         if (cancelled(slot)) {
             closePreparing(slot)
-            await env.flusher.endSave(reservation)
+            await endSave(env, reservation)
             return { kind: 'cancelled' }
         }
     }
@@ -885,7 +975,7 @@ const pickReserved = async (
     // R12: a build that outlasted the press asks for a new one.
     if (activationLapsed(startedAt) && !(await readyIn(slot, 'save', built.blob.size))) {
         closePreparing(slot)
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'cancelled' }
     }
     closePreparing(slot)
@@ -903,20 +993,22 @@ const pickReserved = async (
             },
         })
     } catch (error) {
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'failed', error: fileError(error), name: request.fileName }
     }
     if (target?.kind !== 'handle') {
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'cancelled' }
     }
     const picked = target
-    return keepingOwn(env, picked, pre, async (pick) => {
-        await savePoint('picked')
-        return withBind('exclusive', () =>
+    await savePoint('picked')
+    // The put-back under the same `nse-bind` exclusive as the pick's check and write (ADV-3): no
+    // other tab's write-back meets the emptied file between them.
+    return withBind('exclusive', () =>
+        keepingOwn(env, picked, pre, (pick) =>
             afterPick(env, reservation, built, state, request, binding, picked, pre, pick),
-        )
-    })
+        ),
+    )
 }
 
 /** Whether a pick is the chain's own file, set once `afterPick` has identified it. */
@@ -925,8 +1017,10 @@ type OwnPick = { own?: boolean }
 /**
  * A pick of the chain's own file with its bytes read first (R2, R4): the picker emptied it, so a
  * Save that ends without writing it, by any path or a throw, puts those bytes back while the file
- * is still empty, and offers them as a download when they cannot go back. Never leaves the file
- * holding less than it did before the picker while its bytes are in hand.
+ * is still empty, and offers them as a download when they cannot go back: also when something
+ * else filled the file meanwhile (ADV-3). Never leaves the file holding less than it did before
+ * the picker while its bytes are in hand. A Save runs it under `nse-bind` exclusive, so no other
+ * tab writes between the pick's check and the put-back.
  */
 const keepingOwn = async (
     env: Env,
@@ -948,9 +1042,11 @@ const keepingOwn = async (
     }
     if (outcome.kind === 'done' || !pre || !(await own())) return outcome
     if (await putBack(target, pre.blob)) return outcome
-    // Not empty: written since the pick, by a sync client or by a write whose read-back failed.
+    // Not empty: written since the pick, by a sync client, another tab or a write whose read-back
+    // failed. What it held is offered first, then the outcome is shown.
     const now = await platform.inspect(target, 'nxsp').catch(() => undefined)
-    if (now !== undefined && now !== 'missing' && now.size !== 0) return outcome
+    if (now !== undefined && now !== 'missing' && now.size !== 0)
+        return { kind: 'notPutBack', name, bytes: pre.blob, then: outcome }
     return { kind: 'refused', name, reason: 'notKept', emptied: true, bytes: pre.blob }
 }
 
@@ -989,7 +1085,7 @@ const afterPick = async (
         if (disk === 'missing') throw new FileError('not-found', `${name} cannot be found`)
         found = disk
     } catch (error) {
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'failed', error: fileError(error), name }
     }
     // Written since the pick: by a sync client, or by its owner while this pick waited (R9).
@@ -1002,7 +1098,7 @@ const afterPick = async (
     switch (picked.kind) {
         case 'refused': {
             // R7: refused, and the bytes kept at its open put back while it's still empty.
-            await env.flusher.endSave(reservation)
+            await endSave(env, reservation)
             const bytes = await picked.bytes
             const back = !filled && bytes ? await putBack(target, bytes) : false
             return {
@@ -1016,19 +1112,19 @@ const afterPick = async (
         case 'own': {
             // R4: this chain's own file keeps the identity, appending to the bytes read first.
             if (filled) {
-                await env.flusher.endSave(reservation)
+                await endSave(env, reservation)
                 return { kind: 'conflict', handle, binding }
             }
             // Not at the base: the version read goes back (`keepingOwn`, offered as a download
             // when it can't, R7), and the conflict dialog shows it.
             if (pre && !pre.atBase) {
-                await env.flusher.endSave(reservation)
+                await endSave(env, reservation)
                 return { kind: 'conflict', handle, binding }
             }
             const options = binding.file?.options ?? { history: true, bgm: request.bgm }
             const history = binding.file ? bindingHasHistory(binding.file) : options.history
-            try {
-                built = await runBuild(
+            const rebuild = () =>
+                runBuild(
                     env,
                     {
                         target: pre ? { kind: 'append', source: 'pre' } : { kind: 'copy' },
@@ -1049,16 +1145,31 @@ const afterPick = async (
                           ]
                         : [],
                 )
+            try {
+                built = await rebuild().catch(async (error: unknown) => {
+                    // A refusal is the same on a second try; a worker that failed may not be.
+                    if (error instanceof BuildRefused) throw error
+                    recordError(error)
+                    return rebuild()
+                })
             } catch (error) {
-                // Nothing read first: the build before the picker holds what storage holds, as
-                // this one would, so the emptied file is written with it. Else the bytes read go
-                // back (`keepingOwn`).
-                if (!pre && prebuilt) {
+                // Nothing read first: the emptied file gets what this rebuild would have written
+                // (SF2-2, ADV-4), the chain's own identity, History and BGM. The build before the
+                // picker is that only when it was made so: a Save (`copy`) with the file's options.
+                // Else the file stays empty, which the next Save fills from storage (R9), and the
+                // bytes read, if any, go back (`keepingOwn`).
+                if (
+                    !pre &&
+                    prebuilt &&
+                    request.target === 'copy' &&
+                    request.history === history &&
+                    request.bgm === options.bgm
+                ) {
                     recordError(error)
                     built = prebuilt
                     break
                 }
-                await env.flusher.endSave(reservation)
+                await endSave(env, reservation)
                 if (error instanceof BuildRefused)
                     return { kind: 'error', message: refusalText(error, name) }
                 return { kind: 'failed', error: fileError(error), name }
@@ -1071,7 +1182,7 @@ const afterPick = async (
             const owners = picked.kind === 'other' ? await ownerDisk(env, picked.owner) : undefined
             const ownersOwn = filled && !!owners && sameContent(found, owners)
             if (filled && picked.kind === 'other' && !ownersOwn) {
-                await env.flusher.endSave(reservation)
+                await endSave(env, reservation)
                 return changedWhilePicked(name)
             }
             // A picker that renamed the file: its own name goes into the build (`save` entry and
@@ -1117,7 +1228,7 @@ const afterPick = async (
                 preBind,
             )
             if (!done.ok) {
-                await env.flusher.endSave(reservation)
+                await endSave(env, reservation)
                 return notTakenOver(name)
             }
             tookOver = done.revoked
@@ -1129,7 +1240,7 @@ const afterPick = async (
             await savePoint('revoked')
             // A sync client's write after the pick: pre-bound, never written over (R9).
             if (filled && !ownersOwn) {
-                await env.flusher.endSave(reservation)
+                await endSave(env, reservation)
                 return done.preBound
                     ? { kind: 'conflict', handle, binding: bound }
                     : changedWhilePicked(name)
@@ -1139,7 +1250,7 @@ const afterPick = async (
     }
 
     if (!built) {
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'failed', error: new FileError('io', `${name} was not built`), name }
     }
     const file = await bindingFile(built, reservation, {
@@ -1202,7 +1313,7 @@ const writeBuilt = async (
         // The write may have landed (a failed read-back): its `seq` stays for the marker.
         const unwritten = notWritten(failure)
         if (unwritten && file) removeMarker(env.chainId, built.revisionId)
-        await env.flusher.endSave(reservation, undefined, undefined, !unwritten)
+        await endSave(env, reservation, undefined, undefined, !unwritten)
         if (failure.code === 'conflict')
             return {
                 kind: 'failed',
@@ -1236,13 +1347,13 @@ const download = async (
         })
     } catch (error) {
         closePreparing(slot)
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         if (isCancel(slot, error)) return { kind: 'cancelled' }
         return { kind: 'failed', error: fileError(error), name: request.fileName }
     }
     closePreparing(slot)
     if (result.status !== 'download-started') {
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'cancelled' }
     }
     if (request.dialog !== 'saveToFile') {
@@ -1253,7 +1364,7 @@ const download = async (
         })
         await bindWrite(env, reservation, built, state, file)
         forgetHandle(env.chainId)
-    } else await env.flusher.endSave(reservation)
+    } else await endSave(env, reservation)
     feedback(built, 'download', request.fileName)
     return { kind: 'done' }
 }
@@ -1503,7 +1614,7 @@ const writeBackReserved = async (
         const stopped = isCancel(slot, error)
         const unwritten = !built || stopped || (error instanceof FileError && notWritten(error))
         if (built && unwritten) removeMarker(env.chainId, built.revisionId)
-        await env.flusher.endSave(reservation, undefined, undefined, !unwritten)
+        await endSave(env, reservation, undefined, undefined, !unwritten)
         if (stopped) return { kind: 'cancelled' }
         if (error instanceof BuildRefused) {
             if (error.refusal.refused === 'damagedSource') return unlinkAndSaveAs(env, file.name)
@@ -1515,7 +1626,7 @@ const writeBackReserved = async (
     }
     closePreparing(slot)
     if (result.status !== 'saved' || !built) {
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return { kind: 'cancelled' }
     }
     await savePoint('closed')
@@ -1697,7 +1808,8 @@ const separateFile = async (
     env: Env,
     binding: Binding,
     handle: FileSystemFileHandle,
-    pre: Promise<PreRead | undefined>,
+    /** The conflict dialog's read; a Choose Another… reads again before its picker. */
+    pre?: Promise<PreRead | undefined>,
 ) => {
     const stem = stemOf(handle.name)
     const engine = deviceForm().label.replace(/^Web \((.*)\)$/, '$1')
@@ -1712,14 +1824,29 @@ const separateFile = async (
             bgm: options.bgm,
             target: 'copy',
             startIn: handle,
-            pre,
+            ...(pre ? { pre } : {}),
         }),
+        () => separateFile(env, quickBinding(env), handle),
     )
 }
 
-/** Shows what an outcome needs: a follow-up dialog, or nothing. */
-const afterOutcome = async (env: Env, outcome: Outcome | { kind: 'noChanges' }): Promise<void> => {
+/**
+ * Shows what an outcome needs: a follow-up dialog, or nothing. `again` is a refusal's Choose
+ * Another…: the same Save once more, with its own read of the chain's file first (R2); without
+ * it, the Save dialog.
+ */
+const afterOutcome = async (
+    env: Env,
+    outcome: Outcome | { kind: 'noChanges' },
+    again: () => Promise<void> = () => dialogSave(env, 'save'),
+): Promise<void> => {
     switch (outcome.kind) {
+        case 'notPutBack': {
+            const choice = await saveUi.notPutBack(outcome.name, false)
+            if (choice === 'download') await downloadBytes(outcome.name, outcome.bytes)
+            await afterOutcome(env, outcome.then, again)
+            return
+        }
         case 'done':
         case 'cancelled':
         case 'noChanges':
@@ -1748,7 +1875,7 @@ const afterOutcome = async (env: Env, outcome: Outcome | { kind: 'noChanges' }):
                 return
             }
             const choice = await saveUi.refused(outcome.name, outcome.reason)
-            if (choice === 'chooseAnother') await dialogSave(env, 'save')
+            if (choice === 'chooseAnother') await again()
             else if (choice === 'export') {
                 await openExport()
             }
@@ -1834,6 +1961,7 @@ const notFoundSaveAs = async (env: Env) => {
             ...estimateOf(input, result, binding),
             target: 'copy',
         }),
+        () => notFoundSaveAs(env),
     )
 }
 
@@ -1944,27 +2072,37 @@ const dialogInput = async (
             ...(cached ? { cached: withHeldBgm(cached, state) } : {}),
             // The worker counts what storage holds: this tab's pending entries go first, so the
             // steps are the ones the file will carry (a flush never rejects).
-            load: async () => {
-                const before = key()
-                const again = knownEstimate(env.chainId, before)
-                if (again) {
-                    const known = withHeldBgm(again, state)
-                    noteLoaded(input, known)
-                    return known
+            load: async (signal) => {
+                for (;;) {
+                    const before = key()
+                    const again = knownEstimate(env.chainId, before)
+                    if (again) {
+                        const known = withHeldBgm(again, state)
+                        noteLoaded(input, known)
+                        return known
+                    }
+                    await env.flusher.flush()
+                    const loaded = await env.worker
+                        .call('estimateSaveSize', {
+                            chainId: env.chainId,
+                            ...(hash ? { bgm: hash } : {}),
+                        })
+                        .catch(failedEstimate)
+                    if (!loaded || signal?.aborted) return
+                    // Counted during an open's import: low, since its batches add rows. The
+                    // dialog shows no count ("Estimating size…") until the import ends, then
+                    // counts again (SF2-5).
+                    if (loaded.importing) {
+                        if (!(await importEnded(env, signal))) return
+                        continue
+                    }
+                    // Kept only when it counted every entry: a flush that left some pending
+                    // (storage paused) counted fewer than `nextSeq` says.
+                    if (!env.flusher.hasPending) rememberEstimate(env.chainId, before, loaded)
+                    const estimate = withHeldBgm(loaded, state)
+                    noteLoaded(input, estimate)
+                    return estimate
                 }
-                await env.flusher.flush()
-                const loaded = await env.worker
-                    .call('estimateSaveSize', {
-                        chainId: env.chainId,
-                        ...(hash ? { bgm: hash } : {}),
-                    })
-                    .catch(failedEstimate)
-                if (!loaded) return
-                // Counted during an open's import: its end adds rows without a new `seq`.
-                if (!loaded.importing) rememberEstimate(env.chainId, before, loaded)
-                const estimate = withHeldBgm(loaded, state)
-                noteLoaded(input, estimate)
-                return estimate
             },
         },
     }
@@ -2024,8 +2162,9 @@ const dialogSave = async (
     const replacedLine = replaced
         ? [interpolate(() => i18n.value.file.replacedElsewhere, replaced.name)]
         : []
-    // R2: this chain's own file read first, when it may hold what storage lacks.
-    const pre = kind === 'saveAs' && binding.file ? preRead(env, binding) : undefined
+    // R2: this chain's own file read first, when it may hold what storage lacks: for every kind,
+    // since any picker may return it (SF2-1).
+    const pre = binding.file ? preRead(env, binding) : undefined
     const input = await dialogInput(env, kind, name, [...lines, ...replacedLine])
     const result = await saveUi.saveDialog(input)
     if (!result) return
@@ -2044,6 +2183,8 @@ const dialogSave = async (
             target: kind === 'saveAs' && !unlinked ? 'new' : 'copy',
             ...(pre ? { pre } : {}),
         }),
+        // Choose Another… is this Save again, Save As… staying Save As… (a new `docId`).
+        () => dialogSave(env, kind, lines, unlinked),
     )
 }
 
@@ -2075,7 +2216,7 @@ const downloadAgainReserved = async (env: Env, reservation: SaveReservation, fil
         })
     } catch (error) {
         closePreparing(slot)
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         await afterOutcome(
             env,
             error instanceof BuildRefused
@@ -2087,7 +2228,7 @@ const downloadAgainReserved = async (env: Env, reservation: SaveReservation, fil
     clearTimeout(slot.timer)
     if (cancelled(slot)) {
         closePreparing(slot)
-        await env.flusher.endSave(reservation)
+        await endSave(env, reservation)
         return
     }
     await afterOutcome(
@@ -2214,79 +2355,85 @@ export const saveToFile = (sessionId: string) =>
             saveUi.error(() => i18n.value.save.unavailable)
             return
         }
-        const { applyPendingJournal } = await import('../../local/startup/api')
-        const applied = await applyPendingJournal(sessionId).catch(() => undefined)
-        const read = await env.worker.call('readSession', sessionId).catch(() => undefined)
-        if (read?.kind !== 'open') {
-            saveUi.error(() => i18n.value.save.unavailable)
-            return
-        }
-        const chainId = read.session.chainId as string
-        const shown = displayName(namePartsOf(read.chain))
-        const stem =
-            shown.kind === 'date'
-                ? ''
-                : shown.kind === 'name' || shown.kind === 'title'
-                  ? shown.text
-                  : stemOf(shown.text)
-        const updatedAt =
-            typeof read.session.updatedAt === 'number' ? read.session.updatedAt : Date.now()
-        const name = await suggestion(
-            env,
-            stem ? interpolateRaw(i18n.value.save.restoredName, stem, formatDate(updatedAt)) : '',
-        )
-        // The session's own head, as storage holds it: its BGM row is what a build would write.
-        const estimate = await env.worker
-            .call('estimateSaveSize', { chainId, sessionId })
-            .catch(failedEstimate)
-        const input: SaveDialogInput = {
-            kind: 'saveToFile',
-            name,
-            lines: [],
-            history: globalThis.isSecureContext
-                ? { kind: 'available', ticked: true, locked: false }
-                : { kind: 'insecure' },
-            bgm: sessionBgmRow(estimate),
-            exportLine: false,
-            downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
-            ...(await storageLineOf()),
-            peeking: false,
-            estimate: {
-                ...(estimate ? { cached: estimate } : {}),
-                load: () =>
-                    env.worker
-                        .call('estimateSaveSize', { chainId, sessionId })
-                        .catch(failedEstimate)
-                        .then((loaded) => {
-                            if (loaded) noteLoaded(input, loaded)
-                            return loaded
-                        }),
-            },
-        }
-        const result = await saveUi.saveDialog(input)
-        if (result?.action !== 'save') return
-        const options = answered(input, result, { docId: '' })
-        const estimated = estimatedTotal(input, options)
-        // Its session hold before the build, so Delete Sessions… skips it (§1.6.6).
-        await withSessionHold(sessionId, async () => {
-            const outcome = await writeSessionFile(env, {
-                chainId,
-                sessionId,
-                fileName: result.fileName,
-                ...options,
-                ...(estimated === undefined ? {} : { estimated }),
-                committed: applied === 'held',
-            })
-            await afterOutcome(env, outcome)
-        })
+        await saveToFileNow(env, sessionId)
     })
 
+const saveToFileNow = async (env: Env, sessionId: string) => {
+    const { applyPendingJournal } = await import('../../local/startup/api')
+    const applied = await applyPendingJournal(sessionId).catch(() => undefined)
+    const read = await env.worker.call('readSession', sessionId).catch(() => undefined)
+    if (read?.kind !== 'open') {
+        saveUi.error(() => i18n.value.save.unavailable)
+        return
+    }
+    const chainId = read.session.chainId as string
+    const shown = displayName(namePartsOf(read.chain))
+    const stem =
+        shown.kind === 'date'
+            ? ''
+            : shown.kind === 'name' || shown.kind === 'title'
+              ? shown.text
+              : stemOf(shown.text)
+    const updatedAt =
+        typeof read.session.updatedAt === 'number' ? read.session.updatedAt : Date.now()
+    const name = await suggestion(
+        env,
+        stem ? interpolateRaw(i18n.value.save.restoredName, stem, formatDate(updatedAt)) : '',
+    )
+    // The session's own head, as storage holds it: its BGM row is what a build would write.
+    const estimate = await env.worker
+        .call('estimateSaveSize', { chainId, sessionId })
+        .catch(failedEstimate)
+    const input: SaveDialogInput = {
+        kind: 'saveToFile',
+        name,
+        lines: [],
+        history: globalThis.isSecureContext
+            ? { kind: 'available', ticked: true, locked: false }
+            : { kind: 'insecure' },
+        bgm: sessionBgmRow(estimate),
+        exportLine: false,
+        downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
+        ...(await storageLineOf()),
+        peeking: false,
+        estimate: {
+            ...(estimate ? { cached: estimate } : {}),
+            load: () =>
+                env.worker
+                    .call('estimateSaveSize', { chainId, sessionId })
+                    .catch(failedEstimate)
+                    .then((loaded) => {
+                        if (loaded) noteLoaded(input, loaded)
+                        return loaded
+                    }),
+        },
+    }
+    const result = await saveUi.saveDialog(input)
+    if (result?.action !== 'save') return
+    const options = answered(input, result, { docId: '' })
+    const estimated = estimatedTotal(input, options)
+    // Its session hold before the build, so Delete Sessions… skips it (§1.6.6). Released
+    // before what follows, so Choose Another… holds it again for its own write.
+    const outcome = await withSessionHold(sessionId, () =>
+        writeSessionFile(env, {
+            chainId,
+            sessionId,
+            fileName: result.fileName,
+            ...options,
+            ...(estimated === undefined ? {} : { estimated }),
+            committed: applied === 'held',
+        }),
+    )
+    // Choose Another… is Save to File… for this session again, never the open one's Save.
+    await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId))
+}
+
 /** Holds a session's lock shared while it's written, when no tab holds it exclusively. */
-const withSessionHold = async (sessionId: string, run: () => Promise<void>) => {
+const withSessionHold = async <T>(sessionId: string, run: () => Promise<T>) => {
     const { holdShared } = await import('../../local/startup/open')
     const held = await holdShared(platform.locks, sessionId).catch(() => undefined)
     try {
-        await run()
+        return await run()
     } finally {
         held?.release()
     }
@@ -2475,19 +2622,43 @@ const refreshOwn = (env: Env) => refreshBinding(env.worker, env.flusher)
 
 // Export's picker (§1.4.7, `work/d5/safety.md` E1–E5).
 
-/** Export's read of this chain's own file, from its dialog's opening to its close (R2). */
+/**
+ * Export's read of this chain's own file before its picker (R2), one for each picker that may
+ * return the file (SF2-1): started at the dialog's opening, used by a pick of the file, and read
+ * again for the next picker, as a follow-up dialog that may lead to one opens. Kept while the
+ * dialog is open or its flow runs (its follow-ups run after the dialog closed); then it goes.
+ */
 let exportRead: Promise<PreRead | undefined> | undefined
+let exportOpen = false
+let exportRunning = false
 
 /** Export's dialog opened: this chain's own file is read first when it may hold more (R2). */
 export const startExportRead = () => {
     const env = environment()
-    const binding = env && quickBinding(env)
-    exportRead = env && binding?.file && !binding.replaced ? preRead(env, binding) : undefined
+    exportOpen = true
+    exportRead = env && preRead(env, quickBinding(env))
 }
 
-/** Export's dialog closed: the bytes read go. */
+/**
+ * A picker of Export's may open next: the read stands while no pick of the file used it; else one
+ * starts now, with a grant already held (a prompt would spend the picker's press).
+ */
+export const exportPickerOpening = () => {
+    const env = environment()
+    if (env && platform.pickSaveFile)
+        exportRead ??= preRead(env, quickBinding(env), { prompt: false })
+}
+
+/** Export's dialog closed: the bytes read go, unless its flow runs on in a follow-up. */
 export const endExportRead = () => {
-    exportRead = undefined
+    exportOpen = false
+    if (!exportRunning) exportRead = undefined
+}
+
+/** Export's flow started or ended: the bytes read go once it ended and its dialog closed. */
+export const exportFlowRunning = (running: boolean) => {
+    exportRunning = running
+    if (!running && !exportOpen) exportRead = undefined
 }
 
 /** A destination never registered here still cannot write over another known owner. */
@@ -2523,18 +2694,23 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
     const binding = quickBinding(env)
     const file = binding.file
     const pre = await settledNow(exportRead)
-    const reservation = file && env.flusher.reserveSave()
-    // Left empty: shown, and the next Save fills it (R9).
-    if (!file || !reservation)
-        return {
-            show: () =>
-                afterOutcome(env, {
-                    kind: 'failed',
-                    error: new FileError('io', `${handle.name} was not written again`),
-                    name: handle.name,
-                }),
-        }
+    // The picker emptied the file this read was of: the next picker reads it again.
+    exportRead = undefined
     const target = { kind: 'handle' as const, handle }
+    const reservation = file && env.flusher.reserveSave()
+    // Not written again (no binding, or a Save holds the reservation): what was read goes back
+    // (`keepingOwn`, SF2-4), else it's left empty and the next Save fills it (R9).
+    if (!file || !reservation) {
+        const outcome = await keepingOwn(env, target, pre, (pick) => {
+            pick.own = true
+            return Promise.resolve({
+                kind: 'failed',
+                error: new FileError('io', `${handle.name} was not written again`),
+                name: handle.name,
+            })
+        })
+        return { show: () => afterOutcome(env, outcome) }
+    }
     try {
         const outcome = await keepingOwn(env, target, pre, (pick) =>
             afterPick(

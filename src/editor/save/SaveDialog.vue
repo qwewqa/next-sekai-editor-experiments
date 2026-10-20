@@ -63,8 +63,10 @@ const bgmDisabled = computed(() => bgmRow.value.kind !== 'held' || bgmRow.value.
 const estimate = ref<SaveSizeEstimate | undefined>(props.input.estimate.cached)
 const failed = ref(false)
 let closed = false
+// Ends a load still waiting for its count (an open's import) once the dialog closes.
+const loading = new AbortController()
 onMounted(async () => {
-    const loaded = await props.input.estimate.load().catch(() => undefined)
+    const loaded = await props.input.estimate.load(loading.signal).catch(() => undefined)
     if (closed) return
     if (loaded) estimate.value = loaded
     else if (!estimate.value) failed.value = true
@@ -136,6 +138,7 @@ const cancel = () => {
 
 onBeforeUnmount(() => {
     closed = true
+    loading.abort()
     clearTimeout(pause)
 })
 

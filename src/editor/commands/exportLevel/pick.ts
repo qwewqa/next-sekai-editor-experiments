@@ -85,7 +85,9 @@ export const setPickLock = (lock: PickLock) => {
 /** Runs a pick's check and write under the Save core's lock, when there is one. */
 export const withPickLock: PickLock = (run) => (pickLock ? pickLock(run) : run())
 
-let exportReads: { start: () => void; end: () => void } | undefined
+let exportReads:
+    | { start: () => void; end: () => void; picker: () => void; flow: (running: boolean) => void }
+    | undefined
 
 /** Set by the Save core: Export's dialog reads the chain's own file first when needed (R2). */
 export const setExportReads = (reads: typeof exportReads) => {
@@ -100,6 +102,19 @@ export const exportDialogOpened = () => {
 /** Export's dialog closed: what it read goes. */
 export const exportDialogClosed = () => {
     exportReads?.end()
+}
+
+/**
+ * A picker of Export's may open next, in its dialog or through a follow-up's Choose Another…: the
+ * chain's own file is read first for each picker that may return it (R2, SF2-1).
+ */
+export const exportPickerOpening = () => {
+    exportReads?.picker()
+}
+
+/** Export's flow runs, its follow-ups too after its dialog closed: what was read stays meanwhile. */
+export const exportFlowRunning = (running: boolean) => {
+    exportReads?.flow(running)
 }
 
 /**

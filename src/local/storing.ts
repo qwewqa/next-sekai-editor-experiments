@@ -479,6 +479,14 @@ export const startStoring = (
             void flows().then((flow) => {
                 flow.endExportRead()
             }),
+        picker: () =>
+            void flows().then((flow) => {
+                flow.exportPickerOpening()
+            }),
+        flow: (running) =>
+            void flows().then((flow) => {
+                flow.exportFlowRunning(running)
+            }),
     })
     setFileActions({
         saveAs: () => void flows().then((flow) => flow.fileSaveAs()),

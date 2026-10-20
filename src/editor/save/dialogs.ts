@@ -54,8 +54,15 @@ export type SaveDialogInput = {
     storageLine?: () => string
     /** "Saves the current version." */
     peeking: boolean
-    /** The size preview: a cached estimate shows at once; `load` refreshes it (never blocking). */
-    estimate: { cached?: SaveSizeEstimate; load: () => Promise<SaveSizeEstimate | undefined> }
+    /**
+     * The size preview: a cached estimate shows at once; `load` refreshes it (never blocking). An
+     * estimate still counting (an open's import running) is never shown: `load` resolves once it
+     * has the count, and `signal` ends its wait when the dialog closes.
+     */
+    estimate: {
+        cached?: SaveSizeEstimate
+        load: (signal?: AbortSignal) => Promise<SaveSizeEstimate | undefined>
+    }
 }
 
 export type SaveDialogResult =

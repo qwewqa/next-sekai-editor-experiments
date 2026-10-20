@@ -302,3 +302,140 @@ test('a repair that fails leaves the Save as it was and the damage known (L1)', 
     )
     assert.deepEqual([...(await stillBad(fixture.store, [hex]))], [])
 })
+
+/** Records `hex` as found bad by another chain's build, as a body shared between chains. */
+const knownBad = (fixture: Fixture, hexes: string[]) =>
+    fixture.store.write(['chains'], (tx) =>
+        tx.put('chains', {
+            chainId: 'another',
+            docId: 'another',
+            lineageId: 'lineage',
+            badChunks: packHashes(hexes.map(fromHex16)),
+        }),
+    )
+
+/** Rewrites a stored root or node row so it no longer hashes to its key, as bit rot does. */
+const rot = (fixture: Fixture, hex: string, change: (row: Record<string, unknown>) => void) =>
+    fixture.store.write(['nodes'], async (tx) => {
+        const key = hashKey(fromHex16(hex))
+        const row = { ...((await tx.get('nodes', key)) as Record<string, unknown>) }
+        change(row)
+        await tx.put('nodes', row, key)
+    })
+
+test('a known-bad root and kind node the own file holds are put right by the append (SF2-3)', async () => {
+    const { rootJsonFromRow } = await import('../../../src/local/records/rows')
+    const { fixture, file } = await chainWithFile()
+    const root = stateAt(3).hex
+    const rootOf = async (k: number) =>
+        rootJsonFromRow(
+            (await fixture.store.read(['nodes'], (tx) =>
+                tx.get('nodes', hashKey(fromHex16(stateAt(k).hex))),
+            )) as never,
+        )
+    const others = new Set<string>()
+    for (const k of [0, 1, 2, 4])
+        for (const [, node] of (await rootOf(k))[2] as [string, string][]) others.add(node)
+    const node = ((await rootOf(3))[2] as [string, string][])
+        .map(([, each]) => each)
+        .find((each) => !others.has(each))
+    assert.ok(node, 'state 3 has a kind node of its own')
+    await rot(fixture, node, (row) => {
+        const refs = (row.refs as Uint8Array).slice()
+        refs[0] = (refs[0] ?? 0) ^ 0x5a
+        row.refs = refs
+    })
+    await rot(fixture, root, (row) => {
+        row.noteCount = (row.noteCount as number) + 1
+    })
+    await knownBad(fixture, [root, node])
+    assert.deepEqual([...(await stillBad(fixture.store, [root, node]))].sort(), [root, node].sort())
+    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
+
+    const appended = await save(
+        fixture,
+        { kind: 'append', source: 'target' },
+        { files: [await sourceOf(file)], disk: diskOf },
+    )
+    assert.ok(!('refused' in appended.built) && appended.file)
+    // Stored again from the file's records, which hash to their keys: whole, and no longer short.
+    assert.deepEqual([...(await stillBad(fixture.store, [root, node]))], [])
+    assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, true)
+    // The root's row carries its header's media again, as an import stores it.
+    const row = (await fixture.store.read(['nodes'], (tx) =>
+        tx.get('nodes', hashKey(fromHex16(root))),
+    )) as { refs: Uint8Array; kinds: string[] }
+    assert.ok(row.refs.length > 16 * (1 + row.kinds.length))
+    const copy = await save(fixture, { kind: 'copy' }, { binds: false })
+    assert.ok(!('refused' in copy.built))
+    assert.deepEqual(copy.built.damaged, [])
+    assert.equal(copy.built.marked, 0)
+})
+
+test('a root is stored again only once everything it reaches is whole in storage (SF2-3)', async () => {
+    const { fixture, file } = await chainWithFile()
+    const root = stateAt(3).hex
+    await rot(fixture, root, (row) => {
+        row.noteCount = (row.noteCount as number) + 1
+    })
+    // One of its chunks is bad too, and the file doesn't give chunks back here: the root stays.
+    const chunk = await damageOnly(fixture, 3, [0, 1, 2, 4])
+    await knownBad(fixture, [root])
+    const source = await inspectNxsp(file, {
+        token: 'target',
+        role: 'target',
+        fingerprint: (await sourceOf(file)).fingerprint,
+    })
+    assert.deepEqual(await repairFromSource(fixture.store, source, file), [])
+    assert.deepEqual([...(await stillBad(fixture.store, [root]))], [root])
+    // Its chunk known bad too: put back first, then the root.
+    await knownBad(fixture, [root, chunk])
+    assert.deepEqual(
+        (await repairFromSource(fixture.store, source, file)).sort(),
+        [chunk, root].sort(),
+    )
+    assert.deepEqual([...(await stillBad(fixture.store, [root, chunk]))], [])
+})
+
+test('a known-bad stored BGM the own file holds is put right by the append (SF2-3)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.storeMedia([BGM, COVER, PREVIEW])
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.flush()
+    const first = await save(fixture, { kind: 'copy' }, { disk: diskOf })
+    const file = first.file
+    assert.ok(file)
+    await fixture.edit(2)
+    await fixture.flush()
+    const key = hashKey(fromHex16(BGM.ref.hash))
+    const row = (await fixture.store.read(['media'], (tx) => tx.get('media', key))) as {
+        blob: Blob
+    }
+    const bytes = new Uint8Array(await row.blob.arrayBuffer())
+    bytes[0] = (bytes[0] ?? 0) ^ 0x5a
+    await fixture.store.write(['media'], (tx) =>
+        tx.put('media', { ...row, blob: new Blob([bytes]) }, key),
+    )
+    // A download finds it bad and records it: every later dialog reads the file first.
+    const download = await save(fixture, { kind: 'copy' }, { binds: false })
+    assert.ok(!('refused' in download.built) && download.built.damaged.includes(BGM.ref.hash))
+    assert.deepEqual(
+        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
+        [BGM.ref.hash],
+    )
+    const appended = await save(
+        fixture,
+        { kind: 'append', source: 'target' },
+        { files: [await sourceOf(file)], disk: diskOf },
+    )
+    assert.ok(!('refused' in appended.built))
+    // Stored again from the file's entry, which hashes to its `sha256`: no longer lacking.
+    assert.deepEqual(
+        (await readSaveNeeds(fixture.store, fixture.chainId, [BGM.ref.hash])).lacking,
+        [],
+    )
+    const next = await save(fixture, { kind: 'copy' }, { binds: false })
+    assert.ok(!('refused' in next.built))
+    assert.ok(!next.built.damaged.includes(BGM.ref.hash))
+})
