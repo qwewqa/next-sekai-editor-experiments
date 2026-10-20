@@ -679,7 +679,8 @@ test('x is accepted on a step, a recovery context and its items, and carried by 
         operation,
         recoveryContext: { ...context, x },
     })
-    sameJson(recovered.recoveryContext?.x, x)
+    assert(recovered.kind === 'recovered')
+    sameJson(recovered.recoveryContext.x, x)
 })
 
 test('x must be a JSON object within the operation byte limit; no other key is ignorable', () => {

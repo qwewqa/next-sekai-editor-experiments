@@ -1376,6 +1376,7 @@
     },
     "operation": {
       "changedHeader": "{0} değiştirildi",
+      "changedLevelInfo": "Seviye bilgileri değiştirildi",
       "setValueOnObjects": "{0} nesne için {1} değeri {2} olarak ayarlandı",
       "setValueOnNotes": "{0} nota için {1} değeri {2} olarak ayarlandı",
       "setValueOnBpm": "{0} BPM değişikliği için {1} değeri {2} olarak ayarlandı",

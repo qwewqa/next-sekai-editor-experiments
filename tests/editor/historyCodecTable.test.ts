@@ -535,6 +535,105 @@ const table: Record<OperationId, Row> = {
         ],
         invalid: [['no file', { offset: { before: 0, after: 1 } }]],
     },
+    // One Level Info Apply: its changes in field order, each field once; Initial Life never alone.
+    'nse.levelInfo.set': {
+        valid: [
+            [
+                'a title',
+                { changes: [{ field: 'title', before: name(''), after: name('Coconut') }] },
+            ],
+            [
+                'every field, in field order',
+                {
+                    changes: [
+                        { field: 'artists', before: name('A'), after: name('B') },
+                        { field: 'author', before: name(''), after: name('C') },
+                        { field: 'cover', before: null, after: name('cover.png') },
+                        { field: 'description', before: name('x'), after: name('y') },
+                        { field: 'initialLife', before: 1000, after: 900 },
+                        { field: 'preview', before: name('a.mp3'), after: null },
+                        { field: 'rating', before: null, after: 12 },
+                        { field: 'tags', added: 2, removed: 1 },
+                        { field: 'title', before: name('t'), after: name('u') },
+                    ],
+                },
+            ],
+            [
+                'a rating removed, a cut name',
+                {
+                    changes: [
+                        { field: 'rating', before: 3.5, after: null },
+                        { field: 'title', before: name('a'.repeat(300)), after: name('b') },
+                    ],
+                },
+            ],
+            [
+                'Initial Life with another field',
+                {
+                    changes: [
+                        { field: 'initialLife', before: 1, after: 2 },
+                        { field: 'rating', before: null, after: 1 },
+                    ],
+                },
+            ],
+        ],
+        invalid: [
+            ['no changes', { changes: [] }],
+            ['no list', {}],
+            [
+                'Initial Life alone is nse.header.set',
+                { changes: [{ field: 'initialLife', before: 1, after: 2 }] },
+            ],
+            [
+                'fields out of order',
+                {
+                    changes: [
+                        { field: 'title', before: name('a'), after: name('b') },
+                        { field: 'artists', before: name('a'), after: name('b') },
+                    ],
+                },
+            ],
+            [
+                'a field twice',
+                {
+                    changes: [
+                        { field: 'title', before: name('a'), after: name('b') },
+                        { field: 'title', before: name('b'), after: name('c') },
+                    ],
+                },
+            ],
+            [
+                'an unknown field',
+                { changes: [{ field: 'name', before: name('a'), after: name('b') }] },
+            ],
+            [
+                'the BGM has its own operation',
+                { changes: [{ field: 'bgm', before: null, after: name('a') }] },
+            ],
+            ['tags that changed nothing', { changes: [{ field: 'tags', added: 0, removed: 0 }] }],
+            ['tags by the list', { changes: [{ field: 'tags', before: [], after: [name('a')] }] }],
+            [
+                'a rating that is not finite',
+                { changes: [{ field: 'rating', before: null, after: Infinity }] },
+            ],
+            [
+                'text that is not a name',
+                { changes: [{ field: 'title', before: 'a', after: name('b') }] },
+            ],
+            [
+                'a cover that is a bare string',
+                { changes: [{ field: 'cover', before: null, after: 'a.png' }] },
+            ],
+            [
+                'extra keys',
+                { changes: [{ field: 'title', before: name('a'), after: name('b') }], x: 1 },
+            ],
+            [
+                'extra change keys',
+                { changes: [{ field: 'title', before: name('a'), after: name('b'), note: 1 }] },
+            ],
+        ],
+    },
     'nse.dynamicStages.enable': {
         valid: [
             [
@@ -768,7 +867,7 @@ const table: Record<OperationId, Row> = {
 
 test('the table covers every operation id', () => {
     assert.deepEqual(Object.keys(table).sort(), Object.keys(operationCodecs).sort())
-    assert.equal(Object.keys(operationCodecs).length, 35)
+    assert.equal(Object.keys(operationCodecs).length, 36)
     for (const [id, row] of Object.entries(table)) {
         assert(row.valid.length > 0, `${id} has a valid sample`)
         assert(row.invalid.length > 0, `${id} has an invalid sample`)

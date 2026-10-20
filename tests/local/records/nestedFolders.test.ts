@@ -124,12 +124,12 @@ test('level data shows the folders flat: no folder entity names another, and it 
     const { defaultGuideColors } = serializeEditorMetadata(entities, state.store)
     const chart = parseLevelDataChart(entities, defaultGuideColors)
     // Both folders come back at the top level; the stage that was in Stage folder still is.
-    assert.equal(chart.stageFolders.size, 2)
-    for (const folderObject of chart.stageFolders.values())
-        assert.equal(folderObject.folderId, undefined)
+    const stageFolders = chart.stageFolders ?? new Map()
+    assert.equal(stageFolders.size, 2)
+    for (const folderObject of stageFolders.values()) assert.equal(folderObject.folderId, undefined)
     const sides = [...chart.stages.values()].find((s) => s.name === 'Side')
     assert.ok(sides?.folderId !== undefined)
-    assert.equal(chart.stageFolders.get(sides.folderId)?.name, 'Stage folder')
+    assert.equal(stageFolders.get(sides.folderId)?.name, 'Stage folder')
     // Re-serializing the flat chart is stable: nothing was lost that level data can hold.
     const again = levelDataOf(createState(chart, state.bgm.offset, { levelInfo: state.levelInfo }))
     assert.equal(again.entities.filter((e) => e.archetype === stageFolderArchetype).length, 2)

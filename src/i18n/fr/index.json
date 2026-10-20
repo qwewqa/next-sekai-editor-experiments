@@ -1376,6 +1376,7 @@
     },
     "operation": {
       "changedHeader": "{0} : valeur modifiée",
+      "changedLevelInfo": "Informations du niveau modifiées",
       "setValueOnObjects": "{1} : valeur {2} appliquée à {0} objet|{1} : valeur {2} appliquée à {0} objets",
       "setValueOnNotes": "{1} : valeur {2} appliquée à {0} note|{1} : valeur {2} appliquée à {0} notes",
       "setValueOnBpm": "{1} : valeur {2} appliquée à {0} changement de BPM|{1} : valeur {2} appliquée à {0} changements de BPM",

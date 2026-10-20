@@ -321,6 +321,83 @@ const nativeRecord = (
                 )
             break
         }
+        case 'nse.levelInfo.set': {
+            const fields = t.historyChanges.fields
+            const labels = {
+                title: fields.title,
+                artists: fields.artists,
+                author: fields.author,
+                description: fields.description,
+                rating: fields.rating,
+                tags: fields.tags,
+                cover: fields.cover,
+                preview: fields.previewAudio,
+                initialLife: t.commands.properties.modal.life,
+            } as const
+            const rating = (value: number | null) =>
+                value === null
+                    ? placeholder(t.historyChanges.notSet)
+                    : plain(numberText(value, context))
+            for (const change of operation.data.changes) {
+                const label = labels[change.field]
+                switch (change.field) {
+                    case 'initialLife':
+                        rows.push(
+                            ...numberChange(
+                                change.field,
+                                label,
+                                change.before,
+                                change.after,
+                                context,
+                            ),
+                        )
+                        break
+                    case 'rating':
+                        rows.push(
+                            ...changeRow(
+                                change.field,
+                                label,
+                                rating(change.before),
+                                rating(change.after),
+                            ),
+                        )
+                        break
+                    case 'tags':
+                        if (change.added)
+                            rows.push(
+                                ...valueRow(
+                                    'tagsAdded',
+                                    `${label}: ${t.historyChanges.added}`,
+                                    plain(numberText(change.added, context)),
+                                ),
+                            )
+                        if (change.removed)
+                            rows.push(
+                                ...valueRow(
+                                    'tagsRemoved',
+                                    `${label}: ${t.historyChanges.removed}`,
+                                    plain(numberText(change.removed, context)),
+                                ),
+                            )
+                        break
+                    case 'title':
+                    case 'artists':
+                    case 'author':
+                    case 'description':
+                    case 'cover':
+                    case 'preview':
+                        rows.push(
+                            ...changeRow(
+                                change.field,
+                                label,
+                                nameDetail(change.before, context),
+                                nameDetail(change.after, context),
+                            ),
+                        )
+                }
+            }
+            break
+        }
         case 'nse.dynamicStages.enable':
             rows.push(
                 ...countsRow(

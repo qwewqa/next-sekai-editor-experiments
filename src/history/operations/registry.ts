@@ -119,8 +119,42 @@ const changedTargets = refine(
 const folder = object({ kind: oneOf(['groupFolder', 'stageFolder']), id: count, name: nameText })
 const destination = union(folder, nil)
 const scalarChange = object({ before: finite, after: finite })
-const fileChange = object({ before: union(nameText, nil), after: union(nameText, nil) })
+const fileName = union(nameText, nil)
+const fileChange = object({ before: fileName, after: fileName })
 const ownerDomain = oneOf(['group', 'stage'])
+
+/**
+ * One field of a Level Info Apply (§1.4.12): its text fields before and after as captured names
+ * (an unset field is the empty name), the rating, how many tags by title were added and removed
+ * (v1 edits titles only and keeps icons; the tags themselves are in the snapshots, which Property
+ * Changes diffs), the cover and preview as files, and the Initial Life the dialog also holds.
+ */
+const levelInfoChange = union(
+    object({
+        field: oneOf(['title', 'artists', 'author', 'description']),
+        before: nameText,
+        after: nameText,
+    }),
+    object({ field: literal('rating'), before: union(finite, nil), after: union(finite, nil) }),
+    object({ field: literal('tags'), added: count, removed: count }),
+    object({ field: oneOf(['cover', 'preview']), before: fileName, after: fileName }),
+    object({ field: literal('initialLife'), before: finite, after: finite }),
+)
+export type LevelInfoChange = ValueOf<typeof levelInfoChange>
+/**
+ * One Apply is one step: its changes in field order, each field once. A step that changes only
+ * Initial Life is `nse.header.set`, so each id names one result.
+ */
+const levelInfoChanges = codec<readonly LevelInfoChange[]>(
+    (value) =>
+        Array.isArray(value) &&
+        value.length > 0 &&
+        value.length <= 9 &&
+        value.every(levelInfoChange.is) &&
+        value.every((item, i) => i === 0 || (value[i - 1]?.field ?? '') < item.field) &&
+        value.every((item) => item.field !== 'tags' || item.added + item.removed > 0) &&
+        (value.length > 1 || value[0]?.field !== 'initialLife'),
+)
 
 const ownerChange = union(
     object({
@@ -244,6 +278,7 @@ export const operationCodecs = {
         after: finite,
     }),
     'nse.bgm.change': object({ file: fileChange }, { offset: scalarChange }),
+    'nse.levelInfo.set': object({ changes: levelInfoChanges }),
     'nse.dynamicStages.enable': object({ created: nativeCounts }),
     'nse.owner.create': refine(
         object({ target: ownerReference, destination, gathered: count }),

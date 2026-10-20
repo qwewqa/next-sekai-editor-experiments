@@ -632,21 +632,22 @@ test('a save entry records the app version that wrote it, and only a save entry 
     ])
     // Carried as it is held: an entry from before the version was recorded stays without one.
     const input = fresh().input
-    const entries = (input.history?.entries ?? []).map((e) => {
+    const history = input.history as NonNullable<typeof input.history>
+    const entries = history.entries.map((e) => {
         if (e.kind !== 'save') return e
         const rest = { ...e }
         Reflect.deleteProperty(rest, 'appVersion')
         return rest
     })
-    const old = planNxsp({ ...input, history: { ...(input.history as never), entries } })
+    const old = planNxsp({ ...input, history: { ...history, entries } })
     const oldManifest = jsonPart(old.plan, 'history/manifest.json')
     assert.equal(oldManifest.entries.at(-1).appVersion, undefined)
     // On any other kind it is a foreign key, which the builder's own check against the reader refuses.
-    const foreign = (input.history?.entries ?? []).map((e, i) =>
+    const foreign = history.entries.map((e, i) =>
         i === 1 ? ({ ...e, appVersion: '0.6.0' } as EntryForm) : e,
     )
     assert.throws(
-        () => planNxsp({ ...input, history: { ...(input.history as never), entries: foreign } }),
+        () => planNxsp({ ...input, history: { ...history, entries: foreign } }),
         /The history breaks v1: manifest\.entries\[1\]\.appVersion/,
     )
 })

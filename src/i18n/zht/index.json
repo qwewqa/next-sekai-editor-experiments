@@ -1376,6 +1376,7 @@
     },
     "operation": {
       "changedHeader": "已變更{0}",
+      "changedLevelInfo": "已變更關卡資訊",
       "setValueOnObjects": "已將 {0} 個物件的{1}設為{2}",
       "setValueOnNotes": "已將 {0} 個音符的{1}設為{2}",
       "setValueOnBpm": "已將 {0} 個 BPM 的{1}設為{2}",

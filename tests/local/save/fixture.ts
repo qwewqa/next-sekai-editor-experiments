@@ -91,6 +91,7 @@ type Row = EntryDescription & {
     kept: boolean
     revisionId?: string
     device?: { id: string; label: string }
+    appVersion?: string
     stack?: ReplayEntry['stack']
 }
 

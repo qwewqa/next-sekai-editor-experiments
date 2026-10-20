@@ -173,6 +173,19 @@ const fixture = [
     { id: 'nse.restore', data: { targetTime: 1_600_000_000_000 } },
     { id: 'nse.recovery', data: { droppedSteps: 2 } },
     { id: 'nse.externalChange', data: {} },
+    {
+        id: 'nse.levelInfo.set',
+        data: {
+            changes: [
+                { field: 'artists', before: captureName('A'), after: captureName('B') },
+                { field: 'cover', before: null, after: captureName('cover.png') },
+                { field: 'initialLife', before: 1000, after: 900 },
+                { field: 'rating', before: null, after: 12 },
+                { field: 'tags', added: 2, removed: 1 },
+                { field: 'title', before: captureName(''), after: captureName('Coconut') },
+            ],
+        },
+    },
 ] as const satisfies readonly NativeOperationInput[]
 
 test('all native IDs render current-language singleton descriptions and complete Details', () => {

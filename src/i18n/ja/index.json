@@ -1376,6 +1376,7 @@
     },
     "operation": {
       "changedHeader": "{0}を変更しました",
+      "changedLevelInfo": "レベル情報を変更しました",
       "setValueOnObjects": "{0}個のオブジェクトの{1}を{2}に設定しました",
       "setValueOnNotes": "{0}個のノーツの{1}を{2}に設定しました",
       "setValueOnBpm": "{0}個のBPMの{1}を{2}に設定しました",
