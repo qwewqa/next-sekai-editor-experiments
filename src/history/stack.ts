@@ -1,4 +1,5 @@
 import { computed, ref, shallowReactive, shallowRef, watch, type Ref } from 'vue'
+import { recordError } from '../diagnostics'
 import type { State } from '../state'
 import { emitHistoryAction } from './actions'
 import { freezePublished } from './freeze'
@@ -205,6 +206,7 @@ const load = (slot: Slot): Promise<boolean> => {
             },
             (error: unknown) => {
                 reading.delete(slot)
+                recordError(error)
                 console.error('A stored undo step could not be loaded', error)
                 return false
             },

@@ -1,3 +1,4 @@
+import { recordDiagnostic } from '../../diagnostics'
 import type { StorageStatus } from './core'
 import type { InitOptions } from './handlers'
 import { connect, PING, RpcError, type CallOptions, type Client } from './rpc'
@@ -55,6 +56,11 @@ export class StorageWorker {
 
     get status() {
         return this.current
+    }
+
+    /** How many times this tab restarted the worker, for Copy Diagnostic Info… (§1.4.16). */
+    get restartCount() {
+        return this.restartSeq
     }
 
     /** Starts the worker and storage; keeps the script's Blob copy for restarts. */
@@ -152,7 +158,7 @@ export class StorageWorker {
                 }
                 done = true
                 reject(new RpcError('TimeoutError', 'The storage worker stopped answering'))
-                this.restart(generation)
+                this.restart(generation, 'it stopped answering')
             }
             timer = setTimeout(() => void check(), ms)
             reply.then(
@@ -193,19 +199,19 @@ export class StorageWorker {
         const client = connect<StorageHandlers>(worker, {
             timeoutMs: this.options.timeoutMs,
             onTimeout: () => {
-                this.restart(generation)
+                this.restart(generation, 'a call timed out')
             },
         })
         this.client = client
         worker.addEventListener('error', (event) => {
             event.preventDefault()
-            this.restart(generation)
+            this.restart(generation, `it failed: ${event.message || 'no message'}`)
         })
         client.on('status', (status) => {
             if (generation === this.generation) this.setStatus(status as StorageStatus)
         })
         client.on('testKill', () => {
-            this.restart(generation)
+            this.restart(generation, 'a test killed it')
         })
         // The handshake bounds its own waits (about 3 s blocked, 8 s at most per open).
         return client.call('init', this.init, { timeoutMs: INIT_TIMEOUT_MS }).then((status) => {
@@ -215,8 +221,12 @@ export class StorageWorker {
     }
 
     /** Replaces a crashed or hung worker, once per crash. */
-    private restart(generation: number) {
+    private restart(generation: number, why: string) {
         if (generation !== this.generation || this.dead) return
+        recordDiagnostic(
+            'error',
+            `The storage worker was restarted (restart ${this.restartSeq + 1}): ${why}`,
+        )
         // Later reports of the same crash (an error, a timeout) find it handled.
         this.generation++
         this.worker?.terminate()
@@ -245,6 +255,7 @@ export class StorageWorker {
     }
 
     private die() {
+        recordDiagnostic('error', 'The storage worker stopped for good; storing is paused')
         this.dead = true
         this.worker?.terminate()
         this.worker = undefined

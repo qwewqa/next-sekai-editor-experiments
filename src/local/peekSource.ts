@@ -1,3 +1,4 @@
+import { recordError } from '../diagnostics'
 import { PeekError, parseEntryKey, type PeekSource } from '../history/peek'
 import { loadedStates } from '../history/stack'
 import type { State } from '../state'
@@ -88,6 +89,7 @@ export const readStoredState = async (
             ),
         }
     } catch (error) {
+        recordError(error)
         console.error('A stored snapshot could not be read', error)
         return { kind: 'damaged' }
     }

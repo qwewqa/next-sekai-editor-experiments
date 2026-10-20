@@ -2,7 +2,6 @@ import { computed, shallowRef, watch } from 'vue'
 import { session, type SessionFile } from '../../history/session'
 import { headSnapshot, liveState } from '../../history/stack'
 import { platform } from '../../platform'
-import { detection } from '../../platform/detect'
 import type { State } from '../../state'
 import { fileActions } from './actions'
 import { chipStates, type ChipKind } from './chip'
@@ -92,16 +91,15 @@ export const fileChanged = computed(() => {
     return true
 })
 
-const isIos = () => detection().os === 'ios'
-
 /**
- * The open session's binding is a download that isn't confirmed (§1.3.4): on iPhone and iPad
- * every download until I Have the File; elsewhere until one is confirmed in this browser.
+ * The open session's binding is a download that isn't confirmed (§1.3.4): where the platform
+ * never confirms one (`unconfirmedDownloads`: iPhone and iPad) it is every download until
+ * I Have the File; elsewhere until one is confirmed in this browser.
  */
 export const downloadNotConfirmed = computed(() => {
     const file = boundFile.value
     if (!file || fileEvent.value !== 'downloaded' || file.confirmed) return false
-    return isIos() || !downloadConfirmed.value
+    return platform.capabilities.unconfirmedDownloads || !downloadConfirmed.value
 })
 
 /** Whether Save writes the bound file in place (Chromium) rather than downloading a copy. */

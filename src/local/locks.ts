@@ -76,7 +76,7 @@ export const withMaintExclusive = <T>(locks: LockService, batch: () => Promise<T
 
 /**
  * Named stub (Step 3a) for the maintenance pass: no deleter exists until Step 7's sweep, so it
- * only shows the exclusive side's shape.
+ * only shows the exclusive side's shape. A planned seam: nothing calls it until Step 7.
  */
 export const maintNoop = async (locks: LockService) => {
     await withMaintExclusive(locks, () => Promise.resolve())
