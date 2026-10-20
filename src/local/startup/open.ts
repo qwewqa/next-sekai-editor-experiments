@@ -15,7 +15,7 @@ import type { FlushSession, StoredStack } from '../flush'
 import { resolveHandle } from '../handles'
 import { toHex } from '../hash'
 import { hasWebLocks, sessionLock } from '../locks'
-import { displayName, forkNameOf, namePartsOf } from '../names'
+import { displayName, forkNameOf, namePartsOf, sessionCopyOf, type CopyOf } from '../names'
 import { stateFromRecords } from '../records/records'
 import { decodeSnapshot } from '../records/snapshot'
 import type { HeldLock, TabClient } from '../sessions'
@@ -170,7 +170,7 @@ const storedStack = (read: SessionRead & { kind: 'open' }): StoredStack => ({
 type How =
     | { mode: 'resume'; lock: HeldLock }
     | { mode: 'continue'; parentLock: HeldLock }
-    | { mode: 'fork'; parentLock?: HeldLock; copyOf: { name: string; bound: boolean } }
+    | { mode: 'fork'; parentLock?: HeldLock; copyOf: CopyOf }
 
 /**
  * Opens a stored session in this tab: its stack restored with the head loaded, and the storing
@@ -470,11 +470,14 @@ export const holdShared = async (
 }
 
 /** The file a session's chain is bound to, as its status label names it. */
-const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State) => {
+export const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State): CopyOf => {
     const file = read.chain.file as { name?: unknown } | undefined
     if (typeof file?.name === 'string' && file.name) return { name: file.name, bound: true }
     const shown = displayName(namePartsOf(read.chain, state))
-    return { name: shown.kind === 'date' ? '' : shown.text, bound: false }
+    return sessionCopyOf(
+        shown.kind === 'date' ? undefined : shown.text,
+        typeof read.session.startedAt === 'number' ? read.session.startedAt : undefined,
+    )
 }
 
 /**

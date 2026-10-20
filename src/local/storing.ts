@@ -40,7 +40,7 @@ import { notifyFlusherStart, onFlusherStart } from './flusherStart'
 import { checkPrivateWindow, handleOf } from './handles'
 import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
-import { displayName, forkNameOf, namePartsOf } from './names'
+import { displayName, forkNameOf, namePartsOf, sessionCopyOf } from './names'
 import { isImporting, whenImported } from './open/importLoop'
 import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
@@ -284,10 +284,8 @@ export const startStoring = (
             const copyOf =
                 typeof file?.name === 'string'
                     ? { name: file.name, bound: true }
-                    : (currentSession.value.copyOf ?? {
-                          name: currentSession.value.name ?? '',
-                          bound: false,
-                      })
+                    : (currentSession.value.copyOf ??
+                      sessionCopyOf(currentSession.value.name, currentSession.value.startedAt))
             // The fork has no binding, so no file in the label.
             const { file: _unbound, ...unbound } = currentSession.value
             currentSession.value = {

@@ -4,6 +4,7 @@ import {
     equalJson,
     fieldApplies,
     fieldCodecs,
+    resizableSubjects,
     subjectOfCounts,
     type AssignedValue,
     type Assignment,
@@ -131,6 +132,7 @@ export const editInput = (
     changed: NativeCounts,
     empty: Subject,
     collateral?: Collateral,
+    resized = false,
 ): NativeOperationInput => {
     const data = changedData(changed, empty, collateral)
     const { subject, displaced } = data
@@ -141,6 +143,10 @@ export const editInput = (
         Object.keys(displaced).every((kind) => kind === subject)
     )
         return { id: 'nse.object.replace', data: { ...data, subject, displaced } }
+    // A Select drag that took an edge changed the lanes' extent and nothing else, so it is a resize.
+    // It is by what changed: a drag that changed a kind a resize does not reach stays a move.
+    if (intent === 'move' && resized && resizableSubjects.includes(subject))
+        return { id: 'nse.object.move', data: { ...data, resized: true } }
     return { id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move', data }
 }
 

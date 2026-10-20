@@ -103,9 +103,32 @@ const table: Record<OperationId, Row> = {
                 'displaced',
                 { subject: 'objects', changed: { note: 1, bpm: 1 }, displaced: { bpm: 1 } },
             ],
+            ['a resized note', { subject: 'note', changed: { note: 2 }, resized: true }],
+            [
+                'a resized camera event',
+                { subject: 'cameraEvent', changed: { cameraEvent: 1 }, resized: true },
+            ],
+            [
+                'a resized stage mask event',
+                { subject: 'stageMaskEvent', changed: { stageMaskEvent: 1 }, resized: true },
+            ],
         ],
         invalid: [
             ['empty displaced', { subject: 'timeScale', changed: { timeScale: 1 }, displaced: {} }],
+            ['resized false', { subject: 'note', changed: { note: 1 }, resized: false }],
+            ['resized BPM', { subject: 'bpm', changed: { bpm: 1 }, resized: true }],
+            [
+                'resized stage pivot event',
+                { subject: 'stagePivotEvent', changed: { stagePivotEvent: 1 }, resized: true },
+            ],
+            [
+                'resized mixed objects',
+                { subject: 'objects', changed: { note: 1, bpm: 1 }, resized: true },
+            ],
+            [
+                'resized with displaced',
+                { subject: 'note', changed: { note: 1 }, displaced: { note: 1 }, resized: true },
+            ],
         ],
     },
     'nse.object.replace': {

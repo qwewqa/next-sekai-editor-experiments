@@ -21,6 +21,7 @@ import {
     propertyDescription,
     removalOrBrushDescription,
     renameDescription,
+    resizeDescription,
 } from './format'
 import { captureOperationMember, isEntryDescription, memberOperation } from './members'
 import type { OperationMember, OperationRecipe, OperationTextContext } from './types'
@@ -192,6 +193,8 @@ export const renderOperationRecipe = (
             return nativeDescription('edited', subject(), undefined, context)
         case 'move':
             return nativeDescription('moved', subject(), undefined, context)
+        case 'resize':
+            return resizeDescription(subject(), undefined, context)
         case 'replace':
             return nativeDescription('replaced', subject(), undefined, context)
         case 'elevation':

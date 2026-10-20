@@ -4,6 +4,7 @@ import {
     countOff,
     nearestStop,
     nextStop,
+    reachable,
     stopToward,
     stopsOf,
     type Place,
@@ -67,4 +68,42 @@ test('old and new footprints count once per object in each direction', () => {
         ),
         { above: 2, below: 1 },
     )
+})
+
+// X-12: the view never goes below the chart's start, so a band shortened by a sheet at view time 0
+// can never show what lies before its floor. Such a change counts in neither direction.
+test('a change before the band’s floor is unreachable: it counts in neither direction and is no stop', () => {
+    const places = at(0.2, 3, 20)
+    // At view time 0 the band is 0.57 to 9: its bottom is its floor.
+    const atStart = { top: 9, bottom: 0.57, floor: 0.57 }
+    assert.deepEqual(countOff(places, atStart), { above: 1, below: 0 })
+    // Without the floor the 0.2 change counts below, though no scroll can show it.
+    assert.deepEqual(countOff(places, { top: 9, bottom: 0.57 }), { above: 1, below: 1 })
+    // Scrolled up, the same floor still hides it; the 3 s change counts below, the 20 s above.
+    assert.deepEqual(countOff(places, { top: 19, bottom: 10.57, floor: 0.57 }), {
+        above: 1,
+        below: 1,
+    })
+
+    const reach = reachable(places, atStart.floor)
+    assert.deepEqual(
+        reach.map(({ time }) => time),
+        [3, 20],
+    )
+    const stops = stopsOf(reach, 8.43)
+    assert.equal(stopToward(stops, atStart, 'down'), undefined)
+    assert.equal(stopToward(stops, atStart, 'up')?.from, 20)
+    // A change at the floor itself is reachable.
+    assert.deepEqual(countOff(at(0.57), { top: 9, bottom: 5, floor: 0.57 }), { above: 0, below: 1 })
+    assert.equal(reachable(at(0.57), 0.57).length, 1)
+})
+
+test('Show Change does nothing when the only changes lie before the floor', () => {
+    const band = { top: 9, bottom: 0.57, floor: 0.57 }
+    const stops = stopsOf(reachable(at(0.1, 0.3), band.floor), 8.43)
+    assert.equal(nextStop(stops, band), undefined)
+    assert.equal(nearestStop(stops, band), undefined)
+    // With a reachable change below the band's middle, it is still shown.
+    const some = stopsOf(reachable(at(0.1, 12), band.floor), 8.43)
+    assert.equal(nextStop(some, band)?.from, 12)
 })

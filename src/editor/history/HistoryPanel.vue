@@ -175,6 +175,10 @@ const mode = computed<'label' | 'icon' | 'small'>(() => {
     if (f.full + 36 * f.k <= room) return 'icon'
     return 'small'
 })
+// Timeline never truncates (§6): it does not shrink, and Recent Sessions takes the shortfall to its
+// 48 px floor. In the dialog's small band (the 242 px right sheet) that needs the band's chrome
+// tighter; the tab list clips rather than overlap Go To where nothing was measured.
+const tight = computed(() => mode.value === 'small' && props.surface === 'dialog')
 
 const filtered = computed(() => historyFilter.value !== 'all')
 // The banner: "Saves and Exports", or "Edits Here · 118.2 – 121.4".
@@ -291,17 +295,20 @@ const goToButtonTitle = computed(() =>
         @keydown.esc="onEscape"
     >
         <!-- The band: 48 px, one line, the 6 px panel gutter. Pill-and-marker tabs at its start, as
-             the Properties band's; Go To, a flat band control, at its end. -->
+             the Properties band's; Go To, a flat band control, at its end. The dialog's small band
+             (the 242 px right sheet) closes its gaps to 2 px and its tab pills to 6 px a side, so
+             Timeline stays whole beside Recent Sessions at its 48 px floor (X-6). -->
         <div
             ref="band"
-            class="flex h-12 shrink-0 items-center gap-1.5 bg-header px-1.5"
+            class="flex h-12 shrink-0 items-center bg-header px-1.5"
+            :class="tight ? 'gap-0.5' : 'gap-1.5'"
             data-history-band
             :data-band-mode="mode"
         >
             <div
                 ref="tablist"
                 role="tablist"
-                class="flex h-full min-w-0 self-stretch"
+                class="flex h-full min-w-0 self-stretch overflow-hidden"
                 :aria-label="i18n.history.title"
             >
                 <!-- The whole band height is the tab's hit; its pill carries hover, press and focus. -->
@@ -313,8 +320,8 @@ const goToButtonTitle = computed(() =>
                     role="tab"
                     class="history-tab group flex h-full items-center font-bold text-fg outline-none"
                     :class="[
-                        tab === 'sessions' ? 'min-w-12 shrink-[10000]' : 'min-w-0',
-                        { 'history-tab-small': mode === 'small' },
+                        tab === 'sessions' ? 'min-w-12 shrink-[10000]' : 'shrink-0',
+                        { 'history-tab-small': mode === 'small', 'history-tab-tight': tight },
                     ]"
                     :aria-selected="historyTab === tab"
                     :aria-controls="historyTab === tab ? panelId : undefined"
@@ -326,7 +333,9 @@ const goToButtonTitle = computed(() =>
                 >
                     <span
                         class="history-tab-pill flex h-9 min-w-0 max-w-full items-center rounded-full transition-colors"
-                        :class="mode === 'small' ? 'px-2 text-sm' : 'px-3'"
+                        :class="
+                            mode === 'small' ? (tight ? 'px-1.5 text-sm' : 'px-2 text-sm') : 'px-3'
+                        "
                         ><span class="history-tab-label relative min-w-0"
                             ><span class="block truncate">{{ title(tab) }}</span></span
                         ></span
@@ -453,6 +462,11 @@ const goToButtonTitle = computed(() =>
 
 .history-tab-small[aria-selected='true'] .history-tab-label::after {
     @apply -bottom-3.5;
+}
+
+/* The bar spans the pill: 6 px past the label in the dialog's small band. */
+.history-tab-tight[aria-selected='true'] .history-tab-label::after {
+    @apply -left-1.5 -right-1.5;
 }
 
 @media (forced-colors: active) {

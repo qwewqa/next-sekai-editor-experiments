@@ -87,7 +87,10 @@ export const statusLabel = computed((): StatusLabel => {
     if (open.copyOf)
         return {
             name,
-            state: interpolateRaw(fragment(i18n.value.status.separateCopy), open.copyOf.name),
+            // An untitled source is the copy's own date name already; the label says only "copy".
+            state: open.copyOf.name
+                ? interpolateRaw(fragment(i18n.value.status.separateCopy), open.copyOf.name)
+                : fragment(i18n.value.status.separateCopyShort),
             changed: false,
         }
     return { name, state: fragment(i18n.value.status.notInFile), changed: false }

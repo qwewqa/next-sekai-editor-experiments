@@ -330,6 +330,149 @@ test.describe('load notices in the start-up pill', () => {
         })
     })
 
+    test.describe('on a touch tablet', () => {
+        test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true })
+
+        test('the card goes back above the toolbar when the History sheet closes (X-8)', async ({
+            page,
+        }) => {
+            await visit(page)
+            await addEvent(page, { kind: 'storageCleared' })
+            await expect(pill(page)).toBeVisible()
+            // Held, so it stays while the sheet opens and closes.
+            await page.evaluate(async () => {
+                const { holdNotice } =
+                    (await import('/src/editor/notification.ts')) as typeof import('../../src/editor/notification')
+                holdNotice('focus', true)
+            })
+            const toolbar = page.locator('[data-editor-toolbar] > div')
+            // The card's foot, against the bar's top: 8 px above it once the card has risen in.
+            const space = async () =>
+                (await toolbar.boundingBox())!.y -
+                (await pill(page).evaluate((card) => card.getBoundingClientRect().bottom))
+            await expect.poll(space).toBe(8)
+            // The sheet unmounts the toolbar while it is open; closing it mounts a new one.
+            await run(page, 'history')
+            const sheet = page.locator('[data-tool-dialog][data-sheet]')
+            await expect(sheet).toBeVisible()
+            await expect(toolbar).toHaveCount(0)
+            await page.keyboard.press('Escape')
+            await expect(sheet).toHaveCount(0)
+            await expect(toolbar).toBeVisible()
+            await expect.poll(space).toBe(8)
+            const bar = (await toolbar.boundingBox())!
+            // A tap on the toolbar's centre lands on the toolbar.
+            const hit = await page.evaluate(
+                ({ x, y }) => !!document.elementFromPoint(x, y)?.closest('[data-editor-toolbar]'),
+                { x: bar.x + bar.width / 2, y: bar.y + bar.height / 2 },
+            )
+            expect(hit).toBe(true)
+        })
+    })
+
+    test.describe('beside the right sheet', () => {
+        // A short landscape window: the card narrows beside the sheet to about 184 px, the X-F
+        // phone's, where the heading has 118 px.
+        test.use({ viewport: { width: 560, height: 390 }, hasTouch: true, isMobile: true })
+
+        test('the heading keeps the version whole, on a line of its own when it must (X-9)', async ({
+            page,
+            context,
+        }) => {
+            // A build between tags carries its commit, the longest version there is.
+            await context.addInitScript(() => {
+                localStorage.setItem(
+                    'nse.test.version',
+                    JSON.stringify({ appVersion: '0.6.0+2de308ef', atTag: false }),
+                )
+            })
+            await visit(page)
+            await addEvent(page, { kind: 'storageCleared' })
+            await expect(pill(page)).toBeVisible()
+            await page.evaluate(async () => {
+                const { holdNotice } =
+                    (await import('/src/editor/notification.ts')) as typeof import('../../src/editor/notification')
+                holdNotice('focus', true)
+            })
+            const heading = pill(page).locator('.sticky p')
+            // Where the name and the version are drawn, read from their text, and whether the
+            // heading shows the version whole: inside its room, with no ellipsis.
+            const parts = () =>
+                heading.evaluate((p) => {
+                    const texts: Text[] = []
+                    const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
+                    while (walker.nextNode()) texts.push(walker.currentNode as Text)
+                    const rect = (node: Text) => {
+                        const range = document.createRange()
+                        range.selectNodeContents(node)
+                        return range.getBoundingClientRect()
+                    }
+                    const name = texts[0]!
+                    const version = texts.find((node) => /\d+\.\d+/.test(node.data))!
+                    const separator = texts.find((node) => node.data.includes('·'))
+                    const dot = document.createRange()
+                    if (separator) {
+                        dot.setStart(separator, separator.data.indexOf('·'))
+                        dot.setEnd(separator, separator.data.indexOf('·') + 1)
+                    }
+                    const room = p.getBoundingClientRect()
+                    const end = room.right - parseFloat(getComputedStyle(p).paddingRight)
+                    const holder = version.parentElement!
+                    const start = room.left + parseFloat(getComputedStyle(p).paddingLeft)
+                    return {
+                        text: p.textContent,
+                        width: room.width,
+                        need: rect(version).width,
+                        content: end - start,
+                        oneLine: rect(name).top === rect(version).top,
+                        nameWhole:
+                            name.parentElement!.scrollWidth <= name.parentElement!.clientWidth,
+                        versionWhole:
+                            rect(version).right <= end + 0.5 &&
+                            holder.scrollWidth <= holder.clientWidth,
+                        // Beside the name its " · " shows; on a line of its own it is hidden.
+                        separatorShown: !!separator && dot.getBoundingClientRect().left >= start,
+                    }
+                })
+            // In the full card, one line: the name, then " · Version …".
+            await expect(heading).toHaveText('Next SEKAI Editor · Version 0.6.0+2de308ef')
+            expect(await parts()).toMatchObject({
+                oneLine: true,
+                nameWhole: true,
+                versionWhole: true,
+                separatorShown: true,
+            })
+            await run(page, 'history')
+            await expect(page.locator('[data-tool-dialog][data-sheet]')).toBeVisible()
+            // The card narrows to the left of the sheet.
+            await expect.poll(async () => (await parts()).width).toBeLessThan(240)
+            for (const locale of ['en', 'ja', 'fr', 'tr']) {
+                await page.evaluate(async (locale) => {
+                    const { settings } =
+                        (await import('/src/settings.ts')) as typeof import('../../src/settings')
+                    settings.locale = locale as never
+                }, locale)
+                await page.evaluate(() => new Promise(requestAnimationFrame))
+                const narrow = await parts()
+                test.info().annotations.push({ type: locale, description: JSON.stringify(narrow) })
+                expect(narrow.width, locale).toBeLessThan(240)
+                expect(narrow.versionWhole, locale).toBe(true)
+                expect(narrow.separatorShown, locale).toBe(narrow.oneLine)
+            }
+            // A little wider, the name gives way first and the version stays on its line.
+            await page.setViewportSize({ width: 680, height: 390 })
+            await expect.poll(async () => (await parts()).oneLine).toBe(true)
+            const wider = await parts()
+            test.info().annotations.push({ type: 'wider', description: JSON.stringify(wider) })
+            expect(wider).toMatchObject({
+                oneLine: true,
+                nameWhole: false,
+                versionWhole: true,
+                separatorShown: true,
+            })
+        })
+    })
+
     test('every line is read by the one live region', async ({ page }) => {
         await visit(page)
         await addEvent(page, { kind: 'storageCleared' })
@@ -420,6 +563,56 @@ test.describe('the status bar label', () => {
         await expect(pill(duplicate)).toContainText(
             '"coconut.nxsp" is open in another tab or window, so this is a separate copy.',
         )
+    })
+
+    // X-13: an untitled chart has no name of its own, so its copy names it by its date, as the
+    // "open in another tab" notice does, and the label and title never carry an empty name.
+    test('a Duplicate Tab of an untitled chart names its date and leaves no empty name', async ({
+        page,
+        context,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        const record = await page.evaluate((key) => sessionStorage.getItem(key), `${prefix}tab`)
+        const duplicate = await context.newPage()
+        await duplicate.addInitScript(
+            ({ key, record }) => {
+                if (!sessionStorage.getItem('copied')) {
+                    sessionStorage.setItem(key, record)
+                    sessionStorage.setItem('copied', 'true')
+                }
+            },
+            { key: `${prefix}tab`, record: record! },
+        )
+        await visit(duplicate)
+        await expect(pill(duplicate)).toContainText(
+            /"Untitled · [^"]+" is open in another tab or window, so this is a separate copy./,
+        )
+        await expect(pill(duplicate)).not.toContainText('"" is open')
+        await expect(label(duplicate)).toHaveText(/^Untitled · .+ · separate copy$/)
+        await expect(duplicate).toHaveTitle(/^Untitled · .+ · separate copy – Next SEKAI Editor$/)
+        const copyOf = await duplicate.evaluate(async () => {
+            const { session } =
+                (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
+            return session.value.copyOf
+        })
+        expect(copyOf).toMatchObject({ name: '', bound: false, at: expect.any(Number) })
+    })
+
+    test('Restore as a Copy of an untitled chart leaves no empty name', async ({
+        page,
+        context,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        const next = await context.newPage()
+        await visit(next)
+        await pill(next).getByRole('button', { name: 'Restore as a Copy' }).click()
+        await expect.poll(() => lifeOf(next)).toBe(990)
+        await expect(label(next)).toHaveText(/^Untitled · .+ · separate copy$/)
+        await expect(next).toHaveTitle(/^Untitled · .+ · separate copy – Next SEKAI Editor$/)
     })
 
     test('pressing it opens the level’s dialog, and it describes itself', async ({ page }) => {

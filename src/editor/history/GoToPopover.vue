@@ -47,8 +47,9 @@ const filterTitle = (filter: Filter) =>
         : filter === 'saves'
           ? i18n.value.history.filterSaves
           : i18n.value.history.filterHere
-// The beats Edits Here would take, as the popover opens.
-const hereText = hereRangeText(takeHereRange())
+// The beats Edits Here would take now, as choosing it takes them: it follows the view and the
+// selection while the popover is open, so a pick names the range the banner then shows (X-7).
+const hereText = computed(() => hereRangeText(takeHereRange()))
 const hereId = useId()
 
 const margin = 8
