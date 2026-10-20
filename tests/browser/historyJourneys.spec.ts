@@ -372,9 +372,10 @@ test('J1: edit, group, peek, Details, Restore, Undo, Redo and reload, all by rea
     const details = page.getByRole('dialog').filter({ hasText: english.history.details.title })
     await expect(details).toBeVisible()
     await expect(details.locator('[data-operation-description]')).toHaveText(setLane(0))
-    await expect(
-        details.locator('[data-operation-section="properties"] [data-operation-field="left"]'),
-    ).toHaveText(new RegExp(`^${lane}[\\s]*0$`))
+    // The record is a row per field now: the label, then the before value and the new one.
+    await expect(details.locator('[data-operation-field="left"]')).toHaveText(
+        new RegExp(`^${lane}[\\s\\S]*0$`),
+    )
     await page.keyboard.press('Escape')
     await expect(details).toHaveCount(0)
     await expect(page.locator('[data-peek-details]')).toBeFocused()

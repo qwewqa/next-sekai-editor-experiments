@@ -769,7 +769,7 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
         )
     })
     const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
-    await expect(details.locator('[data-operation-field="after"] dd')).toHaveText(
+    await expect(details.locator('[data-operation-field="offset"]')).toContainText(
         '1,234.5678901234567',
     )
     await page.keyboard.press('Escape')
@@ -805,7 +805,7 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
         'This editor cannot read the details of this step.',
     )
     await expect(details.locator('[data-operation-description] b')).toHaveCount(0)
-    await expect(details.locator('[data-operation-section]')).toHaveCount(0)
+    await expect(details.locator('[data-operation-field]')).toHaveCount(0)
     await page.keyboard.press('Escape')
     await expect(details).toHaveCount(0)
     await page.evaluate(async () => {
@@ -977,8 +977,9 @@ test('selected Details keeps exact members and request identity while text reloc
     await expect(
         childBody.locator('[data-operation-description], [data-operation-time]'),
     ).toHaveCount(0)
-    await expect(childBody.locator('[data-operation-field="before"]')).toContainText('1,030')
-    await expect(childBody.locator('[data-operation-field="after"]')).toContainText('1,031')
+    // The steps run newest first, so the first one is the second change: the before value, then the new one.
+    await expect(childBody.locator('[data-operation-field="life"]')).toContainText('1,031')
+    await expect(childBody.locator('[data-operation-field="life"]')).toContainText('1,032')
     await capture(page, 'desktop-operation-details')
     const before = await details.locator('[data-operation-description]').first().textContent()
     await page.evaluate(() => {
