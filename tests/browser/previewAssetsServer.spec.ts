@@ -156,6 +156,21 @@ const setChoice = (page: Page, type: string, choice: unknown) =>
     )
 
 test.describe('From a Server', () => {
+    test('the address field, off while connecting, takes focus back after a failed connection', async ({
+        page,
+    }) => {
+        await start(page)
+        await serve(page, { delay: () => 400, status: () => 503 })
+        await open(page, 'skin')
+        await chooseServer(page)
+        await field(page).fill(BASE)
+        await field(page).press('Enter')
+        await expect(chooser(page).locator('[data-chooser-progress]')).toHaveText(/Connecting…/)
+        await expect(errorOf(page)).toBeVisible()
+        await expect(field(page)).toBeEnabled()
+        await expect(field(page)).toBeFocused()
+    })
+
     test('a skin is connected, listed, used, stored and shown, and loads again after a reload', async ({
         page,
     }) => {

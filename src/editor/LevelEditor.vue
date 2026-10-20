@@ -8,6 +8,7 @@ import { stageFolders, stages } from '../history/stages'
 import { i18n } from '../i18n'
 import { settings } from '../settings'
 import { interpolateRaw } from '../utils/interpolate'
+import { vFocusRescue } from '../directives/focusRescue'
 import LevelEditorCanvas from './canvas/LevelEditorCanvas.vue'
 import ManageGroupsIcon from './commands/manageGroups/ManageGroupsIcon.vue'
 import ManageStagesIcon from './commands/manageStages/ManageStagesIcon.vue'
@@ -256,6 +257,7 @@ const stageCount = computed(() =>
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"
                 ref="container"
+                v-focus-rescue
                 class="chart-pane relative min-w-0 flex-1 overflow-hidden [outline:none]"
                 tabindex="-1"
                 @pointerenter="activateEditorNavigation()"

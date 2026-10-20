@@ -10,8 +10,22 @@ import { validName } from './fileName'
 import { copyName, exportMemory, loadExportTarget } from './memory'
 import { exportDialogClosed, exportDialogOpened } from './pick'
 
+// One Export dialog at a time, from the key press to its close: a second press while the target
+// is being read would open a second dialog over the first, with its own read flags.
+let opening = false
+
 /** Opens the Export dialog; the remembered target's handle is read here, never at startup (D24). */
 const openExport = async () => {
+    if (opening) return
+    opening = true
+    try {
+        await openExportDialog()
+    } finally {
+        opening = false
+    }
+}
+
+const openExportDialog = async () => {
     const target = platform.capabilities.writeBack ? await loadExportTarget() : undefined
     const { exportName, sourceName } = exportMemory
     // The name used last; else the source file's own name; else the displayed name, made

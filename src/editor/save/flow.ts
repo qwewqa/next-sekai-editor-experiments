@@ -969,10 +969,16 @@ const pickAndWrite = async (env: Env, given: PickRequest): Promise<Outcome> => {
     // A large download on a touch device would outlast the tap: "Preparing…" opens at once, with
     // the estimated size (§1.4.7).
     if (largeDownload(request.estimated)) openPreparing(slot).built(request.estimated)
-    await commitFirst(env)
-    if ((await waitForImport(env, slot)) === 'cancelled') {
+    // "Preparing…" may be open already: a throw here, a storage failure, closes it too.
+    try {
+        await commitFirst(env)
+        if ((await waitForImport(env, slot)) === 'cancelled') {
+            closePreparing(slot)
+            return { kind: 'cancelled' }
+        }
+    } catch (error) {
         closePreparing(slot)
-        return { kind: 'cancelled' }
+        throw error
     }
     const binding = quickBinding(env)
     const reservation = env.flusher.reserveSave()
@@ -2716,13 +2722,14 @@ const refreshOwn = (env: Env) => refreshBinding(env.worker, env.flusher)
  * dialog is open or its flow runs (its follow-ups run after the dialog closed); then it goes.
  */
 let exportRead: Promise<PreRead | undefined> | undefined
-let exportOpen = false
-let exportRunning = false
+// Counts, not flags: Export's follow-ups of one flow can run while the next Export's dialog is open.
+let exportOpen = 0
+let exportRunning = 0
 
 /** Export's dialog opened: this chain's own file is read first when it may hold more (R2). */
 export const startExportRead = () => {
     const env = environment()
-    exportOpen = true
+    exportOpen++
     exportRead = env && preRead(env, quickBinding(env))
 }
 
@@ -2762,14 +2769,14 @@ export const exportImportWait = async (name: string, size: number) => {
 
 /** Export's dialog closed: the bytes read go, unless its flow runs on in a follow-up. */
 export const endExportRead = () => {
-    exportOpen = false
-    if (!exportRunning) exportRead = undefined
+    exportOpen = Math.max(0, exportOpen - 1)
+    if (!exportRunning && !exportOpen) exportRead = undefined
 }
 
 /** Export's flow started or ended: the bytes read go once it ended and its dialog closed. */
 export const exportFlowRunning = (running: boolean) => {
-    exportRunning = running
-    if (!running && !exportOpen) exportRead = undefined
+    exportRunning = Math.max(0, exportRunning + (running ? 1 : -1))
+    if (!exportRunning && !exportOpen) exportRead = undefined
 }
 
 /** A destination never registered here still cannot write over another known owner. */

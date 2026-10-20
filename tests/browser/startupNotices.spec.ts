@@ -1067,6 +1067,10 @@ test.describe('Settings › Local Data', () => {
                 dialog,
             )
             await expect(later.locator('[data-recovery-row="autoSave"]')).toHaveCount(0)
+            // The row's own button went with it: focus stays in Settings, on the first row left.
+            await expect(
+                later.locator('#settings-localData [data-recovery-row] button').first(),
+            ).toBeFocused()
             expect(
                 await later.evaluate(() =>
                     localStorage.getItem('sonolus-next-sekai-editor.autoSave.unreadable'),

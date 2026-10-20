@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { vFocusRescue } from '../../directives/focusRescue'
 import { chipSeverity } from './chip'
 import { chipSentence, chipText, openChipDialog } from './chipDialogs'
 import { chip } from './state'
@@ -15,6 +16,7 @@ const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : un
 <template>
     <button
         v-if="chip"
+        v-focus-rescue
         type="button"
         class="file-chip ghost focus-out ghost-chrome relative flex shrink-0 items-center gap-1"
         :class="compact ? 'w-6 justify-center' : 'px-1'"

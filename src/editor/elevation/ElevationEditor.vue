@@ -175,6 +175,7 @@ import SelectValue from '../../modals/form/SelectValue.vue'
 import SquareGridIcon from './SquareGridIcon.vue'
 import { elevationMoveDelta, inverseAttachedElevation, type AttachedElevationDrag } from './drag'
 import { runCommand } from '../commands/runCommand'
+import { vFocusRescue } from '../../directives/focusRescue'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const container = useTemplateRef<HTMLElement>('container')
@@ -2037,6 +2038,7 @@ onUnmounted(() => {
 <template>
     <section
         ref="container"
+        v-focus-rescue
         class="elevation-editor chart-pane absolute size-full [outline:none]"
         tabindex="-1"
         @pointerenter="activate"
@@ -2105,6 +2107,7 @@ onUnmounted(() => {
                 <div class="elevation-controls">
                     <div class="elevation-beat">
                         <button
+                            v-focus-rescue="() => beatInput"
                             type="button"
                             :class="headerIconButton"
                             :aria-label="i18n.elevation.previousBeat"
@@ -2132,6 +2135,7 @@ onUnmounted(() => {
                                 @wheel="wheelBeatField"
                         /></label>
                         <button
+                            v-focus-rescue="() => beatInput"
                             type="button"
                             :class="headerIconButton"
                             :aria-label="i18n.elevation.nextBeat"

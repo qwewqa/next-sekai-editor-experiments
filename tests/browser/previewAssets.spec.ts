@@ -292,6 +292,20 @@ test.describe('Default and Built-in', () => {
         await expect.poll(() => skinTitle(page)).toBe('Fixture')
     })
 
+    test('a helper that turns itself off hands focus to the other helper', async ({ page }) => {
+        await start(page)
+        await open(page)
+        const useAll = dialog(page).getByRole('button', { name: 'Use Built-in for All' })
+        const reset = dialog(page).getByRole('button', { name: 'Reset to Default' })
+        await useAll.focus()
+        await page.keyboard.press('Enter')
+        await expect(useAll).toBeDisabled()
+        await expect(reset).toBeFocused()
+        await page.keyboard.press('Enter')
+        await expect(reset).toBeDisabled()
+        await expect(useAll).toBeFocused()
+    })
+
     test('a saved Built-in choice loads Built-in at start and never asks for Default', async ({
         page,
     }) => {
@@ -372,7 +386,9 @@ test.describe('fallbacks', () => {
         await open(page)
         await page.evaluate(() => (window.editorTest.settings.locale = 'ja'))
         // Japanese joins with "。", not ". ".
-        await expect(selectedTab(page)).toHaveAccessibleName('スキン。デフォルトを読み込めませんでした。')
+        await expect(selectedTab(page)).toHaveAccessibleName(
+            'スキン。デフォルトを読み込めませんでした。',
+        )
     })
 
     test('the panel’s line and the dialog’s row give one reason for each case', async ({

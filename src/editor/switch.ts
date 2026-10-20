@@ -122,11 +122,14 @@ export const notifyLeft = (message: () => string, offer = true) => {
         return
     }
     const shown = notify(message, { action: reopenAction(left) })
+    // Stops once the card is gone however it went (dismissed, replaced, used), so a switch leaves
+    // no watcher behind.
     const stop = watch(
-        () => previousSession.value === left,
-        (still) => {
-            if (still) return
+        [() => previousSession.value === left, () => noticeCard.value?.id === shown],
+        ([still, showing]) => {
+            if (showing && still) return
             stop()
+            if (!showing) return
             // Nothing to reopen after all (Leave Anyway): a card still showing turns plain.
             if (reopening || noticeCard.value?.id !== shown) return
             dismissNoticeCard()
