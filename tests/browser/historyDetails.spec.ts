@@ -459,7 +459,9 @@ test('Show More reveals twenty more steps and moves focus to the first new one',
     await expect(steps.getByRole('button', { name: 'Show More' })).toHaveCount(0)
 })
 
-test('Tab visits each opened step, then Show More, then the close button', async ({ page }) => {
+test('the close button comes first in the tab order, then each opened step, then Show More', async ({
+    page,
+}) => {
     const lane = (i: number) =>
         op('nse.property.set', {
             subject: 'note',
@@ -477,6 +479,8 @@ test('Tab visits each opened step, then Show More, then the close button', async
         Array.from({ length: 22 }, (_, i) => lane(i)),
     )
     await expect(root(page)).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(details(page).getByRole('button', { name: 'Close' })).toBeFocused()
     const summaries = details(page).locator('summary')
     for (let i = 0; i < 20; i++) {
         await page.keyboard.press('Tab')
@@ -486,8 +490,6 @@ test('Tab visits each opened step, then Show More, then the close button', async
     await expect(
         details(page).getByRole('button', { name: 'Show More', exact: true }),
     ).toBeFocused()
-    await page.keyboard.press('Tab')
-    await expect(details(page).getByRole('button', { name: 'Close' })).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(details(page)).toHaveCount(0)
 })
