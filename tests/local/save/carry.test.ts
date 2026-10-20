@@ -1,10 +1,23 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { hashKey } from '../../../src/local/db'
+import { entryOperation } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
+import { BIND_STORES, finishOwnSave } from '../../../src/local/save/bind'
 import type { SaveStore } from '../../../src/local/save/bodies'
 import { buildSave } from '../../../src/local/save/execute'
-import { checkFiles, commit, Fixture, hasUv, heldRows, save, saveOptions, stateAt } from './fixture'
+import {
+    asFile,
+    checkFiles,
+    commit,
+    DEVICE,
+    Fixture,
+    hasUv,
+    heldRows,
+    save,
+    saveOptions,
+    stateAt,
+} from './fixture'
 
 // The carry test (§1.6.11.6 as D25 settles it): flagged rows count only when no kept row up to
 // the cut has their state; a binding is stored with its write's marks; and flagged rows' states
@@ -228,4 +241,78 @@ test('a Save without History reads only the head: a bad state elsewhere on the s
     // With History the state is written, so its damage is found and marked.
     const full = ok((await save(fixture, { kind: 'copy' }, { binds: false })).built)
     assert.ok(full.damaged.length > 0)
+})
+
+// ADV3-1: our own completed Save recognised later, its `save` row not written (a kept gap below
+// it), keeps its cut as the file holds it. The next write that isn't an append then doesn't carry
+// the file's `completeFrom`, which would claim the `save` row the chain lacks: it shows the line.
+test('a recognised Save whose row the chain lacks is never carried by the next copy (ADV3-1)', async () => {
+    const fixture = await Fixture.create(71)
+    await fixture.storeMedia()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.flush()
+    // A Save A whose seq 3 is a kept gap (its file may hold it), then Save B at 4.
+    fixture.reserveSave()
+    const { options, reserved } = saveOptions(fixture)
+    assert.equal(reserved.seq, 4)
+    const built = ok(await buildSave(fixture.store, fixture.chainId, { kind: 'copy' }, options, []))
+    const b = await heldRows(asFile(built.blob))
+    assert.ok(b.history.entries.some((entry) => entry.kind === 'save'))
+    assert.equal(built.identity.entry!.count, b.history.entries.length)
+
+    // A later visit recognises B: not this tab's session and `lastSeq` 2 < 3, so no row.
+    const entry = {
+        sessionId: reserved.sessionId,
+        seq: reserved.seq,
+        time: reserved.time,
+        operation: entryOperation(built.saveEntry),
+        snapshot: built.saveEntry.snapshot,
+        noteCount: built.saveEntry.noteCount ?? 0,
+        revisionId: built.revisionId,
+        device: DEVICE,
+    }
+    const unit = {
+        docId: built.identity.docId,
+        revision: built.identity.revision,
+        file: {
+            name: 'coconut.nxsp',
+            event: 'saved',
+            at: reserved.time,
+            hash: fromHex16(built.saveEntry.snapshot),
+            entry: {
+                sessionId: reserved.sessionId,
+                seq: reserved.seq,
+                startedAt: reserved.startedAt,
+                ...built.identity.entry!,
+            },
+            ...(built.identity.completeFrom === undefined
+                ? {}
+                : { completeFrom: built.identity.completeFrom }),
+            options: { history: true, bgm: true },
+        },
+        marks: built.identity.marks,
+    }
+    assert.equal(
+        await fixture.store.write(BIND_STORES, (tx) =>
+            finishOwnSave(tx, fixture.chainId, entry, unit, Date.now()),
+        ),
+        true,
+    )
+    assert.ok((await fixture.entries()).every((row) => row.kind !== 'save'))
+    const cut = ((await fixture.chain()).file as { entry: { count: number } }).entry
+    assert.equal(cut.count, b.history.entries.length)
+
+    const next = saveOptions(fixture)
+    const builtN = ok(await buildSave(fixture.store, fixture.chainId, { kind: 'copy' }, next.options))
+    const n = await heldRows(asFile(builtN.blob))
+    const nRevision = n.read.project!.revision!
+    const bRevision = b.read.project!.revision!
+    const missing = [...b.rows].filter(([row, c]) => (n.rows.get(row) ?? 0) < c)
+    assert.ok(missing.length > 0)
+    const claimsB =
+        nRevision.completeFrom === bRevision.id ||
+        bRevision.ancestors.includes(nRevision.completeFrom!)
+    assert.equal(claimsB, false)
+    assert.equal(builtN.someStepsNotKept, true)
 })

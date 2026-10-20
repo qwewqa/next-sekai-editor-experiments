@@ -753,14 +753,14 @@ test('our own completed Save is stored only where replay lands it: never under a
         const entries = storedEntries(world, session.id)
         assert.doesNotThrow(() => replay(entries))
         assert.deepEqual(checkStored(world.memory), [])
-        // The binding is recorded all the same, its cut without the entry the chain lacks.
+        // The binding is recorded all the same, its cut as the file holds it (it only under-claims).
         const chain = rows(world, 'chains').get(session.chainId)!
         assert.equal((chain.revision as { id: string }).id, 'rev-1')
-        assert.equal((chain.file as { entry: { count: number } }).entry.count, 2)
+        assert.equal((chain.file as { entry: { count: number } }).entry.count, 3)
     }
 })
 
-test('our own completed Save over another kept gap records a cut the next Saveâ€™s carry test matches', async () => {
+test('our own completed Save over another kept gap keeps its cut as the file holds it, so the next write never over-claims', async () => {
     const world = createWorld({ seed: 19 })
     const page = await openPage(world, world.tab('a'))
     const first = stateOf(goldenChart())
@@ -785,16 +785,27 @@ test('our own completed Save over another kept gap records a cut the next Saveâ€
         return (chain.file as { entry: Parameters<typeof carries>[1] }).entry
     }
     // A later visit recognises B (the file's rows 1, 2 and B's `save`): the gap 3 below it may be
-    // entries a tab still holds, so no row, and its cut counts only what the chain holds.
+    // entries a tab still holds, so no row. The cut still counts B's row, which the chain lacks, so
+    // the next write that isn't an append doesn't carry B (ADV3-1): it says "Some earlier steps
+    // were not kept." once.
     assert.equal(await ownSave(page, session.id, session.chainId, 4, second, 3).record(), true)
     assert.deepEqual(kinds(world), [
         [1, 'init'],
         [2, 'edit'],
     ])
-    assert.equal(cut().count, 2)
+    assert.equal(cut().count, 3)
     assert.equal(
         carries(chainRows(), cut(), () => false),
-        true,
+        false,
+    )
+    // Nor when a row the file never held is stored below the cut later and the counts agree again:
+    // the chain still lacks the cut's own row.
+    const late = chainRows()[1]!
+    const grown = [...chainRows(), { ...late, entry: { ...late.entry, seq: 3 } }]
+    assert.equal(grown.filter((row) => row.entry.seq <= 4).length, cut().count)
+    assert.equal(
+        carries(grown, cut(), () => false),
+        false,
     )
     // Recognising A, right after the stored entries, writes its row and keeps its cut whole.
     assert.equal(await ownSave(page, session.id, session.chainId, 3, second, 3).record(), true)
