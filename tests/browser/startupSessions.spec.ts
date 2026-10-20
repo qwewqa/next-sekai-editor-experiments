@@ -609,7 +609,7 @@ test.describe('storage unavailable', () => {
         const items = await later.evaluate(async () => {
             const { recoveryItems } =
                 (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
-            return (await recoveryItems()).map((item) => item.kind)
+            return (await recoveryItems()).items.map((item) => item.kind)
         })
         // The legacy slot, written from the journal, is offered for Download too.
         expect(items).toEqual(['journal', 'legacy'])

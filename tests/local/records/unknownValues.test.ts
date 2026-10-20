@@ -18,7 +18,7 @@ import {
 import { RECORDS_V, SESSION_V } from '../../../src/local/records/version'
 
 test('only the current session generation is readable, including in its chain', () => {
-    for (const v of [undefined, 1, SESSION_V + 1, String(SESSION_V)])
+    for (const v of [undefined, 0, SESSION_V + 1, String(SESSION_V)])
         assert.equal(isReadableSession({ row: { v } }), false, String(v))
     assert.equal(isReadableSession({ row: {} }), false)
     assert.equal(isReadableSession({ row: { v: SESSION_V } }), true)
@@ -26,7 +26,7 @@ test('only the current session generation is readable, including in its chain', 
     assert.equal(isReadableChain([readable, readable]), true)
     assert.equal(isReadableChain([readable, { row: { v: SESSION_V + 1 } }]), false)
     assert.equal(isReadableChain([readable, { row: {} }]), false)
-    assert.equal(isReadableChain([readable, { row: { v: 1 } }]), false)
+    assert.equal(isReadableChain([readable, { row: { v: 0 } }]), false)
 })
 
 test('an unknown entry kind or a newer root makes a session, and its chain, unreadable', () => {
@@ -65,17 +65,17 @@ test('readability splits what a newer build wrote from what is merely not suppor
     assert.equal(sessionReadability({ row, entryKinds: ['init', 'merge'] }), 'newer')
     assert.equal(sessionReadability({ row, rootVersions: [1, 2] }), 'newer')
     assert.equal(sessionReadability({ row, rootVersions: [RECORDS_V + 5] }), 'newer')
-    // Not newer, and not read either: an older or malformed generation.
-    for (const v of [1, 0, -1, 1.5, '2', undefined])
+    // Not newer, and not read either: a malformed `v`.
+    for (const v of [0, -1, 1.5, '1', undefined])
         assert.equal(sessionReadability({ row: { v } }), 'unsupported', String(v))
     for (const v of [0, -1, 1.5, '1', undefined])
         assert.equal(sessionReadability({ row, rootVersions: [v] }), 'unsupported', String(v))
     // Newer wins when both are found: the chain "Needs a newer version".
-    assert.equal(sessionReadability({ row: { v: 1 }, entryKinds: ['merge'] }), 'newer')
+    assert.equal(sessionReadability({ row: { v: 0 }, entryKinds: ['merge'] }), 'newer')
     assert.equal(sessionReadability({ row, rootVersions: [0, 2] }), 'newer')
     assert.equal(isNewerSessionVersion(SESSION_V + 1), true)
     assert.equal(isNewerSessionVersion(SESSION_V), false)
-    assert.equal(isNewerSessionVersion(1), false)
+    assert.equal(isNewerSessionVersion(0), false)
     assert.equal(isNewerSessionVersion('3'), false)
     assert.equal(isNewerRootVersion(2), true)
     assert.equal(isNewerRootVersion(1), false)

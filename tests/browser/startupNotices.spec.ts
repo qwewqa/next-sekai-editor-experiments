@@ -173,6 +173,23 @@ test.describe('load notices in the start-up pill', () => {
         await expect(pill(next)).not.toContainText('Continued "')
     })
 
+    test('a continued session whose time is unknown names no time, never 1970', async ({
+        page,
+    }) => {
+        await visit(page)
+        const lines = pill(page).locator(':scope > div')
+        await addEvent(page, {
+            kind: 'continued',
+            name: { name: { kind: 'name', text: 'coconut' } },
+        })
+        await expect(lines.nth(1)).toContainText('Continued "coconut".')
+        await expect(pill(page)).not.toContainText('1970')
+        // An untitled one has no date to show in its name either.
+        await addEvent(page, { kind: 'continued', name: { name: { kind: 'date' } } })
+        await expect(pill(page)).toContainText('Continued "Untitled".')
+        await expect(pill(page)).not.toContainText(/1970|Untitled · /)
+    })
+
     test('a session open elsewhere puts Restore as a Copy on the pill, at the bottom', async ({
         page,
         context,
@@ -1050,6 +1067,10 @@ test.describe('Settings › Local Data', () => {
                 dialog,
             )
             await expect(later.locator('[data-recovery-row="autoSave"]')).toHaveCount(0)
+            // The row's own button went with it: focus stays in Settings, on the first row left.
+            await expect(
+                later.locator('#settings-localData [data-recovery-row] button').first(),
+            ).toBeFocused()
             expect(
                 await later.evaluate(() =>
                     localStorage.getItem('sonolus-next-sekai-editor.autoSave.unreadable'),

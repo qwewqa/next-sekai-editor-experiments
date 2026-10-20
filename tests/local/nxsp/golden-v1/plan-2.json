@@ -7,7 +7,7 @@
     {
       "name": "project.json",
       "method": 8,
-      "crc32": 3783092425,
+      "crc32": 3897401244,
       "uncompressedSize": 1562,
       "parts": [
         {
@@ -15,7 +15,7 @@
           "json": {
             "format": "nxsp",
             "version": 1,
-            "minor": 1,
+            "minor": 0,
             "patch": 0,
             "levelVersion": 1,
             "appVersion": "0.6.0",
@@ -1591,13 +1591,13 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 666711990,
+      "crc32": 3707244075,
       "uncompressedSize": 7547,
       "parts": [
         {
           "kind": "bytes",
           "json": {
-            "version": 2,
+            "version": 1,
             "entries": [
               {
                 "kind": "init",
@@ -2213,7 +2213,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 3,
-          "dataOffset": 3467,
+          "dataOffset": 3465,
           "check": {
             "kind": "entryCrc"
           }
@@ -2246,7 +2246,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 5,
-          "dataOffset": 4773,
+          "dataOffset": 4771,
           "check": {
             "kind": "entryCrc"
           }
@@ -2263,7 +2263,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 6,
-          "dataOffset": 4842,
+          "dataOffset": 4840,
           "check": {
             "kind": "entryCrc"
           }

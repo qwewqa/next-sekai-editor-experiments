@@ -807,16 +807,15 @@ def check_file(path):
 
 
 # `MINOR_TABLE` and `PATCH_TABLE` of src/local/nxsp/version.ts for v1, which this checker pins itself: the
-# only thing that needs a minor above 0 is a manifest `version` 2, that is, a history; every other thing
-# (level version 1, root v 1, each entry kind, each ZIP entry kind) is 0. Every `x` carrier row is 0, since
-# no writer writes one.
-MINOR_BY_MANIFEST_VERSION = {2: 1}
+# only manifest `version` is 1, and every thing a file can use (level version 1, root v 1, each entry kind,
+# each ZIP entry kind) maps to minor 0. Every `x` carrier row is 0, since no writer writes one.
+MINOR_BY_MANIFEST_VERSION = {1: 0}
 CARRIER_PATCH = {"entry.x": 0, "step.x": 0, "context.x": 0, "item.x": 0, "slot.x": 0, "stack.x": 0,
                  "undoStack.x": 0, "part.x": 0}
 
 
 def expected_minor(has_history):
-    return MINOR_BY_MANIFEST_VERSION[2] if has_history else 0
+    return MINOR_BY_MANIFEST_VERSION[1] if has_history else 0
 
 
 def expected_patch(carriers):
@@ -892,7 +891,7 @@ def check_history(project, history, segments, by_name, summary, rev, carriers):
     manifest = parse_json(data, "manifest")
     keys_within(manifest, ["version", "entries", "roots", "nodes", "chunks", "undoStack", "x"], "manifest")
     need({"version", "entries", "roots", "nodes", "chunks", "undoStack"} <= set(manifest)
-         and num_is(manifest["version"], 2), "manifest: version or a key missing")
+         and num_is(manifest["version"], 1), "manifest: version or a key missing")
     extension_form(manifest, "manifest")
     parts.append(("manifest", manifest))
     for _, part in parts:
@@ -1684,10 +1683,9 @@ def check_part(value, path, manifest):
         return None, [("damaged", path)]
     if manifest:
         version = value.get("version")
-        # Below the current version is damaged (no older manifest generation is supported before the ship).
-        if not is_safe_int(version) or version < 2:
+        if not is_safe_int(version) or version < 1:
             return None, [("damaged", f"{path}.version")]
-        if version != 2:
+        if version > 1:
             return None, [("newer", f"{path}.version")]
     issues = Issues()
     allowed = ["entries", "roots", "nodes", "chunks", "x"] + (["version", "undoStack"] if manifest else [])
@@ -1987,7 +1985,7 @@ def read_nxsp(blob, info=None):
                 info["savedAt"] = project["saved_at"]
             for reason, path in issues:
                 report.append(({"unknown-key": "unknown-key", "schema": "invalid-key"}.get(reason, "damaged"), path))
-            if project["minor"] > 1:
+            if project["minor"] > 0:
                 report.append(("newer-minor", "minor"))
             if project["patch"] > 0:
                 report.append(("newer-patch", "patch"))

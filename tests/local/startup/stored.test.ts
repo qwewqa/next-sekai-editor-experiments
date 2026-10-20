@@ -220,8 +220,8 @@ test('a stack rebuilt over a stored parent that a later entry cuts below its win
     assert.deepEqual(rebuilt.stack.window, { base: 0, length: 1, index: 0 })
 })
 
-// Versions (§1.6.11.8): a newer build's data is "Needs a newer version", never damaged; an older or
-// malformed generation is not newer, and is not read either.
+// Versions (§1.6.11.8): a newer build's data is "Needs a newer version", never damaged; a
+// malformed version is not newer, and is not read either.
 
 const tamperNodes = async (
     world: World,
@@ -233,7 +233,7 @@ const tamperNodes = async (
     await tab.run(() => core.write(['sessions', 'nodes'], change))
 }
 
-test('a head root a newer build wrote reads as later, an older or malformed one as damaged', async () => {
+test('a head root a newer build wrote reads as later, a malformed one as damaged', async () => {
     const world = createWorld({ seed: 21 })
     const { page, newer } = await twoChains(world)
     const read = (id: string) => page.tab.run(() => handlersOf(page).readSession(id))
@@ -258,7 +258,7 @@ test('a head root a newer build wrote reads as later, an older or malformed one 
     assert.equal((await read(newer.id)).kind, 'open')
 })
 
-test('a session of an older or malformed generation is damaged, only a newer one later', async () => {
+test('a session of a malformed version is damaged, only a newer one later', async () => {
     const world = createWorld({ seed: 22 })
     const { page, newer } = await twoChains(world)
     const read = (id: string) => page.tab.run(() => handlersOf(page).readSession(id))
@@ -268,20 +268,20 @@ test('a session of an older or malformed generation is damaged, only a newer one
             await tx.put('sessions', { ...session, v })
         })
     for (const [v, kind] of [
-        [1, 'damaged'],
         [0, 'damaged'],
         [undefined, 'damaged'],
-        ['2', 'damaged'],
+        ['1', 'damaged'],
+        [2, 'later'],
         [3, 'later'],
         [100, 'later'],
-        [2, 'open'],
+        [1, 'open'],
     ] as const) {
         await setV(v)
         assert.equal((await read(newer.id)).kind, kind, String(v))
     }
 })
 
-test('a newer session anywhere in a chain makes the whole chain newer; an older one, damaged', async () => {
+test('a newer session anywhere in a chain makes the whole chain newer; a malformed one, damaged', async () => {
     const world = createWorld({ seed: 23 })
     const { page, newer } = await twoChains(world)
     const read = (id: string) => page.tab.run(() => handlersOf(page).readSession(id))
@@ -300,9 +300,9 @@ test('a newer session anywhere in a chain makes the whole chain newer; an older 
     await setV(3)
     assert.equal((await read(newer.id)).kind, 'later')
     assert.equal((await read(child.id)).kind, 'later')
-    await setV(1)
+    await setV(0)
     assert.equal((await read(newer.id)).kind, 'damaged')
-    await setV(2)
+    await setV(1)
     assert.equal((await read(newer.id)).kind, 'open')
 })
 

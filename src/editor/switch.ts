@@ -58,21 +58,25 @@ type Left = NonNullable<typeof previousSession.value>
 let reopening: SwitchRequest | undefined
 
 // A session without a name of its own is named by its date, which takes no quotes.
-const reopenAction = (left: Left): NoticeAction => ({
-    label:
-        left.name.name.kind === 'date'
-            ? interpolate(
-                  () => i18n.value.notice.reopenUntitled,
-                  () => formatDateTime(left.name.at),
-              )
-            : interpolate(
-                  () => i18n.value.notice.reopen,
-                  () => shownName(left.name),
-              ),
-    run: () => {
-        void reopenPrevious()
-    },
-})
+// Without its start, the date fallback is just "Untitled".
+const reopenAction = (left: Left): NoticeAction => {
+    const { at } = left.name
+    return {
+        label:
+            left.name.name.kind === 'date' && at !== undefined
+                ? interpolate(
+                      () => i18n.value.notice.reopenUntitled,
+                      () => formatDateTime(at),
+                  )
+                : interpolate(
+                      () => i18n.value.notice.reopen,
+                      () => shownName(left.name),
+                  ),
+        run: () => {
+            void reopenPrevious()
+        },
+    }
+}
 
 /**
  * Reopen: continues the session this tab left last, after the prompt when the open one would
@@ -118,11 +122,14 @@ export const notifyLeft = (message: () => string, offer = true) => {
         return
     }
     const shown = notify(message, { action: reopenAction(left) })
+    // Stops once the card is gone however it went (dismissed, replaced, used), so a switch leaves
+    // no watcher behind.
     const stop = watch(
-        () => previousSession.value === left,
-        (still) => {
-            if (still) return
+        [() => previousSession.value === left, () => noticeCard.value?.id === shown],
+        ([still, showing]) => {
+            if (showing && still) return
             stop()
+            if (!showing) return
             // Nothing to reopen after all (Leave Anyway): a card still showing turns plain.
             if (reopening || noticeCard.value?.id !== shown) return
             dismissNoticeCard()

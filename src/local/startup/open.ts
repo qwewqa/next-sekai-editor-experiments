@@ -146,7 +146,7 @@ const boundFileOf = (chain: Record<string, unknown>) => {
 
 const shownOf = (read: SessionRead & { kind: 'open' }, state: State): ShownName => ({
     name: displayName(namePartsOf(read.chain, state)),
-    at: typeof read.session.startedAt === 'number' ? read.session.startedAt : Date.now(),
+    ...(typeof read.session.startedAt === 'number' ? { at: read.session.startedAt } : {}),
 })
 
 const headState = async (worker: OpenDeps['worker'], head: Uint8Array) => {
@@ -548,7 +548,7 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
         deps.events({
             kind: 'continued',
             name: shownOf(read, state),
-            from: typeof read.session.updatedAt === 'number' ? read.session.updatedAt : 0,
+            ...(typeof read.session.updatedAt === 'number' ? { from: read.session.updatedAt } : {}),
         })
     return !!state
 }

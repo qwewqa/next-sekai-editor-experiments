@@ -33,7 +33,8 @@ export type ExportUi = {
     /** The conflict dialog's Export form; `opened` while the target is the opened file. */
     conflict: (
         name: string,
-        disk: DiskState,
+        /** The file as read; `lastModified` is undefined when the blob does not say. */
+        disk: Omit<DiskState, 'lastModified'> & { lastModified: number | undefined },
         opened: boolean,
     ) => Promise<'replace' | 'chooseAnother' | undefined>
     notLevelData: (name: string) => Promise<'chooseAnother' | undefined>
@@ -116,7 +117,8 @@ type Found =
     | { state: 'missing' }
     | { state: 'unreadable'; error: FileError }
     | { state: 'other' }
-    | { state: 'levelData'; disk: DiskState }
+    /** `modified` is absent when the read blob does not say when the file was changed. */
+    | { state: 'levelData'; disk: DiskState; modified?: number }
 
 /**
  * The target as one read finds it, so its disk state and its content check describe the same
@@ -129,8 +131,13 @@ const readTarget = async (target: FileTarget): Promise<Found> => {
         if (file.size > LEVEL_DATA_LIMIT || !mayBeLevelData(first)) return { state: 'other' }
         const bytes = await file.arrayBuffer()
         if (!isLevelDataContent(new Uint8Array(bytes))) return { state: 'other' }
-        const time = file instanceof File ? file.lastModified : 0
-        return { state: 'levelData', disk: await diskStateOfBytes(bytes, time) }
+        const modified = file instanceof File ? file.lastModified : undefined
+        return {
+            state: 'levelData',
+            // The state's own time only compares: the dialog shows `modified`, never this 0.
+            disk: await diskStateOfBytes(bytes, modified ?? 0),
+            ...(modified === undefined ? {} : { modified }),
+        }
     } catch (error) {
         const failure = fileError(error)
         if (failure.code === 'not-found') return { state: 'missing' }
@@ -172,7 +179,14 @@ const conflicted = async (ctx: ExportContext, target: ExportTarget): Promise<Exp
             return ended(await choose(ctx, () => ctx.ui.notLevelData(name)))
         case 'levelData': {
             const choice = await choose(ctx, () =>
-                ctx.ui.conflict(name, found.disk, !target.exported),
+                ctx.ui.conflict(
+                    name,
+                    {
+                        ...found.disk,
+                        lastModified: found.modified,
+                    },
+                    !target.exported,
+                ),
             )
             if (choice === 'replace') return exportToTarget(ctx, target, found.disk)
             return ended(choice)

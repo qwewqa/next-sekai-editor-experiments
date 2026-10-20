@@ -213,7 +213,7 @@ test('a root of a version this build doesn’t read refuses with "Needs a newer 
     assert.equal(built.refused, 'needsNewer')
 })
 
-test('a root of an older or malformed version is bad, not "Needs a newer version", as open and peek say', async () => {
+test('a root of a malformed version is bad, not "Needs a newer version", as open and peek say', async () => {
     for (const v of [0, -1, 1.5, '1', undefined]) {
         const fixture = await chain()
         const key = hashKey(fromHex16(stateAt(0).hex))
@@ -227,10 +227,10 @@ test('a root of an older or malformed version is bad, not "Needs a newer version
     }
 })
 
-test('a session of an older generation refuses as unreadable, one of a newer generation as "Needs a newer version"', async () => {
+test('a session of a malformed version refuses as unreadable, one of a newer version as "Needs a newer version"', async () => {
     for (const [v, refused] of [
-        [1, 'unreadableHead'],
-        [3, 'needsNewer'],
+        [0, 'unreadableHead'],
+        [2, 'needsNewer'],
     ] as const) {
         const fixture = await chain()
         const { session } = fixture

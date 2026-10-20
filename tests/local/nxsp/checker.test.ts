@@ -222,11 +222,11 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
             ],
             // `minor` and `patch` are the lowest the content needs (the writer's `minorOf` and `patchOf`).
             [
-                'minor-low',
+                'minor-one',
                 craft((items) => {
-                    setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), minor: 0 })
+                    setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), minor: 1 })
                 }),
-                'project.json: minor 0 is not the lowest',
+                'project.json: minor 1 is not the lowest',
             ],
             [
                 'minor-high',
@@ -247,10 +247,19 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
                 'x: description depth',
             ],
             [
-                'manifest-version-old',
+                'manifest-version-newer',
                 craft((items) => {
                     const m = jsonOf(items, 'history/manifest.json')
-                    m.version = 1
+                    m.version = 2
+                    setJson(items, 'history/manifest.json', m)
+                }),
+                'manifest: version',
+            ],
+            [
+                'manifest-version-zero',
+                craft((items) => {
+                    const m = jsonOf(items, 'history/manifest.json')
+                    m.version = 0
                     setJson(items, 'history/manifest.json', m)
                 }),
                 'manifest: version',
@@ -497,7 +506,7 @@ top = ["bpms", 1, [leaf_key] * repeat]
 top_key = key(top)
 root = [1, header, [["bpms", top_key]], 0]
 root_key = key(root)
-manifest = dict(version=2, entries=[], roots={root_key: root}, nodes={leaf_key: leaf, top_key: top},
+manifest = dict(version=1, entries=[], roots={root_key: root}, nodes={leaf_key: leaf, top_key: top},
                 chunks=[[header, 0, 1], [body, 1, 1]],
                 undoStack=dict(base=0, index=0, slots=[dict(snapshot=root_key, step=dict(kind="init", operation={"id":"future.fixture", "version":1, "data":{}, "fallback":{"locale":"en", "text":"Graph fixture"}}))]))
 Edges.visits = 0

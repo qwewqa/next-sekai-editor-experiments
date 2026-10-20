@@ -361,8 +361,9 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         'x-entry-too-deep': await probe(manifest((m) => (m.entries[0].x = nested(40)))),
         'x-manifest-too-deep': await probe(manifest((m) => (m.x = nested(40)))),
         'x-slot-too-deep': await probe(manifest((m) => (m.undoStack.slots[0].x = nested(40)))),
-        // A manifest `version` below the current one is damaged (nothing older is supported).
-        'manifest-version-old': await probe(manifest((m) => (m.version = 1))),
+        // A manifest `version` above the current one is newer; 0 or a non-integer is damage.
+        'manifest-version-newer': await probe(manifest((m) => (m.version = 2))),
+        'manifest-version-float': await probe(manifest((m) => (m.version = 1.5))),
         'manifest-version-zero': await probe(manifest((m) => (m.version = 0))),
         // Plan §1.6.11.8: a key no carrier knows, inside a slot or a step, is "unknown-key".
         'step-unknown-key': await probe(manifest((m) => (m.undoStack.slots[0].step.zz = 1))),
@@ -527,8 +528,9 @@ const expectedByPlan: Record<string, Opened> = {
     'x-entry-too-deep': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     'x-manifest-too-deep': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     'x-slot-too-deep': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
-    // A manifest below the current version is damaged, not "newer".
-    'manifest-version-old': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    // A manifest above the current version is newer; 0 or a non-integer is damaged, not "newer".
+    'manifest-version-newer': { kind: 'nxsp', open: 'partial', reasons: ['newer-history'] },
+    'manifest-version-float': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     'manifest-version-zero': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     // An unknown key in a slot or step is newer content: "Made by a newer version", not damage.
     'step-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },

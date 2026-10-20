@@ -7,6 +7,7 @@ import { interpolate } from '../../utils/interpolate'
 import { formatCount, formatSize } from '../../utils/size'
 import { nameProblem, showsAtOnce } from '../commands/exportLevel/fileName'
 import type { SaveDialogInput, SaveDialogResult } from './dialogs'
+import { totalOf } from './total'
 
 // The Save dialog (Part 1 §1.4.7): the first Save, Save As… and Save to File…. File Name with
 // its round 8 and 9 rules, History and BGM with their sizes and disabled states, the total, and
@@ -94,7 +95,7 @@ const bgmDetail = computed(() => {
 const total = computed(() => {
     const sizes = estimate.value
     if (!sizes) return
-    return sizes.base + (history.value ? sizes.history : 0) + (bgm.value ? (sizes.bgm ?? 0) : 0)
+    return totalOf(sizes, { history: history.value, bgm: bgm.value })
 })
 const totalText = computed(() =>
     total.value === undefined

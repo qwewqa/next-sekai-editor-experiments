@@ -78,7 +78,7 @@ test('a newer patch alone opens bound with its history, says so once, and saving
     await edit(page, 3)
     await pressSave(page)
     await expect.poll(async () => (await projectOf(page, 'coconut.nxsp')).patch).toBe(0)
-    expect((await projectOf(page, 'coconut.nxsp')).minor).toBe(1)
+    expect((await projectOf(page, 'coconut.nxsp')).minor).toBe(0)
 })
 
 test('a newer patch beside another unknown thing is one line, the partial open’s', async ({

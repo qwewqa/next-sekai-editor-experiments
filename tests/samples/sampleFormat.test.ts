@@ -6,6 +6,7 @@ import { samplesDir } from '../../scripts/samples.mjs'
 import { decodeOperation } from '../../src/history/operations/registry'
 import { DB_VERSION } from '../../src/local/db'
 import { decodeValue, readDump } from '../../src/local/dump'
+import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 import { seedDump } from '../../src/local/seed'
 import { createWorld } from '../../src/local/testing/world'
 
@@ -64,6 +65,32 @@ test('the long-history sample is at the current database version', { skip: !pres
         `The sample is not at database version ${DB_VERSION}. ${REGENERATE}`,
     )
 })
+
+test(
+    'every session and root in the long-history sample has the current version',
+    { skip: !present },
+    () => {
+        const stores = readDump(load()).stores
+        const rows = (name: string) =>
+            stores
+                .filter((store) => store.name === name)
+                .flatMap((store) =>
+                    store.records.map((record) => decodeValue(record.value) as { v?: unknown }),
+                )
+        const sessions = rows('sessions')
+        assert.ok(sessions.length > 0, 'The sample has no sessions')
+        assert.ok(
+            sessions.every((row) => row.v === SESSION_V),
+            `A session is not at version ${SESSION_V}. ${REGENERATE}`,
+        )
+        const roots = rows('nodes').filter((row) => (row as { t?: unknown }).t === 'root')
+        assert.ok(roots.length > 0, 'The sample has no roots')
+        assert.ok(
+            roots.every((row) => row.v === RECORDS_V),
+            `A root is not at version ${RECORDS_V}. ${REGENERATE}`,
+        )
+    },
+)
 
 test('the seeder accepts the long-history sample', { skip: !present }, async () => {
     const world = createWorld()

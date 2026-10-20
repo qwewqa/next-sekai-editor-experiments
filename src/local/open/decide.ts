@@ -133,17 +133,27 @@ export type EarlierChain = {
     revision?: { id: string; ancestors: readonly string[] }
     /** Bound, with or without a handle. */
     bound?: { handle: boolean }
-    /** Its head differs from its file event's state. */
-    changed: boolean
+    /** Its head differs from its file event's state; undefined when that could not be read. */
+    changed: boolean | undefined
     /** Its latest session is open in another tab. */
     openElsewhere: boolean
     updatedAt: number
 }
 
+/** Whether a chain has changes: unknown when its journal could not be checked. */
+export const changedOf = (
+    chain: { changed: boolean; bound?: unknown; sessionId: string },
+    journals: ReadonlySet<string> | undefined,
+): boolean | undefined => {
+    if (chain.changed) return true
+    if (!chain.bound) return false
+    return journals ? journals.has(chain.sessionId) : undefined
+}
+
 /** What the open says about earlier sessions on its file (§1.5.4 step 4). */
 export type EarlierNotice =
-    | { kind: 'unsavedChanges'; chain: EarlierChain; restore: boolean }
-    | { kind: 'unsavedEarlier'; chain: EarlierChain }
+    | { kind: 'unsavedChanges'; chain: EarlierChain; restore: boolean; maybe?: true }
+    | { kind: 'unsavedEarlier'; chain: EarlierChain; maybe?: true }
     | { kind: 'olderVersion'; chain: EarlierChain }
 
 /**
@@ -159,19 +169,28 @@ export const earlierNotice = (
     const newest = [...chains]
         .filter((chain) => !chain.openElsewhere)
         .sort((a, b) => b.updatedAt - a.updatedAt)
+    // Unknown changes count as possible: the notice says "may", never "no changes".
     const unsaved = newest.find(
-        (chain) => chain.bound && chain.changed && chain.revision?.id === file.id,
+        (chain) => chain.bound && chain.changed !== false && chain.revision?.id === file.id,
     )
-    if (unsaved) return { kind: 'unsavedChanges', chain: unsaved, restore: true }
+    if (unsaved)
+        return {
+            kind: 'unsavedChanges',
+            chain: unsaved,
+            restore: true,
+            ...(unsaved.changed === undefined ? { maybe: true as const } : {}),
+        }
     const earlier = newest.find(
         (chain) =>
             chain.bound &&
-            chain.changed &&
+            chain.changed !== false &&
             chain.revision !== undefined &&
             file.ancestors.includes(chain.revision.id),
     )
-    if (earlier?.bound?.handle) return { kind: 'unsavedChanges', chain: earlier, restore: true }
-    if (earlier) return { kind: 'unsavedEarlier', chain: earlier }
+    const maybe = earlier?.changed === undefined ? { maybe: true as const } : {}
+    if (earlier?.bound?.handle)
+        return { kind: 'unsavedChanges', chain: earlier, restore: true, ...maybe }
+    if (earlier) return { kind: 'unsavedEarlier', chain: earlier, ...maybe }
     const newer = newest.find((chain) => chain.revision?.ancestors.includes(file.id))
     if (newer) return { kind: 'olderVersion', chain: newer }
 }
