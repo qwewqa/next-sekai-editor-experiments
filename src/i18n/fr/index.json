@@ -955,6 +955,7 @@
         "legacy": "Copie de récupération d’une ancienne version · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
+        "listFailed": "Les données de récupération stockées n’ont pas pu être lues",
         "atLoad": "Notifications au démarrage"
       },
       "openHistory": "Ouvrir l’historique",
@@ -1171,6 +1172,7 @@
     "tryAgain": "Réessayer",
     "continued": "Session du {1} reprise : \"{0}\".",
     "continuedUntitled": "Votre session du {0} a été reprise.",
+    "continuedUndated": "Session reprise : \"{0}\".",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application, où certaines fonctionnalités peuvent ne pas fonctionner et où le travail stocké risque davantage d’être perdu. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "journalKept": "Une modification de \"{0}\" n’a pas pu être appliquée, elle a donc été conservée dans une session séparée.",
@@ -2119,6 +2121,7 @@
     "title": "\"{0}\" a changé",
     "body": "\"{0}\" a changé depuis que vous l’avez ouvert ou sauvegardé ici.",
     "saved": "{0}, {1} · {2}.",
+    "savedNoNotes": "{0}, {1}.",
     "otherProject": "Un autre fichier de projet, \"{0}\".",
     "otherProjectUnnamed": "Un autre fichier de projet.",
     "notDescendant": "Cette version ne prolonge pas la vôtre ({0}).",
@@ -2210,6 +2213,8 @@
     },
     "unsavedChanges": "{0} ouvert. Ce fichier a des modifications du {1} non sauvegardées.",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans Sessions récentes.",
+    "unsavedEarlierMaybe": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont peut-être dans Sessions récentes.",
+    "unsavedChangesMaybe": "{0} ouvert. Ce fichier a peut-être des modifications du {1} non sauvegardées.",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans Sessions récentes.",
     "restoreIt": "Restaurer la session",
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
@@ -2241,6 +2246,7 @@
   "confirm": {
     "title": "Téléchargement non confirmé",
     "body": "Vérifiez que {0} a fini de se télécharger ({1}).",
+    "bodyUndated": "Vérifiez que {0} a fini de se télécharger.",
     "haveFile": "J’ai le fichier",
     "downloadAgain": "Télécharger à nouveau",
     "announce": "{0} Pour le confirmer plus tard, utilisez {1} dans la barre d’état."

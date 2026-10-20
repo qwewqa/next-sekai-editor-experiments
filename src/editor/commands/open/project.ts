@@ -149,9 +149,19 @@ const earlierMessage = (notice: EarlierNotice, name: string) => {
     const { open } = i18n.value
     switch (notice.kind) {
         case 'unsavedChanges':
-            return () => interpolateRaw(open.unsavedChanges, name, when)
+            return () =>
+                interpolateRaw(
+                    notice.maybe ? open.unsavedChangesMaybe : open.unsavedChanges,
+                    name,
+                    when,
+                )
         case 'unsavedEarlier':
-            return () => interpolateRaw(open.unsavedEarlier, name, when)
+            return () =>
+                interpolateRaw(
+                    notice.maybe ? open.unsavedEarlierMaybe : open.unsavedEarlier,
+                    name,
+                    when,
+                )
         case 'olderVersion':
             return () => interpolateRaw(open.olderVersion, name, when)
     }

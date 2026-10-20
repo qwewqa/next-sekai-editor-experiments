@@ -222,8 +222,12 @@ const local = () => {
     }
 }
 
-/** Every recovery row, as Local Data lists them. */
-export const recoveryItems = async (): Promise<RecoveryItem[]> => {
+/**
+ * Every recovery row, as Local Data lists them. `unreadable` is true when the stored rows could
+ * not be listed: an empty list then does not mean there is nothing to recover.
+ */
+export const recoveryItems = async (): Promise<{ items: RecoveryItem[]; unreadable: boolean }> => {
+    let unreadable = false
     const items: RecoveryItem[] = []
     for (const found of context?.recovery.keptForLocalData ?? []) {
         const text = local()?.getItem(storageKey(found.from))
@@ -259,9 +263,13 @@ export const recoveryItems = async (): Promise<RecoveryItem[]> => {
         })
     const worker = context?.open.worker
     if (worker && context?.recovery.status.mode !== 'memory')
-        for (const row of await worker.call('listRecovered').catch(() => []))
-            items.push({ kind: 'recovered', id: row.id, foundAt: row.foundAt, size: row.size })
-    return items
+        try {
+            for (const row of await worker.call('listRecovered'))
+                items.push({ kind: 'recovered', id: row.id, foundAt: row.foundAt, size: row.size })
+        } catch {
+            unreadable = true
+        }
+    return { items, unreadable }
 }
 
 /** A recovery row as a file to download (`toRecoveryFile`); the UI hands it over. */

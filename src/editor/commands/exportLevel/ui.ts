@@ -52,7 +52,9 @@ export const exportUi: ExportUi = {
                             ? i18n.value.conflict.exportBodyOpened
                             : i18n.value.conflict.exportBody,
                     name,
-                )()}\n${formatSize(disk.size)} · ${formatTime(disk.lastModified)}`,
+                )()}\n${formatSize(disk.size)}${
+                    disk.lastModified === undefined ? '' : ` · ${formatTime(disk.lastModified)}`
+                }`,
             choices: [
                 {
                     value: 'replace' as const,

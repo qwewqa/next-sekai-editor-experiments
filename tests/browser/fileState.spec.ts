@@ -703,6 +703,28 @@ test.describe('the label and the title', () => {
 })
 
 test.describe('the chip', () => {
+    test('a download with no recorded time names no time, never "()"', async ({
+        page,
+        context,
+    }) => {
+        await seed(context, { fileSystemAccess: false })
+        await visit(page)
+        await page.evaluate(async () => {
+            const { bindFile } =
+                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+            const { liveState } =
+                (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+            bindFile({ name: 'coconut.nxsp', event: 'downloaded' }, liveState.value)
+        })
+        await expect(chip(page)).toHaveAttribute('data-file-chip', 'notConfirmed')
+        await expect(chip(page)).toHaveAccessibleName(
+            'Check that coconut.nxsp finished downloading.',
+        )
+        // The label leaves out an event it cannot date.
+        await expect(label(page)).not.toContainText('downloaded')
+        await expect(label(page)).not.toContainText('1970')
+    })
+
     test('a download not yet confirmed in this browser shows the chip, and I Have the File clears it', async ({
         page,
         context,

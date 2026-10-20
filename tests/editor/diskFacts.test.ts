@@ -32,7 +32,7 @@ test('a saved version reads its device, RFC 3339 time and the summary of its own
         id: 'c3f00000-0000-4000-8000-000000000000',
         label: 'Web (Chrome)',
     })
-    assert.ok(facts.version.notes > 0)
+    assert.ok(facts.version.notes! > 0)
 })
 
 test('a savedAt that is not RFC 3339 reads as an unknown version, never a guessed time', async () => {
@@ -53,6 +53,7 @@ test('the summary counts only for the revision it was computed for', async () =>
     assert.equal(current.version.kind, 'saved')
     assert.equal(stale.version.kind, 'saved')
     if (current.version.kind !== 'saved' || stale.version.kind !== 'saved') return
-    assert.ok(current.version.notes > 0)
-    assert.equal(stale.version.notes, 0)
+    assert.ok(current.version.notes! > 0)
+    // A stale summary says nothing about the file: no count, never 0.
+    assert.ok(!('notes' in stale.version))
 })

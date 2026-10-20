@@ -95,7 +95,8 @@ export type PendingRow = EntryDescription & {
     time: number
     /** Its state's root, as hex. */
     snapshot: string
-    noteCount: number
+    /** Absent when the root isn't at hand here; the writer takes it from the root it holds. */
+    noteCount?: number
     dirty: boolean
     stack?: { keep: number; push: { snapshot: string; step: UndoableStep }[]; index: number }
     /** A `save` entry's revision, device and writer's app version. */
@@ -371,7 +372,7 @@ const withPending = (
                 time: row.time,
                 ...captureEntryDescription(row),
                 snapshot: fromHex16(row.snapshot),
-                noteCount: row.noteCount,
+                ...withCount(row.noteCount),
                 dirty: row.dirty,
                 kept: true,
                 ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),

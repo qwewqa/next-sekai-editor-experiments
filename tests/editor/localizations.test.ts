@@ -243,6 +243,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.note',
         // The device, the time and the count in one line.
         'conflict.saved',
+        'conflict.savedNoNotes',
         'elevation.auto',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
@@ -342,6 +343,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // The device, the time and the count in one line.
         'conflict.saved',
+        'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
         'history.quoted',
@@ -381,6 +383,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'commands.visibilities.toggle.types.bpm',
         // The device, the time and the count in one line.
         'conflict.saved',
+        'conflict.savedNoNotes',
         // A file name, as Sonolus servers name level data.
         'export.placeholder',
         'history.quoted',
