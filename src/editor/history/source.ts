@@ -92,6 +92,11 @@ const pendingEntries = (): Entry[] => {
  * The open session's entries once shown as waiting, until a read returns them stored. The flusher
  * forgets an entry when it stores it, a moment before the next read: without these the list
  * would drop it for that moment.
+ *
+ * A carried entry keeps `pending: true` until a read returns it, so for up to about 1.3 s it says
+ * "waiting" although it is stored. Only this file reads the flag, to give a continuation not read
+ * yet its divider (`entries`); anything that shows "not stored yet" would have to use the
+ * flusher's own list instead.
  */
 const carried = new Map<string, Entry>()
 let carriedFor: string | undefined
@@ -177,6 +182,10 @@ const joinOf = (fresh: readonly Entry[], loaded: readonly Entry[]) => {
     return found
 }
 
+/** Refreshes begun, and the last one that landed: an older one landing later is dropped. */
+let started = 0
+let landed = 0
+
 /**
  * Reads the newest page again, keeping the older pages already loaded. With `replace` the loaded
  * run is dropped for the newest page (Now, Home after a jump).
@@ -197,6 +206,7 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
         newerCount.value = 0
     }
     const mark = epoch
+    const ticket = ++started
     const fresh: Entry[] = []
     let next: Cursor | undefined
     try {
@@ -220,7 +230,9 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
         return
     }
     // The session changed meanwhile: its own refresh follows. A jump replaced the run: it stays.
-    if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
+    // A refresh that began before one that has landed holds older entries: it is dropped.
+    if (session.value.sessionId !== id || mark !== epoch || isJumped() || ticket < landed) return
+    landed = ticket
     // The run joins the loaded one at the oldest fresh entry already loaded; its older pages follow.
     const join = !replace && loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
     if (join) {
@@ -384,10 +396,12 @@ export const jumpToOldest = async (filter: Filter) => {
 
 /** Back to the newest entries after a jump: Now, Home. */
 export const resetToNewest = async () => {
+    const jumped = isJumped()
     replaceSource()
     newer.value = undefined
     newerCount.value = 0
-    await refresh({ replace: true })
+    // After a jump the window is dropped for the newest page; without one, what is loaded stays.
+    await refresh({ replace: jumped })
 }
 
 /** Entries waiting for the worker. */
