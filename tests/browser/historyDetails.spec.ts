@@ -483,7 +483,9 @@ test('Tab visits each opened step, then Show More, then the close button', async
         await expect(summaries.nth(i)).toBeFocused()
     }
     await page.keyboard.press('Tab')
-    await expect(details(page).getByRole('button', { name: 'Show More', exact: true })).toBeFocused()
+    await expect(
+        details(page).getByRole('button', { name: 'Show More', exact: true }),
+    ).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(details(page).getByRole('button', { name: 'Close' })).toBeFocused()
     await page.keyboard.press('Escape')
