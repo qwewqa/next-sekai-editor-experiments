@@ -551,7 +551,7 @@ for (const hasTouch of [false, true]) {
 
 test('an added or removed entry shows its one value per row, under a singular folder label', async ({
     page,
-}) => {
+}, testInfo) => {
     await seed(page, 'folders')
     await open(page)
     const added = dialog(page).locator('[data-property-section="groupFolders:500"]')
@@ -572,6 +572,7 @@ test('an added or removed entry shows its one value per row, under a singular fo
     await expect(dialog(page)).not.toContainText('Not present')
     await expect(added.getByText(/^(Before|After)$/)).toHaveCount(0)
     await expect(removed.getByText(/^(Before|After)$/)).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('property-one-sided.png') })
 })
 
 test('a removed media section keeps only its before value, and a placeholder is quieter', async ({

@@ -459,6 +459,60 @@ test('Show More reveals twenty more steps and moves focus to the first new one',
     await expect(steps.getByRole('button', { name: 'Show More' })).toHaveCount(0)
 })
 
+test('Tab visits each opened step, then Show More, then the close button', async ({ page }) => {
+    const lane = (i: number) =>
+        op('nse.property.set', {
+            subject: 'note',
+            changed: { note: 1 },
+            assignments: [
+                {
+                    field: 'left',
+                    before: { mode: 'uniform', value: i },
+                    after: { mode: 'uniform', value: i + 1 },
+                },
+            ],
+        })
+    await openDetails(
+        page,
+        Array.from({ length: 22 }, (_, i) => lane(i)),
+    )
+    await expect(root(page)).toBeFocused()
+    const summaries = details(page).locator('summary')
+    for (let i = 0; i < 20; i++) {
+        await page.keyboard.press('Tab')
+        await expect(summaries.nth(i)).toBeFocused()
+    }
+    await page.keyboard.press('Tab')
+    await expect(details(page).getByRole('button', { name: 'Show More', exact: true })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(details(page).getByRole('button', { name: 'Close' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(details(page)).toHaveCount(0)
+})
+
+test('a very long name wraps whole in the title and the card does not overflow', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 700 })
+    const long = 'A very long name that keeps going and going '.repeat(8).slice(0, 255) + 'x'
+    await openDetails(page, [
+        op('nse.owner.rename', {
+            target: { kind: 'group', id: 3, name: { text: long } },
+            before: { text: long },
+            after: { text: 'Short' },
+        }),
+    ])
+    const title = root(page).locator('[data-operation-description]')
+    await expect(title).toContainText(long.slice(0, 40))
+    const fits = await details(page).evaluate((dialog) => ({
+        sideways: dialog.scrollWidth > dialog.clientWidth,
+        bodyWidthFits: [...dialog.querySelectorAll('p, dt, dd, li')].every(
+            (e) => e.getBoundingClientRect().right <= dialog.getBoundingClientRect().right + 0.5,
+        ),
+    }))
+    expect(fits).toEqual({ sideways: false, bodyWidthFits: true })
+})
+
 test.describe('the phone card', () => {
     for (const width of [390, 320])
         test(`${width} wide: a centred card sized to its content, with no sideways overflow`, async ({

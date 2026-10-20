@@ -148,6 +148,14 @@ The History redesign is the newest large body of UI; it follows the rules above 
 - `GoToPopover`, `GoToList` and `ChangeOptionsMenu` use the shared `.popup-*` classes, the font-awesome check, a reserved icon column, and the phone sheet with its backdrop.
 - The details and changes dialogs use `BaseModal` and the secondary recipe for Show More, View Chart and Try Again.
 
+**Step Details and Property Changes** (`OperationDetailsContent.vue`, `DetailsHeader.vue`, `PropertyChangesModal.vue`)
+- Both open with `DetailsHeader`: the title (bold 16 px, wraps whole), the meta line (`text-sm tabular-nums text-fg/80`: date and time, then " · removed to save space" or " · damaged" from the row's flags) and, for Property Changes, an optional summary line. Blocks sit 16 px apart, the body's `gap-4`.
+- Step Details is one record table, not a stack of one-row sections: a label column `fit-content(40%)` (`text-sm text-fg/80`) beside the values, a `border-t border-fg/15` hairline above every cell so the rules run unbroken, and fact lines as full-width rows under it. A change reads `before › after` on one line (the 12 px chevron at `fg/70`, with screen-reader words), counts are one phrase per line, and a placeholder (Not set, Varies) is `fg/80`. Below 19 rem of container width the label stacks over its value.
+- A row exists only when it adds something to the title. A title that says everything leaves the minimal form: the header alone. A block with nothing to show is not drawn, and no heading stands over nothing.
+- A group lists its steps newest first under an `h3` that is the step count. A step is a disclosure only when its own record has content; otherwise it is a plain row with an empty 12 px slot, so labels stay aligned, and a step's own flag follows its label at `fg/80`. An opened step shows its record only, indented to the label.
+- On a phone the dialog stays a centred card that sizes to its content, like every other `BaseModal`; it is not a sheet.
+- Property Changes keeps two captioned columns (Before, After) for long values. An added or removed entry has one side, so its rows show that value alone under the section's Added or Removed badge, with no empty column. A section about one folder uses the singular label (Group Folder, Stage Folder).
+
 ## 9. Principles for new UI
 
 1. **Use the roles.** Theme tokens and the recipes, not palette colours or hand-rolled hover and press states. A retune then lands everywhere, and the guard test can check it. A scrim over the chart or a preview overlay (`bg-black/30`) is geometry rather than a role; chrome that sits over the chart may use white or black ink where the chrome tier says so.

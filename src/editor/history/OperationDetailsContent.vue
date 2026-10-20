@@ -127,7 +127,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                             <span class="inline-flex min-w-0 items-baseline gap-x-2">
                                 <ChevronIcon direction="right" class="self-center text-fg/70" />
                                 <span class="sr-only"
-                                    >{{ i18n.historyChanges.after }}{{ ' ' }}</span
+                                    >{{ ' ' }}{{ i18n.historyChanges.after }}{{ ' ' }}</span
                                 >
                                 <span
                                     class="min-w-0 tabular-nums"
