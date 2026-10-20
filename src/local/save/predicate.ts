@@ -6,7 +6,7 @@ import { unpackHashes } from '../records/rows'
 import { reachedHashes, stillBad, type SaveStore } from './bodies'
 import { CUT_STORES, readCut, type ChainCut } from './cut'
 import { isStoredMediaWhole } from './media'
-import { carries, chainRows, isLater, ModelError } from './model'
+import { bindingHasHistory, carries, chainRows, isLater, ModelError } from './model'
 
 // Comparing files (Part 0 §0.9.5; Part 1 §1.6.11.6): the relation of two revisions, the content
 // predicate "N holds O" from `project.json` and the chain record alone, and the web's Replace
@@ -86,7 +86,7 @@ export const baseFacts = (cut: ChainCut): Facts => {
     return {
         ...(revision ? { revision: { id: revision.id, ancestors: revision.ancestors } } : {}),
         ...(cd ? { cd } : {}),
-        ...(file?.entry ? { entries: file.entry.count } : {}),
+        ...(file?.entry && bindingHasHistory(file) ? { entries: file.entry.count } : {}),
     }
 }
 
@@ -119,7 +119,9 @@ export type ReplaceDecision = {
 export const replaceDecision = (cut: ChainCut, disk: Facts): ReplaceDecision => {
     const base = baseFacts(cut)
     return {
-        holdsBase: holdsHistory(disk, base) && !wouldCarry(cut),
+        // A base without history holds no earlier steps: nothing for a write to carry or lose.
+        holdsBase:
+            bindingHasHistory(cut.chain.file) && holdsHistory(disk, base) && !wouldCarry(cut),
         relation: relation(disk, base),
     }
 }
@@ -154,7 +156,7 @@ export const knownDamage = async (store: SaveStore) => {
  */
 export const keptRowsNeed = async (store: SaveStore, cut: ChainCut, bad: ReadonlySet<string>) => {
     const entry = cut.chain.file?.entry
-    if (!entry || !bad.size) return false
+    if (!entry || !bindingHasHistory(cut.chain.file) || !bad.size) return false
     let rows
     try {
         rows = chainRows(cut)
@@ -209,6 +211,8 @@ export const readSaveNeeds = async (
         if (known.has(hash) && !lacking.includes(hash) && !(await isStoredMediaWhole(store, hash)))
             lacking.push(hash)
     const carried =
-        !cut?.chain.file?.entry || (wouldCarry(cut) && !(await keptRowsNeed(store, cut, bad)))
+        !cut ||
+        !bindingHasHistory(cut.chain.file) ||
+        (wouldCarry(cut) && !(await keptRowsNeed(store, cut, bad)))
     return { carries: carried, lacking }
 }
