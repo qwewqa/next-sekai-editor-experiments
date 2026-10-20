@@ -26,13 +26,13 @@ test('stale Save plans cannot partially mark or bind unsupported session generat
         file: { name: 'new.nxsp', entry: { sessionId: current } },
         marks: [
             { sessionId: current, seq: 1 },
-            { sessionId: 'old-generation', seq: 1 },
+            { sessionId: 'bad-version', seq: 1 },
         ],
     }
     await fixture.store.write(['sessions', 'entries', 'chains'], async (tx) => {
-        await tx.put('sessions', { ...row, id: 'old-generation', v: 1 })
+        await tx.put('sessions', { ...row, id: 'bad-version', v: 0 })
         await tx.put('entries', {
-            sessionId: 'old-generation',
+            sessionId: 'bad-version',
             seq: 1,
             kept: true,
             operation: { unknown: 'intact' },
@@ -76,7 +76,7 @@ test('stale Save plans cannot partially mark or bind unsupported session generat
     assert.deepEqual(await snapshot(), before)
 
     const ownOnly = { ...unit, marks: [{ sessionId: current, seq: 1 }] }
-    for (const v of [undefined, 1, 3]) {
+    for (const v of [undefined, 0, 2]) {
         await fixture.store.write(['sessions'], (tx) => tx.put('sessions', { ...row, v }))
         const held = await snapshot()
         assert.equal(

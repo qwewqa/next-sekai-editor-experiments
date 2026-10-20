@@ -590,11 +590,20 @@ test('minor is computed from the table; a value it lacks fails', () => {
         minorOf({
             levelVersion: 1,
             rootVs: [1],
-            manifestVersion: 2,
+            manifestVersion: 1,
             entryKinds: ['save'],
             zipEntries: ['project.json', 'bgm/a.mp3'],
         }),
-        1,
+        0,
+    )
+    assert.throws(() =>
+        minorOf({
+            levelVersion: 1,
+            rootVs: [],
+            manifestVersion: 2,
+            entryKinds: [],
+            zipEntries: [],
+        }),
     )
     assert.throws(() => minorOf({ levelVersion: 2, rootVs: [], entryKinds: [], zipEntries: [] }))
     assert.throws(() => minorOf({ levelVersion: 1, rootVs: [2], entryKinds: [], zipEntries: [] }))

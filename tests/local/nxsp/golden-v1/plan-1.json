@@ -7,7 +7,7 @@
     {
       "name": "project.json",
       "method": 8,
-      "crc32": 194316257,
+      "crc32": 2574006069,
       "uncompressedSize": 1496,
       "parts": [
         {
@@ -15,7 +15,7 @@
           "json": {
             "format": "nxsp",
             "version": 1,
-            "minor": 1,
+            "minor": 0,
             "patch": 0,
             "levelVersion": 1,
             "appVersion": "0.6.0",
@@ -1520,13 +1520,13 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 450633765,
+      "crc32": 3482912830,
       "uncompressedSize": 4850,
       "parts": [
         {
           "kind": "bytes",
           "json": {
-            "version": 2,
+            "version": 1,
             "entries": [
               {
                 "kind": "init",

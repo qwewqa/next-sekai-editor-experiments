@@ -398,6 +398,9 @@ const day1Afternoon = async (s: Session) => {
     await s.ed.focus(b)
     await slide(s, b - 5, -6)
     await slide(s, b - 1, 1, true)
+    // Stored first, so a slow machine cannot make the reload race the flush and add a `recovered` entry.
+    await s.ed.flush()
+    await s.ed.settled()
     await s.ed.reload()
     await s.think(4)
     await s.ed.focus(b)

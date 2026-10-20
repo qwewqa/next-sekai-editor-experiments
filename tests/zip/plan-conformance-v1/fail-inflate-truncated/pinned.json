@@ -1,13 +1,13 @@
 {
   "source.nxsp": {
-    "fingerprint": "zip:5287:0:333abe92",
-    "size": 5287,
+    "fingerprint": "zip:5285:0:deff0527",
+    "size": 5285,
     "entries": [
       {
         "index": 0,
         "name": "project.json",
         "method": 8,
-        "crc32": 194316257,
+        "crc32": 2574006069,
         "compressedSize": 742,
         "uncompressedSize": 1496,
         "dataOffset": 42
@@ -25,8 +25,8 @@
         "index": 2,
         "name": "history/manifest.json",
         "method": 8,
-        "crc32": 450633765,
-        "compressedSize": 1265,
+        "crc32": 3482912830,
+        "compressedSize": 1263,
         "uncompressedSize": 4850,
         "dataOffset": 2154
       },
@@ -37,7 +37,7 @@
         "crc32": 2853292100,
         "compressedSize": 1169,
         "uncompressedSize": 1197,
-        "dataOffset": 3467
+        "dataOffset": 3465
       },
       {
         "index": 4,
@@ -46,7 +46,7 @@
         "crc32": 136824160,
         "compressedSize": 15,
         "uncompressedSize": 15,
-        "dataOffset": 4682
+        "dataOffset": 4680
       },
       {
         "index": 5,
@@ -55,7 +55,7 @@
         "crc32": 3245599963,
         "compressedSize": 17,
         "uncompressedSize": 17,
-        "dataOffset": 4745
+        "dataOffset": 4743
       },
       {
         "index": 6,
@@ -64,7 +64,7 @@
         "crc32": 1553704227,
         "compressedSize": 12,
         "uncompressedSize": 12,
-        "dataOffset": 4814
+        "dataOffset": 4812
       }
     ]
   }

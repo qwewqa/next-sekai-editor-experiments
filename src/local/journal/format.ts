@@ -9,7 +9,7 @@ import { RECORDS_V, SESSION_V } from '../records/version'
 // later build; one this build can't read keeps its bytes in the `recovered` store (§1.6.4).
 
 /** The writer's own journal version (§1.6.11.8). */
-export const JOURNAL_VERSION = 2
+export const JOURNAL_VERSION = 1
 
 /** Group, stage and folder ids in level-data entity order (§1.6.11.3). */
 export type JournalIds = {
@@ -121,13 +121,10 @@ export const readJournal = (text: string, sessionId: string): JournalReading => 
 
     // Newer first: a later build's journal is never moved aside, whatever else it holds.
     const { journalVersion, kind, recordsV, descriptor } = value
-    if (!Number.isSafeInteger(journalVersion) || (journalVersion as number) < 1)
+    if (!Number.isSafeInteger(journalVersion) || (journalVersion as number) < JOURNAL_VERSION)
         return unreadable('no journalVersion')
-    // Only a newer journal is left for a newer build; an older one is not read, and says so.
     if ((journalVersion as number) > JOURNAL_VERSION)
         return { kind: 'later', why: `journalVersion ${String(journalVersion)}` }
-    if (journalVersion !== JOURNAL_VERSION)
-        return unreadable(`journalVersion ${String(journalVersion)} is older`)
     if (kind !== 'journal') return { kind: 'later', why: `kind ${String(kind)}` }
     if (!Number.isSafeInteger(recordsV) || (recordsV as number) < 1)
         return unreadable('no recordsV')
