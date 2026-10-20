@@ -427,6 +427,8 @@ test('L3: Now after a far jump reads the newest page again, and without a jump t
     await pushSteps(page, 250)
     await flush(page)
     await openHistory(page)
+    // The first page has been read before a key goes to the list.
+    await expect(row(page, 'Syn 250')).toBeVisible()
     // End jumps to the oldest entry: a window there, with a gap row above it.
     await page.keyboard.press('End')
     await expect(row(page, 'Imported a level')).toBeVisible()
@@ -480,4 +482,64 @@ test('L4: entries carried for one session are gone when a new session begins', a
     } finally {
         await release(page)
     }
+})
+
+test('L5: a Save and an Export with History open show their rows at the top, without waiting for a read', async ({
+    page,
+}) => {
+    await load(page, { platform: { fileSystemAccess: 'opfs' } })
+    await pushSteps(page, 2)
+    await flush(page)
+    await openPanel(page)
+    await expect(row(page, 'Syn 2', 'panel')).toBeVisible()
+    // No read lands while the file events are made: only what the list was told can show them.
+    await holdWorker(page, 'readTimeline')
+    try {
+        await page.evaluate(() => {
+            const active = document.activeElement
+            if (active instanceof HTMLElement && active !== document.body) active.blur()
+        })
+        await page.keyboard.press('p')
+        await submitSave(page, 'live')
+        await expect(notice(page, 'Saved to live.nxsp')).toBeVisible()
+        await expect
+            .poll(() => rowTitles(page, 'panel'))
+            .toEqual([
+                expect.stringMatching(/^Now/),
+                'Saved live.nxsp',
+                'Syn 2',
+                'Syn 1',
+                expect.any(String),
+            ])
+
+        await page.keyboard.press('Shift+P')
+        const dialog = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('textbox', { name: 'File Name' }).fill('live')
+        await page.keyboard.press('Enter')
+        await expect(notice(page, 'Exported to live.nsld')).toBeVisible()
+        await expect
+            .poll(() => rowTitles(page, 'panel'))
+            .toEqual([
+                expect.stringMatching(/^Now/),
+                'Exported live.nsld',
+                'Saved live.nxsp',
+                'Syn 2',
+                'Syn 1',
+                expect.any(String),
+            ])
+    } finally {
+        await release(page)
+    }
+    // The read that follows agrees.
+    await expect
+        .poll(() => rowTitles(page, 'panel'))
+        .toEqual([
+            expect.stringMatching(/^Now/),
+            'Exported live.nsld',
+            'Saved live.nxsp',
+            'Syn 2',
+            'Syn 1',
+            expect.any(String),
+        ])
 })

@@ -438,8 +438,15 @@ export const followEntries = () => {
         },
         { immediate: true },
     )
-    const stop = onHistoryAction((action) => {
+    // Something changed what the Timeline lists: read the entries waiting now (they may be stored
+    // before the next frame), and read the stored ones again soon.
+    const changed = () => {
         indexes.clear()
+        version.value++
+        void entries.value
+        follow()
+    }
+    const stop = onHistoryAction((action) => {
         if (action.kind === 'reset') {
             carried.clear()
             replaceSource()
@@ -451,9 +458,11 @@ export const followEntries = () => {
             canLoadMore.value = false
             status.value = 'loading'
         }
-        version.value++
-        follow()
+        changed()
     })
+    // Every entry joins the flusher's pending list, whether a history action made it or not (a
+    // Save's entry does not): following that list cannot miss a kind of entry added later.
+    const stopEntries = flusher?.onEntry(changed)
     watch(
         () => session.value.sessionId,
         () => {
@@ -462,6 +471,7 @@ export const followEntries = () => {
     )
     onScopeDispose(() => {
         stop()
+        stopEntries?.()
         clearTimeout(timer)
         // A scan stopped part way starts again when the list shows once more.
         if (here.scanning) {
