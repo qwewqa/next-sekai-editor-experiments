@@ -1056,6 +1056,7 @@
       "edited": "{0} nota düzenlendi",
       "moving": "{0} nota taşınıyor",
       "moved": "{0} nota taşındı",
+      "resized": "{0} nota yeniden boyutlandırıldı",
       "selected": "{0} nota seçildi",
       "modal": {
         "title": "Nota Özellikleri"
@@ -1112,6 +1113,7 @@
       "edited": "{0} {1} olayı düzenlendi",
       "moving": "{0} {1} olayı taşınıyor",
       "moved": "{0} {1} olayı taşındı",
+      "resized": "{0} {1} olayı yeniden boyutlandırıldı",
       "selected": "{0} {1} olayı seçildi",
       "modal": {
         "title": "{0} Özellikleri"
@@ -1218,6 +1220,7 @@
       "addedNotes": "Notalar eklendi",
       "editedNotes": "Notalar düzenlendi",
       "movedNotes": "Notalar taşındı",
+      "resizedNotes": "Notalar yeniden boyutlandırıldı",
       "changedNoteElevations": "Notaların yüksekliği değiştirildi",
       "generatedNotes": "Notalar oluşturuldu",
       "addedBpm": "BPM değişiklikleri eklendi",
@@ -1231,6 +1234,7 @@
       "addedEvents": "Olaylar eklendi: {0}",
       "editedEvents": "Olaylar düzenlendi: {0}",
       "movedEvents": "Olaylar taşındı: {0}",
+      "resizedEvents": "Olaylar yeniden boyutlandırıldı: {0}",
       "editedObjects": "Nesneler düzenlendi",
       "movedObjects": "Nesneler taşındı",
       "movedGroupsInto": "Gruplar {0} klasörüne taşındı",

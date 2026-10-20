@@ -49,6 +49,7 @@ import {
     countOff,
     nearestStop,
     nextStop,
+    reachable,
     stopToward,
     stopsOf,
     type Place,
@@ -438,7 +439,9 @@ const timeAt = (y: number) => (0.5 * view.h - y) / settings.pps + view.time
 /** The visible band's times: `top` is later than `bottom`, as time runs up. */
 export const bandTimes = () => {
     const { top, bottom } = changeBand.value
-    return { top: timeAt(top), bottom: timeAt(Math.max(top, view.h - bottom)) }
+    const band = { top: timeAt(top), bottom: timeAt(Math.max(top, view.h - bottom)) }
+    // The view never goes below the chart's start, so the band never shows less than this.
+    return { ...band, floor: band.bottom - view.time }
 }
 
 /** Each changed object's time and lanes, on the peeked tempo, in chart order. */
@@ -523,7 +526,12 @@ const scrollTo = (stop: Stop) => {
 
 const currentStops = () => {
     const band = bandTimes()
-    return { band, stops: usableBand.value ? stopsOf(places.value, band.top - band.bottom) : [] }
+    return {
+        band,
+        stops: usableBand.value
+            ? stopsOf(reachable(places.value, band.floor), band.top - band.bottom)
+            : [],
+    }
 }
 
 const showLateralChange = () => {
@@ -560,7 +568,7 @@ export const showChangeToward = (direction: 'up' | 'down') => {
     if (!usableBand.value) return
     const band = bandTimes()
     const stops = stopsOf(
-        places.value.filter(({ time }) =>
+        reachable(places.value, band.floor).filter(({ time }) =>
             direction === 'up' ? time > band.top : time < band.bottom,
         ),
         band.top - band.bottom,

@@ -1,4 +1,5 @@
 import { shallowRef } from 'vue'
+import type { CopyOf } from '../local/names'
 import { toWellFormed } from '../local/records/wellFormed'
 
 /**
@@ -14,7 +15,7 @@ export type SessionDescriptor = {
      * A separate copy (§1.3.1): the file it was copied from (`bound`), or the session's name, for
      * the status label's "Separate copy of …".
      */
-    readonly copyOf?: { readonly name: string; readonly bound: boolean }
+    readonly copyOf?: CopyOf
     /** When it started: the date fallback of the displayed name (§1.3.5). */
     readonly startedAt?: number
     /** The file it is bound to, as the chain record has it (§1.3.2), for the status label. */

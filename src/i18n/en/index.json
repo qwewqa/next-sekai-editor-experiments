@@ -1056,6 +1056,7 @@
             "edited": "Edited {0} note|Edited {0} notes",
             "moving": "Moving {0} note|Moving {0} notes",
             "moved": "Moved {0} note|Moved {0} notes",
+            "resized": "Resized {0} note|Resized {0} notes",
             "selected": "Selected {0} note|Selected {0} notes",
             "modal": {
                 "title": "Note Properties"
@@ -1112,6 +1113,7 @@
             "edited": "Edited {0} {1} event|Edited {0} {1} events",
             "moving": "Moving {0} {1} event|Moving {0} {1} events",
             "moved": "Moved {0} {1} event|Moved {0} {1} events",
+            "resized": "Resized {0} {1} event|Resized {0} {1} events",
             "selected": "Selected {0} {1} event|Selected {0} {1} events",
             "modal": {
                 "title": "{0} Properties"
@@ -1218,6 +1220,7 @@
             "addedNotes": "Added notes",
             "editedNotes": "Edited notes",
             "movedNotes": "Moved notes",
+            "resizedNotes": "Resized notes",
             "changedNoteElevations": "Changed note elevations",
             "generatedNotes": "Generated notes",
             "addedBpm": "Added BPM changes",
@@ -1231,6 +1234,7 @@
             "addedEvents": "Added {0} events",
             "editedEvents": "Edited {0} events",
             "movedEvents": "Moved {0} events",
+            "resizedEvents": "Resized {0} events",
             "editedObjects": "Edited objects",
             "movedObjects": "Moved objects",
             "movedGroupsInto": "Moved groups into folder {0}",

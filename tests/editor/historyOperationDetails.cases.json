@@ -298,6 +298,42 @@
         ]
     },
     {
+        "id": "object.move.note.resized",
+        "cat": "object",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.object.move",
+                    "data": {
+                        "subject": "note",
+                        "changed": {
+                            "note": 4
+                        },
+                        "resized": true
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "object.move.cameraEvent.resized",
+        "cat": "object",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.object.move",
+                    "data": {
+                        "subject": "cameraEvent",
+                        "changed": {
+                            "cameraEvent": 2
+                        },
+                        "resized": true
+                    }
+                }
+            }
+        ]
+    },
+    {
         "id": "object.move.objects.mixed",
         "cat": "object",
         "members": [

@@ -31,6 +31,7 @@ import {
     type FieldFor,
     type NativeKind,
     type OwnerReference,
+    type Subject,
 } from './fields'
 import {
     captureJson,
@@ -122,6 +123,27 @@ const changedTargets = refine(
     ({ subject, changed, retainedInitialBpm }) =>
         agrees(subject, changed) &&
         (!retainedInitialBpm || subject === 'bpm' || subject === 'objects'),
+)
+/** The kinds a Select drag resizes: a note's width, a camera or stage mask event's range. */
+export const resizableSubjects: readonly Subject[] = ['note', 'cameraEvent', 'stageMaskEvent']
+
+/**
+ * A move. `resized` says the drag took an edge and changed only the lanes' extent: it names the
+ * step a resize and not a move. It needs a resizable subject, and displaces nothing.
+ */
+const movedTargets = refine(
+    object(
+        { subject, changed: nativeCounts },
+        {
+            displaced: nativeCountsPlus,
+            retainedInitialBpm: literal(true),
+            resized: literal(true),
+        },
+    ),
+    ({ subject, changed, displaced, retainedInitialBpm, resized }) =>
+        agrees(subject, changed) &&
+        (!retainedInitialBpm || subject === 'bpm' || subject === 'objects') &&
+        (!resized || (resizableSubjects.includes(subject) && !displaced && !retainedInitialBpm)),
 )
 const folder = object({ kind: oneOf(['groupFolder', 'stageFolder']), id: count, name: nameText })
 const destination = union(folder, nil)
@@ -249,7 +271,7 @@ export const operationCodecs = {
         created: count,
     }),
     'nse.object.edit': changedTargets,
-    'nse.object.move': changedTargets,
+    'nse.object.move': movedTargets,
     // A BPM or time scale moved onto an occupied beat. Both kinds' counts name only the subject.
     'nse.object.replace': refine(
         object(

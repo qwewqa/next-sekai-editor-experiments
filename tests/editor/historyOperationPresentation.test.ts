@@ -969,3 +969,50 @@ test('an empty file name never leaves a dangling space', () => {
         }
     }
 })
+
+// X-14: a Select drag that took an edge is a resize, titled and grouped as one, and never a move.
+test('a resize is titled "Resized" in every locale, and groups with resizes and not with moves', () => {
+    const resize = (count: number): NativeOperationInput => ({
+        id: 'nse.object.move',
+        data: { subject: 'note', changed: { note: count }, resized: true },
+    })
+    const move: NativeOperationInput = {
+        id: 'nse.object.move',
+        data: { subject: 'note', changed: { note: 2 } },
+    }
+    const camera: NativeOperationInput = {
+        id: 'nse.object.move',
+        data: { subject: 'cameraEvent', changed: { cameraEvent: 1 }, resized: true },
+    }
+    const moveCamera: NativeOperationInput = {
+        id: 'nse.object.move',
+        data: { subject: 'cameraEvent', changed: { cameraEvent: 1 } },
+    }
+    assert.equal(describeOperation(resize(1), en), 'Resized 1 note')
+    assert.equal(describeOperation(resize(3), en), 'Resized 3 notes')
+    assert.equal(describeOperation(move, en), 'Moved 2 notes')
+    assert.equal(
+        describeOperation(camera, en),
+        `Resized 1 ${en.strings.eventKinds.cameraEvent} event`,
+    )
+    // Resizes group with resizes, quantity-free; a resize and a move are not one group.
+    assert.equal(renderOperationRecipe(recipe([resize(1), resize(2)]), en), 'Resized notes')
+    assert.equal(renderOperationRecipe(recipe([move, move]), en), 'Moved notes')
+    assert.equal(
+        renderOperationRecipe(recipe([camera, camera]), en),
+        `Resized ${en.strings.eventKinds.cameraEvent} events`,
+    )
+    assert.throws(() => recipe([resize(1), move]), /Incompatible/)
+    assert.throws(() => recipe([move, resize(1)]), /Incompatible/)
+    // No locale titles a resize with its move wording.
+    for (const locale of locales) {
+        const ctx = context(locale)
+        assert.notEqual(describeOperation(resize(2), ctx), describeOperation(move, ctx), locale)
+        assert.notEqual(
+            renderOperationRecipe(recipe([resize(2), resize(2)]), ctx),
+            renderOperationRecipe(recipe([move, move]), ctx),
+            locale,
+        )
+        assert.notEqual(describeOperation(camera, ctx), describeOperation(moveCamera, ctx), locale)
+    }
+})

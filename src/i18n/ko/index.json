@@ -1056,6 +1056,7 @@
       "edited": "{0}개 노트 편집됨",
       "moving": "{0}개 노트 이동",
       "moved": "{0}개 노트 이동됨",
+      "resized": "{0}개 노트 크기 조절됨",
       "selected": "{0}개의 노트 선택됨",
       "modal": {
         "title": "노트 속성"
@@ -1112,6 +1113,7 @@
       "edited": "{0}개의 {1} 이벤트 편집됨",
       "moving": "{0}개의 {1} 이벤트 이동",
       "moved": "{0}개의 {1} 이벤트 이동됨",
+      "resized": "{0}개의 {1} 이벤트 크기 조절됨",
       "selected": "{0}개의 {1} 이벤트 선택됨",
       "modal": {
         "title": "{0} 속성"
@@ -1218,6 +1220,7 @@
       "addedNotes": "노트 추가됨",
       "editedNotes": "노트 편집됨",
       "movedNotes": "노트 이동됨",
+      "resizedNotes": "노트 크기 조절됨",
       "changedNoteElevations": "노트 높이 변경됨",
       "generatedNotes": "노트 생성됨",
       "addedBpm": "BPM 추가됨",
@@ -1231,6 +1234,7 @@
       "addedEvents": "{0} 이벤트 추가됨",
       "editedEvents": "{0} 이벤트 편집됨",
       "movedEvents": "{0} 이벤트 이동됨",
+      "resizedEvents": "{0} 이벤트 크기 조절됨",
       "editedObjects": "객체 편집됨",
       "movedObjects": "객체 이동됨",
       "movedGroupsInto": "그룹을 {0} 폴더로 이동함",

@@ -73,6 +73,12 @@ T: Edited notes
 #object.move.note4 en
 T: Moved 4 notes
 
+#object.move.note.resized en
+T: Resized 4 notes
+
+#object.move.cameraEvent.resized en
+T: Resized 2 camera events
+
 #object.move.objects.mixed en
 T: Moved 9 objects
 R: Changed [changed]: 5 notes / 4 BPM changes
