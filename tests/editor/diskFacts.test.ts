@@ -8,8 +8,6 @@ import { crafted, jsonOf, setJson, type Loose } from '../local/nxsp/craft'
 // What a `.nxsp` on disk is, as the conflict dialog and the Replace guard read it (Part 0 §0.9.6):
 // by the reader's own rules, so an odd `savedAt` or a stale `summary` is never half-believed.
 
-const DEVICE = 'c3f00000-0000-4000-8000-000000000000'
-
 const freshFile = () => executePlan(planNxsp(fresh().input).plan, new Map())
 
 const factsOf = async (change: (project: Loose) => void) =>
@@ -22,7 +20,6 @@ const factsOf = async (change: (project: Loose) => void) =>
             },
             await freshFile(),
         ),
-        DEVICE,
     )
 
 test('a saved version reads its device, RFC 3339 time and the summary of its own revision', async () => {
@@ -31,8 +28,10 @@ test('a saved version reads its device, RFC 3339 time and the summary of its own
     if (facts.version.kind !== 'saved') return
     // The writer's `savedAt` is the build's clock to the second.
     assert.equal(facts.version.savedAt, Math.floor(NOW / 1000) * 1000)
-    assert.equal(facts.version.thisDevice, true)
-    assert.deepEqual(facts.version.device, { id: DEVICE, label: 'Web (Chrome)' })
+    assert.deepEqual(facts.version.device, {
+        id: 'c3f00000-0000-4000-8000-000000000000',
+        label: 'Web (Chrome)',
+    })
     assert.ok(facts.version.notes > 0)
 })
 
