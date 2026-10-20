@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { vFocusRescue } from '../../../directives/focusRescue'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import ToggleField from '../../../modals/form/ToggleField.vue'
@@ -22,6 +23,10 @@ const onRemoveFromGroup = (i: number, j: number) => {
     )
 }
 
+// The tool that was removed leaves focus on its group's Add button.
+const groupAddButton = (group: number) =>
+    document.querySelector<HTMLElement>(`[data-toolbar-group="${group}"] button`)
+
 const onAddGroup = async () => {
     const name = await showModal(SettingsSelectToolModal, {})
     if (!name) return
@@ -35,11 +40,17 @@ const onAddGroup = async () => {
         <!-- Centred pseudo-elements fill each column and half the gaps around it; the faces stay unpositioned. -->
         <div class="flex flex-wrap items-end justify-center gap-1">
             <!-- Names not registered yet stay in the group but are not shown. -->
-            <div v-for="(names, i) in settings.toolbar" :key="i" class="flex flex-col items-center">
+            <div
+                v-for="(names, i) in settings.toolbar"
+                :key="i"
+                class="flex flex-col items-center"
+                :data-toolbar-group="i"
+            >
                 <SettingsToolbarAddButton @click="onAddToGroup(i)" />
                 <template v-for="(name, j) in names" :key="j">
                     <LevelEditorToolbarTool
                         v-if="isCommandName(name)"
+                        v-focus-rescue="() => groupAddButton(i)"
                         class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-[2.125rem]"
                         :name
                         @click="onRemoveFromGroup(i, j)"

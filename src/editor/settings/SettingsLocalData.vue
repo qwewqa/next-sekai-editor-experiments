@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref } from 'vue'
+import { vFocusRescue } from '../../directives/focusRescue'
 import { i18n } from '../../i18n'
 import { formatDate } from '../../i18n/when'
 import { storageStatus } from '../../local/startup/events'
@@ -149,6 +150,11 @@ const openHistory = () => {
     showHistoryLink()
 }
 
+// A row that goes with its own button (Discard) leaves focus on the next row, else on Open History.
+const afterRowGone = () =>
+    document.querySelector<HTMLElement>('[data-recovery-row] button') ??
+    document.querySelector<HTMLElement>('[data-open-history]')
+
 const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.length > 0)
 </script>
 
@@ -174,6 +180,7 @@ const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.l
             <div
                 v-for="item in items"
                 :key="item.kind === 'recovered' ? item.id : item.key"
+                v-focus-rescue="afterRowGone"
                 class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
                 :data-recovery-row="item.kind"
             >

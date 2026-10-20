@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, provide, shallowRef, useTemplateRef } from 'vue'
+import { vFocusRescue } from '../../../directives/focusRescue'
 import { brushProperties } from '.'
 import { isDynamicStages } from '../../../history/dynamicStages.ts'
 import { defaultGroupId } from '../../../history/groups'
@@ -100,6 +101,9 @@ const addItems = computed((): ManagerMenuItem[] => {
     return items
 })
 
+// The last property set turns Add off: focus moves on to Pick.
+const pickButton = () => root.value?.querySelector<HTMLElement>('.brush-pick:not(:disabled)')
+
 const toggleAddMenu = () => {
     addMenu.value = addMenu.value ? undefined : { modals: modals.length }
 }
@@ -164,6 +168,7 @@ const clear = () => {
             so its label fits; Pick and Clear share the next. -->
             <button
                 ref="addButton"
+                v-focus-rescue="pickButton"
                 type="button"
                 class="brush-add btn btn-secondary flex min-w-0 basis-full items-center gap-2.5 rounded-full py-1 pl-3 pr-4"
                 :title="i18n.tools.brush.add"
