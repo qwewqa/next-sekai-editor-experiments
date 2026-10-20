@@ -2389,7 +2389,7 @@ const folderEyeLabel = (item: FolderItem) =>
                         class="manager-selection-count truncate pl-1 tabular-nums"
                         :title="barLabel ? undefined : selectionCount"
                         aria-hidden="true"
-                        >{{ barLabel ? selectionCount : selectionSize }}</span
+                        >{{ barLabel ? selectionCount : formatCount(selectionSize) }}</span
                     >
                 </button>
                 <span class="sr-only" role="status">{{ selectionCount }}</span>

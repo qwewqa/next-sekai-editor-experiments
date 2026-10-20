@@ -34,6 +34,52 @@ test('no user-facing count is written as a bare template literal or String()', (
     assert.deepEqual(matches(bareString), [])
 })
 
+// A Vue interpolation shows a count raw when it names one outside formatCount(...): `{{ x.count }}`,
+// `{{ list.length }}`, `{{ total }}`. A count passed to a helper (`{{ stepsText(n) }}`) is that
+// helper's to format; countOf() is the one helper that returns a bare number.
+const countName = /\.length\b|\.size\b|\bcount\b(?!\.(short|label)\b)|\btotal\b/
+const withoutCalls = (expression: string) => {
+    let rest = expression
+    for (
+        let next = rest.replace(/\([^()]*\)/g, '');
+        next !== rest;
+        next = rest.replace(/\([^()]*\)/g, '')
+    )
+        rest = next
+    return rest
+}
+const bareInterpolations = (text: string) =>
+    [...text.matchAll(/\{\{([\s\S]*?)\}\}/g)]
+        .filter(
+            ([, expression]) =>
+                /\bcountOf\(/.test(expression!.replace(/formatCount\(countOf\([^()]*\)\)/g, '')) ||
+                countName.test(withoutCalls(expression!)),
+        )
+        .map(([whole]) => whole)
+
+test('no Vue interpolation shows a bare count', () => {
+    assert.deepEqual(
+        files.flatMap(({ path, text }) =>
+            path.endsWith('.vue')
+                ? bareInterpolations(text).map((found) => `${path}: ${found}`)
+                : [],
+        ),
+        [],
+    )
+})
+
+test('the Vue interpolation guard sees a raw count and accepts a formatted one', () => {
+    assert.equal(bareInterpolations('<span>{{ indicator.count }}</span>').length, 1)
+    assert.equal(bareInterpolations('{{ reportCounts ? countOf(direction) : "–" }}').length, 1)
+    assert.equal(bareInterpolations('{{ items.length }}').length, 1)
+    assert.equal(bareInterpolations('{{ formatCount(indicator.count) }}').length, 0)
+    assert.equal(
+        bareInterpolations('{{ reportCounts ? formatCount(countOf(direction)) : "–" }}').length,
+        0,
+    )
+    assert.equal(bareInterpolations('{{ count.short }} {{ stepsText(row.count) }}').length, 0)
+})
+
 // One shared helper owns the grouping, so a locale rule is changed in one place.
 test('number formatting for display lives in utils/size and the property formatter', () => {
     const formatters = matches(/new Intl\.NumberFormat\(/)

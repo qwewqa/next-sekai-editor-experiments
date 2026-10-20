@@ -46,7 +46,7 @@ test('Add12 sums actual creations while repeated moves make no unique-target cla
     const [added] = rows(Array.from({ length: 12 }, () => edit(1)))
     assert.deepEqual(presentRow(added!, context), {
         main: 'Added 12 notes',
-        count: '12 steps',
+        steps: '12 steps',
         full: 'Added 12 notes · 12 steps',
     })
     const move: EntryDescription = {
@@ -61,7 +61,7 @@ test('Add12 sums actual creations while repeated moves make no unique-target cla
     const [moved] = rows([move, move])
     assert.deepEqual(presentRow(moved!, context), {
         main: en.history.summary.movedNotes,
-        count: '2 steps',
+        steps: '2 steps',
         full: `${en.history.summary.movedNotes} · 2 steps`,
     })
 })
@@ -94,7 +94,7 @@ test('direction groups count crossed steps while children retain original Restor
             presentRow(parent!, context).main,
             kind === 'undo' ? 'Undid 2 steps' : 'Redid 2 steps',
         )
-        assert.equal(presentRow(parent!, context).count, undefined)
+        assert.equal(presentRow(parent!, context).steps, undefined)
         assert.equal(
             operationDetails(recipe, context).steps?.members[1]?.member.description.kind,
             kind,

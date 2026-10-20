@@ -1908,12 +1908,7 @@
       "moveDown": "Klasörü aşağı taşı",
       "ungroup": "Klasörü dağıt",
       "path": "{0} › {1}",
-      "added": "{0} klasörü eklendi",
-      "renamed": "{0} klasörü {1} olarak yeniden adlandırıldı",
-      "moved": "{0} klasörü taşındı",
-      "ungrouped": "{0} klasörü dağıtıldı",
-      "deleted": "{0} klasörü silindi",
-      "duplicated": "{0} klasörü çoğaltıldı"
+      "ungrouped": "{0} klasörü dağıtıldı"
     },
     "manager": {
       "currentGroup": "Geçerli Grup",

@@ -1908,12 +1908,7 @@
             "moveDown": "Move Folder Down",
             "ungroup": "Ungroup",
             "path": "{0} › {1}",
-            "added": "Added {0} folder",
-            "renamed": "Renamed {0} folder to {1}",
-            "moved": "Moved {0} folder",
-            "ungrouped": "Ungrouped {0} folder",
-            "deleted": "Deleted {0} folder",
-            "duplicated": "Duplicated {0} folder"
+            "ungrouped": "Ungrouped {0} folder"
         },
         "manager": {
             "currentGroup": "Current Group",

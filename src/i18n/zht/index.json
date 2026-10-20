@@ -1908,12 +1908,7 @@
       "moveDown": "下移資料夾",
       "ungroup": "解散資料夾",
       "path": "{0} › {1}",
-      "added": "已新增{0}資料夾",
-      "renamed": "已將資料夾{0}重新命名為{1}",
-      "moved": "已移動{0}資料夾",
-      "ungrouped": "已解散{0}資料夾",
-      "deleted": "已刪除{0}資料夾",
-      "duplicated": "已為{0}資料夾建立複本"
+      "ungrouped": "已解散{0}資料夾"
     },
     "manager": {
       "currentGroup": "目前圖層",

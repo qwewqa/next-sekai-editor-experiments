@@ -46,23 +46,50 @@ const AFTER = String.raw`(?![A-Za-z0-9_$])`
 const word = (name: string) => new RegExp(`${BEFORE}${name}${AFTER}`)
 
 /**
- * Whether some source file refers to the key: the parent's name followed by the key's, or, where
- * the section is held under another name (`strings.value.leaf`, a destructured section), a file
- * that names the section and also reads the leaf as a property, a quoted literal or a destructured
- * name. It is a static, name-based scan, not a proof: it catches a key nobody names, and the
- * dynamic patterns below are listed by hand.
+ * Whether some source file reads the key. Either the parent's name is followed by the key's
+ * (`parent.leaf`, `parent?.leaf`), or the file binds the whole section (`history.details`) to a
+ * name and reads the leaf through that name: `const d = t.history.details` then `d.leaf`,
+ * `const text = () => i18n.value.load` then `text().leaf`, or the leaf destructured from the
+ * section. A leaf that merely appears in a file that mentions the section does not count, so a
+ * common leaf name (`group`, `all`, `note`) cannot hide an unused key. It is a static, name-based
+ * scan, not a proof: the dynamic patterns below are listed by hand.
  */
 const referenced = (key: string) => {
     const segments = key.split('.')
     const leaf = segments.at(-1)!
     const parent = segments.at(-2)
     if (!parent) return sources.some((text) => word(leaf).test(text))
-    const direct = new RegExp(String.raw`${BEFORE}${parent}\??\.${leaf}${AFTER}`)
-    const section = word(parent)
-    const property = new RegExp(
-        String.raw`\.${leaf}${AFTER}|\['${leaf}'\]|'${leaf}'|"${leaf}"|[{,]\s*${leaf}\s*[,}:]`,
+    // The section is a property (`strings.history.details.leaf`), not a local named like it.
+    const direct = new RegExp(String.raw`\.${parent}\??\.${leaf}${AFTER}`)
+    const chain = segments.slice(0, -1).join(String.raw`\??\.`)
+    const binding = String.raw`[\w$.?]*${BEFORE}${chain}${AFTER}(?!\??\.[\w$])`
+    const aliases = new RegExp(
+        String.raw`(?:const|let|var)\s+(\w+)\s*=\s*(?:computed\(\s*)?(?:\(\)\s*=>\s*)?${binding}`,
+        'g',
     )
-    return sources.some((text) => direct.test(text) || (section.test(text) && property.test(text)))
+    const destructured = new RegExp(
+        String.raw`(?:const|let|var)\s*\{([^}]*)\}\s*=\s*${binding}`,
+        'g',
+    )
+    // The section itself taken out of its holder: `const { status } = i18n.value`, then `status.leaf`.
+    const taken = new RegExp(
+        String.raw`(?:const|let|var)\s*\{[^}]*${BEFORE}${parent}${AFTER}[^}]*\}\s*=`,
+    )
+    const takenRead = new RegExp(String.raw`${BEFORE}${parent}\??\.${leaf}${AFTER}`)
+    return sources.some(
+        (text) =>
+            text.includes(parent) &&
+            (direct.test(text) ||
+                (taken.test(text) && takenRead.test(text)) ||
+                [...text.matchAll(aliases)].some(([, alias]) =>
+                    new RegExp(
+                        String.raw`${BEFORE}${alias}(\(\)|\.value)?\??\.${leaf}${AFTER}`,
+                    ).test(text),
+                ) ||
+                [...text.matchAll(destructured)].some(([, list]) =>
+                    list!.split(',').some((item) => item.split(':')[0]!.trim() === leaf),
+                )),
+    )
 }
 
 /**
@@ -90,7 +117,71 @@ const dynamic: Record<string, string> = {
     'modals.form.key.names.': 'the key’s name from the event',
     'modals.loading.': 'TaskFailureKind',
     'peek.loadingShort': 'fixedLines in history/changes.ts, read through fixedLine',
+    'open.media.': 'the media name, read as open.media[line.media] in commands/open/project.ts',
+    'peek.noChanges': 'fixedLines in history/changes.ts, read through fixedLine',
     'peek.unavailableShort': 'fixedLines in history/changes.ts, read through fixedLine',
+    'commands.open.opened': "levelData: 'opened' in open/index.ts, read as the result’s message",
+    'commands.open.imported': 'the importedChcy/Usc/Sus map in open/index.ts',
+    'commands.open.revision.': 'RevisionWarning names, read as revision[message]',
+    'commands.scaleBeat.': 'labelKeys in scaleSelection/labels.ts',
+    'commands.scaleWidth.': 'labelKeys in scaleSelection/labels.ts',
+    'commands.scaleElevation.': 'labelKeys in scaleSelection/labels.ts',
+    'commands.editorLayout.': 'the layout name, read as editorLayout[layout]',
+    'commands.visibilities.toggle.types.': 'the visibility key, read as types[key]',
+    'commands.previewAssets.skin': 'the asset type, read as strings[type]',
+    'commands.previewAssets.particle': 'the asset type, read as strings[type]',
+    'commands.previewAssets.effect': 'the asset type, read as strings[type]',
+    'commands.divisions.custom.modal.division':
+        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
+    'commands.laneDivisions.custom.modal.division':
+        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
+    'tools.bpm.':
+        'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
+    'tools.timeScale.':
+        'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
+    'tools.events.':
+        'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
+    'tools.note.':
+        'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
+    'tools.slide.':
+        'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
+    'history.summary.scaled': 'chosen by the scaled axis in operationPresentation/aggregate.ts',
+    'history.details.counts.':
+        'the kind, read as phrases[kind] in operationPresentation/details.ts',
+    'commands.manageGroups.modal.added':
+        'the action, read as modal[action] in operationPresentation/format.ts',
+    'commands.manageGroups.modal.deleted':
+        'the action, read as modal[action] in operationPresentation/format.ts',
+    'commands.manageStages.modal.added':
+        'the action, read as modal[action] in operationPresentation/format.ts',
+    'commands.manageStages.modal.deleted':
+        'the action, read as modal[action] in operationPresentation/format.ts',
+    'history.details.pointer':
+        "the paste location, read as d[at === 'pointer' ? ...] in details.ts",
+    'history.details.position':
+        "the paste location, read as d[at === 'pointer' ? ...] in details.ts",
+    'historyChanges.fields.':
+        'spread into the property labels in editor/history/propertyPresentation.ts',
+    'modals.form.ease.': 'the ease name, read as ease[value] in EaseField.vue',
+    'modals.form.colors.': 'the color name, read as colors[name]',
+    'modals.form.key.': 'the refusal reason, read as key[refusedAs] in KeyField.vue',
+    'offscreenNotes.': 'the side, read as offscreenNotes[side]',
+    'workspace.panels.': 'the panel id, read as panels[id] in workspace/panels.ts',
+    'workspace.docks.': 'the side, read as docks[side]',
+    'workspace.collapse.': 'the side, read as collapse[side]',
+    'workspace.expand.': 'the side, read as expand[side]',
+    'workspace.resize.': 'the side, read as resize[side]',
+    'workspace.groups.renamed':
+        "workspace[group ? 'groups' : 'stages'] in operationPresentation/format.ts",
+    'workspace.groups.propertySet':
+        "workspace[group ? 'groups' : 'stages'] in operationPresentation/format.ts",
+    'workspace.stages.renamed':
+        "workspace[group ? 'groups' : 'stages'] in operationPresentation/format.ts",
+    'workspace.stages.propertySet':
+        "workspace[group ? 'groups' : 'stages'] in operationPresentation/format.ts",
+    'workspace.properties.': 'the section name, read as properties[section] in PropertiesPanel.vue',
+    'file.downloaded': 'the file event, joined in labelText.ts',
+    'file.opened': 'the file event, joined in labelText.ts',
     'history.summary.movedGroupsInto': 'moved${suffix}Into in operationPresentation/format.ts',
     'history.summary.movedGroupsOut': 'moved${suffix}Out in operationPresentation/format.ts',
     'history.summary.movedStagesInto': 'moved${suffix}Into in operationPresentation/format.ts',
@@ -165,6 +256,11 @@ const removed = [
     'sidebars.default.setTimeScales',
     'sidebars.default.setEvents',
     'sidebars.default.editedNotes',
+    'workspace.folders.added',
+    'workspace.folders.renamed',
+    'workspace.folders.moved',
+    'workspace.folders.deleted',
+    'workspace.folders.duplicated',
 ]
 
 test('every English message is read by some source file', () => {
@@ -192,6 +288,21 @@ test('every dynamic-access entry still matches a message', () => {
 test('the scan finds a key that nothing names', () => {
     assert.equal(referenced('peek.neverNamedAnywhere'), false)
     assert.equal(referenced('commands.reset.title'), true)
+})
+
+// A common leaf name must not be satisfied by unrelated files that mention the section.
+test('the scan reports made-up keys that share a leaf name with real ones', () => {
+    for (const key of [
+        'history.details.group',
+        'history.details.note',
+        'history.details.stage',
+        'history.operation.title',
+        'history.summary.all',
+        'historyChanges.fields.name',
+    ])
+        assert.equal(referenced(key), false, key)
+    assert.equal(referenced('history.details.changed'), true)
+    assert.equal(referenced('history.details.counts.note'), true)
 })
 
 test('removed messages stay out of every locale', () => {
