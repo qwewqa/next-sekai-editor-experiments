@@ -12,7 +12,7 @@ import {
 } from 'vue'
 import { peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
-import { focusAfterRemoval } from '../../utils/focusFallback'
+import { focusLost } from '../../utils/focusFallback'
 import { useRootFontSize } from '../useRootFontSize'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import CloseIcon from '../workspace/CloseIcon.vue'
@@ -243,12 +243,14 @@ const onEscape = (event: KeyboardEvent) => {
     else emit('close')
 }
 
-// Show All goes with the banner: focus on it goes to Go To, where the filter was chosen (X-2).
+// Show All goes with the banner: focus on it goes to the list, as a Go To pick's does (X-5).
 const showAll = (event: MouseEvent) => {
     historyFilter.value = 'all'
     blurAfterPointer(event)
-    if (event.currentTarget === document.activeElement)
-        void focusAfterRemoval(() => goToButton.value)
+    if (event.currentTarget !== document.activeElement) return
+    void nextTick(() => {
+        if (focusLost()) timeline.value?.focus()
+    })
 }
 
 const select = (tab: HistoryTab) => {

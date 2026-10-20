@@ -1508,7 +1508,7 @@ test('leaving the peek from the strip gives focus to the chart, by any of its wa
     await gone()
 })
 
-test('Try Again and Show All by keys hand focus on as they go (X-2)', async ({ page }) => {
+test('Try Again and Show All by keys hand focus on as they go (X-2, X-5)', async ({ page }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })
     await stored(page)
     await viewAt(page, 6)
@@ -1527,11 +1527,11 @@ test('Try Again and Show All by keys hand focus on as they go (X-2)', async ({ p
     await expect(failed).toHaveCount(0)
     // To the cursor's row.
     await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
-    // Show All goes with the banner: to Go To, where the filter was chosen.
+    // Show All goes with the banner: to the list's roving row, as a Go To pick goes (X-5).
     await surface(page).getByRole('button', { name: 'Show All' }).focus()
     await page.keyboard.press('Enter')
     await expect(surface(page).locator('[data-history-filter-banner]')).toHaveCount(0)
-    await expect(surface(page).locator('[data-history-goto-button]')).toBeFocused()
+    await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
 })
 
 test('an outside press that closes Go To or a row’s menu gives focus back to its opener (X-3)', async ({
