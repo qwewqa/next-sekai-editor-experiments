@@ -88,12 +88,31 @@ const pendingEntries = (): Entry[] => {
         .reverse()
 }
 
+/**
+ * The open session's entries once shown as waiting, until a read returns them stored. The flusher
+ * forgets an entry when it stores it, a moment before the next read: without these the list
+ * would drop it for that moment.
+ */
+const carried = new Map<string, Entry>()
+let carriedFor: string | undefined
+
 /** Every entry newest first: those waiting to be stored, then the stored ones; after a jump, the window. */
 export const entries = computed((): Entry[] => {
     const read = loadedFor.value === session.value.sessionId ? stored.value : []
     if (newer.value) return [...read]
     const have = new Set(read.map(entryId))
-    const all = [...pendingEntries().filter((entry) => !have.has(entryId(entry))), ...read]
+    // What the flusher holds now joins what it held a moment ago, and what a read has returned,
+    // or has passed, leaves. Only the computed's own memo changes, never a ref.
+    const open = flusher?.session
+    if (carriedFor !== open?.id) {
+        carried.clear()
+        carriedFor = open?.id
+    }
+    for (const entry of pendingEntries()) carried.set(entryId(entry), entry)
+    const top = read.find((entry) => entry.sessionId === open?.id)?.seq ?? 0
+    for (const [id, entry] of carried) if (have.has(id) || entry.seq < top) carried.delete(id)
+    const waiting = [...carried.values()].sort((a, b) => b.seq - a.seq)
+    const all = [...waiting, ...read]
     // A continuation not stored yet divides from the entry it continues: the next older one.
     return all.map((entry, i) =>
         entry.pending && entry.kind === 'continue' && entry.from === undefined && all[i + 1]
