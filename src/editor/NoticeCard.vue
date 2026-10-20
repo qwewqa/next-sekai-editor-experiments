@@ -16,7 +16,8 @@ const label = computed(() => i18n.value.modals.close)
 const messageId = computed(() => `notice-card-${props.notice.id}`)
 
 // The name and version join into the start-up card's heading; the other lines are its rows. In a
-// narrow card the name gives way first, so the version is never cut in half.
+// narrow card the name gives way first, and when the version has no room beside it, the version
+// takes a line of its own, so it is never cut (X-9).
 const heading = computed(() =>
     (props.notice.lines ?? []).filter((line) => line.heading).map((line) => line.message()),
 )
@@ -178,14 +179,28 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                 >
                     <p
                         :id="messageId"
-                        class="flex min-w-0 flex-1 overflow-hidden pl-2.5 pr-2 text-xs font-bold text-fg/80"
+                        class="min-w-0 flex-1 pl-2.5 pr-2 text-xs font-bold text-fg/80"
                     >
-                        <span class="min-w-0 truncate">{{ heading[0] }}</span>
-                        <span
-                            v-for="(part, i) in heading.slice(1)"
-                            :key="i"
-                            class="shrink-0 whitespace-pre"
-                            >{{ ` · ${part}` }}</span
+                        <!-- The name truncates down to 32 px; then the version takes a line of
+                             its own, wrapping at its space (or, narrower still, anywhere) rather
+                             than lose a character. Each part after the name keeps its " · " in its
+                             own 10 px start, which the list hides past its start edge when the
+                             part begins a line (X-9). -->
+                        <span class="block overflow-hidden"
+                            ><span class="-ml-2.5 flex flex-wrap"
+                                ><span
+                                    class="min-w-[2.625rem] max-w-max grow basis-0 truncate pl-2.5"
+                                    >{{ heading[0] }}</span
+                                ><span
+                                    v-for="(part, i) in heading.slice(1)"
+                                    :key="i"
+                                    class="relative min-w-0 pl-2.5 [overflow-wrap:anywhere]"
+                                    ><span
+                                        class="absolute inset-y-0 left-0 w-2.5 whitespace-pre text-center"
+                                        >{{ ' · ' }}</span
+                                    >{{ part }}</span
+                                ></span
+                            ></span
                         >
                     </p>
                     <button
