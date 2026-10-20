@@ -173,7 +173,7 @@ export const reloadAndWait = async (page: Page) => {
  * The fixture's `window.editorTest` without its `show`: the fixture would replace the session the
  * reload restored. Evaluated in the page.
  */
-const installReloaded = async () => {
+export const installReloaded = async () => {
     const moduleUrls = new Map(
         performance
             .getEntriesByType('resource')
