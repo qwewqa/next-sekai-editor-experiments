@@ -118,6 +118,7 @@ path = [
     "src/editor/history/FlagIcon.vue",
     "src/editor/history/GapArrowIcon.vue",
     "src/editor/history/InfoIcon.vue",
+    "src/editor/SeverityIcon.vue",
     "src/editor/history/KindIcon.vue",
     "src/editor/toolbar/LevelEditorToolbarTool.vue",
     "src/editor/workspace/ChevronIcon.vue",

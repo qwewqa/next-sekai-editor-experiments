@@ -130,7 +130,9 @@ test.describe('load notices in the start-up pill', () => {
         await visit(next)
         await expect(pill(next)).toContainText('Next SEKAI Editor')
         await expect(pill(next)).toContainText('Version 0.6.0')
-        await expect(pill(next)).toContainText(/Continued "coconut" from [A-Z][a-z]{2} \d{1,2}\./)
+        await expect(pill(next)).toContainText(
+            /Continued "coconut" from [A-Z][a-z]{2}\u00A0\d{1,2}\./,
+        )
         // No storage line at load, on any override (Z22).
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
         // Its one button is Open History (Step 5), so the pill sits with the action notices.
@@ -166,7 +168,7 @@ test.describe('load notices in the start-up pill', () => {
         const next = await context.newPage()
         await visit(next)
         await expect(pill(next)).toContainText(
-            /Continued your session from [A-Z][a-z]{2} \d{1,2}\./,
+            /Continued your session from [A-Z][a-z]{2}\u00A0\d{1,2}\./,
         )
         await expect(pill(next)).not.toContainText('Continued "')
     })
@@ -778,6 +780,29 @@ test.describe('Settings › Local Data', () => {
                 .getByRole('button', { name: 'Download' })
                 .click()
             expect((await download).suggestedFilename()).toMatch(/\.nsld$/)
+        })
+
+        test('a Download that fails is an error card', async ({ page, context }) => {
+            const later = await earlierVisit(page, context)
+            await later.evaluate(async () => {
+                const { openSettings } =
+                    (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+                void openSettings('localData')
+                // The download fails as the platform reports a failed file operation.
+                const { platform } =
+                    (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
+                const { FileError } =
+                    (await import('/src/platform/types.ts')) as typeof import('../../src/platform/types')
+                platform.saveFile = () =>
+                    Promise.reject(new FileError('io', 'No space', undefined, 'download'))
+            })
+            await later
+                .locator('[data-recovery-row="journal"]')
+                .getByRole('button', { name: 'Download' })
+                .click()
+            const card = later.locator('[data-notice-card]')
+            await expect(card).toContainText('could not be downloaded.')
+            await expect(card.locator('svg[data-severity="error"]')).toHaveCount(1)
         })
 
         test('Open puts the journal’s work in this tab', async ({ page, context }) => {

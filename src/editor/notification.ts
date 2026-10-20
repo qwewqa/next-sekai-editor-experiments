@@ -252,6 +252,7 @@ export const notify = (
         action?: NoticeAction
         card?: boolean
         announcement?: () => string
+        /** The card's glyph. A quick toast has no glyph, so a severity without `card` or `action` is dropped. */
         severity?: NoticeSeverity
     },
 ) => {

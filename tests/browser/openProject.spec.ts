@@ -772,6 +772,26 @@ test('a newer major version asks first, then opens only the level, unbound', asy
     ).toEqual(['continue'])
 })
 
+test('a newer major version whose level is refused is an error card', async ({ page }) => {
+    await start(page)
+    const bytes = await changedBytes((items) => {
+        const project = jsonOf(items, 'project.json')
+        project.version = 2
+        setJson(items, 'project.json', project)
+        setJson(items, 'level.json', { entities: [] })
+    })
+    await writeFile(page, 'coconut.nxsp', bytes)
+    await openFile(page, 'coconut.nxsp')
+    const dialog = page
+        .getByRole('dialog')
+        .filter({ hasText: 'Only the level can be opened from this file.' })
+    await page.waitForTimeout(400)
+    await dialog.getByRole('button', { name: 'Open the Level' }).click()
+    const card = notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' })
+    await expect(card).toBeVisible()
+    await expect(card.locator('svg[data-severity]')).toHaveAttribute('data-severity', 'error')
+})
+
 test('a re-zipped file, every entry deflated, with a Japanese-named BGM and Thumbs.db, opens whole', async ({
     page,
     browserName,

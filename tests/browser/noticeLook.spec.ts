@@ -153,6 +153,60 @@ test.describe('the severity glyph', () => {
     })
 })
 
+test.describe('severity beyond the plain card', () => {
+    test('a severity without card or action stays a quick toast, with no glyph', async ({
+        page,
+    }) => {
+        await boot(page)
+        await raise(page, { message: 'Quick feedback only.', severity: 'warning' })
+        await expect(
+            page.locator('.notification', { hasText: 'Quick feedback only.' }),
+        ).toBeVisible()
+        await expect(card(page)).toHaveCount(0)
+        await expect(page.locator('svg[data-severity]')).toHaveCount(0)
+    })
+
+    test('a card with a severity drawn over a blocking dialog shows its glyph on the menu surface', async ({
+        page,
+    }) => {
+        await boot(page)
+        await page.evaluate(async () => {
+            const { showChoice } =
+                await window.editorTest.appImport<typeof import('../../src/modals/choice')>(
+                    '/src/modals/choice.ts',
+                )
+            void showChoice({
+                title: () => 'Blocking',
+                choices: [{ value: 'go', label: () => 'Go', default: true }],
+            })
+        })
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toBeVisible()
+        await raise(page, { message: 'Over the dialog.', card: true, severity: 'error' })
+        const over = dialog.locator('[data-notice-card]')
+        await expect(over).toBeVisible()
+        await expect(over).toHaveClass(/bg-popup/)
+        const glyph = over.locator('svg[data-severity="error"]')
+        await expect(glyph).toHaveCount(1)
+        await expect(glyph).toHaveClass(/text-danger/)
+        expect((await glyph.boundingBox())!.width).toBe(16)
+    })
+})
+
+test.describe('the producers’ severities', () => {
+    test('a save error is an error card', async ({ page }) => {
+        await boot(page)
+        await page.evaluate(async () => {
+            const { defaultSaveUi } = await window.editorTest.appImport<
+                typeof import('../../src/editor/save/dialogs')
+            >('/src/editor/save/dialogs.ts')
+            defaultSaveUi.error(() => '"coconut.nxsp" could not be downloaded.')
+        })
+        await expect(card(page)).toContainText('"coconut.nxsp" could not be downloaded.')
+        await expect(glyphs(page)).toHaveAttribute('data-severity', 'error')
+    })
+})
+
 test.describe('the start-up card', () => {
     /** The load notices of real events, as the loader adds them. */
     const raiseLoad = (page: Page, events: unknown[]) =>
