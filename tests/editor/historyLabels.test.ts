@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { registerHooks } from 'node:module'
-import { afterEach, mock, test } from 'node:test'
+import { afterEach, test } from 'node:test'
 
 // The Timeline's day, hour and minute labels depend on the host's time zone. A zone with daylight
 // saving time makes the 23-hour and 25-hour days testable. node:test runs each file in its own
@@ -54,8 +54,6 @@ const at = (year: number, month: number, day: number, hour = 12, minute = 0) =>
 
 const now = at(2026, 10, 16, 15, 30)
 
-// Date.now is the clock the labels read for the year of an older date, so each test pins it.
-const withClock = (clock: number) => mock.method(Date, 'now', () => clock)
 const inLocale = (locale: Locale) => {
     settings.locale = locale
 }
@@ -69,7 +67,6 @@ const header = (level: Header['level'], time: number, withDay = false): Header =
 })
 
 afterEach(() => {
-    mock.restoreAll()
     inLocale('en')
 })
 
@@ -79,7 +76,6 @@ test('the host zone is the one this file asks for', () => {
 })
 
 test('a day is Today, Yesterday or its date in each language', () => {
-    withClock(now)
     for (const locale of ['en', 'fr', 'ja'] as const) {
         inLocale(locale)
         const strings = catalogues[locale].history
@@ -97,7 +93,6 @@ test('a day is Today, Yesterday or its date in each language', () => {
 })
 
 test('Yesterday is the previous calendar day even when the two are under 24 hours apart', () => {
-    withClock(now)
     inLocale('en')
     // Just after midnight, the previous evening is Yesterday.
     const justAfter = at(2026, 10, 16, 0, 5)
@@ -106,8 +101,20 @@ test('Yesterday is the previous calendar day even when the two are under 24 hour
     assert.equal(dayLabel(at(2026, 10, 14, 0, 5), at(2026, 10, 16, 0, 5)), 'Oct 14')
 })
 
+test('the year of an older date follows the clock that is passed, not the real one', () => {
+    // Far from today's real date, so a label that read Date.now would add or drop the year.
+    const later = at(2030, 10, 16, 15, 30)
+    inLocale('en')
+    assert.equal(dayLabel(at(2030, 10, 14), later), 'Oct 14')
+    assert.equal(dayLabel(at(2029, 10, 14), later), 'Oct 14, 2029')
+    assert.equal(headerText(header('day', at(2030, 10, 9)), later), 'Oct 9')
+    assert.equal(headerText(header('day', at(2029, 10, 9)), later), 'Oct 9, 2029')
+    assert.equal(headerText(header('hour', at(2030, 10, 9, 9), true), later), 'Oct 9 · 9 AM')
+    assert.equal(pinnedText(header('hour', at(2029, 10, 9, 9)), later), 'Oct 9, 2029 · 9 AM')
+    assert.equal(pinnedText(header('day', at(2030, 10, 9)), later), 'Oct 9')
+})
+
 test('a date in another year carries the year', () => {
-    withClock(now)
     inLocale('en')
     assert.equal(dayLabel(at(2025, 10, 14), now), 'Oct 14, 2025')
     inLocale('ja')
@@ -121,7 +128,6 @@ test('after the clocks go forward, a 23-hour day is still Yesterday', () => {
     const sunday = at(2026, 3, 8, 12)
     const monday = at(2026, 3, 9, 0, 30)
     assert.equal(monday - at(2026, 3, 8, 0, 30), 23 * 3_600_000)
-    withClock(monday)
     inLocale('en')
     assert.equal(dayLabel(sunday, monday), en.history.yesterday)
     // The first hour of that day, before the jump, is Yesterday too.
@@ -134,7 +140,6 @@ test('after the clocks go back, a 25-hour day is still Yesterday', () => {
     // 2026-11-01 has 25 hours: 02:00 EDT falls back to 01:00 EST.
     const monday = at(2026, 11, 2, 0, 30)
     assert.equal(monday - at(2026, 11, 1, 0, 30), 25 * 3_600_000)
-    withClock(monday)
     inLocale('en')
     assert.equal(dayLabel(at(2026, 11, 1, 0, 10), monday), en.history.yesterday)
     assert.equal(dayLabel(at(2026, 11, 1, 23, 50), monday), en.history.yesterday)
@@ -144,42 +149,42 @@ test('after the clocks go back, a 25-hour day is still Yesterday', () => {
 })
 
 test('a header says its own label, with its day when the day is not named above it', () => {
-    withClock(now)
     inLocale('en')
     const evening = at(2026, 10, 15, 21, 5)
-    assert.equal(headerText(header('day', at(2026, 10, 9))), 'Oct 9')
-    assert.equal(headerText(header('hour', evening)), '9 PM')
-    assert.equal(headerText(header('hour', evening, true)), 'Yesterday · 9 PM')
-    assert.equal(headerText(header('minute', at(2026, 10, 16, 14, 41))), '2:41 PM')
-    assert.equal(headerText(header('minute', at(2026, 10, 16, 14, 41), true)), 'Today · 2:41 PM')
-    assert.equal(headerText(header('hour', at(2025, 10, 14, 9), true)), 'Oct 14, 2025 · 9 AM')
+    assert.equal(headerText(header('day', at(2026, 10, 9)), now), 'Oct 9')
+    assert.equal(headerText(header('hour', evening), now), '9 PM')
+    assert.equal(headerText(header('hour', evening, true), now), 'Yesterday · 9 PM')
+    assert.equal(headerText(header('minute', at(2026, 10, 16, 14, 41)), now), '2:41 PM')
+    assert.equal(
+        headerText(header('minute', at(2026, 10, 16, 14, 41), true), now),
+        'Today · 2:41 PM',
+    )
+    assert.equal(headerText(header('hour', at(2025, 10, 14, 9), true), now), 'Oct 14, 2025 · 9 AM')
 })
 
 test('the pinned header always names its day', () => {
-    withClock(now)
     inLocale('en')
     const evening = at(2026, 10, 15, 21, 5)
-    assert.equal(pinnedText(header('hour', evening)), 'Yesterday · 9 PM')
-    assert.equal(pinnedText(header('hour', evening, true)), 'Yesterday · 9 PM')
-    assert.equal(pinnedText(header('minute', at(2026, 10, 16, 14, 41))), 'Today · 2:41 PM')
-    assert.equal(pinnedText(header('day', at(2026, 10, 9))), 'Oct 9')
+    assert.equal(pinnedText(header('hour', evening), now), 'Yesterday · 9 PM')
+    assert.equal(pinnedText(header('hour', evening, true), now), 'Yesterday · 9 PM')
+    assert.equal(pinnedText(header('minute', at(2026, 10, 16, 14, 41)), now), 'Today · 2:41 PM')
+    assert.equal(pinnedText(header('day', at(2026, 10, 9)), now), 'Oct 9')
 })
 
 test('headers follow the language', () => {
-    withClock(now)
     const evening = at(2026, 10, 15, 21, 5)
     inLocale('fr')
     assert.match(
-        headerText(header('hour', evening, true)),
+        headerText(header('hour', evening, true), now),
         new RegExp(`^${fr.history.yesterday} · .*21`),
     )
-    assert.match(headerText(header('minute', at(2026, 10, 16, 14, 41))), /^14:41$/)
+    assert.match(headerText(header('minute', at(2026, 10, 16, 14, 41)), now), /^14:41$/)
     inLocale('ja')
     assert.match(
-        headerText(header('hour', evening, true)),
+        headerText(header('hour', evening, true), now),
         new RegExp(`^${ja.history.yesterday} · .*21`),
     )
-    assert.match(headerText(header('minute', at(2026, 10, 16, 14, 41))), /14:41/)
+    assert.match(headerText(header('minute', at(2026, 10, 16, 14, 41)), now), /14:41/)
 })
 
 test('step counts pluralise and group digits in each language', () => {
