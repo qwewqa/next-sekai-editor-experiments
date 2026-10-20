@@ -213,3 +213,44 @@ test('a Save waiting for a held, multi-batch import shows its progress, and fini
     })
     await expect(preparing).toHaveCount(0)
 })
+
+test('a progress listener that throws does not fail the import', async ({ page }) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    // Once the import's first batch is asked for, a throwing listener joins and its outcome is kept.
+    await page.evaluate(async () => {
+        const { onImportProgress, whenImported } = await import('/src/local/open/importLoop.ts')
+        const { storageWorker } = await import('/src/local/start.ts')
+        const seen = window as unknown as { heard: number; outcome?: Promise<{ kind: string }> }
+        seen.heard = 0
+        const worker = storageWorker!
+        const call = worker.call.bind(worker)
+        worker.call = (async (method: string, ...rest: unknown[]) => {
+            if (method === 'openBatch' && !seen.outcome) {
+                // The session whose import is pending is the one this batch belongs to.
+                const stored = (await call('testRows', ['sessions'])) as Record<
+                    string,
+                    { value: { id: string; importPending?: boolean } }[]
+                >
+                const id = stored.sessions!.find((row) => row.value.importPending)!.value.id
+                onImportProgress(id, () => {
+                    seen.heard++
+                    throw new Error('a UI threw')
+                })
+                seen.outcome = whenImported(id)
+            }
+            return (call as (...args: unknown[]) => unknown)(method, ...rest)
+        }) as typeof worker.call
+    })
+    await open(page, 'coconut.nxsp')
+    await imported(page)
+    expect(
+        await page.evaluate(
+            async () =>
+                (await (window as unknown as { outcome: Promise<{ kind: string }> }).outcome).kind,
+        ),
+    ).toBe('done')
+    expect(
+        await page.evaluate(() => (window as unknown as { heard: number }).heard),
+    ).toBeGreaterThan(0)
+})

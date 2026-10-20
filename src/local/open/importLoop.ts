@@ -62,9 +62,18 @@ export type ImportProgress = { done: number; total: number }
 const progress = new Map<string, ImportProgress>()
 const listeners = new Map<string, Set<(progress: ImportProgress) => void>>()
 
+/** A listener is a UI's: whatever it throws never fails the import. */
+const notifyListener = (listener: (progress: ImportProgress) => void, next: ImportProgress) => {
+    try {
+        listener(next)
+    } catch (error) {
+        console.error('An import progress listener failed', error)
+    }
+}
+
 const report = (sessionId: string, next: ImportProgress) => {
     progress.set(sessionId, next)
-    for (const listener of listeners.get(sessionId) ?? []) listener(next)
+    for (const listener of [...(listeners.get(sessionId) ?? [])]) notifyListener(listener, next)
 }
 
 /**
@@ -79,7 +88,7 @@ export const onImportProgress = (
     set.add(listener)
     listeners.set(sessionId, set)
     const known = progress.get(sessionId)
-    if (known) listener(known)
+    if (known) notifyListener(listener, known)
     return () => {
         set.delete(listener)
         if (!set.size && listeners.get(sessionId) === set) listeners.delete(sessionId)

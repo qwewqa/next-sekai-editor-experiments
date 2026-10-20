@@ -965,7 +965,8 @@ const afterPick = async (
             }
             // A picker that renamed the file: its own name goes into the build (`save` entry and
             // `revision.fileName`). Rebuilt only now, once the file is known to be written, so a
-            // refused pick is put back as soon as it is known, and before anything is revoked.
+            // refused pick is put back as soon as it is known, and before anything is revoked. A
+            // rebuild that fails leaves the first build, which differs only in that name.
             if (built && name !== request.fileName && !(filled && !ownersOwn)) {
                 try {
                     built = await runBuild(env, {
@@ -980,10 +981,9 @@ const afterPick = async (
                         state,
                     })
                 } catch (error) {
-                    await env.flusher.endSave(reservation)
-                    if (error instanceof BuildRefused)
-                        return { kind: 'error', message: refusalText(error, name) }
-                    return { kind: 'failed', error: fileError(error), name }
+                    // The first build is the same file under the typed name, and the picked file
+                    // is empty: it is written, never left empty by a Save that ends here.
+                    recordError(error)
                 }
             }
             const preBind = {

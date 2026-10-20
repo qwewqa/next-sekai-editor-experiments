@@ -397,3 +397,79 @@ test('our own file gone back to an older revision says it does not continue ours
     await expect(dialog).toContainText(/This version does not continue yours \(.+\)\./)
     await expect(dialog).not.toContainText('Saved in the web editor')
 })
+
+test.describe('a picker that renames the file', () => {
+    for (const [how, fail] of [
+        ['throws', "throw new Error('the rebuild failed')"],
+        ['is refused', "return { refused: 'unreadable' }"],
+    ] as const) {
+        test(`a rebuild that ${how}: the first build is written whole and the Save succeeds`, async ({
+            page,
+        }) => {
+            await start(page)
+            await edit(page, 1)
+            // Only the build under the picked name fails.
+            await page.evaluate(
+                async ({ fail }) => {
+                    const { storageWorker } = await import('/src/local/start.ts')
+                    const worker = storageWorker!
+                    const call = worker.call.bind(worker)
+                    worker.call = (async (method: string, ...rest: unknown[]) => {
+                        const options = (rest[0] as { options?: { fileName?: string } } | undefined)
+                            ?.options
+                        if (method === 'buildSave' && options?.fileName === 'mysave.nxsp')
+                            return new Function(fail)()
+                        return (call as (...args: unknown[]) => unknown)(method, ...rest)
+                    }) as typeof worker.call
+                },
+                { fail },
+            )
+            await queuePicks(page, ['mysave.nxsp'])
+            await pressSave(page)
+            await submitSave(page, 'coconut')
+            await expect(notice(page).filter({ hasText: 'Saved to mysave.nxsp' })).toBeVisible()
+            // Whole, readable and bound: the typed name is the one inside it.
+            const project = await projectOf(page, 'mysave.nxsp')
+            expect((project.revision as Row).fileName).toBe('coconut.nxsp')
+            await expect
+                .poll(async () => (await chainOf(page)).file)
+                .toMatchObject({
+                    name: 'mysave.nxsp',
+                    event: 'saved',
+                })
+        })
+    }
+
+    test('taking over another tab’s file under a new name writes the picked name into it', async ({
+        context,
+    }) => {
+        const b = await context.newPage()
+        await start(b)
+        await edit(b, 1)
+        await pressSave(b)
+        await submitSave(b, 'coconut')
+        await expect(notice(b).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+        await expect
+            .poll(async () => (await chainOf(b)).file)
+            .toMatchObject({ name: 'coconut.nxsp' })
+        const a = await context.newPage()
+        await start(a)
+        await edit(a, 5)
+        // A types another name; the picker returns B's file.
+        await queuePicks(a, ['coconut.nxsp'])
+        await pressSave(a)
+        await submitSave(a, 'mine')
+        await expect(
+            notice(a).filter({
+                hasText: 'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
+            }),
+        ).toBeVisible()
+        const written = await projectOf(a, 'coconut.nxsp')
+        expect((written.revision as Row).fileName).toBe('coconut.nxsp')
+        expect(written.id).toBe((await chainOf(a)).docId)
+        const { entries } = await rows(a, ['entries'])
+        const text = JSON.stringify(entries!.filter((row) => row.value.kind === 'save').at(-1))
+        expect(text).toContain('coconut.nxsp')
+        expect(text).not.toContain('mine.nxsp')
+    })
+})
