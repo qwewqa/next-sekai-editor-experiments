@@ -7223,7 +7223,7 @@
                             }
                         },
                         "objects": {
-                            "cameraEvent": 4
+                            "stageTransformEvent": 4
                         }
                     }
                 }
@@ -7292,7 +7292,7 @@
                         },
                         "objects": {
                             "note": 120,
-                            "bpm": 1
+                            "timeScale": 1
                         }
                     }
                 }

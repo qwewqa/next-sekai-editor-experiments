@@ -57,8 +57,9 @@ for (const id of ['nse.object.delete', 'nse.object.cut'] as const) {
         assert.equal(describeStep(step, en), text)
         const details = operationDetails(captureOperationRecipe([{ description: step }]), en)
         assert.equal(details.description, text)
-        assert.equal(details.explanation, en.strings.history.details.unsupported)
-        assert.deepEqual(details.sections, [])
+        assert.equal(details.note, en.strings.history.details.unsupported)
+        assert.deepEqual(details.rows, [])
+        assert.deepEqual(details.facts, [])
     })
 
     test(`${id}: describing the cast input does not throw and drops the total`, () => {
