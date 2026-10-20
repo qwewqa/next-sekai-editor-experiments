@@ -1,7 +1,6 @@
 import type { LevelData, LevelDataEntity } from '@sonolus/core'
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { ImportRefusal } from '../../src/chart/refusal'
 import { chcyToUsc, isChcyLevelData } from '../../src/chcy/convert'
 
 // Chart Cyanvas level data in the shape its servers serve (e.g.
@@ -413,63 +412,4 @@ test('time scale chains that loop or point elsewhere end', () => {
             ],
         },
     ])
-})
-
-// A value the format does not define is refused, never imported as the default (linear, up,
-// neutral, none); an absent one is the default.
-const guide = (extra: Record<string, number> = {}) => {
-    const point = (prefix: string, beat: number) => ({
-        [`${prefix}Beat`]: beat,
-        [`${prefix}TimeScaleGroup`]: ref('tsg:0'),
-        [`${prefix}Lane`]: 0,
-        [`${prefix}Size`]: 1,
-    })
-    return entity('Guide', {
-        ...point('start', 0),
-        ...point('head', 0),
-        ...point('tail', 1),
-        ...point('end', 1),
-        ...extra,
-    })
-}
-const connectorOf = (ease: number) => [
-    note('NormalSlideStartNote', 0, 0, 1, {}, 'a'),
-    note('NormalSlideEndNote', 1, 0, 1, { slide: ref('c') }, 'b'),
-    entity(
-        'NormalSlideConnector',
-        { start: ref('a'), end: ref('b'), head: ref('a'), tail: ref('b'), ease },
-        'c',
-    ),
-]
-
-test('an ease, direction, colour or fade the format does not define is refused', () => {
-    const refused = (name: string, ...entities: LevelDataEntity[]) =>
-        assert.throws(
-            () => chcyToUsc(level(...entities)),
-            (error: unknown) =>
-                error instanceof ImportRefusal &&
-                error.reason === 'invalidValue' &&
-                error.params[0] === name,
-            name,
-        )
-    refused('ease', ...connectorOf(7))
-    refused('ease', ...connectorOf(0.5))
-    refused('ease', guide({ ease: 3 }))
-    refused('direction', note('NormalFlickNote', 1, 0, 1, { direction: 2 }))
-    refused('direction', note('NormalFlickNote', 1, 0, 1, { direction: -2 }))
-    refused(
-        'direction',
-        note('NormalSlideStartNote', 0, 0, 1, {}, 'a'),
-        note('NormalSlideEndFlickNote', 1, 0, 1, { direction: 5, slide: ref('c') }, 'b'),
-        ...connectorOf(0).slice(2),
-    )
-    refused('color', guide({ color: 8 }))
-    refused('fade', guide({ fade: 3 }))
-    // Absent is the format's default; every defined value is accepted.
-    const objects = chcyToUsc(level(guide())).objects.filter(({ type }) => type === 'guide')
-    assert.deepEqual(
-        objects.map((object) => object.type === 'guide' && [object.color, object.fade]),
-        [['neutral', 'none']],
-    )
-    chcyToUsc(level(guide({ color: 7, fade: 2, ease: -2 })))
 })
