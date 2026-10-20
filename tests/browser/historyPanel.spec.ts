@@ -544,7 +544,6 @@ test.describe('the dialog', () => {
         const card = await page.locator('[data-notice-card]').boundingBox()
         if (!card) throw new Error('no card')
         expect(card.x + card.width).toBeLessThanOrEqual(box.x)
-        await page.waitForTimeout(300)
         await shoot(page, 'dialog-landscape')
     })
 })
@@ -899,16 +898,22 @@ test.describe('states', () => {
                 call: (name: string, ...args: unknown[]) => Promise<unknown>
             }
             const call = worker.call.bind(worker)
+            // The first read waits for the test; later calls go through once it is released.
+            const gate = new Promise<void>((resolve) => {
+                ;(window as unknown as { releaseTimeline: () => void }).releaseTimeline = resolve
+            })
             worker.call = async (name, ...args) => {
-                if (name === 'readTimeline')
-                    await new Promise((resolve) => setTimeout(resolve, 2500))
+                if (name === 'readTimeline') await gate
                 return call(name, ...args)
             }
         })
         await openTab(page)
         await expect(page.locator('[data-history-loading]')).toBeVisible()
         await shoot(page, 'states-loading')
-        await expect(page.locator('[data-history-loading]')).toHaveCount(0, { timeout: 8000 })
+        await page.evaluate(() =>
+            (window as unknown as { releaseTimeline: () => void }).releaseTimeline(),
+        )
+        await expect(page.locator('[data-history-loading]')).toHaveCount(0)
     })
 
     test('a timeline that cannot be read says so, and Try Again reads it', async ({ page }) => {

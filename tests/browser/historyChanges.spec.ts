@@ -198,6 +198,24 @@ const peekLine = (page: Page) => page.locator('[data-peek-change]')
 const arrow = (page: Page, direction: 'up' | 'down') =>
     page.locator(`[data-change-arrow="${direction}"]`)
 
+/** Two animation frames: whatever a change queued for the next draw has been drawn. */
+const frames = (page: Page) =>
+    page.evaluate(
+        () =>
+            new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+            ),
+    )
+
+/** How the peek's comparison stands: 'loading', 'known', 'initial' or 'unavailable'. */
+const comparison = (page: Page) =>
+    page.evaluate(async () => {
+        const { comparisonStatus } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/changes')
+        >('/src/editor/history/changes.ts')
+        return comparisonStatus.value
+    })
+
 const openTab = async (page: Page) => {
     await page
         .locator('[data-workspace-dock="right"]')
@@ -456,7 +474,9 @@ test('an entry whose previous state cannot be read shows its label alone, with n
         })
     })
     await expect(page.locator('[data-peek-text]')).toBeVisible()
-    await page.waitForTimeout(500)
+    // The comparison has ended: nothing is left to arrive after the checks below.
+    await expect.poll(() => comparison(page)).toBe('unavailable')
+    await frames(page)
     await expect(peekLine(page)).toHaveText('Changes unavailable')
     await expect(page.locator('.notification')).toHaveCount(0)
     expect((await changes(page)).dimmed).toBe(false)
@@ -738,15 +758,19 @@ test('a delayed group Show Change cannot scroll a child comparison with the same
             await window.editorTest.appImport<typeof import('../../src/local/start')>(
                 '/src/local/start.ts',
             )
-        const gates: (() => void)[] = []
-        ;(window as unknown as { diffGates: (() => void)[] }).diffGates = gates
+        const gates: (() => Promise<void>)[] = []
+        ;(window as unknown as { diffGates: (() => Promise<void>)[] }).diffGates = gates
         storageWorker!.call = new Proxy(storageWorker!.call, {
             apply(target, self, args) {
                 if (args[0] !== 'readChanges') return Reflect.apply(target, self, args)
                 return new Promise((resolve, reject) => {
-                    gates.push(() => {
-                        Promise.resolve(Reflect.apply(target, self, args)).then(resolve, reject)
-                    })
+                    // A gate lets the read go and returns when it has answered.
+                    gates.push(() =>
+                        Promise.resolve(Reflect.apply(target, self, args)).then(
+                            (value) => resolve(value),
+                            (error: unknown) => reject(error),
+                        ),
+                    )
                 })
             },
         })
@@ -773,8 +797,11 @@ test('a delayed group Show Change cannot scroll a child comparison with the same
         .toBe(2)
     await page.evaluate(() => (window as unknown as { diffGates: (() => void)[] }).diffGates[1]!())
     await expect(peekLine(page)).toHaveText('1 change')
-    await page.evaluate(() => (window as unknown as { diffGates: (() => void)[] }).diffGates[0]!())
-    await page.waitForTimeout(300)
+    // The stale read answers; its result reaches the comparison and is dropped there.
+    await page.evaluate(async () => {
+        await (window as unknown as { diffGates: (() => Promise<void>)[] }).diffGates[0]!()
+    })
+    await frames(page)
     await expect(peekLine(page)).toHaveText('1 change')
     expect((await changes(page)).time).toBe(3)
     expect(await page.locator('[data-peek-main]').boundingBox()).toEqual(bounds)
@@ -1037,8 +1064,10 @@ test('inactive History band waits for focus and resumes with current layout at N
             await nextTick()
             let frames = 0
             const request = window.requestAnimationFrame
+            // The band's own frame requests are the ones that must not come: other parts of the
+            // page, such as the overlay scrollbars, measure after the resize as they should.
             window.requestAnimationFrame = (callback) => {
-                frames++
+                if (new Error().stack?.includes('ChangeBand')) frames++
                 return request.call(window, callback)
             }
             window.editorFrames = { chart: 0, overlay: 0 }
@@ -1046,8 +1075,11 @@ test('inactive History band waits for focus and resumes with current layout at N
                 stack.style.height = `${stack.getBoundingClientRect().height + 90}px`
                 if (bar) bar.style.height = `${bar.getBoundingClientRect().height + 60}px`
                 await nextTick()
-                // Let observers deliver without requesting a test animation frame.
-                await new Promise((resolve) => setTimeout(resolve, 100))
+                // Let observers deliver without counting a frame: they run in the draw step, so two
+                // frames of the page's own, asked for before the count began, are enough.
+                await new Promise<void>((resolve) =>
+                    request.call(window, () => request.call(window, () => resolve())),
+                )
                 const box = pane.getBoundingClientRect()
                 return {
                     active: isAppActive.value,
