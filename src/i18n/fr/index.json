@@ -955,6 +955,7 @@
         "legacy": "Copie de récupération d’une ancienne version · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
+        "listFailed": "Les données de récupération stockées n’ont pas pu être lues",
         "atLoad": "Notifications au démarrage"
       },
       "openHistory": "Ouvrir l’historique",

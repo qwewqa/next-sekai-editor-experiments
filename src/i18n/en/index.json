@@ -955,6 +955,7 @@
                 "legacy": "Recovery copy from an older version · {0}",
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
+                "listFailed": "Stored recovery data could not be read",
                 "atLoad": "Startup Notices"
             },
             "openHistory": "Open History",

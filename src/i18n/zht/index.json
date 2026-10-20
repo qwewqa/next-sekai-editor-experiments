@@ -955,6 +955,7 @@
         "legacy": "舊版本的恢復副本 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
+        "listFailed": "無法讀取已儲存的恢復資料",
         "atLoad": "啟動通知"
       },
       "openHistory": "開啟歷史記錄",
