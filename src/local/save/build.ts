@@ -47,6 +47,7 @@ import {
 import { markDamaged } from './mark'
 import { planMediaItem, type HeldMedia, type MediaKind } from './media'
 import {
+    bindingHasHistory,
     carries,
     chainRows,
     checkReadable,
@@ -489,10 +490,11 @@ export const planSave = async (
     const priorMarks = new Set((options.identity?.marks ?? []).map(keyOf))
     const flaggedBefore = (entry: EntryRow) => !entry.kept || priorMarks.has(keyOf(entry))
 
-    // Bodies: every root the rows, their pushes, the stack and the head need, verified.
+    // Bodies: every root the rows, their pushes, the stack and the head need, verified. Without
+    // history only the head is written: the stack's other states are neither read nor marked.
     const wanted = new Set<string>([
         head,
-        ...(stack?.slots.map((slot) => toHex(slot.snapshot)) ?? []),
+        ...(history ? (stack?.slots.map((slot) => toHex(slot.snapshot)) ?? []) : []),
     ])
     if (history)
         for (const { entry } of own)
@@ -573,7 +575,7 @@ export const planSave = async (
         marks.set(keyOf({ sessionId, seq }), { sessionId, seq })
 
     // `completeFrom`, the carry test (D25) and the line (§1.6.11.6).
-    const baseHadHistory = !!(chain.revision && cutEntry)
+    const baseHadHistory = !!chain.revision && bindingHasHistory(chain.file)
     const carried =
         !appending &&
         !!chain.revision &&

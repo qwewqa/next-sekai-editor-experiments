@@ -79,3 +79,30 @@ test('the cache is for the BGM the page names: another BGM is a new estimate', a
         named,
     )
 })
+
+test('an estimate counted while an open’s import runs is not kept: the next one counts again (SF-6)', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    for (let k = 1; k <= 5; k++) await fixture.edit(k)
+    await fixture.flush()
+    const id = fixture.session.id
+    const setImporting = (on: boolean) =>
+        fixture.store.write(['sessions'], async (tx) => {
+            const row = { ...((await tx.get('sessions', id)) as Record<string, unknown>) }
+            if (on) row.importPending = true
+            else delete row.importPending
+            await tx.put('sessions', row)
+        })
+    await setImporting(true)
+    const during = await estimateSaveSize(fixture.store, fixture.chainId)
+    assert.equal(during?.importing, true)
+    const lastSeq = fixture.session.rows.at(-1)?.seq ?? 0
+    assert.equal(cachedEstimate(fixture.chainId, id, lastSeq), undefined)
+    // The import lands, with no new `seq`: the estimate is counted again, and kept.
+    await setImporting(false)
+    const after = await estimateSaveSize(fixture.store, fixture.chainId)
+    assert.ok(after)
+    assert.equal(after.importing, undefined)
+    assert.notEqual(after, during)
+    assert.deepEqual(cachedEstimate(fixture.chainId, id, lastSeq), after)
+})

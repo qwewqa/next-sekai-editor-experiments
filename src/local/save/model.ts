@@ -103,6 +103,15 @@ export const isLater = (row: ChainRow, cut: Cut) =>
     (row.entry.sessionId === cut.sessionId && row.entry.seq > cut.seq)
 
 /**
+ * Whether the file a binding records holds a history (§1.6.11.2): its cut counts at least one
+ * entry. A Save without History stores no cut; an open of a file without history stores one of
+ * count 0. A file with history always holds an entry (its last write's `save`), so "no cut" and
+ * "count 0" both mean no history, and nothing there for a write to carry or keep.
+ */
+export const bindingHasHistory = (file: { entry?: { count: number } } | undefined) =>
+    !!file?.entry && file.entry.count > 0
+
+/**
  * The carry test (§1.6.11.6, D25): a write that isn't an append carries its base's
  * `completeFrom` only when the chain's rows up to the cut still number `entry.count`, and the rows
  * among them that are flagged (stored `kept: false`, or marked by this build) and whose state no

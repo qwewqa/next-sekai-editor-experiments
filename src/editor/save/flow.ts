@@ -18,6 +18,7 @@ import type { HandleOwner } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
 import type { SaveSizeEstimate } from '../../local/save/estimate'
 import type { BuiltSave } from '../../local/save/execute'
+import { bindingHasHistory } from '../../local/save/model'
 import { storageWorker } from '../../local/start'
 import { storageStatus } from '../../local/startup/events'
 import { journalWriter, flusher as storingFlusher } from '../../local/storing'
@@ -216,11 +217,41 @@ const fileError = (error: unknown) =>
 
 // The Preparing dialog: opened when a build is slow, or a Save waits for an import.
 
-type PreparingSlot = { dialog?: Preparing; name: string; timer?: ReturnType<typeof setTimeout> }
+/**
+ * A Save's "Preparing…": its dialog once opened, and the Save's own cancel, which the dialog's
+ * Cancel sets and which outlives the dialog. Every wait the Save makes after it opens ends on it.
+ */
+type PreparingSlot = {
+    dialog?: Preparing
+    name: string
+    timer?: ReturnType<typeof setTimeout>
+    cancel: AbortController
+}
 
-const preparingFor = (name: string): PreparingSlot => ({ name })
+const preparingFor = (name: string): PreparingSlot => ({ name, cancel: new AbortController() })
 
-const openPreparing = (slot: PreparingSlot) => (slot.dialog ??= saveUi.preparing(slot.name))
+const openPreparing = (slot: PreparingSlot) => {
+    if (slot.dialog) return slot.dialog
+    const dialog = saveUi.preparing(slot.name)
+    slot.dialog = dialog
+    if (dialog.signal.aborted) slot.cancel.abort()
+    else
+        dialog.signal.addEventListener('abort', () => {
+            slot.cancel.abort()
+        })
+    return dialog
+}
+
+/** Whether the Save was cancelled in its "Preparing…". */
+const cancelled = (slot: PreparingSlot) => slot.cancel.signal.aborted
+
+/** An error that is the Save's own cancel, thrown at a write's abort points. */
+const isCancel = (slot: PreparingSlot, error: unknown) =>
+    cancelled(slot) && error === slot.cancel.signal.reason
+
+/** The press a lapsed activation needs (R12): false at once for a Save already cancelled. */
+const readyIn = (slot: PreparingSlot, action: 'download' | 'save', size: number) =>
+    cancelled(slot) ? Promise.resolve(false) : openPreparing(slot).ready(action, size)
 
 const whenSlow = (slot: PreparingSlot) => {
     slot.timer ??= setTimeout(() => {
@@ -250,7 +281,7 @@ const waitForImport = async (env: Env, slot: PreparingSlot) => {
         dialog.importing(progress)
     })
     try {
-        const outcome = await whenImported(env.session.id, dialog.signal)
+        const outcome = await whenImported(env.session.id, slot.cancel.signal)
         return outcome.kind === 'unlinked' ? 'unlinked' : 'done'
     } catch {
         return 'cancelled'
@@ -824,7 +855,7 @@ const pickReserved = async (
     }
     clearTimeout(slot.timer)
     slot.dialog?.built(built.blob.size)
-    if (slot.dialog?.signal.aborted) {
+    if (cancelled(slot)) {
         closePreparing(slot)
         await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
@@ -844,7 +875,7 @@ const pickReserved = async (
         pre = await preRead(env, binding, { damaged: true })
         await savePoint('preRead')
         clearTimeout(slot.timer)
-        if (slot.dialog?.signal.aborted) {
+        if (cancelled(slot)) {
             closePreparing(slot)
             await env.flusher.endSave(reservation)
             return { kind: 'cancelled' }
@@ -852,10 +883,7 @@ const pickReserved = async (
     }
 
     // R12: a build that outlasted the press asks for a new one.
-    if (
-        activationLapsed(startedAt) &&
-        !(await openPreparing(slot).ready('save', built.blob.size))
-    ) {
+    if (activationLapsed(startedAt) && !(await readyIn(slot, 'save', built.blob.size))) {
         closePreparing(slot)
         await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
@@ -883,10 +911,47 @@ const pickReserved = async (
         return { kind: 'cancelled' }
     }
     const picked = target
-    await savePoint('picked')
-    return withBind('exclusive', () =>
-        afterPick(env, reservation, built, state, request, binding, picked, pre),
-    )
+    return keepingOwn(env, picked, pre, async (pick) => {
+        await savePoint('picked')
+        return withBind('exclusive', () =>
+            afterPick(env, reservation, built, state, request, binding, picked, pre, pick),
+        )
+    })
+}
+
+/** Whether a pick is the chain's own file, set once `afterPick` has identified it. */
+type OwnPick = { own?: boolean }
+
+/**
+ * A pick of the chain's own file with its bytes read first (R2, R4): the picker emptied it, so a
+ * Save that ends without writing it, by any path or a throw, puts those bytes back while the file
+ * is still empty, and offers them as a download when they cannot go back. Never leaves the file
+ * holding less than it did before the picker while its bytes are in hand.
+ */
+const keepingOwn = async (
+    env: Env,
+    target: FileTarget & { kind: 'handle' },
+    pre: PreRead | undefined,
+    run: (pick: OwnPick) => Promise<Outcome>,
+): Promise<Outcome> => {
+    const pick: OwnPick = {}
+    const own = async () =>
+        pick.own ?? (await identify(env, target.handle).catch(() => undefined))?.kind === 'own'
+    const name = target.handle.name
+    let outcome: Outcome
+    try {
+        outcome = await run(pick)
+    } catch (error) {
+        if (!pre || !(await own())) throw error
+        recordError(error)
+        outcome = { kind: 'failed', error: fileError(error), name }
+    }
+    if (outcome.kind === 'done' || !pre || !(await own())) return outcome
+    if (await putBack(target, pre.blob)) return outcome
+    // Not empty: written since the pick, by a sync client or by a write whose read-back failed.
+    const now = await platform.inspect(target, 'nxsp').catch(() => undefined)
+    if (now !== undefined && now !== 'missing' && now.size !== 0) return outcome
+    return { kind: 'refused', name, reason: 'notKept', emptied: true, bytes: pre.blob }
 }
 
 /** The disk state another chain's binding records, for a file filled while a pick waited. */
@@ -914,6 +979,7 @@ const afterPick = async (
     binding: Binding,
     target: FileTarget & { kind: 'handle' },
     pre: PreRead | undefined,
+    pick: OwnPick,
 ): Promise<Outcome> => {
     const { handle } = target
     const name = handle.name
@@ -929,6 +995,7 @@ const afterPick = async (
     // Written since the pick: by a sync client, or by its owner while this pick waited (R9).
     const filled = found.size !== 0
     const picked = refusedTarget(env, await identify(env, handle))
+    pick.own = picked.kind === 'own'
     let built = prebuilt
     let tookOver = false
     let bound = binding
@@ -952,14 +1019,14 @@ const afterPick = async (
                 await env.flusher.endSave(reservation)
                 return { kind: 'conflict', handle, binding }
             }
+            // Not at the base: the version read goes back (`keepingOwn`, offered as a download
+            // when it can't, R7), and the conflict dialog shows it.
             if (pre && !pre.atBase) {
                 await env.flusher.endSave(reservation)
-                if (await putBack(target, pre.blob)) return { kind: 'conflict', handle, binding }
-                // The version on disk could not go back: offered as a download (R7).
-                return { kind: 'refused', name, reason: 'notKept', emptied: true, bytes: pre.blob }
+                return { kind: 'conflict', handle, binding }
             }
             const options = binding.file?.options ?? { history: true, bgm: request.bgm }
-            const history = binding.file ? !!binding.file.entry : options.history
+            const history = binding.file ? bindingHasHistory(binding.file) : options.history
             try {
                 built = await runBuild(
                     env,
@@ -983,6 +1050,14 @@ const afterPick = async (
                         : [],
                 )
             } catch (error) {
+                // Nothing read first: the build before the picker holds what storage holds, as
+                // this one would, so the emptied file is written with it. Else the bytes read go
+                // back (`keepingOwn`).
+                if (!pre && prebuilt) {
+                    recordError(error)
+                    built = prebuilt
+                    break
+                }
                 await env.flusher.endSave(reservation)
                 if (error instanceof BuildRefused)
                     return { kind: 'error', message: refusalText(error, name) }
@@ -1073,7 +1148,11 @@ const afterPick = async (
         handle,
         options: {
             history: !!built.identity.entry,
-            bgm: picked.kind === 'own' ? (binding.file?.options.bgm ?? request.bgm) : request.bgm,
+            // The chain's own file keeps its option, unless the first build is what's written.
+            bgm:
+                picked.kind === 'own' && built !== prebuilt
+                    ? (binding.file?.options.bgm ?? request.bgm)
+                    : request.bgm,
         },
     })
     const written = await writeBuilt(env, reservation, built, target, found, bound, file)
@@ -1152,11 +1231,13 @@ const download = async (
             kind: 'nxsp',
             suggestedName: request.fileName,
             build: () => Promise.resolve({ kind: 'blob', blob: built.blob }),
-            ready: (file) => openPreparing(slot).ready('download', file.size),
+            signal: slot.cancel.signal,
+            ready: (file) => readyIn(slot, 'download', file.size),
         })
     } catch (error) {
         closePreparing(slot)
         await env.flusher.endSave(reservation)
+        if (isCancel(slot, error)) return { kind: 'cancelled' }
         return { kind: 'failed', error: fileError(error), name: request.fileName }
     }
     closePreparing(slot)
@@ -1333,6 +1414,22 @@ const writeBack = async (
 ): Promise<Outcome> => {
     const reservation = env.flusher.reserveSave()
     if (!reservation) return { kind: 'cancelled' }
+    try {
+        return await writeBackReserved(env, reservation, handle, binding, file, expected, replaces)
+    } finally {
+        await release(env, reservation)
+    }
+}
+
+const writeBackReserved = async (
+    env: Env,
+    reservation: SaveReservation,
+    handle: FileSystemFileHandle,
+    binding: Binding,
+    file: StoredFile,
+    expected: DiskState,
+    replaces: string | undefined,
+): Promise<Outcome> => {
     const state = savedState()
     const slot = preparingFor(file.name)
     let built: BuiltSave | undefined
@@ -1347,11 +1444,13 @@ const writeBack = async (
             expected,
             // A target found empty holds nothing to keep: written, never a conflict (R9).
             overEmpty: true,
+            // "Preparing…"'s Cancel stops the write before it commits.
+            signal: slot.cancel.signal,
             build: async (sources) => {
                 const source = replaces
                     ? undefined
                     : sources.find((each) => each.token === 'target')
-                built = await runBuild(
+                const made = await runBuild(
                     env,
                     {
                         target: replaces
@@ -1370,22 +1469,28 @@ const writeBack = async (
                     },
                     source ? [source] : [],
                 )
-                bound = await bindingFile(built, reservation, {
+                // Cancelled while it built: nothing is written, and no marker kept.
+                slot.cancel.signal.throwIfAborted()
+                built = made
+                bound = await bindingFile(made, reservation, {
                     name: file.name,
                     event: 'saved',
                     handle,
-                    options: { history: !!built.identity.entry, bgm: file.options.bgm },
+                    options: { history: !!made.identity.entry, bgm: file.options.bgm },
                 })
-                writeMarker(markerOf(env, built, reservation, binding.revision?.id ?? null, bound))
-                return { kind: 'blob', blob: built.blob }
+                writeMarker(markerOf(env, made, reservation, binding.revision?.id ?? null, bound))
+                return { kind: 'blob', blob: made.blob }
             },
         })
     } catch (error) {
         closePreparing(slot)
-        // Once built, the write may have landed: its `seq` stays for the marker.
-        const unwritten = !built || (error instanceof FileError && notWritten(error))
+        // Once built, the write may have landed: its `seq` stays for the marker. A cancel is
+        // honoured only before the write commits.
+        const stopped = isCancel(slot, error)
+        const unwritten = !built || stopped || (error instanceof FileError && notWritten(error))
         if (built && unwritten) removeMarker(env.chainId, built.revisionId)
         await env.flusher.endSave(reservation, undefined, undefined, !unwritten)
+        if (stopped) return { kind: 'cancelled' }
         if (error instanceof BuildRefused) {
             if (error.refusal.refused === 'damagedSource') return unlinkAndSaveAs(env, file.name)
             return { kind: 'error', message: refusalText(error, file.name) }
@@ -1780,7 +1885,8 @@ const dialogInput = async (
     const meta = state.bgm.meta
     const held = await bgmHeld(env, state)
     // A first Save after an open by name writes that file again: its history stays (§0.9.7).
-    const kept = kind === 'save' && binding.file?.event === 'opened' && !!binding.file.entry
+    const kept =
+        kind === 'save' && binding.file?.event === 'opened' && bindingHasHistory(binding.file)
     // The file holds the head's BGM (r11g-bgm #10) when nothing changed since the open; whatever
     // the options, an included BGM stays in it (§0.9.7), ticked and disabled.
     const bgmKept = kept && held && options?.bgm !== false
@@ -1840,7 +1946,8 @@ const dialogInput = async (
                     })
                     .catch(failedEstimate)
                 if (!loaded) return
-                rememberEstimate(env.chainId, before, loaded)
+                // Counted during an open's import: its end adds rows without a new `seq`.
+                if (!loaded.importing) rememberEstimate(env.chainId, before, loaded)
                 const estimate = withHeldBgm(loaded, state)
                 noteLoaded(input, estimate)
                 return estimate
@@ -1931,6 +2038,14 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
     await commitFirst(env)
     const reservation = env.flusher.reserveSave()
     if (!reservation) return
+    try {
+        await downloadAgainReserved(env, reservation, file)
+    } finally {
+        await release(env, reservation)
+    }
+}
+
+const downloadAgainReserved = async (env: Env, reservation: SaveReservation, file: StoredFile) => {
     const state = savedState()
     const slot = preparingFor(file.name)
     whenSlow(slot)
@@ -1956,6 +2071,11 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
         return
     }
     clearTimeout(slot.timer)
+    if (cancelled(slot)) {
+        closePreparing(slot)
+        await env.flusher.endSave(reservation)
+        return
+    }
     await afterOutcome(
         env,
         await download(
@@ -2201,6 +2321,10 @@ const writeSessionFile = async (
         )
         .catch((error: unknown) => fileError(error))
     clearTimeout(slot.timer)
+    if (cancelled(slot)) {
+        closePreparing(slot)
+        return { kind: 'cancelled' }
+    }
     if (built instanceof FileError) {
         closePreparing(slot)
         return { kind: 'failed', error: built, name: request.fileName }
@@ -2220,10 +2344,12 @@ const writeSessionFile = async (
                 kind: 'nxsp',
                 suggestedName: request.fileName,
                 build: () => Promise.resolve({ kind: 'blob', blob: built.blob }),
-                ready: (file) => openPreparing(slot).ready('download', file.size),
+                signal: slot.cancel.signal,
+                ready: (file) => readyIn(slot, 'download', file.size),
             })
         } catch (error) {
             closePreparing(slot)
+            if (isCancel(slot, error)) return { kind: 'cancelled' }
             return { kind: 'failed', error: fileError(error), name: request.fileName }
         }
         closePreparing(slot)
@@ -2235,10 +2361,7 @@ const writeSessionFile = async (
         markFirstSaveDone()
         return { kind: 'done' }
     }
-    if (
-        activationLapsed(startedAt) &&
-        !(await openPreparing(slot).ready('save', built.blob.size))
-    ) {
+    if (activationLapsed(startedAt) && !(await readyIn(slot, 'save', built.blob.size))) {
         closePreparing(slot)
         return { kind: 'cancelled' }
     }
@@ -2397,16 +2520,20 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
                     name: handle.name,
                 }),
         }
+    const target = { kind: 'handle' as const, handle }
     try {
-        const outcome = await afterPick(
-            env,
-            reservation,
-            undefined,
-            savedState(),
-            { dialog: 'save', fileName: handle.name, ...file.options, target: 'copy' },
-            binding,
-            { kind: 'handle', handle },
-            pre,
+        const outcome = await keepingOwn(env, target, pre, (pick) =>
+            afterPick(
+                env,
+                reservation,
+                undefined,
+                savedState(),
+                { dialog: 'save', fileName: handle.name, ...file.options, target: 'copy' },
+                binding,
+                target,
+                pre,
+                pick,
+            ),
         )
         if (outcome.kind === 'done') return 'own'
         return { show: () => afterOutcome(env, outcome) }

@@ -502,11 +502,22 @@ test.describe('the Preparing dialog', () => {
                 (await import('/src/editor/save/dialogs.ts')) as typeof import('../../src/editor/save/dialogs')
             window.saveSeen = {}
             const preparing = saveUi.preparing('coconut.nxsp')
+            window.saveSeen.preparing = preparing
             preparing.signal.addEventListener('abort', () => (window.saveSeen.aborted = true))
         })
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.aborted)).toBe(true)
+        // A press asked for once the activation lapsed has nothing to wait for (SF-2).
+        await page.evaluate(() => {
+            void (
+                window.saveSeen.preparing as { ready: (a: string, s: number) => Promise<boolean> }
+            )
+                .ready('download', 3_000_000)
+                .then((go) => (window.saveSeen.result = go))
+        })
+        await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(false)
+        await expect(dialog(page)).toHaveCount(0)
     })
 })
 
