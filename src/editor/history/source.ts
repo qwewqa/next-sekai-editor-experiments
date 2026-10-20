@@ -22,6 +22,8 @@ import { hereRange, historyFilter } from './state'
 // newer ones into the gap between it and Now, until it reaches the newest entries again.
 
 const PAGE = 100
+/** Pages one refresh reads at most to join a burst of new entries to the loaded run. */
+const MAX_BRIDGE_PAGES = 50
 
 type Cursor = { sessionId: string; before: number }
 
@@ -142,6 +144,20 @@ const recount = async () => {
     }
 }
 
+/**
+ * Where a fresh run, newest first, joins the entries loaded: the fresh run's oldest entry that is
+ * loaded already, and its place among them. Undefined when none is.
+ */
+const joinOf = (fresh: readonly Entry[], loaded: readonly Entry[]) => {
+    const places = new Map(loaded.map((entry, i) => [entryId(entry), i] as const))
+    let found: { at: number; place: number } | undefined
+    for (const [at, entry] of fresh.entries()) {
+        const place = places.get(entryId(entry))
+        if (place !== undefined) found = { at, place }
+    }
+    return found
+}
+
 /** Reads the newest page again, keeping the older pages already loaded. */
 export const refresh = async (): Promise<void> => {
     const worker = storageWorker
@@ -159,9 +175,23 @@ export const refresh = async (): Promise<void> => {
         newerCount.value = 0
     }
     const mark = epoch
-    let page
+    const fresh: Entry[] = []
+    let next: Cursor | undefined
     try {
-        page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
+        const page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
+        fresh.push(...page.entries.map(entryOf))
+        next = page.next
+        // More than a page can have come in since the last read (a held Undo key stores a burst
+        // between two refreshes): read older pages until the run joins the loaded one, so the
+        // older pages and the reader's place stay.
+        for (let pages = 1; next && pages < MAX_BRIDGE_PAGES; pages++) {
+            if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
+            if (loadedFor.value !== id || !stored.value.length) break
+            if (joinOf(fresh, stored.value)) break
+            const older = await worker.call('readTimeline', { ...next, limit: PAGE })
+            fresh.push(...older.entries.map(entryOf))
+            next = older.next
+        }
     } catch {
         if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
         if (loadedFor.value !== id) status.value = 'failed'
@@ -169,14 +199,13 @@ export const refresh = async (): Promise<void> => {
     }
     // The session changed meanwhile: its own refresh follows. A jump replaced the run: it stays.
     if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
-    const fresh = page.entries.map(entryOf)
-    const oldest = fresh.at(-1)
-    const at = oldest ? stored.value.findIndex((entry) => entryId(entry) === entryId(oldest)) : -1
-    if (loadedFor.value === id && at !== -1) {
-        stored.value = [...fresh, ...stored.value.slice(at + 1)]
+    // The run joins the loaded one at the oldest fresh entry already loaded; its older pages follow.
+    const join = loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
+    if (join) {
+        stored.value = [...fresh.slice(0, join.at + 1), ...stored.value.slice(join.place + 1)]
     } else {
         stored.value = fresh
-        cursor = page.next
+        cursor = next
     }
     loadedFor.value = id
     canLoadMore.value = !!cursor
