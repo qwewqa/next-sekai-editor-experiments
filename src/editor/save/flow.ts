@@ -2750,9 +2750,10 @@ export const exportImportWait = async (name: string, size: number) => {
     const slot = preparingFor(name, 'export')
     try {
         if ((await waitForImport(env, slot)) === 'cancelled') return false
-        // Nothing waited for: the picker opens on the press as before.
-        if (!slot.dialog || !activationLapsed(startedAt)) return true
-        slot.dialog.built(size)
+        // The press still holds: the picker opens on it. Else it asks for another, also when
+        // nothing was waited for but the check itself outlasted the press (SF-F1).
+        if (!activationLapsed(startedAt)) return true
+        slot.dialog?.built(size)
         return await readyIn(slot, 'save', size)
     } finally {
         closePreparing(slot)
