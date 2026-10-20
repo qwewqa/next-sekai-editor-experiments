@@ -4,7 +4,6 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type en from '../../src/i18n/en/index.json'
-import { waitForStartup } from './editorFixture'
 import {
     chartOf,
     closePage,
@@ -565,7 +564,7 @@ test('J2: a crash while peeking recovers the live chart, never the peeked one', 
     try {
         const page = await context.newPage()
         errorsFail(page)
-        await load(page, { chart: 'keep' })
+        await load(page)
         await page.evaluate(() => {
             window.editorTest.history.resetState(false)
         })
@@ -620,20 +619,16 @@ test('J2: a crash while peeking recovers the live chart, never the peeked one', 
         await context.close().catch(() => undefined)
         context = await launch()
 
-        // A new visit, which the fixture would replace: the journal is applied at load, and the
-        // session it continues shows the live chart.
+        // A new visit: the journal is applied at load, and the session it continues shows the
+        // live chart.
         const next = await context.newPage()
         errorsFail(next)
-        await next.addInitScript(() => performance.setResourceTimingBufferSize(5000))
-        await next.goto('/')
-        await expect(next.locator('canvas.editor-chart')).toBeVisible()
-        await waitForStartup(next)
+        await load(next, { chart: 'keep' })
         await expect
             .poll(() =>
                 next.evaluate(() => window.nseJournalTest?.outcomes.map((o) => o.kind) ?? []),
             )
             .toContain('applied')
-        await reloadAndWait(next)
         await expect(next.locator('[data-peek-bar]')).toHaveCount(0)
         await liveIs(next, live)
         expect(await chartOf(next)).toEqual(live)
