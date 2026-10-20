@@ -1294,8 +1294,8 @@
       "deletedEvents": "{0}イベントを削除しました",
       "cutEvents": "{0}イベントを切り取りました"
     },
-    "undidSteps": "{0} ステップを元に戻しました",
-    "redidSteps": "{0} ステップをやり直しました",
+    "undidSteps": "{0} 操作を元に戻しました",
+    "redidSteps": "{0} 操作をやり直しました",
     "dynamicStages": {
       "title": "動的ステージ",
       "message": "この機能には動的ステージが必要です。動的ステージを有効にしますか？",
@@ -1341,7 +1341,7 @@
       "action": "詳細",
       "unsupported": "このエディターでは、このステップの詳細を読み取れません。",
       "newer": "このステップは新しいバージョンのエディターで記録されました。",
-      "nameShortened": "名前を省略しています",
+      "textShortened": "テキストを省略しています",
       "varying": "値が異なります",
       "changed": "変更",
       "displaced": "置き換え",
@@ -1908,12 +1908,7 @@
       "moveDown": "フォルダーを下へ移動",
       "ungroup": "フォルダーを解除",
       "path": "{0} › {1}",
-      "added": "{0}フォルダーを追加しました",
-      "renamed": "フォルダー{0}の名前を{1}に変更しました",
-      "moved": "{0}フォルダーを移動しました",
-      "ungrouped": "{0}フォルダーを解除しました",
-      "deleted": "{0}フォルダーを削除しました",
-      "duplicated": "{0}フォルダーを複製しました"
+      "ungrouped": "{0}フォルダーを解除しました"
     },
     "manager": {
       "currentGroup": "現在のグループ",
@@ -2153,6 +2148,8 @@
     "readOnlyPeek": "履歴の表示中は読み取り専用です",
     "restoredTo": "{0} の状態に復元しました",
     "alreadyMatches": "すでに現在の譜面と同じです",
+    "restoreFailed": "復元できませんでした",
+    "peekFailed": "この操作を表示できませんでした",
     "openHistory": "履歴を開く",
     "earlierInHistory": "それ以前の操作は履歴にあります",
     "bgmNotLoaded": "BGM が読み込まれていません",

@@ -1,6 +1,8 @@
 import { hashKey } from '../db'
+import { fromHex16, toHex } from '../hash'
+import { KeyRange } from '../kv/types'
 import type { WritePlan } from '../nxsp/plan'
-import type { SaveStore } from '../save/bodies'
+import { loadBodies, type SaveStore } from '../save/bodies'
 import { setSaveHooksForTests, type SaveOptions, type SaveTarget } from '../save/build'
 import { estimateSaveSize } from '../save/estimate'
 import { buildSave, setBuiltHookForTests, type SaveSourceFile } from '../save/execute'
@@ -85,6 +87,49 @@ export const saveHandlers = (context: WorkerContext) => {
         /** Whether the chain's own file may hold what storage lacks (R2), from storage alone. */
         saveNeeds: ({ chainId, media }: { chainId: string; media: string[] }) =>
             readSaveNeeds(store, chainId, media),
+
+        /**
+         * Of `hashes`, those the media store holds (§1.6.8.4's "held"): one key read each, so a
+         * Save dialog never waits on the chain's cut for its BGM row.
+         */
+        mediaHeld: (hashes: string[]) =>
+            store.read(['media'], async (tx) => {
+                const held: string[] = []
+                for (const hash of hashes)
+                    if ((await tx.getKey('media', hashKey(fromHex16(hash)))) !== undefined)
+                        held.push(hash)
+                return held
+            }),
+
+        /**
+         * Test: a stored chunk gone bad without any build seeing it (SP-1's specs): a byte of a
+         * chunk the row's state needs and no other stored row's state does. Resolves its hash, or
+         * undefined when every chunk of that state is shared.
+         */
+        testDamage: async ({ sessionId, seq }: { sessionId: string; seq: number }) => {
+            if (!context.test) throw new Error('Test hooks need a test flag')
+            const rows = (await context.core.read(['entries'], (tx) =>
+                tx.getAll('entries', KeyRange.bound(['', -Infinity], ['￿', Infinity])),
+            )) as { sessionId: string; seq: number; snapshot: Uint8Array }[]
+            const target = rows.find((row) => row.sessionId === sessionId && row.seq === seq)
+            if (!target) return
+            const hex = toHex(target.snapshot)
+            const others = rows.map((row) => toHex(row.snapshot)).filter((each) => each !== hex)
+            const own = await loadBodies(store, [hex])
+            const shared = await loadBodies(store, others)
+            const chunk = [...own.chunks.keys()].find((key) => !shared.chunks.has(key))
+            if (!chunk) return
+            const key = hashKey(fromHex16(chunk))
+            await context.core.write(['chunks'], async (tx) => {
+                const row = (await tx.get('chunks', key)) as Record<string, unknown> & {
+                    bytes: Uint8Array
+                }
+                const bytes = row.bytes.slice()
+                bytes[0] = (bytes[0] ?? 0) ^ 0x5a
+                await tx.put('chunks', { ...row, bytes }, key)
+            })
+            return chunk
+        },
 
         /**
          * Test: cleanup under pressure, as Step 10's will: a stored row made `kept: false` and its

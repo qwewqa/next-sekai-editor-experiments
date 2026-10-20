@@ -12,6 +12,7 @@ import {
     type SaveRefusal,
     type SaveTarget,
 } from './build'
+import { repairFromSource } from './repair'
 import { BuiltFileError, checkBuilt } from './verify'
 
 // The web's half after the plan (Part 1 §1.6.11.7, §1.5.6), in the storage worker: the pinned
@@ -158,5 +159,15 @@ export const buildSave = async (
     if (!Array.isArray(sources)) return sources
     const planned = await planSave(store, chainId, kind, options, sources)
     if ('refused' in planned) return planned
-    return executeSave(planned, files, kind)
+    const built = await executeSave(planned, files, kind)
+    if (!('refused' in built) && kind.kind === 'append') {
+        const source = sources.find((each) => each.token === kind.source)
+        const file = files.find((each) => each.token === kind.source)?.file
+        // After the check, so it never changes what was built; a failure is only logged.
+        if (source && file)
+            await repairFromSource(store, source, file).catch((error: unknown) => {
+                console.error('Putting damage in storage right from the chain’s file failed', error)
+            })
+    }
+    return built
 }

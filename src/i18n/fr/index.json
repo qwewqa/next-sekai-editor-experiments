@@ -1341,7 +1341,7 @@
       "action": "Détails",
       "unsupported": "Cet éditeur ne peut pas lire les détails de cette étape.",
       "newer": "Cette étape a été enregistrée par une version plus récente de l’éditeur.",
-      "nameShortened": "Nom affiché en abrégé",
+      "textShortened": "Texte affiché en abrégé",
       "varying": "Variable",
       "changed": "Modification",
       "displaced": "Remplacement",
@@ -1908,12 +1908,7 @@
       "moveDown": "Descendre le dossier",
       "ungroup": "Dissoudre le dossier",
       "path": "{0} › {1}",
-      "added": "Dossier {0} ajouté",
-      "renamed": "Dossier {0} renommé en {1}",
-      "moved": "Dossier {0} déplacé",
-      "ungrouped": "Dossier {0} dissous",
-      "deleted": "Dossier {0} supprimé",
-      "duplicated": "Dossier {0} dupliqué"
+      "ungrouped": "Dossier {0} dissous"
     },
     "manager": {
       "currentGroup": "Groupe actuel",
@@ -2153,6 +2148,8 @@
     "readOnlyPeek": "Lecture seule pendant la consultation de l’historique",
     "restoredTo": "Restauré à {0}",
     "alreadyMatches": "Correspond déjà à la partition actuelle",
+    "restoreFailed": "Impossible de restaurer",
+    "peekFailed": "Impossible d’afficher cette étape",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes précédentes sont dans l’historique",
     "bgmNotLoaded": "BGM non chargée",

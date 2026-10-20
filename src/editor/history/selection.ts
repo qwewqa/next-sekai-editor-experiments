@@ -1,4 +1,5 @@
 import { shallowRef, watch } from 'vue'
+import { recordError } from '../../diagnostics'
 import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import {
     operationStepCount,
@@ -15,6 +16,8 @@ import {
     restoreEntry,
     type EntryKey,
 } from '../../history/peek'
+import { i18n } from '../../i18n'
+import { notify } from '../notification'
 import { historyViewGeneration } from './state'
 
 // What the History list asks the peek to show (Part 1 §1.4.10.5, §1.4.11): the entry's key, and
@@ -61,6 +64,16 @@ export const damagedEntries = shallowRef<ReadonlySet<string>>(new Set())
 /** Entries whose state a newer version wrote, by key: shown as needing a newer version, never damaged. */
 export const newerEntries = shallowRef<ReadonlySet<string>>(new Set())
 
+/**
+ * A peek or Restore that failed for a reason other than the entry itself (a storage read that
+ * failed, an exception in the restore): kept in the diagnostics, and told, since the user asked.
+ */
+const reportFailure = (error: unknown, message: () => string) => {
+    if (error instanceof PeekError) return
+    recordError(error)
+    notify(message)
+}
+
 /** Peeks an entry; the peek itself waits a moment when requests come close together. */
 export const requestPeek = (info: PeekedInfo) => {
     const generation = peekSourceGeneration.value
@@ -73,6 +86,7 @@ export const requestPeek = (info: PeekedInfo) => {
             damagedEntries.value = new Set(damagedEntries.value).add(info.key)
         if (error instanceof PeekError && error.reason === 'newer')
             newerEntries.value = new Set(newerEntries.value).add(info.key)
+        reportFailure(error, () => i18n.value.notice.peekFailed)
         if (peekedInfo.value === info) peekedInfo.value = undefined
     })
 }
@@ -94,6 +108,7 @@ export const requestRestore = async (key: EntryKey) => {
             newerEntries.value = new Set(newerEntries.value).add(key)
         else if (error instanceof PeekError && error.reason !== 'removed')
             damagedEntries.value = new Set(damagedEntries.value).add(key)
+        reportFailure(error, () => i18n.value.notice.restoreFailed)
         if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()
     })
 }

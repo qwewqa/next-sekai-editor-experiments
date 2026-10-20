@@ -58,7 +58,10 @@ const current = computed(() => states[index.value]!)
 
 export const isDirty = computed(() => (current.value as Slot | undefined)?.isDirty ?? false)
 
-/** The current slot's stored root, when it has one: a restored slot, or one a flush has stored. */
+/**
+ * The current slot's stored root, when it has one: only a slot restored from storage (a pushed
+ * slot has none, and a selection-only replacement keeps the restored one).
+ */
 export const headSnapshot = computed(() => (current.value as Slot | undefined)?.snapshot)
 
 /** The complete step that made the current state: the Timeline's Now row. */
@@ -185,7 +188,8 @@ const evictRestored = (slot: Slot) => {
 
 const loaded = (slot: Slot, state: State) => {
     slot.state = publish(state)
-    if (slot.snapshot) evictRestored(slot)
+    // A slot dropped from the stack while its read was out (a reset, an edit past it) is not kept.
+    if (slot.snapshot && states.includes(slot)) evictRestored(slot)
 }
 
 /** Reads in flight, so a prefetch and a queued move read a slot once. */
@@ -296,7 +300,25 @@ const queue = (direction: -1 | 1) => {
     return crossed
 }
 
-/** Replaces the current slot, or only the peeked state, which holds its own selection. */
+/** Whether two states hold the same chart and header: all but the selection is the same object. */
+const sameParts = (a: State, b: State) =>
+    a.store === b.store &&
+    a.bpms === b.bpms &&
+    a.groups === b.groups &&
+    a.stages === b.stages &&
+    a.groupFolders === b.groupFolders &&
+    a.stageFolders === b.stageFolders &&
+    a.levelInfo === b.levelInfo &&
+    a.initialLife === b.initialLife &&
+    a.isDynamicStages === b.isDynamicStages &&
+    a.bgm.offset === b.bgm.offset &&
+    a.bgm.meta === b.bgm.meta
+
+/**
+ * Replaces the current slot, or only the peeked state, which holds its own selection. For a
+ * selection change only: the slot keeps its stored root just when the chart and header are the
+ * state it had, so a caller that changed more can never leave a root naming another chart.
+ */
 const replaceCurrent = (state: State) => {
     if (peek.value) {
         peek.value = { ...peek.value, state }
@@ -309,11 +331,16 @@ const replaceCurrent = (state: State) => {
         step: old.step,
         state: publish(state),
         // A selection change keeps the slot's chart, so its stored root still holds.
-        ...(old.snapshot ? { snapshot: old.snapshot } : {}),
+        ...(old.snapshot && old.state && sameParts(old.state, state)
+            ? { snapshot: old.snapshot }
+            : {}),
     }
     // A restored slot keeps its place in the LRU, so it can still go back to its ref.
     const at = loadedRestored.indexOf(old)
-    if (at !== -1) loadedRestored[at] = slot
+    if (at !== -1) {
+        if (slot.snapshot) loadedRestored[at] = slot
+        else loadedRestored.splice(at, 1)
+    }
     states[index.value] = slot
 }
 
@@ -350,11 +377,16 @@ export const pushState = (
     }
     cancelPendingMoves()
 
-    states.splice(index.value + 1, states.length - index.value - 1, {
+    const dropped = states.splice(index.value + 1, states.length - index.value - 1, {
         isDirty: true,
         step,
         state: publish(state),
     })
+    // The redo tail is gone: its loaded states go with it, not held until later loads push them out.
+    for (const slot of dropped) {
+        const at = loadedRestored.indexOf(slot)
+        if (at !== -1) loadedRestored.splice(at, 1)
+    }
     index.value++
     emitHistoryAction({ kind, state, step, isDirty: true })
     return true
@@ -471,3 +503,6 @@ export const loadedStates = () =>
 
 /** Which slots hold a state, for tests of the lazy stack. */
 export const loadedSlotsForTests = () => states.map((slot) => !!slot.state)
+
+/** How many restored slots the LRU holds, for tests of the lazy stack. */
+export const restoredLoadedForTests = () => loadedRestored.length

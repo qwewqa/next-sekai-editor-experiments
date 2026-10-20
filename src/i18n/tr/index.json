@@ -1341,7 +1341,7 @@
       "action": "Ayrıntılar",
       "unsupported": "Bu editör bu adımın ayrıntılarını okuyamıyor.",
       "newer": "Bu adım editörün daha yeni bir sürümüyle kaydedildi.",
-      "nameShortened": "Ad kısaltılarak gösteriliyor",
+      "textShortened": "Metin kısaltılarak gösteriliyor",
       "varying": "Değişken",
       "changed": "Değiştirilen",
       "displaced": "Değiştirilen kayıtlar",
@@ -1908,12 +1908,7 @@
       "moveDown": "Klasörü aşağı taşı",
       "ungroup": "Klasörü dağıt",
       "path": "{0} › {1}",
-      "added": "{0} klasörü eklendi",
-      "renamed": "{0} klasörü {1} olarak yeniden adlandırıldı",
-      "moved": "{0} klasörü taşındı",
-      "ungrouped": "{0} klasörü dağıtıldı",
-      "deleted": "{0} klasörü silindi",
-      "duplicated": "{0} klasörü çoğaltıldı"
+      "ungrouped": "{0} klasörü dağıtıldı"
     },
     "manager": {
       "currentGroup": "Geçerli Grup",
@@ -2153,6 +2148,8 @@
     "readOnlyPeek": "Geçmiş görüntülenirken salt okunur",
     "restoredTo": "{0} anına geri yüklendi",
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",
+    "restoreFailed": "Geri yüklenemedi",
+    "peekFailed": "Bu adım görüntülenemedi",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Önceki adımlar Geçmiş’te",
     "bgmNotLoaded": "BGM yüklenmedi",

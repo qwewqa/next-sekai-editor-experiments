@@ -123,3 +123,94 @@ test('a failed Restore of an entry other than the peeked one keeps that peek', a
         liveLife: 1000,
     })
 })
+
+/** A source whose read of `session:98` fails the way a storage worker's timeout does. */
+const failingRead = () =>
+    window.editorTest
+        .appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts')
+        .then((peek) =>
+            peek.setPeekSource({
+                load: async (key) => {
+                    await Promise.resolve()
+                    if (key === peek.entryKey('session', 98)) throw new Error('storage timed out')
+                    return {
+                        state: { ...window.editorTest.history.liveState.value, initialLife: 999 },
+                        time: 1000,
+                    }
+                },
+                sameSnapshot: () => false,
+            }),
+        )
+
+const diagnosed = (page: import('@playwright/test').Page) =>
+    page.evaluate(async () => {
+        const { ringEntries } =
+            await window.editorTest.appImport<typeof import('../../src/diagnostics')>(
+                '/src/diagnostics.ts',
+            )
+        return ringEntries().some((entry) => entry.text.includes('storage timed out'))
+    })
+
+test('a Restore that fails for a reason other than the entry records it and says so', async ({
+    page,
+}) => {
+    await page.evaluate(failingRead)
+    const result = await page.evaluate(async () => {
+        const { appImport, history } = window.editorTest
+        const peek =
+            await appImport<typeof import('../../src/history/peek')>('/src/history/peek.ts')
+        const selection = await appImport<typeof import('../../src/editor/history/selection')>(
+            '/src/editor/history/selection.ts',
+        )
+        await selection.requestRestore(peek.entryKey('session', 98))
+        return {
+            damaged: [...selection.damagedEntries.value],
+            peeking: peek.isPeeking.value,
+            life: history.liveState.value.initialLife,
+        }
+    })
+    // Not the entry's fault: it is not marked damaged, and the chart is untouched.
+    expect(result).toEqual({ damaged: [], peeking: false, life: 1000 })
+    await expect(page.getByText('Could not restore', { exact: true }).first()).toBeVisible()
+    expect(await diagnosed(page)).toBe(true)
+})
+
+test('a Peek that fails for a reason other than the entry records it and says so', async ({
+    page,
+}) => {
+    await page.evaluate(failingRead)
+    await page.evaluate(async () => {
+        const { appImport, historySteps } = window.editorTest
+        const selection = await appImport<typeof import('../../src/editor/history/selection')>(
+            '/src/editor/history/selection.ts',
+        )
+        const { captureOperationRecipe } = await appImport<
+            typeof import('../../src/history/operationPresentation')
+        >('/src/history/operationPresentation/index.ts')
+        selection.requestPeek({
+            key: 'session:98',
+            time: 1000,
+            recipe: captureOperationRecipe([
+                {
+                    description: {
+                        kind: 'edit',
+                        step: historySteps.editStep(historySteps.initialLife(1000, 999)),
+                    },
+                    time: 1000,
+                    id: 'session:98',
+                },
+            ]),
+        })
+    })
+    await expect(page.getByText('Could not view this step', { exact: true }).first()).toBeVisible()
+    expect(await diagnosed(page)).toBe(true)
+    expect(
+        await page.evaluate(async () => {
+            const peek =
+                await window.editorTest.appImport<typeof import('../../src/history/peek')>(
+                    '/src/history/peek.ts',
+                )
+            return peek.isPeeking.value
+        }),
+    ).toBe(false)
+})

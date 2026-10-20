@@ -75,6 +75,17 @@ export type PendingIdentity = IdentityUnit & {
     readonly seq: number
 }
 
+/** `Flusher.keptSaveBelow`: what the current session holds below a kept Save `seq`. */
+export type KeptSaveBelow =
+    | { kind: 'stored' }
+    | {
+          kind: 'pending'
+          session: FlushSession
+          seq: number
+          /** The newest entry before the `seq`: the state the Save wrote. */
+          after: PendingEntry
+      }
+
 /** What a Save reserved (§1.6.11.6): its `save` entry's `seq` in the current session. */
 export type SaveReservation = {
     readonly session: FlushSession
@@ -131,7 +142,10 @@ export type FlushSession = {
      * `save` entry or lets the `seq` go, so the entry is never behind a stored one.
      */
     reserved?: number
-    /** `seq`s Saves reserved and kept with no entry (a file that may hold them): never entries. */
+    /**
+     * `seq`s Saves reserved and kept with no entry (a file that may hold them): an entry only as
+     * our own completed Save's (`keptSave`).
+     */
     gaps?: Set<number>
     /** A Save's identity unit not stored yet (storage paused or full: the binding in memory). */
     identity?: PendingIdentity
@@ -830,6 +844,55 @@ export class Flusher {
             }
         } else if (keep) (session.gaps ??= new Set()).add(seq)
         else if (session.nextSeq - 1 === seq) session.nextSeq--
+        return this.flush({ strict: true })
+    }
+
+    /**
+     * What this tab holds of a session below our own completed Save's kept `seq` (§1.4.7): a
+     * session's entries are stored in `seq` order, so with entries before it still pending, the
+     * `save` entry is stored after them, by this tab (`keptSave`). Undefined when the session isn't
+     * this tab's current one, or its `seq` is a Save's still reserved.
+     */
+    keptSaveBelow(sessionId: string, seq: number): KeptSaveBelow | undefined {
+        const session = this.current
+        if (session?.id !== sessionId || session.reserved === seq) return
+        const after = session.pending.filter((entry) => entry.seq < seq).at(-1)
+        if (!after) return { kind: 'stored' }
+        return { kind: 'pending', session, seq, after }
+    }
+
+    /**
+     * Our own completed Save's `save` entry at its kept `seq`, after the entries before it that
+     * `keptSaveBelow` found pending: on the state they reached, as the Save wrote it. Nothing is
+     * added to a session that is no longer current (a fork), nor twice.
+     */
+    keptSave(
+        below: Extract<KeptSaveBelow, { kind: 'pending' }>,
+        entry: Pick<PendingEntry, 'wall' | 'revisionId' | 'device' | 'appVersion'> & {
+            operation: JsonValue
+        },
+    ): Promise<void> {
+        const { session, seq, after } = below
+        if (this.current !== session || session.pending.some((each) => each.seq === seq))
+            return this.flush({ strict: true })
+        session.gaps?.delete(seq)
+        if (session.nextSeq <= seq) session.nextSeq = seq + 1
+        const added: PendingEntry = {
+            wall: entry.wall,
+            ...(after.state ? { state: after.state } : {}),
+            ...(after.snapshot ? { snapshot: after.snapshot } : {}),
+            ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
+            ...(entry.device ? { device: entry.device } : {}),
+            ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
+            operation: captureOperation(entry.operation),
+            seq,
+            kind: 'save',
+            dirty: false,
+        }
+        const at = session.pending.findIndex((each) => each.seq > seq)
+        if (at === -1) session.pending.push(added)
+        else session.pending.splice(at, 0, added)
+        this.entered()
         return this.flush({ strict: true })
     }
 

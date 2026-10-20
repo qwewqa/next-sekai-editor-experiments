@@ -162,11 +162,14 @@ export const buildRows = (
     // The notes in an entry's state. An undo or redo not stored yet holds only the root it lands
     // on, whose count the entry that made that state has.
     const counts = new Map<string, number>()
+    // An entry that cannot be read has no known count: it takes no part in a delta.
     for (const entry of newestFirst)
-        if (entry.snapshot && entry.noteCount !== undefined)
+        if (entry.snapshot && entry.noteCount !== undefined && !entry.unreadable)
             counts.set(entry.snapshot, entry.noteCount)
     const noteCountOf = (entry: Entry) =>
-        entry.noteCount ?? (entry.snapshot ? counts.get(entry.snapshot) : undefined)
+        entry.unreadable
+            ? undefined
+            : (entry.noteCount ?? (entry.snapshot ? counts.get(entry.snapshot) : undefined))
     // The change each entry made: its notes against the next older entry's, which Edits Here's
     // matches are not.
     const deltas = new Map<string, number>()

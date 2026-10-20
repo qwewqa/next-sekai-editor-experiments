@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
+import { holdWorker, release } from './historyJourney'
 
 // The change view (Part 1 §1.4.11, §1.4.10.5, Step 5): what a peeked entry changed against the
 // entry before it, marked on the chart with the rest dimmed, counted on the peek bar, brought
@@ -1187,4 +1188,79 @@ test('Edits Here counts its last group exactly once its scan has finished, whate
     await expect(group).toHaveCount(1)
     await expect(surface(page).locator('[data-history-scan]')).toHaveCount(0)
     await expect(group).toHaveText('2 steps')
+})
+
+/** Chooses Edits Here from Go To in the docked panel. */
+const chooseHere = async (page: Page) => {
+    await surface(page).locator('[data-history-goto-button]').click()
+    await page.getByRole('radio', { name: 'Edits Here' }).click()
+    await page.keyboard.press('Escape')
+    await expect(surface(page).locator('[data-history-filter-banner]')).toContainText(
+        'Edits Here · ',
+    )
+}
+
+test('closing the History dialog does not stop the docked panel’s Edits Here scan', async ({
+    page,
+}) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    const hold = await holdWorker(page, 'findEdits')
+    try {
+        await chooseHere(page)
+        await hold.reached()
+        const scan = surface(page).locator('[data-history-scan]')
+        await expect(scan).toHaveAttribute('data-scan', 'checking')
+        // The dialog's own Timeline shows over the panel's, then goes while the scan is out.
+        await page.evaluate(() => {
+            const active = document.activeElement
+            if (active instanceof HTMLElement) active.blur()
+        })
+        await page.keyboard.press('Shift+H')
+        const dialog = page.locator('[data-history-surface="dialog"] [data-history-list]')
+        await expect(dialog).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(dialog).toHaveCount(0)
+        // The panel is still waiting for the scan: it is not shown as complete or as empty.
+        await expect(scan).toHaveAttribute('data-scan', 'checking')
+        await expect(surface(page).locator('[data-history-empty]')).toHaveCount(0)
+    } finally {
+        await release(page)
+    }
+    await expect(row(page, 'Moved near')).toBeVisible()
+    await expect(surface(page).locator('[data-history-scan]')).toHaveCount(0)
+})
+
+test('a failed Edits Here scan says so, and Try Again scans again', async ({ page }) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    const hold = await holdWorker(page, 'findEdits')
+    try {
+        await chooseHere(page)
+        await hold.reached()
+    } finally {
+        await release(page, true)
+    }
+    // Not "No edits here": the search did not finish.
+    const failed = surface(page).locator('[data-history-failed]')
+    await expect(failed).toContainText('The timeline could not be loaded.')
+    await expect(surface(page).locator('[data-history-empty]')).toHaveCount(0)
+    await failed.getByRole('button', { name: 'Try Again' }).click()
+    await expect(row(page, 'Moved near')).toBeVisible()
+    await expect(failed).toHaveCount(0)
+})
+
+test('Edits Here takes the beats of a very large selection', async ({ page }) => {
+    const span = await page.evaluate(async () => {
+        const { beatSpan } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/editsHere')
+        >('/src/editor/history/editsHere.ts')
+        const entities = Array.from({ length: 400_000 }, (_, i) => ({ beat: 10 + (i % 1000) }))
+        return beatSpan(entities)
+    })
+    expect(span).toEqual({ from: 10, to: 1009 })
 })
