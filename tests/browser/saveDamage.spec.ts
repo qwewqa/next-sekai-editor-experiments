@@ -4,10 +4,13 @@ import {
     edit,
     flushed,
     notice,
+    pauseAt,
     pickerCalls,
     pressSave,
     projectOf,
     queuePicks,
+    reached,
+    release,
     rows,
     saveDialog,
     sessionOf,
@@ -139,7 +142,7 @@ test('the Save dialog opens though the worker doesn’t answer whether it holds 
 }) => {
     await start(page, { fileSystemAccess: false })
     await edit(page, 1)
-    await page.evaluate(async () => {
+    const bgm = await page.evaluate(async () => {
         const { pushState, state } = await import('/src/history/index.ts')
         const { captureMedia } = await import('/src/local/media.ts')
         const { bgmOperation } = await import('/src/editor/headerLabels.ts')
@@ -152,6 +155,7 @@ test('the Save dialog opens though the worker doesn’t answer whether it holds 
             source: captured.source,
         }
         pushState(bgmOperation(state.value.bgm, next), { ...state.value, bgm: next })
+        return captured.meta.hash
     })
     await flushed(page)
     await page.reload()
@@ -175,4 +179,67 @@ test('the Save dialog opens though the worker doesn’t answer whether it holds 
     const calls = await page.evaluate(() => (window as unknown as { calls: string[] }).calls)
     expect(calls).toContain('mediaHeld')
     expect(calls).not.toContain('saveNeeds')
+    // Not known to be held, so the row defaults; the build still takes the stored BGM.
+    const downloading = page.waitForEvent('download')
+    await submitSave(page, 'coconut')
+    const download = await downloading
+    const stream = await download.createReadStream()
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) chunks.push(chunk as Buffer)
+    const written = await page.evaluate(
+        async (bytes) => {
+            const { ZipReader } = await import('/src/zip/reader.ts')
+            const reader = await ZipReader.open(new Blob([new Uint8Array(bytes)]))
+            const json = (name: string) =>
+                reader.read(reader.get(name)!, { maxSize: 4_000_000 }).then((data) => {
+                    return JSON.parse(new TextDecoder().decode(data)) as Record<string, unknown>
+                })
+            const project = await json('project.json')
+            // Written with the file: its entry, by its SHA-256.
+            const form = project.bgm as { file?: string; sha256?: string } | undefined
+            const entry = form?.file === undefined ? undefined : reader.get(form.file)
+            return { sha256: form?.sha256, size: entry?.size }
+        },
+        [...Buffer.concat(chunks)],
+    )
+    expect(written.sha256?.startsWith(bgm)).toBe(true)
+    expect(written.size).toBe(4096)
+})
+
+test('Cancel on “Preparing…” while the own file is read before the picker cancels the Save', async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await edit(page, 2)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await edit(page, 3)
+    const first = (await ownRows(page)).find((row) => row.kind === 'edit')!
+    await damage(page, first)
+    const pickers = (await pickerCalls(page)).length
+    // The build finds the damage, and the read before the picker is held.
+    await pauseAt(page, 'preRead')
+    await runSaveAs(page)
+    await expect(saveDialog(page, 'Save As')).toBeVisible()
+    await queuePicks(page, ['coconut.nxsp'])
+    await submitSave(page, undefined, 'Save As')
+    await reached(page, 'preRead')
+    const preparing = page.getByRole('dialog').filter({ hasText: 'Preparing' })
+    await expect(preparing).toBeVisible()
+    await preparing.getByRole('button', { name: 'Cancel' }).click()
+    await release(page)
+    await expect(preparing).toHaveCount(0)
+    // No picker opened, and the file is as it was.
+    await page.waitForTimeout(300)
+    expect((await pickerCalls(page)).length).toBe(pickers)
+    expect(((await projectOf(page, 'coconut.nxsp')).revision as Row).n).toBe(1)
+    // The Save ended: the next one goes on and appends.
+    await runSaveAs(page)
+    await expect(saveDialog(page, 'Save As')).toBeVisible()
+    await submitSave(page, undefined, 'Save As')
+    await expect
+        .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).n)
+        .toBe(2)
 })

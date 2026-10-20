@@ -836,8 +836,20 @@ const pickReserved = async (
     // The build found damage in storage that the carry test couldn't see (SP-1): the chain's own
     // file is still whole until a picker empties it, so it's read now, and a pick of it appends.
     let pre = await settledNow(request.pre)
-    if (!pre && binding.file && (built.damaged.length > 0 || built.marked > 0))
+    if (!pre && binding.file && (built.damaged.length > 0 || built.marked > 0)) {
+        // A long read shows "Preparing…" as a long build does; its Cancel cancels the Save.
+        slot.timer = setTimeout(() => {
+            openPreparing(slot).built(built.blob.size)
+        }, PREPARING_MS)
         pre = await preRead(env, binding, { damaged: true })
+        await savePoint('preRead')
+        clearTimeout(slot.timer)
+        if (slot.dialog?.signal.aborted) {
+            closePreparing(slot)
+            await env.flusher.endSave(reservation)
+            return { kind: 'cancelled' }
+        }
+    }
 
     // R12: a build that outlasted the press asks for a new one.
     if (
@@ -1718,10 +1730,16 @@ const bgmHeld = async (env: Env, state: State) => {
     if (!meta) return false
     if (source) return true
     // One key read; a worker that doesn't answer soon counts as not held, so the dialog opens.
+    let timer: ReturnType<typeof setTimeout> | undefined
     const held = await Promise.race([
         env.worker.call('mediaHeld', [meta.hash]).catch(() => undefined),
-        new Promise<undefined>((resolve) => setTimeout(resolve, BGM_HELD_WAIT_MS)),
+        new Promise<undefined>((resolve) => {
+            timer = setTimeout(() => {
+                resolve(undefined)
+            }, BGM_HELD_WAIT_MS)
+        }),
     ])
+    clearTimeout(timer)
     return !!held?.includes(meta.hash)
 }
 

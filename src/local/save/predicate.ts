@@ -137,9 +137,9 @@ export const readReplaceDecision = async (
 
 /**
  * Damage storage already knows of: every chain's `badChunks` (bodies are shared between chains,
- * so another chain's build may have found it), as hex, those still missing or bad (SP-1).
+ * so another chain's build may have found it), as hex. `stillBad` says which still are (SP-1).
  */
-const knownDamage = async (store: SaveStore) => {
+export const knownDamage = async (store: SaveStore) => {
     const chains = await store.read(['chains'], (tx) => tx.getAll('chains'))
     const known = new Set<string>()
     for (const chain of chains)
