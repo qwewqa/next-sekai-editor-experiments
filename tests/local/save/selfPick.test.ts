@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { hashKey } from '../../../src/local/db'
+import { fromHex16, toHex } from '../../../src/local/hash'
+import { toRecords } from '../../../src/local/records/records'
+import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { readReplaceDecision, readSaveNeeds } from '../../../src/local/save/predicate'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
-import { Fixture, heldRows, inspectNxsp, save, sourceOf } from './fixture'
+import { Fixture, heldRows, inspectNxsp, save, sourceOf, stateAt } from './fixture'
 
 // A save picker returning the chain's own file (Part 1 §1.4.7 R2, R4; owner decision log D5;
 // `work/d5/safety.md` S1, S2): the file is read first only when storage lacks what it holds (the
@@ -83,4 +87,64 @@ test('whether to read the file first is known from storage alone: rows it lacks,
     assert.deepEqual(full.lacking, [missing])
     assert.ok(await fixture.thin(0, 2))
     assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
+})
+
+/** Flips a byte of a stored chunk that only `k`'s state needs, as bit rot no build has found yet. */
+const damageOnly = async (fixture: Fixture, k: number, others: number[]) => {
+    const chunks = (n: number) => {
+        const encoded = encodeSnapshot(toRecords(stateAt(n).state))
+        return [encoded.header, ...encoded.chunks].map((chunk) => toHex(chunk.hash))
+    }
+    const shared = new Set(others.flatMap(chunks))
+    const hex = chunks(k).find((each) => !shared.has(each))
+    assert.ok(hex, `state ${k} has a chunk of its own`)
+    const key = hashKey(fromHex16(hex))
+    await fixture.store.write(['chunks'], async (tx) => {
+        const row = (await tx.get('chunks', key)) as { bytes: Uint8Array }
+        const bytes = row.bytes.slice()
+        bytes[0] = (bytes[0] ?? 0) ^ 0x5a
+        await tx.put('chunks', { ...row, bytes }, key)
+    })
+    return hex
+}
+
+test('damage no build has found: the self-pick is written from storage, the step kept: false and the line shown', async () => {
+    // The property test's "edit, edit, save, edit, edit, damage, pick" (save-prop): the carry test
+    // reads stored rows only, so it can't see a bad chunk, and the file isn't read (R2). The write
+    // from storage finds the damage, marks the row and says so (§1.6.11.6; D5; H-2, H-3).
+    const fixture = await Fixture.create()
+    await fixture.start(1)
+    await fixture.edit(2)
+    await fixture.edit(3)
+    await fixture.flush()
+    const first = await save(fixture, { kind: 'copy' }, { disk: diskOf })
+    const file = first.file
+    assert.ok(file)
+    await fixture.edit(4)
+    await fixture.edit(5)
+    await fixture.flush()
+    const hex = await damageOnly(fixture, 1, [2, 3, 4, 5])
+    assert.equal(await needsRead(fixture, file), false)
+    const { built, file: written } = await save(fixture, { kind: 'copy' }, { disk: diskOf })
+    assert.ok(!('refused' in built) && written)
+    assert.deepEqual(built.damaged, [hex])
+    assert.equal(built.marked, 1)
+    assert.equal(built.someStepsNotKept, true)
+    const old = await heldRows(file)
+    const now = await heldRows(written)
+    const init = `init|${old.history.entries[0]?.time}|${stateAt(1).hex}`
+    assert.equal(old.rows.get(init), 1)
+    // The row is written, flagged: History shows it as damaged, never as a silent gap.
+    assert.equal(now.rows.get(init), undefined)
+    const row = now.history.entries.find((entry) => entry.kind === 'init')
+    assert.equal(row?.kept, false)
+    // Every other row of the picked file is kept with its state.
+    for (const [key, count] of old.rows)
+        if (key !== init) assert.ok((now.rows.get(key) ?? 0) >= count, key)
+    // It writes its own id, so it claims nothing it lacks.
+    const revision = now.read.project?.revision
+    assert.equal(revision?.completeFrom, revision?.id)
+    // The mark is stored (one-way), so no later write claims the step.
+    const stored = (await fixture.entries()).find((entry) => entry.kind === 'init')
+    assert.equal(stored?.kept, false)
 })
