@@ -56,8 +56,9 @@ const outside = (event: PointerEvent) => {
         !menu.value?.contains(event.target) &&
         !props.anchor.contains(event.target)
     ) {
+        // The press only closes it, so it moves no focus: focus goes back to the button (X-3).
         swallowPress(event)
-        emit('close', false)
+        emit('close', true)
     }
 }
 const keydown = (event: KeyboardEvent) => {

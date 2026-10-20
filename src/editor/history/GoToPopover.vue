@@ -126,8 +126,9 @@ onUnmounted(() => {
     window.removeEventListener('blur', onDismiss)
 })
 
+// Focus in it goes back to the button as it closes (X-3).
 const onDismiss = () => {
-    emit('close', false)
+    emit('close', !!popover.value?.contains(document.activeElement))
 }
 
 const onOutside = (event: PointerEvent) => {
@@ -135,9 +136,10 @@ const onOutside = (event: PointerEvent) => {
     if (!(target instanceof Node)) return
     // The button toggles the popover itself on click.
     if (popover.value?.contains(target) || props.anchor.contains(target)) return
-    // The press only closes it, so closing never edits what lies under it.
+    // The press only closes it, so closing never edits what lies under it, and it moves no focus:
+    // focus goes back to the button (X-3).
     swallowPress(event)
-    emit('close', false)
+    emit('close', true)
 }
 
 // Edits Here takes its beats again each time it is chosen.

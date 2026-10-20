@@ -1456,3 +1456,174 @@ test('Edits Here takes the beats of a very large selection', async ({ page }) =>
     })
     expect(span).toEqual({ from: 10, to: 1009 })
 })
+
+test('leaving the peek from the strip gives focus to the chart, by any of its ways (X-2)', async ({
+    page,
+}) => {
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await edit(page, 'Moved B', { kind: 'move', beats: [7] })
+    await stored(page)
+    await openTab(page)
+    const chart = page.locator('.chart-pane')
+    const peek = async () => {
+        await row(page, 'Moved A').click()
+        await expect(page.locator('[data-peek-main]')).toBeVisible()
+    }
+    const gone = async () => {
+        await expect(page.locator('[data-peek-main]')).toHaveCount(0)
+        await expect(chart).toBeFocused()
+    }
+    // Back to Now by keys, then by a click.
+    await peek()
+    await page.locator('[data-peek-back]').focus()
+    await page.keyboard.press('Enter')
+    await gone()
+    await peek()
+    await page.locator('[data-peek-back]').click()
+    await gone()
+    // Escape on a strip control.
+    await peek()
+    await page.locator('[data-peek-restore]').focus()
+    await page.keyboard.press('Escape')
+    await gone()
+    // Restore, then a Restore that already matches, which changes nothing.
+    await peek()
+    await page.locator('[data-peek-restore]').click()
+    await gone()
+    await expect(
+        list(page)
+            .getByRole('row')
+            .filter({ hasText: /^Restored to/ }),
+    ).toHaveCount(1)
+    await peek()
+    await page.locator('[data-peek-restore]').click()
+    await gone()
+    await expect(
+        page.locator('.notification', { hasText: 'Already matches the current chart' }),
+    ).toBeVisible()
+    // Undo pressed while the strip has focus ends the peek too.
+    await peek()
+    await page.locator('[data-peek-restore]').focus()
+    await page.keyboard.press('Control+z')
+    await gone()
+})
+
+test('Try Again and Show All by keys hand focus on as they go (X-2, X-5)', async ({ page }) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    const hold = await holdWorker(page, 'findEdits')
+    try {
+        await chooseHere(page)
+        await hold.reached()
+    } finally {
+        await release(page, true)
+    }
+    const failed = surface(page).locator('[data-history-failed]')
+    await failed.getByRole('button', { name: 'Try Again' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(row(page, 'Moved near')).toBeVisible()
+    await expect(failed).toHaveCount(0)
+    // To the cursor's row.
+    await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
+    // Show All goes with the banner: to the list's roving row, as a Go To pick goes (X-5).
+    await surface(page).getByRole('button', { name: 'Show All' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(surface(page).locator('[data-history-filter-banner]')).toHaveCount(0)
+    await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
+})
+
+test('an outside press that closes Go To or a row’s menu gives focus back to its opener (X-3)', async ({
+    page,
+}) => {
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await stored(page)
+    await openTab(page)
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    const outside = { x: chart.x + chart.width / 2, y: chart.y + chart.height / 2 }
+    const button = surface(page).locator('[data-history-goto-button]')
+    await button.click()
+    await expect(page.locator('[data-history-goto]')).toBeVisible()
+    await page.mouse.click(outside.x, outside.y)
+    await expect(page.locator('[data-history-goto]')).toHaveCount(0)
+    await expect(button).toBeFocused()
+    // A resize closes it the same way.
+    await button.click()
+    await expect(page.locator('[data-history-goto]')).toBeVisible()
+    await page.setViewportSize({ width: 1500, height: 950 })
+    await expect(page.locator('[data-history-goto]')).toHaveCount(0)
+    await expect(button).toBeFocused()
+    // A row's menu: back to the row.
+    await row(page, 'Moved A').click({ button: 'right' })
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+    await page.mouse.click(outside.x, outside.y)
+    await expect(menu).toHaveCount(0)
+    await expect
+        .poll(() => row(page, 'Moved A').evaluate((element) => element.matches(':focus-within')))
+        .toBe(true)
+})
+
+test('Edits Here’s range names its first and last beats, for a selection and for the view (X-B 1, 6)', async ({
+    page,
+}) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    const banner = surface(page).locator('[data-history-filter-banner]')
+    const range = page.locator('[data-goto-here-range]')
+    // In the fixture's 4/4, beat 3 is 1.4, 5 is 2.2 and 7 is 2.4: a last beat at a bar's end reads
+    // itself, not the next bar's first.
+    for (const [beats, text] of [
+        [[5], '2.2 – 2.2'],
+        [[5, 7], '2.2 – 2.4'],
+        [[3], '1.4 – 1.4'],
+    ] as const) {
+        await page.evaluate(
+            async (beats) => {
+                const { history, store } = window.editorTest
+                history.replaceState({
+                    ...history.state.value,
+                    selectedEntities: [...store.getAllEntities()].filter(
+                        (entity) => entity.type === 'note' && beats.includes(entity.beat),
+                    ),
+                })
+                await window.editorTest.nextTick()
+            },
+            beats as readonly number[],
+        )
+        await surface(page).locator('[data-history-goto-button]').click()
+        await expect(range).toHaveText(text)
+        await page.getByRole('radio', { name: 'Edits Here' }).click()
+        await page.keyboard.press('Escape')
+        await expect(banner).toHaveText(new RegExp(`Edits Here · ${text}`))
+    }
+    // With nothing selected, the beats of the band in view: the grid beats its bottom and top are in.
+    await page.evaluate(async () => {
+        const { history } = window.editorTest
+        history.replaceState({ ...history.state.value, selectedEntities: [] })
+        await window.editorTest.nextTick()
+    })
+    await viewAt(page, 40)
+    const expected = await page.evaluate(async () => {
+        const { appImport, history } = window.editorTest
+        const [{ bandTimes }, { timeToBeat }] = await Promise.all([
+            appImport<typeof import('../../src/editor/history/changes')>(
+                '/src/editor/history/changes.ts',
+            ),
+            appImport<typeof import('../../src/state/integrals/bpms')>(
+                '/src/state/integrals/bpms.ts',
+            ),
+        ])
+        const band = bandTimes()
+        const label = (time: number) => {
+            const beat = Math.floor(timeToBeat(history.state.value.bpms, time))
+            return `${Math.floor(beat / 4) + 1}.${(beat % 4) + 1}`
+        }
+        return `${label(band.bottom)} – ${label(band.top)}`
+    })
+    await surface(page).locator('[data-history-goto-button]').click()
+    await expect(range).toHaveText(expected)
+})

@@ -16,6 +16,7 @@ import { useRootFontSize } from '../useRootFontSize'
 import { measurePeekWidths, peekLayout, peekText, peekWidths } from './peekFit'
 import { backToNow, peekedInfo, peekedLabel, requestRestore } from './selection'
 import { openOperationDetails } from './operationDetails'
+import { focusAfterRemoval } from '../../utils/focusFallback'
 
 // --- Announcing the peek: with its change when that arrives within 300 ms, else the change alone.
 const announcement = ref('')
@@ -71,6 +72,18 @@ const text = computed(() => {
     const info = peekedInfo.value
     return info ? peekText(settings.locale, info.time, layout.value.wide) : ''
 })
+
+// Leaving the peek takes the strip away, by Back to Now, Restore, Escape, Undo or anything else:
+// focus in it, or in its options menu, goes to the chart (§1.4.10.2, X-2).
+watch(
+    isPeeking,
+    (peeking) => {
+        if (peeking) return
+        const active = document.activeElement
+        if (active?.closest('[data-peek-bar], [data-change-options-menu]')) void focusAfterRemoval()
+    },
+    { flush: 'sync' },
+)
 
 const restore = () => {
     if (peekedKey.value) void requestRestore(peekedKey.value)

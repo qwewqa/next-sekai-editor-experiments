@@ -28,7 +28,10 @@ export const beatSpan = (entities: readonly { beat: number }[]) => {
     return { from, to }
 }
 
-/** The beats Edits Here would use now: whole grid beats, from the one `from` is in to the one `to` is in. */
+/**
+ * The beats Edits Here would use now: whole grid beats, from the one `from` is in to the end of
+ * the one `last` starts, which its label names (X-B 1).
+ */
 export const takeHereRange = () => {
     const shown = state.value
     const selected = isPeeking.value ? [] : shown.selectedEntities
@@ -43,15 +46,16 @@ export const takeHereRange = () => {
     }
     const first = Math.max(0, beatStart(shown.bpms, span.from))
     const last = Math.max(first, beatStart(shown.bpms, span.to))
-    // Up to the end of the last beat.
-    return { from: first, to: last + 1 - 1e-9 }
+    // Up to the end of the last beat. The end itself is within a rounding of the next beat, so
+    // the label names the last beat's start rather than reading it back from the end.
+    return { from: first, to: last + 1 - 1e-9, last }
 }
 
 /** A range as the grid labels write its first and last beats: "118.2 – 121.4". */
-export const hereRangeText = (range: { from: number; to: number }) => {
+export const hereRangeText = (range: { from: number; last: number }) => {
     const bpms = state.value.bpms
     const at = (beat: number) => formatBeatPosition(bpms, beat, settings.beatDisplay)
-    return `${at(range.from)} – ${at(beatStart(bpms, range.to))}`
+    return `${at(range.from)} – ${at(range.last)}`
 }
 
 /** Turns Edits Here on with the beats it takes now. */

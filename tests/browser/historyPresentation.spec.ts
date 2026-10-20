@@ -1702,7 +1702,7 @@ test('promotion waits for an interrupted Edits Here scan before restoring its an
                 target.releaseHere = () => resolve(result)
             })
         }
-        state.hereRange.value = { from: 0, to: 16 }
+        state.hereRange.value = { from: 0, to: 16, last: 15 }
         state.historyFilter.value = 'here'
     })
     await expect

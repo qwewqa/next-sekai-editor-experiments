@@ -519,3 +519,27 @@ test('the Save dialog stops counting again when an import stays pending that nev
     expect(await estimates()).toBe(settled)
     await expect(total).toHaveText('Estimating size…')
 })
+
+test('Export with no import to wait for still asks for a press once the press has lapsed (SF-F1)', async ({
+    page,
+}) => {
+    // The browser reports the press as gone, as after a slow storage answer.
+    await start(page, { override: { activation: false } })
+    const calls = (await pickerCalls(page)).length
+    await queuePicks(page, ['LevelData'])
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
+    await settle(page)
+    await page.keyboard.press('Enter')
+    const preparing = page
+        .getByRole('dialog')
+        .filter({ has: page.locator('[data-save-preparing]') })
+    await expect(preparing).toBeVisible()
+    // No picker without a press: it would be refused.
+    await page.waitForTimeout(500)
+    expect((await pickerCalls(page)).length).toBe(calls)
+    await settle(page)
+    await preparing.getByRole('button', { name: 'Export', exact: true }).click()
+    await expect.poll(async () => (await pickerCalls(page)).length).toBe(calls + 1)
+    await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+})

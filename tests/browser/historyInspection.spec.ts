@@ -1806,3 +1806,70 @@ test('composed old and new change destinations stay identical while Show Edits i
     expect(opacity).toMatchObject({ typeHidden: 0, groupHidden: 0 })
     await page.screenshot({ path: testInfo.outputPath('composed-navigation-edits-off.png') })
 })
+
+test('an outside press that closes Change Options gives focus back to its button (X-3)', async ({
+    page,
+}) => {
+    await seed(page)
+    await forcePane(page, 240)
+    const opener = page.locator('[data-change-options]')
+    await opener.click()
+    await expect(page.locator('[data-change-options-menu]')).toBeVisible()
+    await page.locator('[data-peek-back]').click()
+    await expect(page.locator('[data-change-options-menu]')).toHaveCount(0)
+    await expect(page.locator('[data-peek-main]')).toBeVisible()
+    await expect(opener).toBeFocused()
+})
+
+test.describe('touch Change Options', () => {
+    test.use({ hasTouch: true })
+    test('an outside tap that closes the sheet gives focus back to its button (X-3)', async ({
+        page,
+    }) => {
+        await seed(page)
+        await page.setViewportSize({ width: 300, height: 568 })
+        const opener = page.locator('[data-change-options]')
+        await expect(opener).toBeVisible()
+        await opener.tap()
+        await expect(page.locator('[data-change-options-menu]')).toBeVisible()
+        // The strip's empty gap, between its two capsules.
+        const main = (await page.locator('[data-peek-main]').boundingBox())!
+        const navigation = (await page.locator('[data-peek-navigation]').boundingBox())!
+        await page.touchscreen.tap(
+            main.x + main.width / 2,
+            (main.y + main.height + navigation.y) / 2,
+        )
+        await expect(page.locator('[data-change-options-menu]')).toHaveCount(0)
+        await expect(page.locator('[data-peek-main]')).toBeVisible()
+        await expect(opener).toBeFocused()
+    })
+})
+
+test('the Property Changes title is whole in a 304 px dialog in every language (X-4)', async ({
+    page,
+}) => {
+    await seed(page)
+    await page.setViewportSize({ width: 320, height: 568 })
+    const cut: string[] = []
+    for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
+        await page.evaluate((locale) => {
+            window.editorTest.settings.locale = locale as never
+        }, locale)
+        await page.locator('[data-property-summary], [data-change-options]').first().click()
+        if (await page.locator('[data-change-options-menu]').count())
+            await page.locator('[data-change-options-menu] [role="menuitem"]').click()
+        const modal = page.locator('dialog[open]').last()
+        const title = modal.locator('[data-modal-title]')
+        await expect(title).toBeVisible()
+        const measure = await title.evaluate((element) => ({
+            text: element.textContent ?? '',
+            dialog: element.closest('dialog')!.getBoundingClientRect().width,
+            whole: element.scrollWidth <= element.clientWidth,
+        }))
+        expect(measure.dialog).toBeLessThanOrEqual(304)
+        if (!measure.whole) cut.push(`${locale}: ${measure.text}`)
+        await page.keyboard.press('Escape')
+        await expect(modal).toHaveCount(0)
+    }
+    expect(cut).toEqual([])
+})
