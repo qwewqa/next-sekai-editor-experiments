@@ -267,7 +267,7 @@ test('Q1e: a failed load reports a failure', async () => {
         undoState()
         const failed = stack.pendingMoveOutcome()!
         await reads.fail()
-        assert.deepEqual(await failed, { kind: 'failed' })
+        assert.deepEqual(await failed, { kind: 'failed', direction: -1 })
         assert.equal(liveState.value.initialLife, 109)
     })
 })

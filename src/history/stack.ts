@@ -126,7 +126,7 @@ const setBusy = (busy: boolean) => {
 export type MoveOutcome =
     | { kind: 'landed'; direction: -1 | 1; step: UndoableStep }
     | { kind: 'cancelled' }
-    | { kind: 'failed' }
+    | { kind: 'failed'; direction: -1 | 1 }
 
 /** The moves queued together: presses share one outcome, which settles once. */
 let batch: { outcome: Promise<MoveOutcome>; end: (outcome: MoveOutcome) => void } | undefined
@@ -251,7 +251,7 @@ const settle = async () => {
         if (!(await load(target))) {
             if (at === generation) {
                 // Nothing moved, and the user can try again: the next press reads the slot anew.
-                endBatch({ kind: 'failed' })
+                endBatch({ kind: 'failed', direction: pendingMove.value < 0 ? -1 : 1 })
                 cancelPendingMoves()
             }
             return

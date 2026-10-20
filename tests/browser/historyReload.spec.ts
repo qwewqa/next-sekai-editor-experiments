@@ -378,8 +378,12 @@ test('R3: a queued Undo onto an unloadable slot changes nothing, and the next pr
     await flush(page)
     expect(await lifeOf(page)).toBe(head - 1)
     expect(await canUndo(page)).toBe(true)
-    // The user was told about the first step only: the one that landed.
+    // The user was told about the first step only (the one that landed), and that the second
+    // could not be undone.
     expect(await moveNotices(page)).toHaveLength(1)
+    await expect
+        .poll(async () => (await noticeLog(page)).includes(en.commands.undo.failed))
+        .toBe(true)
     // With the loader healthy, one press undoes exactly one step.
     await press(page, 'z', 1)
     await expect.poll(() => lifeOf(page)).toBe(head - 2)

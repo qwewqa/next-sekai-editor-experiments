@@ -20,7 +20,15 @@ export const noticeOnLanding = (outcome: Promise<MoveOutcome>) => {
     void outcome.then((result) => {
         // A cancelled move is explained by what cancelled it (an edit, or the peek).
         if (result.kind === 'landed') notifyMove(result.direction, result.step)
+        else if (result.kind === 'failed') notifyFailed(result.direction)
     })
+}
+
+/** The slot could not be read: nothing changed, and the next press tries again. */
+const notifyFailed = (direction: -1 | 1) => {
+    notify(() =>
+        direction < 0 ? i18n.value.commands.undo.failed : i18n.value.commands.redo.failed,
+    )
 }
 
 /** The notice for a step crossed by Undo (negative) or Redo. */

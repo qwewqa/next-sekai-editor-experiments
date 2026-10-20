@@ -294,6 +294,7 @@
     "redo": {
       "title": "Refaire",
       "noState": "Rien à refaire",
+      "failed": "Impossible de refaire",
       "redid": "\"{0}\" refait"
     },
     "reset": {
@@ -382,6 +383,7 @@
     "undo": {
       "title": "Annuler",
       "noState": "Rien à annuler",
+      "failed": "Impossible d’annuler",
       "undid": "\"{0}\" annulé"
     },
     "utilities": {
