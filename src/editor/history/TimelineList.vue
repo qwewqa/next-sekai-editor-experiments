@@ -45,6 +45,7 @@ import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
 import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
+import { dividerLabel } from './dividerLabel'
 import { openOperationDetails } from './operationDetails'
 import { canFocusHistory } from './openHistory'
 import {
@@ -1346,8 +1347,7 @@ const titleOf = (row: EntryRow) =>
 const nameOf = (row: EntryRow) =>
     [labelOf(row), flagTextOf(row), deltaOf(row), whenOf(row)].filter(Boolean).join(', ')
 
-const dividerText = (entry: Entry) =>
-    interpolateRaw(i18n.value.history.continuedFrom, formatDateTime(entry.from ?? entry.time))
+const dividerText = (entry: Entry) => dividerLabel(entry, operationContext.value, formatDateTime)
 
 const headerClass = (header: Header) =>
     header.level === 'day'
