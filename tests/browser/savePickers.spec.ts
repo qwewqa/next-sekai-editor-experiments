@@ -104,6 +104,27 @@ test('a self-pick at the base keeps the docId and ancestry, with no line', async
     await expect(notice(page).filter({ hasText: 'Some earlier steps' })).toHaveCount(0)
 })
 
+test('a self-pick’s file is empty from the pick until the write closes, then holds the next revision', async ({
+    page,
+}) => {
+    await start(page)
+    await savedTo(page, 'coconut.nxsp')
+    const first = await projectOf(page, 'coconut.nxsp')
+    await edit(page, 2)
+    await saveAs(page)
+    await queuePicks(page, ['coconut.nxsp'])
+    await pauseAt(page, 'picked')
+    await submitSave(page, undefined, 'Save As')
+    await reached(page, 'picked')
+    expect(await readFile(page, 'coconut.nxsp')).toEqual([])
+    // A read of the emptied file waits for the save's write.
+    const reading = projectOf(page, 'coconut.nxsp')
+    await release(page)
+    const project = await reading
+    expect((project.revision as Row).parent).toBe((first.revision as Row).id)
+    expect(project.id).toBe(first.id)
+})
+
 test('the chain’s own file changed on disk: a pick puts its bytes back and opens the conflict dialog', async ({
     page,
 }) => {
@@ -394,7 +415,8 @@ test('B mid-write: A’s pick waits for B to finish, then takes the file over', 
     await submitSave(a)
     // A waits on nse-bind while B holds it.
     await a.waitForTimeout(500)
-    expect((await projectOf(b, 'coconut.nxsp').catch(() => undefined))?.id).toBeUndefined()
+    // A's picker emptied the file, and B's write hasn't closed.
+    await expect.poll(() => readFile(b, 'coconut.nxsp')).toEqual([])
     await release(b)
     // B's check of the emptied file goes on without a conflict (R9): its Save lands first.
     await expect
