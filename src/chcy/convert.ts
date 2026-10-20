@@ -105,6 +105,18 @@ export const chcyToUsc = (levelData: LevelData): Usc['usc'] => {
         const data = entity.data.find((data) => data.name === name)
         return data && 'value' in data ? data.value : undefined
     }
+    // An enumerated value: absent is the format's default, a value the table lacks is refused
+    // (never imported as the default).
+    const choice = <T>(
+        entity: ChcyEntity,
+        name: string,
+        table: Record<number, T | undefined>,
+        absent: number,
+    ): T => {
+        const result = table[value(entity, name) ?? absent]
+        if (result === undefined) throw new ImportRefusal('invalidValue', name)
+        return result
+    }
     const number = (entity: ChcyEntity, name: string, fallback?: number) => {
         const result = value(entity, name) ?? fallback
         if (result === undefined || !Number.isFinite(result))
@@ -171,7 +183,7 @@ export const chcyToUsc = (levelData: LevelData): Usc['usc'] => {
             head,
             tail,
             critical,
-            ease: eases[value(entity, 'ease') ?? 0] ?? 'linear',
+            ease: choice(entity, 'ease', eases, 0),
         }
         connectorsByEntity.set(entity, connector)
         const slide = slides.get(start)
@@ -244,7 +256,7 @@ export const chcyToUsc = (levelData: LevelData): Usc['usc'] => {
             }
             if (i === notes.length - 1) {
                 const direction = archetype.includes('Flick')
-                    ? directions[value(entity, 'direction') ?? 0]
+                    ? choice(entity, 'direction', directions, 0)
                     : undefined
                 return {
                     type: 'end',
@@ -293,7 +305,7 @@ export const chcyToUsc = (levelData: LevelData): Usc['usc'] => {
         const single = singleNotes[archetype] ?? orphanSlideNote(archetype)
         if (!single) continue
         const direction: UscDirection | undefined = single.flick
-            ? (directions[value(entity, 'direction') ?? 0] ?? 'up')
+            ? choice(entity, 'direction', directions, 0)
             : undefined
         objects.push({
             type: 'single',
@@ -327,13 +339,13 @@ export const chcyToUsc = (levelData: LevelData): Usc['usc'] => {
     >()
     for (const entity of entities) {
         if (entity.archetype !== 'Guide') continue
-        const color = guideColors[value(entity, 'color') ?? 0] ?? 'neutral'
-        const fade = guideFades[value(entity, 'fade') ?? 1] ?? 'none'
+        const color = choice(entity, 'color', guideColors, 0)
+        const fade = choice(entity, 'fade', guideFades, 1)
         const guideKey = [key(point(entity, 'start')), key(point(entity, 'end')), color, fade].join(
             '|',
         )
         const piece = {
-            head: point(entity, 'head', eases[value(entity, 'ease') ?? 0] ?? 'linear'),
+            head: point(entity, 'head', choice(entity, 'ease', eases, 0)),
             tail: point(entity, 'tail'),
         }
         const guide = guides.get(guideKey)
