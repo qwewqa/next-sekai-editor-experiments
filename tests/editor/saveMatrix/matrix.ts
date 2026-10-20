@@ -369,6 +369,8 @@ export type Armed = {
     /** Background work the cell joins before it ends. */
     driver?: Promise<unknown>
     facts?: Partial<Facts>
+    /** Whether the fault was met in this cell (a statistic: some cells exit before it). */
+    observed?: () => boolean
     /** Undoes what the fault set up outside the world, before the invariants are checked. */
     cleanup?: () => void
     /** The fault must have taken effect, else the cell proved nothing (a harness fault). */
@@ -440,13 +442,14 @@ const failWrite = (
     at: 'checked' | 'built' | 'beforeClose' | 'closed',
     error: () => Error,
     sticky: boolean,
-) => {
+): Armed => {
     let fired = false
     w.mock.fault = (point) => {
         if (point !== at || (fired && !sticky)) return
         fired = true
         throw error()
     }
+    return { observed: () => fired }
 }
 
 /** The name the last picker opening returned. */
@@ -683,8 +686,20 @@ export const FAULTS: FaultDef[] = [
             path.writes &&
             single(p) &&
             ['other', 'unknown', 'own', 'fresh'].includes(last(p)),
-        arm: (w) => {
+        arm: (w, path, p) => {
+            let calls = 0
+            w.on('worker:takeOver', () => {
+                calls++
+            })
             w.behaviour.set('takeOver', () => 'throw')
+            // Which picks the path takes over: another chain's file, or an unknown one it binds.
+            const takes =
+                path.id === 'save-to-file'
+                    ? ['own', 'other']
+                    : path.family === 'export'
+                      ? ['other']
+                      : ['other', 'unknown', 'fresh']
+            return { effective: () => calls > 0 || !takes.includes(last(p)) }
         },
     },
     {
@@ -698,11 +713,13 @@ export const FAULTS: FaultDef[] = [
     {
         id: 'activation-lapsed-build',
         exit: 'activation lapsed during the build (pressed again)',
-        applies: (path, p) => path.picker && path.build && single(p) && writesFile(p),
+        applies: (path, p) =>
+            path.picker && path.family === 'save' && path.build && single(p) && writesFile(p),
         arm: (w) => {
             w.on('worker:buildSave', (n) => {
                 if (n === 1) activation.active = false
             })
+            return { effective: () => w.log.some((line) => line.startsWith('ready:')) }
         },
     },
     {
@@ -750,7 +767,7 @@ export const FAULTS: FaultDef[] = [
                 imp.finish()
                 await imp.run
             })()
-            return { driver }
+            return { driver, effective: () => w.preparing.length > 0 }
         },
     },
     {
@@ -793,7 +810,7 @@ export const FAULTS: FaultDef[] = [
                 imp.finish()
                 await imp.run
             })()
-            return { driver }
+            return { driver, effective: () => w.log.some((line) => line.startsWith('ready:')) }
         },
     },
     {
@@ -944,6 +961,8 @@ export type CellResult = {
     fault: string
     violations: Violation[]
     outcome: string
+    /** For faults that report it: the fault was met before the Save ended. */
+    observed?: boolean
 }
 
 /** Whether the bytes a Save had to keep were expected in hand for this setup. */
@@ -1035,6 +1054,7 @@ export const runCell = async (
         fault: fault.id,
         violations,
         outcome,
+        ...(armed.observed ? { observed: armed.observed() } : {}),
     }
 }
 
