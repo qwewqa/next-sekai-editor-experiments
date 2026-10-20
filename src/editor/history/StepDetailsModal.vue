@@ -5,12 +5,15 @@ import { peekSourceGeneration } from '../../history/peek'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
 import OperationDetailsContent from './OperationDetailsContent.vue'
+import type { Flags } from './rows'
 import { sourceGeneration } from './source'
 import { historyViewGeneration } from './state'
 
 const props = defineProps<{
     recipe: OperationRecipe
     time: number
+    flags?: Flags
+    memberFlags?: ReadonlyMap<string, Flags>
     source: number
     peekSource: number
     generation: number
@@ -39,6 +42,12 @@ watch(
 
 <template>
     <BaseModal :title="i18n.history.details.title" @close="emit('close')">
-        <OperationDetailsContent v-capture-dialog :recipe="recipe" :time="time" />
+        <OperationDetailsContent
+            v-capture-dialog
+            :recipe="recipe"
+            :time="time"
+            :flags="flags"
+            :member-flags="memberFlags"
+        />
     </BaseModal>
 </template>

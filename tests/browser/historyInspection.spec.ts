@@ -1384,7 +1384,8 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
         )
         const tags = modal.locator('[data-property-row="tags"] [data-property-before]')
         await expect(tags.locator('li').nth(0)).toContainText(messages.historyChanges.notSet)
-        await expect(tags.locator('li').nth(1)).toContainText(messages.historyChanges.empty)
+        // An empty icon reads as Not set too: Step Details uses one empty word.
+        await expect(tags.locator('li').nth(1)).toContainText(messages.historyChanges.notSet)
         expect(await tags.locator('li').nth(2).locator('[data-property-value]').textContent()).toBe(
             '  ',
         )

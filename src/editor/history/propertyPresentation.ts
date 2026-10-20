@@ -10,7 +10,7 @@ import {
     type PropertyValue,
 } from './propertyChanges'
 
-export const propertySectionLabel = (kind: PropertySectionKind) => {
+export const propertySectionLabel = (kind: PropertySectionKind, single = false) => {
     const strings = i18n.value
     return {
         level: strings.commands.properties.title,
@@ -20,8 +20,13 @@ export const propertySectionLabel = (kind: PropertySectionKind) => {
         preview: strings.historyChanges.fields.previewAudio,
         groups: strings.commands.manageGroups.modal.properties.modal.title,
         stages: strings.commands.manageStages.modal.properties.modal.title,
-        groupFolders: strings.historyChanges.groupFolders,
-        stageFolders: strings.historyChanges.stageFolders,
+        // A section about one folder names one; the order of all of them names the kind.
+        groupFolders: single
+            ? strings.historyChanges.groupFolder
+            : strings.historyChanges.groupFolders,
+        stageFolders: single
+            ? strings.historyChanges.stageFolder
+            : strings.historyChanges.stageFolders,
     }[kind]
 }
 
@@ -69,8 +74,6 @@ export const propertyValueText = (
     switch (value.kind) {
         case 'notSet':
             return strings.historyChanges.notSet
-        case 'empty':
-            return strings.historyChanges.empty
         case 'notPresent':
             return strings.historyChanges.notPresent
         case 'noFolder':

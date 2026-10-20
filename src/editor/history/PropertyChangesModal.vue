@@ -19,6 +19,7 @@ import {
     propertyReferenceText,
     propertySectionLabel,
 } from './propertyPresentation'
+import DetailsHeader from './DetailsHeader.vue'
 import PropertyChangeValue from './PropertyChangeValue.vue'
 import { peekedLabel } from './selection'
 
@@ -56,19 +57,20 @@ onBeforeUnmount(() => {
 
 <template>
     <BaseModal :title="i18n.historyChanges.title" @close="emit('close')">
-        <div class="min-w-0 select-text space-y-1 [overflow-wrap:anywhere]" data-property-context>
-            <p class="whitespace-pre-wrap font-bold">{{ peekedLabel(comparison.request) }}</p>
-            <p class="text-fg/80">{{ formatDateTimeSeconds(comparison.request.time) }}</p>
-            <p v-if="summary !== peekedLabel(comparison.request)" class="whitespace-pre-wrap">
-                {{ summary }}
-            </p>
-        </div>
+        <DetailsHeader
+            scope="property"
+            class="select-text [overflow-wrap:anywhere]"
+            :title="peekedLabel(comparison.request)"
+            :meta="formatDateTimeSeconds(comparison.request.time)"
+            :summary="summary !== peekedLabel(comparison.request) ? summary : undefined"
+            data-property-context
+        />
         <div class="min-h-24 min-w-0" data-property-comparison>
             <p v-if="inspection?.status === 'loading' && inspection.delayed">
                 {{ i18n.peek.loadingChanges }}
             </p>
             <p v-else-if="inspection?.status === 'unavailable'">{{ i18n.peek.unavailable }}</p>
-            <div v-else-if="page" class="space-y-5">
+            <div v-else-if="page" class="space-y-4">
                 <section
                     v-for="section in page.sections"
                     :key="propertySectionKey(section)"
@@ -78,7 +80,9 @@ onBeforeUnmount(() => {
                     <h3
                         class="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-bold [overflow-wrap:anywhere]"
                     >
-                        <span>{{ propertySectionLabel(section.kind) }}</span>
+                        <span>{{
+                            propertySectionLabel(section.kind, section.id !== undefined)
+                        }}</span>
                         <span v-if="section.beforeName" class="min-w-0 whitespace-pre-wrap">{{
                             propertyReferenceText(section.beforeName)
                         }}</span>
@@ -119,7 +123,21 @@ onBeforeUnmount(() => {
                         <h4 class="mb-2 text-sm font-bold text-fg/80">
                             {{ propertyFieldLabel(row.field) }}
                         </h4>
-                        <div class="grid min-w-0 grid-cols-2 gap-3">
+                        <!-- An added or removed entry has one side: its value, with no Before and After. -->
+                        <div
+                            v-if="section.status"
+                            class="min-w-0"
+                            v-bind="{
+                                [`data-property-${section.status === 'added' ? 'after' : 'before'}`]:
+                                    '',
+                            }"
+                        >
+                            <PropertyChangeValue
+                                :value="section.status === 'added' ? row.after : row.before"
+                                :field="row.field"
+                            />
+                        </div>
+                        <div v-else class="grid min-w-0 grid-cols-2 gap-3">
                             <div class="min-w-0" data-property-before>
                                 <p class="mb-1 text-xs text-fg/80">
                                     {{ i18n.historyChanges.before }}
