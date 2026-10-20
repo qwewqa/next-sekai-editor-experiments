@@ -39,11 +39,9 @@ export const chipSentence = (kind: ChipKind) => {
         case 'newerOnDisk':
             return interpolateRaw(state.newerOnDiskName, name)
         case 'notConfirmed':
-            return interpolateRaw(
-                confirm.body,
-                name,
-                file?.at === undefined ? '' : formatWhen(file.at),
-            )
+            return file?.at === undefined
+                ? interpolateRaw(confirm.bodyUndated, name)
+                : interpolateRaw(confirm.body, name, formatWhen(file.at))
         case 'notStored':
             return i18n.value.notSaving.bar
     }

@@ -10,6 +10,7 @@ import {
     watch,
 } from 'vue'
 import { i18n } from '../../../i18n'
+import { vFocusRescue } from '../../../directives/focusRescue'
 import { vScrollEdges } from '../../../directives/scrollEdges'
 import BaseModal from '../../../modals/BaseModal.vue'
 import { platform } from '../../../platform'
@@ -221,6 +222,14 @@ const storedText = computed(() => storedLine(strings.value.stored, summary.value
 // While the shown tab's chooser is open, its Cancel and Use are the actions: the footer goes.
 const choosing = computed(() => isAssetTab(active.value) && choosers[active.value].open.value)
 
+// A helper that turns itself off hands focus to the other helper, else to the shown tab.
+const builtinAllButton = useTemplateRef<HTMLButtonElement>('builtinAllButton')
+const resetButton = useTemplateRef<HTMLButtonElement>('resetButton')
+const handOn = (other: HTMLButtonElement | null) => () =>
+    other && !other.disabled
+        ? other
+        : tablist.value?.querySelector<HTMLElement>(`#${CSS.escape(tabId(active.value))}`)
+
 // Both rewrite every type's source in one press, so they are quiet red, not neutral.
 const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
@@ -299,6 +308,8 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                     class="ml-auto flex gap-2 max-[440px]:ml-0 max-[440px]:w-full max-[440px]:flex-col"
                 >
                     <button
+                        ref="builtinAllButton"
+                        v-focus-rescue="handOn(resetButton)"
                         type="button"
                         :class="[buttonClass, 'max-[440px]:w-full']"
                         :disabled="allBuiltin"
@@ -309,6 +320,8 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                     </button>
                     <button
                         v-if="hasDefault"
+                        ref="resetButton"
+                        v-focus-rescue="handOn(builtinAllButton)"
                         type="button"
                         :class="[buttonClass, 'max-[440px]:w-full']"
                         :disabled="allDefault"

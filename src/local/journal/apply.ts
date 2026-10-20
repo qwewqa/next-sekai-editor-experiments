@@ -209,20 +209,23 @@ export const writeJournalApply = async (
         }
 
     // Never a recovered entry in a chain this build can't fully read (§1.6.4 step 2). A newer
-    // generation is left for a newer build. An older one is not newer: the journal is kept as a
+    // generation is left for a newer build. A malformed one is not newer: the journal is kept as a
     // separate session through the ordinary recovery write below, never dropped before it.
-    let olderWhy: string | undefined
+    let unsupportedWhy: string | undefined
     if (session && !isReadableSessionVersion(session.v)) {
         if (isNewerSessionVersion(session.v))
             return { kind: 'later', why: 'its session needs a newer version' }
-        olderWhy = 'its session is of an unsupported older generation'
+        unsupportedWhy = 'its session has an unsupported version'
     }
     if (chain) {
         const sessions = await tx.index('sessions', 'chainId').getAll(chainId)
         if (sessions.some((row) => isRow(row) && isNewerSessionVersion(row.v)))
             return { kind: 'later', why: 'its chain needs a newer version' }
-        if (!olderWhy && sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
-            olderWhy = 'its chain has a session of an unsupported older generation'
+        if (
+            !unsupportedWhy &&
+            sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v))
+        )
+            unsupportedWhy = 'its chain has a session with an unsupported version'
     }
     if (session) {
         const range = KeyRange.bound([sessionId, -Infinity], [sessionId, Infinity])
@@ -256,7 +259,7 @@ export const writeJournalApply = async (
     const based = continuing ? parent : session
 
     let recoveryWhy: string | undefined
-    if (olderWhy) recoveryWhy = olderWhy
+    if (unsupportedWhy) recoveryWhy = unsupportedWhy
     else if (tombstone !== undefined) recoveryWhy = 'its session was removed'
     else if (chain?.deleting !== undefined) recoveryWhy = CHAIN_DELETING
     else if (chain && chain.head !== sessionId && !continuing)

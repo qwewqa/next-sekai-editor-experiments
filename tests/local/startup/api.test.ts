@@ -150,7 +150,8 @@ test('Local Data’s rows: Discard removes a row only while it holds what was li
     const loaded = await load(world, 'tab', storage, { core: { flags: { noStorage: true } } })
     setSessionContext(loaded.deps, loaded.recovery)
     assert.equal(loaded.recovery.keptForLocalData.length, 1)
-    const items = await recoveryItems()
+    const { items, unreadable } = await recoveryItems()
+    assert.equal(unreadable, false)
     assert.deepEqual(
         items.map((item) => item.kind),
         ['journal', 'autoSave', 'legacy'],
@@ -185,13 +186,48 @@ test('Discard of unreadable recovered work removes only that row', async () => {
     storage.setItem('nse.journal.b', 'not json')
     const loaded = await load(world, 'tab', storage)
     setSessionContext(loaded.deps, loaded.recovery)
-    const recovered = (await recoveryItems()).filter((item) => item.kind === 'recovered')
+    const recovered = (await recoveryItems()).items.filter((item) => item.kind === 'recovered')
     assert.equal(recovered.length, 2)
     const [one] = recovered
     assert.ok(one)
     assert.equal(typeof (await recoveryFile(one)), 'object')
     await loaded.page.tab.run(() => discardRecoveryItem(one))
-    assert.equal((await recoveryItems()).filter((item) => item.kind === 'recovered').length, 1)
+    assert.equal(
+        (await recoveryItems()).items.filter((item) => item.kind === 'recovered').length,
+        1,
+    )
+})
+
+test('a recovery listing that fails is reported as unreadable, never as nothing to recover', async () => {
+    const world = createWorld({ seed: 5 })
+    const storage = new MemoryStorage()
+    storage.setItem('nse.journal.a', '{"damaged":')
+    const loaded = await load(world, 'tab', storage)
+    setSessionContext(loaded.deps, loaded.recovery)
+    assert.deepEqual(
+        await recoveryItems().then(({ items, unreadable }) => [items.length, unreadable]),
+        [1, false],
+    )
+    const { worker } = loaded.deps
+    setSessionContext(
+        {
+            ...loaded.deps,
+            worker: {
+                ...worker,
+                call: (name: string, ...args: unknown[]) =>
+                    name === 'listRecovered'
+                        ? Promise.reject(new Error('the worker is down'))
+                        : (worker.call as (name: string, ...args: unknown[]) => Promise<unknown>)(
+                              name,
+                              ...args,
+                          ),
+            } as typeof worker,
+        },
+        loaded.recovery,
+    )
+    const failed = await recoveryItems()
+    assert.equal(failed.unreadable, true)
+    assert.deepEqual(failed.items, [])
 })
 
 /** A session another tab had open, with edits only its journal holds, then the tab died. */

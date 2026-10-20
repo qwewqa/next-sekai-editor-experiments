@@ -119,6 +119,7 @@ export class Fixture {
     private clock = 1_000_000
     private written = new Set<string>()
     private known = new Map<string, State>()
+    private reserved: { sessionId: string; seq: number }[] = []
 
     private constructor(world: World, tab: Tab, store: SaveStore) {
         this.world = world
@@ -167,7 +168,7 @@ export class Fixture {
             nextSeq: 1,
         }
         if (last) {
-            session.parent = { id: last.id, uptoSeq: last.nextSeq - 1 }
+            session.parent = { id: last.id, uptoSeq: last.rows.at(-1)?.seq ?? 0 }
             session.slots = [...last.slots]
             session.index = last.index
         }
@@ -339,9 +340,17 @@ export class Fixture {
         })
     }
 
+    /** A reserved `seq` no row took: a Save that wrote nothing let it go (a hole the plan allows). */
+    isHole = (sessionId: string, seq: number) =>
+        this.reserved.some((each) => each.sessionId === sessionId && each.seq === seq) &&
+        !this.sessions.some(
+            (session) => session.id === sessionId && session.rows.some((row) => row.seq === seq),
+        )
+
     /** Reserves the `save` entry's `seq` and time, as the Save does before its build. */
     reserveSave() {
         const session = this.session
+        this.reserved.push({ sessionId: session.id, seq: session.nextSeq })
         return {
             sessionId: session.id,
             seq: session.nextSeq++,

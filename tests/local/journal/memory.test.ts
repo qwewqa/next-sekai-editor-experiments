@@ -4,7 +4,7 @@ import { equalJson, type JsonValue } from '../../../src/history/operations'
 import { DB_VERSION } from '../../../src/local/db'
 import type { Journal } from '../../../src/local/journal/format'
 import type { MemoryStorage } from '../../../src/local/journal/store'
-import { checkStored } from '../../../src/local/testing/invariants'
+import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
@@ -136,7 +136,7 @@ test('after Try Again’s move the journal stays until a strict commit, and the 
         const before = page.results.length
         await page.flusher.flush()
         assert.deepEqual(page.errors, [], `seed ${seed}`)
-        assert.deepEqual(checkStored(world.memory), [], `seed ${seed}`)
+        assert.deepEqual(checkStrict(world.memory), [], `seed ${seed}`)
         // The blocks it left alone were memory's: sent again whole, written, never removed.
         const results = page.results.slice(before)
         assert.deepEqual(

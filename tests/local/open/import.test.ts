@@ -7,7 +7,7 @@ import { keyText } from '../../../src/local/kv/keys'
 import { webLockService } from '../../../src/local/locks'
 import { executePlan, planNxsp, readNxsp, type ReadHistory } from '../../../src/local/nxsp'
 import { startImport } from '../../../src/local/open/importLoop'
-import type { OpenStoreRequest } from '../../../src/local/open/importWrite'
+import { headCount, type OpenStoreRequest } from '../../../src/local/open/importWrite'
 import type { OpenReadReply } from '../../../src/local/open/opened'
 import { carries, type ChainRow } from '../../../src/local/save/model'
 import { stateBatch } from '../../../src/local/stateBatch'
@@ -599,4 +599,12 @@ test('a stopped import settles abandonment before its final read cleanup', async
     assert.deepEqual(await job, { kind: 'stopped' })
     assert.deepEqual(beforeSettlement, ['openBatch', 'openAbandon'])
     assert.deepEqual(calls, ['openBatch', 'openAbandon', 'abandon settled', 'openDrop'])
+})
+
+test('a head root that holds no note count gives no count, never 0', () => {
+    assert.equal(headCount(12), 12)
+    assert.equal(headCount(0), 0)
+    for (const value of [undefined, null, -1, 1.5, '3', Number.NaN]) {
+        assert.equal(headCount(value), undefined, String(value))
+    }
 })

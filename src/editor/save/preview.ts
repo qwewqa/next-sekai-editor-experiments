@@ -3,6 +3,7 @@ import type { SaveSizeEstimate } from '../../local/save/estimate'
 import { storageStatus } from '../../local/startup/events'
 import { readBrowserFacts, storageLineKey } from '../settings/storageLine'
 import type { SaveDialogInput } from './dialogs'
+import { totalOf } from './total'
 
 // What the Save dialogs know before a build (Part 1 §1.4.7): the storage line's first sentence,
 // the size preview this tab already holds, and the size that decides whether "Preparing…" opens
@@ -57,18 +58,17 @@ export const noteLoaded = (input: SaveDialogInput, estimate: SaveSizeEstimate) =
     loaded.set(input, estimate)
 }
 
-/** The dialog's total for the ticks answered, or undefined while no estimate has loaded. */
+/**
+ * The dialog's total for the ticks answered, or undefined while no estimate has loaded or a ticked
+ * row's size is unknown.
+ */
 export const estimatedTotal = (
     input: SaveDialogInput,
     ticks: { history: boolean; bgm: boolean },
 ) => {
     const estimate = loaded.get(input)
     if (!estimate) return
-    return (
-        estimate.base +
-        (ticks.history ? estimate.history : 0) +
-        (ticks.bgm ? (estimate.bgm ?? 0) : 0)
-    )
+    return totalOf(estimate, ticks)
 }
 
 /** Over this estimated size a download build on a touch device opens "Preparing…" at once (§1.4.7). */

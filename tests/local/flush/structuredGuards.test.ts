@@ -85,7 +85,7 @@ test('chain-field continuation describes the last source entry and rejects unsup
     const lastTime = stored.updatedAt as number
     assert.notEqual(lastTime, stored.startedAt)
     const original = rows(world, 'chains').get(session.chainId)!
-    for (const v of [undefined, 1, 3]) {
+    for (const v of [undefined, 0, 3]) {
         await page.tab.run(() =>
             page.core.write(['sessions'], (tx) => tx.put('sessions', { ...stored, v })),
         )
@@ -99,7 +99,7 @@ test('chain-field continuation describes the last source entry and rejects unsup
         )
         assert.equal(result.kind, 'missing')
         assert.deepEqual(rows(world, 'chains').get(session.chainId), original)
-        // Only a newer generation "needs a newer version"; an older or missing one is not newer.
+        // Only a newer generation "needs a newer version"; a malformed or missing one is not newer.
         assert.equal(
             (await page.tab.run(() => handlersOf(page).readSession(session.id))).kind,
             v === 3 ? 'later' : 'damaged',

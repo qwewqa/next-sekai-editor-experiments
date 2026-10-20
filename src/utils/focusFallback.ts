@@ -16,12 +16,29 @@ const shown = (element: HTMLElement | null | undefined): element is HTMLElement 
 export const chartPane = () =>
     [...document.querySelectorAll<HTMLElement>('.chart-pane')].find((pane) => shown(pane))
 
+const frames = (count: number) =>
+    new Promise<void>((resolve) => {
+        const step = (left: number) => {
+            if (left <= 0) resolve()
+            else
+                requestAnimationFrame(() => {
+                    step(left - 1)
+                })
+        }
+        step(count)
+    })
+
 /**
  * Once the DOM has updated, focus that fell to the page goes to `opener` when it is still shown,
  * else to the chart. Focus that went anywhere else meanwhile stays.
  */
-export const focusAfterRemoval = async (opener?: () => HTMLElement | null | undefined) => {
+export const focusAfterRemoval = async (
+    opener?: () => HTMLElement | null | undefined,
+    /** Waits out the frames Chrome takes to drop focus from a control that was turned off. */
+    afterFrames = false,
+) => {
     await nextTick()
+    if (afterFrames) await frames(2)
     if (!focusLost()) return
     const target = opener?.()
     if (shown(target)) target.focus({ preventScroll: true })

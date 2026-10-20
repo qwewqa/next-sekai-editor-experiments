@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, useId, useTemplateRef, watch } from 'vue'
+import { vFocusRescue } from '../../../directives/focusRescue'
 import { i18n } from '../../../i18n'
 import { platform } from '../../../platform'
 import type { AssetType } from '../../../preview/assets'
@@ -140,6 +141,7 @@ const primaryClass = `${baseClass} btn-primary`
 
 <template>
     <section
+        v-focus-rescue:return
         class="flex flex-col gap-3 px-1 pb-1"
         role="group"
         :aria-label="titles"

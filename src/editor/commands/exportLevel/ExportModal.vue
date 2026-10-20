@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
+import { vFocusRescue } from '../../../directives/focusRescue'
 import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
 import type { ReadyPrompt } from '../../../platform'
@@ -211,6 +212,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                     }}</span>
                     <!-- Wrapped below a long name, it keeps to the right. -->
                     <button
+                        v-focus-rescue:return
                         type="button"
                         class="btn-secondary ml-auto"
                         :class="buttonClass"
@@ -274,6 +276,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                 </button>
                 <button
                     v-else
+                    v-focus-rescue:return
                     type="submit"
                     class="btn-primary"
                     :class="buttonClass"

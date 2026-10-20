@@ -10,6 +10,7 @@ import { canScaleSelection } from '../state/operations/scaleValues'
 import { getSplitHoldNotes } from '../state/operations/splitHold'
 import { vScrollEdges } from '../directives/scrollEdges'
 import { interpolate } from '../utils/interpolate'
+import { focusAfterRemoval } from '../utils/focusFallback'
 import { holdsCharacter, menuKeyIndex } from '../utils/menuKeys'
 import { commands, isCommandName, type Command, type CommandName } from './commands'
 import {
@@ -148,7 +149,10 @@ const toActions = (groups: ActionName[][]) =>
 
 const dismiss = (restoreFocus = false) => {
     closeContextMenu()
-    if (restoreFocus) returnFocus?.focus({ preventScroll: true })
+    if (!restoreFocus) return
+    returnFocus?.focus({ preventScroll: true })
+    // An opener that is gone leaves focus to the chart, once the menu has gone.
+    void focusAfterRemoval(() => returnFocus)
 }
 
 // A click has a detail; keys activate with none. A finger tap focuses no field.
@@ -214,7 +218,8 @@ watch(
         () => view.visibilities,
     ],
     () => {
-        dismiss()
+        // A menu that holds focus gives it back, as its other exits do.
+        dismiss(!!menu.value?.contains(document.activeElement))
     },
     { flush: 'sync' },
 )

@@ -25,7 +25,7 @@ import { openStored } from '../startup/open'
 import { writeTabRecord } from '../startup/tab'
 import type { StateBatch } from '../stateBatch'
 import { flusher, journalWriter } from '../storing'
-import type { EarlierChain } from './decide'
+import { changedOf, type EarlierChain } from './decide'
 import { resumeImports, startImport, type ImportOutcome } from './importLoop'
 import { keepCopy } from './kept'
 import type { OpenReadReply } from './opened'
@@ -100,14 +100,16 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle) => {
 export const earlierChains = async (docId: string, exclude: string): Promise<EarlierChain[]> => {
     const { open, recovery } = context()
     const stored = await open.worker.call('openEarlierChains', { docId, exclude })
-    // A dead tab's pending journal holds changes storage doesn't: Restore applies it first.
-    const journals = new Set(
-        (await recovery.journal.read().catch(() => [])).map((found) => found.sessionId),
-    )
+    // A dead tab's pending journal holds changes storage doesn't: Restore applies it first. When
+    // the journals cannot be read, a bound chain that looks unchanged has unknown changes.
+    const journals = await recovery.journal
+        .read()
+        .then((found) => new Set(found.map((each) => each.sessionId)))
+        .catch(() => undefined)
     return Promise.all(
         stored.map(async (chain) => ({
             ...chain,
-            changed: chain.changed || (!!chain.bound && journals.has(chain.sessionId)),
+            changed: changedOf(chain, journals),
             openElsewhere:
                 hasWebLocks() &&
                 (await open.client.heldElsewhere(sessionLock(chain.sessionId)).catch(() => false)),

@@ -10,7 +10,7 @@ import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/s
 import { sessionLock } from '../../../src/local/locks'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
-import { checkStored } from '../../../src/local/testing/invariants'
+import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
@@ -234,17 +234,21 @@ for (const [name, change] of [
         assert.equal(page.storage.length, 1)
     })
 
-// Only a newer journal is left for a newer build: an older or malformed one is not newer, so its
+// Only a newer journal is left for a newer build: a malformed one is not newer, so its
 // bytes go to the recovered store (nothing is lost, and nothing waits for a build that won't come).
 for (const [name, change] of [
-    ['an older journalVersion', (j: Record<string, unknown>) => (j.journalVersion = 1)],
+    ['a journalVersion of 0', (j: Record<string, unknown>) => (j.journalVersion = 0)],
     [
-        'an older descriptor v',
-        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = 1),
+        'a journalVersion that is not an integer',
+        (j: Record<string, unknown>) => (j.journalVersion = '1'),
+    ],
+    [
+        'a descriptor v of 0',
+        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = 0),
     ],
     [
         'a malformed descriptor v',
-        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = '2'),
+        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = '1'),
     ],
 ] as const)
     test(`a journal with ${name} is unreadable, not newer: its bytes are kept`, async () => {
@@ -262,10 +266,10 @@ for (const [name, change] of [
         assert.equal(page.storage.length, 0)
     })
 
-// A journal is dropped only after its work is stored: against a session or chain of an older
-// generation it becomes one new recovery session holding the journal's head, then the key goes.
+// A journal is dropped only after its work is stored: against a session or chain with a session
+// of a malformed `v` it becomes one new recovery session holding the journal's head, then the key goes.
 for (const where of ['its own session', 'another session of its chain'] as const)
-    test(`a journal against ${where} of an older generation is stored as a recovery session before its key goes`, async () => {
+    test(`a journal against ${where} with a malformed v is stored as a recovery session before its key goes`, async () => {
         const { world, page, session, states } = await killedAfterEdits(7)
         const other = world.tab('other')
         const core = workerCore(world, other)
@@ -273,8 +277,8 @@ for (const where of ['its own session', 'another session of its chain'] as const
         await other.run(() =>
             core.write(['sessions'], async (tx) => {
                 const row = (await tx.get('sessions', session.id)) as Record<string, unknown>
-                if (where === 'its own session') await tx.put('sessions', { ...row, v: 1 })
-                else await tx.put('sessions', { ...row, id: 'older-sibling', v: 1 })
+                if (where === 'its own session') await tx.put('sessions', { ...row, v: 0 })
+                else await tx.put('sessions', { ...row, id: 'sibling', v: 0 })
             }),
         )
         const sessionsBefore = new Set(rows(world, 'sessions').keys())
@@ -402,7 +406,7 @@ test('replay killed at every await applies the journal once, whole or not at all
         },
         check: ({ world }) => {
             const { storage, sessionId } = storages.get(world)!
-            assert.deepEqual(checkStored(world.memory), [])
+            assert.deepEqual(checkStrict(world.memory), [])
             assert.deepEqual(
                 entriesOf(world, sessionId).map((entry) => entry.kind),
                 ['init', 'recovered'],

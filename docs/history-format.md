@@ -154,7 +154,7 @@ A **session** is one visit's run of entries; a **chain** is the sessions of one 
 | Session field | Meaning |
 | --- | --- |
 | `id`, `chainId` | Identity. A session never changes chain. |
-| `v` | `SESSION_V`. Newer: the session and its chain read "Needs a newer version". Older or malformed: not read and not called newer (`sessionReadability`, `src/local/records/unknownValues.ts`). |
+| `v` | `SESSION_V`. Newer: the session and its chain read "Needs a newer version". Any other value (0, a non-integer, absent): not read and not called newer (`sessionReadability`, `src/local/records/unknownValues.ts`). |
 | `origin` | `new`, `import` (`Flusher.begin`); `nxsp`, `replaced` (`writeOpenHead`); `continued` (continuations and forks); `migrated` (`migrationWrite.ts`); `journal` (`journal/apply.ts`). An unknown value reads as ordinary. |
 | `startedAt`, `updatedAt` | Milliseconds. Sessions with equal starts are ordered by `parent` links, else a write refuses (`orderSessions`). |
 | `parent {id, uptoSeq}` | The session and entry a continuation continues. |
@@ -200,9 +200,9 @@ The journal is the last-chance copy of an open session whose entries are not yet
 - **Where.** One `localStorage` key per session, `<prefix>journal.<sessionId>`, overwritten on each write and verified by reading back. A key holds at most 1 MiB (`JOURNAL_KEY_LIMIT`) and all `journal.*` keys, the legacy recovery slot and the old auto save at most 4 MiB, counted in characters. A write that does not fit trims the optional recovery context, and removes the legacy recovery slot only when that makes room; otherwise it is not made (`writeWhole`, `store.ts`). A page never replaces a key whose text it neither wrote nor loaded.
 - **When.** Synchronously on hide, pagehide, beforeunload and freeze while the session has entries not committed strictly, and every 10 s while storage is unavailable (`IDLE_JOURNAL_MS`). A second trigger for the same `seq` writes nothing. A key is cleared only once a strict flush covering its `seq` commits; where IndexedDB has no `durability`, nothing clears it and the next load deletes it as covered, after the strict commit of the replay transaction (below).
 - **Contents** (`Journal`, `format.ts`, `JOURNAL_VERSION`): `journalVersion`, `kind: 'journal'`, `recordsV`, `appVersion`, `writtenAt`, `sessionId`, `seq`; a `descriptor` (the session's `v`, `origin`, `parent`, `startedAt`, flags and the chain record as last written, without handles, hashes as hex); the state as `levelDataGz` (level data, gzip level 1, base64) plus `editorMetadata` and `header {levelInfo, bgm?, ids}` for what level data cannot carry; and `stack {keep, lastKept?, head, context, index}`: slots `0 … keep-1` of the committed stack stay, and `context` is a `RecoveryContext` of the dropped steps.
-- **Reading.** A newer journal (`journalVersion` or `recordsV` above this build's, a newer descriptor `v`, an unknown `kind`) is left for a later build. An older or malformed one goes to the `recovered` store, so nothing is lost.
+- **Reading.** A newer journal (`journalVersion` or `recordsV` above this build's, a newer descriptor `v`, an unknown `kind`) is left for a later build. A malformed one (a `journalVersion` or descriptor `v` that is 0, not an integer or absent) goes to the `recovered` store, so nothing is lost.
 - **Replay** (every load, before any session opens: canary, journals, then the legacy migration; `src/local/startup/recovery.ts`). One strict transaction under the session lock either **applies** the journal or makes a **recovery session**. Apply writes one `recovered` entry whose `stack` keeps slots below `keep` and pushes the journalled state as an `edit` step of `nse.recovery` with the context. A journal a flush already covered (`lastSeq >= seq`) is deleted without an entry, but only after a strict commit: the covering flush may have been relaxed, so the transaction writes a `meta.maxSeenTime` row that makes it durable before the key goes (`journal/apply.ts`).
-- **Recovery session.** When the session was removed or continued, the chain is missing or being deleted, the stored stack does not match, a kept block is missing, or the session is of an older generation, the journal becomes a session in a **new chain** (copied from the descriptor as a fork is), origin `journal`, with one `recovered` entry whose stack is one slot. It is stored before the key goes. A chain or session of a newer generation is left in place instead.
+- **Recovery session.** When the session was removed or continued, the chain is missing or being deleted, the stored stack does not match, a kept block is missing, or the session has a malformed `v`, the journal becomes a session in a **new chain** (copied from the descriptor as a fork is), origin `journal`, with one `recovered` entry whose stack is one slot. It is stored before the key goes. A chain or session of a newer generation is left in place instead.
 - **Journal-only reload.** When storage is unavailable, a reload rebuilds the session from its own journal (`resumeFromJournal`, `src/local/startup/open.ts`) and the flusher queues a `recovered` baseline entry with stack `{keep: 0, push: [the state], index: 0}` (`Flusher.resumeJournalled`; `prepareFlush` checks the shape).
 - **Taken journal.** A continuation or fork that takes up a journal left unapplied pushes it as a plain `edit` entry with an `nse.recovery` step and its context (`openStored`, `src/local/startup/open.ts`).
 - **`RecoveryContext`** (`src/history/operations/steps.ts`): `{head, headIndex, dropped[], omitted, x?}`, the descriptions of steps that could not be kept, so the Timeline can say what was lost. At most 64 items (`RECOVERY_CONTEXT_ITEMS`) and 128 KiB (`RECOVERY_CONTEXT_BYTES`) of `dropped`, counted without any `x` on the items (`withoutExtension`); the oldest go first and `omitted` counts them.
@@ -236,7 +236,7 @@ Writer order (`PROJECT_KEYS`, `src/local/nxsp/project.ts`): `format version mino
 
 | Key | Rule |
 | --- | --- |
-| `format` … `levelVersion` | format-versioning section 2. `minor` is 1 when a manifest is written, else 0. |
+| `format` … `levelVersion` | format-versioning section 2. `minor` is 0. |
 | `appVersion` | The last writer's version. Per-Save versions are on the `save` entries. |
 | `id`, `lineageId` | The `docId`; provenance, copied on forks and Save As. |
 | `revision` | `{id, parent, n, savedAt, device {id, label}, ancestors, replaces?, fileName?, completeFrom?}`. `id` is new per write; `parent` is the revision it descends from or `null`; `n` is display only; `ancestors` are newest first, at most 1,024 (`ANCESTOR_LIMIT`, a writer limit the strict checker enforces), read as a set; `replaces` only by Replace. |
@@ -248,7 +248,7 @@ Writer order (`PROJECT_KEYS`, `src/local/nxsp/project.ts`): `format version mino
 ### 3.3 Manifest and segments
 
 ```
-manifest: { version: 2, entries, roots, nodes, chunks, undoStack }
+manifest: { version: 1, entries, roots, nodes, chunks, undoStack }
 segment:  { entries, roots, nodes, chunks }
 ```
 
@@ -324,8 +324,8 @@ History is read only when the report holds no `damaged` and no `newer-minor`.
 | Reason | Cause | Effect |
 | --- | --- | --- |
 | `damaged` | Duplicate names, overlapping data, a directory recovered by scan, a pointer outside its prefix or two on one entry, a cap passed, a ZIP or JSON failure in a history part (other than `chunks.bin`), a non-object `parts` | History not read; the level opens. |
-| `history-unreadable` | A missing part, a dangling hash, an index that does not tile, a chunk not hashing to its name or over 16 MiB, any failure reading `chunks.bin`, a root or node not hashing to its key or invalid, `index` out of range, a key with two values, an `entries` mismatch, a bad entry, a resource-invalid description, a manifest `version` that is not an integer of at least 2 (`version < MANIFEST_VERSION`, `checkPart`) | History not read. |
-| `newer-history` | A manifest `version` that is a safe integer above 2, a root `v` above `RECORDS_V`, an entry `kind` or record kind name this build does not know | History not read. |
+| `history-unreadable` | A missing part, a dangling hash, an index that does not tile, a chunk not hashing to its name or over 16 MiB, any failure reading `chunks.bin`, a root or node not hashing to its key or invalid, `index` out of range, a key with two values, an `entries` mismatch, a bad entry, a resource-invalid description, a manifest `version` that is not an integer of at least 1 (`version < MANIFEST_VERSION`, `checkPart`) | History not read. |
+| `newer-history` | A manifest `version` that is a safe integer above 1, a root `v` above `RECORDS_V`, an entry `kind` or record kind name this build does not know | History not read. |
 | `unknown-entry`, `unknown-key`, `invalid-key`, `newer-level`, `newer-minor`, `newer-patch`, `newer-version` | Newer content or a known key of the wrong form (format-versioning section 2) | `unknown-key` covers unknown `level.json` keys too. |
 | `media-unreadable` | A media entry missing, or its size or SHA-256 differs from `project.json` | The rest opens. |
 
