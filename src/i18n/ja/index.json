@@ -298,8 +298,7 @@
       "redid": "「{0}」をやり直しました"
     },
     "reset": {
-      "title": "リセット",
-      "reset": "譜面をリセット"
+      "title": "リセット"
     },
     "save": {
       "title": "保存"
@@ -966,13 +965,7 @@
     "default": {
       "none": "選択されたオブジェクトがありません",
       "edited": "{0}個のオブジェクトを編集しました",
-      "editedNotes": "{0}個のノーツを編集しました",
-      "set": "{0}個のオブジェクトの{1}を設定しました",
-      "setNotes": "{0}個のノーツの{1}を設定しました",
-      "noChange": "変更はありません",
-      "setBpm": "{0}個のBPMの{1}を設定しました",
-      "setTimeScales": "{0}個のハイスピードの{1}を設定しました",
-      "setEvents": "{0}個の{2}イベントの{1}を設定しました"
+      "noChange": "変更はありません"
     },
     "view": {
       "tool": "ツール",
@@ -1046,8 +1039,7 @@
     "eraser": {
       "title": "消去",
       "deselected": "すべてのオブジェクトを選択解除しました",
-      "erasing": "{0}個のオブジェクトを消去します",
-      "erased": "{0}個のオブジェクトを消去しました"
+      "erasing": "{0}個のオブジェクトを消去します"
     },
     "generateSlideNotes": {
       "title": "スライドノーツ生成",
@@ -1095,7 +1087,6 @@
       "adding": "{0}個のノーツを追加します",
       "added": "{0}個のノーツを追加しました",
       "editing": "{0}個のノーツを編集します",
-      "edited": "{0}個のノーツを編集しました",
       "moving": "{0}個のノーツを移動します",
       "moved": "{0}個のノーツを移動しました",
       "selected": "{0}個のノーツを選択しました",
@@ -1303,10 +1294,8 @@
       "deletedEvents": "{0}イベントを削除しました",
       "cutEvents": "{0}イベントを切り取りました"
     },
-    "edits": "{0} 回の編集",
     "undidSteps": "{0} ステップを元に戻しました",
     "redidSteps": "{0} ステップをやり直しました",
-    "initialize": "初期化",
     "dynamicStages": {
       "title": "動的ステージ",
       "message": "この機能には動的ステージが必要です。動的ステージを有効にしますか？",
@@ -1831,7 +1820,11 @@
       "ok": "OK"
     },
     "loading": {
-      "loading": "読み込み中…"
+      "loading": "読み込み中…",
+      "audioUnreadable": "この音源ファイルを読み込めませんでした。",
+      "imageUnreadable": "この画像を読み込めませんでした。",
+      "coverFailed": "ジャケットを生成できませんでした。",
+      "failed": "処理を完了できませんでした。"
     }
   },
   "preview": {
@@ -1916,8 +1909,6 @@
       "added": "{0}フォルダーを追加しました",
       "renamed": "フォルダー{0}の名前を{1}に変更しました",
       "moved": "{0}フォルダーを移動しました",
-      "movedInto": "{0}を{1}フォルダーに移動しました",
-      "movedOut": "{0}を{1}フォルダーから出しました",
       "ungrouped": "{0}フォルダーを解除しました",
       "deleted": "{0}フォルダーを削除しました",
       "duplicated": "{0}フォルダーを複製しました"
@@ -2043,16 +2034,12 @@
     "addedRemoved": "追加 {0} · 削除 {1}",
     "exportsCurrent": "現在のバージョンを出力します。",
     "overlay": "履歴を表示中 · 読み取り専用",
-    "viewing": "{0} を表示中 · {1} · 読み取り専用",
-    "viewingShort": "{0} を表示中 · 読み取り専用",
     "backToNow": "現在に戻る",
     "restore": "復元",
     "changeCount": "{0}個の変更",
     "noChanges": "変更なし",
     "changedLarge": "変更：{0}",
     "notes": "{0}個のノーツ",
-    "notesOf": "{1}個中{0}個のノーツ",
-    "eventsOf": "{1}個中{0}個のイベント",
     "bpms": "{0}個のBPM",
     "timeScales": "{0}個のハイスピード",
     "events": "{0}個のイベント",
@@ -2104,6 +2091,7 @@
     "savedWithoutMediaLarge": "{0} にメディアなしで保存しました",
     "someStepsNotKept": "{0} に保存しました。以前の一部の操作は保持されていません。",
     "someStepsNotKeptLine": "以前の一部の操作は保持されていません。",
+    "committedState": "別のタブで開かれているセッションの、最後に保管された状態です。",
     "tookOver": "{0} に保存しました。以前の作業は「最近のセッション」にあります。",
     "noChanges": "{0} のダウンロード以降、変更はありません",
     "noChangesSaved": "{0} の保存以降、変更はありません",
@@ -2133,9 +2121,10 @@
     "replace": "置き換え",
     "title": "「{0}」が変更されました",
     "body": "「{0}」はここで開くか保存した後に変更されています。",
-    "savedOn": "{0} で保存、{1} · {2}。",
-    "savedWeb": "Web エディター ({0}) で保存、{1} · {2}。",
+    "saved": "{0}、{1} · {2}。",
     "otherProject": "別のプロジェクトファイル「{0}」です。",
+    "otherProjectUnnamed": "別のプロジェクトファイルです。",
+    "notDescendant": "このバージョンはお使いのものの続きではありません ({0})。",
     "separate": "別のファイルとして保存",
     "openOther": "もう一方のバージョンを開く",
     "openOtherNote": "変更は保存されないまま残ります。",
@@ -2227,20 +2216,10 @@
   },
   "file": {
     "replacedElsewhere": "「{0}」は別のタブまたはウィンドウから置き換えられました。",
-    "saved": "{0} · {1}に保存",
-    "changedSinceSaved": "{0} · 保存後に変更あり",
     "downloaded": "{0} · {1}にダウンロード",
-    "notConfirmed": "未確認",
-    "changedSinceDownload": "{0} · ダウンロード後に変更あり",
     "opened": "{0} · {1}に開いた",
-    "changedSinceOpened": "{0} · 開いた後に変更あり",
     "short": {
-      "saved": "保存済み",
-      "changed": "変更あり",
-      "notSaved": "未保存",
-      "downloaded": "ダウンロード済み",
-      "notConfirmed": "未確認",
-      "opened": "開いた"
+      "notSaved": "未保存"
     }
   },
   "state": {

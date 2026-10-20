@@ -28,3 +28,7 @@ export const formatSize = (bytes: number, locale: string = currentLocale()) => {
 /** A count in the UI locale's own grouping: "1,840". */
 export const formatCount = (count: number, locale: string = currentLocale()) =>
     new Intl.NumberFormat(languageTag(locale)).format(count)
+
+/** A decimal such as a speed in the UI locale: "0,5" in French, at most three fractions. */
+export const formatDecimal = (value: number, locale: string = currentLocale()) =>
+    new Intl.NumberFormat(languageTag(locale), { maximumFractionDigits: 3 }).format(value)

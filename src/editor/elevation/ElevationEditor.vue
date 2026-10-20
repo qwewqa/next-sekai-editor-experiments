@@ -60,6 +60,7 @@ import { createTransaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
 import { isComposingKey } from '../../utils/composition'
 import { alignComputed, clamp, shiftComputed } from '../../utils/math'
+import { formatCount } from '../../utils/size'
 import { committedGrid } from '../beatGrid'
 import { createNameLayer, placeNames } from '../canvas/names'
 import { createLabelSprites } from '../canvas/labelSprites'
@@ -809,7 +810,7 @@ const notifySelected = (tool: ReturnType<typeof noticeTool> = noticeTool()) => {
     notify(
         interpolate(
             () => i18n.value.tools[tool].selected,
-            `${state.value.selectedEntities.length}`,
+            formatCount(state.value.selectedEntities.length),
         ),
     )
 }
@@ -1136,7 +1137,7 @@ const controls: Pick<
         }
         // Posted now, so a cancel clears it.
         const tool = noticeTool()
-        const count = `${drag.targets.length}`
+        const count = formatCount(drag.targets.length)
         notify(
             interpolate(
                 () =>
@@ -1225,7 +1226,7 @@ const controls: Pick<
                               : tool === 'generateSlideNotes'
                                 ? i18n.value.tools.generateSlideNotes.selecting
                                 : i18n.value.tools.select.selecting,
-                    `${selection.length}`,
+                    formatCount(selection.length),
                 ),
             )
             return

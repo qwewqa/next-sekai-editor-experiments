@@ -27,6 +27,7 @@ import {
 } from '../../i18n/when'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import { deviceId } from '../save/env'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
@@ -1306,7 +1307,9 @@ const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSec
 const timeOf = (row: EntryRow) => clockOf(row.entry.time)
 
 const deltaOf = (row: EntryRow) =>
-    row.delta === undefined ? undefined : `${row.delta > 0 ? '+' : '−'}${Math.abs(row.delta)}`
+    row.delta === undefined
+        ? undefined
+        : `${row.delta > 0 ? '+' : '−'}${formatCount(Math.abs(row.delta))}`
 
 // The full date and time is the row's tooltip and in its accessible name; the header gives the date.
 const whenOf = (row: EntryRow) => formatDateTimeSeconds(row.entry.time)

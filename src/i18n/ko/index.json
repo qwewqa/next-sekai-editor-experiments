@@ -298,8 +298,7 @@
       "redid": "\"{0}\" 다시 실행됨"
     },
     "reset": {
-      "title": "초기화",
-      "reset": "레벨 초기화"
+      "title": "초기화"
     },
     "save": {
       "title": "저장"
@@ -966,13 +965,7 @@
     "default": {
       "none": "선택된 객체 없음",
       "edited": "{0}개 객체 편집됨",
-      "editedNotes": "{0}개 노트 편집됨",
-      "set": "{0}개 객체의 {1} 설정됨",
-      "setNotes": "{0}개 노트의 {1} 설정됨",
-      "noChange": "변경 사항 없음",
-      "setBpm": "{0}개 BPM의 {1} 설정됨",
-      "setTimeScales": "{0}개 시간 배율의 {1} 설정됨",
-      "setEvents": "{0}개 {2} 이벤트의 {1} 설정됨"
+      "noChange": "변경 사항 없음"
     },
     "view": {
       "tool": "도구",
@@ -1046,8 +1039,7 @@
     "eraser": {
       "title": "지우개",
       "deselected": "모든 객체 선택 해제됨",
-      "erasing": "{0}개 객체 지우기",
-      "erased": "{0}개 객체 삭제됨"
+      "erasing": "{0}개 객체 지우기"
     },
     "generateSlideNotes": {
       "title": "슬라이드 노트 생성",
@@ -1095,7 +1087,6 @@
       "adding": "{0}개 노트 추가",
       "added": "{0}개의 노트 추가됨",
       "editing": "{0}개 노트 편집",
-      "edited": "{0}개의 노트 편집됨",
       "moving": "{0}개 노트 이동",
       "moved": "{0}개의 노트 이동됨",
       "selected": "{0}개의 노트 선택됨",
@@ -1303,10 +1294,8 @@
       "deletedEvents": "{0} 이벤트 삭제됨",
       "cutEvents": "{0} 이벤트 잘라냄"
     },
-    "edits": "편집 {0}회",
     "undidSteps": "{0}단계 실행 취소",
     "redidSteps": "{0}단계 다시 실행",
-    "initialize": "초기화",
     "dynamicStages": {
       "title": "동적 스테이지",
       "message": "이 기능을 사용하려면 동적 스테이지가 필요합니다. 동적 스테이지를 활성화하시겠습니까?",
@@ -1831,7 +1820,11 @@
       "ok": "확인"
     },
     "loading": {
-      "loading": "불러오는 중…"
+      "loading": "불러오는 중…",
+      "audioUnreadable": "이 오디오 파일을 읽지 못했습니다.",
+      "imageUnreadable": "이 이미지를 읽지 못했습니다.",
+      "coverFailed": "커버를 생성하지 못했습니다.",
+      "failed": "작업을 완료하지 못했습니다."
     }
   },
   "preview": {
@@ -1916,8 +1909,6 @@
       "added": "{0} 폴더 추가됨",
       "renamed": "{0} 폴더 이름을 {1}(으)로 변경함",
       "moved": "{0} 폴더 이동됨",
-      "movedInto": "{0}을(를) {1} 폴더로 이동함",
-      "movedOut": "{0}을(를) {1} 폴더에서 꺼냄",
       "ungrouped": "{0} 폴더 해제됨",
       "deleted": "{0} 폴더 삭제됨",
       "duplicated": "{0} 폴더 복제됨"
@@ -2043,16 +2034,12 @@
     "addedRemoved": "추가 {0} · 삭제 {1}",
     "exportsCurrent": "현재 버전을 내보냅니다.",
     "overlay": "기록 보는 중 · 읽기 전용",
-    "viewing": "{0} 보는 중 · {1} · 읽기 전용",
-    "viewingShort": "{0} 보는 중 · 읽기 전용",
     "backToNow": "현재로 돌아가기",
     "restore": "복원",
     "changeCount": "{0}개 변경",
     "noChanges": "변경 없음",
     "changedLarge": "변경됨: {0}",
     "notes": "{0}개 노트",
-    "notesOf": "노트 {1}개 중 {0}개",
-    "eventsOf": "이벤트 {1}개 중 {0}개",
     "bpms": "{0}개 BPM",
     "timeScales": "{0}개 시간 배율",
     "events": "{0}개 이벤트",
@@ -2104,6 +2091,7 @@
     "savedWithoutMediaLarge": "{0}에 미디어 없이 저장됨",
     "someStepsNotKept": "{0}에 저장됨. 이전 단계 일부는 보존되지 않았습니다.",
     "someStepsNotKeptLine": "이전 단계 일부는 보존되지 않았습니다.",
+    "committedState": "다른 탭에서 열려 있는 세션의 마지막으로 보관된 상태입니다.",
     "tookOver": "{0}에 저장됨. 이전 작업은 최근 세션에 있습니다.",
     "noChanges": "{0} 다운로드 이후 변경 사항 없음",
     "noChangesSaved": "{0} 저장 이후 변경 사항 없음",
@@ -2133,9 +2121,10 @@
     "replace": "교체",
     "title": "\"{0}\" 변경됨",
     "body": "\"{0}\"이(가) 여기서 열거나 저장한 후 변경되었습니다.",
-    "savedOn": "{0}에서 저장됨, {1} · {2}.",
-    "savedWeb": "웹 편집기({0})에서 저장됨, {1} · {2}.",
+    "saved": "{0}, {1} · {2}.",
     "otherProject": "다른 프로젝트 파일 \"{0}\"입니다.",
+    "otherProjectUnnamed": "다른 프로젝트 파일입니다.",
+    "notDescendant": "이 버전은 사용자의 버전을 이어받지 않습니다({0}).",
     "separate": "별도 파일로 저장",
     "openOther": "다른 버전 열기",
     "openOtherNote": "변경 사항은 저장되지 않은 채로 남습니다.",
@@ -2227,20 +2216,10 @@
   },
   "file": {
     "replacedElsewhere": "\"{0}\"이(가) 다른 탭이나 창에서 교체되었습니다.",
-    "saved": "{0} · {1} 저장됨",
-    "changedSinceSaved": "{0} · 저장 후 변경됨",
     "downloaded": "{0} · {1} 다운로드됨",
-    "notConfirmed": "확인되지 않음",
-    "changedSinceDownload": "{0} · 다운로드 후 변경됨",
     "opened": "{0} · {1} 열림",
-    "changedSinceOpened": "{0} · 연 후 변경됨",
     "short": {
-      "saved": "저장됨",
-      "changed": "변경됨",
-      "notSaved": "저장 안 됨",
-      "downloaded": "다운로드됨",
-      "notConfirmed": "확인되지 않음",
-      "opened": "열림"
+      "notSaved": "저장 안 됨"
     }
   },
   "state": {

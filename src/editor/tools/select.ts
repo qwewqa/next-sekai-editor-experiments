@@ -73,6 +73,7 @@ import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
 import { interpolate } from '../../utils/interpolate'
 import { shiftComputed } from '../../utils/math'
+import { formatCount } from '../../utils/size'
 import { committedGrid } from '../beatGrid'
 import { inverseAffine } from '../composedPointer'
 import {
@@ -304,7 +305,7 @@ export const select: Tool = {
             })
             focusEntityAtBeat(entity.beat)
 
-            notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
+            notify(interpolate(() => i18n.value.tools.select.selected, formatCount(targets.length)))
         } else {
             const selectedLength = selectedEntities.value.length
 
@@ -316,7 +317,12 @@ export const select: Tool = {
             if (entity) {
                 focusEntityAtBeat(entity.beat)
 
-                notify(interpolate(() => i18n.value.tools.select.selected, `${entities.length}`))
+                notify(
+                    interpolate(
+                        () => i18n.value.tools.select.selected,
+                        formatCount(entities.length),
+                    ),
+                )
             } else {
                 focusViewAtBeat(yToValidBeat(y))
 
@@ -346,7 +352,12 @@ export const select: Tool = {
         } else if (target.isSelected) {
             focusEntityAtBeat(target.focus.beat)
 
-            notify(interpolate(() => i18n.value.tools.select.moving, `${target.entities.length}`))
+            notify(
+                interpolate(
+                    () => i18n.value.tools.select.moving,
+                    formatCount(target.entities.length),
+                ),
+            )
 
             active = target
         } else {
@@ -489,7 +500,12 @@ export const select: Tool = {
                 if (active.count === targets.length) return
                 active.count = targets.length
 
-                notify(interpolate(() => i18n.value.tools.select.selecting, `${targets.length}`))
+                notify(
+                    interpolate(
+                        () => i18n.value.tools.select.selecting,
+                        formatCount(targets.length),
+                    ),
+                )
                 break
             }
         }
@@ -554,7 +570,12 @@ export const select: Tool = {
                     creating: [],
                 }
 
-                notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
+                notify(
+                    interpolate(
+                        () => i18n.value.tools.select.selected,
+                        formatCount(targets.length),
+                    ),
+                )
                 break
             }
         }

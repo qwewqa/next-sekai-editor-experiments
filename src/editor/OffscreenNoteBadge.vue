@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import { i18n } from '../i18n'
 import { interpolateRaw } from '../utils/interpolate'
+import { formatCount } from '../utils/size'
 import ChevronIcon from './workspace/ChevronIcon.vue'
 import type { OffscreenNoteGroup } from './offscreenNotes'
 
@@ -67,7 +68,9 @@ onUnmounted(() => {
         :data-count="indicator.count"
         :data-selectable="indicator.targets.length"
         role="img"
-        :aria-label="interpolateRaw(i18n.offscreenNotes[indicator.side], String(indicator.count))"
+        :aria-label="
+            interpolateRaw(i18n.offscreenNotes[indicator.side], formatCount(indicator.count))
+        "
     >
         <ChevronIcon
             :direction="

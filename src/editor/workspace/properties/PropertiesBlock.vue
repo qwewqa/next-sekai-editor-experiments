@@ -35,6 +35,7 @@ import {
 import PropertiesFieldGroup from './PropertiesFieldGroup.vue'
 import { selectOnly } from './selectOnly'
 import type { SummaryKind } from './summary'
+import { formatCount } from '../../../utils/size'
 
 const props = defineProps<{
     /** The kind of the block's objects; General when unset. */
@@ -113,7 +114,7 @@ const connectorSummary = computed(() => {
     if (!fields.length) return ''
     return parts.length
         ? parts.join(' · ')
-        : interpolateRaw(i18n.value.workspace.properties.valuesDiffer, `${fields.length}`)
+        : interpolateRaw(i18n.value.workspace.properties.valuesDiffer, formatCount(fields.length))
 })
 
 const toggleConnector = (event: MouseEvent) => {
@@ -135,10 +136,10 @@ const kindLabel = computed(() =>
 const kindHead = computed(() => Array.from(kindLabel.value).slice(0, -1).join(''))
 const kindTail = computed(() => Array.from(kindLabel.value).at(-1) ?? '')
 const slidesText = computed(() =>
-    interpolateRaw(i18n.value.workspace.properties.inSlides, `${props.slides}`),
+    interpolateRaw(i18n.value.workspace.properties.inSlides, formatCount(props.slides)),
 )
 const selectOnlyLabel = computed(() =>
-    interpolateRaw(i18n.value.modals.form.selectOnly, `${props.count}`, kindLabel.value),
+    interpolateRaw(i18n.value.modals.form.selectOnly, formatCount(props.count), kindLabel.value),
 )
 
 const header = useTemplateRef<HTMLElement>('header')
@@ -168,7 +169,7 @@ const measure = () => {
         return context.measureText(text).width
     }
     // Only the kind's name is bold.
-    const tail = `\u00a0${props.count}${props.slides ? ` · ${slidesText.value}` : ''}`
+    const tail = `\u00a0${formatCount(props.count)}${props.slides ? ` · ${slidesText.value}` : ''}`
     const titleWidth = width(kindLabel.value, 'bold') + (props.kind ? width(tail, 'normal') : 0)
     // Icon (0.875rem tall, 320:512), gap and padding around the action's name; its
     // negative margin takes back the gap before it.
@@ -222,7 +223,9 @@ const narrowKind = async (event: MouseEvent) => {
                     <span class="font-bold">{{ kindHead }}</span
                     ><span class="whitespace-nowrap"
                         ><span class="font-bold">{{ kindTail }}</span
-                        >&nbsp;<span class="tabular-nums text-fg/80">{{ count }}</span></span
+                        >&nbsp;<span class="tabular-nums text-fg/80">{{
+                            formatCount(count)
+                        }}</span></span
                     >
                     <span v-if="slides" class="text-fg/80"> · {{ slidesText }}</span>
                 </template>

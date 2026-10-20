@@ -4,6 +4,7 @@ import { isPeeking } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { modals, showModal } from '../../modals'
 import { interpolateRaw } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import HiddenIcon from '../workspace/manager/icons/HiddenIcon.vue'
@@ -142,7 +143,7 @@ const labelOf = (direction: 'up' | 'down') => {
     return reportCounts.value
         ? interpolateRaw(
               direction === 'up' ? strings.changesAbove : strings.changesBelow,
-              String(countOf(direction)),
+              formatCount(countOf(direction)),
           )
         : direction === 'up'
           ? strings.changesAboveAny

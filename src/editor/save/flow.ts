@@ -12,10 +12,11 @@ import { handleOf, readableWithoutPrompt, requestRead, storableHandle } from '..
 import { toHex } from '../../local/hash'
 import { displayName, namePartsOf, stemOf } from '../../local/names'
 import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
-import { isImporting, whenImported } from '../../local/open/importLoop'
+import { isImporting, onImportProgress, whenImported } from '../../local/open/importLoop'
 import { readKeptCopy } from '../../local/open/kept'
 import type { HandleOwner } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
+import type { SaveSizeEstimate } from '../../local/save/estimate'
 import type { BuiltSave } from '../../local/save/execute'
 import { storageWorker } from '../../local/start'
 import { storageStatus } from '../../local/startup/events'
@@ -63,6 +64,7 @@ import {
 import {
     replaceNewerLine,
     saveUi,
+    type BgmRow,
     type ConflictChoice,
     type DiskVersion,
     type Preparing,
@@ -87,6 +89,16 @@ import {
     writeRevocation,
     type SaveMarker,
 } from './env'
+import {
+    estimatedTotal,
+    estimateKey,
+    isTouchDevice,
+    knownEstimate,
+    LARGE_BUILD_BYTES,
+    noteLoaded,
+    rememberEstimate,
+    storageNote,
+} from './preview'
 import { refreshBinding, revokedOf } from './watch'
 
 // Save, Save As… and Save to File… (Part 1 §1.4.7; owner decision log D5): write-back with
@@ -233,11 +245,17 @@ const activationLapsed = (startedAt: number) =>
 const waitForImport = async (env: Env, slot: PreparingSlot) => {
     if (!isImporting(env.session.id)) return 'done'
     const dialog = openPreparing(slot)
+    // The import's progress, from the batches it has run (§1.4.7).
+    const stop = onImportProgress(env.session.id, (progress) => {
+        dialog.importing(progress)
+    })
     try {
         const outcome = await whenImported(env.session.id, dialog.signal)
         return outcome.kind === 'unlinked' ? 'unlinked' : 'done'
     } catch {
         return 'cancelled'
+    } finally {
+        stop()
     }
 }
 
@@ -662,6 +680,8 @@ type PickRequest = {
     target: 'new' | 'copy'
     startIn?: FileSystemHandle
     pre?: Promise<PreRead | undefined>
+    /** The size the Save dialog estimated for the options answered, in bytes. */
+    estimated?: number
 }
 
 type Outcome =
@@ -705,6 +725,13 @@ const exclusive = async (run: () => Promise<void>) => {
     }
 }
 
+/** A download whose build would likely outlast the tap: over 2 MB estimated, on a touch device. */
+const largeDownload = (estimated: number | undefined): estimated is number =>
+    !platform.pickSaveFile &&
+    estimated !== undefined &&
+    estimated > LARGE_BUILD_BYTES &&
+    isTouchDevice()
+
 /** Ends a reservation no path ended (a throw): its `seq` kept, since the write may have landed. */
 const release = async (env: Env, reservation: SaveReservation) => {
     if (reservation.session.reserved === reservation.seq)
@@ -723,6 +750,9 @@ const settledNow = <T>(promise: Promise<T | undefined> | undefined) =>
 const pickAndWrite = async (env: Env, request: PickRequest): Promise<Outcome> => {
     const slot = preparingFor(request.fileName)
     const startedAt = performance.now()
+    // A large download on a touch device would outlast the tap: "Preparing…" opens at once, with
+    // the estimated size (§1.4.7).
+    if (largeDownload(request.estimated)) openPreparing(slot).built(request.estimated)
     await commitFirst(env)
     if ((await waitForImport(env, slot)) === 'cancelled') {
         closePreparing(slot)
@@ -933,6 +963,29 @@ const afterPick = async (
                 await env.flusher.endSave(reservation)
                 return changedWhilePicked(name)
             }
+            // A picker that renamed the file: its own name goes into the build (`save` entry and
+            // `revision.fileName`). Rebuilt only now, once the file is known to be written, so a
+            // refused pick is put back as soon as it is known, and before anything is revoked. A
+            // rebuild that fails leaves the first build, which differs only in that name.
+            if (built && name !== request.fileName && !(filled && !ownersOwn)) {
+                try {
+                    built = await runBuild(env, {
+                        target:
+                            request.target === 'new'
+                                ? { kind: 'new', docId: built.identity.docId }
+                                : { kind: 'copy' },
+                        history: request.history,
+                        bgm: request.bgm,
+                        fileName: name,
+                        save: { time: reservation.wall, operation: saveOperation(name, false) },
+                        state,
+                    })
+                } catch (error) {
+                    // The first build is the same file under the typed name, and the picked file
+                    // is empty: it is written, never left empty by a Save that ends here.
+                    recordError(error)
+                }
+            }
             const preBind = {
                 file: {
                     name,
@@ -1103,7 +1156,7 @@ const ownCompletedSave = async (
 ) => {
     const marker = readMarker(env.chainId)
     if (!marker) return false
-    const facts = await readDiskFacts(file, deviceId()).catch(() => undefined)
+    const facts = await readDiskFacts(file).catch(() => undefined)
     const project = isRow(facts?.projectJson) ? facts.projectJson : undefined
     const revision = isRow(project?.revision) ? project.revision : undefined
     const device = isRow(revision?.device) ? revision.device : undefined
@@ -1359,7 +1412,7 @@ const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileH
     try {
         const file = await handle.getFile()
         const disk = await platform.inspect({ kind: 'handle', handle }, 'nxsp')
-        facts = await readDiskFacts(file, deviceId())
+        facts = await readDiskFacts(file)
         if (disk !== 'missing') pinned = { file, disk }
         if (disk !== 'missing' && facts.projectJson !== undefined) {
             const decision = await env.worker.call('replaceDecision', {
@@ -1373,7 +1426,12 @@ const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileH
     } catch {
         // What is on disk cannot be read: the title and body say enough.
     }
-    const version: DiskVersion = otherProject(facts, binding.docId) ?? facts.version
+    // Another project by its `id`; ours gone back, by the relation; else what `project.json` says.
+    const version: DiskVersion =
+        otherProject(facts, binding.docId) ??
+        (relation === 'older' && facts.version.kind === 'saved'
+            ? { kind: 'notDescendant', savedAt: facts.version.savedAt }
+            : facts.version)
     replaceDisabled ??= replaceUnavailable(facts, pinned?.disk)
     return {
         input: {
@@ -1609,7 +1667,7 @@ const notFoundSaveAs = async (env: Env) => {
     const binding = quickBinding(env)
     const stem = copyStem(binding.file ? stemOf(binding.file.name) : shownStem(env, savedState()))
     const name = await suggestion(env, stem)
-    const input = dialogInput(env, 'saveAs', name, [])
+    const input = await dialogInput(env, 'saveAs', name, [])
     const result = await saveUi.saveDialog(input)
     if (result?.action !== 'save') return
     await afterOutcome(
@@ -1618,25 +1676,73 @@ const notFoundSaveAs = async (env: Env) => {
             dialog: 'notFound',
             fileName: result.fileName,
             ...answered(input, result, binding),
+            ...estimateOf(input, result, binding),
             target: 'copy',
         }),
     )
 }
 
-const dialogInput = (
+/**
+ * Whether the head's BGM is held (§1.6.8.4, defined once): its bytes are in this tab's memory or
+ * in the media store. A read that fails counts as not held, the side that claims less.
+ */
+const bgmHeld = async (env: Env, state: State) => {
+    const { meta, source } = state.bgm
+    if (!meta) return false
+    if (source) return true
+    const needs = await env.worker
+        .call('saveNeeds', { chainId: env.chainId, media: [meta.hash] })
+        .catch(() => undefined)
+    return !!needs && !needs.lacking.includes(meta.hash)
+}
+
+/** The estimate with the BGM this tab holds counted when storage doesn't have it yet. */
+const withHeldBgm = (estimate: SaveSizeEstimate, state: State): SaveSizeEstimate => {
+    const source = state.bgm.source
+    return estimate.bgm === undefined && source ? { ...estimate, bgm: source.byteLength } : estimate
+}
+
+/** The storage line's first sentence for the first Save in this browser, where it applies. */
+const storageLineOf = async () => {
+    if (firstSaveDone.value) return
+    const storageLine = await storageNote()
+    return storageLine ? { storageLine } : undefined
+}
+
+/**
+ * The BGM row of a session that isn't open (Save to File…), from what storage holds of its head: a
+ * stored BGM is held, a head media item storage lacks is "not loaded", and none is "No BGM". With
+ * no estimate to tell, the row stays ticked, which never strips a BGM.
+ */
+const sessionBgmRow = (estimate: SaveSizeEstimate | undefined): BgmRow => {
+    if (!estimate) return { kind: 'held', name: 'BGM', ticked: true, locked: false }
+    if (estimate.bgm !== undefined)
+        return { kind: 'held', name: estimate.bgmName ?? 'BGM', ticked: true, locked: false }
+    return estimate.mediaMissing ? { kind: 'notLoaded' } : { kind: 'none' }
+}
+
+const dialogInput = async (
     env: Env,
     kind: SaveDialogKind,
     name: string,
     lines: (() => string)[],
-): SaveDialogInput => {
+): Promise<SaveDialogInput> => {
     const state = savedState()
     const binding = quickBinding(env)
     const options = binding.file?.options
     const meta = state.bgm.meta
-    const held = !!state.bgm.source
+    const held = await bgmHeld(env, state)
     // A first Save after an open by name writes that file again: its history stays (§0.9.7).
     const kept = kind === 'save' && binding.file?.event === 'opened' && !!binding.file.entry
-    return {
+    // The file holds the head's BGM (r11g-bgm #10) when nothing changed since the open; whatever
+    // the options, an included BGM stays in it (§0.9.7), ticked and disabled.
+    const bgmKept = kept && held && options?.bgm !== false
+    const fileHash = binding.file?.hash
+    const bgmSame = bgmKept && fileHash instanceof Uint8Array && rootOf(state) === toHex(fileHash)
+    const hash = meta?.hash
+    const key = () => estimateKey(env.session, hash)
+    const cached = knownEstimate(env.chainId, key())
+    const input: SaveDialogInput = {
         kind,
         name,
         lines,
@@ -1654,8 +1760,9 @@ const dialogInput = (
                 ? {
                       kind: 'held',
                       name: meta.filename || (state.bgm.filename ?? 'BGM'),
-                      ticked: kind === 'saveAs' ? true : (options?.bgm ?? true),
-                      locked: false,
+                      ticked: kind === 'saveAs' ? true : bgmKept || (options?.bgm ?? true),
+                      locked: bgmKept,
+                      ...(bgmSame && binding.file ? { keptIn: binding.file.name } : {}),
                   }
                 : { kind: 'notLoaded' }
             : { kind: 'none' },
@@ -1664,21 +1771,36 @@ const dialogInput = (
             exportMemory.sourceName !== undefined ||
             (launch.isExistingUser && !exportUsed.value),
         downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
+        ...(await storageLineOf()),
         peeking: isPeeking.value,
         estimate: {
+            ...(cached ? { cached: withHeldBgm(cached, state) } : {}),
             // The worker counts what storage holds: this tab's pending entries go first, so the
             // steps are the ones the file will carry (a flush never rejects).
             load: async () => {
+                const before = key()
+                const again = knownEstimate(env.chainId, before)
+                if (again) {
+                    const known = withHeldBgm(again, state)
+                    noteLoaded(input, known)
+                    return known
+                }
                 await env.flusher.flush()
-                return env.worker
+                const loaded = await env.worker
                     .call('estimateSaveSize', {
                         chainId: env.chainId,
-                        ...(meta ? { bgm: meta.hash } : {}),
+                        ...(hash ? { bgm: hash } : {}),
                     })
                     .catch(failedEstimate)
+                if (!loaded) return
+                rememberEstimate(env.chainId, before, loaded)
+                const estimate = withHeldBgm(loaded, state)
+                noteLoaded(input, estimate)
+                return estimate
             },
         },
     }
+    return input
 }
 
 /** A size estimate that failed shows no sizes and is logged in the diagnostics ring (§1.4.7). */
@@ -1703,6 +1825,16 @@ const answered = (
             : (binding.file?.options.bgm ?? true),
 })
 
+/** The size the dialog estimated for the options a Save will use, once an estimate loaded. */
+const estimateOf = (
+    input: SaveDialogInput,
+    result: { history: boolean; bgm: boolean },
+    binding: Binding,
+) => {
+    const estimated = estimatedTotal(input, answered(input, result, binding))
+    return estimated === undefined ? {} : { estimated }
+}
+
 /** The Save dialog, then the picker or a download (§1.4.7's "Not bound" row and Save As…). */
 const dialogSave = async (
     env: Env,
@@ -1726,7 +1858,7 @@ const dialogSave = async (
         : []
     // R2: this chain's own file read first, when it may hold what storage lacks.
     const pre = kind === 'saveAs' && binding.file ? preRead(env, binding) : undefined
-    const input = dialogInput(env, kind, name, [...lines, ...replacedLine])
+    const input = await dialogInput(env, kind, name, [...lines, ...replacedLine])
     const result = await saveUi.saveDialog(input)
     if (!result) return
     if (result.action === 'export') {
@@ -1739,6 +1871,7 @@ const dialogSave = async (
             dialog: kind,
             fileName: result.fileName,
             ...answered(input, result, binding),
+            ...estimateOf(input, result, binding),
             // Save As… gives a new `docId`; a first Save, a fork's and a taken-over chain's keep it.
             target: kind === 'saveAs' && !unlinked ? 'new' : 'copy',
             ...(pre ? { pre } : {}),
@@ -1921,6 +2054,10 @@ export const saveToFile = (sessionId: string) =>
             env,
             stem ? interpolateRaw(i18n.value.save.restoredName, stem, formatDate(updatedAt)) : '',
         )
+        // The session's own head, as storage holds it: its BGM row is what a build would write.
+        const estimate = await env.worker
+            .call('estimateSaveSize', { chainId, sessionId })
+            .catch(failedEstimate)
         const input: SaveDialogInput = {
             kind: 'saveToFile',
             name,
@@ -1928,20 +2065,27 @@ export const saveToFile = (sessionId: string) =>
             history: globalThis.isSecureContext
                 ? { kind: 'available', ticked: true, locked: false }
                 : { kind: 'insecure' },
-            bgm: { kind: 'held', name: 'BGM', ticked: true, locked: false },
+            bgm: sessionBgmRow(estimate),
             exportLine: false,
             downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
+            ...(await storageLineOf()),
             peeking: false,
             estimate: {
+                ...(estimate ? { cached: estimate } : {}),
                 load: () =>
                     env.worker
                         .call('estimateSaveSize', { chainId, sessionId })
-                        .catch(failedEstimate),
+                        .catch(failedEstimate)
+                        .then((loaded) => {
+                            if (loaded) noteLoaded(input, loaded)
+                            return loaded
+                        }),
             },
         }
         const result = await saveUi.saveDialog(input)
         if (result?.action !== 'save') return
         const options = answered(input, result, { docId: '' })
+        const estimated = estimatedTotal(input, options)
         // Its session hold before the build, so Delete Sessions… skips it (§1.6.6).
         await withSessionHold(sessionId, async () => {
             const outcome = await writeSessionFile(env, {
@@ -1949,6 +2093,7 @@ export const saveToFile = (sessionId: string) =>
                 sessionId,
                 fileName: result.fileName,
                 ...options,
+                ...(estimated === undefined ? {} : { estimated }),
                 committed: applied === 'held',
             })
             await afterOutcome(env, outcome)
@@ -1975,11 +2120,13 @@ const writeSessionFile = async (
         fileName: string
         history: boolean
         bgm: boolean
+        estimated?: number
         committed: boolean
     },
 ): Promise<Outcome> => {
     const slot = preparingFor(request.fileName)
     const startedAt = performance.now()
+    if (largeDownload(request.estimated)) openPreparing(slot).built(request.estimated)
     whenSlow(slot)
     const built = await env.worker
         .call(

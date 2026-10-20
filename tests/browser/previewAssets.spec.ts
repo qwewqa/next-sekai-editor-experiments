@@ -364,6 +364,17 @@ test.describe('fallbacks', () => {
         await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
     })
 
+    test('a tab’s accessible name joins its type and reason as the language does', async ({
+        page,
+    }) => {
+        await start(page, { fail: ['default-skin'] })
+        await expect.poll(() => skinTitle(page)).toBe('Editor')
+        await open(page)
+        await page.evaluate(() => (window.editorTest.settings.locale = 'ja'))
+        // Japanese joins with "。", not ". ".
+        await expect(selectedTab(page)).toHaveAccessibleName('スキン。デフォルトを読み込めませんでした。')
+    })
+
     test('the panel’s line and the dialog’s row give one reason for each case', async ({
         browser,
     }) => {

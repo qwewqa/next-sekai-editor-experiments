@@ -20,6 +20,7 @@ import { inStoredOrder } from '../../../state/operations/transformSelection'
 import type { Store } from '../../../state/store'
 import { createStore } from '../../../state/store/creates'
 import { interpolate } from '../../../utils/interpolate'
+import { formatCount } from '../../../utils/size'
 import { createComposedLayout } from '../../composed'
 import { notify } from '../../notification'
 import { pointHitsAt } from '../../tools/utils'
@@ -81,7 +82,7 @@ export const copy: Command = {
             source: clipboardSource(),
         })
 
-        notify(interpolate(() => i18n.value.commands.copy.copied, `${entities.length}`))
+        notify(interpolate(() => i18n.value.commands.copy.copied, formatCount(entities.length)))
     },
 }
 

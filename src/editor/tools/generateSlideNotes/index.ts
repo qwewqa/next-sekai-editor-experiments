@@ -15,6 +15,7 @@ import { addNote } from '../../../state/mutations/slides/note'
 import { createTransaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
 import { bisect } from '../../../utils/ordered'
+import { formatCount } from '../../../utils/size'
 import { committedGrid } from '../../beatGrid'
 import { notify } from '../../notification'
 import { revealAuthoredEntities } from '../../scope'
@@ -124,7 +125,10 @@ export const generateSlideNotes: Tool = {
         active.count = targets.length
 
         notify(
-            interpolate(() => i18n.value.tools.generateSlideNotes.selecting, `${targets.length}`),
+            interpolate(
+                () => i18n.value.tools.generateSlideNotes.selecting,
+                formatCount(targets.length),
+            ),
         )
     },
 
