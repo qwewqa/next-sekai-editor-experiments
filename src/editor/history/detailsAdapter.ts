@@ -1,62 +1,24 @@
-// TEMPORARY: adapts the model on main to the Step Details model of the proposal (section 5), so that
-// the dialog can be built before P2 lands. When P2 is merged, the dialog imports `operationDetails`
-// and these types from `history/operationPresentation`, and this file is deleted.
+// TEMPORARY: adapts the legacy model to the Step Details model of the proposal (section 5), so the
+// dialog can run before P2's `operationDetails` lands. When P2 is merged, the dialog imports
+// `operationDetails` from `history/operationPresentation` and this file is deleted.
 import {
+    describeMember,
+    describeStep,
+    isEntryDescription,
     operationDetails as legacyDetails,
-    type OperationMember,
+    type DetailRow,
+    type OperationDetails,
     type OperationRecipe,
     type OperationTextContext,
 } from '../../history/operationPresentation'
-import type { StepDescription } from '../../history/operations'
-
-export type DetailText = {
-    readonly text: string
-    readonly placeholder?: true
-    readonly shortened?: true
-}
-export type DetailRow =
-    | {
-          readonly kind: 'counts'
-          readonly key: string
-          readonly label: string
-          readonly items: readonly string[]
-      }
-    | {
-          readonly kind: 'change'
-          readonly key: string
-          readonly label: string
-          readonly before: DetailText
-          readonly after: DetailText
-      }
-    | {
-          readonly kind: 'value'
-          readonly key: string
-          readonly label: string
-          readonly value: DetailText
-      }
-export type OperationDetails = {
-    readonly description: string
-    readonly descriptionLang?: string
-    readonly note?: string
-    readonly rows: readonly DetailRow[]
-    readonly facts: readonly string[]
-    readonly steps?: {
-        readonly count: number
-        readonly partial: boolean
-        readonly members: readonly { member: OperationMember; expandable: boolean }[]
-        readonly prefixless?: true
-    }
-    readonly recovery?: {
-        readonly descriptions: readonly StepDescription[]
-        readonly headIndex: number
-        readonly omitted: number
-    }
-}
 
 export const operationDetails = (
     recipe: OperationRecipe,
     context: OperationTextContext,
 ): OperationDetails => {
+    const fixture = (globalThis as { __detailsFixtures?: Record<string, OperationDetails> }).__detailsFixtures
+    const named = recipe.members[0]?.id ? fixture?.[`${recipe.kind}:${recipe.members[0].id}`] : undefined
+    if (named) return named
     const old = legacyDetails(recipe, context)
     const rows: DetailRow[] = []
     for (const section of old.sections) {
@@ -78,6 +40,7 @@ export const operationDetails = (
                     value: { text: row.value },
                 })
     }
+    const prefixless = recipe.kind === 'undo' || recipe.kind === 'redo'
     return {
         description: old.description,
         ...(old.explanation ? { note: old.explanation } : {}),
@@ -88,9 +51,17 @@ export const operationDetails = (
                   steps: {
                       count: old.stepCount,
                       partial: old.partial,
-                      members: [...old.children]
-                          .reverse()
-                          .map((member) => ({ member, expandable: true })),
+                      members: [...old.children].reverse().map((member) => ({
+                          member,
+                          label:
+                              prefixless &&
+                              isEntryDescription(member.description) &&
+                              member.description.step
+                                  ? describeStep(member.description.step, context)
+                                  : describeMember(member, context),
+                          expandable: true,
+                      })),
+                      ...(prefixless ? { prefixless: true as const } : {}),
                   },
               }
             : {}),

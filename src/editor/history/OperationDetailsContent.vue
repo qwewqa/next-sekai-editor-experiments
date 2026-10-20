@@ -3,18 +3,17 @@ import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import {
     captureOperationRecipe,
-    describeMember,
     describeStep,
-    isEntryDescription,
     message,
     operationStepCount,
+    type DetailText,
     type OperationMember,
     type OperationRecipe,
 } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
 import { formatClockSeconds, formatDateTimeSeconds } from '../../i18n/when'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
-import { operationDetails, type DetailText } from './detailsAdapter'
+import { operationDetails } from './detailsAdapter'
 import DetailsHeader from './DetailsHeader.vue'
 import type { Flags } from './rows'
 
@@ -57,13 +56,6 @@ const meta = computed(() =>
         .filter(Boolean)
         .join(' · '),
 )
-// The steps of an undone or redone step are listed without the parent's repeated prefix.
-const label = (member: OperationMember) => {
-    const { description } = member
-    return details.value.steps?.prefixless && isEntryDescription(description) && description.step
-        ? describeStep(description.step, context.value)
-        : describeMember(member, context.value)
-}
 const memberFlagText = (member: OperationMember) =>
     member.id === undefined ? undefined : flagText(props.memberFlags?.get(member.id))
 const toggle = (index: number, event: Event) => {
@@ -172,7 +164,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                                 class="self-center"
                             />
                             <span class="min-w-0 flex-1 whitespace-pre-wrap"
-                                >{{ label(entry.member)
+                                >{{ entry.label
                                 }}<span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
                                     ` · ${memberFlagText(entry.member)}`
                                 }}</span></span
@@ -199,7 +191,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                     >
                         <span class="size-3 shrink-0 self-center" aria-hidden="true"></span>
                         <span class="min-w-0 flex-1 whitespace-pre-wrap"
-                            >{{ label(entry.member)
+                            >{{ entry.label
                             }}<span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
                                 ` · ${memberFlagText(entry.member)}`
                             }}</span></span

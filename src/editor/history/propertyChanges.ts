@@ -249,7 +249,11 @@ export const comparePropertyChanges = (
                 )
             }
             field('name', (entry) => text(entry.name))
-            if (!old || !next || old.folderId !== next.folderId)
+            // A folder holds no folder, so a folder section has no Folder row.
+            if (
+                (kind === 'groups' || kind === 'stages') &&
+                (!old || !next || old.folderId !== next.folderId)
+            )
                 field('folder', (entry, old) => folder(entry.folderId, old))
             if (kind === 'groups')
                 field('forceNoteSpeed', (entry) =>
