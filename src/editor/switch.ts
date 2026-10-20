@@ -58,21 +58,25 @@ type Left = NonNullable<typeof previousSession.value>
 let reopening: SwitchRequest | undefined
 
 // A session without a name of its own is named by its date, which takes no quotes.
-const reopenAction = (left: Left): NoticeAction => ({
-    label:
-        left.name.name.kind === 'date'
-            ? interpolate(
-                  () => i18n.value.notice.reopenUntitled,
-                  () => formatDateTime(left.name.at),
-              )
-            : interpolate(
-                  () => i18n.value.notice.reopen,
-                  () => shownName(left.name),
-              ),
-    run: () => {
-        void reopenPrevious()
-    },
-})
+// Without its start, the date fallback is just "Untitled".
+const reopenAction = (left: Left): NoticeAction => {
+    const { at } = left.name
+    return {
+        label:
+            left.name.name.kind === 'date' && at !== undefined
+                ? interpolate(
+                      () => i18n.value.notice.reopenUntitled,
+                      () => formatDateTime(at),
+                  )
+                : interpolate(
+                      () => i18n.value.notice.reopen,
+                      () => shownName(left.name),
+                  ),
+        run: () => {
+            void reopenPrevious()
+        },
+    }
+}
 
 /**
  * Reopen: continues the session this tab left last, after the prompt when the open one would

@@ -46,14 +46,15 @@ export const readDiskFacts = async (file: Blob): Promise<DiskFacts> => {
     const revision = project?.revision
     const device = revision?.device
     const savedAt = parseSavedAt(revision?.savedAt)
-    const notes = (project ? currentSummary(project)?.noteCount : undefined) ?? 0
+    // Absent when the file has no summary for this revision: never taken as 0.
+    const notes = project ? currentSummary(project)?.noteCount : undefined
     const version: DiskVersion =
         device && savedAt !== undefined
             ? {
                   kind: 'saved',
                   device: { id: device.id, label: device.label },
                   savedAt,
-                  notes,
+                  ...(notes === undefined ? {} : { notes }),
               }
             : { kind: 'unknown' }
     return {

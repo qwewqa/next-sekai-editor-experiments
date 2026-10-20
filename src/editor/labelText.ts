@@ -24,7 +24,10 @@ export const displayedName = computed(() => {
         },
         liveState.value,
     )
-    return shownName({ name: displayName(parts), at: open.startedAt ?? 0 })
+    return shownName({
+        name: displayName(parts),
+        ...(open.startedAt === undefined ? {} : { at: open.startedAt }),
+    })
 })
 
 // A state fragment of a line joined with " · " is lower case (§1.4.19), unless it opens with a
@@ -34,15 +37,15 @@ const fragment = (text: string) =>
         ? text
         : text.charAt(0).toLocaleLowerCase(languageTag(settings.locale)) + text.slice(1)
 
-/** The time when the event was today, the date otherwise (§1.3.4: one formatter for every event). */
-const whenOf = (at: number | undefined) => (at === undefined ? '' : formatWhen(at))
-
 /**
  * A `file.*` string as a joined fragment: "{0} · downloaded {1}" without its name, "downloaded
- * Oct 14" (§1.3.4).
+ * Oct 14" (§1.3.4): the time when the event was today, the date otherwise. Undefined when the
+ * event's time is not known: the fragment is left out.
  */
 const eventFragment = (template: string, at: number | undefined) =>
-    interpolateRaw(template.replace(/^\{0\} · /, ''), '', whenOf(at))
+    at === undefined
+        ? undefined
+        : interpolateRaw(template.replace(/^\{0\} · /, ''), '', formatWhen(at))
 
 export type StatusLabel = {
     /** The displayed name, or empty when the file's name stands for it. */

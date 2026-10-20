@@ -6,12 +6,15 @@ import type { StorageStatus } from '../worker/core'
 // with its action, most important first. Kept for the page's life, so Settings › Local Data ›
 // Recovery can list "At this load". Light (Vue only).
 
-/** A name as shown: the displayed name, or the date fallback with the session's start. */
-export type ShownName = { name: DisplayName; at: number }
+/**
+ * A name as shown: the displayed name, or the date fallback with the session's start (absent when
+ * the session's row does not say: the date fallback then shows no date).
+ */
+export type ShownName = { name: DisplayName; at?: number }
 
 export type LoadEvent =
     /** A new visit continued the most recent session: "Continued "{0}" from {1}." [Open History]. */
-    | { kind: 'continued'; name: ShownName; from: number }
+    | { kind: 'continued'; name: ShownName; from?: number }
     /** The canary: "Work from earlier visits is missing. The browser cleared this site’s storage." */
     | { kind: 'storageCleared' }
     /** "A change to "{0}" could not be applied, so it was kept as a separate session." [Restore Session]. */

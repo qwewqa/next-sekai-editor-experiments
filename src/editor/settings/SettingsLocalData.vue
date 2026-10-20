@@ -45,8 +45,17 @@ const storageLine = computed(() => {
 // --- Recovery rows. The storage-side modules load when a row is acted on.
 const api = () => import('../../local/startup/api')
 const items = ref<RecoveryItem[]>([])
+// A listing that fails is its own state, not "nothing to recover".
+const unreadable = ref(false)
 const refresh = async () => {
-    items.value = await (await api()).recoveryItems().catch(() => [])
+    try {
+        const listing = await (await api()).recoveryItems()
+        items.value = listing.items
+        unreadable.value = listing.unreadable
+    } catch {
+        items.value = []
+        unreadable.value = true
+    }
 }
 onMounted(refresh)
 
@@ -155,7 +164,9 @@ const afterRowGone = () =>
     document.querySelector<HTMLElement>('[data-recovery-row] button') ??
     document.querySelector<HTMLElement>('[data-open-history]')
 
-const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.length > 0)
+const hasRecovery = computed(
+    () => items.value.length > 0 || unreadable.value || loadNotices.value.length > 0,
+)
 </script>
 
 <template>
@@ -216,6 +227,8 @@ const hasRecovery = computed(() => items.value.length > 0 || loadNotices.value.l
                     </button>
                 </span>
             </div>
+
+            <p v-if="unreadable" data-recovery-unreadable>{{ strings.recovery.listFailed }}</p>
 
             <div v-if="loadNotices.length" class="flex flex-col gap-1" data-at-load>
                 <div class="text-sm font-bold opacity-75">{{ strings.recovery.atLoad }}</div>

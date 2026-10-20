@@ -6,10 +6,15 @@ import { interpolateRaw } from '../utils/interpolate'
 
 /** What a separate copy was made from, as shown: a chain with no name of its own by its date. */
 export const copySourceName = ({ name, at }: CopyOf) =>
-    name || shownName({ name: { kind: 'date' }, at: at ?? Date.now() })
+    name || shownName({ name: { kind: 'date' }, ...(at === undefined ? {} : { at }) })
 
-/** A name as shown: the displayed name, or the date fallback, "Untitled · Oct 16, 2:41 PM". */
+/**
+ * A name as shown: the displayed name, or the date fallback, "Untitled · Oct 16, 2:41 PM"; just
+ * "Untitled" when the start is not known.
+ */
 export const shownName = ({ name, at }: ShownName) =>
     name.kind === 'date'
-        ? interpolateRaw(i18n.value.session.untitled, formatDateTime(at))
+        ? at === undefined
+            ? i18n.value.save.placeholder
+            : interpolateRaw(i18n.value.session.untitled, formatDateTime(at))
         : name.text

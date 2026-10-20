@@ -955,6 +955,7 @@
         "legacy": "Eski bir sürümden kurtarma kopyası · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
+        "listFailed": "Depolanan kurtarma verileri okunamadı",
         "atLoad": "Başlangıç Bildirimleri"
       },
       "openHistory": "Geçmişi Aç",
@@ -1171,6 +1172,7 @@
     "tryAgain": "Tekrar Dene",
     "continued": "\"{0}\", {1} tarihinden devam ettirildi.",
     "continuedUntitled": "{0} tarihli oturumunuz devam ettirildi.",
+    "continuedUndated": "\"{0}\" devam ettirildi.",
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
     "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Burada bazı özellikler çalışmayabilir ve saklanan çalışmanın kaybolma olasılığı daha yüksektir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
     "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
@@ -2119,6 +2121,7 @@
     "title": "\"{0}\" Değişti",
     "body": "\"{0}\", burada açtığınızdan veya kaydettiğinizden bu yana değişti.",
     "saved": "{0}, {1} · {2}.",
+    "savedNoNotes": "{0}, {1}.",
     "otherProject": "Farklı bir proje dosyası: \"{0}\".",
     "otherProjectUnnamed": "Farklı bir proje dosyası.",
     "notDescendant": "Bu sürüm sizinkinin devamı değil ({0}).",
@@ -2210,6 +2213,8 @@
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz var.",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
+    "unsavedEarlierMaybe": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da olabilir.",
+    "unsavedChangesMaybe": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz olabilir.",
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. {1} tarihli daha yeni bir sürüm Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
     "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."
@@ -2241,6 +2246,7 @@
   "confirm": {
     "title": "İndirme Onaylanmadı",
     "body": "{0} dosyasının indirmesinin tamamlandığını kontrol edin ({1}).",
+    "bodyUndated": "{0} dosyasının indirmesinin tamamlandığını kontrol edin.",
     "haveFile": "Dosya Bende",
     "downloadAgain": "Tekrar İndir",
     "announce": "{0} Daha sonra onaylamak için durum çubuğundaki {1} düğmesini kullanın."
