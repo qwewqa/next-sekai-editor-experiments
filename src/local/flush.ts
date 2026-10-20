@@ -119,6 +119,11 @@ export type FlushSession = {
     /** Whether a flush of it has committed. */
     stored: boolean
     nextSeq: number
+    /**
+     * The newest `seq` of an entry this session holds, stored, pending or in memory only: the
+     * journal's `seq` (§1.6.4). Never a reserved or skipped one, and never lowered.
+     */
+    entrySeq: number
     readonly pending: PendingEntry[]
     /** Acknowledged by an in-memory store only: sent again after a worker restart. */
     readonly memoryOnly: PendingEntry[]
@@ -492,6 +497,7 @@ export class Flusher {
             ...(start.sourceName === undefined ? {} : { sourceName: start.sourceName }),
             stored: false,
             nextSeq: 1,
+            entrySeq: 0,
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
@@ -536,6 +542,7 @@ export class Flusher {
             continuation: true,
             stored: false,
             nextSeq: 1,
+            entrySeq: 0,
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
@@ -580,6 +587,7 @@ export class Flusher {
             ...(start.parent ? { parent: { ...start.parent } } : {}),
             stored: true,
             nextSeq: Math.max(start.lastSeq, this.deps.reservedSeq?.(start.id) ?? 0) + 1,
+            entrySeq: start.lastSeq,
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
@@ -626,7 +634,9 @@ export class Flusher {
             ...(start.parent ? { parent: { ...start.parent } } : {}),
             atOnce: true,
             stored: false,
-            nextSeq: start.seq + 1,
+            // Past the journal's entries and a marker's `seq`: the Save's file may hold it.
+            nextSeq: Math.max(start.seq, this.deps.reservedSeq?.(start.id) ?? 0) + 1,
+            entrySeq: 0,
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
@@ -653,6 +663,7 @@ export class Flusher {
             state: start.state,
             dirty: true,
         })
+        session.entrySeq = session.nextSeq - 1
         this.entered()
         return this.switchTo(session)
     }
@@ -794,16 +805,17 @@ export class Flusher {
             ...(state instanceof Uint8Array ? { snapshot: state } : { state }),
             dirty,
         })
+        session.entrySeq = Math.max(session.entrySeq, session.nextSeq - 1)
         if (isEditingKind(description.kind)) session.edited = true
         this.entered()
     }
 
-    /** The newest entry's `seq` in memory; 0 before any. */
+    /**
+     * The newest entry's `seq` the session holds; 0 before any. A reserved `seq`, a kept gap and
+     * the `seq`s a resume jumped over are not entries, so the journal never names them (§1.6.4).
+     */
     newestSeq(session: FlushSession) {
-        // A reserved `seq` with no entry yet isn't one, nor is a kept gap.
-        let seq = session.nextSeq - 1
-        while (seq > 0 && (seq === session.reserved || session.gaps?.has(seq))) seq--
-        return seq
+        return session.entrySeq
     }
 
     /**
@@ -848,6 +860,7 @@ export class Flusher {
             }
             if (at === -1) session.pending.push(added)
             else session.pending.splice(at, 0, added)
+            session.entrySeq = Math.max(session.entrySeq, seq)
             this.entered()
             if (identity) {
                 session.identity = { ...identity, seq }
@@ -910,6 +923,7 @@ export class Flusher {
         const at = session.pending.findIndex((each) => each.seq > seq)
         if (at === -1) session.pending.push(added)
         else session.pending.splice(at, 0, added)
+        session.entrySeq = Math.max(session.entrySeq, seq)
         this.entered()
         return this.flush({ strict: true })
     }
@@ -1596,6 +1610,7 @@ export class Flusher {
             ...(from.chainSet ? { chainSet: from.chainSet, atOnce: true } : {}),
             stored: false,
             nextSeq: moving.length + 1,
+            entrySeq: moving.length,
             pending: moving.map((entry, i) => ({ ...entry, seq: i + 1 })),
             memoryOnly: [],
             ready: lock?.ready ?? Promise.resolve(),
