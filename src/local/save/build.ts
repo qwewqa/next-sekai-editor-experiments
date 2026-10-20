@@ -611,13 +611,21 @@ export const planSave = async (
     let historyInput: HistoryInput | undefined
     if (history) {
         if (!stack || !headSlot) return refuse('unreadableHead')
+        // A row that doesn't say its note count takes its state's, from the root this write
+        // verified (PF2-5): a count is never made up as 0 while the root says it. The v1 entry
+        // form needs one, so a row whose root no source holds is written with 0 (DECISIONS-LOG).
+        const countOf = (entry: EntryRow) => {
+            if (entry.noteCount !== undefined) return entry.noteCount
+            const count = bodies.roots.get(toHex(entry.snapshot))?.[3]
+            return typeof count === 'number' && Number.isSafeInteger(count) ? count : 0
+        }
         const entries: EntryForm[] = []
         for (const { entry } of own)
             entries.push({
                 ...captureEntryDescription(entry),
                 time: entry.time,
                 snapshot: toHex(entry.snapshot),
-                noteCount: entry.noteCount,
+                noteCount: countOf(entry),
                 ...(entry.dirty ? { dirty: true as const } : {}),
                 ...(flagged(entry) ? { kept: false as const } : {}),
                 ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),

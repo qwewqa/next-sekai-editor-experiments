@@ -29,7 +29,8 @@ export type EntryRow = EntryDescription & {
     seq: number
     time: number
     snapshot: Uint8Array
-    noteCount: number
+    /** The state's note count; absent when the row doesn't say (never taken as 0, HS-1). */
+    noteCount?: number
     dirty: boolean
     kept: boolean
     revisionId?: string
@@ -128,10 +129,11 @@ export const readEntryRow = (value: unknown): EntryRow | undefined => {
         time,
         ...description,
         snapshot,
-        noteCount: Number.isSafeInteger(noteCount) ? (noteCount as number) : 0,
         dirty: value.dirty === true,
         kept: value.kept !== false,
     }
+    if (Number.isSafeInteger(noteCount) && (noteCount as number) >= 0)
+        row.noteCount = noteCount as number
     if (typeof value.revisionId === 'string') row.revisionId = value.revisionId
     const device = value.device
     if (isRow(device) && typeof device.id === 'string' && typeof device.label === 'string')
