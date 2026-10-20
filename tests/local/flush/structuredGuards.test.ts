@@ -99,9 +99,10 @@ test('chain-field continuation describes the last source entry and rejects unsup
         )
         assert.equal(result.kind, 'missing')
         assert.deepEqual(rows(world, 'chains').get(session.chainId), original)
+        // Only a newer generation "needs a newer version"; an older or missing one is not newer.
         assert.equal(
             (await page.tab.run(() => handlersOf(page).readSession(session.id))).kind,
-            'later',
+            v === 3 ? 'later' : 'damaged',
         )
     }
     await page.tab.run(() =>

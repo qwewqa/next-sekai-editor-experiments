@@ -1327,6 +1327,7 @@
     "newerSteps": "{0} 個較新的步驟",
     "removedForSpace": "已為節省空間而移除",
     "damaged": "已損毀",
+    "needsNewer": "需要較新版本",
     "quoted": "\"{0}\"",
     "quotedField": "{0}",
     "continuedFrom": "從 {0} 繼續",

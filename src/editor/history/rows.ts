@@ -34,6 +34,8 @@ export type Filter = 'all' | 'saves' | 'here'
 export type Flags = {
     removed: boolean
     damaged: boolean
+    /** Written by a newer version: unavailable, and never called damaged. */
+    newer?: boolean
 }
 
 export type EntryRow = {
@@ -107,7 +109,7 @@ const tierOf = (time: number, now: number) => {
 
 /** Supported semantic keys; availability and chronology are independent boundaries. */
 const groupKey = (entry: Entry, flags: Flags) => {
-    const flag = `${flags.removed ? 1 : 0}${flags.damaged ? 1 : 0}`
+    const flag = `${flags.removed ? 1 : 0}${flags.damaged ? 1 : 0}${flags.newer ? 1 : 0}`
     if (entry.kind === 'undo' || entry.kind === 'redo') return `${entry.kind}:${flag}`
     if (entry.kind !== 'edit') return
     const decoded = decodeOperation(entry.step.operation)
@@ -122,6 +124,8 @@ export type BuildOptions = {
     expanded: ReadonlySet<string>
     /** Entries found unreadable when loaded, by id. */
     damaged: ReadonlySet<string>
+    /** Entries a newer version wrote, by id: unavailable, not damaged. */
+    newer?: ReadonlySet<string>
     /** The clock the headers' ages are measured against. */
     now?: number
     /** After a jump: how many entries lie between Now and the first one given. */
@@ -133,11 +137,12 @@ export type BuildOptions = {
 /** The rows to show for a chain's entries, newest first. */
 export const buildRows = (
     newestFirst: readonly Entry[],
-    { filter, expanded, damaged, now = Date.now(), gap, more, pinned }: BuildOptions,
+    { filter, expanded, damaged, newer, now = Date.now(), gap, more, pinned }: BuildOptions,
 ): Row[] => {
     const flagsOf = (entry: Entry): Flags => ({
-        removed: !entry.kept && !damaged.has(entryId(entry)),
+        removed: !entry.kept && !damaged.has(entryId(entry)) && !newer?.has(entryId(entry)),
         damaged: damaged.has(entryId(entry)),
+        ...(newer?.has(entryId(entry)) ? { newer: true } : {}),
     })
     // The change each entry made: its notes against the next older entry's, which Edits Here's
     // matches are not.
@@ -192,7 +197,7 @@ export const buildRows = (
             flags,
             delta: known && sum !== 0 ? sum : undefined,
             child: false,
-            selectable: !flags.removed && !flags.damaged,
+            selectable: !flags.removed && !flags.damaged && !flags.newer,
             partial: !!(key && more && i === shown.length - 1),
         }
         items.push(row)
@@ -209,7 +214,7 @@ export const buildRows = (
                     delta: delta === 0 ? undefined : delta,
                     child: true,
                     partial: false,
-                    selectable: !memberFlags.removed && !memberFlags.damaged,
+                    selectable: !memberFlags.removed && !memberFlags.damaged && !memberFlags.newer,
                 })
             }
     }

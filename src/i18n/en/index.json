@@ -1327,6 +1327,7 @@
         "newerSteps": "{0} newer step|{0} newer steps",
         "removedForSpace": "removed to save space",
         "damaged": "damaged",
+        "needsNewer": "needs a newer version",
         "quoted": "\"{0}\"",
         "quotedField": "{0}",
         "continuedFrom": "Continued from {0}",

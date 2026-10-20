@@ -45,9 +45,11 @@ const childRecipe = (member: OperationMember) => captureOperationRecipe([member]
 const flagText = (flags: Flags | undefined) =>
     flags?.damaged
         ? i18n.value.history.damaged
-        : flags?.removed
-          ? i18n.value.history.removedForSpace
-          : undefined
+        : flags?.newer
+          ? i18n.value.history.needsNewer
+          : flags?.removed
+            ? i18n.value.history.removedForSpace
+            : undefined
 const meta = computed(() =>
     [
         props.time === undefined ? undefined : formatDateTimeSeconds(props.time),

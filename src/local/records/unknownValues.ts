@@ -83,6 +83,14 @@ export const isReadableRootVersion = (v: unknown) =>
 /** Only the current session generation is supported; older experimental rows remain untouched. */
 export const isReadableSessionVersion = (v: unknown) => v === SESSION_V
 
+/** A session `v` above this build's: a newer build wrote it, so it "needs a newer version". */
+export const isNewerSessionVersion = (v: unknown) =>
+    Number.isSafeInteger(v) && (v as number) > SESSION_V
+
+/** A root `v` above this build's `RECORDS_V`: a newer build wrote it. */
+export const isNewerRootVersion = (v: unknown) =>
+    Number.isSafeInteger(v) && (v as number) > RECORDS_V
+
 /** What deciding a session's readability needs. */
 export type SessionReadability = {
     row: { v?: unknown }
@@ -92,17 +100,36 @@ export type SessionReadability = {
     rootVersions?: Iterable<unknown>
 }
 
-/** Whether this build can read a session: never continued, restored or rewritten otherwise. */
-export const isReadableSession = ({
+/**
+ * How this build stands to a session (§1.6.11.8): `readable`; `newer`, written by a newer build
+ * (a session `v` or root `v` above this build's, an unknown entry kind), which reads as "Needs a
+ * newer version"; or `unsupported`, an older or malformed generation that this build does not
+ * read either, and says so plainly instead of calling it newer. Newer wins when both are found.
+ */
+export type Readability = 'readable' | 'newer' | 'unsupported'
+
+export const sessionReadability = ({
     row,
     entryKinds = [],
     rootVersions = [],
-}: SessionReadability) => {
-    if (!isReadableSessionVersion(row.v)) return false
-    for (const kind of entryKinds) if (!isKnownEntryKind(kind)) return false
-    for (const v of rootVersions) if (!isReadableRootVersion(v)) return false
-    return true
+}: SessionReadability): Readability => {
+    let result: Readability = 'readable'
+    if (!isReadableSessionVersion(row.v)) {
+        if (isNewerSessionVersion(row.v)) return 'newer'
+        result = 'unsupported'
+    }
+    for (const kind of entryKinds) if (!isKnownEntryKind(kind)) return 'newer'
+    for (const v of rootVersions) {
+        if (isReadableRootVersion(v)) continue
+        if (isNewerRootVersion(v)) return 'newer'
+        result = 'unsupported'
+    }
+    return result
 }
+
+/** Whether this build can read a session: never continued, restored or rewritten otherwise. */
+export const isReadableSession = (session: SessionReadability) =>
+    sessionReadability(session) === 'readable'
 
 /**
  * Whether this build can read a chain: one session it can't read makes the whole chain

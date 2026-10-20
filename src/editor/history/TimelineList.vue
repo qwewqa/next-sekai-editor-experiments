@@ -56,6 +56,7 @@ import {
     backToNow,
     damagedEntries,
     keyOf,
+    newerEntries,
     peekedInfo,
     requestPeek,
     requestRestore,
@@ -131,6 +132,7 @@ const built = computed(() =>
         filter: historyFilter.value,
         expanded: expandedGroups.value,
         damaged: damagedEntries.value,
+        newer: newerEntries.value,
         now: clock.value,
         gap: gap.value,
         more: canLoadMore.value,
@@ -1267,10 +1269,13 @@ const labelOf = (row: EntryRow) => presentationOf(row).full
 const flagTextOf = (row: EntryRow) =>
     row.flags.damaged
         ? i18n.value.history.damaged
-        : row.flags.removed
-          ? i18n.value.history.removedForSpace
-          : undefined
+        : row.flags.newer
+          ? i18n.value.history.needsNewer
+          : row.flags.removed
+            ? i18n.value.history.removedForSpace
+            : undefined
 
+// A row from a newer version is unavailable, like a removed one, and is not damaged.
 const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed')
 
 // Narrow rows omit seconds and note deltas; full times remain in their names. Narrow is under 21.25rem:

@@ -1327,6 +1327,7 @@
     "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
     "removedForSpace": "supprimé pour libérer de l’espace",
     "damaged": "endommagé",
+    "needsNewer": "nécessite une version plus récente",
     "quoted": "\"{0}\"",
     "quotedField": "{0}",
     "continuedFrom": "Reprise du {0}",

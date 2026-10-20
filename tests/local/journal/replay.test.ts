@@ -226,6 +226,57 @@ for (const [name, change] of [
         assert.equal(page.storage.length, 1)
     })
 
+// Only a newer journal is left for a newer build: an older or malformed one is not newer, so its
+// bytes go to the recovered store (nothing is lost, and nothing waits for a build that won't come).
+for (const [name, change] of [
+    ['an older journalVersion', (j: Record<string, unknown>) => (j.journalVersion = 1)],
+    [
+        'an older descriptor v',
+        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = 1),
+    ],
+    [
+        'a malformed descriptor v',
+        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = '2'),
+    ],
+] as const)
+    test(`a journal with ${name} is unreadable, not newer: its bytes are kept`, async () => {
+        const { world, page, session } = await killedAfterEdits(7)
+        rewrite(page.storage, session.id, change)
+        const text = page.storage.getItem(`nse.journal.${session.id}`) ?? ''
+        assert.equal(readJournal(text, session.id).kind, 'unreadable')
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, 'unreadable')
+        assert.equal(entriesOf(world, session.id).length, 2)
+        const [row] = (world.memory.dump(DB_NAME).get('recovered') ?? []).map(
+            (item) => item.value as Record<string, unknown>,
+        )
+        assert.equal(await (row?.bytes as Blob).text(), text)
+        assert.equal(page.storage.length, 0)
+    })
+
+test('a journal against a session of an older generation is kept as a recovery, a newer one is left', async () => {
+    for (const [v, kind] of [
+        [1, 'recovery'],
+        [3, 'later'],
+    ] as const) {
+        const { world, page, session } = await killedAfterEdits(7)
+        const other = world.tab('other')
+        const core = workerCore(world, other)
+        await other.run(() => core.start())
+        await other.run(() =>
+            core.write(['sessions'], async (tx) => {
+                const row = (await tx.get('sessions', session.id)) as Record<string, unknown>
+                await tx.put('sessions', { ...row, v })
+            }),
+        )
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, kind, String(v))
+        // Neither touches the session it can't read.
+        assert.equal(entriesOf(world, session.id).length, 2)
+        assert.equal(page.storage.length, kind === 'later' ? 1 : 0)
+    }
+})
+
 /** Adds an archetype this build doesn't read to the journal's level data. */
 const withFutureArchetype = async (journal: Record<string, unknown>) => {
     const { gzip, ungzip } = await import('pako')

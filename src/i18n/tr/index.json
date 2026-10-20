@@ -1327,6 +1327,7 @@
     "newerSteps": "{0} yeni adım",
     "removedForSpace": "yer açmak için kaldırıldı",
     "damaged": "hasarlı",
+    "needsNewer": "daha yeni bir sürüm gerekiyor",
     "quoted": "\"{0}\"",
     "quotedField": "{0}",
     "continuedFrom": "{0} tarihinden devam",

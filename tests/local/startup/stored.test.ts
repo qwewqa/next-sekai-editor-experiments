@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { captureStep, createRecoveryContext } from '../../../src/history/operations'
+import { hashKey } from '../../../src/local/db'
 import { toHex } from '../../../src/local/hash'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
@@ -217,4 +218,90 @@ test('a stack rebuilt over a stored parent that a later entry cuts below its win
     assert.equal(rebuilt.kind, 'open')
     if (rebuilt.kind !== 'open') return
     assert.deepEqual(rebuilt.stack.window, { base: 0, length: 1, index: 0 })
+})
+
+// Versions (§1.6.11.8): a newer build's data is "Needs a newer version", never damaged; an older or
+// malformed generation is not newer, and is not read either.
+
+const tamperNodes = async (
+    world: World,
+    change: (tx: import('../../../src/local/kv/types').KvTx) => Promise<void>,
+) => {
+    const tab = world.tab('tamper-nodes')
+    const core = workerCore(world, tab)
+    await tab.run(() => core.start())
+    await tab.run(() => core.write(['sessions', 'nodes'], change))
+}
+
+test('a head root a newer build wrote reads as later, an older or malformed one as damaged', async () => {
+    const world = createWorld({ seed: 21 })
+    const { page, newer } = await twoChains(world)
+    const read = (id: string) => page.tab.run(() => handlersOf(page).readSession(id))
+    const opened = await read(newer.id)
+    assert.equal(opened.kind, 'open')
+    if (opened.kind !== 'open') return
+    const key = hashKey(opened.head)
+    const setV = (v: unknown) =>
+        tamperNodes(world, async (tx) => {
+            const row = (await tx.get('nodes', key)) as Record<string, unknown>
+            await tx.put('nodes', { ...row, v }, key)
+        })
+    await setV(2)
+    assert.deepEqual(await read(newer.id), { kind: 'later', why: 'its head needs a newer version' })
+    await setV(99)
+    assert.equal((await read(newer.id)).kind, 'later')
+    for (const v of [0, -1, 1.5, '1', undefined]) {
+        await setV(v)
+        assert.equal((await read(newer.id)).kind, 'damaged', String(v))
+    }
+    await setV(1)
+    assert.equal((await read(newer.id)).kind, 'open')
+})
+
+test('a session of an older or malformed generation is damaged, only a newer one later', async () => {
+    const world = createWorld({ seed: 22 })
+    const { page, newer } = await twoChains(world)
+    const read = (id: string) => page.tab.run(() => handlersOf(page).readSession(id))
+    const setV = (v: unknown) =>
+        tamper(world, async (tx) => {
+            const session = (await tx.get('sessions', newer.id)) as Record<string, unknown>
+            await tx.put('sessions', { ...session, v })
+        })
+    for (const [v, kind] of [
+        [1, 'damaged'],
+        [0, 'damaged'],
+        [undefined, 'damaged'],
+        ['2', 'damaged'],
+        [3, 'later'],
+        [100, 'later'],
+        [2, 'open'],
+    ] as const) {
+        await setV(v)
+        assert.equal((await read(newer.id)).kind, kind, String(v))
+    }
+})
+
+test('a newer session anywhere in a chain makes the whole chain newer; an older one, damaged', async () => {
+    const world = createWorld({ seed: 23 })
+    const { page, newer } = await twoChains(world)
+    const read = (id: string) => page.tab.run(() => handlersOf(page).readSession(id))
+    const child = continueIn(page, await readOpen(page, newer.id))
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) },
+        widen(stateOf(goldenChart()), 5),
+        true,
+    )
+    await page.flusher.flush()
+    const setV = (v: unknown) =>
+        tamper(world, async (tx) => {
+            const session = (await tx.get('sessions', child.id)) as Record<string, unknown>
+            await tx.put('sessions', { ...session, v })
+        })
+    await setV(3)
+    assert.equal((await read(newer.id)).kind, 'later')
+    assert.equal((await read(child.id)).kind, 'later')
+    await setV(1)
+    assert.equal((await read(newer.id)).kind, 'damaged')
+    await setV(2)
+    assert.equal((await read(newer.id)).kind, 'open')
 })

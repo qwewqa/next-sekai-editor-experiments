@@ -1327,6 +1327,7 @@
     "newerSteps": "새 단계 {0}개",
     "removedForSpace": "공간 확보를 위해 제거됨",
     "damaged": "손상됨",
+    "needsNewer": "더 새로운 버전 필요",
     "quoted": "\"{0}\"",
     "quotedField": "{0}",
     "continuedFrom": "{0}에서 이어서",

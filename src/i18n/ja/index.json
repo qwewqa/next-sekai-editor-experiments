@@ -1327,6 +1327,7 @@
     "newerSteps": "新しい操作 {0} 件",
     "removedForSpace": "容量節約のため削除",
     "damaged": "破損",
+    "needsNewer": "より新しいバージョンが必要",
     "quoted": "「{0}」",
     "quotedField": "「{0}」",
     "continuedFrom": "{0}から続行",
