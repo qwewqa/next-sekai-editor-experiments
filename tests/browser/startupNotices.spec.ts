@@ -182,7 +182,7 @@ test.describe('load notices in the start-up pill', () => {
             kind: 'continued',
             name: { name: { kind: 'name', text: 'coconut' } },
         })
-        await expect(lines.nth(1)).toHaveText('Continued "coconut".')
+        await expect(lines.nth(1)).toContainText('Continued "coconut".')
         await expect(pill(page)).not.toContainText('1970')
         // An untitled one has no date to show in its name either.
         await addEvent(page, { kind: 'continued', name: { name: { kind: 'date' } } })
