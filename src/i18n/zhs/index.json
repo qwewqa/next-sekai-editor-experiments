@@ -1085,14 +1085,9 @@
     "slide": {
       "title": "长按音符 #{0}",
       "adding": "添加 {0} 个音符",
-      "added": "已添加 {0} 个音符",
       "editing": "编辑 {0} 个音符",
       "moving": "移动 {0} 个音符",
-      "moved": "已移动 {0} 个音符",
       "selected": "已选择 {0} 个音符",
-      "modal": {
-        "title": "音符属性"
-      },
       "sidebar": {
         "title": "默认长按音符属性"
       }
@@ -2149,7 +2144,7 @@
     "restoredTo": "已还原到 {0}",
     "alreadyMatches": "已与当前谱面一致",
     "restoreFailed": "无法还原",
-    "peekFailed": "无法查看此步",
+    "peekFailed": "无法查看此步骤",
     "openHistory": "打开历史记录",
     "earlierInHistory": "更早的步骤在历史记录中",
     "bgmNotLoaded": "BGM 未加载",

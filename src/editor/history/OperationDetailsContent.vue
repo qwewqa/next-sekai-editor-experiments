@@ -4,6 +4,7 @@ import { getHistoryOperationContext } from '../../history/createHistoryOperation
 import {
     captureOperationRecipe,
     describeStep,
+    stepLang,
     message,
     operationDetails,
     operationStepCount,
@@ -181,8 +182,8 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                                 />
                             </span>
                             <span class="min-w-0 flex-1 whitespace-pre-wrap"
-                                >{{ entry.label
-                                }}<span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
+                                ><span :lang="entry.lang">{{ entry.label }}</span
+                                ><span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
                                     ` · ${memberFlagText(entry.member)}`
                                 }}</span></span
                             >
@@ -209,8 +210,8 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                         >
                             <span class="size-3 shrink-0 self-start" aria-hidden="true"></span>
                             <span class="min-w-0 flex-1 whitespace-pre-wrap"
-                                >{{ entry.label
-                                }}<span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
+                                ><span :lang="entry.lang">{{ entry.label }}</span
+                                ><span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
                                     ` · ${memberFlagText(entry.member)}`
                                 }}</span></span
                             >
@@ -246,7 +247,7 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                         >
                             {{ i18n.history.details.recoveryHead }}
                         </p>
-                        <p>{{ describeStep(step, context) }}</p>
+                        <p :lang="stepLang(step, context)">{{ describeStep(step, context) }}</p>
                     </div>
                 </li>
             </ol>

@@ -1,4 +1,3 @@
-import { languageTag } from '../../i18n/plural'
 import {
     checkedSum,
     decodeOperation,
@@ -18,7 +17,7 @@ import {
     type OwnerReference,
 } from '../operations'
 import { renderOperationRecipe } from './aggregate'
-import { describeMember, namedOwnerDescription } from './format'
+import { describeMember, fallbackLang, memberLang, namedOwnerDescription } from './format'
 import { memberOperation, memberRecoveryContext } from './members'
 import type {
     DetailRow,
@@ -30,6 +29,7 @@ import type {
     OperationTextContext,
 } from './types'
 import {
+    fileNameText,
     message,
     nameText,
     numberText,
@@ -491,7 +491,13 @@ const nativeRecord = (
             break
         case 'nse.file.export':
             if (operation.data.delivery === 'download')
-                facts.push(message(context, t.entry.downloaded, nameText(operation.data.file)))
+                facts.push(
+                    message(
+                        context,
+                        t.entry.downloaded,
+                        fileNameText(operation.data.file, context),
+                    ),
+                )
             break
         case 'nse.recovery':
             if (operation.data.droppedSteps)
@@ -531,13 +537,12 @@ const memberRecord = (member: OperationMember, context: OperationTextContext) =>
                 : record.facts,
         }
     }
+    const lang = fallbackLang(raw, context)
     return {
         rows: [],
         facts: [],
         note: unreadable(raw, context),
-        ...(decoded.fallback?.text && decoded.fallback.locale !== context.locale
-            ? { lang: languageTag(decoded.fallback.locale) }
-            : {}),
+        ...(lang ? { lang } : {}),
     } satisfies RecordData
 }
 
@@ -673,9 +678,11 @@ export const operationDetails = (
             hasShortenedName(recipe.group?.destination)
         const steps: DetailStep[] = [...recipe.members].reverse().map((member) => {
             const record = memberRecord(member, context)
+            const lang = memberLang(member, context, { prefixless })
             return {
                 member,
                 label: describeMember(member, context, { prefixless }),
+                ...(lang ? { lang } : {}),
                 expandable:
                     record.rows.length > 0 ||
                     record.facts.length > 0 ||

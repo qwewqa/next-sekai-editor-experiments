@@ -1085,14 +1085,9 @@
     "slide": {
       "title": "滑條 #{0}",
       "adding": "正在新增 {0} 個音符",
-      "added": "已新增 {0} 個音符",
       "editing": "正在編輯 {0} 個音符",
       "moving": "正在移動 {0} 個音符",
-      "moved": "已移動 {0} 個音符",
       "selected": "已選取 {0} 個音符",
-      "modal": {
-        "title": "音符屬性"
-      },
       "sidebar": {
         "title": "預設滑條屬性"
       }
@@ -2149,7 +2144,7 @@
     "restoredTo": "已還原到 {0}",
     "alreadyMatches": "已與目前譜面一致",
     "restoreFailed": "無法還原",
-    "peekFailed": "無法檢視此步",
+    "peekFailed": "無法檢視此步驟",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中",
     "bgmNotLoaded": "BGM 未載入",

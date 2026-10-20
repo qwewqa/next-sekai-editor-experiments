@@ -63,6 +63,8 @@ export type DetailStep = {
     readonly member: OperationMember
     /** The step's own line, without the Undo or Redo prefix inside a prefixless parent. */
     readonly label: string
+    /** The captured language of a fallback label, when it is not the current one. */
+    readonly lang?: string
     /** Whether the step's own record has rows, facts or a note, so it can be opened. */
     readonly expandable: boolean
 }

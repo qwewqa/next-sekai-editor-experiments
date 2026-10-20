@@ -41,53 +41,94 @@ const sources = (() => {
     return files
 })()
 
+/** What holds the strings: `i18n`, `i18n.value`, a `strings` or `t` parameter. */
+const stringsHolder = /(?<![\w$])(?:i18n(?:\.value)?|t|strings|en)\??$/
 const BEFORE = String.raw`(?<![A-Za-z0-9_$])`
 const AFTER = String.raw`(?![A-Za-z0-9_$])`
+/** A local name starts here: not a word character, and not a property of something else. */
+const LOCAL = String.raw`(?<![A-Za-z0-9_$.])`
 const word = (name: string) => new RegExp(`${BEFORE}${name}${AFTER}`)
 
 /**
- * Whether some source file reads the key. Either the parent's name is followed by the key's
- * (`parent.leaf`, `parent?.leaf`), or the file binds the whole section (`history.details`) to a
- * name and reads the leaf through that name: `const d = t.history.details` then `d.leaf`,
- * `const text = () => i18n.value.load` then `text().leaf`, or the leaf destructured from the
- * section. A leaf that merely appears in a file that mentions the section does not count, so a
- * common leaf name (`group`, `all`, `note`) cannot hide an unused key. It is a static, name-based
- * scan, not a proof: the dynamic patterns below are listed by hand.
+ * Whether some source file reads the key, by resolving its access path by name. The path is read
+ * whole (`i18n.value.history.details.leaf`, or `details.leaf` after `const details =
+ * i18n.value.history.details`), so the last two names matching some other section's does not count
+ * (`tools.note.switched` does not read `commands.note.switched`). A section (or the root, `i18n.value`)
+ * may be bound to a name (`const d = t.history.details`, `const text = () => i18n.value.load`,
+ * `const strings = computed(() => i18n.value.settings.localData)`), and a name may be taken out
+ * of a bound name by destructuring (`const { recovery } = strings.value`, `const { file: strings }
+ * = i18n.value`); the rest of the path is then read through that name. A leaf that merely appears
+ * in a file that mentions the section does not count. It is a static, name-based scan, not a
+ * proof: the dynamic patterns below are listed by hand.
  */
 const referenced = (key: string) => {
     const segments = key.split('.')
     const leaf = segments.at(-1)!
     const parent = segments.at(-2)
     if (!parent) return sources.some((text) => word(leaf).test(text))
-    // The section is a property (`strings.history.details.leaf`), not a local named like it.
-    const direct = new RegExp(String.raw`\.${parent}\??\.${leaf}${AFTER}`)
-    const chain = segments.slice(0, -1).join(String.raw`\??\.`)
-    const binding = String.raw`[\w$.?]*${BEFORE}${chain}${AFTER}(?!\??\.[\w$])`
-    const aliases = new RegExp(
-        String.raw`(?:const|let|var)\s+(\w+)\s*=\s*(?:computed\(\s*)?(?:\(\)\s*=>\s*)?${binding}`,
-        'g',
-    )
-    const destructured = new RegExp(
-        String.raw`(?:const|let|var)\s*\{([^}]*)\}\s*=\s*${binding}`,
-        'g',
-    )
-    // The section itself taken out of its holder: `const { status } = i18n.value`, then `status.leaf`.
-    const taken = new RegExp(
-        String.raw`(?:const|let|var)\s*\{[^}]*${BEFORE}${parent}${AFTER}[^}]*\}\s*=`,
-    )
-    const takenRead = new RegExp(String.raw`${BEFORE}${parent}\??\.${leaf}${AFTER}`)
+    const join = (from: number, to = segments.length) =>
+        segments.slice(from, to).join(String.raw`\??\.`)
+    // The path read in full from the strings object (`i18n.value.commands.note.switched`,
+    // `t.history.details.title`). What holds it must be that object: `row.session.name` and
+    // `modals.form.group.label` do not read `session.name` or `group.label`.
+    const direct = new RegExp(String.raw`\.${join(0)}${AFTER}`, 'g')
+    const readInFull = (text: string) =>
+        [...text.matchAll(direct)].some(({ index }) =>
+            stringsHolder.test(text.slice(Math.max(0, index - 20), index)),
+        )
+    // What `consumed` leading segments of the key refer to: the strings object, or a section of it.
+    const root = String.raw`[\w$.?]*(?:${BEFORE}i18n(?:\.value)?|${BEFORE}strings|${BEFORE}t)`
+    const expression = (consumed: number) =>
+        consumed === 0
+            ? String.raw`${root}${AFTER}(?!\??\.[\w$])`
+            : String.raw`${root}\??\.${join(0, consumed)}${AFTER}(?!\??\.[\w$])`
+    const access = String.raw`(?:\(\)|\.value)?`
+    const patterns = segments.map((_, consumed) => ({
+        alias: new RegExp(
+            String.raw`(?:const|let|var)\s+(\w+)\s*=\s*(?:computed\(\s*)?(?:\(\)\s*=>\s*)?${expression(consumed)}`,
+            'g',
+        ),
+        take: new RegExp(
+            String.raw`(?:const|let|var)\s*\{([^}]*)\}\s*=\s*${expression(consumed)}`,
+            'g',
+        ),
+    }))
+    /** Names bound to `consumed` leading segments, as [name, consumed]. */
+    const bind = (text: string) => {
+        const names: [string, number][] = []
+        const takeFrom = (list: string, consumed: number) => {
+            for (const item of list.split(',')) {
+                const [from, to] = item.split(':').map((part) => part.trim())
+                if (from === segments[consumed] && (to ?? from))
+                    names.push([to ?? from!, consumed + 1])
+            }
+        }
+        patterns.forEach(({ alias, take }, consumed) => {
+            for (const [, name] of text.matchAll(alias)) names.push([name!, consumed])
+            for (const [, list] of text.matchAll(take)) takeFrom(list!, consumed)
+        })
+        for (let index = 0; index < names.length; index++) {
+            const [name, consumed] = names[index]!
+            if (consumed >= segments.length - 1) continue
+            const from = new RegExp(
+                String.raw`(?:const|let|var)\s*\{([^}]*)\}\s*=\s*${LOCAL}${name}${access}${AFTER}`,
+                'g',
+            )
+            for (const [, list] of text.matchAll(from)) takeFrom(list!, consumed)
+        }
+        return names
+    }
     return sources.some(
         (text) =>
-            text.includes(parent) &&
-            (direct.test(text) ||
-                (taken.test(text) && takenRead.test(text)) ||
-                [...text.matchAll(aliases)].some(([, alias]) =>
-                    new RegExp(
-                        String.raw`${BEFORE}${alias}(\(\)|\.value)?\??\.${leaf}${AFTER}`,
-                    ).test(text),
-                ) ||
-                [...text.matchAll(destructured)].some(([, list]) =>
-                    list!.split(',').some((item) => item.split(':')[0]!.trim() === leaf),
+            text.includes(segments[0]!) &&
+            text.includes(leaf) &&
+            (readInFull(text) ||
+                bind(text).some(
+                    ([name, consumed]) =>
+                        consumed === segments.length ||
+                        new RegExp(
+                            String.raw`${LOCAL}${name}${access}\??\.${join(consumed)}${AFTER}`,
+                        ).test(text),
                 )),
     )
 }
@@ -130,7 +171,12 @@ const dynamic: Record<string, string> = {
     'commands.visibilities.toggle.types.': 'the visibility key, read as types[key]',
     'commands.previewAssets.skin': 'the asset type, read as strings[type]',
     'commands.previewAssets.particle': 'the asset type, read as strings[type]',
+    'commands.previewAssets.background': 'the asset type, read as strings[type]',
     'commands.previewAssets.effect': 'the asset type, read as strings[type]',
+    'commands.divisions.custom.modal.title':
+        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
+    'commands.laneDivisions.custom.modal.title':
+        'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
     'commands.divisions.custom.modal.division':
         'the modal’s labels, chosen by axis in CustomDivisionModal.vue',
     'commands.laneDivisions.custom.modal.division':
@@ -142,8 +188,6 @@ const dynamic: Record<string, string> = {
     'tools.events.':
         'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
     'tools.note.':
-        'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
-    'tools.slide.':
         'the subject and action, read as tools[subject][action] in operationPresentation/format.ts',
     'history.summary.scaled': 'chosen by the scaled axis in operationPresentation/aggregate.ts',
     'history.details.counts.':
@@ -245,6 +289,9 @@ const removed = [
     'file.short.notConfirmed',
     'tools.eraser.erased',
     'tools.slide.edited',
+    'tools.slide.added',
+    'tools.slide.moved',
+    'tools.slide.modal.title',
     'entry.recovered',
     'entry.recoveredDropped',
     'workspace.folders.movedInto',
@@ -303,7 +350,49 @@ test('the scan reports made-up keys that share a leaf name with real ones', () =
     ])
         assert.equal(referenced(key), false, key)
     assert.equal(referenced('history.details.changed'), true)
-    assert.equal(referenced('history.details.counts.note'), true)
+})
+
+// The whole access path counts, not only its last two names: a generic parent (`modal`, `note`)
+// or leaf (`title`, `delete`) read under one section does not hide the same pair under another.
+test('the scan reports made-up keys under a generic parent', () => {
+    for (const key of [
+        'commands.slide.delete',
+        'commands.bgm.modal.delete',
+        'commands.properties.modal.title',
+        'commands.previewAssets.modal.delete',
+        'help.title',
+        'elevation.title',
+    ]) {
+        assert.ok(!(key in english), `${key} is real`)
+        assert.equal(referenced(key), false, key)
+    }
+})
+
+test('the scan finds real keys read through a path, an alias or a destructured name', () => {
+    for (const key of [
+        'commands.reset.title', // the whole path
+        'commands.previewAssets.modal.title', // strings = computed(() => i18n.value.commands.previewAssets)
+        'commands.previewAssets.fallback.panel', // an alias of the section above the parent
+        'settings.localData.recovery.journal', // const { recovery } = strings.value
+        'history.savedOn', // const { history } = context.strings
+        'tools.note.title',
+    ])
+        assert.ok(key in english && referenced(key), key)
+})
+
+test('no section path hides a made-up key behind a generic name', () => {
+    // A path that is itself a section (`commands.slide.title`) is not a key.
+    const sections = new Set(
+        Object.keys(english).flatMap((key) => {
+            const parts = key.split('.')
+            return parts.slice(1).map((_, index) => parts.slice(0, index + 1).join('.'))
+        }),
+    )
+    const leaves = ['title', 'delete']
+    const hidden = [...sections]
+        .flatMap((section) => leaves.map((leaf) => `${section}.${leaf}`))
+        .filter((key) => !sections.has(key) && !(key in english) && referenced(key))
+    assert.deepEqual(hidden, [])
 })
 
 test('removed messages stay out of every locale', () => {

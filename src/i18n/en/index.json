@@ -1085,14 +1085,9 @@
         "slide": {
             "title": "Slide #{0}",
             "adding": "Adding {0} note|Adding {0} notes",
-            "added": "Added {0} note|Added {0} notes",
             "editing": "Editing {0} note|Editing {0} notes",
             "moving": "Moving {0} note|Moving {0} notes",
-            "moved": "Moved {0} note|Moved {0} notes",
             "selected": "Selected {0} note|Selected {0} notes",
-            "modal": {
-                "title": "Note Properties"
-            },
             "sidebar": {
                 "title": "Default Slide Properties"
             }
