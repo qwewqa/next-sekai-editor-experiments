@@ -6,6 +6,7 @@ import {
     flushed,
     notice,
     pressSave,
+    projectOf,
     rows,
     saveDialog,
     sessionOf,
@@ -16,6 +17,8 @@ import {
 // The History row of the Save dialogs counts the steps the file would hold (Part 1 §1.4.7): the
 // entries of the chain, with no `save` entry of the write itself, which is the number Go To and
 // the Timeline count. Until the estimate says so the row shows no number, never "0 steps".
+
+type Row = Record<string, unknown>
 
 const dialogSteps = async (page: Page, title?: string) => {
     const size = saveDialog(page, title).locator('[data-save-row="history"] [data-save-size]')
@@ -36,7 +39,8 @@ const timelineSteps = async (page: Page) => {
     await openHistory(page)
     await page.locator('[data-history-surface="dialog"] [data-history-goto-button]').click()
     const items = page.locator('[data-history-goto] [data-goto-item]')
-    await expect(items).toHaveCount(2)
+    // Now, then the day (with a row for each of its sessions when there are several).
+    await expect(items.nth(1)).toBeVisible()
     await expect(items.nth(1)).toContainText(/\d steps?/)
     const text = (await items.nth(1).textContent()) ?? ''
     const steps = Number(/([\d,]+) steps?/.exec(text)![1]!.replaceAll(',', ''))
@@ -113,4 +117,42 @@ test('Save to File from Recent Sessions shows the steps its session holds', asyn
     }, earlier.sessionId)
     expect(await dialogSteps(page)).toBe(held)
     await cancel(page)
+})
+
+// A fork is a new chain: the Timeline goes on into its parent's chain, but a file holds only the
+// chain's own rows (Part 1 §1.6.11.6), so the dialog counts those, and the file agrees with it.
+test('a fork shows the steps of its own chain, which are the steps its file holds', async ({
+    context,
+}) => {
+    const b = await context.newPage()
+    await start(b)
+    for (let beat = 1; beat <= 3; beat++) await edit(b, beat)
+    await pressSave(b)
+    await submitSave(b, 'coconut')
+    await expect(notice(b).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    const { sessionId } = await sessionOf(b)
+    await flushed(b)
+    const a = await context.newPage()
+    await start(a)
+    await a.evaluate(async (sessionId) => {
+        const { restoreCopy } = await import('/src/editor/switch.ts')
+        await restoreCopy(sessionId)
+    }, sessionId)
+    await expect.poll(async () => (await sessionOf(a)).copyOf?.name).toBe('coconut.nxsp')
+    await edit(a, 4)
+    await edit(a, 5)
+    await pressSave(a)
+    const shown = await dialogSteps(a)
+    // The fork's own rows: its continue entry and the two edits, none of the parent chain's five.
+    await flushed(a)
+    const { sessions, entries } = await rows(a, ['sessions', 'entries'])
+    const { sessionId: forkId } = await sessionOf(a)
+    const chainId = sessions!.find((row) => row.value.id === forkId)!.value.chainId
+    const own = sessions!.filter((row) => row.value.chainId === chainId).map((row) => row.value.id)
+    expect(shown).toBe(entries!.filter((row) => own.includes(row.value.sessionId as string)).length)
+    expect(shown).toBe(3)
+    await submitSave(a, 'fork')
+    await expect(notice(a).filter({ hasText: 'Saved to fork.nxsp' })).toBeVisible()
+    // The file holds those rows and its own `save` entry.
+    expect((((await projectOf(a, 'fork.nxsp')).history as Row).entries as number) - 1).toBe(shown)
 })

@@ -16,7 +16,8 @@ import { chainRows, ModelError } from './model'
 export type SaveSizeEstimate = {
     /**
      * History's steps: the chain's rows, as Go To and the Timeline count them (continue entries and
-     * rows not kept included; the write's own `save` entry not yet).
+     * rows not kept included; the write's own `save` entry not yet). A fork's Timeline goes on into
+     * its parent's chain, which a file does not hold: the count is the chain's own.
      */
     steps: number
     /** The manifest, segments and `chunks.bin`. */
