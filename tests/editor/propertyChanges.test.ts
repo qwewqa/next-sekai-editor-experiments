@@ -579,3 +579,29 @@ test('an empty name is an empty name, not Not set, and no reference carries an i
         for (const value of [sectionValue.beforeName, sectionValue.afterName])
             if (value) assert.ok(!('disambiguate' in value), 'a reference has no id qualifier')
 })
+
+for (const [name, from, to] of [
+    ['extension case', 'song.mp3', 'song.MP3'],
+    ['edge spaces', 'song.mp3', 'song .mp3'],
+] as const)
+    for (const kind of ['bgm', 'cover', 'preview'] as const)
+        test(`a ${kind} file name changed only in ${name} still shows its change`, () => {
+            const before = state(),
+                after = state()
+            const meta = (filename: string, s: State) =>
+                kind === 'bgm' ? { ...s.bgm.meta!, filename } : { ...s.levelInfo[kind]!, filename }
+            const put = (s: State, filename: string) => {
+                if (kind === 'bgm') s.bgm = { ...s.bgm, meta: meta(filename, s) }
+                else s.levelInfo = { ...s.levelInfo, [kind]: meta(filename, s) }
+            }
+            put(before, from)
+            put(after, to)
+            // The header differs, and the names as shown are the same: no throw, and a row.
+            const changes = comparePropertyChanges(before, after, { expectedDifference: true })
+            assert.equal(changes.rowCount, 1)
+            assert.deepEqual(row(changes, kind, 'filename'), {
+                field: 'filename',
+                before: { kind: 'text', value: from },
+                after: { kind: 'text', value: to },
+            })
+        })

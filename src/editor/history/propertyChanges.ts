@@ -172,6 +172,15 @@ export const comparePropertyChanges = (
         }
         if (a || b) {
             field('filename', fileName)
+            // The name as stored can differ from the name as shown (a known extension in another
+            // case, spaces at the edges): the header changed, so the change shows as stored.
+            if (
+                a &&
+                b &&
+                a.filename !== b.filename &&
+                !rows.some(({ field }) => field === 'filename')
+            )
+                rows.push({ field: 'filename', before: text(a.filename), after: text(b.filename) })
             field('size', (ref) => number(ref.size, 'bytes'))
             field('type', (ref) => text(ref.type))
             if (kind === 'bgm') field('duration', (ref) => number(ref.durationMs, 'ms'))

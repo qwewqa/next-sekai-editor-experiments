@@ -1332,6 +1332,7 @@
         "noEditsHere": "No edits here",
         "checking": "Checking older steps…",
         "notChecked": "{0} step could not be checked|{0} steps could not be checked",
+        "searchFailed": "The search could not be completed.",
         "announceViewingChange": "Viewing {0}, {1}",
         "openedFile": "Opened {0}",
         "viewChart": "View Chart",

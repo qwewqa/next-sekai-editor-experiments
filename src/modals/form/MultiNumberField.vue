@@ -14,6 +14,7 @@ import { i18n } from '../../i18n'
 import { interpolateRaw } from '../../utils/interpolate'
 import BaseField from './BaseField.vue'
 import { formatNumber } from '../../utils/formatNumber'
+import { extentOf } from '../../utils/math'
 import { formatRange, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
 import { numberEditKey } from './numberEdit'
 import { isChromium } from '../../utils/browser'
@@ -43,7 +44,8 @@ const steps = shallowRef<Map<unknown, number>>()
 const range = computed(() => {
     if (!steps.value) return mixedRange(field?.value)
     const values = [...steps.value.values()]
-    return formatRange(Math.min(...values), Math.max(...values))
+    const { min, max } = extentOf(values)
+    return formatRange(min, max)
 })
 // Shown to 4 decimals, as mixed ranges are; only typing writes, so the exact value stays.
 const shown = () => (modelValue.value === undefined ? '' : formatNumber(modelValue.value))

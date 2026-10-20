@@ -1332,6 +1332,7 @@
     "noEditsHere": "ここの変更はありません",
     "checking": "以前の操作を確認中…",
     "notChecked": "{0} 操作を確認できませんでした",
+    "searchFailed": "検索を完了できませんでした。",
     "announceViewingChange": "{0} を表示中、{1}",
     "openedFile": "{0} を開きました",
     "viewChart": "譜面を表示",

@@ -1,4 +1,5 @@
 import { computed, nextTick, shallowRef } from 'vue'
+import { recordError } from '../../diagnostics'
 import { onResetState } from '../../history/resetHooks'
 import { isPeeking } from '../../history/stack'
 import { i18n } from '../../i18n'
@@ -10,7 +11,7 @@ import {
     isElevationSideBySide,
     openElevationEditor,
 } from '../elevation/state'
-import type { NoticeAction } from '../notification'
+import { notify, type NoticeAction } from '../notification'
 import { prepareToolModal, showToolModal } from '../toolModals'
 import { isPanelEnabled, showPanel } from '../workspace'
 import { createHistoryPresentation, type HistoryCloseResult } from './presentation'
@@ -53,7 +54,18 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
     let presentation: ReturnType<typeof createHistoryPresentation> | undefined
     try {
         // Loads when first opened: it brings the storage modules' readers.
-        const { default: HistoryDialog } = await import('./HistoryDialog.vue')
+        let HistoryDialog: Awaited<typeof import('./HistoryDialog.vue')>['default']
+        try {
+            HistoryDialog = (await import('./HistoryDialog.vue')).default
+        } catch (error) {
+            // The chunk did not load (offline after a deploy): the editor stays as it was, and the
+            // user, who asked, is told.
+            recordError(error)
+            if (at !== generation) return
+            notify(() => i18n.value.history.loadFailed)
+            if (reopenAt !== undefined) openElevationEditor(reopenAt)
+            return
+        }
         if (at !== generation) return
         presentation = createHistoryPresentation(
             () => historyTab.value === 'timeline' && historyFilter.value !== 'all',

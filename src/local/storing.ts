@@ -36,6 +36,7 @@ import {
     type FlushReport,
     type FlushSession,
 } from './flush'
+import { notifyFlusherStart, onFlusherStart } from './flusherStart'
 import { checkPrivateWindow, handleOf } from './handles'
 import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
@@ -83,17 +84,7 @@ declare global {
 /** This tab's flusher, once storing started. */
 export let flusher: Flusher | undefined
 
-const flusherListeners = new Set<() => void>()
-
-/** Calls `listener` once, when storing starts and the flusher exists. Returns the way to cancel. */
-export const onFlusherStart = (listener: () => void) => {
-    const once = () => {
-        flusherListeners.delete(once)
-        listener()
-    }
-    flusherListeners.add(once)
-    return () => void flusherListeners.delete(once)
-}
+export { onFlusherStart }
 
 /**
  * Safe mode (§1.4.2): the flusher holds the open session in memory only, so Save builds from
@@ -334,7 +325,6 @@ export const startStoring = (
     })
     flusher = instance
     storingWorker = worker
-    for (const listener of [...flusherListeners]) listener()
     // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7 R11).
     if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal
@@ -555,4 +545,6 @@ export const startStoring = (
         }
     if (!safe)
         void Promise.resolve(status).then(() => worker.call('countDay').catch(() => undefined))
+    // Last, with storing fully set up: a subscriber never runs in the middle of the setup.
+    notifyFlusherStart()
 }

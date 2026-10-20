@@ -1,5 +1,19 @@
 export const clamp = (value: number, min = 0, max = 1) => Math.min(Math.max(value, min), max)
 
+/**
+ * The smallest and largest of some values, by a loop: `Math.min(...values)` throws a RangeError
+ * for an array of some hundred thousand. Empty gives Infinity and -Infinity, as the spreads do.
+ */
+export const extentOf = (values: Iterable<number>) => {
+    let min = Infinity
+    let max = -Infinity
+    for (const value of values) {
+        if (value < min) min = value
+        if (value > max) max = value
+    }
+    return { min, max }
+}
+
 export const lerp = (x: number, y: number, s: number) => x + s * (y - x)
 
 export const unlerp = (a: number, b: number, x: number) => (x - a) / (b - a)

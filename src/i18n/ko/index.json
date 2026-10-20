@@ -1332,6 +1332,7 @@
     "noEditsHere": "여기에 편집 없음",
     "checking": "이전 단계 확인 중…",
     "notChecked": "{0}단계를 확인할 수 없음",
+    "searchFailed": "검색을 완료할 수 없습니다.",
     "announceViewingChange": "{0} 보는 중, {1}",
     "openedFile": "{0} 열림",
     "viewChart": "채보 보기",
