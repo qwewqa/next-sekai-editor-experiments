@@ -161,7 +161,7 @@ const recoveryContext = (
         recovered: (dropped) =>
             createHistoryOperation({
                 id: 'nse.recovery',
-                data: { source: 'journal', droppedSteps: dropped },
+                data: { droppedSteps: dropped },
             }),
         migrated: createHistoryOperation({ id: 'nse.origin', data: { origin: 'autoSave' } }),
     },
@@ -306,7 +306,7 @@ export const startStorage = async () => {
                     recovered: (dropped) =>
                         createHistoryOperation({
                             id: 'nse.recovery',
-                            data: { source: 'journal', droppedSteps: dropped },
+                            data: { droppedSteps: dropped },
                         }),
                 },
                 events: addLoadEvent,

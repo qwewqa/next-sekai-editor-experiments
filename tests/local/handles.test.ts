@@ -196,7 +196,7 @@ test('startup and recovery read no stored handle; a Save’s write-back after th
             kind: 'edit',
             step: editStep(
                 nativeOperation(
-                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
                     'Changed note',
                 ),
             ),

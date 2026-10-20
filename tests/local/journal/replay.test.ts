@@ -76,10 +76,7 @@ test('a killed tab’s journal is applied to its session, keeping the committed 
     assert.equal(recovered?.seq, 4)
     same(
         recovered?.operation,
-        nativeOperation(
-            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 1 } },
-            'Recovered last change',
-        ),
+        nativeOperation({ id: 'nse.recovery', data: { droppedSteps: 1 } }, 'Recovered last change'),
     )
     // The recovered state hashes as the flushed one would: its values survive level data.
     assert.equal(toHex(recovered?.snapshot as Uint8Array), rootOf(states.d))

@@ -1,7 +1,6 @@
 import { shallowRef, watch, type WatchStopHandle } from 'vue'
 import { pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { subjectOfCounts } from '../../../history/operations'
 import {
     clearPreviewEdit,
     getPreviewState,
@@ -14,7 +13,7 @@ import type { State } from '../../../state'
 import { hasSameChartData } from '../../../state/data'
 import type { Entity } from '../../../state/entities'
 import { isEditableEntity, type EditableEntity } from '../../../state/operations/editable'
-import { changedNativeCounts } from '../../../state/operations/historyReceipts'
+import { changedData, changedNativeCounts } from '../../../state/operations/historyReceipts'
 import { getMaterializedNotePositions } from '../../../state/operations/notePositions'
 import { scaleSelectionWithReceipt } from '../../../state/operations/scaleSelection'
 import {
@@ -31,6 +30,7 @@ import {
     type SelectionTransformResult,
 } from '../../../state/operations/transformSelection'
 import { translateSelectionWithReceipt } from '../../../state/operations/translateSelection'
+import { getInStoreGrid } from '../../../state/store/grid'
 import { clamp } from '../../../utils/math'
 import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
@@ -86,6 +86,9 @@ type DraftTracking = {
     live: ReadonlyMap<Entity, Entity>
     endpoints: ReadonlyMap<Entity, Entity>
     principals: ReadonlySet<Entity>
+    /** Objects any step removed from a destination without moving them. */
+    displaced: ReadonlySet<Entity>
+    retainedInitialBpm: boolean
     transform?: AcceptedTransform
 }
 let tracking = new WeakMap<State, DraftTracking>()
@@ -133,6 +136,8 @@ const createDraftRecorder = (session: ScalingSession) => {
             live,
             endpoints,
             principals,
+            displaced: new Set([...prior.displaced, ...result.displaced]),
+            retainedInitialBpm: prior.retainedInitialBpm || result.retainedInitialBpm,
             transform:
                 prior === sourceTracking && uniform
                     ? { mode: 'uniform', ...uniform }
@@ -213,6 +218,8 @@ export const beginScalingSession = (axis: ScaleAxis) => {
         live: new Map(baselineEntities.map((entity) => [entity, entity])),
         endpoints: new Map(),
         principals: new Set(),
+        displaced: new Set(),
+        retainedInitialBpm: false,
     })
     numericBase = source
     numericBaseFactor = 1
@@ -326,13 +333,19 @@ export const applyScalingSession = () => {
             return after ? [{ before, after }] : []
         }),
     )
+    // Only what the chart held before the session: a step can also remove an earlier step's result.
+    const displaced = [...accepted.displaced].filter((entity) =>
+        getInStoreGrid(session.source.store.grid, entity.type, entity.beat)?.includes(entity),
+    )
     const operation = createHistoryOperation({
         id: 'nse.object.scale',
         data: {
             axis: session.axis === 'beat' ? 'beats' : session.axis,
-            subject: subjectOfCounts(counts),
-            targets: Object.values(counts).reduce((sum, count) => sum + count, 0),
             transform: accepted.transform ?? { mode: 'composed' },
+            ...changedData(counts, 'objects', {
+                displaced,
+                retainedInitialBpm: accepted.retainedInitialBpm,
+            }),
         },
     })
     cancelScalingSession()

@@ -189,7 +189,7 @@ export const replayIn = async (
         appVersion: '0.6.0',
         operation: (droppedSteps) =>
             nativeOperation(
-                { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                { id: 'nse.recovery', data: { droppedSteps } },
                 'Recovered last change',
             ),
         now: () => 1_792_130_500_000,

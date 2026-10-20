@@ -6,7 +6,7 @@ import { switchToolTo } from '../editor/tools'
 import { createState, type State, type StateExtras } from '../state'
 import { cleanupWaveform } from '../waveform'
 import { createHistoryOperation } from './createHistoryOperation'
-import { captureStep } from './operations'
+import { captureStep, type NameText } from './operations'
 import { notifyResetState } from './resetHooks'
 import { createSessionDescriptor, session, type SessionDescriptor } from './session'
 import { resetStates, restoreStates, type RestoredSlot } from './stack'
@@ -130,20 +130,40 @@ export const openStoredState = (
  * Starts a new session with a whole state brought in (a journal opened from Local Data, §1.6.7):
  * stored at once, as an import is.
  */
-export const openState = (state: State, descriptor?: Partial<SessionDescriptor>) => {
-    openPreparedState(state, descriptor, true, 'recovery')
+export const openState = (
+    state: State,
+    descriptor?: Partial<SessionDescriptor>,
+    opened: PreparedOrigin = { origin: 'recovery' },
+) => {
+    openPreparedState(state, descriptor, true, opened)
 }
 
-/** Installs one prepared file-import state with the ordinary clean import semantics. */
-export const resetImportedState = (state: State, descriptor?: Partial<SessionDescriptor>) => {
-    openPreparedState(state, descriptor, false, 'import')
+/**
+ * Installs one prepared file-import state with the ordinary clean import semantics. `source` is
+ * the name of the file it came from.
+ */
+export const resetImportedState = (
+    state: State,
+    descriptor?: Partial<SessionDescriptor>,
+    source?: NameText,
+) => {
+    openPreparedState(state, descriptor, false, {
+        origin: 'import',
+        ...(source ? { source } : {}),
+    })
+}
+
+/** What the first row of a prepared state says about where it came from. */
+export type PreparedOrigin = {
+    origin: 'import' | 'recovery'
+    source?: NameText
 }
 
 const openPreparedState = (
     state: State,
     descriptor: Partial<SessionDescriptor> | undefined,
     isDirty: boolean,
-    origin: 'import' | 'recovery',
+    opened: PreparedOrigin,
 ) => {
     if (!isElevationSideBySide.value) closeElevationEditor()
     session.value = createSessionDescriptor(descriptor)
@@ -154,7 +174,7 @@ const openPreparedState = (
                 kind: 'init',
                 operation: createHistoryOperation({
                     id: 'nse.origin',
-                    data: { origin },
+                    data: opened,
                 }),
             }),
             state,

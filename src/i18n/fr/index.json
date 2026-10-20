@@ -33,7 +33,7 @@
         "generating": "Génération de forme d’onde…"
       },
       "fileChanged": "Fichier de la musique modifié",
-      "offsetSet": "Décalage de la musique défini sur {0} s"
+      "offsetSet": "Décalage de la musique défini sur {0} ms"
     },
     "brush": {
       "title": "Pinceau",
@@ -1327,6 +1327,8 @@
     "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
     "removedForSpace": "supprimé pour libérer de l’espace",
     "damaged": "endommagé",
+    "quoted": "\"{0}\"",
+    "quotedField": "{0}",
     "continuedFrom": "Reprise du {0}",
     "announceViewing": "Affichage de {0}",
     "filterHere": "Modifications ici",
@@ -1340,13 +1342,15 @@
       "title": "Détails de l’étape",
       "named": "Détails de l’étape : {0}",
       "action": "Détails",
-      "unsupported": "Cet éditeur ne peut pas interpréter cette action.",
+      "unsupported": "Cet éditeur ne peut pas lire les détails de cette étape.",
+      "newer": "Cette étape a été enregistrée par une version plus récente de l’éditeur.",
       "nameShortened": "Nom affiché en abrégé",
       "varying": "Variable",
       "changed": "Modification",
       "displaced": "Remplacement",
       "placed": "Collage",
-      "retainedInitialBpm": "BPM initial conservé",
+      "pastedFlipped": "Retourné au collage",
+      "retainedInitialBpm": "Changement de BPM initial conservé",
       "pivot": "Origine de mise à l’échelle",
       "composedTransform": "Ajustements multiples",
       "destination": "Destination",
@@ -1359,6 +1363,16 @@
       "recoveryHead": "Action d’origine",
       "omittedDescriptions": "Descriptions d’actions précédentes omises : {0}",
       "droppedSteps": "Étapes d’annulation supprimées : {0}",
+      "counts": {
+        "note": "{0} note|{0} notes",
+        "bpm": "{0} changement de BPM|{0} changements de BPM",
+        "timeScale": "{0} échelle de temps|{0} échelles de temps",
+        "event": "{0} événement {1}|{0} événements {1}",
+        "group": "{0} groupe|{0} groupes",
+        "stage": "{0} scène|{0} scènes",
+        "groupFolder": "{0} dossier de groupes|{0} dossiers de groupes",
+        "stageFolder": "{0} dossier de scènes|{0} dossiers de scènes"
+      },
       "bgmOffset": "Décalage du BGM",
       "pasteLocation": "Emplacement du collage",
       "pointer": "Pointeur",
@@ -1961,8 +1975,8 @@
       "duplicated": "Groupe {0} dupliqué",
       "duplicatedSelected": "Groupe sélectionné ({0}) dupliqué|Groupes sélectionnés ({0}) dupliqués",
       "duplicatedSelectedFolders": "Dossiers ({0}) et groupes ({1}) sélectionnés dupliqués",
-      "propertySet": "Groupe {0} : {1} défini sur {2}",
-      "propertyCleared": "Groupe {0} : {1} retiré"
+      "propertySet": "{1} : valeur {2} appliquée au groupe {0}",
+      "propertyCleared": "{1} : valeur retirée du groupe {0}"
     },
     "stages": {
       "deleteFolder": "Supprimer le dossier et ses scènes…",
@@ -1986,7 +2000,7 @@
       "duplicated": "Scène {0} dupliquée",
       "duplicatedSelected": "Scène sélectionnée ({0}) dupliquée|Scènes sélectionnées ({0}) dupliquées",
       "duplicatedSelectedFolders": "Dossiers ({0}) et scènes ({1}) sélectionnés dupliqués",
-      "propertySet": "Scène {0} : {1} défini sur {2}"
+      "propertySet": "{1} : valeur {2} appliquée à la scène {0}"
     },
     "properties": {
       "sections": "Sections des propriétés",
@@ -2165,7 +2179,7 @@
     "recoveredDropped": "Dernière modification récupérée. {0} étape d’annulation a été supprimée.|Dernière modification récupérée. {0} étapes d’annulation ont été supprimées.",
     "continued": "Session reprise",
     "migrated": "Récupéré de la sauvegarde automatique",
-    "restoredTo": "Restauré à {0}",
+    "restoredTo": "Restauré au {0}",
     "changedOutside": "Modifié en dehors de l’éditeur",
     "recoveredChanges": "Modifications récupérées"
   },
@@ -2270,6 +2284,8 @@
     "removed": "Supprimé",
     "order": "Ordre",
     "folder": "Dossier",
+    "groupFolder": "Dossier de groupes",
+    "stageFolder": "Dossier de scènes",
     "groupFolders": "Dossiers de groupes",
     "stageFolders": "Dossiers de scènes",
     "levelInfo": "Informations du niveau",

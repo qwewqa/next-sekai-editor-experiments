@@ -22,7 +22,10 @@ export const combineNotes: Command = {
             return
         }
         const count = combined.selectedEntities.filter((entity) => entity.type === 'note').length
-        const operation = createHistoryOperation({ id: 'nse.note.combine', data: { notes: count } })
+        const operation = createHistoryOperation({
+            id: 'nse.note.combine',
+            data: { targets: count },
+        })
         pushState(operation, combined)
         view.entities = { hovered: [], creating: [] }
         notify(() => operation.fallback.text)

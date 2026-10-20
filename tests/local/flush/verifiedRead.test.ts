@@ -50,7 +50,7 @@ const stored = async (seed: number) => {
             kind: 'edit',
             step: editStep(
                 nativeOperation(
-                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
                     'B',
                 ),
             ),
@@ -63,7 +63,7 @@ const stored = async (seed: number) => {
             kind: 'edit',
             step: editStep(
                 nativeOperation(
-                    { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                    { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
                     'C',
                 ),
             ),
@@ -145,7 +145,7 @@ test('a chunk whose bytes changed reads damaged: peek rejects, and Undo never la
         step: index
             ? editStep(
                   nativeOperation(
-                      { id: 'nse.object.edit', data: { subject: 'note', targets: 1 } },
+                      { id: 'nse.object.edit', data: { subject: 'note', changed: { note: 1 } } },
                       index === 1 ? 'B' : 'C',
                   ),
               )

@@ -9,7 +9,6 @@ import type { NoteObject } from '../../chart/note'
 import type { TimeScaleObject } from '../../chart/timeScale'
 import { pushState, replaceState, state } from '../../history'
 import { createHistoryOperation } from '../../history/createHistoryOperation'
-import { subjectOfCounts } from '../../history/operations'
 import { selectedEntities } from '../../history/selectedEntities'
 import { i18n } from '../../i18n'
 import { clearPreviewEdit, setPreviewEdit } from '../../preview/edit'
@@ -68,7 +67,7 @@ import {
 } from '../../state/mutations/events/stage/transform'
 import { replaceNote } from '../../state/mutations/slides/note'
 import { addTimeScale, removeTimeScale, replaceTimeScale } from '../../state/mutations/timeScale'
-import { changedNativeCounts, countNativeEntities } from '../../state/operations/historyReceipts'
+import { changedNativeCounts, editInput } from '../../state/operations/historyReceipts'
 import { editChanges } from '../../state/operations/properties/plan'
 import { getInStoreGrid } from '../../state/store/grid'
 import { createTransaction, type Transaction } from '../../state/transaction'
@@ -527,10 +526,7 @@ export const select: Tool = {
                           plan,
                       )
 
-                const operation = createHistoryOperation({
-                    id: 'nse.object.move',
-                    data: moved.receipt,
-                })
+                const operation = createHistoryOperation(moved.operation)
                 pushState(operation, moved.state)
                 view.entities = {
                     hovered: [],
@@ -701,20 +697,17 @@ const moveEntities = (
     )
     return {
         state: result,
-        receipt: {
-            subject: subjectOfCounts(changed),
-            targets: Object.values(changed).reduce((sum, count) => sum + count, 0),
-            displaced: countNativeEntities(displaced),
-            ...(entities.some(
+        // A BPM or time scale moved onto an occupied beat is a Replace, as in its own tool.
+        operation: editInput('move', changed, 'objects', {
+            displaced,
+            retainedInitialBpm: entities.some(
                 (entity) =>
                     entity.type === 'bpm' &&
                     !entity.beat &&
                     !isPinned(entity, beatOffset) &&
                     toMovedBeat(entity.beat, beatOffset) !== entity.beat,
-            )
-                ? { retainedInitialBpm: true as const }
-                : {}),
-        },
+            ),
+        }),
         focus: result.selectedEntities[focusIndex],
         // A moved note as committed.
         note: (entity: NoteEntity) => {

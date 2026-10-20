@@ -17,6 +17,8 @@ import { addStageTransformEventJoint } from '../../../../../state/mutations/even
 import { editSelectedStageTransformEvent } from '../../../../../state/operations/events/stage/transform'
 import {
     countNativeEntities,
+    editInput,
+    kindCounts,
     nativeTargetChanged,
 } from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
@@ -398,13 +400,14 @@ const update = (
                       created: countNativeEntities(entities).stageTransformEvent ?? 0,
                   },
               }
-            : {
-                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
-                  data: {
-                      subject: 'stageTransformEvent',
-                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
-                  },
-              },
+            : editInput(
+                  intent,
+                  kindCounts(
+                      'stageTransformEvent',
+                      before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  ),
+                  'stageTransformEvent',
+              ),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

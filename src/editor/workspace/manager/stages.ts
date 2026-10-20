@@ -19,13 +19,14 @@ import { removeStagePivotEventJoint } from '../../../state/mutations/events/stag
 import { removeStageStyleEventJoint } from '../../../state/mutations/events/stage/style'
 import { removeStageTransformEventJoint } from '../../../state/mutations/events/stage/transform.ts'
 import { removeNote } from '../../../state/mutations/slides/note'
-import { duplicateOwned } from '../../../state/operations/duplicateOwned'
+import { duplicateOwnedWithReceipt } from '../../../state/operations/duplicateOwned'
+import { countNativeEntities } from '../../../state/operations/historyReceipts'
 import { createTransaction } from '../../../state/transaction'
 import StagePropertiesModal from '../../commands/manageStages/manageStages/stageProperties/StagePropertiesModal.vue'
 import { notify } from '../../notification'
 import { stageScope } from '../../scope'
 import { view } from '../../view'
-import { createFolderOps } from './folders'
+import { createFolderOps, type EntryRemoval } from './folders'
 import { normalizeName, type ManagerModel } from './model'
 import { survivingSelection } from './objects'
 
@@ -84,9 +85,13 @@ export const openStageProperties = async (stageId: StageId) => {
     })
 }
 
-/** The state without these stages and their events and notes, keeping at least one stage. */
-const removeStages = (stageIds: ReadonlySet<StageId>) => {
+/**
+ * The state without these stages and their events and notes, keeping at least one stage, with
+ * what that took: the objects removed and the default stage created when the last one went.
+ */
+const removeStages = (stageIds: ReadonlySet<StageId>): EntryRemoval => {
     const transaction = createTransaction(state.value)
+    const removed: Entity[] = []
 
     const removes: {
         [T in Entity as T['type']]: ((entity: T) => void) | undefined
@@ -100,6 +105,7 @@ const removeStages = (stageIds: ReadonlySet<StageId>) => {
         stageMaskEventJoint(entity) {
             if (!stageIds.has(entity.stageId)) return
 
+            removed.push(entity)
             removeStageMaskEventJoint(transaction, entity)
         },
         stageMaskEventConnection: undefined,
@@ -107,6 +113,7 @@ const removeStages = (stageIds: ReadonlySet<StageId>) => {
         stagePivotEventJoint(entity) {
             if (!stageIds.has(entity.stageId)) return
 
+            removed.push(entity)
             removeStagePivotEventJoint(transaction, entity)
         },
         stagePivotEventConnection: undefined,
@@ -114,6 +121,7 @@ const removeStages = (stageIds: ReadonlySet<StageId>) => {
         stageStyleEventJoint(entity) {
             if (!stageIds.has(entity.stageId)) return
 
+            removed.push(entity)
             removeStageStyleEventJoint(transaction, entity)
         },
         stageStyleEventConnection: undefined,
@@ -121,6 +129,7 @@ const removeStages = (stageIds: ReadonlySet<StageId>) => {
         stageTransformEventJoint(entity) {
             if (!stageIds.has(entity.stageId)) return
 
+            removed.push(entity)
             removeStageTransformEventJoint(transaction, entity)
         },
         stageTransformEventConnection: undefined,
@@ -128,6 +137,7 @@ const removeStages = (stageIds: ReadonlySet<StageId>) => {
         note(entity) {
             if (!stageIds.has(entity.stageId)) return
 
+            removed.push(entity)
             removeNote(transaction, entity)
         },
         connector: undefined,
@@ -142,9 +152,13 @@ const removeStages = (stageIds: ReadonlySet<StageId>) => {
 
     newState.stages = new Map(newState.stages)
     for (const stageId of stageIds) newState.stages.delete(stageId)
-    if (!newState.stages.size) addDefaultStageToStages(newState.stages)
+    let replacement: EntryRemoval['replacement']
+    if (!newState.stages.size) {
+        const [id, name] = addDefaultStageToStages(newState.stages)
+        replacement = { kind: 'stage', id, name: captureName(name) }
+    }
 
-    return newState
+    return { state: newState, objects: countNativeEntities(removed), replacement }
 }
 
 export const stageFolderOps = createFolderOps({
@@ -158,7 +172,8 @@ export const stageFolderOps = createFolderOps({
         const { name: _, ...value } = entry
         return addToStages(entries, name, value)[0]
     },
-    duplicateObjects: (state, copies) => duplicateOwned(state, { key: 'stageId', copies }),
+    duplicateObjects: (state, copies) =>
+        duplicateOwnedWithReceipt(state, { key: 'stageId', copies }),
     owner: 'stageId',
     strings: () => ({
         movedEntry: i18n.value.commands.manageStages.modal.moved,
@@ -178,15 +193,11 @@ export const stageFolderOps = createFolderOps({
 export const deleteStage = (stageId: StageId) => {
     if (!stages.value.has(stageId)) return
     const ids = new Set([stageId])
-    const operation = {
-        id: 'nse.owner.delete',
-        data: {
-            domain: 'stage',
-            removed: { stage: 1 },
-            target: { kind: 'stage', id: stageId, name: captureName(nameOf(stageId)) },
-        },
-    } as const
-    stageFolderOps.commitRemoval(ids, removeStages(ids), operation)
+    stageFolderOps.commitRemoval(ids, removeStages(ids), {
+        kind: 'stage',
+        id: stageId,
+        name: captureName(nameOf(stageId)),
+    })
     view.entities = {
         hovered: [],
         creating: [],

@@ -802,7 +802,7 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
     })
     await expect(details.locator('[data-operation-description]')).toHaveText('<b>Future export</b>')
     await expect(details.locator('[data-operation-unsupported]')).toHaveText(
-        'This editor cannot interpret this action.',
+        'This editor cannot read the details of this step.',
     )
     await expect(details.locator('[data-operation-description] b')).toHaveCount(0)
     await expect(details.locator('[data-operation-section]')).toHaveCount(0)
@@ -832,7 +832,7 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
                     description: {
                         kind: 'recovered',
                         operation: historySteps.nativeOperation(
-                            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 25 } },
+                            { id: 'nse.recovery', data: { droppedSteps: 25 } },
                             'Recovered',
                         ),
                         recoveryContext: { head, headIndex: 2, dropped, omitted: 5 },
@@ -1285,7 +1285,7 @@ for (const width of [1600, 390, 320]) {
                         historySteps.nativeOperation(
                             {
                                 id: 'nse.object.move',
-                                data: { subject: 'note', targets: targets.length },
+                                data: { subject: 'note', changed: { note: targets.length } },
                             },
                             'Moved notes',
                         ),

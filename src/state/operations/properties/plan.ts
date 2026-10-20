@@ -5,7 +5,7 @@ import { addBpm } from '../../mutations/bpm'
 import type { Store } from '../../store'
 import { getInStoreGrid } from '../../store/grid'
 import { createTransaction, type Transaction } from '../../transaction'
-import { editBpm, editSelectedBpm } from '../bpm'
+import { editBpmWithReceipt, editSelectedBpm } from '../bpm'
 import { isEditableEntity, type EditableEntity, type EditableObject } from '../editable'
 import { editSelectedCameraEvent } from '../events/camera'
 import { editSelectedStageMaskEvent } from '../events/stage/mask'
@@ -15,7 +15,7 @@ import { editSelectedStageTransformEvent } from '../events/stage/transform'
 import { propertyEditReceipt } from '../historyReceipts'
 import { editSelectedNote } from '../note'
 import { isWithinBeatRange } from '../scaleValues'
-import { editSelectedTimeScale, editTimeScale } from '../timeScale'
+import { editSelectedTimeScale, editTimeScaleWithReceipt } from '../timeScale'
 import { inStoredOrder } from '../transformSelection'
 import { noteFieldsApply } from './applicability'
 import { getNoteFieldsIn } from './noteFields'
@@ -119,18 +119,27 @@ export const planEdit = (
     )
     const results = new Map<Entity, Entity[]>()
     const requests = new Map<EditableEntity, EditableObject>()
+    // What a lone BPM or time scale edit took from its destination, and the initial BPM kept.
+    const displaced: Entity[] = []
+    let retainedInitialBpm = false
     // Moved same-beat objects land in their stored order, whatever the selection order.
     for (const entity of inStoredOrder(source, changed, (entity) => entity)) {
         if (results.has(entity)) continue
         const own = objectOf(entity)
         requests.set(entity, { ...own })
+        const alone =
+            entity === lone && entity.type === 'bpm'
+                ? editBpmWithReceipt(transaction, entity, own)
+                : entity === lone && entity.type === 'timeScale'
+                  ? editTimeScaleWithReceipt(transaction, entity, own)
+                  : undefined
+        if (alone) {
+            displaced.push(...alone.receipt.displaced)
+            retainedInitialBpm ||= alone.receipt.retainedInitialBpm
+        }
         results.set(
             entity,
-            entity === lone && entity.type === 'bpm'
-                ? editBpm(transaction, entity, own)
-                : entity === lone && entity.type === 'timeScale'
-                  ? editTimeScale(transaction, entity, own)
-                  : edits[entity.type](transaction, entity as never, own),
+            alone?.entities ?? edits[entity.type](transaction, entity as never, own),
         )
         // A tick this Beat edit takes past its slide's end keeps its gameplay place, as detaching does.
         const [note] = results.get(entity) ?? []
@@ -150,8 +159,10 @@ export const planEdit = (
     if (
         initialBpm &&
         !getInStoreGrid(transaction.store.grid, 'bpm', 0)?.some((entity) => entity.beat === 0)
-    )
+    ) {
         addBpm(transaction, initialBpm)
+        retainedInitialBpm = true
+    }
     const selection = selected.flatMap((entity) => results.get(entity) ?? [entity])
     const state = transaction.commit(selection)
     const effective = new Map<Entity, Entity | undefined>()
@@ -163,5 +174,9 @@ export const planEdit = (
         const after = result && effective.get(result)
         return after && isEditableEntity(after) ? [{ before, after, requested }] : []
     })
-    return { state, changed, receipt: propertyEditReceipt(state, targets) }
+    return {
+        state,
+        changed,
+        receipt: propertyEditReceipt(source, state, targets, { displaced, retainedInitialBpm }),
+    }
 }

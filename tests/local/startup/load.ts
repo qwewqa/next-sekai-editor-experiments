@@ -116,7 +116,7 @@ export const load = async (
         operations: {
             recovered: (droppedSteps) =>
                 nativeOperation(
-                    { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                    { id: 'nse.recovery', data: { droppedSteps } },
                     'Recovered last change',
                 ),
             migrated: originOperation('autoSave'),
@@ -189,7 +189,7 @@ export const load = async (
                 nativeOperation({ id: 'nse.continue', data: { fromTime } }, 'Continued'),
             recovered: (droppedSteps) =>
                 nativeOperation(
-                    { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                    { id: 'nse.recovery', data: { droppedSteps } },
                     'Recovered last change',
                 ),
         },

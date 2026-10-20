@@ -13,6 +13,8 @@ export const makeVerticalWithReceipt = (
         return {
             state: source,
             counts: {},
+            displaced: [],
+            retainedInitialBpm: false,
             replacements: new Map<Entity, Entity>(),
             applications: new Map<Entity, Entity>(),
         }

@@ -166,11 +166,12 @@ for (const action of [
                                         id: 'nse.property.set',
                                         data: {
                                             subject: 'note',
-                                            targets: transformed.counts.note ?? 0,
+                                            changed: transformed.counts,
                                             assignments: [
                                                 {
                                                     field: 'isAttached',
-                                                    value: { mode: 'uniform', value: false },
+                                                    before: { mode: 'uniform', value: true },
+                                                    after: { mode: 'uniform', value: false },
                                                 },
                                             ],
                                         },

@@ -30,10 +30,7 @@ const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as J
 const operation = (n: number) =>
     futureFixtureOperation('journal-step', { n, extra: { version: 9 } })
 const recoveredOperation = (droppedSteps: number) =>
-    nativeOperation(
-        { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
-        'Recovered work',
-    )
+    nativeOperation({ id: 'nse.recovery', data: { droppedSteps } }, 'Recovered work')
 
 test('head=false recovery preserves event context and leaves retained slot metadata exact', async () => {
     const world = createWorld({ seed: 93701 })

@@ -97,7 +97,7 @@ const openDetails = async (page: Page, kind: 'steps' | 'recovery') => {
                     description: {
                         kind: 'recovered',
                         operation: historySteps.nativeOperation(
-                            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 45 } },
+                            { id: 'nse.recovery', data: { droppedSteps: 45 } },
                             'Recovered',
                         ),
                         recoveryContext: {

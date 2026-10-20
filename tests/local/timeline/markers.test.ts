@@ -27,7 +27,7 @@ test('recovery operation titles use current locale without claiming collapsed ac
         const strings = messagesOf(locale)
         for (const droppedSteps of [0, 1, 4]) {
             const title = describeOperation(
-                { id: 'nse.recovery', data: { source: 'journal', droppedSteps } },
+                { id: 'nse.recovery', data: { droppedSteps } },
                 { locale, strings, now: 0 },
             )
             assert.equal(title, strings.entry.recoveredChanges)

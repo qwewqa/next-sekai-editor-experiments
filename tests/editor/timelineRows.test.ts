@@ -36,7 +36,7 @@ const operation = (input: NativeOperationInput): EntryDescription => ({
     kind: 'edit',
     step: editStep(nativeOperation(input, 'Same captured text')),
 })
-const move = operation({ id: 'nse.object.move', data: { subject: 'note', targets: 1 } })
+const move = operation({ id: 'nse.object.move', data: { subject: 'note', changed: { note: 1 } } })
 const opaque = (id: string): EntryDescription => ({
     kind: 'edit',
     step: editStep(futureFixtureOperation(id)),
@@ -156,8 +156,14 @@ test('property field and manager typed target distinguish groups despite matchin
             id: 'nse.property.set',
             data: {
                 subject: 'note',
-                targets: 1,
-                assignments: [{ field, value: { mode: 'uniform', value: 2 } }],
+                changed: { note: 1 },
+                assignments: [
+                    {
+                        field,
+                        before: { mode: 'uniform', value: 1 },
+                        after: { mode: 'uniform', value: 2 },
+                    },
+                ],
             },
         })
     const rename = (id: number): EntryDescription =>

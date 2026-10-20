@@ -372,7 +372,7 @@ test('a long stack journalled with keep 0 names its newest dropped steps and cou
     same(
         recovered?.operation,
         nativeOperation(
-            { id: 'nse.recovery', data: { source: 'journal', droppedSteps: 100 } },
+            { id: 'nse.recovery', data: { droppedSteps: 100 } },
             'Recovered last change',
         ),
     )

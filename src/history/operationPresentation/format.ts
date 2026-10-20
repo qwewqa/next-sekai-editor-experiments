@@ -111,6 +111,9 @@ export const removalOrBrushDescription = (
     )
 }
 
+/** How many objects a step changed; undefined when the total is unsafe. */
+const changedTotal = (changed: NativeCounts) => checkedSum(Object.values(changed))
+
 export const propertyDescription = (
     data: PropertyData,
     context: OperationTextContext,
@@ -120,7 +123,7 @@ export const propertyDescription = (
         return nativeDescription(
             'edited',
             data.subject,
-            aggregate ? undefined : data.targets,
+            aggregate ? undefined : changedTotal(data.changed),
             context,
         )
     const assignment = data.assignments[0]
@@ -128,17 +131,17 @@ export const propertyDescription = (
     const field = operationFieldLabel(assignment.field, context)
     const suffix = subjectSuffix(data.subject)
     const subtype = eventSubtype(data.subject, context)
-    if (assignment.value.mode === 'varying')
+    if (assignment.after.mode === 'varying')
         return aggregate
             ? message(context, context.strings.history.summary[`setOn${suffix}`], field, subtype)
             : message(
                   context,
                   context.strings.history.operation[`changedOn${suffix}`],
-                  data.targets,
+                  changedTotal(data.changed) ?? 0,
                   field,
                   subtype,
               )
-    const value = operationValueText(assignment.field, assignment.value.value, context)
+    const value = operationValueText(assignment.field, assignment.after.value, context)
     return aggregate
         ? message(
               context,
@@ -150,7 +153,7 @@ export const propertyDescription = (
         : message(
               context,
               context.strings.history.operation[`setValueOn${suffix}`],
-              data.targets,
+              changedTotal(data.changed) ?? 0,
               field,
               value,
               subtype,
@@ -285,36 +288,30 @@ export const describeOperation = (
             return message(context, t.tools.generateSlideNotes.generated, operation.data.created)
         case 'nse.object.add':
             return nativeDescription(
-                operation.data.displaced &&
-                    Object.values(operation.data.displaced).some((n) => n > 0)
-                    ? 'replaced'
-                    : 'added',
+                'added',
                 operation.data.subject,
-                operation.data.displaced &&
-                    Object.values(operation.data.displaced).some((n) => n > 0)
-                    ? undefined
-                    : operation.data.created,
+                operation.data.created,
                 context,
             )
         case 'nse.object.edit':
             return nativeDescription(
                 'edited',
                 operation.data.subject,
-                operation.data.targets,
+                changedTotal(operation.data.changed),
                 context,
             )
         case 'nse.object.move':
             return nativeDescription(
                 'moved',
                 operation.data.subject,
-                operation.data.targets,
+                changedTotal(operation.data.changed),
                 context,
             )
         case 'nse.object.replace':
             return nativeDescription(
                 'replaced',
                 operation.data.subject,
-                operation.data.targets,
+                changedTotal(operation.data.changed),
                 context,
             )
         case 'nse.note.elevation':
@@ -329,7 +326,7 @@ export const describeOperation = (
             return removalOrBrushDescription(
                 'brushed',
                 operation.data.subject,
-                operation.data.targets,
+                changedTotal(operation.data.changed),
                 context,
             )
         case 'nse.object.delete':
@@ -348,7 +345,7 @@ export const describeOperation = (
                 operation.data.axis === 'horizontal'
                     ? t.commands.flip.flipped
                     : t.commands.flipVertical.flipped,
-                operation.data.targets,
+                changedTotal(operation.data.changed) ?? 0,
             )
         case 'nse.object.scale':
             return message(
@@ -358,12 +355,12 @@ export const describeOperation = (
                         operation.data.axis
                     ] as 'scaleBeat' | 'scaleWidth' | 'scaleElevation'
                 ].scaled,
-                operation.data.targets,
+                changedTotal(operation.data.changed) ?? 0,
             )
         case 'nse.note.combine':
-            return message(context, t.commands.combineNotes.combined, operation.data.notes)
+            return message(context, t.commands.combineNotes.combined, operation.data.targets)
         case 'nse.note.split':
-            return message(context, t.commands.splitHold.split, operation.data.points)
+            return message(context, t.commands.splitHold.split, operation.data.targets)
         case 'nse.note.vertical':
             return message(context, t.commands.makeVertical.made, operation.data.targets)
         case 'nse.property.set':
@@ -374,7 +371,11 @@ export const describeOperation = (
                 operation.data.field === 'initialLife'
                     ? t.commands.properties.lifeSet
                     : t.commands.bgm.offsetSet,
-                numberText(operation.data.after, context),
+                numberText(
+                    operation.data.after,
+                    context,
+                    operation.data.field === 'bgmOffset' ? 3 : 0,
+                ),
             )
         case 'nse.bgm.change':
             return operation.data.offset ? t.commands.bgm.changed : t.commands.bgm.fileChanged

@@ -22,6 +22,8 @@ import { addStageStyleEventJoint } from '../../../../../state/mutations/events/s
 import { editSelectedStageStyleEvent } from '../../../../../state/operations/events/stage/style'
 import {
     countNativeEntities,
+    editInput,
+    kindCounts,
     nativeTargetChanged,
 } from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
@@ -423,13 +425,14 @@ const update = (
                       created: countNativeEntities(entities).stageStyleEvent ?? 0,
                   },
               }
-            : {
-                  id: intent === 'edit' ? 'nse.object.edit' : 'nse.object.move',
-                  data: {
-                      subject: 'stageStyleEvent',
-                      targets: before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
-                  },
-              },
+            : editInput(
+                  intent,
+                  kindCounts(
+                      'stageStyleEvent',
+                      before && after && nativeTargetChanged({ before, after }) ? 1 : 0,
+                  ),
+                  'stageStyleEvent',
+              ),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

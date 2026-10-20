@@ -75,8 +75,14 @@ test('dense guide edits own crowded buckets while retaining source state and und
                     id: 'nse.property.set',
                     data: {
                         subject: 'note',
-                        targets: notes.length,
-                        assignments: [{ field: 'left', value: { mode: 'uniform', value: -3 } }],
+                        changed: { note: notes.length },
+                        assignments: [
+                            {
+                                field: 'left',
+                                before: { mode: 'uniform', value: 1 },
+                                after: { mode: 'uniform', value: -3 },
+                            },
+                        ],
                     },
                 },
                 'Set Left to -3',

@@ -17,6 +17,7 @@ import {
 } from '../../../state/operations/bpm'
 import {
     countNativeEntities,
+    editOutcomeInput,
     editOutcomeReceipt,
     type EditOutcomeReceipt,
 } from '../../../state/operations/historyReceipts'
@@ -338,24 +339,12 @@ const update = (action: (transaction: Transaction) => ToolOutcome) => {
         outcome.intent === 'add'
             ? {
                   id: 'nse.object.add',
-                  data: { subject: 'bpm', created: countNativeEntities(outcome.entities).bpm ?? 0 },
-              }
-            : {
-                  id:
-                      outcome.intent === 'edit'
-                          ? 'nse.object.edit'
-                          : Object.keys(outcome.receipt.displaced).length
-                            ? 'nse.object.replace'
-                            : 'nse.object.move',
                   data: {
                       subject: 'bpm',
-                      targets: outcome.receipt.targets,
-                      displaced: outcome.receipt.displaced,
-                      ...(outcome.receipt.retainedInitialBpm
-                          ? { retainedInitialBpm: true as const }
-                          : {}),
+                      created: countNativeEntities(outcome.entities).bpm ?? 0,
                   },
-              },
+              }
+            : editOutcomeInput(outcome.intent, outcome.receipt),
     )
     pushState(operation, result)
     view.entities = { hovered: [], creating: [] }

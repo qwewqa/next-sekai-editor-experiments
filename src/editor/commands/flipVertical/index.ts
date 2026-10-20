@@ -1,9 +1,9 @@
 import type { Command } from '..'
 import { pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
-import { subjectOfCounts } from '../../../history/operations'
 import { i18n } from '../../../i18n'
 import { flipVerticalWithReceipt as flip } from '../../../state/operations/flipVertical'
+import { changedData } from '../../../state/operations/historyReceipts'
 import { notify } from '../../notification'
 import { toMovedBeat, view } from '../../view'
 import FlipIcon from '../flip/FlipIcon.vue'
@@ -18,7 +18,12 @@ export const flipVertical: Command = {
             return
         }
         // Flipped beats land on the grid without float noise, as moves do.
-        const { state: flipped, counts } = flip(source, source.selectedEntities, toMovedBeat)
+        const {
+            state: flipped,
+            counts,
+            displaced,
+            retainedInitialBpm,
+        } = flip(source, source.selectedEntities, toMovedBeat)
         if (flipped === source) {
             notify(() => i18n.value.sidebars.default.noChange)
             return
@@ -27,8 +32,7 @@ export const flipVertical: Command = {
             id: 'nse.object.flip',
             data: {
                 axis: 'vertical',
-                subject: subjectOfCounts(counts),
-                targets: Object.values(counts).reduce((sum, count) => sum + count, 0),
+                ...changedData(counts, 'objects', { displaced, retainedInitialBpm }),
             },
         })
         pushState(operation, flipped)

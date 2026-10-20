@@ -87,7 +87,7 @@ export const wholeEdits = async (page: Page, n: number) => {
             const { translateSelectionWithReceipt } = await appImport<
                 typeof import('../../src/state/operations/translateSelection')
             >('/src/state/operations/translateSelection.ts')
-            const { checkedSum, subjectOfCounts } = await appImport<
+            const { subjectOfCounts } = await appImport<
                 typeof import('../../src/history/operations')
             >('/src/history/operations/index.ts')
             const { isEditableEntity } = await appImport<
@@ -96,13 +96,11 @@ export const wholeEdits = async (page: Page, n: number) => {
             const all = [...store.getAllEntities()].filter(isEditableEntity)
             const before = history.state.value
             const moved = translateSelectionWithReceipt(before, all, 'width', i % 2 ? -0.25 : 0.25)
-            const targets = checkedSum(Object.values(moved.counts))
-            if (targets === undefined) throw new Error('Invalid whole-chart move count')
             history.pushState(
                 window.editorTest.historySteps.nativeOperation(
                     {
                         id: 'nse.object.move',
-                        data: { subject: subjectOfCounts(moved.counts), targets },
+                        data: { subject: subjectOfCounts(moved.counts), changed: moved.counts },
                     },
                     'Move',
                 ),

@@ -11,13 +11,14 @@ import { showModal } from '../../../modals'
 import type { Entity } from '../../../state/entities'
 import { removeNote } from '../../../state/mutations/slides/note'
 import { removeTimeScale } from '../../../state/mutations/timeScale'
-import { duplicateOwned } from '../../../state/operations/duplicateOwned'
+import { duplicateOwnedWithReceipt } from '../../../state/operations/duplicateOwned'
+import { countNativeEntities } from '../../../state/operations/historyReceipts'
 import { createTransaction } from '../../../state/transaction'
 import GroupPropertiesModal from '../../commands/manageGroups/manageGroups/groupProperties/GroupPropertiesModal.vue'
 import { notify } from '../../notification'
 import { groupScope } from '../../scope'
 import { view } from '../../view'
-import { createFolderOps } from './folders'
+import { createFolderOps, type EntryRemoval } from './folders'
 import { normalizeName, type ManagerModel } from './model'
 import { survivingSelection } from './objects'
 
@@ -76,9 +77,13 @@ export const openGroupProperties = async (groupId: GroupId) => {
     })
 }
 
-/** The state without these groups and their notes and time scales, keeping at least one group. */
-const removeGroups = (groupIds: ReadonlySet<GroupId>) => {
+/**
+ * The state without these groups and their notes and time scales, keeping at least one group,
+ * with what that took: the objects removed and the default group created when the last one went.
+ */
+const removeGroups = (groupIds: ReadonlySet<GroupId>): EntryRemoval => {
     const transaction = createTransaction(state.value)
+    const removed: Entity[] = []
 
     const removes: {
         [T in Entity as T['type']]: ((entity: T) => void) | undefined
@@ -87,6 +92,7 @@ const removeGroups = (groupIds: ReadonlySet<GroupId>) => {
         timeScale(entity) {
             if (!groupIds.has(entity.groupId)) return
 
+            removed.push(entity)
             removeTimeScale(transaction, entity)
         },
 
@@ -108,6 +114,7 @@ const removeGroups = (groupIds: ReadonlySet<GroupId>) => {
         note(entity) {
             if (!groupIds.has(entity.groupId)) return
 
+            removed.push(entity)
             removeNote(transaction, entity)
         },
         connector: undefined,
@@ -122,9 +129,13 @@ const removeGroups = (groupIds: ReadonlySet<GroupId>) => {
 
     newState.groups = new Map(newState.groups)
     for (const groupId of groupIds) newState.groups.delete(groupId)
-    if (!newState.groups.size) addToGroups(newState.groups)
+    let replacement: EntryRemoval['replacement']
+    if (!newState.groups.size) {
+        const [id, name] = addToGroups(newState.groups)
+        replacement = { kind: 'group', id, name: captureName(name) }
+    }
 
-    return newState
+    return { state: newState, objects: countNativeEntities(removed), replacement }
 }
 
 export const groupFolderOps = createFolderOps({
@@ -138,7 +149,8 @@ export const groupFolderOps = createFolderOps({
         const { name: _, ...value } = entry
         return addToGroups(entries, name, value)[0]
     },
-    duplicateObjects: (state, copies) => duplicateOwned(state, { key: 'groupId', copies }),
+    duplicateObjects: (state, copies) =>
+        duplicateOwnedWithReceipt(state, { key: 'groupId', copies }),
     owner: 'groupId',
     strings: () => ({
         movedEntry: i18n.value.commands.manageGroups.modal.moved,
@@ -158,15 +170,11 @@ export const groupFolderOps = createFolderOps({
 export const deleteGroup = (groupId: GroupId) => {
     if (!groups.value.has(groupId)) return
     const ids = new Set([groupId])
-    const operation = {
-        id: 'nse.owner.delete',
-        data: {
-            domain: 'group',
-            removed: { group: 1 },
-            target: { kind: 'group', id: groupId, name: captureName(nameOf(groupId)) },
-        },
-    } as const
-    groupFolderOps.commitRemoval(ids, removeGroups(ids), operation)
+    groupFolderOps.commitRemoval(ids, removeGroups(ids), {
+        kind: 'group',
+        id: groupId,
+        name: captureName(nameOf(groupId)),
+    })
     view.entities = {
         hovered: [],
         creating: [],

@@ -149,6 +149,13 @@ for (const domain of ['group', 'stage'] as const) {
             const before = history.state.value
             const owners = domain === 'group' ? before.groups.size : before.stages.size
             const notes = [...before.store.slides.note.values()].flat().length
+            const copiedFromFolder = new Set(
+                [...before.store.slides.note.values()]
+                    .flat()
+                    .filter((note) =>
+                        ids.includes((domain === 'group' ? note.groupId : note.stageId) as never),
+                    ),
+            ).size
             window.managerOperations = []
             const copy = folders.duplicateMany([ids[0]!], [folder])
             const after = history.state.value
@@ -158,6 +165,7 @@ for (const domain of ['group', 'stage'] as const) {
                 count,
                 notes,
                 afterNotes: [...after.store.slides.note.values()].flat().length,
+                copiedFromFolder,
                 copiedOwners: copy.entries.length,
                 copiedFolders: copy.folders.length,
                 copiedMembers: folders.members(copy.folders[0]!).length,
@@ -174,6 +182,8 @@ for (const domain of ['group', 'stage'] as const) {
             data: { domain, created: { [domain]: 2, [`${domain}Folder`]: 1 } },
         })
         expect(Object.keys(result.operation!.data)).not.toContain('notes')
+        // The copied chart objects are recorded with the copies, and only when there are some.
+        expect(result.operation!.data).toMatchObject({ objects: { note: result.copiedFromFolder } })
     })
 
     test(`${domain}: deletion counts removed originals while retaining a replacement baseline`, async ({
@@ -189,10 +199,13 @@ for (const domain of ['group', 'stage'] as const) {
             >('/src/editor/workspace/manager/stages.ts')
             const model = domain === 'group' ? groups.groupManager : stages.stageManager
             const before = model.entries()
+            const notesBefore = [...history.state.value.store.slides.note.values()].flat().length
             window.managerOperations = []
             model.removeMany(new Set(before.map(({ id }) => id as never)))
             return {
                 removed: before.length,
+                notesBefore,
+                replacement: model.entries()[0],
                 remaining: model.entries().length,
                 notes: [...history.state.value.store.slides.note.values()].flat().length,
                 operation: window.managerOperations[0],
@@ -203,6 +216,12 @@ for (const domain of ['group', 'stage'] as const) {
         expect(result.operation).toMatchObject({
             id: 'nse.owner.delete',
             data: { domain, removed: { [domain]: result.removed } },
+        })
+        // The notes that went with them, and the default entry made when the last one went.
+        expect(result.notesBefore).toBeGreaterThan(0)
+        expect(result.operation!.data).toMatchObject({
+            objects: { note: result.notesBefore },
+            replacement: { kind: domain, id: result.replacement!.id },
         })
     })
 

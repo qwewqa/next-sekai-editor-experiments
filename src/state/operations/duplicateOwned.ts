@@ -1,7 +1,8 @@
 import type { State } from '..'
 import type { GroupId } from '../../chart/groups'
 import type { StageId } from '../../chart/stages'
-import type { EntityOfType } from '../entities'
+import type { NativeCounts } from '../../history/operations'
+import type { Entity, EntityOfType } from '../entities'
 import { createSlideId } from '../entities/slides'
 import { addStageMaskEventJoint } from '../mutations/events/stage/mask'
 import { addStagePivotEventJoint } from '../mutations/events/stage/pivot'
@@ -11,6 +12,7 @@ import { addNote } from '../mutations/slides/note'
 import { addTimeScale } from '../mutations/timeScale'
 import type { StoreGrid } from '../store/grid'
 import { createTransaction, type Transaction } from '../transaction'
+import { countNativeEntities } from './historyReceipts'
 
 /** Each owner's copy, by group or stage id. */
 export type OwnerCopies =
@@ -48,13 +50,19 @@ const chainOf = <T extends keyof typeof stageJoints>(state: State, type: T, stag
  * The state with copies of the owners' time scales or stage events and notes,
  * in source order so same-beat pairs keep theirs. Nothing existing changes.
  */
-export const duplicateOwned = (state: State, owners: OwnerCopies): State => {
+export const duplicateOwnedWithReceipt = (
+    state: State,
+    owners: OwnerCopies,
+): { state: State; objects: NativeCounts } => {
     const transaction: Transaction = createTransaction(state)
+    // The copies of the owners' objects, native ones only, as they are added.
+    const copied: Entity[] = []
 
     if (owners.key === 'groupId') {
         for (const timeScale of gridEntities(state.store.grid, 'timeScale')) {
             const groupId = owners.copies.get(timeScale.groupId)
-            if (groupId !== undefined) addTimeScale(transaction, { ...timeScale, groupId })
+            if (groupId !== undefined)
+                copied.push(...addTimeScale(transaction, { ...timeScale, groupId }))
         }
     } else {
         for (const [stageId, copy] of owners.copies) {
@@ -62,9 +70,9 @@ export const duplicateOwned = (state: State, owners: OwnerCopies): State => {
                 const add = stageJoints[type][1] as (
                     transaction: Transaction,
                     object: EntityOfType<typeof type> & { stageId: StageId },
-                ) => unknown
+                ) => Entity[]
                 for (const joint of chainOf(state, type, stageId))
-                    add(transaction, { ...joint, stageId: copy })
+                    copied.push(...add(transaction, { ...joint, stageId: copy }))
             }
         }
     }
@@ -76,14 +84,22 @@ export const duplicateOwned = (state: State, owners: OwnerCopies): State => {
         if (!owned.length) continue
         const slideId = createSlideId()
         for (const note of owned) {
-            const [copy] = addNote(transaction, slideId, {
+            const added = addNote(transaction, slideId, {
                 ...note,
                 [owners.key]: copyOf(note[owners.key]),
             })
+            copied.push(...added)
+            const [copy] = added
             // A copied tick that ends a partial slide keeps the original's place.
             if (copy) transaction.store.setOrigin(copy, note)
         }
     }
 
-    return transaction.commit([...state.selectedEntities])
+    return {
+        state: transaction.commit([...state.selectedEntities]),
+        objects: countNativeEntities(copied),
+    }
 }
+
+export const duplicateOwned = (state: State, owners: OwnerCopies): State =>
+    duplicateOwnedWithReceipt(state, owners).state
