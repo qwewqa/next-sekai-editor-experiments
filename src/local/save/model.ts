@@ -1,5 +1,5 @@
 import { toHex } from '../hash'
-import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
+import { isReadableSession } from '../records/unknownValues'
 import {
     replay,
     ReplayError,
@@ -34,9 +34,8 @@ export type ChainRow = { entry: EntryRow; startedAt: number }
 export const checkReadable = (cut: ChainCut) => {
     if (cut.unreadable) throw new ModelError('needsNewer')
     for (const session of cut.sessions) {
-        if (!isReadableSessionVersion(session.v)) throw new ModelError('needsNewer')
-        for (const entry of cut.entries.get(session.id) ?? [])
-            if (!isKnownEntryKind(entry.kind)) throw new ModelError('needsNewer')
+        const entryKinds = (cut.entries.get(session.id) ?? []).map((entry) => entry.kind)
+        if (!isReadableSession({ row: session, entryKinds })) throw new ModelError('needsNewer')
     }
 }
 
