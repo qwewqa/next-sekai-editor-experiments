@@ -123,6 +123,9 @@ const installSampleApp = async () => {
         typeof import('../../src/history/operationPresentation')
     >('/src/history/operationPresentation/index.ts')
     const { i18n } = await appImport<typeof import('../../src/i18n')>('/src/i18n/index.ts')
+    const { hostZone } = await appImport<typeof import('../../src/calendar/calendar')>(
+        '/src/calendar/calendar.ts',
+    )
     const { headStep, liveState, loadedSlotsForTests } =
         await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
     const { getAllEntities } =
@@ -157,6 +160,7 @@ const installSampleApp = async () => {
                           locale: settings.locale,
                           strings: i18n.value,
                           now: Date.now(),
+                          zone: hostZone(),
                       })
                     : '',
                 state: id,

@@ -1,39 +1,41 @@
+import type { DayKey } from '../../calendar/calendar'
 import { i18n } from '../../i18n'
-import { formatClock, formatDate, formatHour } from '../../i18n/when'
+import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
+import type { Calendar } from './calendarClock'
+import { historyFormat } from './historyFormat'
 import type { Header } from './rows'
 
 // What a header says: "2:40 PM", "1 PM", "Yesterday · 9 PM", "Oct 2".
 
-const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
-
-/** "Today", "Yesterday" or "Oct 14" (with the year in another year). */
-export const dayLabel = (time: number, now = Date.now()) => {
-    if (sameDay(time, now)) return i18n.value.history.today
-    const before = new Date(now)
-    before.setDate(before.getDate() - 1)
-    return sameDay(time, before.getTime()) ? i18n.value.history.yesterday : formatDate(time, now)
+/** "Today", "Yesterday" or "Oct 14" (with the year in another year), by the calendar's days. */
+export const dayLabel = (day: DayKey, cal: Calendar) => {
+    if (day === cal.today) return i18n.value.history.today
+    if (day === cal.today - 1) return i18n.value.history.yesterday
+    return historyFormat(cal, settings.locale).day(day)
 }
 
 /** A header's own label: its day, hour or minute. */
-const ownLabel = (header: Header, now: number) =>
-    header.level === 'day'
-        ? dayLabel(header.time, now)
+const ownLabel = (header: Header, cal: Calendar) => {
+    const format = historyFormat(cal, settings.locale)
+    return header.level === 'day'
+        ? dayLabel(header.day, cal)
         : header.level === 'hour'
-          ? formatHour(header.time)
-          : formatClock(header.time)
+          ? format.hour(header.time)
+          : format.clock(header.time)
+}
 
-export const headerText = (header: Header, now = Date.now()) =>
+export const headerText = (header: Header, cal: Calendar) =>
     header.withDay
-        ? `${dayLabel(header.time, now)} · ${ownLabel(header, now)}`
-        : ownLabel(header, now)
+        ? `${dayLabel(header.day, cal)} · ${ownLabel(header, cal)}`
+        : ownLabel(header, cal)
 
 /** The pinned header's text: the header above the list's top, always with its day. */
-export const pinnedText = (header: Header, now = Date.now()) =>
+export const pinnedText = (header: Header, cal: Calendar) =>
     header.level === 'day' || header.withDay
-        ? headerText(header, now)
-        : `${dayLabel(header.time, now)} · ${ownLabel(header, now)}`
+        ? headerText(header, cal)
+        : `${dayLabel(header.day, cal)} · ${ownLabel(header, cal)}`
 
 const count = (value: number) => formatCount(value)
 

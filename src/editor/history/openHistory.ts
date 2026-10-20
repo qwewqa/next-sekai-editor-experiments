@@ -14,6 +14,7 @@ import {
 import { notify, type NoticeAction } from '../notification'
 import { prepareToolModal, showToolModal } from '../toolModals'
 import { isPanelEnabled, showPanel } from '../workspace'
+import { checkHistoryCalendar } from './calendarClock'
 import { createHistoryPresentation, type HistoryCloseResult } from './presentation'
 import { backToNow } from './selection'
 import { historyFilter, historyTab, listFocus, type HistoryTab } from './state'
@@ -39,7 +40,8 @@ onResetState(() => generation++)
 export const openHistoryDialog = async (tab?: HistoryTab) => {
     if (tab) historyTab.value = tab
     if (isHistoryDialogOpen.value || opening) {
-        listFocus.value = { surface: 'dialog', at: Date.now() }
+        checkHistoryCalendar()
+        listFocus.value = { surface: 'dialog', at: performance.now() }
         return
     }
     // The Elevation Editor alone fills the editor: it steps aside for the sheet, and returns after.
@@ -136,7 +138,8 @@ export const showHistoryLink = (tab: HistoryTab = 'timeline') => {
         void openHistoryDialog(tab)
         return
     }
-    listFocus.value = { surface: 'panel', at: Date.now() }
+    checkHistoryCalendar()
+    listFocus.value = { surface: 'panel', at: performance.now() }
     showPanel('history')
 }
 

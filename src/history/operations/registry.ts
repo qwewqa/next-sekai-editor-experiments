@@ -1,3 +1,4 @@
+import { TIME_LIMIT } from '../../calendar/calendar'
 import {
     boolean,
     codec,
@@ -261,7 +262,7 @@ const ownedObjects = (domain: 'group' | 'stage', objects: object | undefined) =>
     !objects || Object.keys(objects).every((kind) => ownedKinds[domain].includes(kind))
 
 /** A time as a Date takes it: a whole number of milliseconds within ±8.64e15. */
-const time = refine(count, (value) => value <= 8.64e15)
+const time = refine(count, (value) => value <= TIME_LIMIT)
 
 export const operationCodecs = {
     'nse.note.add': object({ created: count }),

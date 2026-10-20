@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
-import { getHistoryOperationContext } from '../../history/createHistoryOperation'
+import { sameDay } from '../../calendar/calendar'
 import {
     captureOperationRecipe,
     describeStep,
@@ -13,9 +13,12 @@ import {
     type OperationRecipe,
 } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
-import { formatClockSeconds, formatDateTimeSeconds } from '../../i18n/when'
+import { settings } from '../../settings'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
+import { useHistoryCalendar } from './calendarClock'
 import DetailsHeader from './DetailsHeader.vue'
+import { historyFormat } from './historyFormat'
+import { historyOperationContext } from './historyOperationContext'
 import type { Flags } from './rows'
 
 const props = defineProps<{
@@ -33,7 +36,9 @@ const recoveryLimit = ref(PAGE)
 const childList = useTemplateRef<HTMLElement>('childList')
 const recoveryList = useTemplateRef<HTMLElement>('recoveryList')
 const expanded = ref<ReadonlySet<number>>(new Set())
-const context = computed(getHistoryOperationContext)
+const calendar = useHistoryCalendar()
+const format = computed(() => historyFormat(calendar.value, settings.locale))
+const context = computed(() => historyOperationContext(calendar.value))
 const details = computed(() => operationDetails(props.recipe, context.value))
 const members = computed(() => details.value.steps?.members.slice(0, limit.value) ?? [])
 const recovery = computed(() => details.value.recovery?.descriptions.slice(0, recoveryLimit.value))
@@ -53,7 +58,7 @@ const flagText = (flags: Flags | undefined) =>
             : undefined
 const meta = computed(() =>
     [
-        props.time === undefined ? undefined : formatDateTimeSeconds(props.time),
+        props.time === undefined ? undefined : format.value.dateTimeSeconds(props.time),
         flagText(props.flags),
     ]
         .filter(Boolean)
@@ -89,9 +94,9 @@ const showMoreRecovery = async () => {
 }
 // A step on its group's day shows its clock; the group's own line gives the date.
 const childTime = (at: number) =>
-    props.time !== undefined && new Date(at).toDateString() === new Date(props.time).toDateString()
-        ? formatClockSeconds(at)
-        : formatDateTimeSeconds(at)
+    props.time !== undefined && sameDay(at, props.time, calendar.value.zone)
+        ? format.value.clockSeconds(at)
+        : format.value.dateTimeSeconds(at)
 const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : undefined)
 </script>
 

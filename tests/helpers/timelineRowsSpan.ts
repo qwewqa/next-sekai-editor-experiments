@@ -11,6 +11,7 @@ export const runSpanTests = async (zone: string) => {
     assert.equal(resolved, zone, `This platform ignores TZ (the resolved zone is ${resolved})`)
 
     const { buildRows } = await import('../../src/editor/history/rows')
+    const { hostCalendar } = await import('./calendar')
     type Entry = import('../../src/editor/history/rows').Entry
     type Row = import('../../src/editor/history/rows').Row
     type EntryRow = Extract<Row, { type: 'entry' }>
@@ -41,7 +42,7 @@ export const runSpanTests = async (zone: string) => {
             filter: 'all',
             expanded: new Set(),
             damaged: new Set(),
-            now,
+            calendar: hostCalendar(now),
         })
         if (!expandAll) return plain
         const groups = plain.filter(
@@ -51,7 +52,7 @@ export const runSpanTests = async (zone: string) => {
             filter: 'all',
             expanded: new Set(groups.map((row) => row.id)),
             damaged: new Set(),
-            now,
+            calendar: hostCalendar(now),
         })
     }
 

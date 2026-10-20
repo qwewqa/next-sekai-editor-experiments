@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import test from 'node:test'
+import { hostZone } from '../../src/calendar/calendar'
 import {
     captureOperationRecipe,
     describeMember,
@@ -35,6 +36,7 @@ const context = (locale = 'en'): OperationTextContext => {
                 ),
             ),
             now: Date.UTC(2026, 9, 19, 12, 0, 0),
+            zone: hostZone(),
         }
         contexts.set(locale, ctx)
     }

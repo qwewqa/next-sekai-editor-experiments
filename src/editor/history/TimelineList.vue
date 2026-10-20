@@ -12,7 +12,6 @@ import {
 import { peekedKey, peekSourceGeneration } from '../../history/peek'
 import { session } from '../../history/session'
 import { headStep } from '../../history/stack'
-import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import {
     captureOperationRecipe,
     describeStep,
@@ -20,12 +19,6 @@ import {
     type OperationRecipe,
 } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
-import {
-    formatClock,
-    formatClockSeconds,
-    formatDateTime,
-    formatDateTimeSeconds,
-} from '../../i18n/when'
 import { settings } from '../../settings'
 import { focusLost } from '../../utils/focusFallback'
 import { interpolateRaw } from '../../utils/interpolate'
@@ -45,7 +38,10 @@ import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
 import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
-import { dividerLabel } from './dividerLabel'
+import { useHistoryCalendar } from './calendarClock'
+import { historyFormat } from './historyFormat'
+import { historyOperationContext } from './historyOperationContext'
+import { dividerText as dividerTextOf, rowName, rowTime, rowTitle } from './rowText'
 import { openOperationDetails } from './operationDetails'
 import { canFocusHistory } from './openHistory'
 import {
@@ -122,17 +118,11 @@ let restoreReady = false
 followEntries()
 useScrollMemory(() => `${props.surface}:history`, list)
 
-// The headers' ages are measured against the clock, rebuilt at each hour: a row changes tier only
-// then, and always below the top of the list (Part 1 §1.4.10.5).
-const clock = ref(Date.now())
-let clockTimer: ReturnType<typeof setTimeout> | undefined
-const tickClock = () => {
-    clock.value = Date.now()
-    const next = new Date(clock.value)
-    next.setHours(next.getHours() + 1, 0, 1, 0)
-    clockTimer = setTimeout(tickClock, next.getTime() - clock.value)
-}
-tickClock()
+// The headers' ages are measured against the History clock, rebuilt at each hour and when the
+// zone changes: a row changes tier only then, and always below the top of the list (Part 1
+// §1.4.10.5).
+const calendar = useHistoryCalendar()
+const format = computed(() => historyFormat(calendar.value, settings.locale))
 
 const built = computed(() =>
     buildRows(listedEntries.value, {
@@ -141,7 +131,7 @@ const built = computed(() =>
         damaged: damagedEntries.value,
         newer: newerEntries.value,
         removed: removedEntries.value,
-        now: clock.value,
+        calendar: calendar.value,
         gap: gap.value,
         // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
         more: historyFilter.value === 'here' ? here.scanning : canLoadMore.value,
@@ -164,7 +154,7 @@ const isEmpty = computed(
         ),
 )
 const rows = computed(() => (isEmpty.value ? built.value.slice(0, 1) : built.value))
-const operationContext = computed(getHistoryOperationContext)
+const operationContext = computed(() => historyOperationContext(calendar.value))
 const headLabel = computed(
     () => headStep.value && describeStep(headStep.value, operationContext.value),
 )
@@ -1270,14 +1260,13 @@ onBeforeUnmount(() => {
     rememberView()
     cancelAnimationFrame(restoreFrame)
     observer?.disconnect()
-    clearTimeout(clockTimer)
     cancelLongPress()
 })
 // A link asks for the list's focus, also from a list that mounts a moment later.
 watch(
     listFocus,
     (request) => {
-        if (request?.surface !== props.surface || Date.now() - request.at > 3000) return
+        if (request?.surface !== props.surface || performance.now() - request.at > 3000) return
         listFocus.value = undefined
         void nextTick(() => list.value?.focus({ preventScroll: true }))
     },
@@ -1329,9 +1318,7 @@ const memberEnds = computed(() => {
     return { first, last }
 })
 
-const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSeconds(at))
-
-const timeOf = (row: EntryRow) => clockOf(row.entry.time)
+const timeOf = (row: EntryRow) => rowTime(format.value, row.entry.time, narrow.value)
 
 const deltaOf = (row: EntryRow) =>
     row.delta === undefined
@@ -1339,15 +1326,17 @@ const deltaOf = (row: EntryRow) =>
         : `${row.delta > 0 ? '+' : '−'}${formatCount(Math.abs(row.delta))}`
 
 // The full date and time is the row's tooltip and in its accessible name; the header gives the date.
-const whenOf = (row: EntryRow) => formatDateTimeSeconds(row.entry.time)
-
 const titleOf = (row: EntryRow) =>
-    [labelOf(row), flagTextOf(row), whenOf(row)].filter(Boolean).join(' · ')
+    rowTitle(format.value, row.entry.time, { label: labelOf(row), flag: flagTextOf(row) })
 
 const nameOf = (row: EntryRow) =>
-    [labelOf(row), flagTextOf(row), deltaOf(row), whenOf(row)].filter(Boolean).join(', ')
+    rowName(format.value, row.entry.time, {
+        label: labelOf(row),
+        flag: flagTextOf(row),
+        delta: deltaOf(row),
+    })
 
-const dividerText = (entry: Entry) => dividerLabel(entry, operationContext.value, formatDateTime)
+const dividerText = (entry: Entry) => dividerTextOf(format.value, operationContext.value, entry)
 
 const headerClass = (header: Header) =>
     header.level === 'day'
@@ -1464,7 +1453,7 @@ defineExpose({
                         :class="headerClass(row)"
                         :style="{ top: `${top}px`, height: `${HEADER}px` }"
                     >
-                        <span class="min-w-0 truncate">{{ headerText(row, clock) }}</span>
+                        <span class="min-w-0 truncate">{{ headerText(row, calendar) }}</span>
                     </div>
 
                     <div
@@ -1724,7 +1713,7 @@ defineExpose({
                 :class="headerClass(pinned)"
                 :style="{ height: `${HEADER}px` }"
             >
-                <span class="truncate">{{ pinnedText(pinned, clock) }}</span>
+                <span class="truncate">{{ pinnedText(pinned, calendar) }}</span>
             </div>
         </div>
         <OverlayScrollbar :target="list" />

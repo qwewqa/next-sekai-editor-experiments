@@ -1,3 +1,4 @@
+import type { Zone } from '../../calendar/calendar'
 import type {
     AdditiveMetric,
     EntryDescription,
@@ -12,6 +13,8 @@ export type OperationTextContext = {
     readonly locale: string
     readonly strings: OperationStrings
     readonly now: number
+    /** The time zone every date and time in the text is in (the History clock's). */
+    readonly zone: Zone
 }
 
 export type OperationMember = {

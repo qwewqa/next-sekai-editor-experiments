@@ -37,14 +37,28 @@ registerHooks({
             : next(url, context),
 })
 
-const { headerText, newerStepsText, dayLabel, pinnedText, stepsText } =
-    await import('../../src/editor/history/labels')
+const {
+    headerText: headerTextOf,
+    newerStepsText,
+    dayLabel: dayLabelOf,
+    pinnedText: pinnedTextOf,
+    stepsText,
+} = await import('../../src/editor/history/labels')
+const { dayKey, resolveZone } = await import('../../src/calendar/calendar')
+const { calendarAt } = await import('../../src/editor/history/calendarClock')
 const { settings } = await import('../../src/settings')
 const { default: en } = await import('../../src/i18n/en/index.json', { with: { type: 'json' } })
 const { default: fr } = await import('../../src/i18n/fr/index.json', { with: { type: 'json' } })
 const { default: ja } = await import('../../src/i18n/ja/index.json', { with: { type: 'json' } })
 
-type Header = Parameters<typeof headerText>[0]
+type Header = Parameters<typeof headerTextOf>[0]
+
+// The labels take the History calendar; these take the clock's time and read it in New York.
+const newYork = resolveZone('America/New_York')
+const dayLabel = (time: number, clock: number) =>
+    dayLabelOf(dayKey(time, newYork), calendarAt(clock, newYork))
+const headerText = (value: Header, clock: number) => headerTextOf(value, calendarAt(clock, newYork))
+const pinnedText = (value: Header, clock: number) => pinnedTextOf(value, calendarAt(clock, newYork))
 
 const catalogues = { en, fr, ja } as const
 type Locale = keyof typeof catalogues
@@ -64,6 +78,7 @@ const header = (level: Header['level'], time: number, withDay = false): Header =
     level,
     withDay,
     time,
+    day: dayKey(time, newYork),
 })
 
 afterEach(() => {
@@ -73,6 +88,60 @@ afterEach(() => {
 test('the host zone is the one this file asks for', () => {
     assert.equal(new Date(at(2026, 7, 1, 12)).getTimezoneOffset(), 240)
     assert.equal(new Date(at(2026, 1, 1, 12)).getTimezoneOffset(), 300)
+})
+
+test('the first header of a new day says its day, and a today at the top says none', async () => {
+    inLocale('en')
+    const { buildRows } = await import('../../src/editor/history/rows')
+    const clock = at(2026, 10, 16, 18, 30)
+    const cal = calendarAt(clock, newYork)
+    const textsOf = (...times: number[]) =>
+        buildRows(
+            times.map(
+                (time, i) =>
+                    ({
+                        sessionId: 's',
+                        seq: times.length - i,
+                        time,
+                        kept: true,
+                        kind: 'init',
+                    }) as never,
+            ),
+            { filter: 'all', expanded: new Set(), damaged: new Set(), calendar: cal },
+        )
+            .filter((row) => row.type === 'header')
+            .map((row) => headerTextOf(row, cal))
+    // Rows for tomorrow, then today's morning below them, newest first.
+    assert.deepEqual(textsOf(at(2026, 10, 17, 15, 5), at(2026, 10, 16, 8, 5)), [
+        'Oct 17 · 3 PM',
+        'Today · 8 AM',
+    ])
+    // A today that opens the list names nothing.
+    assert.deepEqual(textsOf(at(2026, 10, 16, 18, 10)), ['6:10 PM'])
+    assert.deepEqual(textsOf(at(2026, 10, 16, 14, 41)), ['2 PM'])
+    // Yesterday at the top names itself.
+    assert.deepEqual(textsOf(at(2026, 10, 15, 21, 5)), ['Yesterday · 9 PM'])
+})
+
+test('Go To’s day label follows the calendar it is given, not the host zone or the real clock', () => {
+    inLocale('en')
+    // 2026-10-16 02:30 UTC is Oct 15 at 10:30 PM in New York and Oct 16 in Tokyo.
+    const instant = Date.UTC(2026, 9, 16, 2, 30)
+    const tokyo = resolveZone('Asia/Tokyo')
+    assert.equal(dayLabelOf(dayKey(instant, tokyo), calendarAt(instant, tokyo)), en.history.today)
+    assert.equal(
+        dayLabelOf(dayKey(instant, newYork), calendarAt(instant, newYork)),
+        en.history.today,
+    )
+    // New York's Oct 15, as the calendar moves on: Yesterday a day later, a date after two.
+    assert.equal(
+        dayLabelOf(dayKey(instant, newYork), calendarAt(instant + 24 * 3_600_000, newYork)),
+        en.history.yesterday,
+    )
+    assert.equal(
+        dayLabelOf(dayKey(instant, newYork), calendarAt(instant + 48 * 3_600_000, newYork)),
+        'Oct 15',
+    )
 })
 
 test('a day is Today, Yesterday or its date in each language', () => {

@@ -9,10 +9,13 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
+import { dayKey } from '../../calendar/calendar'
 import { i18n } from '../../i18n'
-import { formatClockRange } from '../../i18n/when'
+import { settings } from '../../settings'
 import type { TimelinePiece } from '../../local/worker/timelineHandlers'
+import { checkHistoryCalendar, useHistoryCalendar } from './calendarClock'
 import CheckIcon from './CheckIcon.vue'
+import { historyFormat } from './historyFormat'
 import { dayLabel, stepsText } from './labels'
 import { here, readIndex, type Target } from './source'
 import { hereRange, historyFilter, historyViewGeneration } from './state'
@@ -38,6 +41,13 @@ type Item =
           target: Target
           pieces: TimelinePiece[]
       }
+
+// Go To's day names and times are the Timeline's: one History clock and zone (I-1). It looks at the
+// clock when it opens, so a list opened after a sleep or a move is current at once.
+const calendar = useHistoryCalendar()
+checkHistoryCalendar()
+const format = computed(() => historyFormat(calendar.value, settings.locale))
+const dayText = (time: number) => dayLabel(dayKey(time, calendar.value.zone), calendar.value)
 
 const pieces = shallowRef<TimelinePiece[]>()
 const failed = ref(false)
@@ -87,7 +97,7 @@ watch(
 )
 
 const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
-const rangeOf = (piece: TimelinePiece) => formatClockRange(piece.oldest, piece.newest)
+const rangeOf = (piece: TimelinePiece) => format.value.clockRange(piece.oldest, piece.newest)
 const targetOf = (piece: TimelinePiece): Target => ({
     sessionId: piece.sessionId,
     seq: piece.newestSeq,
@@ -218,7 +228,7 @@ const SKELETON_ROWS = 4
 const labelOf = (item: Item) =>
     item.kind === 'now'
         ? i18n.value.history.now
-        : [item.kind === 'day' ? dayLabel(item.time) : undefined, item.range, stepsText(item.count)]
+        : [item.kind === 'day' ? dayText(item.time) : undefined, item.range, stepsText(item.count)]
               .filter(Boolean)
               .join(', ')
 </script>
@@ -267,7 +277,7 @@ const labelOf = (item: Item) =>
             }}</span>
             <span v-else class="flex min-w-0 flex-1 items-baseline gap-2">
                 <span v-if="item.kind === 'day'" class="shrink-0 font-bold">{{
-                    dayLabel(item.time)
+                    dayText(item.time)
                 }}</span>
                 <span v-if="item.range" class="min-w-0 truncate">{{ item.range }}</span>
             </span>

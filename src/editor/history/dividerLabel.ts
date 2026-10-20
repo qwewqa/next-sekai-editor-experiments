@@ -23,10 +23,7 @@ export const dividerLabel = (
     const operation = decoded?.status === 'known' ? decoded.operation : undefined
     const continued = (at: number) =>
         message(context, context.strings.history.continuedFrom, minute(at))
-    if (
-        operation?.id === 'nse.continue' &&
-        !Number.isNaN(new Date(operation.data.fromTime).getTime())
-    )
+    if (operation?.id === 'nse.continue' && Number.isFinite(operation.data.fromTime))
         return continued(operation.data.fromTime)
     if (operation?.id === 'nse.origin') return describeOperation(operation, context)
     if (entry.from !== undefined) return continued(entry.from)

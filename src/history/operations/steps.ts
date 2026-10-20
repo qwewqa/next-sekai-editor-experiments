@@ -118,10 +118,7 @@ const context = (value: unknown): value is RecoveryContext => {
         !value.dropped.every(description)
     )
         return false
-    return (
-        jsonBytes(value.dropped.map(withoutExtension) as unknown as JsonValue) <=
-        RECOVERY_CONTEXT_BYTES
-    )
+    return jsonBytes(value.dropped.map(withoutExtension)) <= RECOVERY_CONTEXT_BYTES
 }
 
 export const captureRecoveryContext = (value: unknown): RecoveryContext => {

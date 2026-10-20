@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { hostZone } from '../../src/calendar/calendar'
 import { dividerLabel } from '../../src/editor/history/dividerLabel'
 import type { Entry } from '../../src/editor/history/rows'
 import type { OperationTextContext } from '../../src/history/operationPresentation'
@@ -19,6 +20,7 @@ const context = (locale: string): OperationTextContext => ({
         readFileSync(new URL(`../../src/i18n/${locale}/index.json`, import.meta.url), 'utf8'),
     ),
     now,
+    zone: hostZone(),
 })
 const minute = (locale: string) => (at: number) => formatDateTime(locale, at, now)
 

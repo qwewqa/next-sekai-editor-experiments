@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { hostZone, type DayKey } from '../../src/calendar/calendar'
 import {
     heightOf,
     isCountedParent,
@@ -17,6 +18,7 @@ import {
 import { captureOperation, type EntryDescription } from '../../src/history/operations'
 import en from '../../src/i18n/en/index.json'
 import fr from '../../src/i18n/fr/index.json'
+import { hostCalendar } from '../helpers/calendar'
 import {
     editStep,
     futureFixtureOperation,
@@ -25,8 +27,8 @@ import {
     restoreStep,
 } from '../helpers/historySteps'
 
-const context: OperationTextContext = { locale: 'en', strings: en, now: 0 }
-const french: OperationTextContext = { locale: 'fr', strings: fr, now: 0 }
+const context: OperationTextContext = { locale: 'en', strings: en, now: 0, zone: hostZone() }
+const french: OperationTextContext = { locale: 'fr', strings: fr, now: 0, zone: hostZone() }
 const edit = (created: number): EntryDescription => ({
     kind: 'edit',
     step: editStep(noteAdd(created)),
@@ -40,7 +42,13 @@ const rows = (descriptions: EntryDescription[], more = false, kept = true) =>
             time: 0,
             kept,
         })),
-        { filter: 'all', expanded: new Set(), damaged: new Set(), more, now: 0 },
+        {
+            filter: 'all',
+            expanded: new Set(),
+            damaged: new Set(),
+            more,
+            calendar: hostCalendar(0),
+        },
     ).filter((row): row is EntryRow => row.type === 'entry')
 
 test('Add12 sums actual creations while repeated moves make no unique-target claim', () => {
@@ -215,7 +223,17 @@ test('all unavailable entries reserve the reason', () => {
     }
     assert.equal(heightOf({ type: 'now', id: 'now' }), 44)
     assert.equal(heightOf({ type: 'gap', id: 'gap', count: 4 }), 44)
-    assert.equal(heightOf({ type: 'header', id: 'h', level: 'day', withDay: false, time: 0 }), 28)
+    assert.equal(
+        heightOf({
+            type: 'header',
+            id: 'h',
+            level: 'day',
+            withDay: false,
+            time: 0,
+            day: 0 as DayKey,
+        }),
+        28,
+    )
 })
 
 test('standalone unavailable recovery metadata retains its own ordered context once', () => {
@@ -257,7 +275,7 @@ const saved = (
                 ...(device ? { device } : {}),
             } as Entry,
         ],
-        { filter: 'all', expanded: new Set(), damaged: new Set(), now: 0 },
+        { filter: 'all', expanded: new Set(), damaged: new Set(), calendar: hostCalendar(0) },
     ).filter((row): row is EntryRow => row.type === 'entry')[0]!
 
 test('a save from another device names it, and one from this browser does not', () => {

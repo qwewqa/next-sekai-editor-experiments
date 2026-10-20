@@ -12,6 +12,9 @@ assert.equal(
 )
 
 const { buildRows } = await import('../../src/editor/history/rows')
+const { hostCalendar, calendarIn } = await import('../helpers/calendar')
+const { dayKey, resolveZone } = await import('../../src/calendar/calendar')
+const newYork = resolveZone('America/New_York')
 type Entry = import('../../src/editor/history/rows').Entry
 type Row = import('../../src/editor/history/rows').Row
 type Header = Extract<Row, { type: 'header' }>
@@ -46,7 +49,7 @@ const rowsOf = (entries: Entry[], now: number, filter: 'all' | 'saves' = 'all') 
         filter,
         expanded: new Set(),
         damaged: new Set(),
-        now,
+        calendar: hostCalendar(now),
     })
 const headers = (rows: Row[]) => rows.filter((row): row is Header => row.type === 'header')
 const ids = (rows: Row[]) => rows.map((row) => row.id)
@@ -204,4 +207,71 @@ test('Saves and Exports with skewed times stay in the order they were made', () 
     const kinds = rows.flatMap((row) => (row.type === 'entry' ? [row.entry.seq] : []))
     assert.deepEqual(kinds, [laterSave.seq, exported.seq, save.seq])
     assert.deepEqual(under(rows).flat(), [laterSave.time, exported.time, save.time])
+})
+
+test('every new day names itself with its first header, except a today that opens the list', () => {
+    const now = at(10, 16, 18, 30)
+    const withDay = (rows: Row[]) => headers(rows).map((header) => header.withDay)
+
+    // A today at the top of the list is unnamed: the list says Today by being at Now.
+    assert.deepEqual(withDay(rowsOf([edit(now - 40 * MINUTE)], now)), [false])
+    assert.deepEqual(withDay(rowsOf([edit(now - 5 * MINUTE)], now)), [false])
+
+    // A later date names itself (a device whose clock ran ahead): "Oct 17 · 3 PM".
+    const tomorrow = edit(at(10, 17, 15))
+    const rows = rowsOf([tomorrow], now)
+    assert.deepEqual(withDay(rows), [true])
+    assert.equal(headers(rows)[0]?.level, 'hour')
+    assert.equal(headers(rows)[0]?.day, dayKey(tomorrow.time, newYork))
+
+    // A today below another day names itself: "Today · 8 AM" under tomorrow's rows.
+    const morning = edit(at(10, 16, 8, 5))
+    assert.deepEqual(withDay(rowsOf([morning, tomorrow], now)), [true, true])
+    // Two rows of the same day share the one name.
+    assert.deepEqual(withDay(rowsOf([edit(at(10, 17, 9)), tomorrow], now)), [true, false])
+    // Yesterday opens the list: named, as before.
+    assert.deepEqual(withDay(rowsOf([edit(at(10, 15, 21))], now)), [true])
+    // Yesterday below today: the newer today is unnamed, and the older day names itself.
+    assert.deepEqual(withDay(rowsOf([edit(at(10, 15, 21)), edit(now - 10 * MINUTE)], now)), [
+        false,
+        true,
+    ])
+})
+
+test('headers carry the local day of their time', () => {
+    const now = at(10, 16, 18, 30)
+    const old = edit(at(9, 1, 10))
+    const [header] = headers(rowsOf([old], now))
+    assert.equal(header?.level, 'day')
+    assert.equal(header?.day, dayKey(old.time, newYork))
+    assert.equal(header?.time, old.time)
+})
+
+test('rows are cut by the calendar’s zone, not the host’s', () => {
+    // 18:10Z and 18:20Z are the same New York hour (14:10 and 14:20). In Kathmandu (+5:45) they
+    // are 23:55 on the 16th and 00:05 on the 17th: two days, two hours, two rows.
+    const now = Date.UTC(2026, 9, 17, 3)
+    const first = plainEdit(Date.UTC(2026, 9, 16, 18, 10))
+    const second = plainEdit(Date.UTC(2026, 9, 16, 18, 20))
+    const sizes = (zone: string) =>
+        buildRows([second, first], {
+            filter: 'all',
+            expanded: new Set(),
+            damaged: new Set(),
+            calendar: calendarIn(now, zone),
+        })
+            .filter((row): row is Extract<Row, { type: 'entry' }> => row.type === 'entry')
+            .map((row) => row.members.length)
+    assert.deepEqual(sizes('America/New_York'), [2])
+    assert.deepEqual(sizes('Asia/Kathmandu'), [1, 1])
+    const kathmanduHeaders = headers(
+        buildRows([second, first], {
+            filter: 'all',
+            expanded: new Set(),
+            damaged: new Set(),
+            calendar: calendarIn(now, 'Asia/Kathmandu'),
+        }),
+    )
+    assert.equal(kathmanduHeaders.length, 2)
+    assert.notEqual(kathmanduHeaders[0]?.day, kathmanduHeaders[1]?.day)
 })

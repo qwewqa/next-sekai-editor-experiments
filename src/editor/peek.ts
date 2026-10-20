@@ -5,7 +5,6 @@ import { onPeekLeft, onPeekRefused, onPeekStart, setPeekEffects } from '../histo
 import { onResetState } from '../history/resetHooks'
 import { isPeeking } from '../history/stack'
 import { i18n } from '../i18n'
-import { formatEntryTime } from '../i18n/dateTime'
 import { clearPreviewEdit, previewEdit } from '../preview/edit'
 import { settings } from '../settings'
 import { beatToTime, isSameTempo, timeToBeat } from '../state/integrals/bpms'
@@ -20,6 +19,8 @@ import {
     isElevationSideBySide,
     openElevationEditor,
 } from './elevation/state'
+import { historyCalendar } from './history/calendarClock'
+import { historyFormat } from './history/historyFormat'
 import { notify } from './notification'
 import { view } from './view'
 
@@ -27,7 +28,12 @@ import { view } from './view'
 // drags and scaling sessions on entering, and the Elevation Editor closed while peeking unless
 // side by side, then reopened on leaving.
 
-const clock = (time: number) => () => formatEntryTime(settings.locale, time)
+// The notice names the time in the History clock and zone of the moment the step was restored; the
+// locale stays live.
+const clock = (time: number) => {
+    const calendar = historyCalendar()
+    return () => historyFormat(calendar, settings.locale).entryTime(time)
+}
 
 setPeekEffects({
     restoredOperation: (time) =>

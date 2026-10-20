@@ -1,6 +1,7 @@
 import { shallowRef } from 'vue'
-import { formatClockSeconds, formatDateTimeSeconds } from '../../i18n/dateTime'
-import { languageTag } from '../../i18n/plural'
+import { fieldsOf, resolveZone, sameDay, sameYear } from '../../calendar/calendar'
+import { calendarAt, type Calendar } from './calendarClock'
+import { historyFormat } from './historyFormat'
 
 // The peek strip's fit (Part 1 §1.4.11): one width per language and width class, from the widest
 // text the strip can show, measured once, never from the live date. Stepping between entries or
@@ -59,20 +60,14 @@ export type PeekLayout = {
     narrowArrows: boolean
 }
 
-export const compactDateTime = (locale: string) =>
-    new Intl.DateTimeFormat(languageTag(locale), {
-        year: '2-digit',
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    })
-
-/** Every month name and day period, one- and two-digit hours: tabular figures make digits equal. */
+/**
+ * Every month name and day period, one- and two-digit hours: tabular figures make digits equal.
+ * They are UTC instants, written in UTC: the widths never depend on the History zone.
+ */
 const candidates = (year: number) =>
     Array.from({ length: 12 }, (_, month) =>
         [0, 1, 9, 10, 11, 12, 13, 21, 22, 23].map((hour) =>
-            new Date(year, month, 28, hour, 58, 58).getTime(),
+            Date.UTC(year, month, 28, hour, 58, 58),
         ),
     ).flat()
 
@@ -90,7 +85,7 @@ export const measurePeekWidths = (
         summary: string[]
         counted: string[]
     },
-    now = Date.now(),
+    cal: Calendar,
 ): PeekWidths => {
     const box = document.createElement('div')
     box.setAttribute('aria-hidden', 'true')
@@ -105,18 +100,20 @@ export const measurePeekWidths = (
             return span
         })
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-    const times = candidates(new Date(now).getFullYear())
-    const compact = compactDateTime(locale)
+    // The candidates are of the calendar's year, as a UTC calendar reads them.
+    const year = fieldsOf(cal.now, cal.zone).year
+    const format = historyFormat(calendarAt(Date.UTC(year, 5, 15), resolveZone('UTC')), locale)
+    const times = candidates(year)
     const today = spans(
-        times.map((at) => formatClockSeconds(locale, at)),
+        times.map((at) => format.clockSeconds(at)),
         14,
     )
     const thisYear = spans(
-        times.map((at) => formatDateTimeSeconds(locale, at, now)),
+        times.map((at) => format.dateTimeSeconds(at)),
         14,
     )
     const compactSpans = spans(
-        times.map((at) => compact.format(at)),
+        times.map((at) => format.compact(at)),
         14,
     )
     const backSpans = spans([labels.back], 14)
@@ -225,11 +222,9 @@ export const peekLayout = (pane: number, w: PeekWidths | undefined): PeekLayout 
 }
 
 /** The date the strip shows: today's clock, this year's date and time, or the compact form. */
-export const peekText = (locale: string, at: number, wide: boolean, now = Date.now()) => {
-    const day = new Date(at)
-    const today = new Date(now)
-    if (day.toDateString() === today.toDateString()) return formatClockSeconds(locale, at)
-    if (wide && day.getFullYear() === today.getFullYear())
-        return formatDateTimeSeconds(locale, at, now)
-    return compactDateTime(locale).format(at)
+export const peekText = (cal: Calendar, locale: string, at: number, wide: boolean) => {
+    const format = historyFormat(cal, locale)
+    if (sameDay(at, cal.now, cal.zone)) return format.clockSeconds(at)
+    if (wide && sameYear(at, cal.now, cal.zone)) return format.dateTimeSeconds(at)
+    return format.compact(at)
 }

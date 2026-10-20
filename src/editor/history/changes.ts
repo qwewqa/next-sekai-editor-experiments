@@ -45,6 +45,7 @@ import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { getComposedLayout } from '../composedView'
 import { view } from '../view'
+import { historyCalendar } from './calendarClock'
 import {
     countOff,
     nearestStop,
@@ -55,6 +56,7 @@ import {
     type Place,
     type Stop,
 } from './changeStops'
+import { historyOperationContext } from './historyOperationContext'
 import { createChangePaint, createPropertyInspection, createShowEdits } from './inspection'
 import { peekedInfo, peekedLabel, type ChainKey, type PeekedInfo } from './selection'
 
@@ -254,7 +256,8 @@ export const changeLine = computed(() => {
             changeText(change) ??
             ((peekedInfo.value?.members?.length ?? 1) > 1
                 ? fixedLine('settingsChanged')
-                : peekedInfo.value && peekedLabel(peekedInfo.value))
+                : peekedInfo.value &&
+                  peekedLabel(peekedInfo.value, historyOperationContext(historyCalendar())))
         )
     if (comparisonStatus.value === 'initial') return fixedLine('initialState')
     if (comparisonStatus.value === 'unavailable') return fixedLine('unavailable')
