@@ -54,7 +54,7 @@ const zipOf = (page: Page, name: string) =>
                     ) as never
                 const project = (await read('project.json')) as Row
                 const history = project.history as { manifest: string; segments?: string[] }
-                const segments = []
+                const segments: Zip['segments'] = []
                 for (const part of history.segments ?? []) segments.push(await read(part))
                 return {
                     project,
@@ -173,7 +173,7 @@ test('F1: an operation from a newer editor survives Save, reopen, Restore and an
         })
         const stack =
             await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
-        return JSON.stringify(stack.headStep.value.operation)
+        return JSON.stringify(stack.headStep.value?.operation)
     })
     const afterFuture = await liveOf(page)
     await placeTap(page, { lane: 2, beat: 3 })
