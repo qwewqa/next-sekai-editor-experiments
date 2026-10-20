@@ -635,9 +635,28 @@ const summarize = (dump: Dump, log: Log) => {
     }
 }
 
+const rowsTimes = (dump: Dump) =>
+    (dump.stores.find((store) => store.name === 'entries')?.records ?? []).map(
+        (r) => (r.value as { time: number }).time,
+    )
+
 test('long-history sample', async ({ browser }) => {
     const context = await browser.newContext()
-    const clock = new SampleClock(context, at('2026-10-05T09:10:00'))
+    // Dates are relative to the generation time: the six days end on the day it runs, and the last
+    // visit starts early enough to end before now (on the day before, in the first two hours).
+    const now = new Date()
+    const nowMinutes = now.getHours() * 60 + now.getMinutes()
+    const early = nowMinutes < 120
+    const lastStart = early ? 16 * 60 + 45 : Math.min(16 * 60 + 45, nowMinutes - 90)
+    const lastDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (early ? 1 : 0))
+    const pad = (n: number) => String(n).padStart(2, '0')
+    /** Local time on the day `back` days before the last day. */
+    const when = (back: number, hhmm: string) => {
+        const d = new Date(lastDay.getFullYear(), lastDay.getMonth(), lastDay.getDate() - back)
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${hhmm}:00`
+    }
+    const lastTime = `${pad(Math.floor(lastStart / 60))}:${pad(lastStart % 60)}`
+    const clock = new SampleClock(context, at(when(5, '09:10')))
     await clock.install()
     await seedContext(context)
     await context.addInitScript((prefix) => {
@@ -654,13 +673,13 @@ test('long-history sample', async ({ browser }) => {
         return s
     }
 
-    await day1Morning(await go('2026-10-05T09:12:00', 'first visit: coconut opened'))
-    await day1Afternoon(await go('2026-10-05T13:47:00', 'new visit (continue), with a reload'))
-    await day2(await go('2026-10-06T10:05:00', 'new visit'))
-    await day2Evening(await go('2026-10-06T21:32:00', 'new visit'))
-    await day4(await go('2026-10-08T15:20:00', 'new visit, Duplicate Tab'), context, clock, log)
-    await day5(await go('2026-10-09T11:02:00', 'new visit, Restore from History'))
-    await day6(await go('2026-10-10T16:45:00', 'new visit'))
+    await day1Morning(await go(when(5, '09:12'), 'first visit: coconut opened'))
+    await day1Afternoon(await go(when(5, '13:47'), 'new visit (continue), with a reload'))
+    await day2(await go(when(4, '10:05'), 'new visit'))
+    await day2Evening(await go(when(4, '21:32'), 'new visit'))
+    await day4(await go(when(2, '15:20'), 'new visit, Duplicate Tab'), context, clock, log)
+    await day5(await go(when(1, '11:02'), 'new visit, Restore from History'))
+    await day6(await go(when(0, lastTime), 'new visit'))
 
     const result = await dump(context)
     const summary = summarize(result, log)
@@ -674,5 +693,6 @@ test('long-history sample', async ({ browser }) => {
         `${JSON.stringify(summary, null, 2)}\n`,
     )
     expect(summary.missed).toEqual([])
+    expect(Math.max(...rowsTimes(result))).toBeLessThan(Date.now())
     await context.close()
 })
