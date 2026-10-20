@@ -10,7 +10,7 @@ import type { PreparingModel } from './dialogs'
 // slow, or a Save waiting for an open's import. Cancel stops the Save; when the build has
 // outlasted the press, its button becomes [Download] or [Save], focused, and that press is the
 // gesture.
-const props = defineProps<{ name: string; model: PreparingModel }>()
+const props = defineProps<{ name: string; model: PreparingModel; kind?: 'save' | 'export' }>()
 
 const emit = defineEmits<{ close: [go: boolean] }>()
 
@@ -56,7 +56,10 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
 </script>
 
 <template>
-    <BaseModal :title="i18n.commands.save.title" @close="emit('close', false)">
+    <BaseModal
+        :title="kind === 'export' ? i18n.export.title : i18n.commands.save.title"
+        @close="emit('close', false)"
+    >
         <div class="flex flex-col gap-2">
             <p :id="`${ids}-text`" data-save-preparing>{{ text }}</p>
             <div
@@ -90,7 +93,13 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                 :class="buttonClass"
                 @click="emit('close', true)"
             >
-                {{ model.ready === 'download' ? i18n.save.download : i18n.commands.save.title }}
+                {{
+                    model.ready === 'download'
+                        ? i18n.save.download
+                        : kind === 'export'
+                          ? i18n.export.export
+                          : i18n.commands.save.title
+                }}
             </button>
         </div>
     </BaseModal>

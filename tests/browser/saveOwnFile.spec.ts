@@ -8,6 +8,7 @@ import {
     editPastUndo,
     notice,
     pauseAt,
+    pickerCalls,
     pressSave,
     projectOf,
     queuePicks,
@@ -16,6 +17,7 @@ import {
     release,
     rows,
     saveDialog,
+    sessionOf,
     start,
     submitSave,
     thinUndone,
@@ -357,4 +359,163 @@ test('a Save whose import never resumes says the file is not read completely, ne
         page.getByText('Not saved. "coconut.nxsp" could not be read completely.').first(),
     ).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
+})
+
+test('a pick of the chain’s own file that storage can’t place is still the own file: the bytes read are appended to (ADV3-2)', async ({
+    page,
+}) => {
+    const { before } = await shortChain(page)
+    expect(await thinUndone(page)).toBe(true)
+    const chain = await chainOf(page)
+    await saveAs(page)
+    await expect(saveDialog(page, 'Save As')).toBeVisible()
+    await settle(page)
+    await queuePicks(page, ['coconut.nxsp'])
+    await pauseAt(page, 'picked')
+    await submitSave(page, undefined, 'Save As')
+    await reached(page, 'picked')
+    // At the pick, as after a reload: no handle held, and storage's owners can't be read.
+    await page.evaluate(async (chainId) => {
+        const { forgetHandle } = await import('/src/editor/save/env.ts')
+        forgetHandle(chainId)
+        type Call = (method: string, ...rest: unknown[]) => Promise<unknown>
+        const worker = window.nseStorageTest!.worker as unknown as { call: Call }
+        const own = worker.call.bind(worker)
+        worker.call = (method, ...rest) =>
+            method === 'listHandleOwners'
+                ? Promise.reject(new Error('The storage worker restarted'))
+                : own(method, ...rest)
+    }, chain.chainId as string)
+    await release(page)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    // An append to the bytes read: the file's identity, and its base carried.
+    const after = await projectOf(page, 'coconut.nxsp')
+    expect(after.id).toBe(before.id)
+    expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
+})
+
+test('a put-back over a file filled meanwhile learns it from its size, never reading it whole (SF3-2)', async ({
+    page,
+}) => {
+    await shortChain(page)
+    expect(await thinUndone(page)).toBe(true)
+    await page.evaluate(async () => {
+        const module =
+            (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
+        const own = module.platform
+        const seen = window as unknown as { inspected?: [string | null, number][] }
+        seen.inspected = []
+        module.setPlatformForTests({
+            ...own,
+            inspect: async (target, kind) => {
+                const found = await own.inspect(target, kind)
+                seen.inspected!.push([kind ?? null, found === 'missing' ? -1 : found.size])
+                return found
+            },
+        })
+    })
+    await saveAs(page)
+    await expect(saveDialog(page, 'Save As')).toBeVisible()
+    await settle(page)
+    await queuePicks(page, ['coconut.nxsp'])
+    await pauseAt(page, 'picked')
+    await submitSave(page, undefined, 'Save As')
+    await reached(page, 'picked')
+    const other = new Uint8Array(
+        await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer(),
+    )
+    await writeFile(page, 'coconut.nxsp', other)
+    await release(page)
+    const offer = page
+        .getByRole('dialog')
+        .filter({ hasText: '"coconut.nxsp" no longer holds the content you opened.' })
+    await expect(offer).toBeVisible()
+    const inspected = await page.evaluate(
+        () => (window as unknown as { inspected: [string | null, number][] }).inspected,
+    )
+    // Level data's measure reads and hashes the whole file: never over a filled one.
+    expect(inspected.filter(([kind, size]) => kind === null && size > 0)).toEqual([])
+    expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
+})
+
+test('Export waits for an open’s import before its picker, so a pick of the file never stops the import (SF3-1)', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await heldImport(page)
+    await openFile(page, 'coconut.nxsp')
+    const calls = (await pickerCalls(page)).length
+    await queuePicks(page, ['coconut.nxsp'])
+    await page.keyboard.press('Shift+P')
+    await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
+    await settle(page)
+    await page.keyboard.press('Enter')
+    const waiting = page.getByRole('dialog').filter({ has: page.locator('[data-save-preparing]') })
+    await expect(waiting).toBeVisible()
+    await expect(waiting).toContainText('Export Level Data')
+    await page.waitForTimeout(500)
+    // No picker while the import reads the file.
+    expect((await pickerCalls(page)).length).toBe(calls)
+    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await expect
+        .poll(async () => (await pickerCalls(page)).length, { timeout: 15_000 })
+        .toBe(calls + 1)
+    await expect(page.getByRole('dialog').filter({ hasText: 'is not level data' })).toBeVisible()
+    // The import ended whole: no row left unkept, nothing pending.
+    const { entries, sessions } = await rows(page, ['entries', 'sessions'])
+    expect(entries!.filter((row) => row.value.kept === false)).toEqual([])
+    expect(sessions!.some((row) => row.value.importPending === true)).toBe(false)
+})
+
+test('Save to File… shows no count while an open’s import runs, and counts once it ends (SF3-3)', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await heldImport(page)
+    await openFile(page, 'coconut.nxsp')
+    const { sessionId } = await sessionOf(page)
+    await page.evaluate((sessionId) => {
+        void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile(sessionId))
+    }, sessionId)
+    const dialog = page.getByRole('dialog').filter({ has: page.locator('[data-save-total]') })
+    await expect(dialog).toBeVisible()
+    const total = dialog.locator('[data-save-total]')
+    await expect(total).toHaveText('Estimating size…')
+    await page.waitForTimeout(1500)
+    await expect(total).toHaveText('Estimating size…')
+    await expect(dialog).not.toContainText(/\d steps? ·/)
+    await page.evaluate(() => (window as unknown as { releaseImport: () => void }).releaseImport())
+    await expect(total).toHaveText(/^Total: about /, { timeout: 15_000 })
+    await expect(dialog).toContainText(/\d steps? ·/)
+})
+
+test('the Save dialog stops counting again when an import stays pending that never runs (ADV3-3, UI3-2)', async ({
+    page,
+}) => {
+    await reloadMidImport(page, 'never')
+    await page.evaluate(() => {
+        type Call = (method: string, ...rest: unknown[]) => Promise<unknown>
+        const worker = window.nseStorageTest!.worker as unknown as { call: Call }
+        const own = worker.call.bind(worker)
+        const seen = window as unknown as { estimates: number }
+        seen.estimates = 0
+        worker.call = (method, ...rest) => {
+            if (method === 'estimateSaveSize') seen.estimates++
+            return own(method, ...rest)
+        }
+    })
+    await saveAs(page)
+    const dialog = saveDialog(page, 'Save As')
+    await expect(dialog).toBeVisible()
+    const total = dialog.locator('[data-save-total]')
+    await expect(total).toHaveText('Estimating size…')
+    const estimates = () =>
+        page.evaluate(() => (window as unknown as { estimates: number }).estimates)
+    await page.waitForTimeout(6000)
+    const settled = await estimates()
+    await page.waitForTimeout(4000)
+    expect(await estimates()).toBe(settled)
+    await expect(total).toHaveText('Estimating size…')
 })

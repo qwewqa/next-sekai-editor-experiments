@@ -19,6 +19,7 @@ import {
 import {
     downloadOpened,
     exportPickerOpening,
+    exportPickerReady,
     refusePick,
     withPickLock,
     withTargetLock,
@@ -276,6 +277,9 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
     let refused: RefusedPick | undefined
     let accepted = false as boolean
     let result: SaveResult
+    // An open's import still reading the chain's own file is waited for first (SF3-1).
+    if (platform.pickSaveFile && !(await exportPickerReady(ctx.suggestedName, body.size())))
+        return 'cancelled'
     // Every picker reads the chain's own file first, when it may hold more (R2): not only the
     // dialog's first.
     exportPickerOpening()

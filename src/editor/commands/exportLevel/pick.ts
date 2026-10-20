@@ -22,6 +22,9 @@ export type RefusedPick = {
 /** What the file holds now; a missing or unreadable file is "something else". */
 const holds = async (target: FileTarget, bytes: ArrayBuffer): Promise<PickLeft> => {
     try {
+        // Its size first: a file of another size is never read and hashed whole (SF3-2).
+        const size = (await platform.read(target)).size
+        if (size !== 0 && size !== bytes.byteLength) return 'other'
         const disk = await platform.inspect(target)
         if (disk === 'missing') return 'other'
         if (disk.size === 0) return bytes.byteLength ? 'empty' : 'restored'
@@ -35,8 +38,9 @@ const holds = async (target: FileTarget, bytes: ArrayBuffer): Promise<PickLeft> 
 /** Writes the bytes back while the file is still the empty one the picker left. */
 const putBack = async (target: FileTarget, name: string, bytes: ArrayBuffer): Promise<PickLeft> => {
     try {
-        const disk = await platform.inspect(target)
-        if (disk !== 'missing' && disk.size === 0 && bytes.byteLength) {
+        const disk =
+            (await platform.read(target)).size === 0 ? await platform.inspect(target) : undefined
+        if (disk && disk !== 'missing' && disk.size === 0 && bytes.byteLength) {
             await platform.saveFile({
                 kind: 'recovery',
                 suggestedName: name,
@@ -86,7 +90,14 @@ export const setPickLock = (lock: PickLock) => {
 export const withPickLock: PickLock = (run) => (pickLock ? pickLock(run) : run())
 
 let exportReads:
-    | { start: () => void; end: () => void; picker: () => void; flow: (running: boolean) => void }
+    | {
+          start: () => void
+          end: () => void
+          picker: () => void
+          flow: (running: boolean) => void
+          /** Waits for an open's import before a picker (SF3-1); false when cancelled. */
+          importWait: (name: string, size: number) => Promise<boolean>
+      }
     | undefined
 
 /** Set by the Save core: Export's dialog reads the chain's own file first when needed (R2). */
@@ -111,6 +122,13 @@ export const exportDialogClosed = () => {
 export const exportPickerOpening = () => {
     exportReads?.picker()
 }
+
+/**
+ * Before a picker of Export's: an open's import still reading the chain's own file is waited for,
+ * since a pick of that file empties it (SF3-1). False when the user cancelled the wait.
+ */
+export const exportPickerReady = (name: string, size: number) =>
+    exportReads ? exportReads.importWait(name, size) : Promise.resolve(true)
 
 /** Export's flow runs, its follow-ups too after its dialog closed: what was read stays meanwhile. */
 export const exportFlowRunning = (running: boolean) => {

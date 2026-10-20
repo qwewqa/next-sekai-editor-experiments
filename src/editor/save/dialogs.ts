@@ -142,7 +142,8 @@ export type SavedFeedback = {
 
 export type SaveUi = {
     saveDialog: (input: SaveDialogInput) => Promise<SaveDialogResult>
-    preparing: (name: string) => Preparing
+    /** `export`: Export's picker waiting for an open's import (SF3-1), titled and pressed as Export. */
+    preparing: (name: string, kind?: 'save' | 'export') => Preparing
     conflict: (input: ConflictInput) => Promise<ConflictChoice | undefined>
     /** ""coconut.nxsp" cannot be found." `[Cancel]` `[Save As…]` (focused). */
     notFound: (name: string) => Promise<'saveAs' | undefined>
@@ -253,11 +254,11 @@ export const savedText = (feedback: SavedFeedback) => {
 export const defaultSaveUi: SaveUi = {
     saveDialog: (input) =>
         showModal(SaveDialog, { input }).then((result) => result as SaveDialogResult),
-    preparing: (name) => {
+    preparing: (name, kind = 'save') => {
         const controller = new AbortController()
         const model: PreparingModel = reactive({ size: 0, closed: false })
         let answer: ((go: boolean) => void) | undefined
-        void showModal(PreparingDialog, { name, model }).then((go) => {
+        void showModal(PreparingDialog, { name, model, kind }).then((go) => {
             if (answer) answer(go === true)
             else if (!model.closed) controller.abort()
             answer = undefined
