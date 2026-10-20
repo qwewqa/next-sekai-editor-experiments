@@ -1,27 +1,34 @@
 import {
     checkedSum,
     decodeOperation,
+    isObject,
+    nativeKinds,
+    operationCodecs,
+    ownerKinds,
+    owns,
+    type AssignedValue,
+    type FieldId,
+    type JsonValue,
     type NameText,
     type NativeCounts,
     type NativeKind,
     type NativeOperationInput,
-    type OwnerCounts,
     type OwnerKind,
     type OwnerReference,
-    type Subject,
 } from '../operations'
 import { renderOperationRecipe } from './aggregate'
-import { operationTime } from './format'
+import { describeMember, namedOwnerDescription } from './format'
 import { memberOperation, memberRecoveryContext } from './members'
 import type {
-    OperationDetailRow,
+    DetailRow,
+    DetailStep,
+    DetailText,
     OperationDetails,
-    OperationDetailSection,
+    OperationMember,
     OperationRecipe,
     OperationTextContext,
 } from './types'
 import {
-    booleanText,
     message,
     nameText,
     numberText,
@@ -31,431 +38,554 @@ import {
     ownerValueText,
 } from './values'
 
-const nativeLabel = (kind: NativeKind, context: OperationTextContext) => {
-    const t = context.strings
-    if (kind === 'note') return t.tools.brush.kinds.note
-    if (kind === 'bpm') return t.tools.bpm.title
-    if (kind === 'timeScale') return t.tools.timeScale.title
-    return t.events[kind]
+type Counts = Readonly<Partial<Record<NativeKind | OwnerKind, number>>>
+type RecordData = {
+    readonly rows: DetailRow[]
+    readonly facts: string[]
+    readonly note?: string
+    readonly lang?: string
 }
 
-const ownerLabel = (kind: OwnerKind, context: OperationTextContext) => {
+const plain = (text: string): DetailText => ({ text })
+const placeholder = (text: string): DetailText => ({ text, placeholder: true })
+
+/** A captured name: bare, with "Not set" for none or an empty name. */
+const nameDetail = (
+    name: NameText | null | undefined,
+    context: OperationTextContext,
+): DetailText =>
+    !name || (!name.text && !name.truncated)
+        ? placeholder(context.strings.historyChanges.notSet)
+        : { text: nameText(name), ...(name.truncated ? { shortened: true as const } : {}) }
+
+const sameText = (a: DetailText, b: DetailText) =>
+    a.text === b.text && !a.placeholder === !b.placeholder
+
+const countPhrase = (
+    kind: NativeKind | OwnerKind,
+    value: number,
+    context: OperationTextContext,
+) => {
     const t = context.strings
-    return {
-        group: t.modals.form.group.label,
-        stage: t.modals.form.stage.label,
-        groupFolder: t.historyChanges.groupFolders,
-        stageFolder: t.historyChanges.stageFolders,
-    }[kind]
+    const phrases = t.history.details.counts
+    switch (kind) {
+        case 'note':
+        case 'bpm':
+        case 'timeScale':
+        case 'group':
+        case 'stage':
+        case 'groupFolder':
+        case 'stageFolder':
+            return message(context, phrases[kind], value)
+        case 'cameraEvent':
+        case 'stageMaskEvent':
+        case 'stagePivotEvent':
+        case 'stageStyleEvent':
+        case 'stageTransformEvent':
+            return message(context, phrases.event, value, t.eventKinds[kind])
+    }
 }
 
-const capturedNameRow = (
+/** One phrase per kind, in the kind order: notes, BPM changes, time scales, events, then owners. */
+export const countItems = (counts: Counts, context: OperationTextContext) =>
+    [...nativeKinds, ...ownerKinds].flatMap((kind) => {
+        const value = counts[kind]
+        return value ? [countPhrase(kind, value, context)] : []
+    })
+
+const countsRow = (key: string, label: string, items: readonly string[]): readonly DetailRow[] =>
+    items.length ? [{ kind: 'counts', key, label, items }] : []
+
+const changeRow = (
     key: string,
     label: string,
-    name: NameText | null,
-    context: OperationTextContext,
-): OperationDetailRow => ({
-    key,
-    label,
-    value: name === null ? context.strings.historyChanges.notPresent : nameText(name),
-    ...(name?.truncated ? { nameShortened: true } : {}),
-})
+    before: DetailText,
+    after: DetailText,
+): readonly DetailRow[] =>
+    sameText(before, after) ? [] : [{ kind: 'change', key, label, before, after }]
 
-const countRows = (
-    counts: NativeCounts | OwnerCounts,
-    context: OperationTextContext,
-): OperationDetailRow[] =>
-    Object.entries(counts).map(([kind, value]) => ({
-        key: kind,
-        label: ['group', 'stage', 'groupFolder', 'stageFolder'].includes(kind)
-            ? ownerLabel(kind as OwnerKind, context)
-            : nativeLabel(kind as NativeKind, context),
-        value: numberText(value, context),
-    }))
+const valueRow = (key: string, label: string, value: DetailText): readonly DetailRow[] => [
+    { kind: 'value', key, label, value },
+]
 
-const nativeSections = (operation: NativeOperationInput, context: OperationTextContext) => {
-    const t = context.strings
-    const sections: OperationDetailSection[] = []
-    const add = (key: string, label: string, rows: readonly OperationDetailRow[]) =>
-        sections.push({ key, label, rows })
-    const row = (key: string, label: string, value: string): OperationDetailRow => ({
+const numberChange = (
+    key: string,
+    label: string,
+    before: number,
+    after: number,
+    context: OperationTextContext,
+    shift = 0,
+) =>
+    changeRow(
         key,
         label,
-        value,
-    })
-    const counts = (key: string, label: string, values: NativeCounts | OwnerCounts) =>
-        add(key, label, countRows(values, context))
-    const principal = (
-        subject: Subject,
-        changed: number | NativeCounts,
-        label = t.history.details.changed,
-    ) => {
-        const count =
-            typeof changed === 'number' ? changed : (checkedSum(Object.values(changed)) ?? 0)
-        return subject === 'objects'
-            ? add('principal', label, [
-                  row('objects', label, message(context, t.workspace.manager.objects, count)),
-              ])
-            : counts('principal', label, { [subject]: count })
-    }
-    const owner = (
-        target: OwnerReference,
-        key = 'target',
-        label = ownerLabel(target.kind, context),
-    ) => add(key, label, [capturedNameRow(key, t.modals.form.name.label, target.name, context)])
-    const destination = (target: OwnerReference | null) =>
-        target
-            ? owner(target, 'destination', t.history.details.destination)
-            : add('destination', t.history.details.destination, [
-                  row('root', t.historyChanges.folder, t.workspace.folders.none),
-              ])
-    const numericChange = (key: string, label: string, before: number, after: number, shift = 0) =>
-        add(key, label, [
-            row('before', t.historyChanges.before, numberText(before, context, shift)),
-            row('after', t.historyChanges.after, numberText(after, context, shift)),
-        ])
+        plain(numberText(before, context, shift)),
+        plain(numberText(after, context, shift)),
+    )
+
+const assigned = (
+    field: FieldId,
+    value: AssignedValue,
+    context: OperationTextContext,
+): DetailText =>
+    value.mode === 'varying'
+        ? placeholder(context.strings.history.details.varying)
+        : typeof value.value === 'object'
+          ? nameDetail(value.value.name, context)
+          : plain(operationValueText(field, value.value, context))
+
+const ownerValue = (value: Parameters<typeof ownerValueText>[0], context: OperationTextContext) =>
+    value === null
+        ? placeholder(context.strings.historyChanges.notSet)
+        : plain(ownerValueText(value, context))
+
+const total = (counts: Counts) => checkedSum(Object.values(counts)) ?? 0
+const kindCount = (counts: Counts) => Object.keys(counts).length
+
+/** Whether a title already names this entry alone, so a count of exactly it would repeat the title. */
+const namesEntry = (entry: OwnerReference | undefined, counts: Counts) =>
+    !!entry && total(counts) !== 0 && kindCount(counts) === 1 && counts[entry.kind] === 1
+
+/** Names that were cut for display, anywhere in the operation's data. */
+const hasShortenedName = (value: unknown): boolean =>
+    typeof value === 'object' &&
+    value !== null &&
+    (('truncated' in value && value.truncated === true && 'text' in value) ||
+        Object.values(value).some(hasShortenedName))
+
+const nativeRecord = (
+    operation: NativeOperationInput,
+    context: OperationTextContext,
+): RecordData => {
+    const t = context.strings
+    const d = t.history.details
+    const rows: DetailRow[] = []
+    const facts: string[] = []
     const collateral = (data: { displaced?: NativeCounts; retainedInitialBpm?: true }) => {
-        if (data.displaced) counts('displaced', t.history.details.displaced, data.displaced)
-        if (data.retainedInitialBpm)
-            add('retained', t.tools.bpm.title, [
-                row('initial', t.history.details.retainedInitialBpm, booleanText(true, context)),
-            ])
+        if (data.displaced)
+            rows.push(...countsRow('displaced', d.displaced, countItems(data.displaced, context)))
     }
-    const source = (name: NameText | undefined) => {
-        if (name)
-            add('source', t.history.details.source, [
-                capturedNameRow('source', t.modals.form.name.label, name, context),
-            ])
+    const retained = (data: { retainedInitialBpm?: true }) => {
+        if (data.retainedInitialBpm) facts.push(d.retainedInitialBpm)
+    }
+    const changed = (label: string, counts: NativeCounts, always: boolean) => {
+        if (always || kindCount(counts) >= 2)
+            rows.push(...countsRow('changed', label, countItems(counts, context)))
     }
     switch (operation.id) {
         case 'nse.note.add':
         case 'nse.note.generate':
-            counts('created', t.historyChanges.added, { note: operation.data.created })
-            break
         case 'nse.object.add':
-            counts('created', t.historyChanges.added, {
-                [operation.data.subject]: operation.data.created,
-            })
+        case 'nse.note.combine':
+        case 'nse.note.split':
+        case 'nse.note.vertical':
+        case 'nse.note.elevation':
+        case 'nse.owner.rename':
+        case 'nse.owner.moveMany':
+        case 'nse.origin':
+        case 'nse.continue':
+        case 'nse.file.save':
+        case 'nse.restore':
+        case 'nse.externalChange':
             break
         case 'nse.object.edit':
-        case 'nse.object.move':
-        case 'nse.object.replace':
-            principal(operation.data.subject, operation.data.changed)
+        case 'nse.object.move': {
+            changed(d.changed, operation.data.changed, false)
             collateral(operation.data)
+            retained(operation.data)
             break
-        case 'nse.note.elevation':
-        case 'nse.note.vertical':
-            principal('note', operation.data.targets)
+        }
+        case 'nse.object.replace': {
+            const { subject, displaced } = operation.data
+            // The title says one entry was replaced for each one changed.
+            const same =
+                kindCount(displaced) === 1 && displaced[subject] === total(operation.data.changed)
+            if (!same) collateral(operation.data)
+            retained(operation.data)
             break
-        case 'nse.object.paste':
-            counts('placed', t.history.details.placed, operation.data.placed)
-            if (operation.data.displaced)
-                counts('displaced', t.history.details.displaced, operation.data.displaced)
-            add('paste', t.commands.paste.title, [
-                row(
+        }
+        case 'nse.object.paste': {
+            rows.push(...countsRow('placed', d.placed, countItems(operation.data.placed, context)))
+            collateral(operation.data)
+            rows.push(
+                ...valueRow(
                     'layout',
-                    t.sidebars.view.layout.label,
-                    t.sidebars.view.layout[operation.data.variant],
+                    t.commands.editorLayout.title,
+                    plain(t.sidebars.view.layout[operation.data.variant]),
                 ),
-                row(
-                    'flipped',
-                    t.history.details.flipped,
-                    booleanText(operation.data.flipped, context),
-                ),
-                row(
+                ...valueRow(
                     'at',
-                    t.history.details.pasteLocation,
-                    t.history.details[operation.data.at === 'pointer' ? 'pointer' : 'position'],
+                    d.pasteLocation,
+                    plain(d[operation.data.at === 'pointer' ? 'pointer' : 'position']),
                 ),
-            ])
-            break
-        case 'nse.object.brush':
-        case 'nse.property.set':
-            principal(operation.data.subject, operation.data.changed)
-            collateral(operation.data)
-            add(
-                'properties',
-                t.workspace.panels.properties,
-                operation.data.assignments.map((assignment) => {
-                    const value = assignment.after
-                    return {
-                        key: assignment.field,
-                        label: operationFieldLabel(assignment.field, context),
-                        value:
-                            value.mode === 'varying'
-                                ? t.history.details.varying
-                                : typeof value.value === 'object'
-                                  ? nameText(value.value.name)
-                                  : operationValueText(assignment.field, value.value, context),
-                        ...(value.mode === 'uniform' &&
-                        typeof value.value === 'object' &&
-                        value.value.name.truncated
-                            ? { nameShortened: true }
-                            : {}),
-                    }
-                }),
             )
+            if (operation.data.flipped) facts.push(d.pastedFlipped)
             break
+        }
+        case 'nse.object.brush':
+        case 'nse.property.set': {
+            changed(d.changed, operation.data.changed, false)
+            collateral(operation.data)
+            for (const assignment of operation.data.assignments)
+                rows.push(
+                    ...changeRow(
+                        assignment.field,
+                        operationFieldLabel(assignment.field, context),
+                        assigned(assignment.field, assignment.before, context),
+                        assigned(assignment.field, assignment.after, context),
+                    ),
+                )
+            retained(operation.data)
+            break
+        }
         case 'nse.object.delete':
         case 'nse.object.cut':
-            counts('removed', t.historyChanges.removed, operation.data.removed)
-            break
-        case 'nse.object.flip':
-            principal(operation.data.subject, operation.data.changed)
-            collateral(operation.data)
-            break
-        case 'nse.object.scale':
-            principal(operation.data.subject, operation.data.changed)
-            collateral(operation.data)
-            add(
-                'scale',
-                t.commands.scaleSelection.factor,
-                operation.data.transform.mode === 'uniform'
-                    ? [
-                          row(
-                              'factor',
-                              t.commands.scaleSelection.factor,
-                              numberText(operation.data.transform.factor, context),
-                          ),
-                          row(
-                              'pivot',
-                              t.history.details.pivot,
-                              numberText(operation.data.transform.pivot, context),
-                          ),
-                      ]
-                    : [
-                          row(
-                              'composed',
-                              t.history.details.composedTransform,
-                              t.history.details.composedTransform,
-                          ),
-                      ],
-            )
-            break
-        case 'nse.note.combine':
-            principal('note', operation.data.targets)
-            break
-        case 'nse.note.split':
-            add('split', t.commands.splitHold.title, [
-                row(
-                    'points',
-                    t.commands.splitHold.title,
-                    message(context, t.commands.splitHold.split, operation.data.targets),
-                ),
-            ])
-            break
-        case 'nse.header.set':
-            numericChange(
-                'header',
-                operation.data.field === 'initialLife'
-                    ? t.commands.properties.modal.life
-                    : t.commands.bgm.modal.offset,
-                operation.data.before,
-                operation.data.after,
-                operation.data.field === 'bgmOffset' ? 3 : 0,
-            )
-            break
-        case 'nse.bgm.change':
-            add('file', t.commands.bgm.modal.file, [
-                capturedNameRow(
-                    'before',
-                    t.historyChanges.before,
-                    operation.data.file.before,
-                    context,
-                ),
-                capturedNameRow(
-                    'after',
-                    t.historyChanges.after,
-                    operation.data.file.after,
-                    context,
-                ),
-            ])
-            if (operation.data.offset)
-                numericChange(
-                    'offset',
-                    t.commands.bgm.modal.offset,
-                    operation.data.offset.before,
-                    operation.data.offset.after,
-                    3,
+            if (kindCount(operation.data.removed) >= 2)
+                rows.push(
+                    ...countsRow(
+                        'removed',
+                        t.historyChanges.removed,
+                        countItems(operation.data.removed, context),
+                    ),
                 )
             break
+        case 'nse.object.flip': {
+            changed(d.changed, operation.data.changed, true)
+            collateral(operation.data)
+            retained(operation.data)
+            break
+        }
+        case 'nse.object.scale': {
+            changed(d.changed, operation.data.changed, true)
+            collateral(operation.data)
+            const { transform } = operation.data
+            if (transform.mode === 'uniform')
+                rows.push(
+                    ...valueRow(
+                        'factor',
+                        t.commands.scaleSelection.factor,
+                        plain(numberText(transform.factor, context)),
+                    ),
+                    ...valueRow('pivot', d.pivot, plain(numberText(transform.pivot, context))),
+                )
+            else
+                rows.push(
+                    ...valueRow(
+                        'factor',
+                        t.commands.scaleSelection.factor,
+                        plain(d.composedTransform),
+                    ),
+                )
+            retained(operation.data)
+            break
+        }
+        case 'nse.header.set':
+            rows.push(
+                ...(operation.data.field === 'initialLife'
+                    ? numberChange(
+                          'life',
+                          t.commands.properties.modal.life,
+                          operation.data.before,
+                          operation.data.after,
+                          context,
+                      )
+                    : numberChange(
+                          'offset',
+                          t.commands.bgm.modal.offset,
+                          operation.data.before,
+                          operation.data.after,
+                          context,
+                          3,
+                      )),
+            )
+            break
+        case 'nse.bgm.change': {
+            const { file, offset } = operation.data
+            const before = nameDetail(file.before, context)
+            const after = nameDetail(file.after, context)
+            rows.push(
+                ...(sameText(before, after)
+                    ? valueRow('file', t.commands.bgm.modal.file, after)
+                    : changeRow('file', t.commands.bgm.modal.file, before, after)),
+            )
+            if (offset)
+                rows.push(
+                    ...numberChange(
+                        'offset',
+                        t.commands.bgm.modal.offset,
+                        offset.before,
+                        offset.after,
+                        context,
+                        3,
+                    ),
+                )
+            break
+        }
         case 'nse.dynamicStages.enable':
-            add('dynamicStages', t.history.dynamicStages.title, [
-                row('enabled', t.history.dynamicStages.title, booleanText(true, context)),
-            ])
+            rows.push(
+                ...countsRow(
+                    'created',
+                    t.historyChanges.added,
+                    countItems(operation.data.created, context),
+                ),
+            )
             break
         case 'nse.owner.create':
-            owner(operation.data.target)
-            counts('created', t.historyChanges.added, { [operation.data.target.kind]: 1 })
-            destination(operation.data.destination)
-            if (
-                operation.data.target.kind === 'groupFolder' ||
-                operation.data.target.kind === 'stageFolder'
-            )
-                counts('gathered', t.history.details.gathered, {
-                    [operation.data.target.kind === 'groupFolder' ? 'group' : 'stage']:
-                        operation.data.gathered,
-                })
-            break
-        case 'nse.owner.rename':
-            owner(operation.data.target)
-            add('name', t.modals.form.name.label, [
-                capturedNameRow('before', t.historyChanges.before, operation.data.before, context),
-                capturedNameRow('after', t.historyChanges.after, operation.data.after, context),
-            ])
+            if (operation.data.destination)
+                rows.push(
+                    ...valueRow(
+                        'folder',
+                        t.historyChanges.folder,
+                        nameDetail(operation.data.destination.name, context),
+                    ),
+                )
             break
         case 'nse.owner.set':
-            owner(operation.data.target)
             for (const change of operation.data.changes)
-                add(change.field, ownerFieldLabel(change.field, context), [
-                    row('before', t.historyChanges.before, ownerValueText(change.before, context)),
-                    row('after', t.historyChanges.after, ownerValueText(change.after, context)),
-                ])
-            break
-        case 'nse.owner.move':
-            owner(operation.data.target)
-            destination(operation.data.destination)
-            if (operation.data.fromIndex !== undefined)
-                add('fromIndex', t.historyChanges.order, [
-                    row(
-                        'from',
-                        t.history.details.fromPosition,
-                        numberText(operation.data.fromIndex, context),
+                rows.push(
+                    ...changeRow(
+                        change.field,
+                        ownerFieldLabel(change.field, context),
+                        ownerValue(change.before, context),
+                        ownerValue(change.after, context),
                     ),
-                ])
-            if (operation.data.toIndex !== undefined)
-                add('toIndex', t.historyChanges.order, [
-                    row(
-                        'to',
-                        t.history.details.toPosition,
-                        numberText(operation.data.toIndex, context),
+                )
+            break
+        case 'nse.owner.move': {
+            const { category, fromIndex, toIndex } = operation.data
+            if (category === 'reorder' && fromIndex !== undefined && toIndex !== undefined)
+                rows.push(
+                    ...numberChange(
+                        'order',
+                        t.historyChanges.order,
+                        fromIndex + 1,
+                        toIndex + 1,
+                        context,
                     ),
-                ])
+                )
             break
-        case 'nse.owner.moveMany':
-            counts('principal', t.history.details.changed, {
-                [operation.data.domain]: operation.data.targets,
-            })
-            destination(operation.data.destination)
+        }
+        case 'nse.owner.duplicate': {
+            const { source, created, objects } = operation.data
+            const titled = !source || total(created) === 0 || namesEntry(source, created)
+            if (objects || !titled)
+                rows.push(
+                    ...countsRow('added', t.historyChanges.added, [
+                        ...countItems(created, context),
+                        ...countItems(objects ?? {}, context),
+                    ]),
+                )
             break
-        case 'nse.owner.duplicate':
-            if (operation.data.source)
-                owner(operation.data.source, 'source', t.history.details.source)
-            counts('created', t.historyChanges.added, operation.data.created)
+        }
+        case 'nse.owner.delete': {
+            const { target, removed, objects, replacement } = operation.data
+            const titled = !target || total(removed) === 0 || namesEntry(target, removed)
+            if (objects || !titled)
+                rows.push(
+                    ...countsRow('removed', t.historyChanges.removed, [
+                        ...countItems(removed, context),
+                        ...countItems(objects ?? {}, context),
+                    ]),
+                )
+            if (replacement) facts.push(namedOwnerDescription('added', replacement, context))
             break
-        case 'nse.owner.delete':
-            if (operation.data.target) owner(operation.data.target)
-            counts('removed', t.historyChanges.removed, operation.data.removed)
-            break
+        }
         case 'nse.owner.ungroup':
-            owner(operation.data.target)
-            counts('released', t.history.details.released, {
-                [operation.data.target.kind === 'groupFolder' ? 'group' : 'stage']:
-                    operation.data.released,
-            })
+            if (operation.data.released)
+                rows.push(
+                    ...countsRow(
+                        'released',
+                        d.released,
+                        countItems(
+                            {
+                                [operation.data.target.kind === 'groupFolder' ? 'group' : 'stage']:
+                                    operation.data.released,
+                            },
+                            context,
+                        ),
+                    ),
+                )
             break
-        case 'nse.origin':
-            source(operation.data.source)
-            break
-        case 'nse.continue':
-            add('fromTime', t.history.details.source, [
-                row(
-                    'time',
-                    t.history.details.source,
-                    operationTime(operation.data.fromTime, context),
-                ),
-            ])
-            break
-        case 'nse.file.save':
         case 'nse.file.export':
-            add('file', t.commands.bgm.modal.file, [
-                capturedNameRow('file', t.commands.bgm.modal.file, operation.data.file, context),
-            ])
-            add('delivery', t.history.details.delivery, [
-                row(
-                    'method',
-                    t.history.details.delivery,
-                    operation.data.delivery === 'file'
-                        ? t.commands.bgm.modal.file
-                        : t.history.details.download,
-                ),
-            ])
-            break
-        case 'nse.restore':
-            add('time', t.peek.restore, [
-                row('time', t.peek.restore, operationTime(operation.data.targetTime, context)),
-            ])
+            if (operation.data.delivery === 'download')
+                facts.push(message(context, t.entry.downloaded, nameText(operation.data.file)))
             break
         case 'nse.recovery':
-            add('recovery', t.entry.recoveredChanges, [
-                row(
-                    'dropped',
-                    t.commands.undo.title,
-                    message(context, t.history.details.droppedSteps, operation.data.droppedSteps),
-                ),
-            ])
-            break
-        case 'nse.externalChange':
+            if (operation.data.droppedSteps)
+                facts.push(message(context, d.droppedSteps, operation.data.droppedSteps))
             break
         default: {
             const exhaustive: never = operation
             throw new Error(`Missing operation Details: ${String(exhaustive)}`)
         }
     }
-    return sections
+    return { rows, facts }
+}
+
+/** A step recorded by a newer editor, or one this editor cannot read. */
+const unreadable = (raw: JsonValue, context: OperationTextContext): string => {
+    const d = context.strings.history.details
+    if (
+        isObject(raw) &&
+        typeof raw.id === 'string' &&
+        (owns(operationCodecs, raw.id)
+            ? typeof raw.version === 'number' && raw.version > 1
+            : raw.id.startsWith('nse.'))
+    )
+        return d.newer
+    return d.unsupported
+}
+
+const memberRecord = (member: OperationMember, context: OperationTextContext) => {
+    const raw = memberOperation(member)
+    const decoded = decodeOperation(raw)
+    if (decoded.status === 'known') {
+        const record = nativeRecord(decoded.operation, context)
+        return {
+            ...record,
+            facts: hasShortenedName(decoded.operation.data)
+                ? [...record.facts, context.strings.history.details.nameShortened]
+                : record.facts,
+        }
+    }
+    return {
+        rows: [],
+        facts: [],
+        note: unreadable(raw, context),
+        ...(decoded.fallback?.text && decoded.fallback.locale !== context.locale
+            ? { lang: decoded.fallback.locale }
+            : {}),
+    } satisfies RecordData
+}
+
+const memberRecovery = (member: OperationMember) => {
+    const recovery = memberRecoveryContext(member)
+    return recovery
+        ? {
+              descriptions: Object.freeze([
+                  ...recovery.dropped.slice(0, recovery.headIndex),
+                  recovery.head,
+                  ...recovery.dropped.slice(recovery.headIndex),
+              ]),
+              headIndex: recovery.headIndex,
+              omitted: recovery.omitted,
+          }
+        : undefined
+}
+
+/** Net rows of a group: the first step's before and the last step's after. */
+const groupRows = (recipe: OperationRecipe, context: OperationTextContext): DetailRow[] => {
+    const t = context.strings
+    const group = recipe.group
+    if (!group) return []
+    const operations = recipe.members.flatMap((member) => {
+        const decoded = decodeOperation(memberOperation(member))
+        return decoded.status === 'known' ? [decoded.operation] : []
+    })
+    const first = operations[0]
+    const last = operations.at(-1)
+    if (!first || !last) return []
+    const rows: DetailRow[] = []
+    if (
+        (group.family === 'delete' || group.family === 'cut') &&
+        group.subject === 'objects' &&
+        recipe.metric
+    )
+        rows.push(
+            ...countsRow(
+                'removed',
+                t.historyChanges.removed,
+                countItems(recipe.metric.counts, context),
+            ),
+        )
+    if (first.id === 'nse.header.set' && last.id === 'nse.header.set') {
+        const offset = first.data.field === 'bgmOffset'
+        rows.push(
+            ...numberChange(
+                offset ? 'offset' : 'life',
+                offset ? t.commands.bgm.modal.offset : t.commands.properties.modal.life,
+                first.data.before,
+                last.data.after,
+                context,
+                offset ? 3 : 0,
+            ),
+        )
+    } else if (first.id === 'nse.owner.set' && last.id === 'nse.owner.set') {
+        for (const change of last.data.changes) {
+            const start = first.data.changes.find(({ field }) => field === change.field)
+            if (start)
+                rows.push(
+                    ...changeRow(
+                        change.field,
+                        ownerFieldLabel(change.field, context),
+                        ownerValue(start.before, context),
+                        ownerValue(change.after, context),
+                    ),
+                )
+        }
+    } else if (first.id === 'nse.owner.move' && last.id === 'nse.owner.move') {
+        const { fromIndex } = first.data
+        const { toIndex } = last.data
+        if (group.category === 'reorder' && fromIndex !== undefined && toIndex !== undefined)
+            rows.push(
+                ...numberChange(
+                    'order',
+                    t.historyChanges.order,
+                    fromIndex + 1,
+                    toIndex + 1,
+                    context,
+                ),
+            )
+    }
+    return rows
 }
 
 export const operationDetails = (
     recipe: OperationRecipe,
-    inputContext: OperationTextContext,
+    context: OperationTextContext,
 ): OperationDetails => {
-    const context = { ...inputContext, qualifiers: recipe.qualifiers }
     const description = renderOperationRecipe(recipe, context)
-    const base = { description, stepCount: recipe.members.length, partial: recipe.partial }
     if (recipe.kind !== 'single') {
-        const metric = recipe.metric
+        const prefixless = recipe.kind === 'undo' || recipe.kind === 'redo'
+        const summary = recipe.summary
+        const shortened =
+            hasShortenedName(summary?.data) ||
+            hasShortenedName(recipe.group?.target) ||
+            hasShortenedName(recipe.group?.destination)
+        const steps: DetailStep[] = [...recipe.members].reverse().map((member) => {
+            const record = memberRecord(member, context)
+            return {
+                member,
+                label: describeMember(member, context, { prefixless }),
+                expandable:
+                    record.rows.length > 0 ||
+                    record.facts.length > 0 ||
+                    !!record.note ||
+                    !!memberRecoveryContext(member),
+            }
+        })
         return {
-            ...base,
-            sections: metric
-                ? [
-                      {
-                          key: 'counts',
-                          label:
-                              recipe.group?.family === 'delete' ||
-                              recipe.group?.family === 'ownerDelete' ||
-                              recipe.group?.family === 'cut'
-                                  ? context.strings.historyChanges.removed
-                                  : context.strings.historyChanges.added,
-                          rows: countRows(metric.counts, context),
-                      },
-                  ]
-                : [],
-            children: recipe.members,
+            description,
+            rows: groupRows(recipe, context),
+            facts: shortened ? [context.strings.history.details.nameShortened] : [],
+            steps: {
+                count: recipe.members.length,
+                partial: recipe.partial,
+                members: steps,
+                ...(prefixless ? { prefixless: true as const } : {}),
+            },
         }
     }
     const member = recipe.members[0]
     if (!member) throw new Error('Missing Details member')
-    const decoded = decodeOperation(memberOperation(member))
-    const recovery = memberRecoveryContext(member)
+    const record = memberRecord(member, context)
+    const recovery = memberRecovery(member)
     return {
-        ...base,
-        ...(decoded.status === 'unsupported'
-            ? { explanation: context.strings.history.details.unsupported }
-            : {}),
-        sections: decoded.status === 'known' ? nativeSections(decoded.operation, context) : [],
-        children: [],
-        ...(recovery
-            ? {
-                  recovery: {
-                      descriptions: Object.freeze([
-                          ...recovery.dropped.slice(0, recovery.headIndex),
-                          recovery.head,
-                          ...recovery.dropped.slice(recovery.headIndex),
-                      ]),
-                      headIndex: recovery.headIndex,
-                      omitted: recovery.omitted,
-                  },
-              }
-            : {}),
+        description,
+        ...(record.lang ? { descriptionLang: record.lang } : {}),
+        ...(record.note ? { note: record.note } : {}),
+        rows: record.rows,
+        facts: record.facts,
+        ...(recovery ? { recovery } : {}),
     }
 }

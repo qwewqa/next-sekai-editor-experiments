@@ -9,7 +9,7 @@ import {
     describeMember,
     describeOperation,
     describeStep,
-    disambiguateOperationRecipes,
+    message,
     operationDetails,
     operationFieldLabel,
     operationStepCount,
@@ -188,13 +188,10 @@ test('all native IDs render current-language singleton descriptions and complete
             assert.notEqual(text, ctx.strings.history.summary.edit)
             const details = detail(input, ctx)
             assert.equal(details.description, text)
-            assert.equal(details.stepCount, 1)
-            assert.equal(details.explanation, undefined)
-            assert(
-                details.sections.every((section) =>
-                    section.rows.every((row) => typeof row.value === 'string' && row.label.length),
-                ),
-            )
+            assert.equal(details.steps, undefined)
+            assert.equal(details.note, undefined)
+            assert(details.rows.every((row) => row.label.length && row.key.length))
+            assert(details.rows.every((row) => row.kind !== 'counts' || row.items.length))
         }
     }
     assert.equal(describeOperation(fixture[0], en), 'Added 3 notes')
@@ -286,17 +283,22 @@ test('all 61 fields retain their qualified labels, applicability, typed values a
                         assignments: [
                             {
                                 field,
-                                before: { mode: 'uniform', value: samples[field] },
+                                before: { mode: 'varying' },
                                 after: { mode: 'uniform', value: samples[field] },
                             },
                         ],
                     },
                 } as NativeOperationInput
                 const details = detail(input, ctx)
-                const row = details.sections.find(({ key }) => key === 'properties')?.rows[0]
-                assert.equal(row?.label, operationFieldLabel(field, ctx))
+                const row = details.rows.find(({ key }) => key === field)
+                assert.equal(row?.kind, 'change')
+                assert.equal(row.label, operationFieldLabel(field, ctx))
+                assert.deepEqual(row.before, {
+                    text: ctx.strings.history.details.varying,
+                    placeholder: true,
+                })
                 assert.equal(
-                    row?.value,
+                    row.after.text,
                     typeof samples[field] === 'object'
                         ? 'A'
                         : operationValueText(field, samples[field], ctx),
@@ -310,8 +312,8 @@ test('all 61 fields retain their qualified labels, applicability, typed values a
     assert.equal(operationValueText('noteAlpha', 1.0000000000000002, en), '1.0000000000000002')
     assert.equal(operationValueText('isFake', false, en), 'Disabled')
     for (const ease of eases) assert(operationValueText('eventEase', ease, en).length)
-    const offset = detail(fixture[17]).sections[0]
-    assert.equal(offset?.rows[1]?.value, '1,000.0000000000002')
+    const offset = detail(fixture[17]).rows[0]
+    assert.equal(offset?.kind === 'change' && offset.after.text, '1,000.0000000000002')
     assert.equal(formatPropertyNumber(-0.0000001, 'en', 3), '-0.0001')
 })
 
@@ -342,9 +344,54 @@ test('known text relocalizes while unknown text and actual coarse kind remain li
             ja,
         )
         assert.equal(details.description, raw.fallback.text)
-        assert.equal(details.explanation, ja.strings.history.details.unsupported)
-        assert.deepEqual(details.sections, [])
+        assert.equal(details.note, ja.strings.history.details.unsupported)
+        assert.deepEqual(details.rows, [])
+        assert.deepEqual(details.facts, [])
     }
+    // A newer editor's step says so: an unknown nse id, or a known id with a newer version.
+    for (const raw of [
+        { id: 'nse.future.thing', version: 1, data: {}, fallback: { text: 'Later', locale: 'en' } },
+        { id: 'nse.note.add', version: 2, data: {}, fallback: { text: 'Later', locale: 'en' } },
+    ]) {
+        const details = operationDetails(
+            captureOperationRecipe([
+                {
+                    description: captureStep({
+                        kind: 'edit',
+                        operation: captureOperation(raw),
+                    }),
+                },
+            ]),
+            en,
+        )
+        assert.equal(details.note, en.strings.history.details.newer)
+        assert.equal(details.description, 'Later')
+    }
+    // An empty fallback falls back to the kind label, and a foreign fallback names its language.
+    const empty = captureOperation({
+        id: 'future.x',
+        version: 1,
+        data: {},
+        fallback: { text: '', locale: 'en' },
+    })
+    assert.equal(describeCapturedOperation(empty, 'Edit', en), 'Edit')
+    const foreign = operationDetails(
+        captureOperationRecipe([
+            {
+                description: captureStep({
+                    kind: 'edit',
+                    operation: captureOperation({
+                        id: 'future.x',
+                        version: 1,
+                        data: {},
+                        fallback: { text: 'Hola', locale: 'es' },
+                    }),
+                }),
+            },
+        ]),
+        en,
+    )
+    assert.equal(foreign.descriptionLang, 'es')
     for (const kind of ['init', 'edit', 'restore'] as const) {
         const malformed = captureStep({ kind, operation: { id: 'future' } })
         assert.equal(
@@ -389,8 +436,8 @@ test('creation/removal sums are truthful, overflowing totals preserve groups and
         id: 'nse.object.move',
         data: { subject: 'bpm', changed: {}, displaced: { bpm: 1 }, retainedInitialBpm: true },
     } as const
-    assert.equal(describeOperation(zero, en), 'Moved 0 BPM changes')
-    assert(detail(zero).sections.some(({ key }) => key === 'retained'))
+    assert.equal(describeOperation(zero, en), 'Moved BPM changes')
+    assert.deepEqual(detail(zero).facts, [en.strings.history.details.retainedInitialBpm])
     assert.throws(() => recipe([zero, zero]), /Incompatible/)
 })
 
@@ -508,10 +555,8 @@ test('uniform values, varying fields, broad brush/multifield families and axis-o
         ...fixture[12],
         data: { ...fixture[12].data, transform: { mode: 'composed' } },
     })
-    assert.equal(
-        composed.sections.find(({ key }) => key === 'scale')?.rows[0]?.value,
-        'Multiple Adjustments',
-    )
+    const factor = composed.rows.find(({ key }) => key === 'factor')
+    assert.equal(factor?.kind === 'value' && factor.value.text, 'Multiple Adjustments')
 })
 
 test('all owner kinds quote literal names once and distinguish numbers, placeholders and excerpts', () => {
@@ -524,21 +569,22 @@ test('all owner kinds quote literal names once and distinguish numbers, placehol
                 data: { target: owner(kind, 9, text), destination: null, gathered: 0 },
             } as const
             const rendered = describeOperation(input, ctx)
-            assert(rendered.includes(`"${text}"`), `${locale} ${kind}: ${rendered}`)
-            assert.equal(detail(input, ctx).sections[0]?.rows[0]?.value, text)
+            const quote = (value: string) => message(ctx, ctx.strings.history.quoted, value)
+            assert(rendered.includes(quote(text)), `${locale} ${kind}: ${rendered}`)
+            assert.deepEqual(detail(input, ctx).rows, [])
             const empty = { ...input, data: { ...input.data, target: owner(kind, 9, '') } }
             const literal = {
                 ...input,
                 data: { ...input.data, target: owner(kind, 9, ctx.strings.historyChanges.notSet) },
             }
             assert.notEqual(describeOperation(empty, ctx), describeOperation(literal, ctx))
-            assert.equal(detail(empty, ctx).sections[0]?.rows[0]?.value, '')
+            assert(describeOperation(empty, ctx).includes(quote('')))
             const long = {
                 ...input,
                 data: { ...input.data, target: owner(kind, 9, '😀'.repeat(257)) },
             }
-            assert(describeOperation(long, ctx).includes('😀'.repeat(256) + '…"'))
-            assert.equal(detail(long, ctx).sections[0]?.rows[0]?.nameShortened, true)
+            assert(describeOperation(long, ctx).includes(quote('😀'.repeat(256) + '…')))
+            assert.deepEqual(detail(long, ctx).facts, [ctx.strings.history.details.nameShortened])
             const numeric = { ...input, data: { ...input.data, target: owner(kind, 9, '1') } }
             assert.notEqual(
                 describeOperation(numeric, ctx),
@@ -547,7 +593,7 @@ test('all owner kinds quote literal names once and distinguish numbers, placehol
         }
 })
 
-test('same-name identities gain frozen qualifiers and rename groups use exact first/last names', () => {
+test('rename groups use exact first/last names and identical titles carry no identity', () => {
     const rename = (id: number, before: string, after: string): NativeOperationInput => ({
         id: 'nse.owner.rename',
         data: {
@@ -559,83 +605,12 @@ test('same-name identities gain frozen qualifiers and rename groups use exact fi
     const a = recipe([rename(1, 'A', 'B'), rename(1, 'B', 'A')])
     const b = recipe([rename(2, 'A', 'B'), rename(2, 'B', 'A')])
     assert.equal(renderOperationRecipe(a, en), 'Renamed group "A"')
-    const qualified = disambiguateOperationRecipes([a, b], en)
-    assert.equal(renderOperationRecipe(qualified[0]!, en), 'Renamed group "A" (#1)')
-    assert.equal(renderOperationRecipe(qualified[1]!, en), 'Renamed group "A" (#2)')
-    assert.equal(renderOperationRecipe(a, en), 'Renamed group "A"')
-    const selected = qualified[0]!
-    const before = JSON.stringify(selected)
-    renderOperationRecipe(selected, context('fr'))
-    disambiguateOperationRecipes([selected], context('ja'))
-    assert.equal(JSON.stringify(selected), before)
-    assert(
-        Object.isFrozen(selected.members) &&
-            Object.isFrozen(selected.group?.fields ?? selected.group),
-    )
+    assert.equal(renderOperationRecipe(b, en), 'Renamed group "A"')
+    assert(!('qualifiers' in a))
+    assert(Object.isFrozen(a.members) && Object.isFrozen(a.group?.fields ?? a.group))
     const long = 'x'.repeat(257)
     const truncated = recipe([rename(1, long, 'B'), rename(1, 'B', long)])
     assert.match(renderOperationRecipe(truncated, en), / to /)
-})
-
-test('singleton named owners and uniform reference values qualify only colliding identities', () => {
-    const inputs: NativeOperationInput[] = [
-        ...fixture.filter(({ id }) => id.startsWith('nse.owner.')),
-        {
-            id: 'nse.owner.delete',
-            data: { domain: 'group', removed: { group: 1 }, target: owner() },
-        },
-        {
-            id: 'nse.owner.moveMany',
-            data: { domain: 'group', targets: 2, destination: owner('groupFolder') },
-        },
-        {
-            id: 'nse.property.set',
-            data: {
-                subject: 'note',
-                changed: { note: 1 },
-                assignments: [
-                    {
-                        field: 'groupId',
-                        before: { mode: 'uniform', value: owner() },
-                        after: { mode: 'uniform', value: owner() },
-                    },
-                ],
-            },
-        },
-    ]
-    for (const input of inputs) {
-        const other: NativeOperationInput = JSON.parse(
-            JSON.stringify(input, (key, value: unknown) =>
-                key === 'id' && typeof value === 'number' ? value + 10 : value,
-            ),
-        )
-        const a = recipe([input])
-        const b = recipe([other])
-        for (const locale of locales) {
-            const ctx = context(locale)
-            const original = renderOperationRecipe(a, ctx)
-            const [first, second] = disambiguateOperationRecipes([a, b], ctx)
-            assert(first && second)
-            if (JSON.stringify(input) === JSON.stringify(other)) continue
-            assert.notEqual(
-                renderOperationRecipe(first, ctx),
-                renderOperationRecipe(second, ctx),
-                input.id,
-            )
-            assert.equal(renderOperationRecipe(a, ctx), original)
-            assert(Object.isFrozen(first.qualifiers))
-        }
-    }
-    const property = inputs.at(-1)!
-    const other: NativeOperationInput = JSON.parse(
-        JSON.stringify(property).replaceAll('"id":1', '"id":2'),
-    )
-    const [a, b] = disambiguateOperationRecipes(
-        [recipe([property], true), recipe([other], true)],
-        en,
-    )
-    assert(a && b)
-    assert.notEqual(renderOperationRecipe(a, en), renderOperationRecipe(b, en))
 })
 
 test('full Timeline carriers project every coarse kind while bare initial steps retain context', () => {
@@ -761,7 +736,7 @@ test('actual recovered events retain one immutable ordered context without a pus
         assert.deepEqual(details.recovery?.descriptions, [same, head, same])
         assert.equal(details.recovery?.headIndex, 1)
         assert.equal(details.recovery?.omitted, 2)
-        assert.equal(details.children.length, 0)
+        assert.equal(details.steps, undefined)
         assert(Object.isFrozen(details.recovery?.descriptions))
         assert.equal(describeStep(details.recovery!.descriptions[1]!, ctx), '{0}|<opaque>')
     }
@@ -801,16 +776,22 @@ test('actual recovered events retain one immutable ordered context without a pus
 
 test('Details keeps BGM same-name replacements, recovery insertion order and lazy crossed children', () => {
     const bgm = detail(fixture[18])
-    assert.deepEqual(
-        bgm.sections[0]?.rows.map(({ value }) => value),
-        ['same.ogg', 'same.ogg'],
-    )
+    assert.deepEqual(bgm.rows, [
+        { kind: 'value', key: 'file', label: 'File', value: { text: 'same.ogg' } },
+    ])
     const clear = detail({
         id: 'nse.bgm.change',
         data: { file: { before: null, after: null }, offset: { before: 0, after: 0 } },
     })
     assert.equal(clear.description, 'Changed BGM')
-    assert.equal(clear.sections.length, 2)
+    assert.deepEqual(clear.rows, [
+        {
+            kind: 'value',
+            key: 'file',
+            label: 'File',
+            value: { text: 'Not set', placeholder: true },
+        },
+    ])
     const before = member(fixture[0]).description
     const head = member(fixture[32], 'restore').description
     const after = member(fixture[22]).description
@@ -832,13 +813,19 @@ test('Details keeps BGM same-name replacements, recovery insertion order and laz
         },
     )
     const undoDetails = operationDetails(undo, context('ja'))
-    assert.equal(undoDetails.children, undo.members)
-    assert.equal(undoDetails.sections.length, 0)
-    assert.equal(undoDetails.children[1]?.description.kind, 'restore')
-    assert.equal(undoDetails.stepCount, 3)
+    const steps = undoDetails.steps!
+    assert.deepEqual(
+        steps.members.map(({ member }) => member),
+        [...undo.members].reverse(),
+    )
+    assert.equal(undoDetails.rows.length, 0)
+    assert.equal(steps.members[1]?.member.description.kind, 'restore')
+    assert.equal(steps.count, 3)
+    assert.equal(steps.prefixless, true)
     assert.match(renderOperationRecipe(undo, en), /^Undid 3 steps$/)
+    assert.equal(steps.members[2]?.label, '3個のノーツを追加しました')
     assert.equal(
-        describeMember(undoDetails.children[0]!, context('ja')),
+        describeMember(steps.members[2]!.member, context('ja')),
         '3個のノーツを追加しました',
     )
 })

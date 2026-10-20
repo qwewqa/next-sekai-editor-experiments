@@ -3,11 +3,11 @@ import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import {
     captureOperationRecipe,
-    describeMember,
     describeStep,
     message,
     operationDetails,
     operationStepCount,
+    type DetailText,
     type OperationMember,
     type OperationRecipe,
 } from '../../history/operationPresentation'
@@ -23,12 +23,11 @@ const childList = useTemplateRef<HTMLElement>('childList')
 const recoveryList = useTemplateRef<HTMLElement>('recoveryList')
 const expanded = ref<ReadonlySet<number>>(new Set())
 const context = computed(getHistoryOperationContext)
-const memberContext = computed(() => ({ ...context.value, qualifiers: props.recipe.qualifiers }))
 const details = computed(() => operationDetails(props.recipe, context.value))
-const children = computed(() => details.value.children.slice(0, limit.value))
+const children = computed(() => details.value.steps?.members.slice(0, limit.value) ?? [])
 const recovery = computed(() => details.value.recovery?.descriptions.slice(0, recoveryLimit.value))
-const childRecipe = (member: OperationMember) =>
-    captureOperationRecipe([member], { qualifiers: props.recipe.qualifiers })
+const childRecipe = (member: OperationMember) => captureOperationRecipe([member])
+const placeholderClass = (value: DetailText) => (value.placeholder ? 'text-fg/80' : undefined)
 const toggle = (index: number, event: Event) => {
     const next = new Set(expanded.value)
     if ((event.currentTarget as HTMLDetailsElement).open) next.add(index)
@@ -39,7 +38,7 @@ const toggle = (index: number, event: Event) => {
 const showMore = async () => {
     const first = limit.value
     limit.value += PAGE
-    if (limit.value < details.value.children.length) return
+    if (limit.value < (details.value.steps?.members.length ?? 0)) return
     await nextTick()
     childList.value?.children[first]?.querySelector('summary')?.focus()
 }
@@ -66,7 +65,11 @@ const childTime = (at: number) =>
         data-operation-details
     >
         <div v-if="!summaryProvided" class="space-y-1">
-            <p class="whitespace-pre-wrap font-bold" data-operation-description>
+            <p
+                class="whitespace-pre-wrap font-bold"
+                :lang="details.descriptionLang"
+                data-operation-description
+            >
                 {{ details.description }}
             </p>
             <p v-if="time !== undefined" class="text-fg/80" data-operation-time>
@@ -76,37 +79,36 @@ const childTime = (at: number) =>
                 {{ operationStepCount(recipe, context) }}
             </p>
         </div>
-        <p v-if="details.explanation" data-operation-unsupported>{{ details.explanation }}</p>
-        <section
-            v-for="section in details.sections"
-            :key="section.key"
-            :data-operation-section="section.key"
-        >
-            <h3 class="mb-2 font-bold">{{ section.label }}</h3>
-            <dl class="space-y-3">
-                <div
-                    v-for="row in section.rows"
-                    :key="row.key"
-                    :data-operation-field="row.key"
-                    class="min-w-0"
-                >
-                    <dt class="text-xs text-fg/80">{{ row.label }}</dt>
-                    <dd class="whitespace-pre-wrap">{{ row.value }}</dd>
-                    <dd
-                        v-if="row.nameShortened"
-                        class="text-xs text-fg/80"
-                        data-operation-shortened
-                    >
-                        {{ i18n.history.details.nameShortened }}
-                    </dd>
-                </div>
-            </dl>
-        </section>
+        <p v-if="details.note" data-operation-unsupported>{{ details.note }}</p>
+        <dl v-if="details.rows.length" class="space-y-3">
+            <div
+                v-for="row in details.rows"
+                :key="row.key"
+                :data-operation-field="row.key"
+                class="min-w-0"
+            >
+                <dt class="text-xs text-fg/80">{{ row.label }}</dt>
+                <dd v-if="row.kind === 'counts'" class="whitespace-pre-wrap">
+                    <span v-for="item in row.items" :key="item" class="block">{{ item }}</span>
+                </dd>
+                <dd v-else-if="row.kind === 'change'" class="whitespace-pre-wrap">
+                    <span :class="placeholderClass(row.before)">{{ row.before.text }}</span>
+                    ›
+                    <span :class="placeholderClass(row.after)">{{ row.after.text }}</span>
+                </dd>
+                <dd v-else class="whitespace-pre-wrap" :class="placeholderClass(row.value)">
+                    {{ row.value.text }}
+                </dd>
+            </div>
+        </dl>
+        <ul v-if="details.facts.length" class="space-y-1" data-operation-facts>
+            <li v-for="fact in details.facts" :key="fact">{{ fact }}</li>
+        </ul>
         <!-- The group's steps: one line each, the chevron leading, the time at the end. -->
         <div v-if="children.length" class="space-y-2" data-operation-children>
             <div ref="childList">
                 <details
-                    v-for="(member, index) in children"
+                    v-for="({ member, label }, index) in children"
                     :key="member.id ?? index"
                     class="border-t border-fg/15"
                     @toggle="toggle(index, $event)"
@@ -118,9 +120,7 @@ const childTime = (at: number) =>
                             :direction="expanded.has(index) ? 'down' : 'right'"
                             class="self-center"
                         />
-                        <span class="min-w-0 flex-1 whitespace-pre-wrap">{{
-                            describeMember(member, memberContext)
-                        }}</span>
+                        <span class="min-w-0 flex-1 whitespace-pre-wrap">{{ label }}</span>
                         <span
                             v-if="member.time !== undefined"
                             class="shrink-0 text-xs tabular-nums text-fg/80"
@@ -137,7 +137,7 @@ const childTime = (at: number) =>
                 </details>
             </div>
             <button
-                v-if="children.length < details.children.length"
+                v-if="children.length < (details.steps?.members.length ?? 0)"
                 type="button"
                 class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 data-operation-more

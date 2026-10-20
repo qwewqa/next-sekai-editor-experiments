@@ -10,7 +10,6 @@ import {
     type GroupDescriptor,
     type NativeOperationInput,
     type OwnerCounts,
-    type OwnerReference,
 } from '../operations'
 import {
     describeMember,
@@ -24,13 +23,12 @@ import {
     renameDescription,
 } from './format'
 import { captureOperationMember, isEntryDescription, memberOperation } from './members'
-import type { OperationMember, OperationRecipe, OperationTextContext, OwnerIdentity } from './types'
-import { joinFields, message, numberText, ownerFieldLabel, ownerName } from './values'
+import type { OperationMember, OperationRecipe, OperationTextContext } from './types'
+import { joinFields, message, numberText, ownerFieldLabel, ownerName, quotedField } from './values'
 
 export type OperationRecipeOptions = {
     readonly partial?: boolean
     readonly direction?: 'undo' | 'redo'
-    readonly qualifiers?: readonly OwnerIdentity[]
 }
 
 export const equalOperationValue = (a: FieldValue<FieldId>, b: FieldValue<FieldId>) =>
@@ -72,11 +70,8 @@ export const captureOperationRecipe = (
 ): OperationRecipe => {
     if (!input.length) throw new Error('An operation recipe needs a member')
     const members = Object.freeze(input.map(captureOperationMember))
-    const qualifiers = Object.freeze(
-        (options.qualifiers ?? []).map((identity) => Object.freeze({ ...identity })),
-    )
     const partial = options.partial ?? false
-    const base = { members, qualifiers, partial }
+    const base = { members, partial }
     if (options.direction) {
         if (
             members.some(({ description }) =>
@@ -166,9 +161,8 @@ export const operationStepCount = (recipe: OperationRecipe, context: OperationTe
 
 export const renderOperationRecipe = (
     recipe: OperationRecipe,
-    inputContext: OperationTextContext,
+    context: OperationTextContext,
 ): string => {
-    const context = { ...inputContext, qualifiers: recipe.qualifiers }
     const t = context.strings
     const first = recipe.members[0]
     if (!first) throw new Error('Missing recipe member')
@@ -236,8 +230,8 @@ export const renderOperationRecipe = (
                 context,
                 t.history.operation.changedHeader,
                 group.field === 'initialLife'
-                    ? t.commands.properties.modal.life
-                    : t.history.details.bgmOffset,
+                    ? quotedField(t.commands.properties.modal.life, context)
+                    : quotedField(t.history.details.bgmOffset, context),
             )
         case 'ownerCreate':
         case 'ownerDuplicate':
@@ -278,7 +272,9 @@ export const renderOperationRecipe = (
                 ],
                 ownerName(summary.data.target, context),
                 joinFields(
-                    summary.data.changes.map(({ field }) => ownerFieldLabel(field, context)),
+                    summary.data.changes.map(({ field }) =>
+                        ownerFieldLabel(field, context, { prose: true }),
+                    ),
                     context,
                 ),
             )
@@ -286,122 +282,4 @@ export const renderOperationRecipe = (
         case 'ownerMove':
             return describeOperation(summary, context)
     }
-}
-
-const recipeReferences = (recipe: OperationRecipe): readonly OwnerReference[] => {
-    if (recipe.kind === 'undo' || recipe.kind === 'redo') return []
-    const first = recipe.members[0]
-    const decoded =
-        recipe.kind === 'single' && first ? decodeOperation(memberOperation(first)) : undefined
-    const operation = decoded?.status === 'known' ? decoded.operation : recipe.summary
-    if (!operation) return []
-    if (operation.id === 'nse.property.set') {
-        const assignment = operation.data.assignments[0]
-        return operation.data.assignments.length === 1 &&
-            assignment?.after.mode === 'uniform' &&
-            typeof assignment.after.value === 'object'
-            ? [assignment.after.value]
-            : []
-    }
-    if (recipe.kind === 'group')
-        return [recipe.group?.target, recipe.group?.destination].filter(
-            (reference): reference is OwnerReference => !!reference,
-        )
-    switch (operation.id) {
-        case 'nse.owner.create':
-        case 'nse.owner.rename':
-        case 'nse.owner.set':
-        case 'nse.owner.ungroup':
-            return [operation.data.target]
-        case 'nse.owner.move':
-            return operation.data.category === 'intoFolder' && operation.data.destination
-                ? [operation.data.target, operation.data.destination]
-                : [operation.data.target]
-        case 'nse.owner.moveMany':
-            return operation.data.destination ? [operation.data.destination] : []
-        case 'nse.owner.duplicate':
-            return operation.data.source && checkedSum(Object.values(operation.data.created)) !== 0
-                ? [operation.data.source]
-                : []
-        case 'nse.owner.delete':
-            return operation.data.target && checkedSum(Object.values(operation.data.removed)) !== 0
-                ? [operation.data.target]
-                : []
-        case 'nse.note.add':
-        case 'nse.note.generate':
-        case 'nse.object.add':
-        case 'nse.object.edit':
-        case 'nse.object.move':
-        case 'nse.object.replace':
-        case 'nse.note.elevation':
-        case 'nse.object.paste':
-        case 'nse.object.brush':
-        case 'nse.object.delete':
-        case 'nse.object.cut':
-        case 'nse.object.flip':
-        case 'nse.object.scale':
-        case 'nse.note.combine':
-        case 'nse.note.split':
-        case 'nse.note.vertical':
-        case 'nse.header.set':
-        case 'nse.bgm.change':
-        case 'nse.dynamicStages.enable':
-        case 'nse.origin':
-        case 'nse.continue':
-        case 'nse.file.save':
-        case 'nse.file.export':
-        case 'nse.restore':
-        case 'nse.recovery':
-        case 'nse.externalChange':
-            return []
-    }
-}
-
-// Call on unselected rows; returned recipes never mutate a selected recipe's qualifiers.
-export const disambiguateOperationRecipes = (
-    recipes: readonly OperationRecipe[],
-    context: OperationTextContext,
-): readonly OperationRecipe[] => {
-    const qualifiers = recipes.map((recipe) => [...recipe.qualifiers])
-    const labels = recipes.map((recipe) => renderOperationRecipe(recipe, context))
-    for (let index = 1; index < recipes.length; index++) {
-        const previous = recipes[index - 1]
-        const current = recipes[index]
-        if (!previous || !current || labels[index - 1] !== labels[index]) continue
-        const a = recipeReferences(previous)
-        const b = recipeReferences(current)
-        for (const [at, own, other] of [
-            [index - 1, a, b],
-            [index, b, a],
-        ] as const) {
-            for (const reference of own) {
-                if (
-                    other.some(
-                        (candidate) =>
-                            candidate.kind === reference.kind && candidate.id === reference.id,
-                    )
-                )
-                    continue
-                const list = qualifiers[at]
-                if (
-                    list &&
-                    !list.some(
-                        (candidate) =>
-                            candidate.kind === reference.kind && candidate.id === reference.id,
-                    )
-                )
-                    list.push({ kind: reference.kind, id: reference.id })
-            }
-        }
-    }
-    return Object.freeze(
-        recipes.map((recipe, index) =>
-            Object.freeze({
-                ...recipe,
-                qualifiers: Object.freeze(
-                    (qualifiers[index] ?? []).map((identity) => Object.freeze(identity)),
-                ),
-            }),
-        ),
-    )
 }

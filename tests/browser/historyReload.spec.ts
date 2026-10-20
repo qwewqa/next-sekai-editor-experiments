@@ -308,12 +308,11 @@ test('R1: Undo by real keys over unloaded slots waits, shows the busy cursor, th
             .click()
         const dialog = page.getByRole('dialog', { name: en.history.details.title, exact: true })
         await expect(dialog).toBeVisible()
-        // The five crossed steps, the newest edit first.
+        // The five crossed steps, the last one undone first as in the Timeline, without the repeated Undo prefix.
         await expect(dialog.locator('[data-operation-children] summary span.flex-1')).toHaveText(
             Array.from(
                 { length: 5 },
-                (_, i) =>
-                    `${en.commands.undo.title} · Set Initial Life to ${(head - i).toLocaleString('en')}`,
+                (_, i) => `Set Initial Life to ${(head - 4 + i).toLocaleString('en')}`,
             ),
         )
         await page.keyboard.press('Escape')
