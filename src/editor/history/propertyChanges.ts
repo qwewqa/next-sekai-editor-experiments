@@ -249,11 +249,14 @@ export const comparePropertyChanges = (
                 )
             }
             field('name', (entry) => text(entry.name))
-            // A folder holds no folder, so a folder section has no Folder row.
-            if (
-                (kind === 'groups' || kind === 'stages') &&
-                (!old || !next || old.folderId !== next.folderId)
-            )
+            // An added or removed folder that sits in no folder has no Folder row to show: it would
+            // only say that it is not in one.
+            const placed =
+                kind === 'groups' ||
+                kind === 'stages' ||
+                (old !== undefined && next !== undefined) ||
+                (old ?? next)?.folderId !== undefined
+            if (placed && (!old || !next || old.folderId !== next.folderId))
                 field('folder', (entry, old) => folder(entry.folderId, old))
             if (kind === 'groups')
                 field('forceNoteSpeed', (entry) =>
