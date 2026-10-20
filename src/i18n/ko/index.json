@@ -2118,7 +2118,6 @@
     "fileType": "Next SEKAI 프로젝트 파일",
     "unavailable": "저장되지 않았습니다. 레벨 데이터 내보내기…를 사용하세요.",
     "include": "포함",
-    "historySteps": "{0}단계",
     "historySize": "{0}단계 · {1}",
     "historyNote": "파일이 있는 사람은 해당 파일의 기록을 볼 수 있습니다.",
     "noBgm": "BGM 없음",
