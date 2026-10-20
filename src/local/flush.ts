@@ -880,7 +880,9 @@ export class Flusher {
     /**
      * Our own completed Save's `save` entry at its kept `seq`, after the entries before it that
      * `keptSaveBelow` found pending: on the state they reached, as the Save wrote it. Nothing is
-     * added to a session that is no longer current (a fork), nor twice.
+     * added to a session that is no longer current (a fork), nor twice. Not added, it is never
+     * stored, and the binding's cut, which counts it, under-claims: the next write that isn't an
+     * append doesn't carry the file (save/model.ts `carries`), and no state is lost.
      */
     keptSave(
         below: Extract<KeptSaveBelow, { kind: 'pending' }>,
@@ -1554,7 +1556,11 @@ export class Flusher {
      * chain, so the chain that continued it keeps its whole history.
      */
     private fork(from: FlushSession, lastSeq: number | undefined): FlushSession {
-        // Entries a kill after commit already stored stay the stored session's.
+        // Entries a kill after commit already stored stay the stored session's. One that isn't
+        // stored is our own completed Save's `save` entry `keptSave` put below `lastSeq`: it stays
+        // unstored, and a fork's new chain must not take it. Its state is the entry's below it, so
+        // nothing is lost, and the binding's cut still counts it, so the chain's next write that
+        // isn't an append doesn't carry the file (an under-claim, save/model.ts `carries`).
         const moving = from.pending.filter((entry) => lastSeq === undefined || entry.seq > lastSeq)
         // A continuation that lost the race forks from the parent it continued (§1.3.1).
         const parent =
