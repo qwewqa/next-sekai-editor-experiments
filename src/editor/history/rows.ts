@@ -111,6 +111,14 @@ const tierOf = (time: number, now: number) => {
     return { level: 'hour' as const, key: `h:${hourStart(time)}` }
 }
 
+/**
+ * The local hour a group stays inside (X-1): a ×N row never crosses a day or an hour, so it sits
+ * under the header of its own day and hour, and Go To's days, which count each entry by its own
+ * day, agree with the headers. It does not depend on the clock, so a row's members never change
+ * as it ages. Minute headers in the current hour may be crossed.
+ */
+const spanOf = (time: number) => `${dayStart(time)}|${hourStart(time)}`
+
 /** Supported semantic keys; availability and chronology are independent boundaries. */
 const groupKey = (entry: Entry, flags: Flags) => {
     const flag = `${flags.removed ? 1 : 0}${flags.damaged ? 1 : 0}${flags.newer ? 1 : 0}`
@@ -222,6 +230,8 @@ export const buildRows = (
             if (!next || groupKey(next, flagsOf(next)) !== key) break
             if (next.sessionId !== entry.sessionId) break
             if (pinned?.includes(entryId(next)) !== pinned?.includes(entryId(entry))) break
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            if (spanOf(next.time) !== spanOf(members.at(-1)!.time)) break
             // Edits Here collapses only matches next to each other on the chain.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             if (filter === 'here' && next.pos !== members.at(-1)!.pos! + 1) break

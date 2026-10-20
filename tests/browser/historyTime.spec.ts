@@ -343,3 +343,72 @@ test('T5: stored rows from a clock two hours ahead list with unique ids and End 
         await close()
     }
 })
+
+/** Makes a row that groups with the one before it: Changed Initial Life. */
+const groupable = (page: Page) =>
+    page.evaluate(() => {
+        const { history, historySteps } = window.editorTest
+        const life = history.state.value.initialLife
+        history.pushState(historySteps.initialLife(life, life + 1), {
+            ...history.state.value,
+            initialLife: life + 1,
+        })
+    })
+
+/** The peeked entry's time, or undefined at Now. */
+const peekedTime = (page: Page) =>
+    page.evaluate(async () => {
+        const { peekedInfo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
+        return peekedInfo.value?.time
+    })
+
+test('T6: a group never spans midnight, and Go To’s Yesterday counts and peeks yesterday (X-1)', async ({
+    browser,
+}) => {
+    test.slow()
+    // Kiritimati (+14), 30 s before midnight: one edit before it, one after.
+    const { page, clock, close } = await clocked(
+        browser,
+        'Pacific/Kiritimati',
+        '2026-06-10T23:59:30+14:00',
+    )
+    const midnight = Date.parse('2026-06-11T00:00:00+14:00')
+    try {
+        await groupable(page)
+        await pass(page, clock, MINUTE)
+        await groupable(page)
+        await flush(page)
+        await openHistory(page)
+        // Two rows, each under its own day's header.
+        await expect
+            .poll(async () => textOf(await lines(page)))
+            .toEqual([
+                expect.stringMatching(/^Now/),
+                '12:00 AM',
+                expect.stringMatching(/Initial Life/),
+                'Yesterday · 11 PM',
+                expect.stringMatching(/Initial Life/),
+                IMPORTED,
+            ])
+        const inWorker = await workerZone(page)
+        test.info().annotations.push({ type: 'worker zone', description: String(inWorker) })
+        expect(inWorker).toBe('Pacific/Kiritimati')
+        await openGoTo(page)
+        // As the headers count them: one step today, the edit and the import yesterday.
+        await expect
+            .poll(() => goToDays(page))
+            .toEqual([
+                { day: 'Today', count: 1 },
+                { day: 'Yesterday', count: 2 },
+            ])
+        await page.locator('[data-goto-list] [data-goto-item="day"]').nth(1).click()
+        // Yesterday's newest state, not today's.
+        await expect.poll(() => peekedTime(page)).toBeLessThan(midnight)
+        expect(await peekedTime(page)).toBeGreaterThan(midnight - MINUTE)
+        await noErrors(page)
+    } finally {
+        await close()
+    }
+})
