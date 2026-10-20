@@ -3,7 +3,7 @@ import type { StorageStatus, TestFlags } from '../../src/local/worker/core'
 import { installCanvasCounters } from './editorFixture'
 
 // The upgrade handshake in a real browser, with two tabs (Part 1 §1.6.1; Step 3a's exit): the
-// build opens version 2; a simulated newer tab is the build with the test flag `dbVersion: 3`, a
+// build opens version 3; a simulated newer tab is the build with the test flag `dbVersion: 4`, a
 // frozen tab the flag `ignoreVersionChange`. Each tab's flag is in its own sessionStorage.
 
 // Playwright's Windows WebKit build has no Web Audio, which the editor needs to start; these run
@@ -52,11 +52,11 @@ const database = (page: Page) =>
 
 const pill = (page: Page) => page.locator('.notification-pill')
 
-test('the worker opens nse-local-data at version 2 with every store', async ({ page }) => {
+test('the worker opens nse-local-data at version 3 with every store', async ({ page }) => {
     await boot(page)
     await expect.poll(() => status(page)).toEqual({ mode: 'stored' })
     expect(await database(page)).toEqual({
-        version: 2,
+        version: 3,
         stores: [
             'chains',
             'chunks',
@@ -84,12 +84,12 @@ test('a newer tab: the current tab closes its connection and pauses storing', as
     await boot(old)
     await expect.poll(() => status(old)).toEqual({ mode: 'stored' })
     const next = await context.newPage()
-    await boot(next, { dbVersion: 3 })
+    await boot(next, { dbVersion: 4 })
     await expect.poll(() => status(next)).toEqual({ mode: 'stored' })
     await expect.poll(() => status(old)).toEqual({ mode: 'stored', reason: 'upgrading' })
     expect(await putRow(old, 'late')).toBe('StorageRefusedError')
     expect(await putRow(next, 'x')).toBe('stored')
-    expect((await database(next)).version).toBe(3)
+    expect((await database(next)).version).toBe(4)
     // Pausing says nothing at an arbitrary time.
     await expect(pill(old)).toHaveCount(0)
 })
@@ -101,7 +101,7 @@ test('upgradeWanted alone closes a current tab’s connection', async ({ context
     const other = await context.newPage()
     await other.goto('/favicon.ico')
     await other.evaluate(() => {
-        new BroadcastChannel('nse-local-data').postMessage({ type: 'upgradeWanted', version: 3 })
+        new BroadcastChannel('nse-local-data').postMessage({ type: 'upgradeWanted', version: 4 })
     })
     await expect.poll(() => status(old)).toEqual({ mode: 'stored', reason: 'upgrading' })
 })
@@ -118,7 +118,7 @@ test('onversionchange alone closes a current tab’s connection, so an upgrade i
         () =>
             new Promise<boolean>((resolve, reject) => {
                 let wasBlocked = false
-                const request = indexedDB.open('nse-local-data', 3)
+                const request = indexedDB.open('nse-local-data', 4)
                 request.onblocked = () => (wasBlocked = true)
                 request.onsuccess = () => {
                     request.result.close()
@@ -141,7 +141,7 @@ test('a frozen tab leaves the newer tab with storage unavailable after about 3 s
 
     const next = await context.newPage()
     const started = Date.now()
-    await boot(next, { dbVersion: 3 })
+    await boot(next, { dbVersion: 4 })
     await expect
         .poll(() => status(next), { timeout: 15_000 })
         .toEqual({ mode: 'memory', reason: 'olderTabs' })
@@ -173,7 +173,7 @@ test('a frozen tab leaves the newer tab with storage unavailable after about 3 s
     await frozen.close()
     await pill(next).getByRole('button', { name: 'Try Again' }).click()
     await expect.poll(() => status(next), { timeout: 10_000 }).toEqual({ mode: 'stored' })
-    expect((await database(next)).version).toBe(3)
+    expect((await database(next)).version).toBe(4)
     expect(await putRow(next, 'stored')).toBe('stored')
 })
 
@@ -181,7 +181,7 @@ test('a database newer than this build opens read-only, with its load notice', a
     context,
 }) => {
     const next = await context.newPage()
-    await boot(next, { dbVersion: 3 })
+    await boot(next, { dbVersion: 4 })
     await expect.poll(() => status(next)).toEqual({ mode: 'stored' })
     expect(await putRow(next, 'fromNext')).toBe('stored')
     await next.close()

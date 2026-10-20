@@ -32,7 +32,7 @@ test('the format constants have their v0.6.0 values', () => {
     assert.equal(RECORDS_V, 1)
     assert.equal(SESSION_V, 2)
     assert.equal(JOURNAL_VERSION, 2)
-    assert.equal(DB_VERSION, 2)
+    assert.equal(DB_VERSION, 3)
     assert.equal(FORMAT_VERSION, 1)
     assert.equal(DUMP_VERSION, 1)
 })
