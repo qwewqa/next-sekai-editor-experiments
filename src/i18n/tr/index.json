@@ -1341,7 +1341,7 @@
       "action": "Ayrıntılar",
       "unsupported": "Bu editör bu adımın ayrıntılarını okuyamıyor.",
       "newer": "Bu adım editörün daha yeni bir sürümüyle kaydedildi.",
-      "nameShortened": "Ad kısaltılarak gösteriliyor",
+      "textShortened": "Metin kısaltılarak gösteriliyor",
       "varying": "Değişken",
       "changed": "Değiştirilen",
       "displaced": "Değiştirilen kayıtlar",

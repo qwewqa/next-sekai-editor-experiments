@@ -1341,7 +1341,7 @@
       "action": "Détails",
       "unsupported": "Cet éditeur ne peut pas lire les détails de cette étape.",
       "newer": "Cette étape a été enregistrée par une version plus récente de l’éditeur.",
-      "nameShortened": "Nom affiché en abrégé",
+      "textShortened": "Texte affiché en abrégé",
       "varying": "Variable",
       "changed": "Modification",
       "displaced": "Remplacement",

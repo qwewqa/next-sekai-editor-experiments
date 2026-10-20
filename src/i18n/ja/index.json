@@ -1341,7 +1341,7 @@
       "action": "詳細",
       "unsupported": "このエディターでは、このステップの詳細を読み取れません。",
       "newer": "このステップは新しいバージョンのエディターで記録されました。",
-      "nameShortened": "名前を省略しています",
+      "textShortened": "テキストを省略しています",
       "varying": "値が異なります",
       "changed": "変更",
       "displaced": "置き換え",

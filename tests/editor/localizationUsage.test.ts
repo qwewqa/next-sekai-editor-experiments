@@ -261,6 +261,7 @@ const removed = [
     'workspace.folders.moved',
     'workspace.folders.deleted',
     'workspace.folders.duplicated',
+    'history.details.nameShortened',
 ]
 
 test('every English message is read by some source file', () => {

@@ -1341,7 +1341,7 @@
       "action": "詳細資訊",
       "unsupported": "此編輯器無法讀取此步驟的詳細資訊。",
       "newer": "此步驟由較新版本的編輯器記錄。",
-      "nameShortened": "名稱已縮短顯示",
+      "textShortened": "文字已縮短顯示",
       "varying": "值不一致",
       "changed": "已修改",
       "displaced": "已取代",

@@ -1341,7 +1341,7 @@
       "action": "세부 정보",
       "unsupported": "이 편집기는 이 단계의 세부 정보를 읽을 수 없습니다.",
       "newer": "이 단계는 최신 버전의 편집기에서 기록되었습니다.",
-      "nameShortened": "이름을 줄여 표시함",
+      "textShortened": "텍스트를 줄여 표시함",
       "varying": "값이 다름",
       "changed": "변경",
       "displaced": "교체",

@@ -639,7 +639,7 @@ test('all owner kinds quote literal names once and distinguish numbers, placehol
                 data: { ...input.data, target: owner(kind, 9, '😀'.repeat(257)) },
             }
             assert(describeOperation(long, ctx).includes(quote('😀'.repeat(256) + '…')))
-            assert.deepEqual(detail(long, ctx).facts, [ctx.strings.history.details.nameShortened])
+            assert.deepEqual(detail(long, ctx).facts, [ctx.strings.history.details.textShortened])
             const numeric = { ...input, data: { ...input.data, target: owner(kind, 9, '1') } }
             assert.notEqual(
                 describeOperation(numeric, ctx),

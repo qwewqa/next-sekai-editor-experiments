@@ -527,7 +527,7 @@ const memberRecord = (member: OperationMember, context: OperationTextContext) =>
         return {
             ...record,
             facts: hasShortenedName(decoded.operation.data)
-                ? [...record.facts, context.strings.history.details.nameShortened]
+                ? [...record.facts, context.strings.history.details.textShortened]
                 : record.facts,
         }
     }
@@ -686,7 +686,7 @@ export const operationDetails = (
         return {
             description,
             rows: groupRows(recipe, context),
-            facts: shortened ? [context.strings.history.details.nameShortened] : [],
+            facts: shortened ? [context.strings.history.details.textShortened] : [],
             steps: {
                 count: recipe.members.length,
                 partial: recipe.partial,

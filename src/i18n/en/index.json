@@ -1341,7 +1341,7 @@
             "action": "Details",
             "unsupported": "This editor cannot read the details of this step.",
             "newer": "This step was recorded by a newer version of the editor.",
-            "nameShortened": "Name shortened for display",
+            "textShortened": "Text shortened for display",
             "varying": "Varies",
             "changed": "Changed",
             "displaced": "Replaced",
