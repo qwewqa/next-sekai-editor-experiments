@@ -19,8 +19,9 @@ export type PeekWidths = {
     /** The corner time labels' widest forms at 16 px, with their 4 px inset and 8 px clearance. */
     labels: number
     /**
-     * The capsule's widest passive state line at its 12 px (loading, unavailable, no changes, the
-     * initial state): the short forms under 480 px panes, and the long ones from 480.
+     * The capsule's widest fixed line at its 12 px (changes.ts `fixedLines`): the passive ones, short
+     * under 480 px panes and long from 480, and the summary button's at every width, counted 14 px
+     * wider (its pl-2, gap-1, 12 px chevron and pr-1.5 against the passive line's px-2).
      */
     states: number
     statesWide: number
@@ -76,7 +77,13 @@ export const measurePeekWidths = (
     host: HTMLElement,
     locale: string,
     beatDisplay: keyof typeof BEAT_SAMPLES,
-    labels: { back: string; restore: string; states: string[]; statesWide: string[] },
+    labels: {
+        back: string
+        restore: string
+        states: string[]
+        statesWide: string[]
+        summary: string[]
+    },
     now = Date.now(),
 ): PeekWidths => {
     const box = document.createElement('div')
@@ -111,11 +118,13 @@ export const measurePeekWidths = (
     const corner = spans(['00:00.000', BEAT_SAMPLES[beatDisplay]], 16)
     const states = spans(labels.states, 12)
     const statesWide = spans(labels.statesWide, 12)
+    const summary = spans(labels.summary, 12)
     host.append(box)
     // One layout pass reads them all.
     const widest = (list: HTMLElement[]) =>
         Math.max(0, ...list.map((s) => s.getBoundingClientRect().width))
     const compactW = widest(compactSpans)
+    const summaryW = labels.summary.length ? widest(summary) + (14 / 16) * rem : 0
     const widths = {
         today: widest(today),
         earlier: Math.max(widest(thisYear), compactW),
@@ -123,8 +132,8 @@ export const measurePeekWidths = (
         back: widest(backSpans),
         restore: widest(restoreSpans),
         labels: widest(corner) + ((4 + 8) / 16) * rem,
-        states: widest(states),
-        statesWide: widest(statesWide),
+        states: Math.max(widest(states), summaryW),
+        statesWide: Math.max(widest(statesWide), summaryW),
         rem,
     }
     box.remove()
@@ -178,7 +187,7 @@ export const peekLayout = (pane: number, w: PeekWidths | undefined): PeekLayout 
     const restoreFits = strip((tiny ? ICON : DATE_BUTTON) * k, ICON * k) <= avail
     width = Math.ceil(Math.min(width, avail))
     // The capsule's rows: p-1, the eye (24), gap-2, the summary (px-2 and its words, at least 32 px:
-    // the widest passive state line), gap-2, the arrows (48 + 8 + 48), p-1. Where the strip is
+    // the widest fixed line), gap-2, the arrows (48 + 8 + 48), p-1. Where the strip is
     // narrower, it widens to hold them when the pane has room, so a state line never truncates; a tiny
     // strip keeps its size. Else compact puts the 24 px options button for the eye and summary, and
     // the menu shows the whole line; narrow arrows are 44 + 4 + 44.

@@ -10,7 +10,7 @@ const enWidths: PeekWidths = {
     back: 77.984375,
     restore: 46.375,
     labels: 79.3125,
-    states: 62.96875,
+    states: 105.578125,
     statesWide: 108.546875,
     rem: 16,
 }
@@ -178,7 +178,7 @@ const frWidths: PeekWidths = {
     back: 131.625,
     restore: 58.078125,
     labels: 79.3125,
-    states: 109.671875,
+    states: 121.578125,
     statesWide: 170.65625,
     rem: 16,
 }
@@ -250,7 +250,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     320: {
-        width: 290,
+        width: 302,
         back: 'icon',
         tiny: false,
         snug: true,
@@ -261,7 +261,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     340: {
-        width: 290,
+        width: 302,
         back: 'icon',
         tiny: false,
         snug: false,
@@ -272,7 +272,7 @@ const frLayouts: Record<number, ReturnType<typeof peekLayout>> = {
         narrowArrows: false,
     },
     390: {
-        width: 290,
+        width: 302,
         back: 'icon',
         tiny: false,
         snug: false,
@@ -416,9 +416,10 @@ test('the capsule takes the options button and narrow arrows by fit', () => {
     assert.equal(peekLayout(390, scaled).compact, true)
 })
 
-// Every language's widths at the 16 px root (the strip's other fields as measured; states and
-// statesWide: the widest of loading, unavailable, no changes and the initial state at 12 px, short
-// forms under 480 px panes, long ones from 480).
+// Every language's widths at the 16 px root, as measured. states and statesWide: the widest fixed
+// line at 12 px (changes.ts fixedLines), the passive ones short under 480 px panes and long from 480,
+// and "Settings changed" in the summary button plus its 14 px (English, French, Turkish and Chinese
+// take that one: 91.58, 107.58, 95.42 and 60 px of text).
 const allWidths: Record<string, PeekWidths> = {
     en: enWidths,
     fr: frWidths,
@@ -441,7 +442,7 @@ const allWidths: Record<string, PeekWidths> = {
         back: 78.328125,
         restore: 61.390625,
         labels: 79.3125,
-        states: 74.578125,
+        states: 109.421875,
         statesWide: 140.625,
         rem: 16,
     },
@@ -452,7 +453,7 @@ const allWidths: Record<string, PeekWidths> = {
         back: 56,
         restore: 28,
         labels: 79.3125,
-        states: 48,
+        states: 74,
         statesWide: 80.796875,
         rem: 16,
     },
@@ -463,7 +464,7 @@ const allWidths: Record<string, PeekWidths> = {
         back: 56,
         restore: 28,
         labels: 79.3125,
-        states: 48,
+        states: 74,
         statesWide: 80.796875,
         rem: 16,
     },
@@ -473,10 +474,10 @@ const allWidths: Record<string, PeekWidths> = {
 // state line: the capsule less p-1, the eye, the gaps, px-2 and both arrows (168 px).
 const capsules: Record<string, Record<number, number>> = {
     en: { 390: 305, 375: 305, 320: 297, 1144: 386 },
-    fr: { 390: 290, 375: 290, 320: 290, 1144: 429 },
+    fr: { 390: 302, 375: 302, 320: 302, 1144: 429 },
     ja: { 390: 324, 375: 324, 320: 264, 1144: 344 },
     ko: { 390: 295, 375: 295, 320: 287, 1144: 411 },
-    tr: { 390: 361, 375: 286, 320: 278, 1144: 373 },
+    tr: { 390: 361, 375: 290, 320: 290, 1144: 373 },
     zhs: { 390: 310, 375: 310, 320: 302, 1144: 330 },
     zht: { 390: 338, 375: 338, 320: 278, 1144: 358 },
 }
@@ -498,15 +499,16 @@ test('every state line fits its capsule from 320 px panes, in every language', (
 })
 
 test('at a 20 px root the state line fits or the options button holds it', () => {
-    // Real 20 px measurements are these × 1.25 (French "Aucune modification": 137.09 px).
+    // Real 20 px measurements are these × 1.25 (French "Paramètres modifiés": 134.48 px). French on
+    // the 390 px phone cannot hold it beside the eye and arrows: the options button.
     const at20 = (widths: PeekWidths) =>
         Object.fromEntries(Object.entries(widths).map(([k, v]) => [k, v * 1.25])) as PeekWidths
     const expected: Record<string, Record<number, [number, boolean]>> = {
         en: { 390: [218, true], 375: [218, true], 320: [208, true] },
-        fr: { 390: [363, false], 375: [233, true], 320: [223, true] },
+        fr: { 390: [360, true], 375: [233, true], 320: [223, true] },
         ja: { 390: [330, false], 375: [330, false], 320: [185, true] },
         ko: { 390: [369, false], 375: [195, true], 320: [185, true] },
-        tr: { 390: [358, false], 375: [237, true], 320: [227, true] },
+        tr: { 390: [362, false], 375: [237, true], 320: [227, true] },
         zhs: { 390: [322, false], 375: [322, false], 320: [185, true] },
         zht: { 390: [357, false], 375: [195, true], 320: [185, true] },
     }

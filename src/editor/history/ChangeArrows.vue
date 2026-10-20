@@ -14,6 +14,7 @@ import {
     changeLine,
     comparisonStatus,
     countsShown,
+    fixedLine,
     offBand,
     openPropertyInspection,
     propertyInspection,
@@ -45,14 +46,11 @@ watch(
 onBeforeUnmount(() => {
     clearTimeout(timer)
 })
-const line = computed(
-    () => changeLine.value ?? (delayed.value ? i18n.value.peek.loadingChanges : ''),
-)
+const line = computed(() => changeLine.value ?? (delayed.value ? fixedLine('loadingChanges') : ''))
 const visibleLine = computed(() => {
     if (view.w >= 480) return line.value
-    if (comparisonStatus.value === 'loading')
-        return delayed.value ? i18n.value.peek.loadingShort : ''
-    if (comparisonStatus.value === 'unavailable') return i18n.value.peek.unavailableShort
+    if (comparisonStatus.value === 'loading') return delayed.value ? fixedLine('loadingShort') : ''
+    if (comparisonStatus.value === 'unavailable') return fixedLine('unavailableShort')
     return line.value
 })
 // By fit (peekFit.ts): the options button where the eye and summary would not fit, then narrow arrows.
