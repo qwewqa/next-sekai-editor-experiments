@@ -7,7 +7,7 @@ import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { captureName } from '../../../history/operations'
 import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
-import { formatDate } from '../../../i18n/when'
+import { formatDateInSentence } from '../../../i18n/when'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
 import { getLevelDataRevision, LATEST_REVISION } from '../../../levelData/revision'
@@ -135,7 +135,7 @@ const restoreAction = (sessionId: string) => ({
 })
 
 const earlierMessage = (notice: EarlierNotice, name: string) => {
-    const when = formatDate(notice.chain.updatedAt)
+    const when = formatDateInSentence(notice.chain.updatedAt)
     const { open } = i18n.value
     switch (notice.kind) {
         case 'unsavedChanges':

@@ -1,5 +1,5 @@
 import { i18n } from '../i18n'
-import { formatDate } from '../i18n/when'
+import { formatDateInSentence } from '../i18n/when'
 import { loadEvents, onLoadEvent, type LoadEvent, type ShownName } from '../local/startup/events'
 import { interpolate, interpolateRaw } from '../utils/interpolate'
 import { changeBgm } from './commands/bgm'
@@ -62,8 +62,9 @@ export const loadNoticeOf: Handlers = {
         order: LOAD_ORDER.continued,
         message:
             name.name.kind === 'date'
-                ? () => interpolateRaw(load().continuedUntitled, formatDate(from))
-                : () => interpolateRaw(load().continued, shownName(name), formatDate(from)),
+                ? () => interpolateRaw(load().continuedUntitled, formatDateInSentence(from))
+                : () =>
+                      interpolateRaw(load().continued, shownName(name), formatDateInSentence(from)),
         action: { ...openHistoryAction(), label: () => load().openHistory },
     }),
     storageCleared: () => ({
@@ -95,7 +96,8 @@ export const loadNoticeOf: Handlers = {
     }),
     migrated: (event) => ({
         order: LOAD_ORDER.migrated,
-        // Kept as a session of its own when another session opened (§1.4.3).
+        // Kept as a session of its own when another session opened (§1.4.3). Both forms are
+        // confirmations, so neither carries a severity.
         message: interpolate(
             () => (event.opened ? load().autoSave : load().autoSaveKept),
             quoted(event.name),

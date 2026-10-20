@@ -15,12 +15,10 @@ const card = useTemplateRef<HTMLElement>('card')
 const label = computed(() => i18n.value.modals.close)
 const messageId = computed(() => `notice-card-${props.notice.id}`)
 
-// The name and version join into the start-up card's heading; the other lines are its rows.
+// The name and version join into the start-up card's heading; the other lines are its rows. In a
+// narrow card the name gives way first, so the version is never cut in half.
 const heading = computed(() =>
-    (props.notice.lines ?? [])
-        .filter((line) => line.heading)
-        .map((line) => line.message())
-        .join(' · '),
+    (props.notice.lines ?? []).filter((line) => line.heading).map((line) => line.message()),
 )
 const rows = computed(() => (props.notice.lines ?? []).filter((line) => !line.heading))
 
@@ -180,9 +178,15 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                 >
                     <p
                         :id="messageId"
-                        class="min-w-0 flex-1 truncate pl-2.5 pr-2 text-xs font-bold text-fg/80"
+                        class="flex min-w-0 flex-1 overflow-hidden pl-2.5 pr-2 text-xs font-bold text-fg/80"
                     >
-                        {{ heading }}
+                        <span class="min-w-0 truncate">{{ heading[0] }}</span>
+                        <span
+                            v-for="(part, i) in heading.slice(1)"
+                            :key="i"
+                            class="shrink-0 whitespace-pre"
+                            >{{ ` · ${part}` }}</span
+                        >
                     </p>
                     <button
                         type="button"
@@ -221,6 +225,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                         type="button"
                         data-notice-action
                         :class="rowActionClass"
+                        :title="line.action.label()"
                         @click="line.action.run()"
                     >
                         {{ line.action.label() }}
@@ -251,6 +256,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                         type="button"
                         data-notice-action
                         :class="actionClass"
+                        :title="notice.action.label()"
                         @click="notice.action.run()"
                     >
                         {{ notice.action.label() }}

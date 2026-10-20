@@ -24,6 +24,13 @@ export const formatDate = (locale: string, at: number, now = Date.now()) =>
               at,
           )
 
+/**
+ * A date inside a notice's sentence: "Oct 19" with its parts joined by no-break spaces, so a
+ * narrow card never wraps between the month and the day. Not for file names.
+ */
+export const formatDateInSentence = (locale: string, at: number, now = Date.now()) =>
+    formatDate(locale, at, now).replaceAll(' ', '\u00A0')
+
 /** "2:41 PM". */
 export const formatClock = (locale: string, at: number) =>
     formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }).format(at)

@@ -21,7 +21,7 @@ const COLORS: Record<NoticeSeverity, string> = {
 
 <template>
     <svg
-        class="shrink-0 fill-current"
+        class="shrink-0 fill-current forced-colors:text-[CanvasText]"
         :class="COLORS[severity]"
         :data-severity="severity"
         viewBox="0 0 512 512"
