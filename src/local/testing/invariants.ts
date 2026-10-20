@@ -135,7 +135,8 @@ export type SessionOptions = {
  * - every `seq` up to `lastSeq` is stored, covered by a `recovered` row above it, the binding's
  *   own Save row (a kept gap the file may hold), a hole the test says it let go (`hole`: a
  *   released reservation under later rows), or, only while `importPending`, a row to come;
- * - `time` never decreases in `seq` within a session, and `maxSeenTime` reaches every row's;
+ * - `time` never decreases in `seq` within a session, and `maxSeenTime` reaches every row's (not
+ *   checked for sessions of origin `nxsp` or `replaced`: they hold a file's rows with its times);
  * - a session a continuation branched from holds no row past its `uptoSeq`;
  * - `entryCount` is the number of stored rows;
  * - an entry's key is its own `sessionId` and `seq`.
@@ -194,7 +195,11 @@ export const sessionViolations = (
             violations.push(
                 `session ${sessionId}: rows ${seqList(holes)} up to lastSeq ${String(lastSeq)} are neither stored, covered by a recovered row, nor the binding’s own Save`,
             )
-        for (let at = 1; at < entries.length; at++) {
+        // A session opened from a file holds the file’s rows with their own times, which this
+        // editor did not stamp: only a session’s own rows are strictly increasing, and until an
+        // `importedRows` marker says which are the file’s, nxsp and replaced sessions are skipped.
+        const filed = session.origin === 'nxsp' || session.origin === 'replaced'
+        for (let at = 1; at < entries.length && !filed; at++) {
             const before = record(entries[at - 1])
             const after = record(entries[at])
             if (
@@ -206,7 +211,7 @@ export const sessionViolations = (
                     `session ${sessionId}: row ${String(before.seq)} (time ${before.time}) is later than row ${String(after.seq)} (time ${after.time})`,
                 )
         }
-        if (typeof maxSeen === 'number') {
+        if (typeof maxSeen === 'number' && !filed) {
             const beyond = entries.filter(
                 (entry) => typeof entry.time === 'number' && entry.time > maxSeen,
             )

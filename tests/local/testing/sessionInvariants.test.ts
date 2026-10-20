@@ -98,3 +98,10 @@ test('a key that is not the row’s own session and seq is named', () => {
     const [mismatch] = sessionViolations(dump([session('s')], rows))
     assert.match(mismatch!, /its row says session s seq 2/)
 })
+
+test('a session opened from a file keeps its rows’ own times: no time check', () => {
+    const rows = [entry('s', 1, 10), entry('s', 2, 500), entry('s', 3, 30)]
+    for (const origin of ['nxsp', 'replaced'])
+        assert.deepEqual(sessionViolations(dump([session('s', { origin })], rows)), [])
+    assert.equal(sessionViolations(dump([session('s', { origin: 'import' })], rows)).length, 2)
+})
