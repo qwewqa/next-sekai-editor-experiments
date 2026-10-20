@@ -207,9 +207,19 @@ export type SaveEntryForm = {
 }
 
 /**
+ * What the tab recording our own completed Save holds of its session below the entry's `seq`
+ * (§1.4.7): `pending`, entries still to store, so the tab stores the entry after them; `stored`,
+ * nothing (the tab holds the session, so a gap below is entries lost earlier). Absent when the
+ * session isn't the tab's: another tab may still hold entries below.
+ */
+export type OwnSaveBelow = 'pending' | 'stored'
+
+/**
  * Records our own completed Save (§1.4.7): its `save` entry at its reserved `seq` when the chain
- * doesn't hold one there and its session is stored, then the identity unit with its marks. False,
- * writing nothing, when the chain is gone or a mark can't be stored.
+ * doesn't hold one there, its session is stored and nothing below the `seq` is still to store,
+ * then the identity unit with its marks. A session's `lastSeq` means every entry at or below it is
+ * stored (or covered by a `recovered` entry), so the entry is never written past a lower one a tab
+ * still holds. False, writing nothing, when the chain is gone or a mark can't be stored.
  */
 export const finishOwnSave = async (
     tx: KvTx,
@@ -217,6 +227,7 @@ export const finishOwnSave = async (
     entry: SaveEntryForm,
     unit: IdentityUnit,
     wall: number = Date.now(),
+    below?: OwnSaveBelow,
 ) => {
     const chain = await tx.get('chains', chainId)
     if (!isRow(chain)) return false
@@ -227,7 +238,9 @@ export const finishOwnSave = async (
     if (isRow(session) && !isReadableSessionVersion(session.v)) return false
     const operation = captureOperation(entry.operation)
     if (!(await storeMarks(tx, unit.marks, read))) return false
-    if (isRow(session) && session.chainId === chainId && held === undefined) {
+    const lastSeq = isRow(session) && typeof session.lastSeq === 'number' ? session.lastSeq : 0
+    const follows = below === 'stored' || (below === undefined && lastSeq >= entry.seq - 1)
+    if (isRow(session) && session.chainId === chainId && held === undefined && follows) {
         const maxSeen = (await readMeta(tx, 'maxSeenTime')) ?? 0
         const now = nextTime(maxSeen, wall)
         const time = nextTime(maxSeen, clampTime(entry.time, now))
@@ -247,7 +260,6 @@ export const finishOwnSave = async (
             device: entry.device,
             ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
         })
-        const lastSeq = typeof session.lastSeq === 'number' ? session.lastSeq : 0
         await tx.put('sessions', {
             ...session,
             lastSeq: Math.max(lastSeq, entry.seq),

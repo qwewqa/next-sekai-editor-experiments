@@ -2,9 +2,9 @@ import { expect, test, type Page } from '@playwright/test'
 import type { StorageStatus, TestFlags } from '../../src/local/worker/core'
 import { installCanvasCounters } from './editorFixture'
 
-// The upgrade handshake in a real browser, with two tabs (Part 1 §1.6.1; Step 3a's exit): a
-// simulated v2 tab is the build with the test flag `dbVersion: 2`, a frozen tab the flag
-// `ignoreVersionChange`. Each tab's flag is in its own sessionStorage.
+// The upgrade handshake in a real browser, with two tabs (Part 1 §1.6.1; Step 3a's exit): the
+// build opens version 2; a simulated newer tab is the build with the test flag `dbVersion: 3`, a
+// frozen tab the flag `ignoreVersionChange`. Each tab's flag is in its own sessionStorage.
 
 // Playwright's Windows WebKit build has no Web Audio, which the editor needs to start; these run
 // in WebKit on Linux CI.
@@ -52,11 +52,11 @@ const database = (page: Page) =>
 
 const pill = (page: Page) => page.locator('.notification-pill')
 
-test('the worker opens nse-local-data at version 1 with every v1 store', async ({ page }) => {
+test('the worker opens nse-local-data at version 2 with every store', async ({ page }) => {
     await boot(page)
     await expect.poll(() => status(page)).toEqual({ mode: 'stored' })
     expect(await database(page)).toEqual({
-        version: 1,
+        version: 2,
         stores: [
             'chains',
             'chunks',
@@ -77,34 +77,36 @@ test('the worker opens nse-local-data at version 1 with every v1 store', async (
     await expect(page.locator('.notification')).toHaveText('Next SEKAI Editor\nVersion 0.6.0')
 })
 
-test('a v2 tab: the v1 tab closes its connection and pauses storing', async ({ context }) => {
+test('a newer tab: the current tab closes its connection and pauses storing', async ({
+    context,
+}) => {
     const old = await context.newPage()
     await boot(old)
     await expect.poll(() => status(old)).toEqual({ mode: 'stored' })
     const next = await context.newPage()
-    await boot(next, { dbVersion: 2 })
+    await boot(next, { dbVersion: 3 })
     await expect.poll(() => status(next)).toEqual({ mode: 'stored' })
     await expect.poll(() => status(old)).toEqual({ mode: 'stored', reason: 'upgrading' })
     expect(await putRow(old, 'late')).toBe('StorageRefusedError')
     expect(await putRow(next, 'x')).toBe('stored')
-    expect((await database(next)).version).toBe(2)
+    expect((await database(next)).version).toBe(3)
     // Pausing says nothing at an arbitrary time.
     await expect(pill(old)).toHaveCount(0)
 })
 
-test('upgradeWanted alone closes a v1 tab’s connection', async ({ context }) => {
+test('upgradeWanted alone closes a current tab’s connection', async ({ context }) => {
     const old = await context.newPage()
     await boot(old)
     await expect.poll(() => status(old)).toEqual({ mode: 'stored' })
     const other = await context.newPage()
     await other.goto('/favicon.ico')
     await other.evaluate(() => {
-        new BroadcastChannel('nse-local-data').postMessage({ type: 'upgradeWanted', version: 2 })
+        new BroadcastChannel('nse-local-data').postMessage({ type: 'upgradeWanted', version: 3 })
     })
     await expect.poll(() => status(old)).toEqual({ mode: 'stored', reason: 'upgrading' })
 })
 
-test('onversionchange alone closes a v1 tab’s connection, so an upgrade is never blocked', async ({
+test('onversionchange alone closes a current tab’s connection, so an upgrade is never blocked', async ({
     context,
 }) => {
     const old = await context.newPage()
@@ -116,7 +118,7 @@ test('onversionchange alone closes a v1 tab’s connection, so an upgrade is nev
         () =>
             new Promise<boolean>((resolve, reject) => {
                 let wasBlocked = false
-                const request = indexedDB.open('nse-local-data', 2)
+                const request = indexedDB.open('nse-local-data', 3)
                 request.onblocked = () => (wasBlocked = true)
                 request.onsuccess = () => {
                     request.result.close()
@@ -129,7 +131,7 @@ test('onversionchange alone closes a v1 tab’s connection, so an upgrade is nev
     await expect.poll(() => status(old)).toEqual({ mode: 'stored', reason: 'upgrading' })
 })
 
-test('a frozen tab leaves the v2 tab with storage unavailable after about 3 s, never hung', async ({
+test('a frozen tab leaves the newer tab with storage unavailable after about 3 s, never hung', async ({
     context,
 }) => {
     test.setTimeout(60_000)

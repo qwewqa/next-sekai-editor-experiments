@@ -1,3 +1,4 @@
+import { languageTag } from '../../i18n/plural'
 import {
     checkedSum,
     decodeOperation,
@@ -67,8 +68,9 @@ const nameDetail = (
               ...(name.truncated ? { shortened: true as const } : {}),
           }
 
+/** A cut excerpt may hide a real difference (as in the codec's change test), so it is never the same. */
 const sameText = (a: DetailText, b: DetailText) =>
-    a.text === b.text && !a.placeholder === !b.placeholder
+    a.text === b.text && !a.placeholder === !b.placeholder && !a.shortened && !b.shortened
 
 const countPhrase = (
     kind: NativeKind | OwnerKind,
@@ -525,7 +527,7 @@ const memberRecord = (member: OperationMember, context: OperationTextContext) =>
         return {
             ...record,
             facts: hasShortenedName(decoded.operation.data)
-                ? [...record.facts, context.strings.history.details.nameShortened]
+                ? [...record.facts, context.strings.history.details.textShortened]
                 : record.facts,
         }
     }
@@ -534,7 +536,7 @@ const memberRecord = (member: OperationMember, context: OperationTextContext) =>
         facts: [],
         note: unreadable(raw, context),
         ...(decoded.fallback?.text && decoded.fallback.locale !== context.locale
-            ? { lang: decoded.fallback.locale }
+            ? { lang: languageTag(decoded.fallback.locale) }
             : {}),
     } satisfies RecordData
 }
@@ -684,7 +686,7 @@ export const operationDetails = (
         return {
             description,
             rows: groupRows(recipe, context),
-            facts: shortened ? [context.strings.history.details.nameShortened] : [],
+            facts: shortened ? [context.strings.history.details.textShortened] : [],
             steps: {
                 count: recipe.members.length,
                 partial: recipe.partial,

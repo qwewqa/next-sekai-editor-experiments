@@ -736,10 +736,18 @@ test('a failed own journal a flush covered since goes, and the reload takes up t
     page.tab.kill()
     assert.ok(journalText(storage, session.id))
 
+    // The relaxed flush may not be on disk: a strict commit comes before the key goes.
+    const strictWhileKept: boolean[] = []
+    world.memory.faults.put = (store) => {
+        if (store === 'meta') strictWhileKept.push(journalText(storage, session.id) !== null)
+        return undefined
+    }
     const reload = await failedReload(world, storage, tab)
+    world.memory.faults.put = undefined
     assert.equal(reload.recovery.ownOutcome?.kind, 'failed')
     assert.equal(openSession(reload).id, session.id)
     assert.equal(rootOf(reload.page.live.state), stored)
+    assert.ok(strictWhileKept.includes(true))
     assert.equal(journalText(storage, session.id), null)
     assert.deepEqual(reload.recovery.keptForLocalData, [])
     assert.equal(

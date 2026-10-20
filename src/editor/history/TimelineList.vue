@@ -1564,8 +1564,8 @@ defineExpose({
                                     <span class="timeline-entry-caption" data-history-group-caption>
                                         <!-- A group's step count, collapsed or open, at every width. -->
                                         <span class="timeline-group-count" data-history-group-count
-                                            ><template v-if="presentationOf(row).count">{{
-                                                presentationOf(row).count
+                                            ><template v-if="presentationOf(row).steps">{{
+                                                presentationOf(row).steps
                                             }}</template></span
                                         >
                                         <span

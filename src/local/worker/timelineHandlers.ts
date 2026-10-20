@@ -99,9 +99,6 @@ type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
-/** Parent links followed at most. */
-const MAX_DEPTH = 256
-
 const entryOf = (row: Row): TimelineEntry | undefined => {
     if (
         typeof row.sessionId !== 'string' ||
@@ -165,7 +162,10 @@ const readOlder = async (
     // Exclusive: the entries below this `seq`.
     let upto = before
     let next: TimelinePage['next']
-    for (let depth = 0; depth < MAX_DEPTH; depth++) {
+    // Every parent link is followed, however long the chain; a cycle in damaged rows ends it.
+    const seen = new Set<string>()
+    while (!seen.has(id)) {
+        seen.add(id)
         const wanted = limit - entries.length
         const rows = await tx.entries('entries', {
             query: KeyRange.bound([id, -Infinity], [id, upto], false, true),
@@ -208,10 +208,13 @@ const parentOf = async (tx: KvTx, id: string) => {
 /** The sessions the Timeline follows from its start, newest first: the parent links it walks. */
 const pathOf = async (tx: KvTx, sessionId: string, before = Infinity) => {
     const path: PathStep[] = [{ sessionId, upto: before }]
-    for (let depth = 1; depth < MAX_DEPTH; depth++) {
+    // Every parent link is followed, however long the chain; a cycle in damaged rows ends it.
+    const seen = new Set([sessionId])
+    for (;;) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const parent = await parentOf(tx, path.at(-1)!.sessionId)
-        if (!parent) break
+        if (!parent || seen.has(parent.id)) break
+        seen.add(parent.id)
         path.push({ sessionId: parent.id, upto: parent.upto })
     }
     return path

@@ -221,7 +221,7 @@ test('startup and recovery read no stored handle; a Save’s write-back after th
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a database an earlier Stage 1 build made, without the store, stores and reads no handle', async () => {
+test('a version 1 database made before the store joined the set gains it, and stores and reads handles', async () => {
     const world = createWorld({ seed: 4 })
     const tab = world.tab('old')
     await tab.run(async () => {
@@ -252,7 +252,9 @@ test('a database an earlier Stage 1 build made, without the store, stores and re
         true,
     )
     assert.deepEqual(rows(world, 'chains').get(session.chainId)?.exportTarget, target)
-    assert.equal(await readHandle(page, session.chainId, 'exportTarget'), undefined)
+    assert.deepEqual(await readHandle(page, session.chainId, 'exportTarget'), {
+        testHandle: 'LevelData',
+    })
     assert.equal(page.errors.length, 0)
 })
 
