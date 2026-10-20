@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { captureName } from '../../../src/history/operations'
+import type { FlushSession } from '../../../src/local/flush'
 import { equalBytes, fromHex16, toHex } from '../../../src/local/hash'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { toRecords } from '../../../src/local/records/records'
@@ -157,6 +158,58 @@ test('an edit and an entry-carrying end raise the journal seq; a reservation or 
     assert.equal(next.seq, 4)
     await page.flusher.endSave(next)
     assert.equal(page.flusher.newestSeq(session), 3, 'a let-go reservation is no entry')
+})
+
+test('a trailing Save’s entry is the journal’s seq, and its journal is written at it', async () => {
+    const world = createWorld({ seed: 2905 })
+    const storage = new MemoryStorage()
+    // Storage never answers: the Save's entry stays pending behind the edit.
+    const page = await openJournalPage(
+        world,
+        'a',
+        storage,
+        {},
+        {},
+        { transport: () => new Promise(() => undefined) },
+    )
+    const a = chart()
+    beginSession(page, a)
+    const b = widen(a)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, b)
+    const session = page.flusher.session!
+    const reservation = page.flusher.reserveSave()!
+    assert.equal(reservation.seq, 3)
+    assert.equal(page.flusher.newestSeq(session), 2, 'the reservation is no entry yet')
+    void page.flusher.endSave(reservation, {
+        wall: 1,
+        operation: nativeOperation(
+            { id: 'nse.file.save', data: { file: captureName('coconut.nxsp'), delivery: 'file' } },
+            'Saved',
+        ),
+    })
+    assert.equal(page.flusher.newestSeq(session), 3, 'the Save entry is the newest entry')
+    assert.equal(page.flusher.unflushed(session), true)
+    assert.equal(page.writer.write(), true)
+    const [found] = await storageJournalStore(() => storage, 'nse.').read()
+    assert.equal((JSON.parse(found!.text) as { seq: number }).seq, 3)
+})
+
+test('a fork’s superseded journal stays until the fork holds all it moved', async () => {
+    const world = createWorld({ seed: 2906 })
+    const storage = new MemoryStorage()
+    const page = await openJournalPage(world, 'a', storage)
+    const a = chart()
+    const from = beginSession(page, a)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
+    assert.equal(page.writer.write(), true)
+    assert.equal(storage.getItem(`nse.journal.${from.id}`) === null, false)
+    // The old session's two entries moved to a fork, numbered 1 and 2 there (a fork that is not
+    // the open session, so its own journal does not clear the old key at once).
+    page.writer.forked(from, { id: 'F', nextSeq: 3, entrySeq: 2 } as FlushSession)
+    page.writer.committed('F', 1, true)
+    assert.equal(storage.getItem(`nse.journal.${from.id}`) === null, false, 'entry 1 of 2')
+    page.writer.committed('F', 2, true)
+    assert.equal(storage.getItem(`nse.journal.${from.id}`), null)
 })
 
 test('a journal-only reload numbers its recovered entry past the marker (F5)', async () => {
