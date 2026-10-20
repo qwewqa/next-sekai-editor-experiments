@@ -504,6 +504,61 @@ for (const scheme of schemes) {
     })
 }
 
+/** The 1 px inset edge in a computed `box-shadow`: its colour, or undefined when there is none. */
+const insetEdge = (shadow: string) => /(rgba?\([^)]*\)) 0px 0px 0px 1px inset/.exec(shadow)?.[1]
+
+for (const scheme of schemes) {
+    test(`X-11 (${scheme}): the current row carries a 1 px inset edge, under the focus outline, and moves nothing`, async ({
+        page,
+    }) => {
+        await themed(page, scheme)
+        const current = rowOf(page, 'Life 3')
+        const title = current.locator('.timeline-entry-text')
+        const before = await title.boundingBox()
+        await current.locator('[data-history-group-action]').click()
+        await expect(current).toHaveAttribute('aria-selected', 'true')
+        expect(await title.boundingBox(), 'the title does not move').toEqual(before)
+        const hovered = rowOf(page, 'Life 1')
+        const box = (await hovered.boundingBox())!
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await expect
+            .poll(async () => (await paintOf(hovered, { pseudo: '::before' })).fill.a)
+            .toBeGreaterThan(0)
+        const selected = await paintOf(current, { pseudo: '::before' })
+        const hover = await paintOf(hovered, { pseudo: '::before' })
+        const edge = insetEdge(selected.shadow)
+        expect(edge, `the current row's edge (${selected.shadow})`).toBeDefined()
+        expect(insetEdge(hover.shadow), 'a hovered row has none').toBeUndefined()
+        // A contour, about 1.5:1 against the current fill and against a hovered one.
+        const edgeColor = await page.evaluate((css) => {
+            const context = document.createElement('canvas').getContext('2d')!
+            context.fillStyle = css
+            context.fillRect(0, 0, 1, 1)
+            const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data
+            return { r: r!, g: g!, b: b!, a: a! / 255 }
+        }, edge!)
+        const fill = flatten(selected.fill, selected.surface)
+        const ratios = {
+            againstCurrent: contrast(flatten(edgeColor, fill), fill),
+            againstHover: contrast(flatten(edgeColor, fill), flatten(hover.fill, hover.surface)),
+        }
+        test.info().annotations.push({ type: 'edge', description: JSON.stringify(ratios) })
+        expect(ratios.againstCurrent).toBeGreaterThanOrEqual(1.3)
+        expect(ratios.againstHover).toBeGreaterThanOrEqual(1.3)
+        // Keyboard focus is the 2 px full-fg outline drawn over it, apart from the edge.
+        await page.mouse.move(0, 0)
+        await focusByKeyboard(page, current)
+        const focused = await paintOf(current, { pseudo: '::before' })
+        expect(focused.width).toBe(2)
+        expect(focused.color.a).toBe(1)
+        expect(insetEdge(focused.shadow)).toBe(edge)
+        expect(contrast(flatten(focused.color, fill), fill)).toBeGreaterThan(
+            2 * ratios.againstCurrent,
+        )
+        expect(await title.boundingBox(), 'nor on focus').toEqual(before)
+    })
+}
+
 /** The ring floors (plan TH2): 3:1 against the surface behind it, 2 px wide (1 px outside), drawn. */
 const expectRing = (name: string, ring: Awaited<ReturnType<typeof paintOf>>, outside = false) => {
     expect(ring.focusVisible, `${name} shows focus-visible`).toBe(true)

@@ -1763,14 +1763,11 @@ defineExpose({
     outline-offset: -2px;
 }
 
-/* The current row is the raised pill (row-current's tokens on the pseudo-element). Its shadow barely
-   shows in dark, so there a 1 px edge tells it from a hovered row. */
+/* The current row is the raised pill (row-current's tokens on the pseudo-element) with a 1 px
+   inset edge, so it reads by its outline as well as its fill: a hovered pill is only 1.05:1 from
+   it in light, and the shadow barely shows in dark. */
 .timeline-row-selected::before {
-    @apply bg-button shadow-md;
-}
-
-:root[data-theme='dark'] .timeline-row-selected::before {
-    @apply ring-1 ring-inset ring-fg/25;
+    @apply bg-button shadow-md ring-1 ring-inset ring-fg/25;
 }
 
 /* Not while pressed, so the press shows as on every other control. */

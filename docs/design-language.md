@@ -133,7 +133,7 @@ The History redesign is the newest large body of UI; it follows the rules above 
 - One grid for every row kind: the row pill spans the list less 6 px per side; a 36 px leading slot holds one mark per row (the Now dot, a kind glyph, a group's disclosure, a member's rail); the text pill follows, so every title starts at the same x and every time ends at the same x.
 - Rows have fixed heights per kind so the window needs no measuring: 44 px (40 px pill), 80 px for an unavailable entry with its reason, 28 px headers, 32 px dividers. They scale with the root font size.
 - Rows are `text-sm`. From 18 rem wide a row is one line (mark, title, count, delta, time on one centre line, the title giving way); below it the count, delta and time move to a `text-xs text-fg/80` caption line.
-- The current row is the raised pill (`bg-button shadow-md`, plus a 1 px inset edge in dark where the shadow does not show). Hover is `bg-button/70`, press `bg-press` sunk. A plain row presses its row pill; a group presses its text pill and its disclosure its own circle. Focus rings the pill at its edge in `fg`.
+- The current row is the raised pill (`bg-button shadow-md`) with a 1 px inset edge (`ring-1 ring-inset ring-fg/25`) in both themes: a hovered pill is only 1.05:1 from it in light, and the shadow does not show in dark. Hover is `bg-button/70`, press `bg-press` sunk. A plain row presses its row pill; a group presses its text pill and its disclosure its own circle. Focus rings the pill at its edge in `fg`.
 - Members carry a 2 px `bg-fg/30` rail in their leading slot, from under the parent's disclosure to the end of the run.
 - An unavailable row fades its marks and text to 60 % while its reason and every focus ring stay full strength.
 
