@@ -91,6 +91,10 @@ const dynamic: Record<string, string> = {
     'modals.loading.': 'TaskFailureKind',
     'peek.loadingShort': 'fixedLines in history/changes.ts, read through fixedLine',
     'peek.unavailableShort': 'fixedLines in history/changes.ts, read through fixedLine',
+    'history.summary.movedGroupsInto': 'moved${suffix}Into in operationPresentation/format.ts',
+    'history.summary.movedGroupsOut': 'moved${suffix}Out in operationPresentation/format.ts',
+    'history.summary.movedStagesInto': 'moved${suffix}Into in operationPresentation/format.ts',
+    'history.summary.movedStagesOut': 'moved${suffix}Out in operationPresentation/format.ts',
 }
 
 /**
