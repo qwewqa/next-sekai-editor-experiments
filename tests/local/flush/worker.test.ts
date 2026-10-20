@@ -5,7 +5,7 @@ import type { FlushResult } from '../../../src/local/flushWrite'
 import { keyText } from '../../../src/local/kv/keys'
 import { MemoryKv } from '../../../src/local/kv/memory'
 import type { Key, KvFactory, TxMode } from '../../../src/local/kv/types'
-import { checkStored } from '../../../src/local/testing/invariants'
+import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import type { StorageStatus } from '../../../src/local/worker/core'
@@ -163,7 +163,7 @@ test('Try Again’s move racing a flush loses no entry and leaves no dangling re
             [{ lastSeq: 4, entryCount: 4, seqs: [1, 2, 3, 4] }],
             `seed ${seed}`,
         )
-        assert.deepEqual(checkStored(world.memory), [], `seed ${seed}`)
+        assert.deepEqual(checkStrict(world.memory), [], `seed ${seed}`)
     }
 })
 
@@ -223,7 +223,7 @@ test('a batch planned before a memory-mode worker restart is planned again for t
         await flushing
         assert.equal(page.host.starts, 2)
         assert.equal(page.flusher.hasPending, false)
-        assert.deepEqual(checkStored(page.host.memory), [], `seed ${seed}`)
+        assert.deepEqual(checkStrict(page.host.memory), [], `seed ${seed}`)
         assert.deepEqual(
             sessionsIn(page.host.memory),
             [{ lastSeq: 2, entryCount: 2, seqs: [1, 2] }],
@@ -277,7 +277,11 @@ test('a memo learned on another store is checked again, whatever the epoch', asy
         results.map((result) => result.kind),
         ['stored', 'missing', 'stored'],
     )
-    assert.deepEqual(checkStored(second), [])
+    // The other store never held entry 1, which the page believed stored: its session starts at
+    // lastSeq 2 with the one row (a fault the test injects; evidence for architecture review A0).
+    const found = checkStored(second)
+    assert.equal(found.length, 1)
+    assert.match(found[0]!, /rows 1 up to lastSeq 2 are neither stored/)
 })
 
 test('a worker restart in memory mode keeps the history the old worker acknowledged', async () => {
@@ -328,7 +332,7 @@ for (const [name, flags] of [
                 const page = pages.get(world)
                 assert.ok(page)
                 const store = name === 'stored' ? world.memory : page.host.memory
-                assert.deepEqual(checkStored(store), [], `killed at ${String(killedAt)}`)
+                assert.deepEqual(checkStrict(store), [], `killed at ${String(killedAt)}`)
                 assert.equal(page.flusher.hasPending, false)
                 assert.deepEqual(
                     sessionsIn(store),
@@ -472,7 +476,7 @@ test('a batch planned before a restart is planned again even where the new store
         await flushing
         assert.equal(page.host.starts, 2)
         assert.equal(page.flusher.hasPending, false)
-        assert.deepEqual(checkStored(page.host.memory), [], `seed ${seed}`)
+        assert.deepEqual(checkStrict(page.host.memory), [], `seed ${seed}`)
         assert.deepEqual(
             sessionsIn(page.host.memory),
             [{ lastSeq: 2, entryCount: 2, seqs: [1, 2] }],

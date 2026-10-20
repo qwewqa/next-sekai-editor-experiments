@@ -5,7 +5,7 @@ import { toHex } from '../../../src/local/hash'
 import { sessionLock } from '../../../src/local/locks'
 import { holdParentLock, holdSessionLock, TabClient } from '../../../src/local/sessions'
 import { claimSessionLock } from '../../../src/local/startup/tab'
-import { checkStored } from '../../../src/local/testing/invariants'
+import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import { replay, stackMismatches } from '../../../src/local/timeline'
 import { editStep, futureFixtureOperation, originOperation } from '../../helpers/historySteps'
@@ -131,7 +131,7 @@ test('two tabs continuing one session at once: one continues the chain, the othe
         assert.deepEqual(forkRow?.parent, { id: parent.id, uptoSeq: 2 })
         assert.deepEqual(kinds(world, fork.id), ['1 continue', '2 edit'])
         assert.equal(rows(world, 'sessions').has(sessions[1 - winner]!.id), false)
-        assert.deepEqual(checkStored(world.memory), [], `seed ${seed}`)
+        assert.deepEqual(checkStrict(world.memory), [], `seed ${seed}`)
     }
 })
 

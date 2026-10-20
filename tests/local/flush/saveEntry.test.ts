@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import { describe } from 'node:test'
 import { captureName } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
@@ -8,9 +8,9 @@ import { BIND_STORES, finishOwnSave, type OwnSaveBelow } from '../../../src/loca
 import type { EntryRow } from '../../../src/local/save/cut'
 import { carries } from '../../../src/local/save/model'
 import { checkStored } from '../../../src/local/testing/invariants'
-import { createWorld } from '../../../src/local/testing/world'
 import { replay } from '../../../src/local/timeline'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
+import { readTimelineIndex } from '../../../src/local/worker/timelineHandlers'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
@@ -22,8 +22,14 @@ import {
 } from '../../helpers/historySteps'
 import { append, beginSession, openJournalPage, replayAll } from '../journal/harness'
 import { edgeChart, goldenChart, stateOf } from '../records/charts'
+import { continueIn, readOpen } from '../startup/harness'
 import { storedEntries, widen as widenBy } from '../timeline/helpers'
 import { openPage, rows, testId, type Page } from './harness'
+import {
+    createCheckedWorld as createWorld,
+    expectViolations,
+    checkedTest as test,
+} from './sessionCheck'
 
 // A Save's `save` entry (Part 1 §1.6.11.6): its `seq` reserved before the build, edits made
 // meanwhile after it and held until the entry is appended, its `revisionId` and `device` stored,
@@ -48,6 +54,13 @@ const begin = (page: Page, state: State) =>
     })
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
+
+// Violations the checker finds in a state a test builds, as evidence for architecture review A:
+// AR-2 (a late row stamped later than the rows above it), AR-3 (the net removes the stored stack),
+// and the first test's hand-made writer, which ignores the order on purpose.
+const LATE_TIME = /row 4 \(time \d+\) is later than row 5 \(time \d+\)/
+const WRITER_TIME = /row 3 \(time \d+\) is later than row 4 \(time 5\)/
+const NET_STACK = /its stored stack is missing/
 
 const DEVICE = { id: 'device-1', label: 'Web (Chrome)' }
 
@@ -451,6 +464,7 @@ const ownSave = (
     state: State,
     /** The file's rows, its `save` entry's among them: the binding's cut. */
     count?: number,
+    wall = 2_000_000,
 ) => {
     const entry = {
         sessionId,
@@ -481,7 +495,7 @@ const ownSave = (
         entry,
         record: (below?: OwnSaveBelow) =>
             page.core.write(BIND_STORES, (tx) =>
-                finishOwnSave(tx, chainId, entry, unit, 2_000_000, below),
+                finishOwnSave(tx, chainId, entry, unit, wall, below),
             ),
     }
 }
@@ -587,6 +601,7 @@ test('our own completed Save of a session another tab may hold never passes its 
 })
 
 test('a flush stores pending entries a write put `lastSeq` past, never skipping them', async () => {
+    expectViolations(WRITER_TIME, NET_STACK)
     const world = createWorld({ seed: 17 })
     const page = await openPage(world, world.tab('a'))
     const first = stateOf(goldenChart())
@@ -638,6 +653,7 @@ test('a flush stores pending entries a write put `lastSeq` past, never skipping 
 })
 
 test('our own completed Save kept while a batch past its `seq` is in flight is stored, never acknowledged unsent', async () => {
+    expectViolations(LATE_TIME, NET_STACK)
     const world = createWorld({ seed: 18 })
     let stall = false
     let release!: () => void
@@ -693,10 +709,11 @@ test('our own completed Save kept while a batch past its `seq` is in flight is s
     ])
     assert.equal(sessionRow(world).entryCount, 5)
     assert.equal(session.pending.length, 0)
-    assert.deepEqual(checkStored(world.memory), [])
+    // AR-2: the kept Save is stored below a row already stored above it (`checkedTest` expects it).
 })
 
 test('our own completed Save stored below `lastSeq` alone leaves the head’s summary (LS3-1)', async () => {
+    expectViolations(LATE_TIME, NET_STACK)
     const world = createWorld({ seed: 20 })
     let stall = false
     let release!: () => void
@@ -952,5 +969,132 @@ test('our own completed Save over another kept gap keeps its cut as the file hol
     assert.equal(
         carries(chainRows(), cut(), () => false),
         true,
+    )
+})
+
+// Architecture review A, acceptance tests for A2 (one writer of a session's rows). Each states what
+// holds once only the session's own flusher stores its rows, in `seq` order, and reports as `todo`
+// until A2 lands: they fail on today's tree, and `npm test` stays green. When A2 merges, remove
+// the `todo`. `checkedTest` also runs the stored-data checker at the end of each, so a late row is
+// reported by the invariant it breaks as well as by the assertions.
+
+/**
+ * Rows 1 and 2 stored, a Save reserving 3 whose file may hold it, 4 and 5 stored before local
+ * midnight and 6 after it, then the Save recognised after midnight with everything above it stored.
+ */
+const recognisedLate = async (seed: number) => {
+    const world = createWorld({ seed })
+    const midnight = new Date(2025, 0, 15, 24).getTime()
+    const minutes = (n: number) => 60_000 * n
+    let clock = midnight - minutes(30)
+    const page = await openPage(world, world.tab('a'), { now: () => (clock += 1) })
+    const first = stateOf(goldenChart())
+    const session = begin(page, first)
+    const second = editNote(page, first)
+    await page.flusher.flush()
+    const reservation = page.flusher.reserveSave()!
+    assert.equal(reservation.seq, 3)
+    await page.flusher.endSave(reservation, undefined, undefined, true)
+    clock = midnight - minutes(2)
+    const fourth = editNote(page, second)
+    const fifth = editNote(page, fourth)
+    await page.flusher.flush()
+    clock = midnight + minutes(5)
+    editNote(page, fifth)
+    await page.flusher.flush({ strict: true })
+    clock = midnight + minutes(10)
+    const below = page.flusher.keptSaveBelow(session.id, 3)
+    const save = ownSave(page, session.id, session.chainId, 3, second, 3, clock)
+    assert.equal(await save.record(below?.kind), true)
+    await page.flusher.flush({ strict: true })
+    assert.deepEqual(page.errors, [])
+    return { world, page, session }
+}
+
+const A2 = { todo: 'A2: one writer of a session’s rows' }
+
+describe('A2 acceptance (expected to fail before A2)', () => {
+    test(
+        'AR-1: a Save recognised in a later visit writes nothing into the parent past the continuation’s branch point',
+        async () => {
+            const world = createWorld({ seed: 41 })
+            // Visit 1: S is stored through 2. A Save reserves 3, writes its file, and the tab dies
+            // before the binding is recorded.
+            const first = await openPage(world, world.tab('first'))
+            const a = stateOf(goldenChart())
+            const session = begin(first, a)
+            const b = editNote(first, a)
+            await first.flusher.flush()
+            assert.equal(first.flusher.reserveSave()!.seq, 3)
+            first.tab.kill()
+            // Visit 2 continues S as C (parent S at 2), and C stores its first rows.
+            const next = await openPage(world, world.tab('next'))
+            const opened = await readOpen(next, session.id)
+            const child = continueIn(next, opened)
+            editNote(next, b)
+            await next.flusher.flush({ strict: true })
+            assert.equal(rows(world, 'sessions').get(child.id)?.parent !== undefined, true)
+            // The next Save recognises the file as our own: its `save` at S's 3, with the cut as the
+            // file holds it (init, edit, save).
+            const save = ownSave(next, session.id, session.chainId, 3, b, 3)
+            assert.equal(await save.record(), true)
+            // The binding is recorded, but S, which C branched from at 2, is not written past it.
+            assert.deepEqual(checkStored(world.memory), [])
+            const chain = rows(world, 'chains').get(session.chainId)!
+            assert.equal((chain.revision as { id: string }).id, 'rev-1')
+            assert.deepEqual(
+                [...rows(world, 'entries').values()]
+                    .filter((row) => row.sessionId === session.id)
+                    .map((row) => [row.seq, row.kind]),
+                [
+                    [1, 'init'],
+                    [2, 'edit'],
+                ],
+            )
+            assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
+        },
+        A2,
+    )
+
+    test(
+        'AR-2: a Save recognised late never lands under a later time than the rows above it',
+        async () => {
+            const { world } = await recognisedLate(42)
+            const times = [...rows(world, 'entries').values()].map((row) => row.time as number)
+            for (let i = 1; i < times.length; i++)
+                assert.ok(times[i - 1]! <= times[i]!, `row ${i} is later than row ${i + 1}`)
+        },
+        A2,
+    )
+
+    test(
+        'AR-2: a Save recognised after midnight lands under no other day’s Go To piece',
+        async () => {
+            const { world, page, session } = await recognisedLate(43)
+            // Every row of a Go To piece is on the piece's day, and the pieces hold every row.
+            const { pieces } = await page.tab.run(() =>
+                page.core.read(['sessions', 'entries'], (tx) =>
+                    readTimelineIndex(tx, { sessionId: session.id }),
+                ),
+            )
+            const day = (time: number) => new Date(time).setHours(0, 0, 0, 0)
+            const stored = [...rows(world, 'entries').values()]
+            for (const piece of pieces)
+                for (const row of stored.filter(
+                    (each) =>
+                        (each.seq as number) >= piece.oldestSeq &&
+                        (each.seq as number) <= piece.newestSeq,
+                ))
+                    assert.equal(
+                        day(row.time as number),
+                        day(piece.newest),
+                        `row ${String(row.seq)} lies under another day’s piece`,
+                    )
+            assert.equal(
+                pieces.reduce((sum, piece) => sum + piece.count, 0),
+                stored.length,
+            )
+        },
+        A2,
     )
 })
