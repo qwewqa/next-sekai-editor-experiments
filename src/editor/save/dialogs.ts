@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { isPeeking } from '../../history'
+import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import { i18n } from '../../i18n'
 import { formatDate } from '../../i18n/when'
 import type { SaveSizeEstimate } from '../../local/save/estimate'
@@ -11,6 +12,7 @@ import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
 import { confirmFile, downloadNotConfirmed } from '../file'
+import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
 import SaveDialog from './SaveDialog.vue'
@@ -174,15 +176,13 @@ const describe = (disk: DiskVersion) => {
     switch (disk.kind) {
         case 'saved': {
             const notes = interpolate(() => i18n.value.peek.notes, formatCount(disk.notes))()
-            const when = formatTime(disk.savedAt)
-            return disk.device.label.startsWith('Web')
-                ? interpolate(
-                      () => conflict.savedWeb,
-                      disk.device.label.replace(/^Web \((.*)\)$/, '$1'),
-                      when,
-                      notes,
-                  )()
-                : interpolate(() => conflict.savedOn, disk.device.label, when, notes)()
+            // The device is worded as the Timeline words it, once (Part 0 §0.9.3).
+            return interpolate(
+                () => conflict.saved,
+                savedOnText(getHistoryOperationContext(), disk.device.label),
+                formatTime(disk.savedAt),
+                notes,
+            )()
         }
         case 'otherProject':
             return disk.name === undefined
