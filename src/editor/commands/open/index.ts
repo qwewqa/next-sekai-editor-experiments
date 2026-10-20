@@ -9,7 +9,7 @@ import { ImportRefusal } from '../../../chart/refusal'
 import { validateChart } from '../../../chart/validate'
 import { chcyToUsc, isChcyLevelData } from '../../../chcy/convert'
 import { recordError } from '../../../diagnostics'
-import { detectHead } from '../../../files/detect'
+import { detectHead, detectZip } from '../../../files/detect'
 import { resetImportedState } from '../../../history'
 import { captureName } from '../../../history/operations'
 import { createSessionDescriptor } from '../../../history/session'
@@ -38,6 +38,7 @@ import { confirmSwitch, notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm/index.ts'
 import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/memory'
+import { showPreviewAssets } from '../previewAssets/modal'
 import { installDropGuard } from './dropGuard'
 import OpenIcon from './OpenIcon.vue'
 
@@ -66,8 +67,36 @@ export const open: Command = {
                 void changeBgm(file)
                 return
             }
-            // A ZIP is a project file, read in the storage worker (§1.5.4).
             if (detected === 'zip') {
+                // An archive or a Sonolus package is named, not opened (§1.5.2): nothing is
+                // replaced. A ZIP that cannot be classified goes on to the project reader, which
+                // says why it cannot open.
+                const kind = await detectZip(file).catch(() => 'project' as const)
+                if (!request.isCurrent()) return
+                if (kind === 'archive') {
+                    await showModal(InfoModal, {
+                        title: () => i18n.value.commands.open.title,
+                        message: () => i18n.value.open.severalProjects,
+                    })
+                    return
+                }
+                if (kind === 'package') {
+                    const choice = await showChoice({
+                        title: () => i18n.value.commands.open.title,
+                        message: () => i18n.value.open.scp,
+                        choices: [
+                            {
+                                value: true,
+                                label: () => i18n.value.open.openPreviewAssets,
+                                default: true,
+                            },
+                        ],
+                        cancelLabel: () => i18n.value.modals.info.ok,
+                    })
+                    if (choice) await showPreviewAssets(undefined, { file })
+                    return
+                }
+                // A project file, read in the storage worker (§1.5.4).
                 const { openProject } = await import('./project')
                 try {
                     if (!request.isCurrent()) return

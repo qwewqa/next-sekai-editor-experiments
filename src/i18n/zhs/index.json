@@ -2192,6 +2192,9 @@
   },
   "open": {
     "notProject": "此 ZIP 不是项目文件。",
+    "severalProjects": "此 ZIP 包含多个项目文件。请解压后逐个打开。",
+    "scp": "这是 Sonolus 包。要使用其中的皮肤或其他资源，请在预览资源中选择。",
+    "openPreviewAssets": "预览资源…",
     "damagedUnopened": "此文件已损坏，无法打开。",
     "damaged": "此文件已损坏。已在不含历史记录的情况下打开。",
     "historyUnreadable": "无法读取此文件的历史记录。保存时会创建单独的文件。",
