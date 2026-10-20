@@ -5,6 +5,7 @@ import {
     type HistoryEntryKind,
     type UndoableStep,
 } from '../history/operations'
+import { extentOf } from '../utils/math'
 import { forkRecord } from './chainFields'
 import { deflateChunk, verifyChunk, type VerifiedChunk } from './chunkVerify'
 import { countDayOfUse } from './days'
@@ -488,7 +489,7 @@ export const writeFlush = async (
             )
                 missing.add(entry.seq)
     if (missing.size) {
-        const from = Math.min(...missing)
+        const from = extentOf(missing).min
         const later = await tx.getAll(
             'entries',
             KeyRange.bound([batch.session.id, from], [batch.session.id, lastSeq]),
