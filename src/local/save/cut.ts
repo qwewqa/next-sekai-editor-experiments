@@ -34,6 +34,7 @@ export type EntryRow = EntryDescription & {
     kept: boolean
     revisionId?: string
     device?: { id: string; label: string }
+    appVersion?: string
     stack?: { keep: number; push: { snapshot: Uint8Array; step: UndoableStep }[]; index: number }
     x?: Record<string, unknown>
 }
@@ -135,6 +136,7 @@ export const readEntryRow = (value: unknown): EntryRow | undefined => {
     const device = value.device
     if (isRow(device) && typeof device.id === 'string' && typeof device.label === 'string')
         row.device = { id: device.id, label: device.label }
+    if (typeof value.appVersion === 'string') row.appVersion = value.appVersion
     if (value.stack !== undefined) {
         const stack = value.stack
         const push = isRow(stack) ? readSlots(stack.push) : undefined

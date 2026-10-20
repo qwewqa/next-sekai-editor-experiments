@@ -298,8 +298,7 @@
       "redid": "\"{0}\" refait"
     },
     "reset": {
-      "title": "Réinitialiser",
-      "reset": "Niveau réinitialisé"
+      "title": "Réinitialiser"
     },
     "save": {
       "title": "Sauvegarder"
@@ -966,13 +965,7 @@
     "default": {
       "none": "Aucun objet sélectionné",
       "edited": "{0} objet modifié|{0} objets modifiés",
-      "editedNotes": "{0} note modifiée|{0} notes modifiées",
-      "set": "{1} : {0} objet modifié|{1} : {0} objets modifiés",
-      "setNotes": "{1} : {0} note modifiée|{1} : {0} notes modifiées",
-      "noChange": "Aucun changement",
-      "setBpm": "{1} : {0} changement de BPM modifié|{1} : {0} changements de BPM modifiés",
-      "setTimeScales": "{1} : {0} échelle de temps modifiée|{1} : {0} échelles de temps modifiées",
-      "setEvents": "{1} : {0} événement {2} modifié|{1} : {0} événements {2} modifiés"
+      "noChange": "Aucun changement"
     },
     "view": {
       "tool": "Outil",
@@ -1046,8 +1039,7 @@
     "eraser": {
       "title": "Gomme",
       "deselected": "Tout désélectionné",
-      "erasing": "Effacement de {0} objet|Effacement de {0} objets",
-      "erased": "{0} objet effacé|{0} objets effacés"
+      "erasing": "Effacement de {0} objet|Effacement de {0} objets"
     },
     "generateSlideNotes": {
       "title": "Générer les notes de slide",
@@ -1095,7 +1087,6 @@
       "adding": "Ajout de {0} note|Ajout de {0} notes",
       "added": "{0} note ajoutée|{0} notes ajoutées",
       "editing": "Modification de {0} note|Modification de {0} notes",
-      "edited": "{0} note modifiée|{0} notes modifiées",
       "moving": "Déplacement de {0} note|Déplacement de {0} notes",
       "moved": "{0} note déplacée|{0} notes déplacées",
       "selected": "{0} note sélectionnée|{0} notes sélectionnées",
@@ -1247,6 +1238,10 @@
       "movedEvents": "Événements {0} déplacés",
       "editedObjects": "Objets modifiés",
       "movedObjects": "Objets déplacés",
+      "movedGroupsInto": "Groupes déplacés dans le dossier {0}",
+      "movedGroupsOut": "Groupes sortis des dossiers",
+      "movedStagesInto": "Scènes déplacées dans le dossier {0}",
+      "movedStagesOut": "Scènes sorties des dossiers",
       "pastedObjects": "Objets collés",
       "brushedObjects": "Objets peints",
       "deletedObjects": "Objets supprimés",
@@ -1299,10 +1294,8 @@
       "deletedEvents": "Événements {0} supprimés",
       "cutEvents": "Événements {0} coupés"
     },
-    "edits": "{0} modifications",
     "undidSteps": "{0} étapes annulées",
     "redidSteps": "{0} étapes rétablies",
-    "initialize": "Initialiser",
     "dynamicStages": {
       "title": "Scènes dynamiques",
       "message": "Cette fonctionnalité nécessite les scènes dynamiques. Voulez-vous les activer ?",
@@ -1327,6 +1320,7 @@
     "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
     "removedForSpace": "supprimé pour libérer de l’espace",
     "damaged": "endommagé",
+    "needsNewer": "nécessite une version plus récente",
     "savedOn": "Sauvegardé sur {0}",
     "savedWeb": "Sauvegardé dans l’éditeur web ({0})",
     "savedWebAny": "Sauvegardé dans l’éditeur web",
@@ -1378,6 +1372,7 @@
     },
     "operation": {
       "changedHeader": "{0} : valeur modifiée",
+      "changedLevelInfo": "Informations du niveau modifiées",
       "setValueOnObjects": "{1} : valeur {2} appliquée à {0} objet|{1} : valeur {2} appliquée à {0} objets",
       "setValueOnNotes": "{1} : valeur {2} appliquée à {0} note|{1} : valeur {2} appliquée à {0} notes",
       "setValueOnBpm": "{1} : valeur {2} appliquée à {0} changement de BPM|{1} : valeur {2} appliquée à {0} changements de BPM",
@@ -1827,7 +1822,11 @@
       "ok": "OK"
     },
     "loading": {
-      "loading": "Chargement…"
+      "loading": "Chargement…",
+      "audioUnreadable": "Ce fichier audio n’a pas pu être lu.",
+      "imageUnreadable": "Cette image n’a pas pu être lue.",
+      "coverFailed": "La couverture n’a pas pu être générée.",
+      "failed": "L’opération n’a pas pu aboutir."
     }
   },
   "preview": {
@@ -1912,8 +1911,6 @@
       "added": "Dossier {0} ajouté",
       "renamed": "Dossier {0} renommé en {1}",
       "moved": "Dossier {0} déplacé",
-      "movedInto": "{0} déplacé dans le dossier {1}",
-      "movedOut": "{0} sorti du dossier {1}",
       "ungrouped": "Dossier {0} dissous",
       "deleted": "Dossier {0} supprimé",
       "duplicated": "Dossier {0} dupliqué"
@@ -2039,16 +2036,12 @@
     "addedRemoved": "Ajouts : {0} · suppressions : {1}",
     "exportsCurrent": "Exporte la version actuelle.",
     "overlay": "Consultation de l’historique · lecture seule",
-    "viewing": "Affichage de {0} · {1} · lecture seule",
-    "viewingShort": "Affichage de {0} · lecture seule",
     "backToNow": "Revenir à l’état actuel",
     "restore": "Restaurer",
     "changeCount": "{0} modification|{0} modifications",
     "noChanges": "Aucune modification",
     "changedLarge": "Modifications : {0}",
     "notes": "{0} note|{0} notes",
-    "notesOf": "{0} notes sur {1}",
-    "eventsOf": "{0} événements sur {1}",
     "bpms": "{0} changement de BPM|{0} changements de BPM",
     "timeScales": "{0} échelle de temps|{0} échelles de temps",
     "events": "{0} événement|{0} événements",
@@ -2203,6 +2196,7 @@
     "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde crée un fichier séparé.",
     "newerVersion": "Créé par une version plus récente de {0}. La sauvegarde crée un fichier séparé.",
     "newerRefused": "Créé par une version plus récente de {0}.",
+    "newerPatch": "Créé par une version plus récente de {0}. Certains contenus peuvent ne pas s’afficher.",
     "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde crée un fichier séparé.",
     "media": {
       "bgm": "la BGM",
@@ -2225,20 +2219,10 @@
   },
   "file": {
     "replacedElsewhere": "\"{0}\" a été remplacé depuis un autre onglet ou une autre fenêtre.",
-    "saved": "{0} · sauvegardé {1}",
-    "changedSinceSaved": "{0} · modifié depuis la sauvegarde",
     "downloaded": "{0} · téléchargé {1}",
-    "notConfirmed": "non confirmé",
-    "changedSinceDownload": "{0} · modifié depuis le téléchargement",
     "opened": "{0} · ouvert {1}",
-    "changedSinceOpened": "{0} · modifié depuis l’ouverture",
     "short": {
-      "saved": "sauvegardé",
-      "changed": "modifié",
-      "notSaved": "non sauvegardé",
-      "downloaded": "téléchargé",
-      "notConfirmed": "non confirmé",
-      "opened": "ouvert"
+      "notSaved": "non sauvegardé"
     }
   },
   "state": {
@@ -2276,6 +2260,9 @@
     "notPresent": "Absent",
     "added": "Ajouté",
     "removed": "Supprimé",
+    "tagsAdded": "Tags ajoutés",
+    "tagsRemoved": "Tags supprimés",
+    "tagsChanged": "Tags modifiés",
     "order": "Ordre",
     "folder": "Dossier",
     "groupFolder": "Dossier de groupes",

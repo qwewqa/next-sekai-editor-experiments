@@ -1,5 +1,5 @@
 import { toHex } from '../hash'
-import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
+import { sessionReadability } from '../records/unknownValues'
 import {
     replay,
     ReplayError,
@@ -17,6 +17,8 @@ import type { ChainCut, EntryRow, SessionRow } from './cut'
 export type ModelRefusal =
     /** A session or entry kind this build doesn't know (§1.6.11.6): "Needs a newer version". */
     | 'needsNewer'
+    /** An older or malformed session generation: not newer, and not read either, so "damaged". */
+    | 'unreadableHead'
     /** Two sessions share a `startedAt` and their parent links don't order them. */
     | 'order'
 
@@ -34,9 +36,10 @@ export type ChainRow = { entry: EntryRow; startedAt: number }
 export const checkReadable = (cut: ChainCut) => {
     if (cut.unreadable) throw new ModelError('needsNewer')
     for (const session of cut.sessions) {
-        if (!isReadableSessionVersion(session.v)) throw new ModelError('needsNewer')
-        for (const entry of cut.entries.get(session.id) ?? [])
-            if (!isKnownEntryKind(entry.kind)) throw new ModelError('needsNewer')
+        const entryKinds = (cut.entries.get(session.id) ?? []).map((entry) => entry.kind)
+        const readability = sessionReadability({ row: session, entryKinds })
+        if (readability === 'newer') throw new ModelError('needsNewer')
+        if (readability === 'unsupported') throw new ModelError('unreadableHead')
     }
 }
 

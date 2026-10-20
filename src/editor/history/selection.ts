@@ -58,6 +58,9 @@ export const peekedLabel = (info: PeekedInfo) => {
 /** Entries whose state could not be read, by key: shown as damaged (§1.4.10.5). */
 export const damagedEntries = shallowRef<ReadonlySet<string>>(new Set())
 
+/** Entries whose state a newer version wrote, by key: shown as needing a newer version, never damaged. */
+export const newerEntries = shallowRef<ReadonlySet<string>>(new Set())
+
 /** Peeks an entry; the peek itself waits a moment when requests come close together. */
 export const requestPeek = (info: PeekedInfo) => {
     const generation = peekSourceGeneration.value
@@ -68,6 +71,8 @@ export const requestPeek = (info: PeekedInfo) => {
         // one already reads so from its row, and one not stored yet can be tried again.
         if (error instanceof PeekError && error.reason === 'damaged')
             damagedEntries.value = new Set(damagedEntries.value).add(info.key)
+        if (error instanceof PeekError && error.reason === 'newer')
+            newerEntries.value = new Set(newerEntries.value).add(info.key)
         if (peekedInfo.value === info) peekedInfo.value = undefined
     })
 }
@@ -85,7 +90,9 @@ export const requestRestore = async (key: EntryKey) => {
             historyGeneration !== historyViewGeneration()
         )
             return
-        if (error instanceof PeekError && error.reason !== 'removed')
+        if (error instanceof PeekError && error.reason === 'newer')
+            newerEntries.value = new Set(newerEntries.value).add(key)
+        else if (error instanceof PeekError && error.reason !== 'removed')
             damagedEntries.value = new Set(damagedEntries.value).add(key)
         if (peekedKey.value === key || peekedInfo.value?.key === key) backToNow()
     })

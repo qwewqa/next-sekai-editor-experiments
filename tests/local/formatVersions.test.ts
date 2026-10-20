@@ -10,7 +10,11 @@ import {
     MINOR_TABLE,
     NXSP_FORMAT,
     NXSP_MINOR,
+    NXSP_PATCH,
     NXSP_VERSION,
+    PATCH_TABLE,
+    minorOf,
+    patchOf,
 } from '../../src/local/nxsp/version'
 import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 
@@ -22,6 +26,7 @@ test('the format constants have their v0.6.0 values', () => {
     assert.equal(NXSP_FORMAT, 'nxsp')
     assert.equal(NXSP_VERSION, 1)
     assert.equal(NXSP_MINOR, 1)
+    assert.equal(NXSP_PATCH, 0)
     assert.equal(LEVEL_VERSION, 1)
     assert.equal(MANIFEST_VERSION, 2)
     assert.equal(RECORDS_V, 1)
@@ -78,4 +83,55 @@ test('the minor table: manifest generation 2 requires minor 1', () => {
     assert.deepEqual(Object.keys(MINOR_TABLE.levelVersion).map(Number), [LEVEL_VERSION])
     assert.deepEqual(Object.keys(MINOR_TABLE.rootV).map(Number), [RECORDS_V])
     assert.deepEqual(Object.keys(MINOR_TABLE.manifestVersion).map(Number), [MANIFEST_VERSION])
+})
+
+test('the patch table: every additive thing a file can hold, and the patch that introduced it', () => {
+    // A new ZIP entry kind or `parts` key goes in both tables: the `minor` row is 0 (an older
+    // reader leaves it out, it does not misread what remains) and the `patch` row names the
+    // `patch` it ships in (docs/format-versioning.md).
+    assert.deepEqual(Object.keys(PATCH_TABLE.zipEntry), Object.keys(MINOR_TABLE.zipEntry))
+    assert.deepEqual(Object.keys(PATCH_TABLE.partsKey), Object.keys(MINOR_TABLE.partsKey))
+    assert.ok(Object.values(MINOR_TABLE.zipEntry).every((minor) => minor === 0))
+    assert.ok(Object.values(MINOR_TABLE.partsKey).every((minor) => minor === 0))
+    // The generation is the highest patch any row names.
+    const rows = [...Object.values(PATCH_TABLE.zipEntry), ...Object.values(PATCH_TABLE.partsKey)]
+    assert.equal(Math.max(0, ...rows), NXSP_PATCH)
+    // The writer writes the maximum over what it writes, and refuses what the table lacks.
+    assert.equal(
+        patchOf({ zipEntries: ['project.json', 'bgm/a.mp3', 'history/segments/3.json'] }),
+        0,
+    )
+    assert.throws(() => patchOf({ zipEntries: ['video/a.mp4'] }), /No patch for video\/a\.mp4/)
+    assert.throws(() => patchOf({ zipEntries: [], partsKeys: ['video'] }), /No patch for parts/)
+    assert.throws(
+        () =>
+            minorOf({
+                levelVersion: 1,
+                rootVs: [],
+                entryKinds: [],
+                zipEntries: ['video/a.mp4'],
+            }),
+        /No minor for video\/a\.mp4/,
+    )
+})
+
+test('the patch table names every x carrier, and a carrier row raises the written patch', () => {
+    assert.deepEqual(Object.keys(PATCH_TABLE.carrier).sort(), [
+        'context.x',
+        'entry.x',
+        'item.x',
+        'part.x',
+        'slot.x',
+        'stack.x',
+        'step.x',
+        'undoStack.x',
+    ])
+    assert.ok(Object.values(PATCH_TABLE.carrier).every((patch) => patch === 0))
+    assert.equal(patchOf({ zipEntries: ['project.json'], carriers: ['step.x', 'entry.x'] }), 0)
+    assert.throws(() => patchOf({ zipEntries: [], carriers: ['file.x'] }), /No patch for file\.x/)
+    // The first build to write a step `x` raises that row; the writer's patch follows from it.
+    const raised = { ...PATCH_TABLE, carrier: { ...PATCH_TABLE.carrier, 'step.x': 2 } }
+    assert.equal(patchOf({ zipEntries: ['project.json'], carriers: ['step.x'] }, raised), 2)
+    assert.equal(patchOf({ zipEntries: ['project.json'], carriers: ['entry.x'] }, raised), 0)
+    assert.equal(patchOf({ zipEntries: ['project.json'] }, raised), 0)
 })

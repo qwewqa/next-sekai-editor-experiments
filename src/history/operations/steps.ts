@@ -7,6 +7,7 @@ import {
     OPERATION_WIRE_DEPTH,
     OperationDataError,
     owns,
+    type JsonObject,
     type JsonValue,
 } from './json'
 import { captureOperation, decodeOperation } from './registry'
@@ -15,22 +16,50 @@ export const RECOVERY_CONTEXT_ITEMS = 64
 export const RECOVERY_CONTEXT_BYTES = 128 * 1024
 
 export type StepKind = 'init' | 'edit' | 'restore'
-export type StepDescription = { readonly kind: StepKind; readonly operation: JsonValue }
+
+/**
+ * `x`, the one ignorable extension carrier of a structural object (a step, a recovery-context
+ * item, an undo slot, a stack): a JSON object within the operation byte limit. A reader carries it
+ * by value wherever it copies the object whole, never reads it, and may drop it wherever it
+ * rebuilds the object. Today's writers write none. Anything a reader must understand uses a version.
+ */
+export type Extension = JsonObject
+
+export type StepDescription = {
+    readonly kind: StepKind
+    readonly operation: JsonValue
+    readonly x?: Extension
+}
 export type RecoveryContext = {
     readonly head: StepDescription
     readonly headIndex: number
     readonly dropped: readonly StepDescription[]
     readonly omitted: number
+    readonly x?: Extension
 }
 export type UndoableStep = StepDescription & { readonly recoveryContext?: RecoveryContext }
 export type RecoverySources = RecoveryContext
 
+/** The keys of each carrier: everything but `x` is v1's, and nothing else is read. */
+const STEP_KEYS = ['kind', 'operation', 'x', 'recoveryContext'] as const
+const ITEM_KEYS = ['kind', 'operation', 'x'] as const
+const CONTEXT_KEYS = ['head', 'headIndex', 'dropped', 'omitted', 'x'] as const
+
+const onlyKeys = (value: Record<string, unknown>, keys: readonly string[]) =>
+    Object.keys(value).every((key) => keys.includes(key))
+
+/** An `x` is absent, or a JSON object within the operation byte limit. */
+const extension = (value: Record<string, unknown>) =>
+    !owns(value, 'x') ||
+    (isObject(value.x) && jsonBytes(value.x as JsonObject) <= OPERATION_WIRE_BYTES)
+
 const description = (value: unknown): value is StepDescription => {
     if (
         !isObject(value) ||
-        Object.keys(value).length !== 2 ||
+        !onlyKeys(value, ITEM_KEYS) ||
         !owns(value, 'kind') ||
         !owns(value, 'operation') ||
+        !extension(value) ||
         !['init', 'edit', 'restore'].includes(value.kind as string)
     )
         return false
@@ -41,7 +70,8 @@ const description = (value: unknown): value is StepDescription => {
 const context = (value: unknown): value is RecoveryContext => {
     if (
         !isObject(value) ||
-        Object.keys(value).length !== 4 ||
+        !onlyKeys(value, CONTEXT_KEYS) ||
+        !extension(value) ||
         !owns(value, 'head') ||
         !owns(value, 'headIndex') ||
         !owns(value, 'dropped') ||
@@ -76,9 +106,10 @@ export const captureStep = (value: unknown): UndoableStep => {
     if (!isObject(captured)) throw new OperationDataError('Invalid History step')
     const hasContext = owns(captured, 'recoveryContext')
     if (
-        Object.keys(captured).length !== (hasContext ? 3 : 2) ||
+        !onlyKeys(captured, STEP_KEYS) ||
         !owns(captured, 'kind') ||
         !owns(captured, 'operation') ||
+        !extension(captured) ||
         !description({ kind: captured.kind, operation: captured.operation }) ||
         (hasContext && !context(captured.recoveryContext))
     )
@@ -86,8 +117,75 @@ export const captureStep = (value: unknown): UndoableStep => {
     return captured as unknown as UndoableStep
 }
 
+/** A step's description: its `x` goes with it, since the description copies the step whole. */
 export const stepDescription = (step: UndoableStep): StepDescription =>
-    Object.freeze({ kind: step.kind, operation: step.operation })
+    Object.freeze({
+        kind: step.kind,
+        operation: step.operation,
+        ...(step.x === undefined ? {} : { x: step.x }),
+    })
+
+/**
+ * A step, a recovery context or an entry's description with the keys that no carrier of v1 has
+ * removed, and where they were (paths relative to the value). A reader reports those as
+ * `unknown-key`, newer content, and checks the rest as it would any other: only `x` is ignorable
+ * (§1.6.11.8). The value is not otherwise checked.
+ */
+export type Stripped = { value: unknown; unknown: string[] }
+
+const strip = (value: unknown, keys: readonly string[], path: string, out: string[]) => {
+    if (!isObject(value)) return value
+    const kept: Record<string, unknown> = {}
+    for (const [key, item] of Object.entries(value)) {
+        if (keys.includes(key)) Object.defineProperty(kept, key, { value: item, enumerable: true })
+        else out.push(`${path}${key}`)
+    }
+    return kept
+}
+
+const stripContext = (value: unknown, path: string, out: string[]) => {
+    const kept = strip(value, CONTEXT_KEYS, path, out)
+    if (!isObject(kept)) return kept
+    const copy: Record<string, unknown> = { ...kept }
+    if (owns(copy, 'head')) copy.head = strip(copy.head, ITEM_KEYS, `${path}head.`, out)
+    if (Array.isArray(copy.dropped))
+        copy.dropped = copy.dropped.map((item, i) =>
+            strip(item, ITEM_KEYS, `${path}dropped[${i}].`, out),
+        )
+    return copy
+}
+
+export const stripUnknownStepKeys = (value: unknown, path = ''): Stripped => {
+    const unknown: string[] = []
+    const kept = strip(value, STEP_KEYS, path, unknown)
+    if (isObject(kept) && owns(kept, 'recoveryContext'))
+        return {
+            value: {
+                ...kept,
+                recoveryContext: stripContext(
+                    kept.recoveryContext,
+                    `${path}recoveryContext.`,
+                    unknown,
+                ),
+            },
+            unknown,
+        }
+    return { value: kept, unknown }
+}
+
+/** The same for an entry's description: its `step`, or its `recoveryContext`. */
+export const stripUnknownEntryKeys = (entry: Record<string, unknown>): Stripped => {
+    const unknown: string[] = []
+    const value: Record<string, unknown> = { ...entry }
+    if (owns(entry, 'step')) {
+        const step = stripUnknownStepKeys(entry.step, 'step.')
+        value.step = step.value
+        unknown.push(...step.unknown)
+    }
+    if (owns(entry, 'recoveryContext'))
+        value.recoveryContext = stripContext(entry.recoveryContext, 'recoveryContext.', unknown)
+    return { value, unknown }
+}
 
 export const isSyntheticRecovery = (step: StepDescription) => {
     const decoded = decodeOperation(step.operation)

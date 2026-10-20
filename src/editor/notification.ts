@@ -7,6 +7,7 @@ import { appVersion, platform } from '../platform'
 import { PRODUCT_NAME } from '../product'
 import { startupGate } from '../startup/gate'
 import { interpolate } from '../utils/interpolate'
+import { formatCount } from '../utils/size'
 import { noticeDuration, RESUME_MIN_MS } from './noticeTiming'
 
 /** A card's one button (Part 1 §1.4.1). */
@@ -172,7 +173,10 @@ const pillLines = (): NoticeLine[] => {
     const lines: NoticeLine[] = [...titleLines(), ...shown]
     if (notices.length > shown.length)
         lines.push({
-            message: interpolate(() => i18n.value.load.more, `${notices.length - shown.length}`),
+            message: interpolate(
+                () => i18n.value.load.more,
+                formatCount(notices.length - shown.length),
+            ),
             action: {
                 label: () => i18n.value.load.localData,
                 // The opener itself, so the shown Local Data lines count as this line's twins.
@@ -254,15 +258,21 @@ export const notify = (
         announcement?: () => string
         /** The card's glyph. A quick toast has no glyph, so a severity without `card` or `action` is dropped. */
         severity?: NoticeSeverity
+        /**
+         * A card of several rows, as the start-up card's: a heading line, then a row for each other
+         * line, with its own glyph and action. `message` is then the lines joined.
+         */
+        lines?: NoticeLine[]
     },
 ) => {
     const notice: Notice = {
         id: id++,
         message,
-        action: options?.action,
-        card: options?.card,
+        action: options?.action ?? options?.lines?.find((line) => line.action)?.action,
+        card: options?.card ?? (options?.lines ? true : undefined),
         announcement: options?.announcement,
         severity: options?.severity,
+        ...(options?.lines ? { lines: options.lines } : {}),
     }
     latestNotice.value = notice
     if (isCard(notice)) {

@@ -68,6 +68,7 @@ const entryOf = (entry: TimelineEntry): Entry => ({
     noteCount: entry.noteCount,
     kept: entry.kept,
     ...(entry.damaged ? { damaged: true } : {}),
+    ...(entry.unreadable ? { unreadable: entry.unreadable } : {}),
     ...(entry.device ? { device: entry.device } : {}),
     ...(entry.from === undefined ? {} : { from: entry.from }),
     ...(entry.snapshot ? { snapshot: entry.snapshot } : {}),

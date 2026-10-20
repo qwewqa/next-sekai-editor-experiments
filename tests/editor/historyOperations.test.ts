@@ -19,6 +19,8 @@ import {
     operationGroup,
     RECOVERY_CONTEXT_BYTES,
     recoverySources,
+    stripUnknownEntryKeys,
+    stripUnknownStepKeys,
     type JsonValue,
     type NativeOperationInput,
     type StepDescription,
@@ -629,4 +631,150 @@ test('recovered events retain immutable context independently of a pushed step',
         /recovery context/,
     )
     assert.throws(() => pushedStep(event), /does not push/)
+})
+
+// `x`, the one ignorable carrier of a structural object (§1.6.11.8)
+
+const sameJson = (actual: unknown, expected: JsonValue) =>
+    assert(equalJson(actual as JsonValue, expected))
+
+test('x is accepted on a step, a recovery context and its items, and carried by value', () => {
+    const operation = wire('future.action', { index: 1 })
+    const x = { future: [1, { deep: true }], when: 1792126800000 }
+    const stepWithX = captureStep({ kind: 'edit', operation, x })
+    sameJson(stepWithX.x, x)
+    assert(Object.isFrozen(stepWithX.x))
+    // A step without one is the step v1 writes: no key at all.
+    assert.equal('x' in captureStep({ kind: 'edit', operation }), false)
+
+    const head = captureStep({ kind: 'edit', operation, x: { head: true } })
+    const item = captureStep({ kind: 'edit', operation: wire('future.action', { index: 2 }), x })
+    const context = createRecoveryContext(head, [item], 1)
+    sameJson(context.head.x, { head: true })
+    sameJson(context.dropped[0]?.x, x)
+    assert.equal(context.x, undefined)
+
+    // The context and its items carry their own: a step holds them whole.
+    const withContext = captureStep({
+        kind: 'edit',
+        operation,
+        x,
+        recoveryContext: { ...context, x: { context: 1 } },
+    })
+    sameJson(withContext.recoveryContext?.x, { context: 1 })
+    sameJson(withContext.recoveryContext?.dropped[0]?.x, x)
+    sameJson(captureRecoveryContext(withContext.recoveryContext)?.dropped[0]?.x, x)
+
+    // Flattening a step into a description keeps its x with it.
+    const sources = recoverySources(withContext)
+    sameJson(sources.head.x, x)
+    sameJson(sources.dropped[0]?.x, x)
+    sameJson(recoverySources(stepWithX).head.x, x)
+
+    // An entry holds a step, or a recovered event's context, whole.
+    const entry = captureEntryDescription({ kind: 'edit', step: stepWithX })
+    sameJson(entry.step?.x, x)
+    const recovered = captureEntryDescription({
+        kind: 'recovered',
+        operation,
+        recoveryContext: { ...context, x },
+    })
+    assert(recovered.kind === 'recovered')
+    sameJson(recovered.recoveryContext.x, x)
+})
+
+test('x must be a JSON object within the operation byte limit; no other key is ignorable', () => {
+    const operation = wire('future.action', {})
+    for (const x of [[1], 'x', 1, null, true]) {
+        assert.throws(() => captureStep({ kind: 'edit', operation, x }), /Invalid History step/)
+        assert.throws(
+            () =>
+                captureStep({
+                    kind: 'edit',
+                    operation,
+                    recoveryContext: {
+                        head: { kind: 'edit', operation, x },
+                        headIndex: 0,
+                        dropped: [],
+                        omitted: 0,
+                    },
+                }),
+            /Invalid History step/,
+        )
+    }
+    const big = { text: 'x'.repeat(OPERATION_WIRE_BYTES) }
+    assert.throws(() => captureStep({ kind: 'edit', operation, x: big }))
+    // Any other key is still refused, at every level: a reader that finds one says "newer".
+    assert.throws(() => captureStep({ kind: 'edit', operation, zz: 1 }), /Invalid History step/)
+    assert.throws(
+        () =>
+            captureStep({
+                kind: 'edit',
+                operation,
+                recoveryContext: {
+                    head: { kind: 'edit', operation, zz: 1 },
+                    headIndex: 0,
+                    dropped: [],
+                    omitted: 0,
+                },
+            }),
+        /Invalid History step/,
+    )
+    assert.throws(
+        () =>
+            captureStep({
+                kind: 'edit',
+                operation,
+                recoveryContext: {
+                    head: { kind: 'edit', operation },
+                    headIndex: 0,
+                    dropped: [],
+                    omitted: 0,
+                    zz: 1,
+                },
+            }),
+        /Invalid History step/,
+    )
+})
+
+test('unknown keys are found at the levels of a step, a context and an entry', () => {
+    const operation = wire('future.action', {})
+    const stripped = stripUnknownStepKeys(
+        {
+            kind: 'edit',
+            operation,
+            zz: 1,
+            x: { kept: 1 },
+            recoveryContext: {
+                head: { kind: 'edit', operation, a: 1 },
+                headIndex: 0,
+                dropped: [{ kind: 'edit', operation, b: 1 }],
+                omitted: 0,
+                c: 1,
+            },
+        },
+        'step.',
+    )
+    assert.deepEqual(stripped.unknown.sort(), [
+        'step.recoveryContext.c',
+        'step.recoveryContext.dropped[0].b',
+        'step.recoveryContext.head.a',
+        'step.zz',
+    ])
+    assert.doesNotThrow(() => captureStep(stripped.value))
+    const entry = stripUnknownEntryKeys({
+        kind: 'recovered',
+        operation,
+        recoveryContext: {
+            head: { kind: 'edit', operation },
+            headIndex: 0,
+            dropped: [],
+            omitted: 0,
+            q: 1,
+        },
+    })
+    assert.deepEqual(entry.unknown, ['recoveryContext.q'])
+    assert.doesNotThrow(() => captureEntryDescription(entry.value))
+    // Not objects: left alone, for the codec to refuse.
+    assert.deepEqual(stripUnknownStepKeys(5), { value: 5, unknown: [] })
 })

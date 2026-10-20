@@ -3,6 +3,7 @@ import { replaceState, state } from '../history'
 import { i18n } from '../i18n'
 import type { NoteEntity } from '../state/entities/slides/note'
 import { interpolate } from '../utils/interpolate'
+import { formatCount } from '../utils/size'
 import type { Modifiers } from './controls/gestures/pointer'
 import { editorNavigation, type EditorNavigation } from './navigation'
 import { notify } from './notification'
@@ -66,5 +67,5 @@ export const selectOffscreenNotes = (notes: NoteEntity[], modifiers: Modifiers) 
         selectedEntities: targets,
     })
 
-    notify(interpolate(() => i18n.value.tools.select.selected, `${targets.length}`))
+    notify(interpolate(() => i18n.value.tools.select.selected, formatCount(targets.length)))
 }

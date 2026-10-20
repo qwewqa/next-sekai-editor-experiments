@@ -28,6 +28,7 @@ import {
 } from '../../../../../state/operations/historyReceipts'
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
 import { interpolate } from '../../../../../utils/interpolate'
+import { formatCount } from '../../../../../utils/size'
 import { constrainLaneObject } from '../../../../laneLimits'
 import { notify } from '../../../../notification'
 import { withDraft } from '../../../../sceneState'
@@ -134,7 +135,7 @@ export const stageStyleEvent: Tool = {
                 notify(
                     interpolate(
                         () => i18n.value.tools.events.selected,
-                        `${targets.length}`,
+                        formatCount(targets.length),
                         () => i18n.value.eventKinds.stageStyleEvent,
                     ),
                 )

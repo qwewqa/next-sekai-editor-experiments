@@ -8,6 +8,7 @@ import NumberField from '../../../modals/form/NumberField.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
 import { platform } from '../../../platform'
 import { CoverExporter } from '../../../rendering/coverExport'
+import { TaskFailure } from '../../../utils/error'
 import { timeout } from '../../../utils/promise'
 import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
 
@@ -36,11 +37,11 @@ const onSelect = (file: File) => {
                     if (typeof url === 'string') {
                         resolve(url)
                     } else {
-                        reject(new Error('Failed to load cover'))
+                        reject(new TaskFailure('imageUnreadable', 'Failed to load cover'))
                     }
                 }
                 reader.onerror = () => {
-                    reject(new Error('Failed to load cover'))
+                    reject(new TaskFailure('imageUnreadable', 'Failed to load cover'))
                 }
 
                 reader.readAsDataURL(file)
@@ -56,7 +57,7 @@ const onSelect = (file: File) => {
                     resolve(image)
                 }
                 image.onerror = () => {
-                    reject(new Error('Failed to decode cover'))
+                    reject(new TaskFailure('imageUnreadable', 'Failed to decode cover'))
                 }
 
                 image.src = url

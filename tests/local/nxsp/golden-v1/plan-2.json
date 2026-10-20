@@ -7,8 +7,8 @@
     {
       "name": "project.json",
       "method": 8,
-      "crc32": 1815267727,
-      "uncompressedSize": 1552,
+      "crc32": 3783092425,
+      "uncompressedSize": 1562,
       "parts": [
         {
           "kind": "bytes",
@@ -16,6 +16,7 @@
             "format": "nxsp",
             "version": 1,
             "minor": 1,
+            "patch": 0,
             "levelVersion": 1,
             "appVersion": "0.6.0",
             "id": "d0c00000-0000-4000-8000-000000000000",
@@ -1590,8 +1591,8 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 3428093092,
-      "uncompressedSize": 7505,
+      "crc32": 666711990,
+      "uncompressedSize": 7547,
       "parts": [
         {
           "kind": "bytes",
@@ -1694,7 +1695,8 @@
                 "device": {
                   "id": "c3f00000-0000-4000-8000-000000000000",
                   "label": "Web (Chrome)"
-                }
+                },
+                "appVersion": "0.6.0"
               },
               {
                 "kind": "continue",
@@ -1772,7 +1774,8 @@
                 "device": {
                   "id": "c3f00000-0000-4000-8000-000000000000",
                   "label": "Web (Chrome)"
-                }
+                },
+                "appVersion": "0.6.0"
               }
             ],
             "roots": {
@@ -2210,7 +2213,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 3,
-          "dataOffset": 3449,
+          "dataOffset": 3467,
           "check": {
             "kind": "entryCrc"
           }
@@ -2243,7 +2246,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 5,
-          "dataOffset": 4755,
+          "dataOffset": 4773,
           "check": {
             "kind": "entryCrc"
           }
@@ -2260,7 +2263,7 @@
           "kind": "copy",
           "source": "golden",
           "entryIndex": 6,
-          "dataOffset": 4824,
+          "dataOffset": 4842,
           "check": {
             "kind": "entryCrc"
           }

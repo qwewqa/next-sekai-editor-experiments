@@ -17,7 +17,7 @@ import {
     type SegmentForm,
 } from './manifest'
 import { readProject, type MediaForm, type ProjectExtra, type ProjectV1 } from './project'
-import { NXSP_FORMAT, NXSP_MINOR, NXSP_VERSION } from './version'
+import { NXSP_FORMAT, NXSP_MINOR, NXSP_PATCH, NXSP_VERSION } from './version'
 
 // The `.nxsp` reader (§1.5.4, §1.6.11.4, §1.6.11.8): what a file holds, and a report of everything
 // it didn't read. Any report makes the open partial; the open decides what to say. Damage (an
@@ -52,6 +52,8 @@ export const NXSP_CAPS: NxspCaps = {
  * What a file holds that this build didn't read, each a reason the open is partial:
  * - `newer-version`: a higher major version, so only the level was read;
  * - `newer-minor`: a `minor` above this build's, so the history wasn't read;
+ * - `newer-patch`: a `patch` above this build's: additive content this build may not show. It
+ *   alone leaves the open whole (bound, history read); the open only says so once;
  * - `newer-level`: a `levelVersion` above this build's;
  * - `unknown-entry`, `unknown-key`: content v1 doesn't name (`parts`' keys included);
  * - `invalid-key`: a known `project.json` key of the wrong form;
@@ -63,6 +65,7 @@ export const NXSP_CAPS: NxspCaps = {
 export type ReportReason =
     | 'newer-version'
     | 'newer-minor'
+    | 'newer-patch'
     | 'newer-level'
     | 'unknown-entry'
     | 'unknown-key'
@@ -215,6 +218,8 @@ export const readNxsp = async (
             }
             if (project.minor > NXSP_MINOR)
                 report.push({ reason: 'newer-minor', path: 'minor', detail: String(project.minor) })
+            if (project.patch > NXSP_PATCH)
+                report.push({ reason: 'newer-patch', path: 'patch', detail: String(project.patch) })
             if (project.levelVersion > LEVEL_VERSION)
                 report.push({
                     reason: 'newer-level',
@@ -279,7 +284,8 @@ export const readNxsp = async (
 
         return {
             kind: 'nxsp',
-            open: report.length ? 'partial' : 'full',
+            // A newer `patch` alone is a notice, never a partial open (§1.6.11.8).
+            open: report.some(({ reason }) => reason !== 'newer-patch') ? 'partial' : 'full',
             projectJson,
             ...(project ? { project } : {}),
             extra,

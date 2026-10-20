@@ -21,11 +21,15 @@ export type PartialLine =
     | { kind: 'historyUnreadable' }
     | { kind: 'newerVersion' }
     | { kind: 'mediaBad'; media: MediaKind }
+    /** A newer `patch` alone: the open is whole and bound, and says some content may not show. */
+    | { kind: 'newerPatch' }
 
 /**
  * Which line a partial open shows, from the reader's report and the level parser's: damage, then
  * history that couldn't be read, then content this build doesn't read, then a bad media entry.
- * A newer major version asked first, so it adds none. Undefined for a whole open.
+ * A newer major version asked first, so it adds none. A newer `patch` comes last and only when
+ * nothing else is wrong, so a partial open never says the same thing twice. Undefined for a
+ * whole open.
  */
 export const partialLine = (
     report: readonly ReportItem[],
@@ -43,6 +47,7 @@ export const partialLine = (
     const media = report.find(({ reason }) => reason === 'media-unreadable')?.media
     if (media) return { kind: 'mediaBad', media }
     if (has('newer-version')) return undefined
+    if (has('newer-patch')) return { kind: 'newerPatch' }
     return undefined
 }
 

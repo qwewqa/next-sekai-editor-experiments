@@ -9,6 +9,7 @@ import { i18n } from '../i18n'
 import { settings } from '../settings'
 import { formatTime } from '../utils/format'
 import { interpolateRaw } from '../utils/interpolate'
+import { formatCount, formatDecimal } from '../utils/size'
 import type { PreviewControlsLayout } from './layout'
 import { useTransportInput } from './useTransportInput'
 import { settingsButtonSize } from './usePreviewViewport'
@@ -86,21 +87,25 @@ const cycleStepSize = (event: MouseEvent) => {
     blurPointerButton(event)
 }
 const stepSizeLabel = computed(() =>
-    interpolateRaw(i18n.value.preview.transport.stepSize, `${settings.previewStepSize}`),
+    interpolateRaw(i18n.value.preview.transport.stepSize, formatCount(settings.previewStepSize)),
 )
 
 const stepLabel = (step: number) =>
     interpolateRaw(
         step < 0 ? i18n.value.preview.transport.back : i18n.value.preview.transport.forward,
-        `${Math.abs(step)}`,
+        formatCount(Math.abs(step)),
     )
 const stepTitle = (step: number) =>
-    `${stepLabel(step)}. ${interpolateRaw(
-        step < 0
-            ? i18n.value.preview.transport.holdBackward
-            : i18n.value.preview.transport.holdForward,
-        `${Math.abs(step) / 10}`,
-    )}`
+    interpolateRaw(
+        i18n.value.modals.form.sentenceJoin,
+        stepLabel(step),
+        interpolateRaw(
+            step < 0
+                ? i18n.value.preview.transport.holdBackward
+                : i18n.value.preview.transport.holdForward,
+            formatDecimal(Math.abs(step) / 10),
+        ),
+    )
 
 const steps = [-100, -10, -1, 1, 10, 100]
 

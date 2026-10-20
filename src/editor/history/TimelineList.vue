@@ -27,6 +27,7 @@ import {
 } from '../../i18n/when'
 import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
+import { formatCount } from '../../utils/size'
 import { deviceId } from '../save/env'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
@@ -57,6 +58,7 @@ import {
     backToNow,
     damagedEntries,
     keyOf,
+    newerEntries,
     peekedInfo,
     requestPeek,
     requestRestore,
@@ -132,6 +134,7 @@ const built = computed(() =>
         filter: historyFilter.value,
         expanded: expandedGroups.value,
         damaged: damagedEntries.value,
+        newer: newerEntries.value,
         now: clock.value,
         gap: gap.value,
         // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
@@ -1272,10 +1275,13 @@ const labelOf = (row: EntryRow) => presentationOf(row).full
 const flagTextOf = (row: EntryRow) =>
     row.flags.damaged
         ? i18n.value.history.damaged
-        : row.flags.removed
-          ? i18n.value.history.removedForSpace
-          : undefined
+        : row.flags.newer
+          ? i18n.value.history.needsNewer
+          : row.flags.removed
+            ? i18n.value.history.removedForSpace
+            : undefined
 
+// A row from a newer version is unavailable, like a removed one, and is not damaged.
 const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed')
 
 // Narrow rows omit seconds and note deltas; full times remain in their names. Narrow is under 21.25rem:
@@ -1306,7 +1312,9 @@ const clockOf = (at: number) => (narrow.value ? formatClock(at) : formatClockSec
 const timeOf = (row: EntryRow) => clockOf(row.entry.time)
 
 const deltaOf = (row: EntryRow) =>
-    row.delta === undefined ? undefined : `${row.delta > 0 ? '+' : '−'}${Math.abs(row.delta)}`
+    row.delta === undefined
+        ? undefined
+        : `${row.delta > 0 ? '+' : '−'}${formatCount(Math.abs(row.delta))}`
 
 // The full date and time is the row's tooltip and in its accessible name; the header gives the date.
 const whenOf = (row: EntryRow) => formatDateTimeSeconds(row.entry.time)

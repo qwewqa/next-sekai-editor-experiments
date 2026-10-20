@@ -123,6 +123,26 @@ test('a stored snapshot reads verified and builds its state', async () => {
     if (result.kind === 'found') assert.equal(hexOf(result.state), hexOf(b))
 })
 
+test('a root a newer build wrote reads newer, never damaged: peek says so, and Undo never lands on it', async () => {
+    const { page, b, session, read, worker, seqOf } = await stored(20)
+    const key = hashKey(encoded(b).root.hash)
+    const row = await getRow(page, 'nodes', key)
+    await putRow(page, 'nodes', key, { ...row, v: 2 })
+
+    assert.deepEqual(await read(hexOf(b)), { kind: 'newer' })
+    assert.deepEqual(await readStoredState(read, hexOf(b)), { kind: 'newer' })
+    const source = createPeekSource(worker, () => undefined)
+    await rejectsWith(source.load(entryKey(session.id, seqOf(b))), 'newer')
+    await assert.rejects(slotLoader(read)(encoded(b).root.hash), /newer/)
+    // A root whose v is no version at all is not newer: it is damage.
+    for (const v of [0, -1, 1.5, '1', undefined]) {
+        await putRow(page, 'nodes', key, { ...row, v })
+        assert.deepEqual(await read(hexOf(b)), { kind: 'damaged' }, String(v))
+    }
+    await putRow(page, 'nodes', key, row)
+    assert.equal((await read(hexOf(b))).kind, 'found')
+})
+
 test('a chunk whose bytes changed reads damaged: peek rejects, and Undo never lands on it', async () => {
     const { page, a, b, c, session, read, worker, seqOf } = await stored(2)
     // B's changed chunk holds A's bytes: a valid deflate stream of the same kind.

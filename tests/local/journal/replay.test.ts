@@ -226,6 +226,90 @@ for (const [name, change] of [
         assert.equal(page.storage.length, 1)
     })
 
+// Only a newer journal is left for a newer build: an older or malformed one is not newer, so its
+// bytes go to the recovered store (nothing is lost, and nothing waits for a build that won't come).
+for (const [name, change] of [
+    ['an older journalVersion', (j: Record<string, unknown>) => (j.journalVersion = 1)],
+    [
+        'an older descriptor v',
+        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = 1),
+    ],
+    [
+        'a malformed descriptor v',
+        (j: Record<string, unknown>) => ((j.descriptor as Record<string, unknown>).v = '2'),
+    ],
+] as const)
+    test(`a journal with ${name} is unreadable, not newer: its bytes are kept`, async () => {
+        const { world, page, session } = await killedAfterEdits(7)
+        rewrite(page.storage, session.id, change)
+        const text = page.storage.getItem(`nse.journal.${session.id}`) ?? ''
+        assert.equal(readJournal(text, session.id).kind, 'unreadable')
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, 'unreadable')
+        assert.equal(entriesOf(world, session.id).length, 2)
+        const [row] = (world.memory.dump(DB_NAME).get('recovered') ?? []).map(
+            (item) => item.value as Record<string, unknown>,
+        )
+        assert.equal(await (row?.bytes as Blob).text(), text)
+        assert.equal(page.storage.length, 0)
+    })
+
+// A journal is dropped only after its work is stored: against a session or chain of an older
+// generation it becomes one new recovery session holding the journal's head, then the key goes.
+for (const where of ['its own session', 'another session of its chain'] as const)
+    test(`a journal against ${where} of an older generation is stored as a recovery session before its key goes`, async () => {
+        const { world, page, session, states } = await killedAfterEdits(7)
+        const other = world.tab('other')
+        const core = workerCore(world, other)
+        await other.run(() => core.start())
+        await other.run(() =>
+            core.write(['sessions'], async (tx) => {
+                const row = (await tx.get('sessions', session.id)) as Record<string, unknown>
+                if (where === 'its own session') await tx.put('sessions', { ...row, v: 1 })
+                else await tx.put('sessions', { ...row, id: 'older-sibling', v: 1 })
+            }),
+        )
+        const sessionsBefore = new Set(rows(world, 'sessions').keys())
+        const entriesBefore = rows(world, 'entries').size
+        const { outcomes } = await replayAll(world, page.storage)
+        assert.equal(outcomes[0]?.kind, 'recovery', JSON.stringify(outcomes))
+        // Exactly one new session, in a new chain, holding a `recovered` entry of the journal's head.
+        const added = [...rows(world, 'sessions').values()].filter(
+            (row) => !sessionsBefore.has(row.id as string),
+        )
+        assert.equal(added.length, 1)
+        const recovery = added[0]!
+        const recoveredEntries = entriesOf(world, recovery.id as string)
+        assert.deepEqual(
+            recoveredEntries.map((row) => row.kind),
+            ['recovered'],
+        )
+        assert.equal(toHex(recoveredEntries[0]!.snapshot as Uint8Array), rootOf(states.d))
+        assert.equal(rows(world, 'entries').size, entriesBefore + 1)
+        // The session it could not write into is untouched, and the key went only after the write.
+        assert.equal(entriesOf(world, session.id).length, 2)
+        assert.equal(page.storage.length, 0)
+    })
+
+test('a journal against a session of a newer generation is left in place, with nothing written', async () => {
+    const { world, page, session } = await killedAfterEdits(7)
+    const other = world.tab('other')
+    const core = workerCore(world, other)
+    await other.run(() => core.start())
+    await other.run(() =>
+        core.write(['sessions'], async (tx) => {
+            const row = (await tx.get('sessions', session.id)) as Record<string, unknown>
+            await tx.put('sessions', { ...row, v: 3 })
+        }),
+    )
+    const before = rows(world, 'sessions').size
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.equal(outcomes[0]?.kind, 'later')
+    assert.equal(rows(world, 'sessions').size, before)
+    assert.equal(entriesOf(world, session.id).length, 2)
+    assert.equal(page.storage.length, 1)
+})
+
 /** Adds an archetype this build doesn't read to the journal's level data. */
 const withFutureArchetype = async (journal: Record<string, unknown>) => {
     const { gzip, ungzip } = await import('pako')

@@ -312,8 +312,8 @@ test('recorded contents can change with the same filename and no cached media by
     const changes = comparePropertyChanges(before, after)
     assert.deepEqual(row(changes, 'bgm', 'contents'), {
         field: 'contents',
-        before: { kind: 'text', value: 'song.mp3' },
-        after: { kind: 'text', value: 'song.mp3' },
+        before: { kind: 'text', value: 'song' },
+        after: { kind: 'text', value: 'song' },
     })
     assert.equal(changes.rowCount, 1)
     after.bgm = { ...after.bgm, meta: before.bgm.meta }
@@ -364,7 +364,7 @@ test('removed stages and added folders expose zero, false, empty names and paren
     assert.deepEqual(row(changes, 'stageFolders', 'order', 9).after, { kind: 'number', value: 0 })
 })
 
-test('order uses shared stable IDs without insertion ripple and disambiguates duplicate names', () => {
+test('order uses shared stable IDs without insertion ripple, and names carry no id', () => {
     const before = state(),
         after = state()
     before.groups = new Map([
@@ -382,11 +382,12 @@ test('order uses shared stable IDs without insertion ripple and disambiguates du
     assert.equal(order.before.kind, 'list')
     assert.equal(order.after.kind, 'list')
     if (order.before.kind !== 'list' || order.after.kind !== 'list') return
+    // Two entries named alike stay two entries by their ids, which the user never sees.
     assert.deepEqual(
-        order.before.items.map((item) => item.kind === 'reference' && [item.id, item.disambiguate]),
+        order.before.items.map((item) => item.kind === 'reference' && [item.id, item.name]),
         [
-            [1, true],
-            [2, true],
+            [1, 'Same'],
+            [2, 'Same'],
         ],
     )
     assert.deepEqual(
@@ -476,4 +477,105 @@ test('progressive row and list disclosure uses stable identities without formatt
     assert.equal(propertyItems(tags, 300).items.length, 201)
     assert.equal(propertyItems(tags).total, 201)
     assert.deepEqual(propertyPage(changes, 0), { sections: [], shown: 0, total: 241 })
+})
+
+test('an unset Force Note Speed is Not set on both change and removal, never 0', () => {
+    const before = state(),
+        after = state()
+    before.groups.set(group(1), { name: 'Default' })
+    after.groups.set(group(1), { name: 'Default', forceNoteSpeed: 1.5 })
+    const changed = row(comparePropertyChanges(before, after), 'groups', 'forceNoteSpeed', 1)
+    assert.deepEqual(changed.before, { kind: 'notSet' })
+    assert.deepEqual(changed.after, { kind: 'number', value: 1.5 })
+    // Storage holds an unset speed as 0 and reads 0 back as unset, so a stored 0 is Not set too.
+    before.groups.set(group(1), { name: 'Default', forceNoteSpeed: 0 })
+    assert.deepEqual(
+        row(comparePropertyChanges(before, after), 'groups', 'forceNoteSpeed', 1),
+        changed,
+    )
+    after.groups.delete(group(1))
+    const removed = section(comparePropertyChanges(before, after), 'groups', 1)
+    assert.equal(removed.status, 'removed')
+    assert.deepEqual(removed.rows.find(({ field }) => field === 'forceNoteSpeed')?.before, {
+        kind: 'notSet',
+    })
+})
+
+test('a BGM with a file added and an offset changed is not badged, and keeps the offset before value', () => {
+    const before = state(),
+        after = state()
+    const meta = before.bgm.meta!
+    before.bgm = { offset: 0.25 }
+    after.bgm = { offset: -0.12, meta }
+    const bgm = section(comparePropertyChanges(before, after), 'bgm')
+    assert.equal(bgm.status, undefined)
+    const offset = bgm.rows.find(({ field }) => field === 'offset')
+    assert.deepEqual(offset, {
+        field: 'offset',
+        before: { kind: 'number', value: 0.25, unit: 'ms', decimalShift: 3 },
+        after: { kind: 'number', value: -0.12, unit: 'ms', decimalShift: 3 },
+    })
+    // The file's own rows read Not set before, never Not present.
+    const file = bgm.rows.filter(({ field }) => field !== 'offset')
+    assert.deepEqual(
+        file.map(({ field }) => field),
+        ['filename', 'size', 'type', 'duration'].filter((field) =>
+            file.some((value) => value.field === field),
+        ),
+    )
+    assert.ok(file.length >= 3)
+    assert.ok(file.every(({ before }) => before.kind === 'notSet'))
+    // The mirror: the file removed while the offset changes.
+    const removed = section(comparePropertyChanges(after, before), 'bgm')
+    assert.equal(removed.status, undefined)
+    assert.ok(
+        removed.rows
+            .filter(({ field }) => field !== 'offset')
+            .every(({ after }) => after.kind === 'notSet'),
+    )
+    // A file added with the offset unchanged is one-sided, so it keeps its badge; so do cover and preview.
+    before.bgm = { offset: 0.25 }
+    after.bgm = { offset: 0.25, meta }
+    const alone = section(comparePropertyChanges(before, after), 'bgm')
+    assert.equal(alone.status, 'added')
+    assert.ok(alone.rows.every(({ before }) => before.kind === 'notPresent'))
+    const cover = state()
+    cover.levelInfo = { ...cover.levelInfo, cover: undefined }
+    assert.equal(section(comparePropertyChanges(state(), cover), 'cover').status, 'removed')
+})
+
+test('a media file reads by one name, without its extension', () => {
+    const before = state(),
+        after = state()
+    before.bgm = {
+        offset: 0,
+        meta: { ...before.bgm.meta!, filename: 'Opening theme (final mix).wav' },
+        filename: 'Opening theme (final mix)',
+    }
+    after.bgm = {
+        offset: 0,
+        meta: { ...before.bgm.meta!, hash: mediaHash('other'), filename: 'Closing.mp3' },
+        filename: 'Closing',
+    }
+    const bgm = section(comparePropertyChanges(before, after), 'bgm')
+    assert.deepEqual(
+        bgm.rows.find(({ field }) => field === 'filename'),
+        {
+            field: 'filename',
+            before: { kind: 'text', value: 'Opening theme (final mix)' },
+            after: { kind: 'text', value: 'Closing' },
+        },
+    )
+})
+
+test('an empty name is an empty name, not Not set, and no reference carries an id', () => {
+    const before = state(),
+        after = state()
+    after.groups.set(group(1), { ...after.groups.get(group(1))!, name: '' })
+    after.groupFolders.set(folder(1), { ...after.groupFolders.get(folder(1))!, name: '' })
+    const changes = comparePropertyChanges(before, after)
+    assert.deepEqual(row(changes, 'groups', 'name', 1).after, { kind: 'emptyName' })
+    for (const sectionValue of changes.sections)
+        for (const value of [sectionValue.beforeName, sectionValue.afterName])
+            if (value) assert.ok(!('disambiguate' in value), 'a reference has no id qualifier')
 })

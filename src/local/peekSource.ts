@@ -68,7 +68,7 @@ const heldState = (hex: string, flusher: Flusher | undefined) => {
 
 /** A stored snapshot's state, verified: `missing` when its root is gone, `damaged` when a part is. */
 export type StoredState =
-    { kind: 'missing' } | { kind: 'damaged' } | { kind: 'found'; state: State }
+    { kind: 'missing' } | { kind: 'damaged' } | { kind: 'newer' } | { kind: 'found'; state: State }
 
 /** Reads a snapshot through the worker's verified read and builds its state. */
 export const readStoredState = async (
@@ -119,6 +119,7 @@ export const createPeekSource = (
             : await readStoredState((hex) => worker.call('readSnapshotVerified', hex), hex)
         if (read.kind === 'missing') throw new PeekError(kept ? 'damaged' : 'removed')
         if (read.kind === 'damaged') throw new PeekError('damaged')
+        if (read.kind === 'newer') throw new PeekError('newer')
         // Restore compares by root when both are known, with no hashing.
         remember(read.state, hex)
         return read.state

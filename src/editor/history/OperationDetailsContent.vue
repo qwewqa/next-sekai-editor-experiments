@@ -45,9 +45,11 @@ const childRecipe = (member: OperationMember) => captureOperationRecipe([member]
 const flagText = (flags: Flags | undefined) =>
     flags?.damaged
         ? i18n.value.history.damaged
-        : flags?.removed
-          ? i18n.value.history.removedForSpace
-          : undefined
+        : flags?.newer
+          ? i18n.value.history.needsNewer
+          : flags?.removed
+            ? i18n.value.history.removedForSpace
+            : undefined
 const meta = computed(() =>
     [
         props.time === undefined ? undefined : formatDateTimeSeconds(props.time),
@@ -56,8 +58,12 @@ const meta = computed(() =>
         .filter(Boolean)
         .join(' · '),
 )
-const memberFlagText = (member: OperationMember) =>
-    member.id === undefined ? undefined : flagText(props.memberFlags?.get(member.id))
+// A step's own flag is news only when it is not its group row's: a removed group holds removed
+// steps, and the meta line has said so.
+const memberFlagText = (member: OperationMember) => {
+    const text = member.id === undefined ? undefined : flagText(props.memberFlags?.get(member.id))
+    return text === flagText(props.flags) ? undefined : text
+}
 const toggle = (index: number, event: Event) => {
     const next = new Set(expanded.value)
     if ((event.currentTarget as HTMLDetailsElement).open) next.add(index)
@@ -78,7 +84,7 @@ const showMoreRecovery = async () => {
     recoveryLimit.value += PAGE
     if (recoveryLimit.value < (details.value.recovery?.descriptions.length ?? 0)) return
     await nextTick()
-    ;(recoveryList.value?.children[first] as HTMLElement | undefined)?.focus()
+    ;(recoveryList.value?.children[first]?.firstElementChild as HTMLElement | undefined)?.focus()
 }
 // A step on its group's day shows its clock; the group's own line gives the date.
 const childTime = (at: number) =>
@@ -125,7 +131,9 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                                 row.before.text
                             }}</span>
                             <span class="inline-flex min-w-0 items-baseline gap-x-2">
-                                <ChevronIcon direction="right" class="self-center text-fg/70" />
+                                <span class="flex h-6 shrink-0 items-center self-start">
+                                    <ChevronIcon direction="right" class="text-fg/70" />
+                                </span>
                                 <span class="sr-only"
                                     >{{ ' ' }}{{ i18n.historyChanges.after }}{{ ' ' }}</span
                                 >
@@ -146,10 +154,17 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
         </div>
         <!-- The group's steps, newest first: the chevron leading, the time at the end. -->
         <section v-if="members.length" data-operation-children>
-            <h3 class="mb-1 font-bold" data-operation-count>
+            <!-- An undo or redo parent's title already carries the count. -->
+            <h3 v-if="!details.steps?.prefixless" class="mb-1 font-bold" data-operation-count>
                 {{ operationStepCount(recipe, context) }}
             </h3>
-            <div ref="childList">
+            <div
+                ref="childList"
+                :role="details.steps?.prefixless ? 'group' : undefined"
+                :aria-label="
+                    details.steps?.prefixless ? operationStepCount(recipe, context) : undefined
+                "
+            >
                 <template v-for="(entry, index) in members" :key="entry.member.id ?? index">
                     <details
                         v-if="entry.expandable"
@@ -159,10 +174,12 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                         <summary
                             class="ghost flex cursor-pointer list-none items-baseline gap-2 rounded-lg px-2 py-2 [&::-webkit-details-marker]:hidden"
                         >
-                            <ChevronIcon
-                                :direction="expanded.has(index) ? 'down' : 'right'"
-                                class="self-center"
-                            />
+                            <span class="flex h-6 shrink-0 items-center self-start">
+                                <ChevronIcon
+                                    :direction="expanded.has(index) ? 'down' : 'right'"
+                                    class="text-fg/70"
+                                />
+                            </span>
                             <span class="min-w-0 flex-1 whitespace-pre-wrap"
                                 >{{ entry.label
                                 }}<span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
@@ -183,24 +200,26 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                             class="pb-4 pl-7 pr-2"
                         />
                     </details>
-                    <div
-                        v-else
-                        class="focus-edge flex items-baseline gap-2 rounded-lg border-t border-fg/15 px-2 py-2"
-                        tabindex="-1"
-                        data-operation-step
-                    >
-                        <span class="size-3 shrink-0 self-center" aria-hidden="true"></span>
-                        <span class="min-w-0 flex-1 whitespace-pre-wrap"
-                            >{{ entry.label
-                            }}<span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
-                                ` · ${memberFlagText(entry.member)}`
-                            }}</span></span
+                    <!-- The rule is the outer box's and the radius the inner one's, as on a row that opens. -->
+                    <div v-else class="border-t border-fg/15">
+                        <div
+                            class="focus-edge flex items-baseline gap-2 rounded-lg px-2 py-2"
+                            tabindex="-1"
+                            data-operation-step
                         >
-                        <span
-                            v-if="entry.member.time !== undefined"
-                            class="shrink-0 text-xs tabular-nums text-fg/80"
-                            >{{ childTime(entry.member.time) }}</span
-                        >
+                            <span class="size-3 shrink-0 self-start" aria-hidden="true"></span>
+                            <span class="min-w-0 flex-1 whitespace-pre-wrap"
+                                >{{ entry.label
+                                }}<span v-if="memberFlagText(entry.member)" class="text-fg/80">{{
+                                    ` · ${memberFlagText(entry.member)}`
+                                }}</span></span
+                            >
+                            <span
+                                v-if="entry.member.time !== undefined"
+                                class="shrink-0 text-xs tabular-nums text-fg/80"
+                                >{{ childTime(entry.member.time) }}</span
+                            >
+                        </div>
                     </div>
                 </template>
             </div>
@@ -214,34 +233,32 @@ const placeholder = (text: DetailText) => (text.placeholder ? 'text-fg/80' : und
                 {{ i18n.historyChanges.showMore }}
             </button>
         </section>
-        <section v-if="details.recovery" class="space-y-3" data-operation-recovery>
-            <h3 class="font-bold">{{ i18n.history.details.recoveryContext }}</h3>
-            <ol ref="recoveryList" class="space-y-3">
-                <li
-                    v-for="(step, index) in recovery"
-                    :key="index"
-                    class="focus-edge whitespace-pre-wrap"
-                    tabindex="-1"
-                >
-                    <p
-                        v-if="index === details.recovery.headIndex"
-                        class="text-xs font-bold"
-                        data-operation-recovery-head
-                    >
-                        {{ i18n.history.details.recoveryHead }}
-                    </p>
-                    <p>{{ describeStep(step, context) }}</p>
+        <section v-if="details.recovery" data-operation-recovery>
+            <h3 class="mb-1 font-bold">{{ i18n.history.details.recoveryContext }}</h3>
+            <!-- Ruled as the steps list is: a rule over each row, which is 8 px in from its rule. -->
+            <ol ref="recoveryList">
+                <li v-for="(step, index) in recovery" :key="index" class="border-t border-fg/15">
+                    <div class="focus-edge whitespace-pre-wrap rounded-lg px-2 py-2" tabindex="-1">
+                        <p
+                            v-if="index === details.recovery.headIndex"
+                            class="text-xs font-bold"
+                            data-operation-recovery-head
+                        >
+                            {{ i18n.history.details.recoveryHead }}
+                        </p>
+                        <p>{{ describeStep(step, context) }}</p>
+                    </div>
                 </li>
             </ol>
             <button
                 v-if="(recovery?.length ?? 0) < details.recovery.descriptions.length"
                 type="button"
-                class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
+                class="btn btn-secondary mt-2 h-9 min-w-24 max-w-full truncate rounded-full px-4"
                 @click="showMoreRecovery"
             >
                 {{ i18n.historyChanges.showMore }}
             </button>
-            <p v-if="details.recovery.omitted" class="text-fg/80">
+            <p v-if="details.recovery.omitted" class="mt-2 text-fg/80">
                 {{
                     message(
                         context,

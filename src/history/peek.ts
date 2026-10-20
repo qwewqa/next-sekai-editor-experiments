@@ -29,9 +29,10 @@ export const parseEntryKey = (key: EntryKey) => {
 
 /**
  * Why an entry can't be peeked: no such entry (yet) in storage, its snapshot removed to save
- * space, or a part of it missing or failing its hash (`history.damaged`).
+ * space, a part of it missing or failing its hash (`history.damaged`), or its root written by a
+ * newer version (`history.needsNewer`, never damage).
  */
-export type PeekFailure = 'missing' | 'removed' | 'damaged'
+export type PeekFailure = 'missing' | 'removed' | 'damaged' | 'newer'
 
 export class PeekError extends Error {
     override name = 'PeekError'

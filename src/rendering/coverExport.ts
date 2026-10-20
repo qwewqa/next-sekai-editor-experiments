@@ -1,7 +1,11 @@
 import { Deflate } from 'pako'
 import { createBlob } from '../utils/canvas'
+import { TaskFailure } from '../utils/error'
 import { timeout } from '../utils/promise'
 import { ImageSampler } from './imageSampling'
+
+const contextLost = () =>
+    new TaskFailure('coverFailed', 'The WebGL context was lost while generating the cover')
 
 type Crop = { x: number; y: number; width: number; height: number }
 
@@ -47,7 +51,7 @@ const decodeVectorCrop = async (
         }
         raster.onerror = () => {
             cleanup()
-            reject(new Error('Unable to decode the SVG cover'))
+            reject(new TaskFailure('imageUnreadable', 'Unable to decode the SVG cover'))
         }
         signal.addEventListener('abort', abort, { once: true })
         raster.src =
@@ -125,8 +129,7 @@ const createTiledCoverBlob = async (
             nextYield = performance.now() + 8
         }
         signal.throwIfAborted()
-        if (sampler.isContextLost())
-            throw new Error('The WebGL context was lost while generating the cover')
+        if (sampler.isContextLost()) throw contextLost()
     }
 
     for (let y = 0; y < size; y += tileHeight) {
@@ -213,12 +216,13 @@ const createTiledCoverBlob = async (
         const bytes = height * rowBytes
         for (let offset = 0; offset < bytes; offset += 65536) {
             encoder.push(stripe.subarray(offset, Math.min(bytes, offset + 65536)))
-            if (encoder.err) throw new Error(encoder.msg || 'Failed to encode cover')
+            if (encoder.err)
+                throw new TaskFailure('coverFailed', encoder.msg || 'Failed to encode cover')
             await yieldIfNeeded()
         }
     }
     encoder.push(new Uint8Array(), true)
-    if (encoder.err) throw new Error(encoder.msg || 'Failed to encode cover')
+    if (encoder.err) throw new TaskFailure('coverFailed', encoder.msg || 'Failed to encode cover')
     signal.throwIfAborted()
     parts.push(pngChunk('IEND', new Uint8Array()))
     return new Blob(parts, { type: 'image/png' })
@@ -302,8 +306,7 @@ const renderCoverBlob = async (
         )
         const blob = await createBlob(sampler.canvas)
         signal.throwIfAborted()
-        if (sampler.isContextLost())
-            throw new Error('The WebGL context was lost while generating the cover')
+        if (sampler.isContextLost()) throw contextLost()
         return blob
     } finally {
         bitmap?.close()
@@ -341,8 +344,7 @@ export class CoverExporter {
         try {
             const blob = await renderCoverBlob(sampler, image, requestedSize, controller.signal)
             controller.signal.throwIfAborted()
-            if (sampler.isContextLost())
-                throw new Error('The WebGL context was lost while generating the cover')
+            if (sampler.isContextLost()) throw contextLost()
             completed = true
             return blob
         } finally {

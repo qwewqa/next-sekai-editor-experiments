@@ -298,8 +298,7 @@
             "redid": "Redid \"{0}\""
         },
         "reset": {
-            "title": "Reset",
-            "reset": "Reset level"
+            "title": "Reset"
         },
         "save": {
             "title": "Save"
@@ -966,13 +965,7 @@
         "default": {
             "none": "No object selected",
             "edited": "Edited {0} object|Edited {0} objects",
-            "editedNotes": "Edited {0} note|Edited {0} notes",
-            "set": "Set {1} on {0} object|Set {1} on {0} objects",
-            "setNotes": "Set {1} on {0} note|Set {1} on {0} notes",
-            "noChange": "No change",
-            "setBpm": "Set {1} on {0} BPM change|Set {1} on {0} BPM changes",
-            "setTimeScales": "Set {1} on {0} time scale|Set {1} on {0} time scales",
-            "setEvents": "Set {1} on {0} {2} event|Set {1} on {0} {2} events"
+            "noChange": "No change"
         },
         "view": {
             "tool": "Tool",
@@ -1046,8 +1039,7 @@
         "eraser": {
             "title": "Eraser",
             "deselected": "Deselected all objects",
-            "erasing": "Erasing {0} object|Erasing {0} objects",
-            "erased": "Erased {0} object|Erased {0} objects"
+            "erasing": "Erasing {0} object|Erasing {0} objects"
         },
         "generateSlideNotes": {
             "title": "Generate Slide Notes",
@@ -1095,7 +1087,6 @@
             "adding": "Adding {0} note|Adding {0} notes",
             "added": "Added {0} note|Added {0} notes",
             "editing": "Editing {0} note|Editing {0} notes",
-            "edited": "Edited {0} note|Edited {0} notes",
             "moving": "Moving {0} note|Moving {0} notes",
             "moved": "Moved {0} note|Moved {0} notes",
             "selected": "Selected {0} note|Selected {0} notes",
@@ -1247,6 +1238,10 @@
             "movedEvents": "Moved {0} events",
             "editedObjects": "Edited objects",
             "movedObjects": "Moved objects",
+            "movedGroupsInto": "Moved groups into folder {0}",
+            "movedGroupsOut": "Moved groups out of folders",
+            "movedStagesInto": "Moved stages into folder {0}",
+            "movedStagesOut": "Moved stages out of folders",
             "pastedObjects": "Pasted objects",
             "brushedObjects": "Brushed objects",
             "deletedObjects": "Deleted objects",
@@ -1299,10 +1294,8 @@
             "deletedEvents": "Deleted {0} events",
             "cutEvents": "Cut {0} events"
         },
-        "edits": "{0} edits",
         "undidSteps": "Undid {0} steps",
         "redidSteps": "Redid {0} steps",
-        "initialize": "Initialize",
         "dynamicStages": {
             "title": "Dynamic Stages",
             "message": "This feature requires dynamic stages. Do you want to enable dynamic stages?",
@@ -1327,6 +1320,7 @@
         "newerSteps": "{0} newer step|{0} newer steps",
         "removedForSpace": "removed to save space",
         "damaged": "damaged",
+        "needsNewer": "needs a newer version",
         "savedOn": "Saved on {0}",
         "savedWeb": "Saved in the web editor ({0})",
         "savedWebAny": "Saved in the web editor",
@@ -1378,6 +1372,7 @@
         },
         "operation": {
             "changedHeader": "Changed {0}",
+            "changedLevelInfo": "Changed level info",
             "setValueOnObjects": "Set {1} to {2} on {0} object|Set {1} to {2} on {0} objects",
             "setValueOnNotes": "Set {1} to {2} on {0} note|Set {1} to {2} on {0} notes",
             "setValueOnBpm": "Set {1} to {2} on {0} BPM change|Set {1} to {2} on {0} BPM changes",
@@ -1827,7 +1822,11 @@
             "ok": "OK"
         },
         "loading": {
-            "loading": "Loading…"
+            "loading": "Loading…",
+            "audioUnreadable": "This audio file could not be read.",
+            "imageUnreadable": "This image could not be read.",
+            "coverFailed": "The cover could not be generated.",
+            "failed": "This could not be completed."
         }
     },
     "preview": {
@@ -1912,8 +1911,6 @@
             "added": "Added {0} folder",
             "renamed": "Renamed {0} folder to {1}",
             "moved": "Moved {0} folder",
-            "movedInto": "Moved {0} to {1} folder",
-            "movedOut": "Moved {0} out of {1} folder",
             "ungrouped": "Ungrouped {0} folder",
             "deleted": "Deleted {0} folder",
             "duplicated": "Duplicated {0} folder"
@@ -2039,16 +2036,12 @@
         "addedRemoved": "Added {0} · Removed {1}",
         "exportsCurrent": "Exports the current version.",
         "overlay": "Viewing history · read-only",
-        "viewing": "Viewing {0} · {1} · read-only",
-        "viewingShort": "Viewing {0} · read-only",
         "backToNow": "Back to Now",
         "restore": "Restore",
         "changeCount": "{0} change|{0} changes",
         "noChanges": "No changes",
         "changedLarge": "Changed {0}",
         "notes": "{0} note|{0} notes",
-        "notesOf": "{0} of {1} notes",
-        "eventsOf": "{0} of {1} events",
         "bpms": "{0} BPM change|{0} BPM changes",
         "timeScales": "{0} time scale|{0} time scales",
         "events": "{0} event|{0} events",
@@ -2203,6 +2196,7 @@
         "historyUnreadable": "This file’s history could not be read. Saving makes a separate file.",
         "newerVersion": "Made by a newer version of {0}. Saving makes a separate file.",
         "newerRefused": "Made by a newer version of {0}.",
+        "newerPatch": "Made by a newer version of {0}. Some content may not be shown.",
         "mediaBad": "This file’s {0} could not be read. Saving makes a separate file.",
         "media": {
             "bgm": "BGM",
@@ -2225,20 +2219,10 @@
     },
     "file": {
         "replacedElsewhere": "\"{0}\" was replaced from another tab or window.",
-        "saved": "{0} · saved {1}",
-        "changedSinceSaved": "{0} · changed since saved",
         "downloaded": "{0} · downloaded {1}",
-        "notConfirmed": "not confirmed",
-        "changedSinceDownload": "{0} · changed since download",
         "opened": "{0} · opened {1}",
-        "changedSinceOpened": "{0} · changed since opened",
         "short": {
-            "saved": "saved",
-            "changed": "changed",
-            "notSaved": "not saved",
-            "downloaded": "downloaded",
-            "notConfirmed": "not confirmed",
-            "opened": "opened"
+            "notSaved": "not saved"
         }
     },
     "state": {
@@ -2276,6 +2260,9 @@
         "notPresent": "Not present",
         "added": "Added",
         "removed": "Removed",
+        "tagsAdded": "Tags Added",
+        "tagsRemoved": "Tags Removed",
+        "tagsChanged": "Tags Changed",
         "order": "Order",
         "folder": "Folder",
         "groupFolder": "Group Folder",

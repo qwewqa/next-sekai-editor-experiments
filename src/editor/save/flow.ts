@@ -343,6 +343,9 @@ const markerOf = (
         noteCount: built.saveEntry.noteCount,
         revisionId: built.revisionId,
         device: deviceForm(),
+        ...(built.saveEntry.appVersion === undefined
+            ? {}
+            : { appVersion: built.saveEntry.appVersion }),
     },
     parent,
     unit: {
@@ -374,6 +377,9 @@ const bindWrite = async (
             state,
             revisionId: built.revisionId,
             device: deviceForm(),
+            ...(built.saveEntry.appVersion === undefined
+                ? {}
+                : { appVersion: built.saveEntry.appVersion }),
         },
         unitOf(env, built, file),
     )

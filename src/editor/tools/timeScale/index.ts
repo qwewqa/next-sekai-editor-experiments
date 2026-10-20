@@ -26,6 +26,7 @@ import {
 import { getInStoreGrid } from '../../../state/store/grid'
 import { createTransaction, type Transaction } from '../../../state/transaction'
 import { interpolate } from '../../../utils/interpolate'
+import { formatCount } from '../../../utils/size'
 import { revealSelectionProperties } from '../../editSelectionProperties'
 import { constrainLaneObject } from '../../laneLimits'
 import { notify } from '../../notification'
@@ -115,7 +116,12 @@ export const timeScale: Tool = {
                 }
                 focusEntityAtBeat(entity.beat)
 
-                notify(interpolate(() => i18n.value.tools.timeScale.selected, `${targets.length}`))
+                notify(
+                    interpolate(
+                        () => i18n.value.tools.timeScale.selected,
+                        formatCount(targets.length),
+                    ),
+                )
             } else {
                 if (selectedEntities.value.includes(entity)) {
                     focusEntityAtBeat(entity.beat)

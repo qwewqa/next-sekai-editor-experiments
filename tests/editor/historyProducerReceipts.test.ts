@@ -7,6 +7,7 @@ import {
     bgmOffsetInput,
     groupEditInput,
     initialLifeInput,
+    levelInfoInput,
     stageEditInput,
 } from '../../src/editor/headerLabelText'
 import {
@@ -22,6 +23,7 @@ import type { BpmEntity } from '../../src/state/entities/bpm'
 import { createSlideId } from '../../src/state/entities/slides'
 import type { NoteEntity } from '../../src/state/entities/slides/note'
 import type { TimeScaleEntity } from '../../src/state/entities/timeScale'
+import { emptyLevelInfo } from '../../src/state/levelInfo'
 import { addBpm, removeBpm } from '../../src/state/mutations/bpm'
 import { addNote, removeNote } from '../../src/state/mutations/slides/note'
 import { addTimeScale } from '../../src/state/mutations/timeScale'
@@ -937,6 +939,20 @@ test('header.set, bgm.change, owner.rename and owner.set come from the label bui
         )
 })
 
+test('levelInfo.set: one Apply of the Level Info dialog is one step, built from the two level infos', () => {
+    const before = { ...emptyLevelInfo, title: 'Old', tags: [{ title: 'a' }], rating: 3 }
+    const after = { ...emptyLevelInfo, title: 'New', tags: [{ title: 'a' }, { title: 'b' }] }
+    const receipt = levelInfoInput(before, after, { before: 1000, after: 900 })
+    assert(receipt)
+    assert.equal(accepted(receipt).id, 'nse.levelInfo.set')
+    // A lone Initial Life change keeps nse.header.set, and no change pushes no step.
+    assert.equal(
+        accepted(levelInfoInput(before, before, { before: 1, after: 2 })!).id,
+        'nse.header.set',
+    )
+    assert.equal(levelInfoInput(before, before, { before: 1, after: 1 }), undefined)
+})
+
 test('dynamicStages.enable: the default events are counted from what was added', () => {
     const transaction = createTransaction(baseState())
     const created: Entity[] = []
@@ -1016,5 +1032,5 @@ test('every operation id has a receipt test, in this file or in the browser test
         seen.add(id)
     }
     assert.deepEqual([...seen].sort(), Object.keys(operationCodecs).sort())
-    assert.equal(seen.size, 35)
+    assert.equal(seen.size, 36)
 })

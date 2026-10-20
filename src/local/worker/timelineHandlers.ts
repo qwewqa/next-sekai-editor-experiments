@@ -1,7 +1,13 @@
-import { captureEntryDescription, type EntryDescription } from '../../history/operations'
+import {
+    captureEntryDescription,
+    captureStep,
+    stripUnknownEntryKeys,
+    type EntryDescription,
+} from '../../history/operations'
 import { fromHex16, toHex } from '../hash'
 import { KeyRange, type KvTx } from '../kv/types'
 import { hashKey, unpackHashes, type NodesRow } from '../records/rows'
+import { isKnownEntryKind } from '../records/unknownValues'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
@@ -26,10 +32,17 @@ export type TimelineEntry = EntryDescription & {
      * reads damaged, not removed to save space (§1.4.10.5). Absent otherwise.
      */
     damaged?: true
+    /**
+     * A row this build cannot decode, kept in the run so the chain is not shortened: `newer` when a
+     * newer build wrote it (a kind or a key this build does not know), `damaged` when it is
+     * malformed. It carries a placeholder description and is unavailable (§1.6.11.8).
+     */
+    unreadable?: 'newer' | 'damaged'
     /** A `continue` entry: the time of the parent's entry it continues, for its divider. */
     from?: number
     revisionId?: string
     device?: { id: string; label: string }
+    appVersion?: string
 }
 
 export type TimelineRequest = {
@@ -98,10 +111,16 @@ const entryOf = (row: Row): TimelineEntry | undefined => {
         return
     const snapshot = row.snapshot
     let description: EntryDescription
+    let unreadable: TimelineEntry['unreadable']
     try {
         description = captureEntryDescription(row)
     } catch {
-        return
+        // An unknown kind or a key no carrier knows is a newer build's; anything else is damage.
+        unreadable =
+            !isKnownEntryKind(row.kind) || stripUnknownEntryKeys(row).unknown.length
+                ? 'newer'
+                : 'damaged'
+        description = { kind: 'edit', step: captureStep({ kind: 'edit', operation: null }) }
     }
     return {
         sessionId: row.sessionId,
@@ -118,6 +137,8 @@ const entryOf = (row: Row): TimelineEntry | undefined => {
         typeof row.device.label === 'string'
             ? { device: { id: row.device.id, label: row.device.label } }
             : {}),
+        ...(typeof row.appVersion === 'string' ? { appVersion: row.appVersion } : {}),
+        ...(unreadable ? { unreadable } : {}),
     }
 }
 

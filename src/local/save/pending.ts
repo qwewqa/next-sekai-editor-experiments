@@ -59,6 +59,7 @@ export const pendingFlushRow = (
             : {}),
         ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
         ...(entry.device ? { device: { ...entry.device } } : {}),
+        ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
     }
 }
 
@@ -83,6 +84,7 @@ export const pendingInput = (
             ...(row.stack ? { stack: row.stack } : {}),
             ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
             ...(row.device ? { device: row.device } : {}),
+            ...(row.appVersion === undefined ? {} : { appVersion: row.appVersion }),
             ...captureEntryDescription(row),
             snapshot,
             noteCount: records.roots[snapshot]?.[3] as number,

@@ -470,6 +470,24 @@ test('names: the UTF-8 flag, UTF-8 without it, and CP437', async () => {
     )
 })
 
+test('a leading U+FEFF stays in a name, flagged or not, as Rust’s from_utf8_lossy keeps it', async () => {
+    const bom = [0xef, 0xbb, 0xbf]
+    const reader = await ZipReader.open(
+        new Blob([
+            rawZip([
+                { name: new Uint8Array([...bom, ...utf8('a.mp3')]), data: utf8('1') },
+                { name: new Uint8Array([...bom, ...utf8('b.mp3')]), data: utf8('2'), flags: 0 },
+            ]),
+        ]),
+    )
+    assert.deepEqual(
+        reader.entries.map((entry) => entry.name),
+        ['﻿a.mp3', '﻿b.mp3'],
+    )
+    assert.equal(reader.get('a.mp3'), undefined)
+    assert.ok(reader.get('﻿a.mp3'))
+})
+
 test('ignored entries', () => {
     const ignored = (name: string) => isIgnoredEntry({ key: name, isDirectory: name.endsWith('/') })
     for (const name of [

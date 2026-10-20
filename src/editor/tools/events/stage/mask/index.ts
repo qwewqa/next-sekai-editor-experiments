@@ -24,6 +24,7 @@ import {
 import { createTransaction, type Transaction } from '../../../../../state/transaction'
 import { interpolate } from '../../../../../utils/interpolate'
 import { shiftComputed } from '../../../../../utils/math'
+import { formatCount } from '../../../../../utils/size'
 import { constrainLaneObject } from '../../../../laneLimits'
 import { notify } from '../../../../notification'
 import { toSceneEntity, withDraft } from '../../../../sceneState'
@@ -138,7 +139,7 @@ export const stageMaskEvent: Tool = {
                 notify(
                     interpolate(
                         () => i18n.value.tools.events.selected,
-                        `${targets.length}`,
+                        formatCount(targets.length),
                         () => i18n.value.eventKinds.stageMaskEvent,
                     ),
                 )

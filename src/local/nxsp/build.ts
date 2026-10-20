@@ -9,6 +9,7 @@ import { rootVersion } from '../records/snapshot'
 import { toWellFormed } from '../records/wellFormed'
 import { checkDepth, isObject, setKey, wellFormedJson } from './json'
 import {
+    carriersIn,
     checkPart,
     type ChunkIndexItem,
     type EntryForm,
@@ -40,7 +41,7 @@ import {
     type RevisionForm,
 } from './project'
 import { NXSP_CAPS, type NxspCaps } from './read'
-import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION } from './version'
+import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION, patchOf } from './version'
 
 // The shared builder (§1.6.11.7), its format half: from what a write holds, already decided by
 // the history model (§1.6.11.6), it lays out `project.json`, `level.json`, the segments, the
@@ -293,6 +294,7 @@ const entryForm = (entry: EntryForm): EntryForm => ({
     ...(entry.device
         ? { device: { id: toWellFormed(entry.device.id), label: toWellFormed(entry.device.label) } }
         : {}),
+    ...(entry.appVersion === undefined ? {} : { appVersion: toWellFormed(entry.appVersion) }),
     ...(entry.stack
         ? {
               stack: {
@@ -324,6 +326,8 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
     const placedNodes = new Set<string>()
     const placedChunks = new Set<string>()
     const rootVs = new Set<number>()
+    // The `x` carriers of the source's segments, which are copied whole.
+    const sourceCarriers = new Set<string>()
     const entryKinds = new Set<string>()
     let cursor = 0
     const newChunks: Uint8Array[] = []
@@ -358,6 +362,7 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
             checkPart(parsed.manifest, 'manifest', true),
         ]
         if (known.some(({ part }) => !part)) fail('Append source history does not read')
+        for (const segment of parsed.segments) carriersIn(segment, sourceCarriers)
         for (const { part } of known) {
             const { entries, roots, nodes, chunks } = part as SegmentForm
             sourceEntries += entries.length
@@ -493,6 +498,7 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
         storageChunks,
         rootVs,
         entryKinds,
+        sourceCarriers,
         total: sourceEntries + history.entries.length,
     }
 }
@@ -546,6 +552,7 @@ export const planNxsp = (
     const laid = history ? planHistory(history, sources) : undefined
     const segmentEntries: PlannedEntry[] = []
     let manifestEntry: PlannedEntry | undefined
+    let historyManifest: ManifestForm | undefined
     let chunksEntry: PlannedEntry | undefined
     let pointers: HistoryPointers | undefined
     if (laid && history) {
@@ -587,6 +594,7 @@ export const planNxsp = (
             const { issues } = checkPart(value, isManifest ? 'manifest' : 'segment', isManifest)
             if (issues.length) fail(`The history breaks v1: ${issues[0]?.path ?? ''}`)
         }
+        historyManifest = manifest
         manifestEntry = jsonEntry('history/manifest.json', manifest, caps, [caps.manifest, 'part'])
 
         const newBytes = concat(laid.newChunks)
@@ -651,7 +659,13 @@ export const planNxsp = (
     ]
     const names = ['project.json', 'level.json', ...bodyEntries.map((entry) => entry.name)]
     let minor: number
+    let patch: number
     try {
+        // The `x` carriers the write holds, carried ones too: the table gives their `patch`.
+        const carriers = new Set(laid?.sourceCarriers)
+        for (const part of laid?.parts ?? []) carriersIn(part, carriers)
+        carriersIn(historyManifest, carriers)
+        patch = patchOf({ zipEntries: names, carriers })
         minor = minorOf({
             levelVersion: input.levelVersion,
             rootVs: laid?.rootVs ?? [],
@@ -673,6 +687,7 @@ export const planNxsp = (
             format: NXSP_FORMAT,
             version: NXSP_VERSION,
             minor,
+            patch,
             levelVersion: input.levelVersion,
             appVersion: context.appVersion,
             id: input.id,
