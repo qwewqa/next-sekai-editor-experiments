@@ -45,6 +45,7 @@ import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
 import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
+import { dividerLabel } from './dividerLabel'
 import { openOperationDetails } from './operationDetails'
 import { canFocusHistory } from './openHistory'
 import {
@@ -1346,8 +1347,7 @@ const titleOf = (row: EntryRow) =>
 const nameOf = (row: EntryRow) =>
     [labelOf(row), flagTextOf(row), deltaOf(row), whenOf(row)].filter(Boolean).join(', ')
 
-const dividerText = (entry: Entry) =>
-    interpolateRaw(i18n.value.history.continuedFrom, formatDateTime(entry.from ?? entry.time))
+const dividerText = (entry: Entry) => dividerLabel(entry, operationContext.value, formatDateTime)
 
 const headerClass = (header: Header) =>
     header.level === 'day'
@@ -1763,14 +1763,11 @@ defineExpose({
     outline-offset: -2px;
 }
 
-/* The current row is the raised pill (row-current's tokens on the pseudo-element). Its shadow barely
-   shows in dark, so there a 1 px edge tells it from a hovered row. */
+/* The current row is the raised pill (row-current's tokens on the pseudo-element) with a 1 px
+   inset edge, so it reads by its outline as well as its fill: a hovered pill is only 1.05:1 from
+   it in light, and the shadow barely shows in dark. */
 .timeline-row-selected::before {
-    @apply bg-button shadow-md;
-}
-
-:root[data-theme='dark'] .timeline-row-selected::before {
-    @apply ring-1 ring-inset ring-fg/25;
+    @apply bg-button shadow-md ring-1 ring-inset ring-fg/25;
 }
 
 /* Not while pressed, so the press shows as on every other control. */

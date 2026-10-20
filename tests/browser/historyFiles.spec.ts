@@ -1,10 +1,13 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { installTestPlatform, waitForStartup } from './editorFixture'
 import {
     chartOf,
+    closePage,
     errorsFail,
     flush,
+    installReloaded,
     liveOf,
     load,
     noErrors,
@@ -15,6 +18,7 @@ import {
     restoreFromStrip,
     row,
     rowTitles,
+    sampleClock,
     timeline,
 } from './historyJourney'
 import { pressSave, queuePicks, rows, submitSave } from './saveFlows'
@@ -357,4 +361,75 @@ test('F2: a 520-entry file crosses a segment, pages in order, restores and appen
         await context.close()
     }
     noErrors(page)
+})
+
+/** The Timeline's divider texts, top to bottom. */
+const dividers = (page: Page) =>
+    timeline(page).evaluate((list) =>
+        [...list.querySelectorAll('[data-history-continuation]')]
+            .map((element) => ({ element, top: parseFloat((element as HTMLElement).style.top) }))
+            .sort((a, b) => a.top - b.top)
+            .map(({ element }) => (element.textContent ?? '').replace(/\s+/g, ' ').trim()),
+    )
+
+test('an opened file’s dividers read “Opened <file>” and the time each visit continued from (X-10)', async ({
+    browser,
+}) => {
+    test.slow()
+    // A clock behind the real one: the visits are hours apart, and the open is the newest.
+    const hour = 3_600_000
+    const context = await browser.newContext()
+    const clock = await sampleClock(context, Date.now() - 4 * hour)
+    try {
+        const page = await context.newPage()
+        clock.track(page)
+        errorsFail(page)
+        await load(page, { platform: opfs })
+        await placeTap(page, { lane: -2, beat: 1 })
+        await flush(page)
+        // Closed, a later visit continues the session: a stored chain of two, with its divider.
+        await closePage(page, { runBeforeUnload: false })
+        await clock.pass(2 * hour)
+        const next = await context.newPage()
+        clock.track(next)
+        errorsFail(next)
+        await next.addInitScript(installTestPlatform, opfs)
+        await next.goto('/')
+        await expect(next.locator('canvas.editor-chart')).toBeVisible()
+        await waitForStartup(next)
+        await next.evaluate(installReloaded)
+        await placeTap(next, { lane: 0, beat: 2 })
+        await flush(next)
+        await openHistory(next)
+        const stored = await dividers(next)
+        expect(stored).toEqual([expect.stringMatching(/^Continued from /)])
+        await next.keyboard.press('Escape')
+        await leaveList(next)
+        await pressSave(next)
+        await submitSave(next, 'x10')
+        await expect(notice(next, 'Saved to x10.nxsp')).toBeVisible()
+
+        const { context: fresh, page: other } = await freshPage(browser)
+        try {
+            await store(other, 'x10.nxsp', await encoded(next, 'x10.nxsp'))
+            await openFile(other, 'x10.nxsp')
+            await openHistory(other)
+            // One session with no parent links: each divider names what its own entry holds,
+            // and the continuation the same time as before the Save.
+            await expect.poll(() => dividers(other)).toEqual(['Opened x10.nxsp', ...stored])
+            // The rows beside them carry the same text as their descriptions.
+            const described = await timeline(other).evaluate((list) =>
+                [...list.querySelectorAll('[aria-description]')].map((element) =>
+                    element.getAttribute('aria-description'),
+                ),
+            )
+            expect(described.sort()).toEqual(['Opened x10.nxsp', ...stored].sort())
+            noErrors(other)
+        } finally {
+            await fresh.close()
+        }
+        noErrors(next)
+    } finally {
+        await context.close()
+    }
 })

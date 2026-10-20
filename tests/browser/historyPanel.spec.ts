@@ -685,6 +685,77 @@ test.describe('links', () => {
     })
 })
 
+test.describe('the 242 px right sheet', () => {
+    // A phone in portrait at 379 px: the History sheet on the right, its band in the small mode.
+    test.use({
+        viewport: { width: 390, height: 379 },
+        deviceScaleFactor: 3,
+        hasTouch: true,
+        isMobile: true,
+    })
+
+    test('Timeline is whole in every language, and Recent Sessions takes the shortfall (X-6)', async ({
+        page,
+    }) => {
+        await page.keyboard.press('Shift+H')
+        await expect(sheet(page)).toBeVisible()
+        const band = surface(page, 'dialog').locator('[data-history-band]')
+        const cut: string[] = []
+        for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
+            await page.evaluate((locale) => {
+                window.editorTest.settings.locale = locale as never
+            }, locale)
+            await settle(page)
+            await settle(page)
+            const measured = await band.evaluate((element) => {
+                const tab = (id: string) => {
+                    const button = element.querySelector<HTMLElement>(
+                        `[data-history-focus="tab-${id}"]`,
+                    )!
+                    const label = button.querySelector<HTMLElement>('.truncate')!
+                    // The text's own width, unrounded, against the room its label has.
+                    const range = document.createRange()
+                    range.selectNodeContents(label)
+                    const need = range.getBoundingClientRect().width
+                    const room = label.getBoundingClientRect().width
+                    return {
+                        whole: need <= room + 0.01,
+                        need,
+                        room,
+                        width: button.getBoundingClientRect().width,
+                        text: label.textContent ?? '',
+                    }
+                }
+                const box = (selector: string) =>
+                    element.querySelector(selector)!.getBoundingClientRect()
+                const tablist = element.querySelector<HTMLElement>('[role="tablist"]')!
+                return {
+                    band: element.getBoundingClientRect().width,
+                    mode: element.dataset.bandMode,
+                    // Nothing overlaps, and the tab list clips nothing.
+                    apart:
+                        box('[role="tablist"]').right <= box('[data-history-goto-button]').left &&
+                        box('[data-history-goto-button]').right <= box('[data-history-close]').left,
+                    clipped: tablist.scrollWidth > tablist.clientWidth,
+                    timeline: tab('timeline'),
+                    sessions: tab('sessions'),
+                }
+            })
+            test.info().annotations.push({ type: locale, description: JSON.stringify(measured) })
+            expect(measured.band).toBeGreaterThan(240)
+            expect(measured.band).toBeLessThan(244)
+            expect(measured.mode).toBe('small')
+            expect(measured.apart).toBe(true)
+            expect(measured.clipped).toBe(false)
+            if (locale === 'tr') await shoot(page, 'x6-tr-242')
+            if (!measured.timeline.whole) cut.push(`${locale}: ${measured.timeline.text}`)
+            // Recent Sessions keeps its 48 px floor.
+            expect(measured.sessions.width).toBeGreaterThanOrEqual(48)
+        }
+        expect(cut).toEqual([])
+    })
+})
+
 test.describe('the Timeline', () => {
     test('rows show kind icons, ×N groups collapse and open, and undone steps carry no flag', async ({
         page,

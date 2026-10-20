@@ -1676,3 +1676,29 @@ test('a change under the sheet at the chart’s start counts in neither directio
     await expect.poll(async () => (await changes(page)).off).toEqual({ above: 1, below: 0 })
     await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
 })
+
+test('Go To’s Edits Here line follows the view while open, so a pick matches the banner (X-7)', async ({
+    page,
+}) => {
+    await edit(page, 'Moved near', { kind: 'move', beats: [5] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    const banner = surface(page).locator('[data-history-filter-banner]')
+    const range = page.locator('[data-goto-here-range]')
+    await surface(page).locator('[data-history-goto-button]').click()
+    const opened = await range.textContent()
+    // The view moves while Go To is open, as a wheel or a sheet's promotion moves it.
+    await viewAt(page, 40)
+    await expect(range).not.toHaveText(opened!)
+    const moved = await range.textContent()
+    await page.getByRole('radio', { name: 'Edits Here' }).click()
+    await expect(banner).toHaveText(new RegExp(`Edits Here · ${moved}`))
+    await expect(range).toHaveText(moved!)
+    // Moved again, it names what choosing it again would take.
+    await viewAt(page, 80)
+    await expect(range).not.toHaveText(moved!)
+    const again = await range.textContent()
+    await page.getByRole('radio', { name: 'Edits Here' }).click()
+    await expect(banner).toHaveText(new RegExp(`Edits Here · ${again}`))
+})
