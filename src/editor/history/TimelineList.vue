@@ -16,6 +16,7 @@ import { getHistoryOperationContext } from '../../history/createHistoryOperation
 import {
     captureOperationRecipe,
     describeStep,
+    stepLang,
     type OperationRecipe,
 } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
@@ -165,6 +166,7 @@ const operationContext = computed(getHistoryOperationContext)
 const headLabel = computed(
     () => headStep.value && describeStep(headStep.value, operationContext.value),
 )
+const headLang = computed(() => headStep.value && stepLang(headStep.value, operationContext.value))
 const recipes = computed(() => {
     const result = new Map<string, OperationRecipe>()
     for (const row of rows.value) if (row.type === 'entry') result.set(row.id, recipeOfRow(row))
@@ -1404,7 +1406,7 @@ defineExpose({
                                 <span class="block truncate leading-5"
                                     >{{ i18n.history.now
                                     }}<template v-if="headLabel && !isEmpty">
-                                        · {{ headLabel }}</template
+                                        · <span :lang="headLang">{{ headLabel }}</span></template
                                     ></span
                                 >
                             </span>
@@ -1561,6 +1563,7 @@ defineExpose({
                                     <span
                                         class="block truncate leading-5"
                                         data-history-group-action
+                                        :lang="presentationOf(row).lang"
                                         >{{ presentationOf(row).main }}</span
                                     >
                                     <span class="timeline-entry-caption" data-history-group-caption>
