@@ -2148,6 +2148,8 @@
         "readOnlyPeek": "Read-only while viewing history",
         "restoredTo": "Restored to {0}",
         "alreadyMatches": "Already matches the current chart",
+        "restoreFailed": "Could not restore",
+        "peekFailed": "Could not view this step",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier steps are in History",
         "bgmNotLoaded": "BGM not loaded",

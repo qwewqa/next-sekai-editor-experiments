@@ -2148,6 +2148,8 @@
     "readOnlyPeek": "履歴の表示中は読み取り専用です",
     "restoredTo": "{0} の状態に復元しました",
     "alreadyMatches": "すでに現在の譜面と同じです",
+    "restoreFailed": "復元できませんでした",
+    "peekFailed": "この操作を表示できませんでした",
     "openHistory": "履歴を開く",
     "earlierInHistory": "それ以前の操作は履歴にあります",
     "bgmNotLoaded": "BGM が読み込まれていません",

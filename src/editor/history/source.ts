@@ -4,7 +4,7 @@ import { captureEntryDescription } from '../../history/operations'
 import { session } from '../../history/session'
 import { toHex } from '../../local/hash'
 import { storageWorker } from '../../local/start'
-import { flusher } from '../../local/storing'
+import { flusher, onFlusherStart } from '../../local/storing'
 import type { EditMatch, FindEditsCursor } from '../../local/worker/changeHandlers'
 import type {
     PathStep,
@@ -65,7 +65,7 @@ const entryOf = (entry: TimelineEntry): Entry => ({
     seq: entry.seq,
     time: entry.time,
     ...captureEntryDescription(entry),
-    noteCount: entry.noteCount,
+    ...(entry.noteCount === undefined || entry.unreadable ? {} : { noteCount: entry.noteCount }),
     kept: entry.kept,
     ...(entry.damaged ? { damaged: true } : {}),
     ...(entry.unreadable ? { unreadable: entry.unreadable } : {}),
@@ -420,10 +420,18 @@ export const resetToNewest = async () => {
 const waiting = () => flusher?.session?.pending.length ?? 0
 
 /**
+ * The lists following the entries now (the docked panel's and the dialog's can both show). The
+ * Edits Here scan, the loaded run and the stored entries are shared by all of them, so a list
+ * going away stops the scan only when it was the last.
+ */
+let followers = 0
+
+/**
  * Follows the undo stack while the panel is shown: reads at once, and about 1 s after each
  * change, when the flush has stored it. Call in a component's setup.
  */
 export const followEntries = () => {
+    followers++
     let timer: ReturnType<typeof setTimeout> | undefined
     let tries = 0
     const follow = () => {
@@ -445,7 +453,8 @@ export const followEntries = () => {
         [historyFilter, hereRange, () => session.value.sessionId],
         () => {
             if (historyFilter.value !== 'here') stopHere()
-            else if (hereFor === hereKey() && hereDone) void checkNewer()
+            // A scan running for this range is shared, not started again.
+            else if (hereFor === hereKey() && (hereDone || here.scanning)) void checkNewer()
             else void scanHere()
         },
         { immediate: true },
@@ -474,7 +483,20 @@ export const followEntries = () => {
     })
     // Every entry joins the flusher's pending list, whether a history action made it or not (a
     // Save's entry does not): following that list cannot miss a kind of entry added later.
-    const stopEntries = flusher?.onEntry(changed)
+    // Storing may start after this list sets up: subscribe then, and read what is stored.
+    let stopEntries: (() => void) | undefined
+    const subscribe = () => {
+        stopEntries?.()
+        stopEntries = flusher?.onEntry(changed)
+    }
+    subscribe()
+    const stopStart = flusher
+        ? undefined
+        : onFlusherStart(() => {
+              subscribe()
+              void refresh()
+              changed()
+          })
     watch(
         () => session.value.sessionId,
         () => {
@@ -484,9 +506,11 @@ export const followEntries = () => {
     onScopeDispose(() => {
         stop()
         stopEntries?.()
+        stopStart?.()
         clearTimeout(timer)
-        // A scan stopped part way starts again when the list shows once more.
-        if (here.scanning) {
+        // A scan stopped part way starts again when a list shows once more; while another list
+        // shows, it goes on.
+        if (--followers === 0 && here.scanning) {
             stopHere()
             hereFor = undefined
         }
@@ -503,6 +527,8 @@ export const here = shallowReactive({
     scanning: false,
     /** Entries left out: their state, or the one before, could not be read. */
     unreadable: 0,
+    /** The scan, or the check of newer entries, could not be done: what is listed may be partial. */
+    failed: false,
 })
 
 let hereToken = 0
@@ -528,17 +554,26 @@ const stopHere = () => {
     here.scanning = false
 }
 
+/** Scans again after a failure: Try Again. */
+export const retryHere = () => {
+    hereFor = undefined
+    void scanHere()
+}
+
 const scanHere = async () => {
     const mark = ++hereToken
     const worker = storageWorker
     const range = hereRange.value
     here.matches = []
     here.unreadable = 0
+    here.failed = false
     hereTop = undefined
     hereDone = false
     hereFor = hereKey()
     if (!worker || !range) {
         here.scanning = false
+        // Without storage nothing can be searched: that is not "no edits".
+        here.failed = !worker && !!range
         return
     }
     here.scanning = true
@@ -560,8 +595,12 @@ const scanHere = async () => {
         } while (cursor)
         hereDone = true
     } catch {
-        // What was found stays; choosing Edits Here again scans afresh.
-        hereFor = undefined
+        // What was found stays, marked as partial; Try Again, or choosing Edits Here again, scans
+        // afresh.
+        if (mark === hereToken) {
+            hereFor = undefined
+            here.failed = true
+        }
     } finally {
         if (mark === hereToken) here.scanning = false
     }
@@ -572,7 +611,8 @@ const checkNewer = async () => {
     const worker = storageWorker
     const range = hereRange.value
     const until = hereTop
-    if (!worker || !range || !until || here.scanning || historyFilter.value !== 'here') return
+    if (!worker || !range || !until || here.scanning || !hereDone || historyFilter.value !== 'here')
+        return
     const mark = hereToken
     const start = startOf(session.value.sessionId)
     const found: EditMatch[] = []
@@ -596,8 +636,11 @@ const checkNewer = async () => {
             cursor = page.cursor
         } while (cursor)
     } catch {
+        // The newest entries went unchecked: say so until a check succeeds.
+        if (mark === hereToken) here.failed = true
         return
     }
+    here.failed = false
     if (top) hereTop = top
     // Places along the chain stay counted from the first scan's newest entry.
     if (found.length)

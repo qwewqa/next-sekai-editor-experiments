@@ -2148,6 +2148,8 @@
     "readOnlyPeek": "檢視歷史記錄時為唯讀",
     "restoredTo": "已還原到 {0}",
     "alreadyMatches": "已與目前譜面一致",
+    "restoreFailed": "無法還原",
+    "peekFailed": "無法檢視此步",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中",
     "bgmNotLoaded": "BGM 未載入",

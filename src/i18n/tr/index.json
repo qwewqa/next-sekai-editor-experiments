@@ -2148,6 +2148,8 @@
     "readOnlyPeek": "Geçmiş görüntülenirken salt okunur",
     "restoredTo": "{0} anına geri yüklendi",
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",
+    "restoreFailed": "Geri yüklenemedi",
+    "peekFailed": "Bu adım görüntülenemedi",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Önceki adımlar Geçmiş’te",
     "bgmNotLoaded": "BGM yüklenmedi",

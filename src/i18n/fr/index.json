@@ -2148,6 +2148,8 @@
     "readOnlyPeek": "Lecture seule pendant la consultation de l’historique",
     "restoredTo": "Restauré à {0}",
     "alreadyMatches": "Correspond déjà à la partition actuelle",
+    "restoreFailed": "Impossible de restaurer",
+    "peekFailed": "Impossible d’afficher cette étape",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes précédentes sont dans l’historique",
     "bgmNotLoaded": "BGM non chargée",

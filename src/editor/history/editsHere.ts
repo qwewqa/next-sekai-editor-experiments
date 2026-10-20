@@ -17,22 +17,32 @@ const beatStart = (bpms: GridBpm[], beat: number) => {
     return beat - (position - Math.floor(position))
 }
 
+/** The first and last beat of some entities: a loop, since a spread into a call fails for a large selection. */
+export const beatSpan = (entities: readonly { beat: number }[]) => {
+    let from = Infinity
+    let to = -Infinity
+    for (const { beat } of entities) {
+        if (beat < from) from = beat
+        if (beat > to) to = beat
+    }
+    return { from, to }
+}
+
 /** The beats Edits Here would use now: whole grid beats, from the one `from` is in to the one `to` is in. */
 export const takeHereRange = () => {
     const shown = state.value
     const selected = isPeeking.value ? [] : shown.selectedEntities
-    let from: number
-    let to: number
-    if (selected.length) {
-        from = Math.min(...selected.map((entity) => entity.beat))
-        to = Math.max(...selected.map((entity) => entity.beat))
-    } else {
+    let span: { from: number; to: number }
+    if (selected.length) span = beatSpan(selected)
+    else {
         const band = bandTimes()
-        from = timeToBeat(shown.bpms, Math.max(0, band.bottom))
-        to = timeToBeat(shown.bpms, Math.max(0, band.top))
+        span = {
+            from: timeToBeat(shown.bpms, Math.max(0, band.bottom)),
+            to: timeToBeat(shown.bpms, Math.max(0, band.top)),
+        }
     }
-    const first = Math.max(0, beatStart(shown.bpms, from))
-    const last = Math.max(first, beatStart(shown.bpms, to))
+    const first = Math.max(0, beatStart(shown.bpms, span.from))
+    const last = Math.max(first, beatStart(shown.bpms, span.to))
     // Up to the end of the last beat.
     return { from: first, to: last + 1 - 1e-9 }
 }

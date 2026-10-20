@@ -270,6 +270,25 @@ test('actual note deltas require every real transition and remain distinct from 
     )
 })
 
+test('an entry that cannot be read has no note count, so it takes no part in a delta', () => {
+    // The worker once gave such an entry a count of 0: the newer entry then read as +1200.
+    const rows = entryRows(
+        buildRows(
+            newestFirst(
+                entry(event('init'), noon, { noteCount: 1190 }),
+                entry(add(2), noon, { noteCount: 1200 }),
+                entry(add(3), noon, { noteCount: 0, unreadable: 'newer' }),
+                entry(add(4), noon, { noteCount: 1200 }),
+            ),
+            options,
+        ),
+    )
+    assert.deepEqual(
+        rows.map((row) => row.delta),
+        [undefined, undefined, 10, undefined],
+    )
+})
+
 test('Saves and Exports keeps file events and continuation dividers', () => {
     const rows = buildRows(
         newestFirst(
