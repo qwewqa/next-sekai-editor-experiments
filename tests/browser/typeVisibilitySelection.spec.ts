@@ -92,7 +92,7 @@ test('Delete after hiding types erases only the objects still shown', async ({ p
     expect(await types(page, 'selected')).toEqual({ note: 2 })
     expect(await canUndo(page)).toBe(false)
     await page.keyboard.press('Delete')
-    await expect(page.locator('.notification')).toHaveText('Deleted 2 objects')
+    await expect(page.locator('.notification')).toHaveText('Deleted 2 notes')
     expect(await types(page, 'chart')).toEqual(withoutNotes)
 })
 
@@ -113,7 +113,7 @@ test('Cut and Properties see only the objects still shown', async ({ page }) => 
     await page.keyboard.press('/')
     await expect(headings).toHaveText(['Notes 2'])
     await page.keyboard.press('x')
-    await expect(page.locator('.notification')).toHaveText('Cut 2 objects')
+    await expect(page.locator('.notification')).toHaveText('Cut 2 notes')
     expect(await types(page, 'chart')).toEqual(withoutNotes)
 })
 
