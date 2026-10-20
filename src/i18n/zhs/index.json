@@ -1208,7 +1208,8 @@
     "localData": "本地数据",
     "openHistory": "打开历史记录",
     "copyLink": "复制链接",
-    "linkCopied": "已复制链接"
+    "linkCopied": "已复制链接",
+    "linkNotCopied": "无法复制链接"
   },
   "storage": {
     "reload": "请重新加载以继续存储更改。",

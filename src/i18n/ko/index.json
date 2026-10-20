@@ -1208,7 +1208,8 @@
     "localData": "로컬 데이터",
     "openHistory": "기록 열기",
     "copyLink": "링크 복사",
-    "linkCopied": "링크를 복사했습니다"
+    "linkCopied": "링크를 복사했습니다",
+    "linkNotCopied": "링크를 복사하지 못함"
   },
   "storage": {
     "reload": "변경 사항을 계속 보관하려면 새로고침해 주세요.",

@@ -1208,7 +1208,8 @@
     "localData": "Yerel Veriler",
     "openHistory": "Geçmişi Aç",
     "copyLink": "Bağlantıyı Kopyala",
-    "linkCopied": "Bağlantı kopyalandı"
+    "linkCopied": "Bağlantı kopyalandı",
+    "linkNotCopied": "Bağlantı kopyalanamadı"
   },
   "storage": {
     "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin.",

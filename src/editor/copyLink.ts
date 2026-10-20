@@ -30,6 +30,6 @@ const writeText = async (text: string) => {
 }
 
 export const copyPageLink = async () => {
-    if (await writeText(location.origin + location.pathname))
-        notify(() => i18n.value.load.linkCopied)
+    const copied = await writeText(location.origin + location.pathname)
+    notify(() => (copied ? i18n.value.load.linkCopied : i18n.value.load.linkNotCopied))
 }

@@ -1208,7 +1208,8 @@
         "localData": "Local Data",
         "openHistory": "Open History",
         "copyLink": "Copy Link",
-        "linkCopied": "Copied the link"
+        "linkCopied": "Copied the link",
+        "linkNotCopied": "Could not copy the link"
     },
     "storage": {
         "reload": "Reload to keep storing changes.",

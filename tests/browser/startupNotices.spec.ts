@@ -1025,5 +1025,24 @@ test.describe('the in-app browser line', () => {
             )
             expect(copied).toEqual([`${url.origin}${url.pathname}`])
         })
+
+        test('says so when both the clipboard API and the copy command fail', async ({
+            page,
+            context,
+        }) => {
+            await platformOverride(context, { inAppBrowser: true })
+            await context.addInitScript(() => {
+                Object.defineProperty(navigator.clipboard, 'writeText', {
+                    configurable: true,
+                    value: () => Promise.reject(new DOMException('Denied', 'NotAllowedError')),
+                })
+                document.execCommand = () => false
+            })
+            await visit(page)
+            await pill(page).getByRole('button', { name: 'Copy Link' }).click()
+            await expect(page.locator('.notification:not(.notification-pill)')).toHaveText(
+                'Could not copy the link',
+            )
+        })
     })
 })
