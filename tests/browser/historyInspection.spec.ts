@@ -392,25 +392,10 @@ const expectHit = async (control: Locator, width: number, height: number) => {
     })
 }
 
-// A passive state line fits its slot, except (for now) where the fit-based capsule (the strip less
-// 12 px, one width per language) leaves it under its words: there the line truncates and its whole
-// text stays in its title and its accessible text.
-// 'clippedFull' is that text, for the states known to truncate at a 320 px pane.
-const expectStateLine = async (line: Locator, clippedFull?: string) => {
-    if (clippedFull === undefined) {
-        expect(await line.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
-            true,
-        )
-        return
-    }
-    await expect(line.locator('..')).toHaveAttribute('title', clippedFull)
-    await expect(line.locator('..').locator('.sr-only')).toHaveText(clippedFull)
+// A passive state line fits its slot in every language.
+const expectStateLine = async (line: Locator) => {
+    expect(await line.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
 }
-
-// States whose short line is wider than the capsule's room at a 320 px pane (measured: fr 110 px
-// in 100, ja 83 in 70). This is a known defect, not design: the capsule should fit the line.
-// TEMPORARY: delete clippedAtPane320, the clippedFull parameter and its branch when capsule-fit merges.
-const clippedAtPane320: Record<string, string[]> = { fr: ['noChanges'], ja: ['unavailable'] }
 
 const captureContours = async (page: Page, testInfo: TestInfo, state: string) => {
     const navigation = page.locator('[data-peek-navigation]')
@@ -1459,22 +1444,14 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
             messages.peek.unavailable,
         )
         expect(await page.locator('[data-peek-navigation]').boundingBox()).toEqual(geometry)
-        await expectStateLine(
-            stateLine,
-            clippedAtPane320[locale]?.includes('unavailable')
-                ? messages.peek.unavailable
-                : undefined,
-        )
+        await expectStateLine(stateLine)
         await page.screenshot({
             path: testInfo.outputPath(`navigation-unavailable-${locale}-pane320.png`),
         })
         await select(page, 3)
         await expect(stateLine).toHaveText(messages.peek.noChanges)
         expect(await page.locator('[data-peek-navigation]').boundingBox()).toEqual(geometry)
-        await expectStateLine(
-            stateLine,
-            clippedAtPane320[locale]?.includes('noChanges') ? messages.peek.noChanges : undefined,
-        )
+        await expectStateLine(stateLine)
         await page.screenshot({
             path: testInfo.outputPath(`navigation-no-change-${locale}-pane320.png`),
         })
