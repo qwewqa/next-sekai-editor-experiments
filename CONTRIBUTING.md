@@ -94,6 +94,11 @@ Stored formats change only through the version rules (Part 0, 0.11.7):
 - Every stored file carries a version, and every new format or field goes into the format table in the same change.
 - Fixtures are committed, one per format version, and every self-test reads them. See the notes in the code next to each format.
 
+Read these before you change a format:
+
+- [docs/format-versioning.md](docs/format-versioning.md): what each version number does, the extension points and the checklist for a format change.
+- [docs/history-format.md](docs/history-format.md): the History data model, the `.nxsp` history parts, every History operation, the safety rules and how to add an operation.
+
 ## Forks
 
 A fork builds everything unsigned with no setup beyond the Node version: `npm install`, then `npm run build` or `npm run build:native`.

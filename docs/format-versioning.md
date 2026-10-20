@@ -2,7 +2,7 @@
 
 How the editor's stored and exchanged formats change, and what each version number does. Read this before changing anything a file, a database row, a journal or an operation holds.
 
-The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms); this page is the working summary with the checklist. `docs/` in the repository holds no other format description. The full byte-level description of `.nxsp` is in the owner's `work/nxsp-format.md`.
+The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms); this page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in the owner's `work/nxsp-format.md`.
 
 ## 1. The ruling
 
@@ -93,6 +93,8 @@ Work down the list in order. The first row that fits decides the number.
 The lowest-version rule applies to the writer: compute each number from the content with the pinned tables, never from feature flags, so a bug cannot over-report.
 
 ## 5. Operations: any change to an operation's data raises that id's `version`
+
+The operations, their fields and how to add one are in [history-format.md](history-format.md) sections 4 and 6.
 
 Operation codecs are strict: a member the codec does not list makes the data fail it. So a new field, **even an additive one**, must raise that id's `version`, or an older build shows "cannot read the details of this step" instead of "recorded by a newer version of the editor". After the ship:
 
