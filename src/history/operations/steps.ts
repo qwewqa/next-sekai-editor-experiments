@@ -1,12 +1,15 @@
 import { count } from './codec'
 import {
     captureJson,
+    EXTENSION_BYTES,
+    EXTENSION_DEPTH,
     isObject,
     jsonBytes,
     OPERATION_WIRE_BYTES,
     OPERATION_WIRE_DEPTH,
     OperationDataError,
     owns,
+    type ExtensionTrail,
     type JsonObject,
     type JsonValue,
 } from './json'
@@ -19,7 +22,8 @@ export type StepKind = 'init' | 'edit' | 'restore'
 
 /**
  * `x`, the one ignorable extension carrier of a structural object (a step, a recovery-context
- * item, an undo slot, a stack): a JSON object within the operation byte limit. A reader carries it
+ * item, an undo slot, a stack): a JSON object within `EXTENSION_BYTES` and `EXTENSION_DEPTH`,
+ * measured from the `x` itself, the same on every carrier. A reader carries it
  * by value wherever it copies the object whole, never reads it, and may drop it wherever it
  * rebuilds the object. Today's writers write none. Anything a reader must understand uses a version.
  */
@@ -48,10 +52,38 @@ const CONTEXT_KEYS = ['head', 'headIndex', 'dropped', 'omitted', 'x'] as const
 const onlyKeys = (value: Record<string, unknown>, keys: readonly string[]) =>
     Object.keys(value).every((key) => keys.includes(key))
 
-/** An `x` is absent, or a JSON object within the operation byte limit. */
-const extension = (value: Record<string, unknown>) =>
-    !owns(value, 'x') ||
-    (isObject(value.x) && jsonBytes(value.x as JsonObject) <= OPERATION_WIRE_BYTES)
+/**
+ * The one rule for an `x` value: a JSON object within the extension byte and depth limits, counted
+ * from the `x` itself. It is applied alone, never as part of the object that holds it.
+ */
+export const isExtensionValue = (value: unknown): value is Extension => {
+    if (!isObject(value)) return false
+    try {
+        captureJson(value, { bytes: EXTENSION_BYTES, depth: EXTENSION_DEPTH })
+        return true
+    } catch {
+        return false
+    }
+}
+
+/** An `x` is absent, or valid by the extension rule. */
+const extension = (value: Record<string, unknown>) => !owns(value, 'x') || isExtensionValue(value.x)
+
+/** `trail` is the object at `from` in a recovery context: the context, its head or a dropped item. */
+const contextHost = (trail: ExtensionTrail, from: number) =>
+    trail.length === from ||
+    (trail.length === from + 1 && trail[from] === 'head') ||
+    (trail.length === from + 2 && trail[from] === 'dropped' && typeof trail[from + 1] === 'number')
+
+/** The objects of a recovery context that carry an `x`; the captures read those apart. */
+const contextExtensions = (trail: ExtensionTrail) => contextHost(trail, 0)
+
+/** The objects of a step that carry an `x`: the step, and the context in it. */
+const stepExtensions = (trail: ExtensionTrail) =>
+    trail.length === 0 || (trail[0] === 'recoveryContext' && contextHost(trail, 1))
+
+/** A description without its `x`, which no host byte budget counts. */
+const withoutExtension = (item: StepDescription) => ({ kind: item.kind, operation: item.operation })
 
 const description = (value: unknown): value is StepDescription => {
     if (
@@ -86,13 +118,17 @@ const context = (value: unknown): value is RecoveryContext => {
         !value.dropped.every(description)
     )
         return false
-    return jsonBytes(value.dropped) <= RECOVERY_CONTEXT_BYTES
+    return (
+        jsonBytes(value.dropped.map(withoutExtension) as unknown as JsonValue) <=
+        RECOVERY_CONTEXT_BYTES
+    )
 }
 
 export const captureRecoveryContext = (value: unknown): RecoveryContext => {
     const captured = captureJson(value, {
         bytes: OPERATION_WIRE_BYTES + RECOVERY_CONTEXT_BYTES + 2048,
         depth: OPERATION_WIRE_DEPTH + 3,
+        extensions: contextExtensions,
     })
     if (!context(captured)) throw new OperationDataError('Invalid recovery context')
     return captured
@@ -102,6 +138,7 @@ export const captureStep = (value: unknown): UndoableStep => {
     const captured = captureJson(value, {
         bytes: 2 * OPERATION_WIRE_BYTES + RECOVERY_CONTEXT_BYTES + 4096,
         depth: OPERATION_WIRE_DEPTH + 4,
+        extensions: stepExtensions,
     })
     if (!isObject(captured)) throw new OperationDataError('Invalid History step')
     const hasContext = owns(captured, 'recoveryContext')
@@ -232,7 +269,7 @@ export const createRecoveryContext = (
             throw new OperationDataError('Recovery sources must be flattened')
         return stepDescription(captured)
     })
-    const sizes = optional.map((item) => jsonBytes(item as unknown as JsonValue))
+    const sizes = optional.map((item) => jsonBytes(withoutExtension(item) as unknown as JsonValue))
     let bytes = 2 + sizes.reduce((sum, value) => sum + value, 0) + Math.max(0, sizes.length - 1)
     while (bytes > RECOVERY_CONTEXT_BYTES) {
         const size = sizes.shift()

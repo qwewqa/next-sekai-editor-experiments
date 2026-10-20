@@ -57,6 +57,13 @@ const textOf = (items: Item[], name: string) => {
     return { item, text: new TextDecoder().decode(item.data) }
 }
 
+/** An object with `levels` levels: the outer one is level 0. */
+const nested = (levels: number) => {
+    let value: Loose = {}
+    for (let i = 1; i < levels; i++) value = { a: value }
+    return value
+}
+
 const hashOf = (value: RecordValue) => toHex(hash16Sync(canonicalBytes(value)))
 
 /**
@@ -329,6 +336,31 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         'x-undostack-oversize': await probe(
             manifest((m) => (m.undoStack.x = { big: 'x'.repeat(300_000) })),
         ),
+        // One rule on every carrier: the `x`'s own depth (32 below it), whatever holds it.
+        'x-deep-everywhere': await probe(
+            manifest((m) => {
+                const x = nested(25)
+                m.x = x
+                m.undoStack.x = x
+                m.undoStack.slots[0].x = x
+                m.undoStack.slots[0].step.x = x
+                for (const e of m.entries) {
+                    e.x = x
+                    if (e.step) e.step.x = x
+                }
+            }),
+        ),
+        'x-step-deep': await probe(manifest((m) => (m.undoStack.slots[0].step.x = nested(25)))),
+        'x-entry-step-deep': await probe(
+            manifest((m) => (m.entries.find((e: Loose) => e.step).step.x = nested(25))),
+        ),
+        'x-step-too-deep': await probe(manifest((m) => (m.undoStack.slots[0].step.x = nested(40)))),
+        'x-entry-too-deep': await probe(manifest((m) => (m.entries[0].x = nested(40)))),
+        'x-manifest-too-deep': await probe(manifest((m) => (m.x = nested(40)))),
+        'x-slot-too-deep': await probe(manifest((m) => (m.undoStack.slots[0].x = nested(40)))),
+        // A manifest `version` below the current one is damaged (nothing older is supported).
+        'manifest-version-old': await probe(manifest((m) => (m.version = 1))),
+        'manifest-version-zero': await probe(manifest((m) => (m.version = 0))),
         // Plan §1.6.11.8: a key no carrier knows, inside a slot or a step, is "unknown-key".
         'step-unknown-key': await probe(manifest((m) => (m.undoStack.slots[0].step.zz = 1))),
         'entry-step-unknown-key': await probe(
@@ -482,6 +514,17 @@ const expectedByPlan: Record<string, Opened> = {
     'x-manifest-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     'x-entry-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     'x-undostack-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    // The limits of an `x` are its own and the same everywhere: 25 levels open on a step as on an entry.
+    'x-deep-everywhere': { kind: 'nxsp', open: 'full', reasons: [] },
+    'x-step-deep': { kind: 'nxsp', open: 'full', reasons: [] },
+    'x-entry-step-deep': { kind: 'nxsp', open: 'full', reasons: [] },
+    'x-step-too-deep': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-entry-too-deep': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-manifest-too-deep': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-slot-too-deep': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    // A manifest below the current version is damaged, not "newer".
+    'manifest-version-old': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'manifest-version-zero': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
     // An unknown key in a slot or step is newer content: "Made by a newer version", not damage.
     'step-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },
     'entry-step-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },
