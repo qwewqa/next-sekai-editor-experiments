@@ -294,6 +294,7 @@
         "redo": {
             "title": "Redo",
             "noState": "Nothing to redo",
+            "failed": "Could not redo",
             "redid": "Redid \"{0}\""
         },
         "reset": {
@@ -382,6 +383,7 @@
         "undo": {
             "title": "Undo",
             "noState": "Nothing to undo",
+            "failed": "Could not undo",
             "undid": "Undid \"{0}\""
         },
         "utilities": {
