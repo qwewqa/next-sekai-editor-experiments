@@ -372,22 +372,16 @@ const nativeRecord = (
                         )
                         break
                     case 'tags':
-                        if (change.added)
-                            rows.push(
-                                ...valueRow(
-                                    'tagsAdded',
-                                    `${label}: ${t.historyChanges.added}`,
-                                    plain(numberText(change.added, context)),
-                                ),
-                            )
-                        if (change.removed)
-                            rows.push(
-                                ...valueRow(
-                                    'tagsRemoved',
-                                    `${label}: ${t.historyChanges.removed}`,
-                                    plain(numberText(change.removed, context)),
-                                ),
-                            )
+                        for (const [key, text, value] of [
+                            ['tagsAdded', t.historyChanges.tagsAdded, change.added],
+                            ['tagsRemoved', t.historyChanges.tagsRemoved, change.removed],
+                            ['tagsChanged', t.historyChanges.tagsChanged, change.changed ?? 0],
+                        ] as const)
+                            if (value)
+                                rows.push(...valueRow(key, text, plain(numberText(value, context))))
+                        // Kept tags that moved: the label alone, with the existing "Changed".
+                        if (change.reordered)
+                            rows.push(...valueRow('tagsOrder', label, plain(d.changed)))
                         break
                     case 'title':
                     case 'artists':

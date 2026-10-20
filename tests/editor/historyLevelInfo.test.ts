@@ -38,7 +38,7 @@ const ref = (hash: string, filename: string): MediaRef => ({
 })
 const info = (extra: Partial<LevelInfo> = {}): LevelInfo => ({ ...emptyLevelInfo, ...extra })
 
-test('a changed field is one change each, in field order, with Initial Life among them', () => {
+test('a changed field is one change each, in the dialog’s field order, with Initial Life last', () => {
     const input = levelInfoInput(
         info({ title: 'Old', tags: [{ title: 'a' }], rating: 3 }),
         info({
@@ -55,14 +55,14 @@ test('a changed field is one change each, in field order, with Initial Life amon
         id: 'nse.levelInfo.set',
         data: {
             changes: [
+                { field: 'title', before: captureName('Old'), after: captureName('New') },
                 { field: 'artists', before: captureName(''), after: captureName('Composer') },
-                { field: 'cover', before: null, after: captureName('cover.png') },
-                { field: 'description', before: captureName(''), after: captureName('Line') },
-                { field: 'initialLife', before: 1000, after: 900 },
-                { field: 'preview', before: null, after: captureName('preview.mp3') },
                 { field: 'rating', before: 3, after: null },
                 { field: 'tags', added: 1, removed: 0 },
-                { field: 'title', before: captureName('Old'), after: captureName('New') },
+                { field: 'description', before: captureName(''), after: captureName('Line') },
+                { field: 'cover', before: null, after: captureName('cover.png') },
+                { field: 'preview', before: null, after: captureName('preview.mp3') },
+                { field: 'initialLife', before: 1000, after: 900 },
             ],
         },
     })
@@ -84,37 +84,61 @@ test('nothing changed is no step; Initial Life alone is nse.header.set', () => {
     assert.equal(both?.id, 'nse.levelInfo.set')
 })
 
-test('tags are compared by title as a multiset; icons are kept and not a change', () => {
-    const tags = (...titles: string[]) => titles.map((title) => ({ title }))
-    const change = (before: string[], after: string[]) => {
+test('tags: those added and removed by title, those given another icon, and a change of order', () => {
+    const tags = (...titles: (string | [string, string])[]) =>
+        titles.map((title) =>
+            typeof title === 'string' ? { title } : { title: title[0], icon: title[1] },
+        )
+    const change = (
+        before: (string | [string, string])[],
+        after: (string | [string, string])[],
+    ) => {
         const input = levelInfoInput(
             info({ tags: tags(...before) }),
             info({ tags: tags(...after) }),
         )
-        return input?.id === 'nse.levelInfo.set' ? input.data.changes : undefined
+        if (input?.id !== 'nse.levelInfo.set') return input
+        assert.equal(operationCodecs['nse.levelInfo.set'].is(input.data), true)
+        return input.data.changes
     }
     assert.deepEqual(change(['a'], ['a', 'b', 'b']), [{ field: 'tags', added: 2, removed: 0 }])
     assert.deepEqual(change(['a', 'b'], ['a']), [{ field: 'tags', added: 0, removed: 1 }])
     assert.deepEqual(change(['a'], ['b']), [{ field: 'tags', added: 1, removed: 1 }])
     assert.deepEqual(change(['a', 'a'], ['a']), [{ field: 'tags', added: 0, removed: 1 }])
-    assert.equal(change(['a', 'b'], ['b', 'a']), undefined)
-    assert.equal(
-        levelInfoInput(
-            info({ tags: [{ title: 'a' }] }),
-            info({ tags: [{ title: 'a', icon: 'star' }] }),
-        ),
-        undefined,
-    )
+    // A reorder is a change of state, so it has a step.
+    assert.deepEqual(change(['a', 'b'], ['b', 'a']), [
+        { field: 'tags', added: 0, removed: 0, reordered: true },
+    ])
+    assert.deepEqual(change(['a', 'b', 'c'], ['c', 'b', 'a', 'd']), [
+        { field: 'tags', added: 1, removed: 0, reordered: true },
+    ])
+    // So is an icon given to a tag that stays, or taken from it, or swapped.
+    assert.deepEqual(change(['a'], [['a', 'star']]), [
+        { field: 'tags', added: 0, removed: 0, changed: 1 },
+    ])
+    assert.deepEqual(change([['a', 'star'], 'b'], ['a', ['b', 'moon']]), [
+        { field: 'tags', added: 0, removed: 0, changed: 2 },
+    ])
+    assert.deepEqual(change([['a', 'star'], 'b'], ['b', ['a', 'star'], 'c']), [
+        { field: 'tags', added: 1, removed: 0, reordered: true },
+    ])
+    // Nothing moved or changed is no step.
+    assert.equal(change(['a', ['b', 'x']], ['a', ['b', 'x']]), undefined)
+    assert.equal(change([], []), undefined)
 })
 
-test('a cover or preview is a change by its content, a rating by its value', () => {
+test('a cover or preview is a change by its content or its name, a rating by its value', () => {
     const only = (before: LevelInfo, after: LevelInfo) => {
         const input = levelInfoInput(before, after)
         return input?.id === 'nse.levelInfo.set' ? input.data.changes : undefined
     }
-    // The same content under another name is no change; other content is one.
-    assert.equal(
+    // The same content under another name is a change of state (the header records the name).
+    assert.deepEqual(
         only(info({ cover: ref('a', 'one.png') }), info({ cover: ref('a', 'two.png') })),
+        [{ field: 'cover', before: captureName('one.png'), after: captureName('two.png') }],
+    )
+    assert.equal(
+        only(info({ cover: ref('a', 'one.png') }), info({ cover: ref('a', 'one.png') })),
         undefined,
     )
     assert.deepEqual(
@@ -128,6 +152,10 @@ test('a cover or preview is a change by its content, a rating by its value', () 
         { field: 'rating', before: null, after: 0 },
     ])
     assert.equal(only(info({ rating: 2 }), info({ rating: 2 })), undefined)
+    // A field whose before equals its after is skipped, beside the ones that changed.
+    assert.deepEqual(only(info({ title: 'T', rating: 2 }), info({ title: 'T', rating: 3 })), [
+        { field: 'rating', before: 2, after: 3 },
+    ])
     // A long text is captured cut, and still a change.
     const long = 'x'.repeat(300)
     const changes = only(info(), info({ description: long }))
@@ -161,13 +189,13 @@ test('v0.6.0 renders it: the step reads Changed level info, and Details lists ea
     assert.deepEqual(
         details.rows.map((row) => [row.kind, row.label]),
         [
+            ['change', 'Title'],
             ['change', 'Artists'],
+            ['change', 'Rating'],
+            ['value', 'Tags Added'],
+            ['value', 'Tags Removed'],
             ['change', 'Cover'],
             ['change', 'Initial Life'],
-            ['change', 'Rating'],
-            ['value', 'Tags: Added'],
-            ['value', 'Tags: Removed'],
-            ['change', 'Title'],
         ],
     )
     const rows = Object.fromEntries(details.rows.map((row) => [row.key, row]))
@@ -191,8 +219,8 @@ test('v0.6.0 renders it: the step reads Changed level info, and Details lists ea
 
 test('every locale renders the description and Details with no placeholder left', () => {
     const input = levelInfoInput(
-        info({ title: 'Old' }),
-        info({ title: 'New', rating: 5, tags: [{ title: 'a' }] }),
+        info({ title: 'Old', tags: [{ title: 'a' }, { title: 'b' }] }),
+        info({ title: 'New', rating: 5, tags: [{ title: 'b' }, { title: 'a', icon: 'star' }] }),
         { before: 1, after: 2 },
     )
     assert.ok(input)
@@ -202,7 +230,10 @@ test('every locale renders the description and Details with no placeholder left'
         assert.ok(text.length > 0 && !/\{\d+\}/.test(text), `${locale}: ${text}`)
         const details = operationDetails(recipeOf(input, ctx), ctx)
         assert.equal(details.description, text)
-        assert.ok(details.rows.length >= 4)
+        assert.deepEqual(
+            details.rows.map((row) => row.key),
+            ['title', 'rating', 'tagsChanged', 'tagsOrder', 'initialLife'],
+        )
         assert.ok(details.rows.every((row) => row.label.length > 0 && row.key.length > 0))
     }
 })

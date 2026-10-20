@@ -546,15 +546,15 @@ const table: Record<OperationId, Row> = {
                 'every field, in field order',
                 {
                     changes: [
+                        { field: 'title', before: name('t'), after: name('u') },
                         { field: 'artists', before: name('A'), after: name('B') },
                         { field: 'author', before: name(''), after: name('C') },
-                        { field: 'cover', before: null, after: name('cover.png') },
-                        { field: 'description', before: name('x'), after: name('y') },
-                        { field: 'initialLife', before: 1000, after: 900 },
-                        { field: 'preview', before: name('a.mp3'), after: null },
                         { field: 'rating', before: null, after: 12 },
-                        { field: 'tags', added: 2, removed: 1 },
-                        { field: 'title', before: name('t'), after: name('u') },
+                        { field: 'tags', added: 2, removed: 1, changed: 1, reordered: true },
+                        { field: 'description', before: name('x'), after: name('y') },
+                        { field: 'cover', before: null, after: name('cover.png') },
+                        { field: 'preview', before: name('a.mp3'), after: null },
+                        { field: 'initialLife', before: 1000, after: 900 },
                     ],
                 },
             ],
@@ -562,8 +562,8 @@ const table: Record<OperationId, Row> = {
                 'a rating removed, a cut name',
                 {
                     changes: [
-                        { field: 'rating', before: 3.5, after: null },
                         { field: 'title', before: name('a'.repeat(300)), after: name('b') },
+                        { field: 'rating', before: 3.5, after: null },
                     ],
                 },
             ],
@@ -571,8 +571,32 @@ const table: Record<OperationId, Row> = {
                 'Initial Life with another field',
                 {
                     changes: [
-                        { field: 'initialLife', before: 1, after: 2 },
                         { field: 'rating', before: null, after: 1 },
+                        { field: 'initialLife', before: 1, after: 2 },
+                    ],
+                },
+            ],
+            [
+                'tags moved only',
+                { changes: [{ field: 'tags', added: 0, removed: 0, reordered: true }] },
+            ],
+            [
+                'tags given another icon',
+                { changes: [{ field: 'tags', added: 0, removed: 0, changed: 2 }] },
+            ],
+            [
+                'the same cover under another name',
+                { changes: [{ field: 'cover', before: name('a.png'), after: name('b.png') }] },
+            ],
+            [
+                'a cut name that may hide a difference',
+                {
+                    changes: [
+                        {
+                            field: 'title',
+                            before: name('a'.repeat(300)),
+                            after: name('a'.repeat(300)),
+                        },
                     ],
                 },
             ],
@@ -588,10 +612,46 @@ const table: Record<OperationId, Row> = {
                 'fields out of order',
                 {
                     changes: [
-                        { field: 'title', before: name('a'), after: name('b') },
                         { field: 'artists', before: name('a'), after: name('b') },
+                        { field: 'title', before: name('a'), after: name('b') },
                     ],
                 },
+            ],
+            [
+                'alphabetical, which is not the dialog’s order',
+                {
+                    changes: [
+                        { field: 'artists', before: name('a'), after: name('b') },
+                        { field: 'author', before: name('a'), after: name('b') },
+                        { field: 'rating', before: null, after: 1 },
+                        { field: 'title', before: name('a'), after: name('b') },
+                    ],
+                },
+            ],
+            [
+                'a title that did not change',
+                { changes: [{ field: 'title', before: name('a'), after: name('a') }] },
+            ],
+            [
+                'a rating that did not change',
+                {
+                    changes: [
+                        { field: 'rating', before: 2, after: 2 },
+                        { field: 'tags', added: 1, removed: 0 },
+                    ],
+                },
+            ],
+            [
+                'a cover that did not change',
+                { changes: [{ field: 'cover', before: null, after: null }] },
+            ],
+            [
+                'tags with a zero change count',
+                { changes: [{ field: 'tags', added: 0, removed: 0, changed: 0 }] },
+            ],
+            [
+                'tags reordered: false',
+                { changes: [{ field: 'tags', added: 0, removed: 0, reordered: false }] },
             ],
             [
                 'a field twice',

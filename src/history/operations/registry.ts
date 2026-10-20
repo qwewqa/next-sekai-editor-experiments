@@ -7,6 +7,7 @@ import {
     nil,
     object,
     oneOf,
+    positive,
     refine,
     union,
     type ValueOf,
@@ -136,14 +137,47 @@ const levelInfoChange = union(
         after: nameText,
     }),
     object({ field: literal('rating'), before: union(finite, nil), after: union(finite, nil) }),
-    object({ field: literal('tags'), added: count, removed: count }),
+    object(
+        { field: literal('tags'), added: count, removed: count },
+        // Tags kept but given another icon, and kept but moved: each is a change of state.
+        { changed: positive, reordered: literal(true) },
+    ),
     object({ field: oneOf(['cover', 'preview']), before: fileName, after: fileName }),
     object({ field: literal('initialLife'), before: finite, after: finite }),
 )
 export type LevelInfoChange = ValueOf<typeof levelInfoChange>
+/** The dialog's field order, which a step's changes follow (§1.4.12). */
+export const levelInfoFields = [
+    'title',
+    'artists',
+    'author',
+    'rating',
+    'tags',
+    'description',
+    'cover',
+    'preview',
+    'initialLife',
+] as const
+const fieldAt = (change: LevelInfoChange) => levelInfoFields.indexOf(change.field)
+/** Whether a change changes anything. A cut name may hide a real difference, so it counts. */
+const isChange = (change: LevelInfoChange) => {
+    if (change.field === 'tags')
+        return change.added + change.removed + (change.changed ?? 0) > 0 || !!change.reordered
+    if (change.field === 'rating' || change.field === 'initialLife')
+        return change.before !== change.after
+    // Names and files: equal captured names are no change, unless a cut name hides a difference.
+    const { before, after } = change
+    const same =
+        before === after ||
+        (!!before &&
+            !!after &&
+            before.text === after.text &&
+            !before.truncated === !after.truncated)
+    return !same || !!before?.truncated
+}
 /**
- * One Apply is one step: its changes in field order, each field once. A step that changes only
- * Initial Life is `nse.header.set`, so each id names one result.
+ * One Apply is one step: its changes in the dialog's field order, each field once, each one a
+ * change. A step that changes only Initial Life is `nse.header.set`, so each id names one result.
  */
 const levelInfoChanges = codec<readonly LevelInfoChange[]>(
     (value) =>
@@ -151,8 +185,8 @@ const levelInfoChanges = codec<readonly LevelInfoChange[]>(
         value.length > 0 &&
         value.length <= 9 &&
         value.every(levelInfoChange.is) &&
-        value.every((item, i) => i === 0 || (value[i - 1]?.field ?? '') < item.field) &&
-        value.every((item) => item.field !== 'tags' || item.added + item.removed > 0) &&
+        value.map(fieldAt).every((at, i, all) => i === 0 || (all[i - 1] ?? 0) < at) &&
+        value.every(isChange) &&
         (value.length > 1 || value[0]?.field !== 'initialLife'),
 )
 
