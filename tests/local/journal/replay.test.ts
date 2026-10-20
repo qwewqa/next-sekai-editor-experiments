@@ -10,7 +10,7 @@ import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/s
 import { sessionLock } from '../../../src/local/locks'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
-import { checkStored } from '../../../src/local/testing/invariants'
+import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
@@ -406,7 +406,7 @@ test('replay killed at every await applies the journal once, whole or not at all
         },
         check: ({ world }) => {
             const { storage, sessionId } = storages.get(world)!
-            assert.deepEqual(checkStored(world.memory), [])
+            assert.deepEqual(checkStrict(world.memory), [])
             assert.deepEqual(
                 entriesOf(world, sessionId).map((entry) => entry.kind),
                 ['init', 'recovered'],

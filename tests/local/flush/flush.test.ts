@@ -6,7 +6,7 @@ import { setDeflateHookForTests } from '../../../src/local/chunkVerify'
 import { bumpEpoch, hashKey } from '../../../src/local/db'
 import type { FlushSession } from '../../../src/local/flush'
 import { toRecords } from '../../../src/local/records/records'
-import { checkStored } from '../../../src/local/testing/invariants'
+import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld } from '../../../src/local/testing/world'
 import { StoragePausedError } from '../../../src/local/worker/core'
@@ -642,7 +642,7 @@ test('two tabs flushing at once store both sessions whole, under the CI seeds', 
         assert.deepEqual([...a.errors, ...b.errors], [], `seed ${seed}`)
         assert.equal(rows(world, 'sessions').size, 2, `seed ${seed}`)
         assert.equal(rows(world, 'entries').size, 8, `seed ${seed}`)
-        assert.deepEqual(checkStored(world.memory), [], `seed ${seed}`)
+        assert.deepEqual(checkStrict(world.memory), [], `seed ${seed}`)
     }
 })
 
@@ -667,7 +667,7 @@ test('a kill at every await of two flushes leaves no dangling refs and no half-w
             await page.flusher.flush()
         },
         check: ({ world }) => {
-            assert.deepEqual(checkStored(world.memory), [])
+            assert.deepEqual(checkStrict(world.memory), [])
             const sessions = [...rows(world, 'sessions').values()]
             const entries = [...rows(world, 'entries').values()]
             assert.equal(rows(world, 'chains').size, sessions.length)

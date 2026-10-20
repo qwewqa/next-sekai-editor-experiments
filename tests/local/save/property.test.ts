@@ -17,6 +17,7 @@ import { commitIdentity, IDENTITY_STORES, type IdentityUnit } from '../../../src
 import { buildSave } from '../../../src/local/save/execute'
 import { addRecords, headInput } from '../../../src/local/save/pending'
 import { readSaveNeeds } from '../../../src/local/save/predicate'
+import { sessionChecks } from '../../../src/local/testing/invariants'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import {
@@ -508,12 +509,24 @@ class Scenario {
 
 type Model = { ops: number }
 
+/** The stored rows hold the session invariants after every op (architecture review A0). */
+const checkRows = (scenario: Scenario, op: Op) =>
+    assert.deepEqual(
+        sessionChecks(scenario.fixture.world.memory, {
+            maxSeenTime: false,
+            hole: scenario.fixture.isHole,
+        }),
+        [],
+        `session rows break an invariant after ${describe(op)}\n${scenario.log.join('\n')}`,
+    )
+
 class Command implements fc.AsyncCommand<Model, Scenario> {
     constructor(readonly op: Op) {}
     check = () => true
     async run(model: Model, real: Scenario) {
         model.ops++
         await real.apply(this.op)
+        checkRows(real, this.op)
     }
     toString = () => describe(this.op)
 }
@@ -557,8 +570,12 @@ const runScript = async (start: number, ops: Iterable<Op>) => {
     await fixture.storeMedia([BGM, COVER, PREVIEW])
     await fixture.start(start)
     const scenario = new Scenario(fixture)
-    for (const each of ops) await scenario.apply(each)
+    for (const each of ops) {
+        await scenario.apply(each)
+        checkRows(scenario, each)
+    }
     await scenario.end()
+    checkRows(scenario, { t: 'save' })
 }
 
 test('random edits and Saves never lose a version, over-claim or repeat the line', async () => {
@@ -578,6 +595,7 @@ test('random edits and Saves never lose a version, over-claim or repeat the line
                 const scenario = new Scenario(fixture)
                 await fc.asyncModelRun(() => ({ model: { ops: 0 }, real: scenario }), commands)
                 await scenario.end()
+                checkRows(scenario, { t: 'save' })
             },
         ),
         { numRuns: runs, seed },
