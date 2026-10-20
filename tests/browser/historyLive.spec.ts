@@ -11,6 +11,7 @@ import {
     peekRow,
     release,
     row,
+    rowTitles,
     timeline,
 } from './historyJourney'
 import { submitSave } from './saveFlows'
@@ -28,17 +29,20 @@ test.afterEach(({ page }) => {
 })
 
 /** Pushes `count` steps with titles "Syn <n>", the way a long session would have made them. */
-const pushSteps = (page: Page, count: number) =>
-    page.evaluate((count) => {
-        const { history, historySteps } = window.editorTest
-        for (let i = 1; i <= count; i++) {
-            const life = history.state.value.initialLife
-            history.pushState(historySteps.futureInitialLife(life, life + 1, `Syn ${i}`), {
-                ...history.state.value,
-                initialLife: life + 1,
-            })
-        }
-    }, count)
+const pushSteps = (page: Page, count: number, tag = 'Syn') =>
+    page.evaluate(
+        ({ count, tag }) => {
+            const { history, historySteps } = window.editorTest
+            for (let i = 1; i <= count; i++) {
+                const life = history.state.value.initialLife
+                history.pushState(historySteps.futureInitialLife(life, life + 1, `${tag} ${i}`), {
+                    ...history.state.value,
+                    initialLife: life + 1,
+                })
+            }
+        },
+        { count, tag },
+    )
 
 /** Opens the History tab on the right dock: the Timeline beside the chart, so keys still reach it. */
 const openPanel = async (page: Page) => {
@@ -256,4 +260,69 @@ test('F5: Save and Export while peeking leave the peek and the rows where they a
         .toBe('undo')
     await expect.poll(() => topOf(page, 'Syn 150')).not.toBeNull()
     expect(Math.abs((await topOf(page, 'Syn 150'))! - again)).toBeLessThanOrEqual(1)
+})
+
+test('L1: rows that were shown stay in every frame while pending entries are stored and a new one arrives', async ({
+    page,
+}) => {
+    await load(page)
+    await pushSteps(page, 3)
+    await flush(page)
+    await openPanel(page)
+    await expect(row(page, 'Syn 3', 'panel')).toBeVisible()
+
+    // One sample per frame of the titles rendered, from here to the end.
+    await page.evaluate(() => {
+        const frames: string[][] = []
+        const sampler = { frames, stop: false }
+        ;(window as unknown as { sampler: typeof sampler }).sampler = sampler
+        const sample = () => {
+            frames.push(
+                [
+                    ...document.querySelectorAll(
+                        '[data-history-surface="panel"] [data-history-row] [data-history-group-action]',
+                    ),
+                ].map((element) => (element.textContent ?? '').trim()),
+            )
+            if (!sampler.stop) requestAnimationFrame(sample)
+        }
+        requestAnimationFrame(sample)
+    })
+
+    // Two steps shown from the pending ones, then stored (the flusher forgets them as pending),
+    // then one more: the list is rebuilt before it has read the stored two back.
+    await pushSteps(page, 2, 'New')
+    await expect(row(page, 'New 2', 'panel')).toBeVisible()
+    await flush(page)
+    await pushSteps(page, 1, 'Later')
+    await expect(row(page, 'Later 1', 'panel')).toBeVisible()
+    // Everything is back, and the read has landed: the stored entries are all in the run.
+    await expect
+        .poll(() => rowTitles(page, 'panel'))
+        .toEqual(expect.arrayContaining(['Later 1', 'New 2', 'New 1', 'Syn 3']))
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const source = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/source')
+                >('/src/editor/history/source.ts')
+                return source.entries.value.filter((entry) => entry.pending).length
+            }),
+        )
+        .toBe(0)
+
+    const frames = await page.evaluate(() => {
+        const { sampler } = window as unknown as { sampler: { frames: string[][]; stop: boolean } }
+        sampler.stop = true
+        return sampler.frames
+    })
+    const seen = new Set<string>()
+    const lost: string[] = []
+    for (const titles of frames) {
+        for (const title of seen)
+            if (!titles.includes(title) && !lost.includes(title)) lost.push(title)
+        for (const title of titles) seen.add(title)
+    }
+    expect(lost, 'rows that were shown and then dropped for a while').toEqual([])
+    expect(seen).toContain('New 1')
 })
