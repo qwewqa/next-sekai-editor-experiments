@@ -2,3 +2,4 @@
 process.env.TZ = 'Pacific/Kiritimati'
 const { runSpanTests } = await import('../helpers/timelineRowsSpan')
 await runSpanTests('Pacific/Kiritimati')
+export {}

@@ -2,3 +2,4 @@
 process.env.TZ = 'Pacific/Pago_Pago'
 const { runSpanTests } = await import('../helpers/timelineRowsSpan')
 await runSpanTests('Pacific/Pago_Pago')
+export {}

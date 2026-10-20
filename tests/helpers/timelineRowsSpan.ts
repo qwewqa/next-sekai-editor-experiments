@@ -68,7 +68,7 @@ export const runSpanTests = async (zone: string) => {
             if (row.type === 'header') header = row
             if (row.type !== 'entry' || !header) continue
             for (const member of row.members) {
-                const what = `entry ${member.seq} (${new Date(member.time).toString()}) under ${new Date(header.time).toString()}`
+                const what: string = `entry ${member.seq} (${new Date(member.time).toString()}) under ${new Date(header.time).toString()}`
                 assert.equal(dayOf(member.time), dayOf(header.time), `day: ${what}`)
                 if (header.level !== 'day')
                     assert.equal(hourOf(member.time), hourOf(header.time), `hour: ${what}`)
