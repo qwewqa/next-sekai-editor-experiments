@@ -104,6 +104,21 @@ test('an entry a newer version wrote is unavailable and flagged newer, never dam
     assert.equal(grouped.length, 3)
 })
 
+test('an entry the worker could not decode is an unavailable row: newer or damaged by its cause', () => {
+    const newer = entry(add(), noon, { unreadable: 'newer' })
+    const bad = entry(add(), noon, { unreadable: 'damaged' })
+    const available = entry(add())
+    const rows = entryRows(buildRows(newestFirst(newer, bad, available), options))
+    assert.deepEqual(
+        rows.map((row) => [row.flags, row.selectable]),
+        [
+            [{ removed: false, damaged: false }, true],
+            [{ removed: false, damaged: true }, false],
+            [{ removed: false, damaged: false, newer: true }, false],
+        ],
+    )
+})
+
 test('semantic families group different receipts, while unknown identical text stays individual', () => {
     const unknown = opaque('identical')
     const rows = entryRows(

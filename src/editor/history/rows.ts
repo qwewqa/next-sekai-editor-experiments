@@ -15,6 +15,8 @@ export type Entry = EntryDescription & {
     kept: boolean
     /** A `kept: false` entry whose snapshot reaches a part found bad: it reads damaged (§1.4.10.5). */
     damaged?: boolean
+    /** Stored but not decodable: a newer build's (`newer`) or malformed (`damaged`); unavailable. */
+    unreadable?: 'newer' | 'damaged'
     /** A `continue` entry's time of the entry it continues, for its divider. */
     from?: number
     /** A save's device, as stored (§1.3.3): named on its row when it is not this browser's. */
@@ -145,9 +147,12 @@ export const buildRows = (
     // when a peek or Restore of it failed in this tab; else it was removed to save space.
     // An entry a newer version wrote is neither: it is unavailable, and never called damaged.
     const flagsOf = (entry: Entry): Flags => {
-        const isNewer = newer?.has(entryId(entry)) === true
+        const isNewer = newer?.has(entryId(entry)) === true || entry.unreadable === 'newer'
         const bad =
-            !isNewer && (damaged.has(entryId(entry)) || (!entry.kept && entry.damaged === true))
+            !isNewer &&
+            (damaged.has(entryId(entry)) ||
+                entry.unreadable === 'damaged' ||
+                (!entry.kept && entry.damaged === true))
         return {
             removed: !entry.kept && !bad && !isNewer,
             damaged: bad,

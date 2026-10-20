@@ -129,6 +129,40 @@ test('malformed rows still move the cursor within their session', async () => {
     )
 })
 
+test('a row this build cannot decode stays in the run as an unavailable entry, newer or damaged by its cause', async () => {
+    const world = createWorld({ seed: 1 })
+    const { next, parent } = await chain(world)
+    const rows = (await next.tab.run(() =>
+        next.core.read(['entries'], (tx) =>
+            tx.getAll('entries', KeyRange.bound([parent.id, -Infinity], [parent.id, Infinity])),
+        ),
+    )) as Record<string, unknown>[]
+    const [three, two, one] = rows.sort((a, b) => (b.seq as number) - (a.seq as number))
+    const before = await read(next, { sessionId: parent.id, limit: 100 })
+    await next.tab.run(() =>
+        next.core.write(['entries'], async (tx) => {
+            // A kind this build does not know, a key no carrier knows, and a step that is malformed.
+            await tx.put('entries', { ...three, kind: 'merge' })
+            await tx.put('entries', { ...two, step: { ...(two!.step as object), zz: 1 } })
+            await tx.put('entries', { ...one, step: { kind: 'nope', operation: null } })
+        }),
+    )
+    const after = await read(next, { sessionId: parent.id, limit: 100 })
+    // The chain is not shortened: every row is still there, in order.
+    assert.deepEqual(
+        after.entries.map((entry) => entry.seq),
+        before.entries.map((entry) => entry.seq),
+    )
+    const by = (seq: unknown) => after.entries.find((entry) => entry.seq === seq)
+    assert.equal(by(three!.seq)?.unreadable, 'newer')
+    assert.equal(by(two!.seq)?.unreadable, 'newer')
+    assert.equal(by(one!.seq)?.unreadable, 'damaged')
+    assert.ok(after.entries.filter((entry) => entry.unreadable).length === 3)
+    // The rest decode as before, and the unavailable rows keep their time and snapshot.
+    assert.equal(by(three!.seq)?.time, three!.time)
+    assert.equal(by(three!.seq)?.snapshot.length, 32)
+})
+
 // --- Go To's index and the newer pages after a jump, on rows written directly.
 
 type Synthetic = {
