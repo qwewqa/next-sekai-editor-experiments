@@ -768,8 +768,11 @@ test('Start Blank leaves the stored session untouched, and the blank start has i
     await gate(page).getByRole('button', { name: 'Start Blank' }).click()
     await expect(gate(page)).toHaveCount(0)
     expect(await lifeOf(page)).toBe(1000)
-    // Startup ends without opening it over the blank start.
-    await expect.poll(() => page.evaluate(() => window.nseStartupTest?.opened)).toBe(false)
+    // Startup ends without opening it over the blank start: after the held replay, so it gets
+    // the startup's own time, as waitForStartup does.
+    await expect
+        .poll(() => page.evaluate(() => window.nseStartupTest?.opened), { timeout: 20_000 })
+        .toBe(false)
     expect(await lifeOf(page)).toBe(1000)
     await edit(page, 950)
     await settled(page)
