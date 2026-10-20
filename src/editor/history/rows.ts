@@ -79,7 +79,13 @@ export type Header = {
 
 const minuteOf = (time: number) => Math.floor(time / 60_000)
 
-const hourStart = (time: number) => new Date(time).setMinutes(0, 0, 0)
+// The start of the local hour. It takes away the minutes shown on the clock rather than setting
+// them to 0, because at a daylight saving fall-back "1:00" names two instants an hour apart and
+// setting the minutes would put both hours under the first.
+const hourStart = (time: number) => {
+    const date = new Date(time)
+    return time - (date.getMinutes() * 60_000 + date.getSeconds() * 1000 + date.getMilliseconds())
+}
 
 const dayStart = (time: number) => new Date(time).setHours(0, 0, 0, 0)
 
@@ -212,6 +218,7 @@ export const buildRows = (
     if (gap !== undefined) rows.push({ type: 'gap', id: 'gap', count: gap })
     let previous: Entry | undefined
     let previousKey: string | undefined
+    const headerIds = new Set<string>()
     for (const item of items) {
         const { time } = item.entry
         if (item.type === 'entry' && item.child) {
@@ -224,7 +231,13 @@ export const buildRows = (
                 // A day not yet named, past today, names itself with its first hour or minute.
                 const newDay = !previous || dayStart(previous.time) !== dayStart(time)
                 const withDay = level !== 'day' && newDay && daysBefore(time, now) > 0
-                const id = withDay ? `${key}|${dayStart(time)}` : key
+                const named = withDay ? `${key}|${dayStart(time)}` : key
+                // Headers follow adjacency, so a span whose entries come back out of time order
+                // (an imported file's clock, or a clock that was corrected) shows its header again.
+                // The first keeps the plain id, and a repeat takes its first entry's, so every key
+                // in the list is unique.
+                const id = headerIds.has(named) ? `${named}@${item.id}` : named
+                headerIds.add(id)
                 rows.push({ type: 'header', id, level, withDay, time })
             }
             previousKey = key
