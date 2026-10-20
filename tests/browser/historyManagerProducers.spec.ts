@@ -795,3 +795,228 @@ for (const domain of ['group', 'stage'] as const) {
         ).toEqual({ owners: 1, folders: 0, notes: 0 })
     })
 }
+
+// The cascades: what an entry owns goes and comes with it, and Step Details lists exactly that.
+// The chart has two of everything, each group holding half of the time scales, and stage 1 all
+// of the stage events (the fixture puts them there). Counts come from the chart's own entities
+// before and after, so the recorded objects are checked against what really left or arrived.
+
+type Counts = Record<string, number>
+
+const loadEvents = (page: Page) =>
+    page.evaluate(() => {
+        const { history, fixtures } = window.editorTest
+        history.resetState(false, structuredClone(fixtures.events), 0, {
+            sourceName: 'manager-cascades.json',
+        })
+        window.managerOperations = []
+    })
+
+/** The state's native entities by kind: remembered ('before'), or compared with what was. */
+const nativeCounts = (page: Page, which: 'before' | 'gone' | 'added') =>
+    page.evaluate(async (which) => {
+        const { history, appImport } = window.editorTest
+        const receipts = await appImport<
+            typeof import('../../src/state/operations/historyReceipts')
+        >('/src/state/operations/historyReceipts.ts')
+        const types = [
+            'bpm',
+            'timeScale',
+            'cameraEventJoint',
+            'stageMaskEventJoint',
+            'stagePivotEventJoint',
+            'stageStyleEventJoint',
+            'stageTransformEventJoint',
+        ] as const
+        const all = (state: typeof history.state.value) => {
+            const found = new Set<object>()
+            for (const notes of state.store.slides.note.values())
+                for (const note of notes) found.add(note)
+            for (const type of types)
+                for (const bucket of state.store.grid[type].values())
+                    for (const entity of bucket) found.add(entity)
+            return found
+        }
+        const remembered = window as unknown as { cascadeBefore?: Set<object> }
+        if (which === 'before') {
+            remembered.cascadeBefore = all(history.state.value)
+            return {}
+        }
+        const now = all(history.state.value)
+        const before = remembered.cascadeBefore!
+        const entities =
+            which === 'gone'
+                ? [...before].filter((entity) => !now.has(entity))
+                : [...now].filter((entity) => !before.has(entity))
+        return { ...receipts.countNativeEntities(entities as never) } as Record<string, number>
+    }, which)
+
+const stageEvents = {
+    stageMaskEvent: 4,
+    stagePivotEvent: 4,
+    stageStyleEvent: 4,
+    stageTransformEvent: 4,
+}
+
+test('group deletion records its notes and time scales, and nothing it did not own', async ({
+    page,
+}) => {
+    await loadEvents(page)
+    await nativeCounts(page, 'before')
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { groupManager } = await appImport<
+            typeof import('../../src/editor/workspace/manager/groups')
+        >('/src/editor/workspace/manager/groups.ts')
+        groupManager.removeMany(new Set([1 as never]))
+    })
+    const gone: Counts = await nativeCounts(page, 'gone')
+    expect(gone).toEqual({ note: 2, timeScale: 2 })
+    const [operation] = await operations(page)
+    expect(operation).toMatchObject({
+        id: 'nse.owner.delete',
+        data: { domain: 'group', removed: { group: 1 } },
+    })
+    expect(operation!.data).toHaveProperty('objects', gone)
+})
+
+test('stage deletion records its notes and stage events, and no camera event', async ({ page }) => {
+    await loadEvents(page)
+    await nativeCounts(page, 'before')
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { stageManager } = await appImport<
+            typeof import('../../src/editor/workspace/manager/stages')
+        >('/src/editor/workspace/manager/stages.ts')
+        stageManager.removeMany(new Set([1 as never]))
+    })
+    const gone: Counts = await nativeCounts(page, 'gone')
+    expect(gone).toEqual({ note: 2, ...stageEvents })
+    const [operation] = await operations(page)
+    expect(operation).toMatchObject({
+        id: 'nse.owner.delete',
+        data: { domain: 'stage', removed: { stage: 1 } },
+    })
+    expect(operation!.data).toHaveProperty('objects', gone)
+})
+
+for (const domain of ['group', 'stage'] as const) {
+    test(`${domain}: deleting a folder with members records every member's objects`, async ({
+        page,
+    }) => {
+        await loadEvents(page)
+        await page.evaluate(async (domain) => {
+            const { appImport } = window.editorTest
+            const groups = await appImport<
+                typeof import('../../src/editor/workspace/manager/groups')
+            >('/src/editor/workspace/manager/groups.ts')
+            const stages = await appImport<
+                typeof import('../../src/editor/workspace/manager/stages')
+            >('/src/editor/workspace/manager/stages.ts')
+            const model = domain === 'group' ? groups.groupManager : stages.stageManager
+            const ids = model.entries().map(({ id }) => id as never)
+            const folder = model.folders.create(new Set(ids))
+            window.managerOperations = []
+            ;(window as unknown as { cascadeFolder: number }).cascadeFolder = folder
+        }, domain)
+        await nativeCounts(page, 'before')
+        await page.evaluate(async (domain) => {
+            const { appImport } = window.editorTest
+            const groups = await appImport<
+                typeof import('../../src/editor/workspace/manager/groups')
+            >('/src/editor/workspace/manager/groups.ts')
+            const stages = await appImport<
+                typeof import('../../src/editor/workspace/manager/stages')
+            >('/src/editor/workspace/manager/stages.ts')
+            const model = domain === 'group' ? groups.groupManager : stages.stageManager
+            void model.folders.remove(
+                (window as unknown as { cascadeFolder: number }).cascadeFolder as never,
+            )
+        }, domain)
+        await confirmWhenReady(
+            page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }),
+            page.getByRole('dialog'),
+        )
+        await expect.poll(async () => (await operations(page)).length).toBe(1)
+        const gone: Counts = await nativeCounts(page, 'gone')
+        expect(gone).toEqual(
+            domain === 'group' ? { note: 2, timeScale: 4 } : { note: 2, ...stageEvents },
+        )
+        const [operation] = await operations(page)
+        expect(operation).toMatchObject({
+            id: 'nse.owner.delete',
+            data: { domain, removed: { [domain]: 2, [`${domain}Folder`]: 1 } },
+        })
+        expect(operation!.data).toHaveProperty('objects', gone)
+    })
+
+    test(`${domain}: duplicating an entry records the copies of everything it owns`, async ({
+        page,
+    }) => {
+        await loadEvents(page)
+        await nativeCounts(page, 'before')
+        await page.evaluate(async (domain) => {
+            const { appImport } = window.editorTest
+            const groups = await appImport<
+                typeof import('../../src/editor/workspace/manager/groups')
+            >('/src/editor/workspace/manager/groups.ts')
+            const stages = await appImport<
+                typeof import('../../src/editor/workspace/manager/stages')
+            >('/src/editor/workspace/manager/stages.ts')
+            const model = domain === 'group' ? groups.groupManager : stages.stageManager
+            model.folders.duplicateMany([1 as never], [])
+        }, domain)
+        const added: Counts = await nativeCounts(page, 'added')
+        expect(added).toEqual(
+            domain === 'group' ? { note: 2, timeScale: 2 } : { note: 2, ...stageEvents },
+        )
+        const [operation] = await operations(page)
+        expect(operation).toMatchObject({
+            id: 'nse.owner.duplicate',
+            data: { domain, created: { [domain]: 1 } },
+        })
+        expect(operation!.data).toHaveProperty('objects', added)
+    })
+}
+
+// The owner operations only the manager's Vue-bound producers make are run here, so the
+// completeness test in tests/editor/historyProducerReceipts.test.ts names this test for them.
+test('every owner operation id comes out of a manager producer, known and decoded', async ({
+    page,
+}) => {
+    await loadEvents(page)
+    const result = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const groups = await appImport<typeof import('../../src/editor/workspace/manager/groups')>(
+            '/src/editor/workspace/manager/groups.ts',
+        )
+        const { operationCodecs } = await appImport<typeof import('../../src/history/operations')>(
+            '/src/history/operations/index.ts',
+        )
+        const model = groups.groupManager
+        const ids = model.entries().map(({ id }) => id as never)
+        window.managerOperations = []
+        model.add()
+        const folder = model.folders.create(new Set([ids[0]!]))
+        model.folders.placeEntries(new Set(ids), folder)
+        model.folders.placeEntry(ids[0]!, { folder: undefined })
+        model.folders.ungroup(folder)
+        model.removeMany(new Set([ids[1]!]))
+        return {
+            produced: window.managerOperations.map((operation) => operation.id),
+            owner: Object.keys(operationCodecs).filter((id) => id.startsWith('nse.owner.')),
+        }
+    })
+    const produced = new Set<string>(result.produced)
+    for (const id of [
+        'nse.owner.create',
+        'nse.owner.move',
+        'nse.owner.moveMany',
+        'nse.owner.delete',
+        'nse.owner.ungroup',
+    ])
+        expect(produced, id).toContain(id)
+    // A new owner operation must be produced here, or covered by a unit receipt.
+    const unit = ['nse.owner.rename', 'nse.owner.set', 'nse.owner.duplicate']
+    expect(result.owner.filter((id) => !produced.has(id) && !unit.includes(id))).toEqual([])
+})
