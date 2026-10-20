@@ -6,6 +6,7 @@ import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
+import { openHistory, timeline } from './historyJourney'
 
 // Opening a `.nxsp` (Part 1 §1.5.4): a new session stored at once and bound to the file, its
 // history imported in the background, Undo where the file left off, and the partial opens that
@@ -367,6 +368,12 @@ test('damage found by the import unlinks the session: a new docId, no binding, t
     const again = await chainOf(page, session.sessionId)
     expect(again.badChunks).toEqual(chain.badChunks)
     expect(again.file).toBeUndefined()
+    // History reads the stored marks: the row says damaged, never "removed to save space".
+    await openHistory(page)
+    const flags = timeline(page).locator('[data-history-flag]')
+    await expect(flags).toHaveCount(1)
+    await expect(flags).toContainText('damaged')
+    await expect(timeline(page)).not.toContainText('removed to save space')
 })
 
 /** Slows the import, so a spec acts while it runs. */
