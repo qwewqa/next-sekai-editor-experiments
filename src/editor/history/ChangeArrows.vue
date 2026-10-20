@@ -250,7 +250,7 @@ const labelOf = (direction: 'up' | 'down') => {
                         reportCounts && countOf(direction) >= 100 ? 'pl-1' : 'pl-1.5',
                     ]"
                     aria-hidden="true"
-                    >{{ reportCounts ? countOf(direction) : '–' }}</span
+                    >{{ reportCounts ? formatCount(countOf(direction)) : '–' }}</span
                 >
             </button>
         </div>

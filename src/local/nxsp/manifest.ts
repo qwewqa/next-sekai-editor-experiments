@@ -1,8 +1,7 @@
 import {
     captureEntryDescription,
     captureStep,
-    jsonBytes,
-    OPERATION_WIRE_BYTES,
+    isExtensionValue,
     stripUnknownEntryKeys,
     stripUnknownStepKeys,
     type EntryDescription,
@@ -194,14 +193,12 @@ export const carriersIn = (part: unknown, found = new Set<string>()) => {
 }
 
 /**
- * An `x`, when present, is a JSON object within the operation byte limit on every carrier; what is
- * in it is never read.
+ * An `x`, when present, is valid by the one extension rule (`isExtensionValue`: a JSON object
+ * within the extension byte and depth limits, counted from the `x` itself) on every carrier; what
+ * is in it is never read.
  */
 const checkExtension = (value: Record<string, unknown>, path: string, issues: Issues) => {
-    if (
-        value.x !== undefined &&
-        (!isObject(value.x) || jsonBytes(value.x as never) > OPERATION_WIRE_BYTES)
-    )
+    if (value.x !== undefined && !isExtensionValue(value.x))
         issues.push({ reason: 'damaged', path: `${path}.x` })
 }
 
@@ -324,7 +321,8 @@ const checkChunkIndex = (value: unknown, path: string, issues: Issues) => {
 
 /**
  * Checks a segment, or with `manifest` the manifest, against v1's form. A manifest `version` above
- * 1 is newer and checked no further. The value is the part when nothing was found.
+ * the current one is newer and checked no further; one below it is damaged (no older manifest
+ * generation is supported before the ship). The value is the part when nothing was found.
  */
 export const checkPart = (
     value: unknown,
@@ -335,7 +333,7 @@ export const checkPart = (
     if (!isObject(value)) return { issues: [{ reason: 'damaged', path }] }
     if (manifest) {
         const { version } = value
-        if (!Number.isSafeInteger(version) || (version as number) < 1)
+        if (!Number.isSafeInteger(version) || (version as number) < MANIFEST_VERSION)
             return { issues: [{ reason: 'damaged', path: `${path}.version` }] }
         if (version !== MANIFEST_VERSION)
             return {

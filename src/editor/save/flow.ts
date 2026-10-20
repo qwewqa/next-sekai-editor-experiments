@@ -1292,6 +1292,9 @@ const ownCompletedSave = async (
     if (unit.file.name !== handle.name) return false
     // The handle the check used stays the binding's, so later Saves write back in place.
     const stored = await storableHandle(handle)
+    // A session's entries are stored in `seq` order: with entries before the `save` entry still
+    // pending here, this tab stores it after them.
+    const below = env.flusher.keptSaveBelow(marker.entry.sessionId, marker.entry.seq)
     const done = await env.worker
         .call('finishOwnSave', {
             chainId: env.chainId,
@@ -1300,9 +1303,20 @@ const ownCompletedSave = async (
                 ...unit,
                 file: { ...unit.file, ...(stored ? { handle: stored } : {}), disk, event: 'saved' },
             },
+            ...(below ? { below: below.kind } : {}),
         })
         .catch(() => false)
     if (!done) return false
+    if (below?.kind === 'pending')
+        await env.flusher.keptSave(below, {
+            wall: marker.entry.time,
+            operation: marker.entry.operation,
+            revisionId: marker.entry.revisionId,
+            device: marker.entry.device,
+            ...(marker.entry.appVersion === undefined
+                ? {}
+                : { appVersion: marker.entry.appVersion }),
+        })
     if (unit.clearExport && currentSession.value.sessionId === env.session.id)
         clearExportDestination()
     removeMarker(env.chainId, marker.entry.revisionId)

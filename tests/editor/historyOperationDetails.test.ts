@@ -233,10 +233,10 @@ const check = (spec: Case, locale: string) => {
     }
     assert.equal(new Set(details.facts).size, details.facts.length, `${where}: repeated fact`)
     for (const fact of details.facts) assert.notEqual(fact, details.description, where)
-    if (details.facts.includes(ctx.strings.history.details.nameShortened))
+    if (details.facts.includes(ctx.strings.history.details.textShortened))
         assert.equal(
             details.facts.at(-1),
-            ctx.strings.history.details.nameShortened,
+            ctx.strings.history.details.textShortened,
             `${where}: the shortened-name fact comes last`,
         )
     // A note and rows exclude each other: nothing more is shown for an unreadable step.

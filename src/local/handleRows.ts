@@ -28,8 +28,9 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
 const isRole = (key: string): key is HandleRole => (HANDLE_ROLES as readonly string[]).includes(key)
 
 /**
- * Whether the transaction has the store: a database an earlier Stage 1 build created has none
- * (the worker leaves it out of every scope then), and stores no handle.
+ * Whether the transaction has the store. Every database at version 2 has it (version 2's step
+ * adds it to a version 1 one made before it joined the set); one without it (the worker leaves it
+ * out of every scope then) stores no handle rather than failing.
  */
 const hasStore = (tx: KvTx) => {
     try {

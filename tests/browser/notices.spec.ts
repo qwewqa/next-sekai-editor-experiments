@@ -1084,3 +1084,40 @@ test.describe('over a blocking dialog', () => {
         await expect(page.locator('.notification')).toHaveCount(1)
     })
 })
+
+test('Escape on a later card does not return focus to the target of an Alt+N whose card went', async ({
+    page,
+}) => {
+    // Some browsers fire no focusout for a focused element that is removed: none is delivered here.
+    await boot(page, () => {
+        const add = window.addEventListener.bind(window) as (...args: unknown[]) => void
+        Reflect.set(window, 'addEventListener', (type: string, ...rest: unknown[]) => {
+            if (type !== 'focusout') add(type, ...rest)
+        })
+    })
+    await page.locator('.chart-pane').focus()
+    await notifyWithAction(page, 'First')
+    await page.keyboard.press('Alt+KeyN')
+    const button = pill(page).getByRole('button', { name: 'Open History' })
+    await expect(button).toBeFocused()
+    // The card goes while it holds focus (its action closes it): the browser may fire no focusout.
+    await page.evaluate(async () => {
+        const { dismissNoticeCard } = await window.editorTest.appImport<
+            typeof import('../../src/editor/notification')
+        >('/src/editor/notification.ts')
+        dismissNoticeCard()
+    })
+    await expect(pill(page)).toHaveCount(0)
+    await page.evaluate(() => {
+        const input = document.createElement('input')
+        input.id = 'elsewhere'
+        document.body.append(input)
+        input.focus()
+    })
+    await notifyWithAction(page, 'Second')
+    // Focus reaches the new card another way, by Tab or a click, and Escape closes it.
+    await pill(page).getByRole('button', { name: 'Open History' }).focus()
+    await page.keyboard.press('Escape')
+    await expect(pill(page)).toHaveCount(0)
+    await expect(page.locator('.chart-pane')).not.toBeFocused()
+})

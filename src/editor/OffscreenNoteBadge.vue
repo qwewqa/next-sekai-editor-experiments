@@ -81,6 +81,6 @@ onUnmounted(() => {
                       : indicator.side
             "
         />
-        <span>{{ indicator.count }}</span>
+        <span>{{ formatCount(indicator.count) }}</span>
     </div>
 </template>

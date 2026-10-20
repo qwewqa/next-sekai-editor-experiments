@@ -336,6 +336,59 @@ test('a jump and the index on a 10,000-entry chain', async () => {
         console.log(`index ${indexTime.toFixed(1)} ms, jump ${jumpTime.toFixed(1)} ms`)
 })
 
+test('the index and pages reach the oldest day of a chain of 300 visits', async () => {
+    // A visit a day with three edits, continued each next day.
+    const sessions: Synthetic[] = []
+    for (let i = 0; i < 300; i++)
+        sessions.push({
+            id: `V${String(i).padStart(3, '0')}`,
+            ...(i ? { parent: { id: sessions[i - 1]!.id, uptoSeq: 2 } } : {}),
+            times: minutes(day(i) + 10 * HOUR, 3),
+        })
+    const page = await seed(sessions)
+    const head = sessions.at(-1)!.id
+    const { pieces, path } = await index(page, { sessionId: head })
+    assert.equal(path.length, 300)
+    assert.equal(pieces.length, 300)
+    assert.equal(pieces.at(-1)?.sessionId, 'V000')
+    // Go To the oldest day, then newer pages up to the head.
+    const oldest = pieces.at(-1)!
+    let request: Parameters<typeof readTimeline>[1] | undefined = {
+        sessionId: oldest.sessionId,
+        after: oldest.oldestSeq,
+        limit: 250,
+        path,
+    }
+    let count = 0
+    while (request) {
+        const result = await read(page, request)
+        count += result.entries.length
+        request = result.newer ? { ...result.newer, limit: 250, path } : undefined
+    }
+    assert.equal(count, 300 * 3 - 1)
+    // Older pages from the head reach it too.
+    const all = await read(page, { sessionId: head, limit: 1000 })
+    assert.equal(all.entries.length, 900)
+    assert.equal(all.entries.at(-1)?.sessionId, 'V000')
+})
+
+test('a cycle in damaged parent links ends the path', async () => {
+    const page = await seed([
+        { id: 'X', parent: { id: 'Y', uptoSeq: 1 }, times: minutes(day(0), 2) },
+        { id: 'Y', parent: { id: 'X', uptoSeq: 1 }, times: minutes(day(1), 2) },
+    ])
+    const { path } = await index(page, { sessionId: 'X' })
+    assert.deepEqual(
+        path.map((step) => step.sessionId),
+        ['X', 'Y'],
+    )
+    const all = await read(page, { sessionId: 'X', limit: 100 })
+    assert.deepEqual(
+        all.entries.map((entry) => `${entry.sessionId}:${entry.seq}`),
+        ['X:1', 'X:0', 'Y:1', 'Y:0'],
+    )
+})
+
 // --- Damaged rows (§1.4.10.5): a `kept: false` row whose root reaches a hash in the chain's
 // `badChunks` through the stored nodes' `refs` reads damaged, also after a reload.
 

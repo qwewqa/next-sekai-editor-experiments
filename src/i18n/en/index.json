@@ -1341,7 +1341,7 @@
             "action": "Details",
             "unsupported": "This editor cannot read the details of this step.",
             "newer": "This step was recorded by a newer version of the editor.",
-            "nameShortened": "Name shortened for display",
+            "textShortened": "Text shortened for display",
             "varying": "Varies",
             "changed": "Changed",
             "displaced": "Replaced",
@@ -1908,12 +1908,7 @@
             "moveDown": "Move Folder Down",
             "ungroup": "Ungroup",
             "path": "{0} › {1}",
-            "added": "Added {0} folder",
-            "renamed": "Renamed {0} folder to {1}",
-            "moved": "Moved {0} folder",
-            "ungrouped": "Ungrouped {0} folder",
-            "deleted": "Deleted {0} folder",
-            "duplicated": "Duplicated {0} folder"
+            "ungrouped": "Ungrouped {0} folder"
         },
         "manager": {
             "currentGroup": "Current Group",
@@ -2153,6 +2148,8 @@
         "readOnlyPeek": "Read-only while viewing history",
         "restoredTo": "Restored to {0}",
         "alreadyMatches": "Already matches the current chart",
+        "restoreFailed": "Could not restore",
+        "peekFailed": "Could not view this step",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier steps are in History",
         "bgmNotLoaded": "BGM not loaded",

@@ -83,6 +83,18 @@ declare global {
 /** This tab's flusher, once storing started. */
 export let flusher: Flusher | undefined
 
+const flusherListeners = new Set<() => void>()
+
+/** Calls `listener` once, when storing starts and the flusher exists. Returns the way to cancel. */
+export const onFlusherStart = (listener: () => void) => {
+    const once = () => {
+        flusherListeners.delete(once)
+        listener()
+    }
+    flusherListeners.add(once)
+    return () => void flusherListeners.delete(once)
+}
+
 /**
  * Safe mode (§1.4.2): the flusher holds the open session in memory only, so Save builds from
  * what this tab holds (§1.4.7); no journal, tab record, Reopen or revocation is written.
@@ -322,6 +334,7 @@ export const startStoring = (
     })
     flusher = instance
     storingWorker = worker
+    for (const listener of [...flusherListeners]) listener()
     // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7 R11).
     if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal

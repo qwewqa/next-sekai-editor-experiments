@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import { onHistoryAction } from '../history/actions'
 import { isBlockingModalOpen } from '../modals'
 import { isComposingKey } from '../utils/composition'
@@ -42,9 +42,9 @@ const onEscape = (event: KeyboardEvent) => {
     if (!event.target.closest('[data-notice-card]')) return
     event.preventDefault()
     event.stopImmediatePropagation()
-    dismissNoticeCard()
     const back = returnTo
     returnTo = undefined
+    dismissNoticeCard()
     if (back?.isConnected) back.focus()
     else if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
 }
@@ -55,6 +55,16 @@ const onFocusOut = (event: FocusEvent) => {
     const into = event.relatedTarget
     if (!(into instanceof Element && into.closest('[data-notice-card]'))) returnTo = undefined
 }
+
+// A card that goes (or is replaced) while it holds focus may fire no focusout: its return target
+// goes with it, so a later card's Escape does not use it.
+watch(
+    () => noticeCard.value?.id,
+    () => {
+        returnTo = undefined
+    },
+    { flush: 'sync' },
+)
 
 onMounted(() => {
     window.addEventListener('keydown', onKeydown, true)

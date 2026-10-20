@@ -1341,7 +1341,7 @@
       "action": "詳細資訊",
       "unsupported": "此編輯器無法讀取此步驟的詳細資訊。",
       "newer": "此步驟由較新版本的編輯器記錄。",
-      "nameShortened": "名稱已縮短顯示",
+      "textShortened": "文字已縮短顯示",
       "varying": "值不一致",
       "changed": "已修改",
       "displaced": "已取代",
@@ -1908,12 +1908,7 @@
       "moveDown": "下移資料夾",
       "ungroup": "解散資料夾",
       "path": "{0} › {1}",
-      "added": "已新增{0}資料夾",
-      "renamed": "已將資料夾{0}重新命名為{1}",
-      "moved": "已移動{0}資料夾",
-      "ungrouped": "已解散{0}資料夾",
-      "deleted": "已刪除{0}資料夾",
-      "duplicated": "已為{0}資料夾建立複本"
+      "ungrouped": "已解散{0}資料夾"
     },
     "manager": {
       "currentGroup": "目前圖層",
@@ -2153,6 +2148,8 @@
     "readOnlyPeek": "檢視歷史記錄時為唯讀",
     "restoredTo": "已還原到 {0}",
     "alreadyMatches": "已與目前譜面一致",
+    "restoreFailed": "無法還原",
+    "peekFailed": "無法檢視此步",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中",
     "bgmNotLoaded": "BGM 未載入",

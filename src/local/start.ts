@@ -274,6 +274,8 @@ export const startStorage = async () => {
         )
     const { status, answered } = await starting
     let open = false
+    // Whether the open at start took the reload's claim, which it releases or keeps.
+    let handed = false
     try {
         await recovered
         if (answered && tabClient && recovery) {
@@ -311,6 +313,7 @@ export const startStorage = async () => {
                 },
                 events: addLoadEvent,
             }
+            handed = true
             open = await openAtStart(deps, claim)
             // Reopen, Restore as a Copy and Local Data's rows act through these from now on.
             setSessionContext(deps, recovery)
@@ -325,8 +328,14 @@ export const startStorage = async () => {
                     requestIdleCallback(sweep, { timeout: 5000 })
                 else setTimeout(sweep, 1000)
             }
-        } else if (claim.kind === 'reload') claim.lock.release()
+        }
     } finally {
+        // Nothing opened it (a worker that never answered, or a recovery that failed): the
+        // reload's claim goes, so Restore can continue that session in this tab.
+        if (!handed)
+            void claiming.then((taken) => {
+                if (taken.kind === 'reload') taken.lock.release()
+            })
         // The tab record names the blank start only now, so a reload meanwhile claims again;
         // never when the worker didn't answer (a page torn down mid-start), which decided
         // nothing. Work on it named it already.

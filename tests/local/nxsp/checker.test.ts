@@ -220,6 +220,41 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
                 }),
                 'project.json: patch',
             ],
+            // `minor` and `patch` are the lowest the content needs (the writer's `minorOf` and `patchOf`).
+            [
+                'minor-low',
+                craft((items) => {
+                    setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), minor: 0 })
+                }),
+                'project.json: minor 0 is not the lowest',
+            ],
+            [
+                'minor-high',
+                craft((items) => {
+                    setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), minor: 2 })
+                }),
+                'project.json: minor 2 is not the lowest',
+            ],
+            [
+                'x-too-deep',
+                craft((items) => {
+                    const m = jsonOf(items, 'history/manifest.json')
+                    let x: Loose = {}
+                    for (let i = 0; i < 40; i++) x = { a: x }
+                    m.undoStack.slots[0].step.x = x
+                    setJson(items, 'history/manifest.json', m)
+                }),
+                'x: description depth',
+            ],
+            [
+                'manifest-version-old',
+                craft((items) => {
+                    const m = jsonOf(items, 'history/manifest.json')
+                    m.version = 1
+                    setJson(items, 'history/manifest.json', m)
+                }),
+                'manifest: version',
+            ],
             [
                 'appversion-missing',
                 craft((items) => {

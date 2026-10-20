@@ -92,6 +92,39 @@ test('the first load creates every current store, index and meta row', async () 
     await world.idle()
 })
 
+test('a version 1 database made before a store joined the set gains it, its rows kept', async () => {
+    const world = createWorld({ seed: 2 })
+    const tab = world.tab('a')
+    // A development profile from before `handles` was added.
+    await tab.run(async () => {
+        const db = await tab.kv.open(DB_NAME, 1, {
+            upgrade: (upgrade) => {
+                for (const name of STORE_NAMES) {
+                    if (name === 'handles') continue
+                    const spec = STORES_V1[name]
+                    upgrade.createStore(
+                        name,
+                        spec.keyPath === null ? {} : { keyPath: spec.keyPath },
+                    )
+                    for (const [index, keyPath] of Object.entries(spec.indexes))
+                        upgrade.createIndex(name, index, keyPath)
+                }
+                upgrade.put('meta', { key: 'old', value: 'kept' })
+            },
+        })
+        db.close()
+    })
+    const store = core(world, tab)
+    assert.deepEqual(await tab.run(() => store.start()), { mode: 'stored' })
+    assert.equal(world.memory.version(DB_NAME), DB_VERSION)
+    const handles = await tab.run(() =>
+        store.read(['handles'], async (tx) => tx.describe('handles')),
+    )
+    assert.deepEqual(handles, { keyPath: STORES_V1.handles.keyPath, indexes: {} })
+    assert.deepEqual(await getRow(tab, store, 'old'), { key: 'old', value: 'kept' })
+    await world.idle()
+})
+
 test('a second current tab opens the same database at the same version', async () => {
     for (const seed of CI_SEEDS) {
         const world = createWorld({ seed })
