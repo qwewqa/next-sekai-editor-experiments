@@ -512,6 +512,18 @@ const restoreView = () => {
     viewRestored = true
 }
 watch([geometry, status, () => here.scanning], () => void nextTick(restoreView), { flush: 'post' })
+// A filter shows its list from the top. A scroll position kept from the other list would stay
+// where the new one, often shorter, clamps it, and leave Now half under the banner.
+watch(
+    historyFilter,
+    () => {
+        const element = list.value
+        if (!element) return
+        element.scrollTop = 0
+        scrollTop.value = 0
+    },
+    { flush: 'post' },
+)
 
 watch(peekedKey, () => {
     const key = peekedKey.value
