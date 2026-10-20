@@ -409,6 +409,21 @@ export class Flusher {
      */
     outgoing: Promise<boolean> = Promise.resolve(true)
     private retryMs = 0
+    private readonly entryListeners = new Set<() => void>()
+
+    /**
+     * Calls `listener` whenever an entry joins a session's pending list or a fork takes some over,
+     * whatever made it: an edit, a Save's entry, a continuation, a recovery. What shows the entries
+     * (the Timeline) follows this, not each producer. Returns the way to stop.
+     */
+    onEntry(listener: () => void) {
+        this.entryListeners.add(listener)
+        return () => void this.entryListeners.delete(listener)
+    }
+
+    private entered() {
+        for (const listener of [...this.entryListeners]) listener()
+    }
 
     constructor(private readonly deps: FlushDeps) {
         this.now = deps.now ?? Date.now
@@ -607,6 +622,7 @@ export class Flusher {
             state: start.state,
             dirty: true,
         })
+        this.entered()
         return this.switchTo(session)
     }
 
@@ -748,6 +764,7 @@ export class Flusher {
             dirty,
         })
         if (isEditingKind(description.kind)) session.edited = true
+        this.entered()
     }
 
     /** The newest entry's `seq` in memory; 0 before any. */
@@ -800,6 +817,7 @@ export class Flusher {
             }
             if (at === -1) session.pending.push(added)
             else session.pending.splice(at, 0, added)
+            this.entered()
             if (identity) {
                 session.identity = { ...identity, seq }
                 if (identity.clearExport) {
@@ -1508,6 +1526,7 @@ export class Flusher {
         this.sessions.splice(this.sessions.indexOf(from) + 1, 0, fork)
         if (this.current === from) this.current = fork
         this.deps.onFork?.(fork, from)
+        if (moving.length) this.entered()
         return fork
     }
 }
