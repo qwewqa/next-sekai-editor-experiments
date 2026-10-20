@@ -26,7 +26,11 @@ export const ringEntries = (): readonly RingEntry[] => (ring ??= load())
 
 /** Records one entry; storage can be full or unavailable, which never matters here. */
 export const recordDiagnostic = (kind: RingEntry['kind'], text: string, at = Date.now()) => {
-    ring = [...ringEntries(), { at, kind, text: text.slice(0, 2000) }].slice(-RING_SIZE)
+    const clipped = text.slice(0, 2000)
+    const last = ringEntries().at(-1)
+    // A failure that repeats (a flush retrying) is one entry, so it does not push the rest out.
+    if (last?.kind === kind && last.text === clipped) return
+    ring = [...ringEntries(), { at, kind, text: clipped }].slice(-RING_SIZE)
     try {
         storageSet(RING_KEY, ring)
     } catch {
@@ -93,6 +97,32 @@ const storageText = (estimate: DiagnosticFields['estimate']) => {
     return 'unavailable'
 }
 
+/** What storing says about itself (Part 1 §1.4.16); absent in a tab that never started it. */
+export type StoringFields = {
+    /** Absent before the worker answered. */
+    mode?: 'stored' | 'readOnly' | 'memory'
+    /** Why storing is paused, or why it runs in memory. */
+    reason?: string
+    /** How many times this tab restarted the storage worker. */
+    restarts: number
+    /** Absent when the database could not be read. */
+    database?: { version: number; format?: number; sessions: number; chains: number }
+}
+
+const storingText = (storing: StoringFields) => {
+    const { mode, reason } = storing
+    const why = reason ? ` (${reason})` : ''
+    return mode === undefined
+        ? 'not started'
+        : mode === 'stored'
+          ? reason
+              ? `paused${why}`
+              : 'on'
+          : mode === 'readOnly'
+            ? 'read-only'
+            : `off, in memory only${why}`
+}
+
 export type DiagnosticFields = {
     productName: string
     appVersion: string
@@ -105,7 +135,23 @@ export type DiagnosticFields = {
     standalone: boolean
     userAgent: string
     estimate?: { usage?: number; quota?: number }
+    storing?: StoringFields
     entries: readonly RingEntry[]
+}
+
+const storingLines = (storing: StoringFields | undefined) => {
+    if (!storing) return []
+    const { database } = storing
+    return [
+        `Database: ${
+            database
+                ? `version ${database.version}${database.format === undefined ? '' : `, format ${database.format}`}`
+                : 'unavailable'
+        }`,
+        `Storing: ${storingText(storing)}`,
+        `Worker restarts: ${storing.restarts}`,
+        `Sessions: ${database ? `${database.sessions}, chains: ${database.chains}` : 'unavailable'}`,
+    ]
 }
 
 /** The plain text for a bug report; English, whatever the editor's language. */
@@ -118,6 +164,7 @@ export const formatDiagnostics = (fields: DiagnosticFields) => {
         `OS: ${fields.os}`,
         `Standalone: ${fields.standalone ? 'yes' : 'no'}`,
         `Storage: ${storageText(estimate)}`,
+        ...storingLines(fields.storing),
         `User agent: ${fields.userAgent}`,
         '',
         `Last ${RING_SIZE} errors and CSP violations: ${fields.entries.length ? '' : 'none'}`.trimEnd(),

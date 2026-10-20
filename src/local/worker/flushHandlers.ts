@@ -222,7 +222,10 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
             return failed.length === 0
         },
 
-        /** Foreign data with its closure check (§1.6.4 step 4), committed strictly. */
+        /**
+         * Foreign data with its closure check (§1.6.4 step 4), committed strictly. A planned seam
+         * for a later step's import of another device's data: only the specs call it until then.
+         */
         importForeign: async (batch: ForeignBatch, scope?: CallScope): Promise<ForeignResult> => {
             const progress: Progress = scope ?? {}
             const prepared = await prepareForeign(batch, waiterOf(progress))

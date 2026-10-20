@@ -7,7 +7,6 @@ import type { RecoveryItem } from '../../local/startup/api'
 import { showChoice } from '../../modals/choice'
 import ToggleField from '../../modals/form/ToggleField.vue'
 import { FileError, platform } from '../../platform'
-import { detection } from '../../platform/detect'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
@@ -137,8 +136,10 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
     }
 }
 
-// iPhone and iPad never show the close prompt (§1.4.9), so the setting isn't offered there.
-const showsClosePrompt = detection().os !== 'ios'
+// The setting is the web's (§1.4.14): not offered where downloads are never confirmed (iPhone and
+// iPad never show the close prompt, §1.4.9), and not in the apps, which close on their own terms.
+const showsClosePrompt =
+    platform.capabilities.browserStorage && !platform.capabilities.unconfirmedDownloads
 
 const buttonClass = 'btn btn-secondary inline-flex h-9 max-w-full items-center rounded-full px-4'
 

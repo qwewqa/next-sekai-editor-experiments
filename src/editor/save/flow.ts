@@ -1,3 +1,4 @@
+import { recordError } from '../../diagnostics'
 import { createHistoryOperation } from '../../history/createHistoryOperation'
 import { captureName, entryOperation as operationOfEntry } from '../../history/operations'
 import { session as currentSession } from '../../history/session'
@@ -699,6 +700,7 @@ const exclusive = async (run: () => Promise<void>) => {
         queued = false
     }
     const current = run().catch((error: unknown) => {
+        recordError(error)
         console.error('A Save failed', error)
     })
     running = current
@@ -1547,6 +1549,7 @@ const afterOutcome = async (env: Env, outcome: Outcome | { kind: 'noChanges' }):
         }
         case 'failed': {
             const { error, name } = outcome
+            recordError(error)
             console.warn('A Save failed', error)
             const writable = !!platform.pickSaveFile
             let choice: 'saveAs' | 'tryAgain' | undefined
@@ -1678,10 +1681,16 @@ const dialogInput = (
                         chainId: env.chainId,
                         ...(meta ? { bgm: meta.hash } : {}),
                     })
-                    .catch(() => undefined)
+                    .catch(failedEstimate)
             },
         },
     }
+}
+
+/** A size estimate that failed shows no sizes and is logged in the diagnostics ring (§1.4.7). */
+const failedEstimate = (error: unknown) => {
+    recordError(error)
+    return undefined
 }
 
 /**
@@ -1887,7 +1896,8 @@ export const saveAs = () =>
  * Save to File…: the session's pending journal applied first under its lock, its head with its
  * history written as a new `.nxsp` with a new `docId`, binding nothing. Its picker follows the
  * rules above: a file a chain is bound to is taken from it (R5, R6). A session open in another
- * tab is written as storage holds it, and the feedback says so.
+ * tab is written as storage holds it, and the feedback says so. A planned seam: Step 7's Recent
+ * Sessions is its only entry point, and until then only the specs call it.
  */
 export const saveToFile = (sessionId: string) =>
     exclusive(async () => {
@@ -1932,7 +1942,7 @@ export const saveToFile = (sessionId: string) =>
                 load: () =>
                     env.worker
                         .call('estimateSaveSize', { chainId, sessionId })
-                        .catch(() => undefined),
+                        .catch(failedEstimate),
             },
         }
         const result = await saveUi.saveDialog(input)
