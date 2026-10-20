@@ -233,13 +233,21 @@ test('E4: a live entry arriving keeps the row under the pointer where it was', a
         element.scrollTop = 44 * 40
     })
     await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(44 * 30)
-    // A row on screen, and where it is once the scroll has ended.
-    const target = await list
-        .locator('[data-history-row]')
-        .nth(6)
-        .locator('[data-history-group-action]')
-        .textContent()
-    const title = (target ?? '').trim()
+    // A row on screen once the window has followed the scroll: the first one clear of the top.
+    const shown = () =>
+        list.evaluate((element) => {
+            const area = element.getBoundingClientRect()
+            for (const row of element.querySelectorAll<HTMLElement>('[data-history-row]')) {
+                const rect = row.getBoundingClientRect()
+                if (rect.top >= area.top + 60 && rect.bottom <= area.bottom)
+                    return (
+                        row.querySelector('[data-history-group-action]')?.textContent?.trim() ?? ''
+                    )
+            }
+            return ''
+        })
+    await expect.poll(shown).toMatch(/^Life \d+$/)
+    const title = await shown()
     await stableTop(page, title)
     const before = await topOf(page, title)
     const height = await list.evaluate((element) => element.scrollHeight)
