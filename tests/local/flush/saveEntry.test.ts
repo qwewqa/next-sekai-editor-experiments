@@ -816,7 +816,10 @@ test('our own completed Save dropped by a fork leaves a cut that under-claims (L
     assert.ok(page.results.some((result) => result.kind === 'notHead'))
     // The fork takes no entry at or below the stored `lastSeq`, so the `save` row is never stored.
     assert.notEqual(page.flusher.session?.id, session.id)
-    assert.deepEqual(kinds(world).filter(([seq]) => seq === 4), [])
+    assert.deepEqual(
+        kinds(world).filter(([seq]) => seq === 4),
+        [],
+    )
     // The chain's cut still counts it: the next write that isn't an append doesn't carry the file.
     const chain = rows(world, 'chains').get(session.chainId)!
     const cut = (chain.file as { entry: Parameters<typeof carries>[1] }).entry

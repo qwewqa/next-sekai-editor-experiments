@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { hashKey } from '../../../src/local/db'
 import { entryOperation } from '../../../src/history/operations'
+import { hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { BIND_STORES, finishOwnSave } from '../../../src/local/save/bind'
 import type { SaveStore } from '../../../src/local/save/bodies'
@@ -304,7 +304,9 @@ test('a recognised Save whose row the chain lacks is never carried by the next c
     assert.equal(cut.count, b.history.entries.length)
 
     const next = saveOptions(fixture)
-    const builtN = ok(await buildSave(fixture.store, fixture.chainId, { kind: 'copy' }, next.options))
+    const builtN = ok(
+        await buildSave(fixture.store, fixture.chainId, { kind: 'copy' }, next.options),
+    )
     const n = await heldRows(asFile(builtN.blob))
     const nRevision = n.read.project!.revision!
     const bRevision = b.read.project!.revision!
