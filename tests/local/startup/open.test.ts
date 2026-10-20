@@ -859,6 +859,38 @@ test('a reload whose open fails before it opens anything lets the claim go', asy
     lock.release()
 })
 
+test('a reload from its own journal that fails before its session takes the lock lets the claim go (LS3-3)', async () => {
+    const world = createWorld({ seed: 25 })
+    const storage = new MemoryStorage()
+    const readOnly = { flags: { readOnly: true } }
+    const visit = await load(world, 'visit', storage, { core: readOnly })
+    const a = stateOf(goldenChart())
+    const session = beginSession(visit.page, a, 'new')
+    append(visit.page, { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a))
+    assert.equal(visit.page.writer.write(), true)
+    visit.page.tab.kill()
+    recordTab(visit.tab, { sessionId: session.id, start: 'new' })
+
+    const failing = await quiet(() =>
+        load(world, 'reload', storage, {
+            tab: visit.tab,
+            core: readOnly,
+            show: () => {
+                throw new Error('The editor could not show the session')
+            },
+        }).then(
+            () => undefined,
+            (error: unknown) => error,
+        ),
+    )
+    assert.ok(failing instanceof Error)
+    // The session lock is free again: Restore in that tab continues it.
+    const other = world.tab('other')
+    const lock = await other.run(() => claimSessionLock(other.locks, session.id))
+    assert.ok(lock)
+    lock.release()
+})
+
 test('a stored stack whose window starts after slot 0 opens saying earlier steps are in History', async () => {
     for (const base of [0, 1]) {
         const world = createWorld({ seed: 20 + base })

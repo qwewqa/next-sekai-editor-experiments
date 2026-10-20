@@ -71,6 +71,8 @@ export type LoadOptions = {
     appVersion?: string
     /** The page's journal writer's options (D14's no-durability commits, say). */
     writer?: Partial<JournalWriterDeps>
+    /** Runs before the editor side shows a session (one that throws, say). */
+    show?: (shown: Shown) => void
 }
 
 export type Load = Awaited<ReturnType<typeof load>>
@@ -168,6 +170,7 @@ export const load = async (
         retireJournal: (found, by, seq, dropped) => page.writer.retire(found, by, seq, dropped),
         flusher: () => page.flusher,
         show: (each) => {
+            options.show?.(each)
             shown.push(each)
             session.value = each.descriptor
             restoreStates(each.slots, each.at, each.state, each.earlier)

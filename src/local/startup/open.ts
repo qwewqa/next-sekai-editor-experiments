@@ -571,7 +571,12 @@ const forked = async (
 }
 
 /** A reload while storage is unavailable continues from its own journal (§1.6.7). */
-const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock): boolean => {
+const resumeFromJournal = (
+    deps: OpenDeps,
+    found: JournalFound,
+    lock: HeldLock,
+    handed: () => void,
+): boolean => {
     const flusher = deps.flusher()
     const journalled = journalledSession(found)
     if (!flusher || !journalled) return false
@@ -609,6 +614,8 @@ const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: HeldLock):
         ready: Promise.resolve(),
         done: lock.release,
     })
+    // The flusher's session holds the lock now, and releases it when it ends.
+    handed()
     restoreExportMemory({ partialImport: chain.partialImport })
     writeTabRecord({ sessionId: id, start: 'stored' })
     return true
@@ -764,9 +771,9 @@ const openSessionAtStart = async (
     if (deps.status.mode !== 'stored') {
         const own = deps.ownJournal
         if (claim.kind === 'reload' && own) {
-            // Passed before the call: a throw after the session took the lock never releases it.
-            passed()
-            if (resumeFromJournal(deps, own, claim.lock)) return true
+            // Passed where the flusher's session takes the lock: a throw before then releases it,
+            // and one after never does.
+            if (resumeFromJournal(deps, own, claim.lock, passed)) return true
             // Not loaded: a new session id, and the key stays in Local Data (§1.4.2).
             if (!deps.keptForLocalData?.includes(own)) deps.keptForLocalData?.push(own)
             deps.events({ kind: 'unsavedInLocalData' })
