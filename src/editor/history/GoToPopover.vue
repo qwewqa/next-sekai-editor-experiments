@@ -210,7 +210,7 @@ const onKeydown = (event: KeyboardEvent) => {
             role="dialog"
             tabindex="-1"
             :aria-label="i18n.history.goTo"
-            class="popup-surface popup-sheet fixed z-50 sm:w-72"
+            class="popup-surface popup-sheet fixed z-50 sm:w-80"
             :class="{ invisible: !placement }"
             :style="{
                 left: `${placement?.left ?? 0}px`,
