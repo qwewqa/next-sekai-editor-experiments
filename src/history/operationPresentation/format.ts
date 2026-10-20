@@ -423,6 +423,8 @@ export const describeOperation = (
             )
         case 'nse.bgm.change':
             return operation.data.offset ? t.commands.bgm.changed : t.commands.bgm.fileChanged
+        case 'nse.levelInfo.set':
+            return t.history.operation.changedLevelInfo
         case 'nse.dynamicStages.enable':
             return t.history.dynamicStages.enabled
         case 'nse.owner.create': {

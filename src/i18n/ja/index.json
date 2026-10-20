@@ -1320,6 +1320,7 @@
     "newerSteps": "新しい操作 {0} 件",
     "removedForSpace": "容量節約のため削除",
     "damaged": "破損",
+    "needsNewer": "より新しいバージョンが必要",
     "savedOn": "{0} で保存",
     "savedWeb": "Web エディター ({0}) で保存",
     "savedWebAny": "Web エディターで保存",
@@ -1371,6 +1372,7 @@
     },
     "operation": {
       "changedHeader": "{0}を変更しました",
+      "changedLevelInfo": "レベル情報を変更しました",
       "setValueOnObjects": "{0}個のオブジェクトの{1}を{2}に設定しました",
       "setValueOnNotes": "{0}個のノーツの{1}を{2}に設定しました",
       "setValueOnBpm": "{0}個のBPMの{1}を{2}に設定しました",
@@ -2194,6 +2196,7 @@
     "historyUnreadable": "このファイルの履歴を読み込めませんでした。保存すると別のファイルになります。",
     "newerVersion": "より新しいバージョンの {0} で作成されています。保存すると別のファイルになります。",
     "newerRefused": "より新しいバージョンの {0} で作成されています。",
+    "newerPatch": "より新しいバージョンの {0} で作成されています。一部の内容が表示されない場合があります。",
     "mediaBad": "このファイルの{0}を読み込めませんでした。保存すると別のファイルになります。",
     "media": {
       "bgm": "BGM",
@@ -2257,6 +2260,9 @@
     "notPresent": "存在しない",
     "added": "追加",
     "removed": "削除",
+    "tagsAdded": "追加したタグ",
+    "tagsRemoved": "削除したタグ",
+    "tagsChanged": "変更したタグ",
     "order": "順序",
     "folder": "フォルダー",
     "groupFolder": "グループフォルダー",

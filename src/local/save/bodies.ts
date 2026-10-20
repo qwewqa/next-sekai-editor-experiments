@@ -11,7 +11,7 @@ import {
     rootJsonFromRow,
     type NodesRow,
 } from '../records/rows'
-import { isReadableRootVersion } from '../records/unknownValues'
+import { isNewerRootVersion, isReadableRootVersion } from '../records/unknownValues'
 import { ModelError } from './model'
 
 // The bodies a write takes (Part 1 §1.6.11.6): this tab's pending records first, then the
@@ -118,7 +118,7 @@ const nodeChildren = (json: readonly RecordValue[]) => {
 
 /**
  * Loads and verifies the bodies of `wanted` roots: from `pending`, then storage, skipping what
- * the append source holds. A root `v` this build doesn't read is a refusal (`needsNewer`), never
+ * the append source holds. A root `v` above this build's is a refusal (`needsNewer`), never
  * filtered (§1.6.11.6).
  */
 export const loadBodies = async (
@@ -145,7 +145,12 @@ export const loadBodies = async (
             bodies.bad.add(hex)
             continue
         }
-        if (!isReadableRootVersion(value.v)) throw new ModelError('needsNewer')
+        if (!isReadableRootVersion(value.v)) {
+            // Newer is "Needs a newer version"; an older or malformed `v` is bad, as open and peek say.
+            if (isNewerRootVersion(value.v)) throw new ModelError('needsNewer')
+            bodies.bad.add(hex)
+            continue
+        }
         const json = parse(() => rootJsonFromRow(value))
         if (json && (await hashesTo(json, hex))) bodies.roots.set(hex, json)
         else bodies.bad.add(hex)

@@ -20,7 +20,8 @@ export type RevisionForm = {
     id: string
     parent: string | null
     n: number
-    savedAt: string
+    /** RFC 3339 only (`parseSavedAt`); any other value reads as absent. */
+    savedAt?: string
     device: DeviceForm
     ancestors: string[]
     replaces?: string
@@ -53,6 +54,8 @@ export type ProjectV1 = {
     format: typeof NXSP_FORMAT
     version: number
     minor: number
+    /** Absent reads as 0. Additive content a reader can ignore raises it, not `minor`. */
+    patch: number
     levelVersion: number
     appVersion: string
     id: string
@@ -76,6 +79,7 @@ export const PROJECT_KEYS = [
     'format',
     'version',
     'minor',
+    'patch',
     'levelVersion',
     'appVersion',
     'id',
@@ -142,6 +146,51 @@ const readMedia = (value: unknown, path: string, issues: ProjectIssue[]) => {
     return value as MediaForm
 }
 
+const DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+const RFC_3339 =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/
+
+/**
+ * `revision.savedAt` as epoch milliseconds, by RFC 3339 `date-time` and nothing looser (§1.6.11.4):
+ * `YYYY-MM-DDThh:mm:ss`, an optional fraction, then `Z` or `±hh:mm`, with an uppercase `T` and
+ * `Z`, a date that exists, and seconds 00 to 59 (a leap second `:60` is not accepted). Anything
+ * else, a non-string included, is absent: the reader never guesses, as `Date.parse` does.
+ */
+export const parseSavedAt = (value: unknown): number | undefined => {
+    if (typeof value !== 'string') return
+    const match = RFC_3339.exec(value)
+    if (!match) return
+    const [year, month, day, hour, minute, second, offHour, offMinute] = [
+        match[1],
+        match[2],
+        match[3],
+        match[4],
+        match[5],
+        match[6],
+        match[8],
+        match[9],
+    ].map((part) => (part === undefined ? 0 : Number(part))) as [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+    ]
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+    const days = month === 2 && leap ? 29 : DAYS[month - 1]
+    if (days === undefined || day < 1 || day > days) return
+    if (hour > 23 || minute > 59 || second > 59 || offHour > 23 || offMinute > 59) return
+    const date = new Date(0)
+    date.setUTCFullYear(year, month - 1, day)
+    date.setUTCHours(hour, minute, second, 0)
+    const offset = (offHour * 60 + offMinute) * 60_000 * (match[7] === '-' ? -1 : 1)
+    return date.getTime() - offset
+}
+
 const readRevision = (value: unknown, issues: ProjectIssue[]): RevisionForm | undefined => {
     if (value === undefined) return
     // Unknown keys inside `revision` are ignored: every write replaces it.
@@ -150,7 +199,6 @@ const readRevision = (value: unknown, issues: ProjectIssue[]): RevisionForm | un
         isId(value.id) &&
         (value.parent === null || isId(value.parent)) &&
         isUint(value.n) &&
-        isString(value.savedAt) &&
         isObject(value.device) &&
         isString(value.device.id) &&
         isString(value.device.label) &&
@@ -168,7 +216,8 @@ const readRevision = (value: unknown, issues: ProjectIssue[]): RevisionForm | un
         id,
         parent,
         n,
-        savedAt,
+        // Anything but an RFC 3339 `date-time` reads as absent, never as a reason to open partial.
+        ...(typeof savedAt === 'string' && parseSavedAt(savedAt) !== undefined ? { savedAt } : {}),
         device: { id: device.id, label: device.label },
         ancestors: [...ancestors],
         ...(replaces === undefined ? {} : { replaces }),
@@ -318,11 +367,22 @@ export const readProject = (json: Record<string, unknown>): ProjectRead => {
         if (!(PROJECT_KEYS as readonly string[]).includes(key)) setKey(extra, key, value)
     }
 
-    const { minor = 0, levelVersion, appVersion, id, lineageId, name, exportName, level } = json
+    const {
+        minor = 0,
+        patch = 0,
+        levelVersion,
+        appVersion,
+        id,
+        lineageId,
+        name,
+        exportName,
+        level,
+    } = json
     const required = (ok: boolean, path: string) => {
         if (!ok) issues.push({ reason: 'schema', path })
     }
     required(isUint(minor), 'minor')
+    required(isUint(patch), 'patch')
     required(Number.isSafeInteger(levelVersion) && (levelVersion as number) >= 1, 'levelVersion')
     required(isString(appVersion), 'appVersion')
     required(isId(id), 'id')
@@ -352,6 +412,7 @@ export const readProject = (json: Record<string, unknown>): ProjectRead => {
         format: NXSP_FORMAT,
         version: NXSP_VERSION,
         minor: isUint(minor) ? minor : 0,
+        patch: isUint(patch) ? patch : 0,
         levelVersion: Number.isSafeInteger(levelVersion) ? (levelVersion as number) : 1,
         appVersion: isString(appVersion) ? appVersion : '',
         id: isString(id) ? id : '',

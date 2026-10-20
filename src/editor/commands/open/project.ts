@@ -39,7 +39,7 @@ import { getFilename } from '../../../utils/file'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
-import { dismissNoticeCard, notify } from '../../notification'
+import { dismissNoticeCard, notify, type NoticeLine } from '../../notification'
 import { notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { changeBgm } from '../bgm'
@@ -64,6 +64,12 @@ const newerFile = (read: NxspReply) =>
         ['newer-version', 'newer-minor', 'newer-level'].includes(reason),
     )
 
+/**
+ * Whether a newer `patch` was seen: it leaves the open whole (Replace may keep such a file), but a
+ * level that then fails to parse is still a newer file's.
+ */
+const newerPatch = (read: NxspReply) => read.report.some(({ reason }) => reason === 'newer-patch')
+
 /** The level, parsed through the level-data path with its report (§1.5.4 step 2). */
 const parseLevel = (read: NxspReply) => {
     const report = new LevelDataReport()
@@ -80,6 +86,7 @@ const parseLevel = (read: NxspReply) => {
     } catch (error) {
         const newer =
             newerFile(read) ||
+            newerPatch(read) ||
             (error instanceof ImportRefusal &&
                 getLevelDataRevision(
                     (read.level as { entities?: [] } | undefined)?.entities ?? [],
@@ -110,6 +117,8 @@ const partialMessage = (line: PartialLine) => {
             return open.historyUnreadable
         case 'newerVersion':
             return interpolateRaw(open.newerVersion, PRODUCT_NAME)
+        case 'newerPatch':
+            return interpolateRaw(open.newerPatch, PRODUCT_NAME)
         case 'mediaBad':
             return interpolateRaw(open.mediaBad, open.media[line.media])
     }
@@ -428,26 +437,60 @@ const openRequestedProject = async (
     const bgm = opened.media.bgm
     const bgmMissing =
         live.bgm.meta !== undefined && (!bgm || mediaHash(bgm.form) !== live.bgm.meta.hash)
+    // A newer `patch` is a line of its own, which a whole open shows beside what else it has to
+    // say: bound in another tab, or a BGM that is not loaded. Only an earlier session's unsaved
+    // changes take the card from it, since that notice has the action that keeps work.
+    const patchRow: NoticeLine | undefined =
+        line?.kind === 'newerPatch'
+            ? { message: () => partialMessage(line), severity: 'warning' }
+            : undefined
+    const bgmRow: NoticeLine = {
+        message: () => i18n.value.notice.bgmNotLoaded,
+        severity: 'info',
+        // A BGM the file records but doesn't hold (§1.5.4 step 5): not loaded, with Choose Audio….
+        action: {
+            label: () => i18n.value.notice.chooseAudio,
+            run: () => {
+                void changeBgm()
+            },
+        },
+    }
+    const showRows = (rows: NoticeLine[]) => {
+        const [only] = rows
+        if (rows.length === 1 && only)
+            notify(only.message, {
+                card: true,
+                severity: only.severity ?? 'info',
+                ...(only.action ? { action: only.action } : {}),
+            })
+        else
+            notify(() => rows.map((row) => row.message()).join(String.fromCharCode(10)), {
+                lines: [
+                    {
+                        message: interpolate(() => i18n.value.history.openedFile, name),
+                        heading: true,
+                    },
+                    ...rows,
+                ],
+            })
+    }
     if (elsewhere)
-        notify(
-            interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
-            { card: true, severity: 'info' },
-        )
-    else if (line) {
+        showRows([
+            {
+                message: interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
+                severity: 'info',
+            },
+            ...(patchRow ? [patchRow] : []),
+        ])
+    else if (line && line.kind !== 'newerPatch') {
         const message = partialMessage(line)
         notify(() => message, { card: true, severity: 'warning' })
-    } else if (!earlier && bgmMissing) {
-        // A BGM the file records but doesn't hold (§1.5.4 step 5): not loaded, with Choose Audio….
+    } else if (patchRow && !earlier) {
         dismissNoticeCard()
-        notify(() => i18n.value.notice.bgmNotLoaded, {
-            severity: 'info',
-            action: {
-                label: () => i18n.value.notice.chooseAudio,
-                run: () => {
-                    void changeBgm()
-                },
-            },
-        })
+        showRows([patchRow, ...(bgmMissing ? [bgmRow] : [])])
+    } else if (!earlier && bgmMissing) {
+        dismissNoticeCard()
+        showRows([bgmRow])
     } else notifyOpened(name, earlier, left)
 }
 

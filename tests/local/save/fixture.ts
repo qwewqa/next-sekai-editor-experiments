@@ -91,6 +91,7 @@ type Row = EntryDescription & {
     kept: boolean
     revisionId?: string
     device?: { id: string; label: string }
+    appVersion?: string
     stack?: ReplayEntry['stack']
 }
 
@@ -280,6 +281,7 @@ export class Fixture {
                         : {}),
                     ...(row.revisionId === undefined ? {} : { revisionId: row.revisionId }),
                     ...(row.device ? { device: row.device } : {}),
+                    ...(row.appVersion === undefined ? {} : { appVersion: row.appVersion }),
                 })),
             {
                 base: 0,
@@ -365,6 +367,9 @@ export class Fixture {
             kept: true,
             revisionId: built.revisionId,
             device: DEVICE,
+            ...(built.saveEntry.appVersion === undefined
+                ? {}
+                : { appVersion: built.saveEntry.appVersion }),
         })
     }
 

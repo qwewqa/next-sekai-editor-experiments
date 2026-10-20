@@ -76,6 +76,49 @@ test('only available entries and Now can become the peek cursor', () => {
     )
 })
 
+test('an entry a newer version wrote is unavailable and flagged newer, never damaged or removed', () => {
+    const newer = entry(add(), noon, { kept: false })
+    const available = entry(add())
+    const rows = buildRows(newestFirst(newer, available), {
+        ...options,
+        newer: new Set([`s:${newer.seq}`]),
+    })
+    assert.deepEqual(
+        entryRows(rows).map((row) => [row.flags, row.selectable]),
+        [
+            [{ removed: false, damaged: false }, true],
+            [{ removed: false, damaged: false, newer: true }, false],
+        ],
+    )
+    assert.deepEqual(
+        selectableRows(rows).map((row) => row.id),
+        ['now', `s:${available.seq}`],
+    )
+    // It never groups with an entry that reads, so its row stays its own.
+    const grouped = entryRows(
+        buildRows(newestFirst(entry(move), entry(move), entry(move)), {
+            ...options,
+            newer: new Set([`s:${seq - 1}`]),
+        }),
+    )
+    assert.equal(grouped.length, 3)
+})
+
+test('an entry the worker could not decode is an unavailable row: newer or damaged by its cause', () => {
+    const newer = entry(add(), noon, { unreadable: 'newer' })
+    const bad = entry(add(), noon, { unreadable: 'damaged' })
+    const available = entry(add())
+    const rows = entryRows(buildRows(newestFirst(newer, bad, available), options))
+    assert.deepEqual(
+        rows.map((row) => [row.flags, row.selectable]),
+        [
+            [{ removed: false, damaged: false }, true],
+            [{ removed: false, damaged: true }, false],
+            [{ removed: false, damaged: false, newer: true }, false],
+        ],
+    )
+})
+
 test('semantic families group different receipts, while unknown identical text stays individual', () => {
     const unknown = opaque('identical')
     const rows = entryRows(

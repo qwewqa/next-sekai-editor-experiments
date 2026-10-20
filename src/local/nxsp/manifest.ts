@@ -1,6 +1,10 @@
 import {
     captureEntryDescription,
     captureStep,
+    jsonBytes,
+    OPERATION_WIRE_BYTES,
+    stripUnknownEntryKeys,
+    stripUnknownStepKeys,
     type EntryDescription,
     type UndoableStep,
 } from '../../history/operations'
@@ -32,7 +36,13 @@ export const ENTRY_KINDS = [
 
 export type EntryKindForm = (typeof ENTRY_KINDS)[number]
 
-export type SlotForm = { snapshot: string; step: UndoableStep }
+/**
+ * `x` on a slot, a stack, an undo stack, a segment or the manifest, like an entry's: an ignorable
+ * JSON object. Read as a plain object and never otherwise; a rebuilt object may drop it.
+ */
+export type ExtensionForm = Record<string, unknown>
+
+export type SlotForm = { snapshot: string; step: UndoableStep; x?: ExtensionForm }
 
 /** An entry as a file holds it: hashes in hex, `dirty` and `kept` only when unusual. */
 export type EntryForm = EntryDescription & {
@@ -43,20 +53,23 @@ export type EntryForm = EntryDescription & {
     kept?: false
     revisionId?: string
     device?: DeviceForm
-    stack?: { keep: number; push: SlotForm[]; index: number }
-    x?: Record<string, unknown>
+    /** The app version that wrote a `save` entry; optional on read, always written (§1.6.11.5). */
+    appVersion?: string
+    stack?: { keep: number; push: SlotForm[]; index: number; x?: ExtensionForm }
+    x?: ExtensionForm
 }
 
 /** `[hash, offset, length]`: where a chunk's stored form is in `chunks.bin`. */
 export type ChunkIndexItem = [string, number, number]
 
-export type UndoStackForm = { base: number; slots: SlotForm[]; index: number }
+export type UndoStackForm = { base: number; slots: SlotForm[]; index: number; x?: ExtensionForm }
 
 export type SegmentForm = {
     entries: EntryForm[]
     roots: Record<string, RecordValue[]>
     nodes: Record<string, RecordValue[]>
     chunks: ChunkIndexItem[]
+    x?: ExtensionForm
 }
 
 export type ManifestForm = { version: number } & SegmentForm & { undoStack: UndoStackForm }
@@ -125,19 +138,93 @@ const ENTRY_KEYS = [
     'kept',
     'revisionId',
     'device',
+    'appVersion',
     'stack',
     'x',
 ]
 
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? (value as unknown[]) : [])
+
+const hasX = (value: Record<string, unknown>) => value.x !== undefined
+
+const stepCarriers = (step: unknown, found: Set<string>) => {
+    if (!isObject(step)) return
+    if (hasX(step)) found.add('step.x')
+    contextCarriers(step.recoveryContext, found)
+}
+
+const contextCarriers = (context: unknown, found: Set<string>) => {
+    if (!isObject(context)) return
+    if (hasX(context)) found.add('context.x')
+    for (const item of [context.head, ...list(context.dropped)])
+        if (isObject(item) && hasX(item)) found.add('item.x')
+}
+
+const slotCarriers = (slot: unknown, found: Set<string>) => {
+    if (!isObject(slot)) return
+    if (hasX(slot)) found.add('slot.x')
+    stepCarriers(slot.step, found)
+}
+
+/**
+ * The `x` carriers a part holds, by the names of `PATCH_TABLE.carrier`: the writer's `patch` is
+ * the highest row among them, so a build that starts to write an `x` (or carries one) raises it
+ * through the table, not by a flag.
+ */
+export const carriersIn = (part: unknown, found = new Set<string>()) => {
+    if (!isObject(part)) return found
+    if (hasX(part)) found.add('part.x')
+    for (const entry of list(part.entries)) {
+        if (!isObject(entry)) continue
+        if (hasX(entry)) found.add('entry.x')
+        stepCarriers(entry.step, found)
+        contextCarriers(entry.recoveryContext, found)
+        const { stack } = entry
+        if (isObject(stack)) {
+            if (hasX(stack)) found.add('stack.x')
+            for (const slot of list(stack.push)) slotCarriers(slot, found)
+        }
+    }
+    const { undoStack } = part
+    if (isObject(undoStack)) {
+        if (hasX(undoStack)) found.add('undoStack.x')
+        for (const slot of list(undoStack.slots)) slotCarriers(slot, found)
+    }
+    return found
+}
+
+/**
+ * An `x`, when present, is a JSON object within the operation byte limit on every carrier; what is
+ * in it is never read.
+ */
+const checkExtension = (value: Record<string, unknown>, path: string, issues: Issues) => {
+    if (
+        value.x !== undefined &&
+        (!isObject(value.x) || jsonBytes(value.x as never) > OPERATION_WIRE_BYTES)
+    )
+        issues.push({ reason: 'damaged', path: `${path}.x` })
+}
+
+/**
+ * A step as v1 reads it: a key no carrier of v1 has is newer content (`unknown-key`), and the rest
+ * is checked as it would be without it, so a step is damaged only for what is wrong in it.
+ */
+const checkStep = (value: unknown, path: string, issues: Issues) => {
+    const { value: step, unknown } = stripUnknownStepKeys(value)
+    for (const key of unknown) issues.push({ reason: 'unknown-key', path: `${path}.${key}` })
+    try {
+        captureStep(step)
+    } catch {
+        issues.push({ reason: 'damaged', path })
+    }
+}
+
 const checkSlot = (value: unknown, path: string, issues: Issues) => {
     if (!isObject(value)) return issues.push({ reason: 'damaged', path })
-    unknownKeys(value, ['snapshot', 'step'], path, issues)
+    unknownKeys(value, ['snapshot', 'step', 'x'], path, issues)
     if (!isHash16Hex(value.snapshot)) issues.push({ reason: 'damaged', path })
-    try {
-        captureStep(value.step)
-    } catch {
-        issues.push({ reason: 'damaged', path: `${path}.step` })
-    }
+    checkExtension(value, path, issues)
+    checkStep(value.step, `${path}.step`, issues)
 }
 
 /** Checks one entry of the entry form; returns false when it can't be used. */
@@ -148,7 +235,8 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
         return false
     }
     unknownKeys(value, ENTRY_KEYS, path, issues)
-    const { kind, time, snapshot, noteCount, dirty, kept, revisionId, device, stack, x } = value
+    const { kind, time, snapshot, noteCount, dirty, kept, revisionId, device, appVersion, stack } =
+        value
     // An unknown kind is newer content: its fields are that kind's, so nothing else is checked.
     if (isString(kind) && !(ENTRY_KINDS as readonly string[]).includes(kind)) {
         issues.push({ reason: 'newer', path: `${path}.kind`, detail: kind })
@@ -159,8 +247,12 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
     // A field another kind has: a key this kind doesn't (§1.6.11.8).
     const foreign = (key: string) => issues.push({ reason: 'unknown-key', path: `${path}.${key}` })
     if (!isUint(time)) fail('time')
+    // A key no carrier knows is newer content; the rest of the description is checked without it.
+    const stripped = stripUnknownEntryKeys(value)
+    for (const key of stripped.unknown)
+        issues.push({ reason: 'unknown-key', path: `${path}.${key}` })
     try {
-        captureEntryDescription(value)
+        captureEntryDescription(stripped.value)
     } catch {
         fail('description')
     }
@@ -175,9 +267,12 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
         if (!isString(revisionId)) fail('revisionId')
         if (!isObject(device) || !isString(device.id) || !isString(device.label)) fail('device')
         else unknownKeys(device, ['id', 'label'], `${path}.device`, issues)
+        // Optional on read: a file from a build before the version was recorded still opens.
+        if (appVersion !== undefined && !isString(appVersion)) fail('appVersion')
     } else {
         if (revisionId !== undefined) foreign('revisionId')
         if (device !== undefined) foreign('device')
+        if (appVersion !== undefined) foreign('appVersion')
     }
     if (kind === 'recovered') {
         if (
@@ -188,12 +283,13 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
         )
             fail('stack')
         else {
-            unknownKeys(stack, ['keep', 'push', 'index'], `${path}.stack`, issues)
+            unknownKeys(stack, ['keep', 'push', 'index', 'x'], `${path}.stack`, issues)
+            checkExtension(stack, `${path}.stack`, issues)
             for (const [i, slot] of (stack.push as unknown[]).entries())
                 checkSlot(slot, `${path}.stack.push[${i}]`, issues)
         }
     } else if (stack !== undefined) foreign('stack')
-    if (x !== undefined && !isObject(x)) fail('x')
+    checkExtension(value, path, issues)
     return issues.length === before
 }
 
@@ -251,9 +347,11 @@ export const checkPart = (
         'roots',
         'nodes',
         'chunks',
+        'x',
         ...(manifest ? ['version', 'undoStack'] : []),
     ]
     unknownKeys(value, keys, path, issues)
+    checkExtension(value, path, issues)
     const { entries, roots, nodes, chunks } = value
     if (!Array.isArray(entries)) issues.push({ reason: 'damaged', path: `${path}.entries` })
     else
@@ -272,7 +370,8 @@ export const checkPart = (
         )
             issues.push({ reason: 'damaged', path: `${path}.undoStack` })
         else {
-            unknownKeys(undoStack, ['base', 'slots', 'index'], `${path}.undoStack`, issues)
+            unknownKeys(undoStack, ['base', 'slots', 'index', 'x'], `${path}.undoStack`, issues)
+            checkExtension(undoStack, `${path}.undoStack`, issues)
             for (const [i, slot] of (undoStack.slots as unknown[]).entries())
                 checkSlot(slot, `${path}.undoStack.slots[${i}]`, issues)
         }

@@ -1320,6 +1320,7 @@
         "newerSteps": "{0} newer step|{0} newer steps",
         "removedForSpace": "removed to save space",
         "damaged": "damaged",
+        "needsNewer": "needs a newer version",
         "savedOn": "Saved on {0}",
         "savedWeb": "Saved in the web editor ({0})",
         "savedWebAny": "Saved in the web editor",
@@ -1371,6 +1372,7 @@
         },
         "operation": {
             "changedHeader": "Changed {0}",
+            "changedLevelInfo": "Changed level info",
             "setValueOnObjects": "Set {1} to {2} on {0} object|Set {1} to {2} on {0} objects",
             "setValueOnNotes": "Set {1} to {2} on {0} note|Set {1} to {2} on {0} notes",
             "setValueOnBpm": "Set {1} to {2} on {0} BPM change|Set {1} to {2} on {0} BPM changes",
@@ -2194,6 +2196,7 @@
         "historyUnreadable": "This file’s history could not be read. Saving makes a separate file.",
         "newerVersion": "Made by a newer version of {0}. Saving makes a separate file.",
         "newerRefused": "Made by a newer version of {0}.",
+        "newerPatch": "Made by a newer version of {0}. Some content may not be shown.",
         "mediaBad": "This file’s {0} could not be read. Saving makes a separate file.",
         "media": {
             "bgm": "BGM",
@@ -2257,6 +2260,9 @@
         "notPresent": "Not present",
         "added": "Added",
         "removed": "Removed",
+        "tagsAdded": "Tags Added",
+        "tagsRemoved": "Tags Removed",
+        "tagsChanged": "Tags Changed",
         "order": "Order",
         "folder": "Folder",
         "groupFolder": "Group Folder",

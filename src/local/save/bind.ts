@@ -202,6 +202,8 @@ export type SaveEntryForm = {
     noteCount: number
     revisionId: string
     device: { id: string; label: string }
+    /** The app version that wrote it; absent in a marker an earlier build kept. */
+    appVersion?: string
 }
 
 /**
@@ -243,6 +245,7 @@ export const finishOwnSave = async (
             kept: true,
             revisionId: entry.revisionId,
             device: entry.device,
+            ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
         })
         const lastSeq = typeof session.lastSeq === 'number' ? session.lastSeq : 0
         await tx.put('sessions', {

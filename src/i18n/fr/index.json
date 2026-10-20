@@ -1320,6 +1320,7 @@
     "newerSteps": "{0} étape plus récente|{0} étapes plus récentes",
     "removedForSpace": "supprimé pour libérer de l’espace",
     "damaged": "endommagé",
+    "needsNewer": "nécessite une version plus récente",
     "savedOn": "Sauvegardé sur {0}",
     "savedWeb": "Sauvegardé dans l’éditeur web ({0})",
     "savedWebAny": "Sauvegardé dans l’éditeur web",
@@ -1371,6 +1372,7 @@
     },
     "operation": {
       "changedHeader": "{0} : valeur modifiée",
+      "changedLevelInfo": "Informations du niveau modifiées",
       "setValueOnObjects": "{1} : valeur {2} appliquée à {0} objet|{1} : valeur {2} appliquée à {0} objets",
       "setValueOnNotes": "{1} : valeur {2} appliquée à {0} note|{1} : valeur {2} appliquée à {0} notes",
       "setValueOnBpm": "{1} : valeur {2} appliquée à {0} changement de BPM|{1} : valeur {2} appliquée à {0} changements de BPM",
@@ -2194,6 +2196,7 @@
     "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde crée un fichier séparé.",
     "newerVersion": "Créé par une version plus récente de {0}. La sauvegarde crée un fichier séparé.",
     "newerRefused": "Créé par une version plus récente de {0}.",
+    "newerPatch": "Créé par une version plus récente de {0}. Certains contenus peuvent ne pas s’afficher.",
     "mediaBad": "Impossible de lire {0} de ce fichier. La sauvegarde crée un fichier séparé.",
     "media": {
       "bgm": "la BGM",
@@ -2257,6 +2260,9 @@
     "notPresent": "Absent",
     "added": "Ajouté",
     "removed": "Supprimé",
+    "tagsAdded": "Tags ajoutés",
+    "tagsRemoved": "Tags supprimés",
+    "tagsChanged": "Tags modifiés",
     "order": "Ordre",
     "folder": "Dossier",
     "groupFolder": "Dossier de groupes",

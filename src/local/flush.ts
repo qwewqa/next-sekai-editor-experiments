@@ -63,9 +63,10 @@ export type PendingEntry = EntryDescription & {
     readonly dirty: boolean
     /** A journal-only reload resets its unavailable stack to this one current-state slot. */
     readonly recoveryBaseline?: UndoableStep
-    /** A `save` entry's revision and device (§1.3.3). */
+    /** A `save` entry's revision, device and the app version that wrote it (§1.3.3). */
     readonly revisionId?: string
     readonly device?: { readonly id: string; readonly label: string }
+    readonly appVersion?: string
 }
 
 /** A Save's identity unit waiting for its flush: committed with its `save` entry (§1.3.2). */
@@ -1283,6 +1284,7 @@ export class Flusher {
                         : {}),
                     ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
                     ...(entry.device ? { device: entry.device } : {}),
+                    ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
                 }
             }),
             media,

@@ -29,6 +29,10 @@ import sys
 import unicodedata
 import zlib
 
+# Huge integer literals (400+ digits) must parse, as JSON.parse reads them: a big double or Infinity.
+if hasattr(sys, "set_int_max_str_digits"):
+    sys.set_int_max_str_digits(0)
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(HERE, "fields-v1.json"), encoding="utf-8") as f:
     FIELDS = json.load(f)
@@ -94,8 +98,16 @@ def parse_json(data, what):
         raise Fail(f"{what}: {error}")
 
 
+def finite(v):
+    """A parsed number as a JS double: an integer literal past the double range is Infinity."""
+    try:
+        return math.isfinite(float(v))
+    except OverflowError:
+        return False
+
+
 def is_int(v):
-    return not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(v) and float(v).is_integer()
+    return not isinstance(v, bool) and isinstance(v, (int, float)) and finite(v) and float(v).is_integer()
 
 
 def is_uint(v):
@@ -107,7 +119,7 @@ def is_id(v):
 
 
 def is_number(v):
-    return not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(v)
+    return not isinstance(v, bool) and isinstance(v, (int, float)) and finite(v)
 
 
 def num_is(v, n):
@@ -160,7 +172,7 @@ def js_json(value):
     if isinstance(value, list):
         return "[" + ",".join(js_json(x) for x in value) + "]"
     keys = list(value)
-    index = sorted((k for k in keys if ARRAY_INDEX.match(k) and int(k) < 2 ** 32 - 1), key=int)
+    index = sorted((k for k in keys if ARRAY_INDEX.fullmatch(k) and int(k) < 2 ** 32 - 1), key=int)
     keys = index + [k for k in keys if k not in set(index)]
     return "{" + ",".join(js_json(k) + ":" + js_json(value[k]) for k in keys) + "}"
 
@@ -170,7 +182,7 @@ def is_str(v):
 
 
 def is_hash(v):
-    return isinstance(v, str) and HEX16.match(v) is not None
+    return isinstance(v, str) and HEX16.fullmatch(v) is not None
 
 
 def keys_within(obj, allowed, what):
@@ -264,10 +276,38 @@ def check_refs(form_name, record, ids, path):
             need(x in ids[ref], f"{path}.{field['name']}: {ref} {x} missing")
 
 
+# `revision.savedAt` as a reader takes it (§1.6.11.4): RFC 3339 `date-time` and nothing looser, else absent.
+
+SAVED_AT = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?(?:Z|([+-])([0-9]{2}):([0-9]{2}))")
+
+
+def parse_saved_at(value):
+    """Epoch milliseconds, or None: uppercase T and Z, a date that exists, seconds 00-59, an offset of hh:mm."""
+    if not isinstance(value, str):
+        return None
+    m = SAVED_AT.fullmatch(value)
+    if m is None:
+        return None
+    year, month, day, hour, minute, second = (int(m.group(i)) for i in range(1, 7))
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days = 29 if month == 2 and leap else [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] if 1 <= month <= 12 else 0
+    off_hour, off_minute = (int(m.group(8)), int(m.group(9))) if m.group(7) else (0, 0)
+    if not (1 <= day <= days) or hour > 23 or minute > 59 or second > 59 or off_hour > 23 or off_minute > 59:
+        return None
+    y = year - (month <= 2)
+    era = y // 400
+    yoe = y - era * 400
+    doy = (153 * (month + (-3 if month > 2 else 9)) + 2) // 5 + day - 1
+    doe = yoe * 365 + yoe // 4 - yoe // 100 + doy
+    epoch_days = era * 146097 + doe - 719468
+    offset = (off_hour * 60 + off_minute) * 60000 * (-1 if m.group(7) == "-" else 1)
+    return ((epoch_days * 24 + hour) * 60 + minute) * 60000 + second * 1000 - offset
+
+
 # ZIP
 
 def dos_of(saved_at):
-    m = re.match(r"^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)Z$", saved_at)
+    m = re.fullmatch(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})Z", saved_at)
     need(m is not None, f"revision.savedAt {saved_at!r}: not ISO 8601 UTC to the second")
     y, mo, d, h, mi, s = (int(x) for x in m.groups())
     if y < 1980:
@@ -317,7 +357,7 @@ def read_zip(blob):
     offset, seen = 0, set()
     for e in entries:
         name = e["name_bytes"].decode("ascii", errors="replace")
-        need(re.match(r"^[\x21-\x7e]+$", name) is not None, f"{name!r}: not an ASCII name")
+        need(re.fullmatch(r"[\x21-\x7e]+", name) is not None, f"{name!r}: not an ASCII name")
         need(not name.startswith("/") and ".." not in name.split("/") and not name.endswith("/"),
              f"{name}: not a relative file name")
         need(name not in seen, f"{name}: twice")
@@ -356,7 +396,7 @@ def media_form(form, what, prefix, entries_by_name):
     if "file" in form:
         keys_within(form, ["file", "filename", "type", "sha256", "size"], what)
         need(is_str(form["file"]) and form["file"].startswith(prefix) and form["file"] != prefix, f"{what}.file: outside {prefix}")
-        need(isinstance(form.get("sha256"), str) and HEX32.match(form["sha256"]), f"{what}.sha256")
+        need(isinstance(form.get("sha256"), str) and HEX32.fullmatch(form["sha256"]), f"{what}.sha256")
         entry = entries_by_name.get(form["file"])
         need(entry is not None, f"{what}.file: no entry {form['file']}")
         need(len(entry["data"]) <= CAPS["media"], f"{what}: over the media cap")
@@ -403,15 +443,74 @@ def finite_wire_json(value, path, max_bytes=OP_BYTES, max_depth=16):
     need(len(js_json(value).encode("utf-8")) <= max_bytes, f"{path}: description bytes")
 
 
+# The keys of each carrier (§1.6.11.8): `x` is ignorable on every one, and what is in it is never read.
+STEP_KEYS = ("kind", "operation", "x", "recoveryContext")
+ITEM_KEYS = ("kind", "operation", "x")
+CONTEXT_KEYS = ("head", "headIndex", "dropped", "omitted", "x")
+
+
+def extension_form(value, path):
+    """An `x`, when present, is a JSON object within the operation byte limit."""
+    if "x" in value:
+        need(isinstance(value["x"], dict), f"{path}.x: not an object")
+        need(len(js_json(value["x"]).encode("utf-8")) <= OP_BYTES, f"{path}.x: bytes")
+
+
+def strip_keys(value, keys, path, unknown):
+    """A copy of an object without the keys no carrier of v1 has; those go in `unknown` (newer content)."""
+    if not isinstance(value, dict):
+        return value
+    kept = {}
+    for key, item in value.items():
+        if key in keys:
+            kept[key] = item
+        else:
+            unknown.append(f"{path}{key}")
+    return kept
+
+
+def strip_context(value, path, unknown):
+    kept = strip_keys(value, CONTEXT_KEYS, path, unknown)
+    if not isinstance(kept, dict):
+        return kept
+    kept = dict(kept)
+    if "head" in kept:
+        kept["head"] = strip_keys(kept["head"], ITEM_KEYS, f"{path}head.", unknown)
+    if isinstance(kept.get("dropped"), list):
+        kept["dropped"] = [strip_keys(item, ITEM_KEYS, f"{path}dropped[{i}].", unknown) for i, item in enumerate(kept["dropped"])]
+    return kept
+
+
+def strip_step(value, path, unknown):
+    kept = strip_keys(value, STEP_KEYS, path, unknown)
+    if isinstance(kept, dict) and "recoveryContext" in kept:
+        kept = dict(kept)
+        kept["recoveryContext"] = strip_context(kept["recoveryContext"], f"{path}recoveryContext.", unknown)
+    return kept
+
+
+def strip_entry(e, unknown):
+    """An entry for its description check: the keys of its step and recovery context no carrier has removed."""
+    kept = dict(e)
+    if "step" in e:
+        kept["step"] = strip_step(e["step"], "step.", unknown)
+    if "recoveryContext" in e:
+        kept["recoveryContext"] = strip_context(e["recoveryContext"], "recoveryContext.", unknown)
+    return kept
+
+
 def step_description(value, path):
-    need(isinstance(value, dict) and set(value) == {"kind", "operation"}, f"{path}: step keys")
+    need(isinstance(value, dict) and set(value) <= set(ITEM_KEYS) and "kind" in value and "operation" in value, f"{path}: step keys")
     need(value["kind"] in ("init", "edit", "restore"), f"{path}.kind")
+    extension_form(value, path)
     finite_wire_json(value["operation"], f"{path}.operation")
 
 
 def recovery_context(value, path):
     finite_wire_json(value, path, OP_BYTES + CONTEXT_BYTES + 2048, 19)
-    need(isinstance(value, dict) and set(value) == {"head", "headIndex", "dropped", "omitted"}, f"{path}: context keys")
+    need(isinstance(value, dict) and set(value) <= set(CONTEXT_KEYS)
+         and {"head", "headIndex", "dropped", "omitted"} <= set(value), f"{path}: context keys")
+    extension_form(value, path)
     step_description(value["head"], f"{path}.head")
     dropped = value["dropped"]
     need(isinstance(dropped, list) and len(dropped) <= 64, f"{path}.dropped")
@@ -425,8 +524,8 @@ def recovery_context(value, path):
 def step_form(value, path):
     finite_wire_json(value, path, 2 * OP_BYTES + CONTEXT_BYTES + 4096, 20)
     need(isinstance(value, dict), f"{path}: step object")
-    expected = {"kind", "operation"} | ({"recoveryContext"} if "recoveryContext" in value else set())
-    need(set(value) == expected, f"{path}: step keys")
+    need(set(value) <= set(STEP_KEYS) and "kind" in value and "operation" in value, f"{path}: step keys")
+    extension_form(value, path)
     step_description({"kind": value.get("kind"), "operation": value.get("operation")}, path)
     if "recoveryContext" in value:
         recovery_context(value["recoveryContext"], f"{path}.recoveryContext")
@@ -452,7 +551,7 @@ def entry_description(e, path):
 def entry_form(e, path):
     need(isinstance(e, dict), f"{path}: not an object")
     keys_within(e, ["kind", "time", "operation", "step", "recoveryContext", "snapshot", "noteCount", "dirty", "kept", "revisionId",
-                    "device", "stack", "x"], path)
+                    "device", "appVersion", "stack", "x"], path)
     need(e.get("kind") in ENTRY_KINDS, f"{path}.kind")
     need(is_uint(e.get("time")), f"{path}.time: not a safe integer of at least 0")
     entry_description(e, path)
@@ -465,22 +564,27 @@ def entry_form(e, path):
         d = e.get("device")
         keys_within(d, ["id", "label"], f"{path}.device")
         need(is_str(d.get("id")) and is_str(d.get("label")), f"{path}.device")
+        # A v1 writer always records the app version of a save (optional only on read).
+        need(is_str(e.get("appVersion")) and e["appVersion"] != "", f"{path}.appVersion")
     else:
-        need("revisionId" not in e and "device" not in e, f"{path}: revisionId or device off a save")
+        need("revisionId" not in e and "device" not in e and "appVersion" not in e,
+             f"{path}: revisionId, device or appVersion off a save")
     if e["kind"] == "recovered":
         s = e.get("stack")
-        keys_within(s, ["keep", "push", "index"], f"{path}.stack")
+        keys_within(s, ["keep", "push", "index", "x"], f"{path}.stack")
         need(is_uint(s.get("keep")) and is_uint(s.get("index")) and isinstance(s.get("push"), list), f"{path}.stack")
+        extension_form(s, f"{path}.stack")
         for i, slot in enumerate(s["push"]):
             slot_form(slot, f"{path}.stack.push[{i}]")
     else:
         need("stack" not in e, f"{path}: stack off a recovered entry")
-    need(isinstance(e.get("x", {}), dict), f"{path}.x: not an object")
+    extension_form(e, path)
 
 
 def slot_form(slot, path):
-    keys_within(slot, ["snapshot", "step"], path)
+    keys_within(slot, ["snapshot", "step", "x"], path)
     need(is_hash(slot.get("snapshot")), path)
+    extension_form(slot, path)
     step_form(slot.get("step"), f"{path}.step")
 
 
@@ -556,6 +660,7 @@ def check_file(path):
     need("parts" not in project, "project.json: parts, which v0.6.0 never writes")
     need(project.get("format") == "nxsp" and num_is(project.get("version"), 1), "project.json: format or version")
     need((is_uint(project.get("minor")) and project["minor"] <= 1) and num_is(project.get("levelVersion"), 1), "project.json: minor or levelVersion")
+    need("patch" in project and is_uint(project["patch"]) and project["patch"] <= 0, "project.json: patch")
     for key in ("appVersion", "id", "lineageId"):
         need(is_str(project.get(key)) and project[key] != "", f"project.json.{key}")
     for key in ("name", "exportName"):
@@ -671,14 +776,17 @@ def check_history(project, history, segments, by_name, summary, rev):
     for name in segments:
         need(len(by_name[name]["data"]) <= CAPS["manifest"], f"{name}: over its cap")
         part = parse_json(by_name[name]["data"], name)
-        keys_within(part, ["entries", "roots", "nodes", "chunks"], name)
-        need(set(part) == {"entries", "roots", "nodes", "chunks"}, f"{name}: a key missing")
+        keys_within(part, ["entries", "roots", "nodes", "chunks", "x"], name)
+        need({"entries", "roots", "nodes", "chunks"} <= set(part), f"{name}: a key missing")
+        extension_form(part, name)
         parts.append((name, part))
     data = by_name["history/manifest.json"]["data"]
     need(len(data) <= CAPS["manifest"], "manifest: over its cap")
     manifest = parse_json(data, "manifest")
-    keys_within(manifest, ["version", "entries", "roots", "nodes", "chunks", "undoStack"], "manifest")
-    need(len(manifest) == 6 and num_is(manifest["version"], 2), "manifest: version or a key missing")
+    keys_within(manifest, ["version", "entries", "roots", "nodes", "chunks", "undoStack", "x"], "manifest")
+    need({"version", "entries", "roots", "nodes", "chunks", "undoStack"} <= set(manifest)
+         and num_is(manifest["version"], 2), "manifest: version or a key missing")
+    extension_form(manifest, "manifest")
     parts.append(("manifest", manifest))
 
     chunks_bin = by_name["history/chunks.bin"]["data"]
@@ -789,8 +897,9 @@ def check_history(project, history, segments, by_name, summary, rev):
         for j, slot in enumerate(e.get("stack", {}).get("push", [])):
             held(slot["snapshot"], f"entries[{i}].stack.push[{j}]")
     stack = manifest["undoStack"]
-    keys_within(stack, ["base", "slots", "index"], "undoStack")
+    keys_within(stack, ["base", "slots", "index", "x"], "undoStack")
     need(is_uint(stack.get("base")) and is_uint(stack.get("index")) and isinstance(stack.get("slots"), list), "undoStack")
+    extension_form(stack, "undoStack")
     for i, slot in enumerate(stack["slots"]):
         slot_form(slot, f"undoStack.slots[{i}]")
         held(slot["snapshot"], f"undoStack.slots[{i}]")
@@ -1200,14 +1309,14 @@ def is_safe_int(v):
 
 
 def is_hex64(v):
-    return isinstance(v, str) and HEX32.match(v) is not None
+    return isinstance(v, str) and HEX32.fullmatch(v) is not None
 
 
 def is_nonempty(v):
     return isinstance(v, str) and v != ""
 
 
-PROJECT_KEYS = ["format", "version", "minor", "levelVersion", "appVersion", "id", "lineageId", "revision",
+PROJECT_KEYS = ["format", "version", "minor", "patch", "levelVersion", "appVersion", "id", "lineageId", "revision",
                 "name", "exportName", "level", "editor", "bgm", "history", "summary", "metadata", "parts"]
 
 
@@ -1234,12 +1343,14 @@ def read_media_form(value, path, issues):
 def read_project(p):
     issues = []
     minor = p.get("minor", 0)
+    patch = p.get("patch", 0)
     level_version = p.get("levelVersion")
 
     def required(ok, path):
         if not ok:
             issues.append(("schema", path))
     required(is_uint(minor), "minor")
+    required(is_uint(patch), "patch")
     required(is_safe_int(level_version) and level_version >= 1, "levelVersion")
     required(is_str(p.get("appVersion")), "appVersion")
     required(is_nonempty(p.get("id")), "id")
@@ -1252,7 +1363,7 @@ def read_project(p):
     if "revision" in p:
         d = rev.get("device") if isinstance(rev, dict) else None
         valid = (isinstance(rev, dict) and is_nonempty(rev.get("id")) and (rev.get("parent", 0) is None or is_nonempty(rev.get("parent")))
-                 and is_uint(rev.get("n")) and is_str(rev.get("savedAt")) and isinstance(d, dict)
+                 and is_uint(rev.get("n")) and isinstance(d, dict)
                  and is_str(d.get("id")) and is_str(d.get("label")) and isinstance(rev.get("ancestors"), list)
                  and all(is_nonempty(a) for a in rev["ancestors"])
                  and ("replaces" not in rev or is_str(rev["replaces"])) and ("fileName" not in rev or is_str(rev["fileName"])))
@@ -1326,7 +1437,8 @@ def read_project(p):
         else:
             for key in parts:
                 issues.append(("unknown-key", f"parts.{key}"))
-    project = dict(minor=minor if is_uint(minor) else 0,
+    saved_at = parse_saved_at(rev.get("savedAt")) if isinstance(rev, dict) and not any(i == ("schema", "revision") for i in issues) else None
+    project = dict(minor=minor if is_uint(minor) else 0, patch=patch if is_uint(patch) else 0, saved_at=saved_at,
                    levelVersion=level_version if is_safe_int(level_version) else 1,
                    level=p["level"] if is_str(p.get("level")) else "", bgm=bgm, history=history, metadata=metadata)
     return project, issues
@@ -1351,7 +1463,14 @@ class Issues:
         return self.items + ([(self.more_reason, path)] if self.more else [])
 
 
-ENTRY_KEYS = ["kind", "time", "operation", "step", "recoveryContext", "snapshot", "noteCount", "dirty", "kept", "revisionId", "device", "stack", "x"]
+ENTRY_KEYS = ["kind", "time", "operation", "step", "recoveryContext", "snapshot", "noteCount", "dirty", "kept", "revisionId", "device",
+              "appVersion", "stack", "x"]
+
+
+def part_extension(value, path, issues):
+    """An `x` is a JSON object within the operation byte limit, on every carrier."""
+    if "x" in value and (not isinstance(value["x"], dict) or len(js_json(value["x"]).encode("utf-8")) > OP_BYTES):
+        issues.add("damaged", f"{path}.x")
 
 
 def part_slot(value, path, issues):
@@ -1359,14 +1478,19 @@ def part_slot(value, path, issues):
         issues.add("damaged", path)
         return
     for key in value:
-        if key not in ("snapshot", "step"):
+        if key not in ("snapshot", "step", "x"):
             issues.add("unknown-key", f"{path}.{key}")
     if not is_hash(value.get("snapshot")):
         issues.add("damaged", path)
+    part_extension(value, path, issues)
+    unknown = []
+    step = strip_step(value.get("step"), "", unknown)
+    for key in unknown:
+        issues.add("unknown-key", f"{path}.step.{key}")
     try:
-        step_form(value.get("step"), f"{path}.step")
+        step_form(step, f"{path}.step")
     except Fail:
-        issues.add("damaged", path)
+        issues.add("damaged", f"{path}.step")
 
 
 def part_entry(e, path, issues):
@@ -1390,8 +1514,12 @@ def part_entry(e, path, issues):
         issues.add("unknown-key", f"{path}.{key}")
     if not is_uint(e.get("time")):
         fail("time")
+    unknown = []
+    described = strip_entry(e, unknown)
+    for key in unknown:
+        issues.add("unknown-key", f"{path}.{key}")
     try:
-        entry_description(e, path)
+        entry_description(described, path)
     except Fail:
         fail("description")
     if not is_hash(e.get("snapshot")):
@@ -1412,25 +1540,30 @@ def part_entry(e, path, issues):
             for key in d:
                 if key not in ("id", "label"):
                     issues.add("unknown-key", f"{path}.device.{key}")
+        # Optional on read: a file from a build before the version was recorded still opens.
+        if "appVersion" in e and not is_str(e["appVersion"]):
+            fail("appVersion")
     else:
         if "revisionId" in e:
             foreign("revisionId")
         if "device" in e:
             foreign("device")
+        if "appVersion" in e:
+            foreign("appVersion")
     if kind == "recovered":
         s = e.get("stack")
         if not isinstance(s, dict) or not is_uint(s.get("keep")) or not is_uint(s.get("index")) or not isinstance(s.get("push"), list):
             fail("stack")
         else:
             for key in s:
-                if key not in ("keep", "push", "index"):
+                if key not in ("keep", "push", "index", "x"):
                     issues.add("unknown-key", f"{path}.stack.{key}")
+            part_extension(s, f"{path}.stack", issues)
             for i, slot in enumerate(s["push"]):
                 part_slot(slot, f"{path}.stack.push[{i}]", issues)
     elif "stack" in e:
         foreign("stack")
-    if "x" in e and not isinstance(e["x"], dict):
-        fail("x")
+    part_extension(e, path, issues)
 
 
 def check_part(value, path, manifest):
@@ -1444,10 +1577,11 @@ def check_part(value, path, manifest):
         if version != 2:
             return None, [("newer", f"{path}.version")]
     issues = Issues()
-    allowed = ["entries", "roots", "nodes", "chunks"] + (["version", "undoStack"] if manifest else [])
+    allowed = ["entries", "roots", "nodes", "chunks", "x"] + (["version", "undoStack"] if manifest else [])
     for key in value:
         if key not in allowed:
             issues.add("unknown-key", f"{path}.{key}")
+    part_extension(value, path, issues)
     entries = value.get("entries")
     if not isinstance(entries, list):
         issues.add("damaged", f"{path}.entries")
@@ -1475,8 +1609,9 @@ def check_part(value, path, manifest):
             issues.add("damaged", f"{path}.undoStack")
         else:
             for key in s:
-                if key not in ("base", "slots", "index"):
+                if key not in ("base", "slots", "index", "x"):
                     issues.add("unknown-key", f"{path}.undoStack.{key}")
+            part_extension(s, f"{path}.undoStack", issues)
             for i, slot in enumerate(s["slots"]):
                 part_slot(slot, f"{path}.undoStack.slots[{i}]", issues)
     if len(issues):
@@ -1704,8 +1839,8 @@ def is_ignored(e):
     return last in IGNORED_NAMES or last.startswith("._")
 
 
-def read_nxsp(blob):
-    """The editor's readNxsp: (kind, open, [(reason, path)])."""
+def read_nxsp(blob, info=None):
+    """The editor's readNxsp: (kind, open, [(reason, path)]). `info`, when given, also gets `savedAt`."""
     report = []
     try:
         z = Zip(blob)
@@ -1735,10 +1870,14 @@ def read_nxsp(blob):
             if not (is_int(version) and version == 1):
                 report.append(("invalid-key", "version"))
             project, issues = read_project(pj)
+            if info is not None:
+                info["savedAt"] = project["saved_at"]
             for reason, path in issues:
                 report.append(({"unknown-key": "unknown-key", "schema": "invalid-key"}.get(reason, "damaged"), path))
             if project["minor"] > 1:
                 report.append(("newer-minor", "minor"))
+            if project["patch"] > 0:
+                report.append(("newer-patch", "patch"))
             if project["levelVersion"] > 1:
                 report.append(("newer-level", "levelVersion"))
         pointers = []
@@ -1803,7 +1942,8 @@ def read_nxsp(blob):
             if project["history"] and not damaged and not newer_minor:
                 _, items = read_history(z, project["history"])
                 report += items
-        return "nxsp", "partial" if report else "full", report
+        # A newer `patch` alone is a notice, never a partial open.
+        return "nxsp", "partial" if any(r != "newer-patch" for r, _ in report) else "full", report
     except ReadFailure as failure:
         report.append(failure.item)
         return "unreadable", None, report
@@ -1813,17 +1953,23 @@ def read_main(paths):
     status = 0
     for path in paths:
         try:
+            info = {}
             with open(path, "rb") as f:
-                kind, opened, report = read_nxsp(f.read())
-            print(json.dumps({"file": path, "kind": kind, "open": opened, "report": [list(r) for r in report]},
-                             ensure_ascii=False))
+                kind, opened, report = read_nxsp(f.read(), info)
+            # ASCII only, so no console code page or lone surrogate can break the line.
+            print(json.dumps({"file": path, "kind": kind, "open": opened, "report": [list(r) for r in report],
+                              "savedAt": info.get("savedAt")}, ensure_ascii=True))
         except Exception as error:  # A crash is the checker's bug: say so, never pass.
-            print(json.dumps({"file": path, "error": f"{type(error).__name__}: {error}"}))
+            print(json.dumps({"file": path, "error": f"{type(error).__name__}: {error}"}, ensure_ascii=True))
             status = 1
     return status
 
 
 def main(argv):
+    # Paths and messages may hold any character: never let a console code page crash a run.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     if argv[:1] == ["--show"] and len(argv) == 3:
         show(argv[1], argv[2])
         return 0

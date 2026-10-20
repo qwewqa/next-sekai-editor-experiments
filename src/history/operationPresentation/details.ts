@@ -330,6 +330,78 @@ const nativeRecord = (
                 )
             break
         }
+        case 'nse.levelInfo.set': {
+            const fields = t.historyChanges.fields
+            const labels = {
+                title: fields.title,
+                artists: fields.artists,
+                author: fields.author,
+                description: fields.description,
+                rating: fields.rating,
+                tags: fields.tags,
+                cover: fields.cover,
+                preview: fields.previewAudio,
+                initialLife: t.commands.properties.modal.life,
+            } as const
+            const rating = (value: number | null) =>
+                value === null
+                    ? placeholder(t.historyChanges.notSet)
+                    : plain(numberText(value, context))
+            for (const change of operation.data.changes) {
+                const label = labels[change.field]
+                switch (change.field) {
+                    case 'initialLife':
+                        rows.push(
+                            ...numberChange(
+                                change.field,
+                                label,
+                                change.before,
+                                change.after,
+                                context,
+                            ),
+                        )
+                        break
+                    case 'rating':
+                        rows.push(
+                            ...changeRow(
+                                change.field,
+                                label,
+                                rating(change.before),
+                                rating(change.after),
+                            ),
+                        )
+                        break
+                    case 'tags':
+                        for (const [key, text, value] of [
+                            ['tagsAdded', t.historyChanges.tagsAdded, change.added],
+                            ['tagsRemoved', t.historyChanges.tagsRemoved, change.removed],
+                            ['tagsChanged', t.historyChanges.tagsChanged, change.changed ?? 0],
+                        ] as const)
+                            if (value)
+                                rows.push(...valueRow(key, text, plain(numberText(value, context))))
+                        // Kept tags that moved: the label alone, with the existing "Changed".
+                        if (change.reordered)
+                            rows.push(...valueRow('tagsOrder', label, plain(d.changed)))
+                        break
+                    case 'title':
+                    case 'artists':
+                    case 'author':
+                    case 'description':
+                    case 'cover':
+                    case 'preview':
+                        // An unset field is empty, and reads Not set, as an empty file name does.
+                        rows.push(
+                            ...changeRow(
+                                change.field,
+                                label,
+                                nameDetail(change.before, context, { file: true }),
+                                nameDetail(change.after, context, { file: true }),
+                            ),
+                        )
+                }
+            }
+            break
+        }
         case 'nse.dynamicStages.enable':
             rows.push(
                 ...countsRow(

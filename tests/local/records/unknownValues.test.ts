@@ -4,6 +4,8 @@ import {
     isKnownEntryKind,
     isKnownNodeType,
     isListedUserAsset,
+    isNewerRootVersion,
+    isNewerSessionVersion,
     isReadableChain,
     isReadableRootVersion,
     isReadableSession,
@@ -11,8 +13,9 @@ import {
     readFileEvent,
     readMediaKind,
     readOrigin,
+    sessionReadability,
 } from '../../../src/local/records/unknownValues'
-import { SESSION_V } from '../../../src/local/records/version'
+import { RECORDS_V, SESSION_V } from '../../../src/local/records/version'
 
 test('only the current session generation is readable, including in its chain', () => {
     for (const v of [undefined, 1, SESSION_V + 1, String(SESSION_V)])
@@ -52,4 +55,33 @@ test('unknown enum values follow §1.6.11.2’s table', () => {
     assert.equal(isShownTombstone('chain'), false)
     assert.equal(isKnownNodeType('root'), true)
     assert.equal(isKnownNodeType('tree'), false)
+})
+
+test('readability splits what a newer build wrote from what is merely not supported', () => {
+    const row = { v: SESSION_V }
+    assert.equal(sessionReadability({ row }), 'readable')
+    // Newer: a session v above this build's, an unknown entry kind, a root v above RECORDS_V.
+    assert.equal(sessionReadability({ row: { v: SESSION_V + 1 } }), 'newer')
+    assert.equal(sessionReadability({ row, entryKinds: ['init', 'merge'] }), 'newer')
+    assert.equal(sessionReadability({ row, rootVersions: [1, 2] }), 'newer')
+    assert.equal(sessionReadability({ row, rootVersions: [RECORDS_V + 5] }), 'newer')
+    // Not newer, and not read either: an older or malformed generation.
+    for (const v of [1, 0, -1, 1.5, '2', undefined])
+        assert.equal(sessionReadability({ row: { v } }), 'unsupported', String(v))
+    for (const v of [0, -1, 1.5, '1', undefined])
+        assert.equal(sessionReadability({ row, rootVersions: [v] }), 'unsupported', String(v))
+    // Newer wins when both are found: the chain "Needs a newer version".
+    assert.equal(sessionReadability({ row: { v: 1 }, entryKinds: ['merge'] }), 'newer')
+    assert.equal(sessionReadability({ row, rootVersions: [0, 2] }), 'newer')
+    assert.equal(isNewerSessionVersion(SESSION_V + 1), true)
+    assert.equal(isNewerSessionVersion(SESSION_V), false)
+    assert.equal(isNewerSessionVersion(1), false)
+    assert.equal(isNewerSessionVersion('3'), false)
+    assert.equal(isNewerRootVersion(2), true)
+    assert.equal(isNewerRootVersion(1), false)
+    assert.equal(isNewerRootVersion(0), false)
+    assert.equal(isNewerRootVersion(undefined), false)
+    // `isReadableSession` is exactly "readable".
+    assert.equal(isReadableSession({ row, rootVersions: [1] }), true)
+    assert.equal(isReadableSession({ row, rootVersions: [2] }), false)
 })

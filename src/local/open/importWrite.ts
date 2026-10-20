@@ -168,6 +168,7 @@ const entryRow = (
         kept: entry.kept !== false,
         ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
         ...(entry.device === undefined ? {} : { device: { ...entry.device } }),
+        ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
         ...(entry.stack === undefined
             ? {}
             : {

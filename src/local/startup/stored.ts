@@ -2,7 +2,11 @@ import { hashKey, readEpoch, readMeta } from '../db'
 import type { KnownAt } from '../flushWrite'
 import { splitHandles } from '../handleRows'
 import { KeyRange, type KvTx } from '../kv/types'
-import { isKnownEntryKind, isReadableSessionVersion } from '../records/unknownValues'
+import {
+    isNewerSessionVersion,
+    isReadableSessionVersion,
+    sessionReadability,
+} from '../records/unknownValues'
 import {
     blockOf,
     blockSlot,
@@ -168,15 +172,19 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
     if (!isRow(chain)) return { kind: 'damaged', why: 'no chain record' }
     if (chain.deleting !== undefined) return { kind: 'deleted' }
     // One session this build can't read makes the chain "Needs a newer version" (§1.6.11.8).
+    // A newer generation is "Needs a newer version"; an older or malformed one is not newer, and
+    // is not read either.
     const sessions = await tx.index('sessions', 'chainId').getAll(session.chainId)
-    if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
+    if (sessions.some((row) => isRow(row) && isNewerSessionVersion(row.v)))
         return { kind: 'later', why: 'its chain needs a newer version' }
+    if (sessions.some((row) => !isRow(row) || !isReadableSessionVersion(row.v)))
+        return { kind: 'damaged', why: 'its chain has a session of an unsupported generation' }
     if (!Number.isSafeInteger(session.updatedAt) || (session.updatedAt as number) < 0)
         return { kind: 'damaged', why: 'invalid last entry time' }
     // Every entry, whoever wrote it: an unknown kind is never continued (§1.6.11.8).
     const entries = await entriesOf(tx, sessionId)
-    if (entries.some((row) => !isKnownEntryKind(row.kind)))
-        return { kind: 'later', why: 'its session needs a newer version' }
+    const entriesRead = sessionReadability({ row: session, entryKinds: entries.map((e) => e.kind) })
+    if (entriesRead === 'newer') return { kind: 'later', why: 'its session needs a newer version' }
 
     let stack: StackRead | undefined
     if (isWindow(session.stack)) stack = await readStored(tx, sessionId, session.stack)
@@ -194,8 +202,15 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
         }
     const head = stack.slots[stack.window.index - stack.window.base]
     if (!head) return { kind: 'damaged', why: 'no head slot' }
-    if ((await tx.getKey('nodes', hashKey(head.snapshot))) === undefined)
-        return { kind: 'damaged', why: 'its head is not stored' }
+    // The head's root `v` is checked before it is decoded: a root a newer build wrote is not damage.
+    const headRoot = await tx.get('nodes', hashKey(head.snapshot))
+    if (headRoot === undefined) return { kind: 'damaged', why: 'its head is not stored' }
+    if (isRow(headRoot) && headRoot.t === 'root') {
+        const readability = sessionReadability({ row: session, rootVersions: [headRoot.v] })
+        if (readability === 'newer') return { kind: 'later', why: 'its head needs a newer version' }
+        if (readability === 'unsupported')
+            return { kind: 'damaged', why: 'its head is of an unsupported record version' }
+    }
     return {
         kind: 'open',
         session,

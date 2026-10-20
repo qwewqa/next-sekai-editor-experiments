@@ -1,6 +1,7 @@
 import type { Key, KvTx, KvUpgrade } from './kv/types'
 
-// The database `nse-local-data` v1 (Part 1 §1.6.11.2) and the versioning rules (§1.6.1): upgrades
+// The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 2, the second generation, whose store set is
+// `STORES_V1` under its first name) and the versioning rules (§1.6.1): upgrades
 // only add stores, indexes and fields; nothing here or in any version deletes a store or the
 // database, and there is no reset path. The upgrade interface has no delete at all.
 
@@ -12,7 +13,7 @@ type StoreSpec = {
     indexes: Readonly<Record<string, string>>
 }
 
-/** Every v1 store with its key and indexes (none unique or multi-entry). */
+/** Every store with its key and indexes (none unique or multi-entry); `STORES_V1` is the name the set was first given. */
 export const STORES_V1 = {
     chains: { keyPath: 'chainId', indexes: { updatedAt: 'updatedAt', docId: 'docId' } },
     // A chain's file handles by role, off its record (D24).

@@ -1320,6 +1320,7 @@
     "newerSteps": "{0} 个较新的步骤",
     "removedForSpace": "已为节省空间而移除",
     "damaged": "已损坏",
+    "needsNewer": "需要更新版本",
     "savedOn": "保存于 {0}",
     "savedWeb": "保存于网页编辑器 ({0})",
     "savedWebAny": "保存于网页编辑器",
@@ -1371,6 +1372,7 @@
     },
     "operation": {
       "changedHeader": "已更改{0}",
+      "changedLevelInfo": "已更改关卡信息",
       "setValueOnObjects": "已将 {0} 个对象的{1}设为{2}",
       "setValueOnNotes": "已将 {0} 个音符的{1}设为{2}",
       "setValueOnBpm": "已将 {0} 个 BPM 的{1}设为{2}",
@@ -2194,6 +2196,7 @@
     "historyUnreadable": "无法读取此文件的历史记录。保存时会创建单独的文件。",
     "newerVersion": "由更新版本的 {0} 创建。保存时会创建单独的文件。",
     "newerRefused": "由更新版本的 {0} 创建。",
+    "newerPatch": "由更新版本的 {0} 创建。部分内容可能无法显示。",
     "mediaBad": "无法读取此文件的{0}。保存时会创建单独的文件。",
     "media": {
       "bgm": "BGM",
@@ -2257,6 +2260,9 @@
     "notPresent": "不存在",
     "added": "已添加",
     "removed": "已移除",
+    "tagsAdded": "已添加的标签",
+    "tagsRemoved": "已移除的标签",
+    "tagsChanged": "已修改的标签",
     "order": "顺序",
     "folder": "文件夹",
     "groupFolder": "群组文件夹",

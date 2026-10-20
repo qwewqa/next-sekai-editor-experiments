@@ -1320,6 +1320,7 @@
     "newerSteps": "{0} 個較新的步驟",
     "removedForSpace": "已為節省空間而移除",
     "damaged": "已損毀",
+    "needsNewer": "需要較新版本",
     "savedOn": "儲存於 {0}",
     "savedWeb": "儲存於網頁編輯器 ({0})",
     "savedWebAny": "儲存於網頁編輯器",
@@ -1371,6 +1372,7 @@
     },
     "operation": {
       "changedHeader": "已變更{0}",
+      "changedLevelInfo": "已變更關卡資訊",
       "setValueOnObjects": "已將 {0} 個物件的{1}設為{2}",
       "setValueOnNotes": "已將 {0} 個音符的{1}設為{2}",
       "setValueOnBpm": "已將 {0} 個 BPM 的{1}設為{2}",
@@ -2194,6 +2196,7 @@
     "historyUnreadable": "無法讀取此檔案的歷史記錄。儲存時會建立獨立的檔案。",
     "newerVersion": "由較新版本的 {0} 建立。儲存時會建立獨立的檔案。",
     "newerRefused": "由較新版本的 {0} 建立。",
+    "newerPatch": "由較新版本的 {0} 建立。部分內容可能無法顯示。",
     "mediaBad": "無法讀取此檔案的{0}。儲存時會建立獨立的檔案。",
     "media": {
       "bgm": "BGM",
@@ -2257,6 +2260,9 @@
     "notPresent": "不存在",
     "added": "已新增",
     "removed": "已移除",
+    "tagsAdded": "已新增的標籤",
+    "tagsRemoved": "已移除的標籤",
+    "tagsChanged": "已修改的標籤",
     "order": "順序",
     "folder": "資料夾",
     "groupFolder": "圖層資料夾",

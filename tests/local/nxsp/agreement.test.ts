@@ -7,7 +7,7 @@ import test from 'node:test'
 import { inflateRawSync } from 'node:zlib'
 import { deflateChunk } from '../../../src/local/chunkVerify'
 import { hash16Sync, toHex } from '../../../src/local/hash'
-import { executePlan, planNxsp, readNxsp } from '../../../src/local/nxsp'
+import { executePlan, parseSavedAt, planNxsp, readNxsp } from '../../../src/local/nxsp'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
 import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 import { rawZip, type RawEntry } from '../../zip/rawZip'
@@ -166,6 +166,7 @@ const segmentedFile = async () => {
             {
                 revisionId: 'r001-0000-4000-8000-000000000000',
                 device: input.context.device,
+                appVersion: input.context.appVersion,
             },
         ),
     )
@@ -298,6 +299,104 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         'extra-position': await probe(changeHeadChunk('header', (header) => [...header, 0, 1])),
         'newer-level': await probe(project((p) => (p.levelVersion = 2))),
         'newer-minor': await probe(project((p) => (p.minor = 2))),
+        'newer-patch': await probe(project((p) => (p.patch = 1))),
+        'newer-patch-entry': await probe((items) => {
+            project((p) => (p.patch = 4))(items)
+            items.push({ name: 'video/a.mp4', data: encoder.encode('x'), method: 'store' })
+        }),
+        'patch-string': await probe(project((p) => (p.patch = '1'))),
+        'patch-negative': await probe(project((p) => (p.patch = -1))),
+        // Plan §1.6.11.8: `x` is ignorable on every structural object, and carried unread.
+        'x-everywhere': await probe(
+            manifest((m) => {
+                const x = { future: [1, { deep: true }] }
+                m.x = x
+                m.undoStack.x = x
+                m.undoStack.slots[0].x = x
+                m.undoStack.slots[0].step.x = x
+                for (const e of m.entries) if (e.step) e.step.x = x
+            }),
+        ),
+        'x-not-object': await probe(manifest((m) => (m.undoStack.slots[0].x = [1]))),
+        // The operation byte limit holds on every carrier, not only a step's.
+        'x-slot-oversize': await probe(
+            manifest((m) => (m.undoStack.slots[0].x = { big: 'x'.repeat(300_000) })),
+        ),
+        'x-manifest-oversize': await probe(manifest((m) => (m.x = { big: 'x'.repeat(300_000) }))),
+        'x-entry-oversize': await probe(
+            manifest((m) => (m.entries[0].x = { big: 'x'.repeat(300_000) })),
+        ),
+        'x-undostack-oversize': await probe(
+            manifest((m) => (m.undoStack.x = { big: 'x'.repeat(300_000) })),
+        ),
+        // Plan §1.6.11.8: a key no carrier knows, inside a slot or a step, is "unknown-key".
+        'step-unknown-key': await probe(manifest((m) => (m.undoStack.slots[0].step.zz = 1))),
+        'entry-step-unknown-key': await probe(
+            manifest((m) => (m.entries.find((e: Loose) => e.step).step.zz = 1)),
+        ),
+        'slot-unknown-key': await probe(manifest((m) => (m.undoStack.slots[0].zz = 1))),
+        'step-unknown-key-and-damage': await probe(
+            manifest((m) => {
+                m.undoStack.slots[0].step.zz = 1
+                m.undoStack.slots[0].step.kind = 'nope'
+            }),
+        ),
+        // The app version of a save: optional on read, a string, only on a save entry.
+        'appversion-absent': await probe(
+            manifest((m) => delete m.entries.find((e: Loose) => e.kind === 'save').appVersion),
+        ),
+        'appversion-number': await probe(
+            manifest((m) => (m.entries.find((e: Loose) => e.kind === 'save').appVersion = 6)),
+        ),
+        'appversion-on-edit': await probe(manifest((m) => (m.entries[1].appVersion = '0.6.0'))),
+        // Plan §1.6.11.4: names are UTF-8 as Rust's from_utf8_lossy reads them, which keeps U+FEFF.
+        'bom-name': await (async () => {
+            const { items } = await goldenItems()
+            const bom = [0xef, 0xbb, 0xbf]
+            return rawZip(
+                items.map((item) => ({
+                    name: item.name.startsWith('bgm/')
+                        ? new Uint8Array([...bom, ...encoder.encode(item.name)])
+                        : item.name,
+                    data: item.data,
+                    method: item.method === 'store' ? (0 as const) : (8 as const),
+                })),
+            )
+        })(),
+        // A hash is exactly 32 or 64 lowercase hex digits: no trailing newline.
+        'sha256-newline': await probe(
+            project(
+                (p) =>
+                    (p.bgm.sha256 = `${p.bgm.sha256}
+`),
+            ),
+        ),
+        'hash-newline': await probe(
+            project(
+                (p) =>
+                    (p.metadata.preview = {
+                        type: 'audio/mpeg',
+                        hash: `${'a'.repeat(32)}
+`,
+                        size: 3,
+                    }),
+            ),
+        ),
+        // Huge integer literals read as JSON.parse reads them: a double, or Infinity.
+        'huge-int-n': await probe((items) => {
+            const { item, text } = textOf(items, 'project.json')
+            item.data = encoder.encode(text.replace(/"n":\d+/, `"n":1${'0'.repeat(400)}`))
+        }),
+        'huge-int-rating': await probe((items) => {
+            const { item, text } = textOf(items, 'project.json')
+            item.data = encoder.encode(text.replace('"rating":12', `"rating":${'9'.repeat(5000)}`))
+        }),
+        'huge-int-level': await probe((items) => {
+            const { item, text } = textOf(items, 'level.json')
+            item.data = encoder.encode(
+                text.replace(/"bgmOffset":[^,]+/, `"bgmOffset":${'7'.repeat(5000)}`),
+            )
+        }),
         'newer-major': await probe((items) => {
             project((p) => (p.version = 2))(items)
             items.push({ name: 'video/a.mp4', data: encoder.encode('x'), method: 'store' })
@@ -359,6 +458,55 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
 
 type Opened = { kind: string; open: string | null; reasons: string[] }
 
+/**
+ * What the plan says each of these opens as (§1.6.11.4, §1.6.11.8), written out apart from either
+ * reader: both readers can share a deviation, and agreeing with each other cannot catch it.
+ */
+const expectedByPlan: Record<string, Opened> = {
+    noop: { kind: 'nxsp', open: 'full', reasons: [] },
+    // A newer patch alone is a notice: the open is whole. With anything else unknown it is partial.
+    'newer-patch': { kind: 'nxsp', open: 'full', reasons: ['newer-patch'] },
+    'newer-patch-entry': {
+        kind: 'nxsp',
+        open: 'partial',
+        reasons: ['newer-patch', 'unknown-entry'],
+    },
+    'patch-string': { kind: 'nxsp', open: 'partial', reasons: ['invalid-key'] },
+    'patch-negative': { kind: 'nxsp', open: 'partial', reasons: ['invalid-key'] },
+    // A newer minor skips the history; the file opens partial.
+    'newer-minor': { kind: 'nxsp', open: 'partial', reasons: ['newer-minor'] },
+    // `x` is ignorable anywhere; a non-object `x` is damaged history.
+    'x-everywhere': { kind: 'nxsp', open: 'full', reasons: [] },
+    'x-not-object': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-slot-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-manifest-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-entry-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'x-undostack-oversize': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    // An unknown key in a slot or step is newer content: "Made by a newer version", not damage.
+    'step-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },
+    'entry-step-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },
+    'slot-unknown-key': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },
+    'step-unknown-key-and-damage': {
+        kind: 'nxsp',
+        open: 'partial',
+        reasons: ['history-unreadable', 'unknown-key'],
+    },
+    // The app version of a save is optional, a string, and a save's alone.
+    'appversion-absent': { kind: 'nxsp', open: 'full', reasons: [] },
+    'appversion-number': { kind: 'nxsp', open: 'partial', reasons: ['history-unreadable'] },
+    'appversion-on-edit': { kind: 'nxsp', open: 'partial', reasons: ['unknown-key'] },
+    // A name keeps a leading U+FEFF: it is another entry than bgm/…, which is then missing.
+    'bom-name': { kind: 'nxsp', open: 'partial', reasons: ['media-unreadable', 'unknown-entry'] },
+    // A hash with a trailing newline is no hash.
+    'sha256-newline': { kind: 'nxsp', open: 'partial', reasons: ['invalid-key', 'unknown-entry'] },
+    'hash-newline': { kind: 'nxsp', open: 'partial', reasons: ['invalid-key', 'unknown-entry'] },
+    // Past the double range a literal is Infinity: not a safe integer, not a finite number.
+    'huge-int-n': { kind: 'nxsp', open: 'partial', reasons: ['invalid-key'] },
+    'huge-int-rating': { kind: 'nxsp', open: 'partial', reasons: ['invalid-key'] },
+    // level.json's numbers are the level parser's, not the reader's.
+    'huge-int-level': { kind: 'nxsp', open: 'full', reasons: [] },
+}
+
 const openedBy = async (bytes: Uint8Array): Promise<Opened> => {
     const read = await readNxsp(bytes)
     return {
@@ -399,6 +547,8 @@ test('the reader and the checker open every probe alike', { skip: !hasUv }, asyn
                 ].sort(),
             }
             assert.deepEqual(py, js, `${name}: ${JSON.stringify(line.report)}`)
+            const planned = expectedByPlan[name]
+            if (planned) assert.deepEqual(js, planned, `${name} by the plan`)
             // Never the dangerous direction: a file the checker passes always opens fully.
             if (strict.includes(`ok ${paths[i] ?? ''}`))
                 assert.deepEqual([js.kind, js.open], ['nxsp', 'full'], name)
@@ -437,3 +587,74 @@ test('the reader and the checker open every probe alike', { skip: !hasUv }, asyn
         rmSync(dir, { recursive: true, force: true })
     }
 })
+
+test(
+    'savedAt reads the same in the reader and the checker: RFC 3339 only, else absent',
+    { skip: !hasUv },
+    async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'nxsp-saved-'))
+        try {
+            const cases: [unknown, number | null][] = [
+                ['2026-10-16T05:41:07Z', Date.UTC(2026, 9, 16, 5, 41, 7)],
+                ['2026-10-16T05:41:07.250Z', Date.UTC(2026, 9, 16, 5, 41, 7)],
+                ['2026-10-16T14:41:07+09:00', Date.UTC(2026, 9, 16, 5, 41, 7)],
+                ['2026-10-15T20:41:07-09:00', Date.UTC(2026, 9, 16, 5, 41, 7)],
+                ['2024-02-29T00:00:00Z', Date.UTC(2024, 1, 29)],
+                ['1970-01-01T00:00:00Z', 0],
+                ['0000-01-01T00:00:00Z', -62_167_219_200_000],
+                ['2026-10-16T05:41:07z', null],
+                ['2026-10-16t05:41:07Z', null],
+                ['2026-10-16 05:41:07Z', null],
+                ['2026-10-16T05:41:07', null],
+                ['2026-10-16T05:41Z', null],
+                ['2026-10-16T05:41:07.Z', null],
+                ['2026-10-16T05:41:07+0900', null],
+                ['2026-10-16T05:41:60Z', null],
+                ['2026-10-16T24:00:00Z', null],
+                ['2026-10-16T05:60:00Z', null],
+                ['2026-13-01T00:00:00Z', null],
+                ['2026-00-10T00:00:00Z', null],
+                ['2026-02-29T00:00:00Z', null],
+                ['2026-04-31T00:00:00Z', null],
+                ['1900-02-29T00:00:00Z', null],
+                ['2026-10-16T05:41:07+24:00', null],
+                ['2026-10-16T05:41:07+09:60', null],
+                ['Oct 19 2026', null],
+                ['٢٠٢٦-١٠-١٦T٠٥:٤١:٠٧Z', null],
+                ['2026-10-16T05:41:07Z\n', null],
+                [' 2026-10-16T05:41:07Z', null],
+                ['', null],
+                [1792126800000, null],
+                [null, null],
+                [true, null],
+            ]
+            const paths: string[] = []
+            for (const [i, [savedAt]] of cases.entries()) {
+                const path = join(dir, `${i}.nxsp`)
+                writeFileSync(path, await probe(project((p) => (p.revision.savedAt = savedAt))))
+                paths.push(path)
+            }
+            const read = checker('--read', ...paths)
+            assert.equal(read.status, 0, `${read.stdout}${read.stderr}`)
+            const lines = read.stdout
+                .trim()
+                .split('\n')
+                .map((line) => JSON.parse(line) as Loose)
+            for (const [i, [savedAt, millis]] of cases.entries()) {
+                const js = await readNxsp(new Uint8Array(readFileSync(paths[i] as string)))
+                assert.equal(js.kind, 'nxsp')
+                const label = JSON.stringify(savedAt)
+                // Never a reason to open partial, on either side.
+                assert.equal(js.kind === 'nxsp' ? js.open : '', 'full', label)
+                assert.equal(lines[i]?.open, 'full', label)
+                assert.equal(parseSavedAt(savedAt) ?? null, millis, label)
+                // What the reader keeps of the revision is the same value, or nothing.
+                const kept = js.kind === 'nxsp' ? js.project?.revision?.savedAt : undefined
+                assert.equal(kept === undefined ? null : parseSavedAt(kept), millis, label)
+                assert.equal(lines[i]?.savedAt ?? null, parseSavedAt(savedAt) ?? null, label)
+            }
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    },
+)

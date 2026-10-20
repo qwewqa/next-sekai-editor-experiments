@@ -203,6 +203,7 @@ export const operationGroup = (operation: NativeOperationInput): GroupDescriptor
             )
         }
         case 'nse.bgm.change':
+        case 'nse.levelInfo.set':
         case 'nse.dynamicStages.enable':
         case 'nse.owner.moveMany':
         case 'nse.owner.ungroup':

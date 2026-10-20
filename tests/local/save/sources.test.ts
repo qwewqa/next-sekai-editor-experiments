@@ -213,6 +213,37 @@ test('a root of a version this build doesn’t read refuses with "Needs a newer 
     assert.equal(built.refused, 'needsNewer')
 })
 
+test('a root of an older or malformed version is bad, not "Needs a newer version", as open and peek say', async () => {
+    for (const v of [0, -1, 1.5, '1', undefined]) {
+        const fixture = await chain()
+        const key = hashKey(fromHex16(stateAt(0).hex))
+        await fixture.store.write(['nodes'], async (tx) => {
+            const row = (await tx.get('nodes', key)) as Record<string, unknown>
+            await tx.put('nodes', { ...row, v }, key)
+        })
+        const { built } = await save(fixture, { kind: 'copy' }, { binds: false })
+        // Whatever it is refused or marked as, it is not called newer.
+        assert.ok(!('refused' in built) || built.refused !== 'needsNewer', String(v))
+    }
+})
+
+test('a session of an older generation refuses as unreadable, one of a newer generation as "Needs a newer version"', async () => {
+    for (const [v, refused] of [
+        [1, 'unreadableHead'],
+        [3, 'needsNewer'],
+    ] as const) {
+        const fixture = await chain()
+        const { session } = fixture
+        await fixture.store.write(['sessions'], async (tx) => {
+            const row = (await tx.get('sessions', session.id)) as Record<string, unknown>
+            await tx.put('sessions', { ...row, v })
+        })
+        const { built } = await save(fixture, { kind: 'copy' }, { binds: false })
+        assert.ok('refused' in built, String(v))
+        assert.equal(built.refused, refused, String(v))
+    }
+})
+
 test('damage is marked in storage before the plan is final, even when the plan then fails', async () => {
     const fixture = await chain()
     await fixture.edit(2, noteAdd(1))

@@ -10,7 +10,7 @@ import { deflateChunk } from '../../../src/local/chunkVerify'
 import { hash16Sync, toHex } from '../../../src/local/hash'
 import { readNxsp } from '../../../src/local/nxsp/read'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
-import { jsonOf, setJson, unzip, zipItems, type Item } from './craft'
+import { jsonOf, setJson, unzip, zipItems, type Item, type Loose } from './craft'
 
 // The independent checker (`tools/nxsp_check.py`, §1.6.11.9) over the builder golden's output and
 // over crafted bad files, each failing for its reason. Python runs through `uv` with `-I`; without
@@ -202,6 +202,61 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
                     setJson(items, 'project.json', p)
                 }),
                 'metadata.title',
+            ],
+            // The patch number and the app version of a save (§1.6.11.4, §1.6.11.5).
+            [
+                'patch-missing',
+                craft((items) => {
+                    const p = jsonOf(items, 'project.json')
+                    delete p.patch
+                    setJson(items, 'project.json', p)
+                }),
+                'project.json: patch',
+            ],
+            [
+                'patch-newer',
+                craft((items) => {
+                    setJson(items, 'project.json', { ...jsonOf(items, 'project.json'), patch: 1 })
+                }),
+                'project.json: patch',
+            ],
+            [
+                'appversion-missing',
+                craft((items) => {
+                    const m = jsonOf(items, 'history/manifest.json')
+                    delete m.entries.find((e: Loose) => e.kind === 'save').appVersion
+                    setJson(items, 'history/manifest.json', m)
+                }),
+                'appVersion',
+            ],
+            [
+                'appversion-on-edit',
+                craft((items) => {
+                    const m = jsonOf(items, 'history/manifest.json')
+                    m.entries.find((e: Loose) => e.kind === 'edit').appVersion = '0.6.0'
+                    setJson(items, 'history/manifest.json', m)
+                }),
+                'appVersion',
+            ],
+            // A hash with a trailing newline is no hash (fullmatch, not match).
+            [
+                'sha256-newline',
+                craft((items) => {
+                    const p = jsonOf(items, 'project.json')
+                    p.bgm.sha256 = `${p.bgm.sha256}
+`
+                    setJson(items, 'project.json', p)
+                }),
+                'bgm.sha256',
+            ],
+            [
+                'x-not-object',
+                craft((items) => {
+                    const m = jsonOf(items, 'history/manifest.json')
+                    m.undoStack.slots[0].step.x = [1]
+                    setJson(items, 'history/manifest.json', m)
+                }),
+                'x: not an object',
             ],
             // The history.
             [
@@ -480,6 +535,79 @@ test(
             assert.notEqual(check(file).status, 0)
             const reader = check('--read', file)
             assert.match(reader.output, /"open": "partial"/)
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    },
+)
+
+test(
+    'the checker accepts x on every carrier and any content inside it',
+    { skip: !hasUv },
+    async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'nxsp-x-'))
+        try {
+            const bytes = await craft((items) => {
+                const m = jsonOf(items, 'history/manifest.json')
+                const x = { future: [1, { deep: true }], text: 'ü' }
+                m.x = x
+                m.undoStack.x = x
+                m.undoStack.slots[0].x = x
+                m.undoStack.slots[0].step.x = x
+                for (const entry of m.entries) {
+                    entry.x = x
+                    if (entry.step) entry.step.x = x
+                }
+                setJson(items, 'history/manifest.json', m)
+            })
+            const path = join(dir, 'x.nxsp')
+            writeFileSync(path, bytes)
+            const strict = check(path)
+            assert.equal(strict.status, 0, strict.output)
+            const reader = check('--read', path)
+            assert.match(reader.output, /"open": "full"/)
+            assert.equal(((await readNxsp(new Blob([bytes]))) as { open: string }).open, 'full')
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+    },
+)
+
+test(
+    'the checker never crashes on a path or a number: any Unicode name, huge integer literals',
+    { skip: !hasUv },
+    async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'nxsp-robust-'))
+        try {
+            const good = await craft(() => undefined)
+            // A name outside every Windows code page, and one with a character the console lacks.
+            const odd = join(dir, 'バス-ファイル-é-☃.nxsp')
+            writeFileSync(odd, good)
+            for (const args of [[odd], ['--read', odd]]) {
+                const result = check(...args)
+                assert.equal(result.status, 0, result.output)
+                assert.doesNotMatch(result.output, /Error/)
+            }
+            // Integer literals of 400 digits, and of more than Python's 4,300-digit string limit.
+            for (const digits of [400, 5000]) {
+                const huge = await craft((items) => {
+                    const entry = items.find((i) => i.name === 'project.json')
+                    assert.ok(entry)
+                    const text = new TextDecoder().decode(entry.data)
+                    entry.data = encoder.encode(
+                        text.replace('"rating":12', `"rating":${'9'.repeat(digits)}`),
+                    )
+                })
+                const path = join(dir, `huge-${digits}.nxsp`)
+                writeFileSync(path, huge)
+                const strict = check(path)
+                assert.equal(strict.status, 1)
+                assert.doesNotMatch(strict.output, /Error/)
+                const reader = check('--read', path)
+                assert.equal(reader.status, 0, reader.output)
+                assert.match(reader.output, /"invalid-key", "metadata\.rating"/)
+                assert.doesNotMatch(reader.output, /"error"/)
+            }
         } finally {
             rmSync(dir, { recursive: true, force: true })
         }

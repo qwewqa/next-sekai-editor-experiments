@@ -1320,6 +1320,7 @@
     "newerSteps": "새 단계 {0}개",
     "removedForSpace": "공간 확보를 위해 제거됨",
     "damaged": "손상됨",
+    "needsNewer": "더 새로운 버전 필요",
     "savedOn": "{0}에서 저장됨",
     "savedWeb": "웹 편집기({0})에서 저장됨",
     "savedWebAny": "웹 편집기에서 저장됨",
@@ -1371,6 +1372,7 @@
     },
     "operation": {
       "changedHeader": "{0} 변경됨",
+      "changedLevelInfo": "레벨 정보 변경됨",
       "setValueOnObjects": "객체 {0}개의 {1}을(를) {2}(으)로 설정함",
       "setValueOnNotes": "노트 {0}개의 {1}을(를) {2}(으)로 설정함",
       "setValueOnBpm": "BPM {0}개의 {1}을(를) {2}(으)로 설정함",
@@ -2194,6 +2196,7 @@
     "historyUnreadable": "이 파일의 기록을 읽을 수 없었습니다. 저장하면 별도의 파일이 만들어집니다.",
     "newerVersion": "더 새로운 버전의 {0}에서 만들어졌습니다. 저장하면 별도의 파일이 만들어집니다.",
     "newerRefused": "더 새로운 버전의 {0}에서 만들어졌습니다.",
+    "newerPatch": "더 새로운 버전의 {0}에서 만들어졌습니다. 일부 내용이 표시되지 않을 수 있습니다.",
     "mediaBad": "이 파일의 {0} 항목을 읽을 수 없었습니다. 저장하면 별도의 파일이 만들어집니다.",
     "media": {
       "bgm": "BGM",
@@ -2257,6 +2260,9 @@
     "notPresent": "없음",
     "added": "추가됨",
     "removed": "삭제됨",
+    "tagsAdded": "추가된 태그",
+    "tagsRemoved": "삭제된 태그",
+    "tagsChanged": "변경된 태그",
     "order": "순서",
     "folder": "폴더",
     "groupFolder": "그룹 폴더",

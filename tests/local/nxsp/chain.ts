@@ -54,6 +54,7 @@ export const fresh = () => {
             {
                 revisionId: 'r001-0000-4000-8000-000000000000',
                 device: { id: 'c3f00000-0000-4000-8000-000000000000', label: 'Web (Chrome)' },
+                appVersion: '0.6.0',
             },
         ),
     ]
