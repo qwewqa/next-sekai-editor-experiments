@@ -28,3 +28,25 @@ export const focusAfterRemoval = async (opener?: () => HTMLElement | null | unde
     // An opener that cannot take focus (disabled) leaves it to the chart.
     if (focusLost()) chartPane()?.focus({ preventScroll: true })
 }
+
+/**
+ * Runs `run` once the press that `event` began is released, after the events its release fires,
+ * so it sees where the press left focus. Call it before `swallowPress`, which hides the release
+ * from listeners added after its own.
+ */
+export const afterPress = (event: PointerEvent, run: () => void) => {
+    const { pointerId } = event
+    const done = (next: PointerEvent) => {
+        if (next.pointerId !== pointerId) return
+        removeEventListener('pointerup', done, true)
+        removeEventListener('pointercancel', done, true)
+        setTimeout(run)
+    }
+    addEventListener('pointerup', done, true)
+    addEventListener('pointercancel', done, true)
+}
+
+/** Focus that fell to the page goes back to `opener`, when it is still shown. */
+export const returnFocus = (opener: HTMLElement | null | undefined) => {
+    if (focusLost() && shown(opener)) opener.focus({ preventScroll: true })
+}

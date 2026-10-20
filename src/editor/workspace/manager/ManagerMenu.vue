@@ -11,6 +11,7 @@ import {
 } from 'vue'
 import { vScrollEdges } from '../../../directives/scrollEdges'
 import { holdsCharacter, menuKeyIndex } from '../../../utils/menuKeys'
+import { afterPress, returnFocus } from '../../../utils/focusFallback'
 import { swallowPress } from '../../../utils/swallowPress'
 import { createTypeAhead, isTypeAheadKey } from '../../../utils/typeAhead'
 import { isInWorkspaceDock, workspaceDockAttribute } from '..'
@@ -178,8 +179,9 @@ onUnmounted(() => {
     window.removeEventListener('blur', onDismiss)
 })
 
+// Focus in it goes back to its opener as it closes (X-3).
 const onDismiss = () => {
-    emit('close', false)
+    emit('close', !!menu.value?.contains(document.activeElement))
 }
 
 const onOutside = (event: PointerEvent) => {
@@ -199,8 +201,21 @@ const onOutside = (event: PointerEvent) => {
         event.button !== 2 ||
         !(target instanceof Element) ||
         !(isInWorkspaceDock(target) || list?.contains(target))
-    )
+    ) {
+        // A press that only closes moves no focus: focus goes back to the opener (X-3).
         swallowPress(event)
+        emit('close', true)
+        return
+    }
+    // A right press that opens no menu and takes no focus of its own gives it back too.
+    const anchor = props.anchor
+    afterPress(event, () => {
+        returnFocus(
+            anchor.matches(':is(button, [tabindex]):not(:disabled)')
+                ? anchor
+                : anchor.querySelector<HTMLElement>('button:not(:disabled)'),
+        )
+    })
     emit('close', false)
 }
 

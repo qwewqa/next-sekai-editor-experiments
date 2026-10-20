@@ -1,4 +1,5 @@
 import { isApplePlatform } from '../../editor/controls/bindings'
+import { afterPress, focusLost } from '../../utils/focusFallback'
 import { swallowPress } from '../../utils/swallowPress'
 
 // Keeps the shared list (see selectLists.css) to a system list's rules.
@@ -138,9 +139,16 @@ const onKeydown = (event: KeyboardEvent) => {
 const onPointerDown = (event: PointerEvent) => {
     if (!canOpen) return
     const select = document.querySelector('select:open')
-    if (select && !(event.target instanceof Node && select.contains(event.target)))
+    if (select && !(event.target instanceof Node && select.contains(event.target))) {
+        // The press only closes the list: focus in it, which the closed list would drop to the
+        // page, goes back to its select (X-3).
+        afterPress(event, () => {
+            const active = document.activeElement
+            if (!(select instanceof HTMLElement) || !select.isConnected || active === select) return
+            if (focusLost() || select.contains(active)) select.focus({ preventScroll: true })
+        })
         swallowPress(event)
-    else if (!select && event.target instanceof HTMLSelectElement) fitList(event.target)
+    } else if (!select && event.target instanceof HTMLSelectElement) fitList(event.target)
 }
 
 /** Installs before the app mounts, ahead of its components' listeners but not module-level ones. */

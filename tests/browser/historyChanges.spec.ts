@@ -1533,3 +1533,34 @@ test('Try Again and Show All by keys hand focus on as they go (X-2)', async ({ p
     await expect(surface(page).locator('[data-history-filter-banner]')).toHaveCount(0)
     await expect(surface(page).locator('[data-history-goto-button]')).toBeFocused()
 })
+
+test('an outside press that closes Go To or a row’s menu gives focus back to its opener (X-3)', async ({
+    page,
+}) => {
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await stored(page)
+    await openTab(page)
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    const outside = { x: chart.x + chart.width / 2, y: chart.y + chart.height / 2 }
+    const button = surface(page).locator('[data-history-goto-button]')
+    await button.click()
+    await expect(page.locator('[data-history-goto]')).toBeVisible()
+    await page.mouse.click(outside.x, outside.y)
+    await expect(page.locator('[data-history-goto]')).toHaveCount(0)
+    await expect(button).toBeFocused()
+    // A resize closes it the same way.
+    await button.click()
+    await expect(page.locator('[data-history-goto]')).toBeVisible()
+    await page.setViewportSize({ width: 1500, height: 950 })
+    await expect(page.locator('[data-history-goto]')).toHaveCount(0)
+    await expect(button).toBeFocused()
+    // A row's menu: back to the row.
+    await row(page, 'Moved A').click({ button: 'right' })
+    const menu = page.getByRole('menu')
+    await expect(menu).toBeVisible()
+    await page.mouse.click(outside.x, outside.y)
+    await expect(menu).toHaveCount(0)
+    await expect
+        .poll(() => row(page, 'Moved A').evaluate((element) => element.matches(':focus-within')))
+        .toBe(true)
+})

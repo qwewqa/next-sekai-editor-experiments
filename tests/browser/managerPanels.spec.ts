@@ -1811,3 +1811,25 @@ test('the pressed Select Multiple shows keyboard focus as an inner ring on its f
     expect(icon).not.toBe(fill)
     expect(ring).toEqual({ style: 'solid', width: '2px', offset: '-4px', color: icon })
 })
+
+test('an outside press that closes an action menu gives focus back to its button (X-3)', async ({
+    page,
+}) => {
+    await seedGroups(page, ['Default', 'Other group'])
+    const panel = await openGroups(page)
+    const menu = page.getByRole('menu')
+    const button = panel.getByRole('button', { name: 'More Actions for Default' })
+    await button.click()
+    await expect(menu).toBeVisible()
+    const point = await page.evaluate(() => window.editorTest.point(5.5, 1))
+    await page.mouse.click(point.x, point.y)
+    await expect(menu).toHaveCount(0)
+    await expect(button).toBeFocused()
+    // A right press on the dock's empty space closes it too, and takes no focus of its own.
+    await button.click()
+    await expect(menu).toBeVisible()
+    const box = (await panel.boundingBox())!
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8, { button: 'right' })
+    await expect(menu).toHaveCount(0)
+    await expect(button).toBeFocused()
+})
