@@ -477,23 +477,35 @@ const mediaNotHeld = (state: State, options: StoredFile['options']) => {
 /**
  * Reads the chain's own file before a save picker that may return it (R2), when its dialog
  * opens: whole, and only when it isn't at the base, when storage lacks rows of its base (the
- * carry test) or head media it may hold. Read access is asked for only when storage lacks
- * something; otherwise only a grant already held reads. Undefined when nothing was read.
+ * carry test, and damage storage knows of) or head media it may hold. Read access is asked for
+ * only when storage lacks something; otherwise only a grant already held reads. Again after the
+ * build before the picker found damage (SP-1). Undefined when nothing was read.
  */
-const preRead = async (env: Env, binding: Binding): Promise<PreRead | undefined> => {
+const preRead = async (
+    env: Env,
+    binding: Binding,
+    /**
+     * `damaged`: a build just found damage in storage (SP-1), so the file is read whatever
+     * storage says, but only with a grant already held: a prompt would spend the press the
+     * picker needs.
+     */
+    { damaged = false }: { damaged?: boolean } = {},
+): Promise<PreRead | undefined> => {
     const file = binding.file
     if (!file) return
     const handle = await bindingHandle(env, file)
     if (!handle) return
-    const needs = await env.worker
-        .call('saveNeeds', {
-            chainId: env.chainId,
-            media: mediaNotHeld(savedState(), file.options),
-        })
-        .catch(() => undefined)
-    const short = !needs?.carries || needs.lacking.length > 0
+    const needs = damaged
+        ? undefined
+        : await env.worker
+              .call('saveNeeds', {
+                  chainId: env.chainId,
+                  media: mediaNotHeld(savedState(), file.options),
+              })
+              .catch(() => undefined)
+    const short = damaged || !needs?.carries || needs.lacking.length > 0
     let readable = await readableWithoutPrompt(handle)
-    if (!readable && short) readable = await requestRead(handle)
+    if (!readable && short && !damaged) readable = await requestRead(handle)
     if (!readable) return
     try {
         const found = await handle.getFile()
@@ -821,6 +833,24 @@ const pickReserved = async (
     const pickSaveFile = platform.pickSaveFile
     if (!pickSaveFile) return download(env, reservation, built, state, request, slot)
 
+    // The build found damage in storage that the carry test couldn't see (SP-1): the chain's own
+    // file is still whole until a picker empties it, so it's read now, and a pick of it appends.
+    let pre = await settledNow(request.pre)
+    if (!pre && binding.file && (built.damaged.length > 0 || built.marked > 0)) {
+        // A long read shows "Preparing…" as a long build does; its Cancel cancels the Save.
+        slot.timer = setTimeout(() => {
+            openPreparing(slot).built(built.blob.size)
+        }, PREPARING_MS)
+        pre = await preRead(env, binding, { damaged: true })
+        await savePoint('preRead')
+        clearTimeout(slot.timer)
+        if (slot.dialog?.signal.aborted) {
+            closePreparing(slot)
+            await env.flusher.endSave(reservation)
+            return { kind: 'cancelled' }
+        }
+    }
+
     // R12: a build that outlasted the press asks for a new one.
     if (
         activationLapsed(startedAt) &&
@@ -832,7 +862,7 @@ const pickReserved = async (
     }
     closePreparing(slot)
     // A read that hasn't finished when the picker opens is dropped (R2).
-    const pre = await settledNow(request.pre)
+    pre ??= await settledNow(request.pre)
     let target: FileTarget | undefined
     try {
         target = await pickSaveFile({
@@ -1688,6 +1718,9 @@ const notFoundSaveAs = async (env: Env) => {
     )
 }
 
+/** How long the Save dialog waits to learn whether storage holds the head's BGM. */
+const BGM_HELD_WAIT_MS = 1000
+
 /**
  * Whether the head's BGM is held (§1.6.8.4, defined once): its bytes are in this tab's memory or
  * in the media store. A read that fails counts as not held, the side that claims less.
@@ -1696,10 +1729,18 @@ const bgmHeld = async (env: Env, state: State) => {
     const { meta, source } = state.bgm
     if (!meta) return false
     if (source) return true
-    const needs = await env.worker
-        .call('saveNeeds', { chainId: env.chainId, media: [meta.hash] })
-        .catch(() => undefined)
-    return !!needs && !needs.lacking.includes(meta.hash)
+    // One key read; a worker that doesn't answer soon counts as not held, so the dialog opens.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const held = await Promise.race([
+        env.worker.call('mediaHeld', [meta.hash]).catch(() => undefined),
+        new Promise<undefined>((resolve) => {
+            timer = setTimeout(() => {
+                resolve(undefined)
+            }, BGM_HELD_WAIT_MS)
+        }),
+    ])
+    clearTimeout(timer)
+    return !!held?.includes(meta.hash)
 }
 
 /** The estimate with the BGM this tab holds counted when storage doesn't have it yet. */
