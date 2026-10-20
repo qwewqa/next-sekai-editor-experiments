@@ -241,12 +241,16 @@ test.describe('Export (F4b, F7)', () => {
         await expect(submit).toBeFocused()
     })
 
-    test('a second Export press while the first dialog is opening opens no second dialog', async ({
+    test('a second Export while the first is opening opens no second dialog (F7)', async ({
         page,
     }) => {
         await boot(page, opfs)
-        await page.keyboard.press('Shift+P')
-        await page.keyboard.press('Shift+P')
+        // Two presses within the first one's read of the remembered target.
+        await page.evaluate(async () => {
+            const { commands } = await import('/src/editor/commands/index.ts')
+            commands.exportLevel.execute()
+            commands.exportLevel.execute()
+        })
         await expect(page.getByRole('dialog')).toHaveCount(1)
         await page.waitForTimeout(300)
         await expect(page.getByRole('dialog')).toHaveCount(1)

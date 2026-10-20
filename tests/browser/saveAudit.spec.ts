@@ -390,14 +390,24 @@ test.describe('a large download on a touch device', () => {
         await edit(page, 1)
         await setBgm(page, 'song.mp3', 2_500_000)
         await flushed(page)
-        // The state is stored before the file is built, and that fails (a full disk).
-        await page.evaluate(() => {
-            const flusher = window.nseFlushTest!.flusher
-            flusher.flush = () => Promise.reject(new Error('The disk is full'))
-        })
-        page.on('pageerror', () => undefined)
         await pressSave(page)
+        await expect(saveDialog(page).locator('[data-save-total]')).toContainText('about 2.')
+        // The state is stored before the file is built, and that fails (a full disk): after
+        // “Preparing…” has opened for the large download.
+        await page.evaluate(() => {
+            window.nseFlushTest!.flusher.flush = () => Promise.reject(new Error('The disk is full'))
+            const seen: string[] = []
+            Reflect.set(window, 'preparingSeen', seen)
+            new MutationObserver(() => {
+                if (document.querySelector('[data-save-preparing]')) seen.push('preparing')
+            }).observe(document.body, { childList: true, subtree: true })
+        })
         await submitSave(page, 'coconut')
+        await expect
+            .poll(() =>
+                page.evaluate(() => (Reflect.get(window, 'preparingSeen') as string[]).length),
+            )
+            .toBeGreaterThan(0)
         await expect(page.locator('[data-save-preparing]')).toHaveCount(0)
         await expect(page.getByRole('dialog')).toHaveCount(0)
     })
