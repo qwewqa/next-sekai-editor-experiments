@@ -2193,6 +2193,9 @@
   },
   "open": {
     "notProject": "Ce ZIP n’est pas un fichier de projet.",
+    "severalProjects": "Ce ZIP contient plusieurs fichiers de projet. Décompressez-le et ouvrez-les un par un.",
+    "scp": "Ceci est un paquet Sonolus. Pour utiliser son skin ou ses autres ressources, choisissez-le dans Ressources d’aperçu.",
+    "openPreviewAssets": "Ressources d’aperçu…",
     "damagedUnopened": "Ce fichier est endommagé et n’a pas pu être ouvert.",
     "damaged": "Ce fichier est endommagé. Il a été ouvert sans son historique.",
     "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde crée un fichier séparé.",

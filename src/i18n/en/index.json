@@ -2193,6 +2193,9 @@
     },
     "open": {
         "notProject": "This ZIP is not a project file.",
+        "severalProjects": "This ZIP holds several project files. Unzip it and open them one by one.",
+        "scp": "This is a Sonolus package. To use its skin or other assets, choose it in Preview Assets.",
+        "openPreviewAssets": "Preview Assets…",
         "damagedUnopened": "This file is damaged and could not be opened.",
         "damaged": "This file is damaged. It was opened without its history.",
         "historyUnreadable": "This file’s history could not be read. Saving makes a separate file.",

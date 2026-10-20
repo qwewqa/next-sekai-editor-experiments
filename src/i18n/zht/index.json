@@ -2193,6 +2193,9 @@
   },
   "open": {
     "notProject": "此 ZIP 不是專案檔案。",
+    "severalProjects": "此 ZIP 包含多個專案檔案。請解壓縮後逐一開啟。",
+    "scp": "這是 Sonolus 套件。若要使用其中的外觀或其他資源，請在預覽資源中選擇。",
+    "openPreviewAssets": "預覽資源…",
     "damagedUnopened": "此檔案已損毀，無法開啟。",
     "damaged": "此檔案已損毀。已在不含歷史記錄的情況下開啟。",
     "historyUnreadable": "無法讀取此檔案的歷史記錄。儲存時會建立獨立的檔案。",

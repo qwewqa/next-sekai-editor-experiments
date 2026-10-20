@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { captureEntryDescription } from '../../src/history/operations'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
+import { buildZip } from '../../src/zip'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
@@ -837,6 +838,101 @@ test('in safe mode, where nothing is stored, a .nxsp opens its level alone', asy
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     const session = await sessionOf(page)
     expect(session.file).toBeUndefined()
-    expect(session.sourceName).toBe('coconut.nxsp')
+    // The stem: the extension is not part of the name (stale before AUD-B-2, which pinned the extension).
+    expect(session.sourceName).toBe('coconut')
     expect(await noteCount(page)).toBeGreaterThan(0)
+})
+
+test('a .nxsp keeps the file stem as its source name, so Export suggests "coconut" and not "coconut.nxsp"', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await imported(page)
+
+    const session = await sessionOf(page)
+    expect(session.sourceName).toBe('coconut')
+    const { chains } = await rows(page, ['chains'])
+    expect(chains!.find((row) => row.value.head === session.sessionId)!.value.sourceName).toBe(
+        'coconut',
+    )
+
+    await page.keyboard.press('Shift+P')
+    const field = page.getByRole('dialog').getByRole('textbox', { name: 'File Name' })
+    await expect(field).toHaveValue('coconut')
+    // The picker is offered "coconut.nsld", never "coconut.nxsp.nsld".
+    await expect(page.getByRole('dialog').locator('[data-export-name]')).toBeVisible()
+})
+
+/** Picks a ZIP of the given entries as Open File… would, from OPFS. */
+const openZip = async (page: Page, name: string, entries: [string, string][]) => {
+    const zip = await buildZip(
+        entries.map(([entry, text]) => ({
+            name: entry,
+            method: 'deflate' as const,
+            data: new TextEncoder().encode(text),
+        })),
+    )
+    await writeFile(page, name, [...new Uint8Array(await zip.arrayBuffer())])
+    await openFile(page, name)
+}
+
+test('an archive of project files says to unzip it, and opens nothing', async ({ page }) => {
+    await start(page)
+    const before = await sessionOf(page)
+    await openZip(page, 'backup.zip', [
+        ['manifest.json', '{}'],
+        ['coconut.nxsp', ''],
+    ])
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText(
+        'This ZIP holds several project files. Unzip it and open them one by one.',
+    )
+    await expect(dialog).not.toContainText('not a project file')
+    await dialog.getByRole('button', { name: 'OK' }).click()
+    await expect(dialog).toHaveCount(0)
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
+})
+
+test('a Sonolus package points to Preview Assets, which opens', async ({ page }) => {
+    await start(page)
+    const before = await sessionOf(page)
+    await openZip(page, 'skin.scp', [
+        ['sonolus/skins/list', '{"pageCount":1,"items":[]}'],
+        ['sonolus/info', '{}'],
+    ])
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText(
+        'This is a Sonolus package. To use its skin or other assets, choose it in Preview Assets.',
+    )
+    await expect(dialog).not.toContainText('not a project file')
+    // A press in the dialog's first moments is ignored (the activation guard): press until it counts.
+    await expect(async () => {
+        await dialog.getByRole('button', { name: 'Preview Assets…' }).click({ timeout: 1000 })
+        await expect(page.getByRole('dialog', { name: 'Preview Assets' })).toBeVisible({
+            timeout: 1000,
+        })
+    }).toPass()
+    expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
+})
+
+test('a package can be dismissed without opening Preview Assets', async ({ page }) => {
+    await start(page)
+    await openZip(page, 'skin.scp', [['sonolus/info', '{}']])
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText('This is a Sonolus package.')
+    await expect(async () => {
+        await dialog.getByRole('button', { name: 'OK' }).click({ timeout: 1000 })
+        await expect(dialog).toHaveCount(0, { timeout: 1000 })
+    }).toPass()
+})
+
+test('any other ZIP is still "not a project file"', async ({ page }) => {
+    await start(page)
+    await openZip(page, 'photos.zip', [['a.png', 'x']])
+    await expect(page.getByRole('dialog', { name: 'Open' })).toContainText(
+        'This ZIP is not a project file.',
+    )
 })
