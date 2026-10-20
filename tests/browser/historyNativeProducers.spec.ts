@@ -410,7 +410,8 @@ test('Generate captures only its three fresh notes and a repeat adds no step', a
     expect(result.sameStep).toBe(true)
 })
 
-test('BPM producer captures initial anchor and actual first destination replacement, preserving a zero-result edit', async ({
+// Editing a BPM to the value it has changes nothing, so it pushes no step (owner, 2026-10-19).
+test('BPM producer captures initial anchor and actual first destination replacement, and an edit that changes nothing pushes no step', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
@@ -457,13 +458,8 @@ test('BPM producer captures initial anchor and actual first destination replacem
         [4, 140],
         [4, 120],
     ])
-    expect(result.steps).toBe(2)
-    const unchanged = await headOperation(page)
-    expect(unchanged).toMatchObject({
-        id: 'nse.object.edit',
-        data: { subject: 'bpm', changed: {} },
-    })
-    expect(unchanged.data).not.toHaveProperty('displaced')
+    expect(result.steps).toBe(1)
+    expect(await headOperation(page)).toMatchObject({ id: 'nse.object.replace' })
 })
 
 test('Time Scale producer captures both actually replaced same-group destination members', async ({
@@ -521,6 +517,42 @@ test('Time Scale producer captures both actually replaced same-group destination
         id: 'nse.object.replace',
         data: { subject: 'timeScale', changed: { timeScale: 1 }, displaced: { timeScale: 2 } },
     })
+})
+
+// Editing a Time Scale to the values it has leaves the chart as it was: no step (owner,
+// 2026-10-19), though the edit still selects it.
+test('a Time Scale edit that changes nothing pushes no step', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+        const { show, fixtures, history, appImport } = window.editorTest
+        const { editTimeScale } = await appImport<
+            typeof import('../../src/editor/tools/timeScale')
+        >('/src/editor/tools/timeScale/index.ts')
+        const { loadedStates } =
+            await appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts')
+        const base = fixtures.events.timeScales[0]!
+        show({
+            ...fixtures.interaction,
+            slides: [],
+            timeScales: [
+                {
+                    ...base,
+                    beat: 2,
+                    groupId: fixtures.interaction.groups.keys().next().value!,
+                    timeScale: 1,
+                },
+            ],
+        })
+        const entity = [...history.state.value.store.grid.timeScale.values()]
+            .flatMap((bucket) => [...bucket])
+            .find(({ beat }) => beat === 2)!
+        editTimeScale(entity, { timeScale: 1 })
+        return {
+            steps: loadedStates().length - 1,
+            undo: history.canUndo.value,
+            selected: history.state.value.selectedEntities.length,
+        }
+    })
+    expect(result).toEqual({ steps: 0, undo: false, selected: 1 })
 })
 
 test('all five native event tool Adds retain their typed event subjects', async ({ page }) => {
@@ -697,7 +729,9 @@ test('Brush captures coupled Note fields, ignores derived connector operands and
     })
 })
 
-test('Eraser preserves a connector-only step with zero native removals and Delete excludes initial BPM', async ({
+// A connector has no remover, so Eraser on a connector-only selection removes nothing and pushes
+// no step (owner, 2026-10-19: no step for a no-op). Delete leaves the initial BPM alone.
+test('Eraser on only a connector pushes no step and Delete excludes initial BPM', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
@@ -722,15 +756,20 @@ test('Eraser preserves a connector-only step with zero native removals and Delet
         })
         const source = history.state.value
         const connector = [...source.store.slides.connector.values()].flat()[0]!
+        history.replaceState({ ...source, selectedEntities: [connector] })
         remove([connector])
-        const zero = history.headStep.value!.operation
+        const afterConnector = {
+            steps: loadedStates().length - 1,
+            undo: history.canUndo.value,
+            selected: history.state.value.selectedEntities.length,
+        }
         const state = history.state.value
         const note = [...state.store.slides.note.values()].flat()[0]!
         const initial = [...state.store.grid.bpm.values()].flatMap((bucket) => [...bucket])[0]!
         history.replaceState({ ...state, selectedEntities: [note, initial] })
         deleteSelection.execute()
         return {
-            zero,
+            afterConnector,
             steps: loadedStates().length - 1,
             notes: [...history.state.value.store.slides.note.values()]
                 .flat()
@@ -741,8 +780,8 @@ test('Eraser preserves a connector-only step with zero native removals and Delet
         }
     })
     expect(result).toMatchObject({
-        zero: { id: 'nse.object.delete', data: { removed: {} } },
-        steps: 2,
+        afterConnector: { steps: 0, undo: false, selected: 0 },
+        steps: 1,
         notes: [4],
         bpms: [0],
     })

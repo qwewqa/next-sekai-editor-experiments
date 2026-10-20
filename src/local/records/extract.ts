@@ -105,68 +105,96 @@ export const stageHeads = <J>(ranges: Map<number, { min: J }>) =>
  * bytes; events by beat, then track, then chain order. Shared by `toRecords`, the level-data
  * serializer and the editor metadata, so all three agree.
  */
-export const orderStore = (store: Store): OrderedStore => {
-    const { grid, slides, globalEventRanges, stageEventRanges } = store
-    return {
-        slides: sortSlideRecords(
-            [...slides.note]
-                .filter(([, notes]) => notes.length)
-                .map(([slideId, notes]) => ({
-                    slideId,
-                    entity: notes,
-                    // Filtered to non-empty above.
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    key: notes[0]!.beat,
-                    record: slideRecord(notes),
-                })),
-        ),
-        bpms: events(entitiesOf(grid.bpm), () => 0, bpmRecord),
-        timeScales: events(entitiesOf(grid.timeScale), (e) => e.groupId, timeScaleRecord),
-        cameraEvents: events(
-            inChainOrder(
-                grid.cameraEventJoint,
-                grid.cameraEventConnection,
-                globalEventRanges.cameraEventJoint ? [globalEventRanges.cameraEventJoint.min] : [],
-            ),
-            () => 0,
-            cameraEventRecord,
-        ),
-        stageMaskEvents: events(
-            inChainOrder(
-                grid.stageMaskEventJoint,
-                grid.stageMaskEventConnection,
-                stageHeads(stageEventRanges.stageMaskEventJoint),
-            ),
-            (e) => e.stageId,
-            stageMaskEventRecord,
-        ),
-        stagePivotEvents: events(
-            inChainOrder(
-                grid.stagePivotEventJoint,
-                grid.stagePivotEventConnection,
-                stageHeads(stageEventRanges.stagePivotEventJoint),
-            ),
-            (e) => e.stageId,
-            stagePivotEventRecord,
-        ),
-        stageStyleEvents: events(
-            inChainOrder(
-                grid.stageStyleEventJoint,
-                grid.stageStyleEventConnection,
-                stageHeads(stageEventRanges.stageStyleEventJoint),
-            ),
-            (e) => e.stageId,
-            stageStyleEventRecord,
-        ),
-        stageTransformEvents: events(
-            inChainOrder(
-                grid.stageTransformEventJoint,
-                grid.stageTransformEventConnection,
-                stageHeads(stageEventRanges.stageTransformEventJoint),
-            ),
-            (e) => e.stageId,
-            stageTransformEventRecord,
-        ),
+export const orderStore = (store: Store): OrderedStore => ({
+    slides: orderSlides(store),
+    bpms: orderEvents(store, 'bpms'),
+    timeScales: orderEvents(store, 'timeScales'),
+    cameraEvents: orderEvents(store, 'cameraEvents'),
+    stageMaskEvents: orderEvents(store, 'stageMaskEvents'),
+    stagePivotEvents: orderEvents(store, 'stagePivotEvents'),
+    stageStyleEvents: orderEvents(store, 'stageStyleEvents'),
+    stageTransformEvents: orderEvents(store, 'stageTransformEvents'),
+})
+
+/** The slides in the v1 order. */
+export const orderSlides = ({ slides }: Store): OrderedSlide[] =>
+    sortSlideRecords(
+        [...slides.note]
+            .filter(([, notes]) => notes.length)
+            .map(([slideId, notes]) => ({
+                slideId,
+                entity: notes,
+                // Filtered to non-empty above.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                key: notes[0]!.beat,
+                record: slideRecord(notes),
+            })),
+    )
+
+/** The kinds of events, BPMs and time scales among them. */
+export type EventKind = Exclude<keyof OrderedStore, 'slides'>
+
+/** One event kind in the v1 order. */
+export function orderEvents<K extends EventKind>(store: Store, kind: K): OrderedStore[K]
+export function orderEvents(store: Store, kind: EventKind): Ordered<unknown>[] {
+    const { grid, globalEventRanges, stageEventRanges } = store
+    switch (kind) {
+        case 'bpms':
+            return events(entitiesOf(grid.bpm), () => 0, bpmRecord)
+        case 'timeScales':
+            return events(entitiesOf(grid.timeScale), (e) => e.groupId, timeScaleRecord)
+        case 'cameraEvents':
+            return events(
+                inChainOrder(
+                    grid.cameraEventJoint,
+                    grid.cameraEventConnection,
+                    globalEventRanges.cameraEventJoint
+                        ? [globalEventRanges.cameraEventJoint.min]
+                        : [],
+                ),
+                () => 0,
+                cameraEventRecord,
+            )
+        case 'stageMaskEvents':
+            return events(
+                inChainOrder(
+                    grid.stageMaskEventJoint,
+                    grid.stageMaskEventConnection,
+                    stageHeads(stageEventRanges.stageMaskEventJoint),
+                ),
+                (e) => e.stageId,
+                stageMaskEventRecord,
+            )
+        case 'stagePivotEvents':
+            return events(
+                inChainOrder(
+                    grid.stagePivotEventJoint,
+                    grid.stagePivotEventConnection,
+                    stageHeads(stageEventRanges.stagePivotEventJoint),
+                ),
+                (e) => e.stageId,
+                stagePivotEventRecord,
+            )
+        case 'stageStyleEvents':
+            return events(
+                inChainOrder(
+                    grid.stageStyleEventJoint,
+                    grid.stageStyleEventConnection,
+                    stageHeads(stageEventRanges.stageStyleEventJoint),
+                ),
+                (e) => e.stageId,
+                stageStyleEventRecord,
+            )
+        case 'stageTransformEvents':
+            return events(
+                inChainOrder(
+                    grid.stageTransformEventJoint,
+                    grid.stageTransformEventConnection,
+                    stageHeads(stageEventRanges.stageTransformEventJoint),
+                ),
+                (e) => e.stageId,
+                stageTransformEventRecord,
+            )
     }
 }
 

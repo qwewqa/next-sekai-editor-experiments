@@ -18,8 +18,8 @@ export const splitHold: Command = {
             return
         }
         const operation = createHistoryOperation({ id: 'nse.note.split', data: { targets: count } })
-        pushState(operation, split(source, source.selectedEntities))
+        const pushed = pushState(operation, split(source, source.selectedEntities))
         view.entities = { hovered: [], creating: [] }
-        notify(() => operation.fallback.text)
+        if (pushed) notify(() => operation.fallback.text)
     },
 }

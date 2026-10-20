@@ -527,14 +527,14 @@ export const select: Tool = {
                       )
 
                 const operation = createHistoryOperation(moved.operation)
-                pushState(operation, moved.state)
+                const pushed = pushState(operation, moved.state)
                 view.entities = {
                     hovered: [],
                     creating: [],
                 }
                 focusEntityAtBeat(focus?.beat ?? active.focus.beat)
 
-                notify(() => operation.fallback.text)
+                if (pushed) notify(() => operation.fallback.text)
                 break
             }
             case 'select': {

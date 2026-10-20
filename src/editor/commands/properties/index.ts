@@ -30,12 +30,12 @@ export const properties: Command = {
                 return
 
             const operation = initialLifeOperation(initialLife.value, newInitialLife)
-            pushState(operation, {
+            const pushed = pushState(operation, {
                 ...state.value,
                 initialLife: newInitialLife,
             })
 
-            notify(() => operation.fallback.text)
+            if (pushed) notify(() => operation.fallback.text)
         } finally {
             guard.dispose()
         }

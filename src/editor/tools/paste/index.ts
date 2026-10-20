@@ -373,14 +373,14 @@ export const paste: Tool = {
         const result = transaction.commit(selectedEntities)
         const operation = pasteOperation(result, 'basic', modifiers.shift, 'pointer', displaced)
         // Nothing placed, as when the only events were declined, leaves no step to undo.
-        if (operation) pushState(operation, result)
+        const pushed = operation ? pushState(operation, result) : false
         view.entities = {
             hovered: [],
             creating: [],
         }
         clearPasteGhost()
 
-        if (operation) notify(() => operation.fallback.text)
+        if (operation && pushed) notify(() => operation.fallback.text)
 
         active = undefined
     },
@@ -733,14 +733,14 @@ export const pasteAtPosition = async (
         options.at ?? 'position',
         displaced,
     )
-    if (operation) pushState(operation, result)
+    const pushed = operation ? pushState(operation, result) : false
     view.entities = {
         hovered: [],
         creating: [],
     }
     clearPasteGhost()
 
-    if (operation) notify(() => operation.fallback.text)
+    if (operation && pushed) notify(() => operation.fallback.text)
     return toMovedBeat(data.beat, shiftedOffset)
 }
 
@@ -1065,10 +1065,10 @@ const finishPaste = (
     displaced: Entity[],
 ) => {
     const operation = pasteOperation(result, 'composed', flipped, at, displaced)
-    if (operation) pushState(operation, result)
+    const pushed = operation ? pushState(operation, result) : false
     view.entities = { hovered: [], creating: [] }
     clearPasteGhost()
-    if (operation) notify(() => operation.fallback.text)
+    if (operation && pushed) notify(() => operation.fallback.text)
 }
 
 // Pastes into the copying chart keep their own groups and stages; others map by position.

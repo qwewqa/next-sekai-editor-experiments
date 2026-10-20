@@ -260,8 +260,8 @@ export const applyBrushToEntities = (entities: Entity[]) => {
     revealAuthoringTarget(brushProperties.value)
     if (!receipt) throw new Error('Unexpected missing Brush receipt')
     const operation = createHistoryOperation({ id: 'nse.object.brush', data: receipt })
-    pushState(operation, brushed)
-    notify(() => operation.fallback.text)
+    const pushed = pushState(operation, brushed)
+    if (pushed) notify(() => operation.fallback.text)
 }
 
 const apply = applyBrushToEntities

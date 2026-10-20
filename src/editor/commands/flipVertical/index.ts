@@ -35,8 +35,8 @@ export const flipVertical: Command = {
                 ...changedData(counts, 'objects', { displaced, retainedInitialBpm }),
             },
         })
-        pushState(operation, flipped)
+        const pushed = pushState(operation, flipped)
         view.entities = { hovered: [], creating: [] }
-        notify(() => operation.fallback.text)
+        if (pushed) notify(() => operation.fallback.text)
     },
 }

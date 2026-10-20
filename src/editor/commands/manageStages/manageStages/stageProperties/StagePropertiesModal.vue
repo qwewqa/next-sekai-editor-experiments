@@ -73,12 +73,14 @@ const createModel = <K extends StageEditKey>(key: K) =>
             expected = newObject
             last = newObject
 
-            pushState(operation, {
+            const pushed = pushState(operation, {
                 ...state.value,
                 stages: newStages,
             })
 
-            notify(() => operation.fallback.text)
+            // An edit that changes nothing is no step, and the stored object stays as it was.
+            if (!pushed) expected = object
+            else notify(() => operation.fallback.text)
         },
     })
 
