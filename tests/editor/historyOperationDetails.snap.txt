@@ -1267,7 +1267,7 @@ F: 「Group 1」グループを追加しました
 
 #owner.delete.cascade.stageFolder en
 T: Deleted stage folder "Folder S"
-R: Removed [removed]: 2 stages / 1 stage folder / 4 camera events
+R: Removed [removed]: 2 stages / 1 stage folder / 4 stage transform events
 
 #owner.delete.counts.noCascade en
 T: Deleted 4 groups
@@ -1277,7 +1277,7 @@ T: Deleted group folder "Folder One"
 
 #owner.duplicate.cascade en
 T: Duplicated "Alpha" group
-R: Added [added]: 1 group / 120 notes / 1 BPM change
+R: Added [added]: 1 group / 120 notes / 1 time scale
 
 #owner.duplicate.folderOnly en
 T: Duplicated group folder "Folder One"

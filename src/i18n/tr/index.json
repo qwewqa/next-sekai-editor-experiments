@@ -2195,6 +2195,9 @@
   },
   "open": {
     "notProject": "Bu ZIP bir proje dosyası değil.",
+    "severalProjects": "Bu ZIP birden fazla proje dosyası içeriyor. Arşivden çıkarıp tek tek açın.",
+    "scp": "Bu bir Sonolus paketi. Görünümünü veya diğer varlıklarını kullanmak için Önizleme Varlıkları’nda seçin.",
+    "openPreviewAssets": "Önizleme Varlıkları…",
     "damagedUnopened": "Bu dosya hasarlı ve açılamadı.",
     "damaged": "Bu dosya hasarlı. Geçmişi olmadan açıldı.",
     "historyUnreadable": "Bu dosyanın geçmişi okunamadı. Kaydetmek ayrı bir dosya oluşturur.",
