@@ -14,9 +14,9 @@ import { renderOperationRecipe } from './aggregate'
 import { operationTime } from './format'
 import { memberOperation, memberRecoveryContext } from './members'
 import type {
-    OperationDetailRow,
-    OperationDetails,
-    OperationDetailSection,
+    LegacyOperationDetailRow as OperationDetailRow,
+    LegacyOperationDetails as OperationDetails,
+    LegacyOperationDetailSection as OperationDetailSection,
     OperationRecipe,
     OperationTextContext,
 } from './types'
