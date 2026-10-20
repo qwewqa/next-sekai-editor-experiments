@@ -160,8 +160,8 @@ const notifyOpened = (
     }
     dismissNoticeCard()
     const message = earlierMessage(notice, name)
-    if (notice.kind === 'unsavedEarlier') notify(message, { card: true })
-    else notify(message, { action: restoreAction(notice.chain.sessionId) })
+    if (notice.kind === 'unsavedEarlier') notify(message, { card: true, severity: 'info' })
+    else notify(message, { action: restoreAction(notice.chain.sessionId), severity: 'info' })
 }
 
 /** Decodes the BGM read from the file, as Choose Audio… does, without its dialog. */
@@ -261,7 +261,7 @@ const openRequestedProject = async (
         } catch (error) {
             cancel()
             if (!(error instanceof OpenRefused)) throw error
-            notify(() => error.message, { card: true })
+            notify(() => error.message, { card: true, severity: 'error' })
             return
         }
     }
@@ -429,15 +429,16 @@ const openRequestedProject = async (
     if (elsewhere)
         notify(
             interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
-            { card: true },
+            { card: true, severity: 'info' },
         )
     else if (line) {
         const message = partialMessage(line)
-        notify(() => message, { card: true })
+        notify(() => message, { card: true, severity: 'warning' })
     } else if (!earlier && bgmMissing) {
         // A BGM the file records but doesn't hold (§1.5.4 step 5): not loaded, with Choose Audio….
         dismissNoticeCard()
         notify(() => i18n.value.notice.bgmNotLoaded, {
+            severity: 'info',
             action: {
                 label: () => i18n.value.notice.chooseAudio,
                 run: () => {

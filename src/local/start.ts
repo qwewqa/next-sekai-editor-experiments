@@ -97,15 +97,15 @@ const tryAgain = async () => {
         return
     }
     if (status.mode === 'memory' && status.reason === 'olderTabs')
-        notify(upgradeBlocked, { action: tryAgainAction })
-    else if (status.mode === 'readOnly') notify(olderVersion, { card: true })
+        notify(upgradeBlocked, { action: tryAgainAction, severity: 'warning' })
+    else if (status.mode === 'readOnly') notify(olderVersion, { card: true, severity: 'warning' })
 }
 
 const sayAtLoad = (status: StorageStatus) => {
     if (status.mode === 'memory' && status.reason === 'olderTabs')
-        addLoadNotice(upgradeBlocked, tryAgainAction, LOAD_ORDER.handshake)
+        addLoadNotice(upgradeBlocked, tryAgainAction, LOAD_ORDER.handshake, 'warning')
     else if (status.mode === 'readOnly')
-        addLoadNotice(olderVersion, undefined, LOAD_ORDER.handshake)
+        addLoadNotice(olderVersion, undefined, LOAD_ORDER.handshake, 'warning')
 }
 
 declare global {

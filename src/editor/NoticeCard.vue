@@ -2,11 +2,13 @@
 import { computed, onBeforeUnmount, ref, useTemplateRef } from 'vue'
 import { i18n } from '../i18n'
 import { dismissNoticeCard, holdNotice, type Notice } from './notification'
+import SeverityIcon from './SeverityIcon.vue'
 import CloseIcon from './workspace/CloseIcon.vue'
 
-// A notice card (Part 1 §1.4.1): the peek bar's surface, with a white action pill and a close
-// button; the start-up card is the same surface as a column of rows. A touch or pen drag sideways
-// dismisses it. `over` draws it over a blocking dialog, on the menus' surface.
+// A notice card (Part 1 §1.4.1): the peek strip's surface (a 22 px pill), with a severity glyph, a
+// white action pill and a close button; the start-up card is the same surface as a column of rows.
+// A touch or pen drag sideways dismisses it. `over` draws it over a blocking dialog, on the menus'
+// surface.
 const props = defineProps<{ notice: Notice; over?: boolean }>()
 
 const card = useTemplateRef<HTMLElement>('card')
@@ -124,8 +126,18 @@ const style = computed(() => {
     }
 })
 
-const actionClass = 'btn btn-secondary h-8 shrink-0 rounded-full px-4 font-bold'
-const closeClass = 'ghost flex size-8 shrink-0 items-center justify-center rounded-full'
+// Single cards: the 36 px controls of the peek strip, concentric with the 22 px corners (18 + 4).
+const actionClass = 'btn btn-secondary h-9 min-w-0 max-w-full truncate rounded-full px-4'
+const closeClass = 'ghost flex size-9 shrink-0 items-center justify-center rounded-full'
+// Start-up rows: 32 px pills, concentric in the same corners (16 + 2 + 4).
+const rowActionClass = 'btn btn-secondary ml-auto h-8 min-w-0 max-w-full truncate rounded-full px-4'
+const rowCloseClass = 'ghost ml-1 flex size-8 shrink-0 items-center justify-center rounded-full'
+// The text wraps at any length, and at the end of a sentence in browsers that balance it.
+const messageClass =
+    'min-w-0 flex-auto whitespace-break-spaces pr-3 [overflow-wrap:anywhere] [text-wrap:pretty]'
+
+// Every row has the glyph column once any row has a severity, so the text edges agree.
+const glyphColumn = computed(() => rows.value.some((line) => line.severity))
 </script>
 
 <template>
@@ -133,11 +145,11 @@ const closeClass = 'ghost flex size-8 shrink-0 items-center justify-center round
         <div
             ref="card"
             data-notice-card
-            class="notification-pill pointer-events-auto rounded-3xl py-1 pl-4 pr-1 text-sm text-fg outline outline-1 ring-1 ring-[--popup-ring]"
+            class="notification-pill pointer-events-auto rounded-[1.375rem] p-1 text-sm text-fg shadow-xl outline outline-1 ring-1"
             :class="[
                 over
-                    ? 'bg-popup shadow-xl outline-[--popup-outline]'
-                    : 'bg-modal shadow-md outline-transparent',
+                    ? 'bg-popup outline-[--popup-outline] ring-[--popup-ring]'
+                    : 'bg-modal outline-transparent ring-fg/10',
                 // The start-up card scrolls when its rows are taller than the room, with its × kept.
                 notice.lines
                     ? [
@@ -145,8 +157,10 @@ const closeClass = 'ghost flex size-8 shrink-0 items-center justify-center round
                           over ? 'max-h-[calc(100dvh-2rem)]' : 'max-h-full',
                       ]
                     : [
-                          'flex max-w-[min(36rem,100%)] touch-none items-center justify-end gap-x-2 gap-y-1',
-                          notice.action ? 'flex-wrap' : '',
+                          // The message block keeps its one-line width as its basis, so the action
+                          // and × wrap under it exactly when they cannot share its line.
+                          'flex max-w-[min(36rem,100%)] touch-none',
+                          notice.action ? 'flex-wrap items-center gap-y-1' : 'items-start',
                       ],
             ]"
             :style="style"
@@ -161,19 +175,19 @@ const closeClass = 'ghost flex size-8 shrink-0 items-center justify-center round
         >
             <template v-if="notice.lines">
                 <div
-                    class="sticky top-0 z-10 flex shrink-0 items-center gap-2"
+                    class="sticky -top-1 z-10 flex shrink-0 items-center p-0.5"
                     :class="over ? 'bg-popup' : 'bg-modal'"
                 >
                     <p
                         :id="messageId"
-                        class="min-w-0 flex-1 truncate py-1.5 text-xs font-bold text-fg/80"
+                        class="min-w-0 flex-1 truncate pl-2.5 pr-2 text-xs font-bold text-fg/80"
                     >
                         {{ heading }}
                     </p>
                     <button
                         type="button"
                         data-notice-close
-                        :class="closeClass"
+                        :class="rowCloseClass"
                         :aria-label="label"
                         :aria-describedby="messageId"
                         :title="label"
@@ -185,19 +199,28 @@ const closeClass = 'ghost flex size-8 shrink-0 items-center justify-center round
                 <div
                     v-for="(line, i) in rows"
                     :key="i"
-                    class="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 border-t border-fg/15 py-0.5"
+                    class="relative flex shrink-0 flex-wrap items-center px-0.5 py-1 before:absolute before:inset-x-3 before:top-0 before:border-t before:border-fg/15 last:pb-0.5"
                 >
-                    <p
-                        class="min-w-0 whitespace-break-spaces py-1.5 pr-3"
-                        :class="line.action ? 'mr-auto max-w-[22rem] flex-[1_1_12rem]' : 'flex-1'"
-                    >
-                        {{ line.message() }}
-                    </p>
+                    <div class="flex min-w-0 flex-auto items-start">
+                        <span
+                            v-if="glyphColumn"
+                            class="flex h-8 w-[1.625rem] shrink-0 items-center pl-2.5"
+                        >
+                            <SeverityIcon
+                                v-if="line.severity"
+                                class="size-4"
+                                :severity="line.severity"
+                            />
+                        </span>
+                        <p :class="[messageClass, 'py-1.5', glyphColumn ? 'pl-2' : 'pl-2.5']">
+                            {{ line.message() }}
+                        </p>
+                    </div>
                     <button
                         v-if="line.action"
                         type="button"
                         data-notice-action
-                        :class="actionClass"
+                        :class="rowActionClass"
                         @click="line.action.run()"
                     >
                         {{ line.action.label() }}
@@ -205,18 +228,24 @@ const closeClass = 'ghost flex size-8 shrink-0 items-center justify-center round
                 </div>
             </template>
             <template v-else>
-                <p
-                    :id="messageId"
-                    class="min-w-0 whitespace-break-spaces py-1.5"
-                    :class="
-                        notice.action
-                            ? 'mr-auto max-w-[22rem] flex-auto max-sm:flex-[1_1_12rem]'
-                            : 'max-w-[32rem] flex-1'
-                    "
+                <div
+                    class="flex min-w-0 items-start"
+                    :class="notice.action ? 'flex-auto' : 'flex-1'"
                 >
-                    {{ notice.message?.() }}
-                </p>
-                <div class="flex shrink-0 items-center gap-1">
+                    <span v-if="notice.severity" class="flex h-9 shrink-0 items-center pl-3">
+                        <SeverityIcon class="size-4" :severity="notice.severity" />
+                    </span>
+                    <p
+                        :id="messageId"
+                        :class="[messageClass, 'py-2', notice.severity ? 'pl-2' : 'pl-3']"
+                    >
+                        {{ notice.message?.() }}
+                    </p>
+                </div>
+                <div
+                    class="flex shrink-0 items-center gap-1"
+                    :class="notice.action ? 'ml-auto max-w-full' : 'ml-1'"
+                >
                     <button
                         v-if="notice.action"
                         type="button"

@@ -72,7 +72,8 @@ export const open: Command = {
                     await openProject(file, handle, request)
                 } catch (error) {
                     console.error(error)
-                    if (request.isCurrent()) notify(() => errorMessage(error), { card: true })
+                    if (request.isCurrent())
+                        notify(() => errorMessage(error), { card: true, severity: 'error' })
                 }
                 return
             }

@@ -91,7 +91,7 @@ const download = async (item: RecoveryItem) => {
             )
     } catch (error) {
         if (!(error instanceof FileError)) throw error
-        notify(() => fileErrorText(file.name, error), { card: true })
+        notify(() => fileErrorText(file.name, error), { card: true, severity: 'error' })
     }
 }
 
