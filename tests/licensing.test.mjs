@@ -98,7 +98,7 @@ test('the Built-in files and the icon renders are CC0', () => {
 
 test('every tracked file containing "Font Awesome" is on the CC-BY-4.0 icon list', () => {
     // Files that mention the name without being icon artwork.
-    const mentions = /^(?:REUSE\.toml|README\.md|CONTRIBUTING\.md|deployment\/|scripts\/|tests\/)/
+    const mentions = /^(?:REUSE\.toml|README\.md|CONTRIBUTING\.md|deployment\/|docs\/|scripts\/|tests\/)/
     const icons = tracked.filter((file) => {
         if (isMedia(file) || mentions.test(file)) return false
         return readFileSync(new URL(file, new URL('../', import.meta.url)), 'utf8').includes(
