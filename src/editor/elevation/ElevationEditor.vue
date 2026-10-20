@@ -393,7 +393,8 @@ watch(canvas, (element, _previous, onCleanup) => {
 })
 const hovered = ref<NoteEntity>()
 // A 12px text baseline below the notice at the top, keeping a one-line notice's room (16px above,
-// 40px tall) shown or not, so notices coming and going leave it; a taller one moves it further.
+// 44px tall for a card, which the 40px quick toast fits) shown or not, so notices coming and going
+// leave it; a taller one, or a toast and a card together, moves it further.
 // In pixels: index.css fixes the rem at 16px.
 const belowNotice = (canvas: HTMLCanvasElement, y: number) => {
     const top = canvas.getBoundingClientRect().top
@@ -407,7 +408,7 @@ const belowNotice = (canvas: HTMLCanvasElement, y: number) => {
             },
         ),
     )
-    return Math.max(y + 56, bottom + 24)
+    return Math.max(y + 60, bottom + 24)
 }
 // The pane y badges were last placed from, unrounded.
 let lastOffscreenAnchor = 0

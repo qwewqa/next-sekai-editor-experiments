@@ -402,7 +402,7 @@ export const defaultSaveUi: SaveUi = {
         )
     },
     error: (message) => {
-        notify(message, { card: true })
+        notify(message, { card: true, severity: 'error' })
     },
 }
 

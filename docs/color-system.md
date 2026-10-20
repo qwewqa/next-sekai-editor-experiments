@@ -178,8 +178,8 @@ WCAG 2 relative luminance. ΔE is OKLab ×100, where about 2 is the threshold of
 | `fg-strong` on `band-press` | 11.02 | 5.17 |
 | white on `chrome-press` | 8.41 | 7.30 |
 | `fg` on `selected` (checked row) | 6.43 | 6.22 |
-| `warning` on `modal` / `button` | 4.72 / 5.64 | 9.54 / 6.10 |
-| `info` on `modal` / `button` | 5.01 / 5.97 | 9.57 / 6.12 |
+| `warning` on `modal` / `button` / `popup` | 4.72 / 5.64 / 5.64 | 9.54 / 6.10 / 7.75 |
+| `info` on `modal` / `button` / `popup` | 5.01 / 5.97 / 5.97 | 9.57 / 6.12 / 7.78 |
 
 ### 4.2 Indicators and edges (need 3)
 
@@ -310,10 +310,16 @@ A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (
 ### 5.6 Notices and status
 
 - **Quick notice:** the mint pill for every quick notice, as in v0.5.22.
-- **Notice cards** stay neutral.
-  - Severity, where a card needs it, is a leading glyph in `text-warning`, `text-danger` or `text-info`. That needs an optional `Notice.severity`, which is a follow-up and adds no strings.
-  - The card's action is `btn-secondary`.
-  - The new card look itself is a separate change.
+- **Notice cards** stay neutral surfaces: `bg-modal` with `ring-fg/10` in the pane, `bg-popup` with the popup outline and ring over a dialog. The card is the peek strip's surface, so there is no tint and no coloured edge.
+  - Severity is a leading 16 px glyph (`SeverityIcon`) in `text-warning` (triangle), `text-danger` (circle with an exclamation mark) or `text-info` (circle with an i). It is the optional `severity` field on `Notice`, `NoticeLine` and `LoadNotice`, set where the notice is raised, and it adds no strings. Contrast is the `warning`, `info` and `danger` pairs of 4.1 on `modal` (in the pane) and `popup` (over a dialog); a glyph needs 3.
+  - The mapping rule:
+    - error: what the user asked for did not happen;
+    - warning: work is at risk or was affected, and the user should act or check;
+    - info: worth knowing, with nothing at risk;
+    - neutral (no `severity`, no glyph): a confirmation or a route back, such as Open History, Reopen, "Download started" and "Continued … from …".
+  - Two start-up lines that could be read either way: "This session was deleted in another tab or window." is a warning (work was affected), and "Kept … as a separate session." is neutral, like "Continued … from auto save" (both forms of `migrated` are confirmations).
+  - The glyph is a second cue. The message carries the meaning, and the live region reads only the text.
+  - The card's action is `btn-secondary`, 36 px in normal weight on a single card (32 px on a start-up row).
 - **Status bar:** the root gets `.surface-chrome`.
   - The not-stored label and the warning glyphs are `text-warning`; info glyphs are `text-info`.
   - Text stays white/80.

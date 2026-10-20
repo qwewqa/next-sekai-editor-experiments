@@ -5,6 +5,10 @@ import * as dateTime from './dateTime'
 
 export const formatDate = (at: number) => dateTime.formatDate(settings.locale, at)
 
+/** A date for a notice's sentence, whose parts never wrap apart. */
+export const formatDateInSentence = (at: number) =>
+    dateTime.formatDateInSentence(settings.locale, at)
+
 export const formatClock = (at: number) => dateTime.formatClock(settings.locale, at)
 
 export const formatDateTime = (at: number) => dateTime.formatDateTime(settings.locale, at)

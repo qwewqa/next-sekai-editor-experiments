@@ -452,8 +452,8 @@ const unlinkedSession = (
     if (!first || !canNotify() || (!resumed && currentSession.value.sessionId !== sessionId)) return
     // Its notice: a card after an open, a load notice after a resume (§1.4.3).
     const message = interpolate(() => i18n.value.open.damagedHistory, name)
-    if (resumed) addLoadNotice(message, undefined, LOAD_ORDER.damagedHistory)
-    else notify(message, { card: true })
+    if (resumed) addLoadNotice(message, undefined, LOAD_ORDER.damagedHistory, 'warning')
+    else notify(message, { card: true, severity: 'warning' })
 }
 
 /**

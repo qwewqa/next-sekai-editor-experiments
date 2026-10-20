@@ -7,7 +7,7 @@ import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { captureName } from '../../../history/operations'
 import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
-import { formatDate } from '../../../i18n/when'
+import { formatDateInSentence } from '../../../i18n/when'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
 import { getLevelDataRevision, LATEST_REVISION } from '../../../levelData/revision'
@@ -135,7 +135,7 @@ const restoreAction = (sessionId: string) => ({
 })
 
 const earlierMessage = (notice: EarlierNotice, name: string) => {
-    const when = formatDate(notice.chain.updatedAt)
+    const when = formatDateInSentence(notice.chain.updatedAt)
     const { open } = i18n.value
     switch (notice.kind) {
         case 'unsavedChanges':
@@ -160,8 +160,8 @@ const notifyOpened = (
     }
     dismissNoticeCard()
     const message = earlierMessage(notice, name)
-    if (notice.kind === 'unsavedEarlier') notify(message, { card: true })
-    else notify(message, { action: restoreAction(notice.chain.sessionId) })
+    if (notice.kind === 'unsavedEarlier') notify(message, { card: true, severity: 'info' })
+    else notify(message, { action: restoreAction(notice.chain.sessionId), severity: 'info' })
 }
 
 /** Decodes the BGM read from the file, as Choose Audio… does, without its dialog. */
@@ -261,7 +261,7 @@ const openRequestedProject = async (
         } catch (error) {
             cancel()
             if (!(error instanceof OpenRefused)) throw error
-            notify(() => error.message, { card: true })
+            notify(() => error.message, { card: true, severity: 'error' })
             return
         }
     }
@@ -429,15 +429,16 @@ const openRequestedProject = async (
     if (elsewhere)
         notify(
             interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
-            { card: true },
+            { card: true, severity: 'info' },
         )
     else if (line) {
         const message = partialMessage(line)
-        notify(() => message, { card: true })
+        notify(() => message, { card: true, severity: 'warning' })
     } else if (!earlier && bgmMissing) {
         // A BGM the file records but doesn't hold (§1.5.4 step 5): not loaded, with Choose Audio….
         dismissNoticeCard()
         notify(() => i18n.value.notice.bgmNotLoaded, {
+            severity: 'info',
             action: {
                 label: () => i18n.value.notice.chooseAudio,
                 run: () => {
