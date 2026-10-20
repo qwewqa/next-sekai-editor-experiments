@@ -87,7 +87,7 @@ Row forms (`src/local/records/rows.ts`):
 
 ### 2.3 IndexedDB stores
 
-Database `nse-local-data`, `DB_VERSION` 3 (`src/local/db.ts`). Upgrades only add stores, indexes and fields: `UPGRADES[1]` creates the set, and versions 2 and 3 run `createMissingStores`, which is idempotent and adds any store of the set the database lacks (a version 1 database made before `handles` joined the set; a version 2 one made by a build whose bump had no step). So every database at version 3 holds every store this build writes, and a transaction that names a store the database lacks fails: no write becomes a no-op because its store is absent (`handleRows.ts`, the worker's `StorageCore`). Row updates are field-level, so a field a newer build added stays.
+Database `nse-local-data`, `DB_VERSION` 1 (`src/local/db.ts`). Upgrades only add stores, indexes and fields: `UPGRADES[1]` creates the whole set when the database is new. A transaction that names a store the database lacks fails: no write becomes a no-op because its store is absent (`handleRows.ts`, the worker's `StorageCore`). Row updates are field-level, so a field a newer build added stays.
 
 | Store | Key | Holds |
 | --- | --- | --- |
@@ -631,7 +631,7 @@ Each rule says what must never happen, where the code enforces it and the tests 
 | One writer per session: the tab holds the session lock; a continuation moves the head by compare-and-set; the loser forks without the binding. | `src/local/sessions.ts`, `writeFlush`, `Flusher.fork` | `local/flush/sessions.test.ts`, `local/startup/chains.test.ts` |
 | Stored text has no lone surrogate. | `toWellFormed` | `local/flush/wellFormed.test.ts` |
 | After a kill at any await: no dangling `refs`, no half-deleted chain, every row reachable, the stored stack equal to replay. | `storedViolations` (`src/local/testing/invariants.ts`) | `local/testing/testCore.test.ts`, `local/fuzz/fuzz.test.ts` |
-| Every database at `DB_VERSION` holds every store the build writes (an older one gains the missing ones, its rows kept); a transaction that names a missing store fails, and no handle or row is dropped for it. | `createMissingStores`, `UPGRADES`, `StorageCore` | `local/handshake.test.ts`, `local/formatVersions.test.ts`, browser `storageHandshake.spec.ts` |
+| A transaction that names a store the database lacks fails, and no handle or row is dropped for it. | `UPGRADES`, `StorageCore` | `local/handshake.test.ts`, `local/formatVersions.test.ts`, browser `storageHandshake.spec.ts` |
 | A start listener that throws never stops the others or the storing setup; a cancelled one never runs. | `notifyFlusherStart`, `onFlusherStart` | `local/flusherStart.test.ts` |
 | A reload's claim lock is released when `openAtStart` rejects before it passes the lock on, and never once a session holds it. | `openAtStart`, `reloadOwn` | `local/startup/open.test.ts` ("a reload whose open fails before it opens anything lets the claim go") |
 

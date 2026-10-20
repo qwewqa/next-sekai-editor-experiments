@@ -111,7 +111,7 @@ test('the release build ignores the dbVersion test flag, so it can’t upgrade t
     page,
 }) => {
     await page.addInitScript(() => {
-        sessionStorage.setItem('nse.test.storage', '{"dbVersion":4}')
+        sessionStorage.setItem('nse.test.storage', '{"dbVersion":2}')
     })
     await page.goto('/')
     await expect
@@ -128,5 +128,5 @@ test('the release build ignores the dbVersion test flag, so it can’t upgrade t
                 request.onerror = () => reject(request.error ?? new Error('open failed'))
             }),
     )
-    expect(version).toBe(3)
+    expect(version).toBe(1)
 })

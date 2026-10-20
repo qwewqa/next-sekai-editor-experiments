@@ -1,19 +1,19 @@
 import type { Key, KvTx, KvUpgrade } from './kv/types'
 
-// The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 3, whose store set is `STORES_V1`
-// under its first name) and the versioning rules (§1.6.1): upgrades
+// The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 1, whose store set is `STORES_V1`)
+// and the versioning rules (§1.6.1): upgrades
 // only add stores, indexes and fields; nothing here or in any version deletes a store or the
 // database, and there is no reset path. The upgrade interface has no delete at all.
 
 export const DB_NAME = 'nse-local-data'
-export const DB_VERSION = 3
+export const DB_VERSION = 1
 
 type StoreSpec = {
     keyPath: string | readonly string[] | null
     indexes: Readonly<Record<string, string>>
 }
 
-/** Every store with its key and indexes (none unique or multi-entry); `STORES_V1` is the name the set was first given. */
+/** Every store with its key and indexes (none unique or multi-entry). */
 export const STORES_V1 = {
     chains: { keyPath: 'chainId', indexes: { updatedAt: 'updatedAt', docId: 'docId' } },
     // A chain's file handles by role, off its record (D24).
@@ -35,7 +35,7 @@ export type StoreName = keyof typeof STORES_V1
 
 export const STORE_NAMES = Object.keys(STORES_V1) as StoreName[]
 
-/** The `meta` rows and their starting values, written by the upgrade from version 0. */
+/** The `meta` rows and their starting values, written when the database is created. */
 export type MetaValues = {
     formatVersion: number
     createdBy: string
@@ -86,34 +86,20 @@ export const startingMeta = (context: CreateContext): MetaValues => ({
     lastPersistFailure: null,
 })
 
-/** Creates each store of the set the database lacks, with its indexes. */
-const createMissingStores = (upgrade: KvUpgrade) => {
-    const present = new Set(upgrade.storeNames)
+const createV1 = (upgrade: KvUpgrade, context: CreateContext) => {
     for (const name of STORE_NAMES) {
-        if (present.has(name)) continue
         const spec: StoreSpec = STORES_V1[name]
         upgrade.createStore(name, spec.keyPath === null ? {} : { keyPath: spec.keyPath })
         for (const [index, keyPath] of Object.entries(spec.indexes))
             upgrade.createIndex(name, index, keyPath)
     }
-}
-
-const createV1 = (upgrade: KvUpgrade, context: CreateContext) => {
-    createMissingStores(upgrade)
     for (const [key, value] of Object.entries(startingMeta(context)))
         upgrade.put('meta', { key, value })
 }
 
-/**
- * Each version's additive step; a version without one (a test's empty upgrade) adds nothing.
- * Versions 2 and 3 add any store of the set the database lacks: a version 1 database made before
- * `handles` joined the set, and a version 2 one made by the build whose bump had no step (r2
- * LS2-5), so every database at this version holds every store this build writes.
- */
+/** Each version's additive step; a version without one (a test's empty upgrade) adds nothing. */
 const UPGRADES: Record<number, (upgrade: KvUpgrade, context: CreateContext) => void> = {
     1: createV1,
-    2: createMissingStores,
-    3: createMissingStores,
 }
 
 /** The upgrade callback from any older version to the one requested. */

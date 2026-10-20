@@ -154,21 +154,6 @@ test('a seeded dump reads back equal', async () => {
     await world.idle()
 })
 
-test('a dump from before the handles store seeds a database that has it', async () => {
-    const world = createWorld()
-    const tab = world.tab('a')
-    const dump = sampleDump()
-    dump.stores = dump.stores.filter((store) => store.name !== 'handles')
-    assert.deepEqual(await tab.run(() => seedDump(tab.kv, readDump(dump), fakeStorage())), {
-        seeded: true,
-    })
-    const db = await tab.kv.open('nse-local-data', undefined)
-    assert.ok(db.storeNames.includes('handles'))
-    assert.deepEqual([...db.storeNames].sort(), Object.keys(STORES_V1).sort())
-    db.close()
-    await world.idle()
-})
-
 test('the seeder refuses a database with chains or sessions, and changes nothing', async () => {
     for (const store of ['chains', 'sessions'] as const) {
         const world = createWorld()

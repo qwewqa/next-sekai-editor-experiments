@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DB_NAME, startingMeta, STORE_NAMES, STORES_V1 } from '../../src/local/db'
 import { handleReadsForTests, readHandleRow, type HandleRole } from '../../src/local/handleRows'
 import { resolveHandle } from '../../src/local/handles'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
@@ -10,7 +9,7 @@ import { createWorld, type World } from '../../src/local/testing/world'
 import type { WorkerContext } from '../../src/local/worker/handlers'
 import { openHandlers } from '../../src/local/worker/openHandlers'
 import { editStep, futureFixtureOperation, nativeOperation } from '../helpers/historySteps'
-import { openPage, rows, testId, workerCore, type Page } from './flush/harness'
+import { openPage, rows, workerCore, type Page } from './flush/harness'
 import { append, beginSession, openJournalPage } from './journal/harness'
 import { fresh } from './nxsp/chain'
 import { goldenChart, stateOf } from './records/charts'
@@ -219,43 +218,6 @@ test('startup and recovery read no stored handle; a Save’s write-back after th
     assert.deepEqual(await read('exportTarget'), { testHandle: 'LevelData' })
     assert.equal(handleReadsForTests(), before + 2)
     assert.deepEqual(checkStored(world.memory), [])
-})
-
-test('a version 1 database made before the store joined the set gains it, and stores and reads handles', async () => {
-    const world = createWorld({ seed: 4 })
-    const tab = world.tab('old')
-    await tab.run(async () => {
-        const db = await tab.kv.open(DB_NAME, 1, {
-            upgrade: (upgrade) => {
-                for (const name of STORE_NAMES) {
-                    if (name === 'handles') continue
-                    const spec: { keyPath: string | readonly string[] | null } = STORES_V1[name]
-                    upgrade.createStore(
-                        name,
-                        spec.keyPath === null ? {} : { keyPath: spec.keyPath },
-                    )
-                }
-                const meta = startingMeta({ appVersion: '0.6.0', randomId: testId })
-                for (const [key, value] of Object.entries(meta)) upgrade.put('meta', { key, value })
-            },
-        })
-        db.close()
-    })
-    const page: Page = await openPage(world, world.tab('a'), {
-        writeChain: (request) => page.tab.run(() => handlersOf(page).writeChainFields(request)),
-    })
-    const session = beginIn(page, stateOf(goldenChart()))
-    assert.equal(
-        await page.flusher.setChainFields({
-            exportTarget: { ...target, handle: { testHandle: 'LevelData' } },
-        }),
-        true,
-    )
-    assert.deepEqual(rows(world, 'chains').get(session.chainId)?.exportTarget, target)
-    assert.deepEqual(await readHandle(page, session.chainId, 'exportTarget'), {
-        testHandle: 'LevelData',
-    })
-    assert.equal(page.errors.length, 0)
 })
 
 test('a stored token or handle resolves to a handle; anything else to none', () => {
