@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { hostZone } from '../../src/calendar/calendar'
 import {
     captureOperationRecipe,
     describeOperation,
@@ -28,6 +29,7 @@ const en: OperationTextContext = {
         readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
     ),
     now: 1_700_000_000_000,
+    zone: hostZone(),
 }
 const max = Number.MAX_SAFE_INTEGER
 

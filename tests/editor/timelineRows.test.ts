@@ -9,6 +9,7 @@ import {
     type Row,
 } from '../../src/editor/history/rows'
 import type { EntryDescription, NativeOperationInput } from '../../src/history/operations'
+import { hostCalendar } from '../helpers/calendar'
 import {
     editStep,
     futureFixtureOperation,
@@ -50,7 +51,7 @@ const options = {
     filter: 'all' as const,
     expanded: new Set<string>(),
     damaged: new Set<string>(),
-    now: noon + 30 * MINUTE,
+    calendar: hostCalendar(noon + 30 * MINUTE),
 }
 const entryRows = (rows: Row[]) => rows.filter((row): row is EntryRow => row.type === 'entry')
 

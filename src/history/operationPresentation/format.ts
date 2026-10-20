@@ -1,3 +1,4 @@
+import { clampToDomain } from '../../calendar/calendar'
 import { formatDateTimeSeconds } from '../../i18n/dateTime'
 import { languageTag } from '../../i18n/plural'
 import {
@@ -319,10 +320,9 @@ export const ownerChangedDescription = (
         ),
     )
 
+/** A time in the context's zone; a time no date can hold reads as the nearest date that can. */
 export const operationTime = (time: number, context: OperationTextContext) =>
-    Number.isNaN(new Date(time).getTime())
-        ? numberText(time, context)
-        : formatDateTimeSeconds(context.locale, time, context.now)
+    formatDateTimeSeconds(context.locale, clampToDomain(time), context.now, context.zone)
 
 export const describeOperation = (
     operation: NativeOperationInput,

@@ -699,12 +699,18 @@ test('equal-count action groups retain exact group, child and Restore scopes', a
                 const { peekedInfo, peekedLabel } = await window.editorTest.appImport<
                     typeof import('../../src/editor/history/selection')
                 >('/src/editor/history/selection.ts')
+                const { historyCalendar } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/calendarClock')
+                >('/src/editor/history/calendarClock.ts')
+                const { historyOperationContext } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/historyOperationContext')
+                >('/src/editor/history/historyOperationContext.ts')
                 const info = peekedInfo.value!
                 return {
                     key: info.key,
                     oldest: info.oldest,
                     previous: info.previous?.key,
-                    label: peekedLabel(info),
+                    label: peekedLabel(info, historyOperationContext(historyCalendar())),
                 }
             }),
         ).toEqual({

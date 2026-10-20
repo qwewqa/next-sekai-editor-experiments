@@ -4,7 +4,6 @@ import { isPeeking, peekLoading, peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { isComposingKey } from '../../utils/composition'
-import { formatDateTimeSeconds } from '../../i18n/when'
 import { interpolateRaw } from '../../utils/interpolate'
 import { changeLine, countedLines, fixedLine, fixedLines } from './changes'
 import { settings } from '../../settings'
@@ -13,10 +12,18 @@ import ChevronIcon from '../workspace/ChevronIcon.vue'
 import ChangeArrows from './ChangeArrows.vue'
 import InfoIcon from './InfoIcon.vue'
 import { useRootFontSize } from '../useRootFontSize'
+import { useHistoryCalendar } from './calendarClock'
+import { historyFormat } from './historyFormat'
+import { historyOperationContext } from './historyOperationContext'
 import { measurePeekWidths, peekLayout, peekText, peekWidths } from './peekFit'
 import { backToNow, peekedInfo, peekedLabel, requestRestore } from './selection'
 import { openOperationDetails } from './operationDetails'
 import { focusAfterRemoval } from '../../utils/focusFallback'
+
+// The History clock: the bar's dates and the peeked step's name are in its zone.
+const calendar = useHistoryCalendar()
+const format = computed(() => historyFormat(calendar.value, settings.locale))
+const peekContext = computed(() => historyOperationContext(calendar.value))
 
 // --- Announcing the peek: with its change when that arrives within 300 ms, else the change alone.
 const announcement = ref('')
@@ -24,9 +31,12 @@ let announcedAt = 0
 watch(
     peekedInfo,
     (info) => {
-        announcedAt = Date.now()
+        announcedAt = performance.now()
         announcement.value = info
-            ? interpolateRaw(i18n.value.history.announceViewing, formatDateTimeSeconds(info.time))
+            ? interpolateRaw(
+                  i18n.value.history.announceViewing,
+                  format.value.dateTimeSeconds(info.time),
+              )
             : ''
     },
     { immediate: true },
@@ -35,10 +45,10 @@ watch(changeLine, (line) => {
     const info = peekedInfo.value
     if (!line || !info) return
     announcement.value =
-        Date.now() - announcedAt <= 300
+        performance.now() - announcedAt <= 300
             ? interpolateRaw(
                   i18n.value.history.announceViewingChange,
-                  formatDateTimeSeconds(info.time),
+                  format.value.dateTimeSeconds(info.time),
                   line,
               )
             : line
@@ -48,14 +58,20 @@ const strings = computed(() => i18n.value.peek)
 
 // --- One width per language and width class, so the arrows below never move (peekFit.ts).
 const measure = () => {
-    peekWidths.value = measurePeekWidths(document.body, settings.locale, settings.beatDisplay, {
-        back: strings.value.backToNow,
-        restore: strings.value.restore,
-        states: fixedLines.short.map(fixedLine),
-        statesWide: fixedLines.wide.map(fixedLine),
-        summary: fixedLines.summary.map(fixedLine),
-        counted: countedLines(),
-    })
+    peekWidths.value = measurePeekWidths(
+        document.body,
+        settings.locale,
+        settings.beatDisplay,
+        {
+            back: strings.value.backToNow,
+            restore: strings.value.restore,
+            states: fixedLines.short.map(fixedLine),
+            statesWide: fixedLines.wide.map(fixedLine),
+            summary: fixedLines.summary.map(fixedLine),
+            counted: countedLines(),
+        },
+        calendar.value,
+    )
 }
 onMounted(() => {
     measure()
@@ -70,7 +86,7 @@ watch(useRootFontSize(), measure)
 const layout = computed(() => peekLayout(view.w, peekWidths.value))
 const text = computed(() => {
     const info = peekedInfo.value
-    return info ? peekText(settings.locale, info.time, layout.value.wide) : ''
+    return info ? peekText(calendar.value, settings.locale, info.time, layout.value.wide) : ''
 })
 
 // Leaving the peek takes the strip away, by Back to Now, Restore, Escape, Undo or anything else:
@@ -143,7 +159,7 @@ const onKeydown = (event: KeyboardEvent) => {
                     type="button"
                     class="peek-hit ghost mr-auto flex h-9 min-w-0 items-center gap-2 rounded-full"
                     :class="layout.tiny ? 'w-9 shrink-0 justify-center' : 'px-2.5'"
-                    :title="peekedInfo && peekedLabel(peekedInfo)"
+                    :title="peekedInfo && peekedLabel(peekedInfo, peekContext)"
                     :aria-label="interpolateRaw(i18n.history.details.named, text)"
                     data-peek-text
                     data-peek-details

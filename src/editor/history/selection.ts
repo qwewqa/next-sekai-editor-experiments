@@ -1,10 +1,10 @@
 import { shallowRef, watch } from 'vue'
 import { recordError } from '../../diagnostics'
-import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import {
     operationStepCount,
     renderOperationRecipe,
     type OperationRecipe,
+    type OperationTextContext,
 } from '../../history/operationPresentation'
 import {
     PeekError,
@@ -51,8 +51,7 @@ export const keyOf = (entry: { sessionId: string; seq: number }): EntryKey =>
 /** What the bar names, set when the list asks for a peek. */
 export const peekedInfo = shallowRef<PeekedInfo>()
 
-export const peekedLabel = (info: PeekedInfo) => {
-    const context = getHistoryOperationContext()
+export const peekedLabel = (info: PeekedInfo, context: OperationTextContext) => {
     const title = renderOperationRecipe(info.recipe, context)
     return info.recipe.kind === 'group'
         ? `${title} · ${operationStepCount(info.recipe, context)}`

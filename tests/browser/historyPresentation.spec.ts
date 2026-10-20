@@ -72,18 +72,29 @@ const listed = (page: Page) =>
 
 const selected = (page: Page) =>
     page.evaluate(async () => {
-        const [peek, selection] = await Promise.all([
+        const [peek, selection, clock, format] = await Promise.all([
             window.editorTest.appImport<typeof import('../../src/history/peek')>(
                 '/src/history/peek.ts',
             ),
             window.editorTest.appImport<typeof import('../../src/editor/history/selection')>(
                 '/src/editor/history/selection.ts',
             ),
+            window.editorTest.appImport<typeof import('../../src/editor/history/calendarClock')>(
+                '/src/editor/history/calendarClock.ts',
+            ),
+            window.editorTest.appImport<
+                typeof import('../../src/editor/history/historyOperationContext')
+            >('/src/editor/history/historyOperationContext.ts'),
         ])
         return {
             requested: peek.peekedKey.value,
             displayed: peek.displayedPeekKey.value,
-            label: selection.peekedInfo.value && selection.peekedLabel(selection.peekedInfo.value),
+            label:
+                selection.peekedInfo.value &&
+                selection.peekedLabel(
+                    selection.peekedInfo.value,
+                    format.historyOperationContext(clock.historyCalendar()),
+                ),
             life: window.editorTest.history.state.value.initialLife,
         }
     })

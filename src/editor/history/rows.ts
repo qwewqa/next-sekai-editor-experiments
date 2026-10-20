@@ -1,4 +1,13 @@
+import {
+    dayKey,
+    daysBetween,
+    hourKey,
+    minuteKey,
+    spanKey,
+    type DayKey,
+} from '../../calendar/calendar'
 import { decodeOperation, operationGroup, type EntryDescription } from '../../history/operations'
+import type { Calendar } from './calendarClock'
 
 // The Timeline's rows from a chain's entries (Part 1 §1.4.10.5): flags, ×N groups, dividers and
 // minute, hour or day headers by age. Pure, so Node tests run it without the page.
@@ -81,43 +90,28 @@ export type Header = {
     withDay: boolean
     /** A time in what it labels. */
     time: number
+    /** The local day of that time, in the calendar's zone. */
+    day: DayKey
 }
-
-const minuteOf = (time: number) => Math.floor(time / 60_000)
-
-// The start of the local hour. It takes away the minutes shown on the clock rather than setting
-// them to 0, because at a daylight saving fall-back "1:00" names two instants an hour apart and
-// setting the minutes would put both hours under the first.
-const hourStart = (time: number) => {
-    const date = new Date(time)
-    return time - (date.getMinutes() * 60_000 + date.getSeconds() * 1000 + date.getMilliseconds())
-}
-
-const dayStart = (time: number) => new Date(time).setHours(0, 0, 0, 0)
-
-/** Whole local days from `time` to `now`. */
-const daysBefore = (time: number, now: number) =>
-    Math.round((dayStart(now) - dayStart(time)) / 86_400_000)
 
 /** The days before today that still get hour headers (Part 1 §1.4.10.5). */
 const HOUR_DAYS = 6
 
 /** The finest header an entry's age earns, and the key of the span it labels. */
-const tierOf = (time: number, now: number) => {
-    const ago = daysBefore(time, now)
-    if (ago > HOUR_DAYS) return { level: 'day' as const, key: `d:${dayStart(time)}` }
-    if (ago <= 0 && hourStart(time) === hourStart(now))
-        return { level: 'minute' as const, key: `m:${minuteOf(time)}` }
-    return { level: 'hour' as const, key: `h:${hourStart(time)}` }
+const tierOf = (time: number, cal: Calendar, nowHour: number) => {
+    const day = dayKey(time, cal.zone)
+    const ago = daysBetween(day, cal.today)
+    if (ago > HOUR_DAYS) return { level: 'day' as const, key: `d:${day}`, day }
+    const hour = hourKey(time, cal.zone)
+    if (ago <= 0 && hour === nowHour)
+        return { level: 'minute' as const, key: `m:${minuteKey(time, cal.zone)}`, day }
+    return { level: 'hour' as const, key: `h:${hour}`, day }
 }
 
-/**
- * The local hour a group stays inside (X-1): a ×N row never crosses a day or an hour, so it sits
- * under the header of its own day and hour, and Go To's days, which count each entry by its own
- * day, agree with the headers. It does not depend on the clock, so a row's members never change
- * as it ages. Minute headers in the current hour may be crossed.
- */
-const spanOf = (time: number) => `${dayStart(time)}|${hourStart(time)}`
+// The local hour a group stays inside (X-1) is `spanKey`: a ×N row never crosses a day or an hour,
+// so it sits under the header of its own day and hour, and Go To's days, which count each entry by
+// its own day, agree with the headers. It does not depend on the clock, so a row's members never
+// change as it ages. Minute headers in the current hour may be crossed.
 
 /** Supported semantic keys; availability and chronology are independent boundaries. */
 const groupKey = (entry: Entry, flags: Flags) => {
@@ -140,8 +134,8 @@ export type BuildOptions = {
     newer?: ReadonlySet<string>
     /** Entries a peek or Restore found removed, by id, though they were read as kept. */
     removed?: ReadonlySet<string>
-    /** The clock the headers' ages are measured against. */
-    now?: number
+    /** The History clock the headers' ages and zone come from. */
+    calendar: Calendar
     /** After a jump: how many entries lie between Now and the first one given. */
     gap?: number
     more?: boolean
@@ -151,17 +145,7 @@ export type BuildOptions = {
 /** The rows to show for a chain's entries, newest first. */
 export const buildRows = (
     newestFirst: readonly Entry[],
-    {
-        filter,
-        expanded,
-        damaged,
-        newer,
-        removed,
-        now = Date.now(),
-        gap,
-        more,
-        pinned,
-    }: BuildOptions,
+    { filter, expanded, damaged, newer, removed, calendar, gap, more, pinned }: BuildOptions,
 ): Row[] => {
     // A `kept: false` entry is damaged when the worker found its snapshot reaching a bad part, or
     // when a peek or Restore of it failed in this tab; else it was removed to save space.
@@ -231,7 +215,8 @@ export const buildRows = (
             if (next.sessionId !== entry.sessionId) break
             if (pinned?.includes(entryId(next)) !== pinned?.includes(entryId(entry))) break
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            if (spanOf(next.time) !== spanOf(members.at(-1)!.time)) break
+            if (spanKey(next.time, calendar.zone) !== spanKey(members.at(-1)!.time, calendar.zone))
+                break
             // Edits Here collapses only matches next to each other on the chain.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             if (filter === 'here' && next.pos !== members.at(-1)!.pos! + 1) break
@@ -274,6 +259,8 @@ export const buildRows = (
     if (gap !== undefined) rows.push({ type: 'gap', id: 'gap', count: gap })
     let previous: Entry | undefined
     let previousKey: string | undefined
+    let previousDay: DayKey | undefined
+    const nowHour = hourKey(calendar.now, calendar.zone)
     const headerIds = new Set<string>()
     for (const item of items) {
         const { time } = item.entry
@@ -282,21 +269,24 @@ export const buildRows = (
             continue
         }
         if (item.type === 'entry') {
-            const { level, key } = tierOf(time, now)
+            const { level, key, day } = tierOf(time, calendar, nowHour)
             if (key !== previousKey) {
-                // A day not yet named, past today, names itself with its first hour or minute.
-                const newDay = !previous || dayStart(previous.time) !== dayStart(time)
-                const withDay = level !== 'day' && newDay && daysBefore(time, now) > 0
-                const named = withDay ? `${key}|${dayStart(time)}` : key
+                // Every new day names itself with its first hour or minute, except a today that
+                // opens the list.
+                const newDay = previousDay !== day
+                const withDay =
+                    level !== 'day' && newDay && (day !== calendar.today || previous !== undefined)
+                const named = withDay ? `${key}|${day}` : key
                 // Headers follow adjacency, so a span whose entries come back out of time order
                 // (an imported file's clock, or a clock that was corrected) shows its header again.
                 // The first keeps the plain id, and a repeat takes its first entry's, so every key
                 // in the list is unique.
                 const id = headerIds.has(named) ? `${named}@${item.id}` : named
                 headerIds.add(id)
-                rows.push({ type: 'header', id, level, withDay, time })
+                rows.push({ type: 'header', id, level, withDay, time, day })
             }
             previousKey = key
+            previousDay = day
             previous = item.entry
         }
         rows.push(item)

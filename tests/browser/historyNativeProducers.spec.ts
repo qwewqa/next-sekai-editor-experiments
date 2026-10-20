@@ -696,7 +696,7 @@ for (const mode of ['edge', 'body', 'edge and beat'] as const)
             const { i18n } = await appImport<typeof import('../../src/i18n')>('/src/i18n/index.ts')
             return describeOperation(
                 window.editorTest.history.headStep.value!.operation as never,
-                { locale: 'en', strings: i18n.value, now: Date.now() } as never,
+                { locale: 'en', strings: i18n.value, now: Date.now(), zone: 'UTC' } as never,
             )
         })
         expect(titles).toBe(mode === 'body' ? 'Moved 1 note' : 'Resized 1 note')

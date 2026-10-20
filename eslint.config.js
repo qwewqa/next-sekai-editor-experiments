@@ -3,6 +3,7 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 import pluginVue from 'eslint-plugin-vue'
 import globals from 'globals'
 import tsEslint from 'typescript-eslint'
+import local from './scripts/eslint-plugin-local.mjs'
 
 export default tsEslint.config(
     {
@@ -174,6 +175,40 @@ export default tsEslint.config(
                 },
             ],
         },
+    },
+
+    // History's time (Part 1 §1.6.8.7): local time is read only by the calendar module, and every
+    // date and time on a History surface is written through the History clock and `historyFormat`.
+    // These are two rules of the local plugin and add no `no-restricted-imports` object: a second
+    // one would replace the native-code bans above.
+    {
+        files: [
+            'src/editor/history/**/*.{ts,vue}',
+            'src/history/**/*.ts',
+            'src/editor/peek.ts',
+            'src/local/worker/timelineHandlers.ts',
+            'src/local/days.ts',
+        ],
+        // C1's allowlist: each still buckets by local day itself. C2 and C4 empty it.
+        ignores: [
+            'src/editor/history/GoToList.vue',
+            'src/editor/history/source.ts',
+            'src/local/worker/timelineHandlers.ts',
+            'src/local/days.ts',
+        ],
+        plugins: { local },
+        rules: { 'local/no-local-time': 'error' },
+    },
+    {
+        files: ['src/editor/history/**/*.{ts,vue}', 'src/editor/peek.ts', 'src/history/**/*.ts'],
+        ignores: [
+            'src/editor/history/historyFormat.ts',
+            'src/editor/history/calendarClock.ts',
+            'src/history/createHistoryOperation.ts',
+            'src/history/operationPresentation/format.ts',
+        ],
+        plugins: { local },
+        rules: { 'local/history-imports': 'error' },
     },
 
     {

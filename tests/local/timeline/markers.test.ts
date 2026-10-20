@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { gzip } from 'pako'
+import { hostZone } from '../../../src/calendar/calendar'
 import {
     exportByPicker,
     exportToTarget,
@@ -28,7 +29,7 @@ test('recovery operation titles use current locale without claiming collapsed ac
         for (const droppedSteps of [0, 1, 4]) {
             const title = describeOperation(
                 { id: 'nse.recovery', data: { droppedSteps } },
-                { locale, strings, now: 0 },
+                { locale, strings, now: 0, zone: hostZone() },
             )
             assert.equal(title, strings.entry.recoveredChanges)
             assert(title.length > 0)

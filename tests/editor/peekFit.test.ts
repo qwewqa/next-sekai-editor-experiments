@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { peekLayout, peekText, type PeekWidths } from '../../src/editor/history/peekFit'
+import { hostCalendar } from '../helpers/calendar'
 
 const enWidths: PeekWidths = {
     today: 76.796875,
@@ -372,19 +373,19 @@ test('peekText: today, earlier this year, another year', () => {
     // The clock and dates as Intl writes them (a narrow no-break space may precede AM and PM).
     const plain = (s: string) => s.replace(/[\u202f\u00a0]/g, ' ')
     assert.equal(
-        plain(peekText('en', new Date(2026, 9, 19, 9, 5, 7).getTime(), true, now)),
+        plain(peekText(hostCalendar(now), 'en', new Date(2026, 9, 19, 9, 5, 7).getTime(), true)),
         '9:05:07 AM',
     )
     assert.match(
-        plain(peekText('en', new Date(2026, 2, 3, 21, 5, 7).getTime(), true, now)),
+        plain(peekText(hostCalendar(now), 'en', new Date(2026, 2, 3, 21, 5, 7).getTime(), true)),
         /^Mar 3, 9:05:07 PM$/,
     )
     assert.equal(
-        plain(peekText('en', new Date(2026, 2, 3, 21, 5, 7).getTime(), false, now)),
+        plain(peekText(hostCalendar(now), 'en', new Date(2026, 2, 3, 21, 5, 7).getTime(), false)),
         '3/3/26, 9:05 PM',
     )
     assert.equal(
-        plain(peekText('en', new Date(2025, 2, 3, 21, 5, 7).getTime(), true, now)),
+        plain(peekText(hostCalendar(now), 'en', new Date(2025, 2, 3, 21, 5, 7).getTime(), true)),
         '3/3/25, 9:05 PM',
     )
 })

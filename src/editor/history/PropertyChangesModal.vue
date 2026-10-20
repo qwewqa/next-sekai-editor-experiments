@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { getHistoryOperationContext } from '../../history/createHistoryOperation'
 import { renderOperationRecipe } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
-import { formatDateTimeSeconds } from '../../i18n/when'
+import { settings } from '../../settings'
 import BaseModal from '../../modals/BaseModal.vue'
 import { interpolateRaw } from '../../utils/interpolate'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
@@ -23,15 +22,18 @@ import {
 } from './propertyPresentation'
 import DetailsHeader from './DetailsHeader.vue'
 import PropertyChangeValue from './PropertyChangeValue.vue'
+import { useHistoryCalendar } from './calendarClock'
+import { historyFormat } from './historyFormat'
+import { historyOperationContext } from './historyOperationContext'
 import { peekedLabel } from './selection'
 
 const props = defineProps<{ comparison: InspectionComparison; summary: string }>()
 const emit = defineEmits<{ close: [] }>()
 const limit = ref(PROPERTY_PAGE_SIZE)
 // The step's title alone, as Step Details has it; its step count belongs to a list of steps.
-const title = computed(() =>
-    renderOperationRecipe(props.comparison.request.recipe, getHistoryOperationContext()),
-)
+const calendar = useHistoryCalendar()
+const context = computed(() => historyOperationContext(calendar.value))
+const title = computed(() => renderOperationRecipe(props.comparison.request.recipe, context.value))
 const inspection = computed(() =>
     propertyInspection.value?.comparison === props.comparison
         ? propertyInspection.value
@@ -67,9 +69,11 @@ onBeforeUnmount(() => {
             scope="property"
             class="select-text [overflow-wrap:anywhere]"
             :title="title"
-            :meta="formatDateTimeSeconds(comparison.request.time)"
+            :meta="
+                historyFormat(calendar, settings.locale).dateTimeSeconds(comparison.request.time)
+            "
             :summary="
-                summary !== title && summary !== peekedLabel(comparison.request)
+                summary !== title && summary !== peekedLabel(comparison.request, context)
                     ? summary
                     : undefined
             "
