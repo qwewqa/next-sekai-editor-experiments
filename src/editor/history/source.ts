@@ -177,8 +177,11 @@ const joinOf = (fresh: readonly Entry[], loaded: readonly Entry[]) => {
     return found
 }
 
-/** Reads the newest page again, keeping the older pages already loaded. */
-export const refresh = async (): Promise<void> => {
+/**
+ * Reads the newest page again, keeping the older pages already loaded. With `replace` the loaded
+ * run is dropped for the newest page (Now, Home after a jump).
+ */
+export const refresh = async ({ replace = false } = {}): Promise<void> => {
     const worker = storageWorker
     const id = session.value.sessionId
     // Without storage the timeline holds what this tab made.
@@ -205,7 +208,7 @@ export const refresh = async (): Promise<void> => {
         // older pages and the reader's place stay.
         for (let pages = 1; next && pages < MAX_BRIDGE_PAGES; pages++) {
             if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
-            if (loadedFor.value !== id || !stored.value.length) break
+            if (replace || loadedFor.value !== id || !stored.value.length) break
             if (joinOf(fresh, stored.value)) break
             const older = await worker.call('readTimeline', { ...next, limit: PAGE })
             fresh.push(...older.entries.map(entryOf))
@@ -219,7 +222,7 @@ export const refresh = async (): Promise<void> => {
     // The session changed meanwhile: its own refresh follows. A jump replaced the run: it stays.
     if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
     // The run joins the loaded one at the oldest fresh entry already loaded; its older pages follow.
-    const join = loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
+    const join = !replace && loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
     if (join) {
         stored.value = [...fresh.slice(0, join.at + 1), ...stored.value.slice(join.place + 1)]
     } else {
@@ -384,7 +387,7 @@ export const resetToNewest = async () => {
     replaceSource()
     newer.value = undefined
     newerCount.value = 0
-    await refresh()
+    await refresh({ replace: true })
 }
 
 /** Entries waiting for the worker. */
@@ -424,6 +427,7 @@ export const followEntries = () => {
     const stop = onHistoryAction((action) => {
         indexes.clear()
         if (action.kind === 'reset') {
+            carried.clear()
             replaceSource()
             stored.value = []
             cursor = undefined
