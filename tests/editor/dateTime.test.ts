@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
     formatClock,
+    formatClockRange,
     formatDate,
     formatDateInSentence,
     formatDateTime,
@@ -64,4 +65,18 @@ test('an entry shows its time to the second, with the date when it is not from t
 test('an hour header is the hour alone', () => {
     assert.equal(formatHour('en', at(10, 16, 13, 40)), '1 PM')
     assert.match(formatHour('fr', at(10, 16, 13, 40)), /13/)
+})
+
+test('a clock range puts the earlier time first, whatever order it is given in', () => {
+    const early = at(10, 16, 16, 16)
+    const late = at(10, 16, 16, 33)
+    const range = formatClockRange('en', early, late)
+    assert.match(range, /4:16/)
+    assert.equal(formatClockRange('en', late, early), range)
+    assert.ok(range.indexOf('4:16') < range.indexOf('4:33'))
+})
+
+test('a clock range never throws', () => {
+    assert.equal(formatClockRange('en', Number.NaN, at(10, 16, 16, 16)), '')
+    assert.doesNotThrow(() => formatClockRange('en', at(10, 16, 16, 33), at(10, 16, 16, 16)))
 })

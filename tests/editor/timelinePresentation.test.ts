@@ -115,6 +115,14 @@ test('a foreign fallback row, group step and recovery line name their language',
     // A prefixed line mixes the current language with the captured one, so it names none.
     const [single] = rows([{ kind: 'undo', step: foreign('zhs') }])
     assert.equal(presentRow(single!, context).lang, undefined)
+    // The Step Details title of a single Undo or Redo mixes the languages too; an edit names one.
+    for (const kind of ['undo', 'redo'] as const) {
+        const [mixed] = rows([{ kind, step: foreign('zht') }])
+        const title = operationDetails(recipeOfRow(mixed!), context)
+        assert.match(title.description, /好/)
+        assert.equal(title.descriptionLang, undefined)
+    }
+    assert.equal(operationDetails(recipeOfRow(row!), context).descriptionLang, 'zh-Hant')
     assert.equal(stepLang(foreign('zhs'), context), 'zh-Hans')
     assert.equal(stepLang(editStep(noteAdd(1)), context), undefined)
 })

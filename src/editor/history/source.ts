@@ -14,6 +14,7 @@ import type {
     TimelinePiece,
 } from '../../local/worker/timelineHandlers'
 import type { State } from '../../state'
+import { createPlaces, singleFlight } from './hereChecks'
 import { entryId, type Entry, type Filter } from './rows'
 import { hereRange, historyFilter } from './state'
 
@@ -544,16 +545,18 @@ let hereFor: string | undefined
 let hereDone = false
 /** The newest entry checked: newer ones are checked on their own. */
 let hereTop: { sessionId: string; seq: number } | undefined
+/** Places along the chain for all the checks: the first scan's newest entry is place 0. */
+const herePlaces = createPlaces()
 
 const hereKey = () => {
     const range = hereRange.value
     return range && `${session.value.sessionId}|${range.from}|${range.to}`
 }
 
-const matchOf = (match: EditMatch, shift = 0): Entry => ({
+const matchOf = (match: EditMatch, pos = match.pos): Entry => ({
     ...entryOf(match),
     previous: match.previous,
-    pos: match.pos - shift,
+    pos,
 })
 
 const stopHere = () => {
@@ -576,6 +579,7 @@ const scanHere = async () => {
     here.failed = false
     here.canRetry = !!worker
     hereTop = undefined
+    herePlaces.reset()
     hereDone = false
     hereFor = hereKey()
     if (!worker || !range) {
@@ -602,6 +606,10 @@ const scanHere = async () => {
             cursor = page.cursor
         } while (cursor)
         hereDone = true
+        // Entries stored while the scan ran lie above its newest entry: check them now, as a
+        // check during the scan returned without looking.
+        here.scanning = false
+        void checkNewer()
     } catch {
         // What was found stays, marked as partial; Try Again, or choosing Edits Here again, scans
         // afresh.
@@ -614,33 +622,13 @@ const scanHere = async () => {
     }
 }
 
-/** The check in flight, and how many were asked for while it ran. */
-let checking: Promise<void> | undefined
-let checkRequests = 0
-
 /**
  * Entries stored since the scan began: checked down to where it started. One check runs at a time,
  * for all the lists following (their timers and watches coincide); a request during a check runs
  * once more after it, so what was stored meanwhile is not missed. Every caller's promise covers
  * the checks it asked for.
  */
-const checkNewer = (): Promise<void> => {
-    if (checking) {
-        checkRequests++
-        return checking
-    }
-    const run = (async () => {
-        let seen: number
-        do {
-            seen = checkRequests
-            await checkNewerOnce()
-        } while (seen !== checkRequests)
-    })().finally(() => {
-        checking = undefined
-    })
-    checking = run
-    return run
-}
+const checkNewer = singleFlight(() => checkNewerOnce())
 
 const checkNewerOnce = async () => {
     const worker = storageWorker
@@ -676,11 +664,15 @@ const checkNewerOnce = async () => {
         return
     }
     here.failed = false
-    if (top) hereTop = top
     // Places along the chain stay counted from the first scan's newest entry.
+    const places = found.map((match) => herePlaces.of(match.pos, reached))
+    if (top) {
+        hereTop = top
+        herePlaces.advance(reached)
+    }
     const known = new Set(here.matches.map(entryId))
     const fresh = found
-        .map((match) => matchOf(match, reached))
+        .map((match, i) => matchOf(match, places[i]))
         .filter((entry) => !known.has(entryId(entry)))
     if (fresh.length) here.matches = [...fresh, ...here.matches]
     here.unreadable += unreadable
