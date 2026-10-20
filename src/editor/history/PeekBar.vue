@@ -12,6 +12,7 @@ import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import ChangeArrows from './ChangeArrows.vue'
 import InfoIcon from './InfoIcon.vue'
+import { useRootFontSize } from '../useRootFontSize'
 import { measurePeekWidths, peekLayout, peekText, peekWidths } from './peekFit'
 import { backToNow, peekedInfo, peekedLabel, requestRestore } from './selection'
 import { openOperationDetails } from './operationDetails'
@@ -63,6 +64,8 @@ onBeforeUnmount(() => {
     document.fonts.removeEventListener('loadingdone', measure)
 })
 watch(() => [settings.locale, settings.beatDisplay], measure)
+// The widths are in px at the root font size they were measured at: a change measures them again.
+watch(useRootFontSize(), measure)
 const layout = computed(() => peekLayout(view.w, peekWidths.value))
 const text = computed(() => {
     const info = peekedInfo.value

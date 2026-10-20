@@ -1,0 +1,202 @@
+import assert from 'node:assert/strict'
+import { registerHooks } from 'node:module'
+import { afterEach, mock, test } from 'node:test'
+
+// The Timeline's day, hour and minute labels depend on the host's time zone. A zone with daylight
+// saving time makes the 23-hour and 25-hour days testable. node:test runs each file in its own
+// process, so setting the zone here leaves the other files alone.
+process.env.TZ = 'America/New_York'
+const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+assert.equal(
+    zone,
+    'America/New_York',
+    `This platform ignores TZ (the resolved zone is ${zone}); the DST cases cannot run`,
+)
+
+// Two modules need a browser: src/i18n/localizations.ts collects the catalogues with Vite's
+// import.meta.glob, and src/settings.ts reads media queries and storage. A load hook swaps them for
+// the three catalogues read from their JSON files and a settings object with only the locale.
+const here = (path: string) => new URL(path, import.meta.url).href
+const stubs: Record<string, string> = {
+    [here('../../src/i18n/localizations.ts')]: [
+        ...['en', 'fr', 'ja'].map(
+            (locale) =>
+                `import ${locale} from ${JSON.stringify(here(`../../src/i18n/${locale}/index.json`))} with { type: 'json' }`,
+        ),
+        'export const localizations = { en, fr, ja }',
+    ].join('\n'),
+    [here('../../src/settings.ts')]: [
+        "import { reactive } from 'vue'",
+        "export const settings = reactive({ locale: 'en' })",
+    ].join('\n'),
+}
+registerHooks({
+    load: (url, context, next) =>
+        url in stubs
+            ? { format: 'module', shortCircuit: true, source: stubs[url] }
+            : next(url, context),
+})
+
+const { headerText, newerStepsText, dayLabel, pinnedText, stepsText } =
+    await import('../../src/editor/history/labels')
+const { settings } = await import('../../src/settings')
+const { default: en } = await import('../../src/i18n/en/index.json', { with: { type: 'json' } })
+const { default: fr } = await import('../../src/i18n/fr/index.json', { with: { type: 'json' } })
+const { default: ja } = await import('../../src/i18n/ja/index.json', { with: { type: 'json' } })
+
+type Header = Parameters<typeof headerText>[0]
+
+const catalogues = { en, fr, ja } as const
+type Locale = keyof typeof catalogues
+
+const at = (year: number, month: number, day: number, hour = 12, minute = 0) =>
+    new Date(year, month - 1, day, hour, minute).getTime()
+
+const now = at(2026, 10, 16, 15, 30)
+
+// Date.now is the clock the labels read for the year of an older date, so each test pins it.
+const withClock = (clock: number) => mock.method(Date, 'now', () => clock)
+const inLocale = (locale: Locale) => {
+    settings.locale = locale
+}
+
+const header = (level: Header['level'], time: number, withDay = false): Header => ({
+    type: 'header',
+    id: `${level}:${time}`,
+    level,
+    withDay,
+    time,
+})
+
+afterEach(() => {
+    mock.restoreAll()
+    inLocale('en')
+})
+
+test('the host zone is the one this file asks for', () => {
+    assert.equal(new Date(at(2026, 7, 1, 12)).getTimezoneOffset(), 240)
+    assert.equal(new Date(at(2026, 1, 1, 12)).getTimezoneOffset(), 300)
+})
+
+test('a day is Today, Yesterday or its date in each language', () => {
+    withClock(now)
+    for (const locale of ['en', 'fr', 'ja'] as const) {
+        inLocale(locale)
+        const strings = catalogues[locale].history
+        assert.equal(dayLabel(at(2026, 10, 16, 0, 0), now), strings.today, locale)
+        assert.equal(dayLabel(at(2026, 10, 16, 15, 30), now), strings.today, locale)
+        assert.equal(dayLabel(at(2026, 10, 15, 23, 59), now), strings.yesterday, locale)
+        assert.equal(dayLabel(at(2026, 10, 15, 0, 0), now), strings.yesterday, locale)
+    }
+    inLocale('en')
+    assert.equal(dayLabel(at(2026, 10, 14), now), 'Oct 14')
+    inLocale('fr')
+    assert.match(dayLabel(at(2026, 10, 14), now), /^14 oct/)
+    inLocale('ja')
+    assert.match(dayLabel(at(2026, 10, 14), now), /10月14日/)
+})
+
+test('Yesterday is the previous calendar day even when the two are under 24 hours apart', () => {
+    withClock(now)
+    inLocale('en')
+    // Just after midnight, the previous evening is Yesterday.
+    const justAfter = at(2026, 10, 16, 0, 5)
+    assert.equal(dayLabel(at(2026, 10, 15, 23, 50), justAfter), en.history.yesterday)
+    // A day at least 47 hours back is not.
+    assert.equal(dayLabel(at(2026, 10, 14, 0, 5), at(2026, 10, 16, 0, 5)), 'Oct 14')
+})
+
+test('a date in another year carries the year', () => {
+    withClock(now)
+    inLocale('en')
+    assert.equal(dayLabel(at(2025, 10, 14), now), 'Oct 14, 2025')
+    inLocale('ja')
+    assert.match(dayLabel(at(2025, 10, 14), now), /2025/)
+    inLocale('fr')
+    assert.match(dayLabel(at(2025, 10, 14), now), /2025/)
+})
+
+test('after the clocks go forward, a 23-hour day is still Yesterday', () => {
+    // 2026-03-08 has 23 hours in New York: 02:00 EST jumps to 03:00 EDT.
+    const sunday = at(2026, 3, 8, 12)
+    const monday = at(2026, 3, 9, 0, 30)
+    assert.equal(monday - at(2026, 3, 8, 0, 30), 23 * 3_600_000)
+    withClock(monday)
+    inLocale('en')
+    assert.equal(dayLabel(sunday, monday), en.history.yesterday)
+    // The first hour of that day, before the jump, is Yesterday too.
+    assert.equal(dayLabel(at(2026, 3, 8, 0, 10), monday), en.history.yesterday)
+    // And the day before it is a date.
+    assert.equal(dayLabel(at(2026, 3, 7, 23, 50), monday), 'Mar 7')
+})
+
+test('after the clocks go back, a 25-hour day is still Yesterday', () => {
+    // 2026-11-01 has 25 hours: 02:00 EDT falls back to 01:00 EST.
+    const monday = at(2026, 11, 2, 0, 30)
+    assert.equal(monday - at(2026, 11, 1, 0, 30), 25 * 3_600_000)
+    withClock(monday)
+    inLocale('en')
+    assert.equal(dayLabel(at(2026, 11, 1, 0, 10), monday), en.history.yesterday)
+    assert.equal(dayLabel(at(2026, 11, 1, 23, 50), monday), en.history.yesterday)
+    assert.equal(dayLabel(at(2026, 10, 31, 23, 50), monday), 'Oct 31')
+    // 24 hours before 00:30 on the 2nd is 01:30 EST on the 1st, which is still Yesterday.
+    assert.equal(dayLabel(monday - 24 * 3_600_000, monday), en.history.yesterday)
+})
+
+test('a header says its own label, with its day when the day is not named above it', () => {
+    withClock(now)
+    inLocale('en')
+    const evening = at(2026, 10, 15, 21, 5)
+    assert.equal(headerText(header('day', at(2026, 10, 9))), 'Oct 9')
+    assert.equal(headerText(header('hour', evening)), '9 PM')
+    assert.equal(headerText(header('hour', evening, true)), 'Yesterday · 9 PM')
+    assert.equal(headerText(header('minute', at(2026, 10, 16, 14, 41))), '2:41 PM')
+    assert.equal(headerText(header('minute', at(2026, 10, 16, 14, 41), true)), 'Today · 2:41 PM')
+    assert.equal(headerText(header('hour', at(2025, 10, 14, 9), true)), 'Oct 14, 2025 · 9 AM')
+})
+
+test('the pinned header always names its day', () => {
+    withClock(now)
+    inLocale('en')
+    const evening = at(2026, 10, 15, 21, 5)
+    assert.equal(pinnedText(header('hour', evening)), 'Yesterday · 9 PM')
+    assert.equal(pinnedText(header('hour', evening, true)), 'Yesterday · 9 PM')
+    assert.equal(pinnedText(header('minute', at(2026, 10, 16, 14, 41))), 'Today · 2:41 PM')
+    assert.equal(pinnedText(header('day', at(2026, 10, 9))), 'Oct 9')
+})
+
+test('headers follow the language', () => {
+    withClock(now)
+    const evening = at(2026, 10, 15, 21, 5)
+    inLocale('fr')
+    assert.match(
+        headerText(header('hour', evening, true)),
+        new RegExp(`^${fr.history.yesterday} · .*21`),
+    )
+    assert.match(headerText(header('minute', at(2026, 10, 16, 14, 41))), /^14:41$/)
+    inLocale('ja')
+    assert.match(
+        headerText(header('hour', evening, true)),
+        new RegExp(`^${ja.history.yesterday} · .*21`),
+    )
+    assert.match(headerText(header('minute', at(2026, 10, 16, 14, 41))), /14:41/)
+})
+
+test('step counts pluralise and group digits in each language', () => {
+    inLocale('en')
+    assert.equal(stepsText(1), '1 step')
+    assert.equal(stepsText(58), '58 steps')
+    assert.equal(stepsText(1206), '1,206 steps')
+    assert.equal(newerStepsText(1), '1 newer step')
+    assert.equal(newerStepsText(1206), '1,206 newer steps')
+    inLocale('fr')
+    // French counts 0 and 1 as singular, and groups digits with a narrow no-break space.
+    assert.equal(stepsText(0), '0 étape')
+    assert.equal(stepsText(1), '1 étape')
+    assert.equal(stepsText(2), '2 étapes')
+    assert.match(stepsText(1206), /^1\s206 étapes$/)
+    assert.match(newerStepsText(1206), /^1\s206 étapes plus récentes$/)
+    inLocale('ja')
+    assert.equal(stepsText(1206), '1,206 操作')
+    assert.equal(newerStepsText(1206), '新しい操作 1,206 件')
+})

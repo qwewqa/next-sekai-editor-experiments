@@ -4,6 +4,7 @@ The roles, tokens and control recipes behind the editor's UI colour, and the rul
 
 - **Scope.** UI colour roles. Chart content keeps its own colours (section 13).
 - **Migration.** The system lands in stages; section 12 lists them and what each covers.
+- **Related.** [design-language.md](design-language.md) covers surfaces, shape, size and the History surfaces; [ui-review-checklist.md](ui-review-checklist.md) is the review questions.
 
 ---
 
@@ -788,4 +789,3 @@ Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They 
 - **The press glow is mint.** It is a shadow, it lasts only while held, and the pressed face is sunk and non-mint, so it does not read as on.
 - **Scoped styles cannot merge two recipe classes into one compound selector** (6.1). The on-toggle hover glow is written with one class for that reason; `.row-checked.row-current` is combined at the call site.
 - **`.surface-chrome` cascades** (3.1). A face inside the toolbar flyout that used `accent-strong`, `danger` or `focus-out` would take the chrome values.
-- **The design-language and review-checklist docs still describe v0.5.22 rules** until they are updated to match this file.

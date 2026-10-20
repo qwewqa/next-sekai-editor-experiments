@@ -12,6 +12,7 @@ import {
 } from 'vue'
 import { peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
+import { useRootFontSize } from '../useRootFontSize'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import CloseIcon from '../workspace/CloseIcon.vue'
 import GoToIcon from './GoToIcon.vue'
@@ -161,6 +162,8 @@ onBeforeUnmount(() => {
     document.fonts.removeEventListener('loadingdone', measureFit)
 })
 watch(() => i18n.value, measureFit, { flush: 'post' })
+// The sizes are in px at the root font size they were measured at: a change measures them again.
+watch(useRootFontSize(), measureFit, { flush: 'post' })
 const mode = computed<'label' | 'icon' | 'small'>(() => {
     const f = fit.value
     const width = bandWidth.value
