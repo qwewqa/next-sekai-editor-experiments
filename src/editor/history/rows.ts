@@ -108,11 +108,6 @@ const tierOf = (time: number, cal: Calendar, nowHour: number) => {
     return { level: 'hour' as const, key: `h:${hour}`, day }
 }
 
-// The local hour a group stays inside (X-1) is `spanKey`: a ×N row never crosses a day or an hour,
-// so it sits under the header of its own day and hour, and Go To's days, which count each entry by
-// its own day, agree with the headers. It does not depend on the clock, so a row's members never
-// change as it ages. Minute headers in the current hour may be crossed.
-
 /** Supported semantic keys; availability and chronology are independent boundaries. */
 const groupKey = (entry: Entry, flags: Flags) => {
     const flag = `${flags.removed ? 1 : 0}${flags.damaged ? 1 : 0}${flags.newer ? 1 : 0}`
@@ -214,6 +209,10 @@ export const buildRows = (
             if (!next || groupKey(next, flagsOf(next)) !== key) break
             if (next.sessionId !== entry.sessionId) break
             if (pinned?.includes(entryId(next)) !== pinned?.includes(entryId(entry))) break
+            // X-1: a ×N row never crosses a local day or hour (`spanKey`), so it sits under the header
+            // of its own day and hour, and Go To's days, which count each entry by its own day, agree
+            // with the headers. It does not depend on the clock, so a row's members never change as
+            // it ages. Minute headers in the current hour may be crossed.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             if (spanKey(next.time, calendar.zone) !== spanKey(members.at(-1)!.time, calendar.zone))
                 break

@@ -1,5 +1,5 @@
 import {
-    clampToDomain,
+    TIME_LIMIT,
     sameDay as sameZoneDay,
     sameYear as sameZoneYear,
     type Zone,
@@ -11,7 +11,10 @@ import { languageTag } from './plural'
 //
 // Every export takes an optional last `zone`: a zone's own local time, from the History clock.
 // Without one, the engine's zone is used, as it always was. Every export is total: a time outside
-// [0, 8.64e15] or NaN is taken to the nearest representable time, never an error.
+// the range a `Date` holds (±8.64e15) is taken to its nearest end, and NaN to 0, never an error.
+
+const clampTime = (time: number) =>
+    Number.isNaN(time) ? 0 : Math.min(TIME_LIMIT, Math.max(-TIME_LIMIT, time))
 
 const formatters = new Map<string, Intl.DateTimeFormat>()
 
@@ -46,8 +49,8 @@ const sameDay = (a: number, b: number, zone?: Zone) =>
 
 /** "Oct 15", or "Oct 15, 2025" in another year. */
 export const formatDate = (locale: string, at: number, now = Date.now(), zone?: Zone) => {
-    at = clampToDomain(at)
-    now = clampToDomain(now)
+    at = clampTime(at)
+    now = clampTime(now)
     return sameYear(at, now, zone)
         ? formatter(locale, 'date', { month: 'short', day: 'numeric' }, zone).format(at)
         : formatter(
@@ -67,9 +70,7 @@ export const formatDateInSentence = (locale: string, at: number, now = Date.now(
 
 /** "2:41 PM". */
 export const formatClock = (locale: string, at: number, zone?: Zone) =>
-    formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }, zone).format(
-        clampToDomain(at),
-    )
+    formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }, zone).format(clampTime(at))
 
 /** "2:40:31 PM": a History entry's time in the peek bar and Restore's notice (§1.4.10.3). */
 export const formatClockSeconds = (locale: string, at: number, zone?: Zone) =>
@@ -82,7 +83,7 @@ export const formatClockSeconds = (locale: string, at: number, zone?: Zone) =>
             second: '2-digit',
         },
         zone,
-    ).format(clampToDomain(at))
+    ).format(clampTime(at))
 
 /** "Oct 14, 3:15:02 PM", with the year in another year. */
 export const formatDateTimeSeconds = (
@@ -91,8 +92,8 @@ export const formatDateTimeSeconds = (
     now = Date.now(),
     zone?: Zone,
 ) => {
-    at = clampToDomain(at)
-    now = clampToDomain(now)
+    at = clampTime(at)
+    now = clampTime(now)
     const same = sameYear(at, now, zone)
     return formatter(
         locale,
@@ -111,8 +112,8 @@ export const formatDateTimeSeconds = (
 
 /** "Oct 16, 2:41 PM", with the year in another year. */
 export const formatDateTime = (locale: string, at: number, now = Date.now(), zone?: Zone) => {
-    at = clampToDomain(at)
-    now = clampToDomain(now)
+    at = clampTime(at)
+    now = clampTime(now)
     return sameYear(at, now, zone)
         ? formatter(
               locale,
@@ -141,19 +142,19 @@ export const formatDateTime = (locale: string, at: number, now = Date.now(), zon
 
 /** The time when it was today ("2:41 PM"), the date otherwise ("Oct 14"): a file event's time. */
 export const formatWhen = (locale: string, at: number, now = Date.now(), zone?: Zone) =>
-    sameDay(clampToDomain(at), clampToDomain(now), zone)
+    sameDay(clampTime(at), clampTime(now), zone)
         ? formatClock(locale, at, zone)
         : formatDate(locale, at, now, zone)
 
 /** An entry's time to the second: the time when it was today, the date and time otherwise. */
 export const formatEntryTime = (locale: string, at: number, now = Date.now(), zone?: Zone) =>
-    sameDay(clampToDomain(at), clampToDomain(now), zone)
+    sameDay(clampTime(at), clampTime(now), zone)
         ? formatClockSeconds(locale, at, zone)
         : formatDateTimeSeconds(locale, at, now, zone)
 
 /** "1 PM": an hour header's label. */
 export const formatHour = (locale: string, at: number, zone?: Zone) =>
-    formatter(locale, 'hour', { hour: 'numeric' }, zone).format(clampToDomain(at))
+    formatter(locale, 'hour', { hour: 'numeric' }, zone).format(clampTime(at))
 
 /**
  * "2:10 – 2:41 PM": a session's stretch of a day in Go To. The two times may come in either order
@@ -164,8 +165,8 @@ export const formatClockRange = (locale: string, from: number, to: number, zone?
     if (Number.isNaN(from) || Number.isNaN(to)) return ''
     try {
         return formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }, zone).formatRange(
-            clampToDomain(Math.min(from, to)),
-            clampToDomain(Math.max(from, to)),
+            clampTime(Math.min(from, to)),
+            clampTime(Math.max(from, to)),
         )
     } catch {
         return ''
@@ -185,4 +186,4 @@ export const formatCompactDateTime = (locale: string, at: number, zone?: Zone) =
             minute: '2-digit',
         },
         zone,
-    ).format(clampToDomain(at))
+    ).format(clampTime(at))

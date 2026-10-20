@@ -158,3 +158,52 @@ test('the zone is the last parameter, and leaving it out keeps the engine’s zo
     assert.equal(nbsp(dateTime.formatWhen('en', at, at + 86_400_000)), 'Oct 21')
     assert.equal(nbsp(dateTime.formatWhen('en', at, at + 86_400_000, newYork)), 'Oct 20')
 })
+
+test('a day names its own date in a zone at +13 or +14, where UTC noon is the next local date', () => {
+    // 2026-10-20 18:41Z is Oct 21 in Kiritimati (UTC+14) and Tongatapu (UTC+13), and Oct 20 in UTC.
+    for (const name of ['Pacific/Kiritimati', 'Pacific/Tongatapu']) {
+        const zone = resolveZone(name)
+        const format = historyFormat(calendarAt(at, zone), 'en')
+        assert.equal(format.day(dayKey(at, zone)), 'Oct 21', name)
+        assert.equal(
+            format.day((dayKey(at, zone) - 1) as ReturnType<typeof dayKey>),
+            'Oct 20',
+            name,
+        )
+    }
+    // And a zone at -11 reads the date the other way.
+    const samoa = resolveZone('Pacific/Pago_Pago')
+    assert.equal(historyFormat(calendarAt(at, samoa), 'en').day(dayKey(at, samoa)), 'Oct 20')
+})
+
+test('a day carries its year when it is not the calendar’s year, including the day before 1970', () => {
+    const now = Date.UTC(2026, 5, 1, 12)
+    const zone = resolveZone('Pacific/Kiritimati')
+    const format = historyFormat(calendarAt(now, zone), 'en')
+    // 2025-12-31 12:00Z is Jan 1, 2026 at 02:00 in Kiritimati: this year.
+    assert.equal(format.day(dayKey(Date.UTC(2025, 11, 31, 12), zone)), 'Jan 1')
+    assert.equal(format.day(dayKey(Date.UTC(2025, 11, 31, 9), zone)), 'Dec 31, 2025')
+    // Time 0 west of UTC is Dec 31, 1969: its header is not Jan 1, 1970.
+    assert.equal(format.day(dayKey(0, newYork)), 'Dec 31, 1969')
+})
+
+test('the year check follows the calendar’s zone for every dated text, not the engine’s', () => {
+    // 2026-01-01 03:00Z is still 2025 in New York (10 PM on Dec 31); the Kiritimati host is in 2026.
+    const entry = Date.UTC(2026, 0, 1, 3, 0, 0)
+    const now = Date.UTC(2026, 5, 1, 12)
+    assert.equal(nbsp(dateTime.formatDate('en', entry, now, newYork)), 'Dec 31, 2025')
+    assert.equal(nbsp(dateTime.formatDateTime('en', entry, now, newYork)), 'Dec 31, 2025, 10:00 PM')
+    assert.equal(
+        nbsp(dateTime.formatDateTimeSeconds('en', entry, now, newYork)),
+        'Dec 31, 2025, 10:00:00 PM',
+    )
+    assert.equal(
+        nbsp(dateTime.formatEntryTime('en', entry, now, newYork)),
+        'Dec 31, 2025, 10:00:00 PM',
+    )
+    // The other way: a New York year-end that is already 2026 in Tokyo.
+    assert.equal(nbsp(dateTime.formatDate('en', entry, now, tokyo)), 'Jan 1')
+    assert.equal(nbsp(dateTime.formatDateTime('en', entry, now, tokyo)), 'Jan 1, 12:00 PM')
+    // And a "now" in 2025 in New York (2026-01-01 03:00Z) against an entry from the same instant.
+    assert.equal(nbsp(dateTime.formatDateTime('en', entry, entry, newYork)), 'Dec 31, 10:00 PM')
+})

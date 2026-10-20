@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, test } from 'node:test'
+import vueParser from 'vue-eslint-parser'
 import local from '../../../scripts/eslint-plugin-local.mjs'
 
 // The two History rules of the local lint plugin (Part 1 §1.6.8.7): `local/no-local-time` keeps
@@ -38,6 +39,14 @@ ruleTester.run('local/no-local-time', rules['no-local-time']!, {
         { code: 'date.toISOString()', filename: history },
         { code: 'performance.now()', filename: history },
         { code: 'const f = fields.hour', filename: history },
+        // Accepted residuals (I-1, §3.6): a value that was copied or aliased, a computed key, and
+        // Date#toLocaleString are not seen by name. formatZones and the one-Calendar test back them.
+        { code: 'const D = Date; D.now()', filename: history },
+        { code: 'const read = (d) => d[key]()', filename: history },
+        { code: 'date.toLocaleString()', filename: history },
+        { code: 'import(name)', filename: history },
+        { code: 'import(`../i18n/${name}`)', filename: history },
+        { code: 'const { UTC } = Date', filename: history },
         // Date.now() is only banned under src/editor/history, and calendarClock.ts reads it.
         { code: 'const now = Date.now()', filename: `${root}/src/editor/history/calendarClock.ts` },
         { code: 'const now = Date.now()', filename: `${root}/src/history/session.ts` },
@@ -95,6 +104,21 @@ ruleTester.run('local/no-local-time', rules['no-local-time']!, {
             errors: [messageOf('now')],
         },
         { code: 'const now = Date.now', filename: history, errors: [messageOf('now')] },
+        // Date called as a function, destructured, or reached through the global object.
+        { code: 'const text = Date()', filename: history, errors: [messageOf('call')] },
+        { code: 'const text = globalThis.Date()', filename: history, errors: [messageOf('call')] },
+        { code: 'const { now } = Date', filename: history, errors: [messageOf('now')] },
+        { code: 'const { parse } = Date', filename: history, errors: [messageOf('parse')] },
+        { code: 'const { now } = globalThis.Date', filename: history, errors: [messageOf('now')] },
+        { code: 'globalThis.Date.now()', filename: history, errors: [messageOf('now')] },
+        { code: 'window.Date.now()', filename: history, errors: [messageOf('now')] },
+        { code: 'self.Date.parse(text)', filename: history, errors: [messageOf('parse')] },
+        {
+            code: 'new globalThis.Date(2026, 9, 20)',
+            filename: history,
+            errors: [messageOf('construct')],
+        },
+        { code: 'globalThis.Intl.DateTimeFormat', filename: history, errors: [messageOf('intl')] },
         {
             code: 'const at = Date["now"]()',
             filename: `${root}/src/editor/history/openHistory.ts`,
@@ -116,6 +140,7 @@ ruleTester.run('local/history-imports', rules['history-imports']!, {
         { code: "import { x } from '../switchRequest'", filename: history },
         { code: "import { x } from '../../i18n/whenever'", filename: history },
         { code: "import('./historyFormat')", filename: history },
+        { code: 'import(`./historyFormat`)', filename: history },
         { code: "export { dayKey } from '../../calendar/calendar'", filename: history },
         { code: "import { x } from 'when'", filename: history },
         { code: "import { x } from '@tauri-apps/api/core'", filename: history },
@@ -143,6 +168,12 @@ ruleTester.run('local/history-imports', rules['history-imports']!, {
                 { code: `export * as x from '${source}'`, filename: history, errors },
             ]
         }),
+        // A template literal without holes names its module as a string does.
+        {
+            code: 'const x = await import(`../../i18n/when`)',
+            filename: history,
+            errors: [{ messageId: 'module' as const, data: { module: 'src/i18n/when' } }],
+        },
         // Banned names from modules that otherwise may be used.
         ...['import', 'export'].flatMap((kind) => [
             {
@@ -190,6 +221,51 @@ ruleTester.run('local/history-imports', rules['history-imports']!, {
             code: "import { formatDate } from '../i18n/dateTime'",
             filename: `${root}/src/editor/peek.ts`,
             errors: [{ messageId: 'module' as const, data: { module: 'src/i18n/dateTime' } }],
+        },
+    ],
+})
+
+// A .vue file's template is read too.
+const vueTester = new RuleTester({
+    languageOptions: { parser: vueParser, ecmaVersion: 'latest', sourceType: 'module' },
+})
+const vueFile = `${root}/src/editor/history/TimelineList.vue`
+const template = (expression: string) => `<template><p>{{ ${expression} }}</p></template>`
+const script = (code: string) => `<script setup>
+${code}
+</script>`
+vueTester.run('local/no-local-time in .vue', rules['no-local-time']!, {
+    valid: [
+        { code: template('format.clock(time)'), filename: vueFile },
+        { code: template('new Date(time).getTime()'), filename: vueFile },
+        { code: `${script('const a = 1')}${template('a')}`, filename: vueFile },
+    ],
+    invalid: [
+        {
+            code: template('new Date(1).getHours()'),
+            filename: vueFile,
+            errors: [messageOf('local')],
+        },
+        { code: template('Date.now()'), filename: vueFile, errors: [messageOf('now')] },
+        {
+            code: template('items.map((d) => d.toDateString())'),
+            filename: vueFile,
+            errors: [messageOf('local')],
+        },
+        {
+            code: `<template><p :title="new Date(2026, 1).getDate()"></p></template>`,
+            filename: vueFile,
+            errors: [messageOf('local'), messageOf('construct')],
+        },
+        {
+            code: `<template><p v-if="x">{{ y }}</p><p v-else>{{ Date.parse(s) }}</p></template>`,
+            filename: vueFile,
+            errors: [messageOf('parse')],
+        },
+        {
+            code: `${script('const t = new Date(1).getMonth()')}${template('t')}`,
+            filename: vueFile,
+            errors: [messageOf('local')],
         },
     ],
 })
@@ -295,5 +371,36 @@ test('the two History rules sit beside the native-code bans: one file importing 
         ['local/history-imports', 2],
         ['local/no-local-time', 4],
         ['no-restricted-imports', 1],
+    ])
+})
+
+test('through the real configuration a History .vue file is checked in its template and its script', async () => {
+    const lint = new ESLint({
+        cwd: root,
+        ruleFilter: ({ ruleId }) =>
+            ruleId === 'no-restricted-imports' || ruleId.startsWith('local/'),
+        overrideConfig: [
+            {
+                files: ['**/*.ts', '**/*.vue'],
+                languageOptions: { parserOptions: { projectService: false } },
+            },
+        ],
+    })
+    const code = [
+        '<script setup lang="ts">',
+        "import { formatDate } from '../../i18n/when'",
+        'const shown = formatDate(1)',
+        '</script>',
+        '<template>',
+        '    <p>{{ shown }} {{ new Date(1).getHours() }}</p>',
+        '</template>',
+        '',
+    ].join('\n')
+    const [result] = await lint.lintText(code, {
+        filePath: path.join(root, 'src/editor/history/ZzProbe.vue'),
+    })
+    assert.deepEqual(result!.messages.map((message) => [message.ruleId, message.line]).sort(), [
+        ['local/history-imports', 2],
+        ['local/no-local-time', 6],
     ])
 })

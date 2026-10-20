@@ -23,10 +23,9 @@ const setLocale = (page: Page, locale: string) =>
 test('the playback speed notice uses the language’s decimal mark', async ({ page }) => {
     await setLocale(page, 'fr')
     await page.evaluate(async () => {
-        const player =
-            await window.editorTest.appImport<typeof import('../../src/editor/player')>(
-                '/src/editor/player.ts',
-            )
+        const player = await window.editorTest.appImport<typeof import('../../src/editor/player')>(
+            '/src/editor/player.ts',
+        )
         player.changePlayerSpeed(-1)
     })
     await expect(page.getByRole('status').filter({ hasText: '0,75' })).toBeVisible()

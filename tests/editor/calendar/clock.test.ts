@@ -38,6 +38,7 @@ beforeEach(() => {
 })
 afterEach(() => {
     for (const scope of scopes.splice(0)) scope.stop()
+    mock.restoreAll()
     mock.timers.reset()
     process.env.TZ = 'America/New_York'
 })
@@ -210,4 +211,87 @@ test('historyCalendar() is the published value while the clock runs and a fresh 
     process.env.TZ = 'America/New_York'
     const { calendar } = subscribe()
     assert.equal(historyCalendar(), calendar.value, 'running: the published calendar')
+})
+
+test('a surface that mounts while another holds the clock looks at it: History opening after a sleep and a move', () => {
+    start(Date.UTC(2026, 9, 20, 14, 30)) // 10:30 EDT
+    // The peek bar holds the clock for the editor's whole life.
+    const bar = subscribe()
+    const stale = bar.calendar.value
+    mock.timers.setTime(Date.UTC(2026, 9, 20, 17, 45))
+    process.env.TZ = 'Asia/Tokyo'
+    // The Timeline mounts as History opens: no timer, focus or visibility event has run.
+    const timeline = subscribe()
+    assert.equal(timeline.calendar.value.zone, 'Asia/Tokyo')
+    assert.equal(timeline.calendar.value.now, Date.UTC(2026, 9, 20, 17, 45))
+    assert.notEqual(timeline.calendar.value, stale)
+    assert.equal(timeline.calendar.value, bar.calendar.value, 'one calendar for every surface')
+    // And a surface that mounts when nothing moved does not republish.
+    const same = timeline.calendar.value
+    subscribe()
+    assert.equal(bar.calendar.value, same)
+})
+
+test('the last subscriber leaving clears the timer and the interval and removes every listener', () => {
+    start(Date.UTC(2026, 9, 20, 14, 30))
+    const added: [EventTarget, string, unknown][] = []
+    const removed: [EventTarget, string, unknown][] = []
+    for (const target of [window, document])
+        for (const [name, log] of [
+            ['addEventListener', added],
+            ['removeEventListener', removed],
+        ] as const) {
+            const original = target[name].bind(target)
+            mock.method(target, name, (type: string, handler: EventListener) => {
+                log.push([target, type, handler])
+                original(type, handler)
+            })
+        }
+    const setTimer = mock.method(globalThis, 'setTimeout')
+    const setEvery = mock.method(globalThis, 'setInterval')
+    const clearTimer = mock.method(globalThis, 'clearTimeout')
+    const clearEvery = mock.method(globalThis, 'clearInterval')
+
+    const a = subscribe()
+    const b = subscribe()
+    assert.equal(added.length, 3, 'focus, pageshow and visibilitychange, once')
+    assert.equal(setEvery.mock.callCount(), 1)
+    const interval = setEvery.mock.calls[0]!.result
+    a.scope.stop()
+    assert.equal(removed.length, 0, 'still held')
+    assert.equal(clearEvery.mock.callCount(), 0)
+    b.scope.stop()
+    assert.deepEqual(removed.map(([, type]) => type).sort(), [
+        'focus',
+        'pageshow',
+        'visibilitychange',
+    ])
+    for (const [target, type, handler] of added)
+        assert.ok(
+            removed.some(([t, ty, h]) => t === target && ty === type && h === handler),
+            `${type} removed with the handler it was added with`,
+        )
+    assert.equal(clearEvery.mock.calls.at(-1)?.arguments[0], interval)
+    assert.equal(
+        clearTimer.mock.calls.at(-1)?.arguments[0],
+        setTimer.mock.calls.at(-1)?.result,
+        'the pending boundary timer',
+    )
+})
+
+test('a timer that fires a moment early finds the same hour and arms again for the rest', () => {
+    // The timers run on their own clock and the wall clock is set by hand, so the timer can fire
+    // while the wall clock is still short of the hour, as a corrected clock lets it.
+    mock.timers.enable({ apis: ['setTimeout', 'setInterval'] })
+    let wall = Date.UTC(2026, 9, 20, 14, 59, 30) // the next boundary is in 30 s
+    mock.method(Date, 'now', () => wall)
+    const { calendar } = subscribe()
+    const first = calendar.value
+    wall = Date.UTC(2026, 9, 20, 14, 59, 55)
+    mock.timers.tick(30_000) // the timer fires, 5 s short of the hour
+    assert.equal(calendar.value, first, 'same hour: nothing published')
+    wall = Date.UTC(2026, 9, 20, 15, 0, 0)
+    mock.timers.tick(5_000) // the interval (60 s) has not run: only the re-armed timer can
+    assert.notEqual(calendar.value, first)
+    assert.equal(calendar.value.now, Date.UTC(2026, 9, 20, 15, 0, 0))
 })

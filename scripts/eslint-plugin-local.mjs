@@ -42,7 +42,15 @@ const memberName = (node) => {
     return undefined
 }
 
-const isDate = (node) => node.type === 'Identifier' && node.name === 'Date'
+const GLOBALS = new Set(['globalThis', 'window', 'self'])
+
+/** `Date`, `globalThis.Date`, `window.Date` or `self.Date`. */
+const isDate = (node) =>
+    (node.type === 'Identifier' && node.name === 'Date') ||
+    (node.type === 'MemberExpression' &&
+        node.object.type === 'Identifier' &&
+        GLOBALS.has(node.object.name) &&
+        memberName(node) === 'Date')
 
 const noLocalTime = {
     meta: {
@@ -54,6 +62,7 @@ const noLocalTime = {
                 'new Date here must take one time in ms. Local dates come from src/calendar/calendar.ts.',
             parse: 'Date.parse reads local time. Parse a time where it comes in, not in History.',
             intl: 'Intl.DateTimeFormat formats in the engine’s zone. Format through historyFormat.',
+            call: 'Date() without new writes the local time as text. Local dates come from src/calendar/calendar.ts.',
             now: 'Date.now() belongs to calendarClock.ts. Read the History calendar; time an interval with performance.now().',
         },
     },
@@ -61,7 +70,7 @@ const noLocalTime = {
         const file = normalized(context.filename)
         const inHistory = file.includes('/src/editor/history/')
         const mayReadNow = file.endsWith('/src/editor/history/calendarClock.ts')
-        return {
+        const visitor = {
             MemberExpression(node) {
                 const name = memberName(node)
                 if (name === undefined) return
@@ -80,11 +89,22 @@ const noLocalTime = {
                     !node.computed &&
                     node.key.type === 'Identifier'
                 ) {
+                    // const { now } = Date
+                    const from = node.parent.parent
+                    if (from.type === 'VariableDeclarator' && from.init && isDate(from.init)) {
+                        if (node.key.name === 'parse') context.report({ node, messageId: 'parse' })
+                        else if (node.key.name === 'now' && inHistory && !mayReadNow)
+                            context.report({ node, messageId: 'now' })
+                    }
                     if (LOCAL_DATE_MEMBERS.has(node.key.name))
                         context.report({ node, messageId: 'local', data: { name: node.key.name } })
                     else if (node.key.name === 'DateTimeFormat')
                         context.report({ node, messageId: 'intl' })
                 }
+            },
+            // Date()
+            CallExpression(node) {
+                if (isDate(node.callee)) context.report({ node, messageId: 'call' })
             },
             NewExpression(node) {
                 if (!isDate(node.callee)) return
@@ -97,6 +117,12 @@ const noLocalTime = {
                     context.report({ node, messageId: 'construct' })
             },
         }
+        // A .vue file's template is visited as well (vue-eslint-parser); a script-only parser has
+        // no template.
+        const services = context.sourceCode.parserServices
+        return typeof services?.defineTemplateBodyVisitor === 'function'
+            ? services.defineTemplateBodyVisitor(visitor, visitor)
+            : visitor
     },
 }
 
@@ -150,7 +176,7 @@ const historyImports = {
 
         // `names` is undefined when every name comes along: import(), `* as`, `export *`.
         const check = (node, source, names) => {
-            const resolved = resolve(source?.value)
+            const resolved = resolve(sourceText(source))
             const module = bannedModule(resolved)
             if (module !== undefined) {
                 context.report({ node, messageId: 'module', data: { module } })
@@ -166,6 +192,11 @@ const historyImports = {
                 if (banned.includes(name))
                     context.report({ node: at, messageId: 'name', data: { name } })
         }
+        // A string, or a template literal with no holes: import(`../i18n/when`).
+        const sourceText = (source) =>
+            source?.type === 'TemplateLiteral' && source.expressions.length === 0
+                ? (source.quasis[0].value.cooked ?? undefined)
+                : source?.value
         const nameOf = (identifier) =>
             identifier.type === 'Identifier' ? identifier.name : String(identifier.value)
 

@@ -139,13 +139,18 @@ test(`no zone steps its keys back or leaves its hour ${full ? '(1970–2100)' : 
     assert.ok(looked.zones.size > 150, `${looked.zones.size} zones moved`)
 })
 
-test('the allow-list: Goose Bay (1987–2010) and Moncton (1993–2006) breach, and only inside their years', () => {
+test('the allow-list: Goose Bay, Moncton, St. John’s and Casey breach before 2011, and only inside their years', () => {
     const goose = scan(resolveZone('America/Goose_Bay'), range(1987, 2010))
     const moncton = scan(resolveZone('America/Moncton'), range(1993, 2006))
     // They are real: without the allow-list, the scan finds them (so the list is not stale).
     assert.ok(goose.length > 0, 'Goose Bay does not breach')
     assert.ok(moncton.length > 0, 'Moncton does not breach')
-    for (const breach of [...goose, ...moncton]) assert.ok(allowed(breach), breach.time)
+    const stJohns = scan(resolveZone('America/St_Johns'), range(1987, 2010))
+    const casey = scan(resolveZone('Antarctica/Casey'), range(2009, 2010))
+    assert.ok(stJohns.length > 0, 'St. John’s does not breach')
+    assert.ok(casey.length > 0, 'Casey does not breach')
+    for (const breach of [...goose, ...moncton, ...stJohns, ...casey])
+        assert.ok(allowed(breach), `${breach.zone} ${breach.time}`)
     // Outside those years both zones are clean, and so is every year from 2011 on.
     assert.deepEqual(scan(resolveZone('America/Goose_Bay'), range(2011, 2030)), [])
     assert.deepEqual(scan(resolveZone('America/Moncton'), range(2007, 2030)), [])

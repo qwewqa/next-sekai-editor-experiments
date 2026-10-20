@@ -78,7 +78,12 @@ const listen = (add: boolean) => {
 }
 
 const subscribe = () => {
-    if (subscribers++ > 0) return
+    if (subscribers++ > 0) {
+        // Another surface (the peek bar) holds the clock: a surface that mounts now, as History
+        // opens, looks at it, so it never starts from a calendar a sleep or a move has outdated.
+        check()
+        return
+    }
     published.value = calendarAt(Date.now(), hostZone())
     arm(published.value)
     interval = setInterval(check, CHECK_EVERY)
@@ -95,7 +100,7 @@ const unsubscribe = () => {
 }
 
 /** Subscribes the caller until it calls the returned function. */
-export const subscribeHistoryCalendar = (): (() => void) => {
+const subscribeHistoryCalendar = (): (() => void) => {
     subscribe()
     let done = false
     return () => {

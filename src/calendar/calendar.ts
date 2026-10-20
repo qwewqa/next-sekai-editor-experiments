@@ -200,8 +200,13 @@ export const sameYear = (a: number, b: number, zone: Zone) =>
 /** The year of a local date. */
 export const yearOfDay = (day: DayKey) => new Date(day * DAY).getUTCFullYear()
 
-/** The instant of UTC noon on a local date: a time that formats, in UTC, as that date. */
-export const dayNoon = (day: DayKey) => clampToDomain(day * DAY + 12 * HOUR)
+/**
+ * The instant of UTC noon on a local date: a time that formats, in UTC, as that date. The day
+ * before the epoch (a time of 0 west of UTC) is reachable, so it is clamped to the range a `Date`
+ * holds, not to [0, TIME_LIMIT].
+ */
+export const dayNoon = (day: DayKey) =>
+    Math.min(TIME_LIMIT, Math.max(-TIME_LIMIT, day * DAY + 12 * HOUR))
 
 /**
  * The first instant after `time` where the hour changes (and so the day, whose change is always

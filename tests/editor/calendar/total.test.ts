@@ -210,3 +210,24 @@ test('the host zone is read fresh on every call', () => {
         else process.env.TZ = before
     }
 })
+
+test('outside History a time before 1970 still reads as itself, as it did', () => {
+    const before = process.env.TZ
+    try {
+        process.env.TZ = 'America/New_York'
+        // 1968-11-26 in New York.
+        const old = -34_560_000_000
+        const now = Date.UTC(2026, 0, 1)
+        assert.equal(dateTime.formatDate('en', old, now), 'Nov 26, 1968')
+        assert.match(dateTime.formatDateTime('en', old, now), /^Nov 26, 1968/)
+        assert.match(dateTime.formatClockSeconds('en', old), /:\d\d:\d\d/)
+        // The range is that of a Date, in both directions.
+        assert.equal(
+            dateTime.formatDate('en', -TIME_LIMIT - 1, now),
+            dateTime.formatDate('en', -TIME_LIMIT, now),
+        )
+    } finally {
+        if (before === undefined) delete process.env.TZ
+        else process.env.TZ = before
+    }
+})
