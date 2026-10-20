@@ -11,3 +11,5 @@ uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/write-1.nxsp tes
 ```
 
 Written by `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts`, in Step 6. Never again once v0.6.0 ships.
+
+Step Details P1 regenerated `plan-2.json` and `write-2.nxsp` before v0.6.0 shipped, because `nse.continue` dropped its `source` field. This follows the owner ruling of 2026-10-19: until Stage 1 ships, codecs and formats change in place at v1, as nothing has shipped. No other operation in the golden chain changed shape.
