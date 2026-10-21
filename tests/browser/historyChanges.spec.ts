@@ -413,14 +413,18 @@ test('a Restore’s change is against the state just before it', async ({ page }
         .getByRole('row')
         .filter({ hasText: /^Restored to/ })
     await restoreRow.click()
+    // The bar holds the last step's '1 change' while this one is read: wait for its own change.
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { shownChange } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/changes')
+                >('/src/editor/history/changes.ts')
+                return shownChange.value?.set.objects.map((object) => object.beat)
+            }),
+        )
+        .toEqual([7])
     await expect(peekLine(page)).toHaveText('1 change')
-    const objects = await page.evaluate(async () => {
-        const { shownChange } = await window.editorTest.appImport<
-            typeof import('../../src/editor/history/changes')
-        >('/src/editor/history/changes.ts')
-        return shownChange.value?.set.objects.map((object) => object.beat)
-    })
-    expect(objects).toEqual([7])
 })
 
 test('past 150 objects the bar counts by kind; most of the chart is told in words', async ({
