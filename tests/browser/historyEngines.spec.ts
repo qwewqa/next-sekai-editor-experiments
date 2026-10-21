@@ -208,6 +208,8 @@ test.describe('E1: focus returns to the opener', () => {
         await page.keyboard.press('ArrowDown')
         await expect(page.locator('[data-peek-bar]')).toBeVisible()
         const date = page.locator('[data-peek-details]')
+        // It stays hidden, and takes no focus, until the step's change is read.
+        await expect(date).toBeVisible()
         await date.focus()
         await expect(date).toBeFocused()
         await page.keyboard.press('Enter')
