@@ -295,7 +295,9 @@ const createWorld = async (setup: Setup = {}) => {
             name,
             activation: activation.active,
             importing: isImporting(ownSession.id),
-            // Restated I5: pending in storage is allowed once the wait has run its bound.
+            // Restated I5: pending in storage is allowed once the wait has run its bound. The bound
+            // counts per world, from the first listing of the pending import by any caller, and 150 ms
+            // is timing tolerance (the wait polls every 250 ms).
             importPending:
                 pendingImports.has(ownSession.id) &&
                 !(

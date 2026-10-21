@@ -327,3 +327,19 @@ test('a cancel before the write ends the attempt as cancelled and lets the reser
     assert.deepEqual(during.ends, ['letGo'])
     assert.equal(readMarker('c1'), undefined)
 })
+
+test('a throw after the file read back as ours, outside the entry, is recorded and not shown as a failed write', async () => {
+    const t = await setup()
+    const ending = await quiet(() =>
+        withSaveAttempt(t.spec(), async (attempt) => {
+            await attempt.reserve()
+            await attempt.write(t.request(), t.marker)
+            // The bookkeeping after the landing breaks (the label, the feedback).
+            throw new Error('the label broke')
+        }),
+    )
+    assert.deepEqual(ending, { kind: 'cancelled' }, 'no "could not be written"')
+    assert.ok(ringEntries().some((each) => each.text.includes('the label broke')))
+    assert.deepEqual(t.ends, ['kept'])
+    assert.ok(readMarker('c1'), 'the marker stays for the next Save to record the binding')
+})

@@ -128,6 +128,8 @@ export const withSaveAttempt = async <T>(
     /** The reservation held now, and whether a write of it started (so it may have landed). */
     let held: SaveReservation | undefined
     let writing = false
+    /** A write returned a landing (the file read back as ours, or the download started). */
+    const progress = { landed: false }
 
     const stopped = (error: unknown) =>
         error instanceof Cancelled || (signal.aborted && error === signal.reason)
@@ -229,7 +231,10 @@ export const withSaveAttempt = async <T>(
                     },
                 })
                 closeDialog()
-                if (result.status === 'saved' || result.status === 'download-started') return result
+                if (result.status === 'saved' || result.status === 'download-started') {
+                    progress.landed = true
+                    return result
+                }
                 writing = false
                 await end()
                 return result
@@ -299,6 +304,13 @@ export const withSaveAttempt = async <T>(
         return await body(attempt)
     } catch (error) {
         if (stopped(error)) return { kind: 'cancelled' }
+        // The file is written: a throw in the bookkeeping after it is recorded, never shown as a
+        // failed write. The marker stays for the next Save to record the binding.
+        if (progress.landed) {
+            recordError(error)
+            console.error('A Save failed', error)
+            return { kind: 'cancelled' }
+        }
         // Shown as a failure, which records it; logged as a Save's own throw always was.
         console.error('A Save failed', error)
         return { kind: 'failed', error: fileError(error), name: spec.name }
