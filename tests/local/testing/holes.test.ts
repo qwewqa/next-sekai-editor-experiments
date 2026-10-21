@@ -2,12 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { HoleLedger } from '../../../src/local/testing/holes'
 
-// The hole ledger (design A §7, R2-2 and R3-7) on a stand-in flusher, so each way it learns is
+// The hole ledger (spec A, R2-2 and R3-7) on a stand-in flusher, so each way it learns is
 // shown alone: the scenario tests in `flush/ownSave.test.ts` run it on the real one. The stand-in
 // numbers as the real one does: a resume goes on from `max(lastSeq, marker) + 1`, and a
 // journal-only resume numbers its `recovered` entry itself, after the marker.
 
-type Session = { id: string; pending: { seq: number }[] }
+type Session = { id: string; pending: { seq: number; kind?: string }[] }
 
 const fake = (current?: Session) => {
     const sessions: Session[] = current ? [current] : []
@@ -18,7 +18,25 @@ const fake = (current?: Session) => {
         current,
         sessions,
         reserveSave: () => ({ session: current ?? { id: 'none', pending: [] }, seq: 3, wall: 0 }),
-        endSave: (_reservation?: unknown, _entry?: unknown) => Promise.resolve(),
+        // As the real one reports: the entry is added only to a session still in `sessions`.
+        endSave: (
+            reservation?: { session: Session },
+            entry?: unknown,
+            _identity?: unknown,
+            keep?: boolean,
+        ) => {
+            if (entry && sessions.includes(reservation!.session))
+                reservation!.session.pending.push({ seq: 3, kind: 'save' } as never)
+            return Promise.resolve(
+                entry
+                    ? sessions.includes(reservation!.session)
+                        ? 'added'
+                        : 'notCurrent'
+                    : keep
+                      ? 'kept'
+                      : 'letGo',
+            )
+        },
         keptSave: (_below?: unknown, _entry?: unknown) => Promise.resolve(),
         resumeSession: (start: { id: string; lastSeq: number }) => ({
             id: start.id,
@@ -55,21 +73,27 @@ test('an end that adds the entry makes the seq no hole; an end without one, or o
     const ledger = new HoleLedger()
     const flusher = watch(ledger, fake(current))
     const reservation = flusher.reserveSave()
-    await flusher.endSave(reservation as never, { wall: 1 } as never)
+    const ended = flusher.endSave(reservation as never, { wall: 1 } as never)
+    assert.equal(ledger.has('s', 3), false, 'no hole while the end’s flush runs')
+    assert.equal(await ended, 'added')
     assert.equal(ledger.has('s', 3), false, 'the Save’s entry is added')
     // Learned again by a later marker read, it is still no hole: the entry was added.
     flusher.deps.reservedSeq = () => 3
     ;(flusher.deps.reservedSeq as (id: string) => number | undefined)('s')
     assert.equal(ledger.has('s', 3), false)
 
+    current.pending.length = 0
     const other = new HoleLedger()
     const bare = watch(other, fake(current))
-    await bare.endSave(bare.reserveSave() as never)
+    assert.equal(await bare.endSave(bare.reserveSave() as never), 'letGo')
     assert.equal(other.has('s', 3), true, 'let go or kept: a hole')
     const gone = new HoleLedger()
     const replaced = watch(gone, fake(session('old')))
     replaced.sessions.length = 0
-    await replaced.endSave(replaced.reserveSave() as never, { wall: 1 } as never)
+    assert.equal(
+        await replaced.endSave(replaced.reserveSave() as never, { wall: 1 } as never),
+        'notCurrent',
+    )
     assert.equal(gone.has('old', 3), true, 'a session no longer current takes no entry')
 })
 

@@ -1,19 +1,18 @@
 import type { FlushDeps, Flusher } from '../flush'
 
-// The holes the flusher makes (design A §7, R2-2 and R3-7): a `seq` below a session's `lastSeq`
+// The holes the flusher makes (spec A, R2-2 and R3-7): a `seq` below a session's `lastSeq`
 // with no row is allowed (I-3) when a Save reserved it and its end did not add a `save` row there.
-// The ledger learns them from every `reserveSave`, from every `endSave` (let go or kept), and from
-// the marker a resume reads (`reservedSeq`): a resume numbers past the marker, so every `seq` it
-// jumps over, from the stored `lastSeq` to the marker, is a hole (entries a dying tab never stored
-// are among them). It never excuses a `seq` that some commit created a row at and no power loss
-// undid, nor one whose end added the entry, nor the entry a journal-only resume numbers itself, so
-// a row a defect lost is still reported. An example: a Save reserves 3 and the tab reloads before
-// any end; the resumed session stores 4, and 3 is a hole.
+// The ledger learns them from every `reserveSave`, from every `endSave` result but 'added', and
+// from the marker a resume reads (`reservedSeq`): a resume numbers past the marker, so every `seq`
+// it jumps over, from the stored `lastSeq` to the marker, is a hole (entries a dying tab never
+// stored are among them). It never excuses a `seq` that some commit created a row at and no power
+// loss undid, nor one whose end added the entry, nor the entry a journal-only resume numbers
+// itself, so a row a defect lost is still reported. An example: a Save reserves 3 and the tab
+// reloads before any end; the resumed session stores 4, and 3 is a hole.
 
 type Watched = {
     deps: FlushDeps
     current?: unknown
-    sessions: readonly unknown[]
 }
 
 type Resuming = { id: string; lastSeq?: number; seq?: number }
@@ -62,16 +61,16 @@ export class HoleLedger {
             return reservation
         }
         const endSave = flusher.endSave.bind(flusher)
-        flusher.endSave = (reservation, entry, ...rest) => {
+        flusher.endSave = (reservation, ...rest) => {
             const { session, seq } = reservation
-            // The flusher adds the entry only to its current session, as `endSave` decides.
-            const adds =
-                entry !== undefined &&
-                target.current === session &&
-                target.sessions.includes(session)
-            if (adds) this.add(session.id, seq)
+            // Decided as the end returns: it adds its entry before it returns its promise, so the
+            // `seq` is no hole while the end's flush runs, nor after a kill. Any other result
+            // (kept, let go, not current, or an end that did nothing) leaves it one.
+            const ended = endSave(reservation, ...rest)
+            if (session.pending.some((each) => each.seq === seq && each.kind === 'save'))
+                this.add(session.id, seq)
             else this.learn(session.id, seq)
-            return endSave(reservation, entry, ...rest)
+            return ended
         }
         const keptSave = flusher.keptSave.bind(flusher)
         flusher.keptSave = (below, entry) => {

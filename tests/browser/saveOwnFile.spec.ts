@@ -209,7 +209,7 @@ test('a stale reservation’s release never ends a later Save’s reservation of
     // When the Save lets its `seq` go, another reserves it at once, as Export's pick could.
     await page.evaluate(() => {
         type Flusher = {
-            endSave: (...args: unknown[]) => Promise<void>
+            endSave: (...args: unknown[]) => Promise<unknown>
             reserveSave: () => { seq: number } | undefined
         }
         const flusher = window.nseFlushTest!.flusher as unknown as Flusher
@@ -233,12 +233,16 @@ test('a stale reservation’s release never ends a later Save’s reservation of
         )
         .toBeDefined()
     await page.waitForTimeout(500)
-    const { held, reserved } = await page.evaluate(() => ({
-        held: (window as unknown as { held?: { seq: number } }).held?.seq,
-        reserved: (window.nseFlushTest!.flusher as unknown as { session?: { reserved?: number } })
-            .session?.reserved,
-    }))
-    expect(reserved).toBe(held)
+    // The later Save still holds its reservation: the stale end ended nothing (identity, not `seq`).
+    const { held, same } = await page.evaluate(() => {
+        const flusher = window.nseFlushTest!.flusher as unknown as {
+            session?: { reserved?: { seq: number } }
+        }
+        const held = (window as unknown as { held?: { seq: number } }).held
+        return { held: held?.seq, same: flusher.session?.reserved === held }
+    })
+    expect(held).toBeDefined()
+    expect(same).toBe(true)
 })
 
 /** An open whose import is held at its second batch until `releaseImport`. */

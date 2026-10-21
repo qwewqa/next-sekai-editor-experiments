@@ -94,6 +94,19 @@ export type SaveReservation = {
     readonly wall: number
 }
 
+/** The `save` entry a Save's end adds: a `PendingEntry` without what the flusher decides. */
+export type SaveEntryInput = Omit<PendingEntry, 'seq' | 'kind' | 'dirty' | 'step' | 'operation'> & {
+    operation: JsonValue
+}
+
+/**
+ * What `Flusher.endSave` did: 'added' the `save` entry; 'kept' the `seq` with no entry (a file
+ * that may hold it); 'letGo' (a trailing `seq` is handed out again); 'notCurrent' (an entry was
+ * given but the session is no longer current: nothing added, the `seq` kept); or 'ended' (not the
+ * session's current reservation: nothing changed).
+ */
+export type EndSaveResult = 'added' | 'kept' | 'letGo' | 'notCurrent' | 'ended'
+
 export type FlushSession = {
     readonly id: string
     chainId: string
@@ -149,15 +162,11 @@ export type FlushSession = {
      */
     journalParent?: () => void
     /**
-     * A Save's reserved `seq` (§1.6.11.6): entries after it wait until the Save appends its
-     * `save` entry or lets the `seq` go, so the entry is never behind a stored one.
+     * A Save's reservation (§1.6.11.6): entries after its `seq` wait until the Save appends its
+     * `save` entry or lets the `seq` go, so the entry is never behind a stored one. Ended by the
+     * object, never by its `seq`: a later Save may reserve the same one.
      */
-    reserved?: number
-    /**
-     * `seq`s Saves reserved and kept with no entry (a file that may hold them): an entry only as
-     * our own completed Save's (`keptSave`).
-     */
-    gaps?: Set<number>
+    reserved?: SaveReservation
     /** A Save's identity unit not stored yet (storage paused or full: the binding in memory). */
     identity?: PendingIdentity
 }
@@ -829,7 +838,7 @@ export class Flusher {
     }
 
     /**
-     * The newest entry's `seq` the session holds; 0 before any. A reserved `seq`, a kept gap and
+     * The newest entry's `seq` the session holds; 0 before any. A reserved `seq`, a kept one and
      * the `seq`s a resume jumped over are not entries, so the journal never names them (§1.6.4).
      */
     newestSeq(session: FlushSession) {
@@ -844,30 +853,33 @@ export class Flusher {
         const session = this.current
         if (!session || session.reserved !== undefined) return
         const seq = session.nextSeq++
-        session.reserved = seq
-        return { session, seq, wall: this.now() }
+        const reservation = { session, seq, wall: this.now() }
+        session.reserved = reservation
+        return reservation
     }
 
     /**
-     * Ends a reservation: with `entry`, the Save's `save` entry at its `seq`, and `identity`
-     * committed with it; without, the `seq` is let go (a trailing one is used again unless `keep`:
-     * a file that may hold it, for our own completed Save). Resolves once a flush tried it.
-     * Nothing is added to a session that is no longer current (a fork).
+     * Ends `reservation` if it is the session's current one, else 'ended' and nothing changes.
+     * With `entry`: added at its `seq` with `identity` ('added'), or, the session no longer
+     * current, nothing added and the `seq` kept ('notCurrent'). Without: kept with `keep`
+     * ('kept'), else let go ('letGo'; a trailing `seq` is handed out again). A capture that throws
+     * leaves it held. Resolves once a strict flush tried it.
      */
     endSave(
         reservation: SaveReservation,
-        entry?: Omit<PendingEntry, 'seq' | 'kind' | 'dirty' | 'step' | 'operation'> & {
-            operation: JsonValue
-        },
+        entry?: SaveEntryInput,
         identity?: IdentityUnit,
         keep = false,
-    ): Promise<void> {
+    ): Promise<EndSaveResult> {
         const { session, seq } = reservation
+        if (session.reserved !== reservation) return Promise.resolve('ended')
+        const current = this.current === session && this.sessions.includes(session)
         const captured =
-            entry && this.current === session && this.sessions.includes(session)
+            entry && current
                 ? { ...entry, operation: captureOperation(entry.operation) }
                 : undefined
-        if (session.reserved === seq) session.reserved = undefined
+        session.reserved = undefined
+        let result: EndSaveResult
         if (captured) {
             const at = session.pending.findIndex((each) => each.seq > seq)
             const added: PendingEntry = {
@@ -889,9 +901,19 @@ export class Flusher {
                     delete session.chainSet?.exportName
                 }
             }
-        } else if (keep) (session.gaps ??= new Set()).add(seq)
-        else if (session.nextSeq - 1 === seq) session.nextSeq--
-        return this.flush({ strict: true })
+            result = 'added'
+        } else if (entry) result = 'notCurrent'
+        else if (keep) result = 'kept'
+        else {
+            if (session.nextSeq - 1 === seq) session.nextSeq--
+            result = 'letGo'
+        }
+        return this.flush({ strict: true }).then(() => result)
+    }
+
+    /** Ends a reservation no path ended (a throw, a write in flight): kept. */
+    release(reservation: SaveReservation): Promise<EndSaveResult> {
+        return this.endSave(reservation, undefined, undefined, true)
     }
 
     /**
@@ -902,7 +924,7 @@ export class Flusher {
      */
     keptSaveBelow(sessionId: string, seq: number): KeptSaveBelow | undefined {
         const session = this.current
-        if (session?.id !== sessionId || session.reserved === seq) return
+        if (session?.id !== sessionId || session.reserved?.seq === seq) return
         const after = session.pending.filter((entry) => entry.seq < seq).at(-1)
         if (!after) return { kind: 'stored' }
         return { kind: 'pending', session, seq, after }
@@ -924,7 +946,6 @@ export class Flusher {
         const { session, seq, after } = below
         if (this.current !== session || session.pending.some((each) => each.seq === seq))
             return this.flush({ strict: true })
-        session.gaps?.delete(seq)
         if (session.nextSeq <= seq) session.nextSeq = seq + 1
         const added: PendingEntry = {
             wall: entry.wall,
@@ -964,7 +985,7 @@ export class Flusher {
 
     /** The entries a flush can take: those before a reserved `seq`. */
     private takeable(session: FlushSession) {
-        const { reserved } = session
+        const reserved = session.reserved?.seq
         if (reserved === undefined) return session.pending
         const at = session.pending.findIndex((entry) => entry.seq > reserved)
         return at === -1 ? session.pending : session.pending.slice(0, at)
