@@ -106,7 +106,7 @@ export const statusText = computed(() => {
     return changed ? `${line} •` : line
 })
 
-/** The label's accessible name: "Coconut (Master), changed since saved to coconut.nxsp". */
+/** The label's accessible name: "Coconut (Master), changed since coconut.nxsp was saved". */
 export const statusName = computed(() => {
     const open = session.value
     const { status } = i18n.value
