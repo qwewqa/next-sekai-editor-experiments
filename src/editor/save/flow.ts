@@ -202,7 +202,10 @@ const readBinding = async (env: Env): Promise<StoredRead<Binding>> =>
         return bindingOf(record, env.session)
     })
 
-/** The binding read again, or the read's failure thrown: a Save under `nse-bind` ends as failed. */
+/**
+ * The binding read again, or the read's failure thrown: the Save ends there with nothing shown, as
+ * before (`exclusive` only logs it; B0's WB-throw).
+ */
 const readBindingOrThrow = async (env: Env): Promise<Binding> => {
     const read = await readBinding(env)
     if (read.storedRead === 'failed') throw read.storedError
@@ -2440,9 +2443,10 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
     try {
         read = await env.worker.call('readSession', sessionId)
     } catch (error) {
-        // Storage could not be read: that is not a missing session (invariant 12).
+        // Storage could not be read: that is not a missing session (invariant 12). Not
+        // `save.storageUnavailable`: its "use Save As…" would save the open session, not this one.
         recordError(error)
-        saveUi.error(() => i18n.value.save.storageUnavailable)
+        saveUi.error(() => i18n.value.notice.storageUnavailable)
         return
     }
     if (read.kind !== 'open') {
