@@ -16,12 +16,12 @@ import type { Bgm } from '../../state/bgm'
 import { interpolate } from '../../utils/interpolate'
 import { releaseWaveform } from '../../waveform'
 import type { ChainSummary } from '../flushWrite'
-import { resolveHandle, storableHandle } from '../handles'
+import { storableHandle } from '../handles'
 import { hasWebLocks, sessionLock } from '../locks'
 import { placedCompleteFrom } from '../nxsp/project'
 import { holdSessionLock } from '../sessions'
 import { sessionContext } from '../startup/api'
-import { openStored } from '../startup/open'
+import { fileBoundIn, openStored, sessionsHeldElsewhere } from '../startup/open'
 import { writeTabRecord } from '../startup/tab'
 import type { StateBatch } from '../stateBatch'
 import { readValue, storedRead, type StoredRead } from '../storedRead'
@@ -81,31 +81,15 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle): Promise<B
     const { open } = context()
     if (!hasWebLocks()) return 'no'
     try {
-        const own = await open.client.id()
-        const snapshot = await open.locks.query()
-        const others = snapshot.held
-            .filter((lock) => lock.name.startsWith('nse-session:'))
-            .filter((lock) => own === undefined || lock.clientId !== own)
-            .map((lock) => lock.name.slice('nse-session:'.length))
+        const others = await sessionsHeldElsewhere(open)
         if (!others.length) return 'no'
         const bindings = await storedRead(open.worker, 'readBindings', others)
         if (bindings.storedRead === 'failed') return 'unknown'
-        let unknown = false
-        for (const { chainId } of bindings.storedValue) {
-            const read = await storedRead(open.worker, 'readHandle', { chainId, role: 'file' })
-            if (read.storedRead === 'failed') {
-                unknown = true
-                continue
-            }
-            if (read.storedValue === undefined) continue
-            const other = resolveHandle(read.storedValue)
-            if (!other) {
-                unknown = true
-                continue
-            }
-            if (await other.isSameEntry(handle)) return 'yes'
-        }
-        return unknown ? 'unknown' : 'no'
+        return await fileBoundIn(
+            open.worker,
+            bindings.storedValue.map(({ chainId }) => chainId),
+            handle,
+        )
     } catch {
         // Uncertain ownership opens a separate copy, and says so.
         return 'unknown'

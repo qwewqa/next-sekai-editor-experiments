@@ -3,8 +3,8 @@ import { keyText } from '../kv/keys'
 import type { CommitReport } from '../kv/memory'
 import type { Key } from '../kv/types'
 
-// The transition check and the lock-holder assertion of architecture review A (A0+; design A §2's
-// I-1 to I-5, I-4's binding rule and §7): what each committed read-write transaction of the
+// The transition check and the lock-holder assertion of architecture review A (A0+; spec A's
+// I-1 to I-5 and I-4's binding rule, work/arch/spec-A.md): what each committed read-write transaction of the
 // profile's database may do to a session's rows. The memory store reports a commit with the rows
 // it put (as they were before) and removed; the world adds the session locks the creating page
 // held when the transaction was created. Pure functions over those reports, so a test can feed

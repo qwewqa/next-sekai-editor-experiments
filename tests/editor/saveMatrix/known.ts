@@ -1,12 +1,12 @@
 import type { Violation } from './invariants'
 import type { CellResult } from './matrix'
 
-// The violations the matrix finds on today's tree (B0 report). Each is a `todo` test in the
-// matrix files: it fails today and turns green when the design in architecture-review.md §B fixes
-// it. A violation not named here fails the matrix, so a regression or a new finding cannot pass
-// unnoticed. `by-design` marks what the plan documents (an unfinished read is dropped, R2) but the
-// invariant, read strictly, still forbids. `accepted` is a residual the lead ruled acceptable (a
-// compound case), kept visible here.
+// The violations the matrix finds on today's tree. Each is a `todo` test in the matrix files. A
+// `bug` fails today and turns green when its step in work/arch/spec-B.md fixes it. A violation not
+// named here fails the matrix, so a regression or a new finding cannot pass unnoticed. `by-design`
+// marks what the plan documents (an unfinished read is dropped, R2) but the invariant, read
+// strictly, still forbids. `accepted` is the one way to mark a residual the owner or lead ruled
+// acceptable (work/arch/spec-B.md, section 5), kept visible here as a todo that stays.
 
 export type Known = {
     id: string
@@ -33,7 +33,7 @@ export const KNOWN: Known[] = [
     },
     {
         id: 'EX-I5',
-        kind: 'bug',
+        kind: 'accepted',
         title: 'Export opens its picker with an import pending that never started',
         paths: ['export', 'export/reloaded'],
         invariant: 'I5',
@@ -49,7 +49,7 @@ export const KNOWN: Known[] = [
     },
     {
         id: 'R2-stale',
-        kind: 'bug',
+        kind: 'accepted',
         title: 'the read first is stale: bytes written between the read and the pick are emptied and lost',
         paths: [
             'save-as',
@@ -81,7 +81,7 @@ export const KNOWN: Known[] = [
     },
     {
         id: 'R8-owners',
-        kind: 'by-design',
+        kind: 'accepted',
         title: 'storage fails when the pick is identified: the owners are unread, so another chain keeps its binding, or its Export target, on a file that now holds this chain’s project',
         paths: [
             'save-first',

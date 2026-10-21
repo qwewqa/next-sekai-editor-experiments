@@ -4,7 +4,7 @@ import type { CommitReport } from '../../../src/local/kv/memory'
 import type { Durability, KvDatabase, KvUpgrade } from '../../../src/local/kv/types'
 import { createWorld, type Tab } from '../../../src/local/testing/world'
 
-// The memory store's test hooks (design A §7, R2-5 and R3-6): the durability each transaction asked
+// The memory store's test hooks: the durability each transaction asked
 // for, the commit hook, and the two power losses. `loseRelaxed(k)` models Chromium and Firefox 126
 // and later, which honour `strict`; `loseCommits(n)` Firefox before 126, which does not. Both keep
 // commit order: a lost commit loses every later one.

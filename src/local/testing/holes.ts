@@ -2,10 +2,10 @@ import type { FlushDeps, Flusher } from '../flush'
 
 // The holes the flusher makes (spec A, R2-2 and R3-7): a `seq` below a session's `lastSeq`
 // with no row is allowed (I-3) when a Save reserved it and its end did not add a `save` row there.
-// The ledger learns them from every `reserveSave`, from every `endSave` result but 'added', and
-// from the marker a resume reads (`reservedSeq`): a resume numbers past the marker, so every `seq`
-// it jumps over, from the stored `lastSeq` to the marker, is a hole (entries a dying tab never
-// stored are among them). It never excuses a `seq` that some commit created a row at and no power
+// The ledger learns them from every `reserveSave`, from every `endSave` that did not put a `save`
+// entry in `pending` at its `seq` (decided as the end returns), and from the marker a resume reads
+// (`reservedSeq`): a resume numbers past the marker, so every `seq` it jumps over, from the stored
+// `lastSeq` to the marker, is a hole (entries a dying tab never stored are among them). It never excuses a `seq` that some commit created a row at and no power
 // loss undid, nor one whose end added the entry, nor the entry a journal-only resume numbers
 // itself, so a row a defect lost is still reported. An example: a Save reserves 3 and the tab
 // reloads before any end; the resumed session stores 4, and 3 is a hole.
