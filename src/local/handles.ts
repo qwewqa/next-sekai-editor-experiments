@@ -1,5 +1,6 @@
 import { platformOverride, suspectPrivate, usesOpfsPickers } from '../platform/detect'
-import { OPFS_PICKER_CALLS_KEY } from '../platform/opfs'
+import { logPickerCall } from '../platform/opfs'
+import { testKeysOpen } from '../platform/testKeys'
 import type { HandleRole } from './handleRows'
 import { mapRead, storedRead, type ReadWorker, type StoredRead } from './storedRead'
 
@@ -92,14 +93,11 @@ export const storableHandleNow = (
  * logged among the picker calls. Granted otherwise.
  */
 const testReadPermission = (name: string, request: boolean): PermissionState => {
+    if (!testKeysOpen) return 'granted'
     const set = localStorage.getItem('nse.test.readPermission')
     if (set !== 'prompt' && set !== 'denied') return 'granted'
     if (!request) return 'prompt'
-    const calls = JSON.parse(localStorage.getItem(OPFS_PICKER_CALLS_KEY) ?? '[]') as unknown[]
-    localStorage.setItem(
-        OPFS_PICKER_CALLS_KEY,
-        JSON.stringify([...calls, { picker: 'permission', mode: 'read', name }]),
-    )
+    logPickerCall({ picker: 'permission', mode: 'read', name })
     return set === 'denied' ? 'denied' : 'granted'
 }
 

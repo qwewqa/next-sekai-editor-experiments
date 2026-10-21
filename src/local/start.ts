@@ -5,6 +5,7 @@ import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
 import { appVersion, platform } from '../platform'
+import { testKeysOpen } from '../platform/testKeys'
 import { PRODUCT_NAME } from '../product'
 import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
@@ -39,7 +40,7 @@ import storageWorkerUrl from './worker/storage.worker?worker&url'
 /** The worker's test flag, seeded like the other test keys (§1.11's test notes). */
 export const STORAGE_TEST_KEY = 'nse.test.storage'
 /** The fixture hook's no-storage key. */
-export const NO_STORAGE_TEST_KEY = 'nse.test.noStorage'
+const NO_STORAGE_TEST_KEY = 'nse.test.noStorage'
 
 type StorageTestFlags = TestFlags & {
     rpcTimeoutMs?: number
@@ -59,7 +60,7 @@ const readFlags = (): { flags: StorageTestFlags; test: boolean } => {
         // A tab's own flag first, so a spec can run tabs of two simulated builds side by side.
         const text =
             sessionStorage.getItem(STORAGE_TEST_KEY) ?? localStorage.getItem(STORAGE_TEST_KEY)
-        const noStorage = localStorage.getItem(NO_STORAGE_TEST_KEY) !== null
+        const noStorage = testKeysOpen && localStorage.getItem(NO_STORAGE_TEST_KEY) !== null
         const parsed = text ? (JSON.parse(text) as unknown) : undefined
         const flags =
             typeof parsed === 'object' && parsed !== null ? (parsed as StorageTestFlags) : {}
