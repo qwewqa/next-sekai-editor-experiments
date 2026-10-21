@@ -2088,8 +2088,8 @@
     "savedWithoutCoverLarge": "已保存到 {0}，未包含封面",
     "savedWithoutPreviewLarge": "已保存到 {0}，未包含预览音频",
     "savedWithoutMediaLarge": "已保存到 {0}，未包含媒体",
-    "someStepsNotKept": "已保存到 {0}。部分较早的步骤未保留。",
-    "someStepsNotKeptLine": "部分较早的步骤未保留。",
+    "someStepsNotKept": "已保存到 {0}。时间线中部分较早的步骤未保留。",
+    "someStepsNotKeptLine": "时间线中部分较早的步骤未保留。",
     "committedState": "这是在另一个标签页中打开的会话最后存储的状态。",
     "tookOver": "已保存到 {0}。其之前的工作在“最近会话”中。",
     "noChanges": "自下载 {0} 以来没有更改",
@@ -2131,7 +2131,7 @@
     "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
     "keptName": "{0}（{1} 被替换）",
     "replaceNewer": "由更新版本的 {0} 创建。",
-    "replaceHoldsEarlier": "它包含此浏览器已不再拥有的较早步骤。",
+    "replaceHoldsEarlier": "它包含此浏览器已不再拥有的较早时间线步骤。",
     "keepEditing": "继续编辑"
   },
   "name": {

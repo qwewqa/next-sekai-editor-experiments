@@ -2088,8 +2088,8 @@
     "savedWithoutCoverLarge": "{0} dosyasına kapak olmadan kaydedildi",
     "savedWithoutPreviewLarge": "{0} dosyasına önizleme sesi olmadan kaydedildi",
     "savedWithoutMediaLarge": "{0} dosyasına medya olmadan kaydedildi",
-    "someStepsNotKept": "{0} dosyasına kaydedildi. Bazı önceki adımlar korunmadı.",
-    "someStepsNotKeptLine": "Bazı önceki adımlar korunmadı.",
+    "someStepsNotKept": "{0} dosyasına kaydedildi. Zaman Çizgisi’ndeki bazı önceki adımlar korunmadı.",
+    "someStepsNotKeptLine": "Zaman Çizgisi’ndeki bazı önceki adımlar korunmadı.",
     "committedState": "Bu, başka bir sekmede açık olan oturumun en son saklanan durumudur.",
     "tookOver": "{0} dosyasına kaydedildi. Önceki çalışması Son Oturumlar’da.",
     "noChanges": "{0} indirildiğinden beri değişiklik yok",
@@ -2131,7 +2131,7 @@
     "replaceNote": "Diskteki sürüm Son Oturumlar’da saklanır.",
     "keptName": "{0} ({1} değiştirildi)",
     "replaceNewer": "Daha yeni bir {0} sürümüyle oluşturuldu.",
-    "replaceHoldsEarlier": "Bu tarayıcıda artık bulunmayan önceki adımları içeriyor.",
+    "replaceHoldsEarlier": "Bu tarayıcıda artık bulunmayan önceki Zaman Çizgisi adımlarını içeriyor.",
     "keepEditing": "Düzenlemeye Devam Et"
   },
   "name": {

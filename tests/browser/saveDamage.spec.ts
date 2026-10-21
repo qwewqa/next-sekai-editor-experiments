@@ -90,7 +90,7 @@ test('damage the build before the picker finds: the own file is read first and a
     await expect
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).n)
         .toBe(2)
-    await expect(notice(page).filter({ hasText: 'Some earlier steps were not kept.' })).toHaveCount(
+    await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' })).toHaveCount(
         0,
     )
     const after = await projectOf(page, 'coconut.nxsp')
@@ -133,7 +133,7 @@ test('the same damage without a held grant: no prompt before the picker, and the
     // A prompt between the press and the picker would spend the press the picker needs.
     expect((await pickerCalls(page)).map((call) => call.picker)).toEqual(['save'])
     await expect(
-        notice(page).filter({ hasText: 'Some earlier steps were not kept.' }),
+        notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' }),
     ).toBeVisible()
 })
 

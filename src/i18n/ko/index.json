@@ -2088,8 +2088,8 @@
     "savedWithoutCoverLarge": "{0}에 커버 없이 저장됨",
     "savedWithoutPreviewLarge": "{0}에 미리보기 오디오 없이 저장됨",
     "savedWithoutMediaLarge": "{0}에 미디어 없이 저장됨",
-    "someStepsNotKept": "{0}에 저장됨. 이전 단계 일부는 보존되지 않았습니다.",
-    "someStepsNotKeptLine": "이전 단계 일부는 보존되지 않았습니다.",
+    "someStepsNotKept": "{0}에 저장됨. 타임라인의 이전 단계 일부는 보존되지 않았습니다.",
+    "someStepsNotKeptLine": "타임라인의 이전 단계 일부는 보존되지 않았습니다.",
     "committedState": "다른 탭에서 열려 있는 세션의 마지막으로 보관된 상태입니다.",
     "tookOver": "{0}에 저장됨. 이전 작업은 최근 세션에 있습니다.",
     "noChanges": "{0} 다운로드 이후 변경 사항 없음",
@@ -2131,7 +2131,7 @@
     "replaceNote": "디스크의 버전은 최근 세션에 보관됩니다.",
     "keptName": "{0} ({1} 교체됨)",
     "replaceNewer": "더 새로운 버전의 {0}에서 만들어졌습니다.",
-    "replaceHoldsEarlier": "이 브라우저에 더 이상 없는 이전 단계가 들어 있습니다.",
+    "replaceHoldsEarlier": "이 브라우저에 더 이상 없는 타임라인의 이전 단계가 들어 있습니다.",
     "keepEditing": "계속 편집"
   },
   "name": {

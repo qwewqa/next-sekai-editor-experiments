@@ -2088,8 +2088,8 @@
     "savedWithoutCoverLarge": "已儲存到 {0}，未包含封面",
     "savedWithoutPreviewLarge": "已儲存到 {0}，未包含預覽音訊",
     "savedWithoutMediaLarge": "已儲存到 {0}，未包含媒體",
-    "someStepsNotKept": "已儲存到 {0}。部分較早的步驟未保留。",
-    "someStepsNotKeptLine": "部分較早的步驟未保留。",
+    "someStepsNotKept": "已儲存到 {0}。時間軸中部分較早的步驟未保留。",
+    "someStepsNotKeptLine": "時間軸中部分較早的步驟未保留。",
     "committedState": "這是在另一個分頁中開啟之工作階段最後存放的狀態。",
     "tookOver": "已儲存到 {0}。其先前的工作在「最近工作階段」中。",
     "noChanges": "自下載 {0} 以來沒有變更",
@@ -2131,7 +2131,7 @@
     "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
-    "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早步驟。",
+    "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早時間軸步驟。",
     "keepEditing": "繼續編輯"
   },
   "name": {

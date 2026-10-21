@@ -129,7 +129,7 @@ export type SavedFeedback = {
     kind: 'saved' | 'download'
     name: string
     size: number
-    /** "Some earlier steps were not kept.": the write doesn't carry its base's `completeFrom`. */
+    /** "Some earlier Timeline steps were not kept.": the write doesn't carry its base's `completeFrom`. */
     someStepsNotKept: boolean
     /** A save picker took the file from another chain: "Its earlier work is in Recent Sessions." */
     tookOver: boolean
@@ -225,7 +225,7 @@ const withoutKey = (feedback: SavedFeedback) => {
 const simple = (feedback: SavedFeedback) =>
     !feedback.someStepsNotKept && !feedback.tookOver && feedback.without.length === 0
 
-/** The feedback's text: the first line, then "Some earlier steps were not kept." where it applies. */
+/** The feedback's text: the first line, then "Some earlier Timeline steps were not kept." where it applies. */
 export const savedText = (feedback: SavedFeedback) => {
     const { save } = i18n.value
     if (feedback.kind === 'download') {

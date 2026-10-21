@@ -2088,8 +2088,8 @@
         "savedWithoutCoverLarge": "Saved to {0} without its cover",
         "savedWithoutPreviewLarge": "Saved to {0} without its preview audio",
         "savedWithoutMediaLarge": "Saved to {0} without its media",
-        "someStepsNotKept": "Saved to {0}. Some earlier steps were not kept.",
-        "someStepsNotKeptLine": "Some earlier steps were not kept.",
+        "someStepsNotKept": "Saved to {0}. Some earlier Timeline steps were not kept.",
+        "someStepsNotKeptLine": "Some earlier Timeline steps were not kept.",
         "committedState": "This is the last stored state of a session open in another tab.",
         "tookOver": "Saved to {0}. Its earlier work is in Recent Sessions.",
         "noChanges": "No changes since {0} was downloaded",
@@ -2131,7 +2131,7 @@
         "replaceNote": "The version on disk will be kept in Recent Sessions.",
         "keptName": "{0} (replaced {1})",
         "replaceNewer": "Made by a newer version of {0}.",
-        "replaceHoldsEarlier": "It holds earlier steps that this browser no longer has.",
+        "replaceHoldsEarlier": "It holds earlier Timeline steps that this browser no longer has.",
         "keepEditing": "Keep Editing"
     },
     "name": {

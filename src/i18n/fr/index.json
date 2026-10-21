@@ -2088,8 +2088,8 @@
     "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",
     "savedWithoutPreviewLarge": "Sauvegardé dans {0} sans son aperçu audio",
     "savedWithoutMediaLarge": "Sauvegardé dans {0} sans ses médias",
-    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures n’ont pas été conservées.",
-    "someStepsNotKeptLine": "Certaines étapes antérieures n’ont pas été conservées.",
+    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
+    "someStepsNotKeptLine": "Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
     "committedState": "Voici le dernier état stocké d’une session ouverte dans un autre onglet.",
     "tookOver": "Sauvegardé dans {0}. Son travail antérieur se trouve dans Sessions récentes.",
     "noChanges": "Aucune modification depuis le téléchargement de {0}",
@@ -2131,7 +2131,7 @@
     "replaceNote": "La version sur le disque sera conservée dans Sessions récentes.",
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Créé par une version plus récente de {0}.",
-    "replaceHoldsEarlier": "Il contient des étapes antérieures que ce navigateur n’a plus.",
+    "replaceHoldsEarlier": "Il contient des étapes antérieures de la chronologie que ce navigateur n’a plus.",
     "keepEditing": "Continuer à modifier"
   },
   "name": {
