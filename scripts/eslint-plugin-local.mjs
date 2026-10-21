@@ -232,10 +232,125 @@ const historyImports = {
     },
 }
 
+// --- Days of use
+
+/** `UseDay`, or the last name of `D.UseDay`. */
+const lastNameIsUseDay = (name) =>
+    name.type === 'Identifier'
+        ? name.name === 'UseDay'
+        : name.type === 'TSQualifiedName' && name.right.name === 'UseDay'
+
+/**
+ * A type that is, or in a union or intersection holds, `UseDay` by name: `UseDay`, `D.UseDay` and
+ * `import('./days').UseDay`. An alias of it is not seen.
+ */
+const namesUseDay = (type) => {
+    if (type.type === 'TSTypeReference') return lastNameIsUseDay(type.typeName)
+    if (type.type === 'TSImportType')
+        return (
+            type.qualifier !== null &&
+            type.qualifier !== undefined &&
+            lastNameIsUseDay(type.qualifier)
+        )
+    if (type.type === 'TSUnionType' || type.type === 'TSIntersectionType')
+        return type.types.some(namesUseDay)
+    return false
+}
+
+const noUseDayCast = {
+    meta: {
+        type: 'problem',
+        schema: [],
+        messages: {
+            cast: 'A UseDay is made by countDayOfUse, NO_USE_DAY and the row types only (I-11). Do not cast to it; read a stored day with storedDay.',
+        },
+    },
+    create(context) {
+        const visitor = {
+            // x as UseDay, x as unknown as UseDay
+            TSAsExpression(node) {
+                if (namesUseDay(node.typeAnnotation)) context.report({ node, messageId: 'cast' })
+            },
+            // <UseDay>x
+            TSTypeAssertion(node) {
+                if (namesUseDay(node.typeAnnotation)) context.report({ node, messageId: 'cast' })
+            },
+            // (x): x is UseDay, asserts x is UseDay: a guard makes a UseDay from any value
+            TSTypePredicate(node) {
+                const type = node.typeAnnotation?.typeAnnotation
+                if (type && namesUseDay(type)) context.report({ node, messageId: 'cast' })
+            },
+        }
+        const services = context.sourceCode.parserServices
+        return typeof services?.defineTemplateBodyVisitor === 'function'
+            ? services.defineTemplateBodyVisitor(visitor, visitor)
+            : visitor
+    },
+}
+
+// --- Storage reads
+
+/**
+ * The storage methods whose empty answer a caller acts on: they are called only through the gate in
+ * src/local/storedRead.ts, which returns the value or the failure. Equal to its COVERED_READS
+ * (tests/local/storedReadClasses.test.ts).
+ */
+const COVERED_READS = [
+    'readHandle',
+    'listHandleOwners',
+    'readBindings',
+    'readChainRecord',
+    'replaceDecision',
+    'openEarlierChains',
+    'openPendingImports',
+    'openImportTarget',
+    'listRecovered',
+    'readRecovered',
+    'listKept',
+    'findEdits',
+]
+
+/** A method name written out: a string literal, or a template literal without holes. */
+const literalName = (node) => {
+    if (node === undefined) return undefined
+    if (node.type === 'Literal' && typeof node.value === 'string') return node.value
+    if (node.type === 'TemplateLiteral' && node.expressions.length === 0)
+        return node.quasis[0].value.cooked ?? undefined
+    return undefined
+}
+
+const storedReads = {
+    meta: {
+        type: 'problem',
+        schema: [],
+        messages: {
+            gate: '{{ method }} is a covered storage read. Read it through storedRead() (src/local/storedRead.ts), which returns the value or the failure, and write the failed case.',
+        },
+    },
+    create(context) {
+        if (normalized(context.filename).endsWith('src/local/storedRead.ts')) return {}
+        const visitor = {
+            CallExpression(node) {
+                const { callee } = node
+                if (callee.type !== 'MemberExpression' || memberName(callee) !== 'call') return
+                const method = literalName(node.arguments[0])
+                if (method !== undefined && COVERED_READS.includes(method))
+                    context.report({ node, messageId: 'gate', data: { method } })
+            },
+        }
+        const services = context.sourceCode.parserServices
+        return typeof services?.defineTemplateBodyVisitor === 'function'
+            ? services.defineTemplateBodyVisitor(visitor, visitor)
+            : visitor
+    },
+}
+
 export default {
     meta: { name: 'eslint-plugin-local' },
     rules: {
         'no-local-time': noLocalTime,
         'history-imports': historyImports,
+        'no-use-day-cast': noUseDayCast,
+        'stored-reads': storedReads,
     },
 }

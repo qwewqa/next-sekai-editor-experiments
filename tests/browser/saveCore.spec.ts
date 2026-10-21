@@ -341,3 +341,47 @@ test('after a reload, the bound file’s handle is read on the first edit, ahead
     await edit(page, 2)
     await expect.poll(reads).toBeGreaterThan(0)
 })
+
+test('a Save whose handle read fails over the real client downloads nothing and keeps the binding; the next press writes in place', async ({
+    page,
+}) => {
+    await start(page)
+    await savedOnce(page)
+    await page.reload()
+    await waitForStartup(page)
+    // The worker stops answering `readHandle` (the page's call to it rejects), as after a restart.
+    await page.evaluate(() => {
+        const worker = window.nseStorageTest!.worker
+        const flags = window as unknown as { failHandleReads?: boolean }
+        flags.failHandleReads = true
+        worker.call = new Proxy(worker.call, {
+            apply(target, thisArg: unknown, args: [string, ...unknown[]]) {
+                if (flags.failHandleReads && args[0] === 'readHandle')
+                    return Promise.reject(new Error('The storage worker stopped (spec)'))
+                return Reflect.apply(target, thisArg, args) as unknown
+            },
+        })
+    })
+    const downloads: string[] = []
+    page.on('download', (download) => downloads.push(download.suggestedFilename()))
+    const before = await readFile(page, 'coconut.nxsp')
+    await edit(page, 2)
+    await pressSave(page)
+    await expect(
+        notice(page).filter({
+            hasText: 'Not saved. The editor could not access this browser’s storage. Try again.',
+        }),
+    ).toBeVisible()
+    expect(downloads).toEqual([])
+    expect(await readFile(page, 'coconut.nxsp')).toEqual(before)
+    expect((await chainOf(page)).file).toMatchObject({ name: 'coconut.nxsp', event: 'saved' })
+    // The next press reads again, finds the handle and writes in place.
+    await page.evaluate(() => {
+        ;(window as unknown as { failHandleReads?: boolean }).failHandleReads = false
+    })
+    await pressSave(page)
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    expect(downloads).toEqual([])
+    expect(await readFile(page, 'coconut.nxsp')).not.toEqual(before)
+    expect(await pickerCalls(page)).toHaveLength(1)
+})

@@ -214,7 +214,7 @@ export type SavePlan = {
     project: Record<string, unknown>
     /** For the post-build check: chunks taken from storage. */
     storageChunks: PlannedChunk[]
-    /** "Some earlier steps were not kept." (§1.6.11.6): exactly when the write doesn't carry its base. */
+    /** "Some earlier Timeline steps were not kept." (§1.6.11.6): exactly when the write doesn't carry its base. */
     someStepsNotKept: boolean
     /** Media written as metadata only (the "without its …" lines), in BGM, cover, preview order. */
     without: MediaKind[]

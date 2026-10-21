@@ -3,6 +3,7 @@ import { fromHex16, toHex } from '../../local/hash'
 import { hasWebLocks } from '../../local/locks'
 import type { Revocation, SaveEntryForm } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
+import { storedRead, type ReadWorker } from '../../local/storedRead'
 import { platform } from '../../platform'
 import { detection } from '../../platform/detect'
 import type { LockMode } from '../../platform/types'
@@ -168,9 +169,7 @@ export const removeMarker = (chainId: string, revisionId?: string) => {
 }
 
 /** Removes the markers of chains storage no longer holds (deleted), at a load's idle time. */
-export const sweepMarkers = async (worker: {
-    call: (method: 'readChainRecord', chainId: string) => Promise<unknown>
-}) => {
+export const sweepMarkers = async (worker: ReadWorker) => {
     const prefix = storageKey('saving.')
     const chains: string[] = []
     try {
@@ -182,9 +181,10 @@ export const sweepMarkers = async (worker: {
         return
     }
     for (const chainId of chains) {
-        const record = await worker.call('readChainRecord', chainId).catch(() => null)
-        // Undefined only when the read worked and found no chain.
-        if (record === undefined) removeMarker(chainId)
+        const read = await storedRead(worker, 'readChainRecord', chainId)
+        // A failed read keeps the marker: it is removed only when the read worked and found no
+        // chain.
+        if (read.storedRead === 'value' && read.storedValue === undefined) removeMarker(chainId)
     }
 }
 

@@ -1031,7 +1031,7 @@ test.describe('states', () => {
         })
         await openTab(page)
         await expect(page.locator('[data-history-failed]')).toContainText(
-            'The timeline could not be loaded.',
+            'The Timeline could not be loaded.',
         )
         await shoot(page, 'states-failed')
         await page.evaluate(() => {

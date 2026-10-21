@@ -318,7 +318,8 @@ const storedHandleName = (page: Page, chainId: string, role: 'file' | 'exportTar
         async ({ chainId, role }) => {
             const { handleOf } =
                 (await import('/src/local/handles.ts')) as typeof import('../../src/local/handles')
-            return (await handleOf(window.nseStorageTest!.worker, chainId, role))?.name
+            const read = await handleOf(window.nseStorageTest!.worker, chainId, role)
+            return read.storedRead === 'value' ? read.storedValue?.name : 'failed'
         },
         { chainId, role },
     )
@@ -1018,3 +1019,111 @@ test('a newer patch gives way to an earlier session’s unsaved-changes notice, 
     await expect(page.getByRole('button', { name: 'Restore Session' })).toBeVisible()
     await expect(notice(page).filter({ hasText: PATCH_LINE })).toHaveCount(0)
 })
+
+// A read of storage that fails is a failure, not "nothing" (Part 1 §1.5.4, §1.6.5). The open has
+// succeeded whatever its earlier-chains read says; its binding check says "may" when it cannot be
+// answered.
+
+/** Makes the storage worker's `method` reject from now on, as a worker that stopped answering. */
+const failReads = (page: Page, methods: string[]) =>
+    page.evaluate((methods) => {
+        const worker = window.nseStorageTest!.worker
+        worker.call = new Proxy(worker.call, {
+            apply(target, thisArg: unknown, args: [string, ...unknown[]]) {
+                if (methods.includes(args[0])) {
+                    const error = new Error('The storage worker stopped answering (spec)')
+                    error.name = 'TimeoutError'
+                    return Promise.reject(error)
+                }
+                return Reflect.apply(target, thisArg, args) as unknown
+            },
+        })
+    }, methods)
+
+const UNCHECKED =
+    'Opened coconut.nxsp. Recent Sessions could not be checked for other versions of it.'
+
+test('an open whose earlier chains cannot be read still opens: the line alone, with Reopen, and no error', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await freshBytes())
+    await edit(page, 777)
+    await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+    await failReads(page, ['openEarlierChains'])
+    await openFile(page, 'coconut.nxsp')
+    const card = notice(page).filter({ hasText: UNCHECKED })
+    await expect(card).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Reopen/ })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await imported(page)
+    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+})
+
+test('an open whose earlier chains cannot be read puts the line above a BGM that is not loaded', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(
+        page,
+        'coconut.nxsp',
+        await patchBytes((items) => {
+            const project = jsonOf(items, 'project.json')
+            project.patch = undefined
+            const { filename, type, sha256, size } = project.bgm
+            project.bgm = { filename, type, hash: sha256.slice(0, 32), size }
+            setJson(items, 'project.json', project)
+            return items.filter((item) => !item.name.startsWith('bgm/'))
+        }),
+    )
+    await failReads(page, ['openEarlierChains'])
+    await openFile(page, 'coconut.nxsp')
+    // One other row, and still the heading: alone, it would read as nothing to report.
+    const card = notice(page).filter({ hasText: UNCHECKED })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText('BGM not loaded')
+    await expect(card.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
+    await imported(page)
+    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+})
+
+test('an open whose earlier chains cannot be read puts the line above a newer patch', async ({
+    page,
+}) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await patchBytes())
+    await failReads(page, ['openEarlierChains'])
+    await openFile(page, 'coconut.nxsp')
+    const card = notice(page).filter({ hasText: UNCHECKED })
+    await expect(card).toBeVisible()
+    await expect(card).toContainText(PATCH_LINE)
+    await imported(page)
+    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+})
+
+for (const method of ['readBindings', 'readHandle'])
+    test(`a binding check that cannot be answered (${method} fails) opens a separate copy and says "may"`, async ({
+        page,
+        context,
+    }) => {
+        await start(page)
+        await writeFile(page, 'coconut.nxsp', await freshBytes())
+        await openFile(page, 'coconut.nxsp')
+        await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+        await imported(page)
+        const other = await context.newPage()
+        await start(other)
+        await failReads(other, [method])
+        await openFile(other, 'coconut.nxsp')
+        await expect(
+            notice(other).filter({
+                hasText:
+                    '"coconut.nxsp" may be open in another tab or window, so this is a separate copy.',
+            }),
+        ).toBeVisible()
+        const session = await sessionOf(other)
+        expect(session.file).toBeUndefined()
+        expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+        // The first tab keeps its binding.
+        expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
+    })

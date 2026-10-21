@@ -19,6 +19,7 @@ import { canonicalBytes, type RecordValue } from '../../../src/local/records/can
 import { toRecords } from '../../../src/local/records/records'
 import { checkRecord } from '../../../src/local/records/schema'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
+import { useDay } from '../../helpers/useDay'
 import { goldenChart, stateOf } from './charts'
 
 const vectors = join(import.meta.dirname, '..', '..', 'fixtures', 'deflate-v1')
@@ -95,7 +96,7 @@ test('only verifyChunk makes a VerifiedChunk, and its row is a compact copy', as
     assert.ok(chunk)
     const forged = { hash: chunk.hash, stored: deflateChunk(chunk.bytes), size: 1 } as VerifiedChunk
     assert.equal(isVerifiedChunk(forged), false)
-    assert.throws(() => chunkRowOf(forged, 0), ChunkVerifyError)
+    assert.throws(() => chunkRowOf(forged, useDay(0)), ChunkVerifyError)
     // A view into a larger buffer is stored as exactly its bytes.
     const stored = deflateChunk(chunk.bytes)
     const padded = new Uint8Array(stored.length + 8)
@@ -103,7 +104,7 @@ test('only verifyChunk makes a VerifiedChunk, and its row is a compact copy', as
     const view = padded.subarray(4, 4 + stored.length)
     const row = chunkRowOf(
         await verifyChunk({ hash: chunk.hash, stored: view, canonical: chunk.bytes }),
-        0,
+        useDay(0),
     )
     assert.equal(row.bytes.buffer.byteLength, stored.length)
 })
@@ -119,7 +120,7 @@ test('a verified chunk holds its own copy: the caller’s buffer changing after 
         stored.fill(0)
         hash.fill(0)
         const verified = await pending
-        const row = chunkRowOf(verified, 0)
+        const row = chunkRowOf(verified, useDay(0))
         assert.deepEqual(inflateStrict(row.bytes), chunk.bytes)
         assert.deepEqual(verified.hash, chunk.hash)
     }

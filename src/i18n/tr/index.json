@@ -955,7 +955,8 @@
         "legacy": "Eski bir sürümden kurtarma kopyası · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
-        "listFailed": "Depolanan kurtarma verileri okunamadı",
+        "listFailed": "Kurtarılmış çalışma okunamadı",
+        "downloadFailed": "Kurtarılmış çalışma indirilemedi.",
         "atLoad": "Başlangıç Bildirimleri"
       },
       "openHistory": "Geçmişi Aç",
@@ -1174,7 +1175,7 @@
     "continuedUntitled": "{0} tarihli oturumunuz devam ettirildi.",
     "continuedUndated": "\"{0}\" devam ettirildi.",
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
-    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Burada bazı özellikler çalışmayabilir ve saklanan çalışmanın kaybolma olasılığı daha yüksektir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
+    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
     "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
     "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
     "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
@@ -1315,7 +1316,7 @@
     "yesterday": "Dün",
     "empty": "Henüz değişiklik yok",
     "noSaves": "Kaydetme veya dışa aktarma yok",
-    "loadFailed": "Zaman çizgisi yüklenemedi.",
+    "loadFailed": "Zaman Çizgisi yüklenemedi.",
     "tryAgain": "Tekrar Dene",
     "steps": "{0} adım",
     "newerSteps": "{0} yeni adım",
@@ -1354,9 +1355,9 @@
       "composedTransform": "Birden fazla ayarlama",
       "released": "Klasörden çıkarılan",
       "recoveryContext": "Önceki işlemler",
-      "recoveryHead": "Kaynak işlem",
-      "omittedDescriptions": "Atlanan önceki işlem açıklamaları: {0}",
-      "droppedSteps": "Kaybedilen geri alma adımları: {0}",
+      "recoveryHead": "Buraya kadar kurtarıldı",
+      "omittedDescriptions": "Listelenmeyen önceki işlemler: {0}",
+      "droppedSteps": "Zaman Çizgisi’nde kendi adımı olmayan işlemler: {0}",
       "counts": {
         "note": "{0} nota",
         "bpm": "{0} BPM değişikliği",
@@ -1367,7 +1368,7 @@
         "groupFolder": "{0} grup klasörü",
         "stageFolder": "{0} sahne klasörü"
       },
-      "bgmOffset": "BGM ofseti",
+      "bgmOffset": "Arka plan müziği zaman kayması",
       "pasteLocation": "Yapıştırma konumu",
       "pointer": "İşaretçi",
       "position": "Seçilen konum"
@@ -1704,7 +1705,7 @@
           "alt": "Alt",
           "shift": "Shift"
         },
-        "fixedAlias": "{0} ile de çalışır (sabit)"
+        "fixedAlias": "{0} ile de çalışır (değiştirilemez)"
       },
       "maskLeft": {
         "label": "Maske Şeridi"
@@ -2088,9 +2089,9 @@
     "savedWithoutCoverLarge": "{0} dosyasına kapak olmadan kaydedildi",
     "savedWithoutPreviewLarge": "{0} dosyasına önizleme sesi olmadan kaydedildi",
     "savedWithoutMediaLarge": "{0} dosyasına medya olmadan kaydedildi",
-    "someStepsNotKept": "{0} dosyasına kaydedildi. Bazı önceki adımlar korunmadı.",
-    "someStepsNotKeptLine": "Bazı önceki adımlar korunmadı.",
-    "committedState": "Bu, başka bir sekmede açık olan oturumun en son saklanan durumudur.",
+    "someStepsNotKept": "{0} dosyasına kaydedildi. Zaman Çizgisi’ndeki bazı önceki adımlar korunmadı.",
+    "someStepsNotKeptLine": "Zaman Çizgisi’ndeki bazı önceki adımlar korunmadı.",
+    "committedState": "Dosya, başka bir sekmede açık olan oturumun en son saklanan sürümünü içeriyor.",
     "tookOver": "{0} dosyasına kaydedildi. Önceki çalışması Son Oturumlar’da.",
     "noChanges": "{0} indirildiğinden beri değişiklik yok",
     "noChangesSaved": "{0} kaydedildiğinden beri değişiklik yok",
@@ -2101,6 +2102,7 @@
     "restoredName": "{0} ({1} geri yüklendi)",
     "fileType": "Next SEKAI proje dosyası",
     "unavailable": "Kaydedilmedi. Seviye Verisini Dışa Aktar… komutunu kullanın.",
+    "storageUnavailable": "Kaydedilmedi. Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "include": "Dahil Edilecekler",
     "historySize": "{0} adım · {1}",
     "historyNote": "Dosyaya sahip herkes dosyanın geçmişini görebilir.",
@@ -2124,14 +2126,14 @@
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "Farklı bir proje dosyası: \"{0}\".",
     "otherProjectUnnamed": "Farklı bir proje dosyası.",
-    "notDescendant": "Bu sürüm sizinkinin devamı değil ({0}).",
+    "notDescendant": "Bu sürüm sizinkinden oluşturulmadı ({0}).",
     "separate": "Ayrı Dosya Olarak Kaydet",
     "openOther": "Diğer Sürümü Aç",
     "openOtherNote": "Değişiklikleriniz kaydedilmemiş olarak kalır.",
     "replaceNote": "Diskteki sürüm Son Oturumlar’da saklanır.",
     "keptName": "{0} ({1} değiştirildi)",
     "replaceNewer": "Daha yeni bir {0} sürümüyle oluşturuldu.",
-    "replaceHoldsEarlier": "Bu tarayıcıda artık bulunmayan önceki adımları içeriyor.",
+    "replaceHoldsEarlier": "Artık bu tarayıcıda saklanmayan önceki Zaman Çizgisi adımlarını içeriyor.",
     "keepEditing": "Düzenlemeye Devam Et"
   },
   "name": {
@@ -2144,6 +2146,8 @@
   "notice": {
     "useOpenFile": "Bir dosya açmak için Aç’ı kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
+    "sameFileMaybeElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık olabilir, bu yüzden bu ayrı bir kopya.",
+    "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
     "newLevel": "Yeni seviye",
     "reopen": "\"{0}\" Yeniden Aç",
@@ -2213,6 +2217,7 @@
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz var.",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
+    "earlierUnchecked": "{0} açıldı. Son Oturumlar’da bu dosyanın başka sürümleri olup olmadığı denetlenemedi.",
     "unsavedEarlierMaybe": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da olabilir.",
     "unsavedChangesMaybe": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz olabilir.",
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. {1} tarihli daha yeni bir sürüm Son Oturumlar’da.",

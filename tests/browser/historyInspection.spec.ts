@@ -1072,7 +1072,7 @@ test('tiny menu takes keyboard focus, holds browser keys and restores its opener
     const opener = page.locator('[data-change-options]')
     await opener.focus()
     await page.keyboard.press('ArrowDown')
-    const menu = page.getByRole('menu', { name: 'Change Options', exact: true })
+    const menu = page.getByRole('menu', { name: 'Options for Changes', exact: true })
     await expect(menu.getByRole('menuitemcheckbox', { name: 'Show Edits' })).toBeFocused()
     await menu.evaluate((element) => {
         window.historyMenuKeys = []
@@ -1807,7 +1807,7 @@ test('composed old and new change destinations stay identical while Show Edits i
     await page.screenshot({ path: testInfo.outputPath('composed-navigation-edits-off.png') })
 })
 
-test('an outside press that closes Change Options gives focus back to its button (X-3)', async ({
+test('an outside press that closes Options for Changes gives focus back to its button (X-3)', async ({
     page,
 }) => {
     await seed(page)
@@ -1821,7 +1821,7 @@ test('an outside press that closes Change Options gives focus back to its button
     await expect(opener).toBeFocused()
 })
 
-test.describe('touch Change Options', () => {
+test.describe('touch Options for Changes', () => {
     test.use({ hasTouch: true })
     test('an outside tap that closes the sheet gives focus back to its button (X-3)', async ({
         page,

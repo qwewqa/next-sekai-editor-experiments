@@ -24,6 +24,7 @@ import { sessionContext } from '../startup/api'
 import { openStored } from '../startup/open'
 import { writeTabRecord } from '../startup/tab'
 import type { StateBatch } from '../stateBatch'
+import { readValue, storedRead, type StoredRead } from '../storedRead'
 import { flusher, journalWriter } from '../storing'
 import { changedOf, type EarlierChain } from './decide'
 import { resumeImports, startImport, type ImportOutcome } from './importLoop'
@@ -68,13 +69,17 @@ export const dropProjectRead = (id: string) => {
     void owner.open.worker.call('openDrop', id).catch(() => undefined)
 }
 
+/** Whether another tab's open session is bound to the file: `unknown` when that can't be told. */
+export type BoundElsewhere = 'yes' | 'no' | 'unknown'
+
 /**
  * Whether another tab's open session is bound to this file (§1.3.2, `isSameEntry`): such an open
- * is a separate copy.
+ * is a separate copy, and so is one that can't be told apart (`unknown`: a failed read, a handle
+ * this page can't hold, or a throw), which the notice says with "may".
  */
-export const boundInAnotherTab = async (handle: FileSystemFileHandle) => {
+export const boundInAnotherTab = async (handle: FileSystemFileHandle): Promise<BoundElsewhere> => {
     const { open } = context()
-    if (!hasWebLocks()) return false
+    if (!hasWebLocks()) return 'no'
     try {
         const own = await open.client.id()
         const snapshot = await open.locks.query()
@@ -82,38 +87,59 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle) => {
             .filter((lock) => lock.name.startsWith('nse-session:'))
             .filter((lock) => own === undefined || lock.clientId !== own)
             .map((lock) => lock.name.slice('nse-session:'.length))
-        if (!others.length) return false
-        for (const { chainId } of await open.worker.call('readBindings', others)) {
-            const raw = await open.worker.call('readHandle', { chainId, role: 'file' })
-            if (raw === undefined) continue
-            const other = resolveHandle(raw)
-            if (!other || (await other.isSameEntry(handle))) return true
+        if (!others.length) return 'no'
+        const bindings = await storedRead(open.worker, 'readBindings', others)
+        if (bindings.storedRead === 'failed') return 'unknown'
+        let unknown = false
+        for (const { chainId } of bindings.storedValue) {
+            const read = await storedRead(open.worker, 'readHandle', { chainId, role: 'file' })
+            if (read.storedRead === 'failed') {
+                unknown = true
+                continue
+            }
+            if (read.storedValue === undefined) continue
+            const other = resolveHandle(read.storedValue)
+            if (!other) {
+                unknown = true
+                continue
+            }
+            if (await other.isSameEntry(handle)) return 'yes'
         }
+        return unknown ? 'unknown' : 'no'
     } catch {
-        // Uncertain ownership opens a separate copy.
-        return true
+        // Uncertain ownership opens a separate copy, and says so.
+        return 'unknown'
     }
-    return false
 }
 
 /** The chains this browser has on the document, as the open's notice reads them (§1.5.4). */
-export const earlierChains = async (docId: string, exclude: string): Promise<EarlierChain[]> => {
+export const earlierChains = async (
+    docId: string,
+    exclude: string,
+): Promise<StoredRead<EarlierChain[]>> => {
     const { open, recovery } = context()
-    const stored = await open.worker.call('openEarlierChains', { docId, exclude })
+    const read = await storedRead(open.worker, 'openEarlierChains', { docId, exclude })
+    // The failure goes to the open, which still succeeds and says so.
+    if (read.storedRead === 'failed') return read
+    const stored = read.storedValue
     // A dead tab's pending journal holds changes storage doesn't: Restore applies it first. When
     // the journals cannot be read, a bound chain that looks unchanged has unknown changes.
     const journals = await recovery.journal
         .read()
         .then((found) => new Set(found.map((each) => each.sessionId)))
         .catch(() => undefined)
-    return Promise.all(
-        stored.map(async (chain) => ({
-            ...chain,
-            changed: changedOf(chain, journals),
-            openElsewhere:
-                hasWebLocks() &&
-                (await open.client.heldElsewhere(sessionLock(chain.sessionId)).catch(() => false)),
-        })),
+    return readValue(
+        await Promise.all(
+            stored.map(async (chain) => ({
+                ...chain,
+                changed: changedOf(chain, journals),
+                openElsewhere:
+                    hasWebLocks() &&
+                    (await open.client
+                        .heldElsewhere(sessionLock(chain.sessionId))
+                        .catch(() => false)),
+            })),
+        ),
     )
 }
 

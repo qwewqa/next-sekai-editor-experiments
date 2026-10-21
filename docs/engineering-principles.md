@@ -34,7 +34,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** "None found" and "could not look" call for different action, and a user acting on the wrong one loses work.
 
-**Example.** A failed Edits Here scan read as "No edits here", and a recovery listing that failed read as "nothing to recover". A search that can fail has a third state beside found and nothing, with a retry. A `.catch(() => [])` needs a reason in a comment. The storage worker's read results are being reworked to carry the difference in their type.
+**Example.** A failed Edits Here scan read as "No edits here", and a recovery listing that failed read as "nothing to recover". A search that can fail has a third state beside found and nothing, with a retry. A `.catch(() => [])` needs a reason in a comment. Storage reads whose empty answer a caller acts on go through the `storedRead` gate (`src/local/storedRead.ts`), which returns the value or the failure and never rejects; `local/stored-reads` keeps those reads there. Each caller writes its failed case; a wrapper over such a read passes the failure on and never decides it for its callers.
 
 ## 5. Tests prove what they claim
 

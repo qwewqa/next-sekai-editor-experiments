@@ -5,7 +5,7 @@ import {
     type JsonValue,
 } from '../../history/operations'
 import { ChunkVerifyError, verifyChunk, type VerifiedChunk } from '../chunkVerify'
-import { countDayOfUse } from '../days'
+import { countDayOfUse, NO_USE_DAY, type UseDay } from '../days'
 import { hashKey, readMeta, writeMeta } from '../db'
 import type { BatchMedia, ChainSummary, PreparedFlush } from '../flushWrite'
 import { prepareForeign, writeForeign, type PreparedForeign } from '../foreign'
@@ -90,7 +90,7 @@ export type OpenStoreResult = {
 const recordRow = (
     json: RecordValue[],
     media: readonly Uint8Array[],
-    day: number,
+    day: UseDay,
 ): RootRow | NodeRow => {
     const size = canonicalBytes(json).length
     if (typeof json[0] === 'number') {
@@ -132,7 +132,7 @@ const mediaOfRoot = async (history: ReadHistory, json: RecordValue[]) => {
 /** Records ready to put: rows by hex key. */
 type PreparedRecords = Map<string, Row>
 
-const prepareRecords = async (history: ReadHistory, keys: Iterable<string>, day: number) => {
+const prepareRecords = async (history: ReadHistory, keys: Iterable<string>, day: UseDay) => {
     const rows: PreparedRecords = new Map()
     for (const key of keys) {
         const root = history.roots.get(key)
@@ -152,7 +152,7 @@ const entryRow = (
     sessionId: string,
     seq: number,
     entry: EntryForm,
-    day: number,
+    day: UseDay,
 ): Row => {
     const root = history.roots.get(entry.snapshot)
     return {
@@ -266,7 +266,8 @@ export const prepareOpenHead = async (
                     others.push(key)
                 }
         }
-        for (const [key, row] of await prepareRecords(history, others, 0)) records.set(key, row)
+        for (const [key, row] of await prepareRecords(history, others, NO_USE_DAY))
+            records.set(key, row)
     } else if (media.length) {
         foreign = await prepareForeign({ roots: [], nodes: [], chunks: [], media }, waiter)
     }
@@ -276,7 +277,7 @@ export const prepareOpenHead = async (
     const entries =
         history && history.entries.length <= BATCH_ROWS
             ? history.entries.map((entry, i) =>
-                  entryRow(history, request.ids.sessionId, i + 1, entry, 0),
+                  entryRow(history, request.ids.sessionId, i + 1, entry, NO_USE_DAY),
               )
             : undefined
     return {
@@ -307,7 +308,7 @@ const stackRows = (
     return { window, blocks }
 }
 
-const putRecords = async (tx: KvTx, records: PreparedRecords, day: number) => {
+const putRecords = async (tx: KvTx, records: PreparedRecords, day: UseDay) => {
     let bytes = 0
     for (const [key, row] of records) {
         const hashed = hashKey(fromHex16(key))
@@ -534,11 +535,14 @@ export const prepareBatch = async (
                 const rows: Row[] = []
                 for (let i = batch.from; i < batch.to; i++)
                     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    rows.push(entryRow(history, sessionId, i + 1, history.entries[i]!, 0))
+                    rows.push(entryRow(history, sessionId, i + 1, history.entries[i]!, NO_USE_DAY))
                 return { kind: 'entries', rows }
             }
             case 'records':
-                return { kind: 'records', rows: await prepareRecords(history, batch.keys, 0) }
+                return {
+                    kind: 'records',
+                    rows: await prepareRecords(history, batch.keys, NO_USE_DAY),
+                }
             case 'chunks': {
                 const chunks: VerifiedChunk[] = []
                 const damaged: string[] = []
