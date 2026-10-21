@@ -43,9 +43,13 @@ export const resetRingForTests = () => {
     ring = undefined
 }
 
-const messageOf = (error: unknown) => {
-    if (error instanceof Error)
-        return error.stack?.split('\n').slice(0, 4).join('\n') ?? error.message
+/** An error as text. A Chromium stack starts with the message; a Firefox or Safari stack does not. */
+export const messageOf = (error: unknown) => {
+    if (error instanceof Error) {
+        const lines = error.stack?.split('\n') ?? []
+        if (error.stack?.includes(error.message)) return lines.slice(0, 4).join('\n')
+        return [`${error.name}: ${error.message}`, ...lines.slice(0, 3)].join('\n')
+    }
     try {
         return typeof error === 'string' ? error : JSON.stringify(error)
     } catch {
