@@ -160,6 +160,21 @@ test('artifact verification detects file tampering and unexpected files', async 
     await assert.rejects(checkRelease(directory), /Unexpected release file/)
 })
 
+test('a production bundle names no test key but the three live ones', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    const bundle = 'assets/index-12345678.js'
+    const keys = 'get("nse.test.version","nse.test.storage","nse.test.startBlank")'
+    await write(directory, bundle, keys)
+    await writeReleaseManifest(directory, metadata, assets)
+    await checkRelease(directory)
+    await write(directory, bundle, `${keys};get("nse.test.platform")`)
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /gated key nse\.test\.platform/)
+    await write(directory, 'index.html', withPolicy(applyTestSite(indexPage)))
+    await writeReleaseManifest(directory, { ...metadata, site: 'test' }, assets)
+    await checkRelease(directory)
+})
+
 test('an extra hashed bundle still fails when it was not recorded by the build', async (t) => {
     const { directory } = await releaseFixture(t)
     await write(directory, 'assets/unexpected-12345678.js', 'unrecorded')

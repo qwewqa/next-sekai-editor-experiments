@@ -391,11 +391,19 @@ async function checkPages(directory, files, manifest) {
 }
 
 // The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.
-async function checkBundles(directory, files) {
+// A production-site build names no test key but these (src/platform/testKeys.ts); the test site may.
+const liveTestKeys = ['nse.test.version', 'nse.test.storage', 'nse.test.startBlank']
+
+async function checkBundles(directory, files, site) {
     for (const file of files.filter((file) => /\.(?:js|html|css)$/.test(file))) {
         const bytes = await regularFile(join(directory, file))
         for (const marker of ['__TAURI_INTERNALS__', 'seedSample', 'nse-handle-probe'])
             if (bytes.includes(marker)) throw new Error(`Release contains ${marker}: ${file}`)
+        const named =
+            site === 'production' ? (bytes.toString().match(/nse\.test\.[A-Za-z]+/g) ?? []) : []
+        for (const key of named)
+            if (!liveTestKeys.includes(key))
+                throw new Error(`Release names a gated key ${key}: ${file}`)
     }
 }
 
@@ -422,7 +430,7 @@ export async function checkRelease(directory, expected = {}) {
     await checkLyonRelease(directory, files)
     await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
-    await checkBundles(directory, files)
+    await checkBundles(directory, files, manifest.site)
     const recorded = Object.keys(manifest.files).sort()
     if (
         JSON.stringify(recorded) !==

@@ -29,6 +29,7 @@ import {
     type Digest,
 } from './historyJourney'
 import { pressSave, projectOf, queuePicks, readFile, submitSave } from './saveFlows'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // The History journeys of D2 package P1 (work/history-redesign/testplan/plan.md §3.1): real
 // tool input from a blank chart through History, and the peek-safety checks, the top data risk:
@@ -37,10 +38,7 @@ import { pressSave, projectOf, queuePicks, readFile, submitSave } from './saveFl
 // the file, the stored entry's root hash), with a peeked state that really differs from the live
 // one.
 
-test.skip(
-    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
-    'Playwright WebKit on Windows does not provide Web Audio',
-)
+skipWhereTheEditorCannotStart()
 
 test.afterEach(({ page }) => noErrors(page))
 
