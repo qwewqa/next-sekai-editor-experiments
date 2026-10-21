@@ -16,7 +16,6 @@ import { prepareToolModal, showToolModal } from '../toolModals'
 import { isPanelEnabled, showPanel } from '../workspace'
 import { checkHistoryCalendar } from './calendarClock'
 import { createHistoryPresentation, type HistoryCloseResult } from './presentation'
-import { backToNow } from './selection'
 import { historyFilter, historyTab, listFocus, type HistoryTab } from './state'
 
 // The ways in (Part 1 §1.4.10.1): the History command always runs the dialog; the links in notices,
@@ -29,6 +28,13 @@ export const canFocusHistory = (surface: 'panel' | 'dialog') =>
     surface === 'dialog'
         ? historyId.value !== undefined && modals.at(-1)?.id === historyId.value
         : modals.length === 0
+// A dialog gives focus back to its opener. An opener that is gone or hidden gets none (and the sheet's
+// host has already given its own), so the chart takes it.
+const focusChartIfLost = () => {
+    const active = document.activeElement
+    if (!active || active === document.body)
+        document.querySelector<HTMLElement>('.chart-pane')?.focus({ preventScroll: true })
+}
 const canFocusChart = () =>
     isPeeking.value && !isBlockingModalOpen.value && !isHistoryDialogOpen.value
 
@@ -98,26 +104,26 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
         opening = false
     }
     if (at !== generation) return
-    if (result === 'view-chart' && isPeeking.value) {
+    // Closing History never ends a peek: Back to Now does, so the groups and stages can be
+    // visited while an old step is shown.
+    if (isPeeking.value) {
         if (reopenAt !== undefined) {
             const { restoreElevationAfterPeek } = await import('../peek')
             if (at !== generation) return
             restoreElevationAfterPeek(reopenAt)
         }
         await nextTick()
-        if (at === generation && canFocusChart())
-            document.querySelector<HTMLElement>('[data-peek-back]')?.focus({ preventScroll: true })
-    } else {
-        backToNow()
-        if (reopenAt !== undefined) openElevationEditor(reopenAt)
-        else {
-            // A dialog gives focus back to its opener. An opener that is gone or hidden gets none
-            // (and the sheet's host has already given its own), so the chart takes it.
-            await nextTick()
-            const active = document.activeElement
-            if (at === generation && (!active || active === document.body))
-                document.querySelector<HTMLElement>('.chart-pane')?.focus({ preventScroll: true })
+        if (at === generation && canFocusChart()) {
+            if (result === 'view-chart')
+                document
+                    .querySelector<HTMLElement>('[data-peek-back]')
+                    ?.focus({ preventScroll: true })
+            else focusChartIfLost()
         }
+    } else if (reopenAt !== undefined) openElevationEditor(reopenAt)
+    else {
+        await nextTick()
+        if (at === generation) focusChartIfLost()
     }
 }
 

@@ -365,6 +365,50 @@ test('the Groups panel is read-only while peeking: visibility works, editing is 
     await leave(page)
 })
 
+test('the Groups dialog opens while peeking: the current group changes, edits are refused', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    await peek(page, first)
+    const names = () =>
+        page.evaluate(() =>
+            [...window.editorTest.history.liveState.value.groups.values()].map(({ name }) => name),
+        )
+    const before = await names()
+    const groupCount = () =>
+        page.evaluate(() => window.editorTest.history.liveState.value.groups.size)
+    await page.keyboard.press('e')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('tab', { selected: true })).toHaveText('Groups')
+
+    // The current group is view state: it changes, and the peek stays.
+    const other = dialog.locator('.manager-name').filter({ hasText: 'Other group' })
+    await other.click()
+    await expect.poll(() => page.evaluate(() => window.editorTest.view.groupId)).toBe(2)
+    expect((await beats(page)).peeking).toBe(true)
+
+    // Every edit is refused with the notice and changes nothing.
+    await other.focus()
+    await page.keyboard.press('F2')
+    await expect(notice(page)).toHaveText('Read-only while viewing history')
+    await expect(dialog.getByRole('textbox')).toHaveCount(0)
+    expect(await names()).toEqual(before)
+    expect(await groupCount()).toBe(before.length)
+    // Enabling dynamic stages from the Stages tab is an edit too.
+    await dialog.getByRole('tab', { name: 'Stages' }).click()
+    await dialog.getByRole('button', { name: 'Enable Dynamic Stages' }).click()
+    await expect(dialog).toHaveCount(1)
+    expect(
+        await page.evaluate(() => window.editorTest.history.liveState.value.isDynamicStages),
+    ).toBe(false)
+    expect((await beats(page)).peeking).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    expect((await beats(page)).peeking).toBe(true)
+    await leave(page)
+})
+
 test('Properties shows fields disabled while peeking', async ({ page }) => {
     const first = await newestSeq(page)
     await page.evaluate(() => {

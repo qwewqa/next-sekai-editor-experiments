@@ -1,3 +1,6 @@
+// The dialog closes and keeps a peek. The tab goes back to now first, then hands focus // to the
+chart. if (props.surface === 'dialog') emit('close') else if (peekedKey.value || peekedInfo.value)
+moveTo(rows.value[0])
 <script setup lang="ts">
 import {
     computed,
@@ -1156,9 +1159,10 @@ const onKeydown = (event: KeyboardEvent) => {
                 return
             case 'Escape':
                 handled()
-                // Back to now first; then the dialog closes, and the tab hands focus to the chart.
-                if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0])
-                else if (props.surface === 'dialog') emit('close')
+                // The dialog closes and keeps a peek. The tab goes back to now first, then hands
+                // focus to the chart.
+                if (props.surface === 'dialog') emit('close')
+                else if (peekedKey.value || peekedInfo.value) moveTo(rows.value[0])
                 else event.target.blur()
                 return
             case 'ArrowRight':

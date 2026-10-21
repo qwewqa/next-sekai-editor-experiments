@@ -9,6 +9,9 @@ export const manageStages: Command = {
         is: ManageStagesIcon,
     },
 
+    // Opens while peeking; the lists refuse every edit themselves (§1.4.11).
+    readOnly: true,
+
     execute() {
         // The Stages tab explains disabled dynamic stages and offers to enable
         // them, so opening the manager never changes the level.
