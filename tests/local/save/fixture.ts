@@ -363,7 +363,9 @@ export class Fixture {
     recordSave(built: BuiltSave, reserved: ReturnType<Fixture['reserveSave']>) {
         const session = this.sessions.find((each) => each.id === reserved.sessionId)
         if (!session) throw new Error('No session')
-        session.rows.push({
+        // In `seq` order, below the edits made while the file was built (E-7).
+        const at = session.rows.findIndex((row) => row.seq > reserved.seq)
+        session.rows.splice(at === -1 ? session.rows.length : at, 0, {
             sessionId: session.id,
             seq: reserved.seq,
             time: reserved.time,
@@ -384,41 +386,56 @@ export class Fixture {
 
     /** Writes every session's rows, its row and stack, and the chain's head. */
     async flush() {
-        await this.store.write(['sessions', 'entries', 'stackBlocks', 'chains'], async (tx) => {
-            for (const session of this.sessions) {
-                const window = storedWindow(session.slots.length, session.index)
-                await tx.put('sessions', {
-                    id: session.id,
-                    v: SESSION_V,
-                    chainId: this.chainId,
-                    startedAt: session.startedAt,
-                    updatedAt: session.rows.at(-1)?.time ?? session.startedAt,
-                    day: 1,
-                    origin: session.parent ? 'continued' : 'import',
-                    ...(session.parent ? { parent: session.parent } : {}),
-                    stack: window,
-                    lastSeq: session.rows.at(-1)?.seq ?? 0,
-                    entryCount: session.rows.length,
-                    appVersion: '0.6.0',
+        await this.store.write(
+            ['sessions', 'entries', 'stackBlocks', 'chains', 'meta'],
+            async (tx) => {
+                // The newest row time the store has seen, as the flusher's commits keep it.
+                const seen = (await tx.get('meta', 'maxSeenTime')) as { value: number } | undefined
+                await tx.put('meta', {
+                    key: 'maxSeenTime',
+                    value: Math.max(
+                        seen?.value ?? 0,
+                        ...this.sessions.flatMap((session) => session.rows.map((row) => row.time)),
+                    ),
                 })
-                for (const row of session.rows) {
-                    const stored = await tx.get('entries', [row.sessionId, row.seq])
-                    // Stored rows keep their own `kept`: a mark is one-way.
-                    if (!stored) await tx.put('entries', row)
+                for (const session of this.sessions) {
+                    const window = storedWindow(session.slots.length, session.index)
+                    await tx.put('sessions', {
+                        id: session.id,
+                        v: SESSION_V,
+                        chainId: this.chainId,
+                        startedAt: session.startedAt,
+                        updatedAt: Math.max(
+                            session.startedAt,
+                            ...session.rows.map((row) => row.time),
+                        ),
+                        day: 1,
+                        origin: session.parent ? 'continued' : 'import',
+                        ...(session.parent ? { parent: session.parent } : {}),
+                        stack: window,
+                        lastSeq: Math.max(0, ...session.rows.map((row) => row.seq)),
+                        entryCount: session.rows.length,
+                        appVersion: '0.6.0',
+                    })
+                    for (const row of session.rows) {
+                        const stored = await tx.get('entries', [row.sessionId, row.seq])
+                        // Stored rows keep their own `kept`: a mark is one-way.
+                        if (!stored) await tx.put('entries', row)
+                    }
+                    for (let first = window.base; first < window.base + window.length;) {
+                        const block = Math.floor(first / BLOCK_SLOTS)
+                        const end = Math.min((block + 1) * BLOCK_SLOTS, window.base + window.length)
+                        await tx.put(
+                            'stackBlocks',
+                            blockRow(session.id, block, first, session.slots.slice(first, end)),
+                        )
+                        first = end
+                    }
                 }
-                for (let first = window.base; first < window.base + window.length;) {
-                    const block = Math.floor(first / BLOCK_SLOTS)
-                    const end = Math.min((block + 1) * BLOCK_SLOTS, window.base + window.length)
-                    await tx.put(
-                        'stackBlocks',
-                        blockRow(session.id, block, first, session.slots.slice(first, end)),
-                    )
-                    first = end
-                }
-            }
-            const chain = (await tx.get('chains', this.chainId)) as Record<string, unknown>
-            await tx.put('chains', { ...chain, head: this.session.id })
-        })
+                const chain = (await tx.get('chains', this.chainId)) as Record<string, unknown>
+                await tx.put('chains', { ...chain, head: this.session.id })
+            },
+        )
     }
 
     async putChain(fields: Record<string, unknown>) {
