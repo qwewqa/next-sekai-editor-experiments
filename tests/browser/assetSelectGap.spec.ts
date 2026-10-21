@@ -91,7 +91,11 @@ for (const { type, from, to } of picks)
                             line: !!document.querySelector('[data-asset-loading]'),
                             checked: row(to).querySelector('input')!.checked,
                         })
-                        if (performance.now() - start < windowMs) requestAnimationFrame(tick)
+                        // At least three frames as well as the window, so a late first frame
+                        // (WebKit after the click) still samples the load; capped at 5 s.
+                        const elapsed = performance.now() - start
+                        if ((elapsed < windowMs || frames.length < 3) && elapsed < 5000)
+                            requestAnimationFrame(tick)
                         else resolve({ before, frames })
                     }
                     row(to).click()
