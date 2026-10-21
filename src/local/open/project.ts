@@ -310,7 +310,6 @@ export const storeAndShow = async (
                 {
                     replace: true,
                     request,
-                    keepUnshownLock: true,
                     canShow: () => sessionContext() === owner,
                     onTransferred: () => {
                         ownership.transferred = true
@@ -357,7 +356,8 @@ export const storeAndShow = async (
             void job.finally(() =>
                 deps.worker.call('openDrop', open.read.id).catch(() => undefined),
             )
-        if (!ownership.transferred) lock.release()
+        // The opened session took it, or it goes now.
+        lock.release()
     }
 }
 

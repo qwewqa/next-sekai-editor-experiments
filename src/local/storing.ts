@@ -273,10 +273,7 @@ export const startStoring = (
             ...(view.groupId === undefined ? {} : { group: view.groupId }),
             ...(view.stageId === undefined ? {} : { stage: view.stageId }),
         }),
-        lockSession: (id) => {
-            const lock = holdSessionLock(locks, id)
-            return { ready: lock.granted.catch(() => undefined), done: lock.release }
-        },
+        lockSession: (id) => holdSessionLock(locks, id),
         onFork: (fork, from) => {
             journalWriter?.forked(from, fork)
             if (currentSession.value.sessionId !== from.id) return
@@ -400,7 +397,6 @@ export const startStoring = (
         (action) => {
             if (action.kind === 'reset') {
                 const descriptor = currentSession.value
-                const lock = holdSessionLock(locks, descriptor.sessionId)
                 // A New reloads as blank (§1.4.2); the page's own blank start is recorded once
                 // startup opened nothing over it (`recordBlankStart`).
                 if (!safe && (!firstReset || action.origin !== 'new'))
@@ -411,20 +407,27 @@ export const startStoring = (
                 const first = firstReset
                 firstReset = false
                 const leaving = instance.session
-                const begun = instance.begin({
-                    id: descriptor.sessionId,
-                    docId: descriptor.docId,
-                    origin: action.origin,
-                    ...(descriptor.sourceName === undefined
-                        ? {}
-                        : { sourceName: descriptor.sourceName }),
-                    state: action.state,
-                    operation: action.step.operation,
-                    dirty: action.isDirty,
-                    // Without Web Locks (an insecure origin) there's no other tab to keep out.
-                    ready: Promise.all([lock.granted.catch(() => undefined), afterReplay]),
-                    done: lock.release,
-                })
+                const lock = holdSessionLock(locks, descriptor.sessionId)
+                let begun: FlushSession
+                try {
+                    begun = instance.begin({
+                        id: descriptor.sessionId,
+                        docId: descriptor.docId,
+                        origin: action.origin,
+                        ...(descriptor.sourceName === undefined
+                            ? {}
+                            : { sourceName: descriptor.sourceName }),
+                        state: action.state,
+                        operation: action.step.operation,
+                        dirty: action.isDirty,
+                        // Without Web Locks (an insecure origin) there's no other tab to keep out.
+                        ready: Promise.all([lock.granted.catch(() => undefined), afterReplay]),
+                        lock,
+                    })
+                } finally {
+                    // The session took it as it registered; anything else goes.
+                    lock.release()
+                }
                 if (first && action.origin === 'new') initialSession = begun
                 if (leaving && !safe) offerReopen(leaving, instance.outgoing)
                 return

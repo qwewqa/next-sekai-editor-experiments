@@ -9,6 +9,7 @@ import type { CoreDeps } from '../../../src/local/worker/core'
 import type { JournalStore } from '../../../src/platform/types'
 import type { State } from '../../../src/state'
 import { nativeOperation, originOperation } from '../../helpers/historySteps'
+import { leaseOf } from '../../helpers/leases'
 import {
     openPage,
     openSplitPage,
@@ -163,7 +164,7 @@ export const beginSession = (
         state,
         operation: originOperation(origin),
         dirty: false,
-        ...(extra.done ? { done: extra.done } : {}),
+        ...(extra.done ? { lock: leaseOf(extra.done) } : {}),
     })
 }
 

@@ -6,20 +6,61 @@ import { clientLock, sessionLock } from './locks'
 // Step 4 every load starts a new session and a new chain; a continuation's parent lock and the
 // reload's blocking request come with Step 4's startup.
 
-/** A lock held until released: the promise settles once it is granted. */
-export type HeldLock = {
+/**
+ * A lock with one owner at a time (A7). Whoever creates a lease releases it when it is done with
+ * it, in a `finally`; a receiver lets the flusher take it or leaves it alone. Only the flusher
+ * calls `take()`, as the first statements of the start that registers a session, so a lock passes
+ * to the next holder only where that holder takes it. The raw release exists in this module only.
+ */
+export type LockLease = {
     readonly name: string
     /** Resolves once granted; rejects if the request fails. */
     readonly granted: Promise<void>
-    release: () => void
+    readonly state: 'held' | 'taken' | 'released'
+    /** Moves the lock to the caller and returns the one release function. Throws unless held. */
+    take(): () => void
+    /** Releases the lock unless it was taken or released already. */
+    release(): void
 }
 
-/** Requests a lock and holds it until `release`, as Web Locks hold a lock while a callback runs. */
+/**
+ * The only constructor of a lease: `release` is the lock's raw release and goes no further.
+ * Production code gets leases from the holders below; tests build theirs here.
+ */
+export const lockLease = (name: string, granted: Promise<void>, release: () => void): LockLease => {
+    let state: LockLease['state'] = 'held'
+    const end = () => {
+        if (state === 'released') return
+        state = 'released'
+        release()
+    }
+    return {
+        name,
+        granted,
+        get state() {
+            return state
+        },
+        take() {
+            if (state !== 'held') throw new Error(`The lock ${name} is ${state}, not held`)
+            state = 'taken'
+            return end
+        },
+        release() {
+            if (state === 'held') end()
+        },
+    }
+}
+
+/** A lease on a lock held nowhere else: where there are no Web Locks, there's no other tab. */
+export const noLease = (name: string): LockLease =>
+    lockLease(name, Promise.resolve(), () => undefined)
+
+/** Requests a lock and holds it until released, as Web Locks hold a lock while a callback runs. */
 export const holdLock = (
     locks: LockService,
     name: string,
     mode: 'exclusive' | 'shared' = 'exclusive',
-): HeldLock => {
+): LockLease => {
     let release!: () => void
     const held = new Promise<void>((resolve) => {
         release = resolve
@@ -33,7 +74,36 @@ export const holdLock = (
         grant()
         await held
     })
-    return { name, granted: Promise.race([granted, request]), release }
+    return lockLease(name, Promise.race([granted, request]), release)
+}
+
+/**
+ * A lock held only if it is granted under `options` (`ifAvailable`, or a `signal` that ends a
+ * blocking request): undefined when it isn't, or when the request fails.
+ */
+export const tryLease = (
+    locks: LockService,
+    name: string,
+    options: Parameters<LockService['request']>[1],
+): Promise<LockLease | undefined> => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+        release = resolve
+    })
+    return new Promise<LockLease | undefined>((resolve) => {
+        locks
+            .request(name, options, async (granted) => {
+                if (!granted) {
+                    resolve(undefined)
+                    return
+                }
+                resolve(lockLease(name, Promise.resolve(), release))
+                await held
+            })
+            .catch(() => {
+                resolve(undefined)
+            })
+    })
 }
 
 /**
@@ -55,7 +125,7 @@ export const holdParentLock = (locks: LockService, parentId: string) =>
  * the tab holds a unique `nse-client:<random>` lock and reads the `clientId` it shows under.
  */
 export class TabClient {
-    readonly lock: HeldLock
+    readonly lock: LockLease
 
     constructor(
         private readonly locks: LockService,

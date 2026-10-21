@@ -9,11 +9,12 @@ import { sessionLock } from '../../../src/local/locks'
 import { transitionViolations } from '../../../src/local/testing/transitions'
 import { createWorld } from '../../../src/local/testing/world'
 import { editStep, futureFixtureOperation, originOperation } from '../../helpers/historySteps'
+import { leaseOf } from '../../helpers/leases'
 import { openPage, testId, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 
-// The transition check and the lock-holder assertion (design A §7, I-1 to I-5): each rule is shown
+// The transition check and the lock-holder assertion (spec-A §2, I-1 to I-5): each rule is shown
 // to report on a made-up commit, and the world's hook is shown to see a real writer that holds no
 // lock.
 
@@ -234,7 +235,7 @@ test('the world reports a flusher whose page holds no lock, and none when it hol
             state: first,
             operation: originOperation('import'),
             dirty: false,
-            done: () => release?.(),
+            lock: leaseOf(() => release?.()),
         })
         // The first flush creates the session, which needs no lock; the next one does.
         await page.flusher.flush({ strict: true })
