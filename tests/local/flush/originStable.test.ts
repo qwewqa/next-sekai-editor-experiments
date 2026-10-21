@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { captureName } from '../../../src/history/operations'
 import { DB_VERSION } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { MemoryStorage } from '../../../src/local/journal/store'
@@ -110,11 +109,6 @@ const guarded = async (run: (seen: Seen, copying: { on: boolean }) => Promise<vo
 }
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
-
-const SAVE_OPERATION = nativeOperation(
-    { id: 'nse.file.save', data: { file: captureName('coconut.nxsp'), delivery: 'file' } },
-    'Saved coconut.nxsp',
-)
 
 const originsOf = (world: World) =>
     new Map([...rows(world, 'sessions').entries()].map(([id, row]) => [id, row.origin]))

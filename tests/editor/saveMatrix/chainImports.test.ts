@@ -39,7 +39,7 @@ test('an import of another session of the chain, running here, is waited for in 
 
     let outcome: string | undefined
     const waited = waitForChainImports(
-        { worker: w.worker, session: w.session, chainId: w.session.chainId },
+        { worker: w.worker as never, session: w.session, chainId: w.session.chainId },
         slot(),
     ).then((value) => {
         outcome = value
@@ -61,7 +61,7 @@ test('an import running nowhere here is polled for the bound, then left to the b
     w.pendingImports.add('session-before')
     const started = Date.now()
     const outcome = await waitForChainImports(
-        { worker: w.worker, session: w.session, chainId: w.session.chainId },
+        { worker: w.worker as never, session: w.session, chainId: w.session.chainId },
         slot(),
     )
     const waited = Date.now() - started

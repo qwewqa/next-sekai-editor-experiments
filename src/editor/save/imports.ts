@@ -1,4 +1,5 @@
 import { isImporting, onImportProgress, whenImported } from '../../local/open/importLoop'
+import { storedRead } from '../../local/storedRead'
 import type { BuildEnv } from './build'
 import { saveUi, type Preparing } from './dialogs'
 
@@ -56,20 +57,23 @@ export const pause = (ms: number, signal?: AbortSignal) =>
 /**
  * Waits for every import of env's chain that storage lists with `importPending`: one running in
  * this tab with its progress in "Preparing…", one running nowhere here polled for up to
- * RESUME_WAIT_MS (a reload's resume that has not started; one that never starts is left to the
- * build's `importing` refusal and `recordOwnSave`'s check). 'unlinked' only when the open
- * session's own import ended unlinked. A failed list read waits for nothing: the build's and
- * `recordOwnSave`'s in-transaction checks decide.
+ * RESUME_WAIT_MS. A list that can't be read counts as pending: it is read again within the same
+ * bound. At the bound the result is 'done' and the caller does what it does while an import is
+ * still pending (the build's `importing` refusal, `recordOwnSave`'s check). 'unlinked' only when
+ * the open session's own import ended unlinked.
  */
 export const waitForChainImports = async (
     env: Pick<BuildEnv, 'worker' | 'session'> & { chainId: string },
     slot: PreparingSlot,
 ): Promise<'done' | 'cancelled' | 'unlinked'> => {
     for (let waited = 0; ;) {
-        const listed = await env.worker.call('openPendingImports').catch(() => [])
-        const pending = listed.filter((each) => each.chainId === env.chainId)
-        if (!pending.length) return 'done'
-        const here = pending.find((each) => isImporting(each.sessionId))
+        const listed = await storedRead(env.worker, 'openPendingImports', undefined)
+        const pending =
+            listed.storedRead === 'failed'
+                ? undefined
+                : listed.storedValue.filter((each) => each.chainId === env.chainId)
+        if (pending && !pending.length) return 'done'
+        const here = pending?.find((each) => isImporting(each.sessionId))
         if (!here) {
             if (waited >= RESUME_WAIT_MS) return 'done'
             openPreparing(slot)

@@ -197,14 +197,14 @@ test('a kill after the picker’s close(): the next Save As… says once that ea
     await expect(
         notice(next).filter({ hasText: 'No changes since coconut.nxsp was saved' }),
     ).toBeVisible()
-    const saveAs = async (beat: number) => {
+    const saveAs = async (beat: number, name?: string) => {
         await edit(next, beat)
         await next.evaluate(async () => {
             const { commands } = await import('/src/editor/commands/index.ts')
             const { runCommand } = await import('/src/editor/commands/runCommand.ts')
             void runCommand(commands.saveAs)
         })
-        await submitSave(next, undefined, 'Save As')
+        await submitSave(next, name, 'Save As')
     }
     await saveAs(2)
     await expect(
@@ -213,8 +213,8 @@ test('a kill after the picker’s close(): the next Save As… says once that ea
         }),
     ).toBeVisible()
     // Once: the file it wrote holds its own row, so the next Save As… carries it.
-    await saveAs(3)
-    await expect(notice(next).filter({ hasText: 'Saved to coconut (3).nxsp' })).toBeVisible()
+    await saveAs(3, 'melt')
+    await expect(notice(next).filter({ hasText: 'Saved to melt.nxsp' })).toBeVisible()
     await expect(notice(next).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
 })
 

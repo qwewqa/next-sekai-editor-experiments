@@ -11,11 +11,13 @@ import { Fixture } from './fixture'
 const STORES = ['chains', 'sessions', 'entries', 'meta', 'handles'] as const
 
 const dump = (fixture: Fixture) =>
-    fixture.store.read(STORES, async (tx) => {
-        const out: Record<string, unknown[]> = {}
-        for (const store of STORES) out[store] = await tx.getAll(store)
-        return out
-    })
+    fixture.store.read(STORES, async (tx) => ({
+        chains: await tx.getAll('chains'),
+        sessions: await tx.getAll('sessions'),
+        entries: await tx.getAll('entries'),
+        meta: await tx.getAll('meta'),
+        handles: await tx.getAll('handles'),
+    }))
 
 /** A chain with one stored session of three rows; the Save's cut is its third. */
 const chainOf = async () => {
