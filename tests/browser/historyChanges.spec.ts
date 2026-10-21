@@ -696,6 +696,77 @@ test('switching entries keeps the whole peek bar filled, never blank or dashed b
     expect(seen.map((look) => look.change)).toEqual(['1 change', '2 changes'])
 })
 
+test('the first peek from Now paints no blank line or dashed counts before its change is read', async ({
+    page,
+}) => {
+    await edit(page, 'Added A', { kind: 'add', beats: [40, 41] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    // Every frame and every change to the page, from before the bar exists: what the bar paints.
+    await page.evaluate(() => {
+        type Look = { date: string; change: string; counts: string[] }
+        const seen: Look[] = []
+        const painted = (element: Element | null) =>
+            !!element && getComputedStyle(element).visibility !== 'hidden'
+        const look = () => {
+            const bar = document.querySelector('[data-peek-bar]')
+            const date = bar?.querySelector('[data-peek-text]') ?? null
+            const nav = bar?.querySelector('[data-peek-navigation]') ?? null
+            if (!painted(date) && !painted(nav)) return
+            const now: Look = {
+                date: painted(date) ? (date?.textContent?.trim() ?? '') : 'hidden',
+                change: painted(nav)
+                    ? (nav?.querySelector('[data-peek-change]')?.textContent ?? '')
+                    : 'hidden',
+                counts: ['up', 'down'].map((direction) =>
+                    painted(nav)
+                        ? (nav?.querySelector(`[data-change-arrow="${direction}"] .change-count`)
+                              ?.textContent ?? '')
+                        : 'hidden',
+                ),
+            }
+            const last = seen[seen.length - 1]
+            if (!last || JSON.stringify(last) !== JSON.stringify(now)) seen.push(now)
+        }
+        new MutationObserver(look).observe(document.body, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+        })
+        const frame = () => {
+            look()
+            requestAnimationFrame(frame)
+        }
+        requestAnimationFrame(frame)
+        ;(window as unknown as { barSeen: Look[] }).barSeen = seen
+    })
+    await row(page, 'Added A').click()
+    await expect(peekLine(page)).toHaveText('2 changes')
+    await frames(page)
+    const seen = await page.evaluate(
+        () =>
+            (
+                window as unknown as {
+                    barSeen: { date: string; change: string; counts: string[] }[]
+                }
+            ).barSeen,
+    )
+    test.info().annotations.push({ type: 'seen', description: JSON.stringify(seen) })
+    expect(seen.length).toBeGreaterThan(0)
+    // What is painted is whole: a date, a line and counts, or hidden, never half of them.
+    expect(
+        seen.filter(
+            (look) =>
+                look.date === '' ||
+                look.change === '' ||
+                look.counts.some((count) => count === '–' || count === ''),
+        ),
+    ).toEqual([])
+    expect(seen[seen.length - 1]!.change).toBe('2 changes')
+})
+
 test('a slow read names the new entry with the loading line, not the old one', async ({ page }) => {
     await edit(page, 'Moved A', { kind: 'move', beats: [5] })
     await edit(page, 'Moved B', { kind: 'move', beats: [7] })
