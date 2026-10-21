@@ -39,10 +39,10 @@ test('invalid append and Save descriptions preserve sequence, reservation and pe
     assert.throws(() =>
         page.flusher.endSave(reservation, { wall: reservation.wall, state, operation: Infinity }),
     )
-    assert.equal(session.reserved, reservation.seq)
+    assert.equal(session.reserved, reservation)
     assert.deepEqual(session.pending, pending)
     assert.equal(session.identity, undefined)
-    await page.flusher.endSave(reservation, {
+    const result = await page.flusher.endSave(reservation, {
         wall: reservation.wall,
         state,
         operation: nativeOperation(
@@ -50,6 +50,7 @@ test('invalid append and Save descriptions preserve sequence, reservation and pe
             'Saved guard.nxsp',
         ),
     })
+    assert.equal(result, 'added')
     assert.deepEqual(page.errors, [])
     assert.deepEqual(
         storedEntries(world, session.id).map(({ kind, seq }) => [kind, seq]),

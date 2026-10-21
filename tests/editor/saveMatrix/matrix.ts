@@ -669,8 +669,8 @@ export const FAULTS: FaultDef[] = [
             single(p) &&
             ['own', 'dismiss'].includes(last(p)),
         arm: (w) => {
-            const session = w.session as { reserved?: number }
-            session.reserved = 99
+            const session = w.session
+            session.reserved = { session, seq: 99, wall: 0 }
             return {
                 cleanup: () => {
                     session.reserved = undefined

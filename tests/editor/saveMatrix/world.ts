@@ -1,4 +1,4 @@
-import type { FlushSession, SaveReservation } from '../../../src/local/flush'
+import type { EndSaveResult, FlushSession, SaveReservation } from '../../../src/local/flush'
 import type { MockPlatform } from '../../../src/platform/mock'
 import './env'
 import { activation } from './env'
@@ -495,11 +495,11 @@ const createWorld = async (setup: Setup = {}) => {
         hasPending: false,
         now: () => (clock += 10),
         reserveSave(): SaveReservation | undefined {
-            const session = ownSession as FlushSession & { reserved?: number }
+            const session = ownSession
             if (session.reserved !== undefined) return
             const seq = session.nextSeq++
-            session.reserved = seq
             const reservation = { session, seq, wall: flusher.now() }
+            session.reserved = reservation
             reservations.push({ reservation, ends: [] })
             return reservation
         },
@@ -508,14 +508,12 @@ const createWorld = async (setup: Setup = {}) => {
             entry?: Row,
             identity?: Row,
             keep = false,
-        ): Promise<void> {
+        ): Promise<EndSaveResult> {
             const record = reservations.find((r) => r.reservation === reservation)
             record?.ends.push({ kept: keep, entry: !!entry })
-            const session = reservation.session as FlushSession & {
-                reserved?: number
-                gaps?: Set<number>
-            }
-            if (session.reserved === reservation.seq) session.reserved = undefined
+            const session = reservation.session
+            if (session.reserved !== reservation) return Promise.resolve('ended')
+            session.reserved = undefined
             if (entry) {
                 if (identity) {
                     ;(session as { identity?: unknown }).identity = {
@@ -534,9 +532,13 @@ const createWorld = async (setup: Setup = {}) => {
                     })
                     if (picked) handleRows.set(`${session.chainId}:file`, picked)
                 }
-            } else if (keep) (session.gaps ??= new Set()).add(reservation.seq)
-            else if (session.nextSeq - 1 === reservation.seq) session.nextSeq--
-            return Promise.resolve()
+            } else if (!keep && session.nextSeq - 1 === reservation.seq) session.nextSeq--
+            return Promise.resolve(entry ? 'added' : keep ? 'kept' : 'letGo')
+        },
+        /** As the real one: an end no path made yet, kept; one already ended is not an end. */
+        release(reservation: SaveReservation): Promise<EndSaveResult> {
+            if (reservation.session.reserved !== reservation) return Promise.resolve('ended')
+            return flusher.endSave(reservation, undefined, undefined, true)
         },
         flush: () => Promise.resolve(),
         unstored: () => ({ entries: [], stack: undefined }),

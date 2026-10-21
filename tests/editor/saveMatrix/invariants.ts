@@ -67,8 +67,8 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     // I3: every reservation ends exactly once, and none is left held.
     for (const [i, { ends }] of world.reservations.entries())
         if (ends.length !== 1) add('I3', `reservation #${i + 1} ended ${ends.length} times`)
-    const reserved = (world.session as { reserved?: number }).reserved
-    if (reserved !== undefined) add('I3', `the session still holds reserved seq ${reserved}`)
+    const reserved = world.session.reserved
+    if (reserved !== undefined) add('I3', `the session still holds reserved seq ${reserved.seq}`)
 
     // I4: no picker opens on a lapsed activation without a ready press.
     for (const opening of world.openings)
