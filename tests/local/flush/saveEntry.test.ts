@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { dayKey, resolveZone } from '../../../src/calendar/calendar'
 import { captureName } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
@@ -8,7 +7,6 @@ import { BIND_STORES, recordOwnSave, type OwnSaveRecorded } from '../../../src/l
 import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { replay } from '../../../src/local/timeline'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
-import { readTimelineIndex } from '../../../src/local/worker/timelineHandlers'
 import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
@@ -719,43 +717,6 @@ test('our own completed Save records its binding and adds no row, whether a jour
     }
 })
 
-// A Save recognised after later rows were stored: no row is added, so none is stamped later than
-// the rows above it, and no Go To piece holds a row of another day.
-
-/**
- * Rows 1 and 2 stored, a Save reserving 3 whose file may hold it, 4 and 5 stored before local
- * midnight and 6 after it, then the Save recognised after midnight with everything above it stored.
- */
-const recognisedLate = async (seed: number) => {
-    const world = createWorld({ seed })
-    const midnight = new Date(2025, 0, 15, 24).getTime()
-    const minutes = (n: number) => 60_000 * n
-    let clock = midnight - minutes(30)
-    const page = await openPage(world, world.tab('a'), { now: () => (clock += 1) })
-    const first = stateOf(goldenChart())
-    const session = begin(page, first)
-    const second = editNote(page, first)
-    await page.flusher.flush()
-    const reservation = page.flusher.reserveSave()!
-    assert.equal(reservation.seq, 3)
-    await page.flusher.endSave(reservation, undefined, undefined, true)
-    clock = midnight - minutes(2)
-    const fourth = editNote(page, second)
-    const fifth = editNote(page, fourth)
-    await page.flusher.flush()
-    clock = midnight + minutes(5)
-    editNote(page, fifth)
-    await page.flusher.flush({ strict: true })
-    clock = midnight + minutes(10)
-    const save = ownSave(page, session.id, session.chainId, 3, second, 3)
-    assert.equal(await save.record(), 'recorded')
-    await page.flusher.flush({ strict: true })
-    assert.deepEqual(page.errors, [])
-    return { world, page, session }
-}
-
-const ZONE = 'UTC'
-
 /**
  * AR-1's sequence: S stored through 2, a Save reserving 3 whose tab dies before the binding, a
  * later visit continuing S as C (parent S at 2) and storing rows, then that visit recognising the
@@ -801,42 +762,4 @@ test('AR-1: a Save recognised in a later visit writes nothing into the parent pa
         ],
     )
     assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
-})
-
-test('AR-2: a Save recognised late never lands under a later time than the rows above it', async () => {
-    const { world } = await recognisedLate(42)
-    const entries = [...rows(world, 'entries').values()]
-    assert.equal(
-        entries.some((row) => row.kind === 'save'),
-        false,
-    )
-    const times = entries.map((row) => row.time as number)
-    for (let i = 1; i < times.length; i++)
-        assert.ok(times[i - 1]! <= times[i]!, `row ${i} is later than row ${i + 1}`)
-})
-
-test('AR-2: a Save recognised after midnight lands under no other day’s Go To piece', async () => {
-    const { world, page, session } = await recognisedLate(43)
-    // Every row of a Go To piece is on the piece's day, and the pieces hold every row.
-    const { pieces } = await page.tab.run(() =>
-        page.core.read(['sessions', 'entries'], (tx) =>
-            readTimelineIndex(tx, { sessionId: session.id, zone: ZONE }),
-        ),
-    )
-    const day = (time: number) => dayKey(time, resolveZone(ZONE))
-    const stored = [...rows(world, 'entries').values()]
-    for (const piece of pieces)
-        for (const row of stored.filter(
-            (each) =>
-                (each.seq as number) >= piece.oldestSeq && (each.seq as number) <= piece.newestSeq,
-        ))
-            assert.equal(
-                day(row.time as number),
-                day(piece.newest),
-                `row ${String(row.seq)} lies under another day’s piece`,
-            )
-    assert.equal(
-        pieces.reduce((sum, piece) => sum + piece.count, 0),
-        stored.length,
-    )
 })

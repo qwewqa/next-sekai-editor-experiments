@@ -3,7 +3,7 @@ import type { MockPlatform } from '../../../src/platform/mock'
 import './env'
 import { activation } from './env'
 
-// The fault-matrix harness's world (B0, work/soundness/architecture-review.md §B.6): the Save
+// The fault-matrix harness's world (B0, work/arch/spec-B.md): the Save
 // core's real flow.ts and Export's real flow over the existing mock platform and its lock manager,
 // with the storage side replaced by in-memory fakes that keep the facts the six invariants need:
 // every reservation and how it ended, every write to a picked file and the locks held then, every
@@ -393,8 +393,6 @@ const createWorld = async (setup: Setup = {}) => {
                     session: { chainId: 'chain-other', updatedAt: NOW },
                     chain: chains.get('chain-other') ?? {},
                 }
-            case 'recordOwnSave': // the real one needs the chain's head to be a stored session, which this world's fake flusher does not have
-                return 'recorded'
             case 'replaceDecision': // reads the other version's stored rows; no cell reaches Replace
                 return { relation: 'unrelated', holdsBase: false }
             default:

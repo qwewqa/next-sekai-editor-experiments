@@ -69,3 +69,36 @@ test('an import running nowhere here is polled for the bound, then left to the b
     assert.ok(waited >= 3500 && waited < 8000, `waited ${waited} ms`)
     assert.ok(w.preparing.some((entry) => entry.open))
 })
+
+test('an import no tab runs is resumed by the wait, and the Save goes on', async () => {
+    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    // Pending in storage, run by no tab: its run threw, or the tab that ran it closed.
+    w.pendingImports.add('session-orphan')
+    let resumed = 0
+    const outcome = await (async () => {
+        const started = Date.now()
+        const value = await waitForChainImports(
+            { worker: w.worker as never, session: w.session, chainId: w.session.chainId },
+            slot(),
+            async () => {
+                resumed++
+                // What the next load's resume does: runs the import, which ends and is no longer pending.
+                await startImport({
+                    worker: { call: async () => ({ kind: 'done' }) } as never,
+                    sessionId: 'session-orphan',
+                    chainId: w.session.chainId,
+                    id: 'import-orphan',
+                    batches: 1,
+                    source: { file: new Blob([]) } as never,
+                    locks: w.mock.locks,
+                    appVersion: '0.6.0',
+                } as never).then(() => w.pendingImports.delete('session-orphan'))
+            },
+        )
+        return { value, waited: Date.now() - started }
+    })()
+    assert.equal(resumed, 1)
+    assert.equal(outcome.value, 'done')
+    assert.ok(outcome.waited < 2000, `waited ${outcome.waited} ms`)
+    assert.equal(w.pendingImports.size, 0, 'the import ended instead of blocking the Save')
+})

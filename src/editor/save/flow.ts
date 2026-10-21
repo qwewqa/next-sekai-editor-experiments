@@ -2708,7 +2708,7 @@ export const exportPickerOpening = () => {
 /**
  * Before each of Export's pickers (SF3-1): a picker that returns the chain's own file empties it,
  * and an open's import still reading that file would stop there, the rows it hadn't copied left
- * unkept. So Export waits for this session's import as a Save does (`waitForChainImports`): in
+ * unkept. So Export waits for the chain's imports as a Save does (`waitForChainImports`): in
  * "Preparing…", whose Cancel cancels the Export, then asks for the press the picker needs (R12).
  * True at once when no import is pending; false when cancelled.
  */

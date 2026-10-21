@@ -1,5 +1,6 @@
 import { isImporting, onImportProgress, whenImported } from '../../local/open/importLoop'
 import { storedRead } from '../../local/storedRead'
+import { appVersion } from '../../platform'
 import type { BuildEnv } from './build'
 import { saveUi, type Preparing } from './dialogs'
 
@@ -54,18 +55,32 @@ export const pause = (ms: number, signal?: AbortSignal) =>
         signal?.addEventListener('abort', stop, { once: true })
     })
 
+/** Resumes the imports no tab runs, as the next load does (`resumeUnfinishedImports`). */
+const resumeOrphans = async () => {
+    try {
+        const { resumeUnfinishedImports } = await import('../../local/open/project')
+        await resumeUnfinishedImports(appVersion().appVersion)
+    } catch {
+        // No resume: the wait goes on to its bound.
+    }
+}
+
 /**
  * Waits for every import of env's chain that storage lists with `importPending`: one running in
  * this tab with its progress in "Preparing…", one running nowhere here polled for up to
- * RESUME_WAIT_MS. A list that can't be read counts as pending: it is read again within the same
- * bound. At the bound the result is 'done' and the caller does what it does while an import is
- * still pending (the build's `importing` refusal, `recordOwnSave`'s check). 'unlinked' only when
- * the open session's own import ended unlinked.
+ * RESUME_WAIT_MS. An import no tab runs (its run threw, its tab closed) is resumed once, as a
+ * reload would resume it (`resume`), and then waited for as one running here. A list that can't be
+ * read counts as pending: it is read again within the same bound. At the bound the result is
+ * 'done' and the caller does what it does while an import is still pending (the build's
+ * `importing` refusal, `recordOwnSave`'s check). 'unlinked' only when the open session's own
+ * import ended unlinked.
  */
 export const waitForChainImports = async (
     env: Pick<BuildEnv, 'worker' | 'session'> & { chainId: string },
     slot: PreparingSlot,
+    resume: () => Promise<void> = resumeOrphans,
 ): Promise<'done' | 'cancelled' | 'unlinked'> => {
+    let resumed = false
     for (let waited = 0; ;) {
         const listed = await storedRead(env.worker, 'openPendingImports', undefined)
         const pending =
@@ -77,6 +92,11 @@ export const waitForChainImports = async (
         if (!here) {
             if (waited >= RESUME_WAIT_MS) return 'done'
             openPreparing(slot)
+            // Once: an import another tab holds is skipped, and one that never starts is polled.
+            if (pending && !resumed) {
+                resumed = true
+                void resume()
+            }
             if (!(await pause(RESUME_POLL_MS, slot.cancel.signal))) return 'cancelled'
             waited += RESUME_POLL_MS
             continue
