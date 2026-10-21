@@ -8,6 +8,7 @@ const timingSpecs = [
     'flushTiming.spec.ts',
     'journalTiming.spec.ts',
     'touchTiming.spec.ts',
+    'historyTimingCalendar.spec.ts',
 ]
 
 export default defineConfig({

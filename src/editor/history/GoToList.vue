@@ -9,10 +9,10 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { dayKey } from '../../calendar/calendar'
+import type { DayKey } from '../../calendar/calendar'
+import { daysOf, type TimelinePiece } from '../../calendar/pieces'
 import { i18n } from '../../i18n'
 import { settings } from '../../settings'
-import type { TimelinePiece } from '../../local/worker/timelineHandlers'
 import { checkHistoryCalendar, useHistoryCalendar } from './calendarClock'
 import CheckIcon from './CheckIcon.vue'
 import { historyFormat } from './historyFormat'
@@ -35,7 +35,7 @@ type Item =
           kind: 'day' | 'session'
           id: string
           /** A day of one session names the day and the session. */
-          time: number
+          day: DayKey
           range?: string
           count: number
           target: Target
@@ -47,7 +47,7 @@ type Item =
 const calendar = useHistoryCalendar()
 checkHistoryCalendar()
 const format = computed(() => historyFormat(calendar.value, settings.locale))
-const dayText = (time: number) => dayLabel(dayKey(time, calendar.value.zone), calendar.value)
+const dayText = (day: DayKey) => dayLabel(day, calendar.value)
 
 const pieces = shallowRef<TimelinePiece[]>()
 const failed = ref(false)
@@ -72,11 +72,12 @@ const load = async () => {
     const mark = ++request
     const context = identity()
     const filter = historyFilter.value
+    const zone = calendar.value.zone
     pieces.value = undefined
     failed.value = false
     if (filter === 'here' && here.scanning) return
     try {
-        const index = await readIndex(filter)
+        const index = await readIndex(filter, zone)
         if (mark === request && context === identity()) pieces.value = index.pieces
     } catch {
         if (mark === request && context === identity()) failed.value = true
@@ -89,6 +90,8 @@ watch(
         historyViewGeneration,
         () => session.value.sessionId,
         () => here.scanning,
+        // The days are in the clock's zone: a list read for another zone is read again.
+        () => calendar.value.zone,
     ],
     load,
     {
@@ -96,8 +99,7 @@ watch(
     },
 )
 
-const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
-const rangeOf = (piece: TimelinePiece) => format.value.clockRange(piece.oldest, piece.newest)
+const rangeOf = (piece: TimelinePiece) => format.value.clockRange(piece.earliest, piece.latest)
 const targetOf = (piece: TimelinePiece): Target => ({
     sessionId: piece.sessionId,
     seq: piece.newestSeq,
@@ -105,32 +107,24 @@ const targetOf = (piece: TimelinePiece): Target => ({
 
 const items = computed((): Item[] => {
     const list: Item[] = [{ kind: 'now', id: 'now' }]
-    const days: TimelinePiece[][] = []
-    for (const piece of pieces.value ?? []) {
-        const last = days.at(-1)
+    for (const { day, pieces: members, count } of daysOf(pieces.value ?? [])) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        if (last && dayOf(last[0]!.newest) === dayOf(piece.newest)) last.push(piece)
-        else days.push([piece])
-    }
-    for (const day of days) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const first = day[0]!
-        const count = day.reduce((sum, piece) => sum + piece.count, 0)
+        const first = members[0]!
         list.push({
             kind: 'day',
             id: `d:${first.sessionId}:${first.newestSeq}`,
-            time: first.newest,
-            ...(day.length === 1 ? { range: rangeOf(first) } : {}),
+            day,
+            ...(members.length === 1 ? { range: rangeOf(first) } : {}),
             count,
             target: targetOf(first),
-            pieces: day,
+            pieces: members,
         })
-        if (day.length > 1)
-            for (const piece of day)
+        if (members.length > 1)
+            for (const piece of members)
                 list.push({
                     kind: 'session',
                     id: `s:${piece.sessionId}:${piece.newestSeq}`,
-                    time: piece.newest,
+                    day,
                     range: rangeOf(piece),
                     count: piece.count,
                     target: targetOf(piece),
@@ -228,7 +222,7 @@ const SKELETON_ROWS = 4
 const labelOf = (item: Item) =>
     item.kind === 'now'
         ? i18n.value.history.now
-        : [item.kind === 'day' ? dayText(item.time) : undefined, item.range, stepsText(item.count)]
+        : [item.kind === 'day' ? dayText(item.day) : undefined, item.range, stepsText(item.count)]
               .filter(Boolean)
               .join(', ')
 </script>
@@ -277,7 +271,7 @@ const labelOf = (item: Item) =>
             }}</span>
             <span v-else class="flex min-w-0 flex-1 items-baseline gap-2">
                 <span v-if="item.kind === 'day'" class="shrink-0 font-bold">{{
-                    dayText(item.time)
+                    dayText(item.day)
                 }}</span>
                 <span v-if="item.range" class="min-w-0 truncate">{{ item.range }}</span>
             </span>
