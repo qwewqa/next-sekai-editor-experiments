@@ -259,7 +259,7 @@ test('shared and browser-claiming bindings are named under their rows', async ({
 })
 
 test('Save’s row names its fixed Ctrl+S, until a binding takes that chord', async ({ page }) => {
-    await expect(shortcutField(page, 'Save')).toContainText('Also Ctrl+S, fixed')
+    await expect(shortcutField(page, 'Save')).toContainText('Also Ctrl+S (cannot be changed)')
     // Save keeps its one binding (§1.4.6): the alias isn't part of the map.
     expect(await savedShortcut(page, 'save')).toBe('p')
     await shortcutButton(page, 'Brush').click()

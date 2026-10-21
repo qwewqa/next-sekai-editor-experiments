@@ -560,7 +560,7 @@ Made by the storage side and the file flows; none groups. Step Details shows the
 | `nse.file.save` | `{file, delivery: file \| download}` | "Saved {file}"; "Downloaded {file}" |
 | `nse.file.export` | `{file, delivery}` | "Exported {file}"; a download adds the fact "Downloaded {file}" |
 | `nse.restore` | `{targetTime}` ms | "Restored to {time}" |
-| `nse.recovery` | `{droppedSteps}` | "Recovered changes"; facts "Undo steps dropped: {n}" above zero, and the recovery context ("Earlier Actions", "Source Action") |
+| `nse.recovery` | `{droppedSteps}` | "Recovered changes"; facts "Actions without their own Timeline step: {n}" above zero, and the recovery context ("Earlier Actions", "Recovered up to here") |
 | `nse.externalChange` | `{}` | "Changed outside the editor" |
 
 - **`nse.origin`**: `resetState` (`new`, or `import` when a chart is given), `resetImportedState` (`import` with `source`), `openState` (default `recovery`, for Local Data's journal opens; a `.nxsp` open in safe mode passes `import` with `source` and stores nothing) and the auto-save migration (`autoSave`, written directly as an `init` entry by `src/local/startup/migrationWrite.ts`). A `.nxsp` open writes it as the `continue` entry, with the file's name, and as the `init` step of a file without history (`writeOpenHead`).

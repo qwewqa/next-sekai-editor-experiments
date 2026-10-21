@@ -650,13 +650,13 @@ test.describe('the conflict dialog', () => {
             input: {
                 name: 'coconut.nxsp',
                 disk: disk.saved,
-                replaceDisabled: 'It holds earlier Timeline steps that this browser no longer has.',
+                replaceDisabled: 'It holds earlier Timeline steps that are no longer stored in this browser.',
             },
         })
         const replace = dialog(page).getByRole('button', { name: 'Replace' })
         await expect(replace).toBeDisabled()
         await expect(dialog(page)).toContainText(
-            'It holds earlier Timeline steps that this browser no longer has.',
+            'It holds earlier Timeline steps that are no longer stored in this browser.',
         )
         await expect(
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
