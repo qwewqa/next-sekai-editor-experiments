@@ -321,18 +321,6 @@ const forcePane = async (page: Page, width: number) => {
     await expect.poll(() => page.evaluate(() => window.editorTest.view.w)).toBe(width)
 }
 const open = async (page: Page) => {
-    // The bar holds the last step's summary while a new step is read, and a press then does
-    // nothing: wait until the shown step is the one that can be opened.
-    await expect
-        .poll(() =>
-            page.evaluate(async () => {
-                const changes = await window.editorTest.appImport<
-                    typeof import('../../src/editor/history/changes')
-                >('/src/editor/history/changes.ts')
-                return changes.canInspectProperties.value
-            }),
-        )
-        .toBe(true)
     await page.locator('[data-property-summary]').click()
     await expect(dialog(page)).toBeVisible()
     await expect(dialog(page).locator('[data-property-row]').first()).toBeVisible()

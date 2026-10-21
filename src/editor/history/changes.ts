@@ -556,9 +556,29 @@ const barNow = computed((): BarState | undefined => {
 
 /** The last step read, as the bar showed it; kept current as its arrows' counts follow the view. */
 const settledBar = shallowRef<BarState>()
+
+let pendingPress: { info: PeekedInfo; run: () => void } | undefined
+/**
+ * A press made while the bar holds the last step: kept (the latest only) and run once, when the
+ * step the user is now on is read. Another step, or the peek ending, drops it.
+ */
+export const pressWhenRead = (run: () => void) => {
+    const info = peekedInfo.value
+    if (info) pendingPress = { info, run }
+}
+
 watch([barNow, peekedInfo, isPeeking], ([state, info, peeking]) => {
-    if (!peeking || !info) settledBar.value = undefined
-    else if (state) settledBar.value = state
+    if (!peeking || !info) {
+        settledBar.value = undefined
+        pendingPress = undefined
+        return
+    }
+    if (pendingPress && pendingPress.info !== info) pendingPress = undefined
+    if (!state) return
+    settledBar.value = state
+    const press = pendingPress
+    pendingPress = undefined
+    press?.run()
 })
 
 /**

@@ -17,6 +17,7 @@ import {
     fixedLine,
     offBand,
     openPropertyInspection,
+    pressWhenRead,
     propertyInspection,
     reportCounts,
     heldBar,
@@ -97,6 +98,10 @@ watch(
     },
 )
 const inspect = async (opener: HTMLElement | null) => {
+    if (heldBar.value) {
+        pressWhenRead(() => void inspect(opener))
+        return
+    }
     if (inspecting || !canInspectProperties.value) return
     const comparison = shownChange.value
     if (!comparison) return
@@ -136,9 +141,14 @@ const counted = computed(() => heldBar.value?.reportCounts ?? reportCounts.value
 const inspectable = computed(() => heldBar.value?.inspectable ?? canInspectProperties.value)
 const enabled = (direction: 'up' | 'down') =>
     heldBar.value ? countOf(direction) > 0 : usableBand.value && countOf(direction) > 0
-// A press never acts on the held step's change: it does nothing until the new one is read.
+// A press while the last step is held acts on the new step once its change is read.
 const press = (direction: 'up' | 'down') => {
-    if (!heldBar.value && enabled(direction)) showChangeToward(direction)
+    if (heldBar.value) {
+        if (enabled(direction))
+            pressWhenRead(() => {
+                press(direction)
+            })
+    } else if (enabled(direction)) showChangeToward(direction)
 }
 const labelOf = (direction: 'up' | 'down') => {
     const strings = i18n.value.peek
