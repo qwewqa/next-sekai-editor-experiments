@@ -16,9 +16,11 @@ import { resolveHandle } from '../handles'
 import { toHex } from '../hash'
 import { hasWebLocks, sessionLock } from '../locks'
 import { displayName, forkNameOf, namePartsOf, sessionCopyOf, type CopyOf } from '../names'
+import type { BoundElsewhere } from '../open/project'
 import { stateFromRecords } from '../records/records'
 import { decodeSnapshot } from '../records/snapshot'
 import type { HeldLock, TabClient } from '../sessions'
+import { storedRead } from '../storedRead'
 import type { StorageWorker } from '../worker/client'
 import type { StorageStatus } from '../worker/core'
 import type { LoadEvent, ShownName } from './events'
@@ -483,11 +485,15 @@ export const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State): C
 /**
  * Whether another tab's open session is bound to this chain's file (§1.3.2, `isSameEntry`). Stored
  * handles are read only when another tab holds a session bound to a file of the same name, so a
- * load with no such tab reads none (D24).
+ * load with no such tab reads none (D24). `unknown` (a failed read, a handle this page can't
+ * hold, or a throw) forks all the same, and the notice says "may".
  */
-export const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind: 'open' }) => {
+export const boundElsewhere = async (
+    deps: OpenDeps,
+    read: SessionRead & { kind: 'open' },
+): Promise<BoundElsewhere> => {
     const name = (read.chain.file as { name?: unknown } | undefined)?.name
-    if (typeof name !== 'string' || !hasWebLocks()) return false
+    if (typeof name !== 'string' || !hasWebLocks()) return 'no'
     try {
         const own = await deps.client.id()
         const snapshot = await deps.locks.query()
@@ -496,29 +502,41 @@ export const boundElsewhere = async (deps: OpenDeps, read: SessionRead & { kind:
             .filter((lock) => own === undefined || lock.clientId !== own)
             .map((lock) => lock.name.slice('nse-session:'.length))
             .filter((id) => id !== read.session.id)
-        if (!others.length) return false
-        const bindings = (await deps.worker.call('readBindings', others)).filter(
+        if (!others.length) return 'no'
+        const listed = await storedRead(deps.worker, 'readBindings', others)
+        if (listed.storedRead === 'failed') return 'unknown'
+        const bindings = listed.storedValue.filter(
             ({ chainId, file }) => chainId !== read.chain.chainId && file.name === name,
         )
-        if (!bindings.length) return false
-        const raw = await deps.worker.call('readHandle', {
+        if (!bindings.length) return 'no'
+        const ownRead = await storedRead(deps.worker, 'readHandle', {
             chainId: String(read.chain.chainId),
             role: 'file',
         })
-        if (raw === undefined) return false
-        const handle = resolveHandle(raw)
-        if (!handle) return true
+        if (ownRead.storedRead === 'failed') return 'unknown'
+        if (ownRead.storedValue === undefined) return 'no'
+        const handle = resolveHandle(ownRead.storedValue)
+        if (!handle) return 'unknown'
+        let unknown = false
         for (const { chainId } of bindings) {
-            const raw = await deps.worker.call('readHandle', { chainId, role: 'file' })
-            if (raw === undefined) continue
-            const other = resolveHandle(raw)
-            if (!other || (await other.isSameEntry(handle))) return true
+            const stored = await storedRead(deps.worker, 'readHandle', { chainId, role: 'file' })
+            if (stored.storedRead === 'failed') {
+                unknown = true
+                continue
+            }
+            if (stored.storedValue === undefined) continue
+            const other = resolveHandle(stored.storedValue)
+            if (!other) {
+                unknown = true
+                continue
+            }
+            if (await other.isSameEntry(handle)) return 'yes'
         }
+        return unknown ? 'unknown' : 'no'
     } catch {
         // A failed ownership check cannot authorize retaining a binding.
-        return true
+        return 'unknown'
     }
-    return false
 }
 
 /** The new-visit rule (§1.4.2): continue the most recent session, or start blank, or fork. */
@@ -535,7 +553,9 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
         deps.events({ kind: 'openElsewhere', name: shownOf(read, state), sessionId: headId })
         return false
     }
-    if (await boundElsewhere(deps, read)) return forked(deps, read, headId)
+    const bound = await boundElsewhere(deps, read)
+    if (bound !== 'no')
+        return forked(deps, read, headId, undefined, undefined, undefined, bound === 'unknown')
     const parentLock = await holdShared(deps.locks, headId)
     if (!parentLock) {
         const state = await headState(deps.worker, read.head)
@@ -561,6 +581,8 @@ const forked = async (
     held?: HeldLock,
     copyOf = copyOfOf(read),
     recovered?: { found: JournalFound; state: State },
+    /** The fork is for a binding check that couldn't tell (`unknown`): the notice says "may". */
+    maybe?: boolean,
 ): Promise<boolean> => {
     const parentLock = held ?? (await holdShared(deps.locks, parentId))
     const state = await openStored(
@@ -569,7 +591,7 @@ const forked = async (
         { mode: 'fork', ...(parentLock ? { parentLock } : {}), copyOf },
         recovered ? { recovered } : {},
     )
-    if (state) deps.events({ kind: 'separateCopy', of: copyOf })
+    if (state) deps.events({ kind: 'separateCopy', of: copyOf, ...(maybe ? { maybe: true } : {}) })
     return !!state
 }
 

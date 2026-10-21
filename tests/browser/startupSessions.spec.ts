@@ -948,3 +948,69 @@ test('Start Blank’s edits while the worker hasn’t answered have a journal: a
     await visit(next)
     expect(await lifeOf(next)).toBe(930)
 })
+
+// Local Data's recovery rows (Part 1 §1.4.14): a Download that cannot read its row says so and
+// leaves the row, and a row gone since it was listed reads the list again.
+
+const seedRecovered = async (page: Page) => {
+    await page.evaluate(async () => {
+        await window.nseStorageTest!.worker.call('keepRecovered', {
+            id: 'recovered-1',
+            source: 'journal',
+            from: 'journal.damaged',
+            text: '{"damaged":',
+            appVersion: '0.6.0',
+        })
+        const { openSettings } =
+            (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+        void openSettings('localData')
+    })
+}
+
+test('Local Data’s Download of a recovered row whose read fails shows the card and keeps the row', async ({
+    page,
+    context,
+}) => {
+    await seed(context)
+    await visit(page)
+    await seedRecovered(page)
+    const row = page.locator('[data-recovery-row="recovered"]')
+    await expect(row).toHaveCount(1)
+    await page.evaluate(() => {
+        const worker = window.nseStorageTest!.worker
+        worker.call = new Proxy(worker.call, {
+            apply(target, thisArg: unknown, args: [string, ...unknown[]]) {
+                if (args[0] === 'readRecovered')
+                    return Promise.reject(new Error('The storage worker stopped (spec)'))
+                return Reflect.apply(target, thisArg, args) as unknown
+            },
+        })
+    })
+    let downloaded = false
+    page.on('download', () => {
+        downloaded = true
+    })
+    await row.getByRole('button', { name: 'Download' }).click()
+    await expect(
+        page
+            .locator('.notification, .notification-pill')
+            .filter({ hasText: 'The recovered work could not be downloaded.' }),
+    ).toBeVisible()
+    await expect(row).toHaveCount(1)
+    expect(downloaded).toBe(false)
+})
+
+test('Local Data’s Download of a recovered row gone since it was listed reads the list again', async ({
+    page,
+    context,
+}) => {
+    await seed(context)
+    await visit(page)
+    await seedRecovered(page)
+    const row = page.locator('[data-recovery-row="recovered"]')
+    await expect(row).toHaveCount(1)
+    // Another tab discarded it.
+    await page.evaluate(() => window.nseStorageTest!.worker.call('discardRecovered', 'recovered-1'))
+    await row.getByRole('button', { name: 'Download' }).click()
+    await expect(row).toHaveCount(0)
+})

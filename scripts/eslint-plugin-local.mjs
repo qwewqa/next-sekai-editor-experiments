@@ -1,7 +1,7 @@
 // The editor's own lint rules (Part 1 §1.6.8.7): History reads local time and formats dates only
 // through the calendar module, the History clock and `historyFormat`. The rules work by name, not
 // by type, so they are cheap and need no project. Where each rule applies, and its allowlist, is in
-// eslint.config.js.
+// eslint.config.js. `local/stored-reads` keeps the storage worker's covered reads in one gate.
 
 import path from 'node:path'
 
@@ -232,10 +232,68 @@ const historyImports = {
     },
 }
 
+// --- Storage reads
+
+/**
+ * The storage methods whose empty answer a caller acts on: they are called only through the gate in
+ * src/local/storedRead.ts, which returns the value or the failure. Equal to its COVERED_READS
+ * (tests/local/storedReadClasses.test.ts).
+ */
+const COVERED_READS = [
+    'readHandle',
+    'listHandleOwners',
+    'readBindings',
+    'readChainRecord',
+    'replaceDecision',
+    'openEarlierChains',
+    'openPendingImports',
+    'openImportTarget',
+    'listRecovered',
+    'readRecovered',
+    'listKept',
+    'findEdits',
+]
+
+/** A method name written out: a string literal, or a template literal without holes. */
+const literalName = (node) => {
+    if (node === undefined) return undefined
+    if (node.type === 'Literal' && typeof node.value === 'string') return node.value
+    if (node.type === 'TemplateLiteral' && node.expressions.length === 0)
+        return node.quasis[0].value.cooked ?? undefined
+    return undefined
+}
+
+const storedReads = {
+    meta: {
+        type: 'problem',
+        schema: [],
+        messages: {
+            gate: '{{ method }} is a covered storage read. Read it through storedRead() (src/local/storedRead.ts), which returns the value or the failure, and write the failed case.',
+        },
+    },
+    create(context) {
+        if (normalized(context.filename).endsWith('src/local/storedRead.ts')) return {}
+        const visitor = {
+            CallExpression(node) {
+                const { callee } = node
+                if (callee.type !== 'MemberExpression' || memberName(callee) !== 'call') return
+                const method = literalName(node.arguments[0])
+                if (method !== undefined && COVERED_READS.includes(method))
+                    context.report({ node, messageId: 'gate', data: { method } })
+            },
+        }
+        const services = context.sourceCode.parserServices
+        return typeof services?.defineTemplateBodyVisitor === 'function'
+            ? services.defineTemplateBodyVisitor(visitor, visitor)
+            : visitor
+    },
+}
+
 export default {
     meta: { name: 'eslint-plugin-local' },
     rules: {
         'no-local-time': noLocalTime,
         'history-imports': historyImports,
+        'stored-reads': storedReads,
     },
 }

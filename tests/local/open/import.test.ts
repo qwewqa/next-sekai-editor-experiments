@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { type TestContext } from 'node:test'
 import { captureEntryDescription, captureName } from '../../../src/history/operations'
 import { DB_NAME, hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { keyText } from '../../../src/local/kv/keys'
 import { webLockService } from '../../../src/local/locks'
 import { executePlan, planNxsp, readNxsp, type ReadHistory } from '../../../src/local/nxsp'
-import { startImport } from '../../../src/local/open/importLoop'
+import { resumeImports, startImport } from '../../../src/local/open/importLoop'
 import { headCount, type OpenStoreRequest } from '../../../src/local/open/importWrite'
 import type { OpenReadReply } from '../../../src/local/open/opened'
 import { carries, type ChainRow } from '../../../src/local/save/model'
@@ -608,4 +608,50 @@ test('a head root that holds no note count gives no count, never 0', () => {
     for (const value of [undefined, null, -1, 1.5, '3', Number.NaN]) {
         assert.equal(headCount(value), undefined, String(value))
     }
+})
+
+// The resume pass reads through the `storedRead` gate and keeps the ends it had (Part 1 §1.5.4,
+// §1.6.5): a failed read ends nothing it did not end before.
+
+const resumeWith = async (t: TestContext, answers: Record<string, () => unknown>) => {
+    const worker = new StorageWorker(
+        { url: 'unused.js', type: 'classic', blobRestart: false },
+        { appVersion: 'test', flags: {}, test: true },
+    )
+    const calls: string[] = []
+    t.mock.method(worker, 'call', (name: string) => {
+        calls.push(name)
+        const answer = answers[name]
+        if (!answer) throw new Error(`Unexpected call: ${name}`)
+        return Promise.resolve().then(answer)
+    })
+    await resumeImports({ worker, locks: webLockService, appVersion: 'test' })
+    return calls
+}
+
+const unavailable = () => {
+    throw new Error('The storage worker stopped answering (resume test)')
+}
+
+test('a pending list that cannot be read resumes nothing and abandons nothing', async (t) => {
+    const calls = await resumeWith(t, { openPendingImports: unavailable })
+    assert.deepEqual(calls, ['openPendingImports'])
+})
+
+test('an import target that cannot be read leaves the import pending: nothing is abandoned', async (t) => {
+    const calls = await resumeWith(t, {
+        openPendingImports: () => [{ sessionId: 's', chainId: 'c' }],
+        openImportTarget: unavailable,
+    })
+    assert.deepEqual(calls, ['openPendingImports', 'openImportTarget'])
+})
+
+test('a bound handle that cannot be read ends the import as a missing one does, as before', async (t) => {
+    const calls = await resumeWith(t, {
+        openPendingImports: () => [{ sessionId: 's', chainId: 'c' }],
+        openImportTarget: () => ({ file: { name: 'a.nxsp', disk: { fingerprint: 'x' } } }),
+        readHandle: unavailable,
+        openAbandon: () => true,
+    })
+    assert.deepEqual(calls, ['openPendingImports', 'openImportTarget', 'readHandle', 'openAbandon'])
 })

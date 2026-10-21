@@ -170,7 +170,7 @@ test('Local Data’s rows: Discard removes a row only while it holds what was li
 
     // Download: the file `gate.js` would offer.
     const file = await recoveryFile(autoSave)
-    assert.ok(file)
+    assert.ok(file.storedRead === 'value' && file.storedValue)
 
     // Discard: a key changed since it was listed stays.
     local.setItem(storageKey(journalKey), `${text} `)
@@ -191,7 +191,8 @@ test('Discard of unreadable recovered work removes only that row', async () => {
     assert.equal(recovered.length, 2)
     const [one] = recovered
     assert.ok(one)
-    assert.equal(typeof (await recoveryFile(one)), 'object')
+    const row = await recoveryFile(one)
+    assert.ok(row.storedRead === 'value' && row.storedValue)
     await loaded.page.tab.run(() => discardRecoveryItem(one))
     assert.equal(
         (await recoveryItems()).items.filter((item) => item.kind === 'recovered').length,
@@ -229,6 +230,41 @@ test('a recovery listing that fails is reported as unreadable, never as nothing 
     const failed = await recoveryItems()
     assert.equal(failed.unreadable, true)
     assert.deepEqual(failed.items, [])
+})
+
+test('a recovered row’s download that fails is failed, and a row gone since it was listed is a value of none', async () => {
+    const world = createWorld({ seed: 5 })
+    const storage = new MemoryStorage()
+    storage.setItem('nse.journal.a', '{"damaged":')
+    const loaded = await load(world, 'tab', storage)
+    setSessionContext(loaded.deps, loaded.recovery)
+    const [row] = (await recoveryItems()).items.filter((item) => item.kind === 'recovered')
+    assert.ok(row)
+    const { worker } = loaded.deps
+    const through = (fail: boolean) =>
+        setSessionContext(
+            {
+                ...loaded.deps,
+                worker: {
+                    ...worker,
+                    call: (name: string, ...args: unknown[]) =>
+                        fail && name === 'readRecovered'
+                            ? Promise.reject(new Error('the worker is down (recovery test)'))
+                            : (
+                                  worker.call as (
+                                      name: string,
+                                      ...args: unknown[]
+                                  ) => Promise<unknown>
+                              )(name, ...args),
+                } as typeof worker,
+            },
+            loaded.recovery,
+        )
+    through(true)
+    assert.equal((await recoveryFile(row)).storedRead, 'failed')
+    through(false)
+    await loaded.page.tab.run(() => discardRecoveryItem(row))
+    assert.deepEqual(await recoveryFile(row), { storedRead: 'value', storedValue: undefined })
 })
 
 /** A session another tab had open, with edits only its journal holds, then the tab died. */

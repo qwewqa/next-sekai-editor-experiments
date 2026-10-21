@@ -956,6 +956,7 @@
         "autoSave": "이전 자동 저장 · {0}",
         "unreadable": "읽을 수 없는 복구된 작업, {0} · {1}",
         "listFailed": "저장된 복구 데이터를 읽을 수 없습니다",
+        "downloadFailed": "복구된 작업을 다운로드하지 못했습니다.",
         "atLoad": "시작 알림"
       },
       "openHistory": "기록 열기",
@@ -2101,6 +2102,7 @@
     "restoredName": "{0} ({1} 복원)",
     "fileType": "Next SEKAI 프로젝트 파일",
     "unavailable": "저장되지 않았습니다. 레벨 데이터 내보내기…를 사용하세요.",
+    "storageUnavailable": "저장되지 않았습니다. 편집기가 이 브라우저의 저장소에 접근하지 못했습니다. 다시 시도하세요.",
     "include": "포함",
     "historySize": "{0}단계 · {1}",
     "historyNote": "파일이 있는 사람은 해당 파일의 기록을 볼 수 있습니다.",
@@ -2144,6 +2146,8 @@
   "notice": {
     "useOpenFile": "파일을 열려면 열기를 사용하세요.",
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
+    "sameFileMaybeElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있을 수 있어 이것은 별도의 사본입니다.",
+    "storageUnavailable": "편집기가 이 브라우저의 저장소에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",
     "newLevel": "새 레벨",
     "reopen": "\"{0}\" 다시 열기",
@@ -2213,6 +2217,7 @@
     },
     "unsavedChanges": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있습니다.",
     "unsavedEarlier": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있습니다.",
+    "earlierUnchecked": "{0}을(를) 열었습니다. 최근 세션에 이 파일의 다른 버전이 있는지 확인하지 못했습니다.",
     "unsavedEarlierMaybe": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있을 수 있습니다.",
     "unsavedChangesMaybe": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있을 수 있습니다.",
     "olderVersion": "{0}의 이전 버전입니다. {1}의 최신 버전이 최근 세션에 있습니다.",

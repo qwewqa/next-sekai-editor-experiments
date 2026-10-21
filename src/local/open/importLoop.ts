@@ -3,6 +3,7 @@ import type { DiskState, LockService } from '../../platform/types'
 import { zipFingerprint } from '../../zip/fingerprint'
 import { handleOf, readableWithoutPrompt } from '../handles'
 import { hasWebLocks, importLock } from '../locks'
+import { storedRead } from '../storedRead'
 import type { StorageWorker } from '../worker/client'
 
 // The page's half of an open's background import (Part 1 §1.5.4): it holds `nse-import:<id>`
@@ -259,13 +260,21 @@ export type ResumeDeps = Omit<
  */
 export const resumeImports = async (deps: ResumeDeps) => {
     const { worker, locks } = deps
-    const pending = await worker.call('openPendingImports')
-    for (const { sessionId, chainId } of pending) {
+    const listed = await storedRead(worker, 'openPendingImports', undefined)
+    // A list that can't be read resumes nothing: every import stays pending for the next load.
+    if (listed.storedRead === 'failed') return
+    for (const { sessionId, chainId } of listed.storedValue) {
         if (running.has(sessionId)) continue
         const resume = async (): Promise<ImportOutcome> => {
-            const target = await worker.call('openImportTarget', chainId)
+            const read = await storedRead(worker, 'openImportTarget', chainId)
+            // As an import that threw: it stays pending, and nothing is abandoned.
+            if (read.storedRead === 'failed') return { kind: 'failed' }
+            const target = read.storedValue
             const disk = target?.file?.disk
-            const handle = disk && (await handleOf(worker, chainId, 'file'))
+            const stored = disk ? await handleOf(worker, chainId, 'file') : undefined
+            // A handle that can't be read ends the import as a missing one does, as today (the
+            // rows stay in the file, and a write-back append keeps them).
+            const handle = stored?.storedRead === 'value' ? stored.storedValue : undefined
             if (disk && handle && (await readableWithoutPrompt(handle))) {
                 try {
                     const file = await handle.getFile()
