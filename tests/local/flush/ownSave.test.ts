@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict'
-import { describe } from 'node:test'
 import { captureName } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { executePlan, planNxsp } from '../../../src/local/nxsp'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
-import { BIND_STORES, finishOwnSave } from '../../../src/local/save/bind'
+import { BIND_STORES, recordOwnSave } from '../../../src/local/save/bind'
 import type { EntryRow } from '../../../src/local/save/cut'
 import { carries } from '../../../src/local/save/model'
 import { journalledSession } from '../../../src/local/startup/resume'
@@ -35,15 +34,12 @@ import { importIds, longFile, storeRequest as storeRequestFor } from './modelFil
 import {
     createCheckedWorld as createWorld,
     expectViolations,
-    pin,
     checkedTest as test,
 } from './sessionCheck'
 
-// Scenario tests on the real flusher, journal, worker core and resume (design A §7), promoted from
-// the validation probes. The first half pass on today's code: what the A0+ checker allows and
-// reports, the hole learning, and the two power losses. The second half are `todo` acceptance
-// tests, each naming the increment that turns it green; they fail on today's tree and `npm test`
-// stays green. When that increment merges, it removes the `todo`.
+// Scenario tests on the real flusher, journal, worker core and resume (spec A section 7),
+// promoted from the validation probes: what the A0+ checker allows and reports, the hole learning,
+// the two power losses, and a recognised Save that records its binding and no row.
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 const DEVICE = { id: 'device-1', label: 'Web (Chrome)' }
@@ -66,49 +62,46 @@ const markedAt = (page: { flusher: unknown }, seq: number) => {
         seq
 }
 
-/** The unit and `save` entry of our own completed Save, as `ownSave` in `saveEntry.test.ts`. */
+/** The unit of our own completed Save, as `ownSave` in `saveEntry.test.ts`. */
 const ownSaveUnit = (sessionId: string, seq: number, state: State, count: number, time = 5) => ({
-    entry: {
-        sessionId,
-        seq,
-        time,
-        operation: SAVE_OPERATION,
-        snapshot: rootOf(state),
-        noteCount: 1,
-        revisionId: 'rev-1',
-        device: DEVICE,
+    docId: testId(),
+    revision: { id: 'rev-1', n: 1, ancestors: [] },
+    file: {
+        name: 'coconut.nxsp',
+        event: 'saved',
+        at: time,
+        hash: fromHex16(rootOf(state)),
+        options: { history: true, bgm: true },
+        entry: { sessionId, seq, startedAt: 0, count, notKept: 0 },
     },
-    unit: {
-        docId: testId(),
-        revision: { id: 'rev-1', n: 1, ancestors: [] },
-        file: {
-            name: 'coconut.nxsp',
-            event: 'saved',
-            at: time,
-            hash: fromHex16(rootOf(state)),
-            options: { history: true, bgm: true },
-            entry: { sessionId, seq, startedAt: 0, count, notKept: 0 },
-        },
-        marks: [],
-    },
+    marks: [],
+    from: {},
 })
 
-/** Whether the chain's cut carries over what storage holds now (today's `carries`). */
+/** Whether the chain's cut carries over what storage holds now (`carries`). */
 const carriesNow = (world: World, sessionId: string, chainId: string) => {
     const chain = rows(world, 'chains').get(chainId)!
     const cut = (chain.file as { entry: Parameters<typeof carries>[1] }).entry
+    const revisionId = (chain.revision as { id: string }).id
     const { startedAt } = rows(world, 'sessions').get(sessionId) as { startedAt: number }
     const chainRows = [...rows(world, 'entries').values()]
         .filter((row) => row.sessionId === sessionId)
         .map((row) => ({ entry: row as unknown as EntryRow, startedAt }))
-    return carries(chainRows, { ...cut, startedAt }, (row) => !row.entry.kept)
+    return carries(
+        chainRows,
+        { ...cut, startedAt },
+        { revisionId },
+        (id) => rows(world, 'sessions').has(id),
+        (row) => !row.entry.kept,
+    )
 }
 
+/** Records the Save's binding as the worker's handler does: strict, from the session as the head. */
 const bind = (
     page: { core: { write: (stores: typeof BIND_STORES, fn: never) => Promise<unknown> } },
     chainId: string,
-    save: ReturnType<typeof ownSaveUnit>,
-    below: 'stored' | 'pending',
+    sessionId: string,
+    unit: ReturnType<typeof ownSaveUnit>,
 ) =>
     (
         page.core as unknown as {
@@ -118,12 +111,9 @@ const bind = (
                 options: { durability: 'strict' },
             ) => Promise<T>
         }
-    ).write(
-        BIND_STORES,
-        (tx) => finishOwnSave(tx, chainId, save.entry, save.unit, 2_000_000, below),
-        // As the worker's handler writes it (`bindHandlers.ts`): a recognised Save is strict.
-        { durability: 'strict' },
-    )
+    ).write(BIND_STORES, (tx) => recordOwnSave(tx, { chainId, writer: { sessionId }, unit }), {
+        durability: 'strict',
+    })
 
 // ---------------------------------------------------------------------------------------------
 // The checker as A0+ corrects it: allowed states pass, breaches are named.
@@ -485,7 +475,7 @@ const stallable = (page: { flusher: unknown }) => {
 /** F2: recognised over a row a power loss undid and a journal recovered. */
 const f2 = async (seed: number) => {
     const { world, session, a, reloaded } = await reloadAfter(seed)
-    await bind(reloaded, session.chainId, ownSaveUnit(session.id, 4, a, 4), 'stored')
+    await bind(reloaded, session.chainId, session.id, ownSaveUnit(session.id, 4, a, 4))
     return { world, session }
 }
 
@@ -505,7 +495,7 @@ const ar8 = async (seed: number) => {
     stalled.on = true
     const reservation = page.flusher.reserveSave()!
     assert.equal(reservation.seq, 3)
-    const save = ownSaveUnit(session.id, 3, b, 3)
+    const unit = ownSaveUnit(session.id, 3, b, 3)
     void page.flusher.endSave(
         reservation,
         {
@@ -515,7 +505,7 @@ const ar8 = async (seed: number) => {
             revisionId: 'rev-1',
             device: DEVICE,
         },
-        save.unit,
+        unit,
     )
     for (let i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve))
     // pagehide: the journal holds seq 3 (the pending save entry is the newest).
@@ -530,7 +520,7 @@ const ar8 = async (seed: number) => {
     ])
     // The reloaded tab recognises its own completed Save: nothing pending below 3.
     const reloaded = await openPage(world, world.tab('reload'))
-    await bind(reloaded, session.chainId, save, 'stored')
+    await bind(reloaded, session.chainId, session.id, unit)
     return { world, session }
 }
 
@@ -559,100 +549,31 @@ const ar8b = async (seed: number) => {
         [2, 'recovered'],
     ])
     const reloaded = await openPage(world, world.tab('reload'))
-    await bind(reloaded, session.chainId, ownSaveUnit(session.id, 3, b, 3), 'stored')
+    await bind(reloaded, session.chainId, session.id, ownSaveUnit(session.id, 3, b, 3))
     return { world, session }
 }
 
 const hasSaveRow = (world: World, sessionId: string, seq: number) =>
     kinds(world, sessionId).some(([at, kind]) => at === seq && kind === 'save')
 
-// Today's code over-claims in each (design A §1.1). These pass now and pin the breach; A2 deletes
-// them as it removes the `todo` from the acceptance tests below.
+// A recognised Save records its binding and adds no row (I-10): the cut counts the `save` row the
+// chain lacks, so it does not carry. Each is a Save whose row a power loss, a journal or a
+// recovery had taken the place of (F2, AR-8, AR-8b).
 
-test('F2 today: the cut carries over recovered@3 where the file holds an undo (pinned, A2)', async () => {
+test('F2: a Save recognised over a row a power loss undid and a journal recovered adds no row and does not carry', async () => {
     const { world, session } = await f2(921)
-    assert.equal(hasSaveRow(world, session.id, 4), true)
-    assert.equal(carriesNow(world, session.id, session.chainId), true)
+    assert.equal(hasSaveRow(world, session.id, 4), false)
+    assert.equal(carriesNow(world, session.id, session.chainId), false)
 })
 
-test('AR-8 today: the cut carries over recovered@3 where the file holds save@3 (pinned, A2)', async () => {
+test('AR-8: a journal folds the pending save entry into recovered@r, and the cut does not carry over it', async () => {
     const { world, session } = await ar8(801)
-    assert.equal(carriesNow(world, session.id, session.chainId), true)
+    assert.equal(hasSaveRow(world, session.id, 3), false)
+    assert.equal(carriesNow(world, session.id, session.chainId), false)
 })
 
-test('AR-8b today: landsOn accepts recovered@2, so save@3 is written and the cut carries (pinned, A2)', async () => {
-    expectViolations(
-        pin(
-            /lock: rows 3 of session \S+ were created while the page did not hold/,
-            'A2',
-            'I-1: finishOwnSave writes save@r from a page that does not hold the session',
-        ),
-    )
+test('AR-8b: a recovered row that replaced a pending row the file holds is not the Save’s landing', async () => {
     const { world, session } = await ar8b(802)
-    assert.equal(hasSaveRow(world, session.id, 3), true)
-    assert.equal(carriesNow(world, session.id, session.chainId), true)
-})
-
-test('a kept Save added to a session the page has left writes nothing (the late writer, M1c)', async () => {
-    const world = createWorld({ seed: 4601 })
-    const page = await openJournalPage(world, 'a')
-    const a = stateOf(goldenChart())
-    const session = beginSession(page, a)
-    await page.flusher.flush({ strict: true })
-    // The Save's file may hold seq 2 (a kept gap), and the build found an entry pending below it.
-    const reservation = page.flusher.reserveSave()!
-    await page.flusher.endSave(reservation, undefined, undefined, true)
-    const below = { kind: 'pending', session, seq: reservation.seq, after: { state: a } }
-    // The page moves on to another session before the Save is added.
-    beginSession(page, stateOf(goldenChart()))
-    await page.flusher.flush({ strict: true })
-    await page.flusher.keptSave(below as never, {
-        wall: 5,
-        operation: SAVE_OPERATION,
-        revisionId: 'rev-1',
-        device: DEVICE,
-    })
-    await page.flusher.flush({ strict: true })
-    assert.equal(hasSaveRow(world, session.id, reservation.seq), false)
-    assert.equal(session.pending.length, 0)
-    assert.deepEqual(page.errors, [])
-})
-
-const A2 = { todo: 'A2: one writer of a session’s rows' }
-
-describe('A2 acceptance (expected to fail before they land)', () => {
-    test(
-        'F2: a Save recognised over a row a power loss undid and a journal recovered does not carry',
-        async () => {
-            const { world, session } = await f2(921)
-            // Either no row is added at 4, or the cut does not carry over recovered@3.
-            assert.ok(
-                !hasSaveRow(world, session.id, 4) ||
-                    !carriesNow(world, session.id, session.chainId),
-            )
-        },
-        A2,
-    )
-
-    test(
-        'AR-8: a journal folds the pending save entry into recovered@r, and the cut does not carry over it',
-        async () => {
-            const { world, session } = await ar8(801)
-            assert.equal(carriesNow(world, session.id, session.chainId), false)
-        },
-        A2,
-    )
-
-    test(
-        'AR-8b: a recovered row that replaced a pending row the file holds is not the Save’s landing',
-        async () => {
-            const { world, session } = await ar8b(802)
-            // Landing on recovered@2 is not the Save's: no row at 3, or a cut that does not carry.
-            assert.ok(
-                !hasSaveRow(world, session.id, 3) ||
-                    !carriesNow(world, session.id, session.chainId),
-            )
-        },
-        A2,
-    )
+    assert.equal(hasSaveRow(world, session.id, 3), false)
+    assert.equal(carriesNow(world, session.id, session.chainId), false)
 })

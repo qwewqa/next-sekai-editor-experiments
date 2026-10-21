@@ -75,17 +75,6 @@ export type PendingIdentity = IdentityUnit & {
     readonly seq: number
 }
 
-/** `Flusher.keptSaveBelow`: what the current session holds below a kept Save `seq`. */
-export type KeptSaveBelow =
-    | { kind: 'stored' }
-    | {
-          kind: 'pending'
-          session: FlushSession
-          seq: number
-          /** The newest entry before the `seq`: the state the Save wrote. */
-          after: PendingEntry
-      }
-
 /** What a Save reserved (§1.6.11.6): its `save` entry's `seq` in the current session. */
 export type SaveReservation = {
     readonly session: FlushSession
@@ -382,7 +371,7 @@ export const summaryOf = (state: State, noteCount: number): ChainSummary => {
 /**
  * Removes exactly the entries a batch sent from `pending`, in place, and returns them in order. By
  * identity, never by count: an entry joins `pending` between others while a batch is in flight
- * (`keptSave`, a restart's re-sends), and must stay until a batch of its own stores it.
+ * (a restart's re-sends), and must stay until a batch of its own stores it.
  */
 const acknowledge = (pending: PendingEntry[], sent: readonly PendingEntry[]) => {
     const ids = new Set(sent)
@@ -896,57 +885,6 @@ export class Flusher {
     /** Ends a reservation no path ended (a throw, a write in flight): kept. */
     release(reservation: SaveReservation): Promise<EndSaveResult> {
         return this.endSave(reservation, undefined, undefined, true)
-    }
-
-    /**
-     * What this tab holds of a session below our own completed Save's kept `seq` (§1.4.7): a
-     * session's entries are stored in `seq` order, so with entries before it still pending, the
-     * `save` entry is stored after them, by this tab (`keptSave`). Undefined when the session isn't
-     * this tab's current one, or its `seq` is a Save's still reserved.
-     */
-    keptSaveBelow(sessionId: string, seq: number): KeptSaveBelow | undefined {
-        const session = this.current
-        if (session?.id !== sessionId || session.reserved?.seq === seq) return
-        const after = session.pending.filter((entry) => entry.seq < seq).at(-1)
-        if (!after) return { kind: 'stored' }
-        return { kind: 'pending', session, seq, after }
-    }
-
-    /**
-     * Our own completed Save's `save` entry at its kept `seq`, after the entries before it that
-     * `keptSaveBelow` found pending: on the state they reached, as the Save wrote it. Nothing is
-     * added to a session that is no longer current (a fork), nor twice. Not added, it is never
-     * stored, and the binding's cut, which counts it, under-claims: the next write that isn't an
-     * append doesn't carry the file (save/model.ts `carries`), and no state is lost.
-     */
-    keptSave(
-        below: Extract<KeptSaveBelow, { kind: 'pending' }>,
-        entry: Pick<PendingEntry, 'wall' | 'revisionId' | 'device' | 'appVersion'> & {
-            operation: JsonValue
-        },
-    ): Promise<void> {
-        const { session, seq, after } = below
-        if (this.current !== session || session.pending.some((each) => each.seq === seq))
-            return this.flush({ strict: true })
-        if (session.nextSeq <= seq) session.nextSeq = seq + 1
-        const added: PendingEntry = {
-            wall: entry.wall,
-            ...(after.state ? { state: after.state } : {}),
-            ...(after.snapshot ? { snapshot: after.snapshot } : {}),
-            ...(entry.revisionId === undefined ? {} : { revisionId: entry.revisionId }),
-            ...(entry.device ? { device: entry.device } : {}),
-            ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
-            operation: captureOperation(entry.operation),
-            seq,
-            kind: 'save',
-            dirty: false,
-        }
-        const at = session.pending.findIndex((each) => each.seq > seq)
-        if (at === -1) session.pending.push(added)
-        else session.pending.splice(at, 0, added)
-        session.entrySeq = Math.max(session.entrySeq, seq)
-        this.entered()
-        return this.flush({ strict: true })
     }
 
     /**
@@ -1591,11 +1529,7 @@ export class Flusher {
      * chain, so the chain that continued it keeps its whole history.
      */
     private fork(from: FlushSession, lastSeq: number | undefined): FlushSession {
-        // Entries a kill after commit already stored stay the stored session's. One that isn't
-        // stored is our own completed Save's `save` entry `keptSave` put below `lastSeq`: it stays
-        // unstored, and a fork's new chain must not take it. Its state is the entry's below it, so
-        // nothing is lost, and the binding's cut still counts it, so the chain's next write that
-        // isn't an append doesn't carry the file (an under-claim, save/model.ts `carries`).
+        // Entries a kill after commit already stored stay the stored session's.
         const moving = from.pending.filter((entry) => lastSeq === undefined || entry.seq > lastSeq)
         // A continuation that lost the race forks from the parent it continued (§1.3.1).
         const parent =

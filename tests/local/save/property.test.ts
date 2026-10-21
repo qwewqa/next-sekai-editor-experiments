@@ -129,7 +129,7 @@ class Scenario {
     /** Storing paused: the last stored `seq` of the session, and the binding in memory. */
     pause: { stored: number; unit?: IdentityUnit; file?: IdentityInput['file'] } | undefined
     docs = 0
-    /** Whether the last write showed "Some earlier Timeline steps were not kept.". */
+    /** Whether the last write showed a steps line ("were not kept" or "may not be included"). */
     line = false
     readonly log: string[] = []
 
@@ -183,10 +183,10 @@ class Scenario {
         assert.ok(!('refused' in built), JSON.stringify(built))
         const file = asFile(built.blob)
         const written = await facts(file)
-        this.check(target, written, built.someStepsNotKept)
+        this.check(target, written, built.stepsLine !== 'none')
         await checkStack(file)
         this.files.push(written)
-        this.line = built.someStepsNotKept
+        this.line = built.stepsLine !== 'none'
         if (kind === 'none') return
         const disk =
             kind === 'saved' ? { ...(await nxspDiskState(file, file.lastModified)) } : undefined

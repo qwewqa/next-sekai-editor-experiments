@@ -371,7 +371,10 @@ const createWorld = async (setup: Setup = {}) => {
         const a = arg as Row
         switch (method) {
             case 'openPendingImports': // the pending imports are the world's `pendingImports` set, which `startImport` drives
-                return [...pendingImports].map((sessionId) => ({ sessionId }))
+                return [...pendingImports].map((sessionId) => ({
+                    sessionId,
+                    chainId: ownSession.chainId,
+                }))
             case 'saveNeeds': // the real one reads the stored snapshot rows, which the seeded sessions do not carry; `s.storage` says what they hold
                 return s.storage === 'holds'
                     ? { carries: true, lacking: [] }
@@ -390,8 +393,8 @@ const createWorld = async (setup: Setup = {}) => {
                     session: { chainId: 'chain-other', updatedAt: NOW },
                     chain: chains.get('chain-other') ?? {},
                 }
-            case 'finishOwnSave': // needs the real session this world's fake flusher does not have (E3)
-                return true
+            case 'recordOwnSave': // the real one needs the chain's head to be a stored session, which this world's fake flusher does not have
+                return 'recorded'
             case 'replaceDecision': // reads the other version's stored rows; no cell reaches Replace
                 return { relation: 'unrelated', holdsBase: false }
             default:
@@ -427,7 +430,7 @@ const createWorld = async (setup: Setup = {}) => {
             revisionId: revision,
             project: {},
             storageChunks: [],
-            someStepsNotKept: false,
+            stepsLine: 'none',
             without: [],
             tooLarge: [],
             identity: {
@@ -513,8 +516,6 @@ const createWorld = async (setup: Setup = {}) => {
         },
         flush: () => Promise.resolve(),
         unstored: () => ({ entries: [], stack: undefined }),
-        keptSaveBelow: () => ({ kind: 'stored' as const }),
-        keptSave: () => Promise.resolve(),
         setChainFields: () => Promise.resolve(),
         setChainFieldsNow: () => Promise.resolve(true),
     }

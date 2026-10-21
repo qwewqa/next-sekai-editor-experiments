@@ -2091,6 +2091,8 @@
         "savedWithoutMediaLarge": "Saved to {0} without its media",
         "someStepsNotKept": "Saved to {0}. Some earlier Timeline steps were not kept.",
         "someStepsNotKeptLine": "Some earlier Timeline steps were not kept.",
+        "someStepsMayNotBeIncluded": "Saved to {0}. Some earlier Timeline steps may not be included.",
+        "someStepsMayNotBeIncludedLine": "Some earlier Timeline steps may not be included.",
         "committedState": "The file holds the last stored version of the session open in another tab.",
         "tookOver": "Saved to {0}. Its earlier work is in Recent Sessions.",
         "noChanges": "No changes since {0} was downloaded",
@@ -2134,6 +2136,7 @@
         "keptName": "{0} (replaced {1})",
         "replaceNewer": "Made by a newer version of {0}.",
         "replaceHoldsEarlier": "It holds earlier Timeline steps that are no longer stored in this browser.",
+        "replaceMayHoldEarlier": "It may hold earlier Timeline steps that are no longer stored in this browser.",
         "keepEditing": "Keep Editing"
     },
     "name": {

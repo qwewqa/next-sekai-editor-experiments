@@ -2091,6 +2091,8 @@
     "savedWithoutMediaLarge": "Sauvegardé dans {0} sans ses médias",
     "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
     "someStepsNotKeptLine": "Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
+    "someStepsMayNotBeIncluded": "Sauvegardé dans {0}. Certaines étapes antérieures de la chronologie n’y figurent peut-être pas.",
+    "someStepsMayNotBeIncludedLine": "Certaines étapes antérieures de la chronologie n’y figurent peut-être pas.",
     "committedState": "Le fichier contient la dernière version stockée de la session ouverte dans un autre onglet.",
     "tookOver": "Sauvegardé dans {0}. Son travail antérieur se trouve dans Sessions récentes.",
     "noChanges": "Aucune modification depuis le téléchargement de {0}",
@@ -2134,6 +2136,7 @@
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Créé par une version plus récente de {0}.",
     "replaceHoldsEarlier": "Il contient des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
+    "replaceMayHoldEarlier": "Il contient peut-être des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
     "keepEditing": "Continuer à modifier"
   },
   "name": {

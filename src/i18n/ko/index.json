@@ -2091,6 +2091,8 @@
     "savedWithoutMediaLarge": "{0}에 미디어 없이 저장됨",
     "someStepsNotKept": "{0}에 저장됨. 타임라인의 이전 단계 일부는 보존되지 않았습니다.",
     "someStepsNotKeptLine": "타임라인의 이전 단계 일부는 보존되지 않았습니다.",
+    "someStepsMayNotBeIncluded": "{0}에 저장됨. 타임라인의 이전 단계 일부가 포함되지 않았을 수 있습니다.",
+    "someStepsMayNotBeIncludedLine": "타임라인의 이전 단계 일부가 포함되지 않았을 수 있습니다.",
     "committedState": "파일에는 다른 탭에서 열려 있는 세션의 마지막으로 보관된 버전이 들어 있습니다.",
     "tookOver": "{0}에 저장됨. 이전 작업은 최근 세션에 있습니다.",
     "noChanges": "{0} 다운로드 이후 변경 사항 없음",
@@ -2134,6 +2136,7 @@
     "keptName": "{0} ({1} 교체됨)",
     "replaceNewer": "더 새로운 버전의 {0}에서 만들어졌습니다.",
     "replaceHoldsEarlier": "이 브라우저에 더 이상 보관되어 있지 않은 타임라인의 이전 단계가 들어 있습니다.",
+    "replaceMayHoldEarlier": "이 브라우저에 더 이상 보관되어 있지 않은 타임라인의 이전 단계가 들어 있을 수 있습니다.",
     "keepEditing": "계속 편집"
   },
   "name": {

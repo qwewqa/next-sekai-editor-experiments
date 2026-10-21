@@ -776,7 +776,7 @@ test.describe('the feedback after a write', () => {
         kind: 'saved',
         name: 'coconut.nxsp',
         size: 1,
-        someStepsNotKept: false,
+        stepsLine: 'none',
         tookOver: false,
         without: [],
         tooLarge: [],
@@ -787,9 +787,13 @@ test.describe('the feedback after a write', () => {
         await visit(page)
         await feedback(page, plain)
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
-        await feedback(page, { ...plain, someStepsNotKept: true })
+        await feedback(page, { ...plain, stepsLine: 'notKept' })
         await expect(notice(page)).toHaveText(
             'Saved to coconut.nxsp. Some earlier Timeline steps were not kept.',
+        )
+        await feedback(page, { ...plain, stepsLine: 'mayNotBeIncluded' })
+        await expect(notice(page)).toHaveText(
+            'Saved to coconut.nxsp. Some earlier Timeline steps may not be included.',
         )
         await feedback(page, { ...plain, without: ['bgm'], tooLarge: ['bgm'] })
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its BGM')
@@ -861,7 +865,7 @@ test.describe('the feedback after a write', () => {
                 (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
             bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
         })
-        await feedback(page, { ...plain, kind: 'download', size: 1_000, someStepsNotKept: true })
+        await feedback(page, { ...plain, kind: 'download', size: 1_000, stepsLine: 'notKept' })
         await expect(notice(page)).toContainText('Download started: coconut.nxsp · 1 kB')
         await expect(notice(page)).toContainText('Some earlier Timeline steps were not kept.')
         await expect(page.getByRole('button', { name: 'I Have the File' })).toHaveCount(0)

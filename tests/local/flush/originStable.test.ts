@@ -10,7 +10,7 @@ import type { OpenStoreRequest } from '../../../src/local/open/importWrite'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { ORIGIN_RULE, readOrigin } from '../../../src/local/records/unknownValues'
-import { BIND_STORES, finishOwnSave } from '../../../src/local/save/bind'
+import { BIND_STORES, recordOwnSave } from '../../../src/local/save/bind'
 import { stateBatch } from '../../../src/local/stateBatch'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import { StorageCore } from '../../../src/local/worker/core'
@@ -43,7 +43,7 @@ import { openPage, rows, workerCore } from './harness'
 // rows, only into a session whose origin `ORIGIN_RULE` calls `file`. The runs go through every
 // writer that rewrites a session row: a flush (`updated`), a journal apply, Try Again's move
 // (`copyIntoStorage`), the open's head and batches (`writeOpenHead`, `writeBatch`, `endImport`, an
-// abandon) and a Save's recording (`finishOwnSave`, `bind.ts`).
+// abandon) and a Save's recording (`recordOwnSave`, `bind.ts`).
 
 type Seen = { created: Map<string, unknown>; puts: number; violations: string[] }
 
@@ -135,17 +135,7 @@ test('a flush, a continuation, a fork and a Save’s recording keep every sessio
             )
             await page.flusher.flush({ strict: i % 2 === 0 })
         }
-        // finishOwnSave writes a Save's row and the session row (`bind.ts`).
-        const entry = {
-            sessionId: created.id,
-            seq: 5,
-            time: 5,
-            operation: SAVE_OPERATION,
-            snapshot: rootOf(state),
-            noteCount: 1,
-            revisionId: 'rev-1',
-            device: { id: 'device-1', label: 'Web (Chrome)' },
-        }
+        // recordOwnSave writes the chain record and no session (`bind.ts`).
         const unit = {
             docId: 'doc',
             revision: { id: 'rev-1', n: 1, ancestors: [] },
@@ -157,14 +147,20 @@ test('a flush, a continuation, a fork and a Save’s recording keep every sessio
                 options: { history: true, bgm: true },
             },
             marks: [],
+            from: {},
         }
         assert.equal(
             await page.core.write(
                 BIND_STORES,
-                (tx) => finishOwnSave(tx, created.chainId, entry, unit, 2_000_000, 'stored'),
+                (tx) =>
+                    recordOwnSave(tx, {
+                        chainId: created.chainId,
+                        writer: { sessionId: created.id },
+                        unit,
+                    }),
                 { durability: 'strict' },
             ),
-            true,
+            'recorded',
         )
         const next = await openPage(world, world.tab('b'))
         const read = await readOpen(next, created.id)
@@ -189,7 +185,7 @@ test('a flush, a continuation, a fork and a Save’s recording keep every sessio
         assert.equal(rows(world, 'entries').size >= 8, true)
     })
     assert.deepEqual(seen.violations, [])
-    assert.ok(seen.puts >= 6, `${seen.puts} session writes judged`)
+    assert.ok(seen.puts >= 5, `${seen.puts} session writes judged`)
 })
 
 test('a journal apply and a recovery session keep their origins', async () => {

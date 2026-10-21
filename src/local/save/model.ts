@@ -111,32 +111,83 @@ export const isLater = (row: ChainRow, cut: Cut) =>
 export const bindingHasHistory = (file: { entry?: { count: number } } | undefined) =>
     !!file?.entry && file.entry.count > 0
 
+/** A binding's cut as the carry test reads it (§1.6.11.6). */
+export type CountedCut = Cut & { count: number; notKept: number; inexact?: true }
+
 /**
- * The carry test (§1.6.11.6, D25): a write that isn't an append carries its base's
- * `completeFrom` only when the chain's rows up to the cut still number `entry.count`, and the rows
- * among them that are flagged (stored `kept: false`, or marked by this build) and whose state no
- * unflagged row up to the cut has still number `entry.notKept`. Both sets only grow, and at the
- * bind the first contains the rows the file lacked, so equal counts mean equal sets. A cut that
- * counts rows also needs its own row, the file's last (its write's `save`, or an open's last
- * copied row): a chain that lacks it holds less than the file, whatever the counts say, and
- * carrying would be an over-claim. A cut only ever under-claims.
+ * Whether the chain holds the cut's own row: `held` (kind `save`, `revisionId` the base's, at the
+ * cut's session and `seq`); `replaced` (another row is there); `absent` (the cut's session is
+ * stored without a row there); `sessionGone` (the session itself is gone).
  */
-export const carries = (
+export const ownRow = (
     rows: readonly ChainRow[],
-    entry: { sessionId: string; seq: number; startedAt: number; count: number; notKept: number },
+    cut: Cut,
+    base: { revisionId: string },
+    sessionStored: (sessionId: string) => boolean,
+): 'held' | 'absent' | 'replaced' | 'sessionGone' => {
+    const at = rows.find(
+        (row) => row.entry.sessionId === cut.sessionId && row.entry.seq === cut.seq,
+    )
+    if (at)
+        return at.entry.kind === 'save' && at.entry.revisionId === base.revisionId
+            ? 'held'
+            : 'replaced'
+    return sessionStored(cut.sessionId) ? 'absent' : 'sessionGone'
+}
+
+/** What the carry test finds (§1.6.11.6, I-18): `missing` is known loss, `unproven` is not. */
+export type CarryStatus = 'carries' | 'missing' | 'unproven'
+
+/**
+ * The carry test (§1.6.11.6, D25; invariants I-11 and I-18 of spec A): a write that isn't an
+ * append carries its base's `completeFrom` only when the cut isn't `inexact`, the chain holds the
+ * cut's own row (`ownRow`), its rows up to the cut still number `cut.count`, and the rows among
+ * them that are flagged (stored `kept: false`, or marked by this build) and whose state no
+ * unflagged row up to the cut has still number `cut.notKept`. Both sets only grow, and at the
+ * bind the first contains the rows the file lacked, so equal counts mean equal sets. A cut only
+ * ever under-claims.
+ *
+ * When it doesn't carry, steps are known missing (`missing`) only when the cut isn't `inexact` and
+ * the chain holds fewer of the file's rows than `count` (a missing own row counted as present), or
+ * holds the own row and exactly `count` rows and, given `lacks`, the write lacks the states of
+ * more of them than `notKept`. Anything else is `unproven`: a flag alone is never a known loss.
+ */
+export const carryStatus = (
+    rows: readonly ChainRow[],
+    cut: CountedCut,
+    base: { revisionId: string },
+    sessionStored: (sessionId: string) => boolean,
     flagged: (row: ChainRow) => boolean,
-) => {
-    const upto = rows.filter((row) => !isLater(row, entry))
+    /** The build only: whether the write lacks this row's state (not in the plan's roots). */
+    lacks?: (row: ChainRow) => boolean,
+): CarryStatus => {
+    const upto = rows.filter((row) => !isLater(row, cut))
+    const own = ownRow(upto, cut, base, sessionStored)
+    // An open of a file without history counts no row: nothing for the own row to be.
+    const ownHeld = cut.count === 0 || own === 'held'
     const kept = new Set(
         upto.filter((row) => !flagged(row)).map((row) => toHex(row.entry.snapshot)),
     )
     let lacking = 0
     for (const row of upto) if (flagged(row) && !kept.has(toHex(row.entry.snapshot))) lacking++
-    const own =
-        entry.count === 0 ||
-        upto.some((row) => row.entry.sessionId === entry.sessionId && row.entry.seq === entry.seq)
-    return own && upto.length === entry.count && lacking === entry.notKept
+    if (!cut.inexact && ownHeld && upto.length === cut.count && lacking === cut.notKept)
+        return 'carries'
+    if (cut.inexact) return 'unproven'
+    const held = upto.length + (own === 'absent' || own === 'sessionGone' ? 1 : 0)
+    if (held < cut.count) return 'missing'
+    if (held > cut.count) return 'unproven'
+    if (lacks && own === 'held' && upto.filter(lacks).length > cut.notKept) return 'missing'
+    return 'unproven'
 }
+
+/** `carryStatus(…) === 'carries'`. */
+export const carries = (
+    rows: readonly ChainRow[],
+    cut: CountedCut,
+    base: { revisionId: string },
+    sessionStored: (sessionId: string) => boolean,
+    flagged: (row: ChainRow) => boolean,
+) => carryStatus(rows, cut, base, sessionStored, flagged) === 'carries'
 
 /** The undo stack a write holds: its slots and absolute `base` and `index` (§1.6.11.5). */
 export type WriteStack = { base: number; slots: ReplaySlot[]; index: number }
