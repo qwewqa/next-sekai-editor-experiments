@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-    computed,
-    nextTick,
-    onBeforeUnmount,
-    ref,
-    shallowRef,
-    useId,
-    useTemplateRef,
-    watch,
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
 import type { DayKey } from '../../calendar/calendar'
 import { daysOf, type TimelinePiece } from '../../calendar/pieces'
 import { i18n } from '../../i18n'
@@ -17,7 +8,7 @@ import { checkHistoryCalendar, useHistoryCalendar } from './calendarClock'
 import CheckIcon from './CheckIcon.vue'
 import { historyFormat } from './historyFormat'
 import { dayLabel, stepsText } from './labels'
-import { here, readIndex, type Target } from './source'
+import { goToPieces, goToStamp, here, loadGoTo, type Target } from './source'
 import { hereRange, historyFilter, historyViewGeneration } from './state'
 import { session } from '../../history/session'
 
@@ -49,11 +40,17 @@ checkHistoryCalendar()
 const format = computed(() => historyFormat(calendar.value, settings.locale))
 const dayText = (day: DayKey) => dayLabel(day, calendar.value)
 
-const pieces = shallowRef<TimelinePiece[]>()
+// Go To's pieces are the source's: the index read for this list, with the Timeline's own entries
+// above what it covers. They are dropped only for another view (a zone, filter, range or session),
+// not while the index is read again for the same one.
+const pieces = goToPieces
 const failed = ref(false)
 let request = 0
+// Counts the openings of the list (it showing its rows), so a read again does not cancel one.
+let shown = 0
 let frame = 0
 let restored = false
+let shownFor: string | undefined
 const identity = () =>
     [
         historyViewGeneration(),
@@ -65,6 +62,7 @@ const identity = () =>
 const openedFor = identity()
 onBeforeUnmount(() => {
     request++
+    shown++
     cancelAnimationFrame(frame)
 })
 
@@ -73,14 +71,16 @@ const load = async () => {
     const context = identity()
     const filter = historyFilter.value
     const zone = calendar.value.zone
-    pieces.value = undefined
+    const view = `${context}|${zone}`
+    const keep = view === shownFor
+    if (!keep) shownFor = undefined
     failed.value = false
-    if (filter === 'here' && here.scanning) return
     try {
-        const index = await readIndex(filter, zone)
-        if (mark === request && context === identity()) pieces.value = index.pieces
+        await loadGoTo(filter, zone, keep)
+        if (mark === request && context === identity()) shownFor = view
     } catch {
-        if (mark === request && context === identity()) failed.value = true
+        // A list that is shown stays when it cannot be read again.
+        if (mark === request && context === identity() && !pieces.value) failed.value = true
     }
 }
 watch(
@@ -98,6 +98,9 @@ watch(
         immediate: true,
     },
 )
+// The entries the index covers moved: read it again, keeping the list. A watch of its own, as a
+// source list with a shallow ref calls back whenever any source is read again, equal or not.
+watch(goToStamp, load)
 
 const rangeOf = (piece: TimelinePiece) => format.value.clockRange(piece.earliest, piece.latest)
 const targetOf = (piece: TimelinePiece): Target => ({
@@ -169,19 +172,19 @@ const scrollToItem = (id: string | undefined, block: ScrollLogicalPosition) => {
 // Opens on the current row, scrolled into view once the list has its rows and its place. Now sits
 // at the top, so in a short popover it stays put and Show stays in view.
 watch(
-    () => pieces.value,
+    () => !!pieces.value,
     async (loaded) => {
+        const mark = ++shown
         if (!loaded) return
         const saved = !restored && openedFor === identity() ? props.restoreActiveId : undefined
         activeId.value =
             saved && items.value.some(({ id }) => id === saved) ? saved : (currentId.value ?? 'now')
         restored = true
-        const mark = request
         await nextTick()
-        if (mark !== request) return
+        if (mark !== shown) return
         cancelAnimationFrame(frame)
         frame = requestAnimationFrame(() => {
-            if (mark !== request) return
+            if (mark !== shown) return
             scrollToItem(activeId.value, activeId.value === 'now' ? 'nearest' : 'center')
             emit('ready')
         })
