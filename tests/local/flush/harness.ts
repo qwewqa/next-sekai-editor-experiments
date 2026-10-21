@@ -3,12 +3,18 @@ import { CHANNEL_NAME } from '../../../src/local/channel'
 import { runToEnd } from '../../../src/local/chunks'
 import { inflateStrict } from '../../../src/local/chunkVerify'
 import { DB_NAME, hashKey } from '../../../src/local/db'
-import { Flusher, type FlushDeps, type FlushReport } from '../../../src/local/flush'
+import {
+    Flusher,
+    type FlushDeps,
+    type FlushReport,
+    type FlushSession,
+} from '../../../src/local/flush'
 import type { FlushBatch, FlushResult } from '../../../src/local/flushWrite'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { keyText } from '../../../src/local/kv/keys'
 import { MemoryKv } from '../../../src/local/kv/memory'
 import { asError, type Key } from '../../../src/local/kv/types'
+import { sessionLock } from '../../../src/local/locks'
 import type { SnapshotRecords } from '../../../src/local/records/encode'
 import { nodeJsonFromRow, rootJsonFromRow, type NodesRow } from '../../../src/local/records/rows'
 import { decodeSnapshot } from '../../../src/local/records/snapshot'
@@ -72,6 +78,45 @@ const freezing = (flusher: Flusher) => {
     return flusher
 }
 
+type Start = { id: string; done?: () => void }
+
+/** The locks a flusher's page holds, by session: a test that loses one releases it from here. */
+export const heldLocks = new WeakMap<Flusher, Map<string, () => void>>()
+
+/**
+ * The page's hold on the sessions its flusher starts, as `storing.ts` takes them: the exclusive
+ * `nse-session:` lock of each session the flusher begins, continues or resumes, released when
+ * the session is replaced and nothing of it is pending, or with the tab. Granted at once, with no
+ * task, so a seeded run is the same as before. The lock-holder assertion (I-1) judges the flusher's
+ * transactions by it; a start that brings its own `done` keeps its own hold.
+ */
+const holdingSessions = (world: World, tab: Tab, flusher: Flusher) => {
+    const held = new Map<string, () => void>()
+    heldLocks.set(flusher, held)
+    const hold = (id: string) => {
+        const release = world.checks.lock
+            ? world.locks.holdNow(tab.actor, sessionLock(id))
+            : undefined
+        if (release) held.set(id, release)
+        return release
+    }
+    for (const name of ['begin', 'continueSession', 'resumeSession', 'resumeJournalled'] as const) {
+        const original = flusher[name] as unknown as (start: Start) => FlushSession
+        ;(flusher as unknown as Record<string, unknown>)[name] = (start: Start) => {
+            if (start.done) return original.call(flusher, start)
+            const release = hold(start.id)
+            return original.call(flusher, release ? { ...start, done: release } : start)
+        }
+    }
+    return flusher
+}
+
+/** The lock a fork's session takes, held until its `done`, as `storing.ts` does. */
+const forkLock = (world: World, tab: Tab) => (id: string) => {
+    const release = world.checks.lock ? world.locks.holdNow(tab.actor, sessionLock(id)) : undefined
+    return { ready: Promise.resolve(), done: release ?? (() => undefined) }
+}
+
 /** A tab with its worker started and a flusher posting to it. */
 export const openPage = async (
     world: World,
@@ -95,6 +140,7 @@ export const openPage = async (
                 nativeOperation({ id: 'nse.continue', data: { fromTime } }, 'Continued'),
             now: () => (clock += 10),
             newId: testId,
+            lockSession: forkLock(world, tab),
             transport: async (batch) => {
                 batches.push(batch)
                 const result = await tab.run(() => handlers.flush(batch))
@@ -111,6 +157,8 @@ export const openPage = async (
             ...deps,
         }),
     )
+    holdingSessions(world, tab, flusher)
+    world.holes.watch(flusher)
     return { tab, core, handlers, flusher, batches, results, reports, errors }
 }
 
@@ -312,6 +360,7 @@ export const openSplitPage = async (
                 nativeOperation({ id: 'nse.continue', data: { fromTime } }, 'Continued'),
             now: timers.now,
             newId: testId,
+            lockSession: forkLock(world, page),
             transport: (batch, _transfer, current) =>
                 host.call(async (handlers) => {
                     batches.push(batch)
@@ -328,6 +377,8 @@ export const openSplitPage = async (
             ...options.flush,
         }),
     )
+    holdingSessions(world, page, flusher)
+    world.holes.watch(flusher)
     host.onRestart(() => {
         void flusher.restarted()
     })

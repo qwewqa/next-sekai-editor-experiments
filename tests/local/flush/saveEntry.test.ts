@@ -7,7 +7,7 @@ import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { BIND_STORES, finishOwnSave, type OwnSaveBelow } from '../../../src/local/save/bind'
 import type { EntryRow } from '../../../src/local/save/cut'
 import { carries } from '../../../src/local/save/model'
-import { checkStored } from '../../../src/local/testing/invariants'
+import { checkStored, checkStrict } from '../../../src/local/testing/invariants'
 import { replay } from '../../../src/local/timeline'
 import { startupHandlers } from '../../../src/local/worker/startupHandlers'
 import { readTimelineIndex } from '../../../src/local/worker/timelineHandlers'
@@ -28,6 +28,7 @@ import { openPage, rows, testId, type Page } from './harness'
 import {
     createCheckedWorld as createWorld,
     expectViolations,
+    pin,
     checkedTest as test,
 } from './sessionCheck'
 
@@ -57,10 +58,33 @@ const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.has
 
 // Violations the checker finds in a state a test builds, as evidence for architecture review A:
 // AR-2 (a late row stamped later than the rows above it), AR-3 (the net removes the stored stack),
-// and the first test's hand-made writer, which ignores the order on purpose.
-const LATE_TIME = /row 4 \(time \d+\) is later than row 5 \(time \d+\)/
-const WRITER_TIME = /row 3 \(time \d+\) is later than row 4 \(time 5\)/
-const NET_STACK = /its stored stack is missing/
+// the same rows seen by the transition check (created at or below `lastSeq`, I-2), and the first
+// test's hand-made writer, which ignores the order on purpose. Each is a pin: A2 clears it.
+const LATE_TIME = pin(
+    /row 4 \(time \d+\) is later than row 5 \(time \d+\)/,
+    'A2',
+    'AR-2: keptSave stores a row below lastSeq under a later stamp',
+)
+const WRITER_TIME = pin(
+    /row 3 \(time \d+\) is later than row 4 \(time 5\)/,
+    'A2',
+    'AR-2: a writer that ignores the order, then the net',
+)
+const NET_STACK = pin(
+    /its stored stack is missing/,
+    'A2',
+    'AR-3: the net (behind) removes the stored stack',
+)
+const BELOW_LAST_SEQ = pin(
+    /rows [\d, ]+ of session \S+ were created at or below its lastSeq/,
+    'A2',
+    'I-2: keptSave and the net store rows under lastSeq',
+)
+const LAST_SEQ_HIGH = pin(
+    /has lastSeq \d+ after creating rows up to \d+/,
+    'A2',
+    'I-2: the same rows leave lastSeq above the highest created',
+)
 
 const DEVICE = { id: 'device-1', label: 'Web (Chrome)' }
 
@@ -601,7 +625,7 @@ test('our own completed Save of a session another tab may hold never passes its 
 })
 
 test('a flush stores pending entries a write put `lastSeq` past, never skipping them', async () => {
-    expectViolations(WRITER_TIME, NET_STACK)
+    expectViolations(WRITER_TIME, NET_STACK, BELOW_LAST_SEQ, LAST_SEQ_HIGH)
     const world = createWorld({ seed: 17 })
     const page = await openPage(world, world.tab('a'))
     const first = stateOf(goldenChart())
@@ -652,9 +676,9 @@ test('a flush stores pending entries a write put `lastSeq` past, never skipping 
     assert.equal(session.pending.length, 0)
 })
 
-test('our own completed Save kept while a batch past its `seq` is in flight is stored, never acknowledged unsent', async () => {
-    expectViolations(LATE_TIME, NET_STACK)
-    const world = createWorld({ seed: 18 })
+/** A kept Save stored below lastSeq while a batch past its seq is in flight (AR-2, AR-3). */
+const keptWhileInFlight = async (seed: number) => {
+    const world = createWorld({ seed })
     let stall = false
     let release!: () => void
     const stalled = new Promise<void>((resolve) => (release = resolve))
@@ -695,6 +719,12 @@ test('our own completed Save kept while a batch past its `seq` is in flight is s
     await ended
     await kept
     await page.flusher.flush({ strict: true })
+    return { world, page, session }
+}
+
+test('our own completed Save kept while a batch past its `seq` is in flight is stored, never acknowledged unsent', async () => {
+    expectViolations(LATE_TIME, NET_STACK, BELOW_LAST_SEQ, LAST_SEQ_HIGH)
+    const { world, page, session } = await keptWhileInFlight(18)
     assert.deepEqual(page.errors, [])
     assert.deepEqual(
         page.batches.map((batch) => batch.entries.map((entry) => entry.seq)),
@@ -713,7 +743,7 @@ test('our own completed Save kept while a batch past its `seq` is in flight is s
 })
 
 test('our own completed Save stored below `lastSeq` alone leaves the head’s summary (LS3-1)', async () => {
-    expectViolations(LATE_TIME, NET_STACK)
+    expectViolations(LATE_TIME, NET_STACK, BELOW_LAST_SEQ, LAST_SEQ_HIGH)
     const world = createWorld({ seed: 20 })
     let stall = false
     let release!: () => void
@@ -871,12 +901,12 @@ const diedMidSave = async (seed: number, journal: boolean) => {
         { kind: 'edit', step: editStep(futureFixtureOperation('Moved notes')) },
         widenBy(b, 1),
     )
+    if (journal) assert.equal(page.writer.write(), true)
+    page.tab.kill()
     if (journal) {
-        assert.equal(page.writer.write(), true)
         const { outcomes } = await replayAll(world, page.storage)
         assert.equal(outcomes[0]?.kind, 'applied')
     }
-    page.tab.kill()
     return { world, session, b, reloaded: await openPage(world, world.tab('reload')) }
 }
 
@@ -1013,33 +1043,74 @@ const recognisedLate = async (seed: number) => {
 
 const A2 = { todo: 'A2: one writer of a session’s rows' }
 
+/**
+ * AR-1's sequence: S stored through 2, a Save reserving 3 whose tab dies before the binding, a
+ * later visit continuing S as C (parent S at 2) and storing rows, then that visit recognising the
+ * Save as its own.
+ */
+const recognisedInLaterVisit = async (seed: number) => {
+    const world = createWorld({ seed })
+    const first = await openPage(world, world.tab('first'))
+    const a = stateOf(goldenChart())
+    const session = begin(first, a)
+    const b = editNote(first, a)
+    await first.flusher.flush()
+    assert.equal(first.flusher.reserveSave()!.seq, 3)
+    first.tab.kill()
+    // Visit 2 continues S as C, and C stores its first rows.
+    const next = await openPage(world, world.tab('next'))
+    const opened = await readOpen(next, session.id)
+    const child = continueIn(next, opened)
+    editNote(next, b)
+    await next.flusher.flush({ strict: true })
+    assert.equal(rows(world, 'sessions').get(child.id)?.parent !== undefined, true)
+    // The next Save recognises the file as our own: its `save` at S's 3, with the cut as the file
+    // holds it (init, edit, save).
+    const save = ownSave(next, session.id, session.chainId, 3, b, 3)
+    assert.equal(await save.record(), true)
+    return { world, session }
+}
+
+test('AR-1 today: a Save recognised in a later visit writes the parent past the branch point, outside its lock', async () => {
+    expectViolations(
+        pin(
+            /lock: rows 3 of session \S+ were created while the page did not hold nse-session:/,
+            'A2',
+            'AR-1, I-1: finishOwnSave writes the parent from a page that holds only the continuation',
+        ),
+        pin(
+            /no longer its chain's head, yet rows 3 were created in it/,
+            'A2',
+            'AR-1, I-5: the parent is written after the head moved to the continuation',
+        ),
+        pin(
+            /session \S+, no longer its chain's head, changed lastSeq, updatedAt, entryCount/,
+            'A2',
+            'AR-1, I-5: the parent’s summary changes after the head moved',
+        ),
+        pin(
+            /parent \S+ holds rows 3 past its uptoSeq 2/,
+            'A2',
+            'AR-1, I-5: the continuation’s branch point has a row above it',
+        ),
+        pin(
+            /parent \S+ has lastSeq 3, not its uptoSeq 2/,
+            'A2',
+            'AR-1, I-5: the parent’s lastSeq moved past the branch point',
+        ),
+    )
+    const { world, session } = await recognisedInLaterVisit(41)
+    assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 3)
+})
+
 describe('A2 acceptance (expected to fail before A2)', () => {
     test(
         'AR-1: a Save recognised in a later visit writes nothing into the parent past the continuation’s branch point',
         async () => {
-            const world = createWorld({ seed: 41 })
-            // Visit 1: S is stored through 2. A Save reserves 3, writes its file, and the tab dies
-            // before the binding is recorded.
-            const first = await openPage(world, world.tab('first'))
-            const a = stateOf(goldenChart())
-            const session = begin(first, a)
-            const b = editNote(first, a)
-            await first.flusher.flush()
-            assert.equal(first.flusher.reserveSave()!.seq, 3)
-            first.tab.kill()
-            // Visit 2 continues S as C (parent S at 2), and C stores its first rows.
-            const next = await openPage(world, world.tab('next'))
-            const opened = await readOpen(next, session.id)
-            const child = continueIn(next, opened)
-            editNote(next, b)
-            await next.flusher.flush({ strict: true })
-            assert.equal(rows(world, 'sessions').get(child.id)?.parent !== undefined, true)
-            // The next Save recognises the file as our own: its `save` at S's 3, with the cut as the
-            // file holds it (init, edit, save).
-            const save = ownSave(next, session.id, session.chainId, 3, b, 3)
-            assert.equal(await save.record(), true)
+            const { world, session } = await recognisedInLaterVisit(41)
             // The binding is recorded, but S, which C branched from at 2, is not written past it.
             assert.deepEqual(checkStored(world.memory), [])
+            assert.deepEqual(world.violations, [])
             const chain = rows(world, 'chains').get(session.chainId)!
             assert.equal((chain.revision as { id: string }).id, 'rev-1')
             assert.deepEqual(
@@ -1052,6 +1123,15 @@ describe('A2 acceptance (expected to fail before A2)', () => {
                 ],
             )
             assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
+        },
+        A2,
+    )
+
+    test(
+        'AR-3: a Save recognised below lastSeq leaves every session with rows its stored stack',
+        async () => {
+            const { world } = await keptWhileInFlight(45)
+            assert.deepEqual(checkStrict(world.memory, { hole: world.holes.has }), [])
         },
         A2,
     )
@@ -1097,4 +1177,19 @@ describe('A2 acceptance (expected to fail before A2)', () => {
         },
         A2,
     )
+})
+
+test('AR-2 today: a Save recognised late is stored under a later time than the rows above it', async () => {
+    expectViolations(
+        pin(
+            /row 3 \(time \d+\) is later than row 4 \(time \d+\)/,
+            'A2',
+            'AR-2: the late Save is stamped after the rows above it',
+        ),
+        BELOW_LAST_SEQ,
+        LAST_SEQ_HIGH,
+    )
+    const { world } = await recognisedLate(44)
+    const times = [...rows(world, 'entries').values()].map((row) => row.time as number)
+    assert.ok(times[2]! > times[3]!, 'row 3 is stamped later than row 4')
 })

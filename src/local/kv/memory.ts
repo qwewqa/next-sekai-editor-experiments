@@ -1,5 +1,5 @@
 import type { Actor, Scheduler } from '../scheduler'
-import { compareKeys, inRange, keyAtPath, normalizeKey, requireKey, toRange } from './keys'
+import { compareKeys, inRange, keyAtPath, keyText, normalizeKey, requireKey, toRange } from './keys'
 import { runTransaction } from './run'
 import {
     domError,
@@ -7,6 +7,7 @@ import {
     isBlobRefusal,
     KeyRange,
     type CursorEntry,
+    type Durability,
     type EntriesOptions,
     type Key,
     type KeyPath,
@@ -17,6 +18,7 @@ import {
     type KvUpgrade,
     type OpenOptions,
     type Query,
+    type TransactionOptions,
     type TxMode,
 } from './types'
 
@@ -26,7 +28,7 @@ import {
 // and read; versions, versionchange, blocked and the connection queue follow IndexedDB. Every
 // delivery is a scheduler task of the connection's actor, so a killed actor's transactions abort.
 
-type Row = { key: Key; value: unknown }
+export type Row = { key: Key; value: unknown }
 
 class StoreData {
     rows: Row[] = []
@@ -125,6 +127,11 @@ class Transaction {
     outstanding = 0
     private readonly queued: Request[] = []
     private readonly undo: (() => void)[] = []
+    /** What the transaction wrote, for the observer and the commit log (test hooks). */
+    readonly puts = new Map<string, WrittenRow>()
+    readonly deletes: DeletedRows[] = []
+    /** What `MemoryObserver.created` returned for it. */
+    context: unknown
     private resolveDone!: () => void
     private rejectDone!: (error: Error) => void
     readonly done = new Promise<void>((resolve, reject) => {
@@ -137,6 +144,7 @@ class Transaction {
         readonly connection: Connection,
         readonly scope: readonly string[],
         readonly mode: TxMode | 'versionchange',
+        readonly durability: Durability = 'default',
     ) {}
 
     get db() {
@@ -192,9 +200,17 @@ class Transaction {
         this.undo.push(undo)
     }
 
+    /** A put, keeping the row as it was before the transaction (the first put's `old`). */
+    recordPut(store: string, key: Key, old: unknown, value: unknown) {
+        const id = `${store}\0${keyText(key)}`
+        const written = this.puts.get(id)
+        if (written) written.value = value
+        else this.puts.set(id, { store, key, old, value })
+    }
+
     commit() {
         this.state = 'finished'
-        this.undo.length = 0
+        this.memory.committed(this, this.undo.splice(0))
         this.memory.finish(this)
         this.memory.scheduler.post(this.actor, this, () => {
             this.resolveDone()
@@ -288,6 +304,7 @@ const makeTx = (tx: Transaction): KvTx => {
             const row = { key: rowKey, value: copy }
             if (found) data.rows[index] = row
             else data.rows.splice(index, 0, row)
+            tx.recordPut(name, rowKey, old?.value, copy)
             tx.log(() => {
                 const at = data.find(rowKey)
                 if (old) data.rows[at.index] = old
@@ -386,10 +403,15 @@ const makeTx = (tx: Transaction): KvTx => {
             return tx.place(() => {
                 const before = data.rows
                 data.rows = before.filter((row) => !inRange(range, row.key))
-                if (data.rows.length !== before.length)
+                if (data.rows.length !== before.length) {
+                    tx.deletes.push({
+                        store: name,
+                        rows: before.filter((row) => inRange(range, row.key)),
+                    })
                     tx.log(() => {
                         data.rows = before
                     })
+                }
             }) as Promise<void>
         },
         index,
@@ -429,11 +451,61 @@ export type MemoryFaults = {
     put?: (store: string, value: unknown) => Error | undefined
 }
 
+/** A row a transaction put: its value before the transaction (none: it created the key). */
+export type WrittenRow = { store: string; key: Key; old: unknown; value: unknown }
+
+/** Rows a transaction removed from a store. */
+export type DeletedRows = { store: string; rows: Row[] }
+
+/** A committed read-write transaction, as the observer sees it (§1.6.1's test hooks). */
+export type CommitReport = {
+    readonly actor: Actor
+    readonly db: string
+    readonly stores: readonly string[]
+    /** `'default'` when the transaction was given no durability: it counts as relaxed. */
+    readonly durability: Durability
+    readonly puts: readonly WrittenRow[]
+    readonly deletes: readonly DeletedRows[]
+    /** What `created` returned when the transaction was created. */
+    readonly context: unknown
+    /** A row as stored now, after the commit; undefined when there is none. */
+    readonly current: (store: string, key: Key) => unknown
+    /** Every row of a store as stored now. */
+    readonly rows: (store: string) => readonly Row[]
+}
+
+/**
+ * Test hooks, inert unless one is registered. `created` runs when a read-write transaction is
+ * created, `committed` when it commits (never for an aborted one).
+ */
+export type MemoryObserver = {
+    created?: (info: {
+        actor: Actor
+        db: string
+        stores: readonly string[]
+        durability: Durability
+    }) => unknown
+    committed?: (report: CommitReport) => void
+}
+
+type LoggedCommit = {
+    readonly durability: Durability
+    readonly writes: boolean
+    readonly undo: (() => void)[]
+}
+
 /** A browser profile's databases, in memory. */
 export class MemoryKv {
     private readonly databases = new Map<string, Database>()
     private readonly touched = new Set<Transaction>()
+    private readonly observers = new Set<MemoryObserver>()
+    private readonly commitLog: LoggedCommit[] = []
     faults: MemoryFaults = {}
+    /**
+     * Keeps what each read-write commit would take to undo, for `loseRelaxed` and `loseCommits`.
+     * Off by default: a test that models a power loss sets it before the commits it may lose.
+     */
+    recordCommits = false
 
     constructor(readonly scheduler: Scheduler) {
         scheduler.onTaskEnd(() => {
@@ -494,6 +566,100 @@ export class MemoryKv {
         this.touched.add(tx)
     }
 
+    /** Registers test hooks; returns the function that removes them. */
+    observe(observer: MemoryObserver) {
+        this.observers.add(observer)
+        return () => {
+            this.observers.delete(observer)
+        }
+    }
+
+    /** How many commits a `loseRelaxed` could take: those since the last strict one. */
+    get relaxedCommits() {
+        let count = 0
+        for (let at = this.commitLog.length - 1; at >= 0; at--) {
+            const commit = this.commitLog[at]
+            if (!commit || commit.durability === 'strict') break
+            if (commit.writes) count++
+        }
+        return count
+    }
+
+    /** How many commits with writes are kept for `loseCommits`. */
+    get loggedCommits() {
+        return this.commitLog.filter((commit) => commit.writes).length
+    }
+
+    /**
+     * A power loss on Chromium or Firefox 126 and later, which honour `strict`: undoes the last
+     * `count` relaxed commits since the last strict one (a `'default'` commit is relaxed), and
+     * with them every later one is already gone, so commit order is kept. Returns how many it
+     * undid, and throws when fewer are relaxed. Kill every tab first: nothing may be in flight.
+     */
+    loseRelaxed(count: number) {
+        if (count > this.relaxedCommits)
+            throw new Error(`Only ${this.relaxedCommits} relaxed commits since the last strict one`)
+        return this.lose(count, true)
+    }
+
+    /**
+     * A power loss on Firefox before 126 (and WebKit, if it lacks `durability`), which ignores
+     * durability: undoes the last `count` commits whatever their durability, in commit order. It
+     * is paired with the journal writer as the page runs it there, `strictCommits: false`
+     * (`storing.ts`), so that no commit clears a journal; with the default writer a strict commit
+     * would clear the journal and the loss then undo that commit, which no browser in the gate
+     * does. Kill every tab first.
+     */
+    loseCommits(count: number) {
+        if (count > this.loggedCommits)
+            throw new Error(`Only ${this.loggedCommits} commits are kept to lose`)
+        return this.lose(count, false)
+    }
+
+    private lose(count: number, relaxedOnly: boolean) {
+        if (!this.recordCommits && count > 0)
+            throw new Error('Set recordCommits before the commits a power loss may undo')
+        for (const db of this.databases.values())
+            if (db.transactions.some((tx) => tx.state !== 'finished'))
+                throw new Error('Kill every tab before a power loss: a transaction is in flight')
+        let lost = 0
+        while (lost < count) {
+            const commit = this.commitLog.pop()
+            if (!commit) break
+            if (relaxedOnly && commit.durability === 'strict')
+                throw new Error('A strict commit is not undone by loseRelaxed')
+            if (!commit.writes) continue
+            for (const undo of commit.undo.reverse()) undo()
+            lost++
+        }
+        return lost
+    }
+
+    /** A transaction committed: the observers see it, and its undo is kept if asked. */
+    committed(tx: Transaction, undo: (() => void)[]) {
+        if (tx.mode !== 'readwrite') return
+        const writes = tx.puts.size > 0 || tx.deletes.length > 0
+        if (this.recordCommits) this.commitLog.push({ durability: tx.durability, writes, undo })
+        if (!this.observers.size) return
+        const report: CommitReport = {
+            actor: tx.actor,
+            db: tx.db.name,
+            stores: tx.scope,
+            durability: tx.durability,
+            puts: [...tx.puts.values()],
+            deletes: tx.deletes,
+            context: tx.context,
+            current: (store, key) => {
+                const data = tx.db.stores.get(store)
+                if (!data) return undefined
+                const found = data.find(key)
+                return found.found ? data.rows[found.index]?.value : undefined
+            },
+            rows: (store) => [...(tx.db.stores.get(store)?.rows ?? [])],
+        }
+        for (const observer of this.observers) observer.committed?.(report)
+    }
+
     finish(tx: Transaction) {
         const db = tx.db
         db.transactions = db.transactions.filter((other) => other !== tx)
@@ -552,8 +718,17 @@ export class MemoryKv {
         connection: Connection,
         scope: readonly string[],
         mode: TxMode | 'versionchange',
+        durability: Durability = 'default',
     ) {
-        const tx = new Transaction(this, connection, scope, mode)
+        const tx = new Transaction(this, connection, scope, mode, durability)
+        if (mode === 'readwrite')
+            for (const observer of this.observers)
+                tx.context = observer.created?.({
+                    actor: connection.actor,
+                    db: connection.db.name,
+                    stores: scope,
+                    durability,
+                })
         connection.db.transactions.push(tx)
         this.touch(tx)
         // Outside a task (the worker's in-memory fallback), a task still ends its activity.
@@ -576,6 +751,7 @@ export class MemoryKv {
                 stores: readonly string[],
                 mode: TxMode,
                 fn: (tx: KvTx) => Promise<T>,
+                options?: TransactionOptions,
             ): Promise<T> => {
                 if (connection.closePending || connection.closed)
                     return Promise.reject(domError('InvalidStateError', 'The connection is closed'))
@@ -588,7 +764,12 @@ export class MemoryKv {
                     return Promise.reject(
                         new Error('Start transactions inside a scheduler task (a tab’s run)'),
                     )
-                const tx = this.createTransaction(connection, [...new Set(stores)], mode)
+                const tx = this.createTransaction(
+                    connection,
+                    [...new Set(stores)],
+                    mode,
+                    options?.durability,
+                )
                 const kvTx = makeTx(tx)
                 const fault = this.faults.request?.(stores, mode)
                 if (fault) {
@@ -725,6 +906,8 @@ export class MemoryKv {
     private runUpgrade(db: Database, request: OpenRequest, version: number) {
         const oldVersion = db.version
         const oldStores = db.stores
+        // Commits before an upgrade can't be undone across it.
+        this.commitLog.length = 0
         db.stores = new Map([...oldStores].map(([name, data]) => [name, data.copy()]))
         db.version = version
         const connection = new Connection(this, db, request.actor)

@@ -114,6 +114,7 @@ export const openSplitJournalPage = async (
     world: World,
     setup: WorkerSetup & { name?: string } = {},
     storage = new MemoryStorage(),
+    writer: Partial<JournalWriterDeps> = {},
 ): Promise<SplitJournalPage> => {
     const ref: { host?: WorkerHost; writer?: JournalWriter; sync?: { fails: number } } = {}
     const page = await openSplitPage(world, {
@@ -139,6 +140,7 @@ export const openSplitJournalPage = async (
         storage,
         () => page.flusher,
         () => page.host.core.status.reason === 'full',
+        writer,
     )
     ref.writer = parts.writer
     ref.sync = parts.sync

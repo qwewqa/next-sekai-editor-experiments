@@ -280,8 +280,10 @@ test('a memo learned on another store is checked again, whatever the epoch', asy
     // The other store never held entry 1, which the page believed stored: its session starts at
     // lastSeq 2 with the one row (a fault the test injects; evidence for architecture review A0).
     const found = checkStored(second)
-    assert.equal(found.length, 1)
-    assert.match(found[0]!, /rows 1 up to lastSeq 2 are neither stored/)
+    // Replay names it too (A0+ replays every session): the rows begin at an edit.
+    assert.equal(found.length, 2)
+    assert.match(found[0]!, /a session cannot begin with it/)
+    assert.match(found[1]!, /rows 1 up to lastSeq 2 are neither stored/)
 })
 
 test('a worker restart in memory mode keeps the history the old worker acknowledged', async () => {

@@ -384,6 +384,7 @@ const hash = (n: number) => new Uint8Array(16).fill(n)
 
 test('a write killed at any await leaves all of it or none, and its lock released', async () => {
     await crashSweep({
+        checks: false,
         seeds: [undefined, ...CI_SEEDS.slice(0, 2)],
         setup: async (world) => {
             const tab = world.tab('setup')
@@ -414,7 +415,7 @@ test('a write killed at any await leaves all of it or none, and its lock release
             await putRow(tab, store, 'after')
         },
         check: ({ world }) => {
-            assert.deepEqual(checkStored(world.memory), [])
+            assert.deepEqual(checkStored(world.memory, { replay: false }), [])
             const chains = world.memory.dump(DB_NAME).get('chains') ?? []
             const entries = world.memory.dump(DB_NAME).get('entries') ?? []
             assert.equal(chains.length, entries.length)

@@ -528,8 +528,9 @@ export type SessionRows = {
 
 /**
  * How each stored stack differs from replay of its session's entries (§1.3.9), as messages: a
- * continuation's replay starts from its parent's stack at `uptoSeq`. Sessions without a stored
- * stack are skipped.
+ * continuation's replay starts from its parent's stack at `uptoSeq`. A session without a stored
+ * stack is still replayed, so a `save` row that does not land (I-8) is reported whether or not a
+ * stack was stored; one whose import has not ended has rows to come and is skipped.
  */
 export const stackViolations = (sessions: ReadonlyMap<string, SessionRows>): string[] => {
     const replayed = new Map<string, ReplayedStack | undefined>()
@@ -555,10 +556,10 @@ export const stackViolations = (sessions: ReadonlyMap<string, SessionRows>): str
     const problems: string[] = []
     for (const [id, rows] of sessions) {
         const window = rows.session.stack as StackWindow | undefined
-        if (!window) continue
+        if (rows.session.importPending === true) continue
         try {
             const expected = replayOf(id)
-            if (!expected) continue
+            if (!expected || !window) continue
             const slots = storedSlots(window, (block) => rows.blocks.get(block))
             for (const problem of stackMismatches({ window, slots }, expected))
                 problems.push(`session ${id}: ${problem}`)

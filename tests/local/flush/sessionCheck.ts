@@ -9,13 +9,27 @@ import { createWorld as create, type World } from '../../../src/local/testing/wo
 // (`checkStored`, with the session invariants of `sessionViolations`) over each world its body
 // made when the body ends. A test that builds a state today's writers or a hand-made writer leave
 // violating the invariants calls `expectViolations` with them, as patterns: it then fails if they
-// change, so the evidence the review cites stays exact until the fix removes it.
+// change, so the evidence the review cites stays exact until the fix removes it. A0+ adds what a
+// commit hook sees: the world's transition rules and, in a checked world, the lock-holder
+// assertion (I-1), and the holes the flushers made (`world.holes`, R2-2 and R3-7).
 
 let worlds: World[] = []
 let expected: readonly RegExp[] = []
 
+/** The known breaches pinned today: each names the increment whose acceptance deletes the pin. */
+export const PINS: { pattern: RegExp; clearedBy: string; why: string }[] = []
+
+/**
+ * A violation today's code is known to make, for `expectViolations`. It names the increment that
+ * clears it (AP, A2, A4 or A6): that increment's acceptance deletes the pin (design A §7).
+ */
+export const pin = (pattern: RegExp, clearedBy: string, why: string) => {
+    PINS.push({ pattern, clearedBy, why })
+    return pattern
+}
+
 export const createCheckedWorld = (options: Parameters<typeof create>[0] = {}) => {
-    const world = create(options)
+    const world = create({ checks: { lock: true }, ...options })
     worlds.push(world)
     return world
 }
@@ -23,8 +37,9 @@ export const createCheckedWorld = (options: Parameters<typeof create>[0] = {}) =
 /** The violations of every world the running test made. */
 export const worldViolations = () =>
     worlds.flatMap((world) => [
-        ...checkStored(world.memory),
+        ...checkStored(world.memory, { hole: world.holes.has }),
         ...missingStackViolations(world.memory.dump(DB_NAME)),
+        ...world.violations,
     ])
 
 /** Declares the violations the running test expects: one pattern each, all of which must occur. */
