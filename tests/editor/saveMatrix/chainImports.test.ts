@@ -10,7 +10,15 @@ const { startImport } = await import('../../../src/local/open/importLoop')
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const slot = () => ({ name: 'coconut.nxsp', cancel: new AbortController() })
+const dialogs = await import('../../../src/editor/save/dialogs')
+
+const slot = () => ({
+    name: 'coconut.nxsp',
+    ui: {
+        preparing: (name: string, kind?: 'save' | 'export') => dialogs.saveUi.preparing(name, kind),
+    },
+    cancel: new AbortController(),
+})
 
 test('an import of another session of the chain, running here, is waited for in "Preparing…"', async () => {
     const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })

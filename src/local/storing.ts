@@ -13,6 +13,7 @@ import {
 } from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
+import { setSaveEnvironment } from '../editor/save/binding'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
 import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
 import { withSwitchRequest } from '../editor/switchRequest'
@@ -463,6 +464,13 @@ export const startStoring = (
     // takeovers show here as they happen (R6).
     if (!safe) void afterReplay.then(() => applyRevocations(worker))
     watchBindings(worker, () => flusher)
+    // What the Save flows run in, read at each call: a fork or an open changes the session.
+    setSaveEnvironment(() => {
+        const session = flusher?.session
+        return flusher && session
+            ? { worker, flusher, session, chainId: session.chainId }
+            : undefined
+    })
     // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
     setUnregisteredTargetCheck(async (target) =>

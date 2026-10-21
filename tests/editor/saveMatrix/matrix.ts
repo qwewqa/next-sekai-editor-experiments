@@ -299,7 +299,7 @@ export const PATHS: PathDef[] = [
         picker: false,
         writes: false,
         lock: 'none',
-        importWait: false,
+        importWait: true,
         build: true,
         run: () => flow.fileDownloadAgain(),
     },
@@ -674,16 +674,40 @@ export const FAULTS: FaultDef[] = [
         id: 'reservation-held',
         exit: 'another Save holds the session’s reservation',
         applies: (path, p) =>
-            ['save-as', 'export', 'write-back'].includes(path.id) &&
+            ['save-as', 'export', 'write-back', 'download-again'].includes(path.id) &&
             single(p) &&
             ['own', 'dismiss'].includes(last(p)),
-        arm: (w) => {
+        arm: (w, path) => {
             const session = w.session
             session.reserved = { session, seq: 99, wall: 0 }
+            const cleanup = () => {
+                session.reserved = undefined
+            }
+            // A path that reserves outside a hold waits for it, in "Preparing…": the other flow
+            // ends its reservation once that dialog shows, and the Save goes on.
+            if (path.id !== 'download-again') return { cleanup }
+            const driver = (async () => {
+                await dialogOpen(w)
+                cleanup()
+            })()
+            return { driver, cleanup, effective: () => w.preparing.length > 0 }
+        },
+    },
+    {
+        id: 'commit-forks',
+        exit: 'the first commit forks the session',
+        applies: (path, p) => ['write-back', 'download-again'].includes(path.id) && single(p),
+        arm: (w) => {
+            // What a continuation's first commit can do: another session is open afterwards.
+            const fork = { ...w.session, id: 'session-fork' } as typeof w.session
+            w.flusher.flush = () => {
+                w.flusher.session = fork
+                return Promise.resolve()
+            }
+            // Nothing is written; the Save dialog for the session now open shows (and is cancelled).
             return {
-                cleanup: () => {
-                    session.reserved = undefined
-                },
+                facts: { cancelled: true },
+                effective: () => w.dialogs.some((dialog) => dialog.kind === 'saveDialog'),
             }
         },
     },
