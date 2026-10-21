@@ -16,13 +16,15 @@ const dialog = (page: Page) => page.locator('dialog[open]')
 
 // Long enough to catch a gap, short of the half second after which "Loading…" belongs.
 const WINDOW_MS = 350
+// "Loading…" shows after half a second of loading (AssetSources.vue); frames before this are judged.
+const LINE_FREE_MS = 480
 
 type Source = 'default' | 'builtin'
 const picks: { type: 'skin' | 'particle'; from: Source; to: Source }[] = []
 for (const type of ['skin', 'particle'] as const)
     picks.push({ type, from: 'builtin', to: 'default' }, { type, from: 'default', to: 'builtin' })
 
-type Frame = { top: number; line: boolean; checked: boolean }
+type Frame = { at: number; top: number; line: boolean; checked: boolean }
 
 for (const { type, from, to } of picks)
     test(`choosing ${to} for the ${type} leaves no gap while it loads (from ${from})`, async ({
@@ -86,16 +88,14 @@ for (const { type, from, to } of picks)
                     const frames: Frame[] = []
                     const start = performance.now()
                     const tick = () => {
+                        const at = performance.now() - start
                         frames.push({
+                            at,
                             top: topOf(other),
                             line: !!document.querySelector('[data-asset-loading]'),
                             checked: row(to).querySelector('input')!.checked,
                         })
-                        // At least three frames as well as the window, so a late first frame
-                        // (WebKit after the click) still samples the load; capped at 5 s.
-                        const elapsed = performance.now() - start
-                        if ((elapsed < windowMs || frames.length < 3) && elapsed < 5000)
-                            requestAnimationFrame(tick)
+                        if (at < windowMs) requestAnimationFrame(tick)
                         else resolve({ before, frames })
                     }
                     row(to).click()
@@ -106,10 +106,14 @@ for (const { type, from, to } of picks)
 
         // The choice was made, and the asset was still being fetched all that time.
         expect(held).toBeGreaterThan(0)
-        expect(frames.length).toBeGreaterThan(2)
         expect(frames.at(-1)!.checked).toBe(true)
-        // The other row never moved, and no line was added under the chosen one.
-        for (const frame of frames) expect(frame).toMatchObject({ top: before, line: false })
+        // Before "Loading…" belongs (half a second in), the other row never moved and no line was
+        // added under the chosen one. A slow browser's first frame can land late (WebKit in CI), so
+        // only the frames that fall before then are judged, and there must be one.
+        const early = frames.filter(({ at }) => at < LINE_FREE_MS)
+        expect(early.length).toBeGreaterThan(0)
+        for (const { top, line } of early)
+            expect({ top, line }).toEqual({ top: before, line: false })
 
         release()
         await expect(dialog(page).locator(`[data-asset-row="${to}"] input`)).toBeChecked()
