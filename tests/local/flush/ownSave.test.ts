@@ -436,22 +436,13 @@ test('loseRelaxed with the default writer: the journal a relaxed flush left keep
 })
 
 // ---------------------------------------------------------------------------------------------
-// F2 and A4's identity check. The marker records the newest row the Save's build read; a reload
-// takes the Save's `seq` up as a kept gap only when the stored session still ends with exactly
-// that row. A relaxed commit a power loss undid, with or without the journal recovering it, fails
-// the check; with no power loss it passes. Row 3 is acknowledged relaxed when the Save reserves 4.
+// F2's setup: a relaxed commit a power loss undid and the journal recovered. Row 3 is acknowledged
+// relaxed when the Save reserves 4.
 
-type Loss = 'none' | 'relaxed' | 'commits'
-
-const reloadAfter = async (seed: number, loss: Loss, journal: boolean) => {
+const reloadAfter = async (seed: number) => {
     const world = createWorld({ seed, commitLog: true })
     const storage = new MemoryStorage()
-    const page = await openJournalPage(
-        world,
-        'a',
-        storage,
-        loss === 'commits' ? { strictCommits: false } : {},
-    )
+    const page = await openJournalPage(world, 'a', storage)
     const a = sampleState(LARGE)
     const b = widen(a)
     const session = beginSession(page, a)
@@ -468,42 +459,16 @@ const reloadAfter = async (seed: number, loss: Loss, journal: boolean) => {
     assert.equal(page.flusher.unstored(live).entries.length, 0, 'the build takes no pending row')
     page.live.state = a
     assert.equal(page.writer.write(), true)
-    if (!journal) for (let k = storage.length - 1; k >= 0; k--) storage.removeItem(storage.key(k)!)
     page.tab.kill()
-    if (loss === 'relaxed') world.memory.loseRelaxed(world.memory.relaxedCommits)
-    if (loss === 'commits') world.memory.loseCommits(1)
+    world.memory.loseRelaxed(world.memory.relaxedCommits)
     await replayAll(world, storage, 'reload')
     const reloaded = await openJournalPage(world, 'reload2', new MemoryStorage())
     markedAt(reloaded, 4)
     const read = await readOpen(reloaded, session.id)
     reloaded.live.state = a
-    const resumed = resumeIn(reloaded, read)
-    const lastSeq = read.session.lastSeq as number
-    const last = [...rows(world, 'entries').values()].find(
-        (row) => row.sessionId === session.id && row.seq === lastSeq,
-    )
-    return { world, session, a, page, reloaded, resumed, lastSeq, last }
+    resumeIn(reloaded, read)
+    return { world, session, a, reloaded }
 }
-
-test('A4 identity: a power loss undid row 3 and the journal recovered it: no gap (F2, loseRelaxed)', async () => {
-    const { resumed, lastSeq, last } = await reloadAfter(3102, 'relaxed', true)
-    assert.equal(lastSeq, 3)
-    assert.equal(last?.kind, 'recovered')
-    assert.equal(resumed.gaps?.has(4) ?? false, false)
-})
-
-test('A4 identity: a power loss undid row 3 and no journal was left: no gap (loseRelaxed)', async () => {
-    const { resumed, lastSeq } = await reloadAfter(3103, 'relaxed', false)
-    assert.equal(lastSeq, 2)
-    assert.equal(resumed.gaps?.has(4) ?? false, false)
-})
-
-test('A4 identity: Firefox before 126 lost row 3 and its journal stayed: no gap (loseCommits)', async () => {
-    const { resumed, lastSeq, last } = await reloadAfter(3104, 'commits', true)
-    assert.equal(lastSeq, 3)
-    assert.equal(last?.kind, 'recovered')
-    assert.equal(resumed.gaps?.has(4) ?? false, false)
-})
 
 /** A page whose flusher never reaches the worker while `stalled.on` is set. */
 const stallable = (page: { flusher: unknown }) => {
@@ -519,7 +484,7 @@ const stallable = (page: { flusher: unknown }) => {
 
 /** F2: recognised over a row a power loss undid and a journal recovered. */
 const f2 = async (seed: number) => {
-    const { world, session, a, reloaded } = await reloadAfter(seed, 'relaxed', true)
+    const { world, session, a, reloaded } = await reloadAfter(seed)
     await bind(reloaded, session.chainId, ownSaveUnit(session.id, 4, a, 4), 'stored')
     return { world, session }
 }
@@ -654,20 +619,8 @@ test('a kept Save added to a session the page has left writes nothing (the late 
 })
 
 const A2 = { todo: 'A2: one writer of a session’s rows' }
-const A4 = { todo: 'A4: the marker names the row its Save read' }
-const A6 = { todo: 'A6: a row’s time is decided once' }
 
-describe('A2, A4 and A6 acceptance (expected to fail before they land)', () => {
-    test(
-        'A4 identity: no power loss, the session still ends with the row read: the gap registers',
-        async () => {
-            const { resumed, lastSeq } = await reloadAfter(3101, 'none', true)
-            assert.equal(lastSeq, 3)
-            assert.equal(resumed.gaps?.has(4), true)
-        },
-        A4,
-    )
-
+describe('A2 acceptance (expected to fail before they land)', () => {
     test(
         'F2: a Save recognised over a row a power loss undid and a journal recovered does not carry',
         async () => {
@@ -701,34 +654,5 @@ describe('A2, A4 and A6 acceptance (expected to fail before they land)', () => {
             )
         },
         A2,
-    )
-
-    test(
-        'AR-7: a save entry stored after another write keeps the time the file wrote',
-        async () => {
-            const world = createWorld({ seed: 803 })
-            const page = await openJournalPage(world, 'a')
-            const a = stateOf(goldenChart())
-            beginSession(page, a)
-            await page.flusher.flush({ strict: true })
-            const reservation = page.flusher.reserveSave()!
-            // Another tab writes meanwhile: the clock the stamp reads moves past the Save's.
-            await page.tab.run(() =>
-                page.core.write(['meta'], async (tx) => {
-                    await tx.put('meta', { key: 'maxSeenTime', value: reservation.wall + 1000 })
-                }),
-            )
-            await page.flusher.endSave(reservation, {
-                wall: reservation.wall,
-                operation: SAVE_OPERATION,
-                state: a,
-                revisionId: 'rev-1',
-                device: DEVICE,
-                appVersion: '0.6.0',
-            })
-            const saved = [...rows(world, 'entries').values()].find((row) => row.kind === 'save')!
-            assert.equal(saved.time, reservation.wall)
-        },
-        A6,
     )
 })

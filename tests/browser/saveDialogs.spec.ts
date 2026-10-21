@@ -650,7 +650,8 @@ test.describe('the conflict dialog', () => {
             input: {
                 name: 'coconut.nxsp',
                 disk: disk.saved,
-                replaceDisabled: 'It holds earlier Timeline steps that are no longer stored in this browser.',
+                replaceDisabled:
+                    'It holds earlier Timeline steps that are no longer stored in this browser.',
             },
         })
         const replace = dialog(page).getByRole('button', { name: 'Replace' })

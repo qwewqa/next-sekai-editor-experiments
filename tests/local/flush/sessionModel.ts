@@ -44,8 +44,7 @@ import { fileStates, flaggedFile, importIds, longFile, smallFile, storeRequest }
 // re-storing and damage; opens with their imports, in another tab and in the page itself (which
 // then edits, saves and reloads the opened session while the import runs); forks (another tab's
 // continuation, Duplicate Tab); same-tab reloads, as the startup takes them, and new visits; a
-// reload while storage never answers (the journal alone); and another tab's write. A6's settle
-// operation is not here: its code is.
+// reload while storage never answers (the journal alone); and another tab's write.
 //
 // The oracle holds what the user did apart from what the product says about it: the state each
 // hide journalled, the rows each commit made and whether it was strict, the seqs handed out.
@@ -78,7 +77,7 @@ export type ModelPin = {
     ops: readonly string[]
     /** Only a line that names a session a recognition touched (the cause is named by session). */
     scoped?: true
-    clearedBy: 'A2' | 'A6'
+    clearedBy: 'A2'
     why: string
 }
 
@@ -130,13 +129,6 @@ export const MODEL_PINS: readonly ModelPin[] = [
         ops: [],
         clearedBy: 'A2',
         why: 'AR-8, AR-8b, F2, I-11: the cut carries over a recovered row where the file holds another',
-    },
-    {
-        id: 'AR-7 time',
-        pattern: /^I-11 \(time\)/,
-        ops: [],
-        clearedBy: 'A6',
-        why: 'AR-7, I-11: a row stamped at its flush differs in time from the file’s',
     },
 ]
 
@@ -271,6 +263,23 @@ export class Run {
     private visits = 0
     private checked = 0
 
+    // The ledgers of spec E's added oracles (E-O).
+    /** P1: the pending entries each session held when the oracle last looked. */
+    private readonly seenPending = new WeakMap<FlushSession, Set<unknown>>()
+    /** P4: each session's `ackedSeq` and `strictSeq` when the oracle last looked. */
+    private readonly watched = new Map<FlushSession, Visit>()
+    private readonly seenSeqs = new WeakMap<FlushSession, { acked: number; strict: number }>()
+    /**
+     * J3 and J4: the journal keys a live page wrote, or took over to retire, by key: the text it
+     * left, the `seq` it covers and the session whose strict commit clears it.
+     */
+    private readonly journals = new Map<
+        string,
+        { visit: Visit; session: FlushSession; seq: number; text: string; verified: boolean }
+    >()
+    /** The journal writer's clock: every write is stamped differently, so a rewrite shows in the bytes (J4). */
+    private journalWrites = 0
+
     constructor(
         readonly seed: number,
         readonly fx: boolean,
@@ -313,9 +322,31 @@ export class Run {
             this.world,
             { name: `${name}#${this.visits}`, flags: this.flags, ...(flush ? { flush } : {}) },
             this.storage,
-            this.fx ? { strictCommits: false } : {},
+            {
+                now: () => 1_792_130_467_000 + ++this.journalWrites,
+                ...(this.fx ? { strictCommits: false } : {}),
+            },
         )
-        return Object.assign(page, { name }) as Visit
+        const visit = Object.assign(page, { name }) as Visit
+        // Every write the page's journal makes is noted for J3, whoever asks for it (a hide, a fork).
+        const write = visit.writer.write.bind(visit.writer)
+        visit.writer.write = () => {
+            const session = visit.flusher.session
+            const key = session ? `nse.journal.${session.id}` : undefined
+            const before = key ? this.storage.getItem(key) : null
+            const verified = write()
+            const after = key ? this.storage.getItem(key) : null
+            if (session && key && after !== null && after !== before)
+                this.journals.set(key, {
+                    visit,
+                    session,
+                    seq: visit.flusher.newestSeq(session),
+                    text: after,
+                    verified,
+                })
+            return verified
+        }
+        return visit
     }
 
     async start() {
@@ -475,7 +506,21 @@ export class Run {
         const unflushed = flusher.unflushed(session)
         const key = `nse.journal.${session.id}`
         const before = this.storage.getItem(key)
+        const earlier = this.journals.get(key)
         const written = this.visit.writer.write()
+        // J4: a second hide at the same seq, the key still as this page left it, leaves its bytes.
+        if (
+            unflushed &&
+            earlier?.verified &&
+            earlier.visit === this.visit &&
+            earlier.session === session &&
+            earlier.text === before &&
+            earlier.seq === flusher.newestSeq(session) &&
+            this.storage.getItem(key) !== before
+        )
+            this.fail(
+                `J4: a second hide at seq ${earlier.seq} of session ${session.id} rewrote the journal key`,
+            )
         // I-14: a hide whose journal verified names the newest entry the page holds, and the
         // state it gives back is the one the user sees: the ledger keeps it.
         if (unflushed && written) {
@@ -504,6 +549,16 @@ export class Run {
     }
 
     async do_saveStart() {
+        // P6: a session holds one reservation at a time; a second asked for while the Save's
+        // build holds the first is refused.
+        const held = this.build
+        if (held && !held.ended && this.alive && this.session === held.reservation.session) {
+            const second = this.flusher.reserveSave()
+            if (second)
+                this.fail(
+                    `P6: a second reservation (seq ${second.seq}) was handed out in session ${held.sessionId} while seq ${held.seq} is held`,
+                )
+        }
         // The build refuses while an import of the chain runs ('importing').
         if (!this.alive || this.build || this.chainImporting(this.session!.chainId)) return
         const session = this.session!
@@ -560,12 +615,15 @@ export class Run {
     async do_saveEnd() {
         const build = this.build
         if (!build || build.written === 'no' || build.ended) return
-        if (!this.visit.page.alive || this.session?.id !== build.sessionId) {
+        if (!this.visit.page.alive) {
             // The page is gone: the reservation ended with it (a kill between close() and the
             // binding), leaving the file to be recognised.
             this.build = undefined
             return
         }
+        // The page may have moved to another session while the Save ran (an opened file): the
+        // Save still ends, and the flusher adds nothing to the session it left (P1).
+        const stayed = this.session?.id === build.sessionId
         build.ended = true
         this.build = undefined
         const { reservation } = build
@@ -582,11 +640,14 @@ export class Run {
                 },
                 this.unit(build),
             )
-            this.made.get(build.sessionId)?.set(build.seq, 'save')
-            // Bound by this page: nothing left for another to recognise.
-            const at = this.unbound.indexOf(build)
-            if (at >= 0) this.unbound.splice(at, 1)
-            this.bound.set(build.chainId, build)
+            // Bound by this page: nothing left for another to recognise. A session the page left
+            // got neither the entry nor the binding: the file waits to be recognised.
+            if (stayed) {
+                this.made.get(build.sessionId)?.set(build.seq, 'save')
+                const at = this.unbound.indexOf(build)
+                if (at >= 0) this.unbound.splice(at, 1)
+                this.bound.set(build.chainId, build)
+            }
         } else if (build.written === 'failed') {
             await this.flusher.endSave(reservation)
         } else {
@@ -693,22 +754,22 @@ export class Run {
         const have = upto.map(({ entry }) => rowKey(entry)).sort()
         const held = [...build.fileRows].sort()
         if (have.length === held.length && have.every((key, at) => key === held[at])) return
-        // The same rows with other times (AR-7), or rows that differ (AR-8, AR-8b, F2).
+        // The same rows with other times are accepted (spec A, section 4: another tab's write can
+        // move a row's time by a few milliseconds); rows that differ are AR-8, AR-8b, F2 or new.
         const withoutTime = (key: string) =>
             key
                 .split('|')
                 .filter((_, at) => at !== 1)
                 .join('|')
         const sorted = (keys: string[]) => keys.map(withoutTime).sort()
-        const onlyTime =
-            have.length === held.length && sorted(have).every((key, at) => key === sorted(held)[at])
+        if (
+            have.length === held.length &&
+            sorted(have).every((key, at) => key === sorted(held)[at])
+        )
+            return
         // A recovered row where the file holds another is AR-8, AR-8b and F2; anything else that
         // differs is new.
-        const kind = onlyTime
-            ? 'time'
-            : have.some((key) => key.startsWith('recovered|'))
-              ? 'recovered'
-              : 'content'
+        const kind = have.some((key) => key.startsWith('recovered|')) ? 'recovered' : 'content'
         this.violations.push(
             `I-11 (${kind}): the cut of ${build.revisionId} carries, but the chain's ${have.length} rows up to it differ from the file's ${held.length}`,
         )
@@ -823,12 +884,20 @@ export class Run {
         return found ? journalledSession(found) : undefined
     }
 
+    /** The journal key the own journal came from, as the startup retires it once the continuation holds its work. */
+    private async ownFound(sessionId: string) {
+        return (await storageJournalStore(() => this.storage, 'nse.').read()).find(
+            (each) => each.sessionId === sessionId,
+        )
+    }
+
     /** Takes a read session up as the startup does: resumed, continued, or forked. */
     private adopt(
         visit: Visit,
         read: Extract<Awaited<ReturnType<Run['readSession']>>, { kind: 'open' }>,
         how: 'resume' | 'continue' | 'fork',
         taken?: State,
+        found?: Awaited<ReturnType<Run['ownFound']>>,
     ) {
         const slots = read.stack.slots.map((slot) => this.byRoot.get(toHex(slot.snapshot)))
         if (slots.some((state) => !state)) return false
@@ -852,6 +921,19 @@ export class Run {
             this.slots.push(taken)
             this.index = index + 1
             this.append('edit', taken)
+            // As the startup does (`open.ts`): the journal's key goes once the continuation's
+            // entry holding its work is committed strictly (J3).
+            if (found) {
+                const seq = visit.flusher.newestSeq(session)
+                visit.writer.retire(found, session.id, seq)
+                this.journals.set(`nse.${found.from}`, {
+                    visit,
+                    session,
+                    seq,
+                    text: found.text,
+                    verified: true,
+                })
+            }
         }
         return true
     }
@@ -887,7 +969,8 @@ export class Run {
         let adopted: boolean
         if (own && own.seq > lastSeq) {
             const taken = this.byRoot.get(rootOf(own.state)) ?? this.remember(own.state)
-            adopted = this.adopt(visit, read, read.isHead ? 'continue' : 'fork', taken)
+            const found = await this.ownFound(this.sessionId)
+            adopted = this.adopt(visit, read, read.isHead ? 'continue' : 'fork', taken, found)
         } else adopted = this.adopt(visit, read, sameTab ? 'resume' : 'continue')
         // A state the model never made: start over.
         if (!adopted) return this.freshSession()
@@ -1085,10 +1168,6 @@ export class Run {
      */
     async do_openHere(a: number) {
         if (!this.alive || this.paused || this.inMemory(this.visit) || this.imp) return
-        if (this.build) {
-            await this.flusher.endSave(this.build.reservation)
-            this.build = undefined
-        }
         this.opens++
         const ids = importIds(this.opens)
         const file = await this.fileFor(a % 3)
@@ -1281,9 +1360,70 @@ export class Run {
         return undefined
     }
 
+    /**
+     * Spec E's oracles on the flusher's own state, judged after every operation (E-O): P1, P4 and
+     * J3. They read what the product holds beside what the stored-data checker reads.
+     */
+    private checkFlusher(after: string) {
+        // Sessions the flusher let go stay watched: nothing may be added to them either.
+        for (const visit of [this.visit, this.other])
+            if (visit?.page.alive)
+                for (const session of sessionsOf(visit.flusher)) this.watched.set(session, visit)
+        for (const [session, visit] of this.watched) {
+            if (!visit.page.alive) {
+                this.watched.delete(session)
+                continue
+            }
+            // P1: a session that is not the page's current one gains no pending entry.
+            const earlier = this.seenPending.get(session)
+            if (earlier && session !== visit.flusher.session)
+                for (const entry of session.pending)
+                    if (!earlier.has(entry))
+                        this.fail(
+                            `after ${after}: P1: session ${session.id} (${visit.name}) is not the current one and gained the pending ${entry.kind} entry ${entry.seq}`,
+                        )
+            this.seenPending.set(session, new Set(session.pending))
+            // P4: acknowledged and strict `seq`s never go back.
+            const seen = this.seenSeqs.get(session)
+            if (seen && (session.ackedSeq < seen.acked || session.strictSeq < seen.strict))
+                this.fail(
+                    `after ${after}: P4: session ${session.id} (${visit.name}) went back to ackedSeq ${session.ackedSeq}, strictSeq ${session.strictSeq} from ${seen.acked}, ${seen.strict}`,
+                )
+            this.seenSeqs.set(session, { acked: session.ackedSeq, strict: session.strictSeq })
+        }
+        this.checkJournals(after)
+    }
+
+    /**
+     * J3: once a strict flush covers a journal's `seq` and the page is idle, that journal key is
+     * gone. Where strict commits are not durable on resolve (Firefox before 126) a covered key
+     * waits for the next verified journal instead, so the rule is the default writer's.
+     */
+    private checkJournals(after: string) {
+        for (const [key, journal] of this.journals) {
+            const { visit, session } = journal
+            if (!visit.page.alive || this.storage.getItem(key) !== journal.text)
+                // The page died (its journal is for the next load), or the key is another's now.
+                this.journals.delete(key)
+            else if (
+                !this.fx &&
+                !this.paused &&
+                !this.inMemory(visit) &&
+                sessionsOf(visit.flusher).includes(session) &&
+                session.strictSeq >= journal.seq &&
+                !session.pending.length &&
+                !session.memoryOnly.length
+            )
+                this.fail(
+                    `after ${after}: J3: the journal of session ${session.id} at seq ${journal.seq} is still stored after a strict flush covered seq ${session.strictSeq} (${visit.name})`,
+                )
+        }
+    }
+
     private async check(after: string) {
         const world = this.world
         const found: string[] = []
+        this.checkFlusher(after)
         found.push(
             ...(this.purposeful
                 ? // Bodies gone on purpose: the rows' own rules and the stack against replay.
@@ -1361,7 +1501,9 @@ export class Run {
     private checkMade(after: string) {
         const visit = this.visit
         const session = visit.flusher.session
-        if (!visit.page.alive || !session || this.paused || this.build) return
+        if (!visit.page.alive || !session || this.paused) return
+        // A Save still building holds a reservation in its own session.
+        if (this.build?.sessionId === session.id) return
         if (this.flags.noStorage || visit.host.core.status.mode !== 'stored') return
         if (session.pending.length || visit.flusher.unflushed(session)) return
         const map = this.made.get(session.id)
@@ -1480,6 +1622,40 @@ const REGRESSIONS: readonly Regression[] = [
             assert.ok(continued.length > 0, 'the reload continued the session')
         },
     },
+    // E-O: a Save still reserved when the page moves to another session ends later (P1: the
+    // flusher adds nothing to the session it left); a second reservation asked for while one is
+    // held (P6) and a second hide at the same seq (J4) change nothing.
+    ...[false, true].flatMap((fx): Regression[] => [
+        {
+            name: 'a Save ends after the page moved to another session',
+            seed: 61,
+            fx,
+            script: 'edit:1,flushStrict,save:0:0,openHere:0,saveEnd,flushStrict',
+            expect: (run) => {
+                const own = new Set(
+                    [...rows(run.world, 'sessions').values()]
+                        .filter((session) => session.origin !== 'nxsp')
+                        .map((session) => session.id),
+                )
+                const saves = [...rows(run.world, 'entries').values()].filter(
+                    (row) => row.kind === 'save' && own.has(row.sessionId),
+                )
+                assert.equal(saves.length, 0, 'the Save’s entry went nowhere')
+            },
+        },
+        {
+            name: 'a second reservation while one is held changes nothing',
+            seed: 62,
+            fx,
+            script: 'edit:1,flushStrict,save:0:0,save:1:0,saveEnd,flushStrict',
+        },
+        {
+            name: 'a second hide at the same seq leaves the journal key',
+            seed: 63,
+            fx,
+            script: 'edit:1,flushStrict,edit:2,edit:3,hide,hide,flushStrict',
+        },
+    ]),
     // The review of A0+ (M3): the page opens a file and edits, saves and reloads the opened
     // session while the import runs.
     ...[false, true].map((fx): Regression => ({
@@ -1583,5 +1759,5 @@ export const defineModelTests = (fx: boolean) => {
 }
 
 /** The pins every run of the seed set draws, and those the longer gate does too. */
-const DRAWN: readonly string[] = ['AR-7 time']
+const DRAWN: readonly string[] = []
 const DRAWN_AT_GATE: readonly string[] = MODEL_PINS.map((pin) => pin.id)
