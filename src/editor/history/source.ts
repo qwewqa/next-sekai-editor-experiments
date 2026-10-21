@@ -1,4 +1,6 @@
 import { computed, onScopeDispose, ref, shallowReactive, shallowRef, watch } from 'vue'
+import type { Zone } from '../../calendar/calendar'
+import { piecesOf } from '../../calendar/pieces'
 import { onHistoryAction } from '../../history/actions'
 import { captureEntryDescription } from '../../history/operations'
 import { session } from '../../history/session'
@@ -12,9 +14,9 @@ import type {
     TimelineEntry,
     TimelineIndex,
     TimelinePage,
-    TimelinePiece,
 } from '../../local/worker/timelineHandlers'
 import type { State } from '../../state'
+import { historyCalendar } from './calendarClock'
 import { createPlaces, singleFlight } from './hereChecks'
 import { entryId, type Entry, type Filter } from './rows'
 import { hereRange, historyFilter } from './state'
@@ -330,17 +332,32 @@ export const loadNewer = () => {
 const SAVES = ['save', 'export'] as const
 const indexes = new Map<string, Promise<TimelineIndex>>()
 
-/** The chain's pieces, each a session's entries on one day: saves and exports only while filtering. */
-export const readIndex = (filter: Filter): Promise<TimelineIndex> => {
-    if (filter === 'here') return Promise.resolve({ pieces: piecesOf(here.matches), path: [] })
+/**
+ * The chain's pieces, runs of a session's entries on one local day of `zone` (the History clock's):
+ * saves and exports only while filtering.
+ */
+export const readIndex = (
+    filter: Filter,
+    zone: Zone = historyCalendar().zone,
+): Promise<TimelineIndex> => {
+    const open = session.value.sessionId
+    if (filter === 'here')
+        return Promise.resolve({
+            pieces: piecesOf(here.matches, zone),
+            path: [],
+            topSession: open,
+            importing: false,
+        })
     const worker = storageWorker
-    if (!worker) return Promise.resolve({ pieces: [], path: [] })
-    const start = startOf(session.value.sessionId)
-    const key = `${start.sessionId}:${start.before ?? ''}:${filter}`
+    if (!worker)
+        return Promise.resolve({ pieces: [], path: [], topSession: open, importing: false })
+    const start = startOf(open)
+    const key = `${start.sessionId}:${start.before ?? ''}:${filter}:${zone}`
     let found = indexes.get(key)
     if (!found) {
         found = worker.call('readTimelineIndex', {
             ...start,
+            zone,
             ...(filter === 'saves' ? { kinds: [...SAVES] } : {}),
         })
         indexes.set(key, found)
@@ -692,27 +709,4 @@ const checkNewerOnce = async () => {
         .filter((entry) => !known.has(entryId(entry)))
     if (fresh.length) here.matches = [...fresh, ...here.matches]
     here.unreadable += unreadable
-}
-
-/** Go To's pieces while filtering Edits Here: the matches found so far, by session and day. */
-const piecesOf = (matches: readonly Entry[]): TimelinePiece[] => {
-    const pieces: TimelinePiece[] = []
-    const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
-    for (const entry of matches) {
-        const last = pieces.at(-1)
-        if (last?.sessionId === entry.sessionId && dayOf(last.oldest) === dayOf(entry.time)) {
-            last.oldestSeq = entry.seq
-            last.oldest = entry.time
-            last.count++
-        } else
-            pieces.push({
-                sessionId: entry.sessionId,
-                newestSeq: entry.seq,
-                oldestSeq: entry.seq,
-                newest: entry.time,
-                oldest: entry.time,
-                count: 1,
-            })
-    }
-    return pieces
 }

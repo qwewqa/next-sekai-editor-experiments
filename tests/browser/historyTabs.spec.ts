@@ -294,12 +294,14 @@ test('F4: a new visit continues with a divider, its earlier rows peek and restor
     // Now, today with all the steps, then each visit's share of it.
     await expect(items).toHaveCount(2 + sessions.length)
     await expect(items.first()).toHaveAttribute('aria-current', 'location')
+    // A "Continued from" divider is not a step, so Go To does not count it.
+    const stepsIn = (kinds: string[]) => kinds.filter((kind) => kind !== 'continue').length
     const steps = (count: number) => (count === 1 ? '1 step' : `${count} steps`)
     await expect(items.nth(1)).toContainText(messages.history.today)
     await expect(items.nth(1)).toContainText(
-        steps(sessions.reduce((total, { kinds }) => total + kinds.length, 0)),
+        steps(sessions.reduce((total, { kinds }) => total + stepsIn(kinds), 0)),
     )
     for (const [i, { kinds }] of sessions.entries())
-        await expect(items.nth(i + 2)).toContainText(steps(kinds.length))
+        await expect(items.nth(i + 2)).toContainText(steps(stepsIn(kinds)))
     noErrors(next)
 })
