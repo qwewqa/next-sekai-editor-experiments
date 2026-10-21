@@ -350,7 +350,7 @@ test('a Save right after a reload mid-import waits for the resumed import, then 
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
 })
 
-test('a Save whose import never resumes says the file is not read completely, never "could not be prepared" (SF2-6)', async ({
+test('a Save whose import startup never resumed resumes it and saves, never "could not be prepared" (SF2-6)', async ({
     page,
 }) => {
     await reloadMidImport(page, 'never')
@@ -359,9 +359,10 @@ test('a Save whose import never resumes says the file is not read completely, ne
     await settle(page)
     await queuePicks(page, ['other.nxsp'])
     await submitSave(page, 'other', 'Save As')
-    await expect(
-        page.getByText('Not saved. "coconut.nxsp" could not be read completely.').first(),
-    ).toBeVisible({ timeout: 15_000 })
+    // No tab runs the import, so the Save's wait resumes it as a reload would (spec A).
+    await expect(notice(page).filter({ hasText: 'Saved to other.nxsp' })).toBeVisible({
+        timeout: 20_000,
+    })
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
 })
 
