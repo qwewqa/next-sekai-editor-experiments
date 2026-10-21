@@ -22,6 +22,8 @@ export type DoorWorld = {
     behaviour: Map<string, (n: number, arg: unknown) => unknown>
     /** Door calls in flight; the harness waits for 0 instead of for a time. */
     doorBusy: number
+    /** The chain records as the store holds them (set by `useRealDoor`), not the maps above. */
+    storedChains: () => Promise<Row[]>
 }
 
 /** The worker methods the matrix sends to the real handlers; every other method stays the world's fake. */
@@ -135,6 +137,12 @@ export const useRealDoor = async (
         )
         if (done !== true) throw new Error(`The door could not keep ${row.name}`)
     }
+
+    // The invariants judge this, the store itself; the maps are only the view the fakes read.
+    world.storedChains = async () =>
+        tab.run(() =>
+            page.core.read(['chains'], async (tx) => (await tx.getAll('chains')) as Row[]),
+        )
 
     const syncBack = async () => {
         const dump = await tab.run(() =>

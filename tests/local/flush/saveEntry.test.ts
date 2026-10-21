@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { captureName } from '../../../src/history/operations'
+import { FlushOrderError } from '../../../src/local/flush'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
@@ -51,8 +52,8 @@ const begin = (page: Page, state: State) =>
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
-// Violations the checker finds in the state the hand-made writer below builds on purpose (A3
-// owns that test): a row stamped later than the rows above it, the net removing the stored
+// Violations the checker finds in the state the hand-made writer below builds on purpose (the
+// backstop test): a row stamped later than the rows above it, the net removing the stored
 // stack, and rows created at or below `lastSeq`.
 const WRITER_TIME = /row 3 \(time \d+\) is later than row 4 \(time 5\)/
 const NET_STACK = /its stored stack is missing/
@@ -613,7 +614,12 @@ test('a flush stores pending entries a write put `lastSeq` past, never skipping 
     })
     assert.equal(sessionRow(world).lastSeq, 4)
     await page.flusher.endSave(reservation, undefined, undefined, true)
-    assert.deepEqual(page.errors, [])
+    // The backstop stored both and reported the breach (A3): nothing else is an error.
+    assert.equal(page.errors.length, 1)
+    const [breach] = page.errors as FlushOrderError[]
+    assert.ok(breach instanceof FlushOrderError)
+    assert.equal(breach.sessionId, session.id)
+    assert.deepEqual(breach.breach, { missing: [2, 3], covered: [] })
     assert.deepEqual(kinds(world), [
         [1, 'init'],
         [2, 'edit'],

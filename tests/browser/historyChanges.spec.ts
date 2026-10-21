@@ -602,6 +602,68 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     )
 })
 
+test('switching entries keeps the peek bar’s date and change line filled, never blank between', async ({
+    page,
+}) => {
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await edit(page, 'Moved B', { kind: 'move', beats: [7] })
+    await stored(page)
+    await openTab(page)
+    await row(page, 'Moved B').click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    // Every frame and every change to the bar, the date's and the change line's text.
+    await page.evaluate(() => {
+        const bar = document.querySelector('[data-peek-bar]')!
+        const seen: { date: string; change: string }[] = []
+        const look = () => {
+            const date = bar.querySelector('[data-peek-text] .truncate')?.textContent ?? ''
+            const change = bar.querySelector('[data-peek-change]')?.textContent ?? ''
+            const last = seen[seen.length - 1]
+            if (!last || last.date !== date || last.change !== change) seen.push({ date, change })
+        }
+        new MutationObserver(look).observe(bar, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+        })
+        const frame = () => {
+            look()
+            requestAnimationFrame(frame)
+        }
+        requestAnimationFrame(frame)
+        ;(window as unknown as { barSeen: typeof seen }).barSeen = seen
+    })
+    await list(page).press('ArrowDown')
+    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
+    await expect(peekLine(page)).toHaveText('1 change')
+    await frames(page)
+    const seen = await page.evaluate(
+        () => (window as unknown as { barSeen: { date: string; change: string }[] }).barSeen,
+    )
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.filter((text) => !text.date || !text.change)).toEqual([])
+})
+
+test('a slow read names the new entry with the loading line, not the old one', async ({ page }) => {
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await edit(page, 'Moved B', { kind: 'move', beats: [7] })
+    await stored(page)
+    await openTab(page)
+    await row(page, 'Moved B').click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    const hold = await holdWorker(page, 'readChanges')
+    try {
+        await list(page).press('ArrowDown')
+        await hold.reached()
+        await expect(peekLine(page)).toHaveText(/^Loading/)
+        await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
+    } finally {
+        await release(page)
+    }
+    await expect(peekLine(page)).toHaveText('1 change')
+    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
+})
+
 test('Show Edits default off leaves the chart undimmed and unmarked', async ({ page }) => {
     await edit(page, 'Moved 1 note', { kind: 'move', beats: [5] })
     await stored(page)

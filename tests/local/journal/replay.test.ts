@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { equalJson, type JsonValue } from '../../../src/history/operations'
 import { DB_NAME } from '../../../src/local/db'
-import type { FlushSession } from '../../../src/local/flush'
+import { FlushOrderError, type FlushSession } from '../../../src/local/flush'
 import { toHex } from '../../../src/local/hash'
 import { setJournalApplyHookForTests } from '../../../src/local/journal/apply'
 import { readJournal, type Journal } from '../../../src/local/journal/format'
@@ -598,6 +598,11 @@ test('a late flush reaching past a replayed journal leaves no stack that isn’t
     assert.equal(outcomes[0]?.kind, 'applied')
     // Its flush lands late: entries up to the journal's are stored already, the last is new.
     await page.flusher.flush()
+    // The backstop skipped the entries the recovered entry covers and reported them (A3).
+    const [breach, ...rest] = page.errors as FlushOrderError[]
+    assert.ok(breach instanceof FlushOrderError && rest.length === 0)
+    assert.deepEqual(breach.breach.missing, [])
+    assert.ok(breach.breach.covered.length > 0)
     assert.deepEqual(
         entriesOf(world, session.id).map((entry) => entry.kind),
         ['init', 'edit', 'recovered', 'edit'],

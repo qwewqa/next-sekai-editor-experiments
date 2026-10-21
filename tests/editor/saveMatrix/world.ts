@@ -806,6 +806,7 @@ const createWorld = async (setup: Setup = {}) => {
         answers,
         behaviour,
         doorBusy: 0,
+        storedChains: (async () => []) as () => Promise<Row[]>,
         hooks,
         on,
         fire,

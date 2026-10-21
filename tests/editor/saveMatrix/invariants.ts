@@ -104,11 +104,12 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
 
     // I9 (E-5): one file, one binding. No file name is bound to two chains, and no file is both
     // bound and another chain's Export target. Excepted: a revocation storage could not take,
-    // pending in `revoke.<chainId>` (R11), whose binding is already as good as gone.
+    // pending in `revoke.<chainId>` (R11), whose binding is already as good as gone. Read from the
+    // store through the door, not from the world's view of it.
     const revoked = world.revocations()
     const bound = new Map<string, string[]>()
     const targets = new Map<string, string[]>()
-    for (const record of world.chains.values()) {
+    for (const record of await world.storedChains()) {
         const chainId = String(record.chainId)
         const file = record.file as { name?: string; at?: number } | undefined
         const target = record.exportTarget as { name?: string } | undefined
