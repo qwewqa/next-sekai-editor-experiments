@@ -1501,7 +1501,9 @@ export class Run {
     private checkMade(after: string) {
         const visit = this.visit
         const session = visit.flusher.session
-        if (!visit.page.alive || !session || this.paused || this.build) return
+        if (!visit.page.alive || !session || this.paused) return
+        // A Save still building holds a reservation in its own session.
+        if (this.build?.sessionId === session.id) return
         if (this.flags.noStorage || visit.host.core.status.mode !== 'stored') return
         if (session.pending.length || visit.flusher.unflushed(session)) return
         const map = this.made.get(session.id)

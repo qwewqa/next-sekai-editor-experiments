@@ -436,20 +436,13 @@ test('loseRelaxed with the default writer: the journal a relaxed flush left keep
 })
 
 // ---------------------------------------------------------------------------------------------
-// F2's setup: a relaxed commit a power loss undid, with or without the journal recovering it. Row 3
-// is acknowledged relaxed when the Save reserves 4.
+// F2's setup: a relaxed commit a power loss undid and the journal recovered. Row 3 is acknowledged
+// relaxed when the Save reserves 4.
 
-type Loss = 'relaxed' | 'commits'
-
-const reloadAfter = async (seed: number, loss: Loss, journal: boolean) => {
+const reloadAfter = async (seed: number) => {
     const world = createWorld({ seed, commitLog: true })
     const storage = new MemoryStorage()
-    const page = await openJournalPage(
-        world,
-        'a',
-        storage,
-        loss === 'commits' ? { strictCommits: false } : {},
-    )
+    const page = await openJournalPage(world, 'a', storage)
     const a = sampleState(LARGE)
     const b = widen(a)
     const session = beginSession(page, a)
@@ -466,21 +459,15 @@ const reloadAfter = async (seed: number, loss: Loss, journal: boolean) => {
     assert.equal(page.flusher.unstored(live).entries.length, 0, 'the build takes no pending row')
     page.live.state = a
     assert.equal(page.writer.write(), true)
-    if (!journal) for (let k = storage.length - 1; k >= 0; k--) storage.removeItem(storage.key(k)!)
     page.tab.kill()
-    if (loss === 'relaxed') world.memory.loseRelaxed(world.memory.relaxedCommits)
-    if (loss === 'commits') world.memory.loseCommits(1)
+    world.memory.loseRelaxed(world.memory.relaxedCommits)
     await replayAll(world, storage, 'reload')
     const reloaded = await openJournalPage(world, 'reload2', new MemoryStorage())
     markedAt(reloaded, 4)
     const read = await readOpen(reloaded, session.id)
     reloaded.live.state = a
-    const resumed = resumeIn(reloaded, read)
-    const lastSeq = read.session.lastSeq as number
-    const last = [...rows(world, 'entries').values()].find(
-        (row) => row.sessionId === session.id && row.seq === lastSeq,
-    )
-    return { world, session, a, page, reloaded, resumed, lastSeq, last }
+    resumeIn(reloaded, read)
+    return { world, session, a, reloaded }
 }
 
 /** A page whose flusher never reaches the worker while `stalled.on` is set. */
@@ -497,7 +484,7 @@ const stallable = (page: { flusher: unknown }) => {
 
 /** F2: recognised over a row a power loss undid and a journal recovered. */
 const f2 = async (seed: number) => {
-    const { world, session, a, reloaded } = await reloadAfter(seed, 'relaxed', true)
+    const { world, session, a, reloaded } = await reloadAfter(seed)
     await bind(reloaded, session.chainId, ownSaveUnit(session.id, 4, a, 4), 'stored')
     return { world, session }
 }

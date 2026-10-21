@@ -23,6 +23,11 @@ test('a Save reserved before an edit leaves lastSeq at the edit and the rows in 
     const built = await buildSave(fixture.store, fixture.chainId, { kind: 'copy' }, options, [])
     assert.ok(!('refused' in built))
     fixture.recordSave(built, reserved)
+    // The Fixture's rows are in seq order whatever order they were added in.
+    assert.deepEqual(
+        fixture.session.rows.map((row) => row.seq),
+        [1, 2, 3, 4],
+    )
     await fixture.flush()
     const stored = (await fixture.entries()).filter((row) => row.sessionId === reserved.sessionId)
     assert.deepEqual(
@@ -38,4 +43,21 @@ test('a Save reserved before an edit leaves lastSeq at the edit and the rows in 
     assert.equal(session?.lastSeq, 4)
     assert.equal(session?.updatedAt, Math.max(...stored.map((row) => row.time)))
     assert.deepEqual(checkStored(fixture.world.memory, fixture.world.sessionOptions), [])
+})
+
+test('updatedAt is the greatest row time even when a lower seq carries it (E-F4)', async () => {
+    const fixture = await Fixture.create(82)
+    await fixture.storeMedia()
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.flush()
+    const { options, reserved } = saveOptions(fixture)
+    await fixture.edit(2)
+    const built = await buildSave(fixture.store, fixture.chainId, { kind: 'copy' }, options, [])
+    assert.ok(!('refused' in built))
+    // The Save's row carries a later time than the edit above it.
+    const late = reserved.time + 1_000_000
+    fixture.recordSave(built, { ...reserved, time: late })
+    await fixture.flush()
+    assert.equal(rows(fixture.world, 'sessions').get(reserved.sessionId)?.updatedAt, late)
 })
