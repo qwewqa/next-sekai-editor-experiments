@@ -581,7 +581,7 @@ test('Group Properties opens while peeking with the peeked values and cannot cha
     expect(await liveNames()).toEqual(['Renamed', 'Other group'])
 })
 
-test('the selection menu holds only Copy and Find Edits Here while peeking', async ({ page }) => {
+test('the selection menu holds only viewing actions while peeking', async ({ page }) => {
     const first = await newestSeq(page)
     await deleteAt(page, 3)
     await peek(page, first)
@@ -589,9 +589,37 @@ test('the selection menu holds only Copy and Find Edits Here while peeking', asy
     await page.mouse.click(point.x, point.y, { button: 'right' })
     await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText([
         /^Copy/,
+        'Edit Properties',
         'Find Edits Here',
     ])
     await page.keyboard.press('Escape')
+    await leave(page)
+})
+
+test('Select Slide Notes in a peek selects the whole slide of the peeked chart only', async ({
+    page,
+}) => {
+    // A chart with connected slides, as its own session.
+    const previous = await sessionId(page)
+    await page.evaluate(() => {
+        window.editorTest.show(window.editorTest.fixtures.connectors, 3)
+    })
+    await storesNewSession(page, previous)
+    const first = await newestSeq(page)
+    await peek(page, first)
+    const point = await notePoint(page, 3)
+    await page.mouse.click(point.x, point.y, { button: 'right' })
+    await page.getByRole('menuitem', { name: 'Select Slide Notes' }).click()
+    expect(
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            return [
+                history.state.value.selectedEntities.length,
+                history.liveState.value.selectedEntities.length,
+            ]
+        }),
+    ).toEqual([3, 0])
+    expect(await newestSeq(page)).toBe(first)
     await leave(page)
 })
 
