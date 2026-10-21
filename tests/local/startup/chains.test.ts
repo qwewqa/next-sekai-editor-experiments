@@ -50,7 +50,7 @@ test('a continuation stores nothing until its first edit, which moves the chainâ
     assert.equal(read.isHead, true)
     const lock = holdParentLock(page.tab.locks, parent.id)
     await page.tab.run(() => lock.granted)
-    const session = continueIn(page, read, { parentDone: lock.release })
+    const session = continueIn(page, read, { parentLock: lock })
     assert.equal(session.origin, 'continued')
     assert.equal(session.chainId, parent.chainId)
 

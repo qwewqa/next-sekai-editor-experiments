@@ -14,6 +14,7 @@ import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
 import { editStep, nativeOperation, originOperation } from '../../helpers/historySteps'
+import { leaseOf } from '../../helpers/leases'
 import '../../helpers/lockChecks'
 import { useDay } from '../../helpers/useDay'
 import { goldenChart, stateOf } from '../records/charts'
@@ -501,7 +502,7 @@ test('where no database will ever answer, a replaced session’s in-memory histo
             state,
             operation: originOperation('import'),
             dirty: false,
-            done: () => released.push(id),
+            lock: leaseOf(() => released.push(id)),
         })
     const state = stateOf(goldenChart())
     start('first', state)

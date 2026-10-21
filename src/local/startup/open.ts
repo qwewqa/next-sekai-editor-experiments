@@ -19,7 +19,7 @@ import { displayName, forkNameOf, namePartsOf, sessionCopyOf, type CopyOf } from
 import type { BoundElsewhere } from '../open/project'
 import { stateFromRecords } from '../records/records'
 import { decodeSnapshot } from '../records/snapshot'
-import type { HeldLock, TabClient } from '../sessions'
+import { holdLock, noLease, tryLease, type LockLease, type TabClient } from '../sessions'
 import { storedRead } from '../storedRead'
 import type { StorageWorker } from '../worker/client'
 import type { StorageStatus } from '../worker/core'
@@ -44,17 +44,10 @@ import {
 /** What the tab found of its own session before the recovery order. */
 export type Claim =
     /** Its session's lock was free (or came free): a reload, holding the lock now. */
-    | { kind: 'reload'; record: TabRecord; lock: HeldLock }
+    | { kind: 'reload'; record: TabRecord; lock: LockLease }
     /** Another tab holds it: a Duplicate Tab (or a closed tab reopened while it's still held). */
     | { kind: 'duplicate'; record: TabRecord }
     | { kind: 'none' }
-
-/** A lock held nowhere else: where there are no Web Locks, there's no other tab to keep out. */
-const noLock = (sessionId: string): HeldLock => ({
-    name: sessionLock(sessionId),
-    granted: Promise.resolve(),
-    release: () => undefined,
-})
 
 /**
  * Decides reload or Duplicate Tab by the session lock (Y2), before the recovery order, so this
@@ -69,7 +62,7 @@ export const claimTab = async (locks: LockService): Promise<Claim> => {
     // copy from a live tab (or a crash) leaves its journal to Local Data, never shared (§1.6.7).
     if (!hasWebLocks())
         return marked
-            ? { kind: 'reload', record, lock: noLock(record.sessionId) }
+            ? { kind: 'reload', record, lock: noLease(sessionLock(record.sessionId)) }
             : { kind: 'duplicate', record }
     const lock = await claimSessionLock(locks, record.sessionId, marked ? MARKER_WAIT_MS : 0)
     return lock ? { kind: 'reload', record, lock } : { kind: 'duplicate', record }
@@ -170,9 +163,9 @@ const storedStack = (read: SessionRead & { kind: 'open' }): StoredStack => ({
 
 /** How a stored session opens: taken up again, continued in its chain, or as a fork. */
 type How =
-    | { mode: 'resume'; lock: HeldLock }
-    | { mode: 'continue'; parentLock: HeldLock }
-    | { mode: 'fork'; parentLock?: HeldLock; copyOf: CopyOf }
+    | { mode: 'resume'; lock: LockLease }
+    | { mode: 'continue'; parentLock: LockLease }
+    | { mode: 'fork'; parentLock?: LockLease; copyOf: CopyOf }
 
 /**
  * Opens a stored session in this tab: its stack restored with the head loaded, and the storing
@@ -191,7 +184,6 @@ export const openStored = async (
         onShown,
         onDestination,
         onTransferred,
-        keepUnshownLock = false,
     }: {
         /** An action of the user's (Reopen, Restore as a Copy): it replaces what's open. */
         replace?: boolean
@@ -200,7 +192,6 @@ export const openStored = async (
         onShown?: (leaving: FlushSession | undefined) => void
         onDestination?: () => void
         onTransferred?: () => void
-        keepUnshownLock?: boolean
         /**
          * A journal of the session that couldn't be applied but reads: a continuation or fork
          * starts from its state, an entry over the stored stack, so the newest work is on screen
@@ -210,12 +201,11 @@ export const openStored = async (
     } = {},
 ): Promise<State | undefined> => {
     const flusher = deps.flusher()
-    const releaseAll = () => {
-        if (how.mode === 'resume') how.lock.release()
-        else how.parentLock?.release()
-    }
+    // Whether the flusher's session took this open over: the tab record, Export's memory and
+    // `onShown` follow it. The leases are the callers' (a receiver leaves them alone) and `own`
+    // this function's, each released by its creator, which does nothing for a taken one.
     const ownership = { transferred: false }
-    let own: HeldLock | undefined
+    let own: LockLease | undefined
     const handoff = () => {
         ownership.transferred = true
         onTransferred?.()
@@ -316,7 +306,7 @@ export const openStored = async (
                             at: read.at,
                         },
                         ready: Promise.resolve(),
-                        done: how.lock.release,
+                        lock: how.lock,
                     })
                     handoff()
                 } else {
@@ -346,15 +336,11 @@ export const openStored = async (
                               }
                             : {}),
                         ready: acquired.granted.catch(() => undefined),
+                        lock: acquired,
+                        ...(how.parentLock ? { parentLock: how.parentLock } : {}),
                         // Starting from a journal, the parent stays held until its key goes, so no other
                         // load keeps that key as a second copy meanwhile.
-                        done: taken
-                            ? () => {
-                                  acquired.release()
-                                  how.parentLock?.release()
-                              }
-                            : acquired.release,
-                        ...(how.parentLock && !taken ? { parentDone: how.parentLock.release } : {}),
+                        ...(taken ? { parentUntilReleased: true } : {}),
                     })
                     handoff()
                     if (taken) {
@@ -364,7 +350,9 @@ export const openStored = async (
                             taken.found,
                             continued.id,
                             flusher.newestSeq(continued),
-                            how.parentLock?.release,
+                            () => {
+                                flusher.releaseParent(continued)
+                            },
                         )
                     }
                 }
@@ -410,10 +398,7 @@ export const openStored = async (
         else publish()
         return ownership.transferred ? shown : undefined
     } finally {
-        if (!ownership.transferred) {
-            own?.release()
-            if (!keepUnshownLock) releaseAll()
-        }
+        own?.release()
     }
 }
 
@@ -424,52 +409,17 @@ const isParent = (value: unknown): value is { id: string; uptoSeq: number } =>
     typeof (value as { uptoSeq?: unknown }).uptoSeq === 'number'
 
 /** This tab's lock on a session it starts, held while it might write it (§1.6.6). */
-const holdOwn = (locks: LockService, sessionId: string): HeldLock => {
-    if (!hasWebLocks()) return noLock(sessionId)
-    let release!: () => void
-    const held = new Promise<void>((resolve) => {
-        release = resolve
-    })
-    let grant!: () => void
-    const granted = new Promise<void>((resolve) => {
-        grant = resolve
-    })
-    const request = locks.request(sessionLock(sessionId), {}, async () => {
-        grant()
-        await held
-    })
-    return { name: sessionLock(sessionId), granted: Promise.race([granted, request]), release }
-}
+const holdOwn = (locks: LockService, sessionId: string): LockLease =>
+    hasWebLocks() ? holdLock(locks, sessionLock(sessionId)) : noLease(sessionLock(sessionId))
 
 /** A shared hold on a session, as an unstored continuation keeps its parent (§1.3.6). */
-export const holdShared = async (
+export const holdShared = (
     locks: LockService,
     sessionId: string,
-): Promise<HeldLock | undefined> => {
-    if (!hasWebLocks()) return noLock(sessionId)
-    let release!: () => void
-    const held = new Promise<void>((resolve) => {
-        release = resolve
-    })
-    return new Promise<HeldLock | undefined>((resolve) => {
-        locks
-            .request(
-                sessionLock(sessionId),
-                { mode: 'shared', ifAvailable: true },
-                async (granted) => {
-                    if (!granted) {
-                        resolve(undefined)
-                        return
-                    }
-                    resolve({ name: sessionLock(sessionId), granted: Promise.resolve(), release })
-                    await held
-                },
-            )
-            .catch(() => {
-                resolve(undefined)
-            })
-    })
-}
+): Promise<LockLease | undefined> =>
+    hasWebLocks()
+        ? tryLease(locks, sessionLock(sessionId), { mode: 'shared', ifAvailable: true })
+        : Promise.resolve(noLease(sessionLock(sessionId)))
 
 /** The file a session's chain is bound to, as its status label names it. */
 export const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State): CopyOf => {
@@ -561,7 +511,12 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
         deps.events({ kind: 'openElsewhere', name: shownOf(read, state), sessionId: headId })
         return false
     }
-    const state = await openStored(deps, read, { mode: 'continue', parentLock })
+    let state: State | undefined
+    try {
+        state = await openStored(deps, read, { mode: 'continue', parentLock })
+    } finally {
+        parentLock.release()
+    }
     // The migrated auto save's own line says it already (§1.4.3).
     if (state && deps.migrated?.sessionId !== headId)
         deps.events({
@@ -583,31 +538,33 @@ const forked = async (
         recovered,
         maybe,
     }: {
-        held?: HeldLock
+        held?: LockLease
         copyOf?: CopyOf
         recovered?: { found: JournalFound; state: State }
         /** The fork is for a binding check that couldn't tell (`unknown`): the notice says "may". */
         maybe?: boolean
     } = {},
 ): Promise<boolean> => {
-    const parentLock = held ?? (await holdShared(deps.locks, parentId))
-    const state = await openStored(
-        deps,
-        read,
-        { mode: 'fork', ...(parentLock ? { parentLock } : {}), copyOf },
-        recovered ? { recovered } : {},
-    )
+    // The hold taken here is released here; a passed one is its creator's.
+    const shared = held ? undefined : await holdShared(deps.locks, parentId)
+    const parentLock = held ?? shared
+    let state: State | undefined
+    try {
+        state = await openStored(
+            deps,
+            read,
+            { mode: 'fork', ...(parentLock ? { parentLock } : {}), copyOf },
+            recovered ? { recovered } : {},
+        )
+    } finally {
+        shared?.release()
+    }
     if (state) deps.events({ kind: 'separateCopy', of: copyOf, ...(maybe ? { maybe: true } : {}) })
     return !!state
 }
 
 /** A reload while storage is unavailable continues from its own journal (§1.6.7). */
-const resumeFromJournal = (
-    deps: OpenDeps,
-    found: JournalFound,
-    lock: HeldLock,
-    handed: () => void,
-): boolean => {
+const resumeFromJournal = (deps: OpenDeps, found: JournalFound, lock: LockLease): boolean => {
     const flusher = deps.flusher()
     const journalled = journalledSession(found)
     if (!flusher || !journalled) return false
@@ -643,10 +600,8 @@ const resumeFromJournal = (
         id,
         operation: step.operation,
         ready: Promise.resolve(),
-        done: lock.release,
+        lock,
     })
-    // The flusher's session holds the lock now, and releases it when it ends.
-    handed()
     restoreExportMemory({ partialImport: chain.partialImport })
     writeTabRecord({ sessionId: id, start: 'stored' })
     return true
@@ -669,7 +624,6 @@ const reloadOwn = async (
     claim: Claim & { kind: 'reload' },
     read: SessionRead,
     releaseClaim: () => void,
-    passClaim: () => HeldLock,
 ): Promise<{ opened: boolean; journal: 'none' | 'left' | 'shown' | 'covered' }> => {
     const { record } = claim
     const own = deps.ownLeft ? deps.ownJournal : undefined
@@ -708,14 +662,14 @@ const reloadOwn = async (
     if (read.kind === 'open' && read.isHead) {
         if (journal === 'left')
             return said(
-                openStored(deps, read, { mode: 'continue', parentLock: passClaim() }, taking),
+                openStored(deps, read, { mode: 'continue', parentLock: claim.lock }, taking),
             )
-        const opened = !!(await openStored(deps, read, { mode: 'resume', lock: passClaim() }))
+        const opened = !!(await openStored(deps, read, { mode: 'resume', lock: claim.lock }))
         return { opened, journal }
     }
     // Continued in another tab during the gap: a fork (§1.4.2).
     if (read.kind === 'open')
-        return said(forked(deps, read, record.sessionId, { held: passClaim(), recovered }))
+        return said(forked(deps, read, record.sessionId, { held: claim.lock, recovered }))
     releaseClaim()
     if (read.kind === 'deleted') {
         deps.events({ kind: 'deletedElsewhere' })
@@ -732,15 +686,21 @@ const reloadOwn = async (
         const parent = await deps.worker.call('readSession', record.parent)
         if (parent.kind !== 'open') return { opened: false, journal }
         const parentLock = await holdShared(deps.locks, record.parent)
-        if (parentLock && parent.isHead && !record.copyOf)
-            return said(openStored(deps, parent, { mode: 'continue', parentLock }, taking))
-        return said(
-            forked(deps, parent, record.parent, {
-                held: parentLock,
-                copyOf: record.copyOf,
-                recovered,
-            }),
-        )
+        try {
+            if (parentLock && parent.isHead && !record.copyOf)
+                return await said(
+                    openStored(deps, parent, { mode: 'continue', parentLock }, taking),
+                )
+            return await said(
+                forked(deps, parent, record.parent, {
+                    held: parentLock,
+                    copyOf: record.copyOf,
+                    recovered,
+                }),
+            )
+        } finally {
+            parentLock?.release()
+        }
     }
     if (recovered && journalled) {
         const flusher = deps.flusher()
@@ -768,19 +728,14 @@ export const openedFrom = (deps: Pick<OpenDeps, 'flusher'>) => {
  * migrated auto save's line follows, saying whether it's what opened (§1.4.3).
  */
 export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean> => {
-    // A reload's claim is this open's until it passes the lock to what keeps or releases it (the
-    // session opened, `openStored`); every path that returns has done one or the other.
-    const claimed = { passed: false }
+    // A reload's claim is this open's: the flusher's session takes it as it registers, and
+    // otherwise it goes when the open ends, a rejection included (a worker call that failed or
+    // timed out), so Restore can continue that session in this tab.
     let opened: boolean
     try {
-        opened = await openSessionAtStart(deps, claim, () => {
-            claimed.passed = true
-        })
-    } catch (error) {
-        // Rejected before then (a worker call that failed or timed out): the claim goes, so
-        // Restore can continue that session in this tab.
-        if (claim.kind === 'reload' && !claimed.passed) claim.lock.release()
-        throw error
+        opened = await openSessionAtStart(deps, claim)
+    } finally {
+        if (claim.kind === 'reload') claim.lock.release()
     }
     if (deps.migrated)
         deps.events({
@@ -791,11 +746,7 @@ export const openAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean
     return opened
 }
 
-const openSessionAtStart = async (
-    deps: OpenDeps,
-    claim: Claim,
-    passed: () => void,
-): Promise<boolean> => {
+const openSessionAtStart = async (deps: OpenDeps, claim: Claim): Promise<boolean> => {
     const releaseClaim = () => {
         if (claim.kind === 'reload') claim.lock.release()
     }
@@ -808,9 +759,7 @@ const openSessionAtStart = async (
     if (deps.status.mode !== 'stored') {
         const own = deps.ownJournal
         if (claim.kind === 'reload' && own) {
-            // Passed where the flusher's session takes the lock: a throw before then releases it,
-            // and one after never does.
-            if (resumeFromJournal(deps, own, claim.lock, passed)) return true
+            if (resumeFromJournal(deps, own, claim.lock)) return true
             // Not loaded: a new session id, and the key stays in Local Data (§1.4.2).
             if (!deps.keptForLocalData?.includes(own)) deps.keptForLocalData?.push(own)
             deps.events({ kind: 'unsavedInLocalData' })
@@ -829,15 +778,16 @@ const openSessionAtStart = async (
             releaseClaim()
             if (recovered.kind !== 'open') return false
             const parentLock = await holdShared(deps.locks, deps.ownRecovery)
-            if (parentLock && recovered.isHead)
-                return !!(await openStored(deps, recovered, { mode: 'continue', parentLock }))
-            return forked(deps, recovered, deps.ownRecovery, { held: parentLock })
+            try {
+                if (parentLock && recovered.isHead)
+                    return !!(await openStored(deps, recovered, { mode: 'continue', parentLock }))
+                return await forked(deps, recovered, deps.ownRecovery, { held: parentLock })
+            } finally {
+                parentLock?.release()
+            }
         }
         const read = await deps.worker.call('readSession', record.sessionId)
-        const result = await reloadOwn(deps, claim, read, releaseClaim, () => {
-            passed()
-            return claim.lock
-        })
+        const result = await reloadOwn(deps, claim, read, releaseClaim)
         // A failed own journal the reload couldn't show stays in Local Data, and says so.
         if (deps.ownFailed && result.journal === 'left') deps.events({ kind: 'journalFailed' })
         return result.opened

@@ -798,6 +798,7 @@ const createWorld = async (setup: Setup = {}) => {
         builtLog,
         answers,
         behaviour,
+        doorBusy: 0,
         hooks,
         on,
         fire,

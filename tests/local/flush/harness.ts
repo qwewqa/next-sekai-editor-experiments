@@ -18,6 +18,7 @@ import { sessionLock } from '../../../src/local/locks'
 import type { SnapshotRecords } from '../../../src/local/records/encode'
 import { nodeJsonFromRow, rootJsonFromRow, type NodesRow } from '../../../src/local/records/rows'
 import { decodeSnapshot } from '../../../src/local/records/snapshot'
+import type { LockLease } from '../../../src/local/sessions'
 import type { Tab, World } from '../../../src/local/testing/world'
 import {
     StorageCore,
@@ -28,6 +29,7 @@ import {
 import { flushHandlers } from '../../../src/local/worker/flushHandlers'
 import type { WorkerContext } from '../../../src/local/worker/handlers'
 import { nativeOperation } from '../../helpers/historySteps'
+import { leaseOf } from '../../helpers/leases'
 
 // A tab's storage worker and page on the test core: a StorageCore over the tab's store, the flush
 // handlers, and a Flusher whose transport runs each batch as a task of the tab. `openSplitPage`
@@ -78,7 +80,7 @@ const freezing = (flusher: Flusher) => {
     return flusher
 }
 
-type Start = { id: string; done?: () => void }
+type Start = { id: string; lock?: LockLease }
 
 /** The locks a flusher's page holds, by session: a test that loses one releases it from here. */
 export const heldLocks = new WeakMap<Flusher, Map<string, () => void>>()
@@ -88,7 +90,7 @@ export const heldLocks = new WeakMap<Flusher, Map<string, () => void>>()
  * `nse-session:` lock of each session the flusher begins, continues or resumes, released when
  * the session is replaced and nothing of it is pending, or with the tab. Granted at once, with no
  * task, so a seeded run is the same as before. The lock-holder assertion (I-1) judges the flusher's
- * transactions by it; a start that brings its own `done` keeps its own hold.
+ * transactions by it; a start that brings its own `lock` keeps its own hold.
  */
 const holdingSessions = (world: World, tab: Tab, flusher: Flusher) => {
     const held = new Map<string, () => void>()
@@ -103,9 +105,9 @@ const holdingSessions = (world: World, tab: Tab, flusher: Flusher) => {
     for (const name of ['begin', 'continueSession', 'resumeSession', 'resumeJournalled'] as const) {
         const original = flusher[name] as unknown as (start: Start) => FlushSession
         ;(flusher as unknown as Record<string, unknown>)[name] = (start: Start) => {
-            if (start.done) return original.call(flusher, start)
+            if (start.lock) return original.call(flusher, start)
             const release = hold(start.id)
-            return original.call(flusher, release ? { ...start, done: release } : start)
+            return original.call(flusher, release ? { ...start, lock: leaseOf(release) } : start)
         }
     }
     return flusher
@@ -114,7 +116,7 @@ const holdingSessions = (world: World, tab: Tab, flusher: Flusher) => {
 /** The lock a fork's session takes, held until its `done`, as `storing.ts` does. */
 const forkLock = (world: World, tab: Tab) => (id: string) => {
     const release = world.checks.lock ? world.locks.holdNow(tab.actor, sessionLock(id)) : undefined
-    return { ready: Promise.resolve(), done: release ?? (() => undefined) }
+    return leaseOf(release ?? (() => undefined))
 }
 
 /** A tab with its worker started and a flusher posting to it. */

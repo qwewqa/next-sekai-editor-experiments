@@ -1,6 +1,7 @@
 import { computed, onScopeDispose, ref, shallowReactive, shallowRef, watch } from 'vue'
 import type { Zone } from '../../calendar/calendar'
-import { piecesOf } from '../../calendar/pieces'
+import { composeGoTo } from '../../calendar/goTo'
+import { piecesOf, type TimelinePiece } from '../../calendar/pieces'
 import { onHistoryAction } from '../../history/actions'
 import { captureEntryDescription } from '../../history/operations'
 import { session } from '../../history/session'
@@ -59,6 +60,8 @@ const version = ref(0)
 /** Bumped when the loaded run is replaced: reads begun before it land nowhere. */
 let epoch = 0
 export const sourceGeneration = ref(0)
+/** Bumped when a read lands in the loaded run (`refresh`, `recount`, `loadNewer`, `loadMore`). */
+const landings = ref(0)
 const replaceSource = () => {
     sourceGeneration.value++
     return ++epoch
@@ -149,6 +152,9 @@ export const listedEntries = computed((): Entry[] =>
 
 const isJumped = () => newer.value !== undefined
 
+/** Whether the loaded run reaches Now or is a window after a jump (spec-C invariant 11). */
+const runState = computed(() => (newer.value ? 'jumped' : 'joined'))
+
 /** After a jump, the entries between Now and the window; undefined while the run reaches Now. */
 export const gap = computed(() => {
     if (!newer.value || historyFilter.value === 'here') return undefined
@@ -177,6 +183,7 @@ const recount = async () => {
         return
     }
     if (mark !== epoch || newer.value !== at) return
+    landings.value++
     if (page.newer) newerCount.value = page.newer.count
     else {
         newer.value = undefined
@@ -260,6 +267,7 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
     loadedFor.value = id
     canLoadMore.value = !!cursor
     status.value = 'ready'
+    landings.value++
 }
 
 /** Reads the first page again after it failed. */
@@ -283,6 +291,7 @@ export const loadMore = () => {
             stored.value = [...stored.value, ...page.entries.map(entryOf)]
             cursor = page.next
             canLoadMore.value = !!cursor
+            landings.value++
         } catch {
             // The next scroll tries again.
         } finally {
@@ -309,6 +318,7 @@ export const loadNewer = () => {
             })
             if (mark !== epoch || newer.value !== at) return
             stored.value = [...page.entries.map(entryOf), ...stored.value]
+            landings.value++
             if (page.newer) {
                 newer.value = { ...page.newer, path: at.path }
                 newerCount.value = page.newer.count
@@ -327,10 +337,26 @@ export const loadNewer = () => {
     return loadingAbove
 }
 
-// --- The index Go To lists, read when it opens and kept until the next history action.
+// --- The index Go To lists, read when it opens and again when the Timeline's entries move.
 
 const SAVES = ['save', 'export'] as const
 const indexes = new Map<string, Promise<TimelineIndex>>()
+
+/** What a read landed: the index, with the filter and zone it was read for. */
+type Landed = { index: TimelineIndex; filter: Filter; zone: Zone }
+const indexLanded = shallowRef<Landed>()
+let indexTicket = 0
+
+/**
+ * Names the Timeline entries an index read covers. In normal mode it is the newest stored entry of
+ * the open session that is loaded (0 when none is), so a read is repeated when newer entries load.
+ * After a jump the loaded run does not say what is stored: a read is repeated whenever the
+ * Timeline's next read lands.
+ */
+export const goToStamp = () =>
+    runState.value === 'joined'
+        ? `t${stored.value.find((entry) => entry.sessionId === session.value.sessionId)?.seq ?? 0}`
+        : `r${landings.value}`
 
 /**
  * The chain's pieces, runs of a session's entries on one local day of `zone` (the History clock's):
@@ -352,7 +378,7 @@ export const readIndex = (
     if (!worker)
         return Promise.resolve({ pieces: [], path: [], topSession: open, importing: false })
     const start = startOf(open)
-    const key = `${start.sessionId}:${start.before ?? ''}:${filter}:${zone}`
+    const key = `${start.sessionId}:${start.before ?? ''}:${filter}:${zone}:${goToStamp()}`
     let found = indexes.get(key)
     if (!found) {
         found = worker.call('readTimelineIndex', {
@@ -361,10 +387,44 @@ export const readIndex = (
             ...(filter === 'saves' ? { kinds: [...SAVES] } : {}),
         })
         indexes.set(key, found)
-        found.catch(() => indexes.delete(key))
+        // An index read while an import fills the path is read again next time Go To opens.
+        found.then(
+            (index) => index.importing && indexes.delete(key),
+            () => indexes.delete(key),
+        )
     }
     return found
 }
+
+/**
+ * Reads Go To's index. With `keep` the list shown stays until the read lands; otherwise it is
+ * dropped now. Edits Here's list is read once its scan is done. A read that lands is used whatever
+ * has moved since: `goToPieces` adds the entries it does not cover.
+ */
+export const loadGoTo = async (filter: Filter, zone: Zone, keep: boolean) => {
+    const mark = ++indexTicket
+    if (!keep) indexLanded.value = undefined
+    if (filter === 'here' && here.scanning) return
+    const index = await readIndex(filter, zone)
+    if (mark === indexTicket) indexLanded.value = { index, filter, zone }
+}
+
+/** Go To's pieces: the landed index with the Timeline's entries above what it covers. */
+export const goToPieces = computed((): readonly TimelinePiece[] | undefined => {
+    const at = indexLanded.value
+    if (!at) return
+    if (at.filter === 'here') return at.index.pieces
+    // After a jump the loaded run is a window, so the open session's entries come from it and from
+    // the flusher's waiting entries; spec-C invariant 11 deduplicates them.
+    const listed =
+        runState.value === 'jumped' ? [...pendingEntries(), ...stored.value] : entries.value
+    return composeGoTo(
+        listed,
+        { ...at.index, zone: at.zone },
+        session.value.sessionId,
+        at.filter === 'saves' ? SAVES : undefined,
+    )
+})
 
 /**
  * Replaces the loaded run with a window at the target: from it down, and a page above it, with
@@ -380,6 +440,14 @@ export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | un
     const mark = replaceSource()
     const worker = storageWorker
     if (!worker) return
+    // An entry not stored yet is on the newest page: Go To lists it, and Now shows it.
+    const open = flusher?.session
+    if (open?.id === target.sessionId && open.pending.some((entry) => entry.seq === target.seq)) {
+        await resetToNewest()
+        return entries.value.find(
+            (entry) => entry.sessionId === target.sessionId && entry.seq === target.seq,
+        )
+    }
     const { path } = await readIndex(filter)
     if (mark !== epoch || session.value.sessionId !== id || historyFilter.value !== filter) return
     const [below, above] = await Promise.all([
@@ -494,6 +562,7 @@ export const followEntries = () => {
         if (action.kind === 'reset') {
             carried.clear()
             replaceSource()
+            indexLanded.value = undefined
             stored.value = []
             cursor = undefined
             newer.value = undefined

@@ -20,6 +20,8 @@ export type DoorWorld = {
     worker: { call: (method: string, arg?: unknown) => Promise<unknown> }
     fire: (point: string, arg?: unknown) => Promise<void>
     behaviour: Map<string, (n: number, arg: unknown) => unknown>
+    /** Door calls in flight; the harness waits for 0 instead of for a time. */
+    doorBusy: number
 }
 
 /** The worker methods the matrix sends to the real handlers; every other method stays the world's fake. */
@@ -156,6 +158,14 @@ export const useRealDoor = async (
     const calls = new Map<string, number>()
     world.worker.call = async (method: string, arg?: unknown) => {
         if (!REAL_DOOR.has(method)) return fake(method, arg)
+        world.doorBusy++
+        try {
+            return await viaDoor(method, arg)
+        } finally {
+            world.doorBusy--
+        }
+    }
+    const viaDoor = async (method: string, arg?: unknown) => {
         await world.fire(`worker:${method}`, arg)
         // A fault fires before the real handler, so a faulted call stores nothing (E-4).
         const n = (calls.get(method) ?? 0) + 1

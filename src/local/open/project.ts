@@ -310,7 +310,6 @@ export const storeAndShow = async (
                 {
                     replace: true,
                     request,
-                    keepUnshownLock: true,
                     canShow: () => sessionContext() === owner,
                     onTransferred: () => {
                         ownership.transferred = true
@@ -349,15 +348,16 @@ export const storeAndShow = async (
             ...(job ? { import: job } : {}),
         }
     } finally {
-        // An unshown committed import keeps its session lock until its batches settle.
-        if (!ownership.transferred) await job
-        if (!ownership.transferred) await kept
+        // A lock no session took is kept until the import's batches and the kept copy settle.
+        if (lock.state === 'held') await job
+        if (lock.state === 'held') await kept
         if (!job) await deps.worker.call('openDrop', open.read.id).catch(() => undefined)
         else
             void job.finally(() =>
                 deps.worker.call('openDrop', open.read.id).catch(() => undefined),
             )
-        if (!ownership.transferred) lock.release()
+        // The opened session took it, or it goes now.
+        lock.release()
     }
 }
 

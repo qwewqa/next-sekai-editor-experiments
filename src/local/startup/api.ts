@@ -7,6 +7,7 @@ import { journalState } from '../journal/content'
 import { readJournal } from '../journal/format'
 import { hasWebLocks, sessionLock } from '../locks'
 import type { DisplayName } from '../names'
+import type { LockLease } from '../sessions'
 import { mapRead, readValue, storedRead, type StoredRead } from '../storedRead'
 import { previousSession } from './events'
 import {
@@ -79,7 +80,7 @@ const openSession = async (
     if (!request.isCurrent() || context !== captured) return { opened: false, why: 'blank' }
     const own = leaving?.id === sessionId || previousSession.value?.sessionId === sessionId
     const lock = await claimSessionLock(open.locks, sessionId, own ? MARKER_WAIT_MS : 0)
-    let opened = false
+    let shared: LockLease | undefined
     try {
         // Its pending journal first (§1.6.4, between loads): a stale session is never opened
         // over it silently.
@@ -119,7 +120,7 @@ const openSession = async (
             asCopy || elsewhere || !read.isHead || (await boundElsewhere(open, read)) !== 'no'
         const copyOf = copyOfOf(read)
         // The exclusive hold taken for the replay stands for the parent's shared one (§1.3.6).
-        const parentLock = held ?? (await holdShared(open.locks, sessionId))
+        const parentLock = held ?? (shared = await holdShared(open.locks, sessionId))
         const state = await openStored(
             open,
             read,
@@ -130,9 +131,6 @@ const openSession = async (
                 replace: true,
                 request,
                 canShow: () => context === captured,
-                onTransferred: () => {
-                    opened = true
-                },
                 onShown: (left) => {
                     if (left && flusher) open.onLeft?.(left, flusher.outgoing)
                 },
@@ -140,12 +138,12 @@ const openSession = async (
             },
         )
         if (!state) return { opened: false, why: 'blank' }
-        opened = true
         // The session this replaced is offered by Reopen in turn (§1.4.1).
         return { opened: true }
     } finally {
-        // Otherwise the opened session holds it (released twice is harmless).
-        if (lock && !opened) lock.release()
+        // The opened session took the leases it holds; anything else goes.
+        lock?.release()
+        shared?.release()
     }
 }
 
