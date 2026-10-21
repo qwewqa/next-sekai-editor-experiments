@@ -1,6 +1,6 @@
 # Engineering principles
 
-Rules that past defects taught. Each has the rule, the reason and one real case. Use them when you write and when you review code or tests. The owner keeps the full defect rows (cause, how it came about, fix) in `work/history-redesign/ROOT-CAUSES.md`; the entries here are the short form.
+Rules that past defects taught. Each has the rule, the reason and one real case. Use them when you write and when you review code or tests.
 
 Like the other pages, these are principles with reasons. Depart from one when a case needs it, and say why in the change.
 
