@@ -205,8 +205,8 @@ test('a picked file this tab opened as a chart is refused and put back as it was
     const usc = new TextEncoder().encode('{"usc":{"objects":[],"offset":0},"version":2}')
     const handle = mock.createHandle('chart.usc')
     exportMemory.opened = { handle, levelData: false, partial: false, bytes: usc.buffer }
-    // The picker emptied it before the editor saw it (D5).
-    mock.writeFile('chart.usc', new Blob([]))
+    // The file holds the chart; the pick empties it before the editor sees it (D5).
+    mock.writeFile('chart.usc', new Blob([usc]))
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
     const { ui, asked } = scriptedUi([undefined])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
@@ -315,7 +315,8 @@ test('a picked level whose import left parts out is refused and put back as it w
     const original = new Uint8Array(await level(4).arrayBuffer())
     const handle = mock.createHandle('LevelData')
     exportMemory.opened = { handle, levelData: true, partial: true, bytes: original.slice().buffer }
-    mock.writeFile('LevelData', new Blob([]))
+    // The file holds the level; the pick empties it (D5).
+    mock.writeFile('LevelData', new Blob([original]))
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('LevelData') })
     const { ui, asked } = scriptedUi([undefined])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
@@ -332,7 +333,7 @@ test('a picked chart that cannot be put back is reported, with its bytes to down
         partial: false,
         bytes: usc.buffer,
     }
-    mock.writeFile('chart.usc', new Blob([]))
+    mock.writeFile('chart.usc', new Blob([usc]))
     // Writing it back is not allowed.
     const picked = mock.createHandle('chart.usc', { permission: () => 'denied' })
     mock.saveTargets.push({ kind: 'handle', handle: picked })
@@ -357,7 +358,8 @@ const openedChart = () => {
         partial: false,
         bytes: usc.buffer,
     }
-    mock.writeFile('chart.usc', new Blob([]))
+    // The file holds the chart; the pick empties it (D5).
+    mock.writeFile('chart.usc', new Blob([usc]))
     return usc
 }
 
@@ -381,7 +383,13 @@ test('a refused pick another program wrote since is left as it is, and said so',
 
 test('a refused pick that is gone is not said to be emptied', async () => {
     openedChart()
-    mock.files.delete('chart.usc')
+    // Deleted after the pick, which emptied it (D5).
+    const inspect = mock.inspect
+    mock.inspect = (target) => {
+        mock.files.delete('chart.usc')
+        mock.inspect = inspect
+        return inspect(target)
+    }
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
     const { ui, asked } = scriptedUi([undefined])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
@@ -441,7 +449,8 @@ test('a pick accepted before a cancel is written to its end and reported', async
     const cancelling = context(ui, 1, { signal: second.signal, committed: () => committed++ })
     assert.equal(await exportByPicker(cancelling), 'cancelled')
     assert.equal(committed, 1)
-    assert.equal(mock.files.has('Third.nsld'), false)
+    // The pick created it empty (D5); nothing was written over that.
+    assert.equal(mock.files.get('Third.nsld')?.size, 0)
     assert.deepEqual(asked, [])
 })
 
@@ -511,4 +520,25 @@ test('the conflict dialog has no modified time when the blob read does not say, 
     assert.equal(await exportToTarget(context(second.ui), target), 'cancelled')
     const real = second.asked[0]?.args[1] as { lastModified?: number }
     assert.equal(real.lastModified, 1_700_000_000_000)
+})
+
+test('the mock empties a picked file at the pick and creates a new name empty, as Chromium does', async () => {
+    mock.writeFile('Old.nsld', level(1))
+    let during: number | undefined
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Old.nsld') })
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('New.nsld') })
+    for (const name of ['Old.nsld', 'New.nsld']) {
+        const result = await mock.saveFile({
+            kind: 'nsld',
+            suggestedName: name,
+            build: () => Promise.resolve(new Blob(['x'])),
+            picked: () => {
+                during = mock.files.get(name)?.size
+                return Promise.resolve(false)
+            },
+        })
+        assert.equal(result.status, 'cancelled')
+        assert.equal(during, 0)
+        assert.equal(mock.files.get(name)?.size, 0)
+    }
 })
