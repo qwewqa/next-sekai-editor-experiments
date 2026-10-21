@@ -49,6 +49,20 @@ const dialogResult = (fileName = 'out.nxsp') => ({
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
+/**
+ * The user types a name while Export's read first runs: wait until the door has no call in flight
+ * over two timer turns (the gaps between a read's calls are microtasks and one setImmediate), not
+ * for a time. A `read-slow` cell keeps its read unsettled, as the R2-slow todo needs.
+ */
+const typeName = async (w: World) => {
+    exportPick.exportDialogOpened()
+    if (w.tune.readDelayMs) return sleep(20)
+    for (let quiet = 0; quiet < 2;) {
+        await sleep(2)
+        quiet = w.doorBusy === 0 ? quiet + 1 : 0
+    }
+}
+
 export type PathDef = {
     id: string
     family: 'save' | 'export' | 'download'
@@ -301,9 +315,7 @@ export const PATHS: PathDef[] = [
         importWait: true,
         build: true,
         run: async (w) => {
-            exportPick.exportDialogOpened()
-            // The dialog is open while the user types a name: the read first settles meanwhile.
-            await sleep(20)
+            await typeName(w)
             exportPick.exportFlowRunning(true)
             try {
                 return await exportByPicker(exportContext(w))
@@ -325,9 +337,7 @@ export const PATHS: PathDef[] = [
         importWait: true,
         build: true,
         run: async (w) => {
-            exportPick.exportDialogOpened()
-            // The dialog is open while the user types a name: the read first settles meanwhile.
-            await sleep(20)
+            await typeName(w)
             exportPick.exportFlowRunning(true)
             try {
                 return await exportByPicker(exportContext(w))
@@ -349,8 +359,7 @@ export const PATHS: PathDef[] = [
         importWait: true,
         build: true,
         run: async (w) => {
-            exportPick.exportDialogOpened()
-            await sleep(20)
+            await typeName(w)
             exportPick.exportFlowRunning(true)
             try {
                 return await exportByPicker(exportContext(w))
