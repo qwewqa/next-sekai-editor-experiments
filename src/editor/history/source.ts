@@ -387,7 +387,11 @@ export const readIndex = (
             ...(filter === 'saves' ? { kinds: [...SAVES] } : {}),
         })
         indexes.set(key, found)
-        found.catch(() => indexes.delete(key))
+        // An index read while an import fills the path is read again next time Go To opens.
+        found.then(
+            (index) => index.importing && indexes.delete(key),
+            () => indexes.delete(key),
+        )
     }
     return found
 }
