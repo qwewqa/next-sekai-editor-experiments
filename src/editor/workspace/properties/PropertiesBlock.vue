@@ -4,6 +4,7 @@ import {
     nextTick,
     onBeforeUnmount,
     onMounted,
+    provide,
     ref,
     toRef,
     useId,
@@ -13,6 +14,7 @@ import {
 import { easeEditParts, easeFunctionOf, easeTypeOf, eases, type Ease } from '../../../ease'
 import { isPeeking } from '../../../history/stack'
 import { i18n } from '../../../i18n'
+import { fieldReadOnlyKey } from '../../../modals/form/fieldReadOnly'
 import type { FieldUsage } from '../../../modals/form/fieldUsage'
 import { createFontContext } from '../../../rendering/textRaster'
 import { settings } from '../../../settings'
@@ -48,6 +50,9 @@ const props = defineProps<{
     /** Other kinds are selected too, so this one can be selected alone. */
     narrowable: boolean
 }>()
+
+// While peeking the fields show the peeked values, readable and selectable, and change nothing.
+provide(fieldReadOnlyKey, isPeeking)
 
 const { createModel, createEaseModel } = useEntitiesProperties(
     toRef(props, 'entities'),
@@ -278,15 +283,13 @@ const narrowKind = async (event: MouseEvent) => {
                         :key="field.key"
                         :usage="usageOf(field)"
                     >
-                        <fieldset class="properties-peek contents" :disabled="isPeeking">
-                            <component
-                                :is="multiFieldComponents[field.key]"
-                                :model-value="models[field.key].value"
-                                @update:model-value="
-                                    (value: unknown) => (models[field.key].value = value)
-                                "
-                            />
-                        </fieldset>
+                        <component
+                            :is="multiFieldComponents[field.key]"
+                            :model-value="models[field.key].value"
+                            @update:model-value="
+                                (value: unknown) => (models[field.key].value = value)
+                            "
+                        />
                     </FieldUsageProvider>
                 </div>
             </PropertiesFieldGroup>
@@ -296,17 +299,12 @@ const narrowKind = async (event: MouseEvent) => {
                     :key="field.key"
                     :usage="usageOf(field)"
                 >
-                    <!-- Fields are shown disabled while peeking (§1.4.11). -->
-                    <fieldset class="properties-peek contents" :disabled="isPeeking">
-                        <component
-                            :is="multiFieldComponents[field.key]"
-                            v-bind="fieldProps(field)"
-                            :model-value="models[field.key].value"
-                            @update:model-value="
-                                (value: unknown) => (models[field.key].value = value)
-                            "
-                        />
-                    </fieldset>
+                    <component
+                        :is="multiFieldComponents[field.key]"
+                        v-bind="fieldProps(field)"
+                        :model-value="models[field.key].value"
+                        @update:model-value="(value: unknown) => (models[field.key].value = value)"
+                    />
                 </FieldUsageProvider>
             </PropertiesFieldGroup>
         </template>
@@ -318,12 +316,6 @@ const narrowKind = async (event: MouseEvent) => {
    colours paint as an edge. */
 .properties-block-title {
     outline: none;
-}
-
-/* Fields disabled while peeking look it, and take no pointer input of their own. */
-.properties-peek:disabled > * {
-    opacity: 0.5;
-    pointer-events: none;
 }
 
 /* Blocks of different kinds are set apart more than field groups are. */

@@ -19,6 +19,7 @@ import { cancelFit, queueFit } from './fitBatch'
 import { holdsTyping } from './resync'
 import { observeWidth, unobserveWidth } from './widthObserver'
 import { formatNumber } from '../../utils/formatNumber'
+import { useFieldReadOnly } from './fieldReadOnly'
 import { mixedValues, useFieldUsage, type MixedValue } from './fieldUsage'
 import { formatCount } from '../../utils/size'
 
@@ -33,6 +34,7 @@ const props = defineProps<{
 }>()
 
 const field = useFieldUsage()
+const readOnly = useFieldReadOnly()
 const row = useTemplateRef<HTMLElement>('row')
 const descriptionId = useId()
 // Controls named by more than the label, as a shortcut by its binding, refer to it.
@@ -411,7 +413,7 @@ watchEffect(
                     :tabindex="index === current ? 0 : -1"
                     :title="chip.label"
                     :aria-label="chip.label"
-                    :disabled="!chip.narrow"
+                    :disabled="!chip.narrow || readOnly"
                     @focus="current = index"
                     @click="narrow(chip, $event)"
                 >

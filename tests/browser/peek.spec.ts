@@ -486,7 +486,9 @@ test('the Groups dialog opens while peeking: the current group changes, edits ar
     await leave(page)
 })
 
-test('Properties shows fields disabled while peeking', async ({ page }) => {
+test('Properties shows the peeked values readable and selectable, and changes nothing', async ({
+    page,
+}) => {
     const first = await newestSeq(page)
     await page.evaluate(() => {
         window.editorTest.settings.showSidebar = true
@@ -497,7 +499,34 @@ test('Properties shows fields disabled while peeking', async ({ page }) => {
     await page.mouse.click(point.x, point.y)
     const beat = page.getByLabel('Beat', { exact: true }).first()
     await expect(beat).toBeVisible()
-    await expect(beat).toBeDisabled()
+    // Beats show from 1.
+    await expect(beat).toHaveValue('4')
+
+    // Read-only, not disabled: at full strength, and its text can be selected and copied.
+    await expect(beat).toBeEnabled()
+    await expect(beat).toHaveAttribute('readonly', '')
+    expect(
+        await beat.evaluate((input) => {
+            let opacity = 1
+            for (let el: Element | null = input; el; el = el.parentElement)
+                opacity *= Number(getComputedStyle(el).opacity)
+            return opacity
+        }),
+    ).toBe(1)
+    await beat.focus()
+    expect(await page.evaluate(() => getSelection()?.toString())).toBe('4')
+
+    // Typing and the arrow keys change nothing.
+    await page.keyboard.type('9')
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Enter')
+    await expect(beat).toHaveValue('4')
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+    expect(await newestSeq(page)).toBe(first + 1)
+
+    // Other controls are disabled.
+    const selects = page.locator('#properties-section-selection select')
+    for (const select of await selects.all()) await expect(select).toBeDisabled()
     await leave(page)
 })
 

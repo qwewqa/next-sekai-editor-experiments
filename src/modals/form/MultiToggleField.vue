@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { i18n } from '../../i18n'
 import BaseField from './BaseField.vue'
+import { useFieldReadOnly } from './fieldReadOnly'
 import { useFieldUsage } from './fieldUsage'
 import ToggleSwitch from './ToggleSwitch.vue'
 
@@ -10,6 +11,7 @@ defineProps<{
 }>()
 
 const modelValue = defineModel<boolean | undefined>({ required: true })
+const readOnly = useFieldReadOnly()
 // Only a value several objects share can be mixed; one always set, as the brush's, is a switch.
 const mixable = !!useFieldUsage()
 // The shown value, also on hover where it truncates.
@@ -35,6 +37,7 @@ const shown = computed(() =>
                     :aria-labelledby="textId"
                     :class="{ 'text-fg/80 active:text-fg-strong': modelValue === undefined }"
                     :value="shown"
+                    :disabled="readOnly"
                     :title="shown"
                     @click="modelValue = !modelValue"
                 />

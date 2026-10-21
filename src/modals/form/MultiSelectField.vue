@@ -7,6 +7,7 @@ import { useLeadFit } from './leadFit'
 import { hasGlyphColumn, OptionGlyphSlot, type OptionGlyph } from './optionGlyph'
 import { resyncSelect } from './resync'
 import SelectValue from './SelectValue.vue'
+import { useFieldReadOnly } from './fieldReadOnly'
 import { isUnknownValue, isUnset, mixedOptions, optionName, useFieldUsage } from './fieldUsage'
 import { unknownLabel } from './unknownLabel'
 
@@ -27,6 +28,8 @@ const modelValue = defineModel<T | undefined>({ required: true })
 
 type Section = { label?: string; options: [string, T][] }
 const allSections = computed((): Section[] => props.sections ?? [{ options: props.options ?? [] }])
+
+const readOnly = useFieldReadOnly()
 
 // While mixed, options in use carry their object counts.
 const field = useFieldUsage()
@@ -97,7 +100,7 @@ const leadless = useLeadFit(useTemplateRef<HTMLElement>('wrapper'))
             </span>
             <select
                 v-model.lazy="modelValue"
-                :disabled
+                :disabled="disabled || readOnly"
                 :title="shown"
                 :class="{ 'text-fg/80 active:text-fg-strong': modelValue === undefined }"
                 class="btn btn-secondary w-full appearance-none rounded-full px-4 py-1 disabled:opacity-70"
