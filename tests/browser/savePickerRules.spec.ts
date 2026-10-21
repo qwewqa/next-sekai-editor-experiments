@@ -379,7 +379,10 @@ test('a Save that throws while reserved leaves the next Save able to run', async
     await queuePicks(page, ['coconut.nxsp', 'coconut.nxsp'])
     await pressSave(page)
     await submitSave(page, 'coconut')
-    await expect(saveDialog(page)).toHaveCount(0)
+    // The throw is shown as a failed Save, and the queue is free for the next one.
+    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     await pressSave(page)
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()

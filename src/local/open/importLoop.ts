@@ -130,6 +130,9 @@ export const whenImported = (sessionId: string, signal?: AbortSignal): Promise<I
 /** Whether this tab runs the session's import now. */
 export const isImporting = (sessionId: string) => running.has(sessionId)
 
+/** Whether this tab runs any session's import now: a save picker waits for all of them. */
+export const importsRunning = () => running.size > 0
+
 /** Whether the file is the one read at the open: size and time, and with `full` its `<cd>`. */
 const unchanged = async (source: ImportSource, full: boolean) => {
     const { handle, disk } = source

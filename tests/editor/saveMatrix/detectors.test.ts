@@ -50,19 +50,21 @@ test('I3 sees a reservation ended twice, never, or left held', async () => {
     assert.deepEqual(await invariants(world), ['I3'])
 })
 
-test('I4 and I5 see a picker opened without activation or during an import', async () => {
+test('I4 and I5 see a picker opened without activation, during an import, or while a copy is kept', async () => {
     const world = await createWorld()
     const opening = {
         name: 'x',
         activation: true,
         importing: false,
+        copying: false,
         importPending: false,
         dialogOpen: false,
     }
     world.openings.push({ ...opening, activation: false })
     world.openings.push({ ...opening, importing: true })
+    world.openings.push({ ...opening, copying: true })
     world.openings.push({ ...opening, importPending: true })
-    assert.deepEqual(await invariants(world), ['I4', 'I5', 'I5'])
+    assert.deepEqual(await invariants(world), ['I4', 'I5', 'I5', 'I5'])
 })
 
 test('I6 sees a dialog under the lock, a Preparing left open, and a lock left held', async () => {

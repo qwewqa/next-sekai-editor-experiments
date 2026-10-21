@@ -74,10 +74,13 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     for (const opening of world.openings)
         if (!opening.activation) add('I4', `a picker opened for ${opening.name} without activation`)
 
-    // I5: no picker opens while an import of this tab runs, nor with one pending in storage before
-    // the bounded wait (`RESUME_WAIT_MS`, which a pending import that never starts runs out) is over.
+    // I5: no picker opens while an import of this tab runs (any session's), nor while a copy of an
+    // opened file is being kept, nor with one pending in storage before the bounded wait
+    // (`RESUME_WAIT_MS`, which a pending import that never starts runs out) is over.
     for (const opening of world.openings) {
         if (opening.importing) add('I5', `a picker opened for ${opening.name} during the import`)
+        else if (opening.copying)
+            add('I5', `a picker opened for ${opening.name} while a copy was being kept`)
         else if (opening.importPending)
             add('I5', `a picker opened for ${opening.name} with the import pending`)
     }

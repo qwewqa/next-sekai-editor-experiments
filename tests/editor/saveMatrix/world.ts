@@ -33,7 +33,8 @@ const { readValue } = await import('../../../src/local/storedRead')
 const { clearExportMemory, exportMemory, setExportPersister, setExportTargetReader } =
     await import('../../../src/editor/commands/exportLevel/memory')
 const exportPick = await import('../../../src/editor/commands/exportLevel/pick')
-const { startImport, isImporting } = await import('../../../src/local/open/importLoop')
+const { startImport, importsRunning } = await import('../../../src/local/open/importLoop')
+const { keepCopy, copiesRunning } = await import('../../../src/local/open/kept')
 const { markFirstSaveDone } = await import('../../../src/editor/file/flags')
 const { useRealDoor } = await import('./door')
 
@@ -114,7 +115,10 @@ export type Write = { name: string; exclusive: boolean; shared: boolean; picked:
 export type PickerOpening = {
     name: string
     activation: boolean
+    /** Any import of this tab runs (the open session's, or another's). */
     importing: boolean
+    /** A copy of an opened file is being kept. */
+    copying: boolean
     /** An import pending in storage that the bounded wait (`RESUME_WAIT_MS`) has not run out on (I5). */
     importPending: boolean
     dialogOpen: boolean
@@ -214,6 +218,8 @@ const createWorld = async (setup: Setup = {}) => {
         []
     const pickedHandles = new Set<string>()
     const readFails = new Set<string>()
+    /** Files whose next read fails, once. */
+    const readFailsOnce = new Set<string>()
 
     // The lock facts: whether this session holds `nse-bind` in a mode now.
     const holds = (mode: 'exclusive' | 'shared') =>
@@ -273,7 +279,8 @@ const createWorld = async (setup: Setup = {}) => {
                     await new Promise((resolve) => setTimeout(resolve, tune.readDelayMs))
                 if (tune.readWaitsForDialog && name === OWN)
                     await world.until(() => preparing.some((p) => p.open), 'Preparing…', 8000)
-                if (readFails.has(name)) throw new DOMException('Not readable', 'NotReadableError')
+                if (readFails.has(name) || readFailsOnce.delete(name))
+                    throw new DOMException('Not readable', 'NotReadableError')
                 return inner.getFile()
             },
             createWritable: (options?: unknown) =>
@@ -294,7 +301,8 @@ const createWorld = async (setup: Setup = {}) => {
         openings.push({
             name,
             activation: activation.active,
-            importing: isImporting(ownSession.id),
+            importing: importsRunning(),
+            copying: copiesRunning(),
             // Restated I5: pending in storage is allowed once the wait has run its bound. The bound
             // counts per world, from the first listing of the pending import by any caller, and 150 ms
             // is timing tolerance (the wait polls every 250 ms).
@@ -825,6 +833,7 @@ const createWorld = async (setup: Setup = {}) => {
         preparing,
         pickedHandles,
         readFails,
+        readFailsOnce,
         pendingImports,
         decision,
         conflictInputs,
@@ -943,6 +952,50 @@ const createWorld = async (setup: Setup = {}) => {
             } as never)
             void run.then(() => pendingImports.delete(ownSession.id))
             return { finish, run }
+        },
+        /** An import of a session this flow has no reason to wait for (another chain's), running here. */
+        startOtherImport: () => {
+            let finish!: () => void
+            const gate = new Promise<void>((resolve) => {
+                finish = resolve
+            })
+            const importWorker = {
+                call: async (method: string) => {
+                    if (method === 'openBatch') {
+                        await gate
+                        return { kind: 'done' }
+                    }
+                    return undefined
+                },
+            }
+            const run = startImport({
+                worker: importWorker as never,
+                sessionId: 'session-elsewhere',
+                chainId: 'chain-elsewhere',
+                id: 'import-2',
+                batches: 1,
+                source: { file: new Blob([]) } as never,
+                locks: mock.locks,
+                appVersion: '0.6.0',
+            } as never)
+            return { finish, run }
+        },
+        /** A copy of an opened file being kept (the worker's `keepHandle` waits for `finish`). */
+        startCopy: () => {
+            let finish!: () => void
+            const gate = new Promise<void>((resolve) => {
+                finish = resolve
+            })
+            on('worker:keepHandle', async () => {
+                await gate
+            })
+            const copy = keepCopy(
+                worker as never,
+                ownSession.chainId,
+                new Blob(['opened']),
+                handle('opened.nsld'),
+            )
+            return { finish, copy }
         },
         /** The revocations storage could not take, kept in localStorage (R11). */
         revocations: () => env.pendingRevocations(),

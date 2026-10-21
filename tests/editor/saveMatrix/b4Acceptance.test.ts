@@ -5,10 +5,11 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
 // B4 acceptance (work/arch/spec-B.md, invariants 1 and 2): a save picker is opened only in the
-// pick-session module, and a Save's reservation is ended only through SaveAttempt. The write-back,
-// Replace and Download Again end through it since B1; the picker paths still open their own
-// picker and end their own reservation, so these fail. They are `todo` so the suite stays green,
-// and B4 removes the `todo` when it turns them green.
+// pick-session module, and a Save's reservation is ended only through SaveAttempt. The Save family
+// (the write-back, Replace, Download Again and the Save pickers) opens its picker and ends its
+// reservation there since B2; Export's and Save to File…'s pickers still open their own and end
+// their own reservation, so these fail. They are `todo` so the suite stays green, and B4 removes
+// the `todo` when it turns them green.
 
 const root = fileURLToPath(new URL('../../../src/', import.meta.url))
 

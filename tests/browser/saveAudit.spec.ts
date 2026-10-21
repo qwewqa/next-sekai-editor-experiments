@@ -407,8 +407,9 @@ test.describe('a large download on a touch device', () => {
                 page.evaluate(() => (Reflect.get(window, 'preparingSeen') as string[]).length),
             )
             .toBeGreaterThan(0)
+        // The failure is shown, and "Preparing…" is gone.
         await expect(page.locator('[data-save-preparing]')).toHaveCount(0)
-        await expect(page.getByRole('dialog')).toHaveCount(0)
+        await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
     })
 })
 
