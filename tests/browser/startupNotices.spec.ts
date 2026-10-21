@@ -199,7 +199,9 @@ test.describe('load notices in the start-up pill', () => {
         await settled(page)
         const next = await context.newPage()
         await visit(next)
-        await expect(pill(next)).toContainText('is open in another tab or window.')
+        await expect(pill(next)).toContainText(
+            'was not restored here because it is open in another tab or window.',
+        )
         const button = pill(next).getByRole('button', { name: 'Restore as a Copy' })
         await expect(button).toBeVisible()
         // Above the toolbar, where a tap on the chart does not land.

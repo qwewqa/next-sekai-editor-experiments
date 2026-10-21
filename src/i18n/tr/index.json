@@ -1183,7 +1183,7 @@
     "autoSave": "\"{0}\", otomatik kaydetmeden devam ettirildi.",
     "journal": "\"{0}\" üzerindeki son değişiklik kurtarıldı.",
     "journalLater": "Kurtarılan bir değişiklik için editörün daha yeni bir sürümü gerekiyor.",
-    "openElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık.",
+    "openElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık olduğu için burada geri yüklenmedi.",
     "restoreAsCopy": "Kopya Olarak Geri Yükle",
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
     "autoSaveKept": "\"{0}\", otomatik kaydetmeden ayrı bir oturum olarak saklandı.",

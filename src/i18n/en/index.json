@@ -1183,7 +1183,7 @@
         "autoSave": "Continued \"{0}\" from auto save.",
         "journal": "Recovered your last change to \"{0}\".",
         "journalLater": "A recovered change needs a newer version of the editor.",
-        "openElsewhere": "\"{0}\" is open in another tab or window.",
+        "openElsewhere": "\"{0}\" was not restored here because it is open in another tab or window.",
         "restoreAsCopy": "Restore as a Copy",
         "sessionDeleted": "This session was deleted in another tab or window.",
         "autoSaveKept": "Kept \"{0}\" from auto save as a separate session.",

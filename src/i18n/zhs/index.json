@@ -1183,7 +1183,7 @@
     "autoSave": "已从自动保存继续“{0}”。",
     "journal": "已恢复对“{0}”的最后更改。",
     "journalLater": "已恢复的更改需要更新版本的编辑器。",
-    "openElsewhere": "“{0}”已在另一个标签页或窗口中打开。",
+    "openElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此未在此处还原。",
     "restoreAsCopy": "还原为副本",
     "sessionDeleted": "此会话已在另一个标签页或窗口中删除。",
     "autoSaveKept": "已将自动保存中的“{0}”保留为单独的会话。",
