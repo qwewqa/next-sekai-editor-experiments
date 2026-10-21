@@ -591,6 +591,18 @@ export const heldBar = computed(() =>
     changeLine.value === undefined && !slowRead.value ? settledBar.value : undefined,
 )
 
+/** A peeked step's change is being read for under 250 ms: a press now waits for it. */
+export const awaitingRead = computed(
+    () =>
+        isPeeking.value && !!peekedInfo.value && changeLine.value === undefined && !slowRead.value,
+)
+
+/**
+ * The first step of a peek, read for under 250 ms: nothing is held, so the bar's date and change
+ * strip stay hidden (in place) until its change is read or the loading state shows.
+ */
+export const firstRead = computed(() => awaitingRead.value && !settledBar.value)
+
 /** The step the bar names. */
 export const barInfo = computed(() => heldBar.value?.info ?? peekedInfo.value)
 
@@ -652,8 +664,8 @@ const showLateralChange = () => {
 
 /** Show Change: the next stop above the band's middle, wrapping to the lowest. */
 export const showNextChange = () => {
-    // Held on the last step: the press waits for the new one's change, as the arrows' do.
-    if (heldBar.value) {
+    // While the new step's change is read, the press waits for it, as the arrows' do.
+    if (awaitingRead.value) {
         pressWhenRead(showNextChange)
         return
     }

@@ -6,12 +6,13 @@ import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { isComposingKey } from '../../utils/composition'
 import { interpolateRaw } from '../../utils/interpolate'
 import {
+    awaitingRead,
     barInfo,
+    firstRead,
     changeLine,
     countedLines,
     fixedLine,
     fixedLines,
-    heldBar,
     pressWhenRead,
 } from './changes'
 import { settings } from '../../settings'
@@ -116,7 +117,7 @@ const restore = () => {
 }
 // A press while the last step is held opens the new step's details once its change is read.
 const details = () => {
-    if (heldBar.value) {
+    if (awaitingRead.value) {
         pressWhenRead(details)
         return
     }
@@ -173,7 +174,10 @@ const onKeydown = (event: KeyboardEvent) => {
                 <button
                     type="button"
                     class="peek-hit ghost mr-auto flex h-9 min-w-0 items-center gap-2 rounded-full"
-                    :class="layout.tiny ? 'w-9 shrink-0 justify-center' : 'px-2.5'"
+                    :class="[
+                        layout.tiny ? 'w-9 shrink-0 justify-center' : 'px-2.5',
+                        { invisible: firstRead },
+                    ]"
                     :title="shownInfo && peekedLabel(shownInfo, peekContext)"
                     :aria-label="interpolateRaw(i18n.history.details.named, text)"
                     data-peek-text

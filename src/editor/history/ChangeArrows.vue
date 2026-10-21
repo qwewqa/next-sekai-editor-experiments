@@ -20,6 +20,8 @@ import {
     pressWhenRead,
     propertyInspection,
     reportCounts,
+    awaitingRead,
+    firstRead,
     heldBar,
     showChangeToward,
     shownChange,
@@ -98,7 +100,7 @@ watch(
     },
 )
 const inspect = async (opener: HTMLElement | null) => {
-    if (heldBar.value) {
+    if (awaitingRead.value) {
         pressWhenRead(() => void inspect(opener))
         return
     }
@@ -167,6 +169,7 @@ const labelOf = (direction: 'up' | 'down') => {
     <!-- Every face is a 24 px circle or pill, 4 px in from the capsule's edge; hits reach 4 px past it. -->
     <div
         v-if="isPeeking"
+        :class="{ invisible: firstRead }"
         class="pointer-events-auto flex h-8 w-[calc(var(--peek-w)-0.75rem)] max-w-[calc(100%-0.75rem)] items-center gap-2 rounded-full bg-modal p-1 text-xs text-fg shadow-md ring-1 ring-fg/10"
         data-peek-navigation
         :data-change-options-mode="compact || undefined"
