@@ -75,7 +75,8 @@ jobs:
         needs: check
         runs-on: ubuntu-latest
         # About 1 min of tests in Firefox with one worker on a fast desktop; WebKit runs them on Linux.
-        timeout-minutes: 25
+        # 190 tests on one worker passed 25 minutes on 2026-10-21 (155 done, none failing).
+        timeout-minutes: 40
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:

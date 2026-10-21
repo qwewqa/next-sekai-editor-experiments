@@ -19,7 +19,11 @@ test.afterEach(async ({ page }) => {
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     const messages: string[] = []
     errors.set(page, messages)
-    page.on('pageerror', (error) => messages.push(error.message))
+    // The browser's note that a ResizeObserver deferred a notification is not a failure; the app
+    // ignores it too (src/diagnostics.ts).
+    page.on('pageerror', (error) => {
+        if (!error.message.startsWith('ResizeObserver loop')) messages.push(error.message)
+    })
     if (browserName === 'webkit' && process.platform === 'win32') {
         testInfo.annotations.push({
             type: 'coverage',
