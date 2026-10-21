@@ -56,7 +56,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Rule.** User-facing text states only what is known. Where completeness, or whether something changed, cannot be proved, the text says so, or leaves the clause out.
 
-**Why.** A notice that is not true costs more trust than a vague one (owner, 2026-10-20).
+**Why.** A line that is not true costs more trust than one that says what is unknown. The owner, 2026-10-20: “In a can’t prove situation, let’s word it to state the uncertainty.”
 
 **Example.** The Save conflict dialog said the file on disk had "0 notes" when it had no summary. It now has a line without the note count (`describe` in `src/editor/save/dialogs.ts`). A group count that may be incomplete reads "10+ steps" only while the scan can still find more. Wording stays as in `src/i18n/en/index.json`.
 
@@ -64,6 +64,6 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Rule.** Until Stage 1 ships, formats, codecs and the IndexedDB schema change in place at their current version. Do not add migrations, repairs or version bumps for data from a build that was never released. Before code reads, repairs or migrates stored data, name the build that wrote it and check that it shipped; if it did not, clear the profile.
 
-**Why.** There is no user whose data it would protect, and every rule it adds must be kept forever (owner, 2026-10-20).
+**Why.** There is no user whose data it would protect, and every rule it adds must be kept forever once it ships. The owner, 2026-10-20: “We should not be adding cruft already to handle backwards compatibility between versions that have only been used a few seconds for testing.”
 
 **Example.** Database versions 2 and 3, `createMissingStores` and a dump-seeder repair existed only for test builds, and `MANIFEST_VERSION`, `SESSION_V` and `JOURNAL_VERSION` were raised to 2 before any release. All were returned to 1 with the rules that told the versions apart. See [format-versioning.md](format-versioning.md).
