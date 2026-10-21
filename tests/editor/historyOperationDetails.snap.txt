@@ -554,7 +554,7 @@ T: Opened A very long name that keeps going and going A very long name that keep
 F: Text shortened for display
 
 #continue.plain en
-T: Continued from Oct 18, 2:00:00 AM
+T: Continued from Oct 18, 9:00:00 AM
 
 #file.save.file en
 T: Saved level.nse
@@ -574,7 +574,7 @@ F: Text shortened for display
 T: Saved Untitled
 
 #restore.plain en
-T: Restored to Oct 18, 2:00:00 AM
+T: Restored to Oct 18, 9:00:00 AM
 
 #recovery.journal en
 T: Recovered changes
