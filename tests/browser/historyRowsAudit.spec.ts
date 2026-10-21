@@ -13,14 +13,12 @@ import {
     timeline,
 } from './historyJourney'
 import { pressSave, submitSave } from './saveFlows'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // History's rows (audit package C): a save from another device names it, and a row waiting to
 // be stored already carries its note delta.
 
-test.skip(
-    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
-    'Playwright WebKit on Windows does not provide Web Audio',
-)
+skipWhereTheEditorCannotStart()
 
 test.afterEach(({ page }) => noErrors(page))
 

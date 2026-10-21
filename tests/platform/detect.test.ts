@@ -5,7 +5,6 @@ import {
     detectFromUa,
     parsePlatformOverride,
     suspectPrivate,
-    withoutTestPickers,
     type UaEnv,
 } from '../../src/platform/detect'
 
@@ -188,17 +187,6 @@ test('the platform override keeps only its known fields', () => {
     assert.deepEqual(parsePlatformOverride('not json'), {})
     assert.deepEqual(parsePlatformOverride('null'), {})
     assert.deepEqual(parsePlatformOverride(null), {})
-})
-
-test('the OPFS pickers are honoured only where a test build allows them', () => {
-    const opfs = { os: 'ios', fileSystemAccess: 'opfs' } as const
-    // Real users' builds never swap the pickers or store handle tokens, whatever localStorage says.
-    assert.deepEqual(withoutTestPickers(opfs, false), { os: 'ios' })
-    assert.deepEqual(withoutTestPickers(opfs, true), opfs)
-    // The other values only change wording and hand-over paths, so they stay.
-    assert.deepEqual(withoutTestPickers({ fileSystemAccess: false }, false), {
-        fileSystemAccess: false,
-    })
 })
 
 test('a small quota without persistence suggests a private window', () => {

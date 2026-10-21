@@ -131,9 +131,11 @@ test('the storage worker runs as a classic worker and restarts from its Blob cop
     page,
     browserName,
 }) => {
+    // The page is asked, so no platform is named (tests/browser/webkitSupport.ts).
     test.skip(
-        browserName === 'webkit' && process.platform === 'win32',
-        'Playwright WebKit on Windows does not provide Web Audio',
+        browserName === 'webkit' &&
+            !(await page.evaluate(() => typeof OffscreenCanvas !== 'undefined')),
+        'This WebKit build lacks OffscreenCanvas, so the editor’s support gate refuses to start',
     )
     const errors = await watch(page)
     await page.addInitScript(() => {

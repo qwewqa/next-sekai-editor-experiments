@@ -1,6 +1,6 @@
 import { computed, shallowRef, watch } from 'vue'
 import { session, type SessionFile } from '../../history/session'
-import { headSnapshot, liveState } from '../../history/stack'
+import { headSnapshot, liveState, loadedHeadSnapshot } from '../../history/stack'
 import { platform } from '../../platform'
 import type { State } from '../../state'
 import { fileActions } from './actions'
@@ -66,14 +66,13 @@ const hexOf = (bytes: Uint8Array) =>
 
 // A session opened bound (a reload, a new visit, an open) has no state of the event in memory: the
 // head slot whose stored root is the binding's hash is that state, so later content is compared
-// with it. An open sets its session before it installs the stack, so this first runs against the
-// previous session's head, which can hold the same root as another state object; the install
-// that follows replaces that find, and its own find stands.
+// with it. Only a loaded head counts: at the moments of a stack swap or a queued move, when
+// `liveState` still shows the previous head, a root read beside it would record the wrong state.
 watch(
-    [() => session.value, headSnapshot, liveState],
+    [() => session.value, loadedHeadSnapshot, liveState],
     () => {
         const file = session.value.file
-        const root = headSnapshot.value
+        const root = loadedHeadSnapshot.value
         const held = eventState.value
         if (!file?.hash || !root || (held?.sessionId === session.value.sessionId && !held.derived))
             return

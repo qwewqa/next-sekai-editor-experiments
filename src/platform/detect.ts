@@ -1,4 +1,3 @@
-import { SITE } from '../buildInfo'
 import { HOST_GLOBALS, looksLikeInAppBrowser } from './inAppBrowser'
 import { testKeysOpen } from './testKeys'
 import type { PlatformOs } from './types'
@@ -130,20 +129,6 @@ const hasWindow = () => typeof window !== 'undefined'
 
 let override: PlatformOverride | undefined
 
-/**
- * The override without the OPFS pickers where they are not allowed. They replace the real
- * pickers and make the `handles` store keep `{ testHandle }` tokens, which are stored data, so a
- * build for real users ignores them; every other value changes wording and hand-over paths only.
- */
-export const withoutTestPickers = (
-    override: PlatformOverride,
-    allowed: boolean,
-): PlatformOverride => {
-    if (allowed || override.fileSystemAccess !== 'opfs') return override
-    const { fileSystemAccess: _, ...rest } = override
-    return rest
-}
-
 /** The test override, read once. */
 export const platformOverride = (): PlatformOverride => {
     if (override) return override
@@ -153,12 +138,7 @@ export const platformOverride = (): PlatformOverride => {
     } catch {
         // Storage can be unavailable; detection still runs.
     }
-    const parsed = parsePlatformOverride(text)
-    // Dev builds (every spec) and the test site take the OPFS pickers; evaluated only when asked.
-    return (override = withoutTestPickers(
-        parsed,
-        parsed.fileSystemAccess !== 'opfs' || import.meta.env.DEV || SITE === 'test',
-    ))
+    return (override = parsePlatformOverride(text))
 }
 
 let detected: Detection | undefined

@@ -64,6 +64,15 @@ export const isDirty = computed(() => (current.value as Slot | undefined)?.isDir
  */
 export const headSnapshot = computed(() => (current.value as Slot | undefined)?.snapshot)
 
+/**
+ * The stored root of the current slot, only while that slot is loaded. While it is not,
+ * `liveState` shows the previous head, so a root read beside it would pair with the wrong state.
+ */
+export const loadedHeadSnapshot = computed(() => {
+    const slot = current.value as Slot | undefined
+    return slot?.state ? slot.snapshot : undefined
+})
+
 /** The complete step that made the current state: the Timeline's Now row. */
 export const headStep = computed(() => (current.value as Slot | undefined)?.step)
 

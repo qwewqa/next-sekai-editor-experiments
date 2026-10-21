@@ -1,13 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // The support gate, the startup gate and safe mode in a real browser (Part 1 §1.6.10, §1.4.2).
 
-test.skip(
-    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
-    'Playwright WebKit on Windows does not provide Web Audio',
-)
+skipWhereTheEditorCannotStart()
 
 const prefix = 'sonolus-next-sekai-editor.'
 
