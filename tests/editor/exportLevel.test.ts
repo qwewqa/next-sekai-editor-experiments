@@ -12,6 +12,7 @@ import { setPlatformForTests } from '../../src/platform'
 import { levelDataDiskState } from '../../src/platform/fingerprint'
 import { createMockPlatform, type MockPlatform } from '../../src/platform/mock'
 import { FileError } from '../../src/platform/types'
+import { buildZip } from '../../src/zip'
 
 const level = (n: number) => new Blob([gzip(JSON.stringify({ bgmOffset: 0, entities: [{ n }] }))])
 
@@ -541,4 +542,33 @@ test('the mock empties a picked file at the pick and creates a new name empty, a
         assert.equal(during, 0)
         assert.equal(mock.files.get(name)?.size, 0)
     }
+})
+
+test('Export to a remembered target that now holds a project is refused and leaves it', async () => {
+    const project = await buildZip([
+        {
+            name: 'project.json',
+            method: 'deflate',
+            data: new TextEncoder().encode('{"format":"nxsp","id":"P"}'),
+        },
+    ])
+    mock.writeFile('LevelData', project)
+    const handle = mock.createHandle('LevelData')
+    // The remembered state is the project's own, so the changed-on-disk check passes.
+    const target = {
+        name: 'LevelData',
+        handle,
+        disk: await levelDataDiskState(await handle.getFile()),
+        exported: false,
+    }
+    exportMemory.target = target
+    const { ui, asked, feedback } = scriptedUi([undefined])
+    assert.equal(await exportToTarget(context(ui), target), 'cancelled')
+    assert.deepEqual(asked, [{ dialog: 'notLevelData', args: ['LevelData'] }])
+    assert.deepEqual(feedback, [])
+    assert.equal(
+        mock.calls.some((call) => call.startsWith('write:')),
+        false,
+    )
+    assert.equal(mock.files.get('LevelData')!.size, project.size)
 })
