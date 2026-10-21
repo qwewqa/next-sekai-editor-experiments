@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
-import { holdWorker, release } from './historyJourney'
+import { row as historyRow, holdWorker, release } from './historyJourney'
 
 // The change view (Part 1 §1.4.11, §1.4.10.5, Step 5): what a peeked entry changed against the
 // entry before it, marked on the chart with the rest dimmed, counted on the peek bar, brought
@@ -205,12 +205,7 @@ const changes = (page: Page) =>
 
 const surface = (page: Page) => page.locator('[data-history-surface="panel"]')
 const list = (page: Page) => surface(page).locator('[data-history-list]')
-// The Now row repeats the newest entry's text: it is not the stored row.
-const row = (page: Page, text: string) =>
-    list(page)
-        .getByRole('row')
-        .and(page.locator(':not(.timeline-now)'))
-        .filter({ has: page.getByText(text, { exact: true }) })
+const row = (page: Page, title: string) => historyRow(page, title, 'panel')
 const peekLine = (page: Page) => page.locator('[data-peek-change]')
 const arrow = (page: Page, direction: 'up' | 'down') =>
     page.locator(`[data-change-arrow="${direction}"]`)
