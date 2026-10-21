@@ -80,9 +80,9 @@ test('Save As…’s Choose Another… after a refused pick reads the chain’s 
     await settle(page)
     await submitSave(page, undefined, 'Save As')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' })).toHaveCount(
-        0,
-    )
+    await expect(
+        notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' }),
+    ).toHaveCount(0)
     // An append to the bytes read: the file's identity, and its base carried.
     const after = await projectOf(page, 'coconut.nxsp')
     expect(after.id).toBe(before.id)

@@ -90,9 +90,9 @@ test('damage the build before the picker finds: the own file is read first and a
     await expect
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).n)
         .toBe(2)
-    await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' })).toHaveCount(
-        0,
-    )
+    await expect(
+        notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' }),
+    ).toHaveCount(0)
     const after = await projectOf(page, 'coconut.nxsp')
     expect(after.id).toBe(before.id)
     const revision = after.revision as Row
