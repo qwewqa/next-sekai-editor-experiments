@@ -11,6 +11,7 @@ import { PRODUCT_NAME } from '../../product'
 import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
+import { showNotPutBack } from '../commands/exportLevel/ui'
 import { confirmFile, downloadNotConfirmed } from '../file'
 import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
@@ -392,38 +393,8 @@ export const defaultSaveUi: SaveUi = {
             ],
         })
     },
-    notPutBack: async (name, emptied, downloadable, replaced) => {
-        const message = interpolate(
-            () =>
-                replaced
-                    ? i18n.value.save.replacedContentGone
-                    : emptied
-                      ? i18n.value.save.notPutBack
-                      : i18n.value.save.openedContentGone,
-            name,
-        )
-        if (!downloadable) {
-            await showChoice({
-                title,
-                message,
-                choices: [],
-                cancelIsDefault: true,
-                cancelLabel: () => i18n.value.modals.info.ok,
-            })
-            return undefined
-        }
-        return showChoice({
-            title,
-            message,
-            choices: [
-                {
-                    value: 'download' as const,
-                    label: () => i18n.value.save.download,
-                    default: true,
-                },
-            ],
-        })
-    },
+    notPutBack: (name, emptied, downloadable, replaced = false) =>
+        showNotPutBack(title, name, emptied, downloadable, replaced),
     saved: (feedback) => {
         // A download that leaves the session not confirmed carries the chip's action, so the
         // confirm is where the user is looking (§1.3.4); its announcement names the chip.

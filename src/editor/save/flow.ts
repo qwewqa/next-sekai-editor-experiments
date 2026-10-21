@@ -30,6 +30,7 @@ import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import type { State } from '../../state'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
+import { fileError } from '../commands/exportLevel/errorText'
 import { validName } from '../commands/exportLevel/fileName'
 import { clearExportDestination, exportMemory } from '../commands/exportLevel/memory'
 import { knownTargetAvailable } from '../commands/exportLevel/ownership'
@@ -95,13 +96,7 @@ import {
     storageNote,
 } from './preview'
 import { exclusive } from './queue'
-import {
-    Cancelled,
-    fileError,
-    withSaveAttempt,
-    type Reserved,
-    type SaveAttempt,
-} from './saveAttempt'
+import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
 import { refreshBinding } from './watch'
 
 // Save, Save As… and Save to File… (Part 1 §1.4.7; owner decision log D5): write-back with
@@ -1408,8 +1403,8 @@ const openExport = async () => {
     await runCommand(commands.exportLevel)
 }
 
-/** Downloads bytes kept at an open that could not be put back (§1.4.7 R7, Step 1c). */
-export const downloadBytes = async (name: string, bytes: Blob) => {
+/** Downloads the bytes of an offer (§1.4.7 R7): the file the Save could not put back. */
+const downloadBytes = async (name: string, bytes: Blob) => {
     try {
         const result = await platform.saveFile({
             kind: 'recovery',

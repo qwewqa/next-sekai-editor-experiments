@@ -5,7 +5,15 @@ import { i18n } from '../../i18n'
 import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { isComposingKey } from '../../utils/composition'
 import { interpolateRaw } from '../../utils/interpolate'
-import { barInfo, changeLine, countedLines, fixedLine, fixedLines } from './changes'
+import {
+    barInfo,
+    changeLine,
+    countedLines,
+    fixedLine,
+    fixedLines,
+    heldBar,
+    pressWhenRead,
+} from './changes'
 import { settings } from '../../settings'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
@@ -106,7 +114,12 @@ watch(
 const restore = () => {
     if (peekedKey.value) void requestRestore(peekedKey.value)
 }
+// A press while the last step is held opens the new step's details once its change is read.
 const details = () => {
+    if (heldBar.value) {
+        pressWhenRead(details)
+        return
+    }
     const info = shownInfo.value
     if (info) void openOperationDetails(info.recipe, info.time)
 }

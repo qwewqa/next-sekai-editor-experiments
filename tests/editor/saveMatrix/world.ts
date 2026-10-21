@@ -33,7 +33,7 @@ const { initialStep } = await import('../../helpers/historySteps')
 const { readValue } = await import('../../../src/local/storedRead')
 const { clearExportMemory, exportMemory, setExportPersister, setExportTargetReader } =
     await import('../../../src/editor/commands/exportLevel/memory')
-const exportPick = await import('../../../src/editor/commands/exportLevel/pick')
+const exportPick = await import('../../../src/editor/commands/exportLevel/targetLock')
 const { startExportRead } = await import('../../../src/editor/save/exportPick')
 const { startImport, importsRunning } = await import('../../../src/local/open/importLoop')
 const { keepCopy, copiesRunning } = await import('../../../src/local/open/kept')
@@ -512,8 +512,8 @@ const createWorld = async (setup: Setup = {}) => {
             if (session.reserved !== reservation) return Promise.resolve('ended')
             session.reserved = undefined
             if (entry) {
-                // View only until E3: this fake writes the maps, not the store, so the next door
-                // call replaces them with what storage holds.
+                // The fake flusher writes the maps, not the store; the door's next call replaces them
+                // with what storage holds.
                 if (identity) {
                     ;(session as { identity?: unknown }).identity = {
                         ...identity,
