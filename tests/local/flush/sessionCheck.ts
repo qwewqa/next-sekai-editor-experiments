@@ -17,13 +17,13 @@ let worlds: World[] = []
 let expected: readonly RegExp[] = []
 
 /** The known breaches pinned today: each names the increment whose acceptance deletes the pin. */
-export type Increment = 'AP' | 'A2' | 'A4' | 'A6'
+export type Increment = 'AP' | 'A2'
 
 export const PINS: { pattern: RegExp; clearedBy: Increment; why: string }[] = []
 
 /**
  * A violation today's code is known to make, for `expectViolations`. It names the increment that
- * clears it (AP, A2, A4 or A6): that increment's acceptance deletes the pin (design A §7).
+ * clears it (AP or A2): that increment's acceptance deletes the pin (design A §7).
  */
 export const pin = (pattern: RegExp, clearedBy: Increment, why: string) => {
     PINS.push({ pattern, clearedBy, why })
