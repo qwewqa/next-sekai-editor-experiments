@@ -1,5 +1,9 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { closePage, waitForStartup } from './editorFixture'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
+
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 // Startup (Part 1 §1.4.2, §1.11.4's exit): which session a load opens. A same-tab reload keeps
 // its session, decided by the session lock; a Duplicate Tab forks; a new visit continues the most
