@@ -264,6 +264,17 @@ export const changeLine = computed(() => {
     return undefined
 })
 
+/**
+ * What the bar last showed in full: the step and its change line. Switching steps keeps showing
+ * it until the next step's change is read, so the date and the line swap together and neither
+ * goes blank; the first step of a peek has nothing to keep.
+ */
+export const settledBar = shallowRef<{ info: PeekedInfo; line: string }>()
+watch([changeLine, peekedInfo, isPeeking], ([line, info, peeking]) => {
+    if (!peeking || !info) settledBar.value = undefined
+    else if (line !== undefined) settledBar.value = { info, line }
+})
+
 /** Whether the change has objects to draw and bring into view. */
 export const hasPlaces = computed(() => {
     const layout = shownChange.value?.set.layout

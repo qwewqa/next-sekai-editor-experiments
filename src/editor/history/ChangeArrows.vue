@@ -19,6 +19,7 @@ import {
     offBand,
     openPropertyInspection,
     propertyInspection,
+    settledBar,
     showChangeToward,
     shownChange,
     showEdits,
@@ -47,10 +48,16 @@ watch(
 onBeforeUnmount(() => {
     clearTimeout(timer)
 })
-const line = computed(() => changeLine.value ?? (delayed.value ? fixedLine('loadingChanges') : ''))
+// Between steps the last step's line stays until the next one's is read, or a slow read says so.
+const line = computed(
+    () =>
+        changeLine.value ??
+        (delayed.value ? fixedLine('loadingChanges') : (settledBar.value?.line ?? '')),
+)
 const visibleLine = computed(() => {
     if (view.w >= 480) return line.value
-    if (comparisonStatus.value === 'loading') return delayed.value ? fixedLine('loadingShort') : ''
+    if (comparisonStatus.value === 'loading')
+        return delayed.value ? fixedLine('loadingShort') : (settledBar.value?.line ?? '')
     if (comparisonStatus.value === 'unavailable') return fixedLine('unavailableShort')
     return line.value
 })

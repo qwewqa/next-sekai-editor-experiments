@@ -5,7 +5,7 @@ import { i18n } from '../../i18n'
 import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { isComposingKey } from '../../utils/composition'
 import { interpolateRaw } from '../../utils/interpolate'
-import { changeLine, countedLines, fixedLine, fixedLines } from './changes'
+import { changeLine, countedLines, fixedLine, fixedLines, settledBar } from './changes'
 import { settings } from '../../settings'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
@@ -84,8 +84,10 @@ watch(() => [settings.locale, settings.beatDisplay], measure)
 // The widths are in px at the root font size they were measured at: a change measures them again.
 watch(useRootFontSize(), measure)
 const layout = computed(() => peekLayout(view.w, peekWidths.value))
+// The step the bar names: the last one's until the next one's change is read (changes.ts).
+const shownInfo = computed(() => settledBar.value?.info ?? peekedInfo.value)
 const text = computed(() => {
-    const info = peekedInfo.value
+    const info = shownInfo.value
     return info ? peekText(calendar.value, settings.locale, info.time, layout.value.wide) : ''
 })
 
@@ -105,7 +107,7 @@ const restore = () => {
     if (peekedKey.value) void requestRestore(peekedKey.value)
 }
 const details = () => {
-    const info = peekedInfo.value
+    const info = shownInfo.value
     if (info) void openOperationDetails(info.recipe, info.time)
 }
 const onKeydown = (event: KeyboardEvent) => {
@@ -159,7 +161,7 @@ const onKeydown = (event: KeyboardEvent) => {
                     type="button"
                     class="peek-hit ghost mr-auto flex h-9 min-w-0 items-center gap-2 rounded-full"
                     :class="layout.tiny ? 'w-9 shrink-0 justify-center' : 'px-2.5'"
-                    :title="peekedInfo && peekedLabel(peekedInfo, peekContext)"
+                    :title="shownInfo && peekedLabel(shownInfo, peekContext)"
                     :aria-label="interpolateRaw(i18n.history.details.named, text)"
                     data-peek-text
                     data-peek-details
