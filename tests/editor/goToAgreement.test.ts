@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { registerHooks } from 'node:module'
 import test from 'node:test'
 
-// I-4, I-5: Go To's days are the Timeline's header days. Stored rows are read as the page reads
+// Spec-C invariants 8 and 9: Go To's days are the Timeline's header days. Stored rows are read as the page reads
 // them (`readTimeline`), cut into rows by `buildRows`, and compared with the days of the worker's
 // index (`readTimelineIndex` → `daysOf`): entry for entry, in order, in counts (steps under the
 // headers, every member of collapsed groups, dividers not counted) and in labels, in six zones, at

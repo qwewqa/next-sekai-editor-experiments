@@ -11,7 +11,7 @@ import {
 } from '../../../src/calendar/pieces'
 import { brutePieces } from '../../helpers/piecesBrute'
 
-// I-3's definition: the pieces of a list of entries are its maximal runs of adjacent entries,
+// Spec-C invariant 7, the definition: the pieces of a list of entries are its maximal runs of adjacent entries,
 // dividers skipped, that share a session and a local day. One definition, the page's and the
 // worker's, checked here against a plain restatement over random lists, zones and times.
 

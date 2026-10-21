@@ -1,7 +1,7 @@
 import { dayKey, type Zone } from '../../src/calendar/calendar'
 import type { PieceEntry, TimelinePiece } from '../../src/calendar/pieces'
 
-// The definition of a piece (design C, I-3), written the plain way for tests to compare against:
+// The definition of a piece (spec-C invariant 7), written the plain way for tests to compare against:
 // for each non-divider entry kept by the filter, newest first, it starts a new piece unless the
 // piece before it has the same session and the same local day. No shared code with `piecesOf`.
 

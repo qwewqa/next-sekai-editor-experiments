@@ -459,10 +459,11 @@ type MemoEntry = {
 }
 
 /**
- * The pieces of the sessions that are read in full, kept per `(sessionId, zone, kinds)` (R4). Used
+ * The pieces of the sessions that are read in full, kept per `(sessionId, zone, kinds)`. Used
  * again while the session's `lastSeq` and `entryCount` are as they were, and extended by only the
- * rows above the highest one read when the counters show only those were added (M1). Pieces depend
- * only on `seq`, `time`, the drawn kind and whether the row decodes, never on `kept` (M2). Least
+ * rows above the highest one read when the counters show only those were added: every write that adds or removes a session's rows
+ * moves `lastSeq` or `entryCount`, and sessions are deleted whole. Pieces depend
+ * only on `seq`, `time`, the drawn kind and whether the row decodes, never on `kept`, so a flip of it leaves the answer as it was. Least
  * recently used first; lost with the worker.
  */
 export type IndexMemo = Map<string, MemoEntry>

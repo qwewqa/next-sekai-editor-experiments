@@ -35,7 +35,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { beginIn, continueIn, readOpen, resumeIn } from '../startup/harness'
 import { widen } from './helpers'
 
-// I-3: the storage worker's index (`readTimelineIndex`) equals the pieces of the entries the
+// Spec-C invariant 7: the storage worker's index (`readTimelineIndex`) equals the pieces of the entries the
 // Timeline lists, for every session a real writer makes: new, import, continued, forked, migrated,
 // journal, opened from a file (with shuffled times and a changed level), replaced, and an unknown
 // origin. The oracle is the Timeline's own read (`readTimeline`) cut into pieces by a plain
@@ -358,7 +358,7 @@ test('a head read in full extends by the rows its own flush adds, and agrees wit
         // One ranged read of just the row the flush added: the memo extended.
         assert.equal(reader.linear, 1, `${reader.linear} reads`)
         assert.equal(reader.rowsRead, 1, `${reader.rowsRead} rows read`)
-        assert.equal(result.top, ids.bare.id ? result.top : undefined)
+        assert.equal(result.top, rows(world, 'sessions').get(ids.bare.id)?.lastSeq)
         const cold = await new Reader(world, page).index(request)
         assert.deepEqual(result, cold)
     }
@@ -406,7 +406,7 @@ test('writes under a memo: a late row, a removed row, a flipped kept flag and a 
     await check('appended')
     assert.equal((await reader.index(request)).top, lastSeq + 1)
 
-    // A recovered row above it, then a kept flag flipped without any counter moving (M2).
+    // A recovered row above it, then a kept flag flipped without any counter moving (it changes no piece).
     await write(async (tx, session) => {
         await tx.put('entries', {
             ...(await rowAt(tx, 1)),

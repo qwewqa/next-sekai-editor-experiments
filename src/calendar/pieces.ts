@@ -93,7 +93,7 @@ export const joinPieces = (
     ]
 }
 
-/** A Go To day: adjacent pieces on one local day, as the Timeline's headers run (I-4). */
+/** A Go To day: adjacent pieces on one local day, as the Timeline's headers run (spec-C invariant 8). */
 export type GoToDay = { day: DayKey; pieces: TimelinePiece[]; count: number }
 
 /** Groups adjacent pieces of one day, in order. A day whose rows come back lower is listed again. */

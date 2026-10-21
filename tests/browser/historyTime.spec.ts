@@ -1,15 +1,20 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import en from '../../src/i18n/en/index.json' with { type: 'json' }
 import {
+    closePage,
     errorsFail,
     flush,
     load,
     noErrors,
+    notice,
     openHistory,
+    peekRow,
+    reloadAndWait,
     sampleClock,
     timeline,
     type SampleClock,
 } from './historyJourney'
+import { pressSave, queuePicks, rows, submitSave } from './saveFlows'
 
 // How the Timeline tells time (plan 1.4.10.5): day buckets and headers across zones, midnight,
 // sleep, a clock change and skewed clocks. Entries are future-extension steps, which are never
@@ -147,15 +152,14 @@ test('T1: day buckets follow the zone of the page, far from the host', async ({ 
             type: 'worker zone',
             description: String(inWorker),
         })
-        if (inWorker === 'Pacific/Auckland') {
-            await openGoTo(page)
-            await expect
-                .poll(() => goToDays(page))
-                .toEqual([
-                    { day: 'Today', count: 2 },
-                    { day: 'Yesterday', count: 3 },
-                ])
-        }
+        expect(inWorker).toBe('Pacific/Auckland')
+        await openGoTo(page)
+        await expect
+            .poll(() => goToDays(page))
+            .toEqual([
+                { day: 'Today', count: 2 },
+                { day: 'Yesterday', count: 3 },
+            ])
     } finally {
         await close()
     }
@@ -410,5 +414,263 @@ test('T6: a group never spans midnight, and Go To’s Yesterday counts and peeks
         await noErrors(page)
     } finally {
         await close()
+    }
+})
+
+/** A page of `context` whose zone the test can change with `Emulation.setTimezoneOverride`. */
+const zoned = async (context: BrowserContext, page: Page, timezoneId: string) => {
+    const session = await context.newCDPSession(page)
+    const set = (zone: string) =>
+        session.send('Emulation.setTimezoneOverride', { timezoneId: zone })
+    await set(timezoneId)
+    return set
+}
+
+/** The Timeline's continuation dividers, top down. */
+const dividers = (page: Page) =>
+    timeline(page)
+        .locator('[data-history-continuation]')
+        .evaluateAll((elements) =>
+            elements.map((element) => (element.textContent ?? '').replace(/\s+/g, ' ').trim()),
+        )
+
+test('T7: a zone change while History and Go To are open moves every time to the new zone', async ({
+    browser,
+}) => {
+    test.slow()
+    const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
+    // 08:30 in Tokyo is 19:30 the day before in New York, and 13:30 in Tokyo is 00:30 there.
+    const clock = await sampleClock(context, Date.parse('2026-06-10T08:30:00+09:00'))
+    const first = await context.newPage()
+    await zoned(context, first, 'Asia/Tokyo')
+    clock.track(first)
+    errorsFail(first)
+    try {
+        await load(first)
+        expect(await first.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone)).toBe(
+            'Asia/Tokyo',
+        )
+        await edit(first, 'A')
+        await pass(first, clock, 5 * HOUR)
+        await edit(first, 'B')
+        await flush(first)
+        await closePage(first, { runBeforeUnload: false })
+
+        // A new visit continues the session: its first edit begins with a "Continued from" divider.
+        const page = await context.newPage()
+        const setZone = await zoned(context, page, 'Asia/Tokyo')
+        clock.track(page)
+        errorsFail(page)
+        await load(page, { chart: 'keep' })
+        await edit(page, 'C')
+        await flush(page)
+        await openHistory(page)
+        await openGoTo(page)
+        // In Tokyo it is all one day: the import, A, B and C (the divider is not a step).
+        await expect.poll(() => goToDays(page)).toEqual([{ day: 'Today', count: 4 }])
+        expect(await dividers(page)).toEqual([expect.stringContaining('1:30 PM')])
+
+        await setZone('America/New_York')
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+        // Go To reads the new zone's days: B and C are 12:30 AM today, A and the import yesterday.
+        await expect
+            .poll(() => goToDays(page))
+            .toEqual([
+                { day: 'Today', count: 2 },
+                { day: 'Yesterday', count: 2 },
+            ])
+        await page.keyboard.press('Escape')
+        // The headers, the divider and the peek bar are the new zone's too.
+        await expect
+            .poll(async () => textOf(await lines(page)))
+            .toEqual([
+                expect.stringMatching(/^Now/),
+                '12:30 AM',
+                'C',
+                'B',
+                'Yesterday · 7 PM',
+                'A',
+                IMPORTED,
+            ])
+        await expect.poll(() => dividers(page)).toEqual([expect.stringContaining('12:30 AM')])
+        await peekRow(page, 'A')
+        await expect(page.locator('[data-peek-bar]')).toContainText('7:30')
+        // Step Details names the time in the new zone.
+        await page.locator('[data-peek-details]').click()
+        const details = page.getByRole('dialog', { name: 'Step Details', exact: true })
+        await expect(details).toBeVisible()
+        await expect(details).toContainText('7:30')
+        await noErrors(page)
+    } finally {
+        await context.close()
+    }
+})
+
+const OPFS = { fileSystemAccess: 'opfs' } as const
+
+/** The OPFS file `name` as base64, to carry it to another context. */
+const encoded = (page: Page, name: string) =>
+    page.evaluate(async (name) => {
+        const root = await navigator.storage.getDirectory()
+        const file = await (await root.getFileHandle(name)).getFile()
+        const bytes = new Uint8Array(await file.arrayBuffer())
+        let text = ''
+        for (let i = 0; i < bytes.length; i += 0x8000)
+            text += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+        return btoa(text)
+    }, name)
+
+const stored = (page: Page, name: string, base64: string) =>
+    page.evaluate(
+        async ({ name, base64 }) => {
+            const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
+            const root = await navigator.storage.getDirectory()
+            const writable = await (
+                await root.getFileHandle(name, { create: true })
+            ).createWritable()
+            await writable.write(bytes)
+            await writable.close()
+        },
+        { name, base64 },
+    )
+
+/**
+ * Every header and row of the Timeline, top down: the list is virtual, so it is scrolled from the
+ * top to the oldest row and what shows at each step is kept by its place.
+ */
+const everyLine = async (page: Page) => {
+    const seen = new Map<number, Line>()
+    const list = timeline(page)
+    await list.evaluate((element) => {
+        element.scrollTop = 0
+    })
+    for (let step = 0; step < 100; step++) {
+        const shown = await list
+            .locator('.timeline-header, [data-history-row]')
+            .evaluateAll((elements) =>
+                elements.map((element) => {
+                    const normal = (text: string | null | undefined) =>
+                        (text ?? '').replace(/\s+/g, ' ').trim()
+                    const top = parseFloat((element as HTMLElement).style.top)
+                    if (element.matches('.timeline-header'))
+                        return { top, kind: 'header' as const, text: normal(element.textContent) }
+                    const title = element.matches('.timeline-now')
+                        ? element.querySelector('.timeline-entry-text')
+                        : element.querySelector('[data-history-group-action]')
+                    return { top, kind: 'row' as const, text: normal(title?.textContent) }
+                }),
+            )
+        for (const { top, ...line } of shown) seen.set(top, line)
+        const atEnd = await list.evaluate((element) => {
+            const before = element.scrollTop
+            element.scrollTop = before + element.clientHeight / 2
+            return element.scrollTop === before
+        })
+        if (atEnd) break
+        await page.waitForTimeout(100)
+    }
+    return [...seen.entries()].sort((a, b) => a[0] - b[0]).map(([, line]) => line)
+}
+
+/** The headers and rows of a list, as Go To would count them: steps under each run of a day. */
+const headerDays = (list: Line[]) => {
+    const days: { day: string; count: number }[] = []
+    let day = 'Today'
+    for (const line of list) {
+        if (line.kind === 'header') {
+            const named = /^(.*) · /.exec(line.text)?.[1]
+            if (named) day = named
+            else if (!/^\d{1,2}(:\d\d)? [AP]M$/.test(line.text)) day = line.text
+            // A header without a day continues the day above it.
+        } else if (!/^Now/.test(line.text)) {
+            if (days.at(-1)?.day === day) days.at(-1)!.count++
+            else days.push({ day, count: 1 })
+        }
+    }
+    return days
+}
+
+test('T8: an opened file whose times run out of order lists Go To’s days as the headers count them', async ({
+    browser,
+}) => {
+    test.slow()
+    const zone = 'Pacific/Kiritimati'
+    // A file with a 14-step history.
+    const maker = await browser.newContext({ timezoneId: zone })
+    const source = await maker.newPage()
+    errorsFail(source)
+    let base64: string
+    try {
+        await load(source, { platform: OPFS })
+        for (let i = 1; i <= 14; i++) await edit(source, `Step ${i}`)
+        await flush(source)
+        await pressSave(source)
+        await submitSave(source, 't8')
+        await expect(notice(source, 'Saved to t8.nxsp')).toBeVisible()
+        base64 = await encoded(source, 't8.nxsp')
+    } finally {
+        await maker.close()
+    }
+    // Opened in a fresh context.
+    const context = await browser.newContext({ timezoneId: zone })
+    const page = await context.newPage()
+    errorsFail(page)
+    try {
+        await load(page, { platform: OPFS, chart: 'keep' })
+        await stored(page, 't8.nxsp', base64)
+        await queuePicks(page, ['t8.nxsp'])
+        await page.keyboard.press('o')
+        await expect(notice(page, 't8.nxsp').first()).toBeVisible()
+        await expect
+            .poll(async () => {
+                const { sessions } = await rows(page, ['sessions'])
+                return sessions!.filter((entry) => entry.value.importPending === true).length
+            })
+            .toBe(0)
+        // The file came from a device with another clock: its rows run out of order across days.
+        await page.evaluate(async () => {
+            const db = await new Promise<IDBDatabase>((resolve, reject) => {
+                const request = indexedDB.open('nse-local-data')
+                request.onsuccess = () => resolve(request.result)
+                request.onerror = () => reject(request.error)
+            })
+            const tx = db.transaction(['sessions', 'entries'], 'readwrite')
+            const sessions = await new Promise<{ id: string; origin?: string }[]>((resolve) => {
+                const request = tx.objectStore('sessions').getAll()
+                request.onsuccess = () => resolve(request.result as never)
+            })
+            const opened = sessions.find((session) => session.origin === 'nxsp')!
+            const store = tx.objectStore('entries')
+            const all = await new Promise<{ sessionId: string; seq: number; time: number }[]>(
+                (resolve) => {
+                    const request = store.getAll()
+                    request.onsuccess = () => resolve(request.result as never)
+                },
+            )
+            // Hours back from now, by the file's order: a day, the day before, back again.
+            const back = [60, 5, 30, 28, 3, 55, 26, 2, 52, 1, 29, 50, 4, 27, 6, 8]
+            const now = Date.now()
+            for (const row of all.filter((each) => each.sessionId === opened.id)) {
+                const hours = back[row.seq - 1]
+                if (hours === undefined) continue
+                row.time = now - hours * 3_600_000
+                store.put(row)
+            }
+            await new Promise((resolve) => (tx.oncomplete = resolve))
+            db.close()
+        })
+        await reloadAndWait(page)
+        await openHistory(page)
+        const all = await everyLine(page)
+        expect(all.at(-1)?.text).toBe(IMPORTED)
+        await openGoTo(page)
+        const goTo = await goToDays(page)
+        // As the headers count them: the run of a day that comes back is listed again.
+        expect(goTo).toEqual(headerDays(all))
+        expect(new Set(goTo.map((each) => each.day)).size).toBeLessThan(goTo.length)
+        expect(goTo.reduce((sum, each) => sum + each.count, 0)).toBeGreaterThanOrEqual(16)
+        await noErrors(page)
+    } finally {
+        await context.close()
     }
 })

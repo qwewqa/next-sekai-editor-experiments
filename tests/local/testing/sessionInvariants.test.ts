@@ -245,7 +245,7 @@ test('an opened session’s own rows keep the hole and time rules; only the file
     assert.ok(!found.some((line) => /row 1/.test(line)))
 })
 
-// P2 (design C, I-9): Go To's binary search skips only the lowest row of a session of its own
+// P2 (spec-C invariant 10): Go To's binary search skips only the lowest row of a session of its own
 // rows as a divider, so a `continue` row anywhere above it must be named.
 
 test('P2: a continue row above the lowest row of an own session is named', () => {
