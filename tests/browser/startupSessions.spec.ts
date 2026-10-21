@@ -957,18 +957,22 @@ test('Start Blank’s edits while the worker hasn’t answered have a journal: a
 // leaves the row, and a row gone since it was listed reads the list again.
 
 const seedRecovered = async (page: Page) => {
-    await page.evaluate(async () => {
-        await window.nseStorageTest!.worker.call('keepRecovered', {
+    const kept = await page.evaluate(async () => {
+        const kept = (await window.nseStorageTest!.worker.call('keepRecovered', {
             id: 'recovered-1',
             source: 'journal',
             from: 'journal.damaged',
             text: '{"damaged":',
             appVersion: '0.6.0',
-        })
+        })) as boolean
         const { openSettings } =
             (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
         void openSettings('localData')
+        return kept
     })
+    // A recovered row's bytes are a Blob, which a private-style context's IndexedDB refuses (WebKit
+    // in Playwright, Safari's private windows): there is no row to act on there.
+    test.skip(!kept, 'This browser’s storage refuses Blob rows, so no recovered row can be kept')
 }
 
 test('Local Data’s Download of a recovered row whose read fails shows the card and keeps the row', async ({
