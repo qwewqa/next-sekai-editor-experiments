@@ -5,12 +5,14 @@ import { waitForStartup } from './editorFixture'
 import {
     builds,
     chainOf,
+    edit,
     editPastUndo,
     notice,
     pauseAt,
     pickerCalls,
     pressSave,
     projectOf,
+    prompts,
     queuePicks,
     reached,
     readFile,
@@ -547,4 +549,32 @@ test('Export with no import to wait for still asks for a press once the press ha
     await preparing.getByRole('button', { name: 'Export', exact: true }).click()
     await expect.poll(async () => (await pickerCalls(page)).length).toBe(calls + 1)
     await expect(notice(page).filter({ hasText: 'Exported to LevelData' })).toBeVisible()
+})
+
+test('a saved file opened again after a reload shows no change until an edit', async ({ page }) => {
+    await start(page)
+    await edit(page, 1)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await page.reload()
+    await waitForStartup(page)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+
+    const label = page.locator('[data-status-text]')
+    await expect(label).toHaveText('coconut.nxsp')
+    await expect(page).toHaveTitle('coconut.nxsp – Next SEKAI Editor')
+    expect(await prompts(page)).toBe(false)
+    // Save agrees with the label.
+    await pressSave(page)
+    await expect(
+        notice(page).filter({ hasText: 'No changes since coconut.nxsp was opened' }),
+    ).toBeVisible()
+
+    // An edit after the open is a change.
+    await edit(page, 2)
+    await expect(label).toHaveText('coconut.nxsp •')
+    await expect(page).toHaveTitle('coconut.nxsp • – Next SEKAI Editor')
+    expect(await prompts(page)).toBe(true)
 })

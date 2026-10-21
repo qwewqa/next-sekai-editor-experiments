@@ -17,7 +17,9 @@ export type DiskFinding = {
     kind: 'changed' | 'newer' | 'missing'
 }
 
-const eventState = shallowRef<{ sessionId: string; state: State }>()
+// `derived`: found from the head's stored root, not held at the event. It follows the stack while
+// the root is the binding's hash, and a state held at a Save or an open is never replaced.
+const eventState = shallowRef<{ sessionId: string; state: State; derived?: true }>()
 const finding = shallowRef<DiskFinding>()
 
 /**
@@ -62,16 +64,25 @@ export const fileEvent = computed(() => {
 const hexOf = (bytes: Uint8Array) =>
     Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 
-// A session opened bound (a reload, a new visit) has no state of the event in memory: the head
-// slot whose stored root is the binding's hash is that state, so later content is compared with it.
+// A session opened bound (a reload, a new visit, an open) has no state of the event in memory: the
+// head slot whose stored root is the binding's hash is that state, so later content is compared
+// with it. An open sets its session before it installs the stack, so this first runs against the
+// previous session's head, which can hold the same root as another state object; the install
+// that follows replaces that find, and its own find stands.
 watch(
     [() => session.value, headSnapshot, liveState],
     () => {
         const file = session.value.file
         const root = headSnapshot.value
-        if (!file?.hash || !root || eventState.value?.sessionId === session.value.sessionId) return
+        const held = eventState.value
+        if (!file?.hash || !root || (held?.sessionId === session.value.sessionId && !held.derived))
+            return
         if (hexOf(root) === file.hash)
-            eventState.value = { sessionId: session.value.sessionId, state: liveState.value }
+            eventState.value = {
+                sessionId: session.value.sessionId,
+                state: liveState.value,
+                derived: true,
+            }
     },
     { flush: 'sync', immediate: true },
 )
