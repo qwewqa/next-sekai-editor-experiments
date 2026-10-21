@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
+import { testTitlePrefix } from '../../scripts/site.mjs'
 
 // The landing pages in the release build (Part 5, 5.7.4). Only /privacy/ exists before Stage 2.
 
@@ -36,7 +37,13 @@ test('/privacy/ loads with one h1, no errors and no request to another origin', 
     // The build filled every placeholder, and the page shows the product name.
     const html = await page.content()
     expect(html).not.toMatch(/%[A-Z_]+%/)
-    await expect(page).toHaveTitle('Privacy – Next SEKAI Editor')
+    // A test-site build prefixes every title (scripts/site.mjs); its manifest says which site it is.
+    const { site } = (await (await page.request.get('/release-manifest.json')).json()) as {
+        site: string
+    }
+    await expect(page).toHaveTitle(
+        `${site === 'test' ? testTitlePrefix : ''}Privacy – Next SEKAI Editor`,
+    )
     await expect(page.locator('header')).toContainText('Next SEKAI Editor')
 })
 
