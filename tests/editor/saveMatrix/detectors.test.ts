@@ -118,22 +118,27 @@ test('the baseline cells reach their picker and write, and a Save cancelled in i
 
 test('I9 sees a file bound to two chains, or bound and another chain’s Export target, unless a revocation is pending', async () => {
     const world = await createWorld()
+    // The detector reads the store; these rows stand in for what a bug would have stored.
+    const rows = new Map<string, Record<string, unknown>>()
+    for (const row of await world.storedChains()) rows.set(String(row.chainId), row)
+    const put = (id: string, row: Record<string, unknown>) => rows.set(id, row)
+    world.storedChains = async () => [...rows.values()]
     assert.deepEqual(await invariants(world), [])
-    const own = world.chains.get('chain-own')!
-    const other = world.chains.get('chain-other')!
-    world.chains.set('chain-other', {
+    const own = rows.get('chain-own')!
+    const other = rows.get('chain-other')!
+    put('chain-other', {
         ...other,
         file: { ...(other.file as object), name: 'own.nxsp' },
     })
     assert.deepEqual(await invariants(world), ['I9'])
     // R11: storage could not take the revocation of that binding, so it is kept for later.
     const { writeRevocation } = await import('../../../src/editor/save/env')
-    const file = world.chains.get('chain-other')!.file as { name: string; at: number }
+    const file = rows.get('chain-other')!.file as { name: string; at: number }
     writeRevocation('chain-other', { by: 'chain-own', at: 5, name: file.name, fileAt: file.at })
     assert.deepEqual(await invariants(world), [])
-    world.chains.set('chain-other', other)
+    put('chain-other', other)
     localStorage.clear()
-    world.chains.set('chain-own', {
+    put('chain-own', {
         ...own,
         file: { ...(own.file as object), name: 'target.nsld' },
     })
