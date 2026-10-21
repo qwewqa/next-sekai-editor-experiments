@@ -1,6 +1,6 @@
 import type { FolderId } from '../../../chart/folders'
 import { addToGroups, type GroupId } from '../../../chart/groups'
-import { pushState, state } from '../../../history'
+import { isPeeking, pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { groupFolders, groups } from '../../../history/groups'
 import { captureName } from '../../../history/operations'
@@ -74,6 +74,7 @@ export const renameGroup = (groupId: GroupId, value: string) => {
 export const openGroupProperties = async (groupId: GroupId) => {
     await showModal(GroupPropertiesModal, {
         groupId,
+        readOnly: isPeeking.value,
     })
 }
 

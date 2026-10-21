@@ -501,6 +501,57 @@ test('Properties shows fields disabled while peeking', async ({ page }) => {
     await leave(page)
 })
 
+test('Group Properties opens while peeking with the peeked values and cannot change them', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    // The group is renamed after the first step, so the peek and the live chart differ.
+    await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const { groupEditOperation } = await appImport<
+            typeof import('../../src/editor/headerLabels')
+        >('/src/editor/headerLabels.ts')
+        const id = 1 as never
+        const object = history.state.value.groups.get(id)!
+        const groups = new Map(history.state.value.groups)
+        groups.set(id, { ...object, name: 'Renamed' })
+        history.pushState(groupEditOperation(id, object, 'name', 'Renamed'), {
+            ...history.state.value,
+            groups,
+        })
+    })
+    await peek(page, first)
+    const liveNames = () =>
+        page.evaluate(() =>
+            [...window.editorTest.history.liveState.value.groups.values()].map(({ name }) => name),
+        )
+    expect(await liveNames()).toEqual(['Renamed', 'Other group'])
+
+    await page.keyboard.press('e')
+    const dialog = page.getByRole('dialog').first()
+    const row = dialog.locator('.manager-row').filter({ hasText: 'Default' })
+    await row.hover()
+    await row.locator('.manager-inline-properties').click()
+
+    const properties = page.getByRole('dialog', { name: 'Group Properties' })
+    await expect(properties).toBeVisible()
+    const name = properties.getByRole('textbox')
+    await expect(name).toHaveValue('Default')
+    await expect(name).toBeDisabled()
+    expect(await liveNames()).toEqual(['Renamed', 'Other group'])
+    expect((await beats(page)).peeking).toBe(true)
+
+    // It follows the peek until the peek ends, and then it closes.
+    await page.keyboard.press('Escape')
+    await expect(properties).toHaveCount(0)
+    await row.hover()
+    await row.locator('.manager-inline-properties').click()
+    await expect(properties).toBeVisible()
+    await leave(page)
+    await expect(properties).toHaveCount(0)
+    expect(await liveNames()).toEqual(['Renamed', 'Other group'])
+})
+
 test('the selection menu holds only Copy and Find Edits Here while peeking', async ({ page }) => {
     const first = await newestSeq(page)
     await deleteAt(page, 3)

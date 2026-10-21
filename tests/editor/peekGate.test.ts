@@ -369,7 +369,7 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
                 'src/editor/workspace/manager/ManagerList.vue',
             'src/editor/workspace/manager/stages.ts':
                 'src/editor/workspace/manager/ManagerList.vue',
-            // Opened from a manager's Properties (refused) or Manage Groups/Stages (refused).
+            // Opened from a manager's Properties, which shows it read-only while peeking.
             'src/editor/commands/manageGroups/manageGroups/groupProperties/GroupPropertiesModal.vue':
                 'src/editor/workspace/manager/ManagerList.vue',
             'src/editor/commands/manageStages/manageStages/stageProperties/StagePropertiesModal.vue':
@@ -377,6 +377,12 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
         }
         const guard = guards[path]
         assert.ok(guard, `${path} has no listed guard`)
+        // The read-only form sets nothing.
+        if (path.endsWith('PropertiesModal.vue'))
+            assert.match(
+                read(path),
+                /if \(props\.readOnly \|\| !object \|\| !isCurrent\(\)\) return/,
+            )
         assert.match(read(guard), /refuseWhilePeeking\(\)/)
         if (guard !== 'src/editor/workspace/manager/ManagerList.vue') return
         // Each edit handler refuses; a drag to reorder doesn't start.

@@ -18,6 +18,8 @@ import { normalizeName } from '../../../../workspace/manager/model'
 
 const props = defineProps<{
     stageId: StageId
+    /** Opened while peeking: the peeked revision's values, shown and not changed. */
+    readOnly?: boolean
 }>()
 const emit = defineEmits<{ close: [] }>()
 const generation = stackGeneration()
@@ -34,12 +36,13 @@ const close = () => {
     current = false
     emit('close')
 }
+// A read-only form follows the peeked revision, whichever step is shown, until the peek ends.
 const isCurrent = () =>
     current &&
-    !isPeeking.value &&
-    generation === stackGeneration() &&
-    !!expected &&
-    stages.value.get(props.stageId) === expected
+    (props.readOnly
+        ? isPeeking.value
+        : !isPeeking.value && !!expected && stages.value.get(props.stageId) === expected) &&
+    generation === stackGeneration()
 const validate = () => {
     if (!isCurrent()) close()
 }
@@ -59,11 +62,12 @@ const createModel = <K extends StageEditKey>(key: K) =>
     computed({
         get: () => {
             const object = stages.value.get(props.stageId)
+            if (props.readOnly) return (object ?? last)[key]
             return current && object && object === expected ? object[key] : last[key]
         },
         set: (value) => {
             const object = stages.value.get(props.stageId)
-            if (!object || !isCurrent()) return
+            if (props.readOnly || !object || !isCurrent()) return
 
             const operation = stageEditOperation(props.stageId, object, key, value)
             const newObject = { ...object, [key]: value }
@@ -103,9 +107,11 @@ const generateSimLines = createModel('generateSimLines')
         :title="i18n.commands.manageStages.modal.properties.modal.title"
         @close="close"
     >
-        <NameField v-model="name" />
-        <IsFromStartField v-model="isFromStart" />
-        <IsUntilEndField v-model="isUntilEnd" />
-        <GenerateSimLinesField v-model="generateSimLines" />
+        <fieldset class="contents" :disabled="readOnly">
+            <NameField v-model="name" />
+            <IsFromStartField v-model="isFromStart" />
+            <IsUntilEndField v-model="isUntilEnd" />
+            <GenerateSimLinesField v-model="generateSimLines" />
+        </fieldset>
     </PropertiesModal>
 </template>

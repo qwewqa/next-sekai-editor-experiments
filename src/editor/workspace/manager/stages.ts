@@ -5,7 +5,7 @@ import {
     type StageId,
     type Stages,
 } from '../../../chart/stages'
-import { pushState, state } from '../../../history'
+import { isPeeking, pushState, state } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { groupFolders } from '../../../history/groups'
 import { captureName } from '../../../history/operations'
@@ -82,6 +82,7 @@ export const renameStage = (stageId: StageId, value: string) => {
 export const openStageProperties = async (stageId: StageId) => {
     await showModal(StagePropertiesModal, {
         stageId,
+        readOnly: isPeeking.value,
     })
 }
 
