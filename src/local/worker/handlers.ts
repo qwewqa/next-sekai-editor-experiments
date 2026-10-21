@@ -27,6 +27,12 @@ export type WorkerContext = {
     emit: (event: string, data?: unknown) => void
 }
 
+/** A chain's stored handle for its binding, Export target or kept file (D24). */
+export const readHandle = (
+    core: StorageCore,
+    { chainId, role }: { chainId: string; role: HandleRole },
+) => core.read(['chains', HANDLES], (tx) => readHandleRow(tx, chainId, role))
+
 /** Ends this worker as a crash would, mid-operation: the page terminates and restarts it. */
 const crash = (emit: WorkerContext['emit'], point: string) => {
     emit('testKill', point)
@@ -95,8 +101,8 @@ export const createContext = (emit: WorkerContext['emit']) => {
          * A chain's stored handle for its binding or Export target (D24): only when a Save, an
          * Export or a resumed import needs it, through the page's `handleOf`.
          */
-        readHandle: ({ chainId, role }: { chainId: string; role: HandleRole }) =>
-            context.core.read(['chains', HANDLES], (tx) => readHandleRow(tx, chainId, role)),
+        readHandle: (request: { chainId: string; role: HandleRole }) =>
+            readHandle(context.core, request),
 
         /** Test: how many stored handles this worker has read. */
         testHandleReads: () => {

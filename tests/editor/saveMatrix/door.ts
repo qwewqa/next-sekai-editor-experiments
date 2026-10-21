@@ -1,7 +1,8 @@
-import { HANDLES, readHandleRow } from '../../../src/local/handleRows'
+import { HANDLES, type HandleRole } from '../../../src/local/handleRows'
 import { createWorld as createCoreWorld, type Tab } from '../../../src/local/testing/world'
 import { bindHandlers } from '../../../src/local/worker/bindHandlers'
 import type { StorageCore } from '../../../src/local/worker/core'
+import { readHandle } from '../../../src/local/worker/handlers'
 import { originOperation } from '../../helpers/historySteps'
 import { openPage } from '../../local/flush/harness'
 import { chartState } from '../chartFixture'
@@ -56,17 +57,12 @@ export const useRealDoor = async (
     let extra = 0
     const page = await openPage(core, tab, { newId: () => ids.shift() ?? `door-${extra++}` })
     const context = { core: page.core, test: true, emit: () => undefined }
-    // `readHandle` is inline in `createContext` (handlers.ts), whose `init` builds a browser core
-    // the Node test cannot start; this is its one line.
+    // `readHandle` is the handler `createContext` serves (its `init` builds a browser core the Node
+    // test cannot start), exported from handlers.ts and called on the page core.
     const real: Record<string, (arg: unknown) => Promise<unknown>> = {
         ...bindHandlers(context),
-        readHandle: ({
-            chainId,
-            role,
-        }: {
-            chainId: string
-            role: 'file' | 'exportTarget' | 'kept'
-        }) => page.core.read(['chains', HANDLES], (tx) => readHandleRow(tx, chainId, role)),
+        readHandle: (request: { chainId: string; role: HandleRole }) =>
+            readHandle(page.core, request),
     } as never
 
     // A mock handle holds functions, which no store can clone (a real handle can): it crosses the

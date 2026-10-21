@@ -38,7 +38,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 ## 5. Tests prove what they claim
 
-**Rule.** A regression test fails without its fix; run it once against the unfixed code and say so. A fake behaves like the real code on every path a test relies on. An assertion on an animated property reads it once two consecutive reads agree, or with transitions disabled. An ordering bug is tested with the order fixed, not by repeating runs under load. Wait for a signal, never for a length of time.
+**Rule.** A regression test fails without its fix; run it once against the unfixed code and say so. A fake behaves like the real code on every path a test relies on; where the real code runs in Node, the test runs it instead. An assertion on an animated property reads it once two consecutive reads agree, or with transitions disabled. An ordering bug is tested with the order fixed, not by repeating runs under load. Wait for a signal, never for a length of time.
 
 **Why.** A test that cannot fail, or that fails one run in six, is read as noise and then ignored.
 

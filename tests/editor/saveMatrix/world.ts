@@ -364,36 +364,35 @@ const createWorld = async (setup: Setup = {}) => {
         },
     }
 
-    // The worker methods that stay fakes of our own code (E-1): the real build, import and session
-    // reads need a stored session and its snapshot rows, which the matrix's session fake does not
-    // have (E3 moves them to the real flusher). The record and handle methods run the real
-    // handlers behind `useRealDoor` (./door), so no case below touches a chain or a handle row.
+    // The worker methods that stay fakes of our own code (E-1), each with its reason. The record
+    // and handle methods run the real handlers behind `useRealDoor` (./door), so no case below
+    // touches a chain or a handle row.
     const fake = async (method: string, arg: unknown, how: unknown): Promise<unknown> => {
         const a = arg as Row
         switch (method) {
-            case 'openPendingImports':
+            case 'openPendingImports': // the pending imports are the world's `pendingImports` set, which `startImport` drives
                 return [...pendingImports].map((sessionId) => ({ sessionId }))
-            case 'saveNeeds':
+            case 'saveNeeds': // the real one reads the stored snapshot rows, which the seeded sessions do not carry; `s.storage` says what they hold
                 return s.storage === 'holds'
                     ? { carries: true, lacking: [] }
                     : { carries: false, lacking: [] }
-            case 'buildSave':
+            case 'buildSave': // the real build packs the editor's snapshot into a file; the matrix scripts its result and its timing
                 return build(a, how)
-            case 'readSessionStarts':
+            case 'readSessionStarts': // only a binding kept in memory needs it, and the matrix has none
                 return {}
-            case 'mediaHeld':
+            case 'mediaHeld': // media rows are not seeded
                 return []
-            case 'estimateSaveSize':
+            case 'estimateSaveSize': // the real estimate reads the stored snapshot rows
                 return undefined
-            case 'readSession':
+            case 'readSession': // answers the other chain for Save to File…; the seeded sessions have no snapshot rows to open
                 return {
                     kind: 'open',
                     session: { chainId: 'chain-other', updatedAt: NOW },
                     chain: chains.get('chain-other') ?? {},
                 }
-            case 'finishOwnSave':
+            case 'finishOwnSave': // needs the real session this world's fake flusher does not have (E3)
                 return true
-            case 'replaceDecision':
+            case 'replaceDecision': // reads the other version's stored rows; no cell reaches Replace
                 return { relation: 'unrelated', holdsBase: false }
             default:
                 throw new Error(`The harness does not fake ${method}`)
@@ -487,6 +486,8 @@ const createWorld = async (setup: Setup = {}) => {
             }
             if (session.reserved === reservation.seq) session.reserved = undefined
             if (entry) {
+                // View only until E3: this fake writes the maps, not the store, so the next door
+                // call replaces them with what storage holds.
                 if (identity) {
                     ;(session as { identity?: unknown }).identity = {
                         ...identity,
@@ -756,8 +757,6 @@ const createWorld = async (setup: Setup = {}) => {
 
     const world = {
         setup: s,
-        /** The door's page, flusher and core (set below). */
-        door: undefined as unknown as Awaited<ReturnType<typeof useRealDoor>>,
         tune,
         exportAnswers,
         exportUi,
@@ -914,7 +913,7 @@ const createWorld = async (setup: Setup = {}) => {
         setup0: s,
     }
     // The real storage handlers under the record and handle methods; the maps above are the view.
-    world.door = await useRealDoor(world, kept)
+    await useRealDoor(world, kept)
     ownSession.chain = chains.get(ownSession.chainId)
     return world
 }
