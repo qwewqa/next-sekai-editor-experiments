@@ -5,7 +5,7 @@ import { i18n } from '../../i18n'
 import { isBlockingModalOpen, isToolDialogOpen } from '../../modals'
 import { isComposingKey } from '../../utils/composition'
 import { interpolateRaw } from '../../utils/interpolate'
-import { changeLine, countedLines, fixedLine, fixedLines, settledBar } from './changes'
+import { barInfo, changeLine, countedLines, fixedLine, fixedLines } from './changes'
 import { settings } from '../../settings'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
@@ -85,7 +85,7 @@ watch(() => [settings.locale, settings.beatDisplay], measure)
 watch(useRootFontSize(), measure)
 const layout = computed(() => peekLayout(view.w, peekWidths.value))
 // The step the bar names: the last one's until the next one's change is read (changes.ts).
-const shownInfo = computed(() => settledBar.value?.info ?? peekedInfo.value)
+const shownInfo = barInfo
 const text = computed(() => {
     const info = shownInfo.value
     return info ? peekText(calendar.value, settings.locale, info.time, layout.value.wide) : ''
