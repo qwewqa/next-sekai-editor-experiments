@@ -3,7 +3,7 @@ import type { MockPlatform } from '../../../src/platform/mock'
 import './env'
 import { activation } from './env'
 
-// The fault-matrix harness's world (B0, work/soundness/architecture-review.md §B.6): the Save
+// The fault-matrix harness's world (B0, work/arch/spec-B.md): the Save
 // core's real flow.ts and Export's real flow over the existing mock platform and its lock manager,
 // with the storage side replaced by in-memory fakes that keep the facts the six invariants need:
 // every reservation and how it ended, every write to a picked file and the locks held then, every
@@ -371,7 +371,10 @@ const createWorld = async (setup: Setup = {}) => {
         const a = arg as Row
         switch (method) {
             case 'openPendingImports': // the pending imports are the world's `pendingImports` set, which `startImport` drives
-                return [...pendingImports].map((sessionId) => ({ sessionId }))
+                return [...pendingImports].map((sessionId) => ({
+                    sessionId,
+                    chainId: ownSession.chainId,
+                }))
             case 'saveNeeds': // the real one reads the stored snapshot rows, which the seeded sessions do not carry; `s.storage` says what they hold
                 return s.storage === 'holds'
                     ? { carries: true, lacking: [] }
@@ -390,8 +393,6 @@ const createWorld = async (setup: Setup = {}) => {
                     session: { chainId: 'chain-other', updatedAt: NOW },
                     chain: chains.get('chain-other') ?? {},
                 }
-            case 'finishOwnSave': // needs the real session this world's fake flusher does not have (E3)
-                return true
             case 'replaceDecision': // reads the other version's stored rows; no cell reaches Replace
                 return { relation: 'unrelated', holdsBase: false }
             default:
@@ -427,7 +428,7 @@ const createWorld = async (setup: Setup = {}) => {
             revisionId: revision,
             project: {},
             storageChunks: [],
-            someStepsNotKept: false,
+            stepsLine: 'none',
             without: [],
             tooLarge: [],
             identity: {
@@ -513,8 +514,6 @@ const createWorld = async (setup: Setup = {}) => {
         },
         flush: () => Promise.resolve(),
         unstored: () => ({ entries: [], stack: undefined }),
-        keptSaveBelow: () => ({ kind: 'stored' as const }),
-        keptSave: () => Promise.resolve(),
         setChainFields: () => Promise.resolve(),
         setChainFieldsNow: () => Promise.resolve(true),
     }

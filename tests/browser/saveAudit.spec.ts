@@ -335,7 +335,7 @@ test('a feedback for a session another tab holds says so to assistive technology
             kind: 'saved' as const,
             name: 'restored.nxsp',
             size: 1000,
-            someStepsNotKept: false,
+            stepsLine: 'none' as const,
             tookOver: false,
             without: [],
             tooLarge: [],

@@ -12,7 +12,7 @@ import { handleOf, readableWithoutPrompt, requestRead, storableHandle } from '..
 import { toHex } from '../../local/hash'
 import { displayName, namePartsOf, stemOf } from '../../local/names'
 import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
-import { isImporting, onImportProgress, whenImported } from '../../local/open/importLoop'
+import { isImporting, whenImported } from '../../local/open/importLoop'
 import { readKeptCopy } from '../../local/open/kept'
 import type { HandleOwner } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
@@ -69,7 +69,6 @@ import {
     type BgmRow,
     type ConflictChoice,
     type DiskVersion,
-    type Preparing,
     type RefusedReason,
     type SaveDialogInput,
     type SaveDialogKind,
@@ -91,6 +90,13 @@ import {
     writeRevocation,
     type SaveMarker,
 } from './env'
+import {
+    openPreparing,
+    pause,
+    RESUME_WAIT_MS,
+    waitForChainImports,
+    type PreparingSlot,
+} from './imports'
 import {
     estimatedTotal,
     estimateKey,
@@ -114,7 +120,14 @@ export type StoredFile = {
     event: 'opened' | 'saved' | 'downloaded'
     at: number
     hash: Uint8Array
-    entry?: { sessionId: string; seq: number; startedAt: number; count: number; notKept: number }
+    entry?: {
+        sessionId: string
+        seq: number
+        startedAt: number
+        count: number
+        notKept: number
+        inexact?: true
+    }
     completeFrom?: string
     disk?: DiskState
     options: { history: boolean; bgm: boolean }
@@ -225,36 +238,11 @@ const fileError = (error: unknown) =>
 
 // The Preparing dialog: opened when a build is slow, or a Save waits for an import.
 
-/**
- * A Save's "Preparing…": its dialog once opened, and the Save's own cancel, which the dialog's
- * Cancel sets and which outlives the dialog. Every wait the Save makes after it opens ends on it.
- */
-type PreparingSlot = {
-    dialog?: Preparing
-    name: string
-    /** Export's picker waiting for an open's import (SF3-1). */
-    kind?: 'export'
-    timer?: ReturnType<typeof setTimeout>
-    cancel: AbortController
-}
-
 const preparingFor = (name: string, kind?: 'export'): PreparingSlot => ({
     name,
     cancel: new AbortController(),
     ...(kind ? { kind } : {}),
 })
-
-const openPreparing = (slot: PreparingSlot) => {
-    if (slot.dialog) return slot.dialog
-    const dialog = saveUi.preparing(slot.name, slot.kind)
-    slot.dialog = dialog
-    if (dialog.signal.aborted) slot.cancel.abort()
-    else
-        dialog.signal.addEventListener('abort', () => {
-            slot.cancel.abort()
-        })
-    return dialog
-}
 
 /** Whether the Save was cancelled in its "Preparing…". */
 const cancelled = (slot: PreparingSlot) => slot.cancel.signal.aborted
@@ -282,34 +270,6 @@ const closePreparing = (slot: PreparingSlot) => {
 /** Whether the press's activation lapsed while building (§1.4.7 R12). */
 const activationLapsed = (startedAt: number) =>
     reportsActivation() ? !hasActivation() : performance.now() - startedAt > PREPARING_MS
-
-/** How long a Save waits for a reload's import resume to start (§1.5.4), as a slot load does. */
-const RESUME_WAIT_MS = 4000
-const RESUME_POLL_MS = 250
-
-/** Resolves true after `ms`, or false at once when `signal` aborts. */
-const pause = (ms: number, signal?: AbortSignal) =>
-    new Promise<boolean>((resolve) => {
-        if (signal?.aborted) {
-            resolve(false)
-            return
-        }
-        const stop = () => {
-            clearTimeout(timer)
-            resolve(false)
-        }
-        const timer = setTimeout(() => {
-            signal?.removeEventListener('abort', stop)
-            resolve(true)
-        }, ms)
-        signal?.addEventListener('abort', stop, { once: true })
-    })
-
-/** Whether storage says the open's import of this session hasn't ended (`importPending`). */
-const importPendingHere = async (env: Env) =>
-    (await env.worker.call('openPendingImports').catch(() => [])).some(
-        (each) => each.sessionId === env.session.id,
-    )
 
 /** How often a dialog counts again while an import is pending that runs nowhere here. */
 const ESTIMATE_POLL_MS = 1000
@@ -359,38 +319,6 @@ const countedWhole = async (
         }
         if (!(await pause(ESTIMATE_POLL_MS, signal))) return
         waited += ESTIMATE_POLL_MS
-    }
-}
-
-/**
- * Waits for the open's import of this session (§1.4.7): inside "Preparing…", whose Cancel
- * cancels the Save only. `unlinked` when the import found damage meanwhile. After a reload the
- * import resumes after startup, so a Save storage says has one pending waits for it to start
- * (SF2-6); one that never starts is refused as `importing`, which says the file isn't read whole.
- */
-const waitForImport = async (env: Env, slot: PreparingSlot) => {
-    if (!isImporting(env.session.id)) {
-        if (!(await importPendingHere(env))) return 'done'
-        openPreparing(slot)
-        for (let waited = 0; !isImporting(env.session.id); waited += RESUME_POLL_MS) {
-            if (waited >= RESUME_WAIT_MS) return 'done'
-            if (!(await pause(RESUME_POLL_MS, slot.cancel.signal))) return 'cancelled'
-            // Ended meanwhile (its resume found the file gone or changed): nothing to wait for.
-            if (waited % 1000 === 0 && !(await importPendingHere(env))) return 'done'
-        }
-    }
-    const dialog = openPreparing(slot)
-    // The import's progress, from the batches it has run (§1.4.7).
-    const stop = onImportProgress(env.session.id, (progress) => {
-        dialog.importing(progress)
-    })
-    try {
-        const outcome = await whenImported(env.session.id, slot.cancel.signal)
-        return outcome.kind === 'unlinked' ? 'unlinked' : 'done'
-    } catch {
-        return 'cancelled'
-    } finally {
-        stop()
     }
 }
 
@@ -539,7 +467,7 @@ const savedOf = (built: BuiltSave, kind: 'saved' | 'download', name: string, too
     kind,
     name,
     size: built.blob.size,
-    someStepsNotKept: built.someStepsNotKept,
+    stepsLine: built.stepsLine,
     tookOver,
     without: built.without,
     tooLarge: built.tooLarge,
@@ -971,7 +899,7 @@ const pickAndWrite = async (env: Env, given: PickRequest): Promise<Outcome> => {
     // "Preparing…" may be open already: a throw here, a storage failure, closes it too.
     try {
         await commitFirst(env)
-        if ((await waitForImport(env, slot)) === 'cancelled') {
+        if ((await waitForChainImports(env, slot)) === 'cancelled') {
             closePreparing(slot)
             return { kind: 'cancelled' }
         }
@@ -1459,9 +1387,14 @@ const download = async (
 
 // The write-back (§1.4.7's first row).
 
+/** What recognising our own completed Save found: recorded, a build-style `importing`, or not ours. */
+type Recognised = 'recorded' | 'importing' | 'no'
+
 /**
  * Our own completed Save (§1.4.7, r13-dataloss Minor 1): a file this chain wrote whose binding
- * wasn't recorded. Recorded from the marker kept before the write, after the file's checks.
+ * wasn't recorded. After the file's checks against the marker kept before the write, its binding is
+ * recorded alone (`recordOwnSave`): no entry is written, so the Save has no Saved row in the
+ * Timeline. A chain that still imports is refused as the build refuses it, the marker kept.
  */
 const ownCompletedSave = async (
     env: Env,
@@ -1469,9 +1402,9 @@ const ownCompletedSave = async (
     handle: FileSystemFileHandle,
     file: Blob,
     disk: DiskState,
-) => {
+): Promise<Recognised> => {
     const marker = readMarker(env.chainId)
-    if (!marker) return false
+    if (!marker) return 'no'
     const facts = await readDiskFacts(file).catch(() => undefined)
     const project = isRow(facts?.projectJson) ? facts.projectJson : undefined
     const revision = isRow(project?.revision) ? project.revision : undefined
@@ -1486,42 +1419,45 @@ const ownCompletedSave = async (
         last?.kind !== 'save' ||
         last.revisionId !== marker.entry.revisionId
     )
-        return false
+        return 'no'
     const unit = markerUnit(marker)
-    if (unit.file.name !== handle.name) return false
+    if (unit.file.name !== handle.name) return 'no'
+    // The record as it is now, under `nse-bind`: the binding the Save started from is the one
+    // the transaction checks it still holds.
+    const record = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
+    if (!record) return 'no'
+    const at = (field: unknown) =>
+        isRow(field) && typeof field.at === 'number' ? field.at : undefined
+    const fileAt = at(record.file)
+    const replacedAt = at(record.replaced)
     // The handle the check used stays the binding's, so later Saves write back in place.
     const stored = await storableHandle(handle)
-    // A session's entries are stored in `seq` order: with entries before the `save` entry still
-    // pending here, this tab stores it after them.
-    const below = env.flusher.keptSaveBelow(marker.entry.sessionId, marker.entry.seq)
-    const done = await env.worker
-        .call('finishOwnSave', {
+    const { session } = env
+    const recorded = await env.worker
+        .call('recordOwnSave', {
             chainId: env.chainId,
-            entry: marker.entry,
+            writer: {
+                sessionId: session.id,
+                ...(session.continuation && session.parent ? { parentId: session.parent.id } : {}),
+            },
             unit: {
                 ...unit,
                 file: { ...unit.file, ...(stored ? { handle: stored } : {}), disk, event: 'saved' },
+                from: {
+                    ...(fileAt === undefined ? {} : { fileAt }),
+                    ...(replacedAt === undefined ? {} : { replacedAt }),
+                },
             },
-            ...(below ? { below: below.kind } : {}),
         })
-        .catch(() => false)
-    if (!done) return false
-    if (below?.kind === 'pending')
-        await env.flusher.keptSave(below, {
-            wall: marker.entry.time,
-            operation: marker.entry.operation,
-            revisionId: marker.entry.revisionId,
-            device: marker.entry.device,
-            ...(marker.entry.appVersion === undefined
-                ? {}
-                : { appVersion: marker.entry.appVersion }),
-        })
+        .catch(() => undefined)
+    if (recorded === 'importing') return 'importing'
+    if (recorded !== 'recorded') return 'no'
     if (unit.clearExport && currentSession.value.sessionId === env.session.id)
         clearExportDestination()
     removeMarker(env.chainId, marker.entry.revisionId)
     rememberHandle(env.chainId, handle)
-    const record = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
-    if (record) env.session.chain = record
+    const read = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
+    if (read) env.session.chain = read
     if (currentSession.value.sessionId === env.session.id)
         bindFile({
             name: handle.name,
@@ -1529,7 +1465,7 @@ const ownCompletedSave = async (
             ...(typeof unit.file.at === 'number' ? { at: unit.file.at } : {}),
             hash: marker.unit.file.hash,
         })
-    return true
+    return 'recorded'
 }
 
 type CheckOutcome = Outcome | { kind: 'noChanges'; event: StoredFile['event'] }
@@ -1588,7 +1524,11 @@ const writeBackLocked = async (
         if (checked.kind === 'revoked') return 'revoked'
         if (checked.kind === 'outcome') {
             if (checked.outcome.kind !== 'conflict') return checked.outcome
-            if (attempt === 0 && (await recognise(env, checked.outcome.binding, handle))) continue
+            if (attempt === 0) {
+                const recognised = await recognise(env, checked.outcome.binding, handle)
+                if (recognised === 'importing') return importingOutcome(handle)
+                if (recognised === 'recorded') continue
+            }
             return checked.outcome
         }
         const outcome = await writeBack(
@@ -1599,22 +1539,34 @@ const writeBackLocked = async (
             checked.expected,
         )
         if (outcome.kind !== 'conflict' || attempt > 0) return outcome
-        if (!(await recognise(env, outcome.binding, handle))) return outcome
+        const recognised = await recognise(env, outcome.binding, handle)
+        if (recognised === 'importing') return importingOutcome(handle)
+        if (recognised !== 'recorded') return outcome
     }
     return { kind: 'cancelled' }
 }
 
 /** Our own completed Save, checked on the file as it is now. */
-const recognise = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
+const recognise = async (
+    env: Env,
+    binding: Binding,
+    handle: FileSystemFileHandle,
+): Promise<Recognised> => {
     try {
         const file = await handle.getFile()
         const disk = await platform.inspect({ kind: 'handle', handle }, 'nxsp')
-        if (disk === 'missing') return false
+        if (disk === 'missing') return 'no'
         return await ownCompletedSave(env, binding, handle, file, disk)
     } catch {
-        return false
+        return 'no'
     }
 }
+
+/** An import of the chain still running after the Save's wait: refused as the build refuses it. */
+const importingOutcome = (handle: FileSystemFileHandle): Outcome => ({
+    kind: 'error',
+    message: interpolate(() => i18n.value.save.notKept, handle.name),
+})
 
 const writeBack = async (
     env: Env,
@@ -1775,7 +1727,11 @@ const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileH
                 fingerprint: disk.fingerprint,
             })
             relation = decision?.relation
-            if (decision?.holdsBase) replaceDisabled = () => i18n.value.conflict.replaceHoldsEarlier
+            if (decision?.holdsBase)
+                replaceDisabled =
+                    decision.holdsBase === 'missing'
+                        ? () => i18n.value.conflict.replaceHoldsEarlier
+                        : () => i18n.value.conflict.replaceMayHoldEarlier
         }
     } catch {
         // What is on disk cannot be read: the title and body say enough.
@@ -2022,7 +1978,7 @@ const downloadBytes = async (name: string, bytes: Blob) => {
                 kind: 'download',
                 name,
                 size: bytes.size,
-                someStepsNotKept: false,
+                stepsLine: 'none' as const,
                 tookOver: false,
                 without: [],
                 tooLarge: [],
@@ -2395,7 +2351,7 @@ const saveNow = async (env: Env) => {
         return
     }
     const slot = preparingFor(file.name)
-    const waited = await waitForImport(env, slot)
+    const waited = await waitForChainImports(env, slot)
     closePreparing(slot)
     if (waited === 'cancelled') return
     if (waited === 'unlinked') {
@@ -2750,7 +2706,7 @@ export const exportPickerOpening = () => {
 /**
  * Before each of Export's pickers (SF3-1): a picker that returns the chain's own file empties it,
  * and an open's import still reading that file would stop there, the rows it hadn't copied left
- * unkept. So Export waits for this session's import as a Save does (`waitForImport`): in
+ * unkept. So Export waits for the chain's imports as a Save does (`waitForChainImports`): in
  * "Preparing…", whose Cancel cancels the Export, then asks for the press the picker needs (R12).
  * True at once when no import is pending; false when cancelled.
  */
@@ -2760,7 +2716,7 @@ export const exportImportWait = async (name: string, size: number) => {
     const startedAt = performance.now()
     const slot = preparingFor(name, 'export')
     try {
-        if ((await waitForImport(env, slot)) === 'cancelled') return false
+        if ((await waitForChainImports(env, slot)) === 'cancelled') return false
         // The press still holds: the picker opens on it. Else it asks for another, also when
         // nothing was waited for but the check itself outlasted the press (SF-F1).
         if (!activationLapsed(startedAt)) return true

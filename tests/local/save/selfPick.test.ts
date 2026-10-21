@@ -28,7 +28,7 @@ const needsRead = async (fixture: Fixture, file: File) => {
         role: 'target',
         fingerprint: disk.fingerprint,
     })
-    return (
+    return !!(
         await readReplaceDecision(fixture.store, fixture.chainId, projectJson, disk.fingerprint)
     )?.holdsBase
 }
@@ -54,7 +54,7 @@ test('storage holding everything: no read, and the self-pick written from storag
     assert.equal(await needsRead(fixture, file), false)
     const { built, file: written } = await save(fixture, { kind: 'copy' }, { disk: diskOf })
     assert.ok(!('refused' in built) && written)
-    assert.equal(built.someStepsNotKept, false)
+    assert.equal(built.stepsLine, 'none')
     const old = (await heldRows(file)).rows
     const now = (await heldRows(written)).rows
     for (const [row, count] of old) assert.ok((now.get(row) ?? 0) >= count, row)
@@ -73,7 +73,7 @@ test('storage short: the file is read first and appended to; declined, the line 
         { files: [await sourceOf(file)], disk: diskOf, binds: false },
     )
     assert.ok(!('refused' in appended.built) && appended.file)
-    assert.equal(appended.built.someStepsNotKept, false)
+    assert.equal(appended.built.stepsLine, 'none')
     const old = (await heldRows(file)).rows
     const now = (await heldRows(appended.file)).rows
     for (const [row, count] of old) assert.ok((now.get(row) ?? 0) >= count, row)
@@ -81,7 +81,7 @@ test('storage short: the file is read first and appended to; declined, the line 
     // The read declined: written from storage, and the write says so.
     const declined = await save(fixture, { kind: 'copy' }, { disk: diskOf, binds: false })
     assert.ok(!('refused' in declined.built))
-    assert.equal(declined.built.someStepsNotKept, true)
+    assert.equal(declined.built.stepsLine, 'notKept')
 })
 
 test('whether to read the file first is known from storage alone: rows it lacks, or head media', async () => {
@@ -135,7 +135,7 @@ test('damage no build has found: the self-pick is written from storage, the step
     assert.ok(!('refused' in built) && written)
     assert.deepEqual(built.damaged, [hex])
     assert.equal(built.marked, 1)
-    assert.equal(built.someStepsNotKept, true)
+    assert.equal(built.stepsLine, 'notKept')
     const old = await heldRows(file)
     const now = await heldRows(written)
     const init = `init|${old.history.entries[0]?.time}|${stateAt(1).hex}`
@@ -238,7 +238,7 @@ test('known damage the own file holds is put right by the append, so the next Sa
     )
     assert.ok(!('refused' in appended.built) && appended.file)
     assert.deepEqual(appended.built.damaged, [])
-    assert.equal(appended.built.someStepsNotKept, false)
+    assert.equal(appended.built.stepsLine, 'none')
     // Stored again from the file's bytes, which hash to its key: no longer bad, and no longer short.
     assert.deepEqual([...(await stillBad(fixture.store, [hex]))], [])
     assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, true)
@@ -290,7 +290,7 @@ test('a repair that fails leaves the Save as it was and the damage known (L1)', 
     const built = await buildSave(failing, fixture.chainId, target, options, files)
     assert.ok(!('refused' in built))
     assert.deepEqual(built.damaged, [])
-    assert.equal(built.someStepsNotKept, false)
+    assert.equal(built.stepsLine, 'none')
     assert.deepEqual([...(await stillBad(fixture.store, [hex]))], [hex])
     assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, false)
     // The same file as a build whose repair succeeds.

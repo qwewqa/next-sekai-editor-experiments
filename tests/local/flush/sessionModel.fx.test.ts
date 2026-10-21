@@ -1,6 +1,6 @@
 import { defineModelTests } from './sessionModel'
 
-// The session model test (spec A) as Firefox before 126 runs it: the journal writer with
+// The model test of spec A as Firefox before 126 runs it: the journal writer with
 // `strictCommits: false`, and a power loss is `loseCommits`, which undoes commits whatever their
 // durability. Its seeds are its own (the default writer's plus 1000).
 defineModelTests(true)

@@ -2091,6 +2091,8 @@
     "savedWithoutMediaLarge": "已儲存到 {0}，未包含媒體",
     "someStepsNotKept": "已儲存到 {0}。時間軸中部分較早的步驟未保留。",
     "someStepsNotKeptLine": "時間軸中部分較早的步驟未保留。",
+    "someStepsMayNotBeIncluded": "已儲存到 {0}。可能未包含時間軸中部分較早的步驟。",
+    "someStepsMayNotBeIncludedLine": "可能未包含時間軸中部分較早的步驟。",
     "committedState": "該檔案包含在另一個分頁中開啟之工作階段最後存放的版本。",
     "tookOver": "已儲存到 {0}。其先前的工作在「最近工作階段」中。",
     "noChanges": "自下載 {0} 以來沒有變更",
@@ -2133,6 +2135,7 @@
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
     "replaceHoldsEarlier": "它包含此瀏覽器中已不再存放的較早時間軸步驟。",
+    "replaceMayHoldEarlier": "它可能包含此瀏覽器中已不再存放的較早時間軸步驟。",
     "keepEditing": "繼續編輯"
   },
   "name": {

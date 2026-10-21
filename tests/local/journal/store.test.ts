@@ -8,6 +8,7 @@ import {
     storageJournalStore,
 } from '../../../src/local/journal/store'
 import { JournalWriter } from '../../../src/local/journal/writer'
+import '../../helpers/lockChecks'
 
 // The journal store's budget (Part 1 §1.6.4): all journals and the legacy slot together, the
 // legacy slot left out first, and only when that makes room.

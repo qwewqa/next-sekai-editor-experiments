@@ -222,8 +222,10 @@ test('the Replace guard: a file holding the base this browser lost rows of is ne
     await pressSave(next)
     const dialog = next.getByRole('dialog')
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
+    // A thinned root is a flag the chain can't show it holds: the uncertain reason. Rows gone from
+    // the chain give the definite one (`replaceDecision` units).
     await expect(dialog).toContainText(
-        'It holds earlier Timeline steps that are no longer stored in this browser.',
+        'It may hold earlier Timeline steps that are no longer stored in this browser.',
     )
     await expect(dialog.getByRole('button', { name: 'Replace' })).toBeDisabled()
     await expect(dialog.getByRole('button', { name: 'Save as a Separate File' })).toBeFocused()

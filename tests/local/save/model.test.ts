@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { describe } from 'node:test'
 import { hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { PlanError } from '../../../src/local/nxsp/plan'
 import { setSaveHooksForTests } from '../../../src/local/save/build'
 import { setBuiltHookForTests } from '../../../src/local/save/execute'
-import { ModelError, orderSessions } from '../../../src/local/save/model'
+import {
+    carryStatus,
+    ModelError,
+    orderSessions,
+    type ChainRow,
+} from '../../../src/local/save/model'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { unzip, zipItems } from '../nxsp/craft'
 import { BGM } from '../nxsp/helpers'
@@ -84,7 +89,7 @@ test('a reduced bound session saved to its file keeps the file’s full history'
     await fixture.edit(3)
     await fixture.flush()
     const { built, file } = await writeBack(fixture, first.file)
-    assert.equal(ok(built).someStepsNotKept, false)
+    assert.equal(ok(built).stepsLine, 'none')
     assert.ok(file)
     const { rows } = await heldRows(file)
     const reduced = fixture.sessions[0]?.rows[1]
@@ -168,18 +173,18 @@ test('downloads carry the base’s completeFrom until a row the base held is red
     const d1 = ok((await download()).built)
     const d2 = await download()
     const b2 = ok(d2.built)
-    assert.equal(b2.someStepsNotKept, false)
+    assert.equal(b2.stepsLine, 'none')
     assert.equal(b2.identity.completeFrom, d1.revisionId)
     // A forced cleanup reduces a row the base held.
     assert.equal(await fixture.thin(0, 1), true)
     const d3 = await download()
     const b3 = ok(d3.built)
-    assert.equal(b3.someStepsNotKept, true)
+    assert.equal(b3.stepsLine, 'notKept')
     assert.equal(b3.identity.completeFrom, b3.revisionId)
     assert.deepEqual(b3.identity.entry, { count: 7, notKept: 1 })
     const d4 = await download()
     const b4 = ok(d4.built)
-    assert.equal(b4.someStepsNotKept, false)
+    assert.equal(b4.stepsLine, 'none')
     assert.equal(b4.identity.completeFrom, b3.revisionId)
     if (hasUv) {
         const files = [d2.file, d3.file, d4.file].filter((file): file is File => !!file)
@@ -237,7 +242,7 @@ test('a chunk row corrupted in storage is marked damaged; the Save goes on with 
     const { built, file } = await save(fixture, { kind: 'copy' }, { event: 'downloaded' })
     const plan = ok(built)
     assert.ok(file)
-    assert.equal(plan.someStepsNotKept, true)
+    assert.equal(plan.stepsLine, 'notKept')
     assert.ok(plan.damaged.includes(only))
     assert.ok(plan.marked >= 1)
     const stored = await fixture.entries()
@@ -463,7 +468,7 @@ test('Replace writes the chain’s chronology with `replaces`, and the line when
     )
     const plan = ok(built)
     assert.ok(file)
-    assert.equal(plan.someStepsNotKept, true)
+    assert.equal(plan.stepsLine, 'notKept')
     const { read } = await heldRows(file)
     assert.equal(read.project?.revision?.replaces, 'theirs')
     assert.equal(read.project?.revision?.completeFrom, plan.revisionId)
@@ -497,4 +502,119 @@ test('a file past a reader cap is refused with the cap named, nothing built', as
     assert.ok('refused' in built)
     assert.equal(built.refused, 'plan')
     assert.equal(built.limit, 'project')
+})
+
+// The carry test's status (spec A, I-11 and I-18): `missing` is a known loss, `unproven` is not.
+
+describe('carryStatus', () => {
+    const base = { revisionId: 'r' }
+    const stored = () => true
+    const row = (
+        seq: number,
+        kind = seq === 3 ? 'save' : 'edit',
+        extra: { kept?: boolean; revisionId?: string; snapshot?: string } = {},
+    ): ChainRow =>
+        ({
+            startedAt: 1,
+            entry: {
+                sessionId: 's',
+                seq,
+                kind,
+                kept: extra.kept ?? true,
+                snapshot: fromHex16((extra.snapshot ?? String(seq)).padStart(32, '0')),
+                ...(kind === 'save' ? { revisionId: extra.revisionId ?? 'r' } : {}),
+            },
+        }) as unknown as ChainRow
+    const cut = (count = 3, extra: { inexact?: true } = {}) => ({
+        sessionId: 's',
+        seq: 3,
+        startedAt: 1,
+        count,
+        notKept: 0,
+        ...extra,
+    })
+    const whole = [row(1), row(2), row(3)]
+
+    test('carries only over its own row, the counts and an exact cut', () => {
+        assert.equal(
+            carryStatus(whole, cut(), base, stored, () => false),
+            'carries',
+        )
+        // An inexact cut is never carried, whatever the counts say.
+        assert.equal(
+            carryStatus(whole, cut(3, { inexact: true }), base, stored, () => false),
+            'unproven',
+        )
+    })
+
+    test('an own row that is absent or replaced is not proof, and the missing one counts as present', () => {
+        const absent = [row(1), row(2)]
+        assert.equal(
+            carryStatus(absent, cut(), base, stored, () => false),
+            'unproven',
+        )
+        assert.equal(
+            carryStatus(absent, cut(4), base, stored, () => false),
+            'missing',
+        )
+        const replaced = [row(1), row(2), row(3, 'save', { revisionId: 'x' })]
+        assert.equal(
+            carryStatus(replaced, cut(), base, stored, () => false),
+            'unproven',
+        )
+        assert.equal(
+            carryStatus(replaced, cut(4), base, stored, () => false),
+            'missing',
+        )
+    })
+
+    test('a session that is gone counts its own row as present, so only fewer rows are missing', () => {
+        const gone = () => false
+        assert.equal(
+            carryStatus([], cut(1), base, gone, () => false),
+            'unproven',
+        )
+        assert.equal(
+            carryStatus([], cut(3), base, gone, () => false),
+            'missing',
+        )
+    })
+
+    test('fewer rows than the file are missing, more are not', () => {
+        assert.equal(
+            carryStatus([row(1), row(3)], cut(), base, stored, () => false),
+            'missing',
+        )
+        assert.equal(
+            carryStatus(whole, cut(2), base, stored, () => false),
+            'unproven',
+        )
+    })
+
+    test('flags alone are never known missing; a write that lacks more states than the file did is', () => {
+        const flagged = [row(1), row(2, 'edit', { kept: false }), row(3)]
+        const isFlagged = (each: ChainRow) => !each.entry.kept
+        assert.equal(carryStatus(flagged, cut(), base, stored, isFlagged), 'unproven')
+        // The build's `lacks`: nothing lacks, then the flagged row's state is not in the write.
+        assert.equal(
+            carryStatus(flagged, cut(), base, stored, isFlagged, () => false),
+            'unproven',
+        )
+        assert.equal(
+            carryStatus(flagged, cut(), base, stored, isFlagged, (each) => each.entry.seq === 2),
+            'missing',
+        )
+        // The file already lacked that many: not more, so not known.
+        assert.equal(
+            carryStatus(
+                flagged,
+                { ...cut(), notKept: 1 },
+                base,
+                stored,
+                isFlagged,
+                (each) => each.entry.seq === 2,
+            ),
+            'carries',
+        )
+    })
 })

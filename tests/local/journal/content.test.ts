@@ -10,6 +10,7 @@ import type { State } from '../../../src/state'
 import { createSlideId } from '../../../src/state/entities/slides'
 import { addNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
+import '../../helpers/lockChecks'
 import { goldenChart, note, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 

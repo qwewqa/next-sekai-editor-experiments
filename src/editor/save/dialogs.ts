@@ -127,8 +127,11 @@ export type SavedFeedback = {
     kind: 'saved' | 'download'
     name: string
     size: number
-    /** "Some earlier Timeline steps were not kept.": the write doesn't carry its base's `completeFrom`. */
-    someStepsNotKept: boolean
+    /**
+     * The second line when the write doesn't carry its base's `completeFrom` (§1.6.11.6): "were not
+     * kept" for steps known missing, "may not be included" otherwise.
+     */
+    stepsLine: 'none' | 'notKept' | 'mayNotBeIncluded'
     /** A save picker took the file from another chain: "Its earlier work is in Recent Sessions." */
     tookOver: boolean
     /** Media written as metadata only, in BGM, cover, preview order. */
@@ -221,29 +224,42 @@ const withoutKey = (feedback: SavedFeedback) => {
 
 /** A Save with nothing to add to "Saved to {0}". */
 const simple = (feedback: SavedFeedback) =>
-    !feedback.someStepsNotKept && !feedback.tookOver && feedback.without.length === 0
+    feedback.stepsLine === 'none' && !feedback.tookOver && feedback.without.length === 0
 
-/** The feedback's text: the first line, then "Some earlier Timeline steps were not kept." where it applies. */
+/** The feedback's text: the first line, then the steps line (`stepsLine`) where it applies. */
 export const savedText = (feedback: SavedFeedback) => {
     const { save } = i18n.value
+    const line =
+        feedback.stepsLine === 'notKept'
+            ? save.someStepsNotKeptLine
+            : save.someStepsMayNotBeIncludedLine
+    const withLine = (first: string) =>
+        feedback.stepsLine === 'none' ? first : `${first}\n${line}`
     if (feedback.kind === 'download') {
         const first = interpolate(
             () => save.downloadStarted,
             feedback.name,
             () => formatSize(feedback.size),
         )()
-        return feedback.someStepsNotKept ? `${first}\n${save.someStepsNotKeptLine}` : first
+        return withLine(first)
     }
     const without = withoutKey(feedback)
     if (without) {
         const first = interpolate(() => without, feedback.name)()
-        return feedback.someStepsNotKept ? `${first}\n${save.someStepsNotKeptLine}` : first
+        return withLine(first)
     }
     if (feedback.tookOver) {
         const first = interpolate(() => save.tookOver, feedback.name)()
-        return feedback.someStepsNotKept ? `${first}\n${save.someStepsNotKeptLine}` : first
+        return withLine(first)
     }
-    if (feedback.someStepsNotKept) return interpolate(() => save.someStepsNotKept, feedback.name)()
+    if (feedback.stepsLine !== 'none')
+        return interpolate(
+            () =>
+                feedback.stepsLine === 'notKept'
+                    ? save.someStepsNotKept
+                    : save.someStepsMayNotBeIncluded,
+            feedback.name,
+        )()
     return interpolate(() => save.saved, feedback.name)()
 }
 

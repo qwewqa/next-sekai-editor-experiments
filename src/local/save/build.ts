@@ -48,12 +48,13 @@ import { markDamaged } from './mark'
 import { planMediaItem, type HeldMedia, type MediaKind } from './media'
 import {
     bindingHasHistory,
-    carries,
+    carryStatus,
     chainRows,
     checkReadable,
     cutStack,
     isLater,
     ModelError,
+    ownRow,
     renumbering,
     type ChainRow,
     type WriteStack,
@@ -200,7 +201,7 @@ export type SaveIdentity = {
     /** As written, placed; absent without history. */
     completeFrom?: string
     /** The cut's counts; the caller adds the `save` entry's `sessionId`, `seq` and `startedAt`. */
-    entry?: { count: number; notKept: number }
+    entry?: { count: number; notKept: number; inexact?: true }
     /**
      * Every row written `kept: false` by a mark (this build's and `options.identity`'s): committed
      * with the binding, in its transaction, so a binding is never stored without them (D25).
@@ -214,8 +215,11 @@ export type SavePlan = {
     project: Record<string, unknown>
     /** For the post-build check: chunks taken from storage. */
     storageChunks: PlannedChunk[]
-    /** "Some earlier Timeline steps were not kept." (§1.6.11.6): exactly when the write doesn't carry its base. */
-    someStepsNotKept: boolean
+    /**
+     * The line a write that doesn't carry its base gets (§1.6.11.6, I-18): "were not kept" for
+     * steps known missing, "may not be included" when none is known missing, none otherwise.
+     */
+    stepsLine: 'none' | 'notKept' | 'mayNotBeIncluded'
     /** Media written as metadata only (the "without its …" lines), in BGM, cover, preview order. */
     without: MediaKind[]
     /** Those of `without` this tab holds but that pass the 1 GB media cap: no "which is not loaded". */
@@ -580,16 +584,19 @@ export const planSave = async (
 
     // `completeFrom`, the carry test (D25) and the line (§1.6.11.6).
     const baseHadHistory = !!chain.revision && bindingHasHistory(chain.file)
+    const baseOf = chain.revision ? { revisionId: chain.revision.id } : undefined
+    const sessionStored = (sessionId: string) =>
+        cut.sessions.some((session) => session.id === sessionId)
     const carried =
         !appending &&
-        !!chain.revision &&
+        !!baseOf &&
         !!cutEntry &&
-        carries(rows, cutEntry, (row) => flagged(row.entry))
+        carryStatus(rows, cutEntry, baseOf, sessionStored, (row) => flagged(row.entry)) ===
+            'carries'
     let completeFrom: string | undefined
     if (appending && source) completeFrom = placedCompleteFrom(sourceRevision(source))
     else if (carried && target.kind !== 'new' && chain.revision)
         completeFrom = chain.file?.completeFrom ?? chain.revision.id
-    const someStepsNotKept = history && !appending && baseHadHistory && !carried
 
     // The revision.
     const revisionId = options.context.newId()
@@ -788,11 +795,13 @@ export const planSave = async (
         throw error
     }
 
-    // The binding's counts: the file's rows, and those whose root it lacks.
+    // The binding's counts: the file's rows, and those whose root it lacks. An append onto a
+    // base whose own row is absent or replaced, or whose cut was inexact, leaves an inexact cut.
     let entry: SaveIdentity['entry']
+    let roots = new Set<string>()
     if (historyInput) {
         const parts = plannedParts(plan, appending ? source : undefined)
-        const roots = new Set(parts.flatMap((part) => Object.keys(part.roots)))
+        roots = new Set(parts.flatMap((part) => Object.keys(part.roots)))
         let count = 0
         let lacking = 0
         for (const part of parts)
@@ -800,8 +809,30 @@ export const planSave = async (
                 count++
                 if (!roots.has(form.snapshot)) lacking++
             }
-        entry = { count, notKept: lacking }
+        const own =
+            appending && baseOf && cutEntry ? ownRow(rows, cutEntry, baseOf, sessionStored) : 'held'
+        entry = {
+            count,
+            notKept: lacking,
+            ...(appending && (cutEntry?.inexact || own === 'absent' || own === 'replaced')
+                ? { inexact: true as const }
+                : {}),
+        }
     }
+    // The line, by what is known (I-18): the plan's roots say which states the write lacks.
+    let stepsLine: SavePlan['stepsLine'] = 'none'
+    if (history && !appending && baseHadHistory && !carried && baseOf && cutEntry)
+        stepsLine =
+            carryStatus(
+                rows,
+                cutEntry,
+                baseOf,
+                sessionStored,
+                (row) => flagged(row.entry),
+                (row) => !roots.has(toHex(row.entry.snapshot)),
+            ) === 'missing'
+                ? 'notKept'
+                : 'mayNotBeIncluded'
     const written = plannedProject(plan).revision
     const writtenFrom =
         isObject(written) && typeof written.completeFrom === 'string'
@@ -813,7 +844,7 @@ export const planSave = async (
         revisionId,
         project,
         storageChunks,
-        someStepsNotKept,
+        stepsLine,
         without,
         tooLarge,
         identity: {

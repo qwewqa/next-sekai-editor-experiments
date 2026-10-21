@@ -12,12 +12,9 @@ import type { FlushDeps, Flusher } from '../flush'
 
 type Watched = {
     deps: FlushDeps
-    current?: unknown
 }
 
 type Resuming = { id: string; lastSeq?: number; seq?: number }
-
-type KeptBelow = { session: { id: string; pending: readonly { seq: number }[] }; seq: number }
 
 const keyOf = (sessionId: string, seq: number) => `${sessionId}#${seq}`
 
@@ -36,7 +33,7 @@ export class HoleLedger {
         this.learned.add(keyOf(sessionId, seq))
     }
 
-    /** An end (or a kept Save) added the Save's entry at `seq`: not a hole, and never excused. */
+    /** An end added the Save's entry at `seq`: not a hole, and never excused. */
     add(sessionId: string, seq: number) {
         this.added.add(keyOf(sessionId, seq))
     }
@@ -71,17 +68,6 @@ export class HoleLedger {
                 this.add(session.id, seq)
             else this.learn(session.id, seq)
             return ended
-        }
-        const keptSave = flusher.keptSave.bind(flusher)
-        flusher.keptSave = (below, entry) => {
-            // Added unless the session is no longer current or already holds an entry there.
-            const kept = below as unknown as KeptBelow
-            if (
-                target.current === kept.session &&
-                !kept.session.pending.some((each) => each.seq === kept.seq)
-            )
-                this.add(kept.session.id, kept.seq)
-            return keptSave(below, entry)
         }
         // A resume numbers past the marker of a Save that began in a page whose end this ledger may
         // not have seen: the `seq`s it jumps over, after the stored `lastSeq` (a journal-only

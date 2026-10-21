@@ -37,7 +37,6 @@ const fake = (current?: Session) => {
                       : 'letGo',
             )
         },
-        keptSave: (_below?: unknown, _entry?: unknown) => Promise.resolve(),
         resumeSession: (start: { id: string; lastSeq: number }) => ({
             id: start.id,
             nextSeq: Math.max(start.lastSeq, marker(start.id)) + 1,
@@ -95,22 +94,6 @@ test('an end that adds the entry makes the seq no hole; an end without one, or o
         'notCurrent',
     )
     assert.equal(gone.has('old', 3), true, 'a session no longer current takes no entry')
-})
-
-test('a kept Save that adds its entry at a learned gap makes it no hole', async () => {
-    const current = session('s')
-    const ledger = new HoleLedger()
-    const flusher = watch(ledger, fake(current))
-    const reservation = flusher.reserveSave()
-    await flusher.endSave(reservation as never)
-    assert.equal(ledger.has('s', 3), true)
-    // A session that already holds an entry there takes none.
-    current.pending.push({ seq: 3 })
-    await flusher.keptSave({ session: current, seq: 3 } as never, {} as never)
-    assert.equal(ledger.has('s', 3), true)
-    current.pending.length = 0
-    await flusher.keptSave({ session: current, seq: 3 } as never, {} as never)
-    assert.equal(ledger.has('s', 3), false)
 })
 
 test('a resume jumps over the seqs between its lastSeq and the marker: each is a hole, and no more', () => {

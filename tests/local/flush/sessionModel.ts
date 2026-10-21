@@ -8,7 +8,7 @@ import { fromHex16, toHex } from '../../../src/local/hash'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
-import { BIND_STORES, finishOwnSave, type OwnSaveBelow } from '../../../src/local/save/bind'
+import { BIND_STORES, recordOwnSave } from '../../../src/local/save/bind'
 import { CUT_STORES, readCut } from '../../../src/local/save/cut'
 import { carries, chainRows, isLater, type ChainRow } from '../../../src/local/save/model'
 import { journalledSession } from '../../../src/local/startup/resume'
@@ -49,11 +49,9 @@ import { fileStates, flaggedFile, importIds, longFile, smallFile, storeRequest }
 // The oracle holds what the user did apart from what the product says about it: the state each
 // hide journalled, the rows each commit made and whether it was strict, the seqs handed out.
 //
-// Known breaches of today's code are pinned, each to the operation and the session that cause
-// it and with the increment that clears it; an unpinned violation fails the run and names the
-// operations that led to it. The pins are tallied, so a pinned breach that stops happening
-// shows. `npm test` runs a fixed seed set per writer; `NSE_MODEL_GATE=1` is the per-increment
-// gate; `NSE_MODEL_SEED` and `NSE_MODEL_RUNS` search.
+// A violation fails the run and names the operations that led to it. `npm test` runs a fixed seed
+// set per writer; `NSE_MODEL_GATE=1` is the per-increment gate; `NSE_MODEL_SEED` and
+// `NSE_MODEL_RUNS` search.
 
 const DEVICE = { id: 'device-1', label: 'Web (Chrome)' }
 const LARGE = 'tests/fixtures/generated-large.json'
@@ -67,73 +65,6 @@ const rootOf = (state: State) => {
     if (!root) roots.set(state, (root = toHex(encodeSnapshot(toRecords(state)).root.hash)))
     return root
 }
-
-// ---- Pins: the breaches today's code is known to make --------------------------------------
-
-export type ModelPin = {
-    id: string
-    pattern: RegExp
-    /** The operations whose violations it excuses; empty: any. */
-    ops: readonly string[]
-    /** Only a line that names a session a recognition touched (the cause is named by session). */
-    scoped?: true
-    clearedBy: 'A2'
-    why: string
-}
-
-export const MODEL_PINS: readonly ModelPin[] = [
-    {
-        id: 'AR-1 lock',
-        pattern: /^lock: rows [\d, ]+ of session \S+ were created while the page did not hold/,
-        ops: [],
-        scoped: true,
-        clearedBy: 'A2',
-        why: 'AR-1, I-1: finishOwnSave writes a session its recognising page does not hold',
-    },
-    {
-        id: 'AR-1 head',
-        pattern: /no longer its chain's head/,
-        ops: [],
-        scoped: true,
-        clearedBy: 'A2',
-        why: 'AR-1, I-5: a recognised Save writes a parent after the head moved on',
-    },
-    {
-        id: 'AR-1 parent',
-        pattern:
-            /parent \S+ (holds rows [\d, ]+ past its uptoSeq|has lastSeq \d+, not its uptoSeq)/,
-        ops: [],
-        scoped: true,
-        clearedBy: 'A2',
-        why: 'AR-1, I-5: the parent of a continuation has rows past its branch point',
-    },
-    {
-        id: 'AR-2 lastSeq',
-        pattern: /were created at or below its lastSeq|has lastSeq \d+ after creating rows up to/,
-        ops: [],
-        scoped: true,
-        clearedBy: 'A2',
-        why: 'AR-2, I-2: keptSave and the net store rows under lastSeq',
-    },
-    {
-        id: 'AR-2 time',
-        pattern: /row \d+ \(time \d+\) is later than row \d+ \(time \d+\)/,
-        ops: [],
-        scoped: true,
-        clearedBy: 'A2',
-        why: 'AR-2, I-6: a Save stored late carries a later stamp than the rows above it',
-    },
-    {
-        id: 'AR-8 recovered',
-        pattern: /^I-11 \(recovered\)/,
-        ops: [],
-        clearedBy: 'A2',
-        why: 'AR-8, AR-8b, F2, I-11: the cut carries over a recovered row where the file holds another',
-    },
-]
-
-/** How many times each pin excused a line, over every run of the test file. */
-export const pinHits = new Map<string, number>()
 
 // ---- The model ----------------------------------------------------------------------------------
 
@@ -238,7 +169,6 @@ export class Run {
     opens = 0
     readonly seen = new Set<string>()
     violations: string[] = []
-    pinned = new Set<string>()
 
     // The ledgers: what the user did, apart from what the product says about it.
     /** For each hide that journalled: the state the journal must give back, by session and seq. */
@@ -258,8 +188,6 @@ export class Run {
     >()
     /** A resumed session's `strictSeq` before the page wrote anything: stored rows it cannot vouch for. */
     private readonly claimBase = new Map<string, number>()
-    /** Every session a recognition has touched: the pins of AR-1 and AR-2 name them. */
-    readonly recognised = new Set<string>()
     private visits = 0
     private checked = 0
 
@@ -697,38 +625,43 @@ export class Run {
         const build = this.unbound[a % this.unbound.length]!
         // The write-back waits for an import of the chain to end before it recognises.
         if (this.build === build || this.chainImporting(build.chainId)) return
-        this.recognised.add(build.sessionId)
-        this.recognised.add(this.session!.id)
-        const below = this.flusher.keptSaveBelow(build.sessionId, build.seq)
-        const kind: OwnSaveBelow | undefined = below?.kind
-        const entry = {
-            sessionId: build.sessionId,
-            seq: build.seq,
-            time: build.reservation.wall,
-            operation: this.saveOperation(),
-            snapshot: rootOf(build.head),
-            noteCount: 1,
-            revisionId: build.revisionId,
-            device: DEVICE,
-        }
-        const unit = this.unit(build)
-        const done = await this.visit.host.call((_, core) =>
-            // Strict, as the worker's `finishOwnSave` handler writes it: the model once wrote it
-            // by default (relaxed), and a power loss then undid a row it had pledged.
+        const session = this.session!
+        const at = (field: unknown) =>
+            typeof field === 'object' &&
+            field !== null &&
+            typeof (field as { at?: unknown }).at === 'number'
+                ? (field as { at: number }).at
+                : undefined
+        // Strict, as the worker's `recordOwnSave` handler writes it: the model once wrote it by
+        // default (relaxed), and a power loss then undid a row it had pledged. The record's
+        // binding is read in the same transaction, as `ownCompletedSave` reads it under the lock.
+        const recorded = await this.visit.host.call((_, core) =>
             core.write(
                 BIND_STORES,
-                (tx) => finishOwnSave(tx, build.chainId, entry, unit, 2_000_000, kind),
+                async (tx) => {
+                    const chain = (await tx.get('chains', build.chainId)) as
+                        Record<string, unknown> | undefined
+                    const from = {
+                        ...(at(chain?.file) === undefined ? {} : { fileAt: at(chain?.file) }),
+                        ...(at(chain?.replaced) === undefined
+                            ? {}
+                            : { replacedAt: at(chain?.replaced) }),
+                    }
+                    return recordOwnSave(tx, {
+                        chainId: build.chainId,
+                        writer: {
+                            sessionId: session.id,
+                            ...(session.continuation && session.parent
+                                ? { parentId: session.parent.id }
+                                : {}),
+                        },
+                        unit: { ...this.unit(build), from },
+                    })
+                },
                 { durability: 'strict' },
             ),
         )
-        if (below?.kind === 'pending')
-            await this.flusher.keptSave(below, {
-                wall: entry.time,
-                operation: entry.operation,
-                revisionId: entry.revisionId,
-                device: entry.device,
-            })
-        if (done) {
+        if (recorded === 'recorded') {
             this.unbound.splice(this.unbound.indexOf(build), 1)
             this.bound.set(build.chainId, build)
         }
@@ -756,7 +689,10 @@ export class Run {
         const startedAt = cut.sessions.find((session) => session.id === file.sessionId)?.startedAt
         if (startedAt === undefined) return
         const edge = { ...file, startedAt }
-        if (!carries(all, edge, (row) => !row.entry.kept)) return
+        const base = cut.chain.revision
+        if (!base) return
+        const stored = (sessionId: string) => cut.sessions.some((each) => each.id === sessionId)
+        if (!carries(all, edge, { revisionId: base.id }, stored, (row) => !row.entry.kept)) return
         const upto = all.filter((row) => !isLater(row, edge))
         const have = upto.map(({ entry }) => rowKey(entry)).sort()
         const held = [...build.fileRows].sort()
@@ -774,11 +710,8 @@ export class Run {
             sorted(have).every((key, at) => key === sorted(held)[at])
         )
             return
-        // A recovered row where the file holds another is AR-8, AR-8b and F2; anything else that
-        // differs is new.
-        const kind = have.some((key) => key.startsWith('recovered|')) ? 'recovered' : 'content'
         this.violations.push(
-            `I-11 (${kind}): the cut of ${build.revisionId} carries, but the chain's ${have.length} rows up to it differ from the file's ${held.length}`,
+            `I-11: the cut of ${build.revisionId} carries, but the chain's ${have.length} rows up to it differ from the file's ${held.length}`,
         )
     }
 
@@ -1357,16 +1290,6 @@ export class Run {
 
     // ---- the oracle ----
 
-    matchPin(line: string, op: string) {
-        for (const pin of MODEL_PINS) {
-            if (!pin.pattern.test(line)) continue
-            if (pin.ops.length && !pin.ops.includes(op)) continue
-            if (pin.scoped && ![...this.recognised].some((id) => line.includes(id))) continue
-            return pin
-        }
-        return undefined
-    }
-
     /**
      * Spec E's oracles on the flusher's own state, judged after every operation (E-O): P1, P4 and
      * J3. They read what the product holds beside what the stored-data checker reads.
@@ -1455,20 +1378,11 @@ export class Run {
             if (this.seen.has(line)) continue
             if (importing && /is missing$/.test(line)) continue
             this.seen.add(line)
-            const known = this.matchPin(line, after)
-            if (known) {
-                this.pinned.add(known.why)
-                pinHits.set(known.id, (pinHits.get(known.id) ?? 0) + 1)
-            } else
-                this.fail(
-                    `after ${after}: ${line}\nsessions: ${JSON.stringify(
-                        [...rows(world, 'sessions').values()].map((s) => [
-                            s.id,
-                            s.chainId,
-                            s.lastSeq,
-                        ]),
-                    )}`,
-                )
+            this.fail(
+                `after ${after}: ${line}\nsessions: ${JSON.stringify(
+                    [...rows(world, 'sessions').values()].map((s) => [s.id, s.chainId, s.lastSeq]),
+                )}`,
+            )
         }
         this.checkStrictClaim(after)
         this.checkMade(after)
@@ -1722,7 +1636,7 @@ export const defineModelTests = (fx: boolean) => {
                 }
                 await run.finish()
             } finally {
-                console.log(run.trace.join(' '), [...run.pinned])
+                console.log(run.trace.join(' '))
             }
         })
         return
@@ -1750,21 +1664,4 @@ export const defineModelTests = (fx: boolean) => {
                 { seed: seed + offset, numRuns: runs, endOnFailure: !process.env.NSE_MODEL_SHRINK },
             )
         })
-
-    // A pinned breach that stops happening must show: the pin is then deleted with the increment
-    // that clears it. These are drawn by the seeds above, deterministically.
-    if (!process.env.NSE_MODEL_SEED)
-        test(`session model pins are still met${label}`, () => {
-            const drawn = gate ? DRAWN_AT_GATE : DRAWN
-            for (const id of drawn)
-                assert.ok(
-                    (pinHits.get(id) ?? 0) > 0,
-                    `the pin "${id}" was never met: the breach it excuses no longer happens here, so its increment (${MODEL_PINS.find((pin) => pin.id === id)?.clearedBy}) must delete it`,
-                )
-            if (process.env.NSE_MODEL_VERBOSE) console.log([...pinHits])
-        })
 }
-
-/** The pins every run of the seed set draws, and those the longer gate does too. */
-const DRAWN: readonly string[] = []
-const DRAWN_AT_GATE: readonly string[] = MODEL_PINS.map((pin) => pin.id)
