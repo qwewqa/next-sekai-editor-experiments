@@ -56,6 +56,37 @@ export class FakeLockManager {
         }
     }
 
+    /** Who holds each lock now: for a test's checks of who may write. */
+    holders(): { name: string; mode: LockMode; actor: Actor }[] {
+        return [...this.held.values()]
+            .flat()
+            .map(({ name, mode, actor }) => ({ name, mode, actor }))
+    }
+
+    /**
+     * An exclusive lock for `actor` granted at once, with no task: a test's flusher holds its
+     * session as the page does, without the grant's tasks moving a seeded run. Undefined when the
+     * lock is not free. Released by the returned function or when the actor is killed.
+     */
+    holdNow(actor: Actor, name: string, clientId: string = actor.name): (() => void) | undefined {
+        if (!this.grantableAtEnd(name, 'exclusive')) return
+        if (!this.watched.has(actor)) this.client(actor, clientId)
+        const request: LockRequest = {
+            name,
+            mode: 'exclusive',
+            clientId,
+            actor,
+            run: () => undefined,
+            abort: () => undefined,
+        }
+        let held = this.held.get(name)
+        if (!held) this.held.set(name, (held = []))
+        held.push(request)
+        return () => {
+            this.unlock(request)
+        }
+    }
+
     private request<T>(
         actor: Actor,
         clientId: string,

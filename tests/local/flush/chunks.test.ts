@@ -24,6 +24,7 @@ import { addStageStyleEventJoint } from '../../../src/state/mutations/events/sta
 import { addNote, replaceNote } from '../../../src/state/mutations/slides/note'
 import { replaceTimeScale } from '../../../src/state/mutations/timeScale'
 import { createTransaction, type Transaction } from '../../../src/state/transaction'
+import '../../helpers/lockChecks'
 import { camera, edgeChart, goldenChart, mask, note, stateOf, style } from '../records/charts'
 import { samplePaths, sampleState } from '../records/samples'
 

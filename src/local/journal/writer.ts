@@ -181,7 +181,7 @@ export class JournalWriter {
         if (retiring)
             this.retiring.set(
                 fork.id,
-                retiring.map((each) => ({ ...each, seq: fork.nextSeq - 1 })),
+                retiring.map((each) => ({ ...each, seq: fork.entrySeq })),
             )
         const keys = this.superseded.get(from.id)?.keys ?? []
         this.superseded.delete(from.id)
@@ -189,7 +189,7 @@ export class JournalWriter {
         this.written.delete(from.id)
         if (last) keys.push({ sessionId: from.id, seq: last.seq })
         if (!keys.length) return
-        this.superseded.set(fork.id, { keys, moved: fork.nextSeq - 1 })
+        this.superseded.set(fork.id, { keys, moved: fork.entrySeq })
         if (this.deps.flusher()?.session === fork) this.write()
     }
 

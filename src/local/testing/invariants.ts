@@ -55,7 +55,7 @@ export const replayViolations = (rows: Rows): string[] => {
 }
 
 /** Every violation in a dump of `nse-local-data`; empty when the data is whole. */
-export const storedViolations = (rows: Rows): string[] => {
+export const storedViolations = (rows: Rows, options: SessionOptions = {}): string[] => {
     const violations: string[] = []
     const all = (store: string) => rows.get(store) ?? []
     const hashes = new Set<string>()
@@ -100,8 +100,8 @@ export const storedViolations = (rows: Rows): string[] => {
             if (!has(hash))
                 violations.push(`stack block ${keyText(row.key)}: ${hex(hash)} is missing`)
     }
-    violations.push(...replayViolations(rows))
-    violations.push(...sessionViolations(rows))
+    if (options.replay !== false) violations.push(...replayViolations(rows))
+    violations.push(...sessionViolations(rows, options))
     for (const row of all('tombstones')) {
         const tombstone = record(row.value)
         if (!chains.has(String(tombstone.chainId)))
@@ -124,6 +124,16 @@ const seqList = (seqs: readonly number[]) => seqs.join(', ')
 export type SessionOptions = {
     /** Check every time against `meta.maxSeenTime` (default); false for data a fixture wrote. */
     maxSeenTime?: boolean
+    /**
+     * Replay every followable session's entries (default), for the stored stack and the `save`
+     * rows that land (I-8); false for a writer that stores made-up rows, which are no session's.
+     */
+    replay?: boolean
+    /**
+     * For a session opened from a file, the last `seq` of the file's rows (`World.openBase`):
+     * holes and times are judged for the rows above it. Absent, all of its rows count as the file's.
+     */
+    openBase?: (sessionId: string) => number | undefined
     /** A `seq` the test knows was let go: a hole the plan allows. */
     hole?: (sessionId: string, seq: number) => boolean
 }
@@ -144,7 +154,7 @@ export type SessionOptions = {
  */
 export const sessionViolations = (
     rows: Rows,
-    { maxSeenTime = true, hole }: SessionOptions = {},
+    { maxSeenTime = true, hole, openBase }: SessionOptions = {},
 ): string[] => {
     const violations: string[] = []
     const all = (store: string) => rows.get(store) ?? []
@@ -183,12 +193,20 @@ export const sessionViolations = (
         const recoveredAt = entries
             .filter((entry) => entry.kind === 'recovered')
             .map((entry) => Number(entry.seq))
+        const filedOrigin = session.origin === 'nxsp' || session.origin === 'replaced'
+        // The last `seq` of the file's rows of an opened session, when the world recorded it: the
+        // session's own rows are above it. Without it, every row of such a session counts as the file's.
+        const base = filedOrigin ? openBase?.(sessionId) : undefined
+        const filed = (seq: number) => filedOrigin && (base === undefined || seq <= base)
         const holes: number[] = []
         for (let seq = 1; seq <= lastSeq; seq++) {
-            if (seqs.has(seq) || pending) continue
+            if (seqs.has(seq) || (pending && filed(seq))) continue
             if (recoveredAt.some((at) => at > seq && at <= lastSeq)) continue
             if (own.sessionId === sessionId && own.seq === seq) continue
             if (hole?.(sessionId, seq)) continue
+            // A session opened from a file whose import has ended: rows an ended or abandoned
+            // import never brought are holes I-3 allows, the file's rows only.
+            if (filed(seq)) continue
             holes.push(seq)
         }
         if (holes.length)
@@ -198,10 +216,10 @@ export const sessionViolations = (
         // A session opened from a file holds the file’s rows with their own times, which this
         // editor did not stamp: only a session’s own rows are strictly increasing, and until an
         // `importedRows` marker says which are the file’s, nxsp and replaced sessions are skipped.
-        const filed = session.origin === 'nxsp' || session.origin === 'replaced'
-        for (let at = 1; at < entries.length && !filed; at++) {
-            const before = record(entries[at - 1])
-            const after = record(entries[at])
+        const timed = entries.filter((entry) => !filed(Number(entry.seq)))
+        for (let at = 1; at < timed.length; at++) {
+            const before = record(timed[at - 1])
+            const after = record(timed[at])
             if (
                 typeof before.time === 'number' &&
                 typeof after.time === 'number' &&
@@ -211,8 +229,8 @@ export const sessionViolations = (
                     `session ${sessionId}: row ${String(before.seq)} (time ${before.time}) is later than row ${String(after.seq)} (time ${after.time})`,
                 )
         }
-        if (typeof maxSeen === 'number' && !filed) {
-            const beyond = entries.filter(
+        if (typeof maxSeen === 'number') {
+            const beyond = timed.filter(
                 (entry) => typeof entry.time === 'number' && entry.time > maxSeen,
             )
             if (beyond.length)
@@ -223,7 +241,9 @@ export const sessionViolations = (
         const parent = record(session.parent)
         if (typeof parent.id === 'string' && typeof parent.uptoSeq === 'number') {
             const from = sessions.get(parent.id)
-            if (from) {
+            // The rule is for a parent in the same chain (I-5): a fork is another chain, and its
+            // parent may go on as its own chain's head.
+            if (from && from.chainId === session.chainId) {
                 const past = (stored.get(parent.id) ?? [])
                     .map((entry) => Number(entry.seq))
                     .filter((seq) => seq > (parent.uptoSeq as number))
@@ -275,15 +295,16 @@ export const missingStackViolations = (rows: Rows): string[] => {
 }
 
 /** The violations in the memory store's `nse-local-data`. */
-export const checkStored = (memory: MemoryKv) => storedViolations(memory.dump(DB_NAME))
+export const checkStored = (memory: MemoryKv, options: SessionOptions = {}) =>
+    storedViolations(memory.dump(DB_NAME), options)
 
 /**
  * `checkStored` and the sessions with rows but no stored stack: for a run whose writers all hold
  * their session's lock in order, where nothing should have removed one (AR-3).
  */
-export const checkStrict = (memory: MemoryKv) => {
+export const checkStrict = (memory: MemoryKv, options: SessionOptions = {}) => {
     const dump = memory.dump(DB_NAME)
-    return [...storedViolations(dump), ...missingStackViolations(dump)]
+    return [...storedViolations(dump, options), ...missingStackViolations(dump)]
 }
 
 /**

@@ -5,6 +5,7 @@ import {
     installTestPlatform,
     waitForStartup,
 } from './editorFixture'
+import { row as historyRow } from './historyJourney'
 import { flushed, notice, pressSave, queuePicks, submitSave } from './saveFlows'
 
 // The History tab and dialog, the Timeline and the peek bar (Part 1 §1.4.10, §1.4.11, Step 5).
@@ -90,12 +91,8 @@ const surface = (page: Page, name: 'panel' | 'dialog') =>
 const list = (page: Page, name: 'panel' | 'dialog' = 'panel') =>
     surface(page, name).locator('[data-history-list]')
 
-// The Now row repeats the newest entry's text: it is not the stored row.
-const row = (page: Page, text: string, name: 'panel' | 'dialog' = 'panel'): Locator =>
-    list(page, name)
-        .getByRole('row')
-        .and(page.locator(':not(.timeline-now)'))
-        .filter({ has: page.getByText(text, { exact: true }) })
+const row = (page: Page, title: string, name: 'panel' | 'dialog' = 'panel'): Locator =>
+    historyRow(page, title, name)
 
 const peekBar = (page: Page) => page.locator('[data-peek-bar]')
 

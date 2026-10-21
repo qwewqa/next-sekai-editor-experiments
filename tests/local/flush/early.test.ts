@@ -6,6 +6,7 @@ import { pushState, resetStates, undoState } from '../../../src/history/stack'
 import { replay } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
 import { initialLife, initialStep } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Actions before storing starts are kept for it, but boundedly: a start that never comes mustn't

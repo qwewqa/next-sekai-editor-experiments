@@ -1,5 +1,5 @@
 import type { EntryDescription } from '../../../src/history/operations'
-import type { Flusher, FlushSession } from '../../../src/local/flush'
+import type { FlushDeps, Flusher, FlushSession } from '../../../src/local/flush'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import { replayJournal, type ReplayDeps } from '../../../src/local/journal/replay'
 import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
@@ -74,6 +74,7 @@ export const openJournalPage = async (
     storage = new MemoryStorage(),
     writer: Partial<JournalWriterDeps> = {},
     coreDeps: Partial<CoreDeps> = {},
+    flushDeps: Partial<FlushDeps> = {},
 ): Promise<JournalPage> => {
     const ref: { writer?: JournalWriter; sync?: { fails: number } } = {}
     const page = await openPage(
@@ -93,6 +94,7 @@ export const openJournalPage = async (
                     }).syncStrict(undefined),
                 )
             },
+            ...flushDeps,
         },
         coreDeps,
     )
@@ -110,13 +112,15 @@ export const openJournalPage = async (
 /** A split page (its worker on an actor of its own, with restarts) with a journal writer. */
 export const openSplitJournalPage = async (
     world: World,
-    setup: WorkerSetup & { name?: string } = {},
+    setup: WorkerSetup & { name?: string; flush?: Partial<FlushDeps> } = {},
     storage = new MemoryStorage(),
+    writer: Partial<JournalWriterDeps> = {},
 ): Promise<SplitJournalPage> => {
     const ref: { host?: WorkerHost; writer?: JournalWriter; sync?: { fails: number } } = {}
     const page = await openSplitPage(world, {
         ...setup,
         flush: {
+            ...setup.flush,
             onCommitted: (session, { seq, strict }) =>
                 ref.writer?.committed(session.id, seq, strict),
             onFork: (fork, from) => ref.writer?.forked(from, fork),
@@ -137,6 +141,7 @@ export const openSplitJournalPage = async (
         storage,
         () => page.flusher,
         () => page.host.core.status.reason === 'full',
+        writer,
     )
     ref.writer = parts.writer
     ref.sync = parts.sync

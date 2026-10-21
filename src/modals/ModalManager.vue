@@ -62,11 +62,16 @@ const onBackdropUp = (event: PointerEvent) => {
 }
 
 // Escape ends the busy task first, wherever focus is.
-const onCancel = (event: Event) => {
+const onCancel = (event: Event, modal: Modal) => {
     const busy = (event.currentTarget as HTMLElement).querySelector('[data-modal-busy]')
-    if (!busy) return
-    event.preventDefault()
-    busy.dispatchEvent(new Event('modalcancel'))
+    if (busy) {
+        event.preventDefault()
+        busy.dispatchEvent(new Event('modalcancel'))
+    }
+    // A cancel not refused closes the dialog (with no user activation even a busy one's is not
+    // refusable). It leaves the stack now, as a button's close does: the close event comes a task
+    // later, and a key pressed meanwhile must reach the editor.
+    if (!event.defaultPrevented) closeModal(modal)
 }
 
 const onClick = (event: MouseEvent, modal: Modal) => {
@@ -162,7 +167,7 @@ const vOpen = {
         @pointerdown.capture="onBackdropDown"
         @pointerup.capture="onBackdropUp"
         @click="onClick($event, modal)"
-        @cancel="onCancel"
+        @cancel="onCancel($event, modal)"
         @close="closeModal(modal)"
     >
         <!-- The page behind a dialog is inert, so each dialog carries a region; only the top one is reachable. -->

@@ -99,6 +99,12 @@ Read these before you change a format:
 - [docs/format-versioning.md](docs/format-versioning.md): what each version number does, the extension points and the checklist for a format change.
 - [docs/history-format.md](docs/history-format.md): the History data model, the `.nxsp` history parts, every History operation, the safety rules and how to add an operation.
 
+## Engineering principles
+
+Read this before you write or review code or tests:
+
+- [docs/engineering-principles.md](docs/engineering-principles.md): defaults and unknowns, one source per fact, owned module state, failures that are not empty, honest tests, shared spec helpers, true text, and no compatibility code before ship.
+
 ## Forks
 
 A fork builds everything unsigned with no setup beyond the Node version: `npm install`, then `npm run build` or `npm run build:native`.

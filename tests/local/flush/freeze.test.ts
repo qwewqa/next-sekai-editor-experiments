@@ -4,6 +4,7 @@ import { pushState, resetStates } from '../../../src/history/stack'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
 import { initialStep, nativeOperation } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Outside release builds the undo stack freezes what it publishes (the flush's identity memo
