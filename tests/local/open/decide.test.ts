@@ -14,6 +14,7 @@ import {
     type EarlierChain,
 } from '../../../src/local/open/decide'
 import { stateFromRecords } from '../../../src/local/records/records'
+import '../../helpers/lockChecks'
 import { fresh } from '../nxsp/chain'
 import { crafted, jsonOf, setJson } from '../nxsp/craft'
 

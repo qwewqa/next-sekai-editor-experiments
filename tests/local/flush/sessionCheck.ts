@@ -17,13 +17,15 @@ let worlds: World[] = []
 let expected: readonly RegExp[] = []
 
 /** The known breaches pinned today: each names the increment whose acceptance deletes the pin. */
-export const PINS: { pattern: RegExp; clearedBy: string; why: string }[] = []
+export type Increment = 'AP' | 'A2' | 'A4' | 'A6'
+
+export const PINS: { pattern: RegExp; clearedBy: Increment; why: string }[] = []
 
 /**
  * A violation today's code is known to make, for `expectViolations`. It names the increment that
  * clears it (AP, A2, A4 or A6): that increment's acceptance deletes the pin (design A §7).
  */
-export const pin = (pattern: RegExp, clearedBy: string, why: string) => {
+export const pin = (pattern: RegExp, clearedBy: Increment, why: string) => {
     PINS.push({ pattern, clearedBy, why })
     return pattern
 }
@@ -37,7 +39,7 @@ export const createCheckedWorld = (options: Parameters<typeof create>[0] = {}) =
 /** The violations of every world the running test made. */
 export const worldViolations = () =>
     worlds.flatMap((world) => [
-        ...checkStored(world.memory, { hole: world.holes.has }),
+        ...checkStored(world.memory, world.sessionOptions),
         ...missingStackViolations(world.memory.dump(DB_NAME)),
         ...world.violations,
     ])

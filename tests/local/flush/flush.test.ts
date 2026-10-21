@@ -20,6 +20,7 @@ import {
     originOperation,
     restoreStep,
 } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { goldenChart, recordsText, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 import { openPage, rows, storedRecords, testId, workerCore, type Page } from './harness'

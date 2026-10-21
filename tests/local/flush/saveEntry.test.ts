@@ -518,8 +518,11 @@ const ownSave = (
     return {
         entry,
         record: (below?: OwnSaveBelow) =>
-            page.core.write(BIND_STORES, (tx) =>
-                finishOwnSave(tx, chainId, entry, unit, wall, below),
+            // Strict, as the worker's `finishOwnSave` handler writes it (`bindHandlers.ts`).
+            page.core.write(
+                BIND_STORES,
+                (tx) => finishOwnSave(tx, chainId, entry, unit, wall, below),
+                { durability: 'strict' },
             ),
     }
 }
@@ -1131,7 +1134,7 @@ describe('A2 acceptance (expected to fail before A2)', () => {
         'AR-3: a Save recognised below lastSeq leaves every session with rows its stored stack',
         async () => {
             const { world } = await keptWhileInFlight(45)
-            assert.deepEqual(checkStrict(world.memory, { hole: world.holes.has }), [])
+            assert.deepEqual(checkStrict(world.memory, world.sessionOptions), [])
         },
         A2,
     )

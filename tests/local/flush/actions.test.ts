@@ -3,6 +3,7 @@ import test from 'node:test'
 import { onHistoryAction, type HistoryAction } from '../../../src/history/actions'
 import { pushState, redoState, resetStates, undoState } from '../../../src/history/stack'
 import { initialLife, initialStep } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 
 // The undo stack's actions, which the flush turns into entries (§1.3.8): a reset starts a

@@ -6,6 +6,7 @@ import { sessionLock } from '../../../src/local/locks'
 import { holdParentLock, holdSessionLock, TabClient } from '../../../src/local/sessions'
 import { createWorld } from '../../../src/local/testing/world'
 import type { LockInfo, LockService } from '../../../src/platform/types'
+import '../../helpers/lockChecks'
 import { workerCore } from './harness'
 
 // Session locks on the main thread, this tab's client id, parent locks for unstored

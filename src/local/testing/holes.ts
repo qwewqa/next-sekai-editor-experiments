@@ -5,9 +5,10 @@ import type { FlushDeps, Flusher } from '../flush'
 // The ledger learns them from every `reserveSave`, from every `endSave` (let go or kept), and from
 // the marker a resume reads (`reservedSeq`): a resume numbers past the marker, so every `seq` it
 // jumps over, from the stored `lastSeq` to the marker, is a hole (entries a dying tab never stored
-// are among them). A `seq` whose end added the entry is never excused, so a `save` row a defect
-// lost is still reported. An example: a Save reserves 3 and the tab reloads before any end; the
-// resumed session stores 4, and 3 is a hole.
+// are among them). It never excuses a `seq` that some commit created a row at and no power loss
+// undid, nor one whose end added the entry, nor the entry a journal-only resume numbers itself, so
+// a row a defect lost is still reported. An example: a Save reserves 3 and the tab reloads before
+// any end; the resumed session stores 4, and 3 is a hole.
 
 type Watched = {
     deps: FlushDeps
@@ -17,26 +18,38 @@ type Watched = {
 
 type Resuming = { id: string; lastSeq?: number; seq?: number }
 
+type KeptBelow = { session: { id: string; pending: readonly { seq: number }[] }; seq: number }
+
+const keyOf = (sessionId: string, seq: number) => `${sessionId}#${seq}`
+
 export class HoleLedger {
-    private readonly learned = new Map<string, Set<number>>()
-    private readonly added = new Map<string, Set<number>>()
+    private readonly learned = new Set<string>()
+    private readonly added = new Set<string>()
+    private readonly made = new Set<string>()
 
     /** Whether `seq` of the session is a hole the flusher made. */
-    has = (sessionId: string, seq: number) => !!this.learned.get(sessionId)?.has(seq)
-
-    learn(sessionId: string, seq: number) {
-        if (this.added.get(sessionId)?.has(seq)) return
-        let set = this.learned.get(sessionId)
-        if (!set) this.learned.set(sessionId, (set = new Set()))
-        set.add(seq)
+    has = (sessionId: string, seq: number) => {
+        const key = keyOf(sessionId, seq)
+        return this.learned.has(key) && !this.made.has(key) && !this.added.has(key)
     }
 
-    /** An end added the Save's entry at `seq`: not a hole, and never excused after. */
+    learn(sessionId: string, seq: number) {
+        this.learned.add(keyOf(sessionId, seq))
+    }
+
+    /** An end (or a kept Save) added the Save's entry at `seq`: not a hole, and never excused. */
     add(sessionId: string, seq: number) {
-        let set = this.added.get(sessionId)
-        if (!set) this.added.set(sessionId, (set = new Set()))
-        set.add(seq)
-        this.learned.get(sessionId)?.delete(seq)
+        this.added.add(keyOf(sessionId, seq))
+    }
+
+    /** A commit created a row at `seq`: whatever happens to it, a power loss alone may remove it. */
+    created(sessionId: string, seq: number) {
+        this.made.add(keyOf(sessionId, seq))
+    }
+
+    /** A power loss undid the commit that created the row at `seq`. */
+    undone(sessionId: string, seq: number) {
+        this.made.delete(keyOf(sessionId, seq))
     }
 
     /** Learns from a flusher's reservations, ends and marker reads, for as long as it lives. */
@@ -60,18 +73,28 @@ export class HoleLedger {
             else this.learn(session.id, seq)
             return endSave(reservation, entry, ...rest)
         }
+        const keptSave = flusher.keptSave.bind(flusher)
+        flusher.keptSave = (below, entry) => {
+            // Added unless the session is no longer current or already holds an entry there.
+            const kept = below as unknown as KeptBelow
+            if (
+                target.current === kept.session &&
+                !kept.session.pending.some((each) => each.seq === kept.seq)
+            )
+                this.add(kept.session.id, kept.seq)
+            return keptSave(below, entry)
+        }
         // A resume numbers past the marker of a Save that began in a page whose end this ledger may
-        // not have seen: the `seq`s it jumps over are learned as the holes they are.
+        // not have seen: the `seq`s it jumps over, after the stored `lastSeq` (a journal-only
+        // resume: after the journal's) up to the marker, are holes. The entry a journal-only
+        // resume numbers itself comes after the marker and is no hole.
         for (const name of ['resumeSession', 'resumeJournalled'] as const) {
-            const original = flusher[name] as unknown as (start: Resuming) => {
-                id: string
-                nextSeq: number
-            }
+            const original = flusher[name] as unknown as (start: Resuming) => unknown
             ;(flusher as unknown as Record<string, unknown>)[name] = (start: Resuming) => {
-                const session = original.call(flusher, start)
-                for (let seq = (start.lastSeq ?? start.seq ?? 0) + 1; seq < session.nextSeq; seq++)
-                    this.learn(session.id, seq)
-                return session
+                const marker = target.deps.reservedSeq?.(start.id) ?? 0
+                for (let seq = (start.lastSeq ?? start.seq ?? 0) + 1; seq <= marker; seq++)
+                    this.learn(start.id, seq)
+                return original.call(flusher, start)
             }
         }
         // The marker itself, read by a resume or a journal-only reload, is learned too.

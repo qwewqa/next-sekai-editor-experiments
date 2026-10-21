@@ -20,6 +20,7 @@ import {
     nativeOperation,
     restoreStep,
 } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 
 test('early compaction preserves Restore and complete crossed steps', () => {

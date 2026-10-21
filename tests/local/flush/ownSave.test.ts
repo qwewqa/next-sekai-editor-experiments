@@ -2,13 +2,14 @@ import assert from 'node:assert/strict'
 import { describe } from 'node:test'
 import { captureName } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
-import { MemoryStorage } from '../../../src/local/journal/store'
+import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/store'
 import { executePlan, planNxsp } from '../../../src/local/nxsp'
 import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { BIND_STORES, finishOwnSave } from '../../../src/local/save/bind'
 import type { EntryRow } from '../../../src/local/save/cut'
 import { carries } from '../../../src/local/save/model'
+import { journalledSession } from '../../../src/local/startup/resume'
 import { stateBatch } from '../../../src/local/stateBatch'
 import { checkStored } from '../../../src/local/testing/invariants'
 import type { World } from '../../../src/local/testing/world'
@@ -111,10 +112,17 @@ const bind = (
 ) =>
     (
         page.core as unknown as {
-            write: <T>(stores: typeof BIND_STORES, fn: (tx: never) => Promise<T>) => Promise<T>
+            write: <T>(
+                stores: typeof BIND_STORES,
+                fn: (tx: never) => Promise<T>,
+                options: { durability: 'strict' },
+            ) => Promise<T>
         }
-    ).write(BIND_STORES, (tx) =>
-        finishOwnSave(tx, chainId, save.entry, save.unit, 2_000_000, below),
+    ).write(
+        BIND_STORES,
+        (tx) => finishOwnSave(tx, chainId, save.entry, save.unit, 2_000_000, below),
+        // As the worker's handler writes it (`bindHandlers.ts`): a recognised Save is strict.
+        { durability: 'strict' },
     )
 
 // ---------------------------------------------------------------------------------------------
@@ -246,7 +254,7 @@ test('a reservation never ended is a learned hole: the resumed session may store
     assert.equal(world.holes.has(session.id, 3), true)
     // The checked test passes only because the hole is learned: without the ledger it is a breach.
     assert.match(checkStored(world.memory).join('\n'), /rows 3 up to lastSeq 4 are neither stored/)
-    assert.deepEqual(checkStored(world.memory, { hole: world.holes.has }), [])
+    assert.deepEqual(checkStored(world.memory, world.sessionOptions), [])
 })
 
 test('a hole is learned from the marker a resume reads, though the page never saw its Save', async () => {
@@ -268,11 +276,14 @@ test('a hole is learned from the marker a resume reads, though the page never sa
         [1, 'init'],
         [3, 'edit'],
     ])
-    assert.deepEqual(checkStored(world.memory, { hole: world.holes.has }), [])
+    assert.deepEqual(checkStored(world.memory, world.sessionOptions), [])
 })
 
 test('a `save` row a defect lost is still reported: a seq whose end added the entry is never excused (R3-7)', async () => {
-    expectViolations(/rows 2 up to lastSeq 3 are neither stored/)
+    expectViolations(
+        /rows 2 up to lastSeq 3 are neither stored/,
+        /was removed while the session stays/,
+    )
     const world = createWorld({ seed: 3302 })
     const page = await openJournalPage(world, 'a', new MemoryStorage())
     const a = sampleState(LARGE)
@@ -290,7 +301,7 @@ test('a `save` row a defect lost is still reported: a seq whose end added the en
     })
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('After')) }, widen(a))
     await page.flusher.flush({ strict: true })
-    assert.deepEqual(checkStored(world.memory, { hole: world.holes.has }), [])
+    assert.deepEqual(checkStored(world.memory, world.sessionOptions), [])
     // A defect that never stored the `save` row at 2, with row 3 above it and the counts agreeing.
     await page.tab.run(() =>
         page.core.write(['entries', 'sessions'], async (tx) => {
@@ -300,9 +311,64 @@ test('a `save` row a defect lost is still reported: a seq whose end added the en
         }),
     )
     assert.equal(world.holes.has(session.id, 2), false)
-    const found = checkStored(world.memory, { hole: world.holes.has })
+    const found = checkStored(world.memory, world.sessionOptions)
     assert.equal(found.length, 1)
     assert.match(found[0]!, /rows 2 up to lastSeq 3 are neither stored/)
+})
+
+test('a journal-only reload’s recovered entry is no hole: if it is lost, the checker says so (M1)', async () => {
+    expectViolations(
+        /rows 1, 2, 4 up to lastSeq 4 are neither stored/,
+        /was removed while the session stays/,
+        // The stored stack no longer follows from the rows.
+        /replay gives/,
+        /past replay.s stack/,
+    )
+    const world = createWorld({ seed: 2903 })
+    const storage = new MemoryStorage()
+    // Storage never answers: the edits live in the journal alone.
+    const page = await openJournalPage(
+        world,
+        'a',
+        storage,
+        {},
+        {},
+        { transport: () => new Promise(() => undefined) },
+    )
+    const a = sampleState(LARGE)
+    beginSession(page, a)
+    append(page, { kind: 'edit', step: CHANGED() }, widen(a))
+    assert.equal(page.flusher.reserveSave()?.seq, 3)
+    assert.equal(page.writer.write(), true)
+    page.tab.kill()
+
+    const next = await openJournalPage(world, 'reload', storage)
+    markedAt(next, 3)
+    const found = (await storageJournalStore(() => storage, 'nse.').read())[0]!
+    const resumed = next.flusher.resumeJournalled({
+        ...journalledSession(found)!,
+        operation: nativeOperation(
+            { id: 'nse.recovery', data: { droppedSteps: 0 } },
+            'Recovered last change',
+        ),
+    })
+    // The recovered entry takes 4; the Save's 3 is the hole.
+    assert.deepEqual(
+        resumed.pending.map((entry) => entry.seq),
+        [4],
+    )
+    assert.equal(world.holes.has(resumed.id, 3), true)
+    assert.equal(world.holes.has(resumed.id, 4), false)
+    await next.flusher.flush({ strict: true })
+    assert.deepEqual(checkStored(world.memory, world.sessionOptions), [])
+    // A defect that never stores the journal's only copy of the edits, with the counts agreeing.
+    await next.tab.run(() =>
+        next.core.write(['entries', 'sessions'], async (tx) => {
+            await tx.delete('entries', [resumed.id, 4])
+            const row = (await tx.get('sessions', resumed.id)) as Record<string, number>
+            await tx.put('sessions', { ...row, entryCount: row.entryCount! - 1 })
+        }),
+    )
 })
 
 // ---------------------------------------------------------------------------------------------
@@ -342,7 +408,7 @@ test('loseCommits with strictCommits: false (Firefox before 126 as it runs): the
     assert.equal(row?.kind, 'recovered')
 })
 
-test('loseCommits with the default journal writer loses the edit: a state no browser reaches, so not modelled', async () => {
+test('loseCommits with the default journal writer loses the edit: a state no browser in the gate is known to reach (WebKit: D14), so not modelled', async () => {
     assert.equal(await lostEdit(3401, undefined), undefined)
 })
 
@@ -560,6 +626,31 @@ test('AR-8b today: landsOn accepts recovered@2, so save@3 is written and the cut
     const { world, session } = await ar8b(802)
     assert.equal(hasSaveRow(world, session.id, 3), true)
     assert.equal(carriesNow(world, session.id, session.chainId), true)
+})
+
+test('a kept Save added to a session the page has left writes nothing (the late writer, M1c)', async () => {
+    const world = createWorld({ seed: 4601 })
+    const page = await openJournalPage(world, 'a')
+    const a = stateOf(goldenChart())
+    const session = beginSession(page, a)
+    await page.flusher.flush({ strict: true })
+    // The Save's file may hold seq 2 (a kept gap), and the build found an entry pending below it.
+    const reservation = page.flusher.reserveSave()!
+    await page.flusher.endSave(reservation, undefined, undefined, true)
+    const below = { kind: 'pending', session, seq: reservation.seq, after: { state: a } }
+    // The page moves on to another session before the Save is added.
+    beginSession(page, stateOf(goldenChart()))
+    await page.flusher.flush({ strict: true })
+    await page.flusher.keptSave(below as never, {
+        wall: 5,
+        operation: SAVE_OPERATION,
+        revisionId: 'rev-1',
+        device: DEVICE,
+    })
+    await page.flusher.flush({ strict: true })
+    assert.equal(hasSaveRow(world, session.id, reservation.seq), false)
+    assert.equal(session.pending.length, 0)
+    assert.deepEqual(page.errors, [])
 })
 
 const A2 = { todo: 'A2: one writer of a session’s rows' }

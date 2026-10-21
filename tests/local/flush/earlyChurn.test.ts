@@ -6,6 +6,7 @@ import { pushState, redoState, resetStates, undoState } from '../../../src/histo
 import { replay } from '../../../src/local/timeline'
 import type { State } from '../../../src/state'
 import { initialLife, initialStep } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 
 // Early actions on a short stack churned by undo and redo: past the bound they're cut to the

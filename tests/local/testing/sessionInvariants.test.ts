@@ -58,7 +58,10 @@ test('a seq up to lastSeq with no row is named, unless covered, the binding’s 
         [],
     )
     // Rows still to come while an import is pending.
-    assert.deepEqual(sessionViolations(dump([session('s', { importPending: true })], rows)), [])
+    assert.deepEqual(
+        sessionViolations(dump([session('s', { importPending: true, origin: 'nxsp' })], rows)),
+        [],
+    )
 })
 
 test('a row stamped later than the row above it is named', () => {
@@ -211,4 +214,33 @@ test('a session with no stored stack is replayed: a save that does not land is n
         ),
         [],
     )
+})
+
+test('an opened session’s own rows keep the hole and time rules; only the file’s rows are exempt (M3)', () => {
+    const open = (extra: object = {}) =>
+        session('s', { origin: 'nxsp', lastSeq: 9, entryCount: 5, ...extra })
+    const fileEnd = (id: string) => (id === 's' ? 5 : undefined)
+    // The file's rows 1, 3 and 5 are stored, 2 and 4 never came; the page's own rows are 6 and 8.
+    const rows = [entry('s', 1, 10), entry('s', 3, 30), entry('s', 5, 50), entry('s', 6, 60)]
+    const whole = [...rows, entry('s', 7, 70), entry('s', 8, 80), entry('s', 9, 90)]
+    assert.deepEqual(
+        sessionViolations(dump([open({ entryCount: 7 })], whole), { openBase: fileEnd }),
+        [],
+    )
+    // A hole above the base is the page's own: reported, while the import runs and after.
+    const holey = [...rows, entry('s', 9, 90)]
+    for (const importPending of [true, undefined])
+        assert.match(
+            sessionViolations(dump([open({ importPending })], holey), { openBase: fileEnd })[0]!,
+            /rows 7, 8 up to lastSeq 9 are neither stored/,
+        )
+    // Without a base recorded, all of the session's rows are the file's (as A0 had it).
+    assert.deepEqual(sessionViolations(dump([open()], holey)), [])
+    // Times: the file's rows keep theirs; the page's own rows are strictly in order.
+    const late = [entry('s', 1, 900), entry('s', 5, 50), entry('s', 6, 70), entry('s', 7, 60)]
+    const found = sessionViolations(dump([open({ lastSeq: 7, entryCount: 4 })], late, {}, 1000), {
+        openBase: fileEnd,
+    })
+    assert.ok(found.some((line) => /row 6 \(time 70\) is later than row 7 \(time 60\)/.test(line)))
+    assert.ok(!found.some((line) => /row 1/.test(line)))
 })

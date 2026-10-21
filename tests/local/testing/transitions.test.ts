@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, sep } from 'node:path'
 import test from 'node:test'
 import { DB_NAME, STORE_NAMES } from '../../../src/local/db'
 import type { CommitReport, Row, WrittenRow } from '../../../src/local/kv/memory'
@@ -277,4 +279,118 @@ test('a worker’s transaction is judged by the locks of the page that owns it',
         if (owned) assert.deepEqual(world.violations, [])
         else assert.match(world.violations[0] ?? '', /lock: rows 2 of session S/)
     }
+})
+
+test('an opened session’s import fills at or below the file’s last seq; the page’s own rows keep every rule (M3)', () => {
+    const open = session('F', { origin: 'nxsp', importPending: true, lastSeq: 7, entryCount: 3 })
+    const state = {
+        sessions: [open],
+        entries: [entry('F', 6), entry('F', 7)],
+        chains: [chain('F')],
+    }
+    const fileEnd = new Map([['F', 5]])
+    // The fill: rows at or below 5, no lock, no lastSeq.
+    const fill = commit(state, { entries: [entry('F', 2), entry('F', 3)] })
+    assert.deepEqual(transitionViolations(fill, {}, fileEnd), [])
+    // The page's own row above the base, with the lock: ordinary.
+    const own = commit(
+        state,
+        { entries: [entry('F', 8)], sessions: [{ ...open, lastSeq: 8 }] },
+        { sessions: ['F'] },
+    )
+    assert.deepEqual(transitionViolations(own, {}, fileEnd), [])
+    // Without the lock, below lastSeq, or with lastSeq left behind: each is named.
+    const unlocked = commit(
+        state,
+        { entries: [entry('F', 8)], sessions: [{ ...open, lastSeq: 8 }] },
+        { sessions: [] },
+    )
+    assert.match(
+        transitionViolations(unlocked, {}, fileEnd).join('; '),
+        /lock: rows 8 of session F/,
+    )
+    const below = commit(
+        { ...state, entries: [entry('F', 6)] },
+        { entries: [entry('F', 7)] },
+        { sessions: ['F'] },
+    )
+    assert.match(
+        transitionViolations(below, {}, fileEnd).join('; '),
+        /rows 7 of session F were created at or below its lastSeq 7/,
+    )
+    const behind = commit(state, { entries: [entry('F', 9)] }, { sessions: ['F'] })
+    assert.match(
+        transitionViolations(behind, {}, fileEnd).join('; '),
+        /has lastSeq 7 after creating rows up to 9/,
+    )
+    // With no base recorded, every row of the session counts as the fill (as before).
+    assert.deepEqual(transitionViolations(unlocked, {}), [])
+})
+
+test('an opened session that is not the head keeps I-5 but for the import’s fill (M3)', () => {
+    const open = session('F', { origin: 'nxsp', importPending: true, lastSeq: 7, entryCount: 3 })
+    const state = {
+        sessions: [open, session('K', { chainId: 'c', lastSeq: 1 })],
+        entries: [entry('F', 6), entry('F', 7)],
+        chains: [chain('K')],
+    }
+    const fileEnd = new Map([['F', 5]])
+    const fill = commit(state, {
+        entries: [entry('F', 3)],
+        sessions: [{ ...open, entryCount: 4, ownBytes: 10 }],
+    })
+    assert.deepEqual(transitionViolations(fill, {}, fileEnd), [])
+    const finished = commit(state, { sessions: [{ ...open, importPending: undefined }] })
+    assert.deepEqual(transitionViolations(finished, {}, fileEnd), [])
+    const rewritten = commit(state, {
+        sessions: [{ ...open, lastSeq: 9, stack: { index: 1 } }],
+        stackBlocks: [{ sessionId: 'F', block: 0 }],
+    })
+    const found = transitionViolations(rewritten, {}, fileEnd).join('; ')
+    assert.match(found, /changed lastSeq, stack/)
+    assert.match(found, /stack block 0 of session F/)
+    const own = commit(state, { entries: [entry('F', 8)] }, { sessions: ['F'] })
+    assert.match(transitionViolations(own, {}, fileEnd).join('; '), /yet rows 8 were created/)
+})
+
+test('a row removed while its session stays is named; a session deleted with its rows is not', () => {
+    const report = commit(base(), {})
+    const gone = (sessionStays: boolean): CommitReport => ({
+        ...report,
+        deletes: [{ store: 'entries', rows: [{ key: ['S', 2] as Key, value: entry('S', 2) }] }],
+        current: (store, key) =>
+            store === 'sessions' && !sessionStays ? undefined : report.current(store, key),
+    })
+    assert.match(
+        transitionViolations(gone(true)).join('; '),
+        /row \["S",n2\] of session S was removed while the session stays/,
+    )
+    assert.deepEqual(transitionViolations(gone(false)), [])
+})
+
+test('the whole-store exemption covers exactly the two writers that are meant to have it', () => {
+    // A read-write transaction over every store is exempt from the transition check by its shape:
+    // `copyIntoStorage` (Try Again's move) and `seedDump` (a sample into an empty database). A
+    // third one would be exempt silently, so this lists them.
+    const found: string[] = []
+    const walk = (dir: string) => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            const path = join(dir, entry.name)
+            if (entry.isDirectory()) walk(path)
+            else if (
+                path.endsWith('.ts') &&
+                /\.transaction\(\s*(STORE_NAMES|names)\s*,\s*'readwrite'/.test(
+                    readFileSync(path, 'utf8'),
+                )
+            )
+                found.push(
+                    path
+                        .split(sep)
+                        .join('/')
+                        .replace(/^.*src\/local\//, ''),
+                )
+        }
+    }
+    walk(join(process.cwd(), 'src', 'local'))
+    assert.deepEqual(found.sort(), ['seed.ts', 'worker/core.ts'])
 })

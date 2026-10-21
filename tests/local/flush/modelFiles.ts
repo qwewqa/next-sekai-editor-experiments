@@ -116,3 +116,14 @@ export const smallFile = async () => {
     const { input } = fresh()
     return executePlan(planNxsp(input).plan, new Map())
 }
+
+/**
+ * The states the files above hold, so a session opened from one can be edited by the model: its
+ * stack's hashes are these states' roots.
+ */
+export const fileStates = () => [
+    stateOf(chartWith()),
+    stateOf(chartWith({ extraNotes: 1 })),
+    stateOf(chartWith({ bgm: BGM_2, cover: COVER_2, extraNotes: 1 })),
+    stateOf(chartWith({ extraNotes: 40 })),
+]

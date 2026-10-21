@@ -100,19 +100,17 @@ test('a put over a row reports the value it replaced, and a delete the rows it r
 test('created reports the creating actor and the durability asked for, for read-write only', async () => {
     const { world, tab, db } = await setup(false)
     const created: [string, Durability][] = []
+    const contexts: unknown[] = []
     world.memory.observe({
-        created: ({ actor, durability }) => {
-            created.push([actor.name, durability])
-            return actor.name
-        },
-        committed: (report) => created.push([String(report.context), report.durability]),
+        // An observer that makes no context leaves the world's own in place.
+        created: ({ actor, durability }) => void created.push([actor.name, durability]),
+        committed: (report) => contexts.push(report.context),
     })
     await put(tab, db, 'a', 'strict')
     await tab.run(() => db.transaction(['rows'], 'readonly', (tx) => tx.getAll('rows')))
-    assert.deepEqual(created, [
-        ['a', 'strict'],
-        ['a', 'strict'],
-    ])
+    assert.deepEqual(created, [['a', 'strict']])
+    assert.equal(contexts.length, 1)
+    assert.ok((contexts[0] as { sessions: Set<string> }).sessions instanceof Set)
 })
 
 test('loseRelaxed undoes the last relaxed commits since the last strict one, newest first', async () => {

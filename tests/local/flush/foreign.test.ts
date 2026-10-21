@@ -7,6 +7,7 @@ import { toRecords } from '../../../src/local/records/records'
 import { encodeSnapshot, type EncodedSnapshot } from '../../../src/local/records/snapshot'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld } from '../../../src/local/testing/world'
+import '../../helpers/lockChecks'
 import { edgeChart, recordsText, stateOf } from '../records/charts'
 import { openPage, rows, storedRecords } from './harness'
 

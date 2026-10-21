@@ -16,6 +16,7 @@ import {
     initialLife,
     originOperation,
 } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 import { openPage, openSplitPage, rows, testId, workerCore, type Page } from './harness'
 

@@ -202,6 +202,8 @@ class Transaction {
 
     /** A put, keeping the row as it was before the transaction (the first put's `old`). */
     recordPut(store: string, key: Key, old: unknown, value: unknown) {
+        // Only for a test that registered a hook: the product's memory mode records nothing.
+        if (!this.memory.tracking) return
         const id = `${store}\0${keyText(key)}`
         const written = this.puts.get(id)
         if (written) written.value = value
@@ -404,10 +406,11 @@ const makeTx = (tx: Transaction): KvTx => {
                 const before = data.rows
                 data.rows = before.filter((row) => !inRange(range, row.key))
                 if (data.rows.length !== before.length) {
-                    tx.deletes.push({
-                        store: name,
-                        rows: before.filter((row) => inRange(range, row.key)),
-                    })
+                    if (tx.memory.tracking)
+                        tx.deletes.push({
+                            store: name,
+                            rows: before.filter((row) => inRange(range, row.key)),
+                        })
                     tx.log(() => {
                         data.rows = before
                     })
@@ -486,11 +489,14 @@ export type MemoryObserver = {
         durability: Durability
     }) => unknown
     committed?: (report: CommitReport) => void
+    /** A power loss undid a commit: the rows it had put (their old values are what came back). */
+    lost?: (puts: readonly WrittenRow[]) => void
 }
 
 type LoggedCommit = {
     readonly durability: Durability
     readonly writes: boolean
+    readonly puts: readonly WrittenRow[]
     readonly undo: (() => void)[]
 }
 
@@ -566,6 +572,11 @@ export class MemoryKv {
         this.touched.add(tx)
     }
 
+    /** Whether writes are recorded: a test registered a hook or asked for the commit log. */
+    get tracking() {
+        return this.observers.size > 0 || this.recordCommits
+    }
+
     /** Registers test hooks; returns the function that removes them. */
     observe(observer: MemoryObserver) {
         this.observers.add(observer)
@@ -630,6 +641,7 @@ export class MemoryKv {
                 throw new Error('A strict commit is not undone by loseRelaxed')
             if (!commit.writes) continue
             for (const undo of commit.undo.reverse()) undo()
+            for (const observer of this.observers) observer.lost?.(commit.puts)
             lost++
         }
         return lost
@@ -639,7 +651,13 @@ export class MemoryKv {
     committed(tx: Transaction, undo: (() => void)[]) {
         if (tx.mode !== 'readwrite') return
         const writes = tx.puts.size > 0 || tx.deletes.length > 0
-        if (this.recordCommits) this.commitLog.push({ durability: tx.durability, writes, undo })
+        if (this.recordCommits)
+            this.commitLog.push({
+                durability: tx.durability,
+                writes,
+                puts: [...tx.puts.values()],
+                undo,
+            })
         if (!this.observers.size) return
         const report: CommitReport = {
             actor: tx.actor,
@@ -722,13 +740,16 @@ export class MemoryKv {
     ) {
         const tx = new Transaction(this, connection, scope, mode, durability)
         if (mode === 'readwrite')
-            for (const observer of this.observers)
-                tx.context = observer.created?.({
+            for (const observer of this.observers) {
+                const context = observer.created?.({
                     actor: connection.actor,
                     db: connection.db.name,
                     stores: scope,
                     durability,
                 })
+                // The first observer that makes a context owns it.
+                if (context !== undefined) tx.context ??= context
+            }
         connection.db.transactions.push(tx)
         this.touch(tx)
         // Outside a task (the worker's in-memory fallback), a task still ends its activity.
@@ -906,7 +927,8 @@ export class MemoryKv {
     private runUpgrade(db: Database, request: OpenRequest, version: number) {
         const oldVersion = db.version
         const oldStores = db.stores
-        // Commits before an upgrade can't be undone across it.
+        // Commits before an upgrade can't be undone across it. The log is global to the store, not
+        // per database: the harness creates one database, once, so this is a barrier nobody meets.
         this.commitLog.length = 0
         db.stores = new Map([...oldStores].map(([name, data]) => [name, data.copy()]))
         db.version = version

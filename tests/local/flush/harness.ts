@@ -38,7 +38,7 @@ let ids = 0
 export const testId = () => `id-${ids++}`
 
 export const workerCore = (world: World, tab: Tab, deps: Partial<CoreDeps> = {}) => {
-    const fallback = new MemoryKv(world.scheduler)
+    const fallback = world.memoryStore()
     return new StorageCore({
         factory: tab.kv,
         memory: () => fallback.factory(tab.actor),
@@ -254,7 +254,7 @@ export class WorkerHost {
         const generation = ++this.generation
         const worker =
             given ?? this.world.tab(`${this.page.name}:worker${generation}`, { owner: this.page })
-        const memory = new MemoryKv(this.world.scheduler)
+        const memory = this.world.memoryStore()
         this.memories.push(memory)
         const core = new StorageCore({
             factory: worker.kv,
@@ -267,6 +267,8 @@ export class WorkerHost {
             ...this.setup.core,
             flags: { ...this.setup.flags },
         })
+        // A sweep's victim is given: it is this page's worker all the same.
+        if (given) this.world.adopt(given, this.page)
         this.worker = worker
         this.core = core
         this.handlers = flushHandlers({ core, test: true, emit: () => undefined }, worker.waiter)

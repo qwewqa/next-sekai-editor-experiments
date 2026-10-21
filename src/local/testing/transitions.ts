@@ -59,11 +59,18 @@ const importing = (before: Row | undefined, after: Row | undefined) =>
 /**
  * The violations a committed transaction makes, empty when it keeps the rules. Exempt: the
  * whole-store copy of Try Again (`copyIntoStorage`, the only read-write transaction over every
- * store), and whatever is not the profile's database.
+ * store, which a guard test lists), and whatever is not the profile's database.
+ *
+ * An opened session while its import is pending: only the import's fill is exempt, the rows at or
+ * below `openBase` (the last `seq` of the file's rows, recorded by the open's own transaction) and
+ * its fields (`entryCount`, `ownBytes`, `importPending`). The page's own rows above it, edits
+ * flushed during the import, keep every rule. Without a base, every row of such a session counts as
+ * the fill.
  */
 export const transitionViolations = (
     report: CommitReport,
     checks: TransitionChecks = {},
+    openBase?: ReadonlyMap<string, number>,
 ): string[] => {
     const { lock = true, transitions = true } = checks
     if (report.db !== DB_NAME) return []
@@ -98,13 +105,19 @@ export const transitionViolations = (
         const now = report.current('sessions', sessionId) as Row | undefined
         const born = was === undefined
         const filling = importing(was, now)
-        const seqs = (created.get(sessionId) ?? []).sort((a, b) => a - b)
-        if (lock && seqs.length && !(context.sessions.has(sessionId) || born || filling))
+        const base = openBase?.get(sessionId)
+        const made = (created.get(sessionId) ?? []).sort((a, b) => a - b)
+        // The rows the page wrote itself: all of them, but an import's fill of an opened session.
+        const seqs =
+            filling && base === undefined
+                ? []
+                : made.filter((seq) => !filling || (base !== undefined && seq > base))
+        if (lock && seqs.length && !(context.sessions.has(sessionId) || born))
             violations.push(
                 `lock: rows ${seqs.join(', ')} of session ${sessionId} were created while the page did not hold nse-session:${sessionId} exclusively`,
             )
         if (!transitions) continue
-        if (seqs.length && !filling) {
+        if (seqs.length) {
             const lastSeq = typeof was?.lastSeq === 'number' ? was.lastSeq : 0
             const low = seqs.filter((seq) => seq <= lastSeq)
             if (low.length)
@@ -118,8 +131,8 @@ export const transitionViolations = (
                 )
         }
         // I-5: once not its chain's head, a session's rows and summary change only by `kept`
-        // flips and its import's own writes.
-        if (!was || filling || record(was).importPending === true) continue
+        // flips and its import's own fill.
+        if (!was) continue
         const chain = before('chains', String(was.chainId))
         if (!chain || chain.head === sessionId) continue
         if (seqs.length)
@@ -143,13 +156,34 @@ export const transitionViolations = (
                     `transition: stack block ${String(record(put.value).block)} of session ${sessionId}, no longer its chain's head, was written`,
                 )
         if (now) {
-            const differs = changed(was, now, ['lastSeq', 'stack', 'updatedAt', 'entryCount'])
+            const differs = changed(was, now, [
+                'lastSeq',
+                'stack',
+                'updatedAt',
+                ...(filling ? [] : ['entryCount']),
+            ])
             if (differs.length)
                 violations.push(
                     `transition: session ${sessionId}, no longer its chain's head, changed ${differs.join(', ')}`,
                 )
         }
     }
+
+    // A row removed while its session stays (a whole-session delete takes the session row too).
+    if (transitions)
+        for (const gone of report.deletes)
+            for (const { key, value } of gone.rows) {
+                if (gone.store !== 'entries' && gone.store !== 'stackBlocks') continue
+                const sessionId = String(record(value).sessionId)
+                if (!report.current('sessions', sessionId)) continue
+                const was = before('sessions', sessionId)
+                const chain = was && before('chains', String(was.chainId))
+                // A head's stack blocks are rewritten, and so removed, as its window moves.
+                if (gone.store === 'stackBlocks' && (!chain || chain.head === sessionId)) continue
+                violations.push(
+                    `transition: ${gone.store === 'entries' ? 'row' : 'stack block'} ${keyId(key)} of session ${sessionId} was removed while the session stays`,
+                )
+            }
 
     // I-4: a chain's binding is recorded only while none of its sessions is importing.
     if (transitions)
