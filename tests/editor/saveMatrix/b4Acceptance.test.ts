@@ -65,7 +65,7 @@ test(
     'B4 acceptance: reservations are ended only through SaveAttempt',
     { todo: 'B1 to B4 move every endSave onto SaveAttempt (architecture-review.md §B.7)' },
     () => {
-        const ended = sites(/\bendSave\s*\(/, [SAVE_ATTEMPT, ...OWNERS])
+        const ended = sites(/\b(endSave|release)\s*\(/, [SAVE_ATTEMPT, ...OWNERS])
         assert.deepEqual(ended, [], 'reservations ended outside SaveAttempt')
     },
 )

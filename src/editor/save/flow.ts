@@ -504,8 +504,7 @@ const bindWrite = async (
     file: Row,
 ) => {
     const name = String(file.name)
-    await endSave(
-        env,
+    await env.flusher.endSave(
         reservation,
         {
             wall: reservation.wall,
@@ -947,27 +946,6 @@ const largeDownload = (estimated: number | undefined): estimated is number =>
     estimated > LARGE_BUILD_BYTES &&
     isTouchDevice()
 
-/** Reservations a path here has ended, by identity: a later one may reuse the same `seq`. */
-const ended = new WeakSet<SaveReservation>()
-
-/** Ends a reservation (the flusher's `endSave`), remembered as ended. */
-const endSave = (env: Env, reservation: SaveReservation, ...rest: EndSaveRest) => {
-    ended.add(reservation)
-    return env.flusher.endSave(reservation, ...rest)
-}
-
-type EndSaveRest = Parameters<Env['flusher']['endSave']> extends [unknown, ...infer R] ? R : never
-
-/**
- * Ends a reservation no path ended (a throw): its `seq` kept, since the write may have landed.
- * Matched by identity (ADV-5): once this Save ended its own, a session's `reserved` holding the
- * same `seq` is a later Save's, never this one's.
- */
-const release = async (env: Env, reservation: SaveReservation) => {
-    if (!ended.has(reservation) && reservation.session.reserved === reservation.seq)
-        await endSave(env, reservation, undefined, undefined, true)
-}
-
 /** A read before the picker, as it stands now: one that hasn't finished is dropped (R2). */
 const settledNow = <T>(promise: Promise<T | undefined> | undefined) =>
     promise ? Promise.race([promise, Promise.resolve(undefined)]) : Promise.resolve(undefined)
@@ -1011,7 +989,7 @@ const pickAndWrite = async (env: Env, given: PickRequest): Promise<Outcome> => {
         return await pickReserved(env, reservation, request, binding, slot, startedAt)
     } finally {
         closePreparing(slot)
-        await release(env, reservation)
+        await env.flusher.release(reservation)
     }
 }
 
@@ -1042,7 +1020,7 @@ const pickReserved = async (
         built = await runBuild(env, buildRequest)
     } catch (error) {
         closePreparing(slot)
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         if (error instanceof BuildRefused)
             return {
                 kind: 'error',
@@ -1054,7 +1032,7 @@ const pickReserved = async (
     slot.dialog?.built(built.blob.size)
     if (cancelled(slot)) {
         closePreparing(slot)
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
     }
 
@@ -1074,7 +1052,7 @@ const pickReserved = async (
         clearTimeout(slot.timer)
         if (cancelled(slot)) {
             closePreparing(slot)
-            await endSave(env, reservation)
+            await env.flusher.endSave(reservation)
             return { kind: 'cancelled' }
         }
     }
@@ -1082,7 +1060,7 @@ const pickReserved = async (
     // R12: a build that outlasted the press asks for a new one.
     if (activationLapsed(startedAt) && !(await readyIn(slot, 'save', built.blob.size))) {
         closePreparing(slot)
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
     }
     closePreparing(slot)
@@ -1100,11 +1078,11 @@ const pickReserved = async (
             },
         })
     } catch (error) {
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'failed', error: fileError(error), name: request.fileName }
     }
     if (target?.kind !== 'handle') {
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
     }
     const picked = target
@@ -1195,7 +1173,7 @@ const afterPick = async (
         if (disk === 'missing') throw new FileError('not-found', `${name} cannot be found`)
         found = disk
     } catch (error) {
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'failed', error: fileError(error), name }
     }
     // Written since the pick: by a sync client, or by its owner while this pick waited (R9).
@@ -1208,7 +1186,7 @@ const afterPick = async (
     switch (picked.kind) {
         case 'refused': {
             // R7: refused, and the bytes kept at its open put back while it's still empty.
-            await endSave(env, reservation)
+            await env.flusher.endSave(reservation)
             const bytes = await picked.bytes
             const back = !filled && bytes ? await putBack(target, bytes) : false
             return {
@@ -1222,13 +1200,13 @@ const afterPick = async (
         case 'own': {
             // R4: this chain's own file keeps the identity, appending to the bytes read first.
             if (filled) {
-                await endSave(env, reservation)
+                await env.flusher.endSave(reservation)
                 return { kind: 'conflict', handle, binding }
             }
             // Not at the base: the version read goes back (`keepingOwn`, offered as a download
             // when it can't, R7), and the conflict dialog shows it.
             if (pre && !pre.atBase) {
-                await endSave(env, reservation)
+                await env.flusher.endSave(reservation)
                 return { kind: 'conflict', handle, binding }
             }
             const options = binding.file?.options ?? { history: true, bgm: request.bgm }
@@ -1279,7 +1257,7 @@ const afterPick = async (
                     built = prebuilt
                     break
                 }
-                await endSave(env, reservation)
+                await env.flusher.endSave(reservation)
                 if (error instanceof BuildRefused)
                     return { kind: 'error', message: refusalText(error, name) }
                 return { kind: 'failed', error: fileError(error), name }
@@ -1292,7 +1270,7 @@ const afterPick = async (
             const owners = picked.kind === 'other' ? await ownerDisk(env, picked.owner) : undefined
             const ownersOwn = filled && !!owners && sameContent(found, owners)
             if (filled && picked.kind === 'other' && !ownersOwn) {
-                await endSave(env, reservation)
+                await env.flusher.endSave(reservation)
                 return changedWhilePicked(name)
             }
             // A picker that renamed the file: its own name goes into the build (`save` entry and
@@ -1338,7 +1316,7 @@ const afterPick = async (
                 preBind,
             )
             if (!done.ok) {
-                await endSave(env, reservation)
+                await env.flusher.endSave(reservation)
                 return notTakenOver(name)
             }
             tookOver = done.revoked
@@ -1350,7 +1328,7 @@ const afterPick = async (
             await savePoint('revoked')
             // A sync client's write after the pick: pre-bound, never written over (R9).
             if (filled && !ownersOwn) {
-                await endSave(env, reservation)
+                await env.flusher.endSave(reservation)
                 return done.preBound
                     ? { kind: 'conflict', handle, binding: bound }
                     : changedWhilePicked(name)
@@ -1360,7 +1338,7 @@ const afterPick = async (
     }
 
     if (!built) {
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'failed', error: new FileError('io', `${name} was not built`), name }
     }
     const file = await bindingFile(built, reservation, {
@@ -1423,7 +1401,7 @@ const writeBuilt = async (
         // The write may have landed (a failed read-back): its `seq` stays for the marker.
         const unwritten = notWritten(failure)
         if (unwritten && file) removeMarker(env.chainId, built.revisionId)
-        await endSave(env, reservation, undefined, undefined, !unwritten)
+        await env.flusher.endSave(reservation, undefined, undefined, !unwritten)
         if (failure.code === 'conflict')
             return {
                 kind: 'failed',
@@ -1457,13 +1435,13 @@ const download = async (
         })
     } catch (error) {
         closePreparing(slot)
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         if (isCancel(slot, error)) return { kind: 'cancelled' }
         return { kind: 'failed', error: fileError(error), name: request.fileName }
     }
     closePreparing(slot)
     if (result.status !== 'download-started') {
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
     }
     if (request.dialog !== 'saveToFile') {
@@ -1474,7 +1452,7 @@ const download = async (
         })
         await bindWrite(env, reservation, built, state, file)
         forgetHandle(env.chainId)
-    } else await endSave(env, reservation)
+    } else await env.flusher.endSave(reservation)
     feedback(built, 'download', request.fileName)
     return { kind: 'done' }
 }
@@ -1652,7 +1630,7 @@ const writeBack = async (
     try {
         return await writeBackReserved(env, reservation, handle, binding, file, expected, replaces)
     } finally {
-        await release(env, reservation)
+        await env.flusher.release(reservation)
     }
 }
 
@@ -1724,7 +1702,7 @@ const writeBackReserved = async (
         const stopped = isCancel(slot, error)
         const unwritten = !built || stopped || (error instanceof FileError && notWritten(error))
         if (built && unwritten) removeMarker(env.chainId, built.revisionId)
-        await endSave(env, reservation, undefined, undefined, !unwritten)
+        await env.flusher.endSave(reservation, undefined, undefined, !unwritten)
         if (stopped) return { kind: 'cancelled' }
         if (error instanceof BuildRefused) {
             if (error.refusal.refused === 'damagedSource') return unlinkAndSaveAs(env, file.name)
@@ -1736,7 +1714,7 @@ const writeBackReserved = async (
     }
     closePreparing(slot)
     if (result.status !== 'saved' || !built) {
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return { kind: 'cancelled' }
     }
     await savePoint('closed')
@@ -2305,7 +2283,7 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
     try {
         await downloadAgainReserved(env, reservation, file)
     } finally {
-        await release(env, reservation)
+        await env.flusher.release(reservation)
     }
 }
 
@@ -2325,7 +2303,7 @@ const downloadAgainReserved = async (env: Env, reservation: SaveReservation, fil
         })
     } catch (error) {
         closePreparing(slot)
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         await afterOutcome(
             env,
             error instanceof BuildRefused
@@ -2337,7 +2315,7 @@ const downloadAgainReserved = async (env: Env, reservation: SaveReservation, fil
     clearTimeout(slot.timer)
     if (cancelled(slot)) {
         closePreparing(slot)
-        await endSave(env, reservation)
+        await env.flusher.endSave(reservation)
         return
     }
     await afterOutcome(
@@ -2876,7 +2854,7 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
         if (outcome.kind === 'done') return 'own'
         return { show: () => afterOutcome(env, outcome) }
     } finally {
-        await release(env, reservation)
+        await env.flusher.release(reservation)
     }
 }
 

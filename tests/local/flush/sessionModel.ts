@@ -35,7 +35,7 @@ import { widen } from '../timeline/helpers'
 import { heldLocks, rows, type Page } from './harness'
 import { fileStates, flaggedFile, importIds, longFile, smallFile, storeRequest } from './modelFiles'
 
-// The model test of design A (§7, R2-6): random sequences over the real flusher, journal writer,
+// The model test of spec A (R2-6): random sequences over the real flusher, journal writer,
 // worker core, journal replay and resume, in the test world, with the oracle run after every
 // operation. The operations are the design's for A0+: edits, undo and redo; relaxed and strict
 // flushes; the Save (reserve, build, the write landing, failing or failing ambiguously, the
@@ -628,7 +628,7 @@ export class Run {
         this.build = undefined
         const { reservation } = build
         if (build.written === 'landed') {
-            await this.flusher.endSave(
+            const result = await this.flusher.endSave(
                 reservation,
                 {
                     wall: reservation.wall,
@@ -640,6 +640,13 @@ export class Run {
                 },
                 this.unit(build),
             )
+            // The model's own expectation, not the flusher's word (I-14): the entry is added
+            // exactly when the page is still on the Save's session.
+            const expected = stayed ? 'added' : 'notCurrent'
+            if (result !== expected)
+                this.fail(
+                    `I-14: the Save at ${String(build.seq)} of ${build.sessionId} ended ${result}, not ${expected}`,
+                )
             // Bound by this page: nothing left for another to recognise. A session the page left
             // got neither the entry nor the binding: the file waits to be recognised.
             if (stayed) {
@@ -1555,7 +1562,7 @@ export class Run {
             for (const session of sessionsOf(flusher))
                 if (flusher.unflushed(session))
                     this.fail(
-                        `I-14: session ${session.id} (${visit.name}) has entries not committed strictly after a strict flush: ${JSON.stringify([session.pending.length, session.memoryOnly.length, session.ackedSeq, session.strictSeq, session.reserved, session.stored, flusher.session === session])}`,
+                        `I-14: session ${session.id} (${visit.name}) has entries not committed strictly after a strict flush: ${JSON.stringify([session.pending.length, session.memoryOnly.length, session.ackedSeq, session.strictSeq, session.reserved?.seq, session.stored, flusher.session === session])}`,
                     )
         }
         await this.check('finish')

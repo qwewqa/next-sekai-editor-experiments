@@ -596,7 +596,6 @@ test('our own completed Save with entries before it still pending is stored afte
     assert.equal(sessionRow(world).lastSeq, 4)
     assert.equal(sessionRow(world).entryCount, 4)
     assert.equal(session.pending.length, 0)
-    assert.equal(session.gaps?.has(4) ?? false, false)
     assert.equal(page.flusher.newestSeq(session), 4)
 })
 
