@@ -265,35 +265,26 @@ export const changeLine = computed(() => {
 })
 
 /**
- * What the bar last showed in full: the step and its change line. Switching steps keeps showing
- * it until the next step's change is read, so the date and the line swap together and neither
- * goes blank; the first step of a peek has nothing to keep.
+ * True once the bar has been without a settled step for 250 ms: it then shows the new step's
+ * loading state. The 250 ms runs from when the bar left a settled step, so further switches
+ * before a read lands do not restart it, and it ends when a step settles or the peek does.
  */
-export const settledBar = shallowRef<{ info: PeekedInfo; line: string }>()
-watch([changeLine, peekedInfo, isPeeking], ([line, info, peeking]) => {
-    if (!peeking || !info) settledBar.value = undefined
-    else if (line !== undefined) settledBar.value = { info, line }
-})
-
-/** True once a read has taken 250 ms: the bar then says it is loading and names the new step. */
 export const slowRead = shallowRef(false)
 let slowTimer: ReturnType<typeof setTimeout> | undefined
 watch(
     [comparisonStatus, peekedInfo],
     ([status, info]) => {
-        clearTimeout(slowTimer)
-        slowRead.value = false
-        if (status === 'loading' && info)
+        if (status !== 'loading' || !info) {
+            clearTimeout(slowTimer)
+            slowTimer = undefined
+            slowRead.value = false
+        } else if (!slowTimer && !slowRead.value)
             slowTimer = setTimeout(() => {
+                slowTimer = undefined
                 slowRead.value = true
             }, 250)
     },
     { immediate: true, flush: 'sync' },
-)
-
-/** The step the bar names: the last settled one's while a quick read lands, else the new one's. */
-export const barInfo = computed(() =>
-    slowRead.value ? peekedInfo.value : (settledBar.value?.info ?? peekedInfo.value),
 )
 
 /** Whether the change has objects to draw and bring into view. */
@@ -533,6 +524,55 @@ export const countsShown = computed(
         shownChange.value?.set.layout !== 'most' &&
         (shownChange.value?.set.objects.length ?? 0) <= MARK_LIMIT,
 )
+
+/** Whether the arrows carry counts: the change is read and not past the limit. */
+export const reportCounts = computed(
+    () => !!shownChange.value && usableBand.value && countsShown.value,
+)
+
+/** What the bar shows of a read step: its name, line, arrows and summary. */
+export type BarState = {
+    info: PeekedInfo
+    line: string
+    reportCounts: boolean
+    above: number
+    below: number
+    inspectable: boolean
+}
+
+const barNow = computed((): BarState | undefined => {
+    const info = peekedInfo.value
+    const line = changeLine.value
+    if (!info || line === undefined || !isPeeking.value) return
+    return {
+        info,
+        line,
+        reportCounts: reportCounts.value,
+        above: offBand.value.above,
+        below: offBand.value.below,
+        inspectable: canInspectProperties.value,
+    }
+})
+
+/** The last step read, as the bar showed it; kept current as its arrows' counts follow the view. */
+const settledBar = shallowRef<BarState>()
+watch([barNow, peekedInfo, isPeeking], ([state, info, peeking]) => {
+    if (!peeking || !info) settledBar.value = undefined
+    else if (state) settledBar.value = state
+})
+
+/**
+ * While a new step's change is being read (for under 250 ms), the whole bar keeps the last step's
+ * state: its date, line, counts, enabled arrows and summary, so one swap follows when the new
+ * change lands and nothing shows blank, dashed or dimmed between. The first step of a peek has
+ * none; after 250 ms the bar names the new step and says it is loading.
+ */
+export const heldBar = computed(() =>
+    changeLine.value === undefined && !slowRead.value ? settledBar.value : undefined,
+)
+
+/** The step the bar names. */
+export const barInfo = computed(() => heldBar.value?.info ?? peekedInfo.value)
 
 const scrollTo = (stop: Stop) => {
     const { top, bottom } = changeBand.value

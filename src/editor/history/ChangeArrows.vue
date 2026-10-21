@@ -14,12 +14,12 @@ import {
     canInspectProperties,
     changeLine,
     comparisonStatus,
-    countsShown,
     fixedLine,
     offBand,
     openPropertyInspection,
     propertyInspection,
-    settledBar,
+    reportCounts,
+    heldBar,
     showChangeToward,
     shownChange,
     showEdits,
@@ -36,12 +36,12 @@ import { peekedInfo } from './selection'
 const line = computed(
     () =>
         changeLine.value ??
-        (slowRead.value ? fixedLine('loadingChanges') : (settledBar.value?.line ?? '')),
+        (slowRead.value ? fixedLine('loadingChanges') : (heldBar.value?.line ?? '')),
 )
 const visibleLine = computed(() => {
     if (view.w >= 480) return line.value
     if (comparisonStatus.value === 'loading')
-        return slowRead.value ? fixedLine('loadingShort') : (settledBar.value?.line ?? '')
+        return slowRead.value ? fixedLine('loadingShort') : (heldBar.value?.line ?? '')
     if (comparisonStatus.value === 'unavailable') return fixedLine('unavailableShort')
     return line.value
 })
@@ -125,13 +125,24 @@ const inspectFromMenu = () => {
     })
 }
 const directions = ['up', 'down'] as const
-const countOf = (direction: 'up' | 'down') =>
+// The arrows, counts and summary follow the held step while its successor is being read.
+const liveCountOf = (direction: 'up' | 'down') =>
     direction === 'up' ? offBand.value.above : offBand.value.below
-const reportCounts = computed(() => !!shownChange.value && usableBand.value && countsShown.value)
-const enabled = (direction: 'up' | 'down') => usableBand.value && countOf(direction) > 0
+const countOf = (direction: 'up' | 'down') => {
+    const held = heldBar.value
+    return held ? (direction === 'up' ? held.above : held.below) : liveCountOf(direction)
+}
+const counted = computed(() => heldBar.value?.reportCounts ?? reportCounts.value)
+const inspectable = computed(() => heldBar.value?.inspectable ?? canInspectProperties.value)
+const enabled = (direction: 'up' | 'down') =>
+    heldBar.value ? countOf(direction) > 0 : usableBand.value && countOf(direction) > 0
+// A press never acts on the held step's change: it does nothing until the new one is read.
+const press = (direction: 'up' | 'down') => {
+    if (!heldBar.value && enabled(direction)) showChangeToward(direction)
+}
 const labelOf = (direction: 'up' | 'down') => {
     const strings = i18n.value.peek
-    return reportCounts.value
+    return counted.value
         ? interpolateRaw(
               direction === 'up' ? strings.changesAbove : strings.changesBelow,
               formatCount(countOf(direction)),
@@ -173,7 +184,7 @@ const labelOf = (direction: 'up' | 'down') => {
             </button>
             <!-- The summary hugs its words, its chevron right after them. -->
             <button
-                v-if="canInspectProperties"
+                v-if="inspectable"
                 ref="summary"
                 type="button"
                 class="change-control ghost focus-out relative mr-auto flex h-6 min-w-0 items-center gap-1 rounded-full pl-2 pr-1.5 text-left before:absolute before:-inset-1"
@@ -226,8 +237,8 @@ const labelOf = (direction: 'up' | 'down') => {
                 :aria-label="labelOf(direction)"
                 :title="labelOf(direction)"
                 :data-change-arrow="direction"
-                :data-count="reportCounts ? countOf(direction) : undefined"
-                @click="enabled(direction) && showChangeToward(direction)"
+                :data-count="counted ? countOf(direction) : undefined"
+                @click="press(direction)"
             >
                 <span
                     class="change-face flex size-6 shrink-0 items-center justify-center rounded-full transition-colors"
@@ -238,10 +249,10 @@ const labelOf = (direction: 'up' | 'down') => {
                     class="change-count text-left"
                     :class="[
                         narrowArrows ? 'w-5' : 'w-6',
-                        reportCounts && countOf(direction) >= 100 ? 'pl-1' : 'pl-1.5',
+                        counted && countOf(direction) >= 100 ? 'pl-1' : 'pl-1.5',
                     ]"
                     aria-hidden="true"
-                    >{{ reportCounts ? formatCount(countOf(direction)) : '–' }}</span
+                    >{{ counted ? formatCount(countOf(direction)) : '–' }}</span
                 >
             </button>
         </div>
@@ -250,7 +261,7 @@ const labelOf = (direction: 'up' | 'down') => {
             :anchor="options"
             :summary="line"
             :checked="showEdits"
-            :inspectable="canInspectProperties"
+            :inspectable="inspectable"
             @close="closeMenu"
             @toggle="toggleFromMenu"
             @inspect="inspectFromMenu"
