@@ -189,13 +189,8 @@ export default tsEslint.config(
             'src/local/worker/timelineHandlers.ts',
             'src/local/days.ts',
         ],
-        // C1's allowlist: each still buckets by local day itself. C2 and C4 empty it.
-        ignores: [
-            'src/editor/history/GoToList.vue',
-            'src/editor/history/source.ts',
-            'src/local/worker/timelineHandlers.ts',
-            'src/local/days.ts',
-        ],
+        // The allowlist: each still buckets by local day itself. C4 empties it.
+        ignores: ['src/local/days.ts'],
         plugins: { local },
         rules: { 'local/no-local-time': 'error' },
     },

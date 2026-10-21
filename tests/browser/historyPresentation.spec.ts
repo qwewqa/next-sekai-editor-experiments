@@ -334,6 +334,7 @@ for (const outcome of [
                 )
             const index = await storageWorker!.call('readTimelineIndex', {
                 sessionId: window.nseFlushTest!.flusher.session!.id,
+                zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             })
             const oldestBefore = index.pieces.at(-1)!.oldestSeq + 1
             const control = window as unknown as { releaseOldest?: (fail: boolean) => void }

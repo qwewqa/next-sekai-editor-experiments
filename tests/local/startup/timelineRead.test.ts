@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { dayKey, resolveZone } from '../../../src/calendar/calendar'
 import { decodeOperation, entryOperation, fallbackOf } from '../../../src/history/operations'
 import { KeyRange } from '../../../src/local/kv/types'
 import { createWorld, type World } from '../../../src/local/testing/world'
@@ -172,21 +173,31 @@ type Synthetic = {
     times: (number | undefined)[]
 }
 
+/** Both ways an index reads a session: searched (rows of its own) and read in full (a file's). */
+const ORIGINS = ['continued', 'nxsp'] as const
+
 const HOUR = 3_600_000
-/** Local midnight of a fixed day, so the pieces split where the page's days do. */
-const day = (offset: number) => new Date(2026, 9, 5 + offset).getTime()
+/** The zone the pieces are cut in, and midnight of a fixed day in it. */
+const ZONE = 'UTC'
+const day = (offset: number) => Date.UTC(2026, 9, 5, 0, 0, 0, 0) + offset * 24 * HOUR
 
 /** Sessions and their entries, written as stored rows; an undefined time leaves a gap in `seq`. */
 const seed = async (
     sessions: Synthetic[],
     kindOf: (id: string, seq: number) => 'save' | 'edit' = () => 'edit',
+    origin: (typeof ORIGINS)[number] = 'continued',
 ) => {
     const world = createWorld({ seed: 1 })
     const page = await openPage(world, world.tab('first'))
     await page.tab.run(() =>
         page.core.write(['sessions', 'entries'], async (tx) => {
             for (const { id, parent, times } of sessions) {
-                await tx.put('sessions', { id, chainId: 'chain', ...(parent ? { parent } : {}) })
+                await tx.put('sessions', {
+                    id,
+                    chainId: 'chain',
+                    origin,
+                    ...(parent ? { parent } : {}),
+                })
                 for (const [seq, time] of times.entries())
                     if (time !== undefined)
                         await tx.put('entries', {
@@ -211,9 +222,14 @@ const seed = async (
     return page
 }
 
-const index = (page: Page, request: Parameters<typeof readTimelineIndex>[1]) =>
+const index = (
+    page: Page,
+    request: Omit<Parameters<typeof readTimelineIndex>[1], 'zone'> & { zone?: string },
+) =>
     page.tab.run(() =>
-        page.core.read(['sessions', 'entries'], (tx) => readTimelineIndex(tx, request)),
+        page.core.read(['sessions', 'entries'], (tx) =>
+            readTimelineIndex(tx, { zone: ZONE, ...request }),
+        ),
     )
 
 /** Times a minute apart from `start`. */
@@ -231,54 +247,67 @@ const longChain = () => {
     ]
 }
 
-test('the index lists each session’s entries per day, across midnight, gaps and continuations', async () => {
-    const page = await seed(longChain())
-    const { pieces, path } = await index(page, { sessionId: 'C' })
-    assert.deepEqual(path, [
-        { sessionId: 'C', upto: Infinity },
-        { sessionId: 'B', upto: 31 },
-        { sessionId: 'A', upto: 71 },
-    ])
-    assert.deepEqual(
-        pieces.map((piece) => [piece.sessionId, piece.oldestSeq, piece.newestSeq, piece.count]),
-        [
-            // C: 30 minutes before midnight, then 20 after.
-            ['C', 30, 49, 20],
-            ['C', 0, 29, 30],
-            ['B', 0, 30, 31],
-            // A: 60 minutes before midnight (3 missing), then seq 60 to 70 (2 missing).
-            ['A', 60, 70, 9],
-            ['A', 0, 59, 57],
-        ],
-    )
-    for (const piece of pieces)
-        assert.equal(new Date(piece.oldest).toDateString(), new Date(piece.newest).toDateString())
-})
+for (const origin of ORIGINS)
+    test(`the index lists each session’s entries per day, across midnight, gaps and continuations (${origin})`, async () => {
+        const page = await seed(longChain(), undefined, origin)
+        const { pieces, path, top, topSession, importing } = await index(page, { sessionId: 'C' })
+        assert.equal(top, 49)
+        assert.equal(topSession, 'C')
+        assert.equal(importing, false)
+        assert.deepEqual(path, [
+            { sessionId: 'C', upto: Infinity },
+            { sessionId: 'B', upto: 31 },
+            { sessionId: 'A', upto: 71 },
+        ])
+        assert.deepEqual(
+            pieces.map((piece) => [piece.sessionId, piece.oldestSeq, piece.newestSeq, piece.count]),
+            [
+                // C: 30 minutes before midnight, then 20 after.
+                ['C', 30, 49, 20],
+                ['C', 0, 29, 30],
+                ['B', 0, 30, 31],
+                // A: 60 minutes before midnight (3 missing), then seq 60 to 70 (2 missing).
+                ['A', 60, 70, 9],
+                ['A', 0, 59, 57],
+            ],
+        )
+        for (const piece of pieces) {
+            assert.equal(dayKey(piece.oldest, resolveZone(ZONE)), piece.day)
+            assert.equal(dayKey(piece.newest, resolveZone(ZONE)), piece.day)
+            assert.equal(piece.earliest, piece.oldest)
+            assert.equal(piece.latest, piece.newest)
+        }
+    })
 
-test('the index from a start below the newest, and with only some kinds', async () => {
-    const page = await seed(longChain(), (id, seq) => (seq % 20 === 7 ? 'save' : 'edit'))
-    const below = await index(page, { sessionId: 'B', before: 31 })
-    assert.deepEqual(
-        below.pieces.map((piece) => piece.sessionId),
-        ['B', 'A', 'A'],
-    )
-    const saves = await index(page, { sessionId: 'C', kinds: ['save'] })
-    assert.deepEqual(
-        saves.pieces.map((piece) => [
-            piece.sessionId,
-            piece.oldestSeq,
-            piece.newestSeq,
-            piece.count,
-        ]),
-        [
-            ['C', 47, 47, 1],
-            ['C', 7, 27, 2],
-            ['B', 7, 27, 2],
-            ['A', 67, 67, 1],
-            ['A', 7, 47, 3],
-        ],
-    )
-})
+for (const origin of ORIGINS)
+    test(`the index from a start below the newest, and with only some kinds (${origin})`, async () => {
+        const page = await seed(
+            longChain(),
+            (id, seq) => (seq % 20 === 7 ? 'save' : 'edit'),
+            origin,
+        )
+        const below = await index(page, { sessionId: 'B', before: 31 })
+        assert.deepEqual(
+            below.pieces.map((piece) => piece.sessionId),
+            ['B', 'A', 'A'],
+        )
+        const saves = await index(page, { sessionId: 'C', kinds: ['save'] })
+        assert.deepEqual(
+            saves.pieces.map((piece) => [
+                piece.sessionId,
+                piece.oldestSeq,
+                piece.newestSeq,
+                piece.count,
+            ]),
+            [
+                ['C', 47, 47, 1],
+                ['C', 7, 27, 2],
+                ['B', 7, 27, 2],
+                ['A', 67, 67, 1],
+                ['A', 7, 47, 3],
+            ],
+        )
+    })
 
 test('newer pages read along the path across the dividers, counting what is left', async () => {
     const page = await seed(longChain())

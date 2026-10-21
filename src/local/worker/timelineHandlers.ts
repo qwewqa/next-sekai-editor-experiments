@@ -1,3 +1,5 @@
+import { dayKey, resolveZone, type Zone } from '../../calendar/calendar'
+import { joinPieces, piecesOf, type PieceEntry, type TimelinePiece } from '../../calendar/pieces'
 import {
     captureEntryDescription,
     captureStep,
@@ -7,15 +9,15 @@ import {
 import { fromHex16, toHex } from '../hash'
 import { KeyRange, type KvTx } from '../kv/types'
 import { hashKey, unpackHashes, type NodesRow } from '../records/rows'
-import { isKnownEntryKind } from '../records/unknownValues'
+import { isKnownEntryKind, originRuleOf } from '../records/unknownValues'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
 // The storage worker's read for the History panel's Timeline (Part 1 §1.4.10.5, §1.3.7): a
 // session's entries newest first, a page at a time, continuing into the session it continued
 // at the entry it continued from. Old entries load as the panel scrolls; after a jump, newer ones
-// load along the path the index gave. The index lists the chain's pieces, a session's entries on
-// one day each, for Go To.
+// load along the path the index gave. The index lists the chain's pieces, runs of a session's
+// entries on one local day, for Go To.
 
 /** A stored entry row as the Timeline reads it. */
 export type TimelineEntry = EntryDescription & {
@@ -69,16 +71,7 @@ export type TimelinePage = {
     newer?: { sessionId: string; after: number; count: number }
 }
 
-/** A session's entries on one local day, along the chain (Go To, §1.4.10.5). */
-export type TimelinePiece = {
-    sessionId: string
-    newestSeq: number
-    oldestSeq: number
-    /** The newest and oldest entries' times, in ms. */
-    newest: number
-    oldest: number
-    count: number
-}
+export type { TimelinePiece }
 
 export type TimelineIndexRequest = {
     sessionId: string
@@ -86,6 +79,8 @@ export type TimelineIndexRequest = {
     before?: number
     /** Only entries of these kinds, such as saves and exports while filtering. */
     kinds?: readonly string[]
+    /** The time zone the days are in: the History clock's (an unknown name is UTC). */
+    zone: string
 }
 
 export type TimelineIndex = {
@@ -93,6 +88,12 @@ export type TimelineIndex = {
     pieces: TimelinePiece[]
     /** Newest first. */
     path: PathStep[]
+    /** The newest stored `seq` of `topSession` that the pieces cover; absent when they cover none. */
+    top?: number
+    /** The request's `sessionId`. */
+    topSession: string
+    /** Some session of the path has an import pending (any tab's): rows may still land below `top`. */
+    importing: boolean
 }
 
 type Row = Record<string, unknown>
@@ -328,25 +329,93 @@ export const readTimeline = async (tx: KvTx, request: TimelineRequest) => {
     return page
 }
 
-/** The start of a time's local day: the worker keeps the page's time zone. */
-const dayOf = (time: number) => new Date(time).setHours(0, 0, 0, 0)
+// --- The index Go To lists (Part 1 §1.4.10.5, §1.6.8.7).
 
-/** One session's pieces, newest first: its entries split at local midnights. */
-const piecesOf = async (tx: KvTx, { sessionId: id, upto }: PathStep): Promise<TimelinePiece[]> => {
+/**
+ * How the Timeline draws a stored row, for the kinds that decide a piece. A row whose raw kind is a
+ * divider's, or is one a filter keeps, is decoded as the Timeline decodes it, so an unreadable one
+ * is the `edit` step it is drawn as. Any other row is counted by its typed fields: it is neither a
+ * divider nor in a filter, whether it decodes or not.
+ */
+const drawnKind = (row: Row, kinds?: readonly string[]): string => {
+    const raw = row.kind as string
+    if (raw === 'continue' || kinds?.includes(raw) || kinds?.includes('edit'))
+        return entryOf(row)?.kind ?? raw
+    return raw
+}
+
+/** A stored row as a piece entry, or nothing when the Timeline would skip it. */
+const pieceEntryOf = (value: unknown, kinds?: readonly string[]): PieceEntry | undefined => {
+    if (
+        !isRow(value) ||
+        typeof value.sessionId !== 'string' ||
+        typeof value.seq !== 'number' ||
+        typeof value.time !== 'number' ||
+        typeof value.kind !== 'string'
+    )
+        return
+    return {
+        sessionId: value.sessionId,
+        seq: value.seq,
+        time: value.time,
+        kind: drawnKind(value, kinds),
+    }
+}
+
+/**
+ * The pieces of a session's rows in `[from, to)` (the bounds open or closed as given), read in
+ * full, and the highest `seq` among the rows that are entries.
+ */
+const piecesInRange = async (
+    tx: KvTx,
+    id: string,
+    range: { from: number; to: number; fromOpen?: boolean },
+    zone: Zone,
+    kinds?: readonly string[],
+) => {
+    const rows = await tx.getAll(
+        'entries',
+        KeyRange.bound([id, range.from], [id, range.to], range.fromOpen ?? false, true),
+    )
+    const newestFirst: PieceEntry[] = []
+    let top = -Infinity
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const entry = pieceEntryOf(rows[i], kinds)
+        if (!entry) continue
+        newestFirst.push(entry)
+        top = Math.max(top, entry.seq)
+    }
+    return { pieces: piecesOf(newestFirst, zone, kinds), top }
+}
+
+/**
+ * One session's pieces, newest first, by binary search: two keyed reads and a search on `seq` by
+ * day per piece, robust to gaps. Exact only for a session that holds just its own rows (P0 to P3),
+ * where `time` never decreases along `seq` and a `continue` row is only the lowest.
+ */
+const searchPieces = async (
+    tx: KvTx,
+    { sessionId: id, upto }: PathStep,
+    zone: Zone,
+): Promise<TimelinePiece[]> => {
     const range = (from: number, to: number) => KeyRange.bound([id, from], [id, to], false, true)
     const first = async (from: number, to: number, direction: 'next' | 'prev') =>
         (await tx.entries('entries', { query: range(from, to), direction, limit: 1 }))[0]
+    const dayOf = (row: { value: unknown }) => dayKey(timeOf(row.value), zone)
     const pieces: TimelinePiece[] = []
-    const oldest = await first(-Infinity, upto, 'next')
+    let oldest = await first(-Infinity, upto, 'next')
+    // The divider is the lowest row only (P2), and is no step.
+    if (oldest && isRow(oldest.value) && drawnKind(oldest.value) === 'continue')
+        oldest = await first(seqOf(oldest.primaryKey) + 1, upto, 'next')
     let top = await first(-Infinity, upto, 'prev')
     if (!oldest || !top) return pieces
     const low = seqOf(oldest.primaryKey)
     while (top) {
         const topSeq = seqOf(top.primaryKey)
-        const day = dayOf(timeOf(top.value))
-        // The day's oldest entry: a binary search on `seq` by time, through the keys there are.
+        const day = dayOf(top)
+        // The day's oldest entry: a binary search on `seq` by day, through the keys there are.
         let bottom = top
-        if (timeOf(oldest.value) >= day) bottom = oldest
+        if (dayOf(oldest) >= day) bottom = oldest
         else {
             let lo = low
             let hi = topSeq
@@ -354,93 +423,163 @@ const piecesOf = async (tx: KvTx, { sessionId: id, upto }: PathStep): Promise<Ti
                 const mid = Math.floor((lo + hi) / 2)
                 const found = await first(mid, hi, 'next')
                 if (!found) hi = mid
-                else if (timeOf(found.value) >= day) {
+                else if (dayOf(found) >= day) {
                     bottom = found
                     hi = mid
                 } else lo = seqOf(found.primaryKey)
             }
         }
         const bottomSeq = seqOf(bottom.primaryKey)
-        const piece = {
+        const newest = timeOf(top.value)
+        const earliest = timeOf(bottom.value)
+        pieces.push({
             sessionId: id,
             newestSeq: topSeq,
             oldestSeq: bottomSeq,
-            newest: timeOf(top.value),
-            oldest: timeOf(bottom.value),
+            newest,
+            oldest: earliest,
+            earliest: Math.min(earliest, newest),
+            latest: Math.max(earliest, newest),
             count: await tx.count('entries', range(bottomSeq, topSeq + 1)),
-        }
-        // A clock set back can split a day: one piece still.
-        const previous = pieces.at(-1)
-        if (previous && dayOf(previous.oldest) === dayOf(piece.newest)) {
-            previous.oldestSeq = piece.oldestSeq
-            previous.oldest = piece.oldest
-            previous.count += piece.count
-        } else pieces.push(piece)
+            day,
+        })
         top = bottomSeq > low ? await first(-Infinity, bottomSeq, 'prev') : undefined
     }
     return pieces
 }
 
-/**
- * One session's pieces of only some kinds: every entry read, as no index holds the kind. Not
- * bounded: on a very long chain the whole read can outlast the call's timeout, and Go To with a
- * filter then fails and can be tried again; nothing is written, so nothing is lost (r2 LS2-2).
- */
-const piecesOfKinds = async (
-    tx: KvTx,
-    { sessionId: id, upto }: PathStep,
-    kinds: readonly string[],
-): Promise<TimelinePiece[]> => {
-    const rows = await tx.getAll(
-        'entries',
-        KeyRange.bound([id, -Infinity], [id, upto], false, true),
-    )
-    const pieces: TimelinePiece[] = []
-    for (let i = rows.length - 1; i >= 0; i--) {
-        const row = rows[i]
-        if (!isRow(row) || typeof row.seq !== 'number' || typeof row.time !== 'number') continue
-        if (typeof row.kind !== 'string' || !kinds.includes(row.kind)) continue
-        const previous = pieces.at(-1)
-        if (previous && dayOf(previous.oldest) === dayOf(row.time)) {
-            previous.oldestSeq = row.seq
-            previous.oldest = row.time
-            previous.count++
-        } else
-            pieces.push({
-                sessionId: id,
-                newestSeq: row.seq,
-                oldestSeq: row.seq,
-                newest: row.time,
-                oldest: row.time,
-                count: 1,
-            })
-    }
-    return pieces
+type MemoEntry = {
+    pieces: TimelinePiece[]
+    /** The exclusive `seq` bound the pieces were read below. */
+    upto: number
+    /** The highest `seq` read. */
+    top: number
+    lastSeq: number
+    entryCount: number
 }
 
-/** The chain's pieces, newest first, and the path they lie on (Go To, §1.4.10.5). */
+/**
+ * The pieces of the sessions that are read in full, kept per `(sessionId, zone, kinds)` (R4). Used
+ * again while the session's `lastSeq` and `entryCount` are as they were, and extended by only the
+ * rows above the highest one read when the counters show only those were added (M1). Pieces depend
+ * only on `seq`, `time`, the drawn kind and whether the row decodes, never on `kept` (M2). Least
+ * recently used first; lost with the worker.
+ */
+export type IndexMemo = Map<string, MemoEntry>
+export const createIndexMemo = (): IndexMemo => new Map()
+const MEMO_LIMIT = 32
+
+/** One session's pieces, newest first, by reading its rows (through the memo). */
+const readPieces = async (
+    tx: KvTx,
+    memo: IndexMemo,
+    { sessionId: id, upto }: PathStep,
+    session: unknown,
+    zone: Zone,
+    kinds?: readonly string[],
+): Promise<TimelinePiece[]> => {
+    const lastSeq =
+        isRow(session) && typeof session.lastSeq === 'number' ? session.lastSeq : undefined
+    const entryCount =
+        isRow(session) && typeof session.entryCount === 'number' ? session.entryCount : undefined
+    // A row that does not say what it holds cannot be told from a changed one: read in full.
+    if (lastSeq === undefined || entryCount === undefined)
+        return (await piecesInRange(tx, id, { from: -Infinity, to: upto }, zone, kinds)).pieces
+    const key = JSON.stringify([id, zone, kinds ?? null])
+    const known = memo.get(key)
+    if (known) {
+        memo.delete(key)
+        memo.set(key, known)
+        if (known.upto === upto && known.lastSeq === lastSeq && known.entryCount === entryCount)
+            return known.pieces
+    }
+    let read: { pieces: TimelinePiece[]; top: number }
+    if (
+        known &&
+        upto >= known.upto &&
+        // Only rows above the highest one read were added: the count above it grew by exactly what
+        // the session row says. (The rows between a smaller bound and `upto` would show as extra.)
+        entryCount - known.entryCount ===
+            (await tx.count(
+                'entries',
+                KeyRange.bound([id, known.top], [id, Infinity], true, false),
+            ))
+    ) {
+        const added = await piecesInRange(
+            tx,
+            id,
+            { from: known.top, to: upto, fromOpen: true },
+            zone,
+            kinds,
+        )
+        read = {
+            pieces: joinPieces(added.pieces, known.pieces),
+            top: Math.max(known.top, added.top),
+        }
+    } else read = await piecesInRange(tx, id, { from: -Infinity, to: upto }, zone, kinds)
+    memo.set(key, { ...read, upto, lastSeq, entryCount })
+    for (const oldest of memo.keys()) {
+        if (memo.size <= MEMO_LIMIT) break
+        memo.delete(oldest)
+    }
+    return read.pieces
+}
+
+/**
+ * The chain's pieces, newest first, the path they lie on, and the newest entry they cover (Go To,
+ * §1.4.10.5). A session that holds only its own rows (ORIGIN_RULE `own`, no import pending) is
+ * searched when no kinds filter is given; every other session is read in full through the memo.
+ */
 export const readTimelineIndex = async (
     tx: KvTx,
-    { sessionId, before, kinds }: TimelineIndexRequest,
+    { sessionId, before, kinds, zone }: TimelineIndexRequest,
+    memo: IndexMemo = createIndexMemo(),
 ): Promise<TimelineIndex> => {
+    const calendarZone = resolveZone(zone)
     const path = await pathOf(tx, sessionId, before)
     const pieces: TimelinePiece[] = []
-    for (const step of path)
-        pieces.push(...(kinds ? await piecesOfKinds(tx, step, kinds) : await piecesOf(tx, step)))
-    return { pieces, path }
+    let importing = false
+    for (const step of path) {
+        const session = await tx.get('sessions', step.sessionId)
+        const pending = isRow(session) && session.importPending === true
+        if (pending) importing = true
+        // The path's sessions are distinct, so no piece joins the next session's.
+        const own = originRuleOf(isRow(session) ? session.origin : undefined) === 'own'
+        const found =
+            own && !kinds && !pending
+                ? await searchPieces(tx, step, calendarZone)
+                : await readPieces(tx, memo, step, session, calendarZone, kinds)
+        for (const piece of found) pieces.push(piece)
+    }
+    const newest = pieces[0]
+    return {
+        pieces,
+        path,
+        ...(newest?.sessionId === sessionId ? { top: newest.newestSeq } : {}),
+        topSession: sessionId,
+        importing,
+    }
 }
 
-export const timelineHandlers = (context: WorkerContext) => ({
-    /** A page of the Timeline (§1.4.10.5): older than `before`, or newer than `after`. */
-    readTimeline: (request: TimelineRequest, scope?: CallScope) =>
-        context.core.read(
-            ['sessions', 'entries', 'chains', 'nodes'],
-            (tx) => readTimeline(tx, request),
-            scope,
-        ),
-    /** The chain's pieces, a session's entries on one day each, for Go To. */
-    readTimelineIndex: (request: TimelineIndexRequest, scope?: CallScope) =>
-        context.core.read(['sessions', 'entries'], (tx) => readTimelineIndex(tx, request), scope),
-})
+export const timelineHandlers = (context: WorkerContext) => {
+    // Per worker, so the memo never answers for another database.
+    const memo = createIndexMemo()
+    return {
+        /** A page of the Timeline (§1.4.10.5): older than `before`, or newer than `after`. */
+        readTimeline: (request: TimelineRequest, scope?: CallScope) =>
+            context.core.read(
+                ['sessions', 'entries', 'chains', 'nodes'],
+                (tx) => readTimeline(tx, request),
+                scope,
+            ),
+        /** The chain's pieces, runs of a session's entries on one day, for Go To. */
+        readTimelineIndex: (request: TimelineIndexRequest, scope?: CallScope) =>
+            context.core.read(
+                ['sessions', 'entries'],
+                (tx) => readTimelineIndex(tx, request, memo),
+                scope,
+            ),
+    }
+}
 
 export type TimelineHandlers = ReturnType<typeof timelineHandlers>
