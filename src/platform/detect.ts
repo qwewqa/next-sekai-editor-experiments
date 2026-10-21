@@ -1,5 +1,6 @@
 import { SITE } from '../buildInfo'
 import { HOST_GLOBALS, looksLikeInAppBrowser } from './inAppBrowser'
+import { testKeysOpen } from './testKeys'
 import type { PlatformOs } from './types'
 
 // Detection is for wording and hand-over paths only: nothing stored depends on it (Part 1 §1.6.10).
@@ -148,7 +149,7 @@ export const platformOverride = (): PlatformOverride => {
     if (override) return override
     let text: string | null = null
     try {
-        text = hasWindow() ? localStorage.getItem(PLATFORM_OVERRIDE_KEY) : null
+        text = hasWindow() && testKeysOpen ? localStorage.getItem(PLATFORM_OVERRIDE_KEY) : null
     } catch {
         // Storage can be unavailable; detection still runs.
     }

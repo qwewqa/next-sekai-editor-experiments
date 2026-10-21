@@ -1,4 +1,5 @@
 import { shallowReactive } from 'vue'
+import { testKeysOpen } from '../platform/testKeys'
 import { errorMessage } from '../utils/error'
 
 // The startup gate (Part 1 §1.4.2): until the session is open, the editor refuses input, so
@@ -58,8 +59,9 @@ export const startupGate = shallowReactive<GateState>({
 
 const readFlags = (): StartupFlags => {
     try {
-        const text =
-            sessionStorage.getItem(STARTUP_TEST_KEY) ?? localStorage.getItem(STARTUP_TEST_KEY)
+        const text = testKeysOpen
+            ? (sessionStorage.getItem(STARTUP_TEST_KEY) ?? localStorage.getItem(STARTUP_TEST_KEY))
+            : null
         const parsed: unknown = text ? JSON.parse(text) : undefined
         return typeof parsed === 'object' && parsed !== null ? parsed : {}
     } catch {
