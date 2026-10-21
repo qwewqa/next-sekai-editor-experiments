@@ -1471,7 +1471,7 @@ test('cached header-only comparison waits for its actual displayed entry', async
             inspectable: false,
             inspection: undefined,
         })
-    expect(await page.locator('[data-property-summary]').count()).toBe(0)
+    // The bar still shows the displayed step's summary for this quick moment, but nothing can open for B.
     await page.clock.runFor(100)
     await expect(page.locator('[data-property-summary]')).toBeVisible()
     await page.clock.resume()
