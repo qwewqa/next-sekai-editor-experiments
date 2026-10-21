@@ -531,7 +531,24 @@ export const withPickSession = <T>(
                                     ? disk
                                     : await platform.inspect(target, request.kind)
                             if (expected === 'missing')
-                                throw new FileError('not-found', `${name} cannot be found`)
+                                throw new FileError(
+                                    'not-found',
+                                    `${name} cannot be found`,
+                                    undefined,
+                                    undefined,
+                                    name,
+                                )
+                            // Level data is written only over the empty file, still empty at this second
+                            // look: a sync client's write in between is never written over. (A project
+                            // may go over its owner's own last Save, which `found` decided.)
+                            if (request.kind === 'nsld' && expected.size !== 0)
+                                throw new FileError(
+                                    'conflict',
+                                    `${name} changed`,
+                                    expected,
+                                    'check',
+                                    name,
+                                )
                             const written = await attempt.write(
                                 {
                                     kind: request.kind,

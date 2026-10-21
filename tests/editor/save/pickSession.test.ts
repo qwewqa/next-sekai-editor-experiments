@@ -410,3 +410,26 @@ test('Export’s own pick commits a continuation’s first row before it reserve
     assert.equal(taken, undefined)
     assert.deepEqual(events, ['flush'])
 })
+
+test('level data is never written over bytes that arrive between the two looks at the empty file', async () => {
+    const t = await setup()
+    t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
+    const inspect = t.mock.inspect
+    // A sync client writes into the picked file just before the write's own look at it.
+    t.mock.inspect = (target, kind) => {
+        if (kind === 'nsld') t.mock.writeFile('a.nxsp', new Blob(['a sync client wrote this']))
+        return inspect(target, kind)
+    }
+    const code = await withPickSession(t.spec({ purpose: 'export' as const }), (session) =>
+        session.pick(t.picker, 'out.nsld', async (picked) => {
+            try {
+                await picked.write({ kind: 'nsld', blob: new Blob(['level']) })
+                return 'written'
+            } catch (error) {
+                return (error as { code?: string }).code
+            }
+        }),
+    )
+    assert.equal(code, 'conflict')
+    assert.equal(await t.mock.files.get('a.nxsp')!.text(), 'a sync client wrote this')
+})
