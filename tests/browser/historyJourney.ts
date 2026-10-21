@@ -179,14 +179,7 @@ export const installReloaded = async () => {
             .getEntriesByType('resource')
             .map((entry) => [new URL(entry.name).pathname, entry.name]),
     )
-    const deps = '/node_modules/.vite/deps/'
-    const resolve = (pathname: string) => {
-        const url = moduleUrls.get(pathname)
-        if (url || !pathname.startsWith(deps)) return url ?? pathname
-        const suffix = `/deps/${pathname.slice(deps.length)}`
-        for (const [path, url] of moduleUrls) if (path.endsWith(suffix)) return url
-        return pathname
-    }
+    const resolve = (pathname: string) => moduleUrls.get(pathname) ?? pathname
     const appImport = <T>(pathname: string): Promise<T> => import(resolve(pathname))
     const history = await appImport<typeof import('../../src/history')>('/src/history/index.ts')
     const store = await appImport<typeof import('../../src/history/store')>('/src/history/store.ts')
@@ -195,7 +188,7 @@ export const installReloaded = async () => {
     )
     const { settings } = await appImport<typeof import('../../src/settings')>('/src/settings.ts')
     const { view } = await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
-    const { nextTick } = await appImport<typeof import('vue')>('/node_modules/.vite/deps/vue.js')
+    const { nextTick } = await appImport<typeof import('../helpers/vue')>('/tests/helpers/vue.ts')
     settings.mouseSmoothScrolling = false
     settings.dragToPanX = false
     settings.dragToPanY = false

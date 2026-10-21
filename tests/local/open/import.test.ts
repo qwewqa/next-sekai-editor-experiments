@@ -9,7 +9,7 @@ import { executePlan, planNxsp, readNxsp, type ReadHistory } from '../../../src/
 import { resumeImports, startImport } from '../../../src/local/open/importLoop'
 import { headCount, type OpenStoreRequest } from '../../../src/local/open/importWrite'
 import type { OpenReadReply } from '../../../src/local/open/opened'
-import { carries, type ChainRow } from '../../../src/local/save/model'
+import { carryStatus, type ChainRow } from '../../../src/local/save/model'
 import { stateBatch } from '../../../src/local/stateBatch'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import {
@@ -530,9 +530,16 @@ test('an import abandoned before its rows batch never lets a later Save carry th
         entry: entry as unknown as ChainRow['entry'],
         startedAt,
     }))
+    // Storage holds none of the 2100 rows the file does: known missing, not merely unproven.
     assert.equal(
-        carries(rows, binding.entry, (row) => !row.entry.kept),
-        false,
+        carryStatus(
+            rows,
+            binding.entry,
+            { revisionId: 'file-revision' },
+            (id) => id === sessionRow(s.world)?.id,
+            (row) => !row.entry.kept,
+        ),
+        'missing',
     )
 })
 

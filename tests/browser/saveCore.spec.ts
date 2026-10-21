@@ -245,7 +245,7 @@ test('Ctrl+S is Save: the keydown’s default is prevented and Save runs', async
     expect(await page.evaluate(() => (window as { prevented?: boolean }).prevented)).toBe(true)
 })
 
-test('a reload after close() and before the binding: the next Save records it and appends', async ({
+test('a reload after close() and before the binding: the next Save records the binding, adds no row and appends', async ({
     page,
 }) => {
     await start(page)
@@ -270,7 +270,7 @@ test('a reload after close() and before the binding: the next Save records it an
     const reloaded = await rows(page, ['entries'])
     expect(reloaded.entries!.map((row) => row.value.kind)).not.toContain('recovered')
 
-    // Unchanged: the earlier Save is recorded, and nothing is written.
+    // Unchanged: the earlier Save's binding is recorded, and nothing is written.
     await pressSave(page)
     await expect(
         notice(page).filter({ hasText: 'No changes since coconut.nxsp was saved' }),
@@ -282,6 +282,8 @@ test('a reload after close() and before the binding: the next Save records it an
     await edit(page, 3)
     await pressSave(page)
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    // An append: no line about earlier steps.
+    await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
     await expect(notice(page).filter({ hasText: 'Download started' })).toHaveCount(0)
     expect(await choice(page).count()).toBe(0)
     const revision = (await projectOf(page, 'coconut.nxsp')).revision as Record<string, unknown>
@@ -289,8 +291,11 @@ test('a reload after close() and before the binding: the next Save records it an
     expect(revision.parent).toBe(writtenId)
     const { entries } = await rows(page, ['entries'])
     const saves = entries!.map((row) => row.value).filter((row) => row.kind === 'save')
-    expect(saves.map((row) => row.revisionId)).toContain(writtenId)
-    expect(saves).toHaveLength(3)
+    // The recognised Save has no row: its state is the one before it.
+    expect(saves.map((row) => row.revisionId)).not.toContain(writtenId)
+    expect(saves).toHaveLength(2)
+    const chain = await chainOf(page)
+    expect(chain.revision).toMatchObject({ id: revision.id })
 })
 
 test('a write that never landed leaves no marker, and a load drops markers of chains that are gone', async ({

@@ -3,19 +3,17 @@ import { writeUnlink } from '../open/importWrite'
 import {
     applyRevocation,
     BIND_STORES,
-    finishOwnSave,
     keepHandle,
     listHandleOwners,
     listKept,
     readChainRecord,
     readSessionStarts,
+    recordOwnSave,
     takeOver,
-    type OwnSaveBelow,
+    type OwnSaveRecord,
     type Revocation,
-    type SaveEntryForm,
     type TakeOver,
 } from '../save/bind'
-import type { IdentityUnit } from '../save/commit'
 import type { WorkerContext } from './handlers'
 
 // The storage worker's methods for the Save core's bindings (Part 1 §1.4.7 R3–R11): each a short
@@ -85,21 +83,9 @@ export const bindHandlers = (context: WorkerContext) => ({
             { durability: 'strict' },
         ),
 
-    /** Our own completed Save, recorded (§1.4.7). */
-    finishOwnSave: ({
-        chainId,
-        entry,
-        unit,
-        below,
-    }: {
-        chainId: string
-        entry: SaveEntryForm
-        unit: IdentityUnit
-        below?: OwnSaveBelow
-    }) =>
-        context.core.write(
-            BIND_STORES,
-            (tx) => finishOwnSave(tx, chainId, entry, unit, Date.now(), below),
-            { durability: 'strict' },
-        ),
+    /** Our own completed Save's binding, recorded and nothing else (§1.4.7). */
+    recordOwnSave: (record: OwnSaveRecord) =>
+        context.core.write(BIND_STORES, (tx) => recordOwnSave(tx, record), {
+            durability: 'strict',
+        }),
 })

@@ -53,6 +53,7 @@ export type FileCut = {
     startedAt: number
     count: number
     notKept: number
+    inexact?: true
 }
 
 export type OpenStoreRequest = {

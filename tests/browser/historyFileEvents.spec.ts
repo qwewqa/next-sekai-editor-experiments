@@ -115,10 +115,8 @@ const savedDescriptions = (page: Page, locale: string) =>
     page.evaluate(async (locale) => {
         const { settings } =
             (await import('/src/settings.ts')) as typeof import('../../src/settings')
-        const vue = '/node_modules/.vite/deps/vue.js'
-        const { nextTick } = (await import(/* @vite-ignore */ vue)) as {
-            nextTick: () => Promise<void>
-        }
+        const { nextTick } =
+            (await import('/tests/helpers/vue.ts')) as typeof import('../helpers/vue')
         const operations =
             (await import('/src/history/operations/index.ts')) as typeof import('../../src/history/operations')
         const presentation =

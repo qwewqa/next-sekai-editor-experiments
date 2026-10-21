@@ -275,9 +275,6 @@ const boxClass =
                         {{ hint }}
                     </button>
                 </p>
-                <p v-if="input.downloadNote" class="opacity-75" data-save-download-note>
-                    {{ i18n.save.downloadNote }}
-                </p>
                 <p v-if="input.storageLine" class="opacity-75" data-save-storage-line>
                     {{ input.storageLine() }}
                 </p>

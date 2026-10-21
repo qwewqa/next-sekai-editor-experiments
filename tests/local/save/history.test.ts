@@ -34,7 +34,7 @@ test('a first Save holds the chronology, the media, and its own id as completeFr
     )
     assert.equal(read.project?.revision?.completeFrom, built.revisionId)
     assert.equal(read.project?.revision?.parent, null)
-    assert.equal(built.someStepsNotKept, false)
+    assert.equal(built.stepsLine, 'none')
     assert.deepEqual(built.without, [])
     assert.equal(read.media.bgm?.form.sha256, BGM.sha256)
     assert.equal(read.media.cover?.form.sha256, COVER.sha256)
@@ -69,7 +69,7 @@ test('a write-back appends: the old file’s parts copied whole, then the rows a
     // The old rows are the new file's first rows, as values.
     assert.deepEqual(after.history.entries.slice(0, 4), before.history.entries)
     assert.equal(after.read.project?.revision?.completeFrom, built.revisionId)
-    assert.equal(second.built.someStepsNotKept, false)
+    assert.equal(second.built.stepsLine, 'none')
     // chunks.bin begins with the old one, unchanged.
     const oldChunks = new Uint8Array(await chunksOf(file))
     const newChunks = new Uint8Array(await chunksOf(second.file))

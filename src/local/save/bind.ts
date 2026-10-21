@@ -1,6 +1,4 @@
-import { captureOperation, type JsonValue } from '../../history/operations'
-import { countDayOfUse } from '../days'
-import { readMeta, writeMeta } from '../db'
+import type { JsonValue } from '../../history/operations'
 import {
     deleteHandleRow,
     HANDLES,
@@ -9,14 +7,12 @@ import {
     splitHandles,
     withoutHandles,
 } from '../handleRows'
-import { equalBytes, fromHex16 } from '../hash'
-import { KeyRange, type KvTx } from '../kv/types'
-import { isReadableSessionVersion } from '../records/unknownValues'
-import { clampTime, nextTime } from '../time'
+import type { KvTx } from '../kv/types'
 import {
     clearIdentityExport,
     sessionVersionReader,
     storeMarks,
+    unitApplies,
     writableSession,
     type IdentityUnit,
 } from './commit'
@@ -24,14 +20,14 @@ import {
 // The storage side of the Save core's bindings (Part 1 §1.4.7, owner decision log D5): reading a
 // chain's binding again under `nse-bind` (R10), the handles a save picker's pick is compared with
 // (R3), a takeover's revocation and pre-bind in one transaction (R5), a revocation storage
-// couldn't take applied later (R11), and our own completed Save recorded (§1.4.7).
+// couldn't take applied later (R11), and our own completed Save's binding recorded (§1.4.7).
 
 type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
 /** The stores these transactions touch. */
-export const BIND_STORES = ['chains', 'sessions', 'entries', 'meta', HANDLES] as const
+export const BIND_STORES = ['chains', 'sessions', 'entries', HANDLES] as const
 
 /** A chain record as stored, without handles; undefined when there is none. */
 export const readChainRecord = async (tx: KvTx, chainId: string) => {
@@ -186,27 +182,6 @@ export const applyRevocation = async (tx: KvTx, chainId: string, revoke: Revocat
     return true
 }
 
-/**
- * Whether a `save` entry at its `seq` lands where replay reaches it (timeline.ts `replay`): the
- * session's newest stored entry below it has its snapshot. Otherwise it sits on a state the stored
- * entries never reach (entries below it lost, or folded into a `recovered` one above it), and the
- * session would no longer replay.
- */
-const landsOn = async (tx: KvTx, entry: SaveEntryForm) => {
-    const [before] = await tx.entries('entries', {
-        query: KeyRange.bound(
-            [entry.sessionId, -Infinity],
-            [entry.sessionId, entry.seq],
-            false,
-            true,
-        ),
-        direction: 'prev',
-        limit: 1,
-    })
-    const snapshot = isRow(before?.value) ? before.value.snapshot : undefined
-    return snapshot instanceof Uint8Array && equalBytes(snapshot, fromHex16(entry.snapshot))
-}
-
 /** A Save's `save` entry as a marker keeps it (hashes as hex). */
 export type SaveEntryForm = {
     sessionId: string
@@ -221,84 +196,57 @@ export type SaveEntryForm = {
     appVersion?: string
 }
 
-/**
- * What the tab recording our own completed Save holds of its session below the entry's `seq`
- * (§1.4.7): `pending`, entries still to store, so the tab stores the entry after them; `stored`,
- * nothing (the tab holds the session, so a gap below is entries lost earlier). Absent when the
- * session isn't the tab's: another tab may still hold entries below.
- */
-export type OwnSaveBelow = 'pending' | 'stored'
+/** Our own completed Save, as `recordOwnSave` takes it (§1.4.7). */
+export type OwnSaveRecord = {
+    chainId: string
+    /** The recording tab's session: the chain's head, or an unstored continuation of it. */
+    writer: { sessionId: string; parentId?: string }
+    /** The marker's unit: `file` with its handle, `disk` and `event: 'saved'`; `from` required. */
+    unit: IdentityUnit & { from: NonNullable<IdentityUnit['from']> }
+}
 
 /**
- * Records our own completed Save (§1.4.7): its `save` entry at its reserved `seq` when the chain
- * doesn't hold one there, its session is stored, nothing below the `seq` is still to store and it
- * lands on the newest stored entry's state (`landsOn`), then the identity unit with its marks
- * and its cut as the file holds it, the entry written or not. A session's `lastSeq` means every entry
- * at or below it is stored (or covered by a `recovered` entry), so the entry is never written past
- * a lower one a tab still holds. False, writing nothing, when the chain is gone or a mark can't be
- * stored.
+ * Why a Save was not recorded: `gone` (no such chain), `notHead` (the chain's head is neither the
+ * writer nor, while the writer is unstored, its parent), `unsupported` (the head is a version this
+ * build cannot write), `importing` (a session of the chain still imports), `stale` (the record no
+ * longer holds the binding the Save started from), `marks` (a mark could not be stored).
  */
-export const finishOwnSave = async (
+export type OwnSaveRecorded =
+    'recorded' | 'gone' | 'notHead' | 'unsupported' | 'stale' | 'marks' | 'importing'
+
+/**
+ * Records our own completed Save's binding and nothing else (§1.4.7, invariant I-10): the chain
+ * record (`docId`, `revision`, `file` with its cut and `disk`, the Export clear), its handle row
+ * and the write's marks, in one transaction. No entry is written, so no session changes and no
+ * row is created below a `lastSeq`: the Save has no Saved row in the Timeline, its state is the one
+ * before it. The cut counts the file's rows, the `save` row among them, also though the chain
+ * lacks it: a cut may only under-claim (§1.6.11.6), and the next write that isn't an append then
+ * fails the carry test (save/model.ts `carryStatus`) and says "may not be included" once.
+ */
+export const recordOwnSave = async (
     tx: KvTx,
-    chainId: string,
-    entry: SaveEntryForm,
-    unit: IdentityUnit,
-    wall: number = Date.now(),
-    below?: OwnSaveBelow,
-) => {
+    { chainId, writer, unit }: OwnSaveRecord,
+): Promise<OwnSaveRecorded> => {
     const chain = await tx.get('chains', chainId)
-    if (!isRow(chain)) return false
+    if (!isRow(chain)) return 'gone'
     const read = sessionVersionReader(tx)
-    if (typeof chain.head !== 'string' || !writableSession(await read(chain.head))) return false
-    const session = await read(entry.sessionId)
-    const held = await tx.getKey('entries', [entry.sessionId, entry.seq])
-    if (isRow(session) && !isReadableSessionVersion(session.v)) return false
-    const operation = captureOperation(entry.operation)
-    if (!(await storeMarks(tx, unit.marks, read))) return false
-    const lastSeq = isRow(session) && typeof session.lastSeq === 'number' ? session.lastSeq : 0
-    // Stored in `seq` order: never past an entry a tab may still store below it.
-    const inOrder = below === 'stored' || (below === undefined && lastSeq >= entry.seq - 1)
-    const written =
-        isRow(session) &&
-        session.chainId === chainId &&
-        held === undefined &&
-        inOrder &&
-        (await landsOn(tx, entry))
-    if (written) {
-        const maxSeen = (await readMeta(tx, 'maxSeenTime')) ?? 0
-        const now = nextTime(maxSeen, wall)
-        const time = nextTime(maxSeen, clampTime(entry.time, now))
-        const day = await countDayOfUse(tx, now)
-        await tx.put('entries', {
-            sessionId: entry.sessionId,
-            seq: entry.seq,
-            time,
-            day,
-            kind: 'save',
-            operation,
-            snapshot: fromHex16(entry.snapshot),
-            noteCount: entry.noteCount,
-            dirty: false,
-            kept: true,
-            revisionId: entry.revisionId,
-            device: entry.device,
-            ...(entry.appVersion === undefined ? {} : { appVersion: entry.appVersion }),
-        })
-        await tx.put('sessions', {
-            ...session,
-            lastSeq: Math.max(lastSeq, entry.seq),
-            ...(entry.seq > lastSeq ? { updatedAt: time } : {}),
-            entryCount: (typeof session.entryCount === 'number' ? session.entryCount : 0) + 1,
-        })
-        await writeMeta(tx, 'maxSeenTime', Math.max(time, now))
-    }
+    const { head } = chain
+    const continues =
+        writer.parentId !== undefined &&
+        head === writer.parentId &&
+        (await read(writer.sessionId)) === undefined
+    if (typeof head !== 'string' || (head !== writer.sessionId && !continues)) return 'notHead'
+    if (!writableSession(await read(head))) return 'unsupported'
+    for (const session of await tx.index('sessions', 'chainId').getAll(chainId))
+        if (isRow(session) && session.importPending === true) return 'importing'
+    if (!unitApplies(chain, unit)) return 'stale'
+    if (!(await storeMarks(tx, unit.marks, read))) return 'marks'
     const file = { ...unit.file }
-    if (isRow(session) && isRow(file.entry) && file.entry.sessionId === entry.sessionId)
-        file.entry = { ...file.entry, startedAt: session.startedAt }
-    // The cut counts the file's rows, this entry's among them, also when the entry isn't written: a
-    // cut may only under-claim (§1.6.11.6). The next write that isn't an append then fails the
-    // carry test (save/model.ts `carries`) and says "Some earlier Timeline steps were not kept." once,
-    // rather than claiming a file whose `save` row it lacks.
+    if (isRow(file.entry)) {
+        const session = await read(String(file.entry.sessionId))
+        if (isRow(session) && typeof session.startedAt === 'number')
+            file.entry = { ...file.entry, startedAt: session.startedAt }
+    }
     const fields = await splitHandles(tx, chainId, { file })
     const record: Row = {
         ...chain,
@@ -309,5 +257,5 @@ export const finishOwnSave = async (
     await clearIdentityExport(tx, chainId, record, unit)
     delete record.replaced
     await tx.put('chains', record)
-    return true
+    return 'recorded'
 }

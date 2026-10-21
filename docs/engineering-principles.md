@@ -67,3 +67,19 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 **Why.** There is no user whose data it would protect, and every rule it adds must be kept forever once it ships. The owner, 2026-10-20: “We should not be adding cruft already to handle backwards compatibility between versions that have only been used a few seconds for testing.”
 
 **Example.** Database versions 2 and 3, `createMissingStores` and a dump-seeder repair existed only for test builds, and `MANIFEST_VERSION`, `SESSION_V` and `JOURNAL_VERSION` were raised to 2 before any release. All were returned to 1 with the rules that told the versions apart. See [format-versioning.md](format-versioning.md).
+
+## 9. Protect in proportion
+
+**Rule.** Guard the paths users really take with one simple, structural guarantee. A case that needs two independent failures at once, a failure inside a narrow window, or two tabs plus a failure is an accepted residual: state it once, in the spec, and add no code for it unless the fix is trivial. Session History, recoverable through Recent Sessions, is the main safeguard; protection on the file side matters for bytes that are in a file but not in this browser, and `.nxsp` is the source of truth, while `.nsld` is an import source and an Export artifact.
+
+**Why.** Every extra rule is code to keep and a new place for bugs, some of which lose data themselves. The owner, 2026-10-20: “Let’s be careful that we don’t overindex on edge cases”, and “session history will be robust, with recent sessions being a strong safeguard”.
+
+**Example.** The Save picker redesign grew through seven validation rounds, each finding a narrower case; it was cut to one attempt, one queue and one pick session, with the rarer cases listed as residuals. A partly imported `.nsld` written over after a reload, with storage failing as the pick is identified, is accepted: a user editing the chart would notice first, and the file is not the source of truth.
+
+## 10. A test earns its place
+
+**Rule.** Decide whether to write a test before writing it: write it when it would catch a realistic bug in something that matters, then make it well and show it fails without its fix. Keep tests that have value. Understand a failure that repeats; for a flake, find the test, then remove it if it is of little value, fix it if it is useful, or mark it flaky. Delete a test when, revisited, it costs more than it is worth, never to make a failure go away. Build no harness, oracle or load generator unless a realistic bug needs one.
+
+**Why.** Tests serve the product; a test of little value is upkeep without return. The owner, 2026-10-21: “A bad test is worse than no test”, and “what we really should balance is whether we write a test at all (this is the best time to consider whether it’s really worthwhile)”.
+
+**Example.** Reviews stopped running mutation campaigns over whole changes; one targeted mutation still checks a key safety test. The matrix's Export cells waited a fixed 20 ms for a read, which failed under load once the real storage handlers made the read slower; they now wait until the storage door has no call in flight.

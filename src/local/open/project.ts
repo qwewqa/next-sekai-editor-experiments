@@ -470,23 +470,32 @@ const unlinkedSession = (
 }
 
 /**
+ * Resumes the open's imports no tab runs, from the bound handle, or ends them (§1.5.4): what the
+ * next load does after startup, and what a Save's wait for the chain's imports does for one that
+ * nothing runs. It skips an import this tab runs and one whose lock another tab holds.
+ */
+export const resumeUnfinishedImports = (appVersion: string) => {
+    const { open: deps } = context()
+    return resumeImports({
+        worker: deps.worker,
+        locks: deps.locks,
+        appVersion,
+        onResumedUnlink: (sessionId, name, record, first, kept) => {
+            unlinkedSession(sessionId, name, record, first, true, kept)
+        },
+    }).catch((error: unknown) => {
+        recordError(error)
+        console.error('An unfinished import could not be resumed', error)
+    })
+}
+
+/**
  * After startup, an open's import a tab didn't finish is resumed from the bound handle, or ended
  * (§1.5.4): never during startup or recovery, so a stored handle is read only here (D16).
  */
 export const resumeAfterStartup = (appVersion: string) => {
-    const { open: deps } = context()
     const run = () => {
-        void resumeImports({
-            worker: deps.worker,
-            locks: deps.locks,
-            appVersion,
-            onResumedUnlink: (sessionId, name, record, first, kept) => {
-                unlinkedSession(sessionId, name, record, first, true, kept)
-            },
-        }).catch((error: unknown) => {
-            recordError(error)
-            console.error('An unfinished import could not be resumed', error)
-        })
+        void resumeUnfinishedImports(appVersion)
     }
     if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 })
     else setTimeout(run, 0)

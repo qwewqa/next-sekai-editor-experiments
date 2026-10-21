@@ -66,7 +66,7 @@ const CLASSES = {
     takeOver: 'write',
     applyRevocation: 'write',
     unlinkChain: 'write',
-    finishOwnSave: 'write',
+    recordOwnSave: 'write',
     openDrop: 'write',
     openStore: 'write',
     openResume: 'write',

@@ -58,7 +58,6 @@ const base: Input = {
     history: { kind: 'available', ticked: true, locked: false },
     bgm: { kind: 'held', name: 'coconut.mp3', ticked: true, locked: false },
     exportLine: false,
-    downloadNote: false,
     peeking: false,
     estimate: { load: () => Promise.resolve(undefined) },
 }
@@ -361,7 +360,7 @@ test.describe('the Save dialog', () => {
         await expect(dialog(page).locator('[data-save-row="bgm"]')).not.toContainText('Already in')
     })
 
-    test('the notes: the first lines, Export, the download note, the storage line, peeking', async ({
+    test('the notes: the first lines, Export, the storage line, peeking', async ({
         page,
         context,
     }) => {
@@ -370,7 +369,6 @@ test.describe('the Save dialog', () => {
         await openSave(page, {
             lines: ['"coconut.nxsp" was replaced from another tab or window.'],
             exportLine: true,
-            downloadNote: true,
             storageLine: 'Safari deletes stored work after 7 days without a visit.',
             peeking: true,
         })
@@ -379,9 +377,6 @@ test.describe('the Save dialog', () => {
         )
         await expect(dialog(page).locator('[data-save-export]')).toHaveText(
             'For Sonolus, use Export Level Data…',
-        )
-        await expect(dialog(page).locator('[data-save-download-note]')).toHaveText(
-            'Each save downloads a new copy.',
         )
         await expect(dialog(page).locator('[data-save-storage-line]')).toBeVisible()
         await expect(dialog(page).locator('[data-save-peeking]')).toHaveText(
@@ -776,7 +771,7 @@ test.describe('the feedback after a write', () => {
         kind: 'saved',
         name: 'coconut.nxsp',
         size: 1,
-        someStepsNotKept: false,
+        stepsLine: 'none',
         tookOver: false,
         without: [],
         tooLarge: [],
@@ -787,9 +782,13 @@ test.describe('the feedback after a write', () => {
         await visit(page)
         await feedback(page, plain)
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
-        await feedback(page, { ...plain, someStepsNotKept: true })
+        await feedback(page, { ...plain, stepsLine: 'notKept' })
         await expect(notice(page)).toHaveText(
             'Saved to coconut.nxsp. Some earlier Timeline steps were not kept.',
+        )
+        await feedback(page, { ...plain, stepsLine: 'mayNotBeIncluded' })
+        await expect(notice(page)).toHaveText(
+            'Saved to coconut.nxsp. Some earlier Timeline steps may not be included.',
         )
         await feedback(page, { ...plain, without: ['bgm'], tooLarge: ['bgm'] })
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its BGM')
@@ -861,7 +860,7 @@ test.describe('the feedback after a write', () => {
                 (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
             bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
         })
-        await feedback(page, { ...plain, kind: 'download', size: 1_000, someStepsNotKept: true })
+        await feedback(page, { ...plain, kind: 'download', size: 1_000, stepsLine: 'notKept' })
         await expect(notice(page)).toContainText('Download started: coconut.nxsp · 1 kB')
         await expect(notice(page)).toContainText('Some earlier Timeline steps were not kept.')
         await expect(page.getByRole('button', { name: 'I Have the File' })).toHaveCount(0)

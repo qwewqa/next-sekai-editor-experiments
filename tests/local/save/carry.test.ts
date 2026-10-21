@@ -1,21 +1,21 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { entryOperation } from '../../../src/history/operations'
 import { hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
-import { BIND_STORES, finishOwnSave } from '../../../src/local/save/bind'
+import { BIND_STORES, recordOwnSave } from '../../../src/local/save/bind'
 import type { SaveStore } from '../../../src/local/save/bodies'
 import { buildSave } from '../../../src/local/save/execute'
+import { nxspDiskState } from '../../../src/platform/fingerprint'
 import {
     asFile,
     checkFiles,
     commit,
-    DEVICE,
     Fixture,
     hasUv,
     heldRows,
     save,
     saveOptions,
+    sourceOf,
     stateAt,
 } from './fixture'
 
@@ -67,8 +67,8 @@ test('a flagged row whose state a kept row shares shows the line at most once (M
     let from = d0.identity.completeFrom
     for (let i = 0; i < 3; i++) {
         const d = ok((await download(fixture)).built)
-        lines.push(d.someStepsNotKept)
-        if (!d.someStepsNotKept) assert.equal(d.identity.completeFrom, from)
+        lines.push(d.stepsLine !== 'none')
+        if (d.stepsLine === 'none') assert.equal(d.identity.completeFrom, from)
         from = d.identity.completeFrom
     }
     assert.ok(lines.filter(Boolean).length <= 1, JSON.stringify(lines))
@@ -106,7 +106,7 @@ test('a flagged row whose state only the stack held never carries its base (no o
     assert.ok(lost.length > 0)
     // N lacks rows B held with their states: it must not claim B's completeness.
     assert.notEqual(built.identity.completeFrom, ok(b.built).identity.completeFrom)
-    assert.equal(built.someStepsNotKept, true)
+    assert.equal(built.stepsLine, 'notKept')
     if (hasUv) {
         const result = await checkFiles([b.file, n.file])
         assert.equal(result.status, 0, result.output)
@@ -164,7 +164,9 @@ test('a binding is stored with its write’s marks, so a later reduction never c
     assert.equal(await fixture.thin(0, 2), true)
     const d2 = ok((await download(fixture)).built)
     assert.notEqual(d2.identity.completeFrom, d1.identity.completeFrom)
-    assert.equal(d2.someStepsNotKept, true)
+    // Flags and a thinned root can't be told from the flagged row d1's file already lacked: the
+    // counts agree, so it is not known missing (I-18).
+    assert.equal(d2.stepsLine, 'mayNotBeIncluded')
 })
 
 test('flagged rows’ states are written when storage still holds them whole (H-2, minor 8)', async () => {
@@ -262,16 +264,6 @@ test('a recognised Save whose row the chain lacks is never carried by the next c
     assert.equal(built.identity.entry!.count, b.history.entries.length)
 
     // A later visit recognises B: not this tab's session and `lastSeq` 2 < 3, so no row.
-    const entry = {
-        sessionId: reserved.sessionId,
-        seq: reserved.seq,
-        time: reserved.time,
-        operation: entryOperation(built.saveEntry),
-        snapshot: built.saveEntry.snapshot,
-        noteCount: built.saveEntry.noteCount ?? 0,
-        revisionId: built.revisionId,
-        device: DEVICE,
-    }
     const unit = {
         docId: built.identity.docId,
         revision: built.identity.revision,
@@ -292,12 +284,17 @@ test('a recognised Save whose row the chain lacks is never carried by the next c
             options: { history: true, bgm: true },
         },
         marks: built.identity.marks,
+        from: {},
     }
     assert.equal(
         await fixture.store.write(BIND_STORES, (tx) =>
-            finishOwnSave(tx, fixture.chainId, entry, unit, Date.now()),
+            recordOwnSave(tx, {
+                chainId: fixture.chainId,
+                writer: { sessionId: reserved.sessionId },
+                unit,
+            }),
         ),
-        true,
+        'recorded',
     )
     assert.ok((await fixture.entries()).every((row) => row.kind !== 'save'))
     const cut = ((await fixture.chain()).file as { entry: { count: number } }).entry
@@ -316,5 +313,65 @@ test('a recognised Save whose row the chain lacks is never carried by the next c
         nRevision.completeFrom === bRevision.id ||
         bRevision.ancestors.includes(nRevision.completeFrom!)
     assert.equal(claimsB, false)
-    assert.equal(builtN.someStepsNotKept, true)
+    assert.equal(builtN.stepsLine, 'mayNotBeIncluded')
 })
+
+// A write that appends onto a base whose own row the chain lacks leaves an inexact cut (spec A,
+// I-18): no later write carries from it, and its line says steps may not be included. A base whose
+// session is gone stays exact: its count already shows the loss.
+for (const lost of ['absent', 'replaced', 'sessionGone'] as const)
+    test(`an append over a base whose own row is ${lost} ${lost === 'sessionGone' ? 'stays exact' : 'leaves an inexact cut'}`, async () => {
+        const fixture = await Fixture.create(80)
+        await fixture.storeMedia()
+        await fixture.start(0)
+        await fixture.edit(1)
+        await fixture.flush()
+        const diskOf = (file: File) =>
+            nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
+        const first = await save(fixture, { kind: 'copy' }, { disk: diskOf })
+        assert.ok(first.file)
+        const owner = fixture.session
+        const own = owner.rows.find((row) => row.kind === 'save')!
+        if (lost === 'sessionGone') {
+            // A later visit holds the chain's head; the session of the cut is deleted.
+            await fixture.start()
+            await fixture.flush()
+            await fixture.deleteSession(0)
+        } else if (lost === 'absent') {
+            owner.rows.splice(owner.rows.indexOf(own), 1)
+            await fixture.store.write(['entries'], (tx) =>
+                tx.delete('entries', [own.sessionId, own.seq]),
+            )
+        } else {
+            // Another Save's row at the same place (the stored row, not the flush's copy).
+            own.revisionId = 'another-save'
+            await fixture.store.write(['entries'], async (tx) => {
+                const stored = (await tx.get('entries', [own.sessionId, own.seq])) as object
+                await tx.put('entries', { ...stored, revisionId: 'another-save' })
+            })
+        }
+        const appended = await save(
+            fixture,
+            { kind: 'append', source: 'target' },
+            { files: [await sourceOf(first.file)], disk: diskOf },
+        )
+        assert.ok(!('refused' in appended.built) && appended.file)
+        assert.equal(
+            appended.built.identity.entry?.inexact,
+            lost === 'sessionGone' ? undefined : true,
+        )
+        // The next write that isn't an append never carries from an inexact cut.
+        const copy = await save(fixture, { kind: 'copy' }, { binds: false })
+        assert.ok(!('refused' in copy.built))
+        if (lost === 'sessionGone') return
+        assert.equal(copy.built.stepsLine, 'mayNotBeIncluded')
+        assert.notEqual(copy.built.identity.completeFrom, first.built.identity.completeFrom)
+        // And an append onto it stays inexact.
+        const again = await save(
+            fixture,
+            { kind: 'append', source: 'target' },
+            { files: [await sourceOf(appended.file)], disk: diskOf },
+        )
+        assert.ok(!('refused' in again.built))
+        assert.equal(again.built.identity.entry?.inexact, true)
+    })

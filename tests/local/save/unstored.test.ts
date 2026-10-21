@@ -32,5 +32,5 @@ test('a chain storage never held is written from its pending rows and record', a
         ['init', 'edit', 'edit', 'save'],
     )
     assert.equal(built.identity.docId, fixture.docId)
-    assert.equal(built.someStepsNotKept, false)
+    assert.equal(built.stepsLine, 'none')
 })

@@ -16,20 +16,6 @@ import { createWorld as create, type World } from '../../../src/local/testing/wo
 let worlds: World[] = []
 let expected: readonly RegExp[] = []
 
-/** The known breaches pinned today: each names the increment whose acceptance deletes the pin. */
-export type Increment = 'AP' | 'A2'
-
-export const PINS: { pattern: RegExp; clearedBy: Increment; why: string }[] = []
-
-/**
- * A violation today's code is known to make, for `expectViolations`. It names the increment that
- * clears it (AP or A2): that increment's acceptance deletes the pin (work/arch/spec-A.md, A0+t).
- */
-export const pin = (pattern: RegExp, clearedBy: Increment, why: string) => {
-    PINS.push({ pattern, clearedBy, why })
-    return pattern
-}
-
 export const createCheckedWorld = (options: Parameters<typeof create>[0] = {}) => {
     const world = create({ checks: { lock: true }, ...options })
     worlds.push(world)

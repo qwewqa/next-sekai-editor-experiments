@@ -6,7 +6,14 @@ import { unpackHashes } from '../records/rows'
 import { reachedHashes, stillBad, type SaveStore } from './bodies'
 import { CUT_STORES, readCut, type ChainCut } from './cut'
 import { isStoredMediaWhole } from './media'
-import { bindingHasHistory, carries, chainRows, isLater, ModelError } from './model'
+import {
+    bindingHasHistory,
+    carryStatus,
+    chainRows,
+    isLater,
+    ModelError,
+    type CarryStatus,
+} from './model'
 
 // Comparing files (Part 0 §0.9.5; Part 1 §1.6.11.6): the relation of two revisions, the content
 // predicate "N holds O" from `project.json` and the chain record alone, and the web's Replace
@@ -91,37 +98,54 @@ export const baseFacts = (cut: ChainCut): Facts => {
 }
 
 /**
- * Whether the chain's next write that isn't an append would carry its base: the build's carry test
- * (D25) over the stored rows. A build that then finds damage in storage may still not carry.
+ * What the chain's next write that isn't an append would find (the build's carry test, D25) over
+ * the stored rows, without a plan: `carries`, `missing` (rows of the base's file are gone) or
+ * `unproven`. A build that then finds damage in storage may still not carry.
  */
-export const wouldCarry = (cut: ChainCut) => {
-    const entry = cut.chain.file?.entry
-    if (!cut.chain.revision || !entry) return false
+export const carryStatusOf = (cut: ChainCut): CarryStatus => {
+    const { revision, file } = cut.chain
+    const entry = file?.entry
+    if (!revision || !entry) return 'unproven'
     try {
-        return carries(chainRows(cut), entry, (row) => !row.entry.kept)
+        return carryStatus(
+            chainRows(cut),
+            entry,
+            { revisionId: revision.id },
+            (sessionId) => cut.sessions.some((session) => session.id === sessionId),
+            (row) => !row.entry.kept,
+        )
     } catch (error) {
-        if (error instanceof ModelError) return false
+        if (error instanceof ModelError) return 'unproven'
         throw error
     }
 }
 
+/** Whether the chain's next write that isn't an append would carry its base. */
+export const wouldCarry = (cut: ChainCut) => carryStatusOf(cut) === 'carries'
+
 export type ReplaceDecision = {
-    /** "It holds earlier Timeline steps that are no longer stored in this browser.": Replace disabled. */
-    holdsBase: boolean
+    /**
+     * Replace is disabled: `missing` when the chain holds fewer of the base's rows ("It holds earlier
+     * Timeline steps that are no longer stored in this browser."), `unproven` when it can't show it
+     * holds them ("It may hold …").
+     */
+    holdsBase: false | 'missing' | 'unproven'
     relation: Relation
 }
 
 /**
  * The Replace guard (§0.9.6; r12-history-critique §2): Replace is disabled when the file on disk
  * holds the chain's base (rules 1 and 2, O the base as the binding records it) and the write
- * wouldn't carry it, so the only durable holder of earlier versions is never overwritten.
+ * wouldn't carry it, so the only durable holder of earlier versions is never overwritten. The
+ * reason is definite only for rows gone; a flag or a thinned root gives the uncertain one.
  */
 export const replaceDecision = (cut: ChainCut, disk: Facts): ReplaceDecision => {
     const base = baseFacts(cut)
+    // A base without history holds no earlier steps: nothing for a write to carry or lose.
+    const holds = bindingHasHistory(cut.chain.file) && holdsHistory(disk, base)
+    const status = holds ? carryStatusOf(cut) : 'carries'
     return {
-        // A base without history holds no earlier steps: nothing for a write to carry or lose.
-        holdsBase:
-            bindingHasHistory(cut.chain.file) && holdsHistory(disk, base) && !wouldCarry(cut),
+        holdsBase: status === 'carries' ? false : status,
         relation: relation(disk, base),
     }
 }

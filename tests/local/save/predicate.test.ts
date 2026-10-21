@@ -69,9 +69,9 @@ test('Replace is disabled when the file on disk holds the base and the write wou
         readReplaceDecision(fixture.store, fixture.chainId, descendant, 'zip:1:1:abcdef01')
     // Every row the base held is still stored: the write carries, so Replace keeps the line.
     assert.deepEqual(await decide(), { holdsBase: false, relation: 'newer' })
-    // The chain's base rows reduced: the file on disk is the only holder of them.
+    // A row of the base thinned (flagged, its root removed): the chain can't show it holds them.
     assert.equal(await fixture.thin(0, 1), true)
-    assert.deepEqual(await decide(), { holdsBase: true, relation: 'newer' })
+    assert.deepEqual(await decide(), { holdsBase: 'unproven', relation: 'newer' })
     // A diverged version is kept first by Replace instead.
     const diverged = {
         ...descendant,
@@ -169,9 +169,10 @@ test('a base without history holds no earlier steps: Replace stays available (SF
         holdsBase: false,
         relation: 'newer',
     })
-    // A base with history storage no longer carries is still guarded.
+    // A base with history whose rows storage no longer has is still guarded, with the definite
+    // reason: the chain holds fewer of its rows than the file did.
     assert.deepEqual(replaceDecision(chainCut({ count: 4 }), disk), {
-        holdsBase: true,
+        holdsBase: 'missing',
         relation: 'newer',
     })
 })

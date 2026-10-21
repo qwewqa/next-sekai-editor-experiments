@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { BIND_STORES, finishOwnSave } from '../../../src/local/save/bind'
+import { BIND_STORES, recordOwnSave } from '../../../src/local/save/bind'
 import {
     commitIdentity,
     IDENTITY_STORES,
@@ -57,21 +57,14 @@ test('stale Save plans cannot partially mark or bind unsupported session generat
         false,
     )
     assert.deepEqual(await snapshot(), before)
-    const saveEntry = {
-        sessionId: current,
-        seq: 3,
-        time: 1234,
-        operation: futureFixtureOperation('futureSave'),
-        snapshot: fixture.head,
-        noteCount: 1,
-        revisionId: 'new-revision',
-        device: { id: 'test', label: 'Test' },
-    }
+    const record = (own: IdentityUnit) => ({
+        chainId: fixture.chainId,
+        writer: { sessionId: current },
+        unit: { ...own, from: {} },
+    })
     assert.equal(
-        await fixture.store.write(BIND_STORES, (tx) =>
-            finishOwnSave(tx, fixture.chainId, saveEntry, unit),
-        ),
-        false,
+        await fixture.store.write(BIND_STORES, (tx) => recordOwnSave(tx, record(unit))),
+        'marks',
     )
     assert.deepEqual(await snapshot(), before)
 
@@ -86,10 +79,8 @@ test('stale Save plans cannot partially mark or bind unsupported session generat
             false,
         )
         assert.equal(
-            await fixture.store.write(BIND_STORES, (tx) =>
-                finishOwnSave(tx, fixture.chainId, saveEntry, ownOnly),
-            ),
-            false,
+            await fixture.store.write(BIND_STORES, (tx) => recordOwnSave(tx, record(ownOnly))),
+            'unsupported',
         )
         assert.deepEqual(await snapshot(), held)
     }
@@ -106,65 +97,7 @@ test('stale Save plans cannot partially mark or bind unsupported session generat
     assert.equal(marked.kept, false)
 })
 
-test('Save marker completion advances the source time only when its sequence becomes latest', async () => {
-    for (const historical of [false, true]) {
-        const fixture = await Fixture.create()
-        await fixture.start(0)
-        await fixture.edit(1)
-        if (historical) await fixture.edit(2)
-        await fixture.flush()
-        const id = fixture.session.id
-        const before = (await fixture.store.read(['sessions'], (tx) =>
-            tx.get('sessions', id),
-        )) as Record<string, unknown>
-        const seq = historical ? 2 : 3
-        if (historical)
-            await fixture.store.write(['entries'], (tx) => tx.delete('entries', [id, seq]))
-        const unit: IdentityUnit = {
-            docId: fixture.docId,
-            revision: { id: 'marker-revision', n: 1, ancestors: [] },
-            file: { name: 'marker.nxsp', entry: { sessionId: id } },
-            marks: [],
-        }
-        const entry = {
-            sessionId: id,
-            seq,
-            time: 2000000,
-            operation: futureFixtureOperation('save-marker'),
-            snapshot: fixture.head,
-            noteCount: 1,
-            revisionId: 'marker-revision',
-            device: { id: 'test', label: 'Test' },
-        }
-        assert.equal(
-            await fixture.store.write(BIND_STORES, (tx) =>
-                finishOwnSave(tx, fixture.chainId, entry, unit, 2000000),
-            ),
-            true,
-        )
-        const after = (await fixture.store.read(['sessions'], (tx) =>
-            tx.get('sessions', id),
-        )) as Record<string, unknown>
-        const stored = (await fixture.store.read(['entries'], (tx) =>
-            tx.get('entries', [id, seq]),
-        )) as Record<string, unknown>
-        assert.equal(after.updatedAt, historical ? before.updatedAt : stored.time)
-        assert.equal(after.lastSeq, 3)
-        if (!historical) assert.notEqual(after.updatedAt, before.updatedAt)
-        assert.equal(
-            await fixture.store.write(BIND_STORES, (tx) =>
-                finishOwnSave(tx, fixture.chainId, { ...entry, time: 3000000 }, unit, 3000000),
-            ),
-            true,
-        )
-        assert.deepEqual(
-            await fixture.store.read(['sessions'], (tx) => tx.get('sessions', id)),
-            after,
-        )
-    }
-})
-
-test('Save completion from a supported older session preserves the current session and binds its actual source', async () => {
+test('Save completion from a supported older session preserves both sessions and binds its actual source', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.flush()
@@ -181,34 +114,26 @@ test('Save completion from a supported older session preserves the current sessi
         file: { name: 'old.nxsp', entry: { sessionId: old } },
         marks: [{ sessionId: old, seq: 1 }],
     }
-    const entry = {
-        sessionId: old,
-        seq: 2,
-        time: 2000000,
-        operation: futureFixtureOperation('older-session-save'),
-        snapshot: fixture.head,
-        noteCount: 1,
-        revisionId: 'old-save',
-        device: { id: 'test', label: 'Test' },
-    }
+    const oldBefore = await fixture.store.read(['sessions'], (tx) => tx.get('sessions', old))
     assert.equal(
         await fixture.store.write(BIND_STORES, (tx) =>
-            finishOwnSave(tx, fixture.chainId, entry, unit, 2000000),
+            recordOwnSave(tx, {
+                chainId: fixture.chainId,
+                writer: { sessionId: current },
+                unit: { ...unit, from: {} },
+            }),
         ),
-        true,
+        'recorded',
     )
+    // Neither session changes: the binding names the older one, and no row is written.
     assert.deepEqual(
         await fixture.store.read(['sessions'], (tx) => tx.get('sessions', current)),
         currentBefore,
     )
-    const source = (await fixture.store.read(['sessions'], (tx) =>
-        tx.get('sessions', old),
-    )) as Record<string, unknown>
-    const event = (await fixture.store.read(['entries'], (tx) =>
-        tx.get('entries', [old, 2]),
-    )) as Record<string, unknown>
-    assert.equal(source.updatedAt, event.time)
-    assert.equal(source.lastSeq, 2)
+    assert.deepEqual(
+        await fixture.store.read(['sessions'], (tx) => tx.get('sessions', old)),
+        oldBefore,
+    )
     const chain = (await fixture.store.read(['chains'], (tx) =>
         tx.get('chains', fixture.chainId),
     )) as { head: string; file: { entry: { sessionId: string } } }

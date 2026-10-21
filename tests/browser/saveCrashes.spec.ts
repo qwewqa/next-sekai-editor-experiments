@@ -136,7 +136,7 @@ test('a kill during the picker’s write: the reload is bound to the emptied fil
     expect((await readFile(next, 'coconut.nxsp'))!.length).toBeGreaterThan(0)
 })
 
-test('a kill after the picker’s close(): the next Save records it silently, then writes in place', async ({
+test('a kill after the picker’s close(): the next Save records the binding silently and adds no row, then writes in place', async ({
     context,
 }) => {
     const a = await context.newPage()
@@ -161,9 +161,12 @@ test('a kill after the picker’s close(): the next Save records it silently, th
     const chain = await chainOf(next)
     expect(chain.revision).toMatchObject({ id: (written.revision as Row).id })
     const { entries } = await rows(next, ['entries'])
-    expect(entries!.map((row) => row.value).filter((row) => row.kind === 'save')[0]).toMatchObject({
-        revisionId: (written.revision as Row).id,
-    })
+    // The recognised Save has no row: its state is the one before it.
+    expect(
+        entries!
+            .map((row) => row.value)
+            .filter((row) => row.revisionId === (written.revision as Row).id),
+    ).toEqual([])
     // The handle stays the binding's: the next Save writes the file in place.
     await edit(next, 2)
     await pressSave(next)
@@ -172,6 +175,47 @@ test('a kill after the picker’s close(): the next Save records it silently, th
         (written.revision as Row).id,
     )
     expect(await pickerCalls(next)).toHaveLength(1)
+})
+
+test('a kill after the picker’s close(): the next Save As… says once that earlier steps may not be included', async ({
+    context,
+}) => {
+    const a = await context.newPage()
+    await start(a)
+    await edit(a, 1)
+    await pauseAt(a, 'closed')
+    await queuePicks(a, ['coconut.nxsp'])
+    await pressSave(a)
+    await submitSave(a, 'coconut')
+    await reached(a, 'closed')
+    await kill(a)
+
+    const next = await visitAgain(context)
+    await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
+    // The Save records the binding and adds no row; the cut still counts the row it lacks.
+    await pressSave(next)
+    await expect(
+        notice(next).filter({ hasText: 'No changes since coconut.nxsp was saved' }),
+    ).toBeVisible()
+    const saveAs = async (beat: number, name?: string) => {
+        await edit(next, beat)
+        await next.evaluate(async () => {
+            const { commands } = await import('/src/editor/commands/index.ts')
+            const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+            void runCommand(commands.saveAs)
+        })
+        await submitSave(next, name, 'Save As')
+    }
+    await saveAs(2)
+    await expect(
+        notice(next).filter({
+            hasText: 'Saved to coconut (2).nxsp. Some earlier Timeline steps may not be included.',
+        }),
+    ).toBeVisible()
+    // Once: the file it wrote holds its own row, so the next Save As… carries it.
+    await saveAs(3, 'melt')
+    await expect(notice(next).filter({ hasText: 'Saved to melt.nxsp' })).toBeVisible()
+    await expect(notice(next).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
 })
 
 test('two pickers on one unknown file: the last to take nse-bind owns it, and the other loses it', async ({

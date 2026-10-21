@@ -746,9 +746,8 @@ export const writeFlush = async (
         updatedAt,
         day,
         // The summary is the batch's last state's, so only a batch that reaches the session's last
-        // entry writes it, as for the stack: a re-send of stored entries (a kill after commit), or
-        // an entry stored below `lastSeq` alone (our own completed Save's, `keptSave`), leaves the
-        // newer head's. A batch whose head isn't one of its states has none.
+        // entry writes it, as for the stack: a re-send of stored entries (a kill after commit)
+        // leaves the newer head's. A batch whose head isn't one of its states has none.
         ...(batch.summary && ((written && ownsStack) || !chain) ? { summary: batch.summary } : {}),
         appVersion: batch.appVersion,
         ...(edited ? { edited: true, hasContent: true } : {}),

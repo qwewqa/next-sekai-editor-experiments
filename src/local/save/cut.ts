@@ -55,7 +55,14 @@ export type SessionRow = {
 export type StoredBinding = {
     name?: string
     event?: string
-    entry?: { sessionId: string; seq: number; startedAt: number; count: number; notKept: number }
+    entry?: {
+        sessionId: string
+        seq: number
+        startedAt: number
+        count: number
+        notKept: number
+        inexact?: true
+    }
     completeFrom?: string
     disk?: { revisionId?: string; fingerprint: string; size: number; lastModified: number }
     options?: { history: boolean; bgm: boolean }
