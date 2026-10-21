@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue'
 import { isPeeking } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { modals, showModal } from '../../modals'
@@ -19,9 +19,11 @@ import {
     offBand,
     openPropertyInspection,
     propertyInspection,
+    settledBar,
     showChangeToward,
     shownChange,
     showEdits,
+    slowRead,
     toggleShowEdits,
     usableBand,
 } from './changes'
@@ -30,27 +32,16 @@ import PropertyChangesModal from './PropertyChangesModal.vue'
 import { peekLayout, peekWidths } from './peekFit'
 import { peekedInfo } from './selection'
 
-const delayed = ref(false)
-let timer: ReturnType<typeof setTimeout> | undefined
-watch(
-    [comparisonStatus, peekedInfo],
-    ([status]) => {
-        clearTimeout(timer)
-        delayed.value = false
-        if (status === 'loading')
-            timer = setTimeout(() => {
-                delayed.value = true
-            }, 250)
-    },
-    { immediate: true, flush: 'sync' },
+// Between steps the last step's line stays until the next one's is read, or a slow read says so.
+const line = computed(
+    () =>
+        changeLine.value ??
+        (slowRead.value ? fixedLine('loadingChanges') : (settledBar.value?.line ?? '')),
 )
-onBeforeUnmount(() => {
-    clearTimeout(timer)
-})
-const line = computed(() => changeLine.value ?? (delayed.value ? fixedLine('loadingChanges') : ''))
 const visibleLine = computed(() => {
     if (view.w >= 480) return line.value
-    if (comparisonStatus.value === 'loading') return delayed.value ? fixedLine('loadingShort') : ''
+    if (comparisonStatus.value === 'loading')
+        return slowRead.value ? fixedLine('loadingShort') : (settledBar.value?.line ?? '')
     if (comparisonStatus.value === 'unavailable') return fixedLine('unavailableShort')
     return line.value
 })

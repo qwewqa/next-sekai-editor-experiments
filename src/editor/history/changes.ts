@@ -264,6 +264,38 @@ export const changeLine = computed(() => {
     return undefined
 })
 
+/**
+ * What the bar last showed in full: the step and its change line. Switching steps keeps showing
+ * it until the next step's change is read, so the date and the line swap together and neither
+ * goes blank; the first step of a peek has nothing to keep.
+ */
+export const settledBar = shallowRef<{ info: PeekedInfo; line: string }>()
+watch([changeLine, peekedInfo, isPeeking], ([line, info, peeking]) => {
+    if (!peeking || !info) settledBar.value = undefined
+    else if (line !== undefined) settledBar.value = { info, line }
+})
+
+/** True once a read has taken 250 ms: the bar then says it is loading and names the new step. */
+export const slowRead = shallowRef(false)
+let slowTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+    [comparisonStatus, peekedInfo],
+    ([status, info]) => {
+        clearTimeout(slowTimer)
+        slowRead.value = false
+        if (status === 'loading' && info)
+            slowTimer = setTimeout(() => {
+                slowRead.value = true
+            }, 250)
+    },
+    { immediate: true, flush: 'sync' },
+)
+
+/** The step the bar names: the last settled one's while a quick read lands, else the new one's. */
+export const barInfo = computed(() =>
+    slowRead.value ? peekedInfo.value : (settledBar.value?.info ?? peekedInfo.value),
+)
+
 /** Whether the change has objects to draw and bring into view. */
 export const hasPlaces = computed(() => {
     const layout = shownChange.value?.set.layout
