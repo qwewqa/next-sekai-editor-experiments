@@ -248,9 +248,7 @@ test.describe('the tab', () => {
         await expect(surface(page, 'panel')).toHaveCount(0)
     })
 
-    test('folding the dock keeps a peek going, and closing or displacing the tab ends it', async ({
-        page,
-    }) => {
+    test('folding, displacing or closing the tab keeps a peek going', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 })
         await edit(page, 3)
         await stored(page)
@@ -265,20 +263,24 @@ test.describe('the tab', () => {
         await tab(page, 'top', 'History').click()
         await expect(surface(page, 'panel')).toBeVisible()
         await expect(peekBar(page)).toBeVisible()
-        // Another panel displacing it ends the peek.
+        // Another panel displacing it keeps the peek, so the groups can be visited.
         await tab(page, 'top', 'Groups').click()
         await expect(surface(page, 'panel')).toHaveCount(0)
-        await expect(peekBar(page)).toHaveCount(0)
+        await expect(peekBar(page)).toBeVisible()
         const { shown, live } = await lives(page)
-        expect(shown).toBe(live)
+        expect(shown).not.toBe(live)
 
-        // So does closing it from its menu.
+        // So does closing it from its menu; Back to Now ends it.
         await openTab(page, 'top')
         await row(page, 'Life 1').click()
         await expect(peekBar(page)).toBeVisible()
         await tab(page, 'top', 'History').click({ button: 'right' })
         await page.getByRole('menuitem', { name: 'Close History' }).click()
+        await expect(surface(page, 'panel')).toHaveCount(0)
+        await expect(peekBar(page)).toBeVisible()
+        await peekBar(page).getByRole('button', { name: 'Back to Now' }).click()
         await expect(peekBar(page)).toHaveCount(0)
+        expect((await lives(page)).shown).toBe((await lives(page)).live)
     })
 
     test('the tab menu offers the dock positions and Close, and a middle click closes', async ({
@@ -410,7 +412,7 @@ test.describe('the dialog', () => {
         ).toHaveAttribute('aria-selected', 'true')
     })
 
-    test('Escape goes back to now, then closes, and closing ends the peek and returns focus', async ({
+    test('Escape and Close both close the dialog and keep the peek until Back to Now', async ({
         page,
     }) => {
         await edit(page, 3)
@@ -421,15 +423,23 @@ test.describe('the dialog', () => {
         await expect(peekBar(page)).toBeVisible()
         await expect.poll(() => lives(page)).toEqual({ shown: base - 2, live: base })
         await page.keyboard.press('Escape')
-        await expect(peekBar(page)).toHaveCount(0)
-        await expect(sheet(page)).toBeVisible()
-        await row(page, 'Life 2', 'dialog').click()
-        await expect(peekBar(page)).toBeVisible()
-        // The close button ends the peek.
-        await sheet(page).getByRole('button', { name: 'Close' }).click()
         await expect(sheet(page)).toHaveCount(0)
+        await expect(peekBar(page)).toBeVisible()
+        expect(await lives(page)).toEqual({ shown: base - 2, live: base })
+        // Back to Now still returns.
+        await peekBar(page).getByRole('button', { name: 'Back to Now' }).click()
         await expect(peekBar(page)).toHaveCount(0)
         expect(await lives(page)).toEqual({ shown: base, live: base })
+        // The close button closes the dialog and keeps the peek too.
+        await page.keyboard.press('Shift+H')
+        await row(page, 'Life 2', 'dialog').click()
+        await expect(peekBar(page)).toBeVisible()
+        await sheet(page).getByRole('button', { name: 'Close' }).click()
+        await expect(sheet(page)).toHaveCount(0)
+        await expect(peekBar(page)).toBeVisible()
+        expect(await lives(page)).toEqual({ shown: base - 1, live: base })
+        await peekBar(page).getByRole('button', { name: 'Back to Now' }).click()
+        await expect(peekBar(page)).toHaveCount(0)
         // At now, Escape closes.
         await page.keyboard.press('Shift+H')
         await expect(sheet(page)).toBeVisible()

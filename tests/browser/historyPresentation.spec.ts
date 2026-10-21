@@ -1464,11 +1464,12 @@ for (const size of [
                 await expect(row(page, 'Property 29')).toHaveAttribute('aria-selected', 'true')
                 expect(await selected(page)).toEqual(before)
             }
-            await page.keyboard.press('Escape')
-            await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
-            await expect(presentation(page)).toBeVisible()
+            // Escape closes the dialog and keeps the peek; Back to Now ends it.
             await page.keyboard.press('Escape')
             await expect(presentation(page)).toHaveCount(0)
+            expect((await selected(page)).requested).toBeTruthy()
+            await page.locator('[data-peek-back]').click()
+            await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
         })
 
 test('a portrait sheet promotes once without ending peek, losing the cursor or returning old focus', async ({
@@ -1502,7 +1503,8 @@ test('a portrait sheet promotes once without ending peek, losing the cursor or r
     await page.setViewportSize({ width: 390, height: 844 })
     await expect(presentation(page)).toHaveAttribute('data-history-presentation', 'compact')
     await presentation(page).getByRole('button', { name: 'Close', exact: true }).click()
-    await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
+    await expect(presentation(page)).toHaveCount(0)
+    expect(await selected(page)).toEqual(before)
 })
 
 test('View Chart is disabled for the placeholder and for a pending different endpoint', async ({
@@ -1627,7 +1629,7 @@ test('reopening restores the scroll anchor without selecting again; command clos
     await viewChart(page).focus()
     await page.keyboard.press('Shift+H')
     await expect(presentation(page)).toHaveCount(0)
-    await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
+    expect((await selected(page)).requested).toBe(before.requested)
     await open(page)
     await row(page, 'Property 29').click()
     await expect(viewChart(page)).toBeEnabled()
@@ -1971,9 +1973,7 @@ test('520×320 uses identical fine and coarse History geometry and preserves Sho
 })
 
 for (const dismissal of ['native', 'backdrop'])
-    test(`compact ${dismissal} dismissal ends peek and restores the live state`, async ({
-        page,
-    }) => {
+    test(`compact ${dismissal} dismissal keeps the peek until Back to Now`, async ({ page }) => {
         await page.setViewportSize({ width: 520, height: 320 })
         await open(page)
         await row(page, 'Property 29').click()
@@ -1983,6 +1983,8 @@ for (const dismissal of ['native', 'backdrop'])
             await presentation(page).evaluate((element) => element.closest('dialog')!.close())
         else await page.mouse.click(2, 2)
         await expect(presentation(page)).toHaveCount(0)
+        expect((await selected(page)).requested).toBeTruthy()
+        await page.locator('[data-peek-back]').click()
         await expect.poll(async () => (await selected(page)).requested).toBeUndefined()
         expect(
             await page.evaluate(

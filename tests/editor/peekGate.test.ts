@@ -72,8 +72,10 @@ const allowed = [
     'editorLayout',
     'utilities',
     'openContextMenu',
-    // Level Info opens read-only.
+    // Level Info and the Groups and Stages dialogs open read-only.
     'properties',
+    'manageGroups',
+    'manageStages',
     // The live session.
     'save',
     'saveAs',
@@ -97,13 +99,11 @@ const allowed = [
 /** Leave the peek first, then run: `leavesPeek`. */
 const leaving = ['open', 'reset', 'undo', 'redo']
 
-/** Refused while peeking: offset, elevation as a tool, the managers and every chart edit. */
+/** Refused while peeking: offset, elevation as a tool and every chart edit. */
 const refused = [
     'bgm',
     'offset',
     'elevation',
-    'manageGroups',
-    'manageStages',
     'eraser',
     'brush',
     'paste',

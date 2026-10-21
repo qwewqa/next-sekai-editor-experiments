@@ -9,6 +9,9 @@ export const manageGroups: Command = {
         is: ManageGroupsIcon,
     },
 
+    // Opens while peeking; the lists refuse every edit themselves (§1.4.11).
+    readOnly: true,
+
     execute() {
         showManagerModal('groups')
     },

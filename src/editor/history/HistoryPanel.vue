@@ -10,7 +10,6 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { peekedKey } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { focusLost } from '../../utils/focusFallback'
 import { useRootFontSize } from '../useRootFontSize'
@@ -21,7 +20,6 @@ import GoToList from './GoToList.vue'
 import GoToPopover from './GoToPopover.vue'
 import { hereRangeText } from './editsHere'
 import RecentSessionsTab from './RecentSessionsTab.vue'
-import { backToNow, peekedInfo } from './selection'
 import type { Target } from './source'
 import {
     hereRange,
@@ -238,13 +236,12 @@ const onGoToKeydown = (event: KeyboardEvent) => {
     openGoTo()
 }
 
-// Outside the list, Escape in the dialog is back to Now first, then close.
+// Escape in the dialog closes it; a peek stays, and Back to Now ends it.
 const onEscape = (event: KeyboardEvent) => {
     if (props.surface !== 'dialog' || event.defaultPrevented) return
     event.preventDefault()
     event.stopPropagation()
-    if (peekedKey.value || peekedInfo.value) backToNow()
-    else emit('close')
+    emit('close')
 }
 
 // Show All goes with the banner: focus on it goes to the list, as a Go To pick's does (X-5).

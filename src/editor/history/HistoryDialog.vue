@@ -17,7 +17,7 @@ import { settings } from '../../settings'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
 import HistoryPanel from './HistoryPanel.vue'
 import type { HistoryCloseResult, HistoryPresentation } from './presentation'
-import { backToNow, peekedInfo } from './selection'
+import { peekedInfo } from './selection'
 
 // The sheet and compact dialog share the panel's band and lists, without another title row.
 
@@ -75,8 +75,7 @@ const onEscape = (event: KeyboardEvent) => {
     }
     event.preventDefault()
     event.stopPropagation()
-    if (peekedKey.value || peekedInfo.value) backToNow()
-    else emit('close')
+    emit('close')
 }
 let dialog: HTMLDialogElement | null | undefined
 let unregisterView: (() => void) | undefined

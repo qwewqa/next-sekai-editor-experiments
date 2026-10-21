@@ -1,7 +1,6 @@
 import { computed, ref, shallowRef, watch } from 'vue'
 import { isResettingSettings, settings } from '../../settings'
 import { isCommandName } from '../commands'
-import { backToNow } from '../history/selection'
 import { oneRowToolbarWidth, registeredGroups, toolbarGroups } from '../toolbar/layout'
 import {
     carryAcrossShape,
@@ -207,14 +206,6 @@ export const setDockCollapsed = (side: DockSide, collapsed: boolean) => {
     keepDefaults()
     settings[collapsedKeys[side]] = collapsed
 }
-
-// The peek ends with the tab it came from: closed, displaced or Disabled, but not folded.
-watch(
-    () => panelOpenStates.value.history && isPanelEnabled('history'),
-    (shown) => {
-        if (!shown) backToNow()
-    },
-)
 
 /**
  * Changing a display setting the default's room depends on saves the panels it
