@@ -510,7 +510,7 @@
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
-      "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur. N’utilisez que des éléments que vous avez le droit d’utiliser.",
+      "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur.",
       "progress": {
         "reading": "Lecture du fichier…",
         "storing": "Stockage…",
@@ -1183,7 +1183,7 @@
     "autoSave": "Reprise de \"{0}\" depuis la sauvegarde automatique.",
     "journal": "Dernière modification de \"{0}\" récupérée.",
     "journalLater": "Une modification récupérée nécessite une version plus récente de l’éditeur.",
-    "openElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre.",
+    "openElsewhere": "\"{0}\" n’a pas été restauré ici, car il est ouvert dans un autre onglet ou une autre fenêtre.",
     "restoreAsCopy": "Restaurer en copie",
     "sessionDeleted": "Cette session a été supprimée dans un autre onglet ou une autre fenêtre.",
     "autoSaveKept": "\"{0}\" de la sauvegarde automatique a été conservé dans une session séparée.",
