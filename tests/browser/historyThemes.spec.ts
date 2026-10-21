@@ -8,6 +8,7 @@ import {
     noErrors,
     openHistory,
     placeTap,
+    row,
     timeline,
 } from './historyJourney'
 
@@ -139,27 +140,13 @@ const scrollListTo = async (page: Page, top: number) => {
  * rows' titles are unique ("Life n"), so the peeked row is told by its title.
  */
 const clickCentreOfRow = async (page: Page, title: string) => {
-    const row = timeline(page)
-        .locator('[data-history-row]')
-        .filter({
-            has: page.locator('[data-history-group-action]').filter({
-                hasText: new RegExp(`^\\s*${title}\\s*$`),
-            }),
-        })
-    await expect(row).toHaveCount(1)
-    const box = await row.boundingBox()
+    const target = row(page, title)
+    await expect(target).toHaveCount(1)
+    const box = await target.boundingBox()
     if (!box) throw new Error(`${title} has no box`)
     // The title is the row's main hit; the centre of the row's box is on it or its padding.
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-    await expect(
-        timeline(page)
-            .locator('[data-history-row][aria-selected="true"]')
-            .filter({
-                has: page.locator('[data-history-group-action]').filter({
-                    hasText: new RegExp(`^\\s*${title}\\s*$`),
-                }),
-            }),
-    ).toHaveCount(1)
+    await expect(row(page, title).and(page.locator('[aria-selected="true"]'))).toHaveCount(1)
 }
 
 const backToNowByKey = async (page: Page) => {
@@ -435,15 +422,6 @@ const paintOf = (target: Locator, opts: { ring?: string; pseudo?: '::before' } =
 type Scheme = 'light' | 'dark'
 const schemes: Scheme[] = ['light', 'dark']
 
-const rowOf = (page: Page, title: string) =>
-    timeline(page)
-        .locator('[data-history-row]')
-        .filter({
-            has: page.locator('[data-history-group-action]').filter({
-                hasText: new RegExp(`^\\s*${title}\\s*$`),
-            }),
-        })
-
 /** A group of three real taps, then four separate rows above it, and History open. */
 const themed = async (page: Page, scheme: Scheme) => {
     errorsFail(page)
@@ -470,11 +448,11 @@ for (const scheme of schemes) {
             page,
         }) => {
             await themed(page, scheme)
-            await rowOf(page, 'Life 3').locator('[data-history-group-action]').click()
+            await row(page, 'Life 3').locator('[data-history-group-action]').click()
             await expect(page.locator('[data-peek-bar]')).toBeVisible()
-            const current = rowOf(page, 'Life 3')
+            const current = row(page, 'Life 3')
             await expect(current).toHaveAttribute('aria-selected', 'true')
-            const hovered = rowOf(page, 'Life 1')
+            const hovered = row(page, 'Life 1')
             const box = (await hovered.boundingBox())!
             await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
             // The hover fill shows once the pointer is over the row.
@@ -483,7 +461,7 @@ for (const scheme of schemes) {
                 .toBeGreaterThan(0)
             const selected = await paintOf(current, { pseudo: '::before' })
             const hover = await paintOf(hovered, { pseudo: '::before' })
-            const rest = await paintOf(rowOf(page, 'Life 2'), { pseudo: '::before' })
+            const rest = await paintOf(row(page, 'Life 2'), { pseudo: '::before' })
             // An edge or a shadow that the hover lacks.
             expect(selected.shadow, 'the current row has a shadow or an edge').not.toBe('none')
             expect(hover.shadow, 'the hovered row has none').toBe('none')
@@ -512,13 +490,13 @@ for (const scheme of schemes) {
         page,
     }) => {
         await themed(page, scheme)
-        const current = rowOf(page, 'Life 3')
+        const current = row(page, 'Life 3')
         const title = current.locator('.timeline-entry-text')
         const before = await title.boundingBox()
         await current.locator('[data-history-group-action]').click()
         await expect(current).toHaveAttribute('aria-selected', 'true')
         expect(await title.boundingBox(), 'the title does not move').toEqual(before)
-        const hovered = rowOf(page, 'Life 1')
+        const hovered = row(page, 'Life 1')
         const box = (await hovered.boundingBox())!
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
         await expect
@@ -590,7 +568,7 @@ for (const scheme of schemes) {
             await themed(page, scheme)
             // Row focus: Down peeks and focuses the row below Now.
             await page.keyboard.press('ArrowDown')
-            const first = rowOf(page, 'Life 4')
+            const first = row(page, 'Life 4')
             await expect(first).toBeFocused()
             expectRing('row', await paintOf(first, { pseudo: '::before' }))
 
@@ -651,7 +629,7 @@ for (const scheme of schemes) {
         test(`TH4 (${scheme}): state is not shown by colour alone`, async ({ page }) => {
             await themed(page, scheme)
             await page.keyboard.press('ArrowDown')
-            const current = rowOf(page, 'Life 4')
+            const current = row(page, 'Life 4')
             // The current row carries its state; Now does not.
             await expect(current).toHaveAttribute('aria-selected', 'true')
             await expect(timeline(page).getByRole('row', { name: /^Now/ })).toHaveAttribute(
@@ -697,9 +675,9 @@ test('TH5: with forced colours the current and the focused rows keep an edge, an
     await openHistory(page)
     const live = await liveOf(page)
     // A pointer press makes Life 3 the current row, with no focus ring.
-    await rowOf(page, 'Life 3').locator('[data-history-group-action]').click()
+    await row(page, 'Life 3').locator('[data-history-group-action]').click()
     await expect(page.locator('[data-peek-bar]')).toBeVisible()
-    const current = rowOf(page, 'Life 3')
+    const current = row(page, 'Life 3')
     await expect(current).toHaveAttribute('aria-selected', 'true')
     const edge = async (row: Locator) => {
         const paint = await paintOf(row, { pseudo: '::before' })
@@ -719,7 +697,7 @@ test('TH5: with forced colours the current and the focused rows keep an edge, an
     }
     // A key moves the focus to the next row: it keeps a drawn outline as well.
     await page.keyboard.press('ArrowDown')
-    const focused = rowOf(page, 'Life 2')
+    const focused = row(page, 'Life 2')
     await expect(focused).toBeFocused()
     {
         const { paint, border } = await edge(focused)
@@ -752,7 +730,7 @@ test.describe('on a phone', () => {
         await synthesise(page, 4)
         // On a phone History is a sheet over the chart's lower half: peek a row in it.
         await openHistory(page, { focused: false })
-        await rowOf(page, 'Life 3').locator('[data-history-group-action]').click()
+        await row(page, 'Life 3').locator('[data-history-group-action]').click()
         await expect(page.locator('[data-peek-bar]')).toBeVisible()
 
         const view = () =>
