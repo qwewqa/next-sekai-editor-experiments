@@ -332,6 +332,10 @@ const createWorld = async (setup: Setup = {}) => {
     const chains = new Map<string, Row>()
     const handleRows = new Map<string, FileSystemFileHandle>()
     const pendingImports = new Set<string>()
+    /** What the Replace guard answers. */
+    const decision: { value: unknown } = { value: { relation: 'unrelated', holdsBase: false } }
+    /** The conflict dialog's inputs, as the flow built them. */
+    const conflictInputs: { name: string; replaceDisabled?: () => string }[] = []
     const counts = new Map<string, number>()
     const hooks = new Map<string, ((n: number, arg: unknown) => void | Promise<void>)[]>()
     /** Runs the actions registered for a point of the world (worker calls, dialogs). */
@@ -393,8 +397,8 @@ const createWorld = async (setup: Setup = {}) => {
                     session: { chainId: 'chain-other', updatedAt: NOW },
                     chain: chains.get('chain-other') ?? {},
                 }
-            case 'replaceDecision': // reads the other version's stored rows; no cell reaches Replace
-                return { relation: 'unrelated', holdsBase: false }
+            case 'replaceDecision': // reads the other version's stored rows; the cells do not read them, `replaceGuard.test.ts` sets the answer
+                return decision.value
             default:
                 throw new Error(`The harness does not fake ${method}`)
         }
@@ -605,7 +609,10 @@ const createWorld = async (setup: Setup = {}) => {
                 },
             }
         },
-        conflict: (input) => shown('conflict', [input.name], answers.conflict, undefined),
+        conflict: (input) => {
+            conflictInputs.push(input)
+            return shown('conflict', [input.name], answers.conflict, undefined)
+        },
         notFound: (name) => shown('notFound', [name], answers.notFound, undefined),
         denied: (name) => shown('denied', [name], answers.denied, undefined),
         readOnly: (name) => shown('readOnly', [name], [], undefined),
@@ -793,6 +800,8 @@ const createWorld = async (setup: Setup = {}) => {
         pickedHandles,
         readFails,
         pendingImports,
+        decision,
+        conflictInputs,
         builtLog,
         answers,
         behaviour,

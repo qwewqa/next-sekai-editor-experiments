@@ -2104,7 +2104,7 @@
     "restoredName": "{0}（{1} 还原）",
     "fileType": "Next SEKAI 项目文件",
     "unavailable": "未保存。请使用“导出关卡数据…”。",
-    "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试。",
+    "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试，或使用“另存为…”。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "拥有该文件的人可以查看其中的历史记录。",

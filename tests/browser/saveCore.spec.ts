@@ -374,7 +374,8 @@ test('a Save whose handle read fails over the real client downloads nothing and 
     await pressSave(page)
     await expect(
         notice(page).filter({
-            hasText: 'Not saved. The editor could not access this browser’s storage. Try again.',
+            hasText:
+                'Not saved. The editor could not access this browser’s storage. Try again, or use Save As…',
         }),
     ).toBeVisible()
     expect(downloads).toEqual([])
@@ -389,4 +390,49 @@ test('a Save whose handle read fails over the real client downloads nothing and 
     expect(downloads).toEqual([])
     expect(await readFile(page, 'coconut.nxsp')).not.toEqual(before)
     expect(await pickerCalls(page)).toHaveLength(1)
+})
+
+test('Save As… still saves while every covered storage read fails, as the Not saved line says', async ({
+    page,
+}) => {
+    await start(page)
+    await savedOnce(page)
+    await page.reload()
+    await waitForStartup(page)
+    // The gate's reads all reject, as when the storage worker answers nothing it is asked to read.
+    await page.evaluate(() => {
+        const covered = new Set([
+            'readHandle',
+            'listHandleOwners',
+            'readBindings',
+            'readChainRecord',
+            'replaceDecision',
+            'openEarlierChains',
+            'openPendingImports',
+            'openImportTarget',
+            'listRecovered',
+            'readRecovered',
+            'listKept',
+            'findEdits',
+        ])
+        const worker = window.nseStorageTest!.worker
+        worker.call = new Proxy(worker.call, {
+            apply(target, thisArg: unknown, args: [string, ...unknown[]]) {
+                if (covered.has(args[0]))
+                    return Promise.reject(new Error('The storage worker stopped (spec)'))
+                return Reflect.apply(target, thisArg, args) as unknown
+            },
+        })
+    })
+    await edit(page, 2)
+    await pressSave(page)
+    await expect(notice(page).filter({ hasText: 'Try again, or use Save As…' })).toBeVisible()
+    await page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.saveAs)
+    })
+    await submitSave(page, 'melt', 'Save As')
+    await expect(notice(page).filter({ hasText: 'Saved to melt.nxsp' })).toBeVisible()
+    expect(await projectOf(page, 'melt.nxsp')).toMatchObject({ revision: { n: 1 } })
 })

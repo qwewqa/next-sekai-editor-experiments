@@ -21,7 +21,7 @@ import type { BuiltSave } from '../../local/save/execute'
 import { bindingHasHistory } from '../../local/save/model'
 import { storageWorker } from '../../local/start'
 import { storageStatus } from '../../local/startup/events'
-import { mapRead, readValue, type StoredRead } from '../../local/storedRead'
+import { mapRead, readValue, storedRead, type StoredRead } from '../../local/storedRead'
 import { journalWriter, flusher as storingFlusher } from '../../local/storing'
 import {
     appVersion,
@@ -187,19 +187,26 @@ const bindingOf = (record: Row | undefined, session: FlushSession): Binding => {
 const quickBinding = (env: Env) => bindingOf(env.session.chain, env.session)
 
 /** The record read again (R10), with a revocation localStorage holds for it (R11). */
-const readBinding = async (env: Env): Promise<Binding> => {
-    const record = await env.worker.call('readChainRecord', env.chainId)
-    // Taken over since: by the record, or by a key kept while storage couldn't take it (R11).
-    const replaced = revokedOf(record, env.session) as Binding['replaced'] | undefined
-    if (replaced) {
-        const binding = bindingOf(record, { ...env.session, identity: undefined })
-        return {
-            docId: binding.docId,
-            ...(binding.revision ? { revision: binding.revision } : {}),
-            replaced,
+const readBinding = async (env: Env): Promise<StoredRead<Binding>> =>
+    mapRead(await storedRead(env.worker, 'readChainRecord', env.chainId), (record) => {
+        // Taken over since: by the record, or by a key kept while storage couldn't take it (R11).
+        const replaced = revokedOf(record, env.session) as Binding['replaced'] | undefined
+        if (replaced) {
+            const binding = bindingOf(record, { ...env.session, identity: undefined })
+            return {
+                docId: binding.docId,
+                ...(binding.revision ? { revision: binding.revision } : {}),
+                replaced,
+            }
         }
-    }
-    return bindingOf(record, env.session)
+        return bindingOf(record, env.session)
+    })
+
+/** The binding read again, or the read's failure thrown: a Save under `nse-bind` ends as failed. */
+const readBindingOrThrow = async (env: Env): Promise<Binding> => {
+    const read = await readBinding(env)
+    if (read.storedRead === 'failed') throw read.storedError
+    return read.storedValue
 }
 
 /**
@@ -497,12 +504,11 @@ const refusalText = (refusal: BuildRefused, name: string, source = name) => {
 // R1: suggestions that never name a known file.
 
 const knownNames = async (env: Env) => {
-    try {
-        const owners = await env.worker.call('listHandleOwners')
-        return new Set(owners.map((owner) => owner.name.normalize('NFC').toLocaleLowerCase()))
-    } catch {
-        return new Set<string>()
-    }
+    const read = await storedRead(env.worker, 'listHandleOwners', undefined)
+    // A failed list suggests as if no file were known, as today: the name is only a suggestion,
+    // and the picker or the write still checks the file (R1).
+    if (read.storedRead === 'failed') return new Set<string>()
+    return new Set(read.storedValue.map((owner) => owner.name.normalize('NFC').toLocaleLowerCase()))
 }
 
 /** A suggestion made valid and, when a stored binding or target has its name, " (2)", " (3)"… */
@@ -674,12 +680,10 @@ const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked>
     const own = quickBinding(env).file
     const held = own && heldHandle(env.chainId, own.name)
     if (held && (await same(handle, held))) return { kind: 'own' }
-    let owners: HandleOwner[] = []
-    try {
-        owners = await env.worker.call('listHandleOwners')
-    } catch {
-        // Storage unavailable: no other chain is known (R11), and the pick is R8's.
-    }
+    const list = await storedRead(env.worker, 'listHandleOwners', undefined)
+    // A failed list leaves the pick to the other facts, else `unknown` (R11), as today: no other
+    // chain is known, and the pick is R8's.
+    const owners: HandleOwner[] = list.storedRead === 'value' ? list.storedValue : []
     for (const owner of owners) {
         if (!owner.handle) continue
         const read = await handleOf(env.worker, owner.chainId, owner.role)
@@ -713,7 +717,10 @@ const refusedTarget = (env: Env, picked: Picked): Exclude<Picked, { kind: 'targe
 const targetBytes = async (env: Env, owner: HandleOwner) => {
     if (owner.chainId !== env.chainId) return
     try {
-        const record = await env.worker.call('readChainRecord', env.chainId)
+        const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
+        // A failed read keeps today's outcome: no bytes are offered back for the picked file (R7).
+        if (read.storedRead === 'failed') return
+        const record = read.storedValue
         const target = isRow(record?.exportTarget) ? record.exportTarget : undefined
         const disk = isRow(target?.disk) ? (target.disk as DiskState) : undefined
         if (!disk) return
@@ -797,7 +804,9 @@ const notTakenOver = (name: string): Outcome =>
  * emptied file, which counts as changed until the write is recorded.
  */
 const followPreBind = async (env: Env, reservation: SaveReservation, name: string) => {
-    const record = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
+    const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
+    // A failed read keeps today's outcome: the session follows the next read of its record.
+    const record = read.storedRead === 'value' ? read.storedValue : undefined
     if (!record) return
     env.session.chain = record
     if (typeof record.docId === 'string') env.session.docId = record.docId
@@ -1068,7 +1077,9 @@ const keepingOwn = async (
 
 /** The disk state another chain's binding records, for a file filled while a pick waited. */
 const ownerDisk = async (env: Env, owner: HandleOwner) => {
-    const record = await env.worker.call('readChainRecord', owner.chainId).catch(() => undefined)
+    const read = await storedRead(env.worker, 'readChainRecord', owner.chainId)
+    // A failed read keeps today's outcome: no disk state is known for the other chain's file.
+    const record = read.storedRead === 'value' ? read.storedValue : undefined
     const file = isRow(record?.file) ? record.file : undefined
     return file && file.at === owner.at && isRow(file.disk) ? (file.disk as DiskState) : undefined
 }
@@ -1250,7 +1261,9 @@ const afterPick = async (
             tookOver = done.revoked
             if (done.preBound) {
                 await followPreBind(env, reservation, name)
-                bound = await readBinding(env).catch(() => binding)
+                const reread = await readBinding(env)
+                // A failed read keeps the binding the Save started from, as today.
+                bound = reread.storedRead === 'value' ? reread.storedValue : binding
             }
             if (tookOver) broadcastUpdated()
             await savePoint('revoked')
@@ -1424,7 +1437,9 @@ const ownCompletedSave = async (
     if (unit.file.name !== handle.name) return 'no'
     // The record as it is now, under `nse-bind`: the binding the Save started from is the one
     // the transaction checks it still holds.
-    const record = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
+    const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
+    // A failed read keeps today's outcome: the Save is not recognised, and its marker stays.
+    const record = read.storedRead === 'value' ? read.storedValue : undefined
     if (!record) return 'no'
     const at = (field: unknown) =>
         isRow(field) && typeof field.at === 'number' ? field.at : undefined
@@ -1456,8 +1471,9 @@ const ownCompletedSave = async (
         clearExportDestination()
     removeMarker(env.chainId, marker.entry.revisionId)
     rememberHandle(env.chainId, handle)
-    const read = await env.worker.call('readChainRecord', env.chainId).catch(() => undefined)
-    if (read) env.session.chain = read
+    const after = await storedRead(env.worker, 'readChainRecord', env.chainId)
+    // A failed read keeps today's outcome: the session keeps the record it had.
+    if (after.storedRead === 'value' && after.storedValue) env.session.chain = after.storedValue
     if (currentSession.value.sessionId === env.session.id)
         bindFile({
             name: handle.name,
@@ -1480,7 +1496,7 @@ type Checked =
  * event, the check alone (§1.4.7's "Nothing changed" row).
  */
 const check = async (env: Env, handle: FileSystemFileHandle): Promise<Checked> => {
-    const binding = await readBinding(env)
+    const binding = await readBindingOrThrow(env)
     const file = binding.file
     if (!file || binding.replaced) return { kind: 'revoked', binding }
     if (file.name !== handle.name) return { kind: 'revoked', binding }
@@ -1715,26 +1731,34 @@ const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileH
     let replaceDisabled: (() => string) | undefined
     let pinned: { file: File; disk: DiskState } | undefined
     let relation: string | undefined
+    let guarded: { projectJson: unknown; fingerprint: string } | undefined
     try {
         const file = await handle.getFile()
         const disk = await platform.inspect({ kind: 'handle', handle }, 'nxsp')
         facts = await readDiskFacts(file)
         if (disk !== 'missing') pinned = { file, disk }
-        if (disk !== 'missing' && facts.projectJson !== undefined) {
-            const decision = await env.worker.call('replaceDecision', {
-                chainId: env.chainId,
-                projectJson: facts.projectJson,
-                fingerprint: disk.fingerprint,
-            })
-            relation = decision?.relation
-            if (decision?.holdsBase)
-                replaceDisabled =
-                    decision.holdsBase === 'missing'
-                        ? () => i18n.value.conflict.replaceHoldsEarlier
-                        : () => i18n.value.conflict.replaceMayHoldEarlier
-        }
+        if (disk !== 'missing' && facts.projectJson !== undefined)
+            guarded = { projectJson: facts.projectJson, fingerprint: disk.fingerprint }
     } catch {
         // What is on disk cannot be read: the title and body say enough.
+    }
+    if (guarded) {
+        const read = await storedRead(env.worker, 'replaceDecision', {
+            chainId: env.chainId,
+            ...guarded,
+        })
+        const decision = read.storedRead === 'value' ? read.storedValue : undefined
+        relation = decision?.relation
+        // Replace needs its guard (invariant 6): a failed read, or no decision, never leaves it
+        // enabled. It gives the uncertain reason, unless a reason of the dialog's own applies.
+        if (!decision)
+            replaceDisabled =
+                replaceUnavailable(facts, pinned?.disk) ??
+                (() => i18n.value.conflict.replaceMayHoldEarlier)
+        else if (decision.holdsBase === 'missing')
+            replaceDisabled = () => i18n.value.conflict.replaceHoldsEarlier
+        else if (decision.holdsBase === 'unproven')
+            replaceDisabled = () => i18n.value.conflict.replaceMayHoldEarlier
     }
     // Another project by its `id`; ours gone back, by the relation; else what `project.json` says.
     const version: DiskVersion =
@@ -1816,7 +1840,9 @@ const replace = async (
             .inspect({ kind: 'handle', handle }, 'nxsp')
             .catch(() => undefined)
         const changed = now && (now === 'missing' || !sameContent(now, pinned.disk))
-        const binding = changed ? await readBinding(env).catch(() => undefined) : undefined
+        const reread = changed ? await readBinding(env) : undefined
+        // A failed read shows the bar's error below, as today.
+        const binding = reread?.storedRead === 'value' ? reread.storedValue : undefined
         if (kept === 'failed' && now === 'missing') {
             await afterOutcome(env, {
                 kind: 'failed',
@@ -1839,7 +1865,7 @@ const replace = async (
         return
     }
     const outcome = await withBind('shared', async (): Promise<Outcome> => {
-        const binding = await readBinding(env)
+        const binding = await readBindingOrThrow(env)
         const file = binding.file
         if (!file || binding.replaced || file.name !== handle.name) return { kind: 'cancelled' }
         return writeBack(env, handle, binding, file, pinned.disk, replaces)
@@ -2410,8 +2436,16 @@ export const saveToFile = (sessionId: string) =>
 const saveToFileNow = async (env: Env, sessionId: string) => {
     const { applyPendingJournal } = await import('../../local/startup/api')
     const applied = await applyPendingJournal(sessionId).catch(() => undefined)
-    const read = await env.worker.call('readSession', sessionId).catch(() => undefined)
-    if (read?.kind !== 'open') {
+    let read
+    try {
+        read = await env.worker.call('readSession', sessionId)
+    } catch (error) {
+        // Storage could not be read: that is not a missing session (invariant 12).
+        recordError(error)
+        saveUi.error(() => i18n.value.save.storageUnavailable)
+        return
+    }
+    if (read.kind !== 'open') {
         saveUi.error(() => i18n.value.save.unavailable)
         return
     }

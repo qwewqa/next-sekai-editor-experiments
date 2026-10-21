@@ -1,6 +1,6 @@
 import { ESLint, RuleTester, type Rule } from 'eslint'
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { describe, it, test } from 'node:test'
 import local from '../../../scripts/eslint-plugin-local.mjs'
@@ -105,19 +105,12 @@ const filesUnder = (directory: string): string[] =>
               : []
     })
 
-test('stored-reads covers every file of src, apart from exactly flow.ts until D2-lite', async () => {
+test('stored-reads covers every file of src', async () => {
     const files = filesUnder('src')
     assert.ok(files.length > 300)
     const off: string[] = []
     for (const file of files) if (!(await enabled(file))) off.push(file)
-    assert.deepEqual(off, ['src/editor/save/flow.ts'])
-})
-
-test('flow.ts, exempt until D2-lite, reads the binding’s handle through the gate', () => {
-    // The V-P5 and Open the Other Version sites: bindingHandle reads through handleOf.
-    const source = readFileSync(path.join(root, 'src/editor/save/flow.ts'), 'utf8')
-    assert.ok(!source.includes(".call('readHandle'"))
-    assert.ok(source.includes('await handleOf('))
+    assert.deepEqual(off, [])
 })
 
 test('through the real configuration, a covered read outside the gate is reported', async () => {
