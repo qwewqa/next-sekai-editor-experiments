@@ -650,13 +650,13 @@ test.describe('the conflict dialog', () => {
             input: {
                 name: 'coconut.nxsp',
                 disk: disk.saved,
-                replaceDisabled: 'It holds earlier steps that this browser no longer has.',
+                replaceDisabled: 'It holds earlier Timeline steps that are no longer stored in this browser.',
             },
         })
         const replace = dialog(page).getByRole('button', { name: 'Replace' })
         await expect(replace).toBeDisabled()
         await expect(dialog(page)).toContainText(
-            'It holds earlier steps that this browser no longer has.',
+            'It holds earlier Timeline steps that are no longer stored in this browser.',
         )
         await expect(
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
@@ -788,7 +788,7 @@ test.describe('the feedback after a write', () => {
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp')
         await feedback(page, { ...plain, someStepsNotKept: true })
         await expect(notice(page)).toHaveText(
-            'Saved to coconut.nxsp. Some earlier steps were not kept.',
+            'Saved to coconut.nxsp. Some earlier Timeline steps were not kept.',
         )
         await feedback(page, { ...plain, without: ['bgm'], tooLarge: ['bgm'] })
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its BGM')
@@ -862,7 +862,7 @@ test.describe('the feedback after a write', () => {
         })
         await feedback(page, { ...plain, kind: 'download', size: 1_000, someStepsNotKept: true })
         await expect(notice(page)).toContainText('Download started: coconut.nxsp · 1 kB')
-        await expect(notice(page)).toContainText('Some earlier steps were not kept.')
+        await expect(notice(page)).toContainText('Some earlier Timeline steps were not kept.')
         await expect(page.getByRole('button', { name: 'I Have the File' })).toHaveCount(0)
     })
 

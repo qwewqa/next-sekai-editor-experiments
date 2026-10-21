@@ -1,6 +1,6 @@
 import type { LockService } from '../../platform/types'
 import type { Channel } from '../channel'
-import { countDayOfUse } from '../days'
+import { countDayOfUse, type UseDay } from '../days'
 import { DB_NAME, DB_VERSION, readMeta, STORE_NAMES, upgradeDatabase, writeMeta } from '../db'
 import { answerUpgrades, openWithHandshake, type Opened } from '../handshake'
 import {
@@ -561,7 +561,7 @@ export class StorageCore {
 }
 
 /** A row with its `day` set, when it has one. */
-const withDay = (value: unknown, day: number) =>
+const withDay = (value: unknown, day: UseDay) =>
     typeof value === 'object' &&
     value !== null &&
     typeof (value as { day?: unknown }).day === 'number'

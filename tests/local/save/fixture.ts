@@ -51,6 +51,7 @@ import {
     nativeOperation,
     originOperation,
 } from '../../helpers/historySteps'
+import { useDay } from '../../helpers/useDay'
 import { workerCore } from '../flush/harness'
 import { BGM, BGM_2, chartWith, COVER, COVER_2, PREVIEW, sha256Hex } from '../nxsp/helpers'
 import { stateOf } from '../records/charts'
@@ -237,10 +238,10 @@ export class Fixture {
             ),
         )
         await this.store.write(['nodes', 'chunks'], async (tx) => {
-            await tx.put('nodes', rootRow(snapshot.root, 1), hashKey(snapshot.root.hash))
+            await tx.put('nodes', rootRow(snapshot.root, useDay(1)), hashKey(snapshot.root.hash))
             for (const node of snapshot.nodes)
-                await tx.put('nodes', nodeRow(node, 1), hashKey(node.hash))
-            for (const chunk of chunks) await putChunk(tx, chunk, 1)
+                await tx.put('nodes', nodeRow(node, useDay(1)), hashKey(node.hash))
+            for (const chunk of chunks) await putChunk(tx, chunk, useDay(1))
         })
         this.written.add(known.hex)
         return known
@@ -514,7 +515,7 @@ export class Fixture {
                             kind: item === BGM || item === BGM_2 ? 'bgm' : 'cover',
                             sha256: hexBytes(item.sha256),
                         },
-                        1,
+                        useDay(1),
                     ),
                     hashKey(fromHex16(item.ref.hash)),
                 )

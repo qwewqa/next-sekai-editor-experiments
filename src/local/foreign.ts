@@ -1,4 +1,5 @@
 import { CHUNK_CAP, inflateStrict, verifyChunk, type VerifiedChunk } from './chunkVerify'
+import type { UseDay } from './days'
 import { hashKey } from './db'
 import type { BatchMedia } from './flushWrite'
 import { equalBytes, fromHex16, hash16, sha256, toHex } from './hash'
@@ -177,7 +178,7 @@ export const writeForeign = async (
     tx: KvTx,
     prepared: PreparedForeign,
     roots: readonly Uint8Array[],
-    day: number,
+    day: UseDay,
 ): Promise<ForeignResult> => {
     const missing: string[] = []
     const seen = new Set<string>()

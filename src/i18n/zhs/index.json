@@ -955,7 +955,7 @@
         "legacy": "旧版本的恢复副本 · {0}",
         "autoSave": "旧的自动保存 · {0}",
         "unreadable": "无法读取的已恢复内容，{0} · {1}",
-        "listFailed": "无法读取已存储的恢复数据",
+        "listFailed": "无法读取已恢复的内容",
         "atLoad": "启动通知"
       },
       "openHistory": "打开历史记录",
@@ -1174,7 +1174,7 @@
     "continuedUntitled": "已继续 {0} 的会话。",
     "continuedUndated": "已继续“{0}”。",
     "cleared": "以往访问的内容已丢失。浏览器清除了此网站的存储。",
-    "inAppBrowser": "这似乎是应用内浏览器，部分功能可能无法使用，已存储的内容也更容易丢失。如需保留内容，请在浏览器中打开此页面。",
+    "inAppBrowser": "这似乎是应用内浏览器。部分功能可能无法使用，已存储的内容也可能被删除。如需保留内容，请在浏览器中打开此页面。",
     "journalKept": "无法应用对“{0}”的更改，已将其保留为单独的会话。",
     "fallback": "已恢复以往访问中未保存的内容。",
     "fallbackLocal": "以往访问中未保存的内容在本地数据中。",
@@ -1354,9 +1354,9 @@
       "composedTransform": "多项调整",
       "released": "已移出文件夹",
       "recoveryContext": "先前操作",
-      "recoveryHead": "来源操作",
-      "omittedDescriptions": "已省略的先前操作说明：{0}",
-      "droppedSteps": "已丢失的撤销步骤：{0}",
+      "recoveryHead": "已恢复到此处",
+      "omittedDescriptions": "未列出的先前操作：{0}",
+      "droppedSteps": "时间线中没有单独步骤的操作：{0}",
       "counts": {
         "note": "{0} 个音符",
         "bpm": "{0} 个 BPM",
@@ -1367,7 +1367,7 @@
         "groupFolder": "{0} 个群组文件夹",
         "stageFolder": "{0} 个舞台文件夹"
       },
-      "bgmOffset": "BGM 偏移",
+      "bgmOffset": "背景音乐偏移",
       "pasteLocation": "粘贴位置",
       "pointer": "指针位置",
       "position": "指定位置"
@@ -1704,7 +1704,7 @@
           "alt": "Alt",
           "shift": "Shift"
         },
-        "fixedAlias": "也可按 {0}（固定）"
+        "fixedAlias": "也可按 {0}（不可更改）"
       },
       "maskLeft": {
         "label": "遮罩轨道"
@@ -2048,7 +2048,7 @@
     "changesBelowAny": "下方的更改",
     "savesCurrent": "保存当前版本。",
     "showEdits": "显示更改",
-    "changeOptions": "更改显示选项"
+    "changeOptions": "更改的显示选项"
   },
   "save": {
     "fileName": "文件名",
@@ -2088,9 +2088,9 @@
     "savedWithoutCoverLarge": "已保存到 {0}，未包含封面",
     "savedWithoutPreviewLarge": "已保存到 {0}，未包含预览音频",
     "savedWithoutMediaLarge": "已保存到 {0}，未包含媒体",
-    "someStepsNotKept": "已保存到 {0}。部分较早的步骤未保留。",
-    "someStepsNotKeptLine": "部分较早的步骤未保留。",
-    "committedState": "这是在另一个标签页中打开的会话最后存储的状态。",
+    "someStepsNotKept": "已保存到 {0}。时间线中部分较早的步骤未保留。",
+    "someStepsNotKeptLine": "时间线中部分较早的步骤未保留。",
+    "committedState": "该文件包含在另一个标签页中打开的会话最后存储的版本。",
     "tookOver": "已保存到 {0}。其之前的工作在“最近会话”中。",
     "noChanges": "自下载 {0} 以来没有更改",
     "noChangesSaved": "自保存 {0} 以来没有更改",
@@ -2124,14 +2124,14 @@
     "savedNoNotes": "{0}，{1}。",
     "otherProject": "另一个项目文件“{0}”。",
     "otherProjectUnnamed": "另一个项目文件。",
-    "notDescendant": "此版本并非您版本的后续 ({0})。",
+    "notDescendant": "此版本并非基于您的版本 ({0})。",
     "separate": "另存为单独文件",
     "openOther": "打开另一个版本",
     "openOtherNote": "你的更改保持未保存。",
     "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
     "keptName": "{0}（{1} 被替换）",
     "replaceNewer": "由更新版本的 {0} 创建。",
-    "replaceHoldsEarlier": "它包含此浏览器已不再拥有的较早步骤。",
+    "replaceHoldsEarlier": "它包含此浏览器中已不再存储的较早时间线步骤。",
     "keepEditing": "继续编辑"
   },
   "name": {

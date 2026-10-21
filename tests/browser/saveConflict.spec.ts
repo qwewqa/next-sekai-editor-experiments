@@ -222,7 +222,7 @@ test('the Replace guard: a file holding the base this browser lost rows of is ne
     await pressSave(next)
     const dialog = next.getByRole('dialog')
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
-    await expect(dialog).toContainText('It holds earlier steps that this browser no longer has.')
+    await expect(dialog).toContainText('It holds earlier Timeline steps that are no longer stored in this browser.')
     await expect(dialog.getByRole('button', { name: 'Replace' })).toBeDisabled()
     await expect(dialog.getByRole('button', { name: 'Save as a Separate File' })).toBeFocused()
     expect(await readFile(next, 'coconut.nxsp')).toEqual(disk)
@@ -242,7 +242,7 @@ test('the Replace guard: a diverged file is kept first, and the write says what 
     await dialog.getByRole('button', { name: 'Replace' }).click()
     await expect(
         notice(page).filter({
-            hasText: 'Saved to coconut.nxsp. Some earlier steps were not kept.',
+            hasText: 'Saved to coconut.nxsp. Some earlier Timeline steps were not kept.',
         }),
     ).toBeVisible({ timeout: 15_000 })
     const { chains } = await rows(page, ['chains'])

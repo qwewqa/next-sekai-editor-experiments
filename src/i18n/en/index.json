@@ -955,7 +955,7 @@
                 "legacy": "Recovery copy from an older version · {0}",
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
-                "listFailed": "Stored recovery data could not be read",
+                "listFailed": "Recovered work could not be read",
                 "atLoad": "Startup Notices"
             },
             "openHistory": "Open History",
@@ -1174,7 +1174,7 @@
         "continuedUntitled": "Continued your session from {0}.",
         "continuedUndated": "Continued \"{0}\".",
         "cleared": "Work from earlier visits is missing. The browser cleared this site’s storage.",
-        "inAppBrowser": "This looks like an app’s built-in browser, where some features may not work and stored work is more likely to be lost. To keep your work, open this page in your browser.",
+        "inAppBrowser": "This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your browser.",
         "journalKept": "A change to \"{0}\" could not be applied, so it was kept as a separate session.",
         "fallback": "Recovered unsaved work from an earlier visit.",
         "fallbackLocal": "Unsaved work from an earlier visit is in Local Data.",
@@ -1315,7 +1315,7 @@
         "yesterday": "Yesterday",
         "empty": "No changes yet",
         "noSaves": "No saves or exports",
-        "loadFailed": "The timeline could not be loaded.",
+        "loadFailed": "The Timeline could not be loaded.",
         "tryAgain": "Try Again",
         "steps": "{0} step|{0} steps",
         "newerSteps": "{0} newer step|{0} newer steps",
@@ -1354,9 +1354,9 @@
             "composedTransform": "Multiple Adjustments",
             "released": "Moved out of Folder",
             "recoveryContext": "Earlier Actions",
-            "recoveryHead": "Source Action",
-            "omittedDescriptions": "Earlier action descriptions omitted: {0}",
-            "droppedSteps": "Undo steps dropped: {0}",
+            "recoveryHead": "Recovered up to here",
+            "omittedDescriptions": "Earlier actions not listed: {0}",
+            "droppedSteps": "Actions without their own Timeline step: {0}",
             "counts": {
                 "note": "{0} note|{0} notes",
                 "bpm": "{0} BPM change|{0} BPM changes",
@@ -1704,7 +1704,7 @@
                     "alt": "Alt",
                     "shift": "Shift"
                 },
-                "fixedAlias": "Also {0}, fixed"
+                "fixedAlias": "Also {0} (cannot be changed)"
             },
             "maskLeft": {
                 "label": "Mask Lane"
@@ -2048,7 +2048,7 @@
         "changesBelowAny": "Changes Below",
         "savesCurrent": "Saves the current version.",
         "showEdits": "Show Edits",
-        "changeOptions": "Change Options"
+        "changeOptions": "Options for Changes"
     },
     "save": {
         "fileName": "File Name",
@@ -2088,9 +2088,9 @@
         "savedWithoutCoverLarge": "Saved to {0} without its cover",
         "savedWithoutPreviewLarge": "Saved to {0} without its preview audio",
         "savedWithoutMediaLarge": "Saved to {0} without its media",
-        "someStepsNotKept": "Saved to {0}. Some earlier steps were not kept.",
-        "someStepsNotKeptLine": "Some earlier steps were not kept.",
-        "committedState": "This is the last stored state of a session open in another tab.",
+        "someStepsNotKept": "Saved to {0}. Some earlier Timeline steps were not kept.",
+        "someStepsNotKeptLine": "Some earlier Timeline steps were not kept.",
+        "committedState": "The file holds the last stored version of the session open in another tab.",
         "tookOver": "Saved to {0}. Its earlier work is in Recent Sessions.",
         "noChanges": "No changes since {0} was downloaded",
         "noChangesSaved": "No changes since {0} was saved",
@@ -2124,14 +2124,14 @@
         "savedNoNotes": "{0}, {1}.",
         "otherProject": "A different project file, \"{0}\".",
         "otherProjectUnnamed": "A different project file.",
-        "notDescendant": "This version does not continue yours ({0}).",
+        "notDescendant": "This version was not made from yours ({0}).",
         "separate": "Save as a Separate File",
         "openOther": "Open the Other Version",
         "openOtherNote": "Your changes stay unsaved.",
         "replaceNote": "The version on disk will be kept in Recent Sessions.",
         "keptName": "{0} (replaced {1})",
         "replaceNewer": "Made by a newer version of {0}.",
-        "replaceHoldsEarlier": "It holds earlier steps that this browser no longer has.",
+        "replaceHoldsEarlier": "It holds earlier Timeline steps that are no longer stored in this browser.",
         "keepEditing": "Keep Editing"
     },
     "name": {
@@ -2182,8 +2182,8 @@
         "notInFile": "Not saved to a file",
         "separateCopy": "Separate copy of {0}",
         "opensLevelInfo": "Opens Level Info",
-        "changedSaved": "{0}, changed since saved to {1}",
-        "changedDownload": "{0}, changed since download of {1}",
+        "changedSaved": "{0}, changed since {1} was saved",
+        "changedDownload": "{0}, changed since {1} was downloaded",
         "changedOpened": "{0}, changed since {1} was opened"
     },
     "open": {

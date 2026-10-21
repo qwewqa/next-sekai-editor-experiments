@@ -1,3 +1,4 @@
+import { NO_USE_DAY, type UseDay } from './days'
 import type { Key, KvTx, KvUpgrade } from './kv/types'
 
 // The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 1, whose store set is `STORES_V1`)
@@ -43,9 +44,9 @@ export type MetaValues = {
     maxSeenTime: number
     dbInstanceId: string
     deviceId: string
-    daysOfUse: number
+    daysOfUse: UseDay
     lastUseDate: string
-    lastGcAt: { day: number; time: number } | null
+    lastGcAt: { day: UseDay; time: number } | null
     deletionsPending: boolean
     migratedHashes: string[]
     usage: {
@@ -77,7 +78,7 @@ export const startingMeta = (context: CreateContext): MetaValues => ({
     maxSeenTime: 0,
     dbInstanceId: context.randomId(),
     deviceId: context.deviceId ?? context.randomId(),
-    daysOfUse: 0,
+    daysOfUse: NO_USE_DAY,
     lastUseDate: '',
     lastGcAt: null,
     deletionsPending: false,

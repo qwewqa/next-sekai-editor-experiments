@@ -1094,7 +1094,7 @@ test('safe mode opens read-only on purpose, so its pill has no "older than your 
 // with Copy Link, and a storage line in Settings › Local Data.
 test.describe('the in-app browser line', () => {
     const inApp =
-        'This looks like an app’s built-in browser, where some features may not work and stored work is more likely to be lost. To keep your work, open this page in your browser.'
+        'This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your browser.'
     const inAppStorage =
         'This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.'
     const androidWebView =

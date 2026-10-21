@@ -578,7 +578,7 @@ T: Restored to Oct 18, 2:00:00 AM
 
 #recovery.journal en
 T: Recovered changes
-F: Undo steps dropped: 3
+F: Actions without their own Timeline step: 3
 E: 1 earlier, head 0, omitted 0
 
 #recovery.autoSave.0 en
@@ -587,7 +587,7 @@ E: 1 earlier, head 0, omitted 0
 
 #recovery.local.1 en
 T: Recovered changes
-F: Undo steps dropped: 1
+F: Actions without their own Timeline step: 1
 E: 1 earlier, head 0, omitted 0
 
 #external.change en
@@ -595,27 +595,27 @@ T: Changed outside the editor
 
 #recovery.context.small en
 T: Recovered changes
-F: Undo steps dropped: 2
+F: Actions without their own Timeline step: 2
 E: 3 earlier, head 1, omitted 0
 
 #recovery.context.big en
 T: Recovered changes
-F: Undo steps dropped: 64
+F: Actions without their own Timeline step: 64
 E: 65 earlier, head 30, omitted 12
 
 #recovery.context.big fr
 T: Modifications récupérées
-F: Étapes d’annulation supprimées : 64
+F: Actions sans étape propre dans la chronologie : 64
 E: 65 earlier, head 30, omitted 12
 
 #recovery.context.big ja
 T: 変更を復元しました
-F: 失われた元に戻す操作：64
+F: タイムラインに個別に記録されていない操作：64
 E: 65 earlier, head 30, omitted 12
 
 #recovery.context.unknownSteps en
 T: Recovered changes
-F: Undo steps dropped: 2
+F: Actions without their own Timeline step: 2
 E: 3 earlier, head 0, omitted 0
 
 #unknown.future.fallback en
