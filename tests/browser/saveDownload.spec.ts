@@ -16,7 +16,7 @@ import {
 } from './saveFlows'
 
 // Saving where there's no save picker (Part 1 §1.4.7; Firefox, WebKit, and Chromium with the
-// override's `fileSystemAccess: false`): the first Save shows the dialog with the download note
+// override's `fileSystemAccess: false`): the first Save shows the dialog
 // and downloads; later Saves download with no dialog; an unchanged one offers Download Again; no
 // conflict dialog ever shows. The compatibility config's storage projects run it in Firefox and
 // WebKit.
@@ -37,7 +37,7 @@ test('a download browser: the first Save asks once, later Saves download, unchan
     await edit(page, 1)
     const first = await downloaded(page, async () => {
         await pressSave(page)
-        await expect(saveDialog(page)).toContainText('Each save downloads a new copy.')
+        await expect(saveDialog(page)).toBeVisible()
         await submitSave(page, 'coconut')
     })
     expect(first).toBe('coconut.nxsp')
@@ -70,7 +70,7 @@ test('a download browser: the first Save asks once, later Saves download, unchan
     await expect(saveDialog(page)).toHaveCount(0)
     await expect(page.getByRole('dialog')).toHaveCount(0)
 
-    // A later session's first Save shows no download note.
+    // A later session's first Save asks again.
     await page.reload()
     await waitForStartup(page)
     await page.evaluate(async () => {
@@ -80,7 +80,6 @@ test('a download browser: the first Save asks once, later Saves download, unchan
     await edit(page, 3)
     await pressSave(page)
     await expect(saveDialog(page)).toBeVisible()
-    await expect(saveDialog(page)).not.toContainText('Each save downloads a new copy.')
 })
 
 test('Download Again pressed after another session opened downloads nothing and binds nothing', async ({

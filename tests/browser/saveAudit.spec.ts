@@ -107,7 +107,6 @@ test.describe('the storage line', () => {
         await edit(page, 1)
         await pressSave(page)
         await expect(saveDialog(page)).toBeVisible()
-        await expect(saveDialog(page).locator('[data-save-download-note]')).toBeVisible()
         await expect(saveDialog(page).locator('[data-save-storage-line]')).toHaveCount(0)
     })
 })
