@@ -854,8 +854,7 @@ test('reduced motion stops sliding and turning, and view scrolls jump', async ({
     expect(moving).toEqual([])
     expect(
         await page.evaluate(
-            () =>
-                getComputedStyle(document.querySelector('.transition-colors')!).transitionProperty,
+            () => getComputedStyle(document.querySelector('.panel-tab.ghost')!).transitionProperty,
         ),
     ).toContain('background-color')
     // A page scroll lands at once.
