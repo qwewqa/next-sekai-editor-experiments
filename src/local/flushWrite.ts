@@ -8,7 +8,7 @@ import {
 import { extentOf } from '../utils/math'
 import { forkRecord } from './chainFields'
 import { deflateChunk, verifyChunk, type VerifiedChunk } from './chunkVerify'
-import { countDayOfUse } from './days'
+import { countDayOfUse, type UseDay } from './days'
 import { hashKey, readEpoch, readMeta, writeMeta } from './db'
 import { splitHandles } from './handleRows'
 import { equalBytes, fromHex16, hash16, sha256, toHex } from './hash'
@@ -361,7 +361,7 @@ export const prepareFlush = async (
 }
 
 /** A media row (§1.6.11.2): a new Blob of the bytes, never a `File`. */
-export const mediaRow = (item: BatchMedia & { sha256: Uint8Array }, day: number) => ({
+export const mediaRow = (item: BatchMedia & { sha256: Uint8Array }, day: UseDay) => ({
     blob: new Blob([item.bytes], item.type ? { type: item.type } : {}),
     sha256: item.sha256,
     size: item.bytes.byteLength,
