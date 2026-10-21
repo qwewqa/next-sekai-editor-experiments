@@ -42,7 +42,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** A test that cannot fail, or that fails one run in six, is read as noise and then ignored.
 
-**Example.** `historyThemes.spec.ts` X-11 read a `::before` box-shadow once while the element animated it and failed about one run in six. The Escape fix is covered by a keydown that holds the main thread so the next keys queue before the `close` task (`tests/browser/modalEscapeKeys.spec.ts`). A fake clock that jumped past a real storage call's watchdog made the History time specs fail at 8 workers (4 of 24 runs before the fix, 0 of 80 after); the fix drains the worker before such a jump. The storage worker's fakes are being checked against the real code.
+**Example.** `historyThemes.spec.ts` X-11 read a `::before` box-shadow once while the element animated it and failed about one run in six. The Escape fix is covered by a keydown that holds the main thread so the next keys queue before the `close` task (`tests/browser/modalEscapeKeys.spec.ts`). A fake clock that jumped past a real storage call's watchdog made the History time specs fail at 8 workers (4 of 24 runs before the fix, 0 of 80 after); the fix drains the worker before such a jump. B0's fake storage worker kept a binding the real unlink drops, so a data-loss cell was green on code that loses the file; the matrix now runs the real worker handlers.
 
 ## 6. Browser specs find elements through shared helpers
 

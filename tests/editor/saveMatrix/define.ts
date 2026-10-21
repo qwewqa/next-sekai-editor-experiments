@@ -31,7 +31,12 @@ export const defineMatrix = (pathIds: string[]) => {
             },
             () => {
                 const found = results
-                    .filter((cell) => known.paths.includes(cell.path) && cell.fault === known.fault)
+                    .filter(
+                        (cell) =>
+                            known.paths.includes(cell.path) &&
+                            cell.fault === known.fault &&
+                            (known.plans?.includes(cell.plan) ?? true),
+                    )
                     .flatMap((cell) =>
                         cell.violations
                             .filter((v) => v.invariant === known.invariant)

@@ -15,6 +15,8 @@ export type Known = {
     paths: string[]
     invariant: string
     fault: string
+    /** The pick plans that show it; absent for every plan of the paths. */
+    plans?: string[]
 }
 
 export const KNOWN: Known[] = [
@@ -75,6 +77,32 @@ export const KNOWN: Known[] = [
         fault: 'read-slow',
     },
     {
+        id: 'R8-owners',
+        kind: 'by-design',
+        title: 'storage fails when the pick is identified: the owners are unread, so another chain keeps its binding, or its Export target, on a file that now holds this chain’s project',
+        paths: [
+            'save-first',
+            'save-as',
+            'save-as/reloaded',
+            'save-as/stored',
+            'save-as/ahead',
+            'separate',
+            'notfound-saveas',
+        ],
+        invariant: 'I9',
+        fault: 'identify-fails',
+        plans: ['other', 'target'],
+    },
+    {
+        id: 'R8-kept',
+        kind: 'by-design',
+        title: 'storage fails when the pick is identified after a reload: the partial open’s file is unknown to this tab, and is written over',
+        paths: ['save-as/reloaded', 'export/reloaded'],
+        invariant: 'I1',
+        fault: 'identify-fails',
+        plans: ['partial'],
+    },
+    {
         id: 'WB-throw',
         kind: 'bug',
         title: 'a write-back whose chain record cannot be read ends silently',
@@ -89,5 +117,6 @@ export const isKnown = (cell: CellResult, violation: Violation) =>
         (known) =>
             known.invariant === violation.invariant &&
             known.fault === cell.fault &&
-            known.paths.includes(cell.path),
+            known.paths.includes(cell.path) &&
+            (known.plans?.includes(cell.plan) ?? true),
     )

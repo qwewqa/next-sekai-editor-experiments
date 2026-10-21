@@ -32,6 +32,7 @@ const { clearExportMemory, exportMemory, setExportPersister, setExportTargetRead
 const exportPick = await import('../../../src/editor/commands/exportLevel/pick')
 const { startImport, isImporting } = await import('../../../src/local/open/importLoop')
 const { markFirstSaveDone } = await import('../../../src/editor/file/flags')
+const { useRealDoor } = await import('./door')
 
 export { activation, exportMemory, exportPick, flow }
 
@@ -91,6 +92,11 @@ export type Setup = {
     opened?: 'notProject' | 'levelData' | 'partial'
     /** The build reports damage in storage (SP-1): the own file is read again before the picker. */
     damaged?: boolean
+    /**
+     * `afterReload`: the session was opened from opened.nsld and the page has reloaded since, so
+     * only storage knows the file: its handle is kept (D26) and its bytes are the OPFS copy.
+     */
+    kept?: 'afterReload'
 }
 
 export type Dialog = {
@@ -113,6 +119,34 @@ export type PickerOpening = {
 type ReservationLog = { reservation: SaveReservation; ends: { kept: boolean; entry: boolean }[] }
 
 const OWN = 'own.nxsp'
+
+/**
+ * The bytes a partial open copied into the origin private file system, by chain (`nse-kept`): a
+ * browser API that Node lacks, so the matrix gives `navigator.storage` the one folder the kept
+ * copy is read from (`readKeptCopy`).
+ */
+const keptCopies = new Map<string, Blob>()
+Object.defineProperty(navigator, 'storage', {
+    configurable: true,
+    value: {
+        getDirectory: () =>
+            Promise.resolve({
+                getDirectoryHandle: (name: string) =>
+                    name === 'nse-kept' && keptCopies.size
+                        ? Promise.resolve({
+                              getFileHandle: (chainId: string) => {
+                                  const blob = keptCopies.get(chainId)
+                                  return blob
+                                      ? Promise.resolve({ getFile: () => Promise.resolve(blob) })
+                                      : Promise.reject(
+                                            new DOMException('Not found', 'NotFoundError'),
+                                        )
+                              },
+                          })
+                        : Promise.reject(new DOMException('Not found', 'NotFoundError')),
+            }),
+    },
+})
 
 // A flow that throws is caught by the Save's `exclusive`, which logs it: the world keeps those.
 let current: { errors: unknown[] } | undefined
@@ -140,6 +174,7 @@ const createWorld = async (setup: Setup = {}) => {
         target: setup.target ?? true,
         opened: setup.opened,
         damaged: setup.damaged ?? false,
+        kept: setup.kept,
     }
     localStorage.clear()
     env.forgetHandle('chain-own')
@@ -296,21 +331,6 @@ const createWorld = async (setup: Setup = {}) => {
     const chains = new Map<string, Row>()
     const handleRows = new Map<string, FileSystemFileHandle>()
     const pendingImports = new Set<string>()
-    const owners = () => {
-        const found: Row[] = []
-        for (const [chainId, record] of chains) {
-            const file = record.file as Row | undefined
-            if (file && handleRows.has(`${chainId}:file`))
-                found.push({ chainId, role: 'file', name: file.name, at: file.at, handle: true })
-            const exportTarget = record.exportTarget as Row | undefined
-            if (exportTarget && handleRows.has(`${chainId}:exportTarget`))
-                found.push({ chainId, role: 'exportTarget', name: exportTarget.name, handle: true })
-            if (handleRows.has(`${chainId}:kept`))
-                found.push({ chainId, role: 'kept', name: 'kept', handle: true })
-        }
-        return found
-    }
-
     const counts = new Map<string, number>()
     const hooks = new Map<string, ((n: number, arg: unknown) => void | Promise<void>)[]>()
     /** Runs the actions registered for a point of the world (worker calls, dialogs). */
@@ -343,67 +363,19 @@ const createWorld = async (setup: Setup = {}) => {
         },
     }
 
+    // The worker methods that stay fakes of our own code (E-1): the real build, import and session
+    // reads need a stored session and its snapshot rows, which the matrix's session fake does not
+    // have (E3 moves them to the real flusher). The record and handle methods run the real
+    // handlers behind `useRealDoor` (./door), so no case below touches a chain or a handle row.
     const fake = async (method: string, arg: unknown, how: unknown): Promise<unknown> => {
         const a = arg as Row
         switch (method) {
-            case 'readChainRecord': {
-                const record = chains.get(arg as string)
-                return record ? { ...record } : undefined
-            }
-            case 'listHandleOwners':
-                return owners()
-            case 'readHandle':
-                return handleRows.get(`${String(a.chainId)}:${String(a.role)}`)
             case 'openPendingImports':
                 return [...pendingImports].map((sessionId) => ({ sessionId }))
             case 'saveNeeds':
                 return s.storage === 'holds'
                     ? { carries: true, lacking: [] }
                     : { carries: false, lacking: [] }
-            case 'takeOver': {
-                const owner = a.owner as Row | undefined
-                const preBind = a.preBind as Row | undefined
-                let revoked = false
-                if (owner) {
-                    const chain = chains.get(String(owner.chainId))
-                    const field = chain?.[String(owner.role)] as Row | undefined
-                    if (
-                        chain &&
-                        field &&
-                        field.name === owner.name &&
-                        (owner.role !== 'file' || field.at === owner.at)
-                    ) {
-                        const record = { ...chain }
-                        delete record[String(owner.role)]
-                        if (owner.role === 'file') {
-                            record.replaced = { by: a.by, at: a.at, name: owner.name }
-                            record.edited = true
-                        }
-                        handleRows.delete(`${String(owner.chainId)}:${String(owner.role)}`)
-                        chains.set(String(owner.chainId), record)
-                        revoked = true
-                    }
-                }
-                let preBound = false
-                if (preBind) {
-                    const chain = chains.get(String(preBind.chainId))
-                    if (chain) {
-                        const { handle: picked, ...file } = preBind.file as Row & {
-                            handle?: FileSystemFileHandle
-                        }
-                        const record: Row = { ...chain, file }
-                        if (picked) handleRows.set(`${String(preBind.chainId)}:file`, picked)
-                        delete record.replaced
-                        if (preBind.docId !== undefined) {
-                            record.docId = preBind.docId
-                            delete record.revision
-                        }
-                        chains.set(String(preBind.chainId), record)
-                        preBound = true
-                    }
-                }
-                return { revoked, preBound }
-            }
             case 'buildSave':
                 return build(a, how)
             case 'readSessionStarts':
@@ -418,8 +390,6 @@ const createWorld = async (setup: Setup = {}) => {
                     session: { chainId: 'chain-other', updatedAt: NOW },
                     chain: chains.get('chain-other') ?? {},
                 }
-            case 'unlinkChain':
-                return { ...chains.get(String(a.chainId)), docId: a.docId }
             case 'finishOwnSave':
                 return true
             case 'replaceDecision':
@@ -709,7 +679,6 @@ const createWorld = async (setup: Setup = {}) => {
                 options: { history: true, bgm: true },
             },
         })
-        ownSession.chain = chains.get(ownSession.chainId)
         handleRows.set(`${ownSession.chainId}:file`, handle(OWN))
         if (s.held) env.rememberHandle(ownSession.chainId, handle(OWN))
         readState.set(OWN, s.read)
@@ -720,7 +689,6 @@ const createWorld = async (setup: Setup = {}) => {
             docId: 'doc-own',
             head: ownSession.id,
         })
-        ownSession.chain = chains.get(ownSession.chainId)
     }
     ;(ownSession as { identity?: unknown }).identity = undefined
     if (s.other) {
@@ -754,7 +722,21 @@ const createWorld = async (setup: Setup = {}) => {
     }
     await put('unknown.nxsp', await nxsp('rev-unknown', 'a file nobody knows'))
     await put('fresh.nxsp', new Blob([])) // a new file the picker creates
-    if (s.opened) {
+    // Kept rows the door stores with `keepHandle` (D26): the file a partial open came from.
+    const kept: { chainId: string; name: string; handle: FileSystemFileHandle }[] = []
+    keptCopies.clear()
+    if (s.kept === 'afterReload') {
+        const openedBlob = levelData('opened level')
+        await put('opened.nsld', openedBlob)
+        kept.push({
+            chainId: ownSession.chainId,
+            name: 'opened.nsld',
+            handle: handle('opened.nsld'),
+        })
+        // A browser API: the OPFS folder the open copied its bytes into (src/local/open/kept.ts).
+        keptCopies.set(ownSession.chainId, openedBlob)
+    }
+    if (s.opened && !s.kept) {
         const openedBlob =
             s.opened === 'notProject' ? new Blob(['a chart file']) : levelData('opened level')
         await put('opened.nsld', openedBlob)
@@ -773,6 +755,8 @@ const createWorld = async (setup: Setup = {}) => {
 
     const world = {
         setup: s,
+        /** The door's page, flusher and core (set below). */
+        door: undefined as unknown as Awaited<ReturnType<typeof useRealDoor>>,
         tune,
         exportAnswers,
         exportUi,
@@ -816,7 +800,6 @@ const createWorld = async (setup: Setup = {}) => {
         fire,
         put,
         fileBytes,
-        owners,
         holds,
         lockHeld,
         /** The next picker returns this file, or is dismissed. */
@@ -923,10 +906,15 @@ const createWorld = async (setup: Setup = {}) => {
             void run.then(() => pendingImports.delete(ownSession.id))
             return { finish, run }
         },
+        /** The revocations storage could not take, kept in localStorage (R11). */
+        revocations: () => env.pendingRevocations(),
         /** The own binding's name as the record holds it, or undefined. */
         boundName: () => (chains.get(ownSession.chainId)?.file as Row | undefined)?.name,
         setup0: s,
     }
+    // The real storage handlers under the record and handle methods; the maps above are the view.
+    world.door = await useRealDoor(world, kept)
+    ownSession.chain = chains.get(ownSession.chainId)
     return world
 }
 
