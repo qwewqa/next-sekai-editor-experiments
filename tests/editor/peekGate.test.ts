@@ -237,6 +237,7 @@ const sources = readdirSync(new URL('src/', root), { recursive: true, encoding: 
 
 /** Every module that runs commands; each goes through runCommand (§1.4.11's entry points). */
 const entryPoints = [
+    'src/editor/LevelEditor.vue',
     'src/editor/LevelEditorContextMenu.vue',
     'src/editor/commands/events/index.ts',
     'src/editor/contextMenu.ts',

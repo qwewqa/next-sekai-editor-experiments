@@ -199,7 +199,7 @@ for (const [device, options] of Object.entries({
                 'Other group': 'full',
                 Third: 'hidden',
             })
-            // A phone shows the count only in the chip's name and its disclosure.
+            // A phone shows the count only in the chip's name.
             if (device === 'phone')
                 await expect(chip).toHaveAccessibleName('All Groups 2/3 Groups Shown')
             else await expect(chip).toContainText('2/3')

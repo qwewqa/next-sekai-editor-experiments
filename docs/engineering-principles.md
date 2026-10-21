@@ -83,3 +83,11 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 **Why.** Tests serve the product; a test of little value is upkeep without return. The owner, 2026-10-21: “A bad test is worse than no test”, and “what we really should balance is whether we write a test at all (this is the best time to consider whether it’s really worthwhile)”.
 
 **Example.** Reviews stopped running mutation campaigns over whole changes; one targeted mutation still checks a key safety test. The matrix's Export cells waited a fixed 20 ms for a read, which failed under load once the real storage handlers made the read slower; they now wait until the storage door has no call in flight.
+
+## 11. An element earns its place
+
+**Rule.** Lean towards not having UI of dubious usefulness. Every element is code to maintain, and it can cost users real estate, clicks or confusion. Weigh removing it as a real option, before adding it and when revisiting it.
+
+**Why.** The owner, 2026-10-21: “We should lean towards not having things of dubious usefulness. We should never forget that new features and elements are not free. They have a maintained cost. Depending on the nature of the element, it may negatively impact users in some ways. An element might have almost no use to users, but waste real estate. In the end, we’ve wasted effort, taken on more maintenance burden, and made our users worse off.”
+
+**Example.** The Groups and Stages managers had a collapsed “Current Group” / “Current Stage” row at the top of the list. It only revealed the current item’s path and its shown count, which the status bar’s scope label and the list’s current row already show; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the “Use only items you are allowed to use.” line the same day.

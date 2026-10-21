@@ -277,19 +277,11 @@ test('visibility masks keep the authoring target, history and the status bar tar
 }) => {
     const status = page.locator('[data-status-bar]')
     const expectCurrentScope = async (tab: 'groups' | 'stages', path: string, count: string) => {
-        await status
-            .getByTitle(tab === 'groups' ? 'Manage Groups' : 'Manage Stages', { exact: true })
-            .click()
-        const disclosure = page.locator(`#workspace-panel-${tab} [data-manager-current]`)
-        await expect(disclosure).toHaveAttribute('open', '')
-        const fullPath = disclosure.locator('[data-manager-current-path]')
-        await fullPath.scrollIntoViewIfNeeded()
-        await expect(fullPath).toBeInViewport({ ratio: 1 })
-        await expect(fullPath).toHaveText(path)
-        const fullCount = disclosure.locator('[data-manager-current-count]')
-        await fullCount.scrollIntoViewIfNeeded()
-        await expect(fullCount).toBeInViewport({ ratio: 1 })
-        await expect(fullCount).toHaveText(count)
+        await expect(
+            status.getByTitle(tab === 'groups' ? 'Manage Groups' : 'Manage Stages', {
+                exact: true,
+            }),
+        ).toHaveAccessibleName(`${path} ${count}`.trim())
     }
     await expect(status).toContainText('All Groups')
     await expect(status).not.toContainText('1/2')
@@ -338,7 +330,7 @@ test('visibility masks keep the authoring target, history and the status bar tar
         'full',
     )
     await expect(status.getByTitle(/Groups Shown/)).toHaveCount(0)
-    await expectCurrentScope('groups', 'All Groups', '2/2 Groups Shown')
+    await expectCurrentScope('groups', 'All Groups', '')
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(true)
 })
 

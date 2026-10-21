@@ -1914,8 +1914,6 @@
       "ungrouped": "{0} 폴더 해제됨"
     },
     "manager": {
-      "currentGroup": "현재 그룹",
-      "currentStage": "현재 스테이지",
       "show": "{0} 표시",
       "hide": "{0} 숨기기",
       "actions": "{0} 추가 작업",

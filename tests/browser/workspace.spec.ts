@@ -85,15 +85,6 @@ test('panel names hide visible panels and show hidden ones', async ({ page }) =>
     // A middle click closes a panel outright.
     await stages.click({ button: 'middle' })
     await expect(stages).toHaveAttribute('aria-expanded', 'false')
-
-    // The group chip opens and activates its panel, expanding a collapsed dock.
-    const chip = page.locator('.status-chip').first()
-    await chip.click()
-    await expect(groups).toHaveAttribute('aria-selected', 'true')
-    await groups.click()
-    await expect(groups).toHaveAttribute('aria-selected', 'false')
-    await chip.click()
-    await expect(groups).toHaveAttribute('aria-selected', 'true')
 })
 
 test('compact docks switch tabs without ever bringing back another panel', async ({ page }) => {

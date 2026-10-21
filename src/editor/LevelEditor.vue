@@ -10,6 +10,8 @@ import { settings } from '../settings'
 import { interpolateRaw } from '../utils/interpolate'
 import { vFocusRescue } from '../directives/focusRescue'
 import LevelEditorCanvas from './canvas/LevelEditorCanvas.vue'
+import { commands } from './commands'
+import { runCommand } from './commands/runCommand'
 import ManageGroupsIcon from './commands/manageGroups/ManageGroupsIcon.vue'
 import ManageStagesIcon from './commands/manageStages/ManageStagesIcon.vue'
 import ElevationEditor from './elevation/ElevationEditor.vue'
@@ -33,7 +35,6 @@ import { switchToolTo, tool, toolName, type ToolName } from './tools'
 import { brushProperties } from './tools/brush'
 import { view } from './view'
 import { workspaceLayout } from './workspace'
-import { showManager, type ManagerTab } from './workspace/manager/modal'
 import ResizeHandle from './workspace/ResizeHandle.vue'
 import { formatCount } from '../utils/size'
 
@@ -169,9 +170,9 @@ watch([stages, isDynamicStages, () => brushProperties.value.stageId], () => {
     brushProperties.value.stageId = undefined
 })
 
-// Chips show the panels; the manage commands open the dialog.
-const onStatusChip = (event: MouseEvent, tab: ManagerTab) => {
-    showManager(tab, { revealCurrent: true })
+// A scope label runs its manage command, as the toolbar tool and its hotkey do.
+const onStatusChip = (event: MouseEvent, item: 'group' | 'stage') => {
+    void runCommand(commands[item === 'group' ? 'manageGroups' : 'manageStages'])
     // Pointer clicks return keyboard shortcuts to the editor.
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }
@@ -336,7 +337,7 @@ const stageCount = computed(() =>
                             ? i18n.commands.manageGroups.title
                             : i18n.commands.manageStages.title
                     "
-                    @click="onStatusChip($event, item === 'group' ? 'groups' : 'stages')"
+                    @click="onStatusChip($event, item)"
                 />
                 <span
                     v-else-if="item === 'division' && !compactStatus"
