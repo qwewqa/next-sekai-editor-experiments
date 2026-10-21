@@ -432,6 +432,47 @@ export const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State): C
     )
 }
 
+/** The sessions other tabs hold (except `except`): what the binding checks scan. */
+export const sessionsHeldElsewhere = async (
+    deps: Pick<OpenDeps, 'client' | 'locks'>,
+    except?: string,
+): Promise<string[]> => {
+    const own = await deps.client.id()
+    const snapshot = await deps.locks.query()
+    return snapshot.held
+        .filter((lock) => lock.name.startsWith('nse-session:'))
+        .filter((lock) => own === undefined || lock.clientId !== own)
+        .map((lock) => lock.name.slice('nse-session:'.length))
+        .filter((id) => id !== except)
+}
+
+/**
+ * Whether one of these chains stores `handle`'s file as its handle (`isSameEntry`). A definite
+ * `yes` outranks an earlier `unknown` (a failed read or a handle this page can't hold).
+ */
+export const fileBoundIn = async (
+    worker: Pick<StorageWorker, 'call'>,
+    chainIds: readonly string[],
+    handle: FileSystemFileHandle,
+): Promise<BoundElsewhere> => {
+    let unknown = false
+    for (const chainId of chainIds) {
+        const stored = await storedRead(worker, 'readHandle', { chainId, role: 'file' })
+        if (stored.storedRead === 'failed') {
+            unknown = true
+            continue
+        }
+        if (stored.storedValue === undefined) continue
+        const other = resolveHandle(stored.storedValue)
+        if (!other) {
+            unknown = true
+            continue
+        }
+        if (await other.isSameEntry(handle)) return 'yes'
+    }
+    return unknown ? 'unknown' : 'no'
+}
+
 /**
  * Whether another tab's open session is bound to this chain's file (§1.3.2, `isSameEntry`). Stored
  * handles are read only when another tab holds a session bound to a file of the same name, so a
@@ -445,13 +486,7 @@ export const boundElsewhere = async (
     const name = (read.chain.file as { name?: unknown } | undefined)?.name
     if (typeof name !== 'string' || !hasWebLocks()) return 'no'
     try {
-        const own = await deps.client.id()
-        const snapshot = await deps.locks.query()
-        const others = snapshot.held
-            .filter((lock) => lock.name.startsWith('nse-session:'))
-            .filter((lock) => own === undefined || lock.clientId !== own)
-            .map((lock) => lock.name.slice('nse-session:'.length))
-            .filter((id) => id !== read.session.id)
+        const others = await sessionsHeldElsewhere(deps, String(read.session.id))
         if (!others.length) return 'no'
         const listed = await storedRead(deps.worker, 'readBindings', others)
         if (listed.storedRead === 'failed') return 'unknown'
@@ -467,22 +502,11 @@ export const boundElsewhere = async (
         if (ownRead.storedValue === undefined) return 'no'
         const handle = resolveHandle(ownRead.storedValue)
         if (!handle) return 'unknown'
-        let unknown = false
-        for (const { chainId } of bindings) {
-            const stored = await storedRead(deps.worker, 'readHandle', { chainId, role: 'file' })
-            if (stored.storedRead === 'failed') {
-                unknown = true
-                continue
-            }
-            if (stored.storedValue === undefined) continue
-            const other = resolveHandle(stored.storedValue)
-            if (!other) {
-                unknown = true
-                continue
-            }
-            if (await other.isSameEntry(handle)) return 'yes'
-        }
-        return unknown ? 'unknown' : 'no'
+        return await fileBoundIn(
+            deps.worker,
+            bindings.map(({ chainId }) => chainId),
+            handle,
+        )
     } catch {
         // A failed ownership check cannot authorize retaining a binding.
         return 'unknown'

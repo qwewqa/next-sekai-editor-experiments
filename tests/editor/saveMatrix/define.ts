@@ -26,7 +26,7 @@ export const defineMatrix = (pathIds: string[]) => {
             {
                 todo:
                     known.kind === 'bug'
-                        ? 'a bug today (work/arch/B0-report.md)'
+                        ? 'a bug today (work/arch/spec-B.md)'
                         : known.kind === 'accepted'
                           ? 'an accepted residual'
                           : 'by design today',

@@ -243,7 +243,7 @@ export class Run {
     // The ledgers: what the user did, apart from what the product says about it.
     /** For each hide that journalled: the state the journal must give back, by session and seq. */
     private readonly hid = new Map<string, { seq: number; root: string | undefined }[]>()
-    /** The seqs handed out to entries the page made, by session (design E's flusher model). */
+    /** The seqs handed out to entries the page made, by session (spec E's flusher model). */
     private readonly made = new Map<string, Map<number, string>>()
     /** Sessions whose stored rows are all in `made`: a row there the page never made is a fault. */
     private readonly madeFull = new Set<string>()
@@ -1483,7 +1483,7 @@ export class Run {
 
     /**
      * What the flusher believes strict is: every row it wrote above a resumed session's own
-     * `strictSeq` lies in a commit a strict commit has covered (design E's flusher model).
+     * `strictSeq` lies in a commit a strict commit has covered (spec E's flusher model).
      */
     private checkStrictClaim(after: string) {
         for (const visit of [this.visit, this.other]) {
@@ -1502,7 +1502,7 @@ export class Run {
     }
 
     /**
-     * Design E's flusher model: every entry the page made is stored once, at its own seq and kind,
+     * Spec E's flusher model: every entry the page made is stored once, at its own seq and kind,
      * once a strict flush has nothing left to send; and no entry row the page never made is there.
      */
     private checkMade(after: string) {

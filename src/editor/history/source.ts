@@ -153,7 +153,7 @@ export const listedEntries = computed((): Entry[] =>
 const isJumped = () => newer.value !== undefined
 
 /** Whether the loaded run reaches Now or is a window after a jump (spec-C invariant 11). */
-const runState = computed(() => (newer.value ? 'jumped' : 'joined'))
+const runState = computed(() => (isJumped() ? 'jumped' : 'joined'))
 
 /** After a jump, the entries between Now and the window; undefined while the run reaches Now. */
 export const gap = computed(() => {
