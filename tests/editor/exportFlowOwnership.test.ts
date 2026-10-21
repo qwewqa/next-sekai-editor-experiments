@@ -17,6 +17,7 @@ import {
 } from '../../src/editor/commands/exportLevel/memory'
 import { knownTargetAvailable } from '../../src/editor/commands/exportLevel/ownership'
 import { setPickLock, setTargetLock } from '../../src/editor/commands/exportLevel/pick'
+import { readValue } from '../../src/local/storedRead'
 import type { StorageWorker } from '../../src/local/worker/client'
 import { setPlatformForTests } from '../../src/platform'
 import { levelDataDiskState } from '../../src/platform/fingerprint'
@@ -110,7 +111,7 @@ test('ownership is read after the lock grants, so a queued revoked Export never 
     setExportPersister(async () => true)
     await rememberExport()
     let record: Record<string, unknown> = { exportTarget: { name: target.name, disk: target.disk } }
-    setExportTargetReader(async () => record)
+    setExportTargetReader(async () => readValue(record))
     const held = gate()
     const release = gate()
     const taking = mock.locks.request('nse-bind', { mode: 'exclusive' }, async () => {
@@ -157,7 +158,7 @@ test('failed rewrite metadata retains registered ownership and accepts its older
     setExportPersister(async () => true)
     await rememberExport()
     let record: Record<string, unknown> = { exportTarget: { name: target.name, disk: target.disk } }
-    setExportTargetReader(async () => record)
+    setExportTargetReader(async () => readValue(record))
     setExportPersister(async () => false)
     assert.equal(await exportToTarget(context(), target), 'done')
     const rewritten = exportMemory.target!
@@ -175,7 +176,7 @@ test('failed rewrite metadata retains registered ownership and accepts its older
 test('a never-stored target can write until another owner is positively known', async () => {
     const { mock, target } = await setup()
     setExportPersister(async () => false)
-    setExportTargetReader(async () => ({}))
+    setExportTargetReader(async () => readValue({}))
     setUnregisteredTargetCheck(async () => true)
     assert.equal(await exportToTarget(context(), target), 'done')
     const bytes = await mock.files.get('LevelData')!.arrayBuffer()
@@ -205,7 +206,7 @@ for (const failure of ['list', 'read', 'missing', 'compare'] as const) {
     test(`an unregistered target refuses a failed ${failure} ownership check without writing`, async () => {
         const { mock, target } = await setup()
         setExportPersister(async () => false)
-        setExportTargetReader(async () => ({}))
+        setExportTargetReader(async () => readValue({}))
         assert.equal(await exportToTarget(context(), target), 'done')
         const retryTarget = exportMemory.target!
         const bytes = await mock.files.get('LevelData')!.arrayBuffer()
@@ -256,7 +257,7 @@ for (const kind of ['empty', 'no-handle', 'different', 'own'] as const) {
             },
         } as unknown as Pick<StorageWorker, 'call'>
         setExportPersister(async () => false)
-        setExportTargetReader(async () => ({}))
+        setExportTargetReader(async () => readValue({}))
         setUnregisteredTargetCheck(({ handle }) => knownTargetAvailable(worker, 'own', handle))
         assert.equal(await exportToTarget(context(), target), 'done')
         assert.ok(mock.calls.some((call) => call.startsWith('write:')))

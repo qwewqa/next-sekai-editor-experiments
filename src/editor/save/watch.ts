@@ -1,5 +1,6 @@
 import { session as currentSession } from '../../history/session'
 import type { Flusher, FlushSession } from '../../local/flush'
+import { storedRead, type ReadWorker } from '../../local/storedRead'
 import type { StorageWorker } from '../../local/worker/client'
 import { unbindFile } from '../file'
 import { pendingRevocations, readRevocation, removeRevocation } from './env'
@@ -18,14 +19,14 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
  * the record says so or a revocation kept in localStorage does (R11). The chain then counts as
  * edited (R6), so closing the tab prompts.
  */
-export const refreshBinding = async (
-    worker: Pick<StorageWorker, 'call'>,
-    flusher: Flusher | undefined,
-) => {
+export const refreshBinding = async (worker: ReadWorker, flusher: Flusher | undefined) => {
     const session = flusher?.session
     if (!session?.stored) return
-    const record = await worker.call('readChainRecord', session.chainId).catch(() => undefined)
+    const read = await storedRead(worker, 'readChainRecord', session.chainId)
     if (flusher?.session !== session) return
+    // A failed read is no record: a revocation kept in localStorage still applies to a binding
+    // kept in memory (R11). Otherwise it is a hint only, and the press reads again (R10).
+    const record = read.storedRead === 'value' ? read.storedValue : undefined
     const replaced = revokedOf(record, session)
     if (!replaced) return
     // A binding kept in memory (storage paused) was made before the takeover: it goes too.

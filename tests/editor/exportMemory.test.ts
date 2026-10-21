@@ -8,7 +8,9 @@ import {
     restoreExportMemory,
     setExportHandleReader,
     setExportPersister,
+    setExportTargetReader,
 } from '../../src/editor/commands/exportLevel/memory'
+import { readValue } from '../../src/local/storedRead'
 
 // Export's memory as chain fields (Part 1 §1.4.8, §1.6.11.2): read back when a stored session
 // opens, and stored whenever it changes, never dropping a field this tab didn't change. The
@@ -24,6 +26,7 @@ afterEach(() => {
     clearExportMemory()
     setExportPersister(undefined)
     setExportHandleReader(undefined)
+    setExportTargetReader(undefined)
 })
 
 test('after a reload, an export by download keeps the stored target it has no handle for', () => {
@@ -46,7 +49,7 @@ test('the stored target’s handle is read when Export needs it, never when the 
     let reads = 0
     setExportHandleReader(() => {
         reads++
-        return Promise.resolve(handle)
+        return Promise.resolve(readValue(handle))
     })
     restoreExportMemory(stored)
     assert.equal(reads, 0)
@@ -63,7 +66,7 @@ test('the stored target’s handle is read when Export needs it, never when the 
 })
 
 test('without a stored handle, Export has no target and asks where', async () => {
-    setExportHandleReader(() => Promise.resolve(undefined))
+    setExportHandleReader(() => Promise.resolve(readValue(undefined)))
     restoreExportMemory(stored)
     assert.equal(await loadExportTarget(), undefined)
 })
@@ -81,4 +84,29 @@ test('the opened file’s target names the picker’s suggestion, and a new char
     assert.deepEqual(persisted, [
         { exportTarget: undefined, exportName: undefined, partialImport: undefined },
     ])
+})
+
+const failed = { storedRead: 'failed', storedError: new Error('stopped (export test)') } as const
+
+test('a failed read of the stored target’s handle is no target: the picker asks where', async () => {
+    setExportHandleReader(() => Promise.resolve(failed))
+    restoreExportMemory(stored)
+    assert.equal(await loadExportTarget(), undefined)
+})
+
+test('a failed read of the chain record never authorizes a registered target', async () => {
+    const handle = { kind: 'file', name: 'LevelData' } as unknown as FileSystemFileHandle
+    setExportHandleReader(() => Promise.resolve(readValue(handle)))
+    setExportTargetReader(() => Promise.resolve(failed))
+    restoreExportMemory(stored)
+    assert.equal(await loadExportTarget(), undefined)
+    assert.equal(exportMemory.target, undefined)
+    // The control: the record answers with the target it holds.
+    setExportTargetReader(() =>
+        Promise.resolve(
+            readValue({ exportTarget: { name: 'LevelData', disk: stored.exportTarget.disk } }),
+        ),
+    )
+    restoreExportMemory(stored)
+    assert.equal((await loadExportTarget())?.name, 'LevelData')
 })

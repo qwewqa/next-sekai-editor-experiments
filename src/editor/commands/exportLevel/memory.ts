@@ -1,5 +1,6 @@
 import { onResetState } from '../../../history/resetHooks'
 import { storableHandleNow } from '../../../local/handles'
+import type { StoredRead } from '../../../local/storedRead'
 import type { DiskState } from '../../../platform'
 
 // Export's remembered target and names (Part 1 §1.4.8): this tab's view of the chain's
@@ -107,9 +108,12 @@ export const setExportPersister = (fn: typeof persist) => {
     persist = fn
 }
 
-let readHandle: (() => Promise<FileSystemFileHandle | undefined>) | undefined
+let readHandle: (() => Promise<StoredRead<FileSystemFileHandle | undefined>>) | undefined
 
-/** How Export reads the stored target's handle: the open chain's, set once storing starts. */
+/**
+ * How Export reads the stored target's handle: the open chain's, set once storing starts. A failed
+ * read is no target (a picker asks), as when none is stored.
+ */
 export const setExportHandleReader = (fn: typeof readHandle) => {
     readHandle = fn
 }
@@ -139,7 +143,7 @@ export const rememberExport = async () => {
         registered.set(target, { name: target.name, fingerprint: target.disk.fingerprint })
 }
 
-let readTarget: (() => Promise<unknown>) | undefined
+let readTarget: (() => Promise<StoredRead<unknown> | undefined>) | undefined
 let unregisteredCheck: ((target: ExportTarget) => Promise<boolean>) | undefined
 
 export const setUnregisteredTargetCheck = (check: typeof unregisteredCheck) => {
@@ -154,7 +158,9 @@ export const setExportTargetReader = (read: typeof readTarget) => {
 export const ownsExportTarget = async (target: ExportTarget) => {
     if (exportMemory.target !== target) return false
     if (!readTarget) return true
-    const record = await readTarget().catch(() => undefined)
+    const read = await readTarget()
+    // A failed read is no record: it never authorizes a previously registered destination.
+    const record = read?.storedRead === 'value' ? read.storedValue : undefined
     if (isObject(record) && isObject(record.exportTarget)) {
         const current = record.exportTarget
         const expected = registered.get(target) ?? {
@@ -189,7 +195,9 @@ export const loadExportTarget = async (): Promise<ExportTarget | undefined> => {
         return (await ownsExportTarget(exportMemory.target)) ? exportMemory.target : undefined
     }
     if (!stored || !readHandle) return
-    const handle = await readHandle().catch(() => undefined)
+    const read = await readHandle()
+    // A failed read is no target, as when none is stored: the picker asks.
+    const handle = read.storedRead === 'value' ? read.storedValue : undefined
     // An Export or a new chart meanwhile has its own target.
     if (handle && !hasTarget() && storedTarget === stored) {
         exportMemory.target = {

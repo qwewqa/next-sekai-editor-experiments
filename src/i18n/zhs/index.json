@@ -956,6 +956,7 @@
         "autoSave": "旧的自动保存 · {0}",
         "unreadable": "无法读取的已恢复内容，{0} · {1}",
         "listFailed": "无法读取已恢复的内容",
+        "downloadFailed": "无法下载已恢复的内容。",
         "atLoad": "启动通知"
       },
       "openHistory": "打开历史记录",
@@ -2101,6 +2102,7 @@
     "restoredName": "{0}（{1} 还原）",
     "fileType": "Next SEKAI 项目文件",
     "unavailable": "未保存。请使用“导出关卡数据…”。",
+    "storageUnavailable": "未保存。编辑器无法访问此浏览器的存储。请重试。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "拥有该文件的人可以查看其中的历史记录。",
@@ -2144,6 +2146,8 @@
   "notice": {
     "useOpenFile": "要打开文件，请使用“打开”。",
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
+    "sameFileMaybeElsewhere": "“{0}”可能已在另一个标签页或窗口中打开，因此这是单独的副本。",
+    "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",
     "newLevel": "新关卡",
     "reopen": "重新打开“{0}”",
@@ -2213,6 +2217,7 @@
     },
     "unsavedChanges": "已打开 {0}。你在 {1} 对它有未保存的更改。",
     "unsavedEarlier": "对 {0} 早期版本的未保存更改（{1}）在“最近会话”中。",
+    "earlierUnchecked": "已打开 {0}。无法检查“最近会话”中是否有它的其他版本。",
     "unsavedEarlierMaybe": "对 {0} 早期版本的未保存更改（{1}）可能在“最近会话”中。",
     "unsavedChangesMaybe": "已打开 {0}。你在 {1} 对它可能有未保存的更改。",
     "olderVersion": "这是 {0} 的旧版本。{1} 的较新版本在“最近会话”中。",

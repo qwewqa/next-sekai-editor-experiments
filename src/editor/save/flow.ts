@@ -21,6 +21,7 @@ import type { BuiltSave } from '../../local/save/execute'
 import { bindingHasHistory } from '../../local/save/model'
 import { storageWorker } from '../../local/start'
 import { storageStatus } from '../../local/startup/events'
+import { mapRead, readValue, type StoredRead } from '../../local/storedRead'
 import { journalWriter, flusher as storingFlusher } from '../../local/storing'
 import {
     appVersion,
@@ -188,12 +189,19 @@ const readBinding = async (env: Env): Promise<Binding> => {
     return bindingOf(record, env.session)
 }
 
-/** The handle of the chain's binding: this tab's, else the stored one, read when needed (D24). */
-const bindingHandle = async (env: Env, file: StoredFile) => {
+/**
+ * The handle of the chain's binding: this tab's, else the stored one, read when needed (D24).
+ * `undefined` is an answer (none stored, or another file's); a failed read is `failed`.
+ */
+const bindingHandle = async (
+    env: Env,
+    file: StoredFile,
+): Promise<StoredRead<FileSystemFileHandle | undefined>> => {
     const held = heldHandle(env.chainId, file.name)
-    if (held) return held
-    const stored = await handleOf(env.worker, env.chainId, 'file')
-    return stored?.name === file.name ? stored : undefined
+    if (held) return readValue(held)
+    return mapRead(await handleOf(env.worker, env.chainId, 'file'), (stored) =>
+        stored?.name === file.name ? stored : undefined,
+    )
 }
 
 /** A continuation not stored yet commits its first row before its first file write (§1.3.1). */
@@ -628,7 +636,17 @@ const preRead = async (
 ): Promise<PreRead | undefined> => {
     const file = binding.file
     if (!file || binding.replaced) return
-    const handle = await bindingHandle(env, file)
+    const read = await bindingHandle(env, file)
+    let handle: FileSystemFileHandle | undefined
+    switch (read.storedRead) {
+        case 'value':
+            handle = read.storedValue
+            break
+        case 'failed':
+            // Today's behaviour: nothing is read. B-lite maps this to `ReadResult.failed`, never
+            // to `noAccess`.
+            return
+    }
     if (!handle) return
     const needs = damaged
         ? undefined
@@ -737,7 +755,10 @@ const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked>
     }
     for (const owner of owners) {
         if (!owner.handle) continue
-        const stored = await handleOf(env.worker, owner.chainId, owner.role)
+        const read = await handleOf(env.worker, owner.chainId, owner.role)
+        // A failed read of one owner's handle leaves the pick to the other facts, else `unknown`
+        // (R11), as today.
+        const stored = read.storedRead === 'value' ? read.storedValue : undefined
         if (!stored || !(await same(handle, stored))) continue
         if (owner.role === 'exportTarget') return { kind: 'target', owner }
         // A partial open's file, in this tab after a reload or in another tab (R7, D26).
@@ -2350,7 +2371,14 @@ const saveNow = async (env: Env) => {
         await dialogSave(env, 'save')
         return
     }
-    const handle = platform.pickSaveFile ? await bindingHandle(env, file) : undefined
+    const read = platform.pickSaveFile ? await bindingHandle(env, file) : readValue(undefined)
+    if (read.storedRead === 'failed') {
+        // Not saved, bound or forgotten: a handle that could not be read is not a missing one, so
+        // the file stays bound as it is and the next press reads again (V-P5).
+        saveUi.error(() => i18n.value.save.storageUnavailable)
+        return
+    }
+    const handle = read.storedValue
     if (!handle) {
         // By name: the first Save after an open shows the dialog; an unchanged download asks.
         if (file.event === 'opened') {
@@ -2898,7 +2926,9 @@ export const prefetchHandle = async () => {
     const env = environment()
     const file = env && quickBinding(env).file
     if (!env || !file || !platform.pickSaveFile || heldHandle(env.chainId, file.name)) return
-    const handle = await bindingHandle(env, file)
+    const read = await bindingHandle(env, file)
+    // A failed read remembers nothing: a hint only, and the Save reads again.
+    const handle = read.storedRead === 'value' ? read.storedValue : undefined
     if (handle && quickBinding(env).file?.name === handle.name) rememberHandle(env.chainId, handle)
 }
 
@@ -2909,8 +2939,14 @@ export const openOtherVersion = (supplied?: SwitchRequest) =>
             const env = environment()
             const file = env && quickBinding(env).file
             if (!env || !file || !request.isCurrent()) return
-            const handle = await bindingHandle(env, file)
-            if (request.isCurrent()) await openOther(handle, file.name, request)
+            const read = await bindingHandle(env, file)
+            if (!request.isCurrent()) return
+            if (read.storedRead === 'failed') {
+                // The handle could not be read, which is not the file being unreadable.
+                saveUi.error(() => i18n.value.notice.storageUnavailable)
+                return
+            }
+            await openOther(read.storedValue, file.name, request)
         } catch (error) {
             if (request.isCurrent()) throw error
         }

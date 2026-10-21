@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { handleReadsForTests, readHandleRow, type HandleRole } from '../../src/local/handleRows'
-import { resolveHandle } from '../../src/local/handles'
+import { handleOf, resolveHandle } from '../../src/local/handles'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import type { OpenStoreRequest } from '../../src/local/open/importWrite'
 import { checkStored } from '../../src/local/testing/invariants'
@@ -218,6 +218,36 @@ test('startup and recovery read no stored handle; a Save’s write-back after th
     assert.deepEqual(await read('exportTarget'), { testHandle: 'LevelData' })
     assert.equal(handleReadsForTests(), before + 2)
     assert.deepEqual(checkStored(world.memory), [])
+})
+
+test('a failed handle read and an absent handle are different answers', async () => {
+    const failing = {
+        call: () =>
+            Promise.reject(
+                Object.assign(new Error('restarted (handles test)'), {
+                    name: 'WorkerRestartedError',
+                }),
+            ),
+    }
+    const absent = { call: () => Promise.resolve(undefined) }
+    const held = { kind: 'file', name: 'a.nxsp', getFile: () => undefined }
+    const stored = { call: () => Promise.resolve(held) }
+    const failed = await handleOf(failing, 'c1', 'file')
+    assert.equal(failed.storedRead, 'failed')
+    assert.deepEqual(await handleOf(absent, 'c1', 'file'), {
+        storedRead: 'value',
+        storedValue: undefined,
+    })
+    assert.deepEqual(await handleOf(stored, 'c1', 'file'), {
+        storedRead: 'value',
+        storedValue: held,
+    })
+    // A stored value this page cannot hold is an answer too: none.
+    const token = { call: () => Promise.resolve({ testHandle: 'a.nxsp' }) }
+    assert.deepEqual(await handleOf(token, 'c1', 'file'), {
+        storedRead: 'value',
+        storedValue: undefined,
+    })
 })
 
 test('a stored token or handle resolves to a handle; anything else to none', () => {
