@@ -15,6 +15,7 @@ import {
     initialStep,
     nativeOperation,
 } from '../../helpers/historySteps'
+import '../../helpers/lockChecks'
 import { append, beginSession, openJournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'

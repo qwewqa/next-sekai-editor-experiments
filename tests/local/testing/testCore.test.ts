@@ -263,24 +263,26 @@ const writeSplit = async (tab: Tab, db: KvDatabase) => {
 test('the crash-at-every-await sweep passes an atomic writer and catches a split one', async () => {
     const seeds = [undefined, ...CI_SEEDS.slice(0, 3)]
     const atomic = await crashSweep({
+        checks: false,
         seeds,
         scenario: async ({ victim }) => {
             await writeAtomic(victim, await openLocalData(victim))
         },
         check: ({ world }) => {
-            assert.deepEqual(checkStored(world.memory), [])
+            assert.deepEqual(checkStored(world.memory, { replay: false }), [])
         },
     })
     assert.ok(atomic.every((run) => run.points > 4))
 
     const found: number[] = []
     await crashSweep({
+        checks: false,
         seeds: [undefined],
         scenario: async ({ victim }) => {
             await writeSplit(victim, await openLocalData(victim))
         },
         check: ({ world, killedAt }) => {
-            if (checkStored(world.memory).length) found.push(killedAt!)
+            if (checkStored(world.memory, { replay: false }).length) found.push(killedAt!)
         },
     })
     assert.ok(found.length > 0, 'a kill between the two transactions leaves a dangling entry')

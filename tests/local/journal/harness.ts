@@ -112,13 +112,15 @@ export const openJournalPage = async (
 /** A split page (its worker on an actor of its own, with restarts) with a journal writer. */
 export const openSplitJournalPage = async (
     world: World,
-    setup: WorkerSetup & { name?: string } = {},
+    setup: WorkerSetup & { name?: string; flush?: Partial<FlushDeps> } = {},
     storage = new MemoryStorage(),
+    writer: Partial<JournalWriterDeps> = {},
 ): Promise<SplitJournalPage> => {
     const ref: { host?: WorkerHost; writer?: JournalWriter; sync?: { fails: number } } = {}
     const page = await openSplitPage(world, {
         ...setup,
         flush: {
+            ...setup.flush,
             onCommitted: (session, { seq, strict }) =>
                 ref.writer?.committed(session.id, seq, strict),
             onFork: (fork, from) => ref.writer?.forked(from, fork),
@@ -139,6 +141,7 @@ export const openSplitJournalPage = async (
         storage,
         () => page.flusher,
         () => page.host.core.status.reason === 'full',
+        writer,
     )
     ref.writer = parts.writer
     ref.sync = parts.sync
