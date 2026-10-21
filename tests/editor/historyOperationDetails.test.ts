@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import test from 'node:test'
-import { hostZone } from '../../src/calendar/calendar'
+import { resolveZone } from '../../src/calendar/calendar'
 import {
     captureOperationRecipe,
     describeMember,
@@ -36,7 +36,8 @@ const context = (locale = 'en'): OperationTextContext => {
                 ),
             ),
             now: Date.UTC(2026, 9, 19, 12, 0, 0),
-            zone: hostZone(),
+            // A fixed zone, so the snapshot is the same on every machine and in CI.
+            zone: resolveZone('UTC'),
         }
         contexts.set(locale, ctx)
     }

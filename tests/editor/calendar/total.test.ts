@@ -215,8 +215,9 @@ test('outside History a time before 1970 still reads as itself, as it did', () =
     const before = process.env.TZ
     try {
         process.env.TZ = 'America/New_York'
-        // 1968-11-26 in New York.
-        const old = -34_560_000_000
+        // Noon UTC on 1968-11-26: that date in every zone from UTC-11 to UTC+11, so the check holds
+        // whichever zone a formatter created earlier in this process captured (CI runs in UTC).
+        const old = Date.UTC(1968, 10, 26, 12)
         const now = Date.UTC(2026, 0, 1)
         assert.equal(dateTime.formatDate('en', old, now), 'Nov 26, 1968')
         assert.match(dateTime.formatDateTime('en', old, now), /^Nov 26, 1968/)
