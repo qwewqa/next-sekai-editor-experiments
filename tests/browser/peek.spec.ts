@@ -3,7 +3,7 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // Peek (Part 1 §1.4.11) and its gating: an entry's state shown read-only while writers keep the
 // live state, commands and tools refused with the notice, Undo leaving first, drags and scaling
-// sessions cancelled, the disabled panels, the Elevation Editor closed or behind its overlay,
+// sessions cancelled, the read-only panels, the Elevation Editor closed or behind its overlay,
 // Restore, and Copy while peeking then pasting after leaving. History's own panel is 5-panel's;
 // these drive peek through its module, as the panel does.
 
@@ -16,28 +16,36 @@ test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    const startup = await page.evaluate(async () => {
+    const startup = await sessionId(page)
+    await page.evaluate(installEditorFixture)
+    await storesNewSession(page, startup)
+})
+
+const sessionId = (page: Page) =>
+    page.evaluate(async () => {
         const { flusher } = await import('/src/local/storing.ts')
         return flusher?.session?.id
     })
-    await page.evaluate(installEditorFixture)
-    // Storing follows the fixture's chart: its session is the one peeked. The fixture starts a
-    // new session with the chart as its first entry. Entries are pending only until the next
-    // flush (about a second), which a loaded machine can pass before this first looks, so wait
-    // for the entry itself, not for it to be unsent.
-    await expect
+
+/**
+ * Storing follows the shown chart: its session is the one peeked. A new chart starts a new session
+ * with the chart as its first entry. Entries are pending only until the next flush (about a
+ * second), which a loaded machine can pass before this first looks, so wait for the entry itself,
+ * not for it to be unsent.
+ */
+const storesNewSession = (page: Page, previous: string | undefined) =>
+    expect
         .poll(() =>
-            page.evaluate(async (startup) => {
+            page.evaluate(async (previous) => {
                 const { flusher } =
                     await window.editorTest.appImport<typeof import('../../src/local/storing')>(
                         '/src/local/storing.ts',
                     )
                 const session = flusher?.session
-                return !!session && session.id !== startup && flusher.newestSeq(session) > 0
-            }, startup),
+                return !!session && session.id !== previous && flusher.newestSeq(session) > 0
+            }, previous),
         )
         .toBe(true)
-})
 
 test.afterEach(({ page }) => {
     // A missed edit path throws in development (pushState while viewing history).
@@ -109,6 +117,18 @@ const notePoint = (page: Page, beat: number) =>
             .find((note) => note.beat === beat)!
         return point(note.left + note.size / 2, note.beat)
     }, beat)
+
+/** Writes what is pending, so the open session counts as stored. */
+const flushStorage = (page: Page) =>
+    page.evaluate(async () => {
+        const { flusher } =
+            await window.editorTest.appImport<typeof import('../../src/local/storing')>(
+                '/src/local/storing.ts',
+            )
+        await flusher!.flush()
+        await flusher!.flush()
+        if (flusher!.hasPending) throw new Error('Still pending')
+    })
 
 const notice = (page: Page) => page.locator('.notification')
 
@@ -191,21 +211,78 @@ test('Undo leaves the peek first, then undoes', async ({ page }) => {
     expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [3, 5, 7, 9], peeking: false })
 })
 
+/** Swaps the file picker for one that answers in turn: a file, or null for a cancel. */
+const stubPicker = (page: Page, answers: ({ name: string; text: string } | null)[]) =>
+    page.evaluate(async (answers) => {
+        const { setPlatformForTests, platform } =
+            (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
+        const queue = [...answers]
+        const stub = window as unknown as { pickerCalls: number }
+        stub.pickerCalls = 0
+        setPlatformForTests({
+            ...platform,
+            pickFiles: () => {
+                stub.pickerCalls++
+                const next = queue.shift()
+                return Promise.resolve(
+                    next ? [{ file: new File([next.text], next.name), handle: undefined }] : [],
+                )
+            },
+        })
+    }, answers)
+
+const pickerCalls = (page: Page) =>
+    page.evaluate(() => (window as unknown as { pickerCalls: number }).pickerCalls)
+
+test('Open keeps the peek when the picker is cancelled, and leaves it once a file opens', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    const usc = JSON.stringify({
+        version: 2,
+        usc: {
+            offset: 0,
+            objects: [
+                { type: 'bpm', beat: 0, bpm: 120 },
+                { type: 'timeScaleGroup', changes: [{ beat: 0, timeScale: 1 }] },
+            ],
+        },
+    })
+    await stubPicker(page, [null, { name: 'opened.usc', text: usc }])
+    await peek(page, first)
+    // Stored, so that leaving asks nothing.
+    await flushStorage(page)
+
+    // Cancelled: nothing was opened, so the peek stays.
+    await page.keyboard.press('o')
+    await expect.poll(() => pickerCalls(page)).toBe(1)
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+
+    // A chosen file replaces the chart, which ends the peek; the live chart was never edited.
+    await page.keyboard.press('o')
+    await expect.poll(async () => (await beats(page)).peeking).toBe(false)
+    expect((await beats(page)).live).toEqual([])
+})
+
+test('Undo and Redo with nothing to cross keep the peek', async ({ page }) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    await peek(page, first)
+    // At the newest step: nothing to redo.
+    await page.keyboard.press('y')
+    await expect(page.getByText('Nothing to redo').first()).toBeVisible()
+    expect((await beats(page)).peeking).toBe(true)
+    await leave(page)
+})
+
 test('an entry no longer in memory is read from storage, verified', async ({ page }) => {
     await deleteAt(page, 3)
     const dropped = await newestSeq(page)
     await page.keyboard.press('z')
     // A new edit drops the first from redo: its state is held only in storage now.
     await deleteAt(page, 9)
-    await page.evaluate(async () => {
-        const { flusher } =
-            await window.editorTest.appImport<typeof import('../../src/local/storing')>(
-                '/src/local/storing.ts',
-            )
-        await flusher!.flush()
-        await flusher!.flush()
-        if (flusher!.hasPending) throw new Error('Still pending')
-    })
+    await flushStorage(page)
     await peek(page, dropped)
     expect(await beats(page)).toEqual({ shown: [5, 7, 9], live: [3, 5, 7], peeking: true })
     await leave(page)

@@ -96,7 +96,7 @@ const allowed = [
     'editsHere',
 ]
 
-/** Leave the peek first, then run: `leavesPeek`. */
+/** Run while peeking and end the peek themselves once they proceed: `leavesPeek`. */
 const leaving = ['open', 'reset', 'undo', 'redo']
 
 /** Refused while peeking: offset, elevation as a tool and every chart edit. */
@@ -262,9 +262,22 @@ test('every command entry point runs commands through runCommand', () => {
     )
     // The one place commands execute, and its gate.
     const gate = read('src/editor/commands/runCommand.ts')
-    assert.match(gate, /if \(isPeeking\.value\) \{/)
-    assert.match(gate, /if \(command\.leavesPeek\) leavePeek\(\)/)
-    assert.match(gate, /else if \(!command\.readOnly\) \{\s*refuseWhilePeeking/)
+    assert.match(
+        gate,
+        /if \(isPeeking\.value && !command\.leavesPeek && !command\.readOnly\) \{\s*refuseWhilePeeking/,
+    )
+    assert.doesNotMatch(gate, /leavePeek/)
+})
+
+test('Undo and Redo leave the peek only when there is a step to cross', () => {
+    for (const name of ['undo', 'redo']) {
+        const can = name === 'undo' ? 'canUndo' : 'canRedo'
+        const execute = read(`src/editor/commands/${name}/index.ts`)
+        assert.match(
+            execute,
+            new RegExp(`if \\(${can}\\.value\\) leavePeek\\(\\)\\s*const step = ${name}State\\(`),
+        )
+    }
 })
 
 /** Command folders holding more than one command, or named otherwise. */

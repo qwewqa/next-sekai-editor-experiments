@@ -717,7 +717,7 @@ const command = (flags: Partial<Command> = {}) => {
     return { value, runs }
 }
 
-test('runCommand refuses edits while peeking and says why; Open, New, Undo and Redo leave first', async () => {
+test('runCommand refuses edits while peeking and says why; Open, New, Undo and Redo run and leave themselves', async () => {
     source({ [key(1)]: { state: fake('old'), time: 1 } })
     const refusals: string[] = []
     const stop = onPeekRefused((refusal) => refusals.push(refusal.title?.() ?? ''))
@@ -730,9 +730,11 @@ test('runCommand refuses edits while peeking and says why; Open, New, Undo and R
     assert.deepEqual(edit.runs, [])
     assert.deepEqual(view.runs, [true])
     assert.deepEqual(refusals, ['Test'])
+    // It runs with the peek in place: a cancelled picker or nothing to undo keeps the peek.
     void runCommand(leave.value)
-    assert.deepEqual(leave.runs, [false])
-    assert.equal(isPeeking.value, false)
+    assert.deepEqual(leave.runs, [true])
+    assert.equal(isPeeking.value, true)
+    leavePeek()
     void runCommand(edit.value)
     assert.deepEqual(edit.runs, [false])
     stop()

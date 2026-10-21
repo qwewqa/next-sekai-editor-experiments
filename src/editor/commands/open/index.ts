@@ -12,6 +12,7 @@ import { recordError } from '../../../diagnostics'
 import { detectHead, detectZip } from '../../../files/detect'
 import { resetImportedState } from '../../../history'
 import { captureName } from '../../../history/operations'
+import { leavePeek } from '../../../history/peek'
 import { createSessionDescriptor } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { parseLevelData } from '../../../levelData/parse'
@@ -65,6 +66,8 @@ export const open: Command = {
             const detected = await detectHead(file).catch(() => 'data' as const)
             if (!request.isCurrent()) return
             if (detected === 'audio') {
+                // Audio replaces the chart's BGM: an edit, so the peek ends first.
+                leavePeek()
                 void changeBgm(file)
                 return
             }
