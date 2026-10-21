@@ -24,9 +24,9 @@ export const refreshBinding = async (worker: ReadWorker, flusher: Flusher | unde
     if (!session?.stored) return
     const read = await storedRead(worker, 'readChainRecord', session.chainId)
     if (flusher?.session !== session) return
-    // A failed read changes nothing: a hint only, and the press reads the record again (R10).
-    if (read.storedRead === 'failed') return
-    const record = read.storedValue
+    // A failed read is no record: a revocation kept in localStorage still applies to a binding
+    // kept in memory (R11). Otherwise it is a hint only, and the press reads again (R10).
+    const record = read.storedRead === 'value' ? read.storedValue : undefined
     const replaced = revokedOf(record, session)
     if (!replaced) return
     // A binding kept in memory (storage paused) was made before the takeover: it goes too.

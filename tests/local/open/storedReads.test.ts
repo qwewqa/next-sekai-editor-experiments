@@ -137,19 +137,21 @@ test('boundInAnotherTab: a failed read, a handle this page cannot hold or a thro
     assert.equal(await boundInAnotherTab(file as never), 'unknown')
 })
 
-test('boundInAnotherTab: a definite "yes" outranks an earlier unknown', async () => {
-    install(
-        {
-            readBindings: () => [
-                { chainId: 'a', file: { name: 'a.nxsp' } },
-                { chainId: 'b', file: { name: 'a.nxsp' } },
-            ],
-            readHandle: (arg) => {
-                if ((arg as { chainId: string }).chainId === 'a') throw failure()
-                return file
+for (const [name, first] of [
+    ['a failed read', () => Promise.reject(failure())],
+    ['a handle this page cannot hold', () => Promise.resolve({ testHandle: 'a.nxsp' })],
+] as const)
+    test(`boundInAnotherTab: a definite "yes" outranks an earlier unknown (${name})`, async () => {
+        install(
+            {
+                readBindings: () => [
+                    { chainId: 'a', file: { name: 'a.nxsp' } },
+                    { chainId: 'b', file: { name: 'a.nxsp' } },
+                ],
+                readHandle: (arg) =>
+                    (arg as { chainId: string }).chainId === 'a' ? first() : file,
             },
-        },
-        ['sa', 'sb'],
-    )
-    assert.equal(await boundInAnotherTab(file as never), 'yes')
-})
+            ['sa', 'sb'],
+        )
+        assert.equal(await boundInAnotherTab(file as never), 'yes')
+    })

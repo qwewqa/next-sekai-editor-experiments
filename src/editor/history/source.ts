@@ -592,6 +592,14 @@ const scanHere = async () => {
     here.scanning = true
     const start = startOf(session.value.sessionId)
     let cursor: FindEditsCursor | undefined
+    // What was found stays, marked as partial; Try Again, or choosing Edits Here again, scans
+    // afresh.
+    const scanFailed = () => {
+        if (mark === hereToken) {
+            hereFor = undefined
+            here.failed = true
+        }
+    }
     try {
         do {
             const read = await storedRead(worker, 'findEdits', {
@@ -601,10 +609,7 @@ const scanHere = async () => {
             })
             if (mark !== hereToken) return
             if (read.storedRead === 'failed') {
-                // What was found stays, marked as partial; Try Again, or choosing Edits Here
-                // again, scans afresh.
-                hereFor = undefined
-                here.failed = true
+                scanFailed()
                 return
             }
             const page = read.storedValue
@@ -620,12 +625,8 @@ const scanHere = async () => {
         here.scanning = false
         void checkNewer()
     } catch {
-        // What was found stays, marked as partial; Try Again, or choosing Edits Here again, scans
-        // afresh.
-        if (mark === hereToken) {
-            hereFor = undefined
-            here.failed = true
-        }
+        // An error other than the read's own.
+        scanFailed()
     } finally {
         if (mark === hereToken) here.scanning = false
     }

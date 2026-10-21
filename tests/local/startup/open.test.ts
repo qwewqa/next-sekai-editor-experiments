@@ -573,6 +573,8 @@ test('a new visit whose most recent session’s file is bound in another tab’s
     let failComparison = false
     let missingHandle = false
     let handleReads = 0
+    let ghost: 'none' | 'unreadable' | 'unresolvable' | 'ownUnresolvable' = 'none'
+    let ghostReads = 0
     const file = {
         isSameEntry: (other: unknown) =>
             failComparison
@@ -582,8 +584,21 @@ test('a new visit whose most recent session’s file is bound in another tab’s
     const visit = await load(world, 'visit', storage, {
         call: (method, result) => {
             if (method === 'readBindings' && failBindings) throw new Error('bindings unavailable')
+            // A binding listed before the real one, whose handle is read second (the own first).
+            if (method === 'readBindings' && ghost !== 'none')
+                return [
+                    { chainId: 'ghost', file: { name: 'coconut.nxsp' } },
+                    ...(result as object[]),
+                ]
             if (method !== 'readHandle') return result
             handleReads++
+            if (ghost !== 'none') {
+                ghostReads++
+                if (ghost === 'ownUnresolvable' && ghostReads === 1) return {}
+                if (ghostReads === 2 && ghost === 'unreadable')
+                    throw new Error('handle unavailable')
+                if (ghostReads === 2 && ghost === 'unresolvable') return {}
+            }
             return missingHandle ? undefined : result ? file : result
         },
     })
@@ -617,6 +632,19 @@ test('a new visit whose most recent session’s file is bound in another tab’s
         ),
         'no',
     )
+    // A definite match later outranks a binding that could not be told; without one, unknown.
+    failBindings = false
+    missingHandle = false
+    const answer = () => visit.page.tab.run(() => boundElsewhere(visit.deps, target))
+    for (const unclear of ['unreadable', 'unresolvable'] as const) {
+        ghost = unclear
+        ghostReads = 0
+        assert.equal(await answer(), 'yes', `a later match after an ${unclear} handle`)
+    }
+    // The own handle, which this page cannot hold, is unknown whatever the others say.
+    ghost = 'ownUnresolvable'
+    ghostReads = 0
+    assert.equal(await answer(), 'unknown')
     lock.release()
 })
 

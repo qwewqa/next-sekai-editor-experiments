@@ -1014,3 +1014,26 @@ test('Local Data’s Download of a recovered row gone since it was listed reads 
     await row.getByRole('button', { name: 'Download' }).click()
     await expect(row).toHaveCount(0)
 })
+
+test('a load whose binding check could not be answered says the file "may" be open elsewhere', async ({
+    page,
+    context,
+}) => {
+    await seed(context)
+    await visit(page)
+    await page.evaluate(async () => {
+        const { addLoadEvent } =
+            (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
+        addLoadEvent({
+            kind: 'separateCopy',
+            of: { name: 'coconut.nxsp', bound: true },
+            maybe: true,
+        })
+    })
+    await expect(
+        page.locator('.notification, .notification-pill').filter({
+            hasText:
+                '"coconut.nxsp" may be open in another tab or window, so this is a separate copy.',
+        }),
+    ).toBeVisible()
+})

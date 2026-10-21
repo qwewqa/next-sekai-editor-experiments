@@ -554,8 +554,7 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
         return false
     }
     const bound = await boundElsewhere(deps, read)
-    if (bound !== 'no')
-        return forked(deps, read, headId, undefined, undefined, undefined, bound === 'unknown')
+    if (bound !== 'no') return forked(deps, read, headId, { maybe: bound === 'unknown' })
     const parentLock = await holdShared(deps.locks, headId)
     if (!parentLock) {
         const state = await headState(deps.worker, read.head)
@@ -578,11 +577,18 @@ const forked = async (
     deps: OpenDeps,
     read: SessionRead & { kind: 'open' },
     parentId: string,
-    held?: HeldLock,
-    copyOf = copyOfOf(read),
-    recovered?: { found: JournalFound; state: State },
-    /** The fork is for a binding check that couldn't tell (`unknown`): the notice says "may". */
-    maybe?: boolean,
+    {
+        held,
+        copyOf = copyOfOf(read),
+        recovered,
+        maybe,
+    }: {
+        held?: HeldLock
+        copyOf?: CopyOf
+        recovered?: { found: JournalFound; state: State }
+        /** The fork is for a binding check that couldn't tell (`unknown`): the notice says "may". */
+        maybe?: boolean
+    } = {},
 ): Promise<boolean> => {
     const parentLock = held ?? (await holdShared(deps.locks, parentId))
     const state = await openStored(
@@ -709,7 +715,7 @@ const reloadOwn = async (
     }
     // Continued in another tab during the gap: a fork (§1.4.2).
     if (read.kind === 'open')
-        return said(forked(deps, read, record.sessionId, passClaim(), undefined, recovered))
+        return said(forked(deps, read, record.sessionId, { held: passClaim(), recovered }))
     releaseClaim()
     if (read.kind === 'deleted') {
         deps.events({ kind: 'deletedElsewhere' })
@@ -728,7 +734,13 @@ const reloadOwn = async (
         const parentLock = await holdShared(deps.locks, record.parent)
         if (parentLock && parent.isHead && !record.copyOf)
             return said(openStored(deps, parent, { mode: 'continue', parentLock }, taking))
-        return said(forked(deps, parent, record.parent, parentLock, record.copyOf, recovered))
+        return said(
+            forked(deps, parent, record.parent, {
+                held: parentLock,
+                copyOf: record.copyOf,
+                recovered,
+            }),
+        )
     }
     if (recovered && journalled) {
         const flusher = deps.flusher()
@@ -819,7 +831,7 @@ const openSessionAtStart = async (
             const parentLock = await holdShared(deps.locks, deps.ownRecovery)
             if (parentLock && recovered.isHead)
                 return !!(await openStored(deps, recovered, { mode: 'continue', parentLock }))
-            return forked(deps, recovered, deps.ownRecovery, parentLock)
+            return forked(deps, recovered, deps.ownRecovery, { held: parentLock })
         }
         const read = await deps.worker.call('readSession', record.sessionId)
         const result = await reloadOwn(deps, claim, read, releaseClaim, () => {
