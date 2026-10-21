@@ -2,7 +2,8 @@ import { bytesOf, sameBytes, startsWith, type World } from './world'
 
 // The six invariants of work/soundness/architecture-review.md §B.6 (I1 to I6), as checks over what
 // a world recorded, plus three the task adds: the marker only for a write that may have landed
-// (I7), cancel at any await (I8: nothing written, nothing held), and one binding per file (I9).
+// (I7), cancel at any await (I8: nothing written, nothing held), one binding per file (I9), and a
+// cancel after the pick that stops nothing (I10).
 
 export type Violation = { invariant: string; detail: string }
 
@@ -27,6 +28,8 @@ export type Facts = {
     cancelled?: boolean
     /** A pick of this world's own import-gated state: no picker may open while it runs (I5). */
     expectNoPicker?: boolean
+    /** The dialog was cancelled once the picker had returned a file: the write must still land (I10). */
+    written?: boolean
 }
 
 const offered = async (world: World, bytes: Uint8Array) => {
@@ -105,6 +108,15 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
         if (world.mock.downloads.length) add('I8', 'a cancelled Save downloaded')
     }
     if (facts.expectNoPicker && world.openings.length) add('I5', 'a picker opened that must not')
+
+    // I10: once the picker returned a file, no Cancel stops the write (spec B rule 6).
+    // The pick's own write lands (a put-back is a write too, so a failure shown means it did not).
+    if (
+        facts.written &&
+        (!world.writes.some((write) => write.picked) ||
+            world.dialogs.some((dialog) => ['failed', 'export.failed'].includes(dialog.kind)))
+    )
+        add('I10', 'a cancel after the pick stopped the write')
 
     // I9 (E-5): one file, one binding. No file name is bound to two chains, and no file is both
     // bound and another chain's Export target. Excepted: a revocation storage could not take,

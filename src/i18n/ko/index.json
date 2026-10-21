@@ -2069,6 +2069,7 @@
     "writeFailed": "\"{0}\"에 쓰지 못했습니다.",
     "notPutBack": "\"{0}\"이(가) 비워졌으며 내용을 복원하지 못했습니다.",
     "openedContentGone": "\"{0}\"에 열었을 때의 내용이 더 이상 없습니다.",
+    "replacedContentGone": "\"{0}\"에 이전 내용이 더 이상 없습니다.",
     "title": "프로젝트 파일 저장",
     "titleAs": "다른 이름으로 저장",
     "history": "기록",

@@ -64,6 +64,8 @@ const setup = async () => {
         id: 's1',
         chainId: 'c1',
         nextSeq: 5,
+        stored: true,
+        atOnce: false,
         reserved: undefined as unknown,
         chain: {
             chainId: 'c1',
@@ -118,8 +120,13 @@ const setup = async () => {
         handle,
     }
 
-    const offers: { name: string; emptied: boolean; downloadable: boolean; lockHeld: boolean }[] =
-        []
+    const offers: {
+        name: string
+        emptied: boolean
+        downloadable: boolean
+        lockHeld: boolean
+        replaced?: true
+    }[] = []
     const downloads: { name: string; bytes: Uint8Array | undefined }[] = []
     const answer: { notPutBack: 'download' | undefined } = { notPutBack: undefined }
     const ui = {
@@ -134,8 +141,14 @@ const setup = async () => {
             },
             close: () => undefined,
         }),
-        notPutBack: (name: string, emptied: boolean, downloadable: boolean) => {
-            offers.push({ name, emptied, downloadable, lockHeld: lockHeld() })
+        notPutBack: (name: string, emptied: boolean, downloadable: boolean, replaced = false) => {
+            offers.push({
+                name,
+                emptied,
+                downloadable,
+                lockHeld: lockHeld(),
+                ...(replaced ? { replaced } : {}),
+            })
             return Promise.resolve(answer.notPutBack)
         },
         download: async (name: string, blob: Blob) => {
@@ -155,6 +168,9 @@ const setup = async () => {
     const picker = { id: 'p', types: [], excludeAll: true, startIn: 'documents' as const }
     return {
         mock,
+        env,
+        flusher,
+        session,
         worker,
         log,
         calls,
@@ -332,4 +348,65 @@ test('a write that landed but whose read-back failed is not offered the bytes it
     assert.equal(outcome, 'readBack')
     assert.deepEqual(await bytesOf(t.mock.files.get('a.nxsp')), await bytesOf(grown))
     assert.deepEqual(t.offers, [], 'the file begins with the bytes that were read')
+})
+
+test('Save to File… that takes the open chain’s own file offers what was read of it', async () => {
+    const t = await setup()
+    t.mock.saveTargets.push({ kind: 'handle', handle: t.handle })
+    const other = await nxsp('rev-other')
+    await withPickSession(
+        t.spec({
+            purpose: 'saveToFile' as const,
+            read: Promise.resolve({ kind: 'read' as const, pre: t.pre }),
+        }),
+        (session) =>
+            session.pick(t.picker, 'out.nxsp', (picked) =>
+                picked.write({ kind: 'nxsp', blob: other }),
+            ),
+    )
+    // The file now holds the other session; the earlier contents are offered, not lost.
+    assert.deepEqual(await bytesOf(t.mock.files.get('a.nxsp')), await bytesOf(other))
+    assert.deepEqual(t.offers, [
+        { name: 'a.nxsp', emptied: false, downloadable: true, lockHeld: false, replaced: true },
+    ])
+})
+
+test('Export’s own pick commits a continuation’s first row before it reserves, and reserves nothing when that forks the session', async () => {
+    const t = await setup()
+    t.mock.saveTargets.push(
+        { kind: 'handle', handle: t.handle },
+        { kind: 'handle', handle: t.handle },
+    )
+    const reserved = { session: t.session, seq: 6, wall: 1 }
+    const events: string[] = []
+    ;(t.flusher as { reserveSave: unknown }).reserveSave = () => {
+        events.push('reserve')
+        return reserved
+    }
+    ;(t.flusher as { flush: unknown }).flush = () => {
+        events.push(`flush:${t.session.atOnce ? 'atOnce' : 'stored'}`)
+        return Promise.resolve()
+    }
+    t.session.stored = false
+    await withPickSession(t.spec({ purpose: 'export' as const }), (session) =>
+        session.pick(t.picker, 'out.nxsp', async (picked) => {
+            assert.ok(await picked.reserve(), 'the continuation committed and reserved')
+            return 'none'
+        }),
+    )
+    assert.deepEqual(events, ['flush:atOnce', 'reserve'])
+
+    // The commit forked the session: another one is open now, and nothing is reserved.
+    events.length = 0
+    const fork = { ...t.session, id: 's2' }
+    ;(t.flusher as { flush: unknown }).flush = () => {
+        events.push('flush')
+        setSaveEnvironment(() => ({ ...t.env, session: fork as never }))
+        return Promise.resolve()
+    }
+    const taken = await withPickSession(t.spec({ purpose: 'export' as const }), (session) =>
+        session.pick(t.picker, 'out.nxsp', (picked) => picked.reserve()),
+    )
+    assert.equal(taken, undefined)
+    assert.deepEqual(events, ['flush'])
 })

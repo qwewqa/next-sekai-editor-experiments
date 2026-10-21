@@ -4,13 +4,13 @@ import { vFocusRescue } from '../../../directives/focusRescue'
 import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
 import type { ReadyPrompt } from '../../../platform'
+import type { ReadResult } from '../../save/pickSession'
 import { interpolate } from '../../../utils/interpolate'
 import { buildLevelData } from './build'
 import { nameProblem, showsAtOnce } from './fileName'
 import { exportByPicker, exportToTarget, type ExportContext, type ExportOutcome } from './flow'
 import { formatSize } from './format'
 import type { ExportTarget } from './memory'
-import { exportFlowRunning } from './pick'
 import { exportUi } from './ui'
 
 // Export Level Data… (Part 1 §1.4.8): the File Name row, or only the To row with a target.
@@ -21,6 +21,8 @@ const props = defineProps<{
     /** The field shows the source file's own name, which the picker suggests as it is. */
     sourceName: boolean
     peeking: boolean
+    /** The chain's own file, read when the dialog opened (R2). */
+    read: Promise<ReadResult>
 }>()
 
 const emit = defineEmits<{
@@ -125,6 +127,7 @@ const context = (): ExportContext => ({
         emit('close')
     },
     ready,
+    read: props.read,
     signal: controller.signal,
     committed: () => {
         committed = true
@@ -134,13 +137,10 @@ const context = (): ExportContext => ({
 // The flow starts in the press itself, so its first call keeps the gesture.
 const run = async (outcome: Promise<ExportOutcome>) => {
     busy.value = true
-    // Follow-ups run after the dialog closed: the Save core's read of the chain's own file stays.
-    exportFlowRunning(true)
     try {
         if ((await outcome) !== 'back') emit('close')
     } finally {
         busy.value = false
-        exportFlowRunning(false)
     }
 }
 

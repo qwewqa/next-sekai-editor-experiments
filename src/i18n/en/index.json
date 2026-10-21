@@ -2069,6 +2069,7 @@
         "writeFailed": "\"{0}\" could not be written.",
         "notPutBack": "\"{0}\" was emptied and its contents could not be restored.",
         "openedContentGone": "\"{0}\" no longer holds the content you opened.",
+        "replacedContentGone": "\"{0}\" no longer holds its earlier contents.",
         "title": "Save Project File",
         "titleAs": "Save As",
         "history": "History",

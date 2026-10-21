@@ -183,3 +183,12 @@ test('the door hands out a new handle object on every read, and stores nothing f
     assert.equal(JSON.stringify(await world.worker.call('readChainRecord', 'chain-other')), before)
     assert.ok(world.handleRows.has('chain-other:file'))
 })
+
+test('I10 sees a cancel after the pick that stopped the write', async () => {
+    const world = await createWorld()
+    assert.deepEqual(await invariants(world, { written: true }), ['I10'])
+    world.writes.push({ name: 'own.nxsp', exclusive: true, shared: false, picked: true })
+    assert.deepEqual(await invariants(world, { written: true }), [])
+    world.dialogs.push({ kind: 'export.failed', args: ['x'], lockHeld: false })
+    assert.deepEqual(await invariants(world, { written: true }), ['I10'])
+})

@@ -2069,6 +2069,7 @@
     "writeFailed": "「{0}」に書き込めませんでした。",
     "notPutBack": "「{0}」は空になり、内容を復元できませんでした。",
     "openedContentGone": "「{0}」には、開いたときの内容がもうありません。",
+    "replacedContentGone": "「{0}」には、以前の内容がもうありません。",
     "title": "プロジェクトファイルを保存",
     "titleAs": "名前を付けて保存",
     "history": "履歴",

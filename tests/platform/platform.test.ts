@@ -92,7 +92,7 @@ test('the mock picks the queued files, and nothing when none are left', async ()
     assert.deepEqual(await mock.pickFiles({}), [])
 })
 
-test('the mock downloads, writes to targets and cancels', async () => {
+test('the mock downloads, writes to targets and dismisses its picker', async () => {
     const mock = createMockPlatform()
     const build = () => Promise.resolve(new Blob(['level']))
 
@@ -103,21 +103,15 @@ test('the mock downloads, writes to targets and cancels', async () => {
     assert.equal(mock.downloads.length, 1)
     assert.equal(await mock.downloads[0]!.blob.text(), 'level')
 
+    // The save picker alone: dismissed, or a file it empties (D5).
+    const picker = { id: 'levelData', types: [] }
     mock.saveTargets.push('cancel')
-    let built = false
-    assert.deepEqual(
-        await mock.saveFile({
-            kind: 'nsld',
-            suggestedName: 'LevelData',
-            build: () => {
-                built = true
-                return build()
-            },
-        }),
-        { status: 'cancelled' },
-    )
-    // Built before the picker, as on the web, since the picker empties what it returns (D5).
-    assert.equal(built, true)
+    assert.equal(await mock.pickSaveFile!({ suggestedName: 'LevelData', picker }), undefined)
+    mock.writeFile('picked.nsld', new Blob(['old']))
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('picked.nsld') })
+    const picked = await mock.pickSaveFile!({ suggestedName: 'LevelData', picker })
+    assert.equal(picked?.kind, 'handle')
+    assert.equal(mock.files.get('picked.nsld')?.size, 0)
 
     const handle = mock.createHandle('chart.nsld')
     const result = await mock.saveFile({

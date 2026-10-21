@@ -48,6 +48,8 @@ export type AttemptSpec = {
     readonly commitFirst: boolean
     /** 'chain': waits for every import of the chain (A2), a failed list counting as pending. */
     readonly importWait: 'none' | 'chain'
+    /** The chain whose imports are waited for, when it is not the environment's (Save to File…). */
+    readonly importChain?: string
     /** A write-back's, requested at the press and awaited after the commit. */
     readonly permission?: Promise<PermissionState>
     /** A large touch download: "Preparing…" opens at once, with this size. */
@@ -312,7 +314,10 @@ export const withSaveAttempt = async <T>(
                 }
         }
         if (env && spec.importWait === 'chain') {
-            const waited = await waitForChainImports(env, slot)
+            const waited = await waitForChainImports(
+                spec.importChain ? { ...env, chainId: spec.importChain } : env,
+                slot,
+            )
             // A large download's dialog (opened at once, with its size) stays up through the build.
             if (spec.estimated === undefined) closeDialog()
             if (waited === 'cancelled') return { kind: 'cancelled' }

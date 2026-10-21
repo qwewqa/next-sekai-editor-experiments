@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, test } from 'node:test'
 import { gzip, ungzip } from 'pako'
+// Export's picker path loads the Save core, which needs the stand-ins for the browser's modules.
 import {
     exportByPicker,
     exportToTarget,
@@ -13,6 +14,9 @@ import { levelDataDiskState } from '../../src/platform/fingerprint'
 import { createMockPlatform, type MockPlatform } from '../../src/platform/mock'
 import { FileError } from '../../src/platform/types'
 import { buildZip } from '../../src/zip'
+import './saveMatrix/env'
+
+const { setSaveUiForTests } = await import('./saveMatrix/stubs/dialogs')
 
 const level = (n: number) => new Blob([gzip(JSON.stringify({ bgmOffset: 0, entities: [{ n }] }))])
 
@@ -49,6 +53,9 @@ const scriptedUi = (answers: unknown[]) => {
 
 let mock: MockPlatform
 
+/** What the Save core's own feedback said: the offer's download, or its failure. */
+let saveFeedback: string[] = []
+
 // Read through a call, so an assertion does not narrow it for later reads.
 const remembered = () => exportMemory.target
 
@@ -56,6 +63,12 @@ beforeEach(() => {
     mock = createMockPlatform()
     setPlatformForTests(mock)
     clearExportMemory()
+    saveFeedback = []
+    setSaveUiForTests({
+        saved: (shown: { kind: string; name: string; size: number }) =>
+            saveFeedback.push(`${shown.kind}:${shown.name}:${shown.size}`),
+        error: () => saveFeedback.push('error'),
+    } as never)
 })
 
 afterEach(() => {
@@ -194,9 +207,10 @@ test('a dismissed picker goes back to the dialog; a picked file becomes the targ
     assert.deepEqual(feedback, ['exported:Coconut.nsld'])
 })
 
-test('a download reports its name and size', async () => {
+test('a browser without a save picker downloads, and reports its name and size', async () => {
+    mock = createMockPlatform({ capabilities: { writeBack: false } })
+    setPlatformForTests(mock)
     const { ui, feedback } = scriptedUi([])
-    mock.saveTargets.push('download')
     assert.equal(await exportByPicker(context(ui, 3)), 'done')
     assert.deepEqual(feedback, [`download:Coconut.nsld:${level(3).size}`])
     assert.equal(exportMemory.target, undefined)
@@ -340,14 +354,15 @@ test('a picked chart that cannot be put back is reported, with its bytes to down
     mock.saveTargets.push({ kind: 'handle', handle: picked })
     const { ui, asked, feedback } = scriptedUi(['download'])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(asked, [{ dialog: 'notPutBack', args: ['chart.usc', true] }])
+    assert.deepEqual(asked, [{ dialog: 'notPutBack', args: ['chart.usc', true, true] }])
     assert.equal(mock.files.get('chart.usc')!.size, 0)
     assert.deepEqual(
         mock.downloads.map(({ kind, name }) => ({ kind, name })),
         [{ kind: 'recovery', name: 'chart.usc' }],
     )
     assert.deepEqual(new Uint8Array(await mock.downloads[0]!.blob.arrayBuffer()), usc)
-    assert.deepEqual(feedback, [`download:chart.usc:${usc.byteLength}`])
+    assert.deepEqual(feedback, [])
+    assert.deepEqual(saveFeedback, [`download:chart.usc:${usc.byteLength}`])
 })
 
 /** A chart this tab opened from `chart.usc`, whose pick the picker emptied (D5). */
@@ -377,7 +392,7 @@ test('a refused pick another program wrote since is left as it is, and said so',
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
     const { ui, asked } = scriptedUi([undefined])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(asked, [{ dialog: 'notPutBack', args: ['chart.usc', false] }])
+    assert.deepEqual(asked, [{ dialog: 'notPutBack', args: ['chart.usc', false, true] }])
     assert.equal(await mock.files.get('chart.usc')!.text(), 'other content')
     assert.deepEqual(mock.calls, [])
 })
@@ -392,13 +407,20 @@ test('a refused pick that is gone is not said to be emptied', async () => {
         return inspect(target)
     }
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
-    const { ui, asked } = scriptedUi([undefined])
+    const { ui, asked } = scriptedUi([undefined, undefined])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
-    assert.deepEqual(asked, [{ dialog: 'notPutBack', args: ['chart.usc', false] }])
+    // The offer says the content is gone, then the file that cannot be found is said as well.
+    assert.deepEqual(
+        asked.map(({ dialog, args }) => [dialog, args[0], args[1]]),
+        [
+            ['notPutBack', 'chart.usc', false],
+            ['failed', 'chart.usc', asked[1]?.args[1]],
+        ],
+    )
     assert.equal(mock.files.has('chart.usc'), false)
 })
 
-test('a failed download of the opened bytes is a download failure', async () => {
+test('a failed download of the opened bytes is said to be a download failure', async () => {
     openedChart()
     const picked = mock.createHandle('chart.usc', { permission: () => 'denied' })
     mock.saveTargets.push({ kind: 'handle', handle: picked })
@@ -407,24 +429,21 @@ test('a failed download of the opened bytes is a download failure', async () => 
         req.kind === 'recovery' && !req.target
             ? Promise.reject(new TypeError('Failed to create a Blob URL'))
             : saveFile(req)
-    const { ui, asked } = scriptedUi(['download', undefined])
+    const { ui, asked } = scriptedUi(['download'])
     assert.equal(await exportByPicker(context(ui)), 'cancelled')
     assert.deepEqual(
         asked.map(({ dialog, args }) => [dialog, args[0]]),
-        [
-            ['notPutBack', 'chart.usc'],
-            ['failed', 'chart.usc'],
-        ],
+        [['notPutBack', 'chart.usc']],
     )
-    const error = asked[1]?.args[1]
-    assert.ok(error instanceof FileError)
-    assert.equal(error.step, 'download')
+    // The Save core's own line, which the offer's download shares with the Save family.
+    assert.deepEqual(saveFeedback, ['error'])
 })
 
-test('a pick accepted before a cancel is written to its end and reported', async () => {
+test('a cancel once the picker returned a file is written to its end and reported', async () => {
     const controller = new AbortController()
     let committed = 0
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Other.nsld') })
+    // The dialog is cancelled during the write, after the pick.
     mock.beforeCommit = () => controller.abort()
     const { ui, asked, feedback } = scriptedUi([])
     const ctx = context(ui, 1, { signal: controller.signal, committed: () => committed++ })
@@ -433,26 +452,6 @@ test('a pick accepted before a cancel is written to its end and reported', async
     assert.deepEqual(asked, [])
     assert.deepEqual(feedback, ['exported:Other.nsld'])
     assert.deepEqual((await read(mock, 'Other.nsld')).entities, [{ n: 1 }])
-
-    // A cancel while the pick is checked comes before acceptance: nothing is written.
-    const second = new AbortController()
-    mock.beforeCommit = undefined
-    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Third.nsld') })
-    const saveFile = mock.saveFile
-    mock.saveFile = (req) =>
-        saveFile({
-            ...req,
-            picked: (target) => {
-                second.abort()
-                return req.picked!(target)
-            },
-        })
-    const cancelling = context(ui, 1, { signal: second.signal, committed: () => committed++ })
-    assert.equal(await exportByPicker(cancelling), 'cancelled')
-    assert.equal(committed, 1)
-    // The pick created it empty (D5); nothing was written over that.
-    assert.equal(mock.files.get('Third.nsld')?.size, 0)
-    assert.deepEqual(asked, [])
 })
 
 test('a cancel reaches a target’s write until its commit', async () => {
@@ -469,7 +468,7 @@ test('a cancel reaches a target’s write until its commit', async () => {
     assert.deepEqual((await read(mock, 'LevelData')).entities, [{ n: 0 }])
 })
 
-test('an AbortError with no cancel is shown as a failure', async () => {
+test('an AbortError with no cancel, and a failed picker, are shown as failures', async () => {
     const target = await openedTarget()
     mock.saveFile = () => Promise.reject(new DOMException('Blocked', 'AbortError'))
     const first = scriptedUi([undefined])
@@ -481,7 +480,9 @@ test('an AbortError with no cancel is shown as a failure', async () => {
     )
     assert.equal((first.asked[0]?.args[1] as FileError).code, 'io')
 
+    // A picker that fails is a failure too, never a dismissal.
     const second = scriptedUi([undefined])
+    mock.pickSaveFile = () => Promise.reject(new FileError('io', 'The picker failed'))
     assert.equal(await exportByPicker(context(second.ui, 1, { signal })), 'cancelled')
     assert.deepEqual(
         second.asked.map(({ dialog }) => dialog),
@@ -490,6 +491,7 @@ test('an AbortError with no cancel is shown as a failure', async () => {
 })
 
 test('a failed picked write names the picked file, not the suggested one', async () => {
+    mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Typed.nsld') })
     mock.saveFile = () =>
         Promise.reject(new FileError('io', 'Disk error', undefined, undefined, 'Typed.nsld'))
     const { ui, asked } = scriptedUi([undefined])
@@ -525,21 +527,14 @@ test('the conflict dialog has no modified time when the blob read does not say, 
 
 test('the mock empties a picked file at the pick and creates a new name empty, as Chromium does', async () => {
     mock.writeFile('Old.nsld', level(1))
-    let during: number | undefined
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Old.nsld') })
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('New.nsld') })
     for (const name of ['Old.nsld', 'New.nsld']) {
-        const result = await mock.saveFile({
-            kind: 'nsld',
+        const target = await mock.pickSaveFile!({
             suggestedName: name,
-            build: () => Promise.resolve(new Blob(['x'])),
-            picked: () => {
-                during = mock.files.get(name)?.size
-                return Promise.resolve(false)
-            },
+            picker: { id: 'levelData', types: [] },
         })
-        assert.equal(result.status, 'cancelled')
-        assert.equal(during, 0)
+        assert.equal(target?.kind, 'handle')
         assert.equal(mock.files.get(name)?.size, 0)
     }
 })

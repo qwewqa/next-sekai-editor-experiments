@@ -5,12 +5,7 @@ import {
     setExportTargetReader,
     setUnregisteredTargetCheck,
 } from '../editor/commands/exportLevel/memory'
-import {
-    setExportReads,
-    setPickLock,
-    setProjectPickCheck,
-    setTargetLock,
-} from '../editor/commands/exportLevel/pick'
+import { setTargetLock } from '../editor/commands/exportLevel/pick'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'
@@ -471,33 +466,12 @@ export const startStoring = (
             ? { worker, flusher, session, chainId: session.chainId }
             : undefined
     })
-    // The file state's dialogs and Export's picker run the Save flows, loaded on first use.
+    // The file state's dialogs run the Save flows, loaded on first use.
     const flows = () => import('../editor/save/flow')
     setUnregisteredTargetCheck(async (target) =>
         (await flows()).exportTargetAvailable(target.handle),
     )
-    setProjectPickCheck(async (handle) => (await flows()).projectPick(handle))
-    setPickLock((run) => withBind('exclusive', run))
     setTargetLock((run) => withBind('shared', run))
-    setExportReads({
-        start: () =>
-            void flows().then((flow) => {
-                flow.startExportRead()
-            }),
-        end: () =>
-            void flows().then((flow) => {
-                flow.endExportRead()
-            }),
-        picker: () =>
-            void flows().then((flow) => {
-                flow.exportPickerOpening()
-            }),
-        flow: (running) =>
-            void flows().then((flow) => {
-                flow.exportFlowRunning(running)
-            }),
-        importWait: async (name, size) => (await flows()).exportImportWait(name, size),
-    })
     setFileActions({
         saveAs: () => void flows().then((flow) => flow.fileSaveAs()),
         downloadAgain: () => void flows().then((flow) => flow.fileDownloadAgain()),

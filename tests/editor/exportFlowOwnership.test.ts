@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import { gzip } from 'pako'
+// The picker path loads the Save core, which needs the stand-ins for the browser's modules.
 import {
     exportByPicker,
     exportToTarget,
@@ -16,12 +17,13 @@ import {
     setUnregisteredTargetCheck,
 } from '../../src/editor/commands/exportLevel/memory'
 import { knownTargetAvailable } from '../../src/editor/commands/exportLevel/ownership'
-import { setPickLock, setTargetLock } from '../../src/editor/commands/exportLevel/pick'
+import { setTargetLock } from '../../src/editor/commands/exportLevel/pick'
 import { readValue } from '../../src/local/storedRead'
 import type { StorageWorker } from '../../src/local/worker/client'
 import { setPlatformForTests } from '../../src/platform'
 import { levelDataDiskState } from '../../src/platform/fingerprint'
 import { createMockPlatform } from '../../src/platform/mock'
+import './saveMatrix/env'
 
 const gate = () => {
     let resolve!: () => void
@@ -62,7 +64,6 @@ const setup = async () => {
     }
     exportMemory.target = target
     setTargetLock((run) => mock.locks.request('nse-bind', { mode: 'shared' }, run))
-    setPickLock((run) => mock.locks.request('nse-bind', { mode: 'exclusive' }, run))
     return { mock, target }
 }
 afterEach(() => {
@@ -72,7 +73,6 @@ afterEach(() => {
     setExportTargetReader(undefined)
     setUnregisteredTargetCheck(undefined)
     setTargetLock((run) => run())
-    setPickLock((run) => run())
 })
 
 for (const picker of [false, true]) {

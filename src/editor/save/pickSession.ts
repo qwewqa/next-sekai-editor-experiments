@@ -17,15 +17,24 @@ import { hasActivation, reportsActivation } from '../../platform/detect'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { savePoint } from '../../platform/testPause'
 import { exportMemory, sameEntry, type OpenedSource } from '../commands/exportLevel/memory'
-import { bindingHandle, quickBinding, type Binding, type Env, type StoredFile } from './binding'
+import {
+    bindingHandle,
+    environment,
+    quickBinding,
+    type Binding,
+    type Env,
+    type StoredFile,
+} from './binding'
 import type { RefusedReason } from './dialogs'
 import { heldHandle, savedState, withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
 import {
     Cancelled,
+    commitFirst,
     withSaveAttempt,
     type AttemptSpec,
     type Ending,
+    type Reserved,
     type SaveAttempt,
 } from './saveAttempt'
 
@@ -169,7 +178,7 @@ const sameOrUnsure = async (
  * bytes in hand were read from, or may be: the chain's own (ADV3-2). So bytes read from what may be
  * the picked file are appended to or put back, never written over.
  */
-export const placed = async (
+const placed = async (
     picked: Picked,
     handle: FileSystemFileHandle,
     pre: PreRead | undefined,
@@ -182,19 +191,31 @@ export const placed = async (
 const kept = async (opened: OpenedSource) =>
     (await opened.keptCopy) ?? (opened.bytes && new Blob([opened.bytes]))
 
-/** Identifies a picked file under `nse-bind` (R3, R7), outside any transaction. */
-export const identify = async (env: Env, handle: FileSystemFileHandle): Promise<Picked> => {
+/**
+ * Identifies a picked file under `nse-bind` (R3, R7), outside any transaction. Without storage
+ * (`env` undefined) only the file this session was opened from is known. Export writes over the
+ * level data it was opened from, whole; every other picker refuses it.
+ */
+const identify = async (
+    env: Env | undefined,
+    handle: FileSystemFileHandle,
+    purpose: 'save' | 'export' | 'saveToFile' = 'save',
+): Promise<Picked> => {
     const { opened } = exportMemory
     if (opened && (await same(handle, opened.handle))) {
-        if (!opened.project)
-            return {
-                kind: 'refused',
-                reason: opened.levelData ? 'levelData' : 'notProject',
-                ...(opened.kept ? { bytes: Promise.resolve(new Blob([opened.kept])) } : {}),
-            }
+        if (!opened.project) {
+            const bytes = opened.kept ?? opened.bytes
+            if (!(purpose === 'export' && opened.levelData && !opened.partial))
+                return {
+                    kind: 'refused',
+                    reason: opened.levelData ? 'levelData' : 'notProject',
+                    ...(bytes ? { bytes: Promise.resolve(new Blob([bytes])) } : {}),
+                }
+        }
         // Its bytes are awaited: a quick Save never finds them still being read (m8).
-        if (opened.partial) return { kind: 'refused', reason: 'notKept', bytes: kept(opened) }
+        else if (opened.partial) return { kind: 'refused', reason: 'notKept', bytes: kept(opened) }
     }
+    if (!env) return { kind: 'unknown' }
     const own = quickBinding(env).file
     const held = own && heldHandle(env.chainId, own.name)
     if (held && (await same(handle, held))) return { kind: 'own' }
@@ -246,13 +267,13 @@ const targetBytes = async (env: Env, owner: HandleOwner) => {
 }
 
 /** A project picker's pick of an Export target: level data, refused and put back (R7). */
-export const refusedTarget = (env: Env, picked: Picked): Exclude<Picked, { kind: 'target' }> =>
+const refusedTarget = (env: Env, picked: Picked): Exclude<Picked, { kind: 'target' }> =>
     picked.kind === 'target'
         ? { kind: 'refused', reason: 'levelData', bytes: targetBytes(env, picked.owner) }
         : picked
 
 /** Writes bytes back into a picked file while it's still empty (R4, R7); true when it holds them. */
-export const putBack = async (target: FileTarget, bytes: ArrayBuffer | Blob) => {
+const putBack = async (target: FileTarget, bytes: ArrayBuffer | Blob) => {
     try {
         // Its size first: a filled file is never read and hashed whole only to learn that (SF3-2).
         if ((await platform.read(target)).size !== 0) return false
@@ -303,11 +324,17 @@ export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
     readonly purpose: 'save' | 'export' | 'saveToFile'
     /** The dialog's read of the chain's own file, or `'start'`: one starting now, with a grant held. */
     readonly read: Promise<ReadResult> | 'start'
+    /** The chain whose imports are waited for, when it is not the environment's (Save to File…). */
+    readonly importChain?: string
+    /** Called at the commit point, when the picker returned a file. */
+    readonly committed?: () => void
     readonly ui: AttemptSpec['ui'] & {
+        /** `replaced`: a takeover left the file holding another document's content. */
         notPutBack(
             name: string,
             emptied: boolean,
             downloadable: boolean,
+            replaced: boolean,
         ): Promise<'download' | undefined>
         /** Downloads the bytes of an offer, and says so. */
         download(name: string, bytes: Blob): Promise<void>
@@ -326,6 +353,12 @@ export type PickedFile = {
     readonly identity: Picked
     /** The slot, when the pick is the file it was read from. */
     readonly pre: PreRead | undefined
+    /**
+     * Export's own pick, which rewrites the chain's project: commits a continuation's first row,
+     * then takes the reservation without waiting. Undefined when the commit forked the session or
+     * a Save holds the reservation.
+     */
+    reserve(): Promise<Reserved | undefined>
     /** The one write to the picked file, over `found`. A failure is thrown. */
     write(request: {
         kind: 'nxsp' | 'nsld'
@@ -400,6 +433,7 @@ export const withPickSession = <T>(
         ui: { preparing: spec.ui.preparing },
         commitFirst: spec.commitFirst,
         importWait: 'chain',
+        ...(spec.importChain ? { importChain: spec.importChain } : {}),
         ...(spec.permission ? { permission: spec.permission } : {}),
         ...(spec.estimated === undefined ? {} : { estimated: spec.estimated }),
         ...(spec.signal ? { signal: spec.signal } : {}),
@@ -443,29 +477,35 @@ export const withPickSession = <T>(
             let result: R | undefined
             let failure: { error: unknown } | undefined
             let landed = false
-            let offer: { emptied: boolean; bytes: Blob | undefined } | undefined
+            let offer: { emptied: boolean; bytes: Blob | undefined; replaced?: true } | undefined
             await withBind('exclusive', async () => {
                 let found: DiskState | undefined
                 let identity: Picked | undefined
                 try {
                     const disk = await platform.inspect(target, 'nxsp')
                     if (disk === 'missing')
-                        throw new FileError('not-found', `${name} cannot be found`)
+                        throw new FileError(
+                            'not-found',
+                            `${name} cannot be found`,
+                            undefined,
+                            undefined,
+                            name,
+                        )
                     found = disk
                 } catch (error) {
                     failure = { error }
                 }
                 try {
-                    if (env) {
-                        const identified = await placed(
-                            await identify(env, target.handle),
-                            target.handle,
-                            slot,
-                        )
-                        // A project picker never writes an Export target.
-                        identity =
-                            spec.purpose === 'export' ? identified : refusedTarget(env, identified)
-                    } else identity = { kind: 'unknown' }
+                    const identified = await placed(
+                        await identify(env, target.handle, spec.purpose),
+                        target.handle,
+                        slot,
+                    )
+                    // A project picker never writes an Export target.
+                    identity =
+                        spec.purpose === 'export' || !env
+                            ? identified
+                            : refusedTarget(env, identified)
                 } catch (error) {
                     failure ??= { error }
                 }
@@ -477,13 +517,27 @@ export const withPickSession = <T>(
                         filled: disk.size !== 0,
                         identity,
                         pre: identity.kind === 'own' ? slot : undefined,
+                        reserve: async () => {
+                            if (!env) return
+                            await commitFirst(env)
+                            // A fork leaves the session another one: nothing is written for it.
+                            if (environment()?.session !== env.session) return
+                            return attempt.reserve(false)
+                        },
                         write: async (request) => {
+                            // The empty file as this write's kind measures it (R9).
+                            const expected =
+                                request.kind === 'nxsp'
+                                    ? disk
+                                    : await platform.inspect(target, request.kind)
+                            if (expected === 'missing')
+                                throw new FileError('not-found', `${name} cannot be found`)
                             const written = await attempt.write(
                                 {
                                     kind: request.kind,
                                     suggestedName: name,
                                     target,
-                                    expected: disk,
+                                    expected,
                                     build: () =>
                                         Promise.resolve({ kind: 'blob', blob: request.blob }),
                                 },
@@ -499,8 +553,16 @@ export const withPickSession = <T>(
                         failure = { error }
                     }
                 }
+                if (!identity) return
+                if (landed) {
+                    // Save to File… wrote another document over the chain's own file: what was read
+                    // of it first is offered, since the file no longer holds it.
+                    const earlier = slot?.blob
+                    if (spec.purpose === 'saveToFile' && identity.kind === 'own' && earlier?.size)
+                        offer = { emptied: false, bytes: earlier, replaced: true }
+                    return
+                }
                 // The bytes the editor holds of the file, which nothing of ours has written.
-                if (landed || !identity) return
                 const held =
                     identity.kind === 'own'
                         ? slot?.blob
@@ -510,8 +572,9 @@ export const withPickSession = <T>(
                 const bytes = held && held.size > 0 ? held : undefined
                 const isEmpty = async () => {
                     const now = await platform.inspect(target, 'nxsp').catch(() => undefined)
-                    // A file that cannot be inspected is taken as emptied: the picker did that.
-                    return now === undefined || now === 'missing' || now.size === 0
+                    // A file that cannot be inspected is taken as emptied: the picker did that. One
+                    // that is gone was not emptied, and holds nothing to put back into.
+                    return now === undefined || (now !== 'missing' && now.size === 0)
                 }
                 if (!bytes) {
                     // Emptied, with nothing readable to give back.
@@ -524,7 +587,10 @@ export const withPickSession = <T>(
                 // put-back whose read-back failed); anything else lost them, and they are offered.
                 const emptied = await isEmpty()
                 if (!emptied && (await beginsWith(target, bytes))) return
-                offer = { emptied, bytes }
+                // Save to File… took the chain's own file for another document: it holds that now.
+                const replaced =
+                    spec.purpose === 'saveToFile' && identity.kind === 'own' && !emptied
+                offer = { emptied, bytes, ...(replaced ? { replaced } : {}) }
             })
             if (offer) {
                 // Right after the hold, before any other dialog: the bytes are in memory only.
@@ -532,6 +598,7 @@ export const withPickSession = <T>(
                     name,
                     offer.emptied,
                     offer.bytes !== undefined,
+                    offer.replaced === true,
                 )
                 offered = { emptied: offer.emptied }
                 if (choice === 'download' && offer.bytes) await spec.ui.download(name, offer.bytes)
@@ -614,6 +681,7 @@ export const withPickSession = <T>(
                 if (target?.kind !== 'handle') return { kind: 'dismissed' }
                 // The commit point (rule 6): no Cancel has any effect from here.
                 attempt.commit()
+                spec.committed?.()
                 await savePoint('picked')
                 const result = await hold(target, inLock)
                 return result
