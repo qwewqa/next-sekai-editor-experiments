@@ -1,7 +1,8 @@
 import { chunkRowOf, ChunkVerifyError, isVerifiedChunk, type VerifiedChunk } from './chunkVerify'
+import type { UseDay } from './days'
 import { hashKey } from './db'
 import type { KvTx } from './kv/types'
-import { isChunkRowIntact, type ChunkRow } from './records/rows'
+import { isChunkRowIntact, storedDay, type ChunkRow } from './records/rows'
 
 // The one `chunks` writer (Part 1 §1.6.11.2): the flush, journal replay, the migration, the
 // `.nxsp` import and Check's repair all put chunks through here. It takes only a `VerifiedChunk`,
@@ -26,7 +27,7 @@ const isIntactRow = (key: Uint8Array, row: unknown): row is ChunkRow => {
 export const putChunk = async (
     tx: KvTx,
     chunk: VerifiedChunk,
-    day: number,
+    day: UseDay,
 ): Promise<ChunkRow | undefined> => {
     if (!isVerifiedChunk(chunk)) throw new ChunkVerifyError('Unverified chunk')
     const key = hashKey(chunk.hash)
@@ -38,9 +39,5 @@ export const putChunk = async (
     }
     if (isIntactRow(chunk.hash, old)) return
     const oldDay = (old as { day?: unknown } | undefined)?.day
-    await tx.put(
-        'chunks',
-        chunkRowOf(chunk, Number.isSafeInteger(oldDay) ? (oldDay as number) : day),
-        key,
-    )
+    await tx.put('chunks', chunkRowOf(chunk, storedDay(oldDay, day)), key)
 }

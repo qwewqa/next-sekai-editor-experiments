@@ -348,7 +348,7 @@ test('a feedback for a session another tab holds says so to assistive technology
     })
     expect(said.plain).toBe('Saved to restored.nxsp')
     expect(said.committed).toBe(
-        'Saved to restored.nxsp This is the last stored state of a session open in another tab.',
+        'Saved to restored.nxsp The file holds the last stored version of the session open in another tab.',
     )
 })
 
@@ -446,7 +446,7 @@ test('our own file gone back to an older revision says it does not continue ours
     await pressSave(page)
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
-    await expect(dialog).toContainText(/This version does not continue yours \(.+\)\./)
+    await expect(dialog).toContainText(/This version was not made from yours \(.+\)\./)
     await expect(dialog).not.toContainText('Saved in the web editor')
 })
 

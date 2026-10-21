@@ -1,7 +1,7 @@
 import { platformOverride, suspectPrivate, usesOpfsPickers } from '../platform/detect'
 import { OPFS_PICKER_CALLS_KEY } from '../platform/opfs'
 import type { HandleRole } from './handleRows'
-import type { StorageWorker } from './worker/client'
+import { mapRead, storedRead, type ReadWorker, type StoredRead } from './storedRead'
 
 // File handles stored for a chain (Part 1 §1.3.2, D16, D24): in the `handles` store, never on the
 // chain record or the journal descriptor, and read only through `handleOf` when a Save, an Export
@@ -138,19 +138,15 @@ export const resolveHandle = (stored: unknown): FileSystemFileHandle | undefined
 
 /**
  * A chain's stored handle for its binding (`file`) or Export target, read when a Save, an Export
- * or a resumed import needs it; undefined when none is stored or it can't be read.
+ * or a resumed import needs it. `undefined` is an answer: none is stored, or this page can't hold
+ * the stored one. A failed read is `failed`, for each caller to decide (it is never "none").
  */
 export const handleOf = async (
-    worker: Pick<StorageWorker, 'call'>,
+    worker: ReadWorker,
     chainId: string,
     role: HandleRole,
-): Promise<FileSystemFileHandle | undefined> => {
-    try {
-        return resolveHandle(await worker.call('readHandle', { chainId, role }))
-    } catch {
-        return undefined
-    }
-}
+): Promise<StoredRead<FileSystemFileHandle | undefined>> =>
+    mapRead(await storedRead(worker, 'readHandle', { chainId, role }), resolveHandle)
 
 /** Whether a handle can be read without a prompt: read permission still granted. */
 export const readableWithoutPrompt = async (handle: FileSystemFileHandle) => {

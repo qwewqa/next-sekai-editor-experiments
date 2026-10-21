@@ -955,7 +955,8 @@
         "legacy": "이전 버전의 복구 사본 · {0}",
         "autoSave": "이전 자동 저장 · {0}",
         "unreadable": "읽을 수 없는 복구된 작업, {0} · {1}",
-        "listFailed": "저장된 복구 데이터를 읽을 수 없습니다",
+        "listFailed": "복구된 작업을 읽지 못했습니다",
+        "downloadFailed": "복구된 작업을 다운로드하지 못했습니다.",
         "atLoad": "시작 알림"
       },
       "openHistory": "기록 열기",
@@ -1174,7 +1175,7 @@
     "continuedUntitled": "{0}의 작업을 이어서 열었습니다.",
     "continuedUndated": "\"{0}\" 작업을 이어서 열었습니다.",
     "cleared": "이전 방문의 작업이 없습니다. 브라우저가 이 사이트의 저장 공간을 지웠습니다.",
-    "inAppBrowser": "앱 내 브라우저로 보입니다. 일부 기능이 작동하지 않을 수 있으며, 보관된 작업을 잃을 가능성이 더 큽니다. 작업을 남기려면 이 페이지를 브라우저에서 열어 주세요.",
+    "inAppBrowser": "앱 내 브라우저로 보입니다. 일부 기능이 작동하지 않을 수 있으며, 보관된 작업이 삭제될 수 있습니다. 작업을 남기려면 이 페이지를 브라우저에서 열어 주세요.",
     "journalKept": "\"{0}\"의 변경 사항을 적용할 수 없어 별도의 세션으로 보관했습니다.",
     "fallback": "이전 방문의 저장되지 않은 작업을 복구했습니다.",
     "fallbackLocal": "이전 방문의 저장되지 않은 작업이 로컬 데이터에 있습니다.",
@@ -1354,9 +1355,9 @@
       "composedTransform": "여러 조정",
       "released": "폴더에서 이동",
       "recoveryContext": "이전 작업",
-      "recoveryHead": "원본 작업",
-      "omittedDescriptions": "생략된 이전 작업 설명: {0}",
-      "droppedSteps": "손실된 되돌리기 단계: {0}",
+      "recoveryHead": "여기까지 복구됨",
+      "omittedDescriptions": "표시되지 않은 이전 작업: {0}",
+      "droppedSteps": "타임라인에 개별 단계가 없는 작업: {0}",
       "counts": {
         "note": "{0}개 노트",
         "bpm": "{0}개 BPM",
@@ -1704,7 +1705,7 @@
           "alt": "Alt",
           "shift": "Shift"
         },
-        "fixedAlias": "{0}(으)로도 실행됩니다 (고정)"
+        "fixedAlias": "{0}(으)로도 실행됩니다 (변경 불가)"
       },
       "maskLeft": {
         "label": "마스크 레인"
@@ -2088,9 +2089,9 @@
     "savedWithoutCoverLarge": "{0}에 커버 없이 저장됨",
     "savedWithoutPreviewLarge": "{0}에 미리보기 오디오 없이 저장됨",
     "savedWithoutMediaLarge": "{0}에 미디어 없이 저장됨",
-    "someStepsNotKept": "{0}에 저장됨. 이전 단계 일부는 보존되지 않았습니다.",
-    "someStepsNotKeptLine": "이전 단계 일부는 보존되지 않았습니다.",
-    "committedState": "다른 탭에서 열려 있는 세션의 마지막으로 보관된 상태입니다.",
+    "someStepsNotKept": "{0}에 저장됨. 타임라인의 이전 단계 일부는 보존되지 않았습니다.",
+    "someStepsNotKeptLine": "타임라인의 이전 단계 일부는 보존되지 않았습니다.",
+    "committedState": "파일에는 다른 탭에서 열려 있는 세션의 마지막으로 보관된 버전이 들어 있습니다.",
     "tookOver": "{0}에 저장됨. 이전 작업은 최근 세션에 있습니다.",
     "noChanges": "{0} 다운로드 이후 변경 사항 없음",
     "noChangesSaved": "{0} 저장 이후 변경 사항 없음",
@@ -2101,6 +2102,7 @@
     "restoredName": "{0} ({1} 복원)",
     "fileType": "Next SEKAI 프로젝트 파일",
     "unavailable": "저장되지 않았습니다. 레벨 데이터 내보내기…를 사용하세요.",
+    "storageUnavailable": "저장되지 않았습니다. 편집기가 이 브라우저의 저장소에 접근하지 못했습니다. 다시 시도하세요.",
     "include": "포함",
     "historySize": "{0}단계 · {1}",
     "historyNote": "파일이 있는 사람은 해당 파일의 기록을 볼 수 있습니다.",
@@ -2124,14 +2126,14 @@
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "다른 프로젝트 파일 \"{0}\"입니다.",
     "otherProjectUnnamed": "다른 프로젝트 파일입니다.",
-    "notDescendant": "이 버전은 사용자의 버전을 이어받지 않습니다({0}).",
+    "notDescendant": "이 버전은 사용자의 버전에서 만들어지지 않았습니다({0}).",
     "separate": "별도 파일로 저장",
     "openOther": "다른 버전 열기",
     "openOtherNote": "변경 사항은 저장되지 않은 채로 남습니다.",
     "replaceNote": "디스크의 버전은 최근 세션에 보관됩니다.",
     "keptName": "{0} ({1} 교체됨)",
     "replaceNewer": "더 새로운 버전의 {0}에서 만들어졌습니다.",
-    "replaceHoldsEarlier": "이 브라우저에 더 이상 없는 이전 단계가 들어 있습니다.",
+    "replaceHoldsEarlier": "이 브라우저에 더 이상 보관되어 있지 않은 타임라인의 이전 단계가 들어 있습니다.",
     "keepEditing": "계속 편집"
   },
   "name": {
@@ -2144,6 +2146,8 @@
   "notice": {
     "useOpenFile": "파일을 열려면 열기를 사용하세요.",
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
+    "sameFileMaybeElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있을 수 있어 이것은 별도의 사본입니다.",
+    "storageUnavailable": "편집기가 이 브라우저의 저장소에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",
     "newLevel": "새 레벨",
     "reopen": "\"{0}\" 다시 열기",
@@ -2213,6 +2217,7 @@
     },
     "unsavedChanges": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있습니다.",
     "unsavedEarlier": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있습니다.",
+    "earlierUnchecked": "{0}을(를) 열었습니다. 최근 세션에 이 파일의 다른 버전이 있는지 확인하지 못했습니다.",
     "unsavedEarlierMaybe": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있을 수 있습니다.",
     "unsavedChangesMaybe": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있을 수 있습니다.",
     "olderVersion": "{0}의 이전 버전입니다. {1}의 최신 버전이 최근 세션에 있습니다.",

@@ -27,6 +27,7 @@ const { assembleZip, prepareEntry } = await import('../../../src/zip')
 const { liveState, resetStates } = await import('../../../src/history/stack')
 const { chartState } = await import('../chartFixture')
 const { initialStep } = await import('../../helpers/historySteps')
+const { readValue } = await import('../../../src/local/storedRead')
 const { clearExportMemory, exportMemory, setExportPersister, setExportTargetReader } =
     await import('../../../src/editor/commands/exportLevel/memory')
 const exportPick = await import('../../../src/editor/commands/exportLevel/pick')
@@ -246,8 +247,7 @@ const createWorld = async (setup: Setup = {}) => {
         return wrapped
     }
 
-    // The picker: a target shifted off `saveTargets` is an opening; the real picker empties an
-    // existing file it returns (D5), which the mock does for `pickSaveFile` only.
+    // The picker: a target shifted off `saveTargets` is an opening. The mock empties the pick itself (D5).
     const targets = mock.saveTargets
     const shift = targets.shift.bind(targets)
     targets.shift = () => {
@@ -263,7 +263,6 @@ const createWorld = async (setup: Setup = {}) => {
         if (next && next !== 'cancel' && next !== 'download') {
             before.set(name, mock.files.get(name))
             pickedHandles.add(name)
-            mock.writeFile(name, new Blob([]))
         }
         return next
     }
@@ -659,7 +658,7 @@ const createWorld = async (setup: Setup = {}) => {
     setStorageWorkerForMatrix(worker)
     setFlusherForMatrix(flusher, { rewrite: () => undefined })
     setExportPersister(() => Promise.resolve(true))
-    setExportTargetReader(() => Promise.resolve({}))
+    setExportTargetReader(() => Promise.resolve(readValue({})))
     exportPick.setProjectPickCheck((picked) => flow.projectPick(picked))
     exportPick.setPickLock((run) => env.withBind('exclusive', run))
     exportPick.setTargetLock((run) => env.withBind('shared', run))

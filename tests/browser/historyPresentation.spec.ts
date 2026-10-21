@@ -861,7 +861,7 @@ test('Details renders exact numbers, literal unknown fallback and one paged reco
     await expect(recovery.locator('li')).toHaveCount(20)
     await expect(recovery.locator('li').nth(2)).toContainText('Source metadata')
     await expect(recovery.locator('[data-operation-recovery-head]')).toHaveCount(1)
-    await expect(recovery).toContainText('Earlier action descriptions omitted: 5')
+    await expect(recovery).toContainText('Earlier actions not listed: 5')
     await expect(details.locator('[data-operation-children]')).toHaveCount(0)
     await recovery.getByRole('button', { name: 'Show More', exact: true }).click()
     await expect(recovery.locator('li')).toHaveCount(26)

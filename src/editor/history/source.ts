@@ -6,6 +6,7 @@ import { captureEntryDescription } from '../../history/operations'
 import { session } from '../../history/session'
 import { toHex } from '../../local/hash'
 import { storageWorker } from '../../local/start'
+import { storedRead } from '../../local/storedRead'
 import { flusher, onFlusherStart } from '../../local/storing'
 import type { EditMatch, FindEditsCursor } from '../../local/worker/changeHandlers'
 import type {
@@ -608,14 +609,27 @@ const scanHere = async () => {
     here.scanning = true
     const start = startOf(session.value.sessionId)
     let cursor: FindEditsCursor | undefined
+    // What was found stays, marked as partial; Try Again, or choosing Edits Here again, scans
+    // afresh.
+    const scanFailed = () => {
+        if (mark === hereToken) {
+            hereFor = undefined
+            here.failed = true
+        }
+    }
     try {
         do {
-            const page = await worker.call('findEdits', {
+            const read = await storedRead(worker, 'findEdits', {
                 ...start,
                 ...range,
                 ...(cursor ? { cursor } : {}),
             })
             if (mark !== hereToken) return
+            if (read.storedRead === 'failed') {
+                scanFailed()
+                return
+            }
+            const page = read.storedValue
             hereTop ??= page.top
             if (page.matches.length)
                 here.matches = [...here.matches, ...page.matches.map((match) => matchOf(match))]
@@ -628,12 +642,8 @@ const scanHere = async () => {
         here.scanning = false
         void checkNewer()
     } catch {
-        // What was found stays, marked as partial; Try Again, or choosing Edits Here again, scans
-        // afresh.
-        if (mark === hereToken) {
-            hereFor = undefined
-            here.failed = true
-        }
+        // An error other than the read's own.
+        scanFailed()
     } finally {
         if (mark === hereToken) here.scanning = false
     }
@@ -662,13 +672,19 @@ const checkNewerOnce = async () => {
     let cursor: FindEditsCursor | undefined
     try {
         do {
-            const page = await worker.call('findEdits', {
+            const read = await storedRead(worker, 'findEdits', {
                 ...start,
                 ...range,
                 ...(until ? { until } : {}),
                 ...(cursor ? { cursor } : {}),
             })
             if (mark !== hereToken) return
+            if (read.storedRead === 'failed') {
+                // The newest entries went unchecked: say so until a check succeeds.
+                here.failed = true
+                return
+            }
+            const page = read.storedValue
             top ??= page.top
             found.push(...page.matches)
             unreadable += page.unreadable

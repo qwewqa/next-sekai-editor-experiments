@@ -54,6 +54,7 @@ import {
     writesLegacySlot,
 } from './startup/legacy'
 import { writeTabRecord } from './startup/tab'
+import { readValue, storedRead } from './storedRead'
 import type { StorageWorker } from './worker/client'
 import type { StorageStatus } from './worker/core'
 import { transfer } from './worker/rpc'
@@ -382,15 +383,14 @@ export const startStoring = (
     setExportTargetReader(async () => {
         const session = instance.session
         if (!session?.stored) return
-        const record = await worker.call('readChainRecord', session.chainId)
-        if (instance.session !== session) return {}
-        return record
+        const record = await storedRead(worker, 'readChainRecord', session.chainId)
+        return instance.session !== session ? readValue({}) : record
     })
     // Its handle is the chain's too, read when Export needs it (D24).
     checkPrivateWindow()
     setExportHandleReader(async () => {
         const session = instance.session
-        return session ? handleOf(worker, session.chainId, 'exportTarget') : undefined
+        return session ? handleOf(worker, session.chainId, 'exportTarget') : readValue(undefined)
     })
 
     let firstReset = true
@@ -519,8 +519,16 @@ export const startStoring = (
         } catch (error) {
             const id = instance.session?.id
             // Only a session whose open's import hasn't finished waits for it.
-            const pending = id ? await worker.call('openPendingImports').catch(() => []) : []
-            if (!id || !pending.some((each) => each.sessionId === id)) throw error
+            const pending = id
+                ? await storedRead(worker, 'openPendingImports', undefined)
+                : undefined
+            // A failed read of the pending list rethrows the load's error, as today.
+            if (
+                !id ||
+                pending?.storedRead !== 'value' ||
+                !pending.storedValue.some((each) => each.sessionId === id)
+            )
+                throw error
             if (!(await importStarted(id))) throw error
             await whenImported(id)
             return load(snapshot)

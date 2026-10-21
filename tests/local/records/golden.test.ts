@@ -30,6 +30,7 @@ import { createState, type State } from '../../../src/state'
 import { createSlideId } from '../../../src/state/entities/slides'
 import { addNote, removeNote, replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
+import { useDay } from '../../helpers/useDay'
 import {
     edgeChart,
     edgeHeaderVariants,
@@ -202,9 +203,9 @@ test('records decoded from the vectors give back the chart, and the database row
 
         const snapshot = encodeSnapshot(decoded)
         const hashOf = (json: RecordValue) => toHex(hash16Sync(canonicalBytes(json)))
-        assert.equal(hashOf(rootJsonFromRow(rootRow(snapshot.root, 0))), manifest.root)
+        assert.equal(hashOf(rootJsonFromRow(rootRow(snapshot.root, useDay(0)))), manifest.root)
         for (const node of snapshot.nodes)
-            assert.equal(hashOf(nodeJsonFromRow(nodeRow(node, 0))), toHex(node.hash))
+            assert.equal(hashOf(nodeJsonFromRow(nodeRow(node, useDay(0)))), toHex(node.hash))
     }
     const golden = goldenChart()
     const content = fromRecords(toRecords(stateOf(golden)))

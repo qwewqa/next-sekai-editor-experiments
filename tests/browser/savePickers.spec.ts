@@ -101,7 +101,7 @@ test('a self-pick at the base keeps the docId and ancestry, with no line', async
         .poll(async () => ((await projectOf(page, 'coconut.nxsp')).revision as Row).parent)
         .toBe((first.revision as Row).id)
     expect((await projectOf(page, 'coconut.nxsp')).id).toBe(first.id)
-    await expect(notice(page).filter({ hasText: 'Some earlier steps' })).toHaveCount(0)
+    await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps' })).toHaveCount(0)
 })
 
 test('a self-pick’s file is empty from the pick until the write closes, then holds the next revision', async ({

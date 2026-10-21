@@ -189,10 +189,16 @@ export default tsEslint.config(
             'src/local/worker/timelineHandlers.ts',
             'src/local/days.ts',
         ],
-        // The allowlist: each still buckets by local day itself. C4 empties it.
-        ignores: ['src/local/days.ts'],
         plugins: { local },
         rules: { 'local/no-local-time': 'error' },
+    },
+    // A day of use is not a calendar day (I-11): only countDayOfUse and NO_USE_DAY (days.ts) and
+    // the row types and storedDay (records/rows.ts) make a UseDay.
+    {
+        files: ['src/**/*.{ts,vue}'],
+        ignores: ['src/local/days.ts', 'src/local/records/rows.ts'],
+        plugins: { local },
+        rules: { 'local/no-use-day-cast': 'error' },
     },
     {
         files: ['src/editor/history/**/*.{ts,vue}', 'src/editor/peek.ts', 'src/history/**/*.ts'],
@@ -204,6 +210,15 @@ export default tsEslint.config(
         ],
         plugins: { local },
         rules: { 'local/history-imports': 'error' },
+    },
+
+    // The storage worker's covered reads go through the storedRead gate (Part 1 §1.6.5).
+    {
+        files: ['src/**/*.{ts,vue}'],
+        // D2-lite empties this: flow.ts's remaining reads move to the gate with it.
+        ignores: ['src/editor/save/flow.ts'],
+        plugins: { local },
+        rules: { 'local/stored-reads': 'error' },
     },
 
     {

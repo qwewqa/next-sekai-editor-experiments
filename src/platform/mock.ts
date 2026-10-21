@@ -56,7 +56,8 @@ export type MockPlatform = Platform & {
     readonly picks: OpenedFile[][]
     /**
      * Where each save without a target goes: a target, a cancelled picker, or a download. A save
-     * picker alone (`pickSaveFile`) takes the next too, emptying a file that exists (D5).
+     * picker alone (`pickSaveFile`) takes the next too. A picked target is emptied when it
+     * exists and created empty when it does not (D5).
      */
     readonly saveTargets: (FileTarget | 'cancel' | 'download')[]
     /** Each `pickSaveFile` call's request. */
@@ -331,6 +332,8 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
             return { status: 'download-started', name: req.suggestedName }
         }
+        // The pick empties an existing file and creates a new name empty, as Chromium's (D5).
+        writeFile(targetKey(target), new Blob([]))
         const write = async (): Promise<SaveResult> => {
             if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
             signal?.throwIfAborted()

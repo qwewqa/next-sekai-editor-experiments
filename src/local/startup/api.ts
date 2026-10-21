@@ -7,6 +7,7 @@ import { journalState } from '../journal/content'
 import { readJournal } from '../journal/format'
 import { hasWebLocks, sessionLock } from '../locks'
 import type { DisplayName } from '../names'
+import { mapRead, readValue, storedRead, type StoredRead } from '../storedRead'
 import { previousSession } from './events'
 import {
     AUTO_SAVE_KEY,
@@ -114,7 +115,8 @@ const openSession = async (
         const held = result?.kind === 'recovery' ? undefined : lock
         const elsewhere =
             !held && hasWebLocks() && (await open.client.heldElsewhere(sessionLock(sessionId)))
-        const fork = asCopy || elsewhere || !read.isHead || (await boundElsewhere(open, read))
+        const fork =
+            asCopy || elsewhere || !read.isHead || (await boundElsewhere(open, read)) !== 'no'
         const copyOf = copyOfOf(read)
         // The exclusive hold taken for the replay stands for the parent's shared one (§1.3.6).
         const parentLock = held ?? (await holdShared(open.locks, sessionId))
@@ -262,21 +264,38 @@ export const recoveryItems = async (): Promise<{ items: RecoveryItem[]; unreadab
             size: new Blob([legacy]).size,
         })
     const worker = context?.open.worker
-    if (worker && context?.recovery.status.mode !== 'memory')
-        try {
-            for (const row of await worker.call('listRecovered'))
-                items.push({ kind: 'recovered', id: row.id, foundAt: row.foundAt, size: row.size })
-        } catch {
-            unreadable = true
+    if (worker && context?.recovery.status.mode !== 'memory') {
+        const listed = await storedRead(worker, 'listRecovered', undefined)
+        switch (listed.storedRead) {
+            case 'value':
+                for (const row of listed.storedValue)
+                    items.push({
+                        kind: 'recovered',
+                        id: row.id,
+                        foundAt: row.foundAt,
+                        size: row.size,
+                    })
+                break
+            case 'failed':
+                // Shown as its own state, never as nothing to recover.
+                unreadable = true
+                break
         }
+    }
     return { items, unreadable }
 }
 
 /** A recovery row as a file to download (`toRecoveryFile`); the UI hands it over. */
-export const recoveryFile = async (item: RecoveryItem) => {
-    if (item.kind !== 'recovered') return toRecoveryFile(item.text)
-    const text = await context?.open.worker.call('readRecovered', item.id)
-    return text === undefined ? undefined : toRecoveryFile(text)
+export const recoveryFile = async (
+    item: RecoveryItem,
+): Promise<StoredRead<ReturnType<typeof toRecoveryFile> | undefined>> => {
+    if (item.kind !== 'recovered') return readValue(toRecoveryFile(item.text))
+    const worker = context?.open.worker
+    if (!worker) return readValue(undefined)
+    // `undefined` is a row gone since it was listed; a failed read is its own answer.
+    return mapRead(await storedRead(worker, 'readRecovered', item.id), (text) =>
+        text === undefined ? undefined : toRecoveryFile(text),
+    )
 }
 
 /**

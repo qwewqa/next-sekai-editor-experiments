@@ -58,7 +58,7 @@ test('a History dialog that fails to load leaves the Elevation Editor open and s
     expect(result).toEqual({ open: true, beat: 3 })
     await expect(page.locator('.elevation-canvas')).toBeVisible()
     await expect(
-        page.getByText('The timeline could not be loaded.', { exact: true }).first(),
+        page.getByText('The Timeline could not be loaded.', { exact: true }).first(),
     ).toBeVisible()
 })
 

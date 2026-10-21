@@ -9,6 +9,7 @@ import { chunkCrc32, isChunkRowIntact, type ChunkRow } from '../../../src/local/
 import { encodeSnapshot } from '../../../src/local/records/snapshot'
 import { openLocalData } from '../../../src/local/testing/db'
 import { createWorld } from '../../../src/local/testing/world'
+import { useDay } from '../../helpers/useDay'
 import { goldenChart, stateOf } from './charts'
 
 // `putChunk` (§1.6.11.2): an intact row stays with its first `day`; a row whose CRC fails is
@@ -32,9 +33,12 @@ const rowOf = (tx: KvTx, hash: Uint8Array) => tx.get('chunks', hashKey(hash)) as
 test('an intact row is kept with its first day', async () => {
     const { write, a, verify } = await setup()
     const chunk = await verify(a)
-    const added = await write((tx) => putChunk(tx, chunk, 5))
+    const added = await write((tx) => putChunk(tx, chunk, useDay(5)))
     assert.equal(added?.day, 5)
-    const again = await write(async (tx) => [await putChunk(tx, chunk, 9), await rowOf(tx, a.hash)])
+    const again = await write(async (tx) => [
+        await putChunk(tx, chunk, useDay(9)),
+        await rowOf(tx, a.hash),
+    ])
     assert.equal(again[0], undefined)
     assert.equal((again[1] as ChunkRow).day, 5)
 })
@@ -42,7 +46,7 @@ test('an intact row is kept with its first day', async () => {
 test('a row whose CRC fails is replaced by the verified bytes, keeping its day', async () => {
     const { write, a, b, verify } = await setup()
     const chunk = await verify(a)
-    await write((tx) => putChunk(tx, chunk, 5))
+    await write((tx) => putChunk(tx, chunk, useDay(5)))
     const damaged: ((row: ChunkRow) => unknown)[] = [
         // Bit rot in the stored bytes.
         (row) => ({ ...row, bytes: row.bytes.map((byte, i) => (i === 3 ? byte ^ 1 : byte)) }),
@@ -59,7 +63,7 @@ test('a row whose CRC fails is replaced by the verified bytes, keeping its day',
             await tx.put('chunks', damage(await rowOf(tx, a.hash)), hashKey(a.hash))
         })
         const [result, row] = await write(async (tx) => [
-            await putChunk(tx, chunk, 9),
+            await putChunk(tx, chunk, useDay(9)),
             await rowOf(tx, a.hash),
         ])
         assert.equal(result, undefined)

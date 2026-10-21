@@ -955,7 +955,8 @@
         "legacy": "舊版本的恢復副本 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
-        "listFailed": "無法讀取已儲存的恢復資料",
+        "listFailed": "無法讀取已恢復的內容",
+        "downloadFailed": "無法下載已恢復的內容。",
         "atLoad": "啟動通知"
       },
       "openHistory": "開啟歷史記錄",
@@ -1174,7 +1175,7 @@
     "continuedUntitled": "已繼續 {0} 的工作階段。",
     "continuedUndated": "已繼續 \"{0}\"。",
     "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
-    "inAppBrowser": "這似乎是應用程式內建瀏覽器，部分功能可能無法使用，已存放的內容也更容易遺失。如需保留內容，請在瀏覽器中開啟此頁面。",
+    "inAppBrowser": "這似乎是應用程式內建瀏覽器。部分功能可能無法使用，已存放的內容也可能被刪除。如需保留內容，請在瀏覽器中開啟此頁面。",
     "journalKept": "無法套用對 \"{0}\" 的變更，已將其保留為獨立的工作階段。",
     "fallback": "已恢復先前造訪中未儲存的內容。",
     "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
@@ -1354,9 +1355,9 @@
       "composedTransform": "多項調整",
       "released": "已移出資料夾",
       "recoveryContext": "先前操作",
-      "recoveryHead": "來源操作",
-      "omittedDescriptions": "已省略的先前操作說明：{0}",
-      "droppedSteps": "已遺失的撤銷步驟：{0}",
+      "recoveryHead": "已恢復到此處",
+      "omittedDescriptions": "未列出的先前操作：{0}",
+      "droppedSteps": "時間軸中沒有單獨步驟的操作：{0}",
       "counts": {
         "note": "{0} 個音符",
         "bpm": "{0} 個 BPM",
@@ -1704,7 +1705,7 @@
           "alt": "Alt",
           "shift": "Shift"
         },
-        "fixedAlias": "也可按 {0}（固定）"
+        "fixedAlias": "也可按 {0}（不可變更）"
       },
       "maskLeft": {
         "label": "遮罩軌道"
@@ -2048,7 +2049,7 @@
     "changesBelowAny": "下方的變更",
     "savesCurrent": "儲存目前版本。",
     "showEdits": "顯示變更",
-    "changeOptions": "變更顯示選項"
+    "changeOptions": "變更的顯示選項"
   },
   "save": {
     "fileName": "檔案名稱",
@@ -2088,9 +2089,9 @@
     "savedWithoutCoverLarge": "已儲存到 {0}，未包含封面",
     "savedWithoutPreviewLarge": "已儲存到 {0}，未包含預覽音訊",
     "savedWithoutMediaLarge": "已儲存到 {0}，未包含媒體",
-    "someStepsNotKept": "已儲存到 {0}。部分較早的步驟未保留。",
-    "someStepsNotKeptLine": "部分較早的步驟未保留。",
-    "committedState": "這是在另一個分頁中開啟之工作階段最後存放的狀態。",
+    "someStepsNotKept": "已儲存到 {0}。時間軸中部分較早的步驟未保留。",
+    "someStepsNotKeptLine": "時間軸中部分較早的步驟未保留。",
+    "committedState": "該檔案包含在另一個分頁中開啟之工作階段最後存放的版本。",
     "tookOver": "已儲存到 {0}。其先前的工作在「最近工作階段」中。",
     "noChanges": "自下載 {0} 以來沒有變更",
     "noChangesSaved": "自儲存 {0} 以來沒有變更",
@@ -2101,6 +2102,7 @@
     "restoredName": "{0}（{1} 還原）",
     "fileType": "Next SEKAI 專案檔案",
     "unavailable": "未儲存。請使用「匯出關卡資料…」。",
+    "storageUnavailable": "未儲存。編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "擁有該檔案的人可以查看其中的歷史記錄。",
@@ -2124,14 +2126,14 @@
     "savedNoNotes": "{0}，{1}。",
     "otherProject": "另一個專案檔案 \"{0}\"。",
     "otherProjectUnnamed": "另一個專案檔案。",
-    "notDescendant": "此版本並非您版本的後續 ({0})。",
+    "notDescendant": "此版本並非基於您的版本 ({0})。",
     "separate": "另存為獨立檔案",
     "openOther": "開啟另一個版本",
     "openOtherNote": "你的變更會保持未儲存。",
     "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
-    "replaceHoldsEarlier": "它包含此瀏覽器已不再擁有的較早步驟。",
+    "replaceHoldsEarlier": "它包含此瀏覽器中已不再存放的較早時間軸步驟。",
     "keepEditing": "繼續編輯"
   },
   "name": {
@@ -2144,6 +2146,8 @@
   "notice": {
     "useOpenFile": "要開啟檔案，請使用 \"開啟\"。",
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
+    "sameFileMaybeElsewhere": "\"{0}\" 可能已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
+    "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
     "newLevel": "新關卡",
     "reopen": "重新開啟 \"{0}\"",
@@ -2213,6 +2217,7 @@
     },
     "unsavedChanges": "已開啟 {0}。你在 {1} 對它有未儲存的變更。",
     "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",
+    "earlierUnchecked": "已開啟 {0}。無法檢查「最近工作階段」中是否有它的其他版本。",
     "unsavedEarlierMaybe": "對 {0} 早期版本的未儲存變更（{1}）可能在「最近工作階段」中。",
     "unsavedChangesMaybe": "已開啟 {0}。你在 {1} 對它可能有未儲存的變更。",
     "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在「最近工作階段」中。",

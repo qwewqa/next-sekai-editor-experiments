@@ -82,8 +82,18 @@ const label = (item: RecoveryItem) => {
 }
 
 const download = async (item: RecoveryItem) => {
-    const file = await (await api()).recoveryFile(item)
-    if (!file) return
+    const read = await (await api()).recoveryFile(item)
+    if (read.storedRead === 'failed') {
+        // The row is still there: it can be tried again.
+        notify(() => strings.value.recovery.downloadFailed, { card: true, severity: 'error' })
+        return
+    }
+    const file = read.storedValue
+    if (!file) {
+        // A row gone since it was listed (taken by another tab): the list is read again.
+        await refresh()
+        return
+    }
     try {
         const result = await platform.saveFile({
             kind: 'recovery',

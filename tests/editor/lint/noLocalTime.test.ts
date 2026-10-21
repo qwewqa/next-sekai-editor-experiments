@@ -292,7 +292,7 @@ const filesUnder = (directory: string, extensions: string[]): string[] =>
               : []
     })
 
-test('no-local-time covers History’s files, apart from exactly the one allowlisted', async () => {
+test('no-local-time covers all of History’s files, with no allowlist', async () => {
     const files = [
         ...filesUnder('src/editor/history', ['.ts', '.vue']),
         ...filesUnder('src/history', ['.ts']),
@@ -303,7 +303,9 @@ test('no-local-time covers History’s files, apart from exactly the one allowli
     assert.ok(files.length > 80)
     const off: string[] = []
     for (const file of files) if (!(await enabled(file, 'local/no-local-time'))) off.push(file)
-    assert.deepEqual(off.sort(), ['src/local/days.ts'])
+    assert.deepEqual(off, [])
+    // days.ts reads its date through the calendar module and is checked.
+    assert.equal(await enabled('src/local/days.ts', 'local/no-local-time'), true)
     // The calendar module and the date formatter are where local time is read.
     assert.equal(await enabled('src/calendar/calendar.ts', 'local/no-local-time'), false)
     assert.equal(await enabled('src/i18n/dateTime.ts', 'local/no-local-time'), false)

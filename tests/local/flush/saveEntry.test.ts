@@ -975,7 +975,7 @@ test('our own completed Save over another kept gap keeps its cut as the file hol
     }
     // A later visit recognises B (the file's rows 1, 2 and B's `save`): the gap 3 below it may be
     // entries a tab still holds, so no row. The cut still counts B's row, which the chain lacks, so
-    // the next write that isn't an append doesn't carry B (ADV3-1): it says "Some earlier steps
+    // the next write that isn't an append doesn't carry B (ADV3-1): it says "Some earlier Timeline steps
     // were not kept." once.
     assert.equal(await ownSave(page, session.id, session.chainId, 4, second, 3).record(), true)
     assert.deepEqual(kinds(world), [

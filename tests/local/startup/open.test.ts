@@ -531,8 +531,9 @@ test('a newer database outside safe mode: a reload continues from its own journa
     assert.equal(copy.recovery.keptForLocalData.length, 0)
 })
 
-test('a new visit whose most recent session’s file is bound in another tab’s open session forks it', async () => {
-    const world = createWorld({ seed: 14 })
+/** The newest chain is bound to coconut.nxsp, and another tab has another chain open on it. */
+const boundElsewhereSetup = async (seed: number) => {
+    const world = createWorld({ seed })
     const storage = new MemoryStorage()
     const first = await openJournalPage(world, 'first', storage)
     const a = stateOf(goldenChart())
@@ -562,11 +563,18 @@ test('a new visit whose most recent session’s file is bound in another tab’s
             })
         }
     })
+    return { world, storage, bound, lock }
+}
+
+test('a new visit whose most recent session’s file is bound in another tab’s open session forks it', async () => {
+    const { world, storage, bound, lock } = await boundElsewhereSetup(14)
     // The store holds plain values: the reads carry fake handles, one file for both.
     let failBindings = false
     let failComparison = false
     let missingHandle = false
     let handleReads = 0
+    let ghost: 'none' | 'unreadable' | 'unresolvable' | 'ownUnresolvable' = 'none'
+    let ghostReads = 0
     const file = {
         isSameEntry: (other: unknown) =>
             failComparison
@@ -576,8 +584,21 @@ test('a new visit whose most recent session’s file is bound in another tab’s
     const visit = await load(world, 'visit', storage, {
         call: (method, result) => {
             if (method === 'readBindings' && failBindings) throw new Error('bindings unavailable')
+            // A binding listed before the real one, whose handle is read second (the own first).
+            if (method === 'readBindings' && ghost !== 'none')
+                return [
+                    { chainId: 'ghost', file: { name: 'coconut.nxsp' } },
+                    ...(result as object[]),
+                ]
             if (method !== 'readHandle') return result
             handleReads++
+            if (ghost !== 'none') {
+                ghostReads++
+                if (ghost === 'ownUnresolvable' && ghostReads === 1) return {}
+                if (ghostReads === 2 && ghost === 'unreadable')
+                    throw new Error('handle unavailable')
+                if (ghostReads === 2 && ghost === 'unresolvable') return {}
+            }
             return missingHandle ? undefined : result ? file : result
         },
     })
@@ -594,23 +615,60 @@ test('a new visit whose most recent session’s file is bound in another tab’s
     const target = await readOpen(visit.page, bound.id)
     failBindings = true
     const beforeFailure = handleReads
-    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), true)
+    // A failed read, a throw, or a handle that can't be compared is unknown, never "no".
+    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), 'unknown')
     assert.equal(handleReads, beforeFailure, 'failed enumeration must not eagerly read handles')
     failBindings = false
     failComparison = true
-    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), true)
+    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), 'unknown')
     failComparison = false
+    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), 'yes')
     missingHandle = true
-    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), false)
+    assert.equal(await visit.page.tab.run(() => boundElsewhere(visit.deps, target)), 'no')
     failBindings = true
     assert.equal(
         await visit.page.tab.run(() =>
             boundElsewhere(visit.deps, { ...target, chain: { ...target.chain, file: undefined } }),
         ),
-        false,
+        'no',
     )
+    // A definite match later outranks a binding that could not be told; without one, unknown.
+    failBindings = false
+    missingHandle = false
+    const answer = () => visit.page.tab.run(() => boundElsewhere(visit.deps, target))
+    for (const unclear of ['unreadable', 'unresolvable'] as const) {
+        ghost = unclear
+        ghostReads = 0
+        assert.equal(await answer(), 'yes', `a later match after an ${unclear} handle`)
+    }
+    // The own handle, which this page cannot hold, is unknown whatever the others say.
+    ghost = 'ownUnresolvable'
+    ghostReads = 0
+    assert.equal(await answer(), 'unknown')
     lock.release()
 })
+
+for (const [name, fails] of [
+    ['the bindings read fails', 'readBindings'],
+    ['a handle read fails', 'readHandle'],
+] as const)
+    test(`a new visit whose binding check cannot be answered (${name}) forks and says "may"`, async () => {
+        const { world, storage, lock } = await boundElsewhereSetup(14)
+        const file = { isSameEntry: (other: unknown) => Promise.resolve(other === file) }
+        const visit = await load(world, 'visit', storage, {
+            call: (method, result) => {
+                if (method === fails) throw new Error(`${fails} unavailable`)
+                return method === 'readHandle' && result ? file : result
+            },
+        })
+        const copy = openSession(visit)
+        assert.notEqual(copy.forkOf, undefined)
+        assert.deepEqual(
+            visit.events.find((event) => event.kind === 'separateCopy'),
+            { kind: 'separateCopy', of: { name: 'coconut.nxsp', bound: true }, maybe: true },
+        )
+        lock.release()
+    })
 
 test('Duplicate Tab of an unstored continuation forks what it continued', async () => {
     const world = createWorld({ seed: 15 })

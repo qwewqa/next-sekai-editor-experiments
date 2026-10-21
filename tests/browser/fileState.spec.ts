@@ -224,7 +224,7 @@ test.describe('the label and the title', () => {
         await expect(label(page)).toHaveText('coconut.nxsp •')
         await expect(page).toHaveTitle('coconut.nxsp • – Next SEKAI Editor')
         await expect(button(page)).toHaveAccessibleName(
-            'coconut, changed since saved to coconut.nxsp',
+            'coconut, changed since coconut.nxsp was saved',
         )
 
         // The same content reached another way is unchanged.
@@ -263,7 +263,7 @@ test.describe('the label and the title', () => {
         await expect(label(page)).toHaveText('Coconut (Master) · coconut.nxsp •')
         await expect(page).toHaveTitle('Coconut (Master) · coconut.nxsp • – Next SEKAI Editor')
         await expect(button(page)).toHaveAccessibleName(
-            'Coconut (Master), changed since saved to coconut.nxsp',
+            'Coconut (Master), changed since coconut.nxsp was saved',
         )
     })
 
@@ -299,7 +299,7 @@ test.describe('the label and the title', () => {
         await edit(page, 990)
         await expect(label(page)).toHaveText('coconut.nxsp · downloaded Mar 3 •')
         await expect(button(page)).toHaveAccessibleName(
-            'coconut, changed since download of coconut.nxsp',
+            'coconut, changed since coconut.nxsp was downloaded',
         )
     })
 
@@ -344,7 +344,7 @@ test.describe('the label and the title', () => {
             )
             await expect(page.locator('[data-status-changed]')).toBeVisible()
             await expect(button(page)).toHaveAccessibleName(
-                'A Very Long Distinct Display Name, changed since saved to coconut-long-working-copy.nxsp',
+                'A Very Long Distinct Display Name, changed since coconut-long-working-copy.nxsp was saved',
             )
             const geometry = await statusGeometry(page)
             expect(geometry.file).toMatch(/^coconut/)

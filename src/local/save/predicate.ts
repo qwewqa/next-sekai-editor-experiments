@@ -106,7 +106,7 @@ export const wouldCarry = (cut: ChainCut) => {
 }
 
 export type ReplaceDecision = {
-    /** "It holds earlier steps that this browser no longer has.": Replace disabled. */
+    /** "It holds earlier Timeline steps that are no longer stored in this browser.": Replace disabled. */
     holdsBase: boolean
     relation: Relation
 }
