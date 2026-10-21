@@ -2112,7 +2112,6 @@
     "bgmNotLoaded": "BGM non chargée",
     "bgmSize": "{0} · {1}",
     "keptOptions": "Déjà dans {0}",
-    "downloadNote": "Chaque sauvegarde télécharge une nouvelle copie.",
     "noHistoryHere": "L’historique nécessite une connexion sécurisée.",
     "sizeTotal": "Total : environ {0}",
     "sizePending": "Estimation de la taille…"

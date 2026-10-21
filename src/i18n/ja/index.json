@@ -2112,7 +2112,6 @@
     "bgmNotLoaded": "BGM が読み込まれていません",
     "bgmSize": "{0} · {1}",
     "keptOptions": "{0} に含まれています",
-    "downloadNote": "保存のたびに新しいコピーがダウンロードされます。",
     "noHistoryHere": "履歴を含めるには安全な接続が必要です。",
     "sizeTotal": "合計: 約 {0}",
     "sizePending": "サイズを見積もり中…"

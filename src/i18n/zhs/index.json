@@ -2112,7 +2112,6 @@
     "bgmNotLoaded": "BGM 未加载",
     "bgmSize": "{0} · {1}",
     "keptOptions": "已在 {0} 中",
-    "downloadNote": "每次保存都会下载一份新副本。",
     "noHistoryHere": "包含历史记录需要安全连接。",
     "sizeTotal": "总计：约 {0}",
     "sizePending": "正在估算大小…"

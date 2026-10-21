@@ -48,8 +48,6 @@ export type SaveDialogInput = {
     bgm: BgmRow
     /** "For Sonolus level data, use Export Level Data… (Shift+P)." with its link. */
     exportLine: boolean
-    /** "Each save downloads a new copy." (download browsers, the first Save in this browser). */
-    downloadNote: boolean
     /** Safari, iPhone and iPad, the first Save: the storage line's first sentence. */
     storageLine?: () => string
     /** "Saves the current version." */

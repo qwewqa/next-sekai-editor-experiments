@@ -29,7 +29,7 @@ const exported = flag('exportUsed')
 export const downloadConfirmed = confirmed.value
 export const confirmDownloads = confirmed.set
 
-/** A Save has run in this browser, so the Save dialog's download note no longer shows. */
+/** A Save has run in this browser, so the Save dialog's storage line no longer shows. */
 export const firstSaveDone = firstSave.value
 export const markFirstSaveDone = firstSave.set
 

@@ -58,7 +58,6 @@ const base: Input = {
     history: { kind: 'available', ticked: true, locked: false },
     bgm: { kind: 'held', name: 'coconut.mp3', ticked: true, locked: false },
     exportLine: false,
-    downloadNote: false,
     peeking: false,
     estimate: { load: () => Promise.resolve(undefined) },
 }
@@ -361,7 +360,7 @@ test.describe('the Save dialog', () => {
         await expect(dialog(page).locator('[data-save-row="bgm"]')).not.toContainText('Already in')
     })
 
-    test('the notes: the first lines, Export, the download note, the storage line, peeking', async ({
+    test('the notes: the first lines, Export, the storage line, peeking', async ({
         page,
         context,
     }) => {
@@ -370,7 +369,6 @@ test.describe('the Save dialog', () => {
         await openSave(page, {
             lines: ['"coconut.nxsp" was replaced from another tab or window.'],
             exportLine: true,
-            downloadNote: true,
             storageLine: 'Safari deletes stored work after 7 days without a visit.',
             peeking: true,
         })
@@ -379,9 +377,6 @@ test.describe('the Save dialog', () => {
         )
         await expect(dialog(page).locator('[data-save-export]')).toHaveText(
             'For Sonolus, use Export Level Data…',
-        )
-        await expect(dialog(page).locator('[data-save-download-note]')).toHaveText(
-            'Each save downloads a new copy.',
         )
         await expect(dialog(page).locator('[data-save-storage-line]')).toBeVisible()
         await expect(dialog(page).locator('[data-save-peeking]')).toHaveText(

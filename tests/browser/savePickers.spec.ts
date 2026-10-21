@@ -222,7 +222,7 @@ test('a download browser downloads, binds by name, and offers Download Again unc
     await start(page, { fileSystemAccess: false })
     await edit(page, 1)
     await pressSave(page)
-    await expect(saveDialog(page)).toContainText('Each save downloads a new copy.')
+    await expect(saveDialog(page)).toBeVisible()
     await submitSave(page, 'coconut')
     await expect(notice(page).filter({ hasText: 'Download started: coconut.nxsp' })).toBeVisible()
     expect(await chainOf(page)).toMatchObject({

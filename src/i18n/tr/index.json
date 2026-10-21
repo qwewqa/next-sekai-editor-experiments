@@ -2112,7 +2112,6 @@
     "bgmNotLoaded": "BGM yüklenmedi",
     "bgmSize": "{0} · {1}",
     "keptOptions": "Zaten {0} içinde",
-    "downloadNote": "Her kaydetme yeni bir kopya indirir.",
     "noHistoryHere": "Geçmiş için güvenli bir bağlantı gerekir.",
     "sizeTotal": "Toplam: yaklaşık {0}",
     "sizePending": "Boyut tahmin ediliyor…"

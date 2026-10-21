@@ -2112,7 +2112,6 @@
     "bgmNotLoaded": "BGM을 불러오지 않음",
     "bgmSize": "{0} · {1}",
     "keptOptions": "이미 {0}에 있음",
-    "downloadNote": "저장할 때마다 새 사본이 다운로드됩니다.",
     "noHistoryHere": "기록을 포함하려면 보안 연결이 필요합니다.",
     "sizeTotal": "합계: 약 {0}",
     "sizePending": "크기 추정 중…"
