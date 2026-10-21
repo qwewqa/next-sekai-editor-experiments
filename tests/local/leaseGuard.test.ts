@@ -3,7 +3,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, sep } from 'node:path'
 import test from 'node:test'
 
-// Spec A7: only the flusher takes a lease, and the old raw-lock type is gone.
+// Spec A7: only sessions.ts makes a lease, only the flusher takes one, and the old raw-lock type
+// is gone.
 const src = join(import.meta.dirname, '../../src')
 const found = (pattern: RegExp) =>
     readdirSync(src, { recursive: true, encoding: 'utf8' })
@@ -13,7 +14,8 @@ const found = (pattern: RegExp) =>
         )
         .map((file) => file.replaceAll(sep, '/'))
 
-test('only the flusher takes a lease, and HeldLock is gone', () => {
+test('only sessions.ts makes a lease, only the flusher takes one, and HeldLock is gone', () => {
+    assert.deepEqual(found(/\blockLease\(/), ['local/sessions.ts'])
     assert.deepEqual(found(/\.take\(\)/), ['local/flush.ts'])
     assert.deepEqual(found(/\bHeldLock\b/), [])
 })
