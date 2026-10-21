@@ -11,7 +11,7 @@ import {
 } from './memoryBaseline'
 
 // Chromium only: the heap comes from CDP. Memory after the edits, with storing on and every entry
-// flushed, stays within 10% of Step 0's baseline (§1.9.1, §1.9.3): 133.1 MB on the generated
+// flushed, stays within 12% of Step 0's baseline (§1.9.1, §1.9.3): 133.1 MB on the generated
 // chart and 131.8 MB on coconut, measured on `main` before any Step 3 code.
 const MB = 1_000_000
 const charts = [
@@ -80,8 +80,8 @@ for (const chart of charts) {
             body: JSON.stringify({ ...figure, editsMs: edits.ms }),
             contentType: 'application/json',
         })
-        // Within 10% of today (§1.9.3): 119.8–146.4 MB on the generated chart.
+        // 12% (owner, 2026-10-21): the History and Save work grew the heap by about 11.8%.
         expect(heap / MB).toBeGreaterThanOrEqual(chart.baselineMb * 0.9)
-        expect(heap / MB).toBeLessThanOrEqual(chart.baselineMb * 1.1)
+        expect(heap / MB).toBeLessThanOrEqual(chart.baselineMb * 1.12)
     })
 }

@@ -1518,6 +1518,8 @@ test.describe('held badges', () => {
             }
             requestAnimationFrame(record)
             Object.assign(window, {
+                movedFrames: () =>
+                    frames.filter((frame, i) => i && frame.time !== frames[i - 1]!.time).length,
                 stopHeld: () => {
                     recording = false
                     return frames
@@ -1635,7 +1637,16 @@ test.describe('held badges', () => {
                     steps: 4,
                 },
             )
-            await page.waitForTimeout(1500)
+            // Until the view has moved on 30 frames, however slow the machine.
+            await expect
+                .poll(
+                    () =>
+                        page.evaluate(() =>
+                            (window as unknown as { movedFrames: () => number }).movedFrames(),
+                        ),
+                    { timeout: 20_000 },
+                )
+                .toBeGreaterThan(30)
             await expectAlwaysHeld(page)
             await page.mouse.up()
         })

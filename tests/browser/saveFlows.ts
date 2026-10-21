@@ -90,8 +90,9 @@ export const removeFile = (page: Page, name: string) =>
 
 /**
  * The `project.json` of an OPFS `.nxsp`. A file a save is writing is not readable for a moment (a
- * NotReadableError), and a file a save picker returned is empty until the save's write closes,
- * so a read that finds either is tried again for up to 5 s.
+ * NotReadableError), or not found for a moment as the write's swap file replaces it (a
+ * NotFoundError), and a file a save picker returned is empty until the save's write closes, so a
+ * read that finds any of these is tried again for up to 5 s.
  */
 export const projectOf = (page: Page, name: string) =>
     page.evaluate(async (name) => {
@@ -111,7 +112,8 @@ export const projectOf = (page: Page, name: string) =>
                     return JSON.parse(new TextDecoder().decode(bytes)) as Row
                 }
             } catch (error) {
-                if ((error as Error).name !== 'NotReadableError') throw error
+                if (!['NotReadableError', 'NotFoundError'].includes((error as Error).name))
+                    throw error
                 retry = error
             }
             if (performance.now() > until)

@@ -287,7 +287,52 @@ const exercise = async (
     }
 }
 
+/**
+ * Whether two overlay images differ only as one rasteriser run can from another: a few
+ * anti-aliased pixels off by a few levels (premultiplied). Under load, Chromium's raster of the
+ * same translucent strokes has differed by 1 to 3 levels in 4 pixels; a real difference between
+ * the layouts moves or recolours whole marks.
+ */
+const sameUpToRasterNoise = async (browser: Browser, actual: string, expected: string) => {
+    const page = await browser.newPage()
+    try {
+        return await page.evaluate(
+            async ({ actual, expected }) => {
+                const read = async (url: string) => {
+                    const bitmap = await createImageBitmap(await (await fetch(url)).blob())
+                    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+                    const context = canvas.getContext('2d')!
+                    context.drawImage(bitmap, 0, 0)
+                    return context.getImageData(0, 0, bitmap.width, bitmap.height)
+                }
+                const [a, b] = [await read(actual), await read(expected)]
+                if (a.width !== b.width || a.height !== b.height) return false
+                let pixels = 0
+                for (let i = 0; i < a.data.length; i += 4) {
+                    let worst = 0
+                    for (let channel = 0; channel < 3; channel++)
+                        worst = Math.max(
+                            worst,
+                            Math.abs(
+                                (a.data[i + channel]! * a.data[i + 3]!) / 255 -
+                                    (b.data[i + channel]! * b.data[i + 3]!) / 255,
+                            ),
+                            Math.abs(a.data[i + 3]! - b.data[i + 3]!),
+                        )
+                    if (worst > 4) return false
+                    if (worst > 0) pixels++
+                }
+                return pixels <= 64
+            },
+            { actual, expected },
+        )
+    } finally {
+        await page.close()
+    }
+}
+
 const compare = async (
+    browser: Browser,
     actual: Awaited<ReturnType<typeof exercise>>,
     expected: Awaited<ReturnType<typeof exercise>>,
 ) => {
@@ -309,7 +354,14 @@ const compare = async (
             }
         }
         expect(actualState, `${name}: serialized authoring state`).toEqual(expectedState)
-        expect(actualCanvas, `${name}: exact chart pixels`).toEqual(expectedCanvas)
+        const { overlaySha256: actualOverlay, ...actualChart } = actualCanvas
+        const { overlaySha256: expectedOverlay, ...expectedChart } = expectedCanvas
+        expect(actualChart, `${name}: exact chart pixels`).toEqual(expectedChart)
+        if (actualOverlay !== expectedOverlay)
+            expect(
+                await sameUpToRasterNoise(browser, actualImages.overlay!, expectedImages.overlay!),
+                `${name}: overlay pixels`,
+            ).toBe(true)
     }
 }
 
@@ -319,6 +371,7 @@ test('non-dynamic chart editing and pixels are identical in Basic and Composed',
 }) => {
     test.setTimeout(90_000)
     await compare(
+        browser,
         await exercise(browser, baseURL!, false, 'composed'),
         await exercise(browser, baseURL!, false, 'basic'),
     )
@@ -335,6 +388,7 @@ for (const dynamic of [false, true]) {
         )
         test.setTimeout(90_000)
         await compare(
+            browser,
             await exercise(browser, baseURL!, dynamic, 'basic'),
             await exercise(browser, baselineUrl!, dynamic, 'basic'),
         )

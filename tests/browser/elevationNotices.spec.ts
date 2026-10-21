@@ -235,7 +235,10 @@ for (const [kind, prepare, from, to, label] of [
                     : kind === 'a resize'
                       ? 'nse.object.edit'
                       : 'nse.object.move',
-            data: kind === 'an elevation change' ? { targets } : { subject: 'note', targets },
+            data:
+                kind === 'an elevation change'
+                    ? { targets }
+                    : { subject: 'note', changed: { note: targets } },
         })
         expect(outcome.notes).toEqual(
             kind === 'an elevation change'
