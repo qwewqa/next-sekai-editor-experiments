@@ -716,31 +716,38 @@ test('a slow read names the new entry with the loading line, not the old one', a
     await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
 })
 
-test('an arrow pressed while the last step is held acts on the new step once it is read', async ({
-    page,
-}) => {
-    await edit(page, 'Added A', { kind: 'add', beats: [40, 41] })
-    await edit(page, 'Added B', { kind: 'add', beats: [100] })
-    await stored(page)
-    await viewAt(page, 6)
-    await openTab(page)
-    await row(page, 'Added B').click()
-    await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
-    await holdWorker(page, 'readChanges')
-    try {
-        await list(page).press('ArrowDown')
-        // Still the held step's bar, its arrow enabled: the press waits for A's change.
+for (const press of ['arrow', 'Show Change'] as const) {
+    test(`${press} pressed while the last step is held acts on the new step once it is read`, async ({
+        page,
+    }) => {
+        await edit(page, 'Added A', { kind: 'add', beats: [40, 41] })
+        await edit(page, 'Added B', { kind: 'add', beats: [100] })
+        await stored(page)
+        await viewAt(page, 6)
+        await openTab(page)
+        await row(page, 'Added B').click()
         await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
-        await arrow(page, 'up').click()
-        expect(Math.round(await centreBeat(page))).toBeLessThan(10)
-    } finally {
-        await release(page)
-    }
-    await expect(peekLine(page)).toHaveText('2 changes')
-    // A's changes lie near beat 40, B's at 100.
-    await expect.poll(async () => Math.round(await centreBeat(page))).toBeGreaterThan(38)
-    await expect.poll(async () => Math.round(await centreBeat(page))).toBeLessThan(60)
-})
+        await holdWorker(page, 'readChanges')
+        // The page clock stands still, so the 250 ms that ends the hold cannot pass before the press.
+        await page.clock.install()
+        await page.clock.pauseAt(new Date(Date.now() + 60_000))
+        try {
+            await list(page).press('ArrowDown')
+            // Still the held step's bar, its arrow enabled: the press waits for A's change.
+            await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
+            if (press === 'arrow') await arrow(page, 'up').click()
+            else await runCommand(page, 'showChange')
+            expect(Math.round(await centreBeat(page))).toBeLessThan(10)
+        } finally {
+            await release(page)
+        }
+        await expect(peekLine(page)).toHaveText('2 changes')
+        await page.clock.resume()
+        // A's changes lie near beat 40, B's at 100.
+        await expect.poll(async () => Math.round(await centreBeat(page))).toBeGreaterThan(38)
+        await expect.poll(async () => Math.round(await centreBeat(page))).toBeLessThan(60)
+    })
+}
 
 test('quick switches in a row reach the loading state 250 ms after the first, not the last', async ({
     page,

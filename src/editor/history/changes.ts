@@ -652,6 +652,11 @@ const showLateralChange = () => {
 
 /** Show Change: the next stop above the band's middle, wrapping to the lowest. */
 export const showNextChange = () => {
+    // Held on the last step: the press waits for the new one's change, as the arrows' do.
+    if (heldBar.value) {
+        pressWhenRead(showNextChange)
+        return
+    }
     if (showLateralChange()) return
     const { band, stops } = currentStops()
     const stop = nextStop(stops, band)
