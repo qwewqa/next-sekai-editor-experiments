@@ -14,8 +14,8 @@ import type { State } from '../../../src/state'
 import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
 import { editStep, nativeOperation, originOperation } from '../../helpers/historySteps'
-import { useDay } from '../../helpers/useDay'
 import '../../helpers/lockChecks'
+import { useDay } from '../../helpers/useDay'
 import { goldenChart, stateOf } from '../records/charts'
 import {
     openPage,
