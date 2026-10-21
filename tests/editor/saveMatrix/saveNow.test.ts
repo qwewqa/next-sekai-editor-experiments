@@ -62,3 +62,30 @@ test('Open the Other Version: a handle read that fails says so, and is not the f
     assert.equal(errors.length, 1)
     assert.match(String(errors[0]?.args[0]), /^The editor could not access this browser’s storage/)
 })
+
+// Save to File… (spec D invariant 12): a session read that fails is a storage failure, not a
+// session that is gone. It said "Use Export Level Data…" for both.
+
+const saveToFileSays = async (readSession: () => Promise<unknown>) => {
+    const w = await createWorld({ own: 'bound', held: true, storage: 'holds' })
+    const fake = w.worker.call
+    w.worker.call = (method: string, arg?: unknown) =>
+        method === 'readSession' ? (readSession() as Promise<never>) : fake(method, arg)
+    await flow.saveToFile('session-other')
+    await settle()
+    const errors = w.dialogs.filter((dialog) => dialog.kind === 'error')
+    assert.equal(errors.length, 1)
+    return String(errors[0]?.args[0])
+}
+
+test('Save to File…: a session read that fails says the storage is not available, without the Save As… hint', async () => {
+    const says = await saveToFileSays(() =>
+        Promise.reject(new Error('The storage worker restarted')),
+    )
+    assert.match(says, /^The editor could not access this browser’s storage\. Try again\.$/)
+})
+
+test('Save to File…: a session that is gone keeps its own line (control)', async () => {
+    const says = await saveToFileSays(() => Promise.resolve({ kind: 'missing' }))
+    assert.doesNotMatch(says, /could not access this browser’s storage/)
+})

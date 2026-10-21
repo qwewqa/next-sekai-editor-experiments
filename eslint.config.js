@@ -216,8 +216,6 @@ export default tsEslint.config(
     // The storage worker's covered reads go through the storedRead gate (Part 1 §1.6.5).
     {
         files: ['src/**/*.{ts,vue}'],
-        // D2-lite empties this: flow.ts's remaining reads move to the gate with it.
-        ignores: ['src/editor/save/flow.ts'],
         plugins: { local },
         rules: { 'local/stored-reads': 'error' },
     },

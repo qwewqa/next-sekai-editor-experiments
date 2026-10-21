@@ -2104,7 +2104,7 @@
         "restoredName": "{0} (restored {1})",
         "fileType": "Next SEKAI project file",
         "unavailable": "Not saved. Use Export Level Data…",
-        "storageUnavailable": "Not saved. The editor could not access this browser’s storage. Try again.",
+        "storageUnavailable": "Not saved. The editor could not access this browser’s storage. Try again, or use Save As…",
         "include": "Include",
         "historySize": "{0} step · {1}|{0} steps · {1}",
         "historyNote": "Anyone with the file can view its history.",
