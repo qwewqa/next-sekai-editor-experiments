@@ -200,6 +200,12 @@ export type FlushResult =
           /** Each snapshot's root. */
           roots: Uint8Array[]
           lastSeq: number
+          /**
+           * Entries at or below the session's `lastSeq` that the writer order should have made
+           * impossible (§2.5, the `lastSeq` rule): `missing` ones had no row and were stored now;
+           * `covered` ones had no row but a `recovered` entry above them, and were skipped.
+           */
+          orderBreach?: { missing: number[]; covered: number[] }
           /** Carried media put now, or found there after an unanswered flush: each read back. */
           readBack: string[]
           /**
@@ -477,10 +483,12 @@ export const writeFlush = async (
     // last entry: a re-send of stored entries (a lost reply, or a journal replayed since, §1.6.6)
     // leaves the stored stack alone.
     const lastSeq = typeof session?.lastSeq === 'number' ? session.lastSeq : 0
-    // Entries at or below `lastSeq` are stored, or covered by the `recovered` entry a replayed
-    // journal wrote over them (§1.6.6), so a re-send skips them. One with neither is stored now:
-    // no entry is acknowledged without being stored.
+    // Entries at or below `lastSeq` are stored, so a re-send skips them. One with no row is the
+    // backstop's: no designed path reaches it (one writer, only above `lastSeq`, §2.5), but no
+    // entry is acknowledged without being stored, so it is stored now. One a `recovered` entry
+    // (§1.6.6) covers is skipped. Both are reported as `orderBreach`.
     const missing = new Set<number>()
+    const covered: number[] = []
     if (session)
         for (const entry of batch.entries)
             if (
@@ -497,7 +505,11 @@ export const writeFlush = async (
         const recovered = later
             .filter((row) => isRow(row) && row.kind === 'recovered')
             .map((row) => (row as Row).seq as number)
-        for (const seq of missing) if (recovered.some((at) => at > seq)) missing.delete(seq)
+        for (const seq of missing)
+            if (recovered.some((at) => at > seq)) {
+                missing.delete(seq)
+                covered.push(seq)
+            }
     }
     const last = batch.entries.at(-1)?.seq ?? 0
     // The stored stack is the one after `lastSeq`: an entry stored below it leaves that stack
@@ -807,6 +819,11 @@ export const writeFlush = async (
         chunks: prepared.chunks.map((chunk) => chunk.hash),
         roots: prepared.roots.map((root) => root.hash),
         lastSeq: newLastSeq,
+        // The backstop stored what it found (and skipped what a `recovered` entry covers); the
+        // page reports it, since no designed path leads here (§2.5).
+        ...(missing.size || covered.length
+            ? { orderBreach: { missing: [...missing], covered } }
+            : {}),
         readBack: readBack.filter((hex) => !refused.includes(hex)),
         ...(refused.length ? { mediaFailed: refused } : {}),
         stackWritten: stack !== undefined,

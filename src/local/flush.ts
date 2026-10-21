@@ -96,6 +96,23 @@ export type SaveEntryInput = Omit<PendingEntry, 'seq' | 'kind' | 'dirty' | 'step
  */
 export type EndSaveResult = 'added' | 'kept' | 'letGo' | 'notCurrent' | 'ended'
 
+/**
+ * The storage worker's backstop found entries at or below the session's `lastSeq` that the
+ * writer order should have made impossible (§2.5): it stored the ones with no row and skipped
+ * the ones a `recovered` entry covers. Reported, never thrown: the data is stored.
+ */
+export class FlushOrderError extends Error {
+    override name = 'FlushOrderError'
+    constructor(
+        readonly sessionId: string,
+        readonly breach: { missing: number[]; covered: number[] },
+    ) {
+        super(
+            `Entries ${[...breach.missing, ...breach.covered].join(', ')} of session ${sessionId} were found at or below its lastSeq`,
+        )
+    }
+}
+
 export type FlushSession = {
     readonly id: string
     chainId: string
@@ -1391,6 +1408,8 @@ export class Flusher {
         )
         switch (result.kind) {
             case 'stored': {
+                if (result.orderBreach)
+                    this.deps.onError?.(new FlushOrderError(session.id, result.orderBreach))
                 this.extractor.settle(batch, result.chunks, result.known)
                 this.extractor.confirm(
                     [...reused.values()].map(({ memo }) => memo),
