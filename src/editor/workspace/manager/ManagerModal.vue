@@ -1,20 +1,14 @@
 <script setup lang="ts">
-import { computed, provide, shallowRef, useId, useTemplateRef } from 'vue'
+import { computed, shallowRef, useId, useTemplateRef } from 'vue'
 import { i18n } from '../../../i18n'
 import BaseModal from '../../../modals/BaseModal.vue'
 import { panelTitle } from '../panels'
 import { groupManager } from './groups'
 import ManagerList from './ManagerList.vue'
 import type { ManagerTab } from './modal'
-import { managerDisclosureOwnerKey, type ManagerDisclosureRequest } from './disclosure'
 import StagesManager from './StagesManager.vue'
 
-const props = defineProps<{
-    tab: ManagerTab
-    disclosureRequest?: ManagerDisclosureRequest
-}>()
-
-if (props.disclosureRequest) provide(managerDisclosureOwnerKey, props.disclosureRequest)
+const props = defineProps<{ tab: ManagerTab }>()
 
 const emit = defineEmits<{
     close: []

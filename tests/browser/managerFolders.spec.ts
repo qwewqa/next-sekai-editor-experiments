@@ -103,15 +103,6 @@ const tree = (page: Page) =>
     })
 
 const panel = (page: Page) => page.locator('#workspace-panel-groups')
-const currentGroup = async (page: Page) => {
-    await page.locator('[data-status-bar]').getByTitle('Manage Groups', { exact: true }).click()
-    const disclosure = panel(page).locator('[data-manager-current]')
-    await expect(disclosure).toHaveAttribute('open', '')
-    const path = disclosure.locator('[data-manager-current-path]')
-    await path.scrollIntoViewIfNeeded()
-    await expect(path).toBeInViewport({ ratio: 1 })
-    return disclosure
-}
 
 const nameButton = (scope: Locator, name: string) =>
     scope.locator('.manager-name').filter({
@@ -1244,8 +1235,6 @@ test('pickers group options by folder and the status bar names shared names by f
     await expect(
         page.locator('[data-status-bar]').getByTitle('Manage Groups', { exact: true }),
     ).toContainText(/Chorus › Lead/)
-    const disclosure = await currentGroup(page)
-    await expect(disclosure.locator('[data-manager-current-path]')).toHaveText('Chorus › Lead')
 })
 
 test('the folder holding the target names it and marks the line through it', async ({ page }) => {
@@ -1280,9 +1269,6 @@ test('the folder holding the target names it and marks the line through it', asy
     )
     // The status bar always leads with the folder.
     await expect(groupChip).toContainText('Verse › Fill')
-    await expect((await currentGroup(page)).locator('[data-manager-current-path]')).toHaveText(
-        'Verse › Fill',
-    )
     // A short stretch of line marks the target's pill, and only there.
     expect(await marked('Fill')).not.toBe('none')
     expect(await marked('Lead')).toBe('none')
@@ -1301,9 +1287,6 @@ test('the folder holding the target names it and marks the line through it', asy
     })
     await expect(panel(page).locator('.manager-name[aria-description]')).toHaveCount(0)
     await expect(groupChip.locator('[data-status-part="name"]')).toHaveText('Default')
-    await expect((await currentGroup(page)).locator('[data-manager-current-path]')).toHaveText(
-        'Default',
-    )
 })
 
 test('the folder line and its target mark keep showing in high contrast', async ({ page }) => {
@@ -1431,15 +1414,8 @@ test.describe('touch', () => {
         expect(parts.height).toBe(32)
         // Readability is checked from rendered pixels, including the ellipsis.
         await page.screenshot({ path: testInfo.outputPath('narrow-status-path.png') })
-        const disclosure = await currentGroup(page)
-        const path = disclosure.locator('[data-manager-current-path]')
-        await expect(path).toHaveText('An Extremely Long Folder Name › Lead Synth Layer')
-        const count = disclosure.locator('[data-manager-current-count]')
-        await count.scrollIntoViewIfNeeded()
-        await expect(count).toBeInViewport({ ratio: 1 })
-        await expect(count).toHaveText('1/2 Groups Shown')
-        expect(await path.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
-            true,
+        await expect(chip).toHaveAccessibleName(
+            'An Extremely Long Folder Name › Lead Synth Layer Group 1/2 Groups Shown',
         )
         const bar = chip.locator('..')
         await expect(bar.locator('[data-status-division]')).toHaveCount(0)

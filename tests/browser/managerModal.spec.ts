@@ -81,20 +81,27 @@ test('the commands open the dialog on their tab and leave the panels alone', asy
     await expect(page.locator('#workspace-panel-groups')).toHaveCount(0)
 })
 
-test('the status chips show the panels, or the dialog while a panel is disabled', async ({
+test('the status bar scope labels run the manage commands: the dialog opens on the current row', async ({
     page,
 }) => {
-    await seedGroups(page, [['Default'], ['Lead']])
-    const chip = page.locator('.status-chip').first()
-    await chip.click()
-    await expect(page.locator('#workspace-panel-groups')).toBeVisible()
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-
+    await seedGroups(page, [['Default'], ['Lead'], ['Outro']])
     await page.evaluate(() => {
-        window.editorTest.settings.groupsPosition = 'disabled'
+        window.editorTest.view.groupId = 2 as never
     })
-    await chip.click()
-    await expect(page.getByRole('dialog').getByRole('tab', { selected: true })).toHaveText('Groups')
+    const dialog = page.getByRole('dialog')
+    await page.locator('.status-chip').first().click()
+    await expect(dialog.getByRole('tab', { selected: true })).toHaveText('Groups')
+    await expect(dialog).toHaveAccessibleName('Manage Groups')
+    await expect(nameButton(dialog, 'Lead')).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+
+    await page.locator('.status-chip').nth(1).click()
+    await expect(dialog.getByRole('tab', { selected: true })).toHaveText('Stages')
+    await expect(dialog).toHaveAccessibleName('Manage Stages')
+    await page.keyboard.press('Escape')
+    expect(await settingOf(page, 'showGroups')).toBe(false)
+    await expect(page.locator('#workspace-panel-groups')).toHaveCount(0)
 })
 
 test('tabs switch by pointer and by arrow keys', async ({ page }) => {
@@ -284,6 +291,29 @@ test('a keyboard open starts on the target; Properties returns there', async ({ 
     await expect(dialog.locator('.manager-row-current :focus')).toHaveCount(1)
 })
 
+test('opening on a current row the remembered scroll left out of sight brings it into view', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    await seedGroups(page, manyGroups)
+    await page.keyboard.press('e')
+    const list = page.getByRole('dialog').locator('.manager-entries')
+    await list.evaluate((element) => (element.scrollTop = element.scrollHeight))
+    await list.dispatchEvent('scroll')
+    await page.keyboard.press('Escape')
+
+    // The current group is now one near the top, out of the remembered scroll's view.
+    await page.evaluate(() => {
+        window.editorTest.view.groupId = 2 as never
+    })
+    await page.locator('.chart-pane').focus()
+    await page.keyboard.press('e')
+    const dialog = page.getByRole('dialog')
+    const current = nameButton(dialog, 'Group 2')
+    await expect(current).toBeFocused()
+    await expect(current).toBeInViewport()
+})
+
 test('the dialog and the panel remember their scroll positions apart', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 })
     await seedGroups(page, manyGroups)
@@ -293,11 +323,12 @@ test('the dialog and the panel remember their scroll positions apart', async ({ 
     await list.dispatchEvent('scroll')
     await page.keyboard.press('Escape')
 
-    await page.locator('.status-chip').first().click()
+    await page.evaluate(() => {
+        window.editorTest.settings.showGroups = true
+    })
     const panel = page.locator('#workspace-panel-groups .manager-entries')
     await expect(panel).toBeVisible()
     expect(await panel.evaluate((element) => element.scrollTop)).toBe(0)
-    await expect(panel.locator('[data-manager-current-summary]')).toBeFocused()
 
     await page.locator('.chart-pane').focus()
     await page.keyboard.press('e')

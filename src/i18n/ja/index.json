@@ -1914,8 +1914,6 @@
       "ungrouped": "{0}フォルダーを解除しました"
     },
     "manager": {
-      "currentGroup": "現在のグループ",
-      "currentStage": "現在のステージ",
       "show": "{0}を表示",
       "hide": "{0}を非表示",
       "actions": "{0}のその他の操作",

@@ -1914,8 +1914,6 @@
       "ungrouped": "已解散{0}資料夾"
     },
     "manager": {
-      "currentGroup": "目前圖層",
-      "currentStage": "目前舞台",
       "show": "顯示 {0}",
       "hide": "隱藏 {0}",
       "actions": "{0} 的更多操作",

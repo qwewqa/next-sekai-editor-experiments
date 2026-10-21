@@ -1914,8 +1914,6 @@
       "ungrouped": "Dossier {0} dissous"
     },
     "manager": {
-      "currentGroup": "Groupe actuel",
-      "currentStage": "Scène actuelle",
       "show": "Afficher {0}",
       "hide": "Masquer {0}",
       "actions": "Plus d’actions pour {0}",
