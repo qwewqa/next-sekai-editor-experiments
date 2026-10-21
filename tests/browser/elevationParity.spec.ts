@@ -171,8 +171,8 @@ test('the empty beat note sits under a tall header, and under a tool dialog noti
     await expect(page.locator('.notification')).toHaveText('Switched to Brush tool')
     const pill = (await page.locator('.notification').boundingBox())!
     const canvas = (await page.locator('.elevation-canvas').boundingBox())!
-    await expect.poll(lastEmptyY).toBe(header + 80)
-    expect(header + 80 - 16).toBeGreaterThanOrEqual(pill.y + pill.height - canvas.y)
+    await expect.poll(lastEmptyY).toBe(header + 84)
+    expect(header + 84 - 16).toBeGreaterThanOrEqual(pill.y + pill.height - canvas.y)
 
     // A two-line notice moves it further, until a one-line one replaces it.
     await notifyAndDraw(page, 'Moved 12 objects and changed their elevations')
@@ -180,7 +180,7 @@ test('the empty beat note sits under a tall header, and under a tool dialog noti
     expect(tall.height).toBeCloseTo(pill.height + 24, 0)
     expect(await lastEmptyY()).toBeCloseTo(tall.y + tall.height - canvas.y + 24, 3)
     await notifyAndDraw(page, 'Switched to Brush tool')
-    expect(await lastEmptyY()).toBe(header + 80)
+    expect(await lastEmptyY()).toBe(header + 84)
 })
 
 for (const width of [280, 1280])
@@ -200,7 +200,7 @@ for (const width of [280, 1280])
         await expect(page.locator('[data-tool-dialog]')).toBeVisible()
         await expect(page.locator('.notification')).toHaveCount(0)
         // With no notice, it keeps a one-line notice's room.
-        await expect.poll(async () => (await emptyNotes(page)).at(-1)).toBe(header + 80)
+        await expect.poll(async () => (await emptyNotes(page)).at(-1)).toBe(header + 84)
         const from = (await emptyNotes(page)).length - 1
 
         await notifyAndDraw(page, 'Switched to Brush tool')
@@ -210,7 +210,7 @@ for (const width of [280, 1280])
         await notifyAndDraw(page, 'Switched to Note tool')
         await notifyAndDraw(page)
         await expect(page.locator('.notification')).toHaveCount(0)
-        expect([...new Set((await emptyNotes(page)).slice(from))]).toEqual([header + 80])
+        expect([...new Set((await emptyNotes(page)).slice(from))]).toEqual([header + 84])
     })
 
 test('beside the chart, the empty beat note stays under the header as the chart shows a notice', async ({
