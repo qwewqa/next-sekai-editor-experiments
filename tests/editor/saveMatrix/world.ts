@@ -18,6 +18,8 @@ const { setStorageWorkerForMatrix } = await import('./stubs/start')
 const { setFlusherForMatrix } = await import('./stubs/storing')
 const { setSaveUiForTests } = await import('./stubs/dialogs')
 const flow = await import('../../../src/editor/save/flow')
+const { setSaveEnvironment } = await import('../../../src/editor/save/binding')
+const { RESUME_WAIT_MS } = await import('../../../src/editor/save/imports')
 const { rootOf } = await import('../../../src/editor/save/build')
 const env = await import('../../../src/editor/save/env')
 const { session: currentSession, createSessionDescriptor } =
@@ -113,6 +115,7 @@ export type PickerOpening = {
     name: string
     activation: boolean
     importing: boolean
+    /** An import pending in storage that the bounded wait (`RESUME_WAIT_MS`) has not run out on (I5). */
     importPending: boolean
     dialogOpen: boolean
 }
@@ -292,7 +295,15 @@ const createWorld = async (setup: Setup = {}) => {
             name,
             activation: activation.active,
             importing: isImporting(ownSession.id),
-            importPending: pendingImports.has(ownSession.id),
+            // Restated I5: pending in storage is allowed once the wait has run its bound. The bound
+            // counts per world, from the first listing of the pending import by any caller, and 150 ms
+            // is timing tolerance (the wait polls every 250 ms).
+            importPending:
+                pendingImports.has(ownSession.id) &&
+                !(
+                    pendingSince !== undefined &&
+                    performance.now() - pendingSince >= RESUME_WAIT_MS - 150
+                ),
             dialogOpen: preparing.some((p) => p.open),
         })
         if (next && next !== 'cancel' && next !== 'download') {
@@ -332,6 +343,8 @@ const createWorld = async (setup: Setup = {}) => {
     const chains = new Map<string, Row>()
     const handleRows = new Map<string, FileSystemFileHandle>()
     const pendingImports = new Set<string>()
+    /** When a wait first listed a pending import of the chain: the bound counts from there. */
+    let pendingSince: number | undefined
     /** What the Replace guard answers. */
     const decision: { value: unknown } = { value: { relation: 'unrelated', holdsBase: false } }
     /** The conflict dialog's inputs, as the flow built them. */
@@ -375,6 +388,7 @@ const createWorld = async (setup: Setup = {}) => {
         const a = arg as Row
         switch (method) {
             case 'openPendingImports': // the pending imports are the world's `pendingImports` set, which `startImport` drives
+                if (pendingImports.size) pendingSince ??= performance.now()
                 return [...pendingImports].map((sessionId) => ({
                     sessionId,
                     chainId: ownSession.chainId,
@@ -469,7 +483,7 @@ const createWorld = async (setup: Setup = {}) => {
         hasPending: false,
         now: () => (clock += 10),
         reserveSave(): SaveReservation | undefined {
-            const session = ownSession
+            const session = flusher.session
             if (session.reserved !== undefined) return
             const seq = session.nextSeq++
             const reservation = { session, seq, wall: flusher.now() }
@@ -515,6 +529,11 @@ const createWorld = async (setup: Setup = {}) => {
         release(reservation: SaveReservation): Promise<EndSaveResult> {
             if (reservation.session.reserved !== reservation) return Promise.resolve('ended')
             return flusher.endSave(reservation, undefined, undefined, true)
+        },
+        /** As the real one: resolves once the current session's reservation has ended. */
+        async reservationEnded(signal?: AbortSignal) {
+            while (flusher.session.reserved !== undefined && !signal?.aborted)
+                await new Promise((resolve) => setTimeout(resolve, 2))
         },
         flush: () => Promise.resolve(),
         unstored: () => ({ entries: [], stack: undefined }),
@@ -636,6 +655,13 @@ const createWorld = async (setup: Setup = {}) => {
     // Wiring -----------------------------------------------------------------------------
     setStorageWorkerForMatrix(worker)
     setFlusherForMatrix(flusher, { rewrite: () => undefined })
+    // What `local/storing.ts` sets in the browser: read at each call, so a fork shows.
+    setSaveEnvironment(() => ({
+        worker: worker as never,
+        flusher: flusher as never,
+        session: flusher.session,
+        chainId: flusher.session.chainId,
+    }))
     setExportPersister(() => Promise.resolve(true))
     setExportTargetReader(() => Promise.resolve(readValue({})))
     exportPick.setProjectPickCheck((picked) => flow.projectPick(picked))

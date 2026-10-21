@@ -32,14 +32,6 @@ export const KNOWN: Known[] = [
         fault: 'import-picker-while-running',
     },
     {
-        id: 'EX-I5',
-        kind: 'accepted',
-        title: 'Export opens its picker with an import pending that never started',
-        paths: ['export', 'export/reloaded'],
-        invariant: 'I5',
-        fault: 'import-pending-never-starts',
-    },
-    {
         id: 'EX-I4',
         kind: 'bug',
         title: 'Export opens its picker on an activation its own build outlasted',
@@ -106,14 +98,6 @@ export const KNOWN: Known[] = [
         fault: 'identify-fails',
         plans: ['partial'],
         detail: /^opened.nsld held/,
-    },
-    {
-        id: 'WB-throw',
-        kind: 'bug',
-        title: 'a write-back whose chain record cannot be read ends silently',
-        paths: ['write-back'],
-        invariant: 'flow threw',
-        fault: 'worker-record-fails',
     },
 ]
 

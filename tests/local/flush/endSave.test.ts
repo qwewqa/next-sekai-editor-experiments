@@ -162,3 +162,26 @@ test('release keeps a reservation no path ended, once', async () => {
     assert.equal(await page.flusher.endSave(done, saveEntry(done.wall)), 'added')
     assert.equal(await page.flusher.release(done), 'ended')
 })
+
+test('reservationEnded resolves at once with none held, when the held one ends, or on abort', async () => {
+    const { page, session } = await start(39)
+    // None held: at once.
+    await page.flusher.reservationEnded()
+    const reservation = page.flusher.reserveSave()!
+    let ended = false
+    const waiting = page.flusher.reservationEnded().then(() => {
+        ended = true
+    })
+    await Promise.resolve()
+    assert.equal(ended, false, 'a held reservation is waited for')
+    await page.flusher.release(reservation)
+    await waiting
+    assert.equal(session.reserved, undefined)
+    // Aborted: the wait stops while the reservation is held.
+    const held = page.flusher.reserveSave()!
+    const controller = new AbortController()
+    const stopped = page.flusher.reservationEnded(controller.signal)
+    controller.abort()
+    await stopped
+    assert.equal(session.reserved, held, 'the reservation is still held')
+})

@@ -2,7 +2,7 @@ import { isImporting, onImportProgress, whenImported } from '../../local/open/im
 import { storedRead } from '../../local/storedRead'
 import { appVersion } from '../../platform'
 import type { BuildEnv } from './build'
-import { saveUi, type Preparing } from './dialogs'
+import type { Preparing, SaveUi } from './dialogs'
 
 // The wait for a chain's open imports (Part 1 §1.4.7, spec A): a Save, Save As… and Export wait
 // for them in "Preparing…" before they read the chain, and our own completed Save is recorded only
@@ -15,6 +15,8 @@ import { saveUi, type Preparing } from './dialogs'
 export type PreparingSlot = {
     dialog?: Preparing
     name: string
+    /** How its dialog opens: the Save UI's, given by the flow (this module loads in Node). */
+    ui: { preparing: SaveUi['preparing'] }
     /** Export's picker waiting for an open's import (SF3-1). */
     kind?: 'export'
     timer?: ReturnType<typeof setTimeout>
@@ -23,7 +25,7 @@ export type PreparingSlot = {
 
 export const openPreparing = (slot: PreparingSlot) => {
     if (slot.dialog) return slot.dialog
-    const dialog = saveUi.preparing(slot.name, slot.kind)
+    const dialog = slot.ui.preparing(slot.name, slot.kind)
     slot.dialog = dialog
     if (dialog.signal.aborted) slot.cancel.abort()
     else
@@ -32,6 +34,9 @@ export const openPreparing = (slot: PreparingSlot) => {
         })
     return dialog
 }
+
+/** A build longer than this shows "Preparing…" (§1.4.7, §1.5.6). */
+export const PREPARING_MS = 1000
 
 /** How long a Save waits for a reload's import resume to start (§1.5.4), as a slot load does. */
 export const RESUME_WAIT_MS = 4000

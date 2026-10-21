@@ -10,7 +10,15 @@ import { createWorld, exportPick, type World } from './world'
 const { waitForChainImports } = await import('../../../src/editor/save/imports')
 const { exportByPicker } = await import('../../../src/editor/commands/exportLevel/flow')
 
-const slot = () => ({ name: 'coconut.nxsp', cancel: new AbortController() })
+const dialogs = await import('../../../src/editor/save/dialogs')
+
+const slot = () => ({
+    name: 'coconut.nxsp',
+    ui: {
+        preparing: (name: string, kind?: 'save' | 'export') => dialogs.saveUi.preparing(name, kind),
+    },
+    cancel: new AbortController(),
+})
 const environment = (w: World) => ({
     worker: w.worker as never,
     session: w.session,

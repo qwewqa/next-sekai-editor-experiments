@@ -455,6 +455,8 @@ export class Flusher {
     private mediaAttempts = 0
     private readonly now: () => number
     private readonly newId: () => string
+    /** Waiters for the current session's reservation to end (`reservationEnded`). */
+    private readonly endWaiters = new Set<() => void>()
     private readonly setTimer: (fn: () => void, ms: number) => unknown
     private readonly clearTimer: (handle: unknown) => void
     /** No database will answer in this tab: replaced sessions keep no in-memory history. */
@@ -885,6 +887,7 @@ export class Flusher {
                 ? { ...entry, operation: captureOperation(entry.operation) }
                 : undefined
         session.reserved = undefined
+        for (const wake of [...this.endWaiters]) wake()
         let result: EndSaveResult
         if (captured) {
             const at = session.pending.findIndex((each) => each.seq > seq)
@@ -915,6 +918,24 @@ export class Flusher {
             result = 'letGo'
         }
         return this.flush({ strict: true }).then(() => result)
+    }
+
+    /**
+     * Resolves once no Save holds the current session's reservation: at once when none does, or
+     * when `signal` aborts. A Save that must wait for another flow's reservation (Export's own
+     * pick) waits here, and never while it holds `nse-bind` (§1.6.6).
+     */
+    reservationEnded(signal?: AbortSignal): Promise<void> {
+        if (this.current?.reserved === undefined || signal?.aborted) return Promise.resolve()
+        return new Promise((resolve) => {
+            const done = () => {
+                signal?.removeEventListener('abort', done)
+                this.endWaiters.delete(done)
+                resolve()
+            }
+            this.endWaiters.add(done)
+            signal?.addEventListener('abort', done, { once: true })
+        })
     }
 
     /** Ends a reservation no path ended (a throw, a write in flight): kept. */

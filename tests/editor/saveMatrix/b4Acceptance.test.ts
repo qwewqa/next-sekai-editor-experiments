@@ -4,11 +4,11 @@ import { join, relative, sep } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-// B4 acceptance (work/soundness/architecture-review.md §B.6 item 2, §B.7): once the pick session
-// and SaveAttempt exist, a save picker is opened only in the pick-session module, and a Save's
-// reservation is ended only through SaveAttempt. Today every path opens its own picker and ends
-// its own reservation, so these fail; they are `todo` so the suite stays green, and B4 removes
-// the `todo` when it turns them green. The two allowed modules are named here: B1 may rename them.
+// B4 acceptance (work/arch/spec-B.md, invariants 1 and 2): a save picker is opened only in the
+// pick-session module, and a Save's reservation is ended only through SaveAttempt. The write-back,
+// Replace and Download Again end through it since B1; the picker paths still open their own
+// picker and end their own reservation, so these fail. They are `todo` so the suite stays green,
+// and B4 removes the `todo` when it turns them green.
 
 const root = fileURLToPath(new URL('../../../src/', import.meta.url))
 
@@ -50,7 +50,7 @@ const sites = (
 
 test(
     'B4 acceptance: pickers are opened only in the pick-session module',
-    { todo: 'B1 to B4 move every picker onto the pick session (architecture-review.md §B.7)' },
+    { todo: 'B2 to B4 move every picker onto the pick session (work/arch/spec-B.md §6)' },
     () => {
         // `pickSaveFile(` is a call of the platform's picker; `picker:` in a request is the
         // platform's `saveFile` opening one (Export's).
@@ -63,7 +63,7 @@ test(
 
 test(
     'B4 acceptance: reservations are ended only through SaveAttempt',
-    { todo: 'B1 to B4 move every endSave onto SaveAttempt (architecture-review.md §B.7)' },
+    { todo: 'B2 to B4 move every endSave onto SaveAttempt (work/arch/spec-B.md §6)' },
     () => {
         const ended = sites(/\b(endSave|release)\s*\(/, [SAVE_ATTEMPT, ...OWNERS])
         assert.deepEqual(ended, [], 'reservations ended outside SaveAttempt')

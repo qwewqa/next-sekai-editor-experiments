@@ -7,7 +7,7 @@ import { i18n } from '../../i18n'
 import { formatDateTime } from '../../i18n/dateTime'
 import { formatDate } from '../../i18n/when'
 import { launch } from '../../launch'
-import type { Flusher, FlushSession, SaveReservation } from '../../local/flush'
+import type { SaveReservation } from '../../local/flush'
 import { handleOf, readableWithoutPrompt, requestRead, storableHandle } from '../../local/handles'
 import { toHex } from '../../local/hash'
 import { displayName, namePartsOf, stemOf } from '../../local/names'
@@ -19,10 +19,9 @@ import type { IdentityUnit } from '../../local/save/commit'
 import type { SaveSizeEstimate } from '../../local/save/estimate'
 import type { BuiltSave } from '../../local/save/execute'
 import { bindingHasHistory } from '../../local/save/model'
-import { storageWorker } from '../../local/start'
 import { storageStatus } from '../../local/startup/events'
-import { mapRead, readValue, storedRead, type StoredRead } from '../../local/storedRead'
-import { journalWriter, flusher as storingFlusher } from '../../local/storing'
+import { readValue, storedRead } from '../../local/storedRead'
+import { journalWriter } from '../../local/storing'
 import {
     appVersion,
     diskStateOfBytes,
@@ -56,13 +55,15 @@ import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
 import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
 import {
-    BuildRefused,
-    headHashOf,
-    rootOf,
-    runBuild,
-    type BuildEnv,
-    type BuildRequest,
-} from './build'
+    bindingHandle,
+    environment,
+    quickBinding,
+    readBinding,
+    type Binding,
+    type Env,
+    type StoredFile,
+} from './binding'
+import { BuildRefused, headHashOf, rootOf, runBuild, type BuildRequest } from './build'
 import {
     replaceNewerLine,
     saveUi,
@@ -93,6 +94,7 @@ import {
 import {
     openPreparing,
     pause,
+    PREPARING_MS,
     RESUME_WAIT_MS,
     waitForChainImports,
     type PreparingSlot,
@@ -107,42 +109,22 @@ import {
     rememberEstimate,
     storageNote,
 } from './preview'
-import { refreshBinding, revokedOf } from './watch'
+import { exclusive } from './queue'
+import {
+    Cancelled,
+    commitFirst,
+    completeSave,
+    fileError,
+    notWritten,
+    withSaveAttempt,
+    type SaveAttempt,
+} from './saveAttempt'
+import { refreshBinding } from './watch'
 
 // Save, Save As… and Save to File… (Part 1 §1.4.7; owner decision log D5): write-back with
 // `requestPermission` first, the changed-on-disk check, our own completed Save, the Save dialog,
 // the save picker's rules R1–R12 under `nse-bind`, downloads, and the follow-up dialogs. The
 // dialogs are `saveUi`'s; the writer is the storage worker's (`buildSave`).
-
-/** The binding as the chain record holds it (§1.6.11.2). */
-export type StoredFile = {
-    name: string
-    event: 'opened' | 'saved' | 'downloaded'
-    at: number
-    hash: Uint8Array
-    entry?: {
-        sessionId: string
-        seq: number
-        startedAt: number
-        count: number
-        notKept: number
-        inexact?: true
-    }
-    completeFrom?: string
-    disk?: DiskState
-    options: { history: boolean; bgm: boolean }
-    confirmed?: true
-}
-
-/** The chain's identity fields as a Save reads them: stored, or kept in memory. */
-export type Binding = {
-    docId: string
-    revision?: { id: string; n: number; ancestors: string[] }
-    file?: StoredFile
-    replaced?: { by: string; at: number; name: string }
-}
-
-type Env = BuildEnv & { chainId: string }
 
 type Row = Record<string, unknown>
 
@@ -154,86 +136,6 @@ const NO_DISK: DiskState = { fingerprint: 'none', size: -1, lastModified: 0 }
 /** The project picker's id (§1.4.7). */
 const PICKER_ID = 'nse-project'
 
-/** A build longer than this shows "Preparing…" (§1.4.7, §1.5.6). */
-const PREPARING_MS = 1000
-
-const environment = (): Env | undefined => {
-    const worker = storageWorker
-    const flusher: Flusher | undefined = storingFlusher
-    const session = flusher?.session
-    if (!worker || !flusher || !session) return
-    return { worker, flusher, session, chainId: session.chainId }
-}
-
-/** The binding of a record, with the one kept in memory over it (storage paused, §1.3.2). */
-const bindingOf = (record: Row | undefined, session: FlushSession): Binding => {
-    const identity = session.identity
-    const source: Row = identity
-        ? { ...record, docId: identity.docId, revision: identity.revision, file: identity.file }
-        : (record ?? {})
-    const file =
-        isRow(source.file) && typeof source.file.name === 'string' ? source.file : undefined
-    return {
-        docId: typeof source.docId === 'string' ? source.docId : session.docId,
-        ...(isRow(source.revision) ? { revision: source.revision as Binding['revision'] } : {}),
-        ...(file ? { file: file as unknown as StoredFile } : {}),
-        ...(!identity && isRow(source.replaced)
-            ? { replaced: source.replaced as Binding['replaced'] }
-            : {}),
-    }
-}
-
-/** The record as this tab last wrote it: what a press decides by, before the check. */
-const quickBinding = (env: Env) => bindingOf(env.session.chain, env.session)
-
-/** The record read again (R10), with a revocation localStorage holds for it (R11). */
-const readBinding = async (env: Env): Promise<StoredRead<Binding>> =>
-    mapRead(await storedRead(env.worker, 'readChainRecord', env.chainId), (record) => {
-        // Taken over since: by the record, or by a key kept while storage couldn't take it (R11).
-        const replaced = revokedOf(record, env.session) as Binding['replaced'] | undefined
-        if (replaced) {
-            const binding = bindingOf(record, { ...env.session, identity: undefined })
-            return {
-                docId: binding.docId,
-                ...(binding.revision ? { revision: binding.revision } : {}),
-                replaced,
-            }
-        }
-        return bindingOf(record, env.session)
-    })
-
-/**
- * The binding read again, or the read's failure thrown: the Save ends there with nothing shown, as
- * before (`exclusive` only logs it; B0's WB-throw).
- */
-const readBindingOrThrow = async (env: Env): Promise<Binding> => {
-    const read = await readBinding(env)
-    if (read.storedRead === 'failed') throw read.storedError
-    return read.storedValue
-}
-
-/**
- * The handle of the chain's binding: this tab's, else the stored one, read when needed (D24).
- * `undefined` is an answer (none stored, or another file's); a failed read is `failed`.
- */
-const bindingHandle = async (
-    env: Env,
-    file: StoredFile,
-): Promise<StoredRead<FileSystemFileHandle | undefined>> => {
-    const held = heldHandle(env.chainId, file.name)
-    if (held) return readValue(held)
-    return mapRead(await handleOf(env.worker, env.chainId, 'file'), (stored) =>
-        stored?.name === file.name ? stored : undefined,
-    )
-}
-
-/** A continuation not stored yet commits its first row before its first file write (§1.3.1). */
-const commitFirst = async (env: Env) => {
-    const { session } = env
-    if (!session.stored) session.atOnce = true
-    await env.flusher.flush({ strict: true })
-}
-
 /** The label of the `save` entry and a file event: "Saved coconut.nxsp" (§1.3.8). */
 const saveOperation = (name: string, download: boolean) =>
     createHistoryOperation({
@@ -241,15 +143,16 @@ const saveOperation = (name: string, download: boolean) =>
         data: { file: captureName(name), delivery: download ? 'download' : 'file' },
     })
 
-const fileError = (error: unknown) =>
-    error instanceof FileError
-        ? error
-        : new FileError('io', error instanceof Error ? error.message : String(error))
-
 // The Preparing dialog: opened when a build is slow, or a Save waits for an import.
+
+/** How a Save opens its "Preparing…": the Save UI's, which tests replace. */
+const preparingUi = {
+    preparing: (name: string, kind?: 'save' | 'export') => saveUi.preparing(name, kind),
+}
 
 const preparingFor = (name: string, kind?: 'export'): PreparingSlot => ({
     name,
+    ui: preparingUi,
     cancel: new AbortController(),
     ...(kind ? { kind } : {}),
 })
@@ -436,14 +339,14 @@ const markerOf = (
  */
 const bindWrite = async (
     env: Env,
+    ending: Pick<SaveAttempt, 'complete'>,
     reservation: SaveReservation,
     built: BuiltSave,
     state: State,
     file: Row,
 ) => {
     const name = String(file.name)
-    await env.flusher.endSave(
-        reservation,
+    await ending.complete(
         {
             wall: reservation.wall,
             operation: operationOfEntry(built.saveEntry),
@@ -472,6 +375,11 @@ const bindWrite = async (
         markFirstSaveDone()
     }
 }
+
+/** What the picker paths pass to `bindWrite` until they run in an attempt: their own reservation. */
+const endingOf = (env: Env, reservation: SaveReservation): Pick<SaveAttempt, 'complete'> => ({
+    complete: (entry, unit) => completeSave(env.flusher, reservation, entry, unit),
+})
 
 const savedOf = (built: BuiltSave, kind: 'saved' | 'download', name: string, tookOver = false) => ({
     kind,
@@ -836,6 +744,10 @@ type PickRequest = {
 type Outcome =
     | { kind: 'done' }
     | { kind: 'cancelled' }
+    /** The attempt's commit forked the session: the Save dialog for the one now open. */
+    | { kind: 'forked' }
+    /** The chain's own file was damaged and the chain unlinked from it: Save As… follows. */
+    | { kind: 'unlinked'; name: string }
     | {
           kind: 'refused'
           name: string
@@ -852,32 +764,6 @@ type Outcome =
      * bytes are offered as a download, then `then` is shown.
      */
     | { kind: 'notPutBack'; name: string; bytes: Blob; then: Outcome }
-
-let running: Promise<void> | undefined
-let queued = false
-
-/**
- * One Save at a time in a tab: a press while one runs waits for it and runs once after (a second
- * press then finds nothing changed); more presses meanwhile add nothing.
- */
-const exclusive = async (run: () => Promise<void>) => {
-    if (running) {
-        if (queued) return
-        queued = true
-        await running
-        queued = false
-    }
-    const current = run().catch((error: unknown) => {
-        recordError(error)
-        console.error('A Save failed', error)
-    })
-    running = current
-    try {
-        await current
-    } finally {
-        if (running === current) running = undefined
-    }
-}
 
 /** A download whose build would likely outlast the tap: over 2 MB estimated, on a touch device. */
 const largeDownload = (estimated: number | undefined): estimated is number =>
@@ -1302,16 +1188,13 @@ const afterPick = async (
     if (written.kind !== 'saved') return written.outcome
     await savePoint('closed')
     rememberHandle(env.chainId, handle)
-    await bindWrite(env, reservation, built, state, {
+    await bindWrite(env, endingOf(env, reservation), reservation, built, state, {
         ...file,
         ...(written.disk ? { disk: written.disk } : {}),
     })
     feedback(built, 'saved', name, tookOver)
     return { kind: 'done' }
 }
-
-/** A failure before anything was written: a precondition or a denial. */
-const notWritten = (failure: FileError) => failure.step === 'check' || failure.code === 'denied'
 
 type Written = { kind: 'saved'; disk?: DiskState } | { kind: 'failed'; outcome: Outcome }
 
@@ -1394,7 +1277,7 @@ const download = async (
             event: 'downloaded',
             options: { history: request.history, bgm: request.bgm },
         })
-        await bindWrite(env, reservation, built, state, file)
+        await bindWrite(env, endingOf(env, reservation), reservation, built, state, file)
         forgetHandle(env.chainId)
     } else await env.flusher.endSave(reservation)
     feedback(built, 'download', request.fileName)
@@ -1489,6 +1372,12 @@ const ownCompletedSave = async (
 
 type CheckOutcome = Outcome | { kind: 'noChanges'; event: StoredFile['event'] }
 
+/** The binding could not be read again: the Save writes nothing (B0's WB-throw, D2). */
+const STORAGE_UNAVAILABLE: Outcome = {
+    kind: 'error',
+    message: () => i18n.value.save.storageUnavailable,
+}
+
 type Checked =
     | { kind: 'write'; binding: Binding; file: StoredFile; expected: DiskState }
     | { kind: 'outcome'; outcome: CheckOutcome }
@@ -1499,7 +1388,10 @@ type Checked =
  * event, the check alone (§1.4.7's "Nothing changed" row).
  */
 const check = async (env: Env, handle: FileSystemFileHandle): Promise<Checked> => {
-    const binding = await readBindingOrThrow(env)
+    const read = await readBinding(env)
+    // A record that could not be read is no answer (R10): nothing is written, and the Save says so.
+    if (read.storedRead === 'failed') return { kind: 'outcome', outcome: STORAGE_UNAVAILABLE }
+    const binding = read.storedValue
     const file = binding.file
     if (!file || binding.replaced) return { kind: 'revoked', binding }
     if (file.name !== handle.name) return { kind: 'revoked', binding }
@@ -1535,15 +1427,16 @@ const check = async (env: Env, handle: FileSystemFileHandle): Promise<Checked> =
  * change before `close()` aborts; the read-back confirms; the binding follows (§1.4.7).
  */
 const writeBackLocked = async (
+    attempt: SaveAttempt,
     env: Env,
     handle: FileSystemFileHandle,
 ): Promise<CheckOutcome | 'revoked'> => {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let round = 0; round < 2; round++) {
         const checked = await check(env, handle)
         if (checked.kind === 'revoked') return 'revoked'
         if (checked.kind === 'outcome') {
             if (checked.outcome.kind !== 'conflict') return checked.outcome
-            if (attempt === 0) {
+            if (round === 0) {
                 const recognised = await recognise(env, checked.outcome.binding, handle)
                 if (recognised === 'importing') return importingOutcome(handle)
                 if (recognised === 'recorded') continue
@@ -1551,13 +1444,14 @@ const writeBackLocked = async (
             return checked.outcome
         }
         const outcome = await writeBack(
+            attempt,
             env,
             handle,
             checked.binding,
             checked.file,
             checked.expected,
         )
-        if (outcome.kind !== 'conflict' || attempt > 0) return outcome
+        if (outcome.kind !== 'conflict' || round > 0) return outcome
         const recognised = await recognise(env, outcome.binding, handle)
         if (recognised === 'importing') return importingOutcome(handle)
         if (recognised !== 'recorded') return outcome
@@ -1588,6 +1482,7 @@ const importingOutcome = (handle: FileSystemFileHandle): Outcome => ({
 })
 
 const writeBack = async (
+    attempt: SaveAttempt,
     env: Env,
     handle: FileSystemFileHandle,
     binding: Binding,
@@ -1596,85 +1491,59 @@ const writeBack = async (
     /** Replace: the revision of the version on disk, kept first (§1.4.7). */
     replaces?: string,
 ): Promise<Outcome> => {
-    const reservation = env.flusher.reserveSave()
-    if (!reservation) return { kind: 'cancelled' }
-    try {
-        return await writeBackReserved(env, reservation, handle, binding, file, expected, replaces)
-    } finally {
-        await env.flusher.release(reservation)
-    }
-}
-
-const writeBackReserved = async (
-    env: Env,
-    reservation: SaveReservation,
-    handle: FileSystemFileHandle,
-    binding: Binding,
-    file: StoredFile,
-    expected: DiskState,
-    replaces: string | undefined,
-): Promise<Outcome> => {
-    const state = savedState()
-    const slot = preparingFor(file.name)
+    // Inside the hold of `nse-bind`: a reservation another flow holds is not waited for.
+    const reserved = await attempt.reserve(false)
+    if (!reserved) return { kind: 'cancelled' }
+    const { reservation, state } = reserved
     let built: BuiltSave | undefined
     let bound: Row = {}
     let result: SaveResult
-    whenSlow(slot)
     try {
-        result = await platform.saveFile({
-            kind: 'nxsp',
-            suggestedName: file.name,
-            target: { kind: 'handle', handle },
-            expected,
-            // A target found empty holds nothing to keep: written, never a conflict (R9).
-            overEmpty: true,
-            // "Preparing…"'s Cancel stops the write before it commits.
-            signal: slot.cancel.signal,
-            build: async (sources) => {
-                const source = replaces
-                    ? undefined
-                    : sources.find((each) => each.token === 'target')
-                const made = await runBuild(
-                    env,
-                    {
-                        target: replaces
-                            ? { kind: 'replace', replaces }
-                            : source && binding.revision
-                              ? { kind: 'append', source: 'target' }
-                              : { kind: 'copy' },
-                        history: file.options.history,
-                        bgm: file.options.bgm,
-                        fileName: file.name,
-                        save: {
-                            time: reservation.wall,
-                            operation: saveOperation(file.name, false),
+        result = await attempt.write(
+            {
+                kind: 'nxsp',
+                suggestedName: file.name,
+                target: { kind: 'handle', handle },
+                expected,
+                // A target found empty holds nothing to keep: written, never a conflict (R9).
+                overEmpty: true,
+                build: async (sources) => {
+                    const source = replaces
+                        ? undefined
+                        : sources.find((each) => each.token === 'target')
+                    const made = await runBuild(
+                        env,
+                        {
+                            target: replaces
+                                ? { kind: 'replace', replaces }
+                                : source && binding.revision
+                                  ? { kind: 'append', source: 'target' }
+                                  : { kind: 'copy' },
+                            history: file.options.history,
+                            bgm: file.options.bgm,
+                            fileName: file.name,
+                            save: {
+                                time: reservation.wall,
+                                operation: saveOperation(file.name, false),
+                            },
+                            state,
                         },
-                        state,
-                    },
-                    source ? [source] : [],
-                )
-                // Cancelled while it built: nothing is written, and no marker kept.
-                slot.cancel.signal.throwIfAborted()
-                built = made
-                bound = await bindingFile(made, reservation, {
-                    name: file.name,
-                    event: 'saved',
-                    handle,
-                    options: { history: !!made.identity.entry, bgm: file.options.bgm },
-                })
-                writeMarker(markerOf(env, made, reservation, binding.revision?.id ?? null, bound))
-                return { kind: 'blob', blob: made.blob }
+                        source ? [source] : [],
+                    )
+                    built = made
+                    bound = await bindingFile(made, reservation, {
+                        name: file.name,
+                        event: 'saved',
+                        handle,
+                        options: { history: !!made.identity.entry, bgm: file.options.bgm },
+                    })
+                    return { kind: 'blob', blob: made.blob }
+                },
             },
-        })
+            () => built && markerOf(env, built, reservation, binding.revision?.id ?? null, bound),
+        )
     } catch (error) {
-        closePreparing(slot)
-        // Once built, the write may have landed: its `seq` stays for the marker. A cancel is
-        // honoured only before the write commits.
-        const stopped = isCancel(slot, error)
-        const unwritten = !built || stopped || (error instanceof FileError && notWritten(error))
-        if (built && unwritten) removeMarker(env.chainId, built.revisionId)
-        await env.flusher.endSave(reservation, undefined, undefined, !unwritten)
-        if (stopped) return { kind: 'cancelled' }
+        if (error instanceof Cancelled) throw error
         if (error instanceof BuildRefused) {
             if (error.refusal.refused === 'damagedSource') return unlinkAndSaveAs(env, file.name)
             return { kind: 'error', message: refusalText(error, file.name) }
@@ -1683,14 +1552,10 @@ const writeBackReserved = async (
         if (failure.code === 'conflict') return { kind: 'conflict', handle, binding }
         return { kind: 'failed', error: failure, name: file.name }
     }
-    closePreparing(slot)
-    if (result.status !== 'saved' || !built) {
-        await env.flusher.endSave(reservation)
-        return { kind: 'cancelled' }
-    }
+    if (result.status !== 'saved' || !built) return { kind: 'cancelled' }
     await savePoint('closed')
     const done = built
-    await bindWrite(env, reservation, done, state, {
+    await bindWrite(env, attempt, reservation, done, state, {
         ...bound,
         ...(result.disk ? { disk: result.disk } : {}),
     })
@@ -1718,12 +1583,8 @@ const unlinkAndSaveAs = async (env: Env, name: string): Promise<Outcome> => {
         exportMemory.partial = true
     }
     forgetHandle(env.chainId)
-    pendingLine = interpolate(() => i18n.value.open.damagedHistory, name)
-    return { kind: 'cancelled' }
+    return { kind: 'unlinked', name }
 }
-
-/** A line the next Save dialog shows first (the damage unlink's notice). */
-let pendingLine: (() => string) | undefined
 
 // The follow-up dialogs.
 
@@ -1867,12 +1728,31 @@ const replace = async (
         )
         return
     }
-    const outcome = await withBind('shared', async (): Promise<Outcome> => {
-        const binding = await readBindingOrThrow(env)
-        const file = binding.file
-        if (!file || binding.replaced || file.name !== handle.name) return { kind: 'cancelled' }
-        return writeBack(env, handle, binding, file, pinned.disk, replaces)
-    })
+    // One attempt, as the write-back's: it commits a continuation's first row and waits for the
+    // chain's imports before it writes over the file.
+    const outcome = await withSaveAttempt(
+        {
+            env,
+            name: handle.name,
+            surface: 'save',
+            ui: preparingUi,
+            commitFirst: true,
+            importWait: 'chain',
+        },
+        (attempt): Promise<Outcome> => {
+            if (attempt.imported === 'unlinked')
+                return Promise.resolve({ kind: 'unlinked', name: handle.name })
+            return withBind('shared', async (): Promise<Outcome> => {
+                const read = await readBinding(env)
+                if (read.storedRead === 'failed') return STORAGE_UNAVAILABLE
+                const binding = read.storedValue
+                const file = binding.file
+                if (!file || binding.replaced || file.name !== handle.name)
+                    return { kind: 'cancelled' }
+                return writeBack(attempt, env, handle, binding, file, pinned.disk, replaces)
+            })
+        },
+    )
     await afterOutcome(env, outcome)
 }
 
@@ -1923,11 +1803,20 @@ const afterOutcome = async (
         case 'done':
         case 'cancelled':
         case 'noChanges':
-            if (pendingLine) {
-                const line = pendingLine
-                pendingLine = undefined
-                await dialogSave(env, 'saveAs', [line], true)
-            }
+            return
+        case 'forked': {
+            // Nothing was written: the Save dialog for the session that is open now.
+            const now = environment()
+            if (now) await dialogSave(now, 'save')
+            return
+        }
+        case 'unlinked':
+            await dialogSave(
+                env,
+                'saveAs',
+                [interpolate(() => i18n.value.open.damagedHistory, outcome.name)],
+                true,
+            )
             return
         case 'error':
             saveUi.error(outcome.message)
@@ -2261,63 +2150,71 @@ const dialogSave = async (
 
 /** A Save bound by name (a download, or a file opened without a handle). */
 const downloadAgain = async (env: Env, file: StoredFile) => {
-    await commitFirst(env)
-    const reservation = env.flusher.reserveSave()
-    if (!reservation) return
-    try {
-        await downloadAgainReserved(env, reservation, file)
-    } finally {
-        await env.flusher.release(reservation)
-    }
+    const outcome = await withSaveAttempt(
+        {
+            env,
+            name: file.name,
+            surface: 'save',
+            ui: preparingUi,
+            commitFirst: true,
+            importWait: 'chain',
+        },
+        async (attempt): Promise<Outcome> => {
+            if (attempt.imported === 'unlinked') return { kind: 'unlinked', name: file.name }
+            // Another flow's reservation (Export's own pick) is waited for: nothing is held here.
+            const reserved = await attempt.reserve()
+            if (!reserved) return { kind: 'cancelled' }
+            const { reservation, state } = reserved
+            let built: BuiltSave
+            try {
+                built = await attempt.preparing(() =>
+                    runBuild(env, {
+                        target: { kind: 'copy' },
+                        history: file.options.history,
+                        bgm: file.options.bgm,
+                        fileName: file.name,
+                        save: { time: reservation.wall, operation: saveOperation(file.name, true) },
+                        state,
+                    }),
+                )
+            } catch (error) {
+                if (error instanceof BuildRefused)
+                    return { kind: 'error', message: refusalText(error, file.name) }
+                return { kind: 'failed', error: fileError(error), name: file.name }
+            }
+            attempt.checkpoint()
+            let result: SaveResult
+            try {
+                result = await attempt.write({
+                    kind: 'nxsp',
+                    suggestedName: file.name,
+                    build: () => Promise.resolve({ kind: 'blob', blob: built.blob }),
+                })
+            } catch (error) {
+                if (error instanceof Cancelled) throw error
+                return { kind: 'failed', error: fileError(error), name: file.name }
+            }
+            if (result.status !== 'download-started') return { kind: 'cancelled' }
+            const record = await bindingFile(built, reservation, {
+                name: file.name,
+                event: 'downloaded',
+                options: file.options,
+            })
+            await bindWrite(env, attempt, reservation, built, state, record)
+            forgetHandle(env.chainId)
+            feedback(built, 'download', file.name)
+            return { kind: 'done' }
+        },
+    )
+    await afterOutcome(env, outcome)
 }
 
-const downloadAgainReserved = async (env: Env, reservation: SaveReservation, file: StoredFile) => {
-    const state = savedState()
-    const slot = preparingFor(file.name)
-    whenSlow(slot)
-    let built: BuiltSave
-    try {
-        built = await runBuild(env, {
-            target: { kind: 'copy' },
-            history: file.options.history,
-            bgm: file.options.bgm,
-            fileName: file.name,
-            save: { time: reservation.wall, operation: saveOperation(file.name, true) },
-            state,
-        })
-    } catch (error) {
-        closePreparing(slot)
-        await env.flusher.endSave(reservation)
-        await afterOutcome(
-            env,
-            error instanceof BuildRefused
-                ? { kind: 'error', message: refusalText(error, file.name) }
-                : { kind: 'failed', error: fileError(error), name: file.name },
-        )
-        return
-    }
-    clearTimeout(slot.timer)
-    if (cancelled(slot)) {
-        closePreparing(slot)
-        await env.flusher.endSave(reservation)
-        return
-    }
-    await afterOutcome(
-        env,
-        await download(
-            env,
-            reservation,
-            built,
-            state,
-            { dialog: 'save', fileName: file.name, ...file.options },
-            slot,
-        ),
-    )
-}
+/** Tells one "Download Again" notice from another: a second press of one joins its queued press. */
+let noticeToken = 0
 
 /** Save (§1.4.7): write-back, a download by name, or the Save dialog. */
 export const save = () =>
-    exclusive(async () => {
+    exclusive('save', async () => {
         const env = environment()
         if (!env) {
             saveUi.error(() => i18n.value.save.unavailable)
@@ -2348,8 +2245,9 @@ const saveNow = async (env: Env) => {
             return
         }
         if (rootOf(savedState()) === toHex(file.hash)) {
+            const token = ++noticeToken
             saveUi.noChanges(file.name, 'downloaded', () => {
-                void exclusive(async () => {
+                void exclusive(`downloadAgain:${token}`, async () => {
                     // Pressed later: only for the session it was shown for, as it is now.
                     const now = environment()
                     const bound = now?.session === env.session && quickBinding(now).file
@@ -2364,35 +2262,23 @@ const saveNow = async (env: Env) => {
     // The gesture's first call (Part 0 §0.9.1).
     const permission = requestWrite(handle)
     permission.catch(() => undefined)
-    await commitFirst(env)
-    let granted: PermissionState
-    try {
-        granted = await permission
-    } catch {
-        granted = 'denied'
-    }
-    if (granted !== 'granted') {
-        await afterOutcome(env, {
-            kind: 'failed',
-            error: new FileError('denied', 'Not allowed'),
-            name: file.name,
-        })
-        return
-    }
-    const slot = preparingFor(file.name)
-    const waited = await waitForChainImports(env, slot)
-    closePreparing(slot)
-    if (waited === 'cancelled') return
-    if (waited === 'unlinked') {
-        await dialogSave(
+    // The commit of a continuation's first row, the permission and the wait for the chain's
+    // imports are the attempt's; the check and the write follow under `nse-bind` shared.
+    const outcome = await withSaveAttempt(
+        {
             env,
-            'saveAs',
-            [interpolate(() => i18n.value.open.damagedHistory, file.name)],
-            true,
-        )
-        return
-    }
-    const outcome = await withBind('shared', () => writeBackLocked(env, handle))
+            name: file.name,
+            surface: 'save',
+            ui: preparingUi,
+            commitFirst: true,
+            importWait: 'chain',
+            permission,
+        },
+        (attempt): Promise<CheckOutcome | 'revoked'> =>
+            attempt.imported === 'unlinked'
+                ? Promise.resolve({ kind: 'unlinked', name: file.name })
+                : withBind('shared', () => writeBackLocked(attempt, env, handle)),
+    )
     if (outcome === 'revoked') {
         // Taken over (R6): the label goes, and the dialog says why.
         await refreshOwn(env)
@@ -2408,7 +2294,7 @@ const saveNow = async (env: Env) => {
 
 /** Save As… (§1.4.7): always the dialog, a new `docId` (R4 keeps it for the chain's own file). */
 export const saveAs = () =>
-    exclusive(async () => {
+    exclusive('saveAs', async () => {
         const env = environment()
         if (!env) {
             saveUi.error(() => i18n.value.save.unavailable)
@@ -2427,7 +2313,7 @@ export const saveAs = () =>
  * Sessions is its only entry point, and until then only the specs call it.
  */
 export const saveToFile = (sessionId: string) =>
-    exclusive(async () => {
+    exclusive(`saveToFile:${sessionId}`, async () => {
         const env = environment()
         if (!env) {
             saveUi.error(() => i18n.value.save.unavailable)
@@ -2854,14 +2740,14 @@ export const projectPick = async (handle: FileSystemFileHandle): Promise<Project
 
 /** The not-found chip's Save As…: keeps the chain's identity (§1.4.7). */
 export const fileSaveAs = () =>
-    exclusive(async () => {
+    exclusive('fileSaveAs', async () => {
         const env = environment()
         if (env) await notFoundSaveAs(env)
     })
 
 /** Download Again: builds and downloads the bound file once more. */
 export const fileDownloadAgain = () =>
-    exclusive(async () => {
+    exclusive('fileDownloadAgain', async () => {
         const env = environment()
         const file = env && quickBinding(env).file
         if (env && file) await downloadAgain(env, file)
