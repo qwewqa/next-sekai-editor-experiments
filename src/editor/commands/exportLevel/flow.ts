@@ -1,3 +1,4 @@
+import { isZipHead } from '../../../files/detect'
 import {
     diskStateOfBytes,
     FileError,
@@ -8,6 +9,7 @@ import {
     type SavePickerType,
     type SaveResult,
 } from '../../../platform'
+import { ZipReader } from '../../../zip'
 import { isLevelDataContent, mayBeLevelData } from './content'
 import {
     exportMemory,
@@ -148,6 +150,25 @@ const readTarget = async (target: FileTarget): Promise<Found> => {
     }
 }
 
+/**
+ * Whether the file now holds a project: a ZIP whose `project.json` reads. Export never writes
+ * level data over one, whatever it last found there. Anything else is not told apart here.
+ */
+const holdsProject = async (handle: FileSystemFileHandle) => {
+    try {
+        const file = await handle.getFile()
+        if (!isZipHead(new Uint8Array(await file.slice(0, 64).arrayBuffer()))) return false
+        const reader = await ZipReader.open(file)
+        const entry = reader.get('project.json')
+        if (!entry || entry.isDirectory) return false
+        await reader.read(entry, { maxSize: 1024 * 1024 })
+        return true
+    } catch {
+        // Only a project seen refuses; a file that cannot be read is the write's own check to report.
+        return false
+    }
+}
+
 /** Asks until the answer is not Choose Another…, whose picker exports or comes back here. */
 const choose = async <T extends string>(
     ctx: ExportContext,
@@ -218,6 +239,9 @@ export const exportToTarget = async (
                     if (!(await ownsExportTarget(target))) {
                         throw revoked
                     }
+                    // Never over a project, even one the remembered state matches (the Export guard).
+                    if (await holdsProject(target.handle))
+                        throw new FileError('conflict', `${target.name} holds a project`)
                     const result = await run()
                     await saved(ctx, result as SaveResult)
                     return result
