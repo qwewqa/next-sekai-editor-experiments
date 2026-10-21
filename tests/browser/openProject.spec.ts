@@ -7,6 +7,10 @@ import { crafted, jsonOf, setJson, type Item } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
+
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 // Opening a `.nxsp` (Part 1 §1.5.4): a new session stored at once and bound to the file, its
 // history imported in the background, Undo where the file left off, and the partial opens that

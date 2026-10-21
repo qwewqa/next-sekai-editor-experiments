@@ -1,3 +1,5 @@
+import { testKeysOpen } from './testKeys'
+
 // A spec's pause at a named point of a write (Part 1 §1.11.6's save-picker faults): the point
 // waits while `nse.test.savePause` names it, until the spec calls `nseSaveTest.release()`. Every
 // point reached is logged. Nothing pauses unless a spec set the key.
@@ -14,7 +16,7 @@ export const SAVE_PAUSE_KEY = 'nse.test.savePause'
 export const savePoint = async (name: string) => {
     let paused: string | null
     try {
-        paused = localStorage.getItem(SAVE_PAUSE_KEY)
+        paused = testKeysOpen ? localStorage.getItem(SAVE_PAUSE_KEY) : null
     } catch {
         return
     }

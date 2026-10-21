@@ -2,7 +2,11 @@ import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { resource } from '../browser/previewResourceFixture'
+import { skipWhereTheEditorCannotStart } from '../browser/webkitSupport'
 import { chart, instrumentRendering, seedVersion } from './fixtures'
+
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 test.use({ hasTouch: true })
 

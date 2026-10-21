@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
+
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 // Choosing a source in the Preview Assets dialog leaves no gap under the chosen row while the
 // asset loads. The "Loading…" line used to be in the list from the first frame, invisible for its

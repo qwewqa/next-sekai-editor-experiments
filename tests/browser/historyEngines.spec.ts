@@ -12,6 +12,10 @@ import {
     sampleClock,
     timeline,
 } from './historyJourney'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
+
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 // The History dialog, its focus and its scrolling in each engine (plan R16, INV 7). The same
 // specs run in Chromium with the rest, and in Firefox and WebKit through the compatibility
