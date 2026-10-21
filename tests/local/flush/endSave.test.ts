@@ -3,6 +3,7 @@ import { captureName } from '../../../src/history/operations'
 import { nativeOperation, originOperation } from '../../helpers/historySteps'
 import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
+import { storedEntries } from '../timeline/helpers'
 import { openPage, testId, type Page } from './harness'
 import { createCheckedWorld as createWorld, checkedTest as test } from './sessionCheck'
 
@@ -86,7 +87,7 @@ test('a seq an edit has followed is not handed out again when the Save lets it g
 })
 
 test('a session that is no longer current gets no entry and keeps the seq (notCurrent)', async () => {
-    const { page, session } = await start(34)
+    const { world, page, session } = await start(34)
     const reservation = page.flusher.reserveSave()!
     const other = begin(page)
     assert.notEqual(page.flusher.session, session)
@@ -94,7 +95,13 @@ test('a session that is no longer current gets no entry and keeps the seq (notCu
     const result = await page.flusher.endSave(reservation, saveEntry(reservation.wall))
     assert.equal(result, 'notCurrent')
     assert.equal(session.pending.length, before, 'nothing is added to the session it left')
-    assert.equal(session.nextSeq, 3, 'the trailing seq stays kept: the file may hold it')
+    await page.flusher.flush({ strict: true })
+    // The session it left gains no row, then or later: only its first entry is stored.
+    assert.deepEqual(
+        storedEntries(world, session.id).map(({ kind, seq }) => [kind, seq]),
+        [['init', 1]],
+    )
+    assert.equal(session.nextSeq, 3, 'the seq stays used: the file may hold it')
     assert.equal(session.reserved, undefined)
     assert.equal(session.identity, undefined)
     assert.equal(other.reserved, undefined)

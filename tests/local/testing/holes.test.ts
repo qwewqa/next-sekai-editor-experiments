@@ -7,7 +7,7 @@ import { HoleLedger } from '../../../src/local/testing/holes'
 // numbers as the real one does: a resume goes on from `max(lastSeq, marker) + 1`, and a
 // journal-only resume numbers its `recovered` entry itself, after the marker.
 
-type Session = { id: string; pending: { seq: number }[] }
+type Session = { id: string; pending: { seq: number; kind?: string }[] }
 
 const fake = (current?: Session) => {
     const sessions: Session[] = current ? [current] : []
@@ -24,8 +24,10 @@ const fake = (current?: Session) => {
             entry?: unknown,
             _identity?: unknown,
             keep?: boolean,
-        ) =>
-            Promise.resolve(
+        ) => {
+            if (entry && sessions.includes(reservation!.session))
+                reservation!.session.pending.push({ seq: 3, kind: 'save' } as never)
+            return Promise.resolve(
                 entry
                     ? sessions.includes(reservation!.session)
                         ? 'added'
@@ -33,7 +35,8 @@ const fake = (current?: Session) => {
                     : keep
                       ? 'kept'
                       : 'letGo',
-            ),
+            )
+        },
         keptSave: (_below?: unknown, _entry?: unknown) => Promise.resolve(),
         resumeSession: (start: { id: string; lastSeq: number }) => ({
             id: start.id,
@@ -70,13 +73,16 @@ test('an end that adds the entry makes the seq no hole; an end without one, or o
     const ledger = new HoleLedger()
     const flusher = watch(ledger, fake(current))
     const reservation = flusher.reserveSave()
-    assert.equal(await flusher.endSave(reservation as never, { wall: 1 } as never), 'added')
+    const ended = flusher.endSave(reservation as never, { wall: 1 } as never)
+    assert.equal(ledger.has('s', 3), false, 'no hole while the end’s flush runs')
+    assert.equal(await ended, 'added')
     assert.equal(ledger.has('s', 3), false, 'the Save’s entry is added')
     // Learned again by a later marker read, it is still no hole: the entry was added.
     flusher.deps.reservedSeq = () => 3
     ;(flusher.deps.reservedSeq as (id: string) => number | undefined)('s')
     assert.equal(ledger.has('s', 3), false)
 
+    current.pending.length = 0
     const other = new HoleLedger()
     const bare = watch(other, fake(current))
     assert.equal(await bare.endSave(bare.reserveSave() as never), 'letGo')

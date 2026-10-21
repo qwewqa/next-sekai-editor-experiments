@@ -63,13 +63,14 @@ export class HoleLedger {
         const endSave = flusher.endSave.bind(flusher)
         flusher.endSave = (reservation, ...rest) => {
             const { session, seq } = reservation
-            // What the flusher did, not what it would: 'added' makes the `seq` no hole; every
-            // other result (kept, let go, not current, or an end that did nothing) leaves it one.
-            return endSave(reservation, ...rest).then((result) => {
-                if (result === 'added') this.add(session.id, seq)
-                else this.learn(session.id, seq)
-                return result
-            })
+            // Decided as the end returns: it adds its entry before it returns its promise, so the
+            // `seq` is no hole while the end's flush runs, nor after a kill. Any other result
+            // (kept, let go, not current, or an end that did nothing) leaves it one.
+            const ended = endSave(reservation, ...rest)
+            if (session.pending.some((each) => each.seq === seq && each.kind === 'save'))
+                this.add(session.id, seq)
+            else this.learn(session.id, seq)
+            return ended
         }
         const keptSave = flusher.keptSave.bind(flusher)
         flusher.keptSave = (below, entry) => {

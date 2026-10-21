@@ -623,6 +623,7 @@ export class Run {
         }
         // The page may have moved to another session while the Save ran (an opened file): the
         // Save still ends, and the flusher adds nothing to the session it left (P1).
+        const stayed = this.session?.id === build.sessionId
         build.ended = true
         this.build = undefined
         const { reservation } = build
@@ -639,10 +640,16 @@ export class Run {
                 },
                 this.unit(build),
             )
+            // The model's own expectation, not the flusher's word (I-14): the entry is added
+            // exactly when the page is still on the Save's session.
+            const expected = stayed ? 'added' : 'notCurrent'
+            if (result !== expected)
+                this.fail(
+                    `I-14: the Save at ${String(build.seq)} of ${build.sessionId} ended ${result}, not ${expected}`,
+                )
             // Bound by this page: nothing left for another to recognise. A session the page left
-            // got neither the entry nor the binding ('notCurrent'): the file waits to be
-            // recognised.
-            if (result === 'added') {
+            // got neither the entry nor the binding: the file waits to be recognised.
+            if (stayed) {
                 this.made.get(build.sessionId)?.set(build.seq, 'save')
                 const at = this.unbound.indexOf(build)
                 if (at >= 0) this.unbound.splice(at, 1)
