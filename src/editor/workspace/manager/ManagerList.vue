@@ -399,7 +399,9 @@ watch(
 )
 
 // The target's row comes into view when the target changes, e.g. by Next Group,
-// and on opening unless the list remembers where it was.
+// and on opening unless the list remembers where it was. A list that focuses the
+// target on opening (the dialog) always brings it into view, scrolling only as far
+// as it must, so focus never lands on a row out of sight.
 const revealTarget = async () => {
     await nextTick()
     const id = focused.value
@@ -407,7 +409,7 @@ const revealTarget = async () => {
 }
 watch(focused, revealTarget)
 onMounted(() => {
-    revealOnMeasure = !hasScrollMemory(props.scrollKey)
+    revealOnMeasure = props.autofocusTarget || !hasScrollMemory(props.scrollKey)
 })
 
 // Selection and visibility

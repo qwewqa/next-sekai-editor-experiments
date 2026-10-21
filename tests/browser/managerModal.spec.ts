@@ -291,6 +291,29 @@ test('a keyboard open starts on the target; Properties returns there', async ({ 
     await expect(dialog.locator('.manager-row-current :focus')).toHaveCount(1)
 })
 
+test('opening on a current row the remembered scroll left out of sight brings it into view', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    await seedGroups(page, manyGroups)
+    await page.keyboard.press('e')
+    const list = page.getByRole('dialog').locator('.manager-entries')
+    await list.evaluate((element) => (element.scrollTop = element.scrollHeight))
+    await list.dispatchEvent('scroll')
+    await page.keyboard.press('Escape')
+
+    // The current group is now one near the top, out of the remembered scroll's view.
+    await page.evaluate(() => {
+        window.editorTest.view.groupId = 2 as never
+    })
+    await page.locator('.chart-pane').focus()
+    await page.keyboard.press('e')
+    const dialog = page.getByRole('dialog')
+    const current = nameButton(dialog, 'Group 2')
+    await expect(current).toBeFocused()
+    await expect(current).toBeInViewport()
+})
+
 test('the dialog and the panel remember their scroll positions apart', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 1000 })
     await seedGroups(page, manyGroups)

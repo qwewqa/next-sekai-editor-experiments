@@ -105,17 +105,4 @@ export const useScrollMemory = (
     onUnmounted(() => {
         if (frame !== undefined) cancelAnimationFrame(frame)
     })
-
-    return {
-        resetPosition: () => {
-            const element = toValue(target)
-            if (!element?.isConnected) return
-            if (frame !== undefined) cancelAnimationFrame(frame)
-            frame = undefined
-            restoring = undefined
-            element.scrollTop = 0
-            element.scrollLeft = 0
-            record(toValue(key), element)
-        },
-    }
 }
