@@ -69,8 +69,15 @@ export type SaveAttempt = {
     readonly signal: AbortSignal
     /** 'unlinked': the open session's own import ended unlinked while the attempt waited. */
     readonly imported: 'done' | 'unlinked'
-    /** Throws `Cancelled` once the Save was cancelled. */
+    /** Throws `Cancelled` once the Save was cancelled, until `commit`. */
     checkpoint(): void
+    /**
+     * The commit point (a picker returned a file): "Preparing…" closes and no Cancel has any effect
+     * from here, neither the dialog's nor the spec's signal. The pick session calls it.
+     */
+    commit(): void
+    /** Closes "Preparing…" and its timer: a picker opens next, on the press. */
+    closePreparing(): void
     /**
      * Takes a reservation and the state it saves in, in one step; undefined when none is free. With
      * `wait`, a reservation another flow holds is waited for (never inside a hold of `nse-bind`).
@@ -125,6 +132,8 @@ export const withSaveAttempt = async <T>(
                 { once: true },
             )
     let imported: 'done' | 'unlinked' = 'done'
+    /** Past the commit point: a cancel no longer stops anything. */
+    let committed = false
     /** The reservation held now, and whether a write of it started (so it may have landed). */
     let held: SaveReservation | undefined
     let writing = false
@@ -132,12 +141,13 @@ export const withSaveAttempt = async <T>(
     const progress = { landed: false }
 
     const stopped = (error: unknown) =>
-        error instanceof Cancelled || (signal.aborted && error === signal.reason)
+        !committed && (error instanceof Cancelled || (signal.aborted && error === signal.reason))
     const disarm = () => {
         clearTimeout(slot.timer)
         slot.timer = undefined
     }
     const arm = () => {
+        if (committed) return
         slot.timer ??= setTimeout(() => {
             openPreparing(slot)
         }, PREPARING_MS)
@@ -162,8 +172,13 @@ export const withSaveAttempt = async <T>(
             return imported
         },
         checkpoint: () => {
-            if (signal.aborted) throw new Cancelled()
+            if (!committed && signal.aborted) throw new Cancelled()
         },
+        commit: () => {
+            committed = true
+            closeDialog()
+        },
+        closePreparing: closeDialog,
         reserve: async (wait = true) => {
             if (!env) return
             await end()
@@ -213,14 +228,15 @@ export const withSaveAttempt = async <T>(
             try {
                 const result = await platform.saveFile({
                     ...request,
-                    signal,
+                    // From the commit point on a cancel cannot stop the write.
+                    ...(committed ? {} : { signal }),
                     ...(download && !request.ready
                         ? { ready: (file) => attempt.ready('download', file.size) }
                         : {}),
                     build: async (sources) => {
                         const made = await request.build(sources)
                         // Cancelled while it built: nothing is written, and no marker kept.
-                        signal.throwIfAborted()
+                        if (!committed) signal.throwIfAborted()
                         reached.built = true
                         const kept = marker?.()
                         if (kept) {
@@ -297,7 +313,8 @@ export const withSaveAttempt = async <T>(
         }
         if (env && spec.importWait === 'chain') {
             const waited = await waitForChainImports(env, slot)
-            closeDialog()
+            // A large download's dialog (opened at once, with its size) stays up through the build.
+            if (spec.estimated === undefined) closeDialog()
             if (waited === 'cancelled') return { kind: 'cancelled' }
             imported = waited
         }

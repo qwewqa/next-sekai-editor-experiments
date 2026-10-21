@@ -406,6 +406,9 @@ const readsFirst = (path: PathDef) =>
 const rebuilds = (path: PathDef) =>
     pickerPath(path) && path.family === 'save' && path.id !== 'save-to-file'
 const anyPick = (path: PathDef) => path.picker
+/** A picker of the Save family on the pick session (Save to File… and Export join in B4). */
+const onSession = (path: PathDef) =>
+    path.picker && path.family === 'save' && path.id !== 'save-to-file'
 
 const refuse = (w: World, n: (call: number) => boolean, refused: string) =>
     w.behaviour.set('buildSave', (call) => (n(call) ? { refuse: refused } : undefined))
@@ -503,6 +506,32 @@ export const FAULTS: FaultDef[] = [
         arm: (w) => {
             w.readFails.add('own.nxsp')
             return { facts: { inHand: () => false } }
+        },
+    },
+    {
+        id: 'read-fails-once',
+        exit: 'read first: the read fails once, and the retry reads',
+        applies: (path, p) => onSession(path) && readsFirst(path) && single(p) && last(p) === 'own',
+        arm: (w) => {
+            w.readFailsOnce.add('own.nxsp')
+            return { effective: () => !w.readFailsOnce.has('own.nxsp') }
+        },
+    },
+    {
+        id: 'read-no-handle-once',
+        exit: 'read first: storage fails once reading the file’s handle, and the retry reads',
+        applies: (path, p) => onSession(path) && readsFirst(path) && single(p) && last(p) === 'own',
+        // The handle comes from storage, as after a reload.
+        setup: { held: false },
+        arm: (w, path) => {
+            // A Save that starts as a write-back reads the handle first; the dialog's read is next.
+            const at = ['separate', 'notfound-saveas'].includes(path.id) ? 2 : 1
+            let failed = false
+            w.behaviour.set('readHandle', (call) => {
+                failed ||= call === at
+                return call === at ? 'throw' : undefined
+            })
+            return { effective: () => failed }
         },
     },
     {
@@ -674,18 +703,31 @@ export const FAULTS: FaultDef[] = [
         id: 'reservation-held',
         exit: 'another Save holds the session’s reservation',
         applies: (path, p) =>
-            ['save-as', 'export', 'write-back', 'download-again'].includes(path.id) &&
+            (onSession(path) || ['export', 'write-back', 'download-again'].includes(path.id)) &&
+            path.id !== 'save-first' &&
+            path.id !== 'save-as/stored' &&
             single(p) &&
             ['own', 'dismiss'].includes(last(p)),
         arm: (w, path) => {
             const session = w.session
-            session.reserved = { session, seq: 99, wall: 0 }
+            const held = { session, seq: 99, wall: 0 }
             const cleanup = () => {
                 session.reserved = undefined
             }
+            if (['separate', 'notfound-saveas'].includes(path.id)) {
+                // These begin as a write-back, which takes its own reservation first and never
+                // waits: the other flow takes the session's right after it.
+                const take = w.flusher.reserveSave
+                let calls = 0
+                w.flusher.reserveSave = () => {
+                    if (++calls === 2) session.reserved = held
+                    return take()
+                }
+            } else session.reserved = held
             // A path that reserves outside a hold waits for it, in "Preparing…": the other flow
-            // ends its reservation once that dialog shows, and the Save goes on.
-            if (path.id !== 'download-again') return { cleanup }
+            // ends its reservation once that dialog shows, and the Save goes on. The write-back
+            // reserves inside its hold and does not wait; Export's own pick joins in B4.
+            if (path.id === 'export' || path.id === 'write-back') return { cleanup }
             const driver = (async () => {
                 await dialogOpen(w)
                 cleanup()
@@ -696,18 +738,26 @@ export const FAULTS: FaultDef[] = [
     {
         id: 'commit-forks',
         exit: 'the first commit forks the session',
-        applies: (path, p) => ['write-back', 'download-again'].includes(path.id) && single(p),
-        arm: (w) => {
+        applies: (path, p) =>
+            (onSession(path) || ['write-back', 'download-again', 'download'].includes(path.id)) &&
+            single(p),
+        arm: (w, path) => {
             // What a continuation's first commit can do: another session is open afterwards.
             const fork = { ...w.session, id: 'session-fork' } as typeof w.session
+            // A Save that starts as a write-back commits once before the picker flow commits.
+            const at = ['separate', 'notfound-saveas'].includes(path.id) ? 2 : 1
+            let commits = 0
             w.flusher.flush = () => {
-                w.flusher.session = fork
+                if (++commits === at) w.flusher.session = fork
                 return Promise.resolve()
             }
-            // Nothing is written; the Save dialog for the session now open shows (and is cancelled).
+            // Nothing is written; the Save dialog for the session now open shows (and is
+            // cancelled): a second one on a path that began with its own dialog.
+            const own = path.dialog ? 1 : 0
             return {
                 facts: { cancelled: true },
-                effective: () => w.dialogs.some((dialog) => dialog.kind === 'saveDialog'),
+                effective: () =>
+                    w.dialogs.filter((dialog) => dialog.kind === 'saveDialog').length > own,
             }
         },
     },
@@ -864,6 +914,51 @@ export const FAULTS: FaultDef[] = [
                 await imp.run
             })()
             return { driver }
+        },
+    },
+    {
+        id: 'import-other-running',
+        exit: 'another session’s import runs in this tab (waited for at the pick, then picker)',
+        applies: (path, p) => onSession(path) && single(p) && writesFile(p),
+        arm: (w) => {
+            const imp = w.startOtherImport()
+            const driver = (async () => {
+                await w
+                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
+                    .catch(() => undefined)
+                await sleep(30)
+                imp.finish()
+                await imp.run
+            })()
+            return { driver, effective: () => w.preparing.length > 0 }
+        },
+    },
+    {
+        id: 'copy-in-flight',
+        exit: 'a copy of an opened file is still being kept (waited for at the pick, then picker)',
+        applies: (path, p) => onSession(path) && single(p) && writesFile(p),
+        arm: (w) => {
+            const copy = w.startCopy()
+            const driver = (async () => {
+                await w
+                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
+                    .catch(() => undefined)
+                await sleep(30)
+                copy.finish()
+                await copy.copy
+            })()
+            return { driver, effective: () => w.preparing.length > 0 }
+        },
+    },
+    {
+        id: 'cancel-after-pick',
+        exit: 'Cancel in "Preparing…" after the picker returned a file (no effect: written)',
+        applies: (path, p) => onSession(path) && single(p) && writesFile(p),
+        arm: (w) => {
+            const driver = w.atPoint('picked', () => {
+                w.abortPreparing()
+            })
+            return { driver, effective: () => w.reached().includes('picked') }
         },
     },
     {

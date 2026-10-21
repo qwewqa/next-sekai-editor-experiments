@@ -160,8 +160,15 @@ export type SaveUi = {
         name: string,
         reason: RefusedReason,
     ) => Promise<'chooseAnother' | 'export' | undefined>
-    /** A refused pick whose bytes could not be put back; Download keeps them. */
-    notPutBack: (name: string, emptied: boolean) => Promise<'download' | undefined>
+    /**
+     * Bytes held of a picked file that could not be put back; Download keeps them. Without
+     * `downloadable` there is nothing to give: [OK] only.
+     */
+    notPutBack: (
+        name: string,
+        emptied: boolean,
+        downloadable: boolean,
+    ) => Promise<'download' | undefined>
     saved: (feedback: SavedFeedback) => void
     /** "No changes since … was saved/opened/downloaded", the last with Download Again. */
     noChanges: (
@@ -383,13 +390,24 @@ export const defaultSaveUi: SaveUi = {
             ],
         })
     },
-    notPutBack: (name, emptied) =>
-        showChoice({
+    notPutBack: async (name, emptied, downloadable) => {
+        const message = interpolate(
+            () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
+            name,
+        )
+        if (!downloadable) {
+            await showChoice({
+                title,
+                message,
+                choices: [],
+                cancelIsDefault: true,
+                cancelLabel: () => i18n.value.modals.info.ok,
+            })
+            return undefined
+        }
+        return showChoice({
             title,
-            message: interpolate(
-                () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
-                name,
-            ),
+            message,
             choices: [
                 {
                     value: 'download' as const,
@@ -397,7 +415,8 @@ export const defaultSaveUi: SaveUi = {
                     default: true,
                 },
             ],
-        }),
+        })
+    },
     saved: (feedback) => {
         // A download that leaves the session not confirmed carries the chip's action, so the
         // confirm is where the user is looking (§1.3.4); its announcement names the chip.

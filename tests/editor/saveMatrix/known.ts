@@ -59,15 +59,8 @@ export const KNOWN: Known[] = [
         id: 'R2-slow',
         kind: 'by-design',
         title: 'a read first that has not settled when the picker opens is dropped, and the file is written from storage',
-        paths: [
-            'save-as',
-            'save-as/reloaded',
-            'save-as/ahead',
-            'separate',
-            'export',
-            'export/reloaded',
-            'export/ahead',
-        ],
+        // The Save family waits for its read (the pick session, B2); Export joins in B4.
+        paths: ['export', 'export/reloaded', 'export/ahead'],
         invariant: 'I1',
         fault: 'read-slow',
     },

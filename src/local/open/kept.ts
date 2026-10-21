@@ -16,20 +16,56 @@ const DIR = 'nse-kept'
 const directory = async (create = false) =>
     (await navigator.storage.getDirectory()).getDirectoryHandle(DIR, { create })
 
-/** A chain's kept bytes as an OPFS file, or undefined when there is none. */
+/** A chain's kept bytes as an OPFS file, or undefined when there is none (a 0-byte copy is none). */
 export const readKeptCopy = async (chainId: string): Promise<Blob | undefined> => {
     try {
-        return await (await (await directory()).getFileHandle(chainId)).getFile()
+        const copy = await (await (await directory()).getFileHandle(chainId)).getFile()
+        return copy.size > 0 ? copy : undefined
     } catch {
         return
     }
+}
+
+/** The copies being made now: a save picker waits for them (spec B, rule 3). */
+const copying = new Set<Promise<unknown>>()
+
+/** Whether a copy of an opened file is still being kept. */
+export const copiesRunning = () => copying.size > 0
+
+/** Resolves once no copy is being kept, or at once when `signal` aborts. */
+export const whenCopied = async (signal?: AbortSignal) => {
+    while (copying.size > 0 && !signal?.aborted)
+        await new Promise<void>((resolve) => {
+            const done = () => {
+                signal?.removeEventListener('abort', done)
+                resolve()
+            }
+            signal?.addEventListener('abort', done, { once: true })
+            void Promise.allSettled([...copying]).then(done)
+        })
 }
 
 /**
  * Keeps a file's bytes for a chain, with its handle (§1.5.4): resolves the copy once it's whole,
  * or undefined when it couldn't be kept.
  */
-export const keepCopy = async (
+export const keepCopy = (
+    worker: Worker,
+    chainId: string,
+    file: Blob,
+    handle: FileSystemFileHandle,
+): Promise<Blob | undefined> => {
+    // In the set before its first await.
+    const copy = copyBytes(worker, chainId, file, handle)
+    const done = () => {
+        copying.delete(copy)
+    }
+    copying.add(copy)
+    copy.then(done, done)
+    return copy
+}
+
+const copyBytes = async (
     worker: Worker,
     chainId: string,
     file: Blob,
@@ -41,21 +77,21 @@ export const keepCopy = async (
         await worker
             .call('keepHandle', { chainId, name: handle.name, handle: stored })
             .catch(() => undefined)
-    let copy: Blob | undefined
+    let made: Blob | undefined
     try {
         const target = await (await directory(true)).getFileHandle(chainId, { create: true })
         const writable = await target.createWritable()
         await writable.write(file)
         await writable.close()
         const written = await target.getFile()
-        if (written.size === file.size) copy = written
+        if (written.size === file.size) made = written
     } catch {
         // No OPFS here: memory below the cap.
     }
-    if (!copy && file.size <= KEPT_BYTES_LIMIT)
-        copy = await file.arrayBuffer().then(
+    if (!made && file.size <= KEPT_BYTES_LIMIT)
+        made = await file.arrayBuffer().then(
             (bytes) => new Blob([bytes]),
             () => undefined,
         )
-    return copy
+    return made
 }
