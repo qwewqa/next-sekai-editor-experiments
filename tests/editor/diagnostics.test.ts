@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
     RING_SIZE,
     formatDiagnostics,
+    messageOf,
     recordDiagnostic,
     redactPaths,
     resetRingForTests,
@@ -157,4 +158,19 @@ test('the CSP violation listener writes to the diagnostics ring and calls the te
         ringEntries().map(({ kind, text }) => ({ kind, text })),
         [{ kind: 'csp', text: 'script-src blocked inline' }],
     )
+})
+
+test('an error keeps its message when the stack leaves it out', () => {
+    // Firefox and Safari: the stack is only the frames.
+    const bare = new Error('storing is paused')
+    bare.stack = 'launch@http://x/client.ts:1:2\nstart@http://x/client.ts:3:4'
+    assert.equal(
+        messageOf(bare),
+        'Error: storing is paused\nlaunch@http://x/client.ts:1:2\nstart@http://x/client.ts:3:4',
+    )
+    // Chromium: the stack starts with the message.
+    const full = new Error('storing is paused')
+    full.stack = 'Error: storing is paused\n    at a (x:1:2)'
+    assert.equal(messageOf(full), 'Error: storing is paused\n    at a (x:1:2)')
+    assert.equal(messageOf('plain'), 'plain')
 })

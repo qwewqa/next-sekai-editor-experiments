@@ -14,6 +14,10 @@ import {
     start,
     submitSave,
 } from './saveFlows'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
+
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 // Saving where there's no save picker (Part 1 §1.4.7; Firefox, WebKit, and Chromium with the
 // override's `fileSystemAccess: false`): the first Save shows the dialog

@@ -199,7 +199,9 @@ test.describe('touch', () => {
 
     test('a touch drag from a field released over the backdrop keeps the dialog', async ({
         page,
+        browserName,
     }) => {
+        test.skip(browserName !== 'chromium', 'Touch is driven through CDP.')
         await boot(page)
         const { dialog, input } = await open(page)
         const field = await centre(input)
@@ -216,7 +218,9 @@ test.describe('touch', () => {
 
     test('a second finger on the backdrop does not make the first finger a backdrop click', async ({
         page,
+        browserName,
     }) => {
+        test.skip(browserName !== 'chromium', 'Touch is driven through CDP.')
         await boot(page)
         const { dialog, input } = await open(page)
         const field = await centre(input)

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { StorageStatus } from '../../src/local/worker/core'
 import { closePage, installCanvasCounters, installEditorFixture } from './editorFixture'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // The journal kill tests (Part 1 §1.6.4 #7, Step 3b's exit): edits that only the journal holds
 // (flushes held, as a kill leaves them), then the tab killed, then a new visit whose
@@ -11,10 +12,8 @@ import { closePage, installCanvasCounters, installEditorFixture } from './editor
 // kill exercises (§1.11's test notes): Chromium page.close() and CDP Page.crash after a hidden
 // visibilitychange; Firefox and WebKit page.close() only.
 
-test.skip(
-    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
-    'Playwright WebKit on Windows does not provide Web Audio',
-)
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 type Row = { key: unknown; value: Record<string, unknown> }
 

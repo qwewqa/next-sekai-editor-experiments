@@ -1,17 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { StorageStatus, TestFlags } from '../../src/local/worker/core'
 import { installCanvasCounters } from './editorFixture'
+import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // The upgrade handshake in a real browser, with two tabs (Part 1 §1.6.1; Step 3a's exit): the
 // build opens version 1; a simulated newer tab is the build with the test flag `dbVersion: 2`, a
 // frozen tab the flag `ignoreVersionChange`. Each tab's flag is in its own sessionStorage.
 
-// Playwright's Windows WebKit build has no Web Audio, which the editor needs to start; these run
-// in WebKit on Linux CI.
-test.skip(
-    ({ browserName }) => browserName === 'webkit' && process.platform === 'win32',
-    'Playwright WebKit on Windows does not provide Web Audio',
-)
+// A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
+skipWhereTheEditorCannotStart()
 
 const boot = async (page: Page, flags: TestFlags = {}) => {
     await page.addInitScript(installCanvasCounters)
@@ -140,8 +137,9 @@ test('a frozen tab leaves the newer tab with storage unavailable after about 3 s
     await expect.poll(() => status(frozen)).toEqual({ mode: 'stored' })
 
     const next = await context.newPage()
-    const started = Date.now()
     await boot(next, { dbVersion: 2 })
+    // The clock starts once the page is up: the wait under test is the handshake's, not the load.
+    const started = Date.now()
     await expect
         .poll(() => status(next), { timeout: 15_000 })
         .toEqual({ mode: 'memory', reason: 'olderTabs' })
