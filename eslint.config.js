@@ -14,6 +14,7 @@ export default tsEslint.config(
             '.vite-cache/**',
             'public/**',
             'test-results*/**',
+            'tests/design-capture*/**',
             '.idea/**',
         ],
     },
