@@ -2153,7 +2153,6 @@ const dialogInput = async (
             exportMemory.target !== undefined ||
             exportMemory.sourceName !== undefined ||
             (launch.isExistingUser && !exportUsed.value),
-        downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
         ...(await storageLineOf()),
         peeking: isPeeking.value,
         estimate: {
@@ -2487,7 +2486,6 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             : { kind: 'insecure' },
         bgm: sessionBgmRow(estimate),
         exportLine: false,
-        downloadNote: !platform.pickSaveFile && !firstSaveDone.value,
         ...(await storageLineOf()),
         peeking: false,
         estimate: {

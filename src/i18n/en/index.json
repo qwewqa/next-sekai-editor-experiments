@@ -2110,7 +2110,6 @@
         "bgmNotLoaded": "BGM not loaded",
         "bgmSize": "{0} · {1}",
         "keptOptions": "Already in {0}",
-        "downloadNote": "Each save downloads a new copy.",
         "noHistoryHere": "History requires a secure connection.",
         "sizeTotal": "Total: about {0}",
         "sizePending": "Estimating size…"
