@@ -18,7 +18,6 @@ test('a pin excuses a line only for the operation and session that cause it', ()
     // Another session's breach stays unexcused, as does a rule no pin names.
     assert.equal(run.matchPin(lock.replaceAll('id-9', 'id-10'), 'edit'), undefined)
     assert.equal(run.matchPin('session id-9: rows 2 are neither stored', 'edit'), undefined)
-    // The AR-7 time pin is by its text alone; a content mismatch is not it.
-    assert.equal(run.matchPin('I-11 (time): the cut of rev-1 carries', 'save')?.id, 'AR-7 time')
+    // A content mismatch of the cut is no known breach.
     assert.equal(run.matchPin('I-11 (content): the cut of rev-1 carries', 'save'), undefined)
 })

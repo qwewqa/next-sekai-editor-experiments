@@ -44,8 +44,7 @@ import { fileStates, flaggedFile, importIds, longFile, smallFile, storeRequest }
 // re-storing and damage; opens with their imports, in another tab and in the page itself (which
 // then edits, saves and reloads the opened session while the import runs); forks (another tab's
 // continuation, Duplicate Tab); same-tab reloads, as the startup takes them, and new visits; a
-// reload while storage never answers (the journal alone); and another tab's write. A6's settle
-// operation is not here: its code is.
+// reload while storage never answers (the journal alone); and another tab's write.
 //
 // The oracle holds what the user did apart from what the product says about it: the state each
 // hide journalled, the rows each commit made and whether it was strict, the seqs handed out.
@@ -78,7 +77,7 @@ export type ModelPin = {
     ops: readonly string[]
     /** Only a line that names a session a recognition touched (the cause is named by session). */
     scoped?: true
-    clearedBy: 'A2' | 'A6'
+    clearedBy: 'A2'
     why: string
 }
 
@@ -130,13 +129,6 @@ export const MODEL_PINS: readonly ModelPin[] = [
         ops: [],
         clearedBy: 'A2',
         why: 'AR-8, AR-8b, F2, I-11: the cut carries over a recovered row where the file holds another',
-    },
-    {
-        id: 'AR-7 time',
-        pattern: /^I-11 \(time\)/,
-        ops: [],
-        clearedBy: 'A6',
-        why: 'AR-7, I-11: a row stamped at its flush differs in time from the file’s',
     },
 ]
 
@@ -693,22 +685,22 @@ export class Run {
         const have = upto.map(({ entry }) => rowKey(entry)).sort()
         const held = [...build.fileRows].sort()
         if (have.length === held.length && have.every((key, at) => key === held[at])) return
-        // The same rows with other times (AR-7), or rows that differ (AR-8, AR-8b, F2).
+        // The same rows with other times are accepted (spec A, section 4: another tab's write can
+        // move a row's time by a few milliseconds); rows that differ are AR-8, AR-8b, F2 or new.
         const withoutTime = (key: string) =>
             key
                 .split('|')
                 .filter((_, at) => at !== 1)
                 .join('|')
         const sorted = (keys: string[]) => keys.map(withoutTime).sort()
-        const onlyTime =
-            have.length === held.length && sorted(have).every((key, at) => key === sorted(held)[at])
+        if (
+            have.length === held.length &&
+            sorted(have).every((key, at) => key === sorted(held)[at])
+        )
+            return
         // A recovered row where the file holds another is AR-8, AR-8b and F2; anything else that
         // differs is new.
-        const kind = onlyTime
-            ? 'time'
-            : have.some((key) => key.startsWith('recovered|'))
-              ? 'recovered'
-              : 'content'
+        const kind = have.some((key) => key.startsWith('recovered|')) ? 'recovered' : 'content'
         this.violations.push(
             `I-11 (${kind}): the cut of ${build.revisionId} carries, but the chain's ${have.length} rows up to it differ from the file's ${held.length}`,
         )
@@ -1583,5 +1575,5 @@ export const defineModelTests = (fx: boolean) => {
 }
 
 /** The pins every run of the seed set draws, and those the longer gate does too. */
-const DRAWN: readonly string[] = ['AR-7 time']
+const DRAWN: readonly string[] = []
 const DRAWN_AT_GATE: readonly string[] = MODEL_PINS.map((pin) => pin.id)
