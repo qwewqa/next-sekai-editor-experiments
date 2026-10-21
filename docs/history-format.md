@@ -641,7 +641,7 @@ Each rule says what must never happen, where the code enforces it and the tests 
 | After a kill at any await: no dangling `refs`, no half-deleted chain, every row reachable, the stored stack equal to replay. | `storedViolations` (`src/local/testing/invariants.ts`) | `local/testing/testCore.test.ts`, `local/fuzz/fuzz.test.ts` |
 | A transaction that names a store the database lacks fails, and no handle or row is dropped for it. | `UPGRADES`, `StorageCore` | `local/handshake.test.ts`, `local/formatVersions.test.ts`, browser `storageHandshake.spec.ts` |
 | A start listener that throws never stops the others or the storing setup; a cancelled one never runs. | `notifyFlusherStart`, `onFlusherStart` | `local/flusherStart.test.ts` |
-| A reload's claim lock is released when `openAtStart` rejects before it passes the lock on, and never once a session holds it. | `openAtStart`, `reloadOwn` | `local/startup/open.test.ts` ("a reload whose open fails before it opens anything lets the claim go") |
+| Every session lock has one owner at a time and passes only where the flusher takes it at registration; its creator releases it otherwise. | `LockLease` (`src/local/sessions.ts`), `Flusher` registration | `local/startup/leases.test.ts`, `local/startup/open.test.ts`, `local/leaseGuard.test.ts` |
 
 ### 5.4 Newer data
 

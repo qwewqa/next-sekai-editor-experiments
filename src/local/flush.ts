@@ -31,6 +31,7 @@ import type {
 } from './flushWrite'
 import { toHex } from './hash'
 import type { IdentityUnit } from './save/commit'
+import type { LockLease } from './sessions'
 import {
     isEditingKind,
     SessionStack,
@@ -152,9 +153,14 @@ export type FlushSession = {
     /** Its chain record as the last flush wrote it, for the journal's descriptor. */
     chain?: Record<string, unknown>
     /** Runs once the session is replaced and nothing of it is pending: releases its lock. */
-    readonly done?: () => void
+    done?: () => void
     /** An unstored continuation's hold on its parent (§1.3.6): released at its first write. */
     parentDone?: () => void
+    /**
+     * A continuation that started from a journal holds its parent until the journal's key goes
+     * (`releaseParent`) or the session ends, not until its first write.
+     */
+    journalParent?: () => void
     /**
      * A Save's reservation (§1.6.11.6): entries after its `seq` wait until the Save appends its
      * `save` entry or lets the `seq` go, so the entry is never behind a stored one. Ended by the
@@ -174,7 +180,8 @@ export type SessionStart = {
     operation: JsonValue
     dirty: boolean
     ready?: Promise<unknown>
-    done?: () => void
+    /** The session's lock: the flusher takes it as the session registers (A7). */
+    lock?: LockLease
 }
 
 /** A stored stack as read for opening: slots from `first`, every slot a stored root. */
@@ -202,9 +209,11 @@ export type ContinueStart = {
     /** A fork: a new chain copied from `forkOf`'s record, with `forkName`. */
     fork?: { forkOf: string; forkName?: string }
     ready?: Promise<unknown>
-    done?: () => void
-    /** Releases the hold on the parent once the first write commits. */
-    parentDone?: () => void
+    lock?: LockLease
+    /** The hold on the parent, taken with `lock`: released once the first write commits. */
+    parentLock?: LockLease
+    /** The hold on the parent stays until `releaseParent` (a start from a journal). */
+    parentUntilReleased?: boolean
 }
 
 /** A stored session taken up again by its own tab's reload (§1.4.2): no entry is added. */
@@ -225,7 +234,7 @@ export type ResumeStart = {
         at: StoredAt
     }
     ready?: Promise<unknown>
-    done?: () => void
+    lock?: LockLease
 }
 
 /** What writing chain fields found (§1.3.1: only the chain's head writes its record). */
@@ -263,8 +272,8 @@ export type FlushDeps = {
     now?: () => number
     newId?: () => string
     view?: () => SessionView | undefined
-    /** The lock of a session the flusher starts itself (a fork): held until `done`. */
-    lockSession?: (id: string) => { ready: Promise<unknown>; done: () => void }
+    /** The lock of a session the flusher starts itself (a fork): taken as the fork registers. */
+    lockSession?: (id: string) => LockLease
     /** A session's chain was continued elsewhere: its further entries went to this fork (D10). */
     onFork?: (fork: FlushSession, from: FlushSession) => void
     /** A fork's name from its old session: "<name> (2)" (§1.3.1). */
@@ -510,14 +519,13 @@ export class Flusher {
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
-            ...(start.done ? { done: start.done } : {}),
             stack: new SessionStack(),
             ackedSeq: 0,
             strictSeq: 0,
             edited: false,
         }
         this.add(session, { kind: 'init', operation: start.operation }, start.state, start.dirty)
-        return this.switchTo(session)
+        return this.switchTo(session, start)
     }
 
     /**
@@ -555,8 +563,6 @@ export class Flusher {
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
-            ...(start.done ? { done: start.done } : {}),
-            ...(start.parentDone ? { parentDone: start.parentDone } : {}),
             stack,
             ackedSeq: 0,
             strictSeq: 0,
@@ -564,7 +570,7 @@ export class Flusher {
             chain,
         }
         this.add(session, { kind: 'continue', operation: start.operation }, head.hash, start.dirty)
-        return this.switchTo(session)
+        return this.switchTo(session, start)
     }
 
     /**
@@ -600,14 +606,13 @@ export class Flusher {
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
-            ...(start.done ? { done: start.done } : {}),
             stack,
             ackedSeq: start.lastSeq,
             strictSeq: start.lastSeq,
             edited: start.chain.edited === true,
             chain: { ...start.chain },
         }
-        return this.switchTo(session)
+        return this.switchTo(session, start)
     }
 
     /**
@@ -630,7 +635,7 @@ export class Flusher {
         operation: JsonValue
         recoveryContext: RecoveryContext
         ready?: Promise<unknown>
-        done?: () => void
+        lock?: LockLease
     }): FlushSession {
         const session: FlushSession = {
             id: start.id,
@@ -649,7 +654,6 @@ export class Flusher {
             pending: [],
             memoryOnly: [],
             ready: start.ready ?? Promise.resolve(),
-            ...(start.done ? { done: start.done } : {}),
             stack: new SessionStack(),
             ackedSeq: 0,
             strictSeq: 0,
@@ -674,14 +678,28 @@ export class Flusher {
         })
         session.entrySeq = session.nextSeq - 1
         this.entered()
-        return this.switchTo(session)
+        return this.switchTo(session, start)
     }
 
     /**
      * Makes a session the current one. The replaced session is committed strictly (§1.3.8): its
      * pending entries, or what relaxed flushes stored; `outgoing` says whether that held.
      */
-    private switchTo(session: FlushSession): FlushSession {
+    private switchTo(
+        session: FlushSession,
+        leases: { lock?: LockLease; parentLock?: LockLease; parentUntilReleased?: boolean },
+    ): FlushSession {
+        // The session's leases are taken here, first, after everything that can throw (A7). Both
+        // must be held before either is taken, so a lost one leaves the other to its creator.
+        const { lock, parentLock } = leases
+        if ((lock && lock.state !== 'held') || (parentLock && parentLock.state !== 'held'))
+            throw new Error(`The lock of session ${session.id} is no longer held`)
+        if (lock) session.done = lock.take()
+        if (parentLock) {
+            const release = parentLock.take()
+            if (leases.parentUntilReleased) session.journalParent = release
+            else session.parentDone = release
+        }
         const previous = this.current
         this.current = session
         this.sessions.push(session)
@@ -1193,10 +1211,20 @@ export class Flusher {
             if (this.deps.syncStrict && !this.noDatabase && session.ackedSeq > session.strictSeq)
                 continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
-            session.parentDone?.()
-            session.parentDone = undefined
+            this.releaseParent(session)
             session.done?.()
         }
+    }
+
+    /**
+     * Lets go of a session's hold on its parent: at its first write, or, for a start from a
+     * journal, when the journal's key goes. Safe to call again.
+     */
+    releaseParent(session: FlushSession) {
+        session.parentDone?.()
+        session.parentDone = undefined
+        session.journalParent?.()
+        session.journalParent = undefined
     }
 
     private async flushBatch(
@@ -1614,7 +1642,12 @@ export class Flusher {
         )?.stack
         from.pending.length = 0
         const id = this.newId()
-        const lock = this.deps.lockSession?.(id)
+        // Everything that can throw is built first: the lease is taken straight after (A7).
+        const forkStack = from.stack.forkedStack(inherited)
+        const forkChain = from.chain
+            ? { ...forkRecord(from.chain), ...(forkName ? { name: forkName } : {}) }
+            : undefined
+        const lease = this.deps.lockSession?.(id)
         const fork: FlushSession = {
             id,
             chainId: this.newId(),
@@ -1634,17 +1667,15 @@ export class Flusher {
             entrySeq: moving.length,
             pending: moving.map((entry, i) => ({ ...entry, seq: i + 1 })),
             memoryOnly: [],
-            ready: lock?.ready ?? Promise.resolve(),
-            ...(lock ? { done: lock.done } : {}),
-            stack: from.stack.forkedStack(inherited),
+            ready: lease?.granted.catch(() => undefined) ?? Promise.resolve(),
+            stack: forkStack,
             // Until its own first flush, its journal's descriptor carries the old chain's fields.
-            ...(from.chain
-                ? { chain: { ...forkRecord(from.chain), ...(forkName ? { name: forkName } : {}) } }
-                : {}),
+            ...(forkChain ? { chain: forkChain } : {}),
             ackedSeq: 0,
             strictSeq: 0,
             edited: moving.some((entry) => isEditingKind(entry.kind)),
         }
+        if (lease) fork.done = lease.take()
         from.parentDone = undefined
         this.sessions.splice(this.sessions.indexOf(from) + 1, 0, fork)
         if (this.current === from) this.current = fork

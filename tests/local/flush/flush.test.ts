@@ -20,6 +20,7 @@ import {
     originOperation,
     restoreStep,
 } from '../../helpers/historySteps'
+import { leaseOf } from '../../helpers/leases'
 import '../../helpers/lockChecks'
 import { goldenChart, recordsText, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
@@ -177,7 +178,7 @@ test('a blank start replaced without an edit stores nothing and lets its lock go
         state: stateOf(goldenChart()),
         operation: originOperation(),
         dirty: false,
-        done: () => released++,
+        lock: leaseOf(() => released++),
     })
     begin(page, stateOf(goldenChart()))
     await page.flusher.flush()
@@ -197,7 +198,7 @@ test('a replaced session’s pending entries are flushed strictly, then its lock
         state: blank,
         operation: originOperation(),
         dirty: false,
-        done: () => released++,
+        lock: leaseOf(() => released++),
     })
     page.flusher.append(widenedNoteEntry, widen(blank), true)
     begin(page, blank, 'import')

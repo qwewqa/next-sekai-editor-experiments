@@ -3,7 +3,7 @@ import type { LockService } from '../../platform/types'
 import { storageKey } from '../../storage'
 import { sessionLock } from '../locks'
 import type { CopyOf } from '../names'
-import type { HeldLock } from '../sessions'
+import { tryLease, type LockLease } from '../sessions'
 
 // What a tab remembers across its own reloads (Part 1 §1.4.2): the open session, in
 // sessionStorage, which survives reloads of that tab only (and a Duplicate Tab copies it), and the
@@ -119,11 +119,7 @@ export const claimSessionLock = async (
     locks: LockService,
     sessionId: string,
     waitMs = 0,
-): Promise<HeldLock | undefined> => {
-    let release!: () => void
-    const held = new Promise<void>((resolve) => {
-        release = resolve
-    })
+): Promise<LockLease | undefined> => {
     const controller = new AbortController()
     const timer =
         waitMs > 0
@@ -131,22 +127,8 @@ export const claimSessionLock = async (
                   controller.abort()
               }, waitMs)
             : undefined
-    return new Promise<HeldLock | undefined>((resolve) => {
-        const name = sessionLock(sessionId)
-        const options = waitMs > 0 ? { signal: controller.signal } : { ifAvailable: true }
-        locks
-            .request(name, options, async (granted) => {
-                clearTimeout(timer)
-                if (!granted) {
-                    resolve(undefined)
-                    return
-                }
-                resolve({ name, granted: Promise.resolve(), release })
-                await held
-            })
-            .catch(() => {
-                clearTimeout(timer)
-                resolve(undefined)
-            })
+    const options = waitMs > 0 ? { signal: controller.signal } : { ifAvailable: true }
+    return tryLease(locks, sessionLock(sessionId), options).finally(() => {
+        clearTimeout(timer)
     })
 }
