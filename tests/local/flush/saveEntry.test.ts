@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe } from 'node:test'
+import { dayKey, resolveZone } from '../../../src/calendar/calendar'
 import { captureName } from '../../../src/history/operations'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { toRecords } from '../../../src/local/records/records'
@@ -1044,6 +1045,7 @@ const recognisedLate = async (seed: number) => {
 }
 
 const A2 = { todo: 'A2: one writer of a session’s rows' }
+const ZONE = 'UTC'
 
 /**
  * AR-1's sequence: S stored through 2, a Save reserving 3 whose tab dies before the binding, a
@@ -1156,10 +1158,10 @@ describe('A2 acceptance (expected to fail before A2)', () => {
             // Every row of a Go To piece is on the piece's day, and the pieces hold every row.
             const { pieces } = await page.tab.run(() =>
                 page.core.read(['sessions', 'entries'], (tx) =>
-                    readTimelineIndex(tx, { sessionId: session.id }),
+                    readTimelineIndex(tx, { sessionId: session.id, zone: ZONE }),
                 ),
             )
-            const day = (time: number) => new Date(time).setHours(0, 0, 0, 0)
+            const day = (time: number) => dayKey(time, resolveZone(ZONE))
             const stored = [...rows(world, 'entries').values()]
             for (const piece of pieces)
                 for (const row of stored.filter(

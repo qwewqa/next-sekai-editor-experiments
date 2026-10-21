@@ -64,7 +64,7 @@ type Zoned = {
 }
 
 const zoned = new Map<Zone, Zoned>()
-const MEMO_LIMIT = 4096
+const MEMO_LIMIT = 16_384
 
 const zonedOf = (zone: Zone) => {
     let found = zoned.get(zone)

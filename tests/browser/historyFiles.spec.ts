@@ -333,13 +333,13 @@ test('F2: a 520-entry file crosses a segment, pages in order, restores and appen
         await expect.poll(() => liveOf(other)).toEqual(final)
         await flush(other)
 
-        // Go To: one session, one day: the file's entries, the one that says it was opened, the
-        // Restore and the Undo.
+        // Go To: one session, one day: the file's entries, the Restore and the Undo. The entry that
+        // says it was opened is a "Continued from" divider, which Go To does not count.
         await other.locator('[data-history-surface="dialog"] [data-history-goto-button]').click()
         const items = other.locator('[data-history-goto] [data-goto-item]')
         await expect(items).toHaveCount(2)
         await expect(items.nth(1)).toContainText('Today')
-        await expect(items.nth(1)).toContainText(`${total + 3} steps`)
+        await expect(items.nth(1)).toContainText(`${total + 2} steps`)
         await other.keyboard.press('Escape')
         await expect(items).toHaveCount(0)
 

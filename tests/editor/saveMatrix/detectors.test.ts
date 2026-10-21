@@ -115,3 +115,64 @@ test('the baseline cells reach their picker and write, and a Save cancelled in i
     void startsWith
     void bytesOf
 })
+
+test('I9 sees a file bound to two chains, or bound and another chain’s Export target, unless a revocation is pending', async () => {
+    const world = await createWorld()
+    assert.deepEqual(await invariants(world), [])
+    const own = world.chains.get('chain-own')!
+    const other = world.chains.get('chain-other')!
+    world.chains.set('chain-other', {
+        ...other,
+        file: { ...(other.file as object), name: 'own.nxsp' },
+    })
+    assert.deepEqual(await invariants(world), ['I9'])
+    // R11: storage could not take the revocation of that binding, so it is kept for later.
+    const { writeRevocation } = await import('../../../src/editor/save/env')
+    const file = world.chains.get('chain-other')!.file as { name: string; at: number }
+    writeRevocation('chain-other', { by: 'chain-own', at: 5, name: file.name, fileAt: file.at })
+    assert.deepEqual(await invariants(world), [])
+    world.chains.set('chain-other', other)
+    localStorage.clear()
+    world.chains.set('chain-own', {
+        ...own,
+        file: { ...(own.file as object), name: 'target.nsld' },
+    })
+    assert.deepEqual(await invariants(world), ['I9'])
+})
+
+test('the door hands out a new handle object on every read, and stores nothing for a faulted call', async () => {
+    const world = await createWorld()
+    const picked = world.handle('own.nxsp')
+    const read = (await world.worker.call('readHandle', {
+        chainId: 'chain-own',
+        role: 'file',
+    })) as FileSystemFileHandle
+    const again = (await world.worker.call('readHandle', {
+        chainId: 'chain-own',
+        role: 'file',
+    })) as FileSystemFileHandle
+    assert.notEqual(read, picked)
+    assert.notEqual(read, again)
+    assert.equal(await read.isSameEntry(picked), true)
+    assert.equal(await picked.isSameEntry(read), true)
+
+    // E-4: the fault fires before the handler, so nothing is stored.
+    world.behaviour.set('takeOver', () => 'throw')
+    const before = JSON.stringify(await world.worker.call('readChainRecord', 'chain-other'))
+    await assert.rejects(
+        world.worker.call('takeOver', {
+            owner: {
+                chainId: 'chain-other',
+                role: 'file',
+                name: 'other.nxsp',
+                at: 2000,
+                handle: true,
+            },
+            by: 'chain-own',
+            at: 5,
+        }),
+        /takeOver #1/,
+    )
+    assert.equal(JSON.stringify(await world.worker.call('readChainRecord', 'chain-other')), before)
+    assert.ok(world.handleRows.has('chain-other:file'))
+})

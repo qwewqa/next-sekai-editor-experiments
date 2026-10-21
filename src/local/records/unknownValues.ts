@@ -22,6 +22,28 @@ export type SessionOrigin = (typeof sessionOrigins)[number]
 export const readOrigin = (value: unknown): SessionOrigin | undefined =>
     known(sessionOrigins, value) ? value : undefined
 
+/**
+ * What a session's rows hold (Part 1 §1.6.8.7): `own` sessions hold only rows this editor stamped,
+ * whose times never decrease along `seq` and whose `continue` row is only the lowest; `file`
+ * sessions hold rows copied from a file, with the file's times in any order. The origin is set when
+ * the session is created and never changes.
+ */
+export const ORIGIN_RULE: Record<SessionOrigin, 'own' | 'file'> = {
+    new: 'own',
+    import: 'own',
+    continued: 'own',
+    migrated: 'own',
+    journal: 'own',
+    nxsp: 'file',
+    replaced: 'file',
+}
+
+/** The rule for a stored `origin` value: a missing or unknown origin counts as a file's. */
+export const originRuleOf = (value: unknown): 'own' | 'file' => {
+    const origin = readOrigin(value)
+    return origin ? ORIGIN_RULE[origin] : 'file'
+}
+
 export const fileEvents = ['opened', 'saved', 'downloaded'] as const
 export type FileEvent = (typeof fileEvents)[number]
 

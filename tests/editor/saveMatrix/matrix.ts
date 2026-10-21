@@ -167,7 +167,7 @@ export const PATHS: PathDef[] = [
         id: 'save-as/reloaded',
         family: 'save',
         setup: { own: 'bound', storage: 'lacks', held: false },
-        plans: ['own', 'other', 'opened>own', 'dismiss'].map(plan),
+        plans: ['own', 'other', 'partial', 'opened>own', 'dismiss'].map(plan),
         dialog: true,
         picker: true,
         writes: true,
@@ -317,7 +317,7 @@ export const PATHS: PathDef[] = [
         id: 'export/reloaded',
         family: 'export',
         setup: { own: 'bound', storage: 'lacks', held: false },
-        plans: ['own', 'other', 'chart>own', 'dismiss'].map(plan),
+        plans: ['own', 'other', 'partial', 'chart>own', 'dismiss'].map(plan),
         dialog: false,
         picker: true,
         writes: true,
@@ -1007,7 +1007,10 @@ export const runCell = async (
 ): Promise<CellResult> => {
     const setup: Setup = { ...path.setup, ...fault.setup }
     const kind = planned.picks.find((pick) => ['opened', 'chart', 'partial'].includes(pick))
-    if (kind)
+    // After a reload (`held: false`) only storage knows a partial open's file: its handle is kept
+    // there, and exportMemory is empty (D26). Elsewhere the open is in memory.
+    if (kind === 'partial' && setup.held === false) setup.kept = 'afterReload'
+    else if (kind)
         setup.opened =
             kind === 'chart' ? 'notProject' : kind === 'partial' ? 'partial' : 'levelData'
     const w = await createWorld(setup)

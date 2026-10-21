@@ -244,3 +244,33 @@ test('an opened session’s own rows keep the hole and time rules; only the file
     assert.ok(found.some((line) => /row 6 \(time 70\) is later than row 7 \(time 60\)/.test(line)))
     assert.ok(!found.some((line) => /row 1/.test(line)))
 })
+
+// P2 (spec-C invariant 10): Go To's binary search skips only the lowest row of a session of its own
+// rows as a divider, so a `continue` row anywhere above it must be named.
+
+test('P2: a continue row above the lowest row of an own session is named', () => {
+    const rows = [entry('s', 1, 10), entry('s', 2, 20, { kind: 'continue' }), entry('s', 3, 30)]
+    for (const origin of ['new', 'import', 'continued', 'migrated', 'journal'])
+        assert.deepEqual(sessionViolations(dump([session('s', { origin })], rows)), [
+            'session s: continue rows 2 are not its lowest row (1)',
+        ])
+})
+
+test('P2: a continue row at the lowest row is whole, also with a hole below nothing', () => {
+    const rows = [entry('s', 1, 10, { kind: 'continue' }), entry('s', 2, 20), entry('s', 3, 30)]
+    assert.deepEqual(sessionViolations(dump([session('s', { origin: 'continued' })], rows)), [])
+    // The lowest stored row: a continuation whose seq 1 is let go and recovered over.
+    const later = [entry('s', 2, 20, { kind: 'continue' }), entry('s', 3, 30)]
+    assert.deepEqual(
+        sessionViolations(dump([session('s', { origin: 'continued', entryCount: 2 })], later), {
+            hole: (id, seq) => id === 's' && seq === 1,
+        }),
+        [],
+    )
+})
+
+test('P2: a session that holds a file’s rows, or whose origin is unknown or missing, may hold a continue row anywhere', () => {
+    const rows = [entry('s', 1, 10), entry('s', 2, 20, { kind: 'continue' }), entry('s', 3, 30)]
+    for (const origin of ['nxsp', 'replaced', 'future', undefined])
+        assert.deepEqual(sessionViolations(dump([session('s', { origin })], rows)), [])
+})
