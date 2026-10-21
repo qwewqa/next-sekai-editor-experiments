@@ -736,7 +736,7 @@ test('quick switches in a row reach the loading state 250 ms after the first, no
         }
         requestAnimationFrame(check)
     })
-    const hold = await holdWorker(page, 'readChanges')
+    await holdWorker(page, 'readChanges')
     try {
         // Three switches 100 ms apart, none letting a read land.
         await list(page).press('ArrowDown')
