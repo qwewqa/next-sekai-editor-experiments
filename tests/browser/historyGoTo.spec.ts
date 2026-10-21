@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installEditorFixture, waitForStartup } from './editorFixture'
+import { holdWorker } from './historyJourney'
 
 // Long histories (Part 1 §1.4.10.5): Go To's jump list, the window it reads, the gap row above it
 // and End. Three days of edits: made now, then their stored times moved back a day apart.
@@ -194,4 +195,115 @@ test('keys: Up crosses the gap, End reads the oldest entry, Home goes back to No
     await expect(list(page).locator('[data-history-gap]')).toHaveCount(0)
     await expect(selected(page)).toContainText('Now')
     await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+})
+
+// --- Steps not stored yet, and a list that is read again (spec-C C3-lite, V3 and V4)
+
+/** Pushes `count` steps made now, which the flusher has not stored yet. */
+const pushSteps = (page: Page, count: number, tag = 'Fresh') =>
+    page.evaluate(
+        ({ count, tag }) => {
+            const { history } = window.editorTest
+            for (let i = 1; i <= count; i++) {
+                const life = history.state.value.initialLife
+                history.pushState(
+                    window.editorTest.historySteps.futureInitialLife(life, life + 1, `${tag} ${i}`),
+                    { ...history.state.value, initialLife: life + 1 },
+                )
+            }
+        },
+        { count, tag },
+    )
+
+test('V3: a step not stored yet counts in Go To, and its count follows the list as it changes', async ({
+    page,
+}) => {
+    await openDialog(page)
+    await openGoTo(page)
+    // No read of the Timeline lands until the end: only the entries the list holds can count.
+    const hold = await holdWorker(page, 'readTimeline')
+    try {
+        await pushSteps(page, 1)
+        await expect(items(page)).toHaveCount(DAYS + 2)
+        await expect(items(page).nth(1)).toContainText('Today')
+        await expect(items(page).nth(1)).toContainText('1 step')
+        await pushSteps(page, 1, 'Later')
+        await expect(items(page).nth(1)).toContainText('2 steps')
+        // Stored now, and still not read back: the count stays.
+        await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+        await expect(items(page).nth(1)).toContainText('2 steps')
+        await expect(items(page)).toHaveCount(DAYS + 2)
+    } finally {
+        await hold.release()
+    }
+    // The read that follows agrees, and the older days are as they were.
+    await expect(items(page).nth(1)).toContainText('2 steps')
+    await expect(items(page).nth(2)).toContainText(`${PER_DAY} steps`)
+    await expect(items(page)).toHaveCount(DAYS + 2)
+})
+
+test('V3: a day with a step not stored yet can be picked', async ({ page }) => {
+    await openDialog(page)
+    await openGoTo(page)
+    await pushSteps(page, 1)
+    await expect(items(page).nth(1)).toContainText('Today')
+    await items(page).nth(1).click()
+    await expect(goTo(page)).toHaveCount(0)
+    await expect(selected(page)).toContainText('Fresh 1')
+})
+
+test('V4: Go To keeps its list while it reads again, and shows the skeleton only on a zone change', async ({
+    page,
+}) => {
+    await openDialog(page)
+    await openGoTo(page)
+    const hold = await holdWorker(page, 'readTimelineIndex')
+    try {
+        await pushSteps(page, 1)
+        await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+        // The Timeline reads the stored step back, and Go To reads its index again.
+        await hold.reached()
+        await expect(items(page)).toHaveCount(DAYS + 2)
+        await expect(items(page).nth(1)).toContainText('1 step')
+        await expect(goTo(page).locator('[data-goto-loading]')).toHaveCount(0)
+    } finally {
+        await hold.release()
+    }
+    await expect(items(page).nth(1)).toContainText('1 step')
+
+    // A zone change drops the list until the days are read for the new zone.
+    const hold2 = await holdWorker(page, 'readTimelineIndex')
+    try {
+        const cdp = await page.context().newCDPSession(page)
+        await cdp.send('Emulation.setTimezoneOverride', { timezoneId: 'Pacific/Kiritimati' })
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+        await hold2.reached()
+        await expect(goTo(page).locator('[data-goto-loading]').first()).toBeVisible()
+    } finally {
+        await hold2.release()
+    }
+    await expect(goTo(page).locator('[data-goto-loading]')).toHaveCount(0)
+    await expect(items(page).first()).toContainText('Now')
+})
+
+test('Go To lists its days while a session on the path is importing', async ({ page }) => {
+    await openDialog(page)
+    await page.evaluate(async () => {
+        const start =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        const worker = start.storageWorker as unknown as {
+            call: (name: string, ...args: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        worker.call = async (name, ...args) => {
+            const result = await call(name, ...args)
+            return name === 'readTimelineIndex'
+                ? { ...(result as object), importing: true }
+                : result
+        }
+    })
+    await openGoTo(page)
+    await expect(items(page).nth(1)).toContainText(`${PER_DAY} steps`)
 })
