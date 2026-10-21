@@ -413,14 +413,18 @@ test('a Restore’s change is against the state just before it', async ({ page }
         .getByRole('row')
         .filter({ hasText: /^Restored to/ })
     await restoreRow.click()
+    // The bar holds the last step's '1 change' while this one is read: wait for its own change.
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { shownChange } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/changes')
+                >('/src/editor/history/changes.ts')
+                return shownChange.value?.set.objects.map((object) => object.beat)
+            }),
+        )
+        .toEqual([7])
     await expect(peekLine(page)).toHaveText('1 change')
-    const objects = await page.evaluate(async () => {
-        const { shownChange } = await window.editorTest.appImport<
-            typeof import('../../src/editor/history/changes')
-        >('/src/editor/history/changes.ts')
-        return shownChange.value?.set.objects.map((object) => object.beat)
-    })
-    expect(objects).toEqual([7])
 })
 
 test('past 150 objects the bar counts by kind; most of the chart is told in words', async ({
@@ -602,46 +606,94 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     )
 })
 
-test('switching entries keeps the peek bar’s date and change line filled, never blank between', async ({
+test('switching entries keeps the whole peek bar filled, never blank or dashed between', async ({
     page,
 }) => {
-    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
-    await edit(page, 'Moved B', { kind: 'move', beats: [7] })
+    // Both entries have changes above the view, so a switch changes only the counts' numbers.
+    await edit(page, 'Added A', { kind: 'add', beats: [40, 41] })
+    await edit(page, 'Added B', { kind: 'add', beats: [60] })
     await stored(page)
+    await viewAt(page, 6)
     await openTab(page)
-    await row(page, 'Moved B').click()
+    await row(page, 'Added B').click()
     await expect(peekLine(page)).toHaveText('1 change')
-    // Every frame and every change to the bar, the date's and the change line's text.
+    // Every frame and every change to the bar: the date, the line, the arrows and the toggle.
     await page.evaluate(() => {
         const bar = document.querySelector('[data-peek-bar]')!
-        const seen: { date: string; change: string }[] = []
+        const seen: BarLook[] = []
+        const arrow = (direction: string) => bar.querySelector(`[data-change-arrow="${direction}"]`)
         const look = () => {
-            const date = bar.querySelector('[data-peek-text] .truncate')?.textContent ?? ''
-            const change = bar.querySelector('[data-peek-change]')?.textContent ?? ''
+            const now: BarLook = {
+                date: bar.querySelector('[data-peek-text] .truncate')?.textContent ?? '',
+                change: bar.querySelector('[data-peek-change]')?.textContent ?? '',
+                counts: ['up', 'down'].map(
+                    (direction) =>
+                        arrow(direction)?.querySelector('.change-count')?.textContent ?? '',
+                ),
+                disabled: ['up', 'down'].map((direction) =>
+                    arrow(direction)?.getAttribute('aria-disabled'),
+                ),
+                names: ['up', 'down'].map((direction) => arrow(direction)?.ariaLabel ?? ''),
+                edits: bar.querySelector('[data-show-edits]')?.getAttribute('aria-pressed') ?? '',
+                summary: !!bar.querySelector('[data-property-summary]'),
+            }
             const last = seen[seen.length - 1]
-            if (!last || last.date !== date || last.change !== change) seen.push({ date, change })
+            if (!last || JSON.stringify(last) !== JSON.stringify(now)) seen.push(now)
         }
         new MutationObserver(look).observe(bar, {
             subtree: true,
             childList: true,
             characterData: true,
+            attributes: true,
         })
         const frame = () => {
             look()
             requestAnimationFrame(frame)
         }
+        look()
         requestAnimationFrame(frame)
-        ;(window as unknown as { barSeen: typeof seen }).barSeen = seen
+        ;(window as unknown as { barSeen: BarLook[] }).barSeen = seen
+        type BarLook = {
+            date: string
+            change: string
+            counts: string[]
+            disabled: (string | null | undefined)[]
+            names: string[]
+            edits: string
+            summary: boolean
+        }
     })
     await list(page).press('ArrowDown')
-    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
-    await expect(peekLine(page)).toHaveText('1 change')
+    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Added A')
+    await expect(peekLine(page)).toHaveText('2 changes')
     await frames(page)
     const seen = await page.evaluate(
-        () => (window as unknown as { barSeen: { date: string; change: string }[] }).barSeen,
+        () =>
+            (
+                window as unknown as {
+                    barSeen: {
+                        date: string
+                        change: string
+                        counts: string[]
+                        disabled: string[]
+                        names: string[]
+                        edits: string
+                        summary: boolean
+                    }[]
+                }
+            ).barSeen,
     )
+    test.info().annotations.push({ type: 'seen', description: JSON.stringify(seen) })
     expect(seen.length).toBeGreaterThan(0)
-    expect(seen.filter((text) => !text.date || !text.change)).toEqual([])
+    // Never blank, never dashed, the arrows never disabled, the summary never toggling.
+    expect(seen.filter((look) => !look.date || !look.change)).toEqual([])
+    expect(seen.filter((look) => look.counts.includes('–'))).toEqual([])
+    expect(seen.filter((look) => look.disabled[0] !== 'false')).toEqual([])
+    expect(new Set(seen.map((look) => look.summary)).size).toBe(1)
+    // The counts, the line and the date swap in one step: B's, then A's, nothing between.
+    expect(seen.map((look) => look.counts[0])).toEqual(['1', '2'])
+    expect(seen.map((look) => look.names[0])).toEqual(['Changes Above: 1', 'Changes Above: 2'])
+    expect(seen.map((look) => look.change)).toEqual(['1 change', '2 changes'])
 })
 
 test('a slow read names the new entry with the loading line, not the old one', async ({ page }) => {
@@ -662,6 +714,86 @@ test('a slow read names the new entry with the loading line, not the old one', a
     }
     await expect(peekLine(page)).toHaveText('1 change')
     await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
+})
+
+for (const press of ['arrow', 'Show Change'] as const) {
+    test(`${press} pressed while the last step is held acts on the new step once it is read`, async ({
+        page,
+    }) => {
+        await edit(page, 'Added A', { kind: 'add', beats: [40, 41] })
+        await edit(page, 'Added B', { kind: 'add', beats: [100] })
+        await stored(page)
+        await viewAt(page, 6)
+        await openTab(page)
+        await row(page, 'Added B').click()
+        await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
+        await holdWorker(page, 'readChanges')
+        // The page clock stands still, so the 250 ms that ends the hold cannot pass before the press.
+        await page.clock.install()
+        await page.clock.pauseAt(new Date(Date.now() + 60_000))
+        try {
+            await list(page).press('ArrowDown')
+            // Still the held step's bar, its arrow enabled: the press waits for A's change.
+            await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
+            if (press === 'arrow') await arrow(page, 'up').click()
+            else await runCommand(page, 'showChange')
+            expect(Math.round(await centreBeat(page))).toBeLessThan(10)
+        } finally {
+            await release(page)
+        }
+        await expect(peekLine(page)).toHaveText('2 changes')
+        await page.clock.resume()
+        // A's changes lie near beat 40, B's at 100.
+        await expect.poll(async () => Math.round(await centreBeat(page))).toBeGreaterThan(38)
+        await expect.poll(async () => Math.round(await centreBeat(page))).toBeLessThan(60)
+    })
+}
+
+test('quick switches in a row reach the loading state 250 ms after the first, not the last', async ({
+    page,
+}) => {
+    await edit(page, 'Added A', { kind: 'add', beats: [40, 41] })
+    await edit(page, 'Added B', { kind: 'add', beats: [60] })
+    await edit(page, 'Added C', { kind: 'add', beats: [80] })
+    await edit(page, 'Added D', { kind: 'add', beats: [100] })
+    await stored(page)
+    await viewAt(page, 6)
+    await openTab(page)
+    await row(page, 'Added D').click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    // When the first key went down, and when the line first read Loading.
+    await page.evaluate(() => {
+        const marks = { keyAt: 0, loadingAt: 0 }
+        ;(window as unknown as { marks: typeof marks }).marks = marks
+        document.addEventListener('keydown', () => (marks.keyAt ||= performance.now()), true)
+        const check = () => {
+            const line = document.querySelector('[data-peek-change]')?.textContent ?? ''
+            if (!marks.loadingAt && line.startsWith('Loading')) marks.loadingAt = performance.now()
+            requestAnimationFrame(check)
+        }
+        requestAnimationFrame(check)
+    })
+    await holdWorker(page, 'readChanges')
+    try {
+        // Three switches 100 ms apart, none letting a read land.
+        await list(page).press('ArrowDown')
+        await page.waitForTimeout(100)
+        await list(page).press('ArrowDown')
+        await page.waitForTimeout(100)
+        await list(page).press('ArrowDown')
+        await expect(peekLine(page)).toHaveText(/^Loading/)
+        await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Added A')
+        await expect(arrow(page, 'up')).not.toHaveAttribute('data-count')
+        // 250 ms after the first switch, not after the last (about 450 ms).
+        const { keyAt, loadingAt } = await page.evaluate(
+            () => (window as unknown as { marks: { keyAt: number; loadingAt: number } }).marks,
+        )
+        expect(loadingAt - keyAt).toBeGreaterThan(200)
+        expect(loadingAt - keyAt).toBeLessThan(380)
+    } finally {
+        await release(page)
+    }
+    await expect(peekLine(page)).toHaveText('2 changes')
 })
 
 test('Show Edits default off leaves the chart undimmed and unmarked', async ({ page }) => {
