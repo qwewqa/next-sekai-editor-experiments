@@ -1,8 +1,8 @@
 import { bytesOf, sameBytes, startsWith, type World } from './world'
 
 // The six invariants of work/soundness/architecture-review.md §B.6 (I1 to I6), as checks over what
-// a world recorded, plus two the task adds: the marker only for a write that may have landed (I7),
-// and cancel at any await (I8: nothing written, nothing held).
+// a world recorded, plus three the task adds: the marker only for a write that may have landed
+// (I7), cancel at any await (I8: nothing written, nothing held), and one binding per file (I9).
 
 export type Violation = { invariant: string; detail: string }
 
@@ -67,8 +67,8 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     // I3: every reservation ends exactly once, and none is left held.
     for (const [i, { ends }] of world.reservations.entries())
         if (ends.length !== 1) add('I3', `reservation #${i + 1} ended ${ends.length} times`)
-    const reserved = (world.session as { reserved?: number }).reserved
-    if (reserved !== undefined) add('I3', `the session still holds reserved seq ${reserved}`)
+    const reserved = world.session.reserved
+    if (reserved !== undefined) add('I3', `the session still holds reserved seq ${reserved.seq}`)
 
     // I4: no picker opens on a lapsed activation without a ready press.
     for (const opening of world.openings)
@@ -101,6 +101,38 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
         if (world.mock.downloads.length) add('I8', 'a cancelled Save downloaded')
     }
     if (facts.expectNoPicker && world.openings.length) add('I5', 'a picker opened that must not')
+
+    // I9 (E-5): one file, one binding. No file name is bound to two chains, and no file is both
+    // bound and another chain's Export target. Excepted: a revocation storage could not take,
+    // pending in `revoke.<chainId>` (R11), whose binding is already as good as gone.
+    const revoked = world.revocations()
+    const bound = new Map<string, string[]>()
+    const targets = new Map<string, string[]>()
+    for (const record of world.chains.values()) {
+        const chainId = String(record.chainId)
+        const file = record.file as { name?: string; at?: number } | undefined
+        const target = record.exportTarget as { name?: string } | undefined
+        if (
+            file?.name &&
+            !revoked.some(
+                (r) =>
+                    r.chainId === chainId &&
+                    r.revoke.name === file.name &&
+                    r.revoke.fileAt === file.at,
+            )
+        )
+            bound.set(file.name, [...(bound.get(file.name) ?? []), chainId])
+        if (target?.name) targets.set(target.name, [...(targets.get(target.name) ?? []), chainId])
+    }
+    for (const [name, chainIds] of bound) {
+        if (chainIds.length > 1) add('I9', `${name} is bound to ${chainIds.join(' and ')}`)
+        for (const target of targets.get(name) ?? [])
+            if (!chainIds.includes(target))
+                add(
+                    'I9',
+                    `${name} is bound to ${chainIds.join(', ')} and is ${target}’s Export target`,
+                )
+    }
 
     // A flow that threw is a bug of its own (the Save's `exclusive` logs it).
     for (const error of world.errors)

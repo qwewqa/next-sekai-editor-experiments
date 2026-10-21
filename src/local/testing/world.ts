@@ -82,6 +82,8 @@ export type WorldOptions = {
     checks?: TransitionChecks | false
     /** Keep what a power loss would undo: `memory.loseRelaxed` and `memory.loseCommits`. */
     commitLog?: boolean
+    /** Blob reads resolve a task later, process-wide (default true). The matrix's door passes false. */
+    blobTasks?: boolean
 }
 
 let blobsPatched = false
@@ -109,8 +111,13 @@ const readBlobsInTasks = () => {
     }
 }
 
-export const createWorld = ({ seed, checks: given, commitLog }: WorldOptions = {}): World => {
-    readBlobsInTasks()
+export const createWorld = ({
+    seed,
+    checks: given,
+    commitLog,
+    blobTasks = true,
+}: WorldOptions = {}): World => {
+    if (blobTasks) readBlobsInTasks()
     const scheduler = new Scheduler({ seed })
     const memory = new MemoryKv(scheduler)
     if (commitLog) memory.recordCommits = true

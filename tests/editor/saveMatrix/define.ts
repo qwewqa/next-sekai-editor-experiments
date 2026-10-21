@@ -27,14 +27,25 @@ export const defineMatrix = (pathIds: string[]) => {
                 todo:
                     known.kind === 'bug'
                         ? 'a bug today (work/arch/B0-report.md)'
-                        : 'by design today',
+                        : known.kind === 'accepted'
+                          ? 'an accepted residual'
+                          : 'by design today',
             },
             () => {
                 const found = results
-                    .filter((cell) => known.paths.includes(cell.path) && cell.fault === known.fault)
+                    .filter(
+                        (cell) =>
+                            known.paths.includes(cell.path) &&
+                            cell.fault === known.fault &&
+                            (known.plans?.includes(cell.plan) ?? true),
+                    )
                     .flatMap((cell) =>
                         cell.violations
-                            .filter((v) => v.invariant === known.invariant)
+                            .filter(
+                                (v) =>
+                                    v.invariant === known.invariant &&
+                                    (known.detail?.test(v.detail) ?? true),
+                            )
                             .map((v) => `${cell.id}: ${v.detail}`),
                     )
                 assert.deepEqual(found, [])
