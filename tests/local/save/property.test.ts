@@ -129,7 +129,7 @@ class Scenario {
     /** Storing paused: the last stored `seq` of the session, and the binding in memory. */
     pause: { stored: number; unit?: IdentityUnit; file?: IdentityInput['file'] } | undefined
     docs = 0
-    /** Whether the last write showed "Some earlier steps were not kept.". */
+    /** Whether the last write showed "Some earlier Timeline steps were not kept.". */
     line = false
     readonly log: string[] = []
 

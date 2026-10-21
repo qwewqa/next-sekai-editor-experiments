@@ -15,6 +15,7 @@ import { replaceNote } from '../../../src/state/mutations/slides/note'
 import { createTransaction } from '../../../src/state/transaction'
 import { editStep, nativeOperation, originOperation } from '../../helpers/historySteps'
 import '../../helpers/lockChecks'
+import { useDay } from '../../helpers/useDay'
 import { goldenChart, stateOf } from '../records/charts'
 import {
     openPage,
@@ -176,7 +177,7 @@ test('rows Try Again moves in take the database’s day of use, not the memory s
     await setup.run(() => setupCore.start())
     await setup.run(() =>
         setupCore.write(['meta'], async (tx) => {
-            await writeMeta(tx, 'daysOfUse', 40)
+            await writeMeta(tx, 'daysOfUse', useDay(40))
             await writeMeta(tx, 'lastUseDate', '2000-01-01')
         }),
     )

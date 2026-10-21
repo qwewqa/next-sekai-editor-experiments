@@ -955,7 +955,7 @@
         "legacy": "Copie de récupération d’une ancienne version · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
-        "listFailed": "Les données de récupération stockées n’ont pas pu être lues",
+        "listFailed": "Le travail récupéré n’a pas pu être lu",
         "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé.",
         "atLoad": "Notifications au démarrage"
       },
@@ -1175,7 +1175,7 @@
     "continuedUntitled": "Votre session du {0} a été reprise.",
     "continuedUndated": "Session reprise : \"{0}\".",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
-    "inAppBrowser": "Cela semble être le navigateur intégré d’une application, où certaines fonctionnalités peuvent ne pas fonctionner et où le travail stocké risque davantage d’être perdu. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "journalKept": "Une modification de \"{0}\" n’a pas pu être appliquée, elle a donc été conservée dans une session séparée.",
     "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
     "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
@@ -1355,9 +1355,9 @@
       "composedTransform": "Ajustements multiples",
       "released": "Sortie du dossier",
       "recoveryContext": "Actions précédentes",
-      "recoveryHead": "Action d’origine",
-      "omittedDescriptions": "Descriptions d’actions précédentes omises : {0}",
-      "droppedSteps": "Étapes d’annulation supprimées : {0}",
+      "recoveryHead": "Récupéré jusqu’ici",
+      "omittedDescriptions": "Actions précédentes non listées : {0}",
+      "droppedSteps": "Actions sans étape propre dans la chronologie : {0}",
       "counts": {
         "note": "{0} note|{0} notes",
         "bpm": "{0} changement de BPM|{0} changements de BPM",
@@ -1368,7 +1368,7 @@
         "groupFolder": "{0} dossier de groupes|{0} dossiers de groupes",
         "stageFolder": "{0} dossier de scènes|{0} dossiers de scènes"
       },
-      "bgmOffset": "Décalage du BGM",
+      "bgmOffset": "Décalage de la musique",
       "pasteLocation": "Emplacement du collage",
       "pointer": "Pointeur",
       "position": "Position choisie"
@@ -1705,7 +1705,7 @@
           "alt": "Alt",
           "shift": "Maj"
         },
-        "fixedAlias": "Aussi {0}, fixe"
+        "fixedAlias": "Aussi {0} (non modifiable)"
       },
       "maskLeft": {
         "label": "Voie du masque"
@@ -2089,9 +2089,9 @@
     "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",
     "savedWithoutPreviewLarge": "Sauvegardé dans {0} sans son aperçu audio",
     "savedWithoutMediaLarge": "Sauvegardé dans {0} sans ses médias",
-    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures n’ont pas été conservées.",
-    "someStepsNotKeptLine": "Certaines étapes antérieures n’ont pas été conservées.",
-    "committedState": "Voici le dernier état stocké d’une session ouverte dans un autre onglet.",
+    "someStepsNotKept": "Sauvegardé dans {0}. Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
+    "someStepsNotKeptLine": "Certaines étapes antérieures de la chronologie n’ont pas été conservées.",
+    "committedState": "Le fichier contient la dernière version stockée de la session ouverte dans un autre onglet.",
     "tookOver": "Sauvegardé dans {0}. Son travail antérieur se trouve dans Sessions récentes.",
     "noChanges": "Aucune modification depuis le téléchargement de {0}",
     "noChangesSaved": "Aucune modification depuis la sauvegarde de {0}",
@@ -2126,14 +2126,14 @@
     "savedNoNotes": "{0}, {1}.",
     "otherProject": "Un autre fichier de projet, \"{0}\".",
     "otherProjectUnnamed": "Un autre fichier de projet.",
-    "notDescendant": "Cette version ne prolonge pas la vôtre ({0}).",
+    "notDescendant": "Cette version n’a pas été créée à partir de la vôtre ({0}).",
     "separate": "Sauvegarder dans un fichier séparé",
     "openOther": "Ouvrir l’autre version",
     "openOtherNote": "Vos modifications restent non sauvegardées.",
     "replaceNote": "La version sur le disque sera conservée dans Sessions récentes.",
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Créé par une version plus récente de {0}.",
-    "replaceHoldsEarlier": "Il contient des étapes antérieures que ce navigateur n’a plus.",
+    "replaceHoldsEarlier": "Il contient des étapes antérieures de la chronologie qui ne sont plus stockées dans ce navigateur.",
     "keepEditing": "Continuer à modifier"
   },
   "name": {
@@ -2186,7 +2186,7 @@
     "notInFile": "Non sauvegardé dans un fichier",
     "separateCopy": "Copie séparée de {0}",
     "opensLevelInfo": "Ouvre les informations du niveau",
-    "changedSaved": "{0}, modifié depuis la sauvegarde dans {1}",
+    "changedSaved": "{0}, modifié depuis la sauvegarde de {1}",
     "changedDownload": "{0}, modifié depuis le téléchargement de {1}",
     "changedOpened": "{0}, modifié depuis l’ouverture de {1}"
   },

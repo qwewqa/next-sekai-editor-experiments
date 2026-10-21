@@ -297,7 +297,7 @@ export const finishOwnSave = async (
         file.entry = { ...file.entry, startedAt: session.startedAt }
     // The cut counts the file's rows, this entry's among them, also when the entry isn't written: a
     // cut may only under-claim (§1.6.11.6). The next write that isn't an append then fails the
-    // carry test (save/model.ts `carries`) and says "Some earlier steps were not kept." once,
+    // carry test (save/model.ts `carries`) and says "Some earlier Timeline steps were not kept." once,
     // rather than claiming a file whose `save` row it lacks.
     const fields = await splitHandles(tx, chainId, { file })
     const record: Row = {

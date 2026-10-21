@@ -58,7 +58,7 @@ test('storage short after a reload: Save As… asks to read the file, and a pick
     await queuePicks(page, ['coconut.nxsp'])
     await submitSave(page, undefined, 'Save As')
     await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    await expect(notice(page).filter({ hasText: 'Some earlier steps were not kept.' })).toHaveCount(
+    await expect(notice(page).filter({ hasText: 'Some earlier Timeline steps were not kept.' })).toHaveCount(
         0,
     )
     expect((await pickerCalls(page)).map((call) => call.picker)).toEqual(['permission', 'save'])

@@ -1,3 +1,4 @@
+import { dateText, hostZone } from '../calendar/calendar'
 import { readMeta, writeMeta } from './db'
 import type { KvTx } from './kv/types'
 
@@ -6,24 +7,29 @@ import type { KvTx } from './kv/types'
 // "within the past N days" means `daysOfUse - day < N`, so a clock that jumps can't expire
 // anything early.
 
-/** The local date of a time, `YYYY-MM-DD`. */
-export const localDate = (time: number) => {
-    const date = new Date(time)
-    const pad = (value: number) => String(value).padStart(2, '0')
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
+/**
+ * A count of days of use: what `meta.daysOfUse` and every row's `day` hold. It is not a calendar
+ * day (`DayKey`), so the two can't be mixed up: retention counts `UseDay`s, ages shown to the user
+ * count `DayKey`s. Only `countDayOfUse`, `NO_USE_DAY` and the row types make one (I-11; the
+ * `local/no-use-day-cast` rule bans `as UseDay` elsewhere).
+ */
+export type UseDay = number & { readonly __useDay: true }
+
+/** No day of use yet: a new database's `daysOfUse`. */
+export const NO_USE_DAY = 0 as UseDay
 
 /**
  * Counts `now`'s day as a day of use once, inside a read-write transaction over `meta`; returns
  * the day rows written now are stamped with. A `now` dated before the last day counted (a clock
  * set back) counts nothing until the clock passes it again.
  */
-export const countDayOfUse = async (tx: KvTx, now: number) => {
-    const days = (await readMeta(tx, 'daysOfUse')) ?? 0
+export const countDayOfUse = async (tx: KvTx, now: number): Promise<UseDay> => {
+    const days = (await readMeta(tx, 'daysOfUse')) ?? NO_USE_DAY
     const last = (await readMeta(tx, 'lastUseDate')) ?? ''
-    const today = localDate(now)
+    const today = dateText(now, hostZone())
     if (today <= last) return days
-    await writeMeta(tx, 'daysOfUse', days + 1)
+    const next = (days + 1) as UseDay
+    await writeMeta(tx, 'daysOfUse', next)
     await writeMeta(tx, 'lastUseDate', today)
-    return days + 1
+    return next
 }

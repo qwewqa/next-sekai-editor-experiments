@@ -17,7 +17,7 @@ import { Fixture, heldRows, inspectNxsp, save, saveOptions, sourceOf, stateAt } 
 // A save picker returning the chain's own file (Part 1 §1.4.7 R2, R4; owner decision log D5;
 // `work/d5/safety.md` S1, S2): the file is read first only when storage lacks what it holds (the
 // Replace guard's test), and then appended to, so nothing is lost; with the read declined it is
-// written from storage, and the write says "Some earlier steps were not kept.".
+// written from storage, and the write says "Some earlier Timeline steps were not kept.".
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
 
