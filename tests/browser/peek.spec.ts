@@ -407,6 +407,18 @@ test('side by side, the Elevation Editor shows the peek behind its overlay', asy
     expect(
         await page.evaluate(() => window.editorTest.history.state.value.selectedEntities.length),
     ).toBe(0)
+    // The wheel still scrolls the pane under the overlay.
+    const center = () =>
+        page.evaluate(async () => {
+            const { elevationViewport } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/viewport')
+            >('/src/editor/elevation/viewport.ts')
+            return elevationViewport.center
+        })
+    const before = await center()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.wheel(0, 300)
+    await expect.poll(center).not.toBe(before)
     await leave(page)
     await expect(overlay).toHaveCount(0)
     await expect(page.locator('.elevation-editor')).toBeVisible()
