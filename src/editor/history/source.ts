@@ -60,13 +60,10 @@ const version = ref(0)
 /** Bumped when the loaded run is replaced: reads begun before it land nowhere. */
 let epoch = 0
 export const sourceGeneration = ref(0)
-/** A replacing refresh is out: the loaded run is not the newest entries until it lands. */
-const replacing = ref(false)
 /** Bumped when a read lands in the loaded run (`refresh`, `recount`, `loadNewer`, `loadMore`). */
 const landings = ref(0)
 const replaceSource = () => {
     sourceGeneration.value++
-    replacing.value = false
     return ++epoch
 }
 
@@ -155,8 +152,8 @@ export const listedEntries = computed((): Entry[] =>
 
 const isJumped = () => newer.value !== undefined
 
-/** How the loaded run relates to Now (spec-C invariant 11). */
-const runState = computed(() => (newer.value ? 'jumped' : replacing.value ? 'replacing' : 'joined'))
+/** Whether the loaded run reaches Now or is a window after a jump (spec-C invariant 11). */
+const runState = computed(() => (newer.value ? 'jumped' : 'joined'))
 
 /** After a jump, the entries between Now and the window; undefined while the run reaches Now. */
 export const gap = computed(() => {
@@ -231,7 +228,6 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
         newer.value = undefined
         newerCount.value = 0
     }
-    if (replace) replacing.value = true
     const mark = epoch
     const ticket = ++started
     const fresh: Entry[] = []
@@ -253,7 +249,6 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
         }
     } catch {
         if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
-        replacing.value = false
         if (loadedFor.value !== id) status.value = 'failed'
         return
     }
@@ -272,7 +267,6 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
     loadedFor.value = id
     canLoadMore.value = !!cursor
     status.value = 'ready'
-    replacing.value = false
     landings.value++
 }
 
@@ -351,22 +345,18 @@ const indexes = new Map<string, Promise<TimelineIndex>>()
 /** What a read landed: the index, with the filter and zone it was read for. */
 type Landed = { index: TimelineIndex; filter: Filter; zone: Zone }
 const indexLanded = shallowRef<Landed>()
-let held: TimelinePiece[] | undefined
 let indexTicket = 0
 
 /**
  * Names the Timeline entries an index read covers. In normal mode it is the newest stored entry of
  * the open session that is loaded (0 when none is), so a read is repeated when newer entries load.
- * After a jump, or while a path step is importing, the loaded run does not say what is stored: a
- * read is repeated whenever the Timeline's next read lands.
+ * After a jump the loaded run does not say what is stored: a read is repeated whenever the
+ * Timeline's next read lands.
  */
-const stamp = () =>
-    runState.value === 'joined' && !indexLanded.value?.index.importing
+export const goToStamp = () =>
+    runState.value === 'joined'
         ? `t${stored.value.find((entry) => entry.sessionId === session.value.sessionId)?.seq ?? 0}`
         : `r${landings.value}`
-
-/** Changes when Go To's index should be read again, and is the same for reads that need not be. */
-export const goToStamp = () => `${runState.value}:${stamp()}`
 
 /**
  * The chain's pieces, runs of a session's entries on one local day of `zone` (the History clock's):
@@ -388,7 +378,7 @@ export const readIndex = (
     if (!worker)
         return Promise.resolve({ pieces: [], path: [], topSession: open, importing: false })
     const start = startOf(open)
-    const key = `${start.sessionId}:${start.before ?? ''}:${filter}:${zone}:${stamp()}`
+    const key = `${start.sessionId}:${start.before ?? ''}:${filter}:${zone}:${goToStamp()}`
     let found = indexes.get(key)
     if (!found) {
         found = worker.call('readTimelineIndex', {
@@ -404,18 +394,13 @@ export const readIndex = (
 
 /**
  * Reads Go To's index. With `keep` the list shown stays until the read lands; otherwise it is
- * dropped now. No read starts while the run is being replaced (the list shown stays, and the next
- * stamp reads) or while Edits Here scans. A read that lands is used whatever has moved since:
- * `goToPieces` adds the entries it does not cover.
+ * dropped now. Edits Here's list is read once its scan is done. A read that lands is used whatever
+ * has moved since: `goToPieces` adds the entries it does not cover.
  */
 export const loadGoTo = async (filter: Filter, zone: Zone, keep: boolean) => {
     const mark = ++indexTicket
-    if (!keep) {
-        indexLanded.value = undefined
-        held = undefined
-    }
-    // Edits Here's list is read once its scan is done.
-    if (runState.value === 'replacing' || (filter === 'here' && here.scanning)) return
+    if (!keep) indexLanded.value = undefined
+    if (filter === 'here' && here.scanning) return
     const index = await readIndex(filter, zone)
     if (mark === indexTicket) indexLanded.value = { index, filter, zone }
 }
@@ -424,19 +409,17 @@ export const loadGoTo = async (filter: Filter, zone: Zone, keep: boolean) => {
 export const goToPieces = computed((): readonly TimelinePiece[] | undefined => {
     const at = indexLanded.value
     if (!at) return
-    if (runState.value === 'replacing' && held) return held
-    if (at.filter === 'here') return (held = [...at.index.pieces])
-    const open = session.value.sessionId
+    if (at.filter === 'here') return at.index.pieces
     // After a jump the loaded run is a window, so the open session's entries come from it and from
     // the flusher's waiting entries; spec-C invariant 11 deduplicates them.
     const listed =
         runState.value === 'jumped' ? [...pendingEntries(), ...stored.value] : entries.value
-    return (held = composeGoTo(
+    return composeGoTo(
         listed,
         { ...at.index, zone: at.zone },
-        open,
+        session.value.sessionId,
         at.filter === 'saves' ? SAVES : undefined,
-    ))
+    )
 })
 
 /**
@@ -576,7 +559,6 @@ export const followEntries = () => {
             carried.clear()
             replaceSource()
             indexLanded.value = undefined
-            held = undefined
             stored.value = []
             cursor = undefined
             newer.value = undefined

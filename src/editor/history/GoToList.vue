@@ -115,7 +115,7 @@ const items = computed((): Item[] => {
         const first = members[0]!
         list.push({
             kind: 'day',
-            id: `d:${first.sessionId}:${first.newestSeq}`,
+            id: `d:${first.sessionId}:${first.oldestSeq}`,
             day,
             ...(members.length === 1 ? { range: rangeOf(first) } : {}),
             count,
@@ -126,7 +126,7 @@ const items = computed((): Item[] => {
             for (const piece of members)
                 list.push({
                     kind: 'session',
-                    id: `s:${piece.sessionId}:${piece.newestSeq}`,
+                    id: `s:${piece.sessionId}:${piece.oldestSeq}`,
                     day,
                     range: rangeOf(piece),
                     count: piece.count,

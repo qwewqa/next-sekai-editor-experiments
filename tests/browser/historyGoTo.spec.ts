@@ -286,27 +286,24 @@ test('V4: Go To keeps its list while it reads again, and shows the skeleton only
     await expect(items(page).first()).toContainText('Now')
 })
 
-test('V4: Go To holds its list while Back to Now reads the newest entries', async ({ page }) => {
+test('Go To lists its days while a session on the path is importing', async ({ page }) => {
     await openDialog(page)
+    await page.evaluate(async () => {
+        const start =
+            await window.editorTest.appImport<typeof import('../../src/local/start')>(
+                '/src/local/start.ts',
+            )
+        const worker = start.storageWorker as unknown as {
+            call: (name: string, ...args: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        worker.call = async (name, ...args) => {
+            const result = await call(name, ...args)
+            return name === 'readTimelineIndex'
+                ? { ...(result as object), importing: true }
+                : result
+        }
+    })
     await openGoTo(page)
-    await items(page).nth(3).click()
-    await expect(selected(page)).toContainText(`Day 1 edit ${PER_DAY}`)
-    await openGoTo(page)
-    const before = await items(page).allTextContents()
-    const hold = await holdWorker(page, 'readTimeline')
-    try {
-        await page.evaluate(async () => {
-            const source = await window.editorTest.appImport<
-                typeof import('../../src/editor/history/source')
-            >('/src/editor/history/source.ts')
-            void source.resetToNewest()
-        })
-        await hold.reached()
-        await expect(goTo(page).locator('[data-goto-loading]')).toHaveCount(0)
-        expect(await items(page).allTextContents()).toEqual(before)
-    } finally {
-        await hold.release()
-    }
-    await expect(items(page)).toHaveCount(DAYS + 1)
-    expect(await items(page).allTextContents()).toEqual(before)
+    await expect(items(page).nth(1)).toContainText(`${PER_DAY} steps`)
 })
