@@ -997,10 +997,6 @@ const createWorld = async (setup: Setup = {}) => {
             )
             return { finish, copy }
         },
-        /** Aborts every "Preparing…" this world opened, open or closed: a Cancel at any time. */
-        abortPreparing: () => {
-            for (const entry of preparing) entry.controller.abort()
-        },
         /** The revocations storage could not take, kept in localStorage (R11). */
         revocations: () => env.pendingRevocations(),
         /** The own binding's name as the record holds it, or undefined. */

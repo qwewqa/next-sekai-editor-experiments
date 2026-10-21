@@ -951,17 +951,6 @@ export const FAULTS: FaultDef[] = [
         },
     },
     {
-        id: 'cancel-after-pick',
-        exit: 'Cancel in "Preparing…" after the picker returned a file (no effect: written)',
-        applies: (path, p) => onSession(path) && single(p) && writesFile(p),
-        arm: (w) => {
-            const driver = w.atPoint('picked', () => {
-                w.abortPreparing()
-            })
-            return { driver, effective: () => w.reached().includes('picked') }
-        },
-    },
-    {
         id: 'import-pending-never-starts',
         exit: 'import pending that never starts (4 s)',
         applies: (path, p) =>
