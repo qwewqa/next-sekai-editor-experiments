@@ -17,7 +17,7 @@ import {
     setUnregisteredTargetCheck,
 } from '../../src/editor/commands/exportLevel/memory'
 import { knownTargetAvailable } from '../../src/editor/commands/exportLevel/ownership'
-import { setTargetLock } from '../../src/editor/commands/exportLevel/pick'
+import { setTargetLock } from '../../src/editor/commands/exportLevel/targetLock'
 import { readValue } from '../../src/local/storedRead'
 import type { StorageWorker } from '../../src/local/worker/client'
 import { setPlatformForTests } from '../../src/platform'

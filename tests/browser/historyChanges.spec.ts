@@ -716,7 +716,7 @@ test('a slow read names the new entry with the loading line, not the old one', a
     await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Moved A')
 })
 
-for (const press of ['arrow', 'Show Change'] as const) {
+for (const press of ['arrow', 'Show Change', 'Step Details'] as const) {
     test(`${press} pressed while the last step is held acts on the new step once it is read`, async ({
         page,
     }) => {
@@ -736,13 +736,24 @@ for (const press of ['arrow', 'Show Change'] as const) {
             // Still the held step's bar, its arrow enabled: the press waits for A's change.
             await expect(arrow(page, 'up')).toHaveAttribute('data-count', '1')
             if (press === 'arrow') await arrow(page, 'up').click()
-            else await runCommand(page, 'showChange')
+            else if (press === 'Show Change') await runCommand(page, 'showChange')
+            else await page.locator('[data-peek-details]').click()
             expect(Math.round(await centreBeat(page))).toBeLessThan(10)
+            // The held step's details do not open: the press waits for the new step.
+            await expect(page.locator('dialog[open]')).toHaveCount(0)
         } finally {
             await release(page)
         }
         await expect(peekLine(page)).toHaveText('2 changes')
         await page.clock.resume()
+        if (press === 'Step Details') {
+            // The details of A, the step the user is now on.
+            const dialog = page.locator('dialog[open]')
+            await expect(dialog).toBeVisible()
+            await expect(dialog).toContainText('Added A')
+            await expect(dialog).not.toContainText('Added B')
+            return
+        }
         // A's changes lie near beat 40, B's at 100.
         await expect.poll(async () => Math.round(await centreBeat(page))).toBeGreaterThan(38)
         await expect.poll(async () => Math.round(await centreBeat(page))).toBeLessThan(60)

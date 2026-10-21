@@ -3,25 +3,19 @@ import type { EndSaveResult, Flusher, SaveEntryInput, SaveReservation } from '..
 import type { IdentityUnit } from '../../local/save/commit'
 import { FileError, platform, type SaveRequest, type SaveResult } from '../../platform'
 import type { State } from '../../state'
+import { fileError } from '../commands/exportLevel/errorText'
 import { environment, type Env } from './binding'
 import type { SaveUi } from './dialogs'
 import { removeMarker, savedState, writeMarker, type SaveMarker } from './env'
 import { openPreparing, PREPARING_MS, waitForChainImports, type PreparingSlot } from './imports'
 
-// One Save attempt (Part 1 §1.4.7, spec B): every Save, write-back and Download Again that may write
-// a file runs in one. It owns the Save's cancel and its one "Preparing…", the wait for the chain's
+// One Save attempt (Part 1 §1.4.7, spec B): every Save, Export's pick and Save to File… that may
+// write a file runs in one. It owns the Save's cancel and its one "Preparing…", the wait for the chain's
 // imports, the reservation and how that reservation ends, and the failure the user is shown. The
 // flows own what is built and what is asked; they never end a reservation themselves.
 
-/** A failure before any write, or the error a Save shows. */
-export const fileError = (error: unknown) =>
-    error instanceof FileError
-        ? error
-        : new FileError('io', error instanceof Error ? error.message : String(error))
-
 /** A failure before anything was written: a precondition or a denial. */
-export const notWritten = (failure: FileError) =>
-    failure.step === 'check' || failure.code === 'denied'
+const notWritten = (failure: FileError) => failure.step === 'check' || failure.code === 'denied'
 
 /** The Save was cancelled in its "Preparing…": thrown at the points a cancel can stop it. */
 export class Cancelled extends Error {
@@ -104,7 +98,7 @@ export type SaveAttempt = {
 }
 
 /** Ends a reservation with its entry: the one call that adds a `save` entry. */
-export const completeSave = (
+const completeSave = (
     flusher: Flusher,
     reservation: SaveReservation,
     entry: SaveEntryInput,

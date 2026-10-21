@@ -6,7 +6,7 @@ import type { Preparing, SaveUi } from './dialogs'
 
 // The wait for a chain's open imports (Part 1 §1.4.7, spec A): a Save, Save As… and Export wait
 // for them in "Preparing…" before they read the chain, and our own completed Save is recorded only
-// after them. B and D wait the same way.
+// after them.
 
 /**
  * A Save's "Preparing…": its dialog once opened, and the Save's own cancel, which the dialog's
@@ -40,7 +40,7 @@ export const PREPARING_MS = 1000
 
 /** How long a Save waits for a reload's import resume to start (§1.5.4), as a slot load does. */
 export const RESUME_WAIT_MS = 4000
-export const RESUME_POLL_MS = 250
+const RESUME_POLL_MS = 250
 
 /** Resolves true after `ms`, or false at once when `signal` aborts. */
 export const pause = (ms: number, signal?: AbortSignal) =>
@@ -74,11 +74,11 @@ const resumeOrphans = async () => {
  * Waits for every import of env's chain that storage lists with `importPending`: one running in
  * this tab with its progress in "Preparing…", one running nowhere here polled for up to
  * RESUME_WAIT_MS. An import no tab runs (its run threw, its tab closed) is resumed once, as a
- * reload would resume it (`resume`), and then waited for as one running here. A list that can't be
- * read counts as pending: it is read again within the same bound. At the bound the result is
- * 'done' and the caller does what it does while an import is still pending (the build's
- * `importing` refusal, `recordOwnSave`'s check). 'unlinked' only when the open session's own
- * import ended unlinked.
+ * load does for every chain's unfinished imports (`resume`), and then waited for as one running
+ * here. A list that can't be read counts as pending: it is read again within the same bound. At
+ * the bound the result is 'done' and the caller does what it does while an import is still
+ * pending (the build's `importing` refusal, `recordOwnSave`'s check). 'unlinked' only when the open
+ * session's own import ended unlinked.
  */
 export const waitForChainImports = async (
     env: Pick<BuildEnv, 'worker' | 'session'> & { chainId: string },

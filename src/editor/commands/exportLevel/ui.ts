@@ -19,16 +19,23 @@ export const fileErrorText = (name: string, error: FileError) =>
 
 /**
  * What the pick could not put back, emptied or not: Download keeps the bytes. Without `downloadable`
- * there is nothing to give: [OK] only.
+ * there is nothing to give: [OK] only. `replaced`: Save to File… wrote another document over the
+ * chain's own file. Export's dialog and the Save family's are this one, each with its own title.
  */
 export const showNotPutBack = async (
     dialogTitle: () => string,
     name: string,
     emptied: boolean,
     downloadable: boolean,
+    replaced = false,
 ) => {
     const message = interpolate(
-        () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
+        () =>
+            replaced
+                ? i18n.value.save.replacedContentGone
+                : emptied
+                  ? i18n.value.save.notPutBack
+                  : i18n.value.save.openedContentGone,
         name,
     )
     if (!downloadable) {

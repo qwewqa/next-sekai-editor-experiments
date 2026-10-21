@@ -123,6 +123,7 @@ The History redesign is the newest large body of UI; it follows the rules above 
 - A second strip under the first: `h-8 rounded-full bg-modal p-1 text-xs shadow-md ring-1 ring-fg/10`, as wide as the strip less 12 px, so its end caps are concentric with the strip's.
 - Every face is a 24 px circle or pill 4 px in from the capsule's edge: the Show Edits toggle (`ghost btn-toggle`), the summary button (`ghost`, or passive text when nothing can be inspected) and two arrows with a count each. The arrow's face is the chevron's circle, so hover, press and focus are drawn centred on the glyph rather than on an empty slot.
 - Compact form: an options button and menu replace the eye and the summary, under 320 px panes or when the widest state line would not fit. Disabled arrows dim the chevron and count only, so a focus ring stays strong.
+- While a new step's change is read, for up to 250 ms from the first switch, the strip and capsule keep the last read step's date, line, counts, enabled arrows and summary, so one swap follows and nothing shows blank, dashed or dimmed; after 250 ms they name the new step and show loading. A press meanwhile acts on the new step once it is read (`changes.ts` `heldBar`, `pressWhenRead`).
 - The fit measures the widest line the producer can return (`changes.ts` `fixedLines` and `countedLines`), in the longest locale.
 
 **History panel band** (`HistoryPanel.vue`)

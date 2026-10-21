@@ -13,6 +13,7 @@ import { ZipReader } from '../../../zip'
 import type { PickedLevelData } from '../../save/exportPick'
 import type { ReadResult } from '../../save/pickSession'
 import { isLevelDataContent, mayBeLevelData } from './content'
+import { fileError } from './errorText'
 import {
     exportMemory,
     ownsExportTarget,
@@ -20,7 +21,7 @@ import {
     replaceExportTarget,
     type ExportTarget,
 } from './memory'
-import { withTargetLock } from './pick'
+import { withTargetLock } from './targetLock'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
 
@@ -83,11 +84,6 @@ export type ExportOutcome = 'done' | 'cancelled' | 'back'
 
 /** Above this, a file is not taken for level data without being read whole. */
 const LEVEL_DATA_LIMIT = 64 * 1024 * 1024
-
-const fileError = (error: unknown) => {
-    if (error instanceof FileError) return error
-    return new FileError('io', error instanceof Error ? error.message : String(error))
-}
 
 // Only the user's cancel: a browser's own AbortError is a failure.
 const cancelled = (ctx: ExportContext) => !!ctx.signal?.aborted

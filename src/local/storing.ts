@@ -5,7 +5,7 @@ import {
     setExportTargetReader,
     setUnregisteredTargetCheck,
 } from '../editor/commands/exportLevel/memory'
-import { setTargetLock } from '../editor/commands/exportLevel/pick'
+import { setTargetLock } from '../editor/commands/exportLevel/targetLock'
 import { setFileActions } from '../editor/file'
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'

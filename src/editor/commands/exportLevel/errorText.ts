@@ -1,4 +1,4 @@
-import type { FileError } from '../../../platform'
+import { FileError } from '../../../platform'
 
 /** The `save` message a failed file operation shows: never a browser's message (§1.4.19). */
 export type FileErrorKey =
@@ -11,6 +11,12 @@ export type FileErrorKey =
     | 'notLocal'
     | 'noSpace'
     | 'writeFailed'
+
+/** A failure before any write, or the error a Save or Export shows. */
+export const fileError = (error: unknown) =>
+    error instanceof FileError
+        ? error
+        : new FileError('io', error instanceof Error ? error.message : String(error))
 
 export const fileErrorKey = (error: FileError): FileErrorKey => {
     switch (error.step) {

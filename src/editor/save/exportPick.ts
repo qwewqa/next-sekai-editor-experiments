@@ -1,5 +1,6 @@
 import { FileError, platform, type SavePicker, type SaveResult } from '../../platform'
 import { verifyBuilt } from '../../platform/handover'
+import { fileError } from '../commands/exportLevel/errorText'
 import { rememberWritten, type ExportContext } from '../commands/exportLevel/flow'
 import { environment, quickBinding, type Env } from './binding'
 import {
@@ -13,7 +14,6 @@ import {
 } from './flow'
 import { readOwnFile, withPickSession, type PickedFile, type PickSession } from './pickSession'
 import { enqueueSave } from './queue'
-import { fileError } from './saveAttempt'
 
 // Export Level Data…'s pick, on a pick session (Part 1 §1.4.8, spec B): the level data is built and
 // verified in the session, which opens the picker and holds `nse-bind` from the pick to the end of

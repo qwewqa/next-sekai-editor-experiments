@@ -59,7 +59,7 @@ export const KNOWN: Known[] = [
     {
         id: 'R8-kept',
         kind: 'accepted',
-        title: 'storage fails when the pick is identified after a reload: the partial open’s file is unknown to this tab, and is written over (accepted residual)',
+        title: 'storage fails when the pick is identified after a reload: the partial open’s file is unknown to this tab, and is written over',
         paths: ['save-as/reloaded', 'export/reloaded'],
         invariant: 'I1',
         fault: 'identify-fails',

@@ -1,6 +1,6 @@
 import { bytesOf, sameBytes, startsWith, type World } from './world'
 
-// The six invariants of work/soundness/architecture-review.md §B.6 (I1 to I6), as checks over what
+// The six invariants of work/arch/spec-B.md (I1 to I6), as checks over what
 // a world recorded, plus three the task adds: the marker only for a write that may have landed
 // (I7), cancel at any await (I8: nothing written, nothing held), one binding per file (I9), and a
 // cancel after the pick that stops nothing (I10).
