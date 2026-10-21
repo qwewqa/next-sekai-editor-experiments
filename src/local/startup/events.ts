@@ -50,7 +50,10 @@ export type LoadEvent =
      * visit passed over for an older one (`newest`); `later` needs a newer version.
      */
     | { kind: 'notOpened'; which: 'reload' | 'newest'; why: 'later' | 'damaged' }
-    /** The most recent session is open elsewhere: ""{0}" is open in another tab or window." [Restore as a Copy]. */
+    /**
+     * The most recent session is open elsewhere, so the tab starts blank: ""{0}" was not restored
+     * here because it is open in another tab or window." [Restore as a Copy].
+     */
     | { kind: 'openElsewhere'; name: ShownName; sessionId: string }
     /** The reload's session was deleted in the gap: "This session was deleted in another tab or window." */
     | { kind: 'deletedElsewhere' }
