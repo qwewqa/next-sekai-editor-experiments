@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { defineModelTests, Run } from './sessionModel'
 
-// The model test of design A with the page's default journal writer (Chromium, Firefox 126 and
+// The session model test (spec A) with the page's default journal writer (Chromium, Firefox 126 and
 // later, Safari where it honours `durability`): a power loss is `loseRelaxed`. The Firefox-before-126
 // runs are in `sessionModel.fx.test.ts`, so the two run side by side.
 defineModelTests(false)

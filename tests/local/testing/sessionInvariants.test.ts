@@ -111,7 +111,7 @@ test('a session opened from a file keeps its rows’ own times: no time check', 
     assert.equal(sessionViolations(dump([session('s', { origin: 'import' })], rows)).length, 2)
 })
 
-// A0+ corrections (design A §7): the parent rule is for a parent in the same chain, an opened
+// A0+ corrections: the parent rule is for a parent in the same chain, an opened
 // session's holes are allowed once its import ended, learned holes are allowed, and replay runs
 // for every followable session, stack or not.
 

@@ -23,7 +23,7 @@ export const PINS: { pattern: RegExp; clearedBy: Increment; why: string }[] = []
 
 /**
  * A violation today's code is known to make, for `expectViolations`. It names the increment that
- * clears it (AP or A2): that increment's acceptance deletes the pin (design A §7).
+ * clears it (AP or A2): that increment's acceptance deletes the pin (work/arch/spec-A.md, A0+t).
  */
 export const pin = (pattern: RegExp, clearedBy: Increment, why: string) => {
     PINS.push({ pattern, clearedBy, why })

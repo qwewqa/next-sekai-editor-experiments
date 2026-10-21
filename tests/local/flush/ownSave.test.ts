@@ -39,7 +39,7 @@ import {
     checkedTest as test,
 } from './sessionCheck'
 
-// Scenario tests on the real flusher, journal, worker core and resume (design A §7), promoted from
+// Scenario tests on the real flusher, journal, worker core and resume (work/arch/spec-A.md), promoted from
 // the validation probes. The first half pass on today's code: what the A0+ checker allows and
 // reports, the hole learning, and the two power losses. The second half are `todo` acceptance
 // tests, each naming the increment that turns it green; they fail on today's tree and `npm test`
@@ -566,7 +566,7 @@ const ar8b = async (seed: number) => {
 const hasSaveRow = (world: World, sessionId: string, seq: number) =>
     kinds(world, sessionId).some(([at, kind]) => at === seq && kind === 'save')
 
-// Today's code over-claims in each (design A §1.1). These pass now and pin the breach; A2 deletes
+// Today's code over-claims in each (work/arch/spec-A.md). These pass now and pin the breach; A2 deletes
 // them as it removes the `todo` from the acceptance tests below.
 
 test('F2 today: the cut carries over recovered@3 where the file holds an undo (pinned, A2)', async () => {
