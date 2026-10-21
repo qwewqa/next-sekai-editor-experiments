@@ -10,6 +10,8 @@ import {
     type SaveResult,
 } from '../../../platform'
 import { ZipReader } from '../../../zip'
+import type { PickedLevelData } from '../../save/exportPick'
+import type { ReadResult } from '../../save/pickSession'
 import { isLevelDataContent, mayBeLevelData } from './content'
 import {
     exportMemory,
@@ -18,15 +20,7 @@ import {
     replaceExportTarget,
     type ExportTarget,
 } from './memory'
-import {
-    downloadOpened,
-    exportPickerOpening,
-    exportPickerReady,
-    refusePick,
-    withPickLock,
-    withTargetLock,
-    type RefusedPick,
-} from './pick'
+import { withTargetLock } from './pick'
 
 // Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
 
@@ -42,8 +36,15 @@ export type ExportUi = {
     notLevelData: (name: string) => Promise<'chooseAnother' | undefined>
     /** A pick of level data whose import left parts out. */
     unsupportedParts: (name: string) => Promise<'chooseAnother' | undefined>
-    /** A refused pick whose bytes could not be put back; `emptied` while it is empty. */
-    notPutBack: (name: string, emptied: boolean) => Promise<'download' | undefined>
+    /**
+     * What a pick of a file the editor holds bytes of could not put back, shown at once; `emptied`
+     * while it is empty. Without `downloadable` there is nothing to give: [OK] only.
+     */
+    notPutBack: (
+        name: string,
+        emptied: boolean,
+        downloadable: boolean,
+    ) => Promise<'download' | undefined>
     notFound: (name: string) => Promise<'chooseAnother' | undefined>
     denied: (name: string) => Promise<'tryAgain' | 'chooseAnother' | undefined>
     failed: (name: string, error: FileError) => Promise<'chooseAnother' | undefined>
@@ -68,7 +69,12 @@ export type ExportContext = {
     ready?: ReadyPrompt
     /** Aborted when the dialog is cancelled: nothing more is written or shown. */
     signal?: AbortSignal
-    /** Called once a picked file is accepted: its write runs to its end, cancel or not (D5). */
+    /**
+     * The dialog's read of the chain's own file (R2), or `'start'` (the default): one starting
+     * when the picker is asked for, with a grant already held.
+     */
+    read?: Promise<ReadResult> | 'start'
+    /** Called when the picker returned a file: its write runs to its end, cancel or not (D5). */
     committed?: () => void
 }
 
@@ -104,7 +110,8 @@ const remember = async (ctx: ExportContext, target: ExportTarget) => {
     await rememberExport()
 }
 
-const saved = async (ctx: ExportContext, result: SaveResult) => {
+/** Remembers a written file as the target; inside the hold that wrote it. */
+export const rememberWritten = async (ctx: ExportContext, result: SaveResult) => {
     if (result.status !== 'saved') return
     if (result.target.kind !== 'handle' || !result.disk) throw new Error('Not a handle write')
     await remember(ctx, {
@@ -175,11 +182,10 @@ const choose = async <T extends string>(
     ask: () => Promise<T | 'chooseAnother' | undefined>,
 ): Promise<T | ExportOutcome | undefined> => {
     for (;;) {
-        // Its Choose Another… opens a picker: the chain's own file is read first meanwhile (R2).
-        exportPickerOpening()
         const choice = await ask()
         if (choice !== 'chooseAnother') return choice
-        const outcome = await exportByPicker(ctx)
+        // Its picker reads the chain's own file anew: the dialog's read was of an earlier time.
+        const outcome = await exportByPicker({ ...ctx, read: 'start' })
         if (outcome !== 'back') return outcome
     }
 }
@@ -243,7 +249,7 @@ export const exportToTarget = async (
                     if (await holdsProject(target.handle))
                         throw new FileError('conflict', `${target.name} holds a project`)
                     const result = await run()
-                    await saved(ctx, result as SaveResult)
+                    await rememberWritten(ctx, result as SaveResult)
                     return result
                 }),
             build: body.build,
@@ -283,82 +289,92 @@ export const exportToTarget = async (
     return ended(await choose(ctx, () => ctx.ui.failed(name, error)))
 }
 
-/** After a refused pick: the refusal, or the bytes to download when they could not go back. */
-const afterRefusal = async (ctx: ExportContext, refused: RefusedPick) => {
-    const { name } = refused
-    if (refused.left === 'handled') {
-        await refused.show?.()
-        return 'cancelled'
-    }
-    if (refused.left === 'restored') {
-        const ask =
-            refused.reason === 'notLevelData'
-                ? () => ctx.ui.notLevelData(name)
-                : () => ctx.ui.unsupportedParts(name)
-        return ended(await choose(ctx, ask))
-    }
-    if ((await ctx.ui.notPutBack(name, refused.left === 'empty')) !== 'download') return 'cancelled'
-    try {
-        const result = await downloadOpened(refused)
-        if (result.status === 'download-started')
-            ctx.ui.downloadStarted(result.name, refused.bytes.byteLength)
-    } catch (caught) {
-        const error = fileError(caught)
-        return ended(await choose(ctx, () => ctx.ui.failed(error.fileName ?? name, error)))
-    }
-    return 'cancelled'
+/** A failure no dialog has shown yet: the failed dialog, which offers Choose Another…. */
+const failed = (ctx: ExportContext, error: FileError, fallback: string) => {
+    ctx.leave()
+    const name = error.fileName ?? fallback
+    return choose(ctx, () => ctx.ui.failed(name, error)).then(ended)
 }
 
 /** Exports through the save picker, or downloads where there is none. */
 export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome> => {
+    // Only the pick session opens a picker: build, verify, pick and write run there (B4).
+    if (platform.pickSaveFile) {
+        // A failure after a Cancel, before a file was picked, is the Cancel's: no dialog follows.
+        const pick = { committed: false }
+        const counted: ExportContext = {
+            ...ctx,
+            committed: () => {
+                pick.committed = true
+                ctx.committed?.()
+            },
+        }
+        let picked: PickedLevelData
+        try {
+            picked = await (await import('../../save/exportPick')).pickLevelData(counted)
+        } catch (caught) {
+            if (cancelled(ctx) && !pick.committed) return 'cancelled'
+            return failed(ctx, fileError(caught), ctx.suggestedName)
+        }
+        if (picked.kind === 'failed' && cancelled(ctx) && !pick.committed) return 'cancelled'
+        return afterPick(ctx, picked)
+    }
+    return exportByDownload(ctx)
+}
+
+/** What follows a pick: the feedback, or the dialog that says why nothing was exported. */
+const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<ExportOutcome> => {
+    switch (picked.kind) {
+        case 'written': {
+            const { result } = picked
+            ctx.ui.markExported?.(result.name, 'file')
+            ctx.ui.exported(result.name)
+            return 'done'
+        }
+        case 'dismissed':
+            return 'back'
+        case 'cancelled':
+            return 'cancelled'
+        case 'failed':
+            return failed(ctx, picked.error, ctx.suggestedName)
+        case 'show':
+            // The Save core's own dialog, once Export's has closed.
+            ctx.leave()
+            await picked.show()
+            return 'cancelled'
+        case 'refused':
+        case 'ownProject': {
+            // The file is not level data: it was put back, or the chain's project went into it.
+            ctx.leave()
+            const { name } = picked
+            const ask =
+                picked.kind === 'refused' && picked.reason === 'unsupportedParts'
+                    ? () => ctx.ui.unsupportedParts(name)
+                    : () => ctx.ui.notLevelData(name)
+            return ended(await choose(ctx, ask))
+        }
+    }
+}
+
+/** A browser without a save picker: the level data is downloaded. */
+const exportByDownload = async (ctx: ExportContext): Promise<ExportOutcome> => {
     const body = built(ctx)
-    let refused: RefusedPick | undefined
-    let accepted = false as boolean
     let result: SaveResult
-    // An open's import still reading the chain's own file is waited for first (SF3-1).
-    if (platform.pickSaveFile && !(await exportPickerReady(ctx.suggestedName, body.size())))
-        return 'cancelled'
-    // Every picker reads the chain's own file first, when it may hold more (R2): not only the
-    // dialog's first.
-    exportPickerOpening()
     try {
         result = await platform.saveFile({
             kind: 'nsld',
             suggestedName: ctx.suggestedName,
-            picker: { id: 'levelData', types: ctx.types },
-            // One writer per file: from the pick's check to its write (§1.4.8, R3, R5).
-            lock: (run) =>
-                withPickLock(async () => {
-                    const result = await run()
-                    await saved(ctx, result as SaveResult)
-                    return result
-                }),
             build: body.build,
             ready: ctx.ready,
             signal: ctx.signal,
-            picked: async (target) => {
-                refused = await refusePick(target)
-                if (refused) return false
-                // A cancel before this point is still honoured, with nothing written.
-                accepted = !cancelled(ctx)
-                if (accepted) ctx.committed?.()
-                return true
-            },
         })
     } catch (caught) {
-        // An accepted pick was emptied (D5): its failure is shown even after a cancel.
-        if (cancelled(ctx) && !accepted) return 'cancelled'
-        const error = fileError(caught)
-        ctx.leave()
-        const name = error.fileName ?? ctx.suggestedName
-        return ended(await choose(ctx, () => ctx.ui.failed(name, error)))
+        if (cancelled(ctx)) return 'cancelled'
+        return failed(ctx, fileError(caught), ctx.suggestedName)
     }
-
     switch (result.status) {
+        // Without a target, a save only downloads.
         case 'saved':
-            ctx.ui.markExported?.(result.name, 'file')
-            ctx.ui.exported(result.name)
-            return 'done'
         case 'download-started':
         case 'exported':
             if (ctx.exportName !== undefined) {
@@ -369,11 +385,6 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             ctx.ui.downloadStarted(result.name, body.size())
             return 'done'
         case 'cancelled':
-            break
+            return 'back'
     }
-    if (!refused) return 'back'
-    // A file left empty is reported even after a cancel.
-    if (cancelled(ctx) && refused.left === 'restored') return 'cancelled'
-    ctx.leave()
-    return afterRefusal(ctx, refused)
 }

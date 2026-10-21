@@ -2069,6 +2069,7 @@
     "writeFailed": "无法写入“{0}”。",
     "notPutBack": "“{0}”已被清空，且无法还原其内容。",
     "openedContentGone": "“{0}”已不再包含打开时的内容。",
+    "replacedContentGone": "“{0}”已不再包含之前的内容。",
     "title": "保存项目文件",
     "titleAs": "另存为",
     "history": "历史记录",

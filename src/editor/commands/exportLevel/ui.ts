@@ -17,14 +17,33 @@ const title = () => i18n.value.export.title
 export const fileErrorText = (name: string, error: FileError) =>
     interpolate(() => i18n.value.save[fileErrorKey(error)], error.fileName ?? name)()
 
-/** A refused pick whose bytes could not be put back, emptied or not; Download keeps them. */
-export const showNotPutBack = (dialogTitle: () => string, name: string, emptied: boolean) =>
-    showChoice({
+/**
+ * What the pick could not put back, emptied or not: Download keeps the bytes. Without `downloadable`
+ * there is nothing to give: [OK] only.
+ */
+export const showNotPutBack = async (
+    dialogTitle: () => string,
+    name: string,
+    emptied: boolean,
+    downloadable: boolean,
+) => {
+    const message = interpolate(
+        () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
+        name,
+    )
+    if (!downloadable) {
+        await showChoice({
+            title: dialogTitle,
+            message,
+            choices: [],
+            cancelIsDefault: true,
+            cancelLabel: () => i18n.value.modals.info.ok,
+        })
+        return undefined
+    }
+    return showChoice({
         title: dialogTitle,
-        message: interpolate(
-            () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
-            name,
-        ),
+        message,
         choices: [
             {
                 value: 'download' as const,
@@ -33,6 +52,7 @@ export const showNotPutBack = (dialogTitle: () => string, name: string, emptied:
             },
         ],
     })
+}
 
 const chooseAnother = {
     value: 'chooseAnother' as const,
@@ -76,7 +96,7 @@ export const exportUi: ExportUi = {
             message: interpolate(() => i18n.value.export.unsupportedParts, name),
             choices: [chooseAnother],
         }),
-    notPutBack: (name, emptied) => showNotPutBack(title, name, emptied),
+    notPutBack: (name, emptied, downloadable) => showNotPutBack(title, name, emptied, downloadable),
     notFound: (name) =>
         showChoice({
             title,

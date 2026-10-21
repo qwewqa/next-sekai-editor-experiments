@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createWorld, exportPick, type World } from './world'
+import { createWorld, startExportRead, type World } from './world'
 
 // A pending list that cannot be read counts as pending (spec D invariant 11): `waitForChainImports`
 // reads it again within the bound it uses for a real pending import, for every caller. At the bound
@@ -50,24 +50,18 @@ test('Export whose pending list cannot be read goes on to its picker at the boun
     const reads = failList(w)
     const started = Date.now()
     w.pick('own.nxsp')
-    exportPick.exportDialogOpened()
-    exportPick.exportFlowRunning(true)
     const controller = new AbortController()
-    try {
-        await exportByPicker({
-            ui: w.exportUi,
-            build: () => w.exportBuild(),
-            suggestedName: 'LevelData.nsld',
-            types: [],
-            leave: () => undefined,
-            ready: () => w.exportReady(),
-            signal: controller.signal,
-            committed: () => undefined,
-        } as never)
-    } finally {
-        exportPick.exportDialogClosed()
-        exportPick.exportFlowRunning(false)
-    }
+    await exportByPicker({
+        ui: w.exportUi,
+        build: () => w.exportBuild(),
+        suggestedName: 'LevelData.nsld',
+        types: [],
+        leave: () => undefined,
+        ready: () => w.exportReady(),
+        read: startExportRead(),
+        signal: controller.signal,
+        committed: () => undefined,
+    } as never)
     // The list was read again for the bound before the picker opened.
     const waited = Date.now() - started
     assert.ok(waited >= 3500 && waited < 8000, `waited ${waited} ms`)

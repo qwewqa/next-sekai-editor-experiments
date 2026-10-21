@@ -1,3 +1,4 @@
+import { gzip } from 'pako'
 import type { EndSaveResult, FlushSession, SaveReservation } from '../../../src/local/flush'
 import type { MockPlatform } from '../../../src/platform/mock'
 import './env'
@@ -33,12 +34,13 @@ const { readValue } = await import('../../../src/local/storedRead')
 const { clearExportMemory, exportMemory, setExportPersister, setExportTargetReader } =
     await import('../../../src/editor/commands/exportLevel/memory')
 const exportPick = await import('../../../src/editor/commands/exportLevel/pick')
+const { startExportRead } = await import('../../../src/editor/save/exportPick')
 const { startImport, importsRunning } = await import('../../../src/local/open/importLoop')
 const { keepCopy, copiesRunning } = await import('../../../src/local/open/kept')
 const { markFirstSaveDone } = await import('../../../src/editor/file/flags')
 const { useRealDoor } = await import('./door')
 
-export { activation, exportMemory, exportPick, flow }
+export { activation, exportMemory, exportPick, flow, startExportRead }
 
 type Row = Record<string, unknown>
 type FileTarget = { kind: 'handle'; handle: FileSystemFileHandle }
@@ -71,8 +73,9 @@ export const nxsp = async (revision: string, text: string) =>
         ]),
     )
 
-/** Level data as Export writes it: gzip is not needed, the mock never verifies. */
-export const levelData = (text: string) => new Blob([`level:${text}`])
+/** Level data as Export builds it: gzipped JSON with entities, which the Export flow verifies. */
+export const levelData = (text: string) =>
+    new Blob([gzip(JSON.stringify({ bgmOffset: 0, entities: [{ text }] }))])
 
 // What a scenario sets up (the keys are all optional).
 export type Setup = {
@@ -188,8 +191,6 @@ const createWorld = async (setup: Setup = {}) => {
     env.forgetHandle('chain-own')
     window.nseSaveTest = undefined
     activation.active = true
-    flow.endExportRead()
-    flow.exportFlowRunning(false)
     clearExportMemory()
 
     const manager = new FakeLockManager()
@@ -599,8 +600,13 @@ const createWorld = async (setup: Setup = {}) => {
             shown('export.notLevelData', [name], exportAnswers.notLevelData, undefined),
         unsupportedParts: (name: string) =>
             shown('export.unsupportedParts', [name], exportAnswers.unsupportedParts, undefined),
-        notPutBack: (name: string, emptied: boolean) =>
-            shown('notPutBack', [name, emptied], exportAnswers.notPutBack, 'download' as const),
+        notPutBack: (name: string, emptied: boolean, downloadable: boolean) =>
+            shown(
+                'notPutBack',
+                [name, emptied, downloadable],
+                exportAnswers.notPutBack,
+                'download' as const,
+            ),
         notFound: (name: string) =>
             shown('export.notFound', [name], exportAnswers.notFound, undefined),
         denied: (name: string) => shown('export.denied', [name], exportAnswers.denied, undefined),
@@ -672,17 +678,7 @@ const createWorld = async (setup: Setup = {}) => {
     }))
     setExportPersister(() => Promise.resolve(true))
     setExportTargetReader(() => Promise.resolve(readValue({})))
-    exportPick.setProjectPickCheck((picked) => flow.projectPick(picked))
-    exportPick.setPickLock((run) => env.withBind('exclusive', run))
     exportPick.setTargetLock((run) => env.withBind('shared', run))
-    const later = (run: () => void) => void Promise.resolve().then(run)
-    exportPick.setExportReads({
-        start: () => later(() => flow.startExportRead()),
-        end: () => later(() => flow.endExportRead()),
-        picker: () => later(() => flow.exportPickerOpening()),
-        flow: (running) => later(() => flow.exportFlowRunning(running)),
-        importWait: (name, size) => flow.exportImportWait(name, size),
-    })
     currentSession.value = {
         ...createSessionDescriptor(),
         sessionId: ownSession.id,

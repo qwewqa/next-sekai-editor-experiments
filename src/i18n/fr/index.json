@@ -2069,6 +2069,7 @@
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
     "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert.",
+    "replacedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
     "title": "Sauvegarder le fichier de projet",
     "titleAs": "Sauvegarder sous",
     "history": "Historique",

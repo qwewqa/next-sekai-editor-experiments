@@ -82,9 +82,6 @@ const pickFiles = async ({ id, handles }: PickOptions): Promise<OpenedFile[]> =>
     }
 }
 
-/** Today's save picker for level data: its folder, and "All files" alone. */
-const levelDataPicker: SavePicker = { id: 'levelData', types: [] }
-
 const savePickerOptions = (picker: SavePicker, suggestedName: string): SaveFilePickerOptions => ({
     id: picker.id,
     suggestedName,
@@ -153,57 +150,13 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
         })
     }
 
-    // The picker empties the file it returns, so the body is built and checked before it (D5).
+    // Without a target a save only downloads: the save picker is `pickSaveFile`, opened only by
+    // the pick session (§1.4.7).
     const blob = await toBlob(await req.build([]))
     signal?.throwIfAborted()
     await verifyBuilt(req.kind, blob)
     signal?.throwIfAborted()
-
-    let handle: FileSystemFileHandle | undefined
-    const picker = req.picker ?? (req.kind === 'nsld' ? levelDataPicker : undefined)
-    if (picker) {
-        try {
-            handle = await pickSaveHandle(picker, req.suggestedName)
-        } catch (error) {
-            if (isAbort(error)) return { status: 'cancelled' }
-            throw fileErrorOf(error)
-        }
-    }
-
-    if (!handle) {
-        signal?.throwIfAborted()
-        return handOver(blob, req.suggestedName, startedAt, req.ready)
-    }
-
-    // Checked before a cancel is honoured, so a refused file the picker emptied is put back.
-    const target: FileTarget = { kind: 'handle', handle }
-    const accepted = handle
-    const write = async (): Promise<SaveResult> => {
-        if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
-        signal?.throwIfAborted()
-        // The user's choice, which the picker emptied (D5): written while it's still empty, so a
-        // sync client's write after the pick is never overwritten (R9), and to its end once
-        // accepted, cancel or not.
-        const empty = await inspect(target, req.kind)
-        if (empty !== 'missing' && empty.size !== 0)
-            throw new FileError('conflict', `${accepted.name} changed`, empty, 'check')
-        const picked: SaveRequest = {
-            ...req,
-            target,
-            expected: empty === 'missing' ? 'absent' : empty,
-            signal: undefined,
-            build: () => Promise.resolve(blob),
-        }
-        return writeHandle(picked, accepted, requestWrite(accepted))
-    }
-    try {
-        return await (req.lock ? req.lock(write) : write())
-    } catch (error) {
-        // A picked file that could not be written is downloaded instead, as today.
-        if (req.kind === 'nsld' && !req.picker)
-            return handOver(blob, req.suggestedName, startedAt, req.ready)
-        throw error
-    }
+    return handOver(blob, req.suggestedName, startedAt, req.ready)
 }
 
 const inspect = async (target: FileTarget, kind?: SaveKind): Promise<DiskState | 'missing'> => {

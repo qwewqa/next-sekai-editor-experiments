@@ -4,11 +4,11 @@ import { filename } from '../../../history/live'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import { platform } from '../../../platform'
+import type { ReadResult } from '../../save/pickSession'
 import ExportIcon from './ExportIcon.vue'
 import ExportModal from './ExportModal.vue'
 import { validName } from './fileName'
 import { copyName, exportMemory, loadExportTarget } from './memory'
-import { exportDialogClosed, exportDialogOpened } from './pick'
 
 // One Export dialog at a time, from the key press to its close: a second press while the target
 // is being read would open a second dialog over the first, with its own read flags.
@@ -33,17 +33,17 @@ const openExportDialog = async () => {
     const fromSource = exportName === undefined && sourceName !== undefined
     const name = exportName ?? sourceName ?? copyName(validName(filename.value ?? ''))
     // The chain's own file is read first when a pick of it could lose what it holds (R2).
-    exportDialogOpened()
-    try {
-        await showModal(ExportModal, {
-            target,
-            name,
-            sourceName: fromSource,
-            peeking: isPeeking.value,
-        })
-    } finally {
-        exportDialogClosed()
-    }
+    const read: Promise<ReadResult> = import('../../save/exportPick').then(
+        (pick) => pick.startExportRead(),
+        () => ({ kind: 'noAccess' }) as const,
+    )
+    await showModal(ExportModal, {
+        target,
+        name,
+        sourceName: fromSource,
+        peeking: isPeeking.value,
+        read,
+    })
 }
 
 export const exportLevel: Command = {

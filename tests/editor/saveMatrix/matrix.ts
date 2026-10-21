@@ -3,9 +3,9 @@ import {
     activation,
     bytesOf,
     createWorld,
-    exportPick,
     flow,
     settle,
+    startExportRead,
     type Setup,
     type World,
 } from './world'
@@ -50,17 +50,18 @@ const dialogResult = (fileName = 'out.nxsp') => ({
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /**
- * The user types a name while Export's read first runs: wait until the door has no call in flight
- * over two timer turns (the gaps between a read's calls are microtasks and one setImmediate), not
- * for a time. A `read-slow` cell keeps its read unsettled, as the R2-slow todo needs.
+ * The Export dialog opens and starts its read of the chain's own file; the user types a name
+ * meanwhile: wait until the door has no call in flight over two timer turns (the gaps between a
+ * read's calls are microtasks and one setImmediate), not for a time. A `read-slow` cell keeps its
+ * read unsettled, which the pick session waits for.
  */
 const typeName = async (w: World) => {
-    exportPick.exportDialogOpened()
-    if (w.tune.readDelayMs) return sleep(20)
-    for (let quiet = 0; quiet < 2;) {
-        await sleep(2)
-        quiet = w.doorBusy === 0 ? quiet + 1 : 0
-    }
+    if (w.tune.readDelayMs) await sleep(20)
+    else
+        for (let quiet = 0; quiet < 2;) {
+            await sleep(2)
+            quiet = w.doorBusy === 0 ? quiet + 1 : 0
+        }
 }
 
 export type PathDef = {
@@ -133,10 +134,11 @@ export const prepare = (w: World, path: PathDef, picks: PickName[]) => {
     path.answer?.(w)
 }
 
-const exportContext = (w: World) => {
+const exportContext = (w: World, read: ReturnType<typeof startExportRead>) => {
     const controller = new AbortController()
     w.exportAbort = controller
     return {
+        read,
         ui: w.exportUi,
         build: () => w.exportBuild(),
         suggestedName: 'LevelData.nsld',
@@ -148,6 +150,13 @@ const exportContext = (w: World) => {
             w.committed = true
         },
     }
+}
+
+/** Opens the dialog (its read starts), lets the user type, and presses Export. */
+const exportFlow = async (w: World) => {
+    const read = startExportRead()
+    await typeName(w)
+    return exportByPicker(exportContext(w, read))
 }
 
 export const PATHS: PathDef[] = [
@@ -259,8 +268,7 @@ export const PATHS: PathDef[] = [
         picker: true,
         writes: true,
         lock: 'exclusive',
-        // AR-6: Save to File… has no import wait before its picker.
-        importWait: false,
+        importWait: true,
         build: true,
         run: () => flow.saveToFile('session-other'),
     },
@@ -314,16 +322,7 @@ export const PATHS: PathDef[] = [
         lock: 'exclusive',
         importWait: true,
         build: true,
-        run: async (w) => {
-            await typeName(w)
-            exportPick.exportFlowRunning(true)
-            try {
-                return await exportByPicker(exportContext(w))
-            } finally {
-                exportPick.exportDialogClosed()
-                exportPick.exportFlowRunning(false)
-            }
-        },
+        run: exportFlow,
     },
     {
         id: 'export/reloaded',
@@ -336,16 +335,7 @@ export const PATHS: PathDef[] = [
         lock: 'exclusive',
         importWait: true,
         build: true,
-        run: async (w) => {
-            await typeName(w)
-            exportPick.exportFlowRunning(true)
-            try {
-                return await exportByPicker(exportContext(w))
-            } finally {
-                exportPick.exportDialogClosed()
-                exportPick.exportFlowRunning(false)
-            }
-        },
+        run: exportFlow,
     },
     {
         id: 'export/ahead',
@@ -358,16 +348,7 @@ export const PATHS: PathDef[] = [
         lock: 'exclusive',
         importWait: true,
         build: true,
-        run: async (w) => {
-            await typeName(w)
-            exportPick.exportFlowRunning(true)
-            try {
-                return await exportByPicker(exportContext(w))
-            } finally {
-                exportPick.exportDialogClosed()
-                exportPick.exportFlowRunning(false)
-            }
-        },
+        run: exportFlow,
     },
 ]
 
@@ -399,15 +380,16 @@ const last = (plan: PickPlan) => plan.picks.at(-1)!
 const single = (plan: PickPlan) => plan.picks.length === 1
 const writesFile = (plan: PickPlan) => ['own', 'other', 'unknown', 'fresh'].includes(last(plan))
 const pickerPath = (path: PathDef) => path.picker
-/** A picker that reads the chain's own file first (R2): Save to File… reads nothing (R5). */
-const readsFirst = (path: PathDef) =>
-    path.picker && path.setup.own === 'bound' && path.id !== 'save-to-file'
-/** A picker whose pick is built again afterwards: Save to File… builds once. */
+/** A picker that reads the chain's own file first (R2): every picker, Save to File… included. */
+const readsFirst = (path: PathDef) => path.picker && path.setup.own === 'bound'
+/** A picker whose pick is built again afterwards: Save to File… and Export build once. */
 const rebuilds = (path: PathDef) =>
     pickerPath(path) && path.family === 'save' && path.id !== 'save-to-file'
 const anyPick = (path: PathDef) => path.picker
-/** A picker of the Save family on the pick session (Save to File… and Export join in B4). */
-const onSession = (path: PathDef) =>
+/** A picker on the pick session: every one since B4. */
+const onSession = (path: PathDef) => path.picker
+/** A picker of the Save family that reserves: Export and Save to File… reserve nothing of their own. */
+const reserves = (path: PathDef) =>
     path.picker && path.family === 'save' && path.id !== 'save-to-file'
 
 const refuse = (w: World, n: (call: number) => boolean, refused: string) =>
@@ -703,7 +685,7 @@ export const FAULTS: FaultDef[] = [
         id: 'reservation-held',
         exit: 'another Save holds the session’s reservation',
         applies: (path, p) =>
-            (onSession(path) || ['export', 'write-back', 'download-again'].includes(path.id)) &&
+            (reserves(path) || ['export', 'write-back', 'download-again'].includes(path.id)) &&
             path.id !== 'save-first' &&
             path.id !== 'save-as/stored' &&
             single(p) &&
@@ -726,7 +708,7 @@ export const FAULTS: FaultDef[] = [
             } else session.reserved = held
             // A path that reserves outside a hold waits for it, in "Preparing…": the other flow
             // ends its reservation once that dialog shows, and the Save goes on. The write-back
-            // reserves inside its hold and does not wait; Export's own pick joins in B4.
+            // reserves inside its hold and does not wait; neither does Export's own pick.
             if (path.id === 'export' || path.id === 'write-back') return { cleanup }
             const driver = (async () => {
                 await dialogOpen(w)
@@ -739,7 +721,7 @@ export const FAULTS: FaultDef[] = [
         id: 'commit-forks',
         exit: 'the first commit forks the session',
         applies: (path, p) =>
-            (onSession(path) || ['write-back', 'download-again', 'download'].includes(path.id)) &&
+            (reserves(path) || ['write-back', 'download-again', 'download'].includes(path.id)) &&
             single(p),
         arm: (w, path) => {
             // What a continuation's first commit can do: another session is open afterwards.
@@ -898,7 +880,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'import-picker-while-running',
-        exit: 'import running that this flow does not wait for',
+        exit: 'this session’s import runs, though Save to File… waits for the written session’s chain only (waited for at the pick, then picker)',
         applies: (path, p) =>
             path.id === 'save-to-file' &&
             single(p) &&
@@ -907,13 +889,13 @@ export const FAULTS: FaultDef[] = [
             const imp = w.startImport()
             const driver = (async () => {
                 await w
-                    .until(() => w.openings.length > 0, 'the picker', 3000)
+                    .until(() => w.preparing.some((entry) => entry.open), 'Preparing…', 3000)
                     .catch(() => undefined)
                 await sleep(30)
                 imp.finish()
                 await imp.run
             })()
-            return { driver }
+            return { driver, effective: () => w.preparing.length > 0 }
         },
     },
     {
@@ -1016,7 +998,7 @@ export const FAULTS: FaultDef[] = [
         applies: (path, p) =>
             path.picker &&
             readsFirst(path) &&
-            path.family === 'save' &&
+            reserves(path) &&
             path.dialog &&
             path.id !== 'save-as/ahead' &&
             single(p) &&
@@ -1059,6 +1041,20 @@ export const FAULTS: FaultDef[] = [
         },
     },
     {
+        id: 'export-cancel-after-pick',
+        exit: 'Export dialog cancelled as the picker returns a file (the commit point)',
+        // Not export/ahead: its own pick meets the conflict dialog and writes nothing by design.
+        applies: (path, p) =>
+            path.family === 'export' && path.id !== 'export/ahead' && single(p) && writesFile(p),
+        arm: (w) => {
+            const driver = w.atPoint('picked', () => {
+                w.cancelled = true
+                w.exportAbort?.abort()
+            })
+            return { driver, effective: () => w.cancelled, facts: { written: true } }
+        },
+    },
+    {
         id: 'permission-denied',
         exit: 'write access refused at the press',
         applies: (path) => path.id === 'write-back',
@@ -1088,8 +1084,6 @@ const expectInHand = (path: PathDef, w: World) => (name: string) => {
     if (name === 'opened.nsld') return path.family !== 'export' || w.setup.opened !== 'levelData'
     if (name !== 'own.nxsp') return false
     const s = w.setup
-    // Save to File… reads nothing first (R5), by design.
-    if (path.id === 'save-to-file') return false
     if (s.own !== 'bound' || s.read === 'denied') return false
     return s.storage === 'lacks' || s.ownDisk === 'ahead'
 }

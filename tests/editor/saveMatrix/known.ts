@@ -1,16 +1,14 @@
 import type { Violation } from './invariants'
 import type { CellResult } from './matrix'
 
-// The violations the matrix finds on today's tree. Each is a `todo` test in the matrix files. A
-// `bug` fails today and turns green when its step in work/arch/spec-B.md fixes it. A violation not
-// named here fails the matrix, so a regression or a new finding cannot pass unnoticed. `by-design`
-// marks what the plan documents (an unfinished read is dropped, R2) but the invariant, read
-// strictly, still forbids. `accepted` is the one way to mark a residual the owner or lead ruled
-// acceptable (work/arch/spec-B.md, section 5), kept visible here as a todo that stays.
+// The violations the matrix finds on today's tree: the residuals the owner or lead ruled acceptable
+// (work/arch/spec-B.md, sections 2 and 5). Each is a `todo` test in the matrix files that stays, so
+// it is visible. A violation not named here fails the matrix, so a regression or a new finding
+// cannot pass unnoticed.
 
 export type Known = {
     id: string
-    kind: 'bug' | 'by-design' | 'accepted'
+    kind: 'accepted'
     title: string
     /** The paths whose cells show it. */
     paths: string[]
@@ -24,22 +22,6 @@ export type Known = {
 
 export const KNOWN: Known[] = [
     {
-        id: 'AR-6',
-        kind: 'bug',
-        title: 'Save to File… opens its picker while the open session’s import runs',
-        paths: ['save-to-file'],
-        invariant: 'I5',
-        fault: 'import-picker-while-running',
-    },
-    {
-        id: 'EX-I4',
-        kind: 'bug',
-        title: 'Export opens its picker on an activation its own build outlasted',
-        paths: ['export', 'export/reloaded', 'export/ahead'],
-        invariant: 'I4',
-        fault: 'activation-lapsed-export-build',
-    },
-    {
         id: 'R2-stale',
         kind: 'accepted',
         title: 'the read first is stale: bytes written between the read and the pick are emptied and lost',
@@ -48,21 +30,13 @@ export const KNOWN: Known[] = [
             'save-as/reloaded',
             'save-as/ahead',
             'separate',
+            'save-to-file',
             'export',
             'export/reloaded',
             'export/ahead',
         ],
         invariant: 'I1',
         fault: 'read-stale',
-    },
-    {
-        id: 'R2-slow',
-        kind: 'by-design',
-        title: 'a read first that has not settled when the picker opens is dropped, and the file is written from storage',
-        // The Save family waits for its read (the pick session, B2); Export joins in B4.
-        paths: ['export', 'export/reloaded', 'export/ahead'],
-        invariant: 'I1',
-        fault: 'read-slow',
     },
     {
         id: 'R8-owners',

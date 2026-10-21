@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { gzip } from 'pako'
+// Export's picker path loads the Save core, which needs the stand-ins for the browser's modules.
 import { hostZone } from '../../../src/calendar/calendar'
 import {
     exportByPicker,
@@ -15,6 +16,7 @@ import type { OperationStrings } from '../../../src/history/operationPresentatio
 import { setPlatformForTests } from '../../../src/platform'
 import { levelDataDiskState } from '../../../src/platform/fingerprint'
 import { createMockPlatform } from '../../../src/platform/mock'
+import '../../editor/saveMatrix/env'
 
 // File events capture operation metadata once; presentation uses the current locale.
 const messagesOf = (locale: string) =>
@@ -75,8 +77,10 @@ test('Export Level Data… marks each export it completes: in place, picked or d
         assert.equal(await exportToTarget(context(marked), target), 'done')
         mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Other.nsld') })
         assert.equal(await exportByPicker(context(marked)), 'done')
-        mock.saveTargets.push('download')
+        // A browser without a save picker downloads.
+        setPlatformForTests(createMockPlatform({ capabilities: { writeBack: false } }))
         assert.equal(await exportByPicker(context(marked)), 'done')
+        setPlatformForTests(mock)
         mock.saveTargets.push('cancel')
         assert.equal(await exportByPicker(context(marked)), 'back')
         assert.deepEqual(marked, [

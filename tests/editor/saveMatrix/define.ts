@@ -4,7 +4,7 @@ import { isKnown, KNOWN } from './known'
 import { cells, runCell, type CellResult } from './matrix'
 
 // A matrix file: runs the cells of some paths, fails on any violation the known list does not
-// name, and states each known violation as a `todo` test that turns green when it is fixed.
+// name, and states each known violation as a `todo` test that stays.
 
 export const defineMatrix = (pathIds: string[]) => {
     const results: CellResult[] = []
@@ -23,14 +23,7 @@ export const defineMatrix = (pathIds: string[]) => {
         if (!known.paths.some((path) => pathIds.includes(path))) continue
         test(
             `${known.id}: ${known.title}`,
-            {
-                todo:
-                    known.kind === 'bug'
-                        ? 'a bug today (work/arch/spec-B.md)'
-                        : known.kind === 'accepted'
-                          ? 'an accepted residual'
-                          : 'by design today',
-            },
+            { todo: 'an accepted residual (work/arch/spec-B.md, section 5)' },
             () => {
                 const found = results
                     .filter(

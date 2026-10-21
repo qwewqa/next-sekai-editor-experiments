@@ -162,12 +162,14 @@ export type SaveUi = {
     ) => Promise<'chooseAnother' | 'export' | undefined>
     /**
      * Bytes held of a picked file that could not be put back; Download keeps them. Without
-     * `downloadable` there is nothing to give: [OK] only.
+     * `downloadable` there is nothing to give: [OK] only. `replaced`: Save to File… wrote another
+     * document over the chain's own file.
      */
     notPutBack: (
         name: string,
         emptied: boolean,
         downloadable: boolean,
+        replaced?: boolean,
     ) => Promise<'download' | undefined>
     saved: (feedback: SavedFeedback) => void
     /** "No changes since … was saved/opened/downloaded", the last with Download Again. */
@@ -390,9 +392,14 @@ export const defaultSaveUi: SaveUi = {
             ],
         })
     },
-    notPutBack: async (name, emptied, downloadable) => {
+    notPutBack: async (name, emptied, downloadable, replaced) => {
         const message = interpolate(
-            () => (emptied ? i18n.value.save.notPutBack : i18n.value.save.openedContentGone),
+            () =>
+                replaced
+                    ? i18n.value.save.replacedContentGone
+                    : emptied
+                      ? i18n.value.save.notPutBack
+                      : i18n.value.save.openedContentGone,
             name,
         )
         if (!downloadable) {

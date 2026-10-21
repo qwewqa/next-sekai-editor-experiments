@@ -166,11 +166,13 @@ export const useRealDoor = async (
     const calls = new Map<string, number>()
     world.worker.call = async (method: string, arg?: unknown) => {
         if (!REAL_DOOR.has(method)) return fake(method, arg)
-        world.doorBusy++
+        // A copy of an opened file held by a fault is not the dialog's read the harness waits for.
+        const counted = method !== 'keepHandle'
+        if (counted) world.doorBusy++
         try {
             return await viaDoor(method, arg)
         } finally {
-            world.doorBusy--
+            if (counted) world.doorBusy--
         }
     }
     const viaDoor = async (method: string, arg?: unknown) => {

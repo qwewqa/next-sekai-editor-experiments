@@ -102,7 +102,7 @@ export type ReadyPrompt = (file: { name: string; size: number }) => Promise<bool
 export type SaveRequest = {
     kind: SaveKind
     suggestedName: string
-    /** Write back here; omitted = ask where (picker or dialog), or download. */
+    /** Write back here; omitted = ask where (the apps' save dialog), or download (the web's picker is `pickSaveFile`). */
     target?: FileTarget
     /** The precondition: write only if the target still matches. */
     expected?: DiskState | 'absent'
@@ -110,15 +110,10 @@ export type SaveRequest = {
     overEmpty?: boolean
     replaced?: 'keep' | 'discard'
     replaces?: string
-    /** Runs after any pick. */
     build: (sources: PinnedSource[]) => Promise<FileBody>
-    /** Cancels a pending write before it commits; a pick `picked` accepted is written to its end. */
+    /** Cancels a pending write before it commits. */
     signal?: AbortSignal
-    /** The save picker, when no target is given; level data defaults to today's. */
-    picker?: SavePicker
-    /** Runs on a picked file before anything is written to it; false writes nothing. */
-    picked?: (target: FileTarget) => Promise<boolean>
-    /** Held from `picked` to the end of the picked file's write (`nse-bind`, §1.6.6). */
+    /** Held around the write to `target` (`nse-bind`, §1.6.6). */
     lock?: <T>(run: () => Promise<T>) => Promise<T>
     /** Asks for the tap a download needs when the build outlasted the gesture. */
     ready?: ReadyPrompt

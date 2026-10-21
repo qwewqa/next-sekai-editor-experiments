@@ -2069,6 +2069,7 @@
     "writeFailed": "無法寫入 \"{0}\"。",
     "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。",
     "openedContentGone": "\"{0}\" 已不再包含開啟時的內容。",
+    "replacedContentGone": "\"{0}\" 已不再包含先前的內容。",
     "title": "儲存專案檔案",
     "titleAs": "另存新檔",
     "history": "歷史記錄",

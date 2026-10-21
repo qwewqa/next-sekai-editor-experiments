@@ -268,36 +268,28 @@ test('built level data that does not gunzip and parse is never written', async (
     assert.ok(!events.includes('create'))
 })
 
-test('level data builds before opening the save picker, with the picker’s id and types', async () => {
+test('the save picker alone passes its id, types and folder, and a dismissal is undefined', async () => {
     const events: string[] = []
     const handle = recordingHandle(events)
     const pickers: unknown[] = []
     browser.window.showSaveFilePicker = (options) => {
         pickers.push(options)
-        events.push('picker')
         // A save picker empties the file it returns (D5).
         handle.setContent(new Blob([]))
         return Promise.resolve(handle)
     }
     try {
-        const result = await platform.saveFile({
-            kind: 'nsld',
-            suggestedName: 'LevelData',
-            build: levelData(events),
-        })
-        assert.equal(result.status, 'saved')
-        assert.deepEqual(events.slice(0, 2), ['build', 'picker'])
-        await platform.saveFile({
-            kind: 'nsld',
-            suggestedName: 'Coconut.nsld',
-            picker: {
-                id: 'levelData',
-                types: [{ description: 'Next SEKAI level data', extension: '.nsld' }],
-            },
-            build: levelData(events),
-        })
+        assert.deepEqual(
+            await platform.pickSaveFile!({
+                suggestedName: 'Coconut.nsld',
+                picker: {
+                    id: 'levelData',
+                    types: [{ description: 'Next SEKAI level data', extension: '.nsld' }],
+                },
+            }),
+            { kind: 'handle', handle },
+        )
         assert.deepEqual(pickers, [
-            { id: 'levelData', suggestedName: 'LevelData' },
             {
                 id: 'levelData',
                 suggestedName: 'Coconut.nsld',
@@ -310,86 +302,26 @@ test('level data builds before opening the save picker, with the picker’s id a
                 excludeAcceptAllOption: false,
             },
         ])
-    } finally {
-        delete browser.window.showSaveFilePicker
-    }
-})
-
-test('a picked file filled after the pick is never written over, all under the pick’s lock', async () => {
-    const events: string[] = []
-    const handle = recordingHandle(events)
-    browser.window.showSaveFilePicker = () => {
-        handle.setContent(new Blob([]))
-        return Promise.resolve(handle)
-    }
-    const lock: string[] = []
-    try {
-        await assert.rejects(
-            platform.saveFile({
-                kind: 'nsld',
+        browser.window.showSaveFilePicker = () =>
+            Promise.reject(new DOMException('Dismissed', 'AbortError'))
+        assert.equal(
+            await platform.pickSaveFile!({
                 suggestedName: 'LevelData',
                 picker: { id: 'levelData', types: [] },
-                build: levelData(events),
-                // A sync client writes into it after the pick.
-                picked: () => {
-                    lock.push('picked')
-                    handle.setContent(new Blob([new Uint8Array([1, 2, 3])]))
-                    return Promise.resolve(true)
-                },
-                lock: async (run) => {
-                    lock.push('held')
-                    try {
-                        return await run()
-                    } finally {
-                        lock.push('released')
-                    }
-                },
             }),
-            { code: 'conflict' },
+            undefined,
         )
-        assert.ok(!events.includes('create'))
-        assert.deepEqual(lock, ['held', 'picked', 'released'])
-    } finally {
-        delete browser.window.showSaveFilePicker
-    }
-})
-
-test('a picked file the caller refuses is not written', async () => {
-    const events: string[] = []
-    const handle = recordingHandle(events)
-    browser.window.showSaveFilePicker = () => Promise.resolve(handle)
-    try {
-        const result = await platform.saveFile({
-            kind: 'nsld',
-            suggestedName: 'LevelData',
-            picker: { id: 'levelData', types: [] },
-            build: levelData(events),
-            picked: (target) => {
-                assert.deepEqual(target, { kind: 'handle', handle })
-                return Promise.resolve(false)
-            },
-        })
-        assert.deepEqual(result, { status: 'cancelled' })
-        assert.deepEqual(events, ['build'])
-    } finally {
-        delete browser.window.showSaveFilePicker
-    }
-})
-
-test('dismissing the save picker cancels without downloading', async () => {
-    const events: string[] = []
-    browser.downloads.length = 0
-    browser.window.showSaveFilePicker = () =>
-        Promise.reject(new DOMException('Dismissed', 'AbortError'))
-    try {
-        const result = await platform.saveFile({
-            kind: 'nsld',
-            suggestedName: 'LevelData',
-            build: levelData(events),
-        })
-        assert.deepEqual(result, { status: 'cancelled' })
-        assert.deepEqual(events, ['build'])
-        assert.equal(browser.downloads.length, 0)
+        // Building and writing are the caller's: a save without a target never opens it.
+        browser.downloads.length = 0
+        events.length = 0
+        assert.deepEqual(
+            await platform.saveFile({
+                kind: 'nsld',
+                suggestedName: 'LevelData',
+                build: levelData(events),
+            }),
+            { status: 'download-started', name: 'LevelData' },
+        )
     } finally {
         delete browser.window.showSaveFilePicker
     }
@@ -527,71 +459,6 @@ test('cancelling during a write aborts it without a download', async () => {
         'abort',
     ])
     assert.equal(browser.downloads.length, 0)
-})
-
-test('an accepted pick is written to its end, even when cancelled during the write', async () => {
-    const events: string[] = []
-    const controller = new AbortController()
-    // The picker emptied it (D5); a cancel now would leave it so.
-    const handle = recordingHandle(events, {
-        initial: new Blob([]),
-        onWrite: () => {
-            controller.abort()
-            return Promise.resolve()
-        },
-    })
-    browser.window.showSaveFilePicker = () => Promise.resolve(handle)
-    try {
-        const result = await platform.saveFile({
-            kind: 'nsld',
-            suggestedName: 'LevelData',
-            picker: { id: 'levelData', types: [] },
-            signal: controller.signal,
-            build: levelData(events),
-            picked: () => Promise.resolve(true),
-        })
-        assert.equal(result.status, 'saved')
-        assert.deepEqual(events, [
-            'build',
-            'requestPermission',
-            'create',
-            `write:${levelBlob().size}`,
-            'close',
-        ])
-        assert.deepEqual(await parsed(await handle.getFile()), levelJson(0))
-    } finally {
-        delete browser.window.showSaveFilePicker
-    }
-})
-
-test('a cancel during the picker is honoured after the pick is checked, writing nothing', async () => {
-    const events: string[] = []
-    const controller = new AbortController()
-    const handle = recordingHandle(events, { initial: new Blob([]) })
-    browser.window.showSaveFilePicker = () => {
-        controller.abort()
-        return Promise.resolve(handle)
-    }
-    try {
-        await assert.rejects(
-            platform.saveFile({
-                kind: 'nsld',
-                suggestedName: 'LevelData',
-                picker: { id: 'levelData', types: [] },
-                signal: controller.signal,
-                build: levelData(events),
-                // A refused pick the picker emptied is put back here, cancel or not.
-                picked: () => {
-                    events.push('picked')
-                    return Promise.resolve(true)
-                },
-            }),
-            { name: 'AbortError' },
-        )
-        assert.deepEqual(events, ['build', 'picked'])
-    } finally {
-        delete browser.window.showSaveFilePicker
-    }
 })
 
 test('an AbortError with no cancel is a failure naming the file, never a cancel', async () => {

@@ -55,9 +55,9 @@ export type MockPlatform = Platform & {
     /** Each pickFiles call takes the next entry; none left is a cancel. */
     readonly picks: OpenedFile[][]
     /**
-     * Where each save without a target goes: a target, a cancelled picker, or a download. A save
-     * picker alone (`pickSaveFile`) takes the next too. A picked target is emptied when it
-     * exists and created empty when it does not (D5).
+     * What each save picker (`pickSaveFile`) returns in turn: a target, or a dismissal (`'cancel'`;
+     * `'download'` is no target either). A picked target is emptied when it exists and created
+     * empty when it does not (D5). A save without a target only downloads.
      */
     readonly saveTargets: (FileTarget | 'cancel' | 'download')[]
     /** Each `pickSaveFile` call's request. */
@@ -322,28 +322,11 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
             return req.lock ? req.lock(write) : write()
         }
 
-        // Built before the pick, as the picker empties what it returns (D5).
+        // Without a target a save only downloads; a picker is `pickSaveFile`.
         const body = await toBlob(await req.build([]))
         signal?.throwIfAborted()
-        const target = saveTargets.shift() ?? 'download'
-        if (target === 'cancel') return { status: 'cancelled' }
-        if (target === 'download') {
-            signal?.throwIfAborted()
-            downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
-            return { status: 'download-started', name: req.suggestedName }
-        }
-        // The pick empties an existing file and creates a new name empty, as Chromium's (D5).
-        writeFile(targetKey(target), new Blob([]))
-        const write = async (): Promise<SaveResult> => {
-            if (req.picked && !(await req.picked(target))) return { status: 'cancelled' }
-            signal?.throwIfAborted()
-            // Accepted: written to its end, cancel or not.
-            const name = targetKey(target)
-            mock.beforeCommit?.(name)
-            await point('beforeClose', name)
-            return commit(target, name, body, kind)
-        }
-        return req.lock ? req.lock(write) : write()
+        downloads.push({ kind: req.kind, name: req.suggestedName, blob: body })
+        return { status: 'download-started', name: req.suggestedName }
     }
 
     const commit = async (
