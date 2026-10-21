@@ -1,4 +1,5 @@
 import { CHUNK_CAP, inflateStrict, verifyChunk, type VerifiedChunk } from '../chunkVerify'
+import { NO_USE_DAY, type UseDay } from '../days'
 import { hashKey, readMeta } from '../db'
 import { equalBytes, fromHex16, hash16, sha256, toHex } from '../hash'
 import type { KvTx } from '../kv/types'
@@ -11,6 +12,7 @@ import {
     nodeJsonFromRow,
     packHashes,
     rootJsonFromRow,
+    storedDay,
     type NodeRow,
     type NodesRow,
     type RootRow,
@@ -67,12 +69,10 @@ const sourceRecords = (source: PinnedSource) => {
     return { roots, nodes }
 }
 
-const day = async (tx: KvTx) => (await readMeta(tx, 'daysOfUse')) ?? 0
+const day = async (tx: KvTx) => (await readMeta(tx, 'daysOfUse')) ?? NO_USE_DAY
 
-const keptDay = (old: unknown, fallback: number) => {
-    const value = isObject(old) ? old.day : undefined
-    return Number.isSafeInteger(value) ? (value as number) : fallback
-}
+const keptDay = (old: unknown, fallback: UseDay) =>
+    storedDay(isObject(old) ? old.day : undefined, fallback)
 
 const repairChunks = async (
     store: SaveStore,

@@ -1,4 +1,5 @@
 import { Deflate, Inflate } from 'pako'
+import type { UseDay } from './days'
 import { equalBytes, hash16 } from './hash'
 import { chunkCrc32, type ChunkRow } from './records/rows'
 
@@ -124,7 +125,7 @@ export const isVerifiedChunk = (chunk: unknown): chunk is VerifiedChunk =>
  * bytes, never a view into a larger buffer, and the CRC over the key and exactly those bytes.
  * Synchronous, so it runs inside the transaction.
  */
-export const chunkRowOf = (chunk: VerifiedChunk, day: number): ChunkRow => {
+export const chunkRowOf = (chunk: VerifiedChunk, day: UseDay): ChunkRow => {
     if (!isVerifiedChunk(chunk)) throw new ChunkVerifyError('Unverified chunk')
     const bytes = chunk.stored.slice()
     return { bytes, size: chunk.size, crc32: chunkCrc32(chunk.hash, bytes), day }
