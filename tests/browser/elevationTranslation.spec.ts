@@ -181,6 +181,20 @@ for (const layout of ['basic', 'composed'] as const) {
                 void scaleWidth.execute()
             })
             await expect(page.locator('.scaling-panel')).toBeVisible()
+            // The chart has taken the width the two panes leave it, and the view has measured it.
+            await expect
+                .poll(() =>
+                    page.evaluate(() => {
+                        const chart = document
+                            .querySelector('canvas.editor-chart')!
+                            .getBoundingClientRect()
+                        const pane = document
+                            .querySelector('.elevation-canvas')!
+                            .getBoundingClientRect()
+                        return window.editorTest.view.w === chart.width && chart.right <= pane.left
+                    }),
+                )
+                .toBe(true)
             // Grab the right edge where it is shown; the stage's half-lane offset makes snapping differ.
             const points = await page.evaluate(async (pane) => {
                 const { appImport, point, history } = window.editorTest
