@@ -1121,7 +1121,7 @@ test('outside menu press only dismisses before Back to Now can act', async ({ pa
     await expect(page.locator('[data-peek-main]')).toHaveCount(0)
 })
 
-test('local Show Edits survives selection and groups, then reads the default on a new peek', async ({
+test('local Show Edits survives selection and groups, and the next peek keeps it until the setting changes', async ({
     page,
 }) => {
     await seed(page)
@@ -1140,6 +1140,14 @@ test('local Show Edits survives selection and groups, then reads the default on 
     await expect(page.locator('[data-property-summary]')).toHaveCount(0)
     await expect(eye).toHaveAttribute('aria-pressed', 'false')
     await page.locator('[data-peek-back]').click()
+    await select(page, 1)
+    await expect(eye).toHaveAttribute('aria-pressed', 'false')
+    // A changed setting gives the next peek its default.
+    await page.locator('[data-peek-back]').click()
+    await page.evaluate(() => {
+        window.editorTest.settings.dimUnchangedObjects = false
+        window.editorTest.settings.dimUnchangedObjects = true
+    })
     await select(page, 1)
     await expect(eye).toHaveAttribute('aria-pressed', 'true')
     expect(await page.evaluate(() => window.historyInspectionTest.unchanged())).toBe(true)
