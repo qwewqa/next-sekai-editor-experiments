@@ -510,7 +510,7 @@
       "removeFailed": "Bu öğe kaldırılamadı.",
       "chooseAgain": "Tekrar Seç",
       "noneInFile": "Bu dosyada {0} yok.",
-      "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır. Yalnızca kullanma izniniz olan öğeleri kullanın.",
+      "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır.",
       "progress": {
         "reading": "Dosya okunuyor…",
         "storing": "Saklanıyor…",

@@ -510,7 +510,7 @@
       "removeFailed": "無法移除此項目。",
       "chooseAgain": "重新選擇",
       "noneInFile": "此檔案中沒有{0}。",
-      "rights": "您載入的項目僅存放在此瀏覽器中。請只使用您有權使用的項目。",
+      "rights": "您載入的項目僅存放在此瀏覽器中。",
       "progress": {
         "reading": "正在讀取檔案…",
         "storing": "正在存放…",

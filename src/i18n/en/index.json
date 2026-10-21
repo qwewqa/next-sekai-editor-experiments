@@ -510,7 +510,7 @@
             "removeFailed": "This item could not be removed.",
             "chooseAgain": "Choose Again",
             "noneInFile": "This file has no {0}.",
-            "rights": "Items you load are stored in this browser only. Use only items you are allowed to use.",
+            "rights": "Items you load are stored in this browser only.",
             "progress": {
                 "reading": "Reading file…",
                 "storing": "Storing…",

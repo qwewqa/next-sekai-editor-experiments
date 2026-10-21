@@ -510,7 +510,7 @@
       "removeFailed": "无法移除此项目。",
       "chooseAgain": "重新选择",
       "noneInFile": "此文件中没有{0}。",
-      "rights": "您加载的项目仅存储在此浏览器中。请只使用您有权使用的项目。",
+      "rights": "您加载的项目仅存储在此浏览器中。",
       "progress": {
         "reading": "正在读取文件…",
         "storing": "正在存储…",

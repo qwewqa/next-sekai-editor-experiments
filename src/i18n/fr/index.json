@@ -510,7 +510,7 @@
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
       "chooseAgain": "Choisir à nouveau",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
-      "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur. N’utilisez que des éléments que vous avez le droit d’utiliser.",
+      "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur.",
       "progress": {
         "reading": "Lecture du fichier…",
         "storing": "Stockage…",

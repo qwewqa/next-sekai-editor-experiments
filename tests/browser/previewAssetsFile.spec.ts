@@ -233,7 +233,7 @@ test.describe('From a File', () => {
         await choose(page)
         await expect(chooser(page).locator('[data-chooser-title]')).toHaveText('Choose a Skin')
         await expect(chooser(page).locator('[data-chooser-rights]')).toHaveText(
-            'Items you load are stored in this browser only. Use only items you are allowed to use.',
+            'Items you load are stored in this browser only.',
         )
         // Nothing is listed, and Use waits for an item.
         await expect(chooser(page).locator('[data-chooser-list]')).toHaveCount(0)
