@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // Peek (Part 1 §1.4.11) and its gating: an entry's state shown read-only while writers keep the
@@ -272,7 +274,105 @@ test('Undo and Redo with nothing to cross keep the peek', async ({ page }) => {
     // At the newest step: nothing to redo.
     await page.keyboard.press('y')
     await expect(page.getByText('Nothing to redo').first()).toBeVisible()
-    expect((await beats(page)).peeking).toBe(true)
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+
+    // Undone back to the first step: nothing to undo.
+    await leave(page)
+    await page.keyboard.press('z')
+    expect((await beats(page)).live).toEqual([3, 5, 7, 9])
+    await peek(page, first)
+    await page.keyboard.press('z')
+    await expect(page.getByText('Nothing to undo').first()).toBeVisible()
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [3, 5, 7, 9], peeking: true })
+    await leave(page)
+})
+
+/** Makes the open session not durably stored, so that leaving it asks first. */
+const markNotStored = (page: Page) =>
+    page.evaluate(async () => {
+        const { flusher } =
+            await window.editorTest.appImport<typeof import('../../src/local/storing')>(
+                '/src/local/storing.ts',
+            )
+        flusher!.session!.stored = false
+    })
+
+const notStoredPrompt = (page: Page) => page.getByRole('dialog', { name: 'Changes Not Stored' })
+
+for (const [command, key] of [
+    ['Open', 'o'],
+    ['New', 'n'],
+] as const)
+    test(`${command} in a peek asks about unstored changes; Cancel changes nothing`, async ({
+        page,
+    }) => {
+        const first = await newestSeq(page)
+        await deleteAt(page, 3)
+        await flushStorage(page)
+        await peek(page, first)
+        await markNotStored(page)
+        await stubPicker(page, [])
+        const session = await sessionId(page)
+        const seq = await newestSeq(page)
+
+        await page.keyboard.press(key)
+        await expect(notStoredPrompt(page)).toBeVisible()
+        await confirmWhenReady(
+            notStoredPrompt(page).getByRole('button', { name: 'Cancel' }),
+            notStoredPrompt(page),
+        )
+
+        expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+        expect(await sessionId(page)).toBe(session)
+        expect(await newestSeq(page)).toBe(seq)
+        expect(await pickerCalls(page)).toBe(0)
+        await leave(page)
+    })
+
+test('Save from the unstored-changes prompt in a peek saves the live chart, and the peek stays', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    await flushStorage(page)
+    await peek(page, first)
+    await markNotStored(page)
+    // Without a save picker the file is downloaded.
+    await page.evaluate(() => {
+        ;(window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker = undefined
+    })
+
+    await page.keyboard.press('o')
+    await confirmWhenReady(
+        notStoredPrompt(page).getByRole('button', { name: 'Save' }),
+        notStoredPrompt(page),
+    )
+    const dialog = page.getByRole('dialog', { name: 'Save Project File' })
+    await expect(dialog).toBeVisible()
+    const download = page.waitForEvent('download')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    const saved = readFileSync(await (await download).path())
+
+    // The file holds the live chart, not the peeked step.
+    const savedBeats = await page.evaluate(
+        async (bytes) => {
+            const { readProjectFile } =
+                (await import('/src/local/open/project.ts')) as typeof import('../../src/local/open/project')
+            const read = await readProjectFile(new File([new Uint8Array(bytes)], 'peek.nxsp'))
+            if (read.kind !== 'nxsp') throw new Error('Not a project file')
+            const { entities } = read.level as {
+                entities: { archetype: string; data: { name: string; value?: number }[] }[]
+            }
+            return entities
+                .filter((entity) => entity.archetype === 'NormalTapNote')
+                .map((entity) => entity.data.find((field) => field.name === '#BEAT')?.value)
+                .sort()
+        },
+        [...saved],
+    )
+    expect(savedBeats).toEqual([5, 7, 9])
+    // The prompt returns to the user to repeat Open; the peek is as it was.
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
     await leave(page)
 })
 
