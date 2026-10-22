@@ -1,5 +1,6 @@
 import type { Command } from '..'
-import { earlierSteps, isPristine, pendingMoveOutcome, undoState } from '../../../history'
+import { canUndo, earlierSteps, isPristine, pendingMoveOutcome, undoState } from '../../../history'
+import { leavePeek } from '../../../history/peek'
 import { i18n } from '../../../i18n'
 import { previousSession } from '../../../local/startup/events'
 import { openHistoryAction } from '../../history/openHistory'
@@ -18,6 +19,8 @@ export const undo: Command = {
     leavesPeek: true,
 
     execute() {
+        // Leaves a peek only to undo; with nothing to undo it stays.
+        if (canUndo.value) leavePeek()
         const step = undoState()
         if (step) {
             view.entities = {

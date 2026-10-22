@@ -198,7 +198,8 @@ const headerSelect =
     'elevation-field btn btn-secondary h-8 w-20 appearance-none rounded-full px-3 text-base tabular-nums'
 let navigation: EditorNavigation | undefined
 const { cursor, cursorListeners } = useCanvasCursor(() => navigation)
-const controlListeners = { ...controlsForNavigation(() => navigation), ...cursorListeners }
+const paneControls = controlsForNavigation(() => navigation)
+const controlListeners = { ...paneControls, ...cursorListeners }
 const activate = () => {
     if (navigation) activateEditorNavigation(navigation)
 }
@@ -2066,13 +2067,14 @@ onUnmounted(() => {
             />
             <RenderingError v-if="graphicsError" :message="graphicsError" @reload="retryRenderer" />
         </div>
-        <!-- Side by side while peeking, the peeked state shows behind it, read-only (§1.4.11). -->
+        <!-- Side by side while peeking, the peeked state shows behind it, read-only (§1.4.11). Presses
+        are taken, so nothing is edited; the wheel still scrolls and zooms the pane. -->
         <div
             v-if="isPeeking"
             class="elevation-peek-overlay absolute inset-0 flex touch-none items-center justify-center bg-black/40 p-4"
             :style="{ paddingTop: `${headerHeight}px` }"
             @pointerdown.prevent
-            @wheel.prevent
+            @wheel.prevent="(event: WheelEvent) => paneControls.wheel?.(event)"
             @contextmenu.prevent
         >
             <span

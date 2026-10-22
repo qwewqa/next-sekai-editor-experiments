@@ -44,6 +44,8 @@ const pendingMove = ref(0)
 
 export const canUndo = computed(() => index.value + pendingMove.value > 0)
 
+export const canRedo = computed(() => index.value + pendingMove.value < states.length - 1)
+
 /**
  * Whether steps before the stack's first slot are in History: a stored stack is capped
  * (§1.6.4 #6), so Undo past it after a reload says so.
@@ -425,7 +427,7 @@ export const undoState = () => {
 
 export const redoState = () => {
     requested = undefined
-    if (index.value + pendingMove.value >= states.length - 1) return
+    if (!canRedo.value) return
     moveRequestGeneration.value++
     if (pendingMove.value || !states[index.value + 1]?.state) return queue(1)
 

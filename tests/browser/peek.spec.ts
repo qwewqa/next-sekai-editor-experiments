@@ -1,9 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // Peek (Part 1 §1.4.11) and its gating: an entry's state shown read-only while writers keep the
 // live state, commands and tools refused with the notice, Undo leaving first, drags and scaling
-// sessions cancelled, the disabled panels, the Elevation Editor closed or behind its overlay,
+// sessions cancelled, the read-only panels, the Elevation Editor closed or behind its overlay,
 // Restore, and Copy while peeking then pasting after leaving. History's own panel is 5-panel's;
 // these drive peek through its module, as the panel does.
 
@@ -16,28 +18,36 @@ test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    const startup = await page.evaluate(async () => {
+    const startup = await sessionId(page)
+    await page.evaluate(installEditorFixture)
+    await storesNewSession(page, startup)
+})
+
+const sessionId = (page: Page) =>
+    page.evaluate(async () => {
         const { flusher } = await import('/src/local/storing.ts')
         return flusher?.session?.id
     })
-    await page.evaluate(installEditorFixture)
-    // Storing follows the fixture's chart: its session is the one peeked. The fixture starts a
-    // new session with the chart as its first entry. Entries are pending only until the next
-    // flush (about a second), which a loaded machine can pass before this first looks, so wait
-    // for the entry itself, not for it to be unsent.
-    await expect
+
+/**
+ * Storing follows the shown chart: its session is the one peeked. A new chart starts a new session
+ * with the chart as its first entry. Entries are pending only until the next flush (about a
+ * second), which a loaded machine can pass before this first looks, so wait for the entry itself,
+ * not for it to be unsent.
+ */
+const storesNewSession = (page: Page, previous: string | undefined) =>
+    expect
         .poll(() =>
-            page.evaluate(async (startup) => {
+            page.evaluate(async (previous) => {
                 const { flusher } =
                     await window.editorTest.appImport<typeof import('../../src/local/storing')>(
                         '/src/local/storing.ts',
                     )
                 const session = flusher?.session
-                return !!session && session.id !== startup && flusher.newestSeq(session) > 0
-            }, startup),
+                return !!session && session.id !== previous && flusher.newestSeq(session) > 0
+            }, previous),
         )
         .toBe(true)
-})
 
 test.afterEach(({ page }) => {
     // A missed edit path throws in development (pushState while viewing history).
@@ -109,6 +119,18 @@ const notePoint = (page: Page, beat: number) =>
             .find((note) => note.beat === beat)!
         return point(note.left + note.size / 2, note.beat)
     }, beat)
+
+/** Writes what is pending, so the open session counts as stored. */
+const flushStorage = (page: Page) =>
+    page.evaluate(async () => {
+        const { flusher } =
+            await window.editorTest.appImport<typeof import('../../src/local/storing')>(
+                '/src/local/storing.ts',
+            )
+        await flusher!.flush()
+        await flusher!.flush()
+        if (flusher!.hasPending) throw new Error('Still pending')
+    })
 
 const notice = (page: Page) => page.locator('.notification')
 
@@ -191,21 +213,176 @@ test('Undo leaves the peek first, then undoes', async ({ page }) => {
     expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [3, 5, 7, 9], peeking: false })
 })
 
+/** Swaps the file picker for one that answers in turn: a file, or null for a cancel. */
+const stubPicker = (page: Page, answers: ({ name: string; text: string } | null)[]) =>
+    page.evaluate(async (answers) => {
+        const { setPlatformForTests, platform } =
+            (await import('/src/platform/index.ts')) as typeof import('../../src/platform')
+        const queue = [...answers]
+        const stub = window as unknown as { pickerCalls: number }
+        stub.pickerCalls = 0
+        setPlatformForTests({
+            ...platform,
+            pickFiles: () => {
+                stub.pickerCalls++
+                const next = queue.shift()
+                return Promise.resolve(
+                    next ? [{ file: new File([next.text], next.name), handle: undefined }] : [],
+                )
+            },
+        })
+    }, answers)
+
+const pickerCalls = (page: Page) =>
+    page.evaluate(() => (window as unknown as { pickerCalls: number }).pickerCalls)
+
+test('Open keeps the peek when the picker is cancelled, and leaves it once a file opens', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    const usc = JSON.stringify({
+        version: 2,
+        usc: {
+            offset: 0,
+            objects: [
+                { type: 'bpm', beat: 0, bpm: 120 },
+                { type: 'timeScaleGroup', changes: [{ beat: 0, timeScale: 1 }] },
+            ],
+        },
+    })
+    await stubPicker(page, [null, { name: 'opened.usc', text: usc }])
+    await peek(page, first)
+    // Stored, so that leaving asks nothing.
+    await flushStorage(page)
+
+    // Cancelled: nothing was opened, so the peek stays.
+    await page.keyboard.press('o')
+    await expect.poll(() => pickerCalls(page)).toBe(1)
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+
+    // A chosen file replaces the chart, which ends the peek; the live chart was never edited.
+    await page.keyboard.press('o')
+    await expect.poll(async () => (await beats(page)).peeking).toBe(false)
+    expect((await beats(page)).live).toEqual([])
+})
+
+test('Undo and Redo with nothing to cross keep the peek', async ({ page }) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    await peek(page, first)
+    // At the newest step: nothing to redo.
+    await page.keyboard.press('y')
+    await expect(page.getByText('Nothing to redo').first()).toBeVisible()
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+
+    // Undone back to the first step: nothing to undo.
+    await leave(page)
+    await page.keyboard.press('z')
+    expect((await beats(page)).live).toEqual([3, 5, 7, 9])
+    await peek(page, first)
+    await page.keyboard.press('z')
+    await expect(page.getByText('Nothing to undo').first()).toBeVisible()
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [3, 5, 7, 9], peeking: true })
+    await leave(page)
+})
+
+/** Makes the open session not durably stored, so that leaving it asks first. */
+const markNotStored = (page: Page) =>
+    page.evaluate(async () => {
+        const { flusher } =
+            await window.editorTest.appImport<typeof import('../../src/local/storing')>(
+                '/src/local/storing.ts',
+            )
+        flusher!.session!.stored = false
+    })
+
+const notStoredPrompt = (page: Page) => page.getByRole('dialog', { name: 'Changes Not Stored' })
+
+for (const [command, key] of [
+    ['Open', 'o'],
+    ['New', 'n'],
+] as const)
+    test(`${command} in a peek asks about unstored changes; Cancel changes nothing`, async ({
+        page,
+    }) => {
+        const first = await newestSeq(page)
+        await deleteAt(page, 3)
+        await flushStorage(page)
+        await peek(page, first)
+        await markNotStored(page)
+        await stubPicker(page, [])
+        const session = await sessionId(page)
+        const seq = await newestSeq(page)
+
+        await page.keyboard.press(key)
+        await expect(notStoredPrompt(page)).toBeVisible()
+        await confirmWhenReady(
+            notStoredPrompt(page).getByRole('button', { name: 'Cancel' }),
+            notStoredPrompt(page),
+        )
+
+        expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+        expect(await sessionId(page)).toBe(session)
+        expect(await newestSeq(page)).toBe(seq)
+        expect(await pickerCalls(page)).toBe(0)
+        await leave(page)
+    })
+
+test('Save from the unstored-changes prompt in a peek saves the live chart, and the peek stays', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    await deleteAt(page, 3)
+    await flushStorage(page)
+    await peek(page, first)
+    await markNotStored(page)
+    // Without a save picker the file is downloaded.
+    await page.evaluate(() => {
+        ;(window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker = undefined
+    })
+
+    await page.keyboard.press('o')
+    await confirmWhenReady(
+        notStoredPrompt(page).getByRole('button', { name: 'Save' }),
+        notStoredPrompt(page),
+    )
+    const dialog = page.getByRole('dialog', { name: 'Save Project File' })
+    await expect(dialog).toBeVisible()
+    const download = page.waitForEvent('download')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    const saved = readFileSync(await (await download).path())
+
+    // The file holds the live chart, not the peeked step.
+    const savedBeats = await page.evaluate(
+        async (bytes) => {
+            const { readProjectFile } =
+                (await import('/src/local/open/project.ts')) as typeof import('../../src/local/open/project')
+            const read = await readProjectFile(new File([new Uint8Array(bytes)], 'peek.nxsp'))
+            if (read.kind !== 'nxsp') throw new Error('Not a project file')
+            const { entities } = read.level as {
+                entities: { archetype: string; data: { name: string; value?: number }[] }[]
+            }
+            return entities
+                .filter((entity) => entity.archetype === 'NormalTapNote')
+                .map((entity) => entity.data.find((field) => field.name === '#BEAT')?.value)
+                .sort()
+        },
+        [...saved],
+    )
+    expect(savedBeats).toEqual([5, 7, 9])
+    // The prompt returns to the user to repeat Open; the peek is as it was.
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+    await leave(page)
+})
+
 test('an entry no longer in memory is read from storage, verified', async ({ page }) => {
     await deleteAt(page, 3)
     const dropped = await newestSeq(page)
     await page.keyboard.press('z')
     // A new edit drops the first from redo: its state is held only in storage now.
     await deleteAt(page, 9)
-    await page.evaluate(async () => {
-        const { flusher } =
-            await window.editorTest.appImport<typeof import('../../src/local/storing')>(
-                '/src/local/storing.ts',
-            )
-        await flusher!.flush()
-        await flusher!.flush()
-        if (flusher!.hasPending) throw new Error('Still pending')
-    })
+    await flushStorage(page)
     await peek(page, dropped)
     expect(await beats(page)).toEqual({ shown: [5, 7, 9], live: [3, 5, 7], peeking: true })
     await leave(page)
@@ -330,6 +507,18 @@ test('side by side, the Elevation Editor shows the peek behind its overlay', asy
     expect(
         await page.evaluate(() => window.editorTest.history.state.value.selectedEntities.length),
     ).toBe(0)
+    // The wheel still scrolls the pane under the overlay.
+    const center = () =>
+        page.evaluate(async () => {
+            const { elevationViewport } = await window.editorTest.appImport<
+                typeof import('../../src/editor/elevation/viewport')
+            >('/src/editor/elevation/viewport.ts')
+            return elevationViewport.center
+        })
+    const before = await center()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.wheel(0, 300)
+    await expect.poll(center).not.toBe(before)
     await leave(page)
     await expect(overlay).toHaveCount(0)
     await expect(page.locator('.elevation-editor')).toBeVisible()
@@ -409,7 +598,9 @@ test('the Groups dialog opens while peeking: the current group changes, edits ar
     await leave(page)
 })
 
-test('Properties shows fields disabled while peeking', async ({ page }) => {
+test('Properties shows the peeked values readable and selectable, and changes nothing', async ({
+    page,
+}) => {
     const first = await newestSeq(page)
     await page.evaluate(() => {
         window.editorTest.settings.showSidebar = true
@@ -420,11 +611,89 @@ test('Properties shows fields disabled while peeking', async ({ page }) => {
     await page.mouse.click(point.x, point.y)
     const beat = page.getByLabel('Beat', { exact: true }).first()
     await expect(beat).toBeVisible()
-    await expect(beat).toBeDisabled()
+    // Beats show from 1.
+    await expect(beat).toHaveValue('4')
+
+    // Read-only, not disabled: at full strength, and its text can be selected and copied.
+    await expect(beat).toBeEnabled()
+    await expect(beat).toHaveAttribute('readonly', '')
+    expect(
+        await beat.evaluate((input) => {
+            let opacity = 1
+            for (let el: Element | null = input; el; el = el.parentElement)
+                opacity *= Number(getComputedStyle(el).opacity)
+            return opacity
+        }),
+    ).toBe(1)
+    await beat.focus()
+    expect(await page.evaluate(() => getSelection()?.toString())).toBe('4')
+
+    // Typing and the arrow keys change nothing.
+    await page.keyboard.type('9')
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Enter')
+    await expect(beat).toHaveValue('4')
+    expect(await beats(page)).toEqual({ shown: [3, 5, 7, 9], live: [5, 7, 9], peeking: true })
+    expect(await newestSeq(page)).toBe(first + 1)
+
+    // Other controls are disabled.
+    const selects = page.locator('#properties-section-selection select')
+    for (const select of await selects.all()) await expect(select).toBeDisabled()
     await leave(page)
 })
 
-test('the selection menu holds only Copy and Find Edits Here while peeking', async ({ page }) => {
+test('Group Properties opens while peeking with the peeked values and cannot change them', async ({
+    page,
+}) => {
+    const first = await newestSeq(page)
+    // The group is renamed after the first step, so the peek and the live chart differ.
+    await page.evaluate(async () => {
+        const { history, appImport } = window.editorTest
+        const { groupEditOperation } = await appImport<
+            typeof import('../../src/editor/headerLabels')
+        >('/src/editor/headerLabels.ts')
+        const id = 1 as never
+        const object = history.state.value.groups.get(id)!
+        const groups = new Map(history.state.value.groups)
+        groups.set(id, { ...object, name: 'Renamed' })
+        history.pushState(groupEditOperation(id, object, 'name', 'Renamed'), {
+            ...history.state.value,
+            groups,
+        })
+    })
+    await peek(page, first)
+    const liveNames = () =>
+        page.evaluate(() =>
+            [...window.editorTest.history.liveState.value.groups.values()].map(({ name }) => name),
+        )
+    expect(await liveNames()).toEqual(['Renamed', 'Other group'])
+
+    await page.keyboard.press('e')
+    const dialog = page.getByRole('dialog').first()
+    const row = dialog.locator('.manager-row').filter({ hasText: 'Default' })
+    await row.hover()
+    await row.locator('.manager-inline-properties').click()
+
+    const properties = page.getByRole('dialog', { name: 'Group Properties' })
+    await expect(properties).toBeVisible()
+    const name = properties.getByRole('textbox')
+    await expect(name).toHaveValue('Default')
+    await expect(name).toBeDisabled()
+    expect(await liveNames()).toEqual(['Renamed', 'Other group'])
+    expect((await beats(page)).peeking).toBe(true)
+
+    // It follows the peek until the peek ends, and then it closes.
+    await page.keyboard.press('Escape')
+    await expect(properties).toHaveCount(0)
+    await row.hover()
+    await row.locator('.manager-inline-properties').click()
+    await expect(properties).toBeVisible()
+    await leave(page)
+    await expect(properties).toHaveCount(0)
+    expect(await liveNames()).toEqual(['Renamed', 'Other group'])
+})
+
+test('the selection menu holds only viewing actions while peeking', async ({ page }) => {
     const first = await newestSeq(page)
     await deleteAt(page, 3)
     await peek(page, first)
@@ -432,9 +701,37 @@ test('the selection menu holds only Copy and Find Edits Here while peeking', asy
     await page.mouse.click(point.x, point.y, { button: 'right' })
     await expect(page.getByRole('menu').getByRole('menuitem')).toHaveText([
         /^Copy/,
+        'Edit Properties',
         'Find Edits Here',
     ])
     await page.keyboard.press('Escape')
+    await leave(page)
+})
+
+test('Select Slide Notes in a peek selects the whole slide of the peeked chart only', async ({
+    page,
+}) => {
+    // A chart with connected slides, as its own session.
+    const previous = await sessionId(page)
+    await page.evaluate(() => {
+        window.editorTest.show(window.editorTest.fixtures.connectors, 3)
+    })
+    await storesNewSession(page, previous)
+    const first = await newestSeq(page)
+    await peek(page, first)
+    const point = await notePoint(page, 3)
+    await page.mouse.click(point.x, point.y, { button: 'right' })
+    await page.getByRole('menuitem', { name: 'Select Slide Notes' }).click()
+    expect(
+        await page.evaluate(() => {
+            const { history } = window.editorTest
+            return [
+                history.state.value.selectedEntities.length,
+                history.liveState.value.selectedEntities.length,
+            ]
+        }),
+    ).toEqual([3, 0])
+    expect(await newestSeq(page)).toBe(first)
     await leave(page)
 })
 

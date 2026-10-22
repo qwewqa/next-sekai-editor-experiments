@@ -270,10 +270,10 @@ test('Open tells a ZIP from its first 64 bytes without opening it', async () => 
     assert.deepEqual(slices, [[0, 64]])
 })
 
-test('Open is refused while peeking, since its audio branch changes the BGM', () => {
+test('Open leaves a peek before its audio branch changes the BGM', () => {
     // The command module loads Vue components, so its source is checked instead.
     const source = readFileSync('src/editor/commands/open/index.ts', 'utf8')
-    assert.ok(source.includes('changeBgm(file)'))
+    assert.ok(/leavePeek\(\)\s*void changeBgm\(file\)/.test(source))
     assert.ok(!/readOnly:\s*true/.test(source))
 })
 

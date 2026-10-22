@@ -13,6 +13,7 @@ import { resetStates, restoreStates, type RestoredSlot } from './stack'
 
 export { markExported } from './markers'
 export {
+    canRedo,
     canUndo,
     earlierSteps,
     headStep,

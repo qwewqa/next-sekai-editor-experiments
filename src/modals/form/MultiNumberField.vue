@@ -16,6 +16,7 @@ import BaseField from './BaseField.vue'
 import { formatNumber } from '../../utils/formatNumber'
 import { extentOf } from '../../utils/math'
 import { formatRange, isUnset, mixedRange, useFieldUsage } from './fieldUsage'
+import { useFieldReadOnly } from './fieldReadOnly'
 import { numberEditKey } from './numberEdit'
 import { isChromium } from '../../utils/browser'
 import { createStepTrail, stepValues } from './numberStep'
@@ -36,6 +37,8 @@ const input: Ref<HTMLInputElement | null> = useTemplateRef('input')
 
 const modelValue = defineModel<number | undefined>({ required: true })
 const field = useFieldUsage()
+// Shown and selectable, not changed: the arrow keys and the wheel step nothing.
+const readOnly = useFieldReadOnly()
 const edit = inject(numberEditKey, undefined)
 const owner = Symbol('number field')
 // A mixed field's arrow steps: the value each value in use steps to, until committed.
@@ -171,6 +174,7 @@ const onEscape = (event: KeyboardEvent) => {
 // Arrow keys step from the exact value, as the shown one is rounded, and preview until the field is left.
 const onStepKey = (event: KeyboardEvent) => {
     event.preventDefault()
+    if (readOnly.value) return
     stepBy(event.key === 'ArrowUp' ? 1 : -1)
 }
 
@@ -178,6 +182,7 @@ const onStepKey = (event: KeyboardEvent) => {
 const stepsOnWheel = isChromium(navigator)
 const onWheel = (event: WheelEvent) => {
     if (!stepsOnWheel || !event.deltaY || document.activeElement !== event.currentTarget) return
+    if (readOnly.value) return
     event.preventDefault()
     stepBy(event.deltaY < 0 ? 1 : -1)
 }
@@ -286,6 +291,7 @@ const onBlur = () => {
             :max
             :step
             required
+            :readonly="readOnly"
             @focus="onFocus"
             @input="onInput"
             @change="onChange"

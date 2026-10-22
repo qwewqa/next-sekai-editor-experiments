@@ -1,5 +1,6 @@
 import type { Command } from '..'
-import { isPristine, pendingMoveOutcome, redoState } from '../../../history'
+import { canRedo, isPristine, pendingMoveOutcome, redoState } from '../../../history'
+import { leavePeek } from '../../../history/peek'
 import { i18n } from '../../../i18n'
 import { openHistoryAction } from '../../history/openHistory'
 import { notify } from '../../notification'
@@ -16,6 +17,8 @@ export const redo: Command = {
     leavesPeek: true,
 
     execute() {
+        // Leaves a peek only to redo; with nothing to redo it stays.
+        if (canRedo.value) leavePeek()
         const step = redoState()
         if (step) {
             view.entities = {

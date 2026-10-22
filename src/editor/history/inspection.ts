@@ -99,19 +99,32 @@ export const createPropertyInspection = (
     }
 }
 
-/** A local choice for a continuous peek; persisted settings are read only on entry. */
+/**
+ * A local choice for a continuous peek, kept for the session: the next peek starts as the last one
+ * was left, until the setting that gives the default changes. The setting is read only on entry.
+ */
 export const createShowEdits = (peeking: Readonly<Ref<boolean>>, defaultValue: () => boolean) => {
     const value = shallowRef(false)
+    let chosen: boolean | undefined
     const unwatch = watch(
         peeking,
         (active, previous) => {
             if (!active) value.value = false
-            else if (!previous) value.value = defaultValue()
+            else if (!previous) value.value = chosen ?? defaultValue()
         },
         { immediate: true, flush: 'sync' },
     )
+    const unwatchDefault = watch(
+        defaultValue,
+        () => {
+            chosen = undefined
+        },
+        { flush: 'sync' },
+    )
     const set = (show: boolean) => {
-        if (peeking.value) value.value = show
+        if (!peeking.value) return
+        value.value = show
+        chosen = show
     }
     return {
         showEdits: computed(() => value.value),
@@ -122,7 +135,10 @@ export const createShowEdits = (peeking: Readonly<Ref<boolean>>, defaultValue: (
         reset: () => {
             value.value = false
         },
-        dispose: unwatch,
+        dispose: () => {
+            unwatch()
+            unwatchDefault()
+        },
     }
 }
 

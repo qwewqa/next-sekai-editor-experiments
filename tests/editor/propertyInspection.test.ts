@@ -230,15 +230,11 @@ test('coalesced historical loading is retained without accepting an obsolete com
     }
 })
 
-test('Show Edits is local across entry changes; settings only choose the next peek default', () => {
+test('Show Edits is local across entry changes; the last choice carries to the next peek until the setting changes', () => {
     const peeking = shallowRef(false),
         setting = shallowRef(true),
         selection = shallowRef(1)
-    let reads = 0
-    const controller = createShowEdits(peeking, () => {
-        reads++
-        return setting.value
-    })
+    const controller = createShowEdits(peeking, () => setting.value)
     try {
         assert.equal(controller.showEdits.value, false)
         controller.set(true)
@@ -248,23 +244,37 @@ test('Show Edits is local across entry changes; settings only choose the next pe
         controller.toggle()
         assert.equal(controller.showEdits.value, false)
         selection.value++
+        // The setting applies to the next peek, not this one.
         setting.value = false
         setting.value = true
         assert.equal(controller.showEdits.value, false)
-        assert.equal(reads, 1)
         assert.equal(setting.value, true)
         controller.set(true)
         setting.value = false
         assert.equal(controller.showEdits.value, true)
         peeking.value = false
         assert.equal(controller.showEdits.value, false)
+        // A setting changed since the last choice gives the next peek its default.
         peeking.value = true
         assert.equal(controller.showEdits.value, false)
-        assert.equal(reads, 2)
+        // Without a change of setting, the next peek starts as the last one was left.
+        controller.set(true)
+        peeking.value = false
+        peeking.value = true
+        assert.equal(controller.showEdits.value, true)
+        controller.set(false)
+        peeking.value = false
+        // Changing the setting drops the choice.
+        setting.value = true
+        peeking.value = true
+        assert.equal(controller.showEdits.value, true)
+        controller.set(false)
+        peeking.value = false
+        peeking.value = true
+        assert.equal(controller.showEdits.value, false)
         controller.set(true)
         controller.reset()
         assert.equal(controller.showEdits.value, false)
-        assert.equal(setting.value, false)
     } finally {
         controller.dispose()
     }

@@ -17,6 +17,7 @@ import { createFontContext } from '../../rendering/textRaster'
 import { blurPointerClick } from '../../utils/blurPointerClick'
 import BaseField from './BaseField.vue'
 import { useEmptyLabel, useUnsetChoice } from './emptyLabel'
+import { useFieldReadOnly } from './fieldReadOnly'
 import { isUnknownValue, mixedOptions, useFieldUsage } from './fieldUsage'
 import type { OptionGlyph } from './optionGlyph'
 import MultiSelectField from './MultiSelectField.vue'
@@ -48,6 +49,7 @@ const optional = computed(() => props.variant === 'optional')
 const isMixed = computed(() => props.variant === 'multi' && modelValue.value === undefined)
 // Mixed segments list the values in use below, as selects do.
 const usage = useFieldUsage()
+const readOnly = useFieldReadOnly()
 const mixed = computed(() => (isMixed.value ? mixedOptions(usage?.value, props.options) : []))
 // A value no segment names shows in the select, as unknown.
 const unknown = computed(() => isUnknownValue(modelValue.value, props.options))
@@ -179,6 +181,7 @@ watch(
                     type="radio"
                     :name="id"
                     :value="undefined"
+                    :disabled="readOnly"
                     :aria-label="notSet"
                     @change="resyncRadios($event, () => modelValue)"
                     @click="onClick"
@@ -198,6 +201,7 @@ watch(
                     type="radio"
                     :name="id"
                     :value
+                    :disabled="readOnly"
                     @change="resyncRadios($event, () => modelValue)"
                     @click="onClick"
                 />
