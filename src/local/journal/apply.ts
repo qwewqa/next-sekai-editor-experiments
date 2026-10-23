@@ -315,6 +315,7 @@ export const writeJournalApply = async (
             docId,
             lineageId: descriptor.lineageId,
             ...chainFlagsAtCreation('journal'),
+            startedAt: time,
             updatedAt: time,
             day,
             summary: batch.summary,
@@ -405,6 +406,11 @@ export const writeJournalApply = async (
         stack: next,
         appVersion: batch.appVersion,
     }
+    // Its own start, clamped as times from outside are, never after its entry.
+    const startedAt = Math.min(
+        Math.max(clampTime(descriptor.startedAt, now), continuedAfter(parent)),
+        time,
+    )
     // A session that never flushed is made with its own ids (§1.6.4 step 3); its `v` is kept.
     await tx.put(
         'sessions',
@@ -420,11 +426,7 @@ export const writeJournalApply = async (
                   id: sessionId,
                   chainId,
                   v: SESSION_V,
-                  // Its own start, clamped as times from outside are, never after its entry.
-                  startedAt: Math.min(
-                      Math.max(clampTime(descriptor.startedAt, now), continuedAfter(parent)),
-                      time,
-                  ),
+                  startedAt,
                   origin: descriptor.origin,
                   ...(descriptor.parent ? { parent: descriptor.parent } : {}),
                   ...sessionFields,
@@ -448,6 +450,9 @@ export const writeJournalApply = async (
             ...chainFieldsOf(descriptor),
             chainId,
             head: sessionId,
+            // The session never flushed, so it is the chain's first.
+            startedAt:
+                session && typeof session.startedAt === 'number' ? session.startedAt : startedAt,
             ...common,
         })
     } else {

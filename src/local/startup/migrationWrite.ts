@@ -74,6 +74,7 @@ export const writeMigration = async (
         ...(batch.sourceName === undefined ? {} : { sourceName: batch.sourceName }),
         // Its work is in no file: edited from its first entry (§1.4.9).
         ...chainFlagsAtCreation('migrated'),
+        startedAt: time,
         updatedAt: time,
         day,
         summary: batch.summary,

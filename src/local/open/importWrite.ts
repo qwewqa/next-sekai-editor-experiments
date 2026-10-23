@@ -476,6 +476,7 @@ export const writeOpenHead = async (
         head: sessionId,
         docId,
         lineageId,
+        startedAt: now,
         // Rows copied from a file never make the chain edited (§1.6.11.2).
         hasContent: true,
         updatedAt: now,

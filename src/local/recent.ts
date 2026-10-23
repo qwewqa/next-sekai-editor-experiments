@@ -1,3 +1,4 @@
+import { chainStartOf } from './chainFields'
 import { equalBytes } from './hash'
 import type { KvTx } from './kv/types'
 import { namePartsOf, type NameParts } from './names'
@@ -24,7 +25,10 @@ export type RecentChain = {
     chainId: string
     /** The chain's last write, milliseconds. */
     updatedAt: number
-    /** The head session: what Restore Session opens. `startedAt` dates an untitled name. */
+    /**
+     * The head session: what Restore Session opens. `startedAt` dates an untitled name: the chain's
+     * first start, so a later visit does not rename it (§1.3.5).
+     */
     head: { sessionId: string; lastSeq: number; startedAt: number }
     /** What the displayed name is chosen from (§1.3.5), with the summary's BGM name. */
     nameParts: NameParts
@@ -90,7 +94,7 @@ export const readRecent = async (tx: KvTx): Promise<RecentChain[]> => {
             head: {
                 sessionId,
                 lastSeq: count(head?.lastSeq) ?? 0,
-                startedAt: count(head?.startedAt) ?? updatedAt,
+                startedAt: count(chainStartOf(value, head?.startedAt)) ?? updatedAt,
             },
             nameParts: namePartsOf(value),
             ...(file ? { file } : {}),
