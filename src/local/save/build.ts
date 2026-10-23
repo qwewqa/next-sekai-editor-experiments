@@ -577,7 +577,7 @@ export const planSave = async (
     const damaged = [...new Set([...bodies.bad, ...damagedMedia])]
     let markStored = true
     if (markRows.length || damaged.length)
-        markStored = await markDamaged(store, chainId, markRows, damaged)
+        markStored = (await markDamaged(store, chainId, markRows, damaged)) !== undefined
     const marks = new Map<string, RowKey>()
     for (const { sessionId, seq } of [...(options.identity?.marks ?? []), ...markRows])
         marks.set(keyOf({ sessionId, seq }), { sessionId, seq })

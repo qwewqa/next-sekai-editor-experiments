@@ -308,6 +308,8 @@ const COVERED_READS = [
     'readRecovered',
     'listKept',
     'findEdits',
+    'checkStoredOpen',
+    'checkStoredBatch',
 ]
 
 /** A method name written out: a string literal, or a template literal without holes. */
