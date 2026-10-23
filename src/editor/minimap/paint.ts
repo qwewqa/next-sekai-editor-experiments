@@ -68,19 +68,21 @@ export type PaintSource = {
     mapping: MinimapMapping
 }
 
-/** A connector's lane span at a time on the Basic rule, matching the chart's `edgeAt`. */
+/**
+ * A connector's lane span at a time on the Basic rule, matching the chart's edgeAt. The times
+ * of its attachment ends are the caller's, so a body's samples do not look them up again.
+ */
 export const basicConnectorSpan = (
     connector: ConnectorEntity,
+    attachHeadTime: number,
+    attachTailTime: number,
     time: number,
-    bpms: State['bpms'],
 ) => {
     const { attachHead, attachTail } = connector
-    const f = safeUnlerpClamped(
-        beatToTime(bpms, attachHead.beat),
-        beatToTime(bpms, attachTail.beat),
-        time,
+    const q = ease(
+        attachHead.connectorEase,
+        safeUnlerpClamped(attachHeadTime, attachTailTime, time),
     )
-    const q = ease(attachHead.connectorEase, f)
     const size = lerp(attachHead.size, attachTail.size, q)
     return {
         left: lerp(attachHead.left, attachTail.left, q) + Math.min(size, 0) / 2,
@@ -117,7 +119,13 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
             const { head, tail, segmentHead, segmentTail } = connector
             const tHead = beatToTime(bpms, head.beat)
             const tTail = beatToTime(bpms, tail.beat)
-            const count = Math.max(1, Math.ceil((rowOf(tHead) - rowOf(tTail)) / SAMPLE_ROWS))
+            const tAttachHead = beatToTime(bpms, connector.attachHead.beat)
+            const tAttachTail = beatToTime(bpms, connector.attachTail.beat)
+            // On the Basic rule a linear ease is a straight edge, so its two ends are exact.
+            const straight = !layout && connector.attachHead.connectorEase === 'linear'
+            const count = straight
+                ? 1
+                : Math.max(1, Math.ceil((rowOf(tHead) - rowOf(tTail)) / SAMPLE_ROWS))
             xs.length = xe.length = ys.length = 0
             for (let i = 0; i <= count; i++) {
                 const time = i === 0 ? tHead : i === count ? tTail : lerp(tHead, tTail, i / count)
@@ -126,7 +134,7 @@ export const createPainter = (ctx: CanvasRenderingContext2D, source: PaintSource
                           connector,
                           i === 0 ? head.beat : i === count ? tail.beat : timeToBeat(bpms, time),
                       )
-                    : basicConnectorSpan(connector, time, bpms)
+                    : basicConnectorSpan(connector, tAttachHead, tAttachTail, time)
                 const [x0, x1] = mapping.spanToX(position.left, position.size)
                 xs.push(x0 * scale)
                 xe.push(x1 * scale)
