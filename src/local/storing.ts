@@ -7,6 +7,7 @@ import {
 } from '../editor/commands/exportLevel/memory'
 import { setTargetLock } from '../editor/commands/exportLevel/targetLock'
 import { setFileActions } from '../editor/file'
+import { configureHeldBgm, decodeBgmData, withCachedBgm } from '../editor/media/heldBgm'
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
@@ -497,7 +498,9 @@ export const startStoring = (
     // A restored undo slot is built from its stored records, verified, when Undo or Redo reaches it.
     // Right after a reload, a slot the resumed import hasn't brought yet loads once it has: the
     // load waits for the resume to start, then for the import, and tries again (§1.5.4).
-    const load = slotLoader((hex) => worker.call('readSnapshotVerified', hex))
+    const read = slotLoader((hex) => worker.call('readSnapshotVerified', hex))
+    // A BGM this tab holds is attached to the slot it names, so Undo and Redo land with audio.
+    const load = async (snapshot: Uint8Array) => withCachedBgm(await read(snapshot))
     setSlotLoader(async (snapshot) => {
         try {
             return await load(snapshot)
@@ -518,6 +521,15 @@ export const startStoring = (
             await whenImported(id)
             return load(snapshot)
         }
+    })
+
+    // A state that names audio it does not hold gets it from the media store (§1.6.8.4).
+    configureHeldBgm({
+        read: (hash, size) =>
+            worker.call('readMedia', hash, { timeoutMs: mediaTimeoutMs(size ?? 0) }),
+        decode: decodeBgmData,
+        store: (item) =>
+            worker.call('storeMedia', item, { timeoutMs: mediaTimeoutMs(item.bytes.byteLength) }),
     })
 
     // History's entries are peeked from memory or their stored snapshots (§1.4.11).
