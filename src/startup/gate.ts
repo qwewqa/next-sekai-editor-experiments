@@ -48,8 +48,10 @@ type GateState = {
     slow: boolean
     /** The failed startup's own text. */
     error: string
-    /** Export Raw Data… on the error state, once it is built (Step 8); undefined until then. */
+    /** Export Raw Data… on the error state, registered by `setRawExport`; undefined until then. */
     rawExport: RawExport | undefined
+    /** Its export is running: the button waits, so a second press starts no second download. */
+    rawExportRunning: boolean
     /** What the last Export Raw Data… press says, if it did not go through whole. */
     rawExportNote: string | undefined
 }
@@ -60,6 +62,7 @@ export const startupGate = shallowReactive<GateState>({
     slow: false,
     error: '',
     rawExport: undefined,
+    rawExportRunning: false,
     rawExportNote: undefined,
 })
 
@@ -203,12 +206,15 @@ export const setRawExport = (rawExport: RawExport | undefined) => {
 /** The error state's button: runs the export and shows its line, a failure included. */
 export const runRawExport = async () => {
     const { rawExport } = startupGate
-    if (!rawExport) return
+    if (!rawExport || startupGate.rawExportRunning) return
+    startupGate.rawExportRunning = true
     startupGate.rawExportNote = undefined
     try {
         startupGate.rawExportNote = await rawExport.run()
     } catch (error) {
         // The export says its own failures; this is a bug in it.
         console.error(error)
+    } finally {
+        startupGate.rawExportRunning = false
     }
 }
