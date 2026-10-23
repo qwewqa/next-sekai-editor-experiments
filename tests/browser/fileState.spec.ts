@@ -631,7 +631,7 @@ test.describe('the label and the title', () => {
                     .evaluate((element) => element.closest('fieldset')),
             ).toBeNull()
             await afterGuard(page)
-            await page.getByRole('button', { name: 'Confirm', exact: true }).click()
+            await page.getByRole('button', { name: 'OK', exact: true }).click()
             const after = await page.evaluate(async () => {
                 const { state, liveState, isPeeking } =
                     (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
