@@ -47,7 +47,10 @@ export type Notice = {
 
 let id = 0
 
-/** How many load notices the start-up card shows before "and N more in Local Data" (Part 1 §1.4.3). */
+/**
+ * How many load notices the start-up card shows before "and N more in Local Data" (Part 1 §1.4.3).
+ * One more would be a row as tall as the line it hides, so that many show whole.
+ */
 export const PILL_NOTICES = 3
 
 // "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with What’s New (Part 1 §1.4.3).
@@ -169,7 +172,7 @@ export const setLocalDataOpener = (open: () => void) => {
 
 const pillLines = (): NoticeLine[] => {
     const notices = loadNotices.value
-    const shown = notices.slice(0, PILL_NOTICES)
+    const shown = notices.length > PILL_NOTICES + 1 ? notices.slice(0, PILL_NOTICES) : notices
     const lines: NoticeLine[] = [...titleLines(), ...shown]
     if (notices.length > shown.length)
         lines.push({
@@ -306,6 +309,37 @@ export const dismissNoticeCard = () => {
     if (!noticeCard.value) return
     noticeCard.value = undefined
     cardInDialog.value = false
+    track()
+}
+
+/**
+ * Takes what offers `action` off the card, because what it offered is done (a BGM attached): the
+ * card itself when nothing else is on it, else its other rows.
+ */
+export const dropCardAction = (action: NoticeAction) => {
+    const card = noticeCard.value
+    if (!card) return
+    const { lines } = card
+    if (!lines) {
+        if (card.action === action) dismissNoticeCard()
+        return
+    }
+    if (!lines.some((line) => line.action === action)) return
+    const rest = lines.filter((line) => line.action !== action)
+    const [only] = rest
+    if (!only || rest.every((line) => line.heading)) {
+        dismissNoticeCard()
+        return
+    }
+    // A new id hands back the focus the removed button held.
+    noticeCard.value = {
+        ...card,
+        id: id++,
+        lines: rest,
+        message: card.startup ? () => rest.map((line) => line.message()).join('\n') : only.message,
+        action: rest.find((line) => line.action)?.action,
+        announcement: undefined,
+    }
     track()
 }
 

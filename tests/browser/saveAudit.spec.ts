@@ -121,7 +121,8 @@ test('after a reload the BGM row, its size and the total match what the Save wri
     await pressSave(page)
     const dialog = saveDialog(page)
     const bgm = dialog.locator('[data-save-row="bgm"]')
-    await expect(sizeText(dialog, 'bgm')).toHaveText('song.mp3 · 400 kB')
+    await expect(sizeText(dialog, 'bgm')).toHaveText('400 kB')
+    await expect(bgm.locator('[data-save-name-line]')).toHaveText('song.mp3')
     await expect(bgm).not.toContainText('not loaded')
     await expect(bgm.getByRole('checkbox')).toBeEnabled()
     await expect(bgm.getByRole('checkbox')).toBeChecked()
@@ -223,7 +224,8 @@ test('the file opened by name keeps its BGM: ticked, disabled, "Already in" it',
     await expect(bgm).toContainText('Already in coconut.nxsp')
     await expect(bgm.getByRole('checkbox')).toBeDisabled()
     await expect(bgm.getByRole('checkbox')).toBeChecked()
-    await expect(sizeText(dialog, 'bgm')).toContainText('song.mp3 · 200 kB')
+    await expect(sizeText(dialog, 'bgm')).toHaveText('200 kB')
+    await expect(bgm.locator('[data-save-name-line]')).toHaveText('song.mp3')
 })
 
 test('a file without history opened by name: History is unticked and can be ticked (SF-4)', async ({
@@ -279,20 +281,17 @@ test.describe('Save to File…', () => {
         await start(page, { fileSystemAccess: false })
         await toFile(page, await earlierSession(page, 300_000))
         const dialog = saveDialog(page)
-        await expect(sizeText(dialog, 'bgm')).toHaveText('song.mp3 · 300 kB')
+        await expect(sizeText(dialog, 'bgm')).toHaveText('300 kB')
         expect(await totalBytes(dialog)).toBeGreaterThan(300_000)
         await expect(dialog.locator('[data-save-row="bgm"]').getByRole('checkbox')).toBeChecked()
     })
 
-    test('a session without a BGM says so, and writes none', async ({ page }) => {
+    test('a session without a BGM has no BGM row, and writes none', async ({ page }) => {
         await start(page, { fileSystemAccess: false })
         await toFile(page, await earlierSession(page))
         const dialog = saveDialog(page)
-        await expect(sizeText(dialog, 'bgm')).toHaveText('No BGM')
-        await expect(dialog.locator('[data-save-row="bgm"]').getByRole('checkbox')).toBeDisabled()
-        await expect(
-            dialog.locator('[data-save-row="bgm"]').getByRole('checkbox'),
-        ).not.toBeChecked()
+        await expect(dialog.locator('[data-save-row="history"]')).toBeVisible()
+        await expect(dialog.locator('[data-save-row="bgm"]')).toHaveCount(0)
     })
 })
 

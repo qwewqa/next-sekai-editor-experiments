@@ -296,7 +296,7 @@ const settingsProperties = {
     toolbar: Type.Codec(
         Type.Array(storedNames(), {
             default: [
-                ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
+                ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
                 [
                     'previewAssets',
                     'offset',

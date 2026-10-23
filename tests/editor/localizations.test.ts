@@ -282,8 +282,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'peek.notes',
         // "BGM", as in its other strings.
         'save.bgm',
-        // A name and a size.
-        'save.bgmSize',
         // French spells "Version" the same.
         'settings.about.version',
         'settings.editor.waveformVisualization.fft',
@@ -328,8 +326,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'open.media.bgm',
         // "BGM", as in its other strings.
         'save.bgm',
-        // A name and a size.
-        'save.bgmSize',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'utilities.previewEditor.bgm',
@@ -369,8 +365,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'open.media.bgm',
         // "BGM", as in its other strings.
         'save.bgm',
-        // A name and a size.
-        'save.bgmSize',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'workspace.folders.path',
@@ -407,8 +401,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.sentenceJoin',
         // "BGM", as in its other strings.
         'save.bgm',
-        // A name and a size.
-        'save.bgmSize',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'workspace.folders.path',
@@ -441,8 +433,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'open.media.bgm',
         // "BGM", as in its other strings.
         'save.bgm',
-        // A name and a size.
-        'save.bgmSize',
         'tools.bpm.title',
         'workspace.folders.path',
         'workspace.manager.copyName',
@@ -477,8 +467,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'open.media.bgm',
         // "BGM", as in its other strings.
         'save.bgm',
-        // A name and a size.
-        'save.bgmSize',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'utilities.previewEditor.bgm',

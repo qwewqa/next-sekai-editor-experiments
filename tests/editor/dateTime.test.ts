@@ -30,6 +30,15 @@ test('a date in a sentence joins its parts with no-break spaces', () => {
     assert.doesNotMatch(formatDateInSentence('ja', at(10, 15), now), / /)
 })
 
+test('a date in a sentence is the time when it was today', () => {
+    assert.equal(
+        formatDateInSentence('en', at(10, 16), now).replaceAll(/\p{Zs}/gu, ' '),
+        formatClock('en', at(10, 16)).replaceAll(/\p{Zs}/gu, ' '),
+    )
+    assert.doesNotMatch(formatDateInSentence('en', at(10, 16), now), /Oct/)
+    assert.equal(formatDateInSentence('fr', at(10, 16), now), '14:41')
+})
+
 test('the French sentences that carry a date do not end on it, whose abbreviation point would double', async () => {
     const { default: fr } = await import('../../src/i18n/fr/index.json', { with: { type: 'json' } })
     assert.match(formatDateInSentence('fr', at(10, 19), now), /\.$/)

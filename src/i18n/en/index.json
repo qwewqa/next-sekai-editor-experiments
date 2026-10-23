@@ -2144,9 +2144,7 @@
         "include": "Include",
         "historySize": "{0} step · {1}|{0} steps · {1}",
         "historyNote": "Anyone with the file can view its history.",
-        "noBgm": "No BGM",
         "bgmNotLoaded": "BGM not loaded",
-        "bgmSize": "{0} · {1}",
         "keptOptions": "Already in {0}",
         "noHistoryHere": "History requires a secure connection.",
         "sizeTotal": "Total: about {0}",
@@ -2224,7 +2222,7 @@
         "peekSessionFailed": "Could not view this session",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier steps are in History",
-        "bgmNotLoaded": "BGM not loaded",
+        "bgmNotLoaded": "The BGM is not loaded.",
         "savedCurrent": "Saved the current version to {0}"
     },
     "entry": {
@@ -2310,13 +2308,6 @@
         "changedOnDisk": "Changed on disk",
         "newerOnDisk": "Newer on disk",
         "notConfirmed": "Download not confirmed",
-        "short": {
-            "fileMissing": "Missing",
-            "changedOnDisk": "Changed",
-            "newerOnDisk": "Newer",
-            "notConfirmed": "Not confirmed",
-            "notStored": "Not stored"
-        },
         "changedOnDiskName": "\"{0}\": changed on disk since you opened or saved it here.",
         "newerOnDiskName": "\"{0}\": a newer version is on disk.",
         "notStored": "Not stored"

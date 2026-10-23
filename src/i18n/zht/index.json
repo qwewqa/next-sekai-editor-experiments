@@ -2144,9 +2144,7 @@
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "擁有該檔案的人可以查看其中的歷史記錄。",
-    "noBgm": "無 BGM",
     "bgmNotLoaded": "BGM 未載入",
-    "bgmSize": "{0} · {1}",
     "keptOptions": "已在 {0} 中",
     "noHistoryHere": "包含歷史記錄需要安全連線。",
     "sizeTotal": "總計：約 {0}",
@@ -2224,7 +2222,7 @@
     "peekSessionFailed": "無法檢視此工作階段",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中",
-    "bgmNotLoaded": "BGM 未載入",
+    "bgmNotLoaded": "BGM 未載入。",
     "savedCurrent": "已將目前版本儲存到 {0}"
   },
   "entry": {
@@ -2310,13 +2308,6 @@
     "changedOnDisk": "磁碟上已變更",
     "newerOnDisk": "磁碟上有較新版本",
     "notConfirmed": "下載未確認",
-    "short": {
-      "fileMissing": "遺失",
-      "changedOnDisk": "已變更",
-      "newerOnDisk": "較新",
-      "notConfirmed": "未確認",
-      "notStored": "未存放"
-    },
     "changedOnDiskName": "\"{0}\"：自你在此處開啟或儲存後，磁碟上的檔案已變更。",
     "newerOnDiskName": "\"{0}\"：磁碟上有較新版本。",
     "notStored": "未存放"

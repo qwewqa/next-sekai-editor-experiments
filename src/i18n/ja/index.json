@@ -2144,9 +2144,7 @@
     "include": "含める",
     "historySize": "{0} 操作 · {1}",
     "historyNote": "ファイルを持つ人は、その履歴を見ることができます。",
-    "noBgm": "BGM なし",
     "bgmNotLoaded": "BGM が読み込まれていません",
-    "bgmSize": "{0} · {1}",
     "keptOptions": "{0} に含まれています",
     "noHistoryHere": "履歴を含めるには安全な接続が必要です。",
     "sizeTotal": "合計: 約 {0}",
@@ -2224,7 +2222,7 @@
     "peekSessionFailed": "このセッションを表示できませんでした",
     "openHistory": "履歴を開く",
     "earlierInHistory": "それ以前の操作は履歴にあります",
-    "bgmNotLoaded": "BGM が読み込まれていません",
+    "bgmNotLoaded": "BGM が読み込まれていません。",
     "savedCurrent": "現在のバージョンを {0} に保存しました"
   },
   "entry": {
@@ -2310,13 +2308,6 @@
     "changedOnDisk": "ディスク上で変更",
     "newerOnDisk": "ディスク上のほうが新しい",
     "notConfirmed": "ダウンロード未確認",
-    "short": {
-      "fileMissing": "ファイルなし",
-      "changedOnDisk": "変更あり",
-      "newerOnDisk": "新しい",
-      "notConfirmed": "未確認",
-      "notStored": "未保管"
-    },
     "changedOnDiskName": "「{0}」: ここで開いた後または保存した後にディスク上で変更されました。",
     "newerOnDiskName": "「{0}」: ディスク上により新しいバージョンがあります。",
     "notStored": "未保管"

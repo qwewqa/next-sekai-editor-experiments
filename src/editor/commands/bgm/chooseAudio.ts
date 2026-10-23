@@ -11,7 +11,7 @@ import { releaseWaveform } from '../../../waveform'
 import { bgmOperation } from '../../headerLabels'
 import { applyPick, type PickedBgm } from '../../media/applyPick'
 import { bgmStatus, claimNotice, onUnheldAfterMove } from '../../media/heldBgm'
-import { notify, type NoticeAction, type NoticeLine } from '../../notification'
+import { dropCardAction, notify, type NoticeAction, type NoticeLine } from '../../notification'
 import { loadPickedBgm } from './loadPicked'
 
 // Choose Audio… (Part 1 §1.6.8.4, Step 7 design §3.6): the action of every "BGM not loaded" line.
@@ -47,6 +47,8 @@ export const chooseAudio = async () => {
         return
     }
     const outcome = applyPick(picked, id, bgmOperation)
+    // The audio is back: the line that offered it is not true any more.
+    if (outcome.kind === 'attached') dropCardAction(chooseAudioAction)
     if (outcome.kind !== 'changed') return
     const { decision } = outcome
     // A file for audio the state named and lacked says that it is another file.
@@ -69,7 +71,7 @@ export const chooseAudioAction: NoticeAction = {
 
 /** The not-loaded line, as a row of a card or a card of its own. */
 const unheldLine = (): NoticeLine => ({
-    message: () => i18n.value.notice.bgmNotLoaded,
+    message: () => i18n.value.load.bgmNotLoaded,
     severity: 'info',
     action: chooseAudioAction,
 })
@@ -91,7 +93,7 @@ export const takeBgmLine = async (): Promise<NoticeLine | undefined> => {
 
 // Undo or Redo reached audio nothing holds: a card of its own, beside the quick “Undid…” notice.
 onUnheldAfterMove(() => {
-    notify(() => i18n.value.notice.bgmNotLoaded, {
+    notify(() => i18n.value.load.bgmNotLoaded, {
         card: true,
         severity: 'info',
         action: chooseAudioAction,

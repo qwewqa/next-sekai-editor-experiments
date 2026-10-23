@@ -91,8 +91,13 @@ const classes = (button: ChoiceButton) =>
                 <div class="flex shrink-0 flex-col gap-1" :class="{ 'items-stretch': stacked }">
                     <button
                         type="button"
-                        class="btn h-9 min-w-24 max-w-full rounded-full px-4"
-                        :class="[classes(button), stacked ? 'w-full' : 'whitespace-nowrap']"
+                        class="btn min-h-9 min-w-24 max-w-full rounded-full px-4"
+                        :class="[
+                            classes(button),
+                            stacked
+                                ? 'h-auto w-full py-1.5 leading-tight'
+                                : 'h-9 whitespace-nowrap',
+                        ]"
                         :disabled="button.disabled"
                         :data-autofocus="button.default || undefined"
                         :data-choice="
@@ -106,7 +111,7 @@ const classes = (button: ChoiceButton) =>
                     <div
                         v-if="button.description"
                         :id="`${ids}-${index}`"
-                        class="px-2 text-sm opacity-75"
+                        class="px-2 text-sm text-fg/80"
                     >
                         {{ button.description() }}
                     </div>
