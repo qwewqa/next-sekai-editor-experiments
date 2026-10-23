@@ -39,19 +39,21 @@ export function appVersion({ cwd = process.cwd() } = {}) {
     return { version, appVersion: version, atTag: false }
 }
 
-const parse = (tag) => {
+/** `[major, minor, patch]` of a `vX.Y.Z` tag, else null. */
+export const parseTag = (tag) => {
     const match = versionTag.exec(tag)
     return match && match.slice(1).map(Number)
 }
 
-const compare = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
+/** Negative, zero or positive as version `a` is below, equal to or above `b`. */
+export const compareVersions = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
 
 /** Whether `tag` is the highest version tag in `tags`; tags that aren't `vX.Y.Z` are ignored. */
 export function isHighestTag(tag, tags) {
-    const mine = parse(tag)
+    const mine = parseTag(tag)
     if (!mine) return false
     return tags.every((other) => {
-        const theirs = parse(other)
-        return !theirs || compare(theirs, mine) <= 0
+        const theirs = parseTag(other)
+        return !theirs || compareVersions(theirs, mine) <= 0
     })
 }
