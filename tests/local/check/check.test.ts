@@ -155,8 +155,10 @@ test('after Check removes a damaged cover with no copy, the next Save writes tha
     assert.equal(read.open, 'full')
     assert.equal(read.media.cover, undefined)
     assert.notEqual(read.media.preview, undefined)
-    assert.equal(read.project?.metadata?.cover?.hash, COVER.ref.hash)
-    assert.equal(read.project?.metadata?.cover?.file, undefined)
+    // The state still names it, as metadata only.
+    const cover = read.project?.metadata?.cover
+    assert.ok(cover && cover.file === undefined)
+    assert.equal(cover.hash, COVER.ref.hash)
 })
 
 test('read-only storage (?safe): the same report, and nothing written', async () => {

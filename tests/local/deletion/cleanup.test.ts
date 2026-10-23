@@ -176,7 +176,11 @@ test('an Undo onto a step whose BGM went stores it again when the tab attached i
         liveHeld: () => (live.state ? heldMediaOf(live.state) : []),
     })
     await daysPass(world)
-    assert.equal((await clean(Number.MAX_SAFE_INTEGER)).items, 2)
+    assert.deepEqual(await clean(Number.MAX_SAFE_INTEGER), {
+        kind: 'removed',
+        bytes: 8192 + 2048,
+        items: 2,
+    })
     // A restored slot names its audio by hash only; the tab's cache attaches the bytes to the live
     // state without a step.
     const bgm = { ...states.middle.bgm }
