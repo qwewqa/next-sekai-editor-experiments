@@ -31,7 +31,7 @@ const synthesise = (page: Page, count: number) =>
             )
     }, count)
 
-/** Adds an older stored entry that was removed to save space: an unavailable row. */
+/** Adds an older stored entry that was not kept: an unavailable row. */
 const seedRemoved = (page: Page) =>
     page.evaluate(async () => {
         const start =

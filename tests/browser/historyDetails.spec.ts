@@ -335,12 +335,12 @@ test('steps without a record of their own are plain rows with no disclosure', as
     expect(first! - row).toBe(8 + 12 + 8)
 })
 
-test('the meta line says when a step was removed to save space or is damaged', async ({ page }) => {
+test('the meta line says when a step was not kept or is damaged', async ({ page }) => {
     await openDetails(page, [op('nse.note.add', { created: 5 })], {
         flags: { removed: true, damaged: false },
     })
     await expect(root(page).locator('[data-operation-time]')).toHaveText(
-        'Oct 19, 5:34:56 AM · removed to save space',
+        'Oct 19, 5:34:56 AM · not kept',
     )
     await page.keyboard.press('Escape')
     await expect(details(page)).toHaveCount(0)
@@ -372,7 +372,7 @@ test('a step of a group shows its own flag after its label', async ({ page }) =>
     await expect(labels).toHaveText([
         'Added 2 notes',
         'Added 2 notes',
-        'Added 2 notes · removed to save space',
+        'Added 2 notes · not kept',
     ])
     await expect(labels.last().locator('span', { hasText: '·' })).toHaveClass(/text-fg\/80/)
 })
@@ -390,7 +390,7 @@ test('a step shows its flag only when it differs from the group row’s', async 
         memberFlags: { 0: removed, 1: removed, 2: removed },
     })
     await expect(root(page).locator('[data-operation-time]')).toHaveText(
-        'Oct 19, 5:34:56 AM · removed to save space',
+        'Oct 19, 5:34:56 AM · not kept',
     )
     const labels = details(page).locator('[data-operation-step] > span.flex-1')
     await expect(labels).toHaveText(['Added 2 notes', 'Added 2 notes', 'Added 2 notes'])

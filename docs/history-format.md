@@ -122,7 +122,7 @@ Database `nse-local-data`, `DB_VERSION` 1 (`src/local/db.ts`). Upgrades only add
 - **Check File and History…** removes a media row that still fails its re-hash inside the same exclusive hold (section 2.8), with no epoch bump, since every flush checks media by key.
 - **When.** The maintenance runner (`src/local/maintenance.ts`) runs the reclaim, the sweep and GC (the one GC call, due through `deletionsPending`) at load idle once the page is visible, on becoming visible (at most once a minute), when a mark falls due, and 30 s after a run that found `nse-maint` held or GC busy or stopped. It starts only with Web Locks. The reclaim (`reclaimOrphans`, `src/editor/save/env.ts`) removes a deleted chain's `saving.*` marker, `revoke.*` key and `nse-kept` copy once a record read finds no chain.
 
-`meta.epoch` rises in every transaction that deletes a node or chunk (GC's, which bumps for media too). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair, so a hash GC removed is stored again. The Timeline's "removed to save space" label comes from `kept: false` rows.
+`meta.epoch` rises in every transaction that deletes a node or chunk (GC's, which bumps for media too). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair, so a hash GC removed is stored again. The Timeline’s "not kept" label comes from `kept: false` rows.
 
 ### 2.4 Entries
 
