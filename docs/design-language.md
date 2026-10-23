@@ -39,6 +39,7 @@ Surfaces step up from the chart: chrome, then panels, then bands, then controls.
 - *Box and cursor:* the box is the part of the chart in view, `border border-white/70 bg-white/10`, square, at least 8 px tall, with a `CanvasText` border in forced colours. The cursor is a 1 px `bg-white` line, as the chart's cursor is white.
 - *Pointer:* `cursor-pointer` on the strip, `cursor-grab` on the box and `cursor-grabbing` while it is held. No hover state and no focus state: the strip is `aria-hidden`, a pointer shortcut whose keyboard equivalents are Jump to Start and End and the Page Up and Down scrolls.
 - *Peek:* the mint ring stays on the chart pane (`PeekBar.vue`); the strip adds none of its own.
+- *Change ticks:* while the chart marks a peeked step's changes, `CHANGE_COLOR` ticks in a 3 px column at the strip's left edge, one per place and merged into runs, at least 2 px tall. They never reach the notes. The content takes `opacity-45` while the chart dims, with no ticks during the read hold.
 
 ## 2. Shape
 

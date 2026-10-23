@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
+import { row as historyRow } from './historyJourney'
 
 // The minimap strip's placement, input, command and setting (Part 1 §1.4.22). Its drawing is
 // minimapContent.spec.ts's; the rows here read the content canvas only to tell shown from absent.
@@ -595,6 +596,209 @@ test.describe('peek', () => {
 
         await act(page, 'leavePeek')
         await expect.poll(() => pixelsAround(page, 30)).toBe(withNote)
+    })
+
+    // --- Change ticks (C): the peeked step's changed places, in the tick column.
+
+    type Step =
+        | { kind: 'move'; from: number; to: number }
+        | { kind: 'slide'; beats: number[] }
+        | { kind: 'bpm'; beat: number; bpm: number }
+
+    /** Pushes one native step through the transaction, as the History specs do. */
+    const pushStep = (page: Page, label: string, step: Step) =>
+        page.evaluate(
+            async ({ label, step }) => {
+                const { appImport, history, historySteps } = window.editorTest
+                const [{ createTransaction }, notes, bpm, { noteObjectOf }, { createSlideId }] =
+                    await Promise.all([
+                        appImport<typeof import('../../src/state/transaction')>(
+                            '/src/state/transaction.ts',
+                        ),
+                        appImport<typeof import('../../src/state/mutations/slides/note')>(
+                            '/src/state/mutations/slides/note.ts',
+                        ),
+                        appImport<typeof import('../../src/state/mutations/bpm')>(
+                            '/src/state/mutations/bpm.ts',
+                        ),
+                        appImport<typeof import('../../src/local/records/extract')>(
+                            '/src/local/records/extract.ts',
+                        ),
+                        appImport<typeof import('../../src/state/entities/slides')>(
+                            '/src/state/entities/slides/index.ts',
+                        ),
+                    ])
+                const state = history.state.value
+                const transaction = createTransaction(state)
+                let receipt: import('../../src/history/operations').NativeOperationInput
+                if (step.kind === 'move') {
+                    const note = [...state.store.slides.note.values()]
+                        .flat()
+                        .find((note) => note.beat === step.from)!
+                    receipt = {
+                        id: 'nse.object.move',
+                        data: { subject: 'note', changed: { note: 1 } },
+                    }
+                    notes.replaceNote(transaction, note, { ...noteObjectOf(note), beat: step.to })
+                } else if (step.kind === 'slide') {
+                    receipt = { id: 'nse.note.add', data: { created: step.beats.length } }
+                    const template = noteObjectOf([...state.store.slides.note.values()].flat()[0]!)
+                    const slideId = createSlideId()
+                    for (const beat of step.beats)
+                        notes.addNote(transaction, slideId, { ...template, beat })
+                } else {
+                    receipt = {
+                        id: 'nse.object.edit',
+                        data: { subject: 'bpm', changed: { bpm: 1 } },
+                    }
+                    bpm.addBpm(transaction, { beat: step.beat, bpm: step.bpm, meter: 4 })
+                }
+                // An unknown extension keeps the change view to the plain shapes.
+                const operation = {
+                    ...historySteps.nativeOperation(receipt, label),
+                    futureFixture: true,
+                }
+                history.pushState(operation, transaction.commit([]))
+            },
+            { label, step },
+        )
+
+    /** The ticks: runs of orange rows in the annotation canvas's tick column, in CSS px. */
+    const tickRows = (page: Page) =>
+        page.evaluate(() => {
+            const canvas = document.querySelectorAll<HTMLCanvasElement>('[data-minimap] canvas')[1]
+            if (!canvas) return []
+            const scale = canvas.width / canvas.clientWidth
+            const { data } = canvas.getContext('2d')!.getImageData(0, 0, 3, canvas.height)
+            const runs: [number, number][] = []
+            for (let y = 0; y < canvas.height; y++) {
+                const i = y * 3 * 4
+                // Orange, #ff9b42: red high, blue low.
+                if (data[i + 3]! < 200 || data[i]! < 200 || data[i + 2]! > 120) continue
+                const last = runs.at(-1)
+                if (last && y / scale - last[1] <= 1.01) last[1] = y / scale
+                else runs.push([y / scale, y / scale])
+            }
+            return runs
+        })
+
+    /** Whether anything is drawn outside the tick column. */
+    const marksBeyondColumn = (page: Page) =>
+        page.evaluate(() => {
+            const canvas = document.querySelectorAll<HTMLCanvasElement>('[data-minimap] canvas')[1]
+            if (!canvas) return false
+            const scale = canvas.width / canvas.clientWidth
+            const from = Math.ceil(3 * scale)
+            const { data } = canvas
+                .getContext('2d')!
+                .getImageData(from, 0, canvas.width - from, canvas.height)
+            return data.some((value, i) => i % 4 === 3 && value > 0)
+        })
+
+    /** Peeks a step by its row in the History panel, as the user does. */
+    const peekRow = async (page: Page, title: string) => {
+        const dock = page.locator('[data-workspace-dock="right"]')
+        await dock.getByRole('tab', { name: 'History' }).click()
+        await historyRow(page, title, 'panel').click()
+        await expect.poll(() => isPeeking(page)).toBe(true)
+    }
+
+    const contentOpacity = (page: Page) =>
+        page.evaluate(
+            () => document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')!.style.opacity,
+        )
+
+    /** The CSS row of a time on the strip. */
+    const rowOf = async (page: Page, time: number) => {
+        const { end } = await statsOf(page)
+        const height = await page.locator('[data-minimap]').evaluate((el) => el.clientHeight)
+        return 4 + (height - 8) * (1 - time / end)
+    }
+
+    const near = (runs: [number, number][], y: number) =>
+        runs.some(([from, to]) => from - 2 <= y && y <= to + 2)
+
+    test('a moved note is ticked at its old and new rows, and the strip dims while they show', async ({
+        page,
+    }) => {
+        const first = await newestSeq(page)
+        // Beat 5 is 2.5 s at the fixture's 120 BPM; beat 100 is 50 s.
+        await pushStep(page, 'Moved 1 note', { kind: 'move', from: 5, to: 100 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 1)
+        expect(await tickRows(page)).toEqual([])
+        expect(await contentOpacity(page)).toBe('')
+
+        await peekRow(page, 'Moved 1 note')
+        await expect.poll(() => contentOpacity(page)).toBe('0.45')
+        await expect.poll(async () => (await tickRows(page)).length).toBeGreaterThan(0)
+        const runs = await tickRows(page)
+        expect(near(runs, await rowOf(page, 2.5))).toBe(true)
+        expect(near(runs, await rowOf(page, 50))).toBe(true)
+        // Only those two places, and only in the tick column.
+        expect(runs.length).toBe(2)
+        expect(await marksBeyondColumn(page)).toBe(false)
+
+        await act(page, 'leavePeek')
+        await expect.poll(() => contentOpacity(page)).toBe('')
+        await expect.poll(async () => (await tickRows(page)).length).toBe(0)
+    })
+
+    test('a note moved within its slide is ticked at its old and new rows', async ({ page }) => {
+        const first = await newestSeq(page)
+        // Beats 20 and 30 are 10 s and 15 s; the tail moves to beat 36 (18 s), near enough to pair.
+        await pushStep(page, 'Added a slide', { kind: 'slide', beats: [20, 30] })
+        await pushStep(page, 'Moved the tail', { kind: 'move', from: 30, to: 36 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 2)
+        await peekRow(page, 'Moved the tail')
+        await expect.poll(async () => (await tickRows(page)).length).toBeGreaterThan(0)
+        const runs = await tickRows(page)
+        expect(near(runs, await rowOf(page, 15))).toBe(true)
+        expect(near(runs, await rowOf(page, 18))).toBe(true)
+        await act(page, 'leavePeek')
+    })
+
+    test('with Show Edits off the strip has no ticks and is not dimmed', async ({ page }) => {
+        const first = await newestSeq(page)
+        await pushStep(page, 'Moved 1 note', { kind: 'move', from: 5, to: 100 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 1)
+        await page.evaluate(() => {
+            window.editorTest.settings.dimUnchangedObjects = false
+        })
+        await peekRow(page, 'Moved 1 note')
+        // The change is known, and the chart marks none of it.
+        await expect
+            .poll(() =>
+                page.evaluate(async () => {
+                    const { comparisonStatus, changeMarks } = await window.editorTest.appImport<
+                        typeof import('../../src/editor/history/changes')
+                    >('/src/editor/history/changes.ts')
+                    return [comparisonStatus.value, changeMarks.value]
+                }),
+            )
+            .toEqual(['known', undefined])
+        await frames(page, 5)
+        expect(await tickRows(page)).toEqual([])
+        expect(await contentOpacity(page)).toBe('')
+        await act(page, 'leavePeek')
+    })
+
+    test('a tempo change is ticked at its beat on the peeked tempo', async ({ page }) => {
+        const first = await newestSeq(page)
+        // A note far out gives the strip the range, which ends beyond the tempo changes.
+        await pushStep(page, 'Moved far', { kind: 'move', from: 9, to: 60 })
+        // 120 BPM to beat 10 (5 s), then 60 BPM: beat 20 is at 15 s, where a flat 120 BPM has 10 s.
+        await pushStep(page, 'Slower', { kind: 'bpm', beat: 10, bpm: 60 })
+        await pushStep(page, 'Faster', { kind: 'bpm', beat: 20, bpm: 90 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 3)
+        await peekRow(page, 'Faster')
+        await expect.poll(async () => (await tickRows(page)).length).toBeGreaterThan(0)
+        const runs = await tickRows(page)
+        expect(runs.length).toBe(1)
+        const y = await rowOf(page, 15)
+        expect(near(runs, y)).toBe(true)
+        // The flat-tempo row is far enough away to tell.
+        expect(Math.abs((await rowOf(page, 10)) - y)).toBeGreaterThan(4)
+        await act(page, 'leavePeek')
     })
 
     test('Escape mid-drag keeps the peek', async ({ page }) => {
