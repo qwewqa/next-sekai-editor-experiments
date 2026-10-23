@@ -1338,7 +1338,11 @@ export class Flusher {
             }
         // Bytes attached without a step: checked as held, so a head's missing media is stored again.
         for (const item of this.deps.liveHeld?.() ?? []) {
-            if (!referenced.has(item.hash) || sent.has(item.hash) || this.failedMedia.has(item.hash))
+            if (
+                !referenced.has(item.hash) ||
+                sent.has(item.hash) ||
+                this.failedMedia.has(item.hash)
+            )
                 continue
             sent.add(item.hash)
             if (this.resendMedia.has(item.hash)) media.push(item)

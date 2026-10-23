@@ -541,3 +541,55 @@ test('a damaged chain (no head id) is included, counted as not saved, and delete
     assert.deepEqual(checkStored(world.memory), [])
     await world.idle()
 })
+
+test('a damaged chain whose head session row is missing goes with that head’s entries and blocks', async () => {
+    const { world, chains, read, remove } = await setup(2)
+    const [damaged, plain] = chains as [Chain, Chain]
+    const head = damaged.second.id
+    await edit(world, (tx) => tx.delete('sessions', head))
+    const of = (store: string) =>
+        [...rows(world, store).values()].filter(
+            (row) => (row as { sessionId?: string }).sessionId === head,
+        )
+    assert.ok(of('entries').length && of('stackBlocks').length)
+    const found = await read()
+    assert.equal(byChain(found, damaged)?.readable, 'damaged')
+    assert.deepEqual(await remove(found.filter((chain) => chain.readable === 'damaged')), {
+        deleted: 1,
+        skipped: 0,
+    })
+    assert.ok(!stored(world, damaged))
+    assert.deepEqual([of('entries').length, of('stackBlocks').length], [0, 0])
+    assert.ok(stored(world, plain))
+    await world.idle()
+})
+
+test('a chain counted as saved whose file is taken over or revoked after the read is skipped', async () => {
+    const pending = new Set<string>()
+    const { world, chains, read, remove, calls } = await setup(3, {
+        revoked: (id) => pending.has(id),
+    })
+    const [takenOver, revoked, rebound] = chains as [Chain, Chain, Chain]
+    for (const chain of chains)
+        await patchChain(world, chain, {
+            hasContent: true,
+            file: { name: 'a.nxsp', event: 'saved', at: NOW, hash: await rootOf(world, chain) },
+        })
+    const found = await read()
+    assert.ok(found.every((chain) => !chain.notSaved))
+    // Another tab’s picker overwrote the file: `takeOver` drops the binding, as it leaves `updatedAt`.
+    await edit(world, async (tx) => {
+        const row = (await tx.get('chains', takenOver.first.chainId)) as Record<string, unknown>
+        const { file: _, ...rest } = row
+        await tx.put('chains', { ...rest, replaced: { by: 'other', at: NOW, name: 'a.nxsp' } })
+    })
+    // A revocation storage could not take: only the localStorage key says so.
+    pending.add(revoked.first.chainId)
+    // Saved to another file since: a new binding.
+    await patchChain(world, rebound, {
+        file: { name: 'b.nxsp', event: 'saved', at: NOW + 1, hash: await rootOf(world, rebound) },
+    })
+    assert.deepEqual(await remove(found), { deleted: 0, skipped: 3 })
+    for (const chain of chains) assert.ok(stored(world, chain))
+    assert.deepEqual(calls.results, ['changed', 'changed'])
+})

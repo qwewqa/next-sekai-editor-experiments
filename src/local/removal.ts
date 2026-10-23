@@ -14,6 +14,10 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
 /** A chain's head session id; a damaged chain has none, and removal is then expected against none. */
 const headIdOf = (chain: Row) => (typeof chain.head === 'string' ? chain.head : undefined)
 
+/** The `at` of a chain's file binding: a takeover or a revocation changes it or removes it. */
+export const fileAtOf = (chain: Row) =>
+    isRow(chain.file) && typeof chain.file.at === 'number' ? chain.file.at : undefined
+
 /** The stores a removal writes. */
 export const REMOVE_STORES = ['chains', 'sessions', 'entries', 'stackBlocks', HANDLES, 'meta']
 
@@ -40,7 +44,7 @@ export type RemoveRequest = {
     /** The chain's sessions as the page read and locked them, oldest first. */
     locked: string[]
     /** The chain as read: removal is refused when it changed since. A damaged chain has no `head`. */
-    expect: { head?: string; updatedAt: number; deleting?: number }
+    expect: { head?: string; updatedAt: number; deleting?: number; fileAt?: number }
     /** `delete` removes only a chain carrying this mark; `deleteSessions` only an unmarked one. */
     reason: 'delete' | 'deleteSessions'
 }
@@ -65,9 +69,14 @@ export const removeTx = async (tx: KvTx, request: RemoveRequest): Promise<Remove
         return changed
     const mark = markOf(chain)
     if (mark !== expect.deleting || (reason === 'delete') !== (mark !== undefined)) return changed
+    // Delete Sessions… chose by whether the work is in a file, which a takeover since can change.
+    if (reason === 'deleteSessions' && fileAtOf(chain) !== expect.fileAt) return changed
     const rows = await sessionsOf(tx, chainId)
     if (!sameSet(ids(rows), locked)) return changed
-    for (const id of ids(rows)) {
+    // A damaged chain's head id with no session row may still have entries and blocks.
+    const head = expect.head
+    const orphan = head !== undefined && !(await tx.get('sessions', head))
+    for (const id of orphan ? [...ids(rows), head] : ids(rows)) {
         const range = KeyRange.bound([id, -Infinity], [id, Infinity])
         await tx.delete('entries', range)
         await tx.delete('stackBlocks', range)
