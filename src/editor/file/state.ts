@@ -1,6 +1,6 @@
 import { computed, shallowRef, watch } from 'vue'
 import { session, type SessionFile } from '../../history/session'
-import { headSnapshot, liveState, loadedHeadSnapshot } from '../../history/stack'
+import { headSnapshot, isDirty, liveState, loadedHeadSnapshot } from '../../history/stack'
 import { platform } from '../../platform'
 import type { State } from '../../state'
 import { fileActions } from './actions'
@@ -112,6 +112,12 @@ export const downloadNotConfirmed = computed(() => {
     if (!file || fileEvent.value !== 'downloaded' || file.confirmed) return false
     return platform.capabilities.unconfirmedDownloads || !downloadConfirmed.value
 })
+
+/**
+ * Whether the open session has work no file holds: changed since the file event when bound,
+ * otherwise any edit. A download counts as the file here, confirmed or not.
+ */
+export const workNotInFile = computed(() => (boundFile.value ? fileChanged.value : isDirty.value))
 
 /** Whether Save writes the bound file in place (Chromium) rather than downloading a copy. */
 export const writesInPlace = () => platform.capabilities.writeBack

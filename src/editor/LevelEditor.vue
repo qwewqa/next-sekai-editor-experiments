@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch, watchEffect, type Ref } from 'vue'
 import { isDynamicStages } from '../history/dynamicStages.ts'
-import { isDirty, slotLoading } from '../history'
+import { slotLoading } from '../history'
 import { folderPathParts, templateParts, type NamePart } from '../chart/folders'
 import { groupFolders, groups } from '../history/groups'
 import { stageFolders, stages } from '../history/stages'
@@ -27,6 +27,7 @@ import PeekBar from './history/PeekBar.vue'
 import ChangeBand from './history/ChangeBand.vue'
 import FileChip from './file/FileChip.vue'
 import { notStored } from './file/notStored'
+import { workNotInFile } from './file/state'
 import NotStoredBar from './NotStoredBar.vue'
 import StatusLabel from './StatusLabel.vue'
 import StatusScope from './StatusScope.vue'
@@ -101,7 +102,7 @@ const onResizeCancel = () => {
 
 // iOS and iPadOS have no leave prompt, so the bar is their strong sign while work is only here.
 const showNotStoredBar = computed(
-    () => detection().os === 'ios' && notStored.value !== undefined && isDirty.value,
+    () => detection().os === 'ios' && notStored.value !== undefined && workNotInFile.value,
 )
 // The bar sits above the chart. The chart is centred on `view.time`, so when the bar's height
 // changes, the time moves with it and the chart holds still under the eye.

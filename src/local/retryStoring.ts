@@ -1,5 +1,4 @@
 import type { Flusher } from './flush'
-import type { StorageWorker } from './worker/client'
 import type { StorageStatus } from './worker/core'
 
 // Try Again for storing (Part 1 §1.6.7): the one retry behind the Not stored chip's dialog,
@@ -10,8 +9,13 @@ import type { StorageStatus } from './worker/core'
 /** Try Again waits about 3 s for other tabs, then moves what was stored in memory. */
 const TRY_AGAIN_TIMEOUT_MS = 30_000
 
-type RetryWorker = {
-    call: StorageWorker['call']
+/** What the retry needs of the page's worker client. */
+export type RetryWorker = {
+    call: (
+        method: 'tryAgain',
+        arg: undefined,
+        options: { timeoutMs: number },
+    ) => Promise<StorageStatus>
     readonly status: StorageStatus | undefined
 }
 
