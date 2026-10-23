@@ -601,27 +601,33 @@ test.describe('peek', () => {
     // --- Change ticks (C): the peeked step's changed places, in the tick column.
 
     type Step =
-        { kind: 'move'; from: number; to: number } | { kind: 'bpm'; beat: number; bpm: number }
+        | { kind: 'move'; from: number; to: number }
+        | { kind: 'slide'; beats: number[] }
+        | { kind: 'bpm'; beat: number; bpm: number }
 
     /** Pushes one native step through the transaction, as the History specs do. */
     const pushStep = (page: Page, label: string, step: Step) =>
         page.evaluate(
             async ({ label, step }) => {
                 const { appImport, history, historySteps } = window.editorTest
-                const [{ createTransaction }, notes, bpm, { noteObjectOf }] = await Promise.all([
-                    appImport<typeof import('../../src/state/transaction')>(
-                        '/src/state/transaction.ts',
-                    ),
-                    appImport<typeof import('../../src/state/mutations/slides/note')>(
-                        '/src/state/mutations/slides/note.ts',
-                    ),
-                    appImport<typeof import('../../src/state/mutations/bpm')>(
-                        '/src/state/mutations/bpm.ts',
-                    ),
-                    appImport<typeof import('../../src/local/records/extract')>(
-                        '/src/local/records/extract.ts',
-                    ),
-                ])
+                const [{ createTransaction }, notes, bpm, { noteObjectOf }, { createSlideId }] =
+                    await Promise.all([
+                        appImport<typeof import('../../src/state/transaction')>(
+                            '/src/state/transaction.ts',
+                        ),
+                        appImport<typeof import('../../src/state/mutations/slides/note')>(
+                            '/src/state/mutations/slides/note.ts',
+                        ),
+                        appImport<typeof import('../../src/state/mutations/bpm')>(
+                            '/src/state/mutations/bpm.ts',
+                        ),
+                        appImport<typeof import('../../src/local/records/extract')>(
+                            '/src/local/records/extract.ts',
+                        ),
+                        appImport<typeof import('../../src/state/entities/slides')>(
+                            '/src/state/entities/slides/index.ts',
+                        ),
+                    ])
                 const state = history.state.value
                 const transaction = createTransaction(state)
                 let receipt: import('../../src/history/operations').NativeOperationInput
@@ -634,6 +640,12 @@ test.describe('peek', () => {
                         data: { subject: 'note', changed: { note: 1 } },
                     }
                     notes.replaceNote(transaction, note, { ...noteObjectOf(note), beat: step.to })
+                } else if (step.kind === 'slide') {
+                    receipt = { id: 'nse.note.add', data: { created: step.beats.length } }
+                    const template = noteObjectOf([...state.store.slides.note.values()].flat()[0]!)
+                    const slideId = createSlideId()
+                    for (const beat of step.beats)
+                        notes.addNote(transaction, slideId, { ...template, beat })
                 } else {
                     receipt = {
                         id: 'nse.object.edit',
@@ -725,6 +737,20 @@ test.describe('peek', () => {
         await act(page, 'leavePeek')
         await expect.poll(() => contentOpacity(page)).toBe('')
         await expect.poll(async () => (await tickRows(page)).length).toBe(0)
+    })
+
+    test('a note moved within its slide is ticked at its old and new rows', async ({ page }) => {
+        const first = await newestSeq(page)
+        // Beats 20 and 30 are 10 s and 15 s; the tail moves to beat 36 (18 s), near enough to pair.
+        await pushStep(page, 'Added a slide', { kind: 'slide', beats: [20, 30] })
+        await pushStep(page, 'Moved the tail', { kind: 'move', from: 30, to: 36 })
+        await expect.poll(() => newestSeq(page)).toBe(first + 2)
+        await peekRow(page, 'Moved the tail')
+        await expect.poll(async () => (await tickRows(page)).length).toBeGreaterThan(0)
+        const runs = await tickRows(page)
+        expect(near(runs, await rowOf(page, 15))).toBe(true)
+        expect(near(runs, await rowOf(page, 18))).toBe(true)
+        await act(page, 'leavePeek')
     })
 
     test('with Show Edits off the strip has no ticks and is not dimmed', async ({ page }) => {
