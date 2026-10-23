@@ -1,4 +1,5 @@
 import { readDeleteCandidates } from '../candidates'
+import { removeCachedMedia } from '../cleanup'
 import { gcPass } from '../gc'
 import {
     markTx,
@@ -16,7 +17,7 @@ import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
 // The storage worker's deletion methods (deletion design §3.11): Delete's target, mark and Undo,
-// the marked chains a sweep removes, the removal transaction and GC. Every deleting transaction
+// the marked chains a sweep removes, the removal transaction, GC and cleanup under pressure. Every deleting transaction
 // runs inside `core.exclusive` (R1); the page holds the session locks (R3).
 
 export const maintHandlers = (context: WorkerContext) => ({
@@ -64,6 +65,9 @@ export const maintHandlers = (context: WorkerContext) => ({
             always: request?.always === true,
             ...(scope ? { tick: scope.tick } : {}),
         }),
+
+    /** Cleanup under pressure: cached earlier media, largest first, until `bytes` are freed. */
+    removeCachedMedia: (request: { bytes: number }) => removeCachedMedia(context.core, request),
 })
 
 export type MaintHandlers = ReturnType<typeof maintHandlers>

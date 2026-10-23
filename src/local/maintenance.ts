@@ -1,13 +1,17 @@
-import { detection } from '../platform/detect'
 import type { JournalStore, LockService } from '../platform/types'
 import { broadcastChannel } from './channel'
+import type { CleanupResult } from './cleanup'
 import { createDeletion, runGc, setDeletion, type DeletionDeps, type SweepResult } from './deletion'
 import { hasWebLocks, realTimers, type Timers } from './locks'
+import { relieveAtLoad, relieveFull, type PressureDeps, type PressureRun } from './pressure'
+import { retryStoring } from './retryStoring'
 import type { ReadWorker } from './storedRead'
+import type { StorageStatus } from './worker/core'
 
 // The maintenance runner (deletion design §3.10): when the deleting jobs run. One run at a time,
 // in order: reclaim what deleted chains left outside storage, sweep chains marked for Delete long
-// enough ago, GC, and at load a silent `persist()`. A trigger during a run queues one more run.
+// enough ago, GC, cleanup under pressure (at load when usage is high, and after storing paused for
+// a full browser), and at load a silent `persist()`. A trigger during a run queues one more run.
 // Jobs start only while the page is visible (the load's too); one already running when it hides runs
 // to its end. A page hidden at load still asks for `persist()`.
 
@@ -17,6 +21,9 @@ const VISIBLE_EVERY_MS = 60_000
 /** A run that found `nse-maint` held tries again this much later, while visible. */
 const BUSY_RETRY_MS = 30_000
 
+/** Cleanup reads every chain's head and media row in one transaction: past the usual timeout. */
+const CLEANUP_TIMEOUT_MS = 60_000
+
 export type RunnerDeps = {
     worker: ReadWorker
     /** Delete's sweep (`sweepDeleted`). */
@@ -25,6 +32,11 @@ export type RunnerDeps = {
     reclaim: () => Promise<void>
     /** Asks the browser to keep this origin's data: fire and forget, never awaited. */
     persist?: () => unknown
+    /** Cleanup under pressure: at load, and after storing paused for a full browser. */
+    pressure?: {
+        atLoad: () => Promise<PressureRun | undefined>
+        whenFull: () => Promise<PressureRun>
+    }
     visible: () => boolean
     timers: Timers
     now: () => number
@@ -56,7 +68,30 @@ export const createRunner = (deps: RunnerDeps) => {
     const askPersist = () => {
         if (persisted) return
         persisted = true
-        void Promise.resolve(deps.persist?.()).catch(() => undefined)
+        try {
+            void Promise.resolve(deps.persist?.()).catch(() => undefined)
+        } catch {
+            // Refused at once: everything works without it.
+        }
+    }
+
+    /** The pressure checks still owed: the load's, and one after storing paused full. */
+    const owedPressure = { load: false, full: false }
+
+    /** The owed pressure checks; true when one was busy and is owed again. */
+    const relieve = async () => {
+        const { pressure } = deps
+        if (!pressure) return false
+        let busy = false
+        if (owedPressure.load) {
+            owedPressure.load = false
+            if ((await pressure.atLoad())?.busy) busy = owedPressure.load = true
+        }
+        if (owedPressure.full) {
+            owedPressure.full = false
+            if ((await pressure.whenFull()).busy) busy = owedPressure.full = true
+        }
+        return busy
     }
 
     const runOnce = async (load: boolean) => {
@@ -64,7 +99,9 @@ export const createRunner = (deps: RunnerDeps) => {
         const swept = await deps.sweep()
         // Due after a removal through `deletionsPending`; a busy or aborted pass is retried.
         const gc = await runGc(deps.worker, false)
-        if (swept.busy || gc?.kind === 'busy' || gc?.kind === 'aborted') retryLater()
+        if (load) owedPressure.load = true
+        const pressed = await relieve().catch(() => false)
+        if (swept.busy || gc?.kind === 'busy' || gc?.kind === 'aborted' || pressed) retryLater()
         if (load) askPersist()
     }
 
@@ -72,7 +109,10 @@ export const createRunner = (deps: RunnerDeps) => {
     const trigger = (load = false): Promise<void> => {
         if (!deps.visible()) {
             owed = true
-            if (load) askPersist()
+            if (load) {
+                owedPressure.load = true
+                askPersist()
+            }
             return Promise.resolve()
         }
         if (running) {
@@ -110,14 +150,22 @@ export const createRunner = (deps: RunnerDeps) => {
     }
 
     return {
-        /** The load's run, at idle after startup. */
-        start: () => trigger(true),
+        /** The load's run, at idle after startup; `full` when storing is paused full already. */
+        start: (full = false) => {
+            if (full) owedPressure.full = true
+            return trigger(true)
+        },
         /** The page became visible. */
         visible: () => {
             const at = now()
             if (!owed && at - lastVisible < VISIBLE_EVERY_MS) return Promise.resolve()
             owed = false
             lastVisible = at
+            return trigger()
+        },
+        /** Storing paused for a full browser: a run with cleanup rounds and Try Again. */
+        full: () => {
+            owedPressure.full = true
             return trigger()
         },
         /** A Delete's sweep falls due at this wall time. */
@@ -130,12 +178,12 @@ export const createRunner = (deps: RunnerDeps) => {
     }
 }
 
-/** `persist()` on Chromium and WebKit only: Firefox would ask the user (§3.8). */
-const persist = () => {
-    const { engine } = detection()
-    if (engine !== 'chromium' && engine !== 'webkit') return
-    return navigator.storage.persist()
-}
+/**
+ * `persist()` wherever the browser has it, Firefox included, whose prompt is acceptable (DEL-D5
+ * changed). Best effort: a refusal, a rejection or `false` changes nothing.
+ */
+export const persistStorage = (storage: Partial<StorageManager> | undefined) =>
+    typeof storage?.persist === 'function' ? storage.persist() : undefined
 
 /** Updates lists in every tab, this one's included (another channel object hears it). */
 const updated = () => {
@@ -144,30 +192,53 @@ const updated = () => {
     channel.close()
 }
 
+/** The page's worker as the runner follows it: its calls and its status. */
+export type MaintenanceWorker = ReadWorker & {
+    readonly status: StorageStatus | undefined
+    onStatus: (listener: (status: StorageStatus) => void) => unknown
+}
+
 export type MaintenanceDeps = {
-    worker: ReadWorker
+    worker: MaintenanceWorker
     locks: LockService
     journal: JournalStore
     replayJournal: DeletionDeps['replayJournal']
     reclaim: () => Promise<void>
 }
 
+const pausedFull = (status: StorageStatus | undefined) =>
+    status?.mode === 'stored' && status.reason === 'full'
+
 /**
  * Sets up this tab's Delete and its runner (a stored, non-safe tab); `start` is the load's run at
  * idle. Returns the deletion for the test hooks.
  */
 export const startMaintenance = (deps: MaintenanceDeps) => {
+    const { worker } = deps
+    const pressure: PressureDeps = {
+        removeCachedMedia: (bytes) =>
+            worker.call('removeCachedMedia', { bytes } as never, {
+                timeoutMs: CLEANUP_TIMEOUT_MS,
+            }) as Promise<CleanupResult>,
+        estimate: async () => navigator.storage.estimate(),
+        paused: () => (worker.status?.mode === 'stored' ? worker.status.reason : undefined),
+        retryStoring,
+    }
     const runner = createRunner({
-        worker: deps.worker,
+        worker,
         sweep: () => deletion.sweepDeleted(),
         reclaim: deps.reclaim,
-        persist,
+        persist: () => persistStorage(navigator.storage),
+        pressure: {
+            atLoad: () => relieveAtLoad(pressure),
+            whenFull: () => relieveFull(pressure),
+        },
         visible: () => document.visibilityState === 'visible',
         timers: realTimers,
         now: Date.now,
     })
     const deletion = createDeletion({
-        worker: deps.worker,
+        worker,
         locks: deps.locks,
         journal: deps.journal,
         replayJournal: deps.replayJournal,
@@ -182,5 +253,13 @@ export const startMaintenance = (deps: MaintenanceDeps) => {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') void runner.visible()
     })
-    return { deletion, start: () => runner.start() }
+    // Storing turning paused for a full browser: a cleanup round, then Try Again.
+    const fullAtSetup = pausedFull(worker.status)
+    let wasFull = fullAtSetup
+    worker.onStatus((status) => {
+        const full = pausedFull(status)
+        if (full && !wasFull) void runner.full()
+        wasFull = full
+    })
+    return { deletion, start: () => runner.start(fullAtSetup) }
 }
