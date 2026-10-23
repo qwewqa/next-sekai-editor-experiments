@@ -147,11 +147,18 @@ const loadEntry = async (key: EntryKey) => {
 /** An entry's state as peek loads it, through the same LRU and loads in flight: the change view's. */
 export const loadEntryState = async (key: EntryKey) => (await loadEntry(key)).state
 
+/** A session's peek (`audio: 'none'`) plays without BGM: the live audio is another session's. */
+export type PeekOptions = { audio?: 'live' | 'none' }
+
 /**
  * What a peek shows: no selection at first, since the peeked state holds its own, and the live
  * audio and its waveform, which playback keeps while peeking (§1.4.11).
  */
-const shown = (state: State): State => {
+const shown = (state: State, audio: PeekOptions['audio'] = 'live'): State => {
+    if (audio === 'none') {
+        const { buffer: _buffer, waveform: _waveform, ...bgm } = state.bgm
+        return { ...state, bgm, selectedEntities: [] }
+    }
     const { buffer, waveform } = liveState.value.bgm
     return {
         ...state,
@@ -182,7 +189,7 @@ const stopTimers = () => {
  * edit while the state loads; a later call replaces this one, which then resolves. Rejects, and
  * leaves the peek, when the entry can't be read.
  */
-export const peekEntry = (key: EntryKey): Promise<void> => {
+export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<void> => {
     const at = ++generation.value
     settlePrevious?.()
     settlePrevious = undefined
@@ -191,7 +198,7 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
         displayed.value = undefined
         // Drags and sessions end on the live state, before anything is peeked.
         for (const listener of [...startListeners]) listener()
-        peek.value = { source: key, state: shown(liveState.value) }
+        peek.value = { source: key, state: shown(liveState.value, options.audio) }
     }
 
     const now = Date.now()
@@ -226,7 +233,7 @@ export const peekEntry = (key: EntryKey): Promise<void> => {
             }
             settlePrevious = undefined
             stopTimers()
-            peek.value = { source: key, state: shown(entry.state) }
+            peek.value = { source: key, state: shown(entry.state, options.audio) }
             displayed.value = key
             resolve()
         }

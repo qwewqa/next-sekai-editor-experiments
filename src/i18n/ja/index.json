@@ -1340,6 +1340,13 @@
     "announceViewingChange": "{0} を表示中、{1}",
     "openedFile": "{0} を開きました",
     "viewChart": "譜面を表示",
+    "sessions": {
+      "loadFailed": "最近のセッションを読み込めませんでした。",
+      "thisTab": "このタブ",
+      "elsewhere": "別のタブまたはウィンドウで開いています",
+      "actions": "「{0}」のその他の操作",
+      "saveToFile": "ファイルに保存…"
+    },
     "details": {
       "title": "操作の詳細",
       "named": "操作の詳細：{0}",
@@ -2160,6 +2167,7 @@
     "alreadyMatches": "すでに現在の譜面と同じです",
     "restoreFailed": "復元できませんでした",
     "peekFailed": "この操作を表示できませんでした",
+    "peekSessionFailed": "このセッションを表示できませんでした",
     "openHistory": "履歴を開く",
     "earlierInHistory": "それ以前の操作は履歴にあります",
     "bgmNotLoaded": "BGM が読み込まれていません",
@@ -2176,7 +2184,9 @@
     "recoveredChanges": "変更を復元しました"
   },
   "session": {
-    "untitled": "無題 · {0}"
+    "untitled": "無題 · {0}",
+    "restored": "「{0}」を復元しました",
+    "restoredCopy": "「{0}」のコピーを復元しました"
   },
   "prompt": {
     "title": "変更が保管されていません",

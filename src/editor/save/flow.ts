@@ -1829,8 +1829,8 @@ export const saveAs = () =>
  * Save to File…: the session's pending journal applied first under its lock, its head with its
  * history written as a new `.nxsp` with a new `docId`, binding nothing. Its picker follows the
  * rules above: a file a chain is bound to is taken from it (R5, R6). A session open in another
- * tab is written as storage holds it, and the feedback says so. A planned seam: Step 7's Recent
- * Sessions is its only entry point, and until then only the specs call it.
+ * tab is written as storage holds it, and the feedback says so. Recent Sessions' ⋯ menu is its
+ * entry point.
  */
 export const saveToFile = (sessionId: string) =>
     exclusive(`saveToFile:${sessionId}`, async () => {
@@ -1842,9 +1842,14 @@ export const saveToFile = (sessionId: string) =>
         await saveToFileNow(env, sessionId)
     })
 
-const saveToFileNow = async (env: Env, sessionId: string) => {
+const applyPending = async (sessionId: string) => {
     const { applyPendingJournal } = await import('../../local/startup/api')
-    const applied = await applyPendingJournal(sessionId).catch(() => undefined)
+    return applyPendingJournal(sessionId).catch(() => undefined)
+}
+
+const saveToFileNow = async (env: Env, sessionId: string) => {
+    // Safe mode only reads: applying a journal is a write, so the session is saved as stored.
+    const applied = isSafeMode() ? undefined : await applyPending(sessionId)
     let read
     try {
         read = await env.worker.call('readSession', sessionId)

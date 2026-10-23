@@ -13,13 +13,13 @@ import {
     type NoticeAction,
     type NoticeSeverity,
 } from './notification'
+import { restoreStored } from './restoreStored'
 import { openSettings } from './settings/openSettings'
 import { copySourceName, shownName } from './shownName'
 import { restoreCopy } from './switch'
 
 // What this load found (the events of `local/startup/events.ts`) as the start-up pill's load
-// notices, with their actions (Part 1 §1.4.3). Restore Session (Step 7) is left out until that step
-// adds it.
+// notices, with their actions (Part 1 §1.4.3).
 
 const quoted = (name: ShownName) => () => shownName(name)
 
@@ -34,6 +34,13 @@ const restoreAsCopy = (sessionId: string): NoticeAction => ({
     label: () => i18n.value.load.restoreAsCopy,
     run: () => {
         void restoreCopy(sessionId)
+    },
+})
+
+const restoreSession = (sessionId: string, name?: ShownName): NoticeAction => ({
+    label: () => i18n.value.open.restoreIt,
+    run: () => {
+        void restoreStored(sessionId, 'restore', name)
     },
 })
 
@@ -85,11 +92,13 @@ export const loadNoticeOf: Handlers = {
         order: LOAD_ORDER.journalKept,
         severity: 'warning',
         message: interpolate(() => load().journalKept, quoted(event.name)),
+        action: restoreSession(event.sessionId, event.name),
     }),
-    unsavedRecovered: () => ({
+    unsavedRecovered: (event) => ({
         order: LOAD_ORDER.unsavedRecovered,
         severity: 'info',
         message: () => load().fallback,
+        action: restoreSession(event.sessionId),
     }),
     unsavedInLocalData: () => ({
         order: LOAD_ORDER.unsavedInLocalData,

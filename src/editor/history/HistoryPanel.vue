@@ -408,7 +408,7 @@ const goToButtonTitle = computed(() =>
                 :surface="props.surface"
                 @close="emit('close')"
             />
-            <RecentSessionsTab v-else />
+            <RecentSessionsTab v-else :surface="props.surface" @close="emit('close')" />
         </div>
         <GoToPopover
             v-if="goToOpen && goToButton"
