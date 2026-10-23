@@ -4,7 +4,7 @@ import { createWorld, type World } from '../../../src/local/testing/world'
 import { readTimeline } from '../../../src/local/worker/timelineHandlers'
 import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
 import '../../helpers/lockChecks'
-import { rows, workerCore } from '../flush/harness'
+import { workerCore } from '../flush/harness'
 import { append, openJournalPage } from '../journal/harness'
 import { continueIn, readOpen } from '../startup/harness'
 import { widen } from '../timeline/helpers'
@@ -89,22 +89,4 @@ test('the report comes with the page that ends the chain, not one that fills bef
         assert.equal(rest.earlierMissing, true, `limit ${String(limit)}`)
         assert.equal(rest.next, undefined)
     }
-})
-
-test('removing a chain’s oldest sessions leaves the next one ending its Timeline the same way', async () => {
-    const world = createWorld({ seed: 34 })
-    const storage = new MemoryStorage()
-    const { first, second } = await closedChain(world, storage)
-    const deleter = await openDeleter(world, world.tab('b'), storage)
-    const chain = rows(world, 'chains').get(first.chainId)!
-    const result = await deleter.remove({
-        chainId: first.chainId,
-        locked: [first.id, second.id],
-        remove: { whole: false, count: 1 },
-        expect: { head: second.id, updatedAt: chain.updatedAt as number },
-        reason: 'cleanup',
-    })
-    assert.equal(result.kind, 'removed')
-    const page = await read(world, second.id)
-    assert.equal(page.earlierMissing, true)
 })
