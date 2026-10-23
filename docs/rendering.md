@@ -93,21 +93,21 @@ The minimap strip (`src/editor/minimap/`) draws its content with Canvas2D, a sec
 
 - **What it reads.** The committed `state` (the peeked state while viewing history), never `sceneState`. A tool dialog's preview or a Composed drag preview reaches the strip at its commit.
 - **Positions.** Lanes −6 to 6 are linear over the central 80% of the width; lanes beyond them are compressed into the margins and never clipped. In Composed, `getComposedLayout` gives each note and connector span; otherwise the authoring `left` and `size`. One module (`mapping.ts`) holds this, and the painter, the overlay, the input and the annotations read it.
-- **Updates.** Change detection is an identity diff of `store.grid.note` and `.connector` and of each key's bucket (a transaction copies a bucket on first write, so an untouched bucket keeps its identity). Changed keys become bands, redrawn in the canonical paint order (gutter rules, connector bodies, notes) so a band gives the same pixels as a full redraw. A change over 256 entities, or over a third of the height, is a full redraw instead. A BPM edit moves the range without touching the grid, so the range is converted to time on every pass.
-- **Full redraws are sliced.** They run in animation-frame slices of 2 ms of recording into a CPU back buffer, and each slice forces its rasterisation with a 1×1 readback so the cost lands inside the slice, not in the swap. The front canvas gets one blit. A geometry, range, layout or tempo change cancels a running job; other edits wait for it and land as bands.
+- **Updates.** Change detection is an identity diff of `store.grid.note` and `.connector` and of each key's bucket (a transaction copies a bucket on first write, so an untouched bucket keeps its identity). Changed keys become bands. A band repaints whole items in the canonical paint order (gutter rules, connector bodies, notes) into the back buffer, with no canvas clip, which would change the antialiased edges of slanted bodies, and copies its rows to the front. A band then gives exactly the pixels of a full redraw. A change over 256 entities, or over a third of the height, is a full redraw instead. A BPM edit moves the range without touching the grid, so the range is converted to time on every pass.
+- **Full redraws are sliced.** They run in animation-frame slices of 2 ms of recording into a CPU back buffer, and each slice forces its rasterisation with a 1×1 readback so the cost lands inside the slice, not in the swap. The front canvas gets one blit. Both canvases are CPU canvases (`willReadFrequently`), so band copies and blits rasterise predictably. A geometry, range, layout or tempo change cancels a running job; other edits wait for it and land as bands.
 - **Scale.** At most 2, and low enough that the backing store is at most 4,096 rows. A resize or a pixel-ratio change starts a full redraw 100 ms after the last change; the old image is stretched by CSS meanwhile.
 - **Zero work while moving.** A wheel scroll, playback with Follow and a held chart drag paint nothing: the box and the cursor move by transform, written by one watcher outside the template. `minimapStats.paints` and `.annotationPaints` (read through `editorTest.appImport`) stay unchanged over those, which `tests/browser/minimap.spec.ts` checks.
 - **Hidden means free.** The strip is unmounted when off, so its watchers, observers and canvases do not exist.
 
-Measured on coconut (1,679 notes) in Chromium, with the CPU throttled 4× for a mid-range phone:
+Measured on coconut (1,679 notes) in Chromium, with the CPU throttled 4× for a mid-range phone. The 4× column is the quietest run on a shared machine; busier runs were up to twice as slow.
 
 | | Desktop | 4× |
 | --- | --- | --- |
-| Basic full redraw, total | 2.1 ms in 1 slice | 10.9 ms in 4 slices |
-| Composed full redraw, total | 3.0 ms in 2 slices | 19.0 ms in 8 slices |
-| Longest slice | 2.4 ms | 2.9 ms |
-| Swap blit | 0.1 ms | 0.6 ms |
-| One note moved (band) | 0.3 ms | 1.1 ms |
+| Basic full redraw, total | 2.5 ms in 1 slice | 10 ms in 4 slices |
+| Composed full redraw, total | 3.1 ms in 2 slices | 15 ms in 8 slices |
+| Longest slice | 2.4 ms | 3.3 ms |
+| Swap blit | 0.1 ms | 0.8 ms |
+| One note moved (band) | 0.3 ms | 1.6 ms |
 
 ## Pinned Pixi seams and upgrade gate
 
