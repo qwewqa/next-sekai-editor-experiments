@@ -32,9 +32,10 @@ jobs:
             - run: npm run check-lint
             - run: npm run check-format
             - run: npm test
-            # One call, so the golden pair's completeFrom claim is checked against write-1.
+            # One call, so the completeFrom claims between files are checked: the golden pair's against
+            # write-1, and the v1 fixtures' against each other.
             - name: Check the .nxsp fixtures with the independent checker
-              run: uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/*.nxsp tests/zip/plan-conformance-v1/*/expected.nxsp
+              run: uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/*.nxsp tests/zip/plan-conformance-v1/*/expected.nxsp tests/native/fixtures/nxsp-v1/*.nxsp
             - run: npm run test:release
             - run: npm run check:builtin-assets
             - run: npm run build:native

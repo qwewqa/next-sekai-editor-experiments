@@ -20,6 +20,8 @@ const storageSpecs = [
     'openProject.spec.ts',
     // Saving where there's no save picker: the download flow (Step 6).
     'saveDownload.spec.ts',
+    // The v1 web storage fixtures seeded into a profile and read by the editor (release prep, Part 1 §1.6.11.9).
+    'webStorageV1.spec.ts',
 ]
 
 export default defineConfig({
