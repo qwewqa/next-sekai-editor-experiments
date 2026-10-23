@@ -963,7 +963,23 @@
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改",
       "exportRaw": "导出原始数据…",
-      "exportRawName": "{0} 原始数据 {1}.zip"
+      "exportRawName": "{0} 原始数据 {1}.zip",
+      "storageHeading": "存储",
+      "stored": "此浏览器中已存储：{0}，总容量约 {1}",
+      "deleteSessions": "删除会话…",
+      "deleteTitle": "删除会话",
+      "lastEdited": "上次编辑已超过 {0} 天",
+      "all": "全部",
+      "includeNotSaved": "包含未保存到文件的内容",
+      "deleteNext": "删除…",
+      "deleteConfirm": "要删除 {0} 个会话吗？",
+      "notSaved": "有 {0} 个会话未保存到文件：{1}。",
+      "namesMore": "{0} 及其他 {1} 个",
+      "newer": "其中有会话需要更新版本的编辑器。",
+      "deleting": "正在删除…",
+      "deleteFailed": "无法删除会话。",
+      "exportRawNote": "用于报告问题。",
+      "exportRawUnreadable": "无法读取已存储的内容。"
     }
   },
   "sidebars": {
@@ -2209,7 +2225,8 @@
   "session": {
     "untitled": "未命名 · {0}",
     "restored": "已还原“{0}”",
-    "restoredCopy": "已还原“{0}”的副本"
+    "restoredCopy": "已还原“{0}”的副本",
+    "deletedMany": "已删除 {0} 个会话"
   },
   "prompt": {
     "title": "更改未存储",

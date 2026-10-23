@@ -963,7 +963,23 @@
             "openHistory": "Open History",
             "confirmClose": "Ask Before Closing with Unsaved Changes",
             "exportRaw": "Export Raw Data…",
-            "exportRawName": "{0} raw data {1}.zip"
+            "exportRawName": "{0} raw data {1}.zip",
+            "storageHeading": "Storage",
+            "stored": "Stored in this browser: {0} of about {1}",
+            "deleteSessions": "Delete Sessions…",
+            "deleteTitle": "Delete Sessions",
+            "lastEdited": "Last edited over {0} day ago|Last edited over {0} days ago",
+            "all": "All",
+            "includeNotSaved": "Include work not saved to a file",
+            "deleteNext": "Delete…",
+            "deleteConfirm": "Delete {0} session?|Delete {0} sessions?",
+            "notSaved": "{0} session is not saved to a file: {1}.|{0} sessions are not saved to a file: {1}.",
+            "namesMore": "{0} and {1} more",
+            "newer": "This session needs a newer version of the editor.|Some of these sessions need a newer version of the editor.",
+            "deleting": "Deleting…",
+            "deleteFailed": "The sessions could not be deleted.",
+            "exportRawNote": "For reporting a problem.",
+            "exportRawUnreadable": "The stored work could not be read."
         }
     },
     "sidebars": {
@@ -2209,7 +2225,8 @@
     "session": {
         "untitled": "Untitled · {0}",
         "restored": "Restored \"{0}\"",
-        "restoredCopy": "Restored a copy of \"{0}\""
+        "restoredCopy": "Restored a copy of \"{0}\"",
+        "deletedMany": "Deleted {0} session|Deleted {0} sessions"
     },
     "prompt": {
         "title": "Changes Not Stored",

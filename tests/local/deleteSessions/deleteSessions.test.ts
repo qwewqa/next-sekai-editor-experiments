@@ -454,6 +454,29 @@ test('after the removals GC runs, then Try Again for storing only when storing i
     assert.deepEqual(none.calls.order, [])
 })
 
+test('the orphan reclaim runs after the removals and before GC and Try Again, so freed space is real', async () => {
+    // A full browser: the kept copies of a deleted chain are still on disk until the reclaim.
+    const shared: { order?: string[] } = {}
+    const { read, remove, calls } = await setup(2, {
+        reclaim: () => {
+            shared.order?.push('reclaim')
+            return Promise.resolve()
+        },
+    })
+    shared.order = calls.order
+    calls.paused = 'full'
+    assert.deepEqual(await remove(await read()), { deleted: 2, skipped: 0 })
+    assert.deepEqual(calls.order, ['reclaim', 'gc', 'retry'])
+    // Nothing deleted: nothing to reclaim.
+    const none = await setup(1, { reclaim: () => Promise.reject(new Error('must not run')) })
+    assert.deepEqual(await none.remove([]), { deleted: 0, skipped: 0 })
+    // A reclaim that fails does not stop GC or Try Again.
+    const broken = await setup(1, { reclaim: () => Promise.reject(new Error('disk')) })
+    broken.calls.paused = 'full'
+    assert.deepEqual(await broken.remove(await broken.read()), { deleted: 1, skipped: 0 })
+    assert.deepEqual(broken.calls.order, ['gc', 'retry'])
+})
+
 test('a failed removal stops the run with what was deleted, and GC still runs', async () => {
     const { world, chains, read, remove, calls } = await setup(3)
     calls.failAt = 2

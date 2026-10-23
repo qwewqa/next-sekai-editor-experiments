@@ -10,6 +10,7 @@ import {
 import {
     failStartup,
     finishStartup,
+    runRawExport,
     setOpeningName,
     setRawExport,
     setStartBlankHandler,
@@ -17,6 +18,7 @@ import {
     startupGate,
     trackStartup,
 } from '../../src/startup/gate'
+import { rawExportNote } from '../../src/startup/rawExportNote'
 import { storageKey } from '../../src/storage'
 
 // Safe mode's rule and the startup gate's state (Part 1 §1.4.2).
@@ -91,7 +93,7 @@ test('the startup gate lifts when startup resolves and says so when it fails', a
     // Export Raw Data… registers when it is built.
     const rawExport = () => startupGate.rawExport
     assert.equal(rawExport(), undefined)
-    setRawExport({ label: () => 'Export Raw Data…', run: () => undefined })
+    setRawExport({ label: () => 'Export Raw Data…', run: () => Promise.resolve(undefined) })
     assert.equal(rawExport()?.label(), 'Export Raw Data…')
     finishStartup()
     assert.equal(startupGate.phase, 'done')
@@ -134,4 +136,45 @@ test('tracked startup resolves to done, rejects to the error, and Start Blank ru
     } finally {
         console.error = log
     }
+})
+
+test('the error state’s Export Raw Data… shows the line its run returns, and clears it on the next press', async () => {
+    const log = console.error
+    const notes = ['The stored work could not be read.', undefined]
+    setRawExport({ label: () => 'Export Raw Data…', run: () => Promise.resolve(notes.shift()) })
+    await runRawExport()
+    assert.equal(startupGate.rawExportNote, 'The stored work could not be read.')
+    // A press that goes through whole shows no line, not the old one.
+    await runRawExport()
+    assert.equal(startupGate.rawExportNote, undefined)
+    // A run that throws (a bug in it) leaves no stale line and no unhandled rejection.
+    console.error = () => undefined
+    try {
+        notes.push('stale')
+        await runRawExport()
+        setRawExport({ label: () => 'x', run: () => Promise.reject(new Error('bug')) })
+        startupGate.rawExportNote = 'stale'
+        await runRawExport()
+    } finally {
+        console.error = log
+    }
+    assert.equal(startupGate.rawExportNote, undefined)
+    setRawExport(undefined)
+})
+
+test('the gate’s line names the file when the download failed, and the stored work when it was left out', () => {
+    const texts = {
+        downloadFailed: '"{0}" could not be downloaded.',
+        unreadable: 'The stored work could not be read.',
+    }
+    assert.equal(
+        rawExportNote({ kind: 'failed', name: 'raw data.zip', error: new Error('x') }, texts),
+        '"raw data.zip" could not be downloaded.',
+    )
+    const done = { kind: 'done', name: 'a.zip', size: 1, started: true } as const
+    assert.equal(
+        rawExportNote({ ...done, databaseUnreadable: true }, texts),
+        'The stored work could not be read.',
+    )
+    assert.equal(rawExportNote({ ...done, databaseUnreadable: false }, texts), undefined)
 })

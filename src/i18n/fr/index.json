@@ -963,7 +963,23 @@
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
       "exportRaw": "Exporter les données brutes…",
-      "exportRawName": "{0} données brutes {1}.zip"
+      "exportRawName": "{0} données brutes {1}.zip",
+      "storageHeading": "Stockage",
+      "stored": "Stocké dans ce navigateur : {0} sur environ {1}",
+      "deleteSessions": "Supprimer des sessions…",
+      "deleteTitle": "Supprimer des sessions",
+      "lastEdited": "Dernière modification il y a plus de {0} jour|Dernière modification il y a plus de {0} jours",
+      "all": "Tout",
+      "includeNotSaved": "Inclure le travail non sauvegardé dans un fichier",
+      "deleteNext": "Supprimer…",
+      "deleteConfirm": "Supprimer {0} session ?|Supprimer {0} sessions ?",
+      "notSaved": "{0} session n’est pas sauvegardée dans un fichier : {1}.|{0} sessions ne sont pas sauvegardées dans un fichier : {1}.",
+      "namesMore": "{0} et {1} de plus",
+      "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
+      "deleting": "Suppression…",
+      "deleteFailed": "Les sessions n’ont pas pu être supprimées.",
+      "exportRawNote": "Pour signaler un problème.",
+      "exportRawUnreadable": "Le travail stocké n’a pas pu être lu."
     }
   },
   "sidebars": {
@@ -2209,7 +2225,8 @@
   "session": {
     "untitled": "Sans titre · {0}",
     "restored": "\"{0}\" restaurée",
-    "restoredCopy": "Copie de \"{0}\" restaurée"
+    "restoredCopy": "Copie de \"{0}\" restaurée",
+    "deletedMany": "{0} session supprimée|{0} sessions supprimées"
   },
   "prompt": {
     "title": "Modifications non stockées",

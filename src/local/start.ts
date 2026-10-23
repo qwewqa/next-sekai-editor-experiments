@@ -326,14 +326,15 @@ export const startStorage = async () => {
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
                 const context = recovery
+                // Only what definitely deleted chains left can be reclaimed.
+                const reclaim = () =>
+                    reclaimOrphans(worker, { chains: keptCopyChains, remove: removeKeptCopy })
                 const maintenance = startMaintenance({
                     worker,
                     locks: platform.locks,
                     journal: platform.journal,
                     replayJournal: (sessionId) => replaySessionJournal(context, sessionId),
-                    // Only what definitely deleted chains left can be reclaimed.
-                    reclaim: () =>
-                        reclaimOrphans(worker, { chains: keptCopyChains, remove: removeKeptCopy }),
+                    reclaim,
                 })
                 // Delete Sessions… in Local Data acts through this.
                 setDeleteSessions(
@@ -346,6 +347,7 @@ export const startStorage = async () => {
                         paused: () =>
                             worker.status?.mode === 'stored' ? worker.status.reason : undefined,
                         retryStoring,
+                        reclaim,
                         revoked: (chainId) => readRevocation(chainId) !== undefined,
                     }),
                 )
