@@ -3,7 +3,7 @@ import { selectedEntities } from '../../../history/selectedEntities'
 import { i18n } from '../../../i18n'
 import { isEditableEntity } from '../../../state/operations/editable'
 import { canRemove, remove } from '../../tools/eraser'
-import DeleteIcon from '../reset/ResetIcon.vue'
+import DeleteIcon from './DeleteIcon.vue'
 
 /** Whether the selection holds an object Delete removes. */
 export const canDeleteSelection = () =>
