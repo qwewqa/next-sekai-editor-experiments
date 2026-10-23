@@ -235,6 +235,36 @@ test.describe('load notices in the start-up pill', () => {
         ])
     })
 
+    for (const kind of ['journalKept', 'unsavedRecovered'] as const)
+        test(`the ${kind} notice has Restore Session, which opens the session it names`, async ({
+            page,
+        }) => {
+            await visit(page)
+            await edit(page, 990)
+            await settled(page)
+            const sessionId = await page.evaluate(() => window.nseFlushTest!.flusher.session!.id)
+            // The session is left behind, stored and not open anywhere.
+            await page.evaluate(async () => {
+                const { resetState } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                resetState(false)
+            })
+            expect(await lifeOf(page)).toBe(1000)
+            const name = { name: { kind: 'name', text: 'Coconut (Master)' }, at: Date.now() }
+            await addEvent(
+                page,
+                kind === 'journalKept' ? { kind, name, sessionId } : { kind, sessionId },
+            )
+            await pill(page).getByRole('button', { name: 'Restore Session' }).click()
+            await expect.poll(() => lifeOf(page)).toBe(990)
+            expect(await page.evaluate(() => window.nseFlushTest!.flusher.session!.id)).not.toBe(
+                sessionId,
+            )
+            await expect(
+                page.locator('.notification-pill, .notification').filter({ hasText: /^Restored / }),
+            ).toBeVisible()
+        })
+
     test('notices are ordered by the table, three show, and the rest are "and N more in Local Data"', async ({
         page,
     }) => {
