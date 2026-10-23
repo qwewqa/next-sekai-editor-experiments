@@ -22,6 +22,8 @@ import { activateEditorNavigation, useControlLifecycle } from './controls'
 import { useFocusControl } from './controls/focus'
 import { useKeyboardControl } from './controls/keyboard'
 import './peek'
+import Minimap from './minimap/Minimap.vue'
+import { isMinimapShown } from './minimap/state'
 import LevelEditorNotification from './LevelEditorNotification.vue'
 import PeekBar from './history/PeekBar.vue'
 import ChangeBand from './history/ChangeBand.vue'
@@ -296,6 +298,7 @@ const stageCount = computed(() =>
                 <LevelEditorToolbar v-if="!hasToolModal('main')" pane="main" />
                 <EditorToolModalHost pane="main" />
             </div>
+            <Minimap v-if="isMinimapShown && (!isElevationEditorOpen || isElevationSideBySide)" />
             <div
                 v-if="isElevationEditorOpen && isElevationSideBySide"
                 class="relative z-10 w-px flex-none bg-white/10"

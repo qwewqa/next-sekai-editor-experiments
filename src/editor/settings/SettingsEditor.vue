@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { bgm } from '../../history/bgm'
 import { i18n } from '../../i18n'
 import { localizations } from '../../i18n/localizations'
@@ -10,7 +10,16 @@ import ToggleField from '../../modals/form/ToggleField.vue'
 import InfoModal from '../../modals/InfoModal.vue'
 import { settings } from '../../settings'
 import { themes } from '../../themes'
+import { isMinimapShown } from '../workspace'
 import SettingsSection from './SettingsSection.vue'
+
+// Reads the shown state, which a null setting resolves by width, and saves a choice.
+const showMinimap = computed({
+    get: () => isMinimapShown.value,
+    set: (value) => {
+        settings.showMinimap = value
+    },
+})
 
 watch(
     () => settings.waveform,
@@ -59,6 +68,8 @@ watch(
             v-model="settings.elevationConnectorArrows"
             :label="i18n.settings.editor.elevationConnectorArrows"
         />
+
+        <ToggleField v-model="showMinimap" :label="i18n.settings.editor.minimap" />
 
         <SelectField
             v-model="settings.beatDisplay"

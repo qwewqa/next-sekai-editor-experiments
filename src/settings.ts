@@ -22,6 +22,7 @@ import {
 } from './preview/options'
 import { registerSettingKeys } from './safe'
 import { insertExportLevel } from './settings/toolbarExport'
+import { insertMinimap } from './settings/toolbarMinimap'
 import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
 import { insertSessionRestore } from './settings/toolbarSessionRestore'
 import { storedBindings, storedNames } from './settingsCodecs'
@@ -131,6 +132,8 @@ const settingsProperties = {
     showStages: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
     // History is closed until opened; Disabled hides its tab, and its dialog stays.
     showHistory: Type.Boolean({ default: false }),
+    // Null: shown where the workspace is wide enough (Part 1 §1.4.22).
+    showMinimap: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
 
     panelRecency: Type.Codec(
         Type.Array(Type.String(), {
@@ -336,6 +339,7 @@ const settingsProperties = {
                 ],
                 ['stagePrev', 'stageNext', 'stageAll', 'manageStages'],
                 [
+                    'minimap',
                     'scrollLeft',
                     'scrollRight',
                     'jumpUp',
@@ -619,6 +623,7 @@ const loadSetting = (key: string, defaultValue: unknown) => {
             ['toolbarExportMigrated', insertExportLevel],
             ['toolbarPreviewAssetsMigrated', insertPreviewAssets],
             ['toolbarSessionRestoreMigrated', insertSessionRestore],
+            ['toolbarMinimapMigrated', insertMinimap],
         ] as const
         const pending = steps.filter(([flag]) => storageGet(flag, false) !== true)
         const loaded = storageGet(key, defaultValue)

@@ -38,6 +38,7 @@ import { levelInfo } from './levelInfo'
 import { makeVertical } from './makeVertical'
 import { manageGroups } from './manageGroups'
 import { manageStages } from './manageStages'
+import { minimap } from './minimap'
 import { createNote, note } from './note'
 import { decreaseNoteSize } from './noteSizes/decrease'
 import { increaseNoteSize } from './noteSizes/increase'
@@ -193,6 +194,7 @@ const builtInCommands = {
     scrollPageDown,
     jumpUp,
     jumpDown,
+    minimap,
 
     cycleVisibilities,
     noteVisibility,
