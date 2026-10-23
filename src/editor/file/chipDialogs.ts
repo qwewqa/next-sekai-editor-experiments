@@ -58,7 +58,7 @@ const lines = (first: string, rest: readonly ChipKind[], reason?: string) =>
 
 /** Why changes are not stored, by cause; a browser without storage has nothing more to say. */
 const reasonLine = (cause: NotStoredCause | undefined) => {
-    if (cause?.kind === 'readOnly') return i18n.value.load.olderVersion
+    if (cause?.kind === 'readOnly') return i18n.value.storage.reason.readOnly
     return cause?.kind === 'paused' ? pausedReasonLine(cause.reason) : undefined
 }
 

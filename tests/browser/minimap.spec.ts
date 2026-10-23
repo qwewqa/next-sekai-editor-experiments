@@ -337,6 +337,25 @@ test.describe('mouse', () => {
         expect(await selectedCount(page)).toBe(0)
     })
 
+    test('leaving the app mid-drag ends the press', async ({ page }) => {
+        await selectAll(page)
+        const strip = minimapStrip(page)
+        const m = await strip.metrics()
+        const box = (await strip.box.boundingBox())!
+        await page.mouse.move(m.x, box.y + box.height / 2)
+        await page.mouse.down()
+        await page.mouse.move(m.x, box.y + box.height / 2 - 30)
+        const dragged = await viewTime(page)
+        expect(dragged).not.toBeCloseTo(3, 1)
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+        // The release never arrives: the press is over all the same.
+        await page.mouse.move(m.x, box.y + box.height / 2 - 60)
+        expect(await viewTime(page)).toBe(dragged)
+        await page.mouse.up()
+        await page.keyboard.press('Escape')
+        expect(await selectedCount(page)).toBe(0)
+    })
+
     test('unmounting mid-drag leaves Escape to Deselect', async ({ page }) => {
         await bindKey(page, 'l')
         await selectAll(page)

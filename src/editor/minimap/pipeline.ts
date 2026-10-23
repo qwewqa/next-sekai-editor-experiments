@@ -365,10 +365,6 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         drawn = undefined
         schedulePass()
     }
-    const onContextLost = (event: Event) => {
-        event.preventDefault()
-    }
-    front.addEventListener('contextlost', onContextLost)
     front.addEventListener('contextrestored', restart)
 
     return {
@@ -408,7 +404,6 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
             clearTimeout(geometryTimer)
             if (passFrame !== undefined) cancelAnimationFrame(passFrame)
             passFrame = undefined
-            front.removeEventListener('contextlost', onContextLost)
             front.removeEventListener('contextrestored', restart)
             front.width = 0
             front.height = 0

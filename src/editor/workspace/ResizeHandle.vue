@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
+import { interruptsDrags } from '../../activity'
 import { resizeEscapes } from '../controls'
 import { cancelMouseControls } from '../controls/mouse'
 import { cancelTouchControls } from '../controls/touch'
@@ -86,6 +87,11 @@ const onClick = (event: MouseEvent) => {
     // Pointer interactions return keyboard shortcuts to the editor.
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }
+
+// Leaving the app or a blocking dialog mid-drag may never deliver the release.
+watch(interruptsDrags, (interrupted) => {
+    if (interrupted) cancel()
+})
 
 onUnmounted(() => {
     if (!drag) return

@@ -165,7 +165,7 @@ test('a change of cause while shown keeps the chip, and the dialog follows the c
         ],
         [
             { mode: 'readOnly' },
-            'A newer version of the editor has been opened in this browser.',
+            'A newer version of the editor has been opened.',
             ['Cancel', 'Reload', 'Save'],
         ],
         [{ mode: 'memory' }, undefined, ['Cancel', 'Save']],
