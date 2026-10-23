@@ -160,6 +160,29 @@ test('a peek starts with no selection and the live audio', async () => {
     assert.equal(state.value.bgm.offset, 2)
 })
 
+test('a session’s peek plays without the live audio, while it loads and once shown', async () => {
+    const buffer = {} as AudioBuffer
+    const waveform = {} as State['bgm']['waveform']
+    resetStates({
+        isDirty: false,
+        step: initialStep(),
+        state: fake('live', 0, { bgm: { offset: 0, buffer, waveform } }),
+    })
+    source({ [key(1)]: { state: fake('old', 2), time: 1 } })
+    const loading = peekEntry(key(1), { audio: 'none' })
+    assert.equal(state.value.bgm.buffer, undefined)
+    assert.equal(state.value.bgm.waveform, undefined)
+    await loading
+    assert.equal(state.value.bgm.buffer, undefined)
+    assert.equal(state.value.bgm.waveform, undefined)
+    assert.equal(state.value.bgm.offset, 2)
+    // The live state keeps its audio, and a step’s peek still shows with it.
+    assert.equal(liveState.value.bgm.buffer, buffer)
+    await peekEntry(key(1))
+    assert.equal(state.value.bgm.buffer, buffer)
+    assert.equal(state.value.bgm.waveform, waveform)
+})
+
 const heldEntry = () => {
     const read = deferred<PeekedEntry>()
     const loads: EntryKey[] = []

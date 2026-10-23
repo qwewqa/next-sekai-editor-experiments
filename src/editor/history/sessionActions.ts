@@ -7,6 +7,7 @@ import { isSafeMode } from '../../safe'
 import { restoreStored } from '../restoreStored'
 import { requestSessionPeek } from './selection'
 import { restoreMode, type ChainRow, type SessionRow } from './sessions'
+import { historyTab } from './state'
 
 // What Recent Sessions' rows do (Part 1 §1.4.10.6, §1.4.7): Restore Session, Restore as a Copy
 // and Save to File…, from the menu, Enter, the peek bar or a load notice. Each runs the checks
@@ -31,9 +32,12 @@ export const shownNameOf = (chain: RecentChain): ShownName => ({
     at: chain.head.startedAt,
 })
 
-/** Restore Session, or Restore as a Copy; true when it opened. */
-export const restoreRow = async (row: ChainRow, mode: 'restore' | 'copy') =>
-    (await restoreStored(row.chain.head.sessionId, mode, shownNameOf(row.chain))).opened
+/** Restore Session, or Restore as a Copy; true when it opened, and History then shows its Timeline. */
+export const restoreRow = async (row: ChainRow, mode: 'restore' | 'copy') => {
+    const { opened } = await restoreStored(row.chain.head.sessionId, mode, shownNameOf(row.chain))
+    if (opened) historyTab.value = 'timeline'
+    return opened
+}
 
 /** Save to File…: the session's head with its history, as a new file. */
 export const saveRowToFile = async (row: ChainRow) => {

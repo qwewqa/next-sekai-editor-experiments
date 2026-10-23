@@ -1,6 +1,7 @@
 import type { State } from '../state'
 
-// The displayed name (Part 1 §1.3.5): the first of the Name, the bound file's stem, the title,
+// The displayed name (Part 1 §1.3.5): the first of the bound file's stem, the Name (only a copy's
+// automatic "<name> (2)" is set now, so a copy saved as a file is named by it), the title,
 // the imported file's stem (unless "LevelData", which names nothing), the BGM's stem, and the
 // date fallback ("Untitled · Oct 16, 2:41 PM", formatted where it's shown).
 
@@ -37,8 +38,8 @@ export const stemOf = (fileName: string) => {
 }
 
 export const displayName = (parts: NameParts): DisplayName => {
-    if (parts.name) return { kind: 'name', text: parts.name }
     if (parts.fileName) return { kind: 'file', text: stemOf(parts.fileName) }
+    if (parts.name) return { kind: 'name', text: parts.name }
     if (parts.title) return { kind: 'title', text: parts.title }
     if (parts.sourceName && parts.sourceName !== 'LevelData')
         return { kind: 'source', text: parts.sourceName }
