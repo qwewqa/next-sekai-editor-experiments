@@ -15,7 +15,8 @@ import {
 
 // A build's consistent cut (Part 1 §1.11.6, r12-arch-web L6): the chain record, its session rows,
 // their entries and the saved session's stack blocks, read in one read-only transaction. Bodies
-// are immutable and protected by `nse-maint`, so they can follow in later transactions.
+// are immutable, and no remover touches a chain while a build holds one of its session locks
+// (deletion R3), so they can follow in later transactions.
 
 export const CUT_STORES = ['chains', 'sessions', 'entries', 'stackBlocks'] as const
 

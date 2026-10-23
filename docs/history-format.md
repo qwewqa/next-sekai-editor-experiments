@@ -102,9 +102,17 @@ Database `nse-local-data`, `DB_VERSION` 1 (`src/local/db.ts`). Upgrades only add
 | `media` | 16-byte hash | `{blob, sha256, size, type, filename?, kind, day}` |
 | `recovered` | `id` | Bytes of journals that could not be read (section 2.9) |
 | `userAssets` | `key`; index `type` | Not History |
-| `meta` | `key` | `formatVersion`, `epoch`, `maxSeenTime`, `dbInstanceId`, `deviceId`, `daysOfUse`, `lastUseDate`, `lastGcAt`, `deletionsPending`, `migratedHashes`, `usage`, `lastPersistFailure`, `createdBy` |
+| `meta` | `key` | `formatVersion`, `epoch`, `maxSeenTime`, `dbInstanceId`, `deviceId`, `daysOfUse`, `lastUseDate`, `lastGcAt`, `deletionsPending`, `migratedHashes`, `removedForSpace`, `createdBy` |
 
-**Nothing deletes History yet** (GC and Delete Sessions are Step 8). The one removal so far is Check File and History…'s: a media row that still fails its re-hash under `nse-maint` exclusive (section 2.8), with no epoch bump, since every flush checks media by key. A removed session has no marker: its rows are simply gone. The Timeline's "removed to save space" label comes from `kept: false` rows. `meta.epoch` is meant to rise in any transaction that deletes (`bumpEpoch`, no caller yet). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair.
+**Deleting.** Rows go only as whole sessions, and bodies only by GC (rules R1–R9 in sections 5.3 and 5.4):
+
+- **Delete** (Recent Sessions) marks the chain `deleting: {at}` (`markDeleted`, `src/local/deletion.ts`): it locks every session and import lock of the chain, applies their pending journals, and writes the mark strictly (`markTx`, `src/local/removal.ts`). A marked chain is gone to every reader but GC's mark. Undo clears the mark only while `at` is still its own (`undoTx`).
+- **The sweep** (`sweepDeleted`) removes chains marked about 10 minutes ago through the removal primitive (`removeLocked`): the page locks every session and import of the chain or skips it, and skips it while any of its sessions has a journal key; the worker's one transaction (`removeTx`) re-reads the chain, its sessions and its mark and refuses when anything differs. It deletes whole sessions with their entries and stack blocks, oldest first, and the chain record and its `handles` only with its last session. It sets `deletionsPending`; a `cleanup` removal also sets `removedForSpace`. A removed session leaves no marker.
+- **GC** (`gcPass`, `src/local/gc.ts`) marks from every entry's snapshot, every `recovered` entry's pushed snapshots and every stack block's hashes, follows `refs`, and deletes the `nodes`, `chunks` and `media` rows nothing reaches that were first stored at least 2 days of use ago. It runs when `deletionsPending` is set or once per day of use, under one `nse-maint` exclusive hold, and stops as soon as a writer waits. It never reads `userAssets` or `recovered`.
+- **Check File and History…** removes a media row that still fails its re-hash inside the same exclusive hold (section 2.8), with no epoch bump, since every flush checks media by key.
+- **When.** The maintenance runner (`src/local/maintenance.ts`) runs the reclaim, the sweep and GC at load idle, on becoming visible (at most once a minute), when a mark falls due, and 30 s after a run that found `nse-maint` held. The reclaim (`reclaimOrphans`, `src/editor/save/env.ts`) removes a deleted chain's `saving.*` marker, `revoke.*` key and `nse-kept` copy once a record read finds no chain.
+
+`meta.epoch` rises in every transaction that deletes a node or chunk (GC's, which bumps for media too). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair, so a hash GC removed is stored again. The Timeline's "removed to save space" label comes from `kept: false` rows.
 
 ### 2.4 Entries
 
@@ -166,7 +174,7 @@ The chain record (`chains`):
 
 - Identity: `chainId`, `head` (the head session), `docId` (`project.json` `id`), `lineageId` (provenance), `sourceName`, `name`, `renames`, `exportName`.
 - File: `file {name, event, at, hash, entry, completeFrom, disk, options, confirmed}` (handle in `handles`), `revision {id, n, ancestors}`, `replaced {by, at, name}` after a takeover, `extra` (unknown `project.json` keys, written back by Save), `exportTarget` (handle in `handles`).
-- Flags and display: `hasContent`, `edited`, `partialImport`, `summary {title, artists, author, rating, tags, noteCount}`, `badChunks`, `deleting`, `updatedAt`, `day`, `appVersion`.
+- Flags and display: `hasContent`, `edited`, `partialImport`, `summary {title, artists, author, rating, tags, noteCount}`, `badChunks`, `deleting` (`{at}`: marked for Delete, section 2.3), `updatedAt`, `day`, `appVersion`.
 
 **Continuing.** A continuation stores nothing and holds a shared lock on its parent until its first write, which moves the chain's `head` from the parent to it only if the parent is still the head (a compare-and-set in `writeFlush`). Each open session holds an exclusive Web Lock (`src/local/sessions.ts`); a tab never writes a session it does not hold.
 
@@ -643,12 +651,22 @@ Each rule says what must never happen, where the code enforces it and the tests 
 | A transaction that names a store the database lacks fails, and no handle or row is dropped for it. | `UPGRADES`, `StorageCore` | `local/handshake.test.ts`, `local/formatVersions.test.ts`, browser `storageHandshake.spec.ts` |
 | A start listener that throws never stops the others or the storing setup; a cancelled one never runs. | `notifyFlusherStart`, `onFlusherStart` | `local/flusherStart.test.ts` |
 | Every session lock has one owner at a time and passes only where the flusher takes it at registration; its creator releases it otherwise. | `LockLease` (`src/local/sessions.ts`), `Flusher` registration | `local/startup/leases.test.ts`, `local/startup/open.test.ts`, `local/leaseGuard.test.ts` |
+| R1. Every transaction that deletes rows or bodies runs inside `nse-maint` exclusive, requested with ifAvailable (never queued: `busy` retries later); its writes take no shared hold, never pause storing, and run while storing is paused for a full browser. | `StorageCore.exclusive` | `local/deletion/gc.test.ts` (busy, paused), `local/testing/testCore.test.ts` |
+| R2. A transaction that deletes a node or chunk bumps the epoch in that transaction; removing session rows bumps nothing. | `gcPass` (`bumpEpoch`) | `local/deletion/gc.test.ts` (one bump per sweep transaction; the closure check) |
+| R3. A remover locks every session lock and import lock of a chain, exclusive and ifAvailable, across its transaction, or skips the chain: open tabs, continuations' parent holds, Save to File…, builds and imports are never touched. | `removeLocked`, `markDeleted` (`lockChain`); the test core's lock rule | `local/deletion/delete.test.ts` (each holder; the lock rule fires) |
+| R4. A session goes whole (entries, stack blocks, row) in one transaction, only the oldest of a chain, the head only with the chain, the record and handles only with the last session; the transaction refuses (`changed`) when the chain, its sessions or its mark differ from what was locked. | `removeTx` | `local/deletion/delete.test.ts`, `local/deletion/crash.test.ts` |
+| R5. No remover deletes a journal: Delete applies the chain's journals before the mark, and every remover skips a chain with a `journal.<sessionId>` key; a marked chain's journal becomes a recovery chain at the next load. | `markDeleted`, `removeLocked`, `writeJournalApply` (`CHAIN_DELETING`) | `local/deletion/delete.test.ts` |
+| R6. GC holds one exclusive hold from its mark to its last sweep, never resumes from an earlier mark, stops when a writer waits with its swept batches committed, and keeps a body first stored within the last 2 days of use. | `gcPass` | `local/deletion/gc.test.ts` |
+| R8. A marked chain is gone to every reader but GC's mark: the newest session, an open, the open notice and pending imports skip it. | `readSessionForOpen`, `readNewestSession`, `openPendingImports`, `readEarlierChains` | `local/startup/stored.test.ts`, `local/deletion/delete.test.ts` |
+| R9. Undo clears a mark only while its `at` is the one its Delete wrote; a chain the sweep removed first is reported lost. | `undoTx` | `local/deletion/delete.test.ts` |
+| A kill at any await of Delete, the sweep or GC leaves each chain whole (marked or not) or gone, and the next load's sweep and GC finish it. | the single removal transaction, `storedViolations` | `local/deletion/crash.test.ts` |
 
 ### 5.4 Newer data
 
 | Rule | Enforced by | Tests |
 | --- | --- | --- |
 | A newer session `v`, an unknown entry kind or a root `v` above `RECORDS_V` is "Needs a newer version", never damage: never continued, restored, reduced, saved or rewritten, and a chain holding one is refused whole. An older or malformed `v` is not newer and not read. | `sessionReadability`, `checkReadable`, `ModelError` | `local/records/unknownValues.test.ts`, `local/save/versionGuards.test.ts`, `local/journal/replay.test.ts` |
+| R7. Automatic removal never reduces newer data: a partial removal or cleanup refuses a chain with a session this build cannot read (`later`), and GC removes nothing while `meta.formatVersion` is newer, a session is newer or an entry kind is unknown, or when its traversal reaches a node of an unknown `t` or a root above `RECORDS_V` (an unreachable one is swept). A user's whole-chain Delete or Delete Sessions… removes such a chain: its rows go by key range, unread. | `removeTx`, `gcPass` | `local/deletion/delete.test.ts`, `local/deletion/gc.test.ts` |
 | Version constants and tables are pinned. | — | `local/formatVersions.test.ts` |
 | An `x` follows one rule on every carrier (a JSON object, at most 256 KiB, at most 32 levels below it, damage otherwise whatever `patch` says) and is never counted in its host's caps; a writer writes the lowest `minor` and `patch` the content needs. | `isExtensionValue`, `withoutExtension`, `minorOf`, `patchOf`, `nxsp_check.py` (`extension_form`, `expected_minor`, `expected_patch`) | `editor/historyOperations.test.ts`, `local/nxsp/agreement.test.ts`, `checker.test.ts`, `local/formatVersions.test.ts` |
 
@@ -757,7 +775,7 @@ Before the ship an operation changes in place at version 1; after it, any change
 
 ## 7. Future work
 
-- **Deleting History (Step 8).** GC, Delete Sessions and space reduction are not built: nothing bumps `meta.epoch` (`bumpEpoch` and `missingHashes` in `db.ts` and `observeTimes` in `time.ts` have no callers, and each says so) or marks a row `kept: false` for space. When they land, every deleting transaction must bump the epoch, which the flush's closure check depends on.
+- **Deleting History (Steps 8 and 10).** Delete Sessions… and cleanup under pressure are not built; both remove through `removeLocked` (section 2.3), and cleanup never removes a chain's latest session. Nothing marks a row `kept: false` for space. `observeTimes` in `time.ts` has no caller.
 - **Level Info (Step 11).** `nse.levelInfo.set` has its codec, presentation, strings and `levelInfoInput`, but no producer until the Level Info dialog. It has no inventory case in `historyOperationDetails.cases.json` yet.
 - **Per-id operation versions.** The envelope has one literal `version: 1`. The first change after the ship needs a per-id version table and the old codec kept for reading.
 - **Native apps.** The apps' reader and writer are not in this repository (Step 7 is paused); the conformance cases and the checker are what they must match.
