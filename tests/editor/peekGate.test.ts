@@ -80,6 +80,8 @@ const allowed = [
     'save',
     'saveAs',
     'exportLevel',
+    // Reads the file and storage; it changes no chart state.
+    'checkProject',
     // A device setting.
     'previewAssets',
     // Focus and visibility of groups and stages (stage ones refuse enabling dynamic stages).

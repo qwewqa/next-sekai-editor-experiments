@@ -281,3 +281,40 @@ test('stored damage with no file to repair it from: the steps are marked', async
     )
     expect(await keptFalse(page)).toBeGreaterThan(0)
 })
+
+test('a Save pressed during a check waits for it', async ({ page }) => {
+    await start(page)
+    await edit(page, 1)
+    await slowCheck(page, 800)
+    await runCheck(page)
+    await expect(checkDialog(page)).toContainText('Checking')
+    await page.evaluate(async () => {
+        const { commands } = await import('/src/editor/commands/index.ts')
+        const { runCommand } = await import('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.save)
+    })
+    await expect(saveDialog(page)).toBeVisible()
+    // One queue: the Save's dialog came after the check's end, never beside its run.
+    expect(await page.evaluate(() => window.nseSaveTest?.reached ?? [])).toContain('checkEnd')
+})
+
+test('a session switch cancels the check', async ({ page }) => {
+    await start(page)
+    const good = await distinctBytes()
+    await opened(page, good)
+    await writeFile(page, 'coconut.nxsp', await withBadChunk(good))
+    const { chainId } = await chainOf(page)
+    await slowCheck(page, 800)
+    await runCheck(page)
+    await expect(checkDialog(page)).toContainText('Checking')
+    await page.evaluate(async () => {
+        const { resetState } = await import('/src/history/index.ts')
+        resetState(false)
+    })
+    await reached(page, 'checkEnd')
+    await expect(checkDialog(page)).toHaveCount(0)
+    // The old chain's file was not unlinked by a check that no longer owned its session.
+    const { chains } = await rows(page, ['chains'])
+    const old = chains!.map((row) => row.value).find((row) => row.chainId === chainId)
+    expect(old?.file).toBeDefined()
+})
