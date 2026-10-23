@@ -4,7 +4,7 @@ import type { UseDay } from '../../../src/local/days'
 import { DB_NAME, hashKey, writeMeta } from '../../../src/local/db'
 import { gcPass } from '../../../src/local/gc'
 import { toHex } from '../../../src/local/hash'
-import { MAINT_LOCK } from '../../../src/local/locks'
+import { importLock, MAINT_LOCK } from '../../../src/local/locks'
 import { packHashes } from '../../../src/local/records/rows'
 import { RECORDS_V, SESSION_V } from '../../../src/local/records/version'
 import { checkStored } from '../../../src/local/testing/invariants'
@@ -374,7 +374,6 @@ test('with storing paused for a full browser, a removal and GC still run and lea
     const request = {
         chainId: first.chainId,
         locked: [first.id, second.id],
-        remove: { whole: true as const },
         expect: {
             head: second.id,
             updatedAt: rows(world, 'chains').get(first.chainId)?.updatedAt as number,
@@ -395,7 +394,7 @@ test('with storing paused for a full browser, a removal and GC still run and lea
     assert.deepEqual(deleter.core.status, { mode: 'stored', reason: 'full' })
 })
 
-test('GC is busy while an import is pending, and sweeps only what nothing reaches once it ends', async () => {
+test('GC is busy only while an import runs: a pending import no tab runs never holds it up', async () => {
     const { world, deleter } = await fresh(9)
     const h = await seedBodies(world)
     // An import that deduped against an old orphan body: its parent node is a later batch.
@@ -405,13 +404,31 @@ test('GC is busy while an import is pending, and sweeps only what nothing reache
             .then(() => undefined),
     )
     const before = bodies(world)
+    const importer = world.tab('importer')
+    let release!: () => void
+    const running = new Promise<void>((resolve) => (release = resolve))
+    void importer.run(() => importer.locks.request(importLock('p'), {}, () => running))
+    await world.idle()
     assert.deepEqual(await deleter.gc(), { kind: 'busy' })
     assert.deepEqual(bodies(world), before)
     assert.ok(bodies(world).has(toHex(h.orphanNode)))
-    await tamper(world, (tx) =>
-        tx.put('sessions', { id: 'p', chainId: 'c', v: SESSION_V }).then(() => undefined),
-    )
+    // The import stopped (a full browser, a closed tab): still pending, its lock gone. A resumed
+    // run starts again at batch 0 and stores again whatever was swept.
+    release()
+    await world.idle()
     assert.deepEqual(await deleter.gc(), { kind: 'done', swept: 4 })
+})
+
+test('GC counts a lock query that fails as a running import', async () => {
+    const world = createWorld({ seed: 12, checks: false })
+    const tab = world.tab('gc')
+    const deleter = await openDeleter(world, tab, new MemoryStorage(), {
+        core: { locks: { ...tab.locks, query: () => Promise.reject(new Error('No query')) } },
+    })
+    await seedBodies(world)
+    const before = bodies(world)
+    assert.deepEqual(await deleter.gc(), { kind: 'busy' })
+    assert.deepEqual(bodies(world), before)
 })
 
 test('a pass that finds newer data is not repeated before the next day of use, and leaves the deletion pending', async () => {

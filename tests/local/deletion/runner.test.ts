@@ -1,16 +1,19 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { markDeleted, type SweepResult } from '../../../src/local/deletion'
-import { createRunner, startMaintenance } from '../../../src/local/maintenance'
+import { createRunner, persistStorage, startMaintenance } from '../../../src/local/maintenance'
+import type { PressureRun } from '../../../src/local/pressure'
 
 // The maintenance runner (deletion design §3.10): when the deleting jobs run.
 
-const setup = () => {
+const setup = ({ persist }: { persist?: () => unknown } = {}) => {
     const timers: { at: number; fn: () => void }[] = []
     const clock = { now: 0, visible: true }
     const log: string[] = []
     const sweeps: SweepResult[] = []
     const passes: { kind: string }[] = []
+    /** What the pressure checks answer, in turn; not busy when empty. */
+    const pressures: PressureRun[] = []
     let hold: Promise<void> = Promise.resolve()
     const runner = createRunner({
         worker: {
@@ -31,7 +34,19 @@ const setup = () => {
         persist: () => {
             log.push('persist')
             // Firefox's prompt, never answered.
-            return new Promise(() => undefined)
+            return persist ? persist() : new Promise(() => undefined)
+        },
+        pressure: {
+            atLoad: () => {
+                log.push('atLoad')
+                return Promise.resolve(pressures.shift())
+            },
+            whenFull: () => {
+                log.push('whenFull')
+                return Promise.resolve(
+                    pressures.shift() ?? { trigger: 'full', freed: 0, busy: false },
+                )
+            },
         },
         visible: () => clock.visible,
         timers: {
@@ -59,6 +74,7 @@ const setup = () => {
         log,
         sweeps,
         passes,
+        pressures,
         clock,
         timers,
         advance,
@@ -75,9 +91,79 @@ const setup = () => {
 test('the load’s run finishes with persist() never answering, and only the load asks for it', async () => {
     const { runner, log } = setup()
     await runner.start()
-    assert.deepEqual(log, ['reclaim', 'sweep', 'gcPass', 'persist'])
+    assert.deepEqual(log, ['reclaim', 'sweep', 'gcPass', 'atLoad', 'persist'])
     await runner.trigger()
     assert.equal(log.filter((each) => each === 'persist').length, 1)
+})
+
+test('a persist() that rejects or throws changes nothing', async () => {
+    const unhandled: unknown[] = []
+    const onUnhandled = (reason: unknown) => unhandled.push(reason)
+    process.on('unhandledRejection', onUnhandled)
+    try {
+        for (const persist of [
+            () => Promise.reject(new Error('Denied')),
+            () => {
+                throw new TypeError('Not allowed')
+            },
+        ]) {
+            const { runner, log } = setup({ persist })
+            await runner.start()
+            assert.deepEqual(log, ['reclaim', 'sweep', 'gcPass', 'atLoad', 'persist'])
+            await runner.trigger()
+            assert.equal(log.filter((each) => each === 'sweep').length, 2)
+        }
+        await new Promise((resolve) => setImmediate(resolve))
+        assert.deepEqual(unhandled, [])
+    } finally {
+        process.off('unhandledRejection', onUnhandled)
+    }
+})
+
+test('persist() is asked for wherever the browser has it, Firefox included', () => {
+    const asked: string[] = []
+    const answer = Promise.resolve(false)
+    assert.equal(
+        persistStorage({
+            persist: () => {
+                asked.push('persist')
+                return answer
+            },
+        }),
+        answer,
+    )
+    assert.deepEqual(asked, ['persist'])
+    assert.equal(persistStorage({}), undefined)
+    assert.equal(persistStorage(undefined), undefined)
+})
+
+test('the pressure check follows GC at load only, and a full browser’s cleanup runs on its own trigger', async () => {
+    const { runner, log } = setup()
+    await runner.start()
+    await runner.trigger()
+    assert.deepEqual(
+        log.filter((each) => each === 'atLoad' || each === 'whenFull'),
+        ['atLoad'],
+    )
+    log.length = 0
+    await runner.full()
+    assert.deepEqual(log, ['reclaim', 'sweep', 'gcPass', 'whenFull'])
+    log.length = 0
+    // Paused full already when the runner starts: the load's run does both.
+    const already = setup()
+    await already.runner.start(true)
+    assert.deepEqual(already.log, ['reclaim', 'sweep', 'gcPass', 'atLoad', 'whenFull', 'persist'])
+})
+
+test('a busy cleanup is owed and tried again 30 s later', async () => {
+    const { runner, log, pressures, advance } = setup()
+    pressures.push({ trigger: 'full', freed: 0, busy: true })
+    await runner.full()
+    assert.equal(log.filter((each) => each === 'whenFull').length, 1)
+    await advance(30_000)
+    assert.equal(log.filter((each) => each === 'whenFull').length, 2)
+    await advance(60_000)
+    assert.equal(log.filter((each) => each === 'whenFull').length, 2, 'done: no further try')
 })
 
 test('a trigger during a run queues one more run, not one per trigger', async () => {
@@ -136,14 +222,18 @@ test('GC is asked for after every sweep, and a busy or stopped pass is tried aga
     }
 })
 
-test('a load in a hidden page runs nothing but persist(); the page’s first visibility runs the jobs', async () => {
+test('a load in a hidden page runs nothing but persist(); the page’s first visibility runs the jobs and the load’s pressure check', async () => {
     const { runner, log, clock } = setup()
     clock.visible = false
     await runner.start()
     assert.deepEqual(log, ['persist'])
     clock.visible = true
     await runner.visible()
-    assert.deepEqual(log, ['persist', 'reclaim', 'sweep', 'gcPass'], 'persist is asked for once')
+    assert.deepEqual(
+        log,
+        ['persist', 'reclaim', 'sweep', 'gcPass', 'atLoad'],
+        'persist is asked for once',
+    )
 })
 
 test('without Web Locks no job runs, no listener is added, and Delete reports failed', async () => {
@@ -164,6 +254,10 @@ test('without Web Locks no job runs, no listener is added, and Delete reports fa
                 call: (method) => {
                     calls.push(String(method))
                     return Promise.resolve(undefined)
+                },
+                status: { mode: 'stored', reason: 'full' },
+                onStatus: () => {
+                    listeners.push('status')
                 },
             },
             locks: {

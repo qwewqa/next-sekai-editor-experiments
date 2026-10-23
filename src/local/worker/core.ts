@@ -12,6 +12,7 @@ import {
     type KvTx,
 } from '../kv/types'
 import {
+    importLock,
     MAINT_LOCK,
     MAINT_WAIT_MS,
     realTimers,
@@ -46,6 +47,8 @@ export type StorageStatus = {
 export type TestFlags = {
     noStorage?: boolean
     forceQuota?: boolean
+    /** A full browser that cleanup can free: quota errors until a deleting job frees space. */
+    quotaUntilFreed?: boolean
     forceUnknownError?: boolean
     /** Step 8's GC reads it. */
     slowGc?: boolean
@@ -131,6 +134,8 @@ export type ExclusiveHold = {
     ) => Promise<T>
     /** Whether a writer waits for `nse-maint` (true when the lock manager can't tell). */
     writerWaiting: () => Promise<boolean>
+    /** Whether an import is running: an `nse-import:*` lock is held (true when it can't tell). */
+    importRunning: () => Promise<boolean>
 }
 
 export class StorageCore {
@@ -362,6 +367,11 @@ export class StorageCore {
         return result
     }
 
+    /** A deleting job freed space: the test flag `quotaUntilFreed` ends. */
+    spaceFreed() {
+        this.flags.quotaUntilFreed = false
+    }
+
     /**
      * Runs a deleting job holding `nse-maint` exclusive, requested with ifAvailable (R1): `ran:
      * false` when any tab holds or waits for it, and the job is retried later. It runs while
@@ -385,6 +395,7 @@ export class StorageCore {
                     write: (stores, fn, options = {}) =>
                         memory.transaction(stores, 'readwrite', fn, options),
                     writerWaiting: () => Promise.resolve(false),
+                    importRunning: () => Promise.resolve(false),
                 }),
             }
         if (mode !== 'stored') throw new StorageRefusedError('failed')
@@ -395,6 +406,14 @@ export class StorageCore {
                 try {
                     const { pending } = await locks.query()
                     return pending.some((lock) => lock.name === MAINT_LOCK)
+                } catch {
+                    return true
+                }
+            },
+            importRunning: async () => {
+                try {
+                    const { held } = await locks.query()
+                    return held.some((lock) => lock.name.startsWith(importLock('')))
                 } catch {
                     return true
                 }
@@ -432,7 +451,7 @@ export class StorageCore {
         const db = this.db
         if (!db) throw domError('InvalidStateError', 'No connection')
         if (db.version !== this.version) throw new StorageRefusedError('readOnly')
-        if (forced && this.flags.forceQuota)
+        if (forced && (this.flags.forceQuota || this.flags.quotaUntilFreed))
             throw domError('QuotaExceededError', 'Forced by a test')
         if (forced && this.flags.forceUnknownError)
             throw domError('UnknownError', 'Forced by a test')

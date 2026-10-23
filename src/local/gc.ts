@@ -20,7 +20,7 @@ import type { ExclusiveHold, StorageCore } from './worker/core'
 export type GcResult =
     /** Not due: no deletion pending and run already on this day of use. */
     | { kind: 'skipped' }
-    /** `nse-maint` is held or wanted, or an import is still writing (its deduped bodies are unmarked). */
+    /** `nse-maint` is held or wanted, or an import is running (its deduped bodies are unmarked). */
     | { kind: 'busy' }
     | { kind: 'done'; swept: number }
     /** A writer waited: stopped, with the batches swept so far committed. */
@@ -85,8 +85,10 @@ const pass = async (
     const sessions = await hold.read(['sessions'], (tx) => tx.getAll('sessions'))
     if (sessions.some((row) => isRow(row) && isNewerSessionVersion(row.v)))
         return unsafe(hold, state.days, 'a session of a newer version')
-    // An import skips bodies already stored, which only its later batches reach (§3.5): wait.
-    if (sessions.some((row) => isRow(row) && row.importPending === true)) return { kind: 'busy' }
+    // A running import skips bodies already stored, which only its later batches reach: wait.
+    // One that stopped (`importPending` with no lock held) starts again at batch 0 and stores again
+    // whatever is swept meanwhile, so it never holds GC up.
+    if (await hold.importRunning()) return { kind: 'busy' }
 
     let swept = 0
     /** Between batches: a waiting writer ends the pass. */

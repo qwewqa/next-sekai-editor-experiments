@@ -86,6 +86,7 @@ const CLASSES = {
     undoDeleting: 'write',
     removeSessions: 'write',
     gcPass: 'write',
+    removeCachedMedia: 'write',
     checkFinish: 'write',
     checkDrop: 'write',
     // Lifecycle.
