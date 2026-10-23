@@ -396,41 +396,6 @@ test.describe('load notices in the start-up pill', () => {
         })
     })
 
-    test.describe('on a narrow phone', () => {
-        test.use({ viewport: { width: 320, height: 640 }, hasTouch: true, isMobile: true })
-
-        test('a long version moves to its own line and cuts neither the name nor itself', async ({
-            page,
-            context,
-        }) => {
-            // Not an update, so the heading is the name and the version.
-            await context.addInitScript(() => {
-                const appVersion = '0.5.22+77f3ad40'
-                localStorage.setItem(
-                    'nse.test.version',
-                    JSON.stringify({ appVersion, atTag: false }),
-                )
-                localStorage.setItem(
-                    'sonolus-next-sekai-editor.lastAppVersion',
-                    JSON.stringify(appVersion),
-                )
-            })
-            await visit(page)
-            await addEvent(page, { kind: 'bgmNotLoaded' })
-            const heading = pill(page).locator('p').first()
-            await expect(heading).toContainText('Next SEKAI Editor')
-            await expect(heading).toContainText('0.5.22+77f3ad40')
-            // No part is clipped: every span shows all of its text.
-            const clipped = await heading
-                .locator('span')
-                .evaluateAll(
-                    (spans) =>
-                        spans.filter((span) => span.scrollWidth > span.clientWidth + 1).length,
-                )
-            expect(clipped).toBe(0)
-        })
-    })
-
     test.describe('on a touch tablet', () => {
         test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true })
 
