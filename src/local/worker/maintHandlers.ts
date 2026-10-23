@@ -1,3 +1,4 @@
+import { readDeleteCandidates } from '../candidates'
 import { gcPass } from '../gc'
 import {
     markTx,
@@ -50,6 +51,12 @@ export const maintHandlers = (context: WorkerContext) => ({
         )
         return ran.ran ? ran.value : { kind: 'busy' }
     },
+
+    /** Delete Sessions…: every unmarked chain with the facts the ranges and the not-saved test read. */
+    deleteCandidates: (request: { wall: number }) =>
+        context.core.read(['chains', 'sessions', 'stackBlocks', 'meta'], (tx) =>
+            readDeleteCandidates(tx, request.wall),
+        ),
 
     /** One GC pass when due, or `always` (after a removal). */
     gcPass: (request: { always?: boolean } | undefined, scope?: CallScope) =>
