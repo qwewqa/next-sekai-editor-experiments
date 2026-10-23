@@ -10,3 +10,7 @@ export type AppVersion = {
 export function appVersion(options?: { cwd?: string }): AppVersion
 
 export function isHighestTag(tag: string, tags: readonly string[]): boolean
+
+export function parseTag(tag: string): [number, number, number] | null
+
+export function compareVersions(a: readonly number[], b: readonly number[]): number
