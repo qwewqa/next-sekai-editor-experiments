@@ -1037,7 +1037,7 @@ test.describe('when a card goes by itself', () => {
         // and no toast repeats it.
         await leave('B')
         await expect(pill(page)).toContainText('Restored “A”')
-        await expect(quick(page)).not.toContainText('Restored “A”')
+        await expect(quick(page).filter({ hasText: 'Restored “A”' })).toHaveCount(0)
         // Leave Anyway: nothing to reopen, so the card turns into a plain toast.
         await leave(undefined)
         await expect(pill(page)).toHaveCount(0)

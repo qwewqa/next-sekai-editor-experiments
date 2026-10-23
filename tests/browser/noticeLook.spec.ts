@@ -239,8 +239,8 @@ test.describe('the start-up card', () => {
         await expect(card(page)).toContainText('Work from earlier visits is missing')
         await settled(page)
         const all = rows(page)
-        // Updated to version, then the first three load notices in the table's order (Continued,
-        // cleared storage, journals full), then "and 1 more in Local Data".
+        // Updated to version, then the four load notices in the table's order (Continued, cleared
+        // storage, journals full, BGM not loaded): one more than the card collapses, so none hides.
         await expect(all).toHaveCount(5)
         const found = await all.evaluateAll((elements) =>
             elements.map((row) => ({
@@ -256,7 +256,7 @@ test.describe('the start-up card', () => {
             })),
         )
         const severities = found.map((row) => row.severity ?? null)
-        expect(severities).toEqual([null, null, 'warning', 'warning', null])
+        expect(severities).toEqual([null, null, 'warning', 'warning', 'info'])
         // One text edge in every row, neutral ones included.
         expect(found.map((row) => row.left)).toEqual([40, 40, 40, 40, 40])
         // The heading has no glyph.

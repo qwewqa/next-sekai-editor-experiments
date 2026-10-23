@@ -131,7 +131,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(pill(next)).toContainText('Next SEKAI Editor')
         await expect(pill(next)).toContainText('Version 0.6.0')
         await expect(pill(next)).toContainText(
-            /Continued "coconut" from [A-Z][a-z]{2}\u00A0\d{1,2}\./,
+            /Continued "coconut" from (\d{1,2}:\d{2}|[A-Z][a-z]{2}\u00A0\d{1,2})/,
         )
         // No storage line at load, on any override (Z22).
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
@@ -168,7 +168,7 @@ test.describe('load notices in the start-up pill', () => {
         const next = await context.newPage()
         await visit(next)
         await expect(pill(next)).toContainText(
-            /Continued your session from [A-Z][a-z]{2}\u00A0\d{1,2}\./,
+            /Continued your session from (\d{1,2}:\d{2}|[A-Z][a-z]{2}\u00A0\d{1,2})/,
         )
         await expect(pill(next)).not.toContainText('Continued "')
     })
@@ -307,6 +307,23 @@ test.describe('load notices in the start-up pill', () => {
             'A recovered change needs a newer version of the editor.',
             'The BGM is not loaded.',
         ])
+    })
+
+    test('four notices show whole: "and 1 more" would be a row as tall as the line it hides', async ({
+        page,
+    }) => {
+        await visit(page)
+        for (const event of [
+            { kind: 'bgmNotLoaded' },
+            { kind: 'journalLater' },
+            { kind: 'migrationFailed' },
+            { kind: 'storageCleared' },
+        ])
+            await addEvent(page, event)
+        const lines = pill(page).locator(':scope > div')
+        await expect(lines).toHaveCount(5)
+        await expect(pill(page)).not.toContainText('more in Local Data')
+        await expect(pill(page)).toContainText('The BGM is not loaded.')
     })
 
     test('the pill stays about 8 s with notices, and a later notice replaces it', async ({
