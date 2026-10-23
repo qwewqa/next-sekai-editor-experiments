@@ -89,9 +89,12 @@ export const forkNameOf = (parts: NameParts) => {
     return shown.kind === 'date' ? undefined : nextCopyName(shown.text)
 }
 
-/** The name a chain keeps when it loses its file: its own, else the file's stem (§1.3.5). */
+/**
+ * The name a chain takes when it loses its file (§1.3.5): the file's stem, over any name it had.
+ * Every web name is automatic, and the file name is the one the user chose last, by saving.
+ */
 export const keptNameOf = (name: unknown, fileName: unknown) =>
-    text(name) ?? (text(fileName) ? stemOf(fileName as string) : undefined)
+    text(fileName) ? stemOf(fileName as string) : text(name)
 
 /**
  * The displayed name as a file name (§1.4.7's prefill): as shown, since the shown name is already a

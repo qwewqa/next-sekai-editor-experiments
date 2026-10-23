@@ -60,8 +60,9 @@ test('the prefill is the displayed name as shown: a dotted name is not cut again
     assert.equal(prefillOf(displayName({})), '')
 })
 
-test('a chain that loses its file keeps its stem, unless it has a name', () => {
+test('a chain that loses its file takes its stem, over any name it had', () => {
     assert.equal(keptNameOf(undefined, 'feat. Miku.nxsp'), 'feat. Miku')
-    assert.equal(keptNameOf('Coconut (2)', 'melt.nxsp'), 'Coconut (2)')
+    assert.equal(keptNameOf('Coconut (2)', 'melt.nxsp'), 'melt')
+    assert.equal(keptNameOf('Coconut (2)', undefined), 'Coconut (2)')
     assert.equal(keptNameOf(undefined, undefined), undefined)
 })

@@ -7,7 +7,8 @@ import { Fixture, save } from './fixture'
 
 // A chain that loses its file keeps the file's stem as its name (Part 1 §1.3.5): the file's stem
 // named it, so its label, its Recent Sessions row and the next Save's prefill keep naming it, not
-// the title or "Untitled · date". A chain that has a name of its own keeps that.
+// the title or "Untitled · date". The stem replaces any name the chain had: every web name is
+// automatic, and the file name is the one the user chose last.
 
 type Row = Record<string, unknown>
 
@@ -84,12 +85,25 @@ test('an unlink after damage, Check’s included, leaves the chain its file’s 
     assert.equal((await chainOf(fixture)).name, 'coconut')
 })
 
-test('a chain with a name of its own keeps it when it loses its file', async () => {
-    const fixture = await boundChain('melt.nxsp', 'Coconut (2)')
-    await fixture.store.write(BIND_STORES, (tx) =>
-        takeOver(tx, { owner: owner(fixture, 'melt.nxsp'), by: 'other', at: 9 }),
+test('a fork later saved as a file takes that file’s stem over its "(2)" name when it loses it', async () => {
+    // A fork "Coconut (2)" saved as melt.nxsp, then taken over or unlinked: it reads "melt".
+    const taken = await boundChain('melt.nxsp', 'Coconut (2)')
+    await taken.store.write(BIND_STORES, (tx) =>
+        takeOver(tx, { owner: owner(taken, 'melt.nxsp'), by: 'other', at: 9 }),
     )
-    assert.equal((await chainOf(fixture)).name, 'Coconut (2)')
+    assert.equal((await chainOf(taken)).name, 'melt')
+    const unlinked = await boundChain('melt.nxsp', 'Coconut (2)')
+    await unlinked.store.write(['chains', 'entries', 'handles'], (tx) =>
+        writeUnlink(tx, {
+            sessionId: '',
+            chainId: unlinked.chainId,
+            docId: 'doc-2',
+            hashes: [],
+            roots: [],
+            appVersion: '0.6.0',
+        }),
+    )
+    assert.equal((await chainOf(unlinked)).name, 'melt')
 })
 
 test('the web’s Save writes no project name: its names are automatic, and the apps would show one', async () => {

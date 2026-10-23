@@ -27,7 +27,7 @@ type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
-/** A chain losing its file keeps the file's stem as its name, when it has none (§1.3.5). */
+/** A chain losing its file takes the file's stem as its name, over any it had (§1.3.5). */
 const keepName = (record: Row, fileName: string) => {
     const name = keptNameOf(record.name, fileName)
     if (name !== undefined) record.name = name
