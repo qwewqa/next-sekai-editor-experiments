@@ -314,7 +314,7 @@ test('a new visit while that session is open in another tab starts blank, and Re
                 (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
             return restoreAsCopy(sessionId)
         }, original.id),
-    ).toBe(true)
+    ).toEqual({ opened: true, forked: true })
     expect(await lifeOf(next)).toBe(990)
     expect((await flushSession(next)).chainId).not.toBe(original.chainId)
 })

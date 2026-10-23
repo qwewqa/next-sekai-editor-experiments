@@ -323,7 +323,10 @@ test('Restore as a Copy without Web Locks never asks which tab holds the session
             },
             loaded.recovery,
         )
-        assert.equal(await loaded.page.tab.run(() => restoreAsCopy(session.id)), true)
+        assert.deepEqual(await loaded.page.tab.run(() => restoreAsCopy(session.id)), {
+            opened: true,
+            forked: true,
+        })
     })
     assert.notEqual(openSession(loaded).forkOf, undefined)
     lock.release()

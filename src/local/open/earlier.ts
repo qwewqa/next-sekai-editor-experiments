@@ -23,7 +23,7 @@ export type StoredEarlierChain = {
 }
 
 /** The head slot's root of a session: its stack's index slot. */
-const headOf = async (tx: KvTx, session: Row) => {
+export const headOf = async (tx: KvTx, session: Row) => {
     const stack = session.stack as { index?: unknown } | undefined
     if (typeof stack?.index !== 'number') return
     const row = (await tx.get('stackBlocks', [session.id as string, blockOf(stack.index)])) as

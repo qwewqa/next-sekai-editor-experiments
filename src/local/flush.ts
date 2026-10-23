@@ -307,6 +307,11 @@ export type FlushDeps = {
     onFlushed?: (report: FlushReport) => void
     /** The roots a flush stored for its entries' states, so peek can find them in memory. */
     onRoots?: (roots: readonly (readonly [State, Uint8Array])[]) => void
+    /**
+     * A flush in a database made the chain record or moved its head (a continuation's or a fork's
+     * first write): other tabs' Recent Sessions lists change (§1.6.6 hints).
+     */
+    onChainMoved?: (session: FlushSession) => void
     /** A flush or a strict sync committed a session's entries up to `seq` in a database. */
     onCommitted?: (session: FlushSession, commit: { seq: number; strict: boolean }) => void
     /**
@@ -384,12 +389,15 @@ const unitOf = ({
 /** Recent Sessions' summary of a head (§1.6.11.2). */
 export const summaryOf = (state: State, noteCount: number): ChainSummary => {
     const { title, artists, author, rating, tags } = state.levelInfo
+    // The BGM's file name, for a chart named by its song (§1.3.5); IndexedDB only.
+    const bgmName = state.bgm.meta?.filename ?? state.bgm.filename
     return {
         ...(title ? { title } : {}),
         ...(artists ? { artists } : {}),
         ...(author ? { author } : {}),
         ...(rating === undefined ? {} : { rating }),
         ...(tags.length ? { tags: tags.map((tag) => tag.title) } : {}),
+        ...(bgmName ? { bgmName } : {}),
         noteCount,
     }
 }
@@ -1496,6 +1504,7 @@ export class Flusher {
                     if (isStrict) session.strictSeq = Math.max(session.strictSeq, seq)
                     this.deps.onCommitted?.(session, { seq, strict: isStrict })
                 }
+                if (result.chainMoved && !result.memory) this.deps.onChainMoved?.(session)
                 const failed = new Set(result.mediaFailed)
                 for (const item of media) {
                     this.unconfirmed.delete(item.hash)

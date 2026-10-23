@@ -103,7 +103,7 @@ export const restoreCopy = (sessionId: string) =>
         if (!(await confirmSwitch()) || !request.isCurrent()) return false
         const { restoreAsCopy } = await import('../local/startup/api')
         if (!request.isCurrent()) return false
-        const opened = await restoreAsCopy(sessionId, request)
+        const { opened } = await restoreAsCopy(sessionId, request)
         if (opened && request.isCurrent()) dismissNoticeCard()
         return opened
     })

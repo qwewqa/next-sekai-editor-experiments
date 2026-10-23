@@ -28,3 +28,15 @@ export const broadcastChannel = (name: string = CHANNEL_NAME): Channel => {
     }
     return wrapper
 }
+
+let poster: Channel | undefined
+
+/** Tells other tabs a chain record was made or its head moved: a hint to read their lists again. */
+export const postSessionUpdated = () => {
+    try {
+        poster ??= broadcastChannel()
+        poster.post({ type: 'sessionUpdated' })
+    } catch {
+        // A hint only: a list refreshes on pageshow and when the page becomes visible too.
+    }
+}
