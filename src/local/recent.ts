@@ -74,8 +74,6 @@ export const readRecent = async (tx: KvTx): Promise<RecentChain[]> => {
         if (!isRow(value) || value.deleting !== undefined || typeof value.chainId !== 'string')
             continue
         const sessionId = typeof value.head === 'string' ? value.head : ''
-        // A removed head (a tombstone) has nothing to restore or show.
-        if (sessionId && (await tx.getKey('tombstones', sessionId)) !== undefined) continue
         const session = sessionId ? await tx.get('sessions', sessionId) : undefined
         const head = isRow(session) ? session : undefined
         const updatedAt = count(value.updatedAt) ?? 0

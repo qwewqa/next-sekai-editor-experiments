@@ -34,7 +34,7 @@ const tamper = async (world: World, change: (tx: KvTx) => Promise<void>) => {
     const tab = world.tab('tamper')
     const core = workerCore(world, tab)
     await tab.run(() => core.start())
-    await tab.run(() => core.write(['sessions', 'chains', 'entries', 'tombstones'], change))
+    await tab.run(() => core.write(['sessions', 'chains', 'entries'], change))
 }
 
 type Row = Record<string, unknown>

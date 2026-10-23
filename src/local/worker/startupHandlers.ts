@@ -24,7 +24,7 @@ import type { CallScope } from './rpc'
 // a session to open it, the most recent session, chain-field writes from the head, and the auto
 // save migration's transaction.
 
-const READ_STORES = ['sessions', 'chains', 'entries', 'stackBlocks', 'tombstones', 'nodes', 'meta']
+const READ_STORES = ['sessions', 'chains', 'entries', 'stackBlocks', 'nodes', 'meta']
 
 export const startupHandlers = (context: WorkerContext, outside: Waiter = directWaiter) => {
     const waiterOf = (progress: Progress): Waiter => ({
@@ -60,7 +60,7 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
 
         /** Recent Sessions' list: every chain not marked for Delete, newest first. */
         listRecent: () =>
-            context.core.read(['chains', 'sessions', 'stackBlocks', 'tombstones'], readRecent),
+            context.core.read(['chains', 'sessions', 'stackBlocks'], readRecent),
 
         /** The bindings of sessions open in other tabs, for the bound-elsewhere check. */
         readBindings: (sessionIds: string[]) =>

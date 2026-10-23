@@ -197,7 +197,7 @@ test('a journal apply and a recovery session keep their origins', async () => {
         assert.equal(applied.outcomes[0]?.kind, 'applied')
         assert.equal(originsOf(world).get(session.id), 'import')
 
-        // A second tab's journal for a session removed meanwhile: a recovery session.
+        // A second tab's journal for a chain marked for Delete meanwhile: a recovery session.
         const second = await openJournalPage(world, 'b', storage)
         const other = beginSession(second, stateOf(goldenChart()))
         await second.flusher.flush({ strict: true })
@@ -208,15 +208,10 @@ test('a journal apply and a recovery session keep their origins', async () => {
         const core = workerCore(world, sweeper)
         await sweeper.run(() => core.start())
         await sweeper.run(() =>
-            core.write(['tombstones'], (tx) =>
-                tx.put('tombstones', {
-                    id: other.id,
-                    kind: 'session',
-                    removedAt: 1,
-                    chainId: other.chainId,
-                    label: { time: 1, name: '' },
-                }),
-            ),
+            core.write(['chains'], async (tx) => {
+                const chain = (await tx.get('chains', other.chainId)) as Record<string, unknown>
+                await tx.put('chains', { ...chain, deleting: { at: 1 } })
+            }),
         )
         const recovered = await replayAll(world, storage, 'next2')
         assert.ok(recovered.outcomes.some((outcome) => outcome.kind === 'recovery'))

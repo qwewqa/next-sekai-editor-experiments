@@ -69,7 +69,7 @@ export type JournalApplyResult =
     /** Its chain needs a newer version: left in place. */
     | { kind: 'later'; why: string }
 
-export const JOURNAL_STORES = [...FLUSH_STORES, 'tombstones'] as const
+export const JOURNAL_STORES = FLUSH_STORES
 
 /** Why a journal of a chain marked for Delete is kept as a recovery session, never swept unseen. */
 export const CHAIN_DELETING = 'its chain is being deleted'
@@ -191,16 +191,12 @@ export const writeJournalApply = async (
     // Reads.
     const sessionRow = await tx.get('sessions', sessionId)
     const session = isRow(sessionRow) ? sessionRow : undefined
-    const tombstone = await tx.get('tombstones', sessionId)
     const chainId = typeof session?.chainId === 'string' ? session.chainId : descriptor.chainId
     const chainRow = await tx.get('chains', chainId)
     const chain = isRow(chainRow) ? chainRow : undefined
     // Kept as a recovery session by an earlier load killed before the key went: it's there.
     const { recovery } = batch
-    if (
-        (await tx.getKey('sessions', recovery.sessionId)) !== undefined ||
-        (await tx.getKey('tombstones', recovery.sessionId)) !== undefined
-    )
+    if ((await tx.getKey('sessions', recovery.sessionId)) !== undefined)
         return {
             kind: 'recovery',
             sessionId: recovery.sessionId,
@@ -260,7 +256,6 @@ export const writeJournalApply = async (
 
     let recoveryWhy: string | undefined
     if (unsupportedWhy) recoveryWhy = unsupportedWhy
-    else if (tombstone !== undefined) recoveryWhy = 'its session was removed'
     else if (chain?.deleting !== undefined) recoveryWhy = CHAIN_DELETING
     else if (chain && chain.head !== sessionId && !continuing)
         recoveryWhy = 'its session was continued'

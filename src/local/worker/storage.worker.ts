@@ -5,6 +5,7 @@ import { checkHandlers } from './checkHandlers'
 import { diagnosticHandlers } from './diagnosticHandlers'
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
+import { maintHandlers } from './maintHandlers'
 import { openHandlers } from './openHandlers'
 import { peekHandlers } from './peekHandlers'
 import { serve, type Endpoint } from './rpc'
@@ -38,6 +39,7 @@ const handlers = {
     ...openHandlers(context),
     ...checkHandlers(context),
     ...diagnosticHandlers(context),
+    ...maintHandlers(context),
 }
 
 export type StorageHandlers = typeof handlers

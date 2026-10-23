@@ -232,16 +232,23 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
                 readEarlierChains(tx, docId, exclude),
             ),
 
-        /** Sessions whose open's import hasn't finished, with their chains (§1.6.11.2's `importPending`). */
+        /**
+         * Sessions whose open's import hasn't finished, with their chains (§1.6.11.2's
+         * `importPending`); never one of a chain marked for Delete (R8).
+         */
         openPendingImports: () =>
-            context.core.read(['sessions'], async (tx) => {
+            context.core.read(['sessions', 'chains'], async (tx) => {
                 const out: { sessionId: string; chainId: string }[] = []
                 for (const row of (await tx.getAll('sessions', KeyRange.lowerBound(''))) as Record<
                     string,
                     unknown
-                >[])
-                    if (row.importPending === true && typeof row.chainId === 'string')
-                        out.push({ sessionId: String(row.id), chainId: row.chainId })
+                >[]) {
+                    if (row.importPending !== true || typeof row.chainId !== 'string') continue
+                    const chain = (await tx.get('chains', row.chainId)) as
+                        Record<string, unknown> | undefined
+                    if (chain?.deleting !== undefined) continue
+                    out.push({ sessionId: String(row.id), chainId: row.chainId })
+                }
                 return out
             }),
     }

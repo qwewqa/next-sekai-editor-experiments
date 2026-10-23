@@ -65,7 +65,6 @@ test('the worker opens nse-local-data at version 1 with every store', async ({ p
             'recovered',
             'sessions',
             'stackBlocks',
-            'tombstones',
             'userAssets',
         ],
     })

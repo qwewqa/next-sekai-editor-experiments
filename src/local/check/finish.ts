@@ -1,5 +1,3 @@
-import type { LockService } from '../../platform/types'
-import { withMaintExclusive } from '../locks'
 import { inspectNxsp } from '../nxsp/inspect'
 import type { MediaKind } from '../nxsp/read'
 import { loadBodies, type SaveStore } from '../save/bodies'
@@ -20,9 +18,13 @@ export const MEDIA_ATTEMPTS = 6
 export const MEDIA_RETRY_MS = 200
 
 export type MediaRemoval = {
-    locks: LockService
-    /** Deletes a media row; the caller holds `nse-maint` exclusive. */
-    remove: (hash: string) => Promise<void>
+    /**
+     * Runs `body` holding `nse-maint` exclusive (`StorageCore.exclusive`, ifAvailable): `ran:
+     * false` when it is held. `remove` deletes a media row inside that hold.
+     */
+    exclusive: <T>(
+        body: (remove: (hash: string) => Promise<void>) => Promise<T>,
+    ) => Promise<{ ran: true; value: T } | { ran: false }>
     sleep: (ms: number) => Promise<void>
 }
 
@@ -61,10 +63,10 @@ export const removeBadMedia = async (
     for (let attempt = 0; attempt < MEDIA_ATTEMPTS; attempt++) {
         if (attempt) await removal.sleep(MEDIA_RETRY_MS)
         try {
-            const held = await withMaintExclusive(removal.locks, async () => {
+            const held = await removal.exclusive(async (remove) => {
                 const state = await storedMediaState(store, hash)
                 if (state === 'whole') return 'repaired' as const
-                if (state === 'bad') await removal.remove(hash)
+                if (state === 'bad') await remove(hash)
                 return 'removed' as const
             })
             if (held.ran) return held.value

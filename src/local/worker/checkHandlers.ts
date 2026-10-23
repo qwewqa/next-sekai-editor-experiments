@@ -1,4 +1,3 @@
-import type { LockService } from '../../platform/types'
 import { checkFileChunks, openFileCheck, type FileBatchResult, type FileCheck } from '../check/file'
 import { finishCheck, type FinishResult } from '../check/finish'
 import {
@@ -9,7 +8,6 @@ import {
 } from '../check/stored'
 import { hashKey } from '../db'
 import { fromHex16 } from '../hash'
-import { webLockService } from '../locks'
 import type { SaveStore } from '../save/bodies'
 import type { ModelRefusal } from '../save/model'
 import type { Progress } from './core'
@@ -38,7 +36,6 @@ export type CheckStoredOpenResult =
     | { kind: 'opened'; id: string; batches: number; roots: number }
 
 export type CheckHandlerOptions = {
-    locks?: LockService
     sleep?: (ms: number) => Promise<void>
 }
 
@@ -49,7 +46,7 @@ const realSleep = (ms: number) =>
 
 export const checkHandlers = (
     context: WorkerContext,
-    { locks = webLockService, sleep = realSleep }: CheckHandlerOptions = {},
+    { sleep = realSleep }: CheckHandlerOptions = {},
 ) => {
     const files = new Map<string, FileCheck>()
     const stored = new Map<string, StoredCheck>()
@@ -121,18 +118,16 @@ export const checkHandlers = (
                 ...(file ? { file } : {}),
                 readOnly: core.status.mode === 'readOnly',
                 removal: {
-                    locks,
                     sleep,
-                    remove: (hash) =>
-                        core.write(
-                            ['media'],
-                            (tx) => tx.delete('media', hashKey(fromHex16(hash))),
-                            {
-                                durability: 'strict',
-                                pauseOnFailure: false,
-                                maintHeld: true,
-                                ...progress,
-                            },
+                    exclusive: (body) =>
+                        core.exclusive((hold) =>
+                            body((hash) =>
+                                hold.write(
+                                    ['media'],
+                                    (tx) => tx.delete('media', hashKey(fromHex16(hash))),
+                                    { durability: 'strict' },
+                                ),
+                            ),
                         ),
                 },
             })
