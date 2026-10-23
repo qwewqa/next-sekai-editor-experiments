@@ -45,9 +45,11 @@ const openExportDialog = async () => {
     const target = platform.capabilities.writeBack ? await loadExportTarget() : undefined
     const { exportName, sourceName } = exportMemory
     // The name used last; else the source file's own name; else the displayed name, made
-    // valid, as "<name> (2)" for a partial import so the picker never suggests the original.
+    // valid, as "<name> (2)" for a partial import so the picker never suggests the original:
+    // one named "LevelData", which names nothing as the displayed name, too.
     const fromSource = exportName === undefined && sourceName !== undefined
-    const name = exportName ?? sourceName ?? copyName(validName(shownStem()))
+    const shown = shownStem() || (exportMemory.partial ? (session.value.sourceName ?? '') : '')
+    const name = exportName ?? sourceName ?? copyName(validName(shown))
     // The chain's own file is read first when a pick of it could lose what it holds (R2).
     const read: Promise<ReadResult> = import('../../save/exportPick').then(
         (pick) => pick.startExportRead(),
