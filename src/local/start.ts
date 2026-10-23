@@ -1,6 +1,7 @@
+import { downloadConfirmed } from '../editor/file/flags'
 import { LOAD_ORDER } from '../editor/loadOrder'
 import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
-import { reclaimOrphans } from '../editor/save/env'
+import { readRevocation, reclaimOrphans } from '../editor/save/env'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
@@ -10,9 +11,11 @@ import { PRODUCT_NAME } from '../product'
 import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
+import { createDeleteSessions, setDeleteSessions } from './deleteSessions'
 import { startMaintenance } from './maintenance'
 import { keptCopyChains, removeKeptCopy } from './open/kept'
 import { resumeAfterStartup } from './open/project'
+import { retryStoring } from './retryStoring'
 import { setSessionContext } from './startup/api'
 import { addLoadEvent, storageStatus } from './startup/events'
 import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
@@ -332,6 +335,20 @@ export const startStorage = async () => {
                     reclaim: () =>
                         reclaimOrphans(worker, { chains: keptCopyChains, remove: removeKeptCopy }),
                 })
+                // Delete Sessions… in Local Data acts through this.
+                setDeleteSessions(
+                    createDeleteSessions({
+                        worker,
+                        locks: platform.locks,
+                        removeLocked: maintenance.deletion.removeLocked,
+                        downloadsConfirmed: () =>
+                            downloadConfirmed.value && !platform.capabilities.unconfirmedDownloads,
+                        paused: () =>
+                            worker.status?.mode === 'stored' ? worker.status.reason : undefined,
+                        retryStoring,
+                        revoked: (chainId) => readRevocation(chainId) !== undefined,
+                    }),
+                )
                 if (window.nseStorageTest)
                     window.nseStorageTest.sweepDeleted = (minAgeMs) =>
                         maintenance.deletion.sweepDeleted(minAgeMs)
