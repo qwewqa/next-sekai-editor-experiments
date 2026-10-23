@@ -281,7 +281,6 @@ const identicalToEnglish: Record<string, string[]> = {
         // French spells "note" the same.
         'peek.notes',
         // "BGM", as in its other strings.
-        'save.bgm',
         // French spells "Version" the same.
         'settings.about.version',
         'settings.editor.waveformVisualization.fft',
@@ -362,9 +361,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.listJoin',
         'modals.form.sentenceJoin',
         // "BGM" as in its other BGM strings.
-        'open.media.bgm',
         // "BGM", as in its other strings.
-        'save.bgm',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'workspace.folders.path',
@@ -400,7 +397,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.listJoin',
         'modals.form.sentenceJoin',
         // "BGM", as in its other strings.
-        'save.bgm',
         'settings.editor.waveformVisualization.fft',
         'tools.bpm.title',
         'workspace.folders.path',
@@ -430,9 +426,7 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.form.key.names.space',
         'modals.form.key.names.tab',
         // "BGM" as in its other BGM strings.
-        'open.media.bgm',
         // "BGM", as in its other strings.
-        'save.bgm',
         'tools.bpm.title',
         'workspace.folders.path',
         'workspace.manager.copyName',
