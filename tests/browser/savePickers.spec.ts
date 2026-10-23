@@ -196,6 +196,14 @@ test('the chain’s own file changed on disk: a pick puts its bytes back and ope
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
 })
 
+test('Save As… suggests a dotted file name whole, as it is shown', async ({ page }) => {
+    await start(page)
+    await savedTo(page, 'feat. Miku.nxsp')
+    await saveAs(page)
+    // The shown name is the stem already: "feat. Miku", never cut again to "feat".
+    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('feat. Miku (2)')
+})
+
 test('suggestions never name a known file: a taken "(2)" gets one more', async ({ page }) => {
     await start(page)
     await savedTo(page, 'coconut.nxsp')

@@ -303,4 +303,10 @@ test('opening the download with work since the Save makes a new chain, and the w
         .map((row) => row.value)
         .filter((row) => row.sessionId === saved.head && row.kind === 'edit')
     expect(left).toHaveLength(2)
+
+    // The new chain's first Save asks, and suggests the file's own name: a download takes
+    // nothing over, so no " (2)" for the name the other chain is bound to (R1 is for pickers).
+    await edit(page, 4)
+    await pressSave(page)
+    await expect(saveDialog(page).getByRole('textbox')).toHaveValue('coconut')
 })
