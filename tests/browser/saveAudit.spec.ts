@@ -206,7 +206,10 @@ test('the file opened by name keeps its BGM: ticked, disabled, "Already in" it',
     await submitSave(page, 'coconut')
     const download = await downloading
     const bytes = [...(await import('node:fs')).readFileSync((await download.path())!)]
+    // From a new session: opened from the session that wrote it, the download keeps that session.
     await page.evaluate(async (bytes) => {
+        const { resetState } = await import('/src/history/index.ts')
+        resetState(false)
         const { openProject } = await import('/src/editor/commands/open/project.ts')
         await openProject(new File([new Uint8Array(bytes)], 'coconut.nxsp'), undefined)
     }, bytes)

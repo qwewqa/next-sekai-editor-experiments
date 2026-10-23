@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { waitForStartup } from './editorFixture'
 import {
     builds,
+    chainById,
     chainOf,
     edit,
     notice,
@@ -135,7 +136,10 @@ test('opening a file this browser downloaded confirms its downloads', async ({ p
     const download = await downloading
     await expect(page.locator('[data-file-chip="notConfirmed"]')).toBeVisible()
     const bytes = [...(await import('node:fs')).readFileSync((await download.path())!)]
+    // From a new session: opened from the session that wrote it, the download keeps that session.
     await page.evaluate(async (bytes) => {
+        const { resetState } = await import('/src/history/index.ts')
+        resetState(false)
         const { openProject } = await import('/src/editor/commands/open/project.ts')
         await openProject(new File([new Uint8Array(bytes)], 'coconut.nxsp'), undefined)
     }, bytes)
@@ -206,4 +210,97 @@ test('Cancel in a slow Preparing… ends the Save: nothing asks or downloads, an
         await preparingDialog(page).getByRole('button', { name: 'Download' }).click()
     })
     expect(next).toBe('coconut.nxsp')
+})
+
+// Open of the file the open session last saved (Part 1 §1.5.4): no new chain, and the session
+// stays; with work since the Save, today's open, a new chain with Reopen.
+
+const chainCount = async (page: Page) => (await rows(page, ['chains'])).chains!.length
+
+/** Saves a first download "coconut", and returns its bytes once its binding is recorded. */
+const savedDownload = async (page: Page) => {
+    await edit(page, 1)
+    const downloading = page.waitForEvent('download')
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    const download = await downloading
+    await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ event: 'downloaded' })
+    return [...(await import('node:fs')).readFileSync((await download.path())!)]
+}
+
+const openBytes = (page: Page, bytes: number[], name: string) =>
+    page.evaluate(
+        async ({ bytes, name }) => {
+            const { openProject } = await import('/src/editor/commands/open/project.ts')
+            await openProject(new File([new Uint8Array(bytes)], name), undefined)
+        },
+        { bytes, name },
+    )
+
+test('opening the download just saved keeps the session: one chain, confirmed, no dialog next', async ({
+    page,
+}) => {
+    await start(page, {
+        fileSystemAccess: false,
+        override: { os: 'linux', engine: 'firefox' },
+    })
+    const bytes = await savedDownload(page)
+    const before = await chainOf(page)
+    const { sessionId } = await sessionOf(page)
+    await expect(page.locator('[data-file-chip="notConfirmed"]')).toBeVisible()
+
+    // The browser renamed the second copy: the name is no fact, the write is.
+    await openBytes(page, bytes, 'coconut (1).nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Reopen/ })).toHaveCount(0)
+    expect(await chainCount(page)).toBe(1)
+    expect((await sessionOf(page)).sessionId).toBe(sessionId)
+    await expect
+        .poll(async () => (await chainOf(page)).file)
+        .toMatchObject({ name: 'coconut.nxsp', event: 'downloaded', confirmed: true })
+    expect((await chainOf(page)).chainId).toBe(before.chainId)
+    await expect(page.locator('[data-file-chip]')).toHaveCount(0)
+
+    // A Save by name: it downloads again, with no dialog.
+    await edit(page, 2)
+    expect(await downloaded(page, () => pressSave(page))).toBe('coconut.nxsp')
+    await expect(saveDialog(page)).toHaveCount(0)
+})
+
+test('the next visit opening the download it saved keeps the session too', async ({ page }) => {
+    await start(page, { fileSystemAccess: false })
+    const bytes = await savedDownload(page)
+    const saved = await chainOf(page)
+    await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
+    // A new visit: another tab after this one closed continues the chain as a new session.
+    const context = page.context()
+    await page.close()
+    const next = await context.newPage()
+    await start(next, { fileSystemAccess: false })
+    await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
+    await openBytes(next, bytes, 'coconut.nxsp')
+    await expect(notice(next).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await expect(next.getByRole('button', { name: /^Reopen/ })).toHaveCount(0)
+    expect(await chainCount(next)).toBe(1)
+    expect((await chainById(next, saved.chainId))?.file).toMatchObject({ event: 'downloaded' })
+})
+
+test('opening the download with work since the Save makes a new chain, and the work stays to Reopen', async ({
+    page,
+}) => {
+    await start(page, { fileSystemAccess: false })
+    const bytes = await savedDownload(page)
+    const saved = await chainOf(page)
+    await edit(page, 3)
+    await openBytes(page, bytes, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Reopen/ })).toBeVisible()
+    expect(await chainCount(page)).toBe(2)
+    expect((await chainOf(page)).chainId).not.toBe(saved.chainId)
+    // The edit after the Save is in the chain left.
+    const { entries } = await rows(page, ['entries'])
+    const left = entries!
+        .map((row) => row.value)
+        .filter((row) => row.sessionId === saved.head && row.kind === 'edit')
+    expect(left).toHaveLength(2)
 })

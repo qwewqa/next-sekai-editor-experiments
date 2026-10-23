@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { waitForStartup } from './editorFixture'
+import { installTestPlatform, waitForStartup } from './editorFixture'
+import { pressSave, submitSave } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // Media re-attach (Part 1 §1.6.8.4, Step 7 design §3.6): a session whose BGM is in the media store
@@ -317,6 +318,33 @@ test.describe('with a stored BGM', () => {
         expect(changed.hash).not.toBe(picked.hash)
         await settled(page)
         await expect.poll(() => storedCount(page, 'entries')).toBe(entries + 1)
+    })
+
+    test('opening the download it saved, with its BGM lost from storage, brings the BGM back', async ({
+        page,
+    }) => {
+        await page.addInitScript(installTestPlatform, { fileSystemAccess: false })
+        await visit(page)
+        const file = wav(0.5)
+        await pickBgm(page, 'pick.wav', file)
+        const picked = await liveBgm(page)
+        const downloading = page.waitForEvent('download')
+        await pressSave(page)
+        await submitSave(page, 'coconut')
+        const download = await downloading
+        const bytes = [...(await import('node:fs')).readFileSync((await download.path())!)]
+        await settled(page)
+        await dropMedia(page, picked.hash!)
+        await reload(page)
+        await expect(page.getByText('The BGM is not loaded.', { exact: true })).toBeVisible()
+
+        // The session the file came from lacks its BGM: the open is today's, which stores it.
+        await page.evaluate(async (bytes) => {
+            const { openProject } = await import('/src/editor/commands/open/project.ts')
+            await openProject(new File([new Uint8Array(bytes)], 'coconut.nxsp'), undefined)
+        }, bytes)
+        await expect.poll(() => liveBgm(page)).toEqual(picked)
+        await expect.poll(() => storedCount(page, 'media')).toBe(1)
     })
 
     test('Download BGM gives back the bytes that were stored', async ({ page }) => {
