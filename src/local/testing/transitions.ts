@@ -63,7 +63,7 @@ const importing = (before: Row | undefined, after: Row | undefined) =>
  *
  * An opened session while its import is pending: only the import's fill is exempt, the rows at or
  * below `openBase` (the last `seq` of the file's rows, recorded by the open's own transaction) and
- * its fields (`entryCount`, `ownBytes`, `importPending`). The page's own rows above it, edits
+ * its fields (`entryCount`, `importPending`). The page's own rows above it, edits
  * flushed during the import, keep every rule. Without a base, every row of such a session counts as
  * the fill.
  */

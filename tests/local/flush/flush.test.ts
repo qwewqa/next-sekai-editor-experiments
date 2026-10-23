@@ -246,7 +246,6 @@ test('a batch sent again after its commit stores nothing twice', async () => {
     const [old] = before.values()
     assert.equal(session?.entryCount, old?.entryCount)
     assert.equal(session?.lastSeq, old?.lastSeq)
-    assert.equal(session?.ownBytes, old?.ownBytes)
 })
 
 test('row updates are field-level: unknown fields on the session and chain stay', async () => {

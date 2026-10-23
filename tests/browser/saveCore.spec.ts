@@ -412,7 +412,6 @@ test('Save As… still saves while every covered storage read fails, as the Not 
             'openImportTarget',
             'listRecovered',
             'readRecovered',
-            'listKept',
             'findEdits',
         ])
         const worker = window.nseStorageTest!.worker

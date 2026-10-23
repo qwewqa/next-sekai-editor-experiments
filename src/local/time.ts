@@ -22,19 +22,3 @@ export const stampNow = async (tx: KvTx, wall: number = Date.now()) => {
     return now
 }
 
-/**
- * Records times a write stores beyond its own `now` (a continuation's startedAt, a journal's
- * entry times), clamped, so later stamps stay above them. Unwired until Step 8 GC.
- */
-export const observeTimes = async (
-    tx: KvTx,
-    times: Iterable<number>,
-    wall: number = Date.now(),
-) => {
-    const seen = (await readMeta(tx, 'maxSeenTime')) ?? 0
-    const now = nextTime(seen, wall)
-    let max = seen
-    for (const time of times) max = Math.max(max, clampTime(time, now))
-    if (max > seen) await writeMeta(tx, 'maxSeenTime', max)
-    return max
-}

@@ -612,14 +612,12 @@ export const writeFlush = async (
         stats.bytesByStore[store] = (stats.bytesByStore[store] ?? 0) + bytes
     }
 
-    let ownBytes = 0
     const records: Uint8Array[] = []
     const entryRows: unknown[] = []
     for (const chunk of prepared.chunks) {
         const row = await putChunk(tx, chunk, day)
         if (!row) continue
         records.push(chunk.hash)
-        ownBytes += row.bytes.length
         stats.chunks++
         count('chunks', row, chunk.hash)
     }
@@ -627,7 +625,6 @@ export const writeFlush = async (
         const row = nodeRow(node, day)
         await tx.put('nodes', row, hashKey(node.hash))
         records.push(node.hash)
-        ownBytes += row.size
         stats.nodes++
         count('nodes', row, node.hash)
     }
@@ -635,7 +632,6 @@ export const writeFlush = async (
         const row = rootRow(root, day)
         await tx.put('nodes', row, hashKey(root.hash))
         records.push(root.hash)
-        ownBytes += row.size
         stats.nodes++
         count('nodes', row, root.hash)
     }
@@ -647,7 +643,6 @@ export const writeFlush = async (
             refused.push(item.hash)
             continue
         }
-        ownBytes += row.size
         count('media', row, item.hash)
     }
 
@@ -738,7 +733,6 @@ export const writeFlush = async (
         ...(stack ? { stack: { base: stack.base, length: stack.length, index: stack.index } } : {}),
         entryCount: (typeof session?.entryCount === 'number' ? session.entryCount : 0) + written,
         activeMs,
-        ownBytes: (typeof session?.ownBytes === 'number' ? session.ownBytes : 0) + ownBytes,
         appVersion: batch.appVersion,
         // A re-send of stored entries leaves the newer view.
         ...(batch.view && (written || !session) ? { view: batch.view } : {}),

@@ -57,7 +57,6 @@ ruleTester.run('local/stored-reads', rule, {
             'openImportTarget',
             'listRecovered',
             'readRecovered',
-            'listKept',
             'findEdits',
             'listRecent',
         ].map((method) => ({

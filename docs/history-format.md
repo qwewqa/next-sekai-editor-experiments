@@ -178,7 +178,7 @@ A **session** is one visit's run of entries; a **chain** is the sessions of one 
 | `origin` | `new`, `import` (`Flusher.begin`); `nxsp`, `replaced` (`writeOpenHead`); `continued` (continuations and forks); `migrated` (`migrationWrite.ts`); `journal` (`journal/apply.ts`). An unknown value reads as ordinary for display; `ORIGIN_RULE` counts it as a file's (section 2.10). |
 | `startedAt`, `updatedAt` | Milliseconds. Sessions with equal starts are ordered by `parent` links, else a write refuses (`orderSessions`). |
 | `parent {id, uptoSeq}` | The session and entry a continuation continues. |
-| `stack`, `lastSeq`, `entryCount`, `activeMs`, `ownBytes`, `view`, `day`, `appVersion` | Window, the `lastSeq` mark (section 2.5), counts, active time, bytes, the Timeline's view, the writer's version. |
+| `stack`, `lastSeq`, `entryCount`, `activeMs`, `view`, `day`, `appVersion` | Window, the `lastSeq` mark (section 2.5), counts, active time, the Timeline's view, the writer's version. |
 | `importPending` | An open's background import is unfinished. A Save waits for it, and for every other import of its chain, in "Preparing…" (`waitForChainImports`, section 3.5); the build refuses (`importing`) while it is set. |
 
 The chain record (`chains`):

@@ -311,14 +311,11 @@ const stackRows = (
 }
 
 const putRecords = async (tx: KvTx, records: PreparedRecords, day: UseDay) => {
-    let bytes = 0
     for (const [key, row] of records) {
         const hashed = hashKey(fromHex16(key))
         if ((await tx.getKey('nodes', hashed)) !== undefined) continue
         await tx.put('nodes', { ...row, day }, hashed)
-        bytes += row.size as number
     }
-    return bytes
 }
 
 /** A root's note count when it holds one; undefined otherwise, never 0. */
@@ -344,7 +341,6 @@ export const writeOpenHead = async (
     const now = (maxSeen = nextTime(maxSeen, request.wall))
     const day = await countDayOfUse(tx, now)
 
-    let ownBytes = 0
     let mediaFailed: string[] | undefined
     if (prepared.foreign) {
         const roots = history ? [fromHex16(history.head)] : []
@@ -353,24 +349,19 @@ export const writeOpenHead = async (
         if (result.kind !== 'stored')
             throw new Error(`The opened file’s head lacks ${result.hashes.join(', ')}`)
         mediaFailed = result.mediaFailed
-        for (const chunk of prepared.foreign.chunks.values()) ownBytes += chunk.stored.length
     }
-    ownBytes += await putRecords(tx, prepared.records, day)
+    await putRecords(tx, prepared.records, day)
 
     let levelRoot: Uint8Array | undefined
     let levelNotes = 0
     if (prepared.level) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const root = prepared.level.roots[0]!
-        for (const chunk of prepared.level.chunks) {
-            const row = await putChunk(tx, chunk, day)
-            if (row) ownBytes += row.bytes.length
-        }
+        for (const chunk of prepared.level.chunks) await putChunk(tx, chunk, day)
         for (const node of [...prepared.level.nodes, root]) {
             if ((await tx.getKey('nodes', hashKey(node.hash))) !== undefined) continue
             const row = node === root ? rootRow(root, day) : nodeRow(node as never, day)
             await tx.put('nodes', row, hashKey(node.hash))
-            ownBytes += row.size
         }
         levelRoot = root.hash.slice()
         levelNotes = root.noteCount
@@ -452,7 +443,6 @@ export const writeOpenHead = async (
         lastSeq: seq,
         entryCount: ownEntries.length + (prepared.entries?.length ?? 0),
         activeMs: 0,
-        ownBytes,
         appVersion: request.appVersion,
         ...(importPending ? { importPending: true } : {}),
     })
@@ -616,19 +606,11 @@ export const writeBatch = async (
             return { kind: 'done' }
         }
         case 'records': {
-            const bytes = await putRecords(tx, prepared.rows, day)
-            if (bytes)
-                await tx.put('sessions', { ...session, ownBytes: ownBytesOf(session) + bytes })
+            await putRecords(tx, prepared.rows, day)
             return { kind: 'done' }
         }
         case 'chunks': {
-            let bytes = 0
-            for (const chunk of prepared.chunks) {
-                const row = await putChunk(tx, chunk, day)
-                if (row) bytes += row.bytes.length
-            }
-            if (bytes)
-                await tx.put('sessions', { ...session, ownBytes: ownBytesOf(session) + bytes })
+            for (const chunk of prepared.chunks) await putChunk(tx, chunk, day)
             return prepared.damaged.length
                 ? { kind: 'damaged', hashes: prepared.damaged }
                 : { kind: 'done' }
@@ -640,8 +622,6 @@ export const writeBatch = async (
         }
     }
 }
-
-const ownBytesOf = (session: Row) => (typeof session.ownBytes === 'number' ? session.ownBytes : 0)
 
 /** The roots of a file's history that reach any of these chunks. */
 export const rootsReaching = (history: ReadHistory, chunks: ReadonlySet<string>) => {

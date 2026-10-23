@@ -94,21 +94,6 @@ export const keepHandle = async (tx: KvTx, chainId: string, name: string, handle
     return true
 }
 
-/** The chains with a kept file, with their head sessions: what a load's sweep checks. */
-export const listKept = async (tx: KvTx) => {
-    const kept: { chainId: string; head?: string }[] = []
-    for (const value of await tx.getAll('chains')) {
-        if (!isRow(value) || typeof value.chainId !== 'string') continue
-        // By key: a load reads no handle (D24).
-        if ((await tx.getKey(HANDLES, [value.chainId, KEPT_ROLE])) === undefined) continue
-        kept.push({
-            chainId: value.chainId,
-            ...(typeof value.head === 'string' ? { head: value.head } : {}),
-        })
-    }
-    return kept
-}
-
 /** A takeover (R5): another chain's binding or Export target revoked, this chain pre-bound. */
 export type TakeOver = {
     owner?: HandleOwner
