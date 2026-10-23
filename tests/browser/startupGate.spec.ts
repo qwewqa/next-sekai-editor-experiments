@@ -234,17 +234,53 @@ test.describe('the startup gate', () => {
         localStorage: Record<string, string>
     }
 
-    /** dump.json out of an exported ZIP: one DEFLATE entry, the local header's sizes locate its data. */
+    /** dump.json out of an exported ZIP: one DEFLATE entry, found through the central directory. */
     const dumpOfZip = (bytes: Buffer) => {
-        expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK\x03\x04')
-        const nameLength = bytes.readUInt16LE(26)
-        const extraLength = bytes.readUInt16LE(28)
-        expect(bytes.subarray(30, 30 + nameLength).toString()).toBe('dump.json')
-        const start = 30 + nameLength + extraLength
-        return JSON.parse(
-            inflateRawSync(bytes.subarray(start, start + bytes.readUInt32LE(18))).toString(),
-        ) as RawDump
+        expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK')
+        // The end record is the last 22 bytes when the ZIP has no comment.
+        const end = bytes.length - 22
+        expect(bytes.readUInt32LE(end)).toBe(0x06054b50)
+        const directory = bytes.readUInt32LE(end + 16)
+        expect(bytes.readUInt32LE(directory)).toBe(0x02014b50)
+        const size = bytes.readUInt32LE(directory + 20)
+        const local = bytes.readUInt32LE(directory + 42)
+        const nameLength = bytes.readUInt16LE(local + 26)
+        const extraLength = bytes.readUInt16LE(local + 28)
+        expect(bytes.subarray(local + 30, local + 30 + nameLength).toString()).toBe('dump.json')
+        const start = local + 30 + nameLength + extraLength
+        return JSON.parse(inflateRawSync(bytes.subarray(start, start + size)).toString()) as RawDump
     }
+
+    test('Export Raw Data… waits while its export runs, so a second press starts no second one', async ({
+        page,
+    }) => {
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await boot(page)
+        const button = gate(page).getByRole('button', { name: 'Export Raw Data…' })
+        await page.evaluate(async () => {
+            const { startupGate } = await import('/src/startup/gate.ts')
+            const held = startupGate.rawExport!
+            const hold = window as unknown as { releaseExport: () => void; exports: number }
+            hold.exports = 0
+            startupGate.rawExport = {
+                ...held,
+                run: async () => {
+                    hold.exports++
+                    await new Promise<void>((resolve) => (hold.releaseExport = resolve))
+                    return undefined
+                },
+            }
+        })
+        await button.click()
+        await expect(button).toBeDisabled()
+        await page.evaluate(() =>
+            (window as unknown as { releaseExport: () => void }).releaseExport(),
+        )
+        await expect(button).toBeEnabled()
+        expect(await page.evaluate(() => (window as unknown as { exports: number }).exports)).toBe(
+            1,
+        )
+    })
 
     test('Export Raw Data… on the error state downloads the stored data as one ZIP', async ({
         page,

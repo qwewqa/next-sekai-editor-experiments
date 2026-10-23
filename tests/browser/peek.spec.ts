@@ -754,6 +754,8 @@ test('Level Info opens read-only while peeking', async ({ page }) => {
         dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }),
     ).toBeDisabled()
     await expect(dialog.getByRole('textbox', { name: 'Title', exact: true })).toBeDisabled()
+    // Nothing to confirm: the footer reads as the other read-only dialogs do.
+    await expect(dialog.locator('input[type="submit"]')).toHaveValue('OK')
     // Checking the file stays available.
     await expect(dialog.getByRole('button', { name: 'Check…', exact: true })).toBeEnabled()
     await page.keyboard.press('Escape')

@@ -28,6 +28,8 @@ export type ChoiceButton = {
 export type ChoiceOptions<T> = {
     title: () => string
     message?: () => string
+    /** Instead of `message`: each sentence its own paragraph. */
+    lines?: () => string[]
     /** In button order, after Cancel. */
     choices: Choice<T>[]
     /** Cancel is the safe default, as in a destructive confirm: it takes the right-hand place. */
@@ -62,5 +64,6 @@ export const showChoice = <T>(options: ChoiceOptions<T>) =>
     showModal(ChoiceModal, {
         title: options.title,
         message: options.message,
+        lines: options.lines,
         buttons: arrangeChoices(options),
     }) as Promise<T | undefined>

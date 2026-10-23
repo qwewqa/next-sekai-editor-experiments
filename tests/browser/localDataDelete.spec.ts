@@ -108,10 +108,10 @@ const seed = async (page: Page, options: LoadOptions = {}) => {
     await tamper(page, 'chains', fixture!, { hasContent: false, updatedAt: Date.now() - 100 * DAY })
     const later = await chainAged(page, 'Later', 120)
     await tamper(page, 'sessions', later.sessionId, { v: 999 })
-    await chainAged(page, 'Month', 40)
+    const month = await chainAged(page, 'Month', 40)
     await chainAged(page, 'Week', 8)
     await chainAged(page, 'Fresh', 2)
-    return { fixture: fixture! }
+    return { fixture: fixture!, month: month.chainId }
 }
 
 const openLocalData = async (page: Page) => {
@@ -184,6 +184,8 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
     await page.locator('[data-delete-next]').click()
     const confirm = confirmDialog(page)
     await expect(confirm).toContainText('Delete 5 sessions?')
+    // Each sentence is its own paragraph, so they do not run together on a phone.
+    await expect(confirm.locator('p')).toHaveCount(3)
     // Newest first; the fixture’s chain has no work to lose, so it is not named.
     await expect(confirm).toContainText(
         '4 sessions are not saved to a file: "Fresh", "Week", "Month" and 1 more.',
@@ -217,7 +219,10 @@ test('with the box unticked the unsaved work is kept, and what is deleted leaves
         confirm.getByRole('button', { name: messages.modals.confirm.delete }),
         deleteDialog(page),
     )
-    await expect(notice(page, 'Deleted 1 session')).toBeVisible()
+    // A card: a quick toast would fade over the open dialog.
+    await expect(
+        page.locator('[data-notice-card]').filter({ hasText: 'Deleted 1 session' }),
+    ).toBeVisible()
     await expect(deleteDialog(page)).toHaveCount(0)
     await page.keyboard.press('Escape')
     const rows = await recentRows(page)
@@ -254,6 +259,24 @@ test('ticking the box deletes the unsaved work too, including a chain from a new
         await expect(rows.filter({ hasText: title })).toHaveCount(1)
 })
 
+test('a run that deletes some and skips one says both', async ({ page }) => {
+    const { month } = await seed(page)
+    await openLocalData(page)
+    await openDelete(page)
+    await page.locator('[data-delete-range="30"]').click()
+    await page.locator('[data-delete-include]').click()
+    await page.locator('[data-delete-next]').click()
+    await expect(confirmDialog(page)).toContainText('Delete 3 sessions?')
+    // One of the three is edited (by another tab, say) after the dialog read it.
+    await tamper(page, 'chains', month, { updatedAt: Date.now() })
+    await confirmWhenReady(
+        confirmDialog(page).getByRole('button', { name: messages.modals.confirm.delete }),
+        deleteDialog(page),
+    )
+    await expect(notice(page, 'Deleted 2 sessions')).toBeVisible()
+    await expect(notice(page, '1 session could not be deleted.')).toBeVisible()
+})
+
 test('Delete… is disabled when nothing is chosen', async ({ page }) => {
     errorsFail(page)
     await load(page)
@@ -280,7 +303,7 @@ test('a chain edited since the dialog read it is skipped, and a run that deletes
         deleteDialog(page),
     )
     // Edited since it was read: skipped, so nothing went, and the failure says so.
-    await expect(notice(page, local.deleteFailed)).toBeVisible()
+    await expect(notice(page, '1 session could not be deleted.')).toBeVisible()
 })
 
 // --- The Storage subsection, Recovery's Export Raw Data…, and the almost-full notice.
@@ -291,6 +314,33 @@ const estimateOf = (page: Page, answer: { usage?: number; quota?: number } | und
         StorageManager.prototype.estimate = () =>
             value ? Promise.resolve(value) : Promise.reject(new Error('unsupported'))
     }, answer)
+
+/**
+ * The estimate as a fixed answer that counts its calls, and with `hold` waits for the spec to
+ * release it: the signal that the load's run has reached its check.
+ */
+const countedEstimate = (page: Page, answer: { usage: number; quota: number }, hold = false) =>
+    page.addInitScript(
+        ({ answer, hold }) => {
+            const probe = { calls: 0, release: () => undefined as void }
+            let open: () => void = () => undefined
+            const gate = hold ? new Promise<void>((resolve) => (open = resolve)) : undefined
+            probe.release = () => open()
+            ;(window as unknown as { estimateProbe: typeof probe }).estimateProbe = probe
+            StorageManager.prototype.estimate = async () => {
+                probe.calls++
+                await gate
+                return answer
+            }
+        },
+        { answer, hold },
+    )
+
+const estimateCalls = (page: Page) =>
+    page.evaluate(
+        () =>
+            (window as unknown as { estimateProbe?: { calls: number } }).estimateProbe?.calls ?? 0,
+    )
 
 const stored = (page: Page) => page.locator('[data-stored-total]')
 
@@ -360,10 +410,8 @@ test.describe('almost full', () => {
     const nearlyFull = { usage: 900_000_000, quota: 1_000_000_000 }
     const line = (page: Page) => notice(page, messages.load.storageNearlyFull)
 
-    test('says so once per day, with Local Data as its action, and not when there is room', async ({
-        page,
-    }) => {
-        await estimateOf(page, nearlyFull)
+    test('says so once per day, with Local Data as its action', async ({ page }) => {
+        await countedEstimate(page, nearlyFull)
         errorsFail(page)
         await load(page)
         await expect(line(page)).toBeVisible({ timeout: 15_000 })
@@ -373,12 +421,10 @@ test.describe('almost full', () => {
         await expect(page.locator('[data-at-load] li')).toContainText([
             messages.load.storageNearlyFull,
         ])
-        // A reload the same day says nothing.
+        // A reload the same day says nothing: the load's run asked, and the stamp held.
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        await expect
-            .poll(() => page.evaluate(() => window.nseStorageTest?.status()?.mode))
-            .toBe('stored')
+        await expect.poll(() => estimateCalls(page), { timeout: 15_000 }).toBeGreaterThan(0)
         await expect(line(page)).toHaveCount(0)
         // Another day says it again.
         await page.evaluate(() => {
@@ -388,32 +434,27 @@ test.describe('almost full', () => {
         await expect(line(page)).toBeVisible({ timeout: 15_000 })
     })
 
-    test('is left to the chip when storing is already paused', async ({ page }) => {
-        await estimateOf(page, nearlyFull)
-        errorsFail(page, { allow: [/Storing paused: full/] })
-        await load(page, { storage: { forceQuota: true } })
-        await edit(page, 'Full', 990)
-        await expect
-            .poll(() => page.evaluate(() => window.nseStorageTest?.status()))
-            .toEqual({ mode: 'stored', reason: 'full' })
-        await page.waitForFunction(() => document.readyState === 'complete')
-        await expect(line(page)).toHaveCount(0)
-    })
-
-    test('with room left there is no notice and no stamp', async ({ page }) => {
-        await estimateOf(page, { usage: 500_000_000, quota: 1_000_000_000 })
+    // The notice would be a card turned up while the user is editing (final review R2 #4).
+    test('an edit made before the load’s run ends leaves it unsaid and unstamped', async ({
+        page,
+    }) => {
+        await countedEstimate(page, nearlyFull, true)
         errorsFail(page)
         await load(page)
-        await expect
-            .poll(() => page.evaluate(() => window.nseStorageTest?.status()?.mode))
-            .toBe('stored')
-        // The load's run has had its idle time.
-        await page.waitForFunction(() => document.readyState === 'complete')
-        await expect(line(page)).toHaveCount(0)
+        // The run asked for the estimate, and is held there.
+        await expect.poll(() => estimateCalls(page), { timeout: 15_000 }).toBeGreaterThan(0)
+        await edit(page, 'Busy', 990)
+        await page.evaluate(() =>
+            (
+                window as unknown as { estimateProbe: { release: () => void } }
+            ).estimateProbe.release(),
+        )
+        // The run's remaining steps are microtasks: done before this round trip is answered.
         expect(
             await page.evaluate(() =>
                 localStorage.getItem('sonolus-next-sekai-editor.nearlyFullDay'),
             ),
         ).toBeNull()
+        await expect(line(page)).toHaveCount(0)
     })
 })

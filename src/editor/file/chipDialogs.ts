@@ -1,14 +1,15 @@
 import { i18n } from '../../i18n'
 import { formatWhen } from '../../i18n/when'
 import { showChoice, type Choice } from '../../modals/choice'
-import { PRODUCT_NAME } from '../../product'
 import { interpolateRaw } from '../../utils/interpolate'
 import { runCommand } from '../commands/runCommand'
 import { save } from '../commands/save'
+import { confirmSwitch } from '../switch'
 import { fileActions } from './actions'
 import type { ChipKind } from './chip'
 import { notStored, type NotStoredCause } from './notStored'
-import { boundFile, chip, confirmFile } from './state'
+import { pausedReasonLine } from './notStoredReason'
+import { boundFile, chip, confirmFile, fileChanged } from './state'
 import { tryStoringAgain } from './tryAgain'
 
 // The chip's text and the dialog a tap opens (Part 1 §1.3.4): the first state's dialog, with the
@@ -57,19 +58,8 @@ const lines = (first: string, rest: readonly ChipKind[], reason?: string) =>
 
 /** Why changes are not stored, by cause; a browser without storage has nothing more to say. */
 const reasonLine = (cause: NotStoredCause | undefined) => {
-    const { storage, load } = i18n.value
-    if (cause?.kind === 'readOnly') return load.olderVersion
-    if (cause?.kind !== 'paused') return undefined
-    switch (cause.reason) {
-        case 'full':
-            return storage.reason.full
-        case 'failed':
-            return storage.reason.failed
-        case 'upgrading':
-            return storage.reason.upgrading
-        case 'olderTabs':
-            return interpolateRaw(storage.reason.olderTabs, PRODUCT_NAME)
-    }
+    if (cause?.kind === 'readOnly') return i18n.value.load.olderVersion
+    return cause?.kind === 'paused' ? pausedReasonLine(cause.reason) : undefined
 }
 
 type NotStoredChoice = 'localData' | 'retry' | 'reload' | 'confirm' | 'save'
@@ -95,17 +85,39 @@ const notStoredChoices = (cause: NotStoredCause | undefined): Choice<NotStoredCh
 /** The Not stored dialog (Part 1 §1.6.7): why, what to do about it, and Save as the way out. */
 const openNotStored = async (rest: readonly ChipKind[]) => {
     const cause = notStored.value
+    const settling = rest.includes('notConfirmed') && !fileChanged.value
     const choice = await showChoice<NotStoredChoice>({
         title: () => i18n.value.prompt.title,
         // The reason is read again, so a change while the dialog is open shows.
         message: () => lines(chipSentence('notStored'), rest, reasonLine(notStored.value ?? cause)),
         choices: [
             ...notStoredChoices(cause),
-            // The download line is there, so the way to settle it is too (§1.3.4).
-            ...(rest.includes('notConfirmed')
-                ? [{ value: 'confirm', label: () => i18n.value.confirm.haveFile } as const]
-                : []),
-            { value: 'save', label: () => i18n.value.prompt.save, default: true },
+            // The download line is there, so the way to settle it is too (§1.3.4). With nothing
+            // changed since, the work is in that file: Save would only offer it again, so the
+            // confirm is the default and Save is left out, as in the leave prompt.
+            ...(settling
+                ? [
+                      {
+                          value: 'confirm',
+                          label: () => i18n.value.confirm.haveFile,
+                          default: true,
+                      } as const,
+                  ]
+                : [
+                      ...(rest.includes('notConfirmed')
+                          ? [
+                                {
+                                    value: 'confirm',
+                                    label: () => i18n.value.confirm.haveFile,
+                                } as const,
+                            ]
+                          : []),
+                      {
+                          value: 'save',
+                          label: () => i18n.value.prompt.save,
+                          default: true,
+                      } as const,
+                  ]),
         ],
     })
     switch (choice) {
@@ -124,7 +136,8 @@ const openNotStored = async (rest: readonly ChipKind[]) => {
             await tryStoringAgain()
             return
         case 'reload':
-            location.reload()
+            // iOS has no leave prompt, so unstored work is asked about here.
+            if (await confirmSwitch()) location.reload()
             return
         case undefined:
             return

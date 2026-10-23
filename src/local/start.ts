@@ -9,6 +9,7 @@ import {
     type NoticeAction,
 } from '../editor/notification'
 import { readRevocation, reclaimOrphans } from '../editor/save/env'
+import { onHistoryAction } from '../history/actions'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
@@ -212,9 +213,17 @@ declare global {
 /** The day the "almost full" notice last showed (a stamp, so a reload does not repeat it). */
 const NEARLY_FULL_KEY = 'nearlyFullDay'
 
+/** Whether the user worked on the chart since storing started: a late card would interrupt it. */
+let workedSinceLoad = false
+
+/** How long after the page loaded the start-up notice may still be turned into a card. */
+const NEARLY_FULL_WINDOW_MS = 12_000
+
 /**
  * After the load's maintenance run: storage still nearly full gets its load notice, once a day, and
- * only while the start-up card is up. A page hidden at load had no run to wait for, so it says
+ * only while the start-up notice is still the one shown: its card, or the quick notice a clean
+ * load leaves while the user has done nothing yet. Never the faint text left after it, or a
+ * card in the middle of editing. A page hidden at load had no run to wait for, so it says
  * nothing until a later load.
  */
 const announceNearlyFull = () => {
@@ -234,7 +243,12 @@ const announceNearlyFull = () => {
             }
         },
         skip: () =>
-            !(notification.value.startup === true || noticeCard.value?.startup === true) ||
+            !(
+                noticeCard.value?.startup === true ||
+                (notification.value.startup === true &&
+                    !workedSinceLoad &&
+                    performance.now() < NEARLY_FULL_WINDOW_MS)
+            ) ||
             // Paused, or unavailable: the chip's dialog and Local Data cover it.
             storageStatus.value?.mode !== 'stored' ||
             storageStatus.value.reason !== undefined ||
@@ -268,6 +282,10 @@ export const startStorage = async () => {
         { timeoutMs: rpcTimeoutMs },
     )
     storageWorker = worker
+    onHistoryAction(({ kind }) => {
+        if (kind === 'edit' || kind === 'restore' || kind === 'undo' || kind === 'redo')
+            workedSinceLoad = true
+    })
     watchLifecycle()
     worker.onStatus((status) => {
         storageStatus.value = status

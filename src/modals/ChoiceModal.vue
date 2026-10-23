@@ -8,6 +8,8 @@ import type { ChoiceButton } from './choice'
 const props = defineProps<{
     title: () => string
     message?: () => string
+    /** Instead of `message`: sentences that are each their own paragraph, so they do not run together when they wrap. */
+    lines?: () => string[]
     /** In button order: Cancel and the other choices come first, the safe default last. */
     buttons: ChoiceButton[]
 }>()
@@ -78,7 +80,10 @@ const classes = (button: ChoiceButton) =>
 
 <template>
     <BaseModal :title="title()" @close="emit('close', undefined)">
-        <div v-if="message" class="whitespace-pre-line">{{ message() }}</div>
+        <div v-if="lines" class="flex flex-col gap-2">
+            <p v-for="(line, index) in lines()" :key="index">{{ line }}</p>
+        </div>
+        <div v-else-if="message" class="whitespace-pre-line">{{ message() }}</div>
 
         <div
             ref="row"

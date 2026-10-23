@@ -108,7 +108,7 @@ export const createDeleteModel = (deps: DeleteDeps) => {
         if (result.kind === 'failed') {
             // The mark stays: Try Again undoes the same one.
             held.set(id, { ...entry, status: 'failed' })
-            announcement.value = session.undoFailed
+            announcement.value = i18n.value.commands.undo.failed
         } else if (result.restored.includes(id)) {
             held.delete(id)
         } else {

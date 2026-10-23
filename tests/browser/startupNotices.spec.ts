@@ -765,6 +765,70 @@ test.describe('Reopen', () => {
         await expect(page.locator('.notification-pill')).toHaveCount(0)
     })
 
+    // Reopen and Restore as a Copy say why a session cannot be opened, as Restore Session does,
+    // and the card stops offering a Reopen that cannot work (final review R2 #3).
+    test('Reopen of a session deleted since says so and is offered no more', async ({ page }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        const chainId = await page.evaluate(() => window.nseFlushTest!.flusher.session!.chainId)
+        await run(page, 'reset')
+        const notice = page.locator('.notification-pill')
+        const reopen = notice.getByRole('button', { name: /^Reopen / })
+        await expect(reopen).toBeVisible()
+        await page.evaluate(
+            (chainId) =>
+                new Promise<void>((resolve, reject) => {
+                    const open = indexedDB.open('nse-local-data')
+                    open.onsuccess = () => {
+                        const tx = open.result.transaction('chains', 'readwrite')
+                        const store = tx.objectStore('chains')
+                        const get = store.get(chainId)
+                        get.onsuccess = () =>
+                            store.put({ ...get.result, deleting: { at: Date.now() } })
+                        tx.oncomplete = () => {
+                            open.result.close()
+                            resolve()
+                        }
+                        tx.onerror = () => reject(tx.error ?? new Error('Not marked'))
+                    }
+                    open.onerror = () => reject(open.error ?? new Error('Not opened'))
+                }),
+            chainId,
+        )
+        await reopen.click()
+        await expect(
+            page
+                .locator('.notification, .notification-pill')
+                .filter({ hasText: 'This session was deleted in another tab or window.' }),
+        ).toBeVisible()
+        await expect(page.getByRole('button', { name: /^Reopen / })).toHaveCount(0)
+        expect(await lifeOf(page)).toBe(1000)
+        expect(
+            await page.evaluate(async () => {
+                const { previousSession } =
+                    (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
+                return previousSession.value
+            }),
+        ).toBeUndefined()
+    })
+
+    test('Restore as a Copy from a load notice says why when the session is gone', async ({
+        page,
+    }) => {
+        await visit(page)
+        await page.evaluate(async () => {
+            const { restoreCopy } =
+                (await import('/src/editor/switch.ts')) as typeof import('../../src/editor/switch')
+            await restoreCopy('nothing')
+        })
+        await expect(
+            page
+                .locator('.notification, .notification-pill')
+                .filter({ hasText: 'This session could not be opened.' }),
+        ).toBeVisible()
+    })
+
     test('an unedited continuation left by New reopens the session it continued', async ({
         page,
         context,
@@ -806,8 +870,7 @@ test.describe('the not-stored prompt', () => {
         const buttons = prompt(page).locator('[data-choice-buttons] button')
         await expect(buttons).toHaveText(['Cancel', 'Leave Anyway', 'Save'])
         await expect(prompt(page).getByRole('button', { name: 'Save' })).toBeFocused()
-        await page.waitForTimeout(400)
-        await prompt(page).getByRole('button', { name: 'Cancel' }).click()
+        await confirmWhenReady(prompt(page).getByRole('button', { name: 'Cancel' }), prompt(page))
         await going
         expect(await lifeOf(page)).toBe(990)
         const leaving = run(page, 'reset')
@@ -888,8 +951,10 @@ test.describe('the not-stored prompt', () => {
                     'Leave Anyway',
                     'I Have the File',
                 ])
-                await page.waitForTimeout(400)
-                await unconfirmed.getByRole('button', { name: 'Cancel' }).click()
+                await confirmWhenReady(
+                    unconfirmed.getByRole('button', { name: 'Cancel' }),
+                    unconfirmed,
+                )
                 await repeated
                 expect(await lifeOf(page)).toBe(990)
                 // I Have the File settles the download and goes on.
@@ -929,8 +994,10 @@ test.describe('the not-stored prompt', () => {
         ]) {
             const going = start()
             await expect(prompt(page)).toBeVisible()
-            await page.waitForTimeout(400)
-            await prompt(page).getByRole('button', { name: 'Cancel' }).click()
+            await confirmWhenReady(
+                prompt(page).getByRole('button', { name: 'Cancel' }),
+                prompt(page),
+            )
             await going
             expect(await lifeOf(page)).toBe(990)
         }
@@ -1155,16 +1222,15 @@ test.describe('Settings › Local Data', () => {
             const autoSave = later.locator('[data-recovery-row="autoSave"]')
             await autoSave.getByRole('button', { name: 'Discard…' }).click()
             const dialog = later.getByRole('dialog', { name: 'Discard' })
-            await expect(dialog).toContainText(/Discard the old auto save \(\d+(\.\d)? kB\)\?/)
+            await expect(dialog).toContainText(/Discard the old auto save \(\d+(\.\d)?\skB\)\?/)
             await expect(dialog.locator('[data-choice-buttons] button')).toHaveText([
                 'Cancel',
                 'Discard',
                 'Download',
             ])
             await expect(dialog.getByRole('button', { name: 'Download' })).toBeFocused()
-            await later.waitForTimeout(400)
             // Cancel removes nothing.
-            await dialog.getByRole('button', { name: 'Cancel' }).click()
+            await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
             await expect(autoSave).toHaveCount(1)
             await autoSave.getByRole('button', { name: 'Discard…' }).click()
             await confirmWhenReady(

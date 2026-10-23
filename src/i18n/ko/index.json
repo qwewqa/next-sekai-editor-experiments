@@ -31,7 +31,7 @@
         "loading": "파일 불러오는 중…",
         "decoding": "오디오 디코딩 중…",
         "generating": "파형 생성 중…",
-        "download": "BGM 다운로드"
+        "download": "배경음 다운로드"
       },
       "fileChanged": "배경음 파일 변경됨",
       "offsetSet": "BGM 오프셋을 {0}밀리초로 설정함"
@@ -966,11 +966,11 @@
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
       "exportRaw": "원시 데이터 내보내기…",
       "exportRawName": "{0} 원시 데이터 {1}.zip",
-      "storageHeading": "보관 공간",
+      "storageHeading": "저장 공간",
       "stored": "이 브라우저에 보관됨: {0} / 약 {1}",
       "deleteSessions": "세션 삭제…",
       "deleteTitle": "세션 삭제",
-      "lastEdited": "마지막 편집이 {0}일보다 오래 전",
+      "lastEdited": "마지막 편집 후 {0}일 넘게 지남",
       "all": "전체",
       "includeNotSaved": "파일에 저장되지 않은 작업 포함",
       "deleteNext": "삭제…",
@@ -979,9 +979,9 @@
       "namesMore": "{0} 외 {1}개",
       "newer": "더 새로운 버전의 편집기가 필요한 세션이 포함되어 있습니다.",
       "deleting": "삭제하는 중…",
-      "deleteFailed": "세션을 삭제하지 못했습니다.",
       "exportRawNote": "문제를 신고할 때 사용합니다.",
-      "exportRawUnreadable": "보관된 작업을 읽지 못했습니다."
+      "exportRawUnreadable": "보관된 작업을 읽지 못했습니다.",
+      "notDeleted": "세션 {0}개를 삭제하지 못했습니다."
     }
   },
   "sidebars": {
@@ -1210,13 +1210,13 @@
     "autoSaveKept": "자동 저장의 \"{0}\" 작업을 별도의 세션으로 보관했습니다.",
     "autoSaveOpened": "이전 자동 저장을 열었습니다.",
     "journalFailed": "복구된 변경 사항을 보관할 수 없습니다. 사본이 로컬 데이터에 있습니다.",
-    "storageNearlyFull": "브라우저 보관 공간이 거의 가득 찼습니다.",
-    "journalsFull": "이전 방문의 저장되지 않은 작업이 브라우저 보관 공간을 차지하고 있습니다.",
+    "storageNearlyFull": "브라우저 저장 공간이 거의 가득 찼습니다.",
+    "journalsFull": "이전 방문의 저장되지 않은 작업이 브라우저 저장 공간을 차지하고 있습니다.",
     "sessionLater": "이 세션에는 더 새로운 버전의 편집기가 필요합니다.",
     "sessionDamaged": "이 세션을 열 수 없습니다.",
     "newestLater": "가장 최근 세션에는 더 새로운 버전의 편집기가 필요합니다.",
     "newestDamaged": "가장 최근 세션을 열 수 없습니다.",
-    "bgmNotLoaded": "BGM이 불러와지지 않았습니다.",
+    "bgmNotLoaded": "BGM을 불러오지 않았습니다.",
     "more": "외 {0}개는 로컬 데이터에 있습니다",
     "localData": "로컬 데이터",
     "openHistory": "기록 열기",
@@ -1226,8 +1226,7 @@
   },
   "storage": {
     "reason": {
-      "full": "브라우저 보관 공간이 가득 찼습니다.",
-      "failed": "브라우저가 변경 사항 보관을 중단했습니다.",
+      "full": "브라우저 저장 공간이 가득 찼습니다.",
       "olderTabs": "변경 사항을 계속 보관하려면 다른 {0} 탭을 닫아 주세요.",
       "upgrading": "다른 탭에서 편집기를 업데이트하고 있습니다."
     },
@@ -1369,7 +1368,7 @@
     "sessions": {
       "loadFailed": "최근 세션을 불러올 수 없습니다.",
       "thisTab": "이 탭",
-      "elsewhere": "다른 탭이나 창에서 열림",
+      "elsewhere": "다른 탭",
       "actions": "\"{0}\" 추가 작업",
       "saveToFile": "파일로 저장…",
       "delete": "삭제",
@@ -2140,7 +2139,7 @@
     "restoredName": "{0} ({1} 복원)",
     "fileType": "Next SEKAI 프로젝트 파일",
     "unavailable": "저장되지 않았습니다. 레벨 데이터 내보내기…를 사용하세요.",
-    "storageUnavailable": "저장되지 않았습니다. 편집기가 이 브라우저의 저장소에 접근하지 못했습니다. 다시 시도하거나 다른 이름으로 저장…을 사용하세요.",
+    "storageUnavailable": "저장되지 않았습니다. 편집기가 이 브라우저의 저장 공간에 접근하지 못했습니다. 다시 시도하거나 다른 이름으로 저장…을 사용하세요.",
     "include": "포함",
     "historySize": "{0}단계 · {1}",
     "historyNote": "파일이 있는 사람은 해당 파일의 기록을 볼 수 있습니다.",
@@ -2151,15 +2150,15 @@
     "sizePending": "크기 추정 중…"
   },
   "check": {
-    "command": "파일 및 기록 확인…",
-    "title": "파일 및 기록 확인",
-    "checkingFile": "{0} 확인 중… {1}%",
-    "checkingStored": "보관된 기록 확인 중… {0}%",
-    "changed": "\"{0}\"이(가) 확인하는 중에 변경되었습니다. 다시 시도하세요.",
+    "command": "파일 및 기록 검사…",
+    "title": "파일 및 기록 검사",
+    "checkingFile": "{0} 검사 중… {1}%",
+    "checkingStored": "보관된 기록 검사 중… {0}%",
+    "changed": "\"{0}\"이(가) 검사 중에 변경되었습니다. 다시 시도하세요.",
     "stillOpening": "\"{0}\"을(를) 아직 여는 중입니다. 다시 시도하세요.",
     "noDamage": "손상이 발견되지 않았습니다.",
-    "scopeBoth": "\"{0}\"과(와) 이 브라우저에 보관된 기록을 확인했습니다.",
-    "scopeStored": "이 브라우저에 보관된 기록을 확인했습니다.",
+    "scopeBoth": "\"{0}\" 및 이 브라우저에 보관된 기록을 검사했습니다.",
+    "scopeStored": "이 브라우저에 보관된 기록을 검사했습니다.",
     "fileDamaged": "\"{0}\"이(가) 손상되었습니다. 저장하면 별도의 파일이 만들어집니다.",
     "repaired": "타임라인 단계 {0}개를 복구했습니다.",
     "storedDamaged": "이 브라우저에 보관된 타임라인 단계 {0}개가 손상되었습니다.",
@@ -2167,7 +2166,7 @@
   },
   "levelInfo": {
     "file": "파일",
-    "check": "확인…",
+    "check": "검사…",
     "tagsPlaceholder": "쉼표로 구분",
     "editCover": "커버 편집기에서 편집…",
     "makePreview": "배경음으로 만들기…",
@@ -2207,7 +2206,7 @@
     "useOpenFile": "파일을 열려면 열기를 사용하세요.",
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
     "sameFileMaybeElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있을 수 있어 이것은 별도의 사본입니다.",
-    "storageUnavailable": "편집기가 이 브라우저의 저장소에 접근하지 못했습니다. 다시 시도하세요.",
+    "storageUnavailable": "편집기가 이 브라우저의 저장 공간에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",
     "bgmDiffers": "이 파일은 원래 BGM \"{0}\"과(와) 다른 파일입니다.",
     "bgmDiffersUnnamed": "이 파일은 원래 BGM과 다른 파일입니다.",
@@ -2222,7 +2221,6 @@
     "peekSessionFailed": "이 세션을 볼 수 없음",
     "openHistory": "기록 열기",
     "earlierInHistory": "이전 단계는 기록에 있습니다",
-    "bgmNotLoaded": "BGM이 불러와지지 않았습니다.",
     "savedCurrent": "현재 버전을 {0}에 저장함"
   },
   "entry": {
@@ -2241,10 +2239,9 @@
     "restoredCopy": "\"{0}\"의 사본 복원됨",
     "deletedMany": "세션 {0}개 삭제됨",
     "deleted": "\"{0}\" 삭제됨",
-    "deleteRefused": "삭제되지 않았습니다. \"{0}\"이(가) 다른 탭이나 창에서 열려 있습니다.",
-    "deleteFailed": "\"{0}\"을(를) 삭제할 수 없습니다",
-    "undoLost": "\"{0}\" 삭제됨. 더 이상 되돌릴 수 없습니다.",
-    "undoFailed": "되돌리지 못했습니다"
+    "deleteRefused": "삭제되지 않았습니다. \"{0}\"이(가) 탭이나 창에서 사용 중입니다.",
+    "deleteFailed": "\"{0}\"을(를) 삭제하지 못했습니다.",
+    "undoLost": "\"{0}\" 삭제됨. 더 이상 되돌릴 수 없습니다."
   },
   "prompt": {
     "title": "변경 사항이 보관되지 않음",

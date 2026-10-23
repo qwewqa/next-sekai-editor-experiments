@@ -11,13 +11,13 @@ import { showChoice } from '../../modals/choice'
 import ToggleField from '../../modals/form/ToggleField.vue'
 import LoadingModal from '../../modals/LoadingModal.vue'
 import { FileError, platform } from '../../platform'
-import { PRODUCT_NAME } from '../../product'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
 import { notStored } from '../file/notStored'
+import { pausedReasonLine } from '../file/notStoredReason'
 import { tryStoringAgain } from '../file/tryAgain'
 import { showHistoryLink } from '../history/openHistory'
 import { loadNotices, notify } from '../notification'
@@ -81,25 +81,16 @@ const storedText = computed(() => {
 const notStoredLine = computed(() => {
     const cause = notStored.value
     if (cause?.kind !== 'paused') return
-    const { reason } = i18n.value.storage
-    switch (cause.reason) {
-        case 'full':
-            return { text: reason.full, action: 'retry' as const }
-        case 'failed':
-            return { text: reason.failed, action: 'retry' as const }
-        case 'olderTabs':
-            return {
-                text: interpolateRaw(reason.olderTabs, PRODUCT_NAME),
-                action: 'retry' as const,
-            }
-        case 'upgrading':
-            return { text: reason.upgrading, action: 'reload' as const }
+    return {
+        text: pausedReasonLine(cause.reason),
+        action: cause.reason === 'upgrading' ? ('reload' as const) : ('retry' as const),
     }
 })
 const retrying = ref(false)
 const retryOrReload = async (action: 'retry' | 'reload') => {
     if (action === 'reload') {
-        location.reload()
+        // iOS has no leave prompt, so unstored work is asked about here.
+        if (await confirmSwitch()) location.reload()
         return
     }
     retrying.value = true
@@ -188,6 +179,7 @@ const download = async (item: RecoveryItem) => {
                     result.name,
                     formatSize(file.blob.size),
                 ),
+                { card: true },
             )
     } catch (error) {
         if (!(error instanceof FileError)) throw error
@@ -275,7 +267,7 @@ const deleteSessions = async () => {
         // Cancel is the default: a stray Enter deletes nothing.
         const confirmed = await showChoice({
             title: () => strings.value.deleteTitle,
-            message: () => {
+            lines: () => {
                 const { history, modals } = i18n.value
                 return confirmLines(targets, (chain) => shownName(chain.name), {
                     confirm: strings.value.deleteConfirm,
@@ -284,7 +276,7 @@ const deleteSessions = async () => {
                     newer: strings.value.newer,
                     listJoin: modals.form.listJoin,
                     quoted: history.quoted,
-                }).join('\n')
+                })
             },
             choices: [{ value: true, label: () => i18n.value.modals.confirm.delete, danger: true }],
             cancelIsDefault: true,
@@ -314,11 +306,23 @@ const deleteSessions = async () => {
             },
         })
         const result = await outcome
-        if (result.deleted > 0)
-            notify(interpolate(() => i18n.value.session.deletedMany, String(result.deleted)))
-        else if ('kind' in result || result.skipped > 0)
-            // Something was asked for and nothing went: never silent.
-            notify(() => strings.value.deleteFailed, { card: true, severity: 'error' })
+        // A card, not a quick toast that fades over the open dialog. What was asked for and did not
+        // go is never silent; closing the dialog asked to stop.
+        const notDeleted = abort.signal.aborted ? 0 : targets.length - result.deleted
+        const done =
+            result.deleted > 0
+                ? interpolate(() => i18n.value.session.deletedMany, String(result.deleted))
+                : undefined
+        const failed =
+            notDeleted > 0
+                ? interpolate(() => strings.value.notDeleted, String(notDeleted))
+                : undefined
+        if (done && failed)
+            notify(() => done() + '\n' + failed(), {
+                lines: [{ message: done }, { message: failed, severity: 'error' }],
+            })
+        else if (done) notify(done, { card: true })
+        else if (failed) notify(failed, { card: true, severity: 'error' })
         await readTotal()
     } finally {
         deleting.value = false
@@ -349,7 +353,10 @@ const exportRaw = async () => {
     if (done.databaseUnreadable)
         notify(() => strings.value.exportRawUnreadable, { card: true, severity: 'warning' })
     else if (done.started)
-        notify(interpolate(() => i18n.value.save.downloadStarted, done.name, formatSize(done.size)))
+        notify(
+            interpolate(() => i18n.value.save.downloadStarted, done.name, formatSize(done.size)),
+            { card: true },
+        )
 }
 </script>
 
@@ -363,9 +370,9 @@ const exportRaw = async () => {
         />
 
         <div v-if="hasStorage" class="flex flex-col gap-3" data-local-data-storage>
-            <h3 class="text-sm font-bold opacity-75">{{ strings.storageHeading }}</h3>
+            <h3 class="text-sm font-bold text-fg/80">{{ strings.storageHeading }}</h3>
 
-            <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
+            <p v-if="storageLine" class="text-sm text-fg/80" data-storage-line>{{ storageLine }}</p>
 
             <p v-if="storedText" data-stored-total>{{ storedText }}</p>
 
@@ -378,7 +385,9 @@ const exportRaw = async () => {
                     <SeverityIcon severity="warning" class="mt-1 size-4" />
                     <div class="flex min-w-0 flex-col">
                         <span>{{ i18n.notSaving.bar }}</span>
-                        <span data-not-stored-reason>{{ notStoredLine.text }}</span>
+                        <span v-if="notStoredLine.text" data-not-stored-reason>{{
+                            notStoredLine.text
+                        }}</span>
                     </div>
                 </div>
                 <button
@@ -410,7 +419,7 @@ const exportRaw = async () => {
         </div>
 
         <div class="flex flex-col gap-3" data-local-data-recovery>
-            <h3 class="text-sm font-bold opacity-75">{{ strings.recoveryHeading }}</h3>
+            <h3 class="text-sm font-bold text-fg/80">{{ strings.recoveryHeading }}</h3>
 
             <div>
                 <button type="button" :class="buttonClass" data-open-history @click="openHistory">
@@ -464,11 +473,11 @@ const exportRaw = async () => {
                 <button type="button" :class="buttonClass" data-export-raw @click="exportRaw">
                     {{ strings.exportRaw }}
                 </button>
-                <span class="text-sm opacity-75">{{ strings.exportRawNote }}</span>
+                <span class="text-sm text-fg/80">{{ strings.exportRawNote }}</span>
             </div>
 
             <div v-if="loadNotices.length" class="flex flex-col gap-1" data-at-load>
-                <div class="text-sm font-bold opacity-75">{{ strings.recovery.atLoad }}</div>
+                <div class="text-sm font-bold text-fg/80">{{ strings.recovery.atLoad }}</div>
                 <ul class="flex list-disc flex-col gap-1 pl-5">
                     <li v-for="(notice, i) in loadNotices" :key="i">
                         {{ notice.message() }}

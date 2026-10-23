@@ -31,7 +31,7 @@
         "loading": "Dosya yükleniyor…",
         "decoding": "Ses çözümleniyor…",
         "generating": "Dalga formu oluşturuluyor…",
-        "download": "BGM’yi İndir"
+        "download": "Arka Plan Müziğini İndir"
       },
       "fileChanged": "Arka plan müziği dosyası değiştirildi",
       "offsetSet": "Arka plan müziğinin zaman kayması {0} ms olarak ayarlandı"
@@ -966,22 +966,22 @@
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
       "exportRaw": "Ham Verileri Dışa Aktar…",
       "exportRawName": "{0} ham veriler {1}.zip",
-      "storageHeading": "Saklama Alanı",
+      "storageHeading": "Depolama Alanı",
       "stored": "Bu tarayıcıda saklanan: {0} / yaklaşık {1}",
       "deleteSessions": "Oturumları Sil…",
       "deleteTitle": "Oturumları Sil",
       "lastEdited": "Son düzenleme {0} günden uzun süre önce",
       "all": "Tümü",
-      "includeNotSaved": "Dosyaya Kaydedilmemiş Çalışmayı Dahil Et",
+      "includeNotSaved": "Dosyaya kaydedilmemiş çalışmayı dahil et",
       "deleteNext": "Sil…",
       "deleteConfirm": "{0} oturum silinsin mi?",
       "notSaved": "{0} oturum dosyaya kaydedilmedi: {1}.",
       "namesMore": "{0} ve {1} tane daha",
       "newer": "Editörün daha yeni bir sürümünü gerektiren oturumlar var.",
       "deleting": "Siliniyor…",
-      "deleteFailed": "Oturumlar silinemedi.",
       "exportRawNote": "Sorun bildirmek için.",
-      "exportRawUnreadable": "Saklanan çalışma okunamadı."
+      "exportRawUnreadable": "Saklanan çalışma okunamadı.",
+      "notDeleted": "{0} oturum silinemedi."
     }
   },
   "sidebars": {
@@ -1192,8 +1192,8 @@
     "upgradeBlocked": "Saklanan çalışmanızı açmak için diğer {0} sekmelerini kapatın.",
     "olderVersion": "Bu sürüm verilerinizden daha eski. Sayfayı yeniden yükleyin veya çalışmanızı dosyalara kaydedin.",
     "tryAgain": "Tekrar Dene",
-    "continued": "\"{0}\", {1} tarihinden devam ettirildi.",
-    "continuedUntitled": "{0} tarihli oturumunuz devam ettirildi.",
+    "continued": "\"{0}\" devam ettirildi ({1}).",
+    "continuedUntitled": "Oturumunuz devam ettirildi ({0}).",
     "continuedUndated": "\"{0}\" devam ettirildi.",
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
     "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
@@ -1210,8 +1210,8 @@
     "autoSaveKept": "\"{0}\", otomatik kaydetmeden ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
     "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Bir kopyası Yerel Veriler’de.",
-    "storageNearlyFull": "Tarayıcının saklama alanı neredeyse dolu.",
-    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma tarayıcının saklama alanını dolduruyor.",
+    "storageNearlyFull": "Tarayıcının depolama alanı neredeyse dolu.",
+    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma tarayıcının depolama alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
     "sessionDamaged": "Bu oturum açılamadı.",
     "newestLater": "En son oturumunuz için editörün daha yeni bir sürümü gerekiyor.",
@@ -1226,8 +1226,7 @@
   },
   "storage": {
     "reason": {
-      "full": "Tarayıcının saklama alanı dolu.",
-      "failed": "Tarayıcı değişiklikleri saklamayı durdurdu.",
+      "full": "Tarayıcının depolama alanı dolu.",
       "olderTabs": "Değişiklikleri saklamaya devam etmek için diğer {0} sekmelerini kapatın.",
       "upgrading": "Başka bir sekme editörü güncelliyor."
     },
@@ -1369,7 +1368,7 @@
     "sessions": {
       "loadFailed": "Son Oturumlar yüklenemedi.",
       "thisTab": "Bu sekme",
-      "elsewhere": "Başka bir sekmede veya pencerede açık",
+      "elsewhere": "Başka sekme",
       "actions": "\"{0}\" için diğer işlemler",
       "saveToFile": "Dosyaya Kaydet…",
       "delete": "Sil",
@@ -1878,7 +1877,7 @@
     "graphicsUnavailable": "Önizleme grafikleri başlatılamadı.",
     "graphicsHelp": "Tarayıcınızda grafik hızlandırmanın ve WebGL özelliğinin etkin olduğunu kontrol edin. Gerekirse tarayıcıyı yeniden başlatın.",
     "errorDetails": "Hata ayrıntıları",
-    "reload": "Yeniden yükle",
+    "reload": "Yeniden Yükle",
     "transport": {
       "hide": "Oynatma denetimlerini gizle",
       "show": "Oynatma denetimlerini göster",
@@ -2163,7 +2162,7 @@
     "fileDamaged": "\"{0}\" hasarlı. Kaydetmek ayrı bir dosya oluşturur.",
     "repaired": "{0} Zaman Çizgisi adımı onarıldı.",
     "storedDamaged": "Bu tarayıcıda saklanan {0} Zaman Çizgisi adımı hasarlı.",
-    "mediaDamaged": "Bu tarayıcıda saklanan {0} hasarlıydı."
+    "mediaDamaged": "Bu tarayıcıda saklanan seviyenin {0} hasarlıydı."
   },
   "levelInfo": {
     "file": "Dosya",
@@ -2222,7 +2221,6 @@
     "peekSessionFailed": "Bu oturum görüntülenemedi",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Önceki adımlar Geçmiş’te",
-    "bgmNotLoaded": "BGM yüklenmedi.",
     "savedCurrent": "Güncel sürüm {0} dosyasına kaydedildi"
   },
   "entry": {
@@ -2241,10 +2239,9 @@
     "restoredCopy": "\"{0}\" kopyası geri yüklendi",
     "deletedMany": "{0} oturum silindi",
     "deleted": "\"{0}\" silindi",
-    "deleteRefused": "Silinmedi. \"{0}\" başka bir sekmede veya pencerede açık.",
-    "deleteFailed": "\"{0}\" silinemedi",
-    "undoLost": "\"{0}\" silindi. Artık geri alınamaz.",
-    "undoFailed": "Geri alma başarısız oldu"
+    "deleteRefused": "Silinmedi. \"{0}\" bir sekmede veya pencerede kullanımda.",
+    "deleteFailed": "\"{0}\" silinemedi.",
+    "undoLost": "\"{0}\" silindi. Artık geri alınamaz."
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
@@ -2286,12 +2283,12 @@
       "body": "Bu seviye, editörün bu sürümünün desteklemediği değerler kullanıyor. Ayrı bir kopya açıldığında bu değerler varsayılanlarla değiştirilir.",
       "openCopy": "Kopya Aç"
     },
-    "unsavedChanges": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz var.",
+    "unsavedChanges": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz var ({1}).",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
     "earlierUnchecked": "{0} açıldı. Son Oturumlar’da bu dosyanın başka sürümleri olup olmadığı denetlenemedi.",
     "unsavedEarlierMaybe": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da olabilir.",
-    "unsavedChangesMaybe": "{0} açıldı. Bu dosyada {1} tarihinden kalma kaydedilmemiş değişiklikleriniz olabilir.",
-    "olderVersion": "Bu, {0} dosyasının eski bir sürümü. {1} tarihli daha yeni bir sürüm Son Oturumlar’da.",
+    "unsavedChangesMaybe": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz olabilir ({1}).",
+    "olderVersion": "Bu, {0} dosyasının eski bir sürümü. Daha yeni bir sürüm ({1}) Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
     "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."
   },
@@ -2324,7 +2321,7 @@
     "bar": "Değişiklikler bu tarayıcıda saklanmıyor."
   },
   "notStored": {
-    "reload": "Yeniden yükle"
+    "reload": "Yeniden Yükle"
   },
   "historyChanges": {
     "title": "Özellik Değişiklikleri",

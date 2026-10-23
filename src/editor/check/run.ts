@@ -9,7 +9,6 @@ import type { ModelRefusal } from '../../local/save/model'
 import { readValue, storedRead } from '../../local/storedRead'
 import { platform, type DiskState } from '../../platform'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
-import { testKeysOpen } from '../../platform/testKeys'
 import { savePoint } from '../../platform/testPause'
 import { isSafeMode } from '../../safe'
 import { interpolate } from '../../utils/interpolate'
@@ -178,19 +177,6 @@ const silentPreparing = (signal: AbortSignal): ReturnType<PreparingSlot['ui']['p
     close: () => undefined,
 })
 
-/** A spec slows each batch of the check by this many ms, to act while it runs. */
-export const CHECK_DELAY_TEST_KEY = 'nse.test.checkDelay'
-
-const testDelay = async () => {
-    let ms = 0
-    try {
-        ms = testKeysOpen ? Number(localStorage.getItem(CHECK_DELAY_TEST_KEY) ?? 0) : 0
-    } catch {
-        // No localStorage: no hook.
-    }
-    if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 /** The strings of the report, each named where it is read. */
 const checkText = (): CheckText => {
     const { check, open, load, save } = i18n.value
@@ -292,7 +278,6 @@ const perform = async (
                 let done = 0
                 let unreadable = false
                 for (let n = 0; n < opened.batches; n++) {
-                    await testDelay()
                     checkpoint()
                     say(fileMessage(name, done, opened.bytes))
                     let batch
@@ -332,7 +317,6 @@ const perform = async (
         held.ids.add(stored.id)
         let done = 0
         for (let n = 0; n < stored.batches; n++) {
-            await testDelay()
             checkpoint()
             say(storedMessage(done, stored.roots))
             const batch = await storedRead(env.worker, 'checkStoredBatch', { id: stored.id, n })
@@ -344,7 +328,6 @@ const perform = async (
         }
         say(storedMessage(stored.roots, stored.roots))
     }
-    await testDelay()
     checkpoint()
 
     // 6. The finish: no Cancel from here. The file's fingerprint is read again; a change writes

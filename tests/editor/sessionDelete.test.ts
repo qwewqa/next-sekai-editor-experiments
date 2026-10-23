@@ -124,7 +124,7 @@ test('a failed Undo keeps the mark: the row says so and Try Again undoes the sam
     t.fakes.undo = () => Promise.resolve({ kind: 'failed' })
     await t.model.undo('a')
     assert.deepEqual(statuses(t.model), [['a', 'failed']])
-    assert.equal(t.model.announcement.value, 'Undo failed')
+    assert.equal(t.model.announcement.value, 'Could not undo')
     // Storage is back: Try Again.
     t.fakes.undo = (marks) =>
         Promise.resolve({ kind: 'done', restored: marks.map((mark) => mark.chainId), lost: [] })
@@ -153,10 +153,10 @@ test('a chain open elsewhere or a failed write is reported and leaves no row; a 
     const t = setup()
     t.fakes.mark = () => Promise.resolve({ kind: 'open' })
     assert.equal(await t.model.remove(chain('a'), 'Alpha'), 'open')
-    assert.deepEqual(t.log.reports, ['Not deleted. "Alpha" is open in another tab or window.'])
+    assert.deepEqual(t.log.reports, ['Not deleted. "Alpha" is in use in a tab or window.'])
     t.fakes.mark = () => Promise.resolve({ kind: 'failed' })
     assert.equal(await t.model.remove(chain('a'), 'Alpha'), 'failed')
-    assert.equal(t.log.reports.at(-1), 'Could not delete "Alpha"')
+    assert.equal(t.log.reports.at(-1), '"Alpha" could not be deleted.')
     t.fakes.mark = () => Promise.resolve({ kind: 'gone' })
     const reports = t.log.reports.length
     const changed = t.log.changed

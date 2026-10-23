@@ -131,6 +131,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                     v-if="startupGate.phase === 'error' && startupGate.rawExport"
                     type="button"
                     :class="buttonClass"
+                    :disabled="startupGate.rawExportRunning"
                     data-raw-export
                     @click="runRawExport()"
                 >

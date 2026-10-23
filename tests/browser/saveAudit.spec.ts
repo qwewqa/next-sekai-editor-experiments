@@ -55,8 +55,9 @@ const sizeText = (dialog: ReturnType<typeof saveDialog>, row: 'history' | 'bgm')
 /** "Total: about 3.7 MB" in bytes. */
 const totalBytes = async (dialog: ReturnType<typeof saveDialog>) => {
     const total = dialog.locator('[data-save-total]')
-    await expect(total).toContainText(/about [\d.,]+ (kB|MB)/)
-    const [, amount, unit] = /about ([\d.,]+) (kB|MB)/.exec((await total.textContent()) ?? '')!
+    // The unit follows the number after a no-break space.
+    await expect(total).toContainText(/about [\d.,]+\s(kB|MB)/)
+    const [, amount, unit] = /about ([\d.,]+)\s(kB|MB)/.exec((await total.textContent()) ?? '')!
     return Number(amount!.replaceAll(',', '')) * (unit === 'MB' ? 1_000_000 : 1000)
 }
 
@@ -380,7 +381,7 @@ test.describe('a large download on a touch device', () => {
         await expect(dialog.locator('[data-save-total]')).toContainText('about 2.')
         await submitSave(page, 'coconut')
         const preparing = page.locator('[data-save-preparing]')
-        await expect(preparing).toHaveText(/^Preparing coconut\.nxsp… 2\.\d MB$/)
+        await expect(preparing).toHaveText(/^Preparing coconut\.nxsp… 2\.\d\sMB$/)
         await page.evaluate(() =>
             (window as unknown as { releaseBuild: () => void }).releaseBuild(),
         )

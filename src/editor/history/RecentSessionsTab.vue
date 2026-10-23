@@ -156,7 +156,7 @@ const nameOf = (row: ChainRow) =>
 /** The inline row's text: Deleted "X", or that it can no longer be undone. */
 const deletedLabel = (row: DeletedRow) =>
     row.status === 'failed'
-        ? [deletedText(row), i18n.value.session.undoFailed].join(', ')
+        ? [deletedText(row), i18n.value.commands.undo.failed].join(', ')
         : deletedText(row)
 const deletedText = (row: DeletedRow) =>
     interpolateRaw(
@@ -265,9 +265,10 @@ const markFailed = (row: ChainRow) => (reason: 'damaged' | 'newer') => {
 
 const moveTo = (row: NavRow) => {
     cursorId.value = row.id
-    // An inline Undo row has nothing to peek: the chart goes back to now, as on this tab's row.
-    if (row.type === 'deleted' || row.thisTab) backToNow()
-    else if (peekable(row)) peekSession(row, safe, nameOf(row), markFailed(row))
+    // An inline Undo row, a damaged or newer one has nothing to peek: the chart goes back to now,
+    // as on this tab's row, and never keeps the row left behind.
+    if (row.type === 'deleted' || row.thisTab || !peekable(row)) backToNow()
+    else peekSession(row, safe, nameOf(row), markFailed(row))
     void focusRow(row.id)
 }
 
@@ -368,7 +369,9 @@ const openMenu = async (row: ChainRow, anchor: HTMLElement, touch = false) => {
     if (menu.value?.row.id === row.id) return
     const token = ++menuToken
     // The row whose menu opens is the row peeked and with the cursor, so focus and peek agree.
-    if (cursorId.value !== row.id || (peekable(row) && peekedSession.value?.chainId !== row.id))
+    // A row that cannot be peeked leaves no peek behind either.
+    const peeked = peekedSession.value?.chainId
+    if (cursorId.value !== row.id || (peekable(row) ? peeked !== row.id : peeked !== undefined))
         moveTo(row)
     cursorId.value = row.id
     focusToken++
@@ -736,7 +739,7 @@ const notePointer = (event: PointerEvent) => {
                                     v-if="row.status === 'failed'"
                                     class="sessions-caption"
                                     data-sessions-undo-failed
-                                    >{{ i18n.session.undoFailed }}</span
+                                    >{{ i18n.commands.undo.failed }}</span
                                 >
                             </div>
                             <button

@@ -19,9 +19,10 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Delete in Recent Sessions (Part 1 §1.4.10.6): the ⋯ menu and the Delete key mark a chain, its row
-// becomes an inline Undo row and a card offers Undo; two deletes merge; Undo says when it can no
-// longer be undone or failed; Delete is refused only for a chain open in another tab.
+// Delete in Recent Sessions (Part 1 §1.4.10.6): the ⋯ menu and the Delete key mark a chain, and its
+// row becomes an inline Undo row (the Node tests of `sessionDelete` pin the state machine; what
+// is checked here is the row, the live region, focus and the real worker); Delete is refused for a
+// chain open in another tab or held by this tab's unstored copy.
 
 const messages = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
@@ -313,13 +314,34 @@ test('Delete is refused for a chain open in another tab, with its reason in the 
     // The key is refused by the core, which asks the locks, not the badge.
     await rowFor(other, 'Alpha').focus()
     await other.keyboard.press('Delete')
-    await expect(
-        card(other, 'Not deleted. "Alpha" is open in another tab or window.'),
-    ).toBeVisible()
+    await expect(card(other, 'Not deleted. "Alpha" is in use in a tab or window.')).toBeVisible()
     await expect(deletedRows(other)).toHaveCount(0)
     await expect(rowFor(other, 'Alpha')).toHaveCount(1)
     expect(await stored(other, alpha.chainId)).toBe(true)
     expect(await lifeOf(page)).toBe(990)
+})
+
+// A copy keeps its parent held until its first write, so the refusal is not about another tab.
+test('Delete is refused while this tab’s unstored copy holds the chain, in words that fit', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    const alpha = await closedChain(page, { title: 'Alpha', life: 990 })
+    await page.evaluate(async (sessionId) => {
+        const { restoreCopy } =
+            await window.editorTest.appImport<typeof import('../../src/editor/switch')>(
+                '/src/editor/switch.ts',
+            )
+        await restoreCopy(sessionId)
+    }, alpha.sessionId)
+    expect(await lifeOf(page)).toBe(990)
+    await openSessions(page)
+    await rowFor(page, 'Alpha').focus()
+    await page.keyboard.press('Delete')
+    await expect(card(page, 'Not deleted. "Alpha" is in use in a tab or window.')).toBeVisible()
+    await expect(deletedRows(page)).toHaveCount(0)
+    expect(await stored(page, alpha.chainId)).toBe(true)
 })
 
 test('the Delete key works only in the list: the chart’s Delete deletes the note, the list’s the chain', async ({
@@ -403,7 +425,7 @@ test('a kill between the mark and the sweep: after a reload the chain never show
     expect(await stored(page, alpha.chainId)).toBe(false)
 })
 
-test('Undo with storing failing says Undo failed, and Try Again works once it is back', async ({
+test('Undo with storing failing says it could not undo, and Try Again works once it is back', async ({
     page,
 }) => {
     errorsFail(page, { allow: [/held undoDeleting call failed/] })
@@ -422,7 +444,7 @@ test('Undo with storing failing says Undo failed, and Try Again works once it is
     await hold.release(true)
     // The row itself says it failed and offers Try Again for the same Delete.
     const failed = deletedFor(page, 'Alpha')
-    await expect(failed.locator('[data-sessions-undo-failed]')).toHaveText('Undo failed')
+    await expect(failed.locator('[data-sessions-undo-failed]')).toHaveText('Could not undo')
     await failed.getByRole('button', { name: messages.history.tryAgain }).click()
     await expect(rowFor(page, 'Alpha')).toHaveCount(1)
     await expect(deletedRows(page)).toHaveCount(0)
@@ -438,7 +460,7 @@ test('a failed Delete is reported and leaves the row', async ({ page }) => {
     await page.keyboard.press('Delete')
     await hold.reached()
     await hold.release(true)
-    await expect(card(page, 'Could not delete "Alpha"')).toBeVisible()
+    await expect(card(page, '"Alpha" could not be deleted.')).toBeVisible()
     await expect(rowFor(page, 'Alpha')).toHaveCount(1)
     await expect(deletedRows(page)).toHaveCount(0)
 })
