@@ -1,11 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { importLevelData, openEditor } from './memoryBaseline'
 
 // The minimap's content pipeline, driven on detached canvases with the app's real state and
 // history (design §13.2). The strip itself is not mounted here.
 
-const coconut = readFileSync('test_level_data/coconut-next-sekai-24887.json')
+// Coconut is local-only (never committed); CI runs the committed generated chart instead.
+const coconutPath = 'test_level_data/coconut-next-sekai-24887.json'
+const hasCoconut = existsSync(coconutPath)
+const coconut = readFileSync(hasCoconut ? coconutPath : 'tests/fixtures/generated-large.json')
 
 test.beforeEach(async ({ page }) => {
     await openEditor(page)
@@ -253,7 +256,7 @@ for (const layout of ['basic', 'composed'] as const)
         page,
     }) => {
         test.setTimeout(120_000)
-        await importLevelData(page, 'coconut.json', coconut, true)
+        await importLevelData(page, 'coconut.json', coconut, hasCoconut)
         await installHarness(page)
         const result = await page.evaluate(async (layout) => {
             const h = window.minimapHarness
