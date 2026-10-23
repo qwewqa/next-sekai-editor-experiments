@@ -11,7 +11,14 @@ import {
     type KvFactory,
     type KvTx,
 } from '../kv/types'
-import { MAINT_WAIT_MS, realTimers, withMaintShared, type Timers } from '../locks'
+import {
+    MAINT_LOCK,
+    MAINT_WAIT_MS,
+    realTimers,
+    withMaintExclusive,
+    withMaintShared,
+    type Timers,
+} from '../locks'
 import { nextTime } from '../time'
 
 // The storage worker's state (Part 1 §1.6.1, §1.6.5, §1.6.7): which store it writes to, whether
@@ -110,6 +117,21 @@ export type WriteOptions = {
     /** False for a write whose failure its caller reports: storing goes on as it was. */
     pauseOnFailure?: boolean
 } & Progress
+
+/**
+ * What a deleting job may do while it holds `nse-maint` exclusive (R1): its transactions take no
+ * shared hold, never pause storing, and are not refused by the forced-quota test flags.
+ */
+export type ExclusiveHold = {
+    read: <T>(stores: readonly string[], fn: (tx: KvTx) => Promise<T>) => Promise<T>
+    write: <T>(
+        stores: readonly string[],
+        fn: (tx: KvTx) => Promise<T>,
+        options?: { durability?: Durability },
+    ) => Promise<T>
+    /** Whether a writer waits for `nse-maint` (true when the lock manager can't tell). */
+    writerWaiting: () => Promise<boolean>
+}
 
 export class StorageCore {
     private db: KvDatabase | undefined
@@ -340,18 +362,47 @@ export class StorageCore {
         return result
     }
 
+    /**
+     * Runs a deleting job holding `nse-maint` exclusive, requested with ifAvailable (R1): `ran:
+     * false` when any tab holds or waits for it, and the job is retried later. Stored only.
+     */
+    async exclusive<T>(
+        body: (hold: ExclusiveHold) => Promise<T>,
+    ): Promise<{ ran: true; value: T } | { ran: false }> {
+        while (this.moving) await this.moving
+        const { mode, reason } = this.current
+        if (mode !== 'stored')
+            throw new StorageRefusedError(mode === 'readOnly' ? 'readOnly' : 'failed')
+        if (reason === 'upgrading') throw new StorageRefusedError('upgrading')
+        const { locks } = this.deps
+        const hold: ExclusiveHold = {
+            read: (stores, fn) => this.read(stores, fn),
+            write: (stores, fn, options = {}) => this.attempt(stores, fn, options, false),
+            writerWaiting: async () => {
+                try {
+                    const { pending } = await locks.query()
+                    return pending.some((lock) => lock.name === MAINT_LOCK)
+                } catch {
+                    return true
+                }
+            },
+        }
+        return withMaintExclusive(locks, () => body(hold))
+    }
+
     private async attempt<T>(
         stores: readonly string[],
         fn: (tx: KvTx) => Promise<T>,
         options: WriteOptions,
+        forced = true,
     ): Promise<T> {
         if (this.lost) await this.reopen()
         try {
-            return await this.transact(stores, fn, options)
+            return await this.transact(stores, fn, options, forced)
         } catch (error) {
             if (!isConnectionError(error)) throw error
             await this.reopen()
-            return this.transact(stores, fn, options)
+            return this.transact(stores, fn, options, forced)
         }
     }
 
@@ -359,6 +410,8 @@ export class StorageCore {
         stores: readonly string[],
         fn: (tx: KvTx) => Promise<T>,
         options: WriteOptions,
+        /** Whether the forced-failure test flags apply: not to deleting jobs. */
+        forced = true,
     ) {
         // A reopen can find a newer database (§1.6.1): never write what this build doesn't know.
         if (this.current.mode !== 'stored') throw new StorageRefusedError('readOnly')
@@ -366,8 +419,10 @@ export class StorageCore {
         const db = this.db
         if (!db) throw domError('InvalidStateError', 'No connection')
         if (db.version !== this.version) throw new StorageRefusedError('readOnly')
-        if (this.flags.forceQuota) throw domError('QuotaExceededError', 'Forced by a test')
-        if (this.flags.forceUnknownError) throw domError('UnknownError', 'Forced by a test')
+        if (forced && this.flags.forceQuota)
+            throw domError('QuotaExceededError', 'Forced by a test')
+        if (forced && this.flags.forceUnknownError)
+            throw domError('UnknownError', 'Forced by a test')
         return db.transaction(stores, 'readwrite', fn, options)
     }
 

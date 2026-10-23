@@ -1,5 +1,5 @@
 import { NO_USE_DAY, type UseDay } from './days'
-import type { Key, KvTx, KvUpgrade } from './kv/types'
+import type { KvTx, KvUpgrade } from './kv/types'
 
 // The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 1, whose store set is `STORES_V1`)
 // and the versioning rules (§1.6.1): upgrades
@@ -48,14 +48,8 @@ export type MetaValues = {
     lastGcAt: { day: UseDay; time: number } | null
     deletionsPending: boolean
     migratedHashes: string[]
-    usage: {
-        history: number
-        media: number
-        cachedMedia: number
-        assets: number
-        at: number
-    } | null
-    lastPersistFailure: { at: number; reason: string } | null
+    /** Cleanup under pressure removed something: the next load says so once. */
+    removedForSpace: boolean
 }
 
 export type MetaKey = keyof MetaValues
@@ -82,8 +76,7 @@ export const startingMeta = (context: CreateContext): MetaValues => ({
     lastGcAt: null,
     deletionsPending: false,
     migratedHashes: [],
-    usage: null,
-    lastPersistFailure: null,
+    removedForSpace: false,
 })
 
 const createV1 = (upgrade: KvUpgrade, context: CreateContext) => {
@@ -138,34 +131,11 @@ export const writeMeta = async <K extends MetaKey>(tx: KvTx, key: K, value: Meta
 export const readEpoch = async (tx: KvTx) => (await readMeta(tx, 'epoch')) ?? 0
 
 /**
- * Bumps the epoch: only in a transaction that actually deleted something (§1.6.6). Unwired until
- * Step 8 GC: every transaction that deletes must call it.
+ * Bumps the epoch: in every transaction that deletes a body (`nodes`, `chunks`, `media`), so a
+ * flush's closure check re-checks the hashes it reuses (R2). Removing rows bumps nothing.
  */
 export const bumpEpoch = async (tx: KvTx) => {
     const epoch = (await readEpoch(tx)) + 1
     await writeMeta(tx, 'epoch', epoch)
     return epoch
-}
-
-/** The stores a stored hash can live in, as `refs` reach them. */
-export const HASH_STORES = ['nodes', 'chunks', 'media'] as const satisfies StoreName[]
-
-/**
- * The closure check (§1.6.6, r12-arch-web M5): which of these hashes no store holds. Run in the
- * flush's transaction after an epoch change, over `HASH_STORES` in its scope. Unwired until Step 8
- * GC, the first thing that changes the epoch.
- */
-export const missingHashes = async (tx: KvTx, hashes: Iterable<Uint8Array>) => {
-    const missing: Uint8Array[] = []
-    for (const hash of hashes) {
-        const key: Key = hashKey(hash)
-        let found = false
-        for (const store of HASH_STORES)
-            if ((await tx.getKey(store, key)) !== undefined) {
-                found = true
-                break
-            }
-        if (!found) missing.push(hash)
-    }
-    return missing
 }
