@@ -653,8 +653,12 @@ test.describe('peek', () => {
                     }
                     bpm.addBpm(transaction, { beat: step.beat, bpm: step.bpm, meter: 4 })
                 }
-                const operation = historySteps.nativeOperation(receipt, label)
-                history.pushState({ ...operation, futureFixture: true }, transaction.commit([]))
+                // An unknown extension keeps the change view to the plain shapes.
+                const operation = {
+                    ...historySteps.nativeOperation(receipt, label),
+                    futureFixture: true,
+                }
+                history.pushState(operation, transaction.commit([]))
             },
             { label, step },
         )
