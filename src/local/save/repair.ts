@@ -336,15 +336,19 @@ const repairMedia = async (
     )
 }
 
-/** Puts back known-bad stored bodies the source holds; resolves the hashes stored again. */
+/**
+ * Puts back known-bad stored bodies the source holds; resolves the hashes stored again. `bad`
+ * names them (Check File and History…'s findings); without it, every chain's `badChunks`.
+ */
 export const repairFromSource = async (
     store: SaveStore,
     source: PinnedSource,
     file: Blob,
+    bad?: ReadonlySet<string>,
 ): Promise<string[]> => {
-    const known = await knownDamage(store)
+    const known = bad ?? (await knownDamage(store))
     if (!known.size) return []
-    const bad = source.manifest ? await stillBad(store, [...known]) : new Set<string>()
+    const still = source.manifest ? await stillBad(store, [...known]) : new Set<string>()
     const done: string[] = []
     // Each kind on its own: one that fails leaves the others to be put right.
     const step = async (kind: string, run: () => Promise<string[]>) => {
@@ -354,9 +358,9 @@ export const repairFromSource = async (
             console.error(`Putting ${kind} in storage right from the chain’s file failed`, error)
         }
     }
-    if (bad.size) {
-        await step('chunks', () => repairChunks(store, source, file, bad))
-        await step('records', () => repairRecords(store, source, bad))
+    if (still.size) {
+        await step('chunks', () => repairChunks(store, source, file, still))
+        await step('records', () => repairRecords(store, source, still))
     }
     await step('media', () => repairMedia(store, source, file, known))
     if (done.length) console.info('Damage in storage put right from the chain’s file', done)

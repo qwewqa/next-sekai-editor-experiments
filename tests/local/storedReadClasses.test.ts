@@ -26,6 +26,8 @@ const CLASSES = {
     readRecovered: 'covered',
     listKept: 'covered',
     findEdits: 'covered',
+    checkStoredOpen: 'covered',
+    checkStoredBatch: 'covered',
     // Other reads: a failure is handled in place, by review.
     readSnapshot: 'read',
     readSnapshotVerified: 'read',
@@ -42,6 +44,8 @@ const CLASSES = {
     mediaHeld: 'read',
     readSessionStarts: 'read',
     openRead: 'read',
+    checkFileOpen: 'read',
+    checkFileBatch: 'read',
     diagnostics: 'read',
     buildSave: 'read',
     userAssetList: 'read',
@@ -73,6 +77,8 @@ const CLASSES = {
     openBatch: 'write',
     openUnlink: 'write',
     openAbandon: 'write',
+    checkFinish: 'write',
+    checkDrop: 'write',
     // Lifecycle.
     init: 'lifecycle',
     status: 'lifecycle',
@@ -107,6 +113,7 @@ const MODULES: [file: string, factory: string][] = [
     ['worker/saveHandlers.ts', 'saveHandlers'],
     ['worker/bindHandlers.ts', 'bindHandlers'],
     ['worker/openHandlers.ts', 'openHandlers'],
+    ['worker/checkHandlers.ts', 'checkHandlers'],
     ['worker/diagnosticHandlers.ts', 'diagnosticHandlers'],
 ]
 

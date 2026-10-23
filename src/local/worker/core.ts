@@ -109,6 +109,8 @@ export type WriteOptions = {
     durability?: Durability
     /** False for a write whose failure its caller reports: storing goes on as it was. */
     pauseOnFailure?: boolean
+    /** The caller holds `nse-maint` exclusive (a deleter's batch): no shared request behind it. */
+    maintHeld?: boolean
 } & Progress
 
 export class StorageCore {
@@ -318,14 +320,13 @@ export class StorageCore {
         }
         let result: T
         try {
-            result = await withMaintShared(
-                this.deps.locks,
-                () => this.attempt(stores, fn, options),
-                {
-                    waitMs: this.deps.maintWaitMs ?? MAINT_WAIT_MS,
-                    timers: this.timers,
-                },
-            )
+            const run = () => this.attempt(stores, fn, options)
+            result = options.maintHeld
+                ? await run()
+                : await withMaintShared(this.deps.locks, run, {
+                      waitMs: this.deps.maintWaitMs ?? MAINT_WAIT_MS,
+                      timers: this.timers,
+                  })
         } catch (error) {
             if (error instanceof StorageRefusedError || options.pauseOnFailure === false)
                 throw error
