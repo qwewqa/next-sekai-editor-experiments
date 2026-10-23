@@ -7,6 +7,7 @@ import { fileActions } from './actions'
 import { chipStates, type ChipKind } from './chip'
 import { sameFileContent } from './content'
 import { confirmDownloads, downloadConfirmed } from './flags'
+import { notStored } from './notStored'
 
 // The passive file state of the open session (Part 1 §1.3.4): what the status label, the chip,
 // `document.title` and the close prompt read. The save flows (`src/editor/save`) set it.
@@ -119,10 +120,22 @@ const found = computed(() =>
     finding.value?.sessionId === session.value.sessionId ? finding.value.kind : undefined,
 )
 
-/** The states other modules raise (Not stored belongs to Step 8's storage chip). */
+/** The states other modules raise. */
 export const raised = {
     notStored: shallowRef(false),
 }
+
+// Not stored follows the storage status once its cause has held for a moment (`notStored.ts`).
+watch(
+    notStored,
+    (cause) => {
+        raised.notStored.value = cause !== undefined
+    },
+    {
+        flush: 'sync',
+        immediate: true,
+    },
+)
 
 /** Every state raised for the open session, highest priority first. */
 export const chipKinds = computed(() => {

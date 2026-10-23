@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch, watchEffect, type Ref } from 'vue'
 import { isDynamicStages } from '../history/dynamicStages.ts'
-import { slotLoading } from '../history'
+import { isDirty, slotLoading } from '../history'
 import { folderPathParts, templateParts, type NamePart } from '../chart/folders'
 import { groupFolders, groups } from '../history/groups'
 import { stageFolders, stages } from '../history/stages'
 import { i18n } from '../i18n'
+import { detection } from '../platform/detect'
 import { settings } from '../settings'
 import { interpolateRaw } from '../utils/interpolate'
 import { vFocusRescue } from '../directives/focusRescue'
@@ -25,6 +26,8 @@ import LevelEditorNotification from './LevelEditorNotification.vue'
 import PeekBar from './history/PeekBar.vue'
 import ChangeBand from './history/ChangeBand.vue'
 import FileChip from './file/FileChip.vue'
+import { notStored } from './file/notStored'
+import NotStoredBar from './NotStoredBar.vue'
 import StatusLabel from './StatusLabel.vue'
 import StatusScope from './StatusScope.vue'
 import { groupScope, stageScope } from './scope'
@@ -96,9 +99,24 @@ const onResizeCancel = () => {
     resizing = undefined
 }
 
+// iOS and iPadOS have no leave prompt, so the bar is their strong sign while work is only here.
+const showNotStoredBar = computed(
+    () => detection().os === 'ios' && notStored.value !== undefined && isDirty.value,
+)
+// The bar sits above the chart. The chart is centred on `view.time`, so when the bar's height
+// changes, the time moves with it and the chart holds still under the eye.
+let barHeight = 0
+const measureBar = () =>
+    host.value?.querySelector('[data-not-stored-bar]')?.getBoundingClientRect().height ?? 0
+
 const updateBounds = () => {
     if (!container.value) return
 
+    const bar = measureBar()
+    if (bar !== barHeight) {
+        view.time = Math.max(0, view.time - (bar - barHeight) / (2 * settings.pps))
+        barHeight = bar
+    }
     const rect = container.value.getBoundingClientRect()
     view.x = rect.x
     view.y = rect.y
@@ -111,6 +129,8 @@ watch(container, (element, _, onCleanup) => {
 
     const observer = new ResizeObserver(updateBounds)
     observer.observe(element)
+    // A chart pane that was not shown while the bar changed has nothing to hold still.
+    barHeight = measureBar()
     updateBounds()
 
     window.addEventListener('resize', updateBounds)
@@ -254,6 +274,7 @@ const stageCount = computed(() =>
     <!-- An own stacking context keeps editor overlays below docks and their popups. -->
     <!-- A move waiting about 150 ms for its undo slot shows the busy cursor (§1.6.4 #6). -->
     <div ref="host" class="isolate flex flex-col" :class="{ 'slot-busy': slotLoading }">
+        <NotStoredBar v-if="showNotStoredBar" />
         <div class="relative flex min-h-0 flex-grow select-none overflow-hidden">
             <div
                 v-if="!isElevationEditorOpen || isElevationSideBySide"

@@ -43,8 +43,8 @@ export const confirmSwitch = async () => {
             { value: 'save', label: () => i18n.value.prompt.save, default: true },
         ],
     })
-    // This session's Save (§1.4.7); the switch is left for the user to repeat, and Step 8 adds
-    // the "Saved to … · Continue" follow-up.
+    // This session's Save (§1.4.7); the switch is left for the user to repeat, and no longer
+    // prompts once the work is in a file.
     if (choice === 'save') await runCommand(save)
     return choice === 'leave'
 }

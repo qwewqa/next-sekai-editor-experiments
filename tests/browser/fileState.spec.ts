@@ -939,7 +939,7 @@ test.describe('the chip', () => {
 })
 
 test.describe('single-line disclosures', () => {
-    test('an uninstalled Not stored handler gives a neutral Close-only explanation', async ({
+    test('a Not stored chip with no storage cause lists the lower states and offers Save', async ({
         page,
         context,
     }) => {
@@ -948,16 +948,11 @@ test.describe('single-line disclosures', () => {
         await visit(page)
         await bindFile(page, { name: 'coconut.nxsp', event: 'saved' })
         await finding(page, 'changed')
-        expect(
-            await page.evaluate(async () => {
-                const { fileActions } =
-                    (await import('/src/editor/file/actions.ts')) as typeof import('../../src/editor/file/actions')
-                const { raised } =
-                    (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
-                raised.notStored.value = true
-                return typeof fileActions.openNotStored
-            }),
-        ).toBe('undefined')
+        await page.evaluate(async () => {
+            const { raised } =
+                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+            raised.notStored.value = true
+        })
         await chip(page).click()
         const dialog = page.getByRole('dialog', { name: 'Changes Not Stored' })
         await expect(dialog).toContainText('Changes are not being stored in this browser.')
@@ -965,19 +960,9 @@ test.describe('single-line disclosures', () => {
             '"coconut.nxsp": changed on disk since you opened or saved it here.',
         )
         await expect(dialog).not.toContainText('Leaving will discard')
-        await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toHaveCount(2)
-        await expect(dialog.getByRole('button')).toHaveCount(2)
+        await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(1)
+        await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeFocused()
         await page.keyboard.press('Escape')
-        await page.evaluate(async () => {
-            const { fileActions } =
-                (await import('/src/editor/file/actions.ts')) as typeof import('../../src/editor/file/actions')
-            fileActions.openNotStored = () => {
-                document.body.dataset.statusHandler = 'called'
-            }
-        })
-        await chip(page).click()
-        await expect(page.locator('body')).toHaveAttribute('data-status-handler', 'called')
-        await expect(page.getByRole('dialog')).toHaveCount(0)
         await button(page).click()
         await expect(page.getByRole('dialog', { name: 'Level Properties' })).toBeVisible()
     })

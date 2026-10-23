@@ -1203,7 +1203,12 @@
     "linkNotCopied": "Bağlantı kopyalanamadı"
   },
   "storage": {
-    "reload": "Değişiklikleri saklamaya devam etmek için sayfayı yeniden yükleyin.",
+    "reason": {
+      "full": "Tarayıcının saklama alanı dolu.",
+      "failed": "Tarayıcı değişiklikleri saklamayı durdurdu.",
+      "olderTabs": "Değişiklikleri saklamaya devam etmek için diğer {0} sekmelerini kapatın.",
+      "upgrading": "Başka bir sekme editörü güncelliyor."
+    },
     "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor; bu tarayıcı saklanan çalışmayı silebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
@@ -2259,6 +2264,9 @@
   },
   "notSaving": {
     "bar": "Değişiklikler bu tarayıcıda saklanmıyor."
+  },
+  "notStored": {
+    "reload": "Yeniden yükle"
   },
   "historyChanges": {
     "title": "Özellik Değişiklikleri",
