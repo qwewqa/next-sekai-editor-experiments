@@ -15,7 +15,7 @@ contexts):
 | File | Made by | Holds |
 | --- | --- | --- |
 | `full.nxsp` | B: A6's file, opened in another browser and saved back in place | History over two devices' `save` entries; every entry kind but `init`; a row `kept: false`; one segment copied whole beside the head manifest; a carried `completeFrom`; the head's BGM, cover and preview with their bytes, earlier ones as metadata only; level info with a rating and a tag icon; group and stage folders; dynamic stages; notes at third lanes; elevation; a depth-1 kind node; unknown top-level and `metadata` keys |
-| `kept-first.nxsp` | B: the file on its disk replaced by A10's, then Save and the conflict dialog's Replace | `revision.replaces`; the carried `completeFrom` of the base; the replaced file's history first |
+| `kept-first.nxsp` | B: the file on its disk replaced by A10's, then Save and the conflict dialog's Replace | `revision.replaces` names the revision the Replace wrote over; the base's `completeFrom` is carried |
 | `carried.nxsp` | D: `full.nxsp` opened in a browser without pickers, edited and saved (a download) | The base's `completeFrom`, carried |
 | `not-carried.nxsp` | D: a stored chunk only a row of `full.nxsp` needs goes bad, and the next Save finds it | `completeFrom` is its own revision; the damaged row `kept: false` |
 | `media-not-held.nxsp` | D: Undo to a state whose BGM, cover and preview this browser does not hold, then Save As… | `bgm`, `metadata.cover` and `metadata.preview` without a file, with `hash`, `size` and `type`; `options.bgm` true |
