@@ -503,6 +503,43 @@ test('a session written by a newer version is listed but cannot be peeked or res
     await expect(page.getByRole('menu').getByText(messages.load.sessionLater)).toHaveCount(1)
 })
 
+test('arrowing onto a row that cannot be peeked leaves the previous row’s peek', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    const alpha = await closedChain(page, { title: 'Alpha', life: 990 })
+    await closedChain(page, { title: 'Beta', life: 980 })
+    await page.evaluate(
+        (sessionId) =>
+            new Promise<void>((resolve, reject) => {
+                const open = indexedDB.open('nse-local-data')
+                open.onsuccess = () => {
+                    const tx = open.result.transaction('sessions', 'readwrite')
+                    const store = tx.objectStore('sessions')
+                    const get = store.get(sessionId)
+                    get.onsuccess = () => store.put({ ...get.result, v: 999 })
+                    tx.oncomplete = () => {
+                        open.result.close()
+                        resolve()
+                    }
+                    tx.onerror = () => reject(tx.error ?? new Error('Not changed'))
+                }
+                open.onerror = () => reject(open.error ?? new Error('Not opened'))
+            }),
+        alpha.sessionId,
+    )
+    await openSessions(page)
+    await rowFor(page, 'Beta').click()
+    await expect.poll(() => peekedLife(page)).toBe(980)
+    await expect(peekBar(page)).toHaveCount(1)
+    // Newest first: Alpha, which needs a newer version, is the row below.
+    await page.keyboard.press('ArrowDown')
+    await expect(rowFor(page, 'Alpha')).toBeFocused()
+    await expect(peekBar(page)).toHaveCount(0)
+    expect(await lifeOf(page)).toBe(1000)
+})
+
 test('Save to File… of a closed session opens the save dialog for it', async ({ page }) => {
     errorsFail(page)
     await load(page)
