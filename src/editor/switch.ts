@@ -98,22 +98,24 @@ const reopenAction = (left: Left): NoticeAction => {
                       () => shownName(left.name),
                   ),
         run: () => {
-            void reopenPrevious()
+            void reopenPrevious(left)
         },
     }
 }
 
 /**
  * Reopen: continues the session this tab left last, after the prompt when the open one would
- * lose work. True when it opened.
+ * lose work. True when it opened. A card passes the session it offered: when this tab has left
+ * another since, nothing opens.
  */
-export const reopenPrevious = () =>
+export const reopenPrevious = (offered?: Left) =>
     withSwitchRequest(undefined, async (request) => {
-        if (!previousSession.value || !(await confirmSwitch()) || !request.isCurrent()) return false
+        const left = previousSession.value
+        if (!left || (offered && left !== offered)) return false
+        if (!(await confirmSwitch()) || !request.isCurrent()) return false
         const { reopenSession } = await import('../local/startup/api')
         if (!request.isCurrent()) return false
         reopening = request
-        const left = previousSession.value
         try {
             const result = await reopenSession(request)
             if (result.opened && request.isCurrent()) await afterSwitch()

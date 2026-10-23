@@ -12,9 +12,12 @@ export const failureLine = (why: 'deleted' | 'missing' | 'later' | 'damaged') =>
           : load.sessionDamaged
 }
 
-/** Says why an open failed; a request that was replaced, answered Cancel or had nothing says nothing. */
+/**
+ * Says why an open failed, as a card: the user asked for it. A request that was replaced,
+ * answered Cancel or had nothing says nothing.
+ */
 export const notifyNotOpened = (result: OpenResult) => {
     if (result.opened || result.why === 'none' || result.why === 'blank') return
     const { why } = result
-    notify(() => failureLine(why))
+    notify(() => failureLine(why), { card: true, severity: 'error' })
 }
