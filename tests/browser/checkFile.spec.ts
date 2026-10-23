@@ -35,7 +35,7 @@ const freshBytes = async () =>
 const distinctBytes = async () => new Uint8Array(await (await distinctFile()).file.arrayBuffer())
 
 /** The file with a byte flipped in a chunk that neither its head nor any header uses. */
-const withBadChunk = async (bytes: Uint8Array) => {
+const withBadChunk = async (bytes: Uint8Array<ArrayBuffer>) => {
     const file = new File([bytes], 'coconut.nxsp')
     const read = await readNxsp(file)
     if (read.kind !== 'nxsp' || !read.history || !read.project?.history)
@@ -70,7 +70,7 @@ const imported = (page: Page) =>
         .toBe(0)
 
 /** The chain opened from `bytes` as coconut.nxsp, its import done. */
-const opened = async (page: Page, bytes: Uint8Array) => {
+const opened = async (page: Page, bytes: Uint8Array<ArrayBuffer>) => {
     await writeFile(page, 'coconut.nxsp', bytes)
     await open(page, 'coconut.nxsp')
     await imported(page)
