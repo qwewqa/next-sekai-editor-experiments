@@ -9,6 +9,7 @@ import { readValue, storedRead } from '../../local/storedRead'
 import { platform, type DiskState } from '../../platform'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { testKeysOpen } from '../../platform/testKeys'
+import { savePoint } from '../../platform/testPause'
 import { isSafeMode } from '../../safe'
 import { interpolate } from '../../utils/interpolate'
 import { bindingHandle, environment, quickBinding, type Env } from '../save/binding'
@@ -407,6 +408,7 @@ export const startCheck = (plan: Plan, signal: AbortSignal, say: Say): Promise<C
                 held.release?.()
                 for (const id of held.ids)
                     void plan.env.worker.call('checkDrop', id).catch(() => undefined)
+                await savePoint('checkEnd')
             }
         })
     })
