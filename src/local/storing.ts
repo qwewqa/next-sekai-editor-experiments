@@ -24,6 +24,7 @@ import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { startupGate } from '../startup/gate'
 import type { State } from '../state'
+import { postSessionUpdated } from './channel'
 import { isDurablyStoredWith } from './durable'
 import {
     Flusher,
@@ -244,6 +245,10 @@ export const startStoring = (
             journalWriter?.committed(session.id, seq, strict)
         },
         syncStrict: () => worker.call('syncStrict'),
+        // A chain made or its head moved: other tabs' Recent Sessions lists refresh.
+        onChainMoved: () => {
+            postSessionUpdated()
+        },
         // A Save's binding stored: its marker goes (§1.4.7, our own completed Save).
         onIdentity: (session, identity) => {
             removeMarker(session.chainId, identity.revision.id)
