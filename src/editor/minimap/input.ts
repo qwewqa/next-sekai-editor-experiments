@@ -1,5 +1,6 @@
-import { onBeforeUnmount, ref, type Ref } from 'vue'
+import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import { times } from '..'
+import { interruptsDrags } from '../../activity'
 import { settings } from '../../settings'
 import { activateEditorNavigation, resizeEscapes } from '../controls'
 import { isDragging } from '../controls/gestures/recognizers/drag'
@@ -144,6 +145,11 @@ export const useMinimapInput = (mapping: Readonly<Ref<MinimapMapping | undefined
                   : 1
         scrollViewYBy(-event.deltaY * unit, settings.mouseSmoothScrolling)
     }
+
+    // Leaving the app or a blocking dialog mid-press may never deliver the release.
+    watch(interruptsDrags, (interrupted) => {
+        if (interrupted) end()
+    })
 
     // The strip can unmount mid-press; a dead `cancel` would swallow every Escape.
     onBeforeUnmount(end)
