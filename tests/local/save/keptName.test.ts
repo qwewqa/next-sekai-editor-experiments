@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readNxsp } from '../../../src/local/nxsp/read'
 import { writeUnlink } from '../../../src/local/open/importWrite'
 import { applyRevocation, BIND_STORES, takeOver } from '../../../src/local/save/bind'
-import { Fixture } from './fixture'
+import { Fixture, save } from './fixture'
 
 // A chain that loses its file keeps the file's stem as its name (Part 1 §1.3.5): the file's stem
 // named it, so its label, its Recent Sessions row and the next Save's prefill keep naming it, not
@@ -89,4 +90,22 @@ test('a chain with a name of its own keeps it when it loses its file', async () 
         takeOver(tx, { owner: owner(fixture, 'melt.nxsp'), by: 'other', at: 9 }),
     )
     assert.equal((await chainOf(fixture)).name, 'Coconut (2)')
+})
+
+test('the web’s Save writes no project name: its names are automatic, and the apps would show one', async () => {
+    const fixture = await Fixture.create(92)
+    await fixture.start(0)
+    await fixture.edit(1)
+    await fixture.flush()
+    // A fork's automatic name, which the file would otherwise carry to the apps (Part 3 ND15).
+    await fixture.store.write(['chains'], async (tx) => {
+        const chain = (await tx.get('chains', fixture.chainId)) as Row
+        await tx.put('chains', { ...chain, name: 'Coconut (2)' })
+    })
+    const { file } = await save(fixture, { kind: 'copy' }, { binds: false })
+    assert(file)
+    const read = await readNxsp(file)
+    assert.equal(read.kind, 'nxsp')
+    if (read.kind !== 'nxsp') return
+    assert.equal('name' in read.projectJson, false)
 })

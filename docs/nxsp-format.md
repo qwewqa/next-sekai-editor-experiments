@@ -160,7 +160,7 @@ A JSON object, compact, UTF-8.
 | `id` | non-empty string | The document id. Required. |
 | `lineageId` | non-empty string | Provenance; copied by forks and Save As. Required. |
 | `revision` | object, optional on read | §5.3. Any form error: `invalid-key` and the whole `revision` reads as absent. |
-| `name` | string, optional | The chain's name. |
+| `name` | string, optional | The chain's name. The apps name a file brought into their library by it (Part 3 ND15). The web reads it and does not write it: its names are automatic (a copy's "(2)", a lost file's stem). |
 | `exportName` | string, optional | The name Export uses (may be `""`). |
 | `level` | string | Must be `"level.json"` (§4). |
 | `editor` | object, optional (`{}`) | Only `defaultGuideColors`: an array of counts, indices into `level.json` `entities` (§7.6). Other keys: `unknown-key`. A bad array: `invalid-key`, read as absent. |

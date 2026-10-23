@@ -757,7 +757,6 @@ export const planSave = async (
         },
         id: docId,
         lineageId: chain.lineageId,
-        ...(chain.name === undefined ? {} : { name: chain.name }),
         ...(fresh || chain.exportName === undefined ? {} : { exportName: chain.exportName }),
         revision: {
             parent,

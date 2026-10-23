@@ -182,7 +182,7 @@ A **session** is one visit's run of entries; a **chain** is the sessions of one 
 
 The chain record (`chains`):
 
-- Identity: `chainId`, `head` (the head session), `docId` (`project.json` `id`), `lineageId` (provenance), `sourceName`, `name`, `renames`, `exportName`.
+- Identity: `chainId`, `head` (the head session), `docId` (`project.json` `id`), `lineageId` (provenance), `sourceName`, `name` (automatic: a copy's "(2)", "(3)", or the stem of a file the chain lost: `writeUnlink`, `takeOver`, `applyRevocation`), `renames`, `exportName`.
 - File: `file {name, event, at, hash, entry, completeFrom, disk, options, confirmed}` (handle in `handles`), `revision {id, n, ancestors}`, `replaced {by, at, name}` after a takeover, `extra` (unknown `project.json` keys, written back by Save), `exportTarget` (handle in `handles`).
 - Flags and display: `hasContent`, `edited`, `partialImport`, `summary {title, artists, author, rating, tags, bgmName, noteCount}`, `badChunks`, `deleting` (`{at}`: marked for Delete, section 2.3), `updatedAt`, `day`, `appVersion`.
 
@@ -264,6 +264,7 @@ Writer order (`PROJECT_KEYS`, `src/local/nxsp/project.ts`): `format version mino
 | `format` … `levelVersion` | format-versioning section 2. `minor` is 0. |
 | `appVersion` | The last writer's version. Per-Save versions are on the `save` entries. |
 | `id`, `lineageId` | The `docId`; provenance, copied on forks and Save As. |
+| `name` | Read into the chain's `name` at an open; the web's Save never writes it (`src/local/save/build.ts`): every web `name` is automatic (a copy's "(2)", a lost file's stem), and the apps name a library file by it (Part 3 ND15). |
 | `revision` | `{id, parent, n, savedAt, device {id, label}, ancestors, replaces?, fileName?, completeFrom?}`. `id` is new per write; `parent` is the revision it descends from or `null`; `n` is display only; `ancestors` are newest first, at most 1,024 (`ANCESTOR_LIMIT`, a writer limit the strict checker enforces), read as a set; `replaces` only by Replace. |
 | `revision.completeFrom` | History writes only; a non-string reads as absent. The writer keeps the carried value if it is the new id or in `ancestors`, else writes the oldest ancestor, or the new id when there are none. The reader places it against `{id} ∪ ancestors`; an unplaceable value reads as the file's own id (`placedCompleteFrom`). |
 | `history` | `{manifest, chunks, entries, segments?}`, present exactly when the file has history. `entries` is the total over all parts; a mismatch is damaged history. At most 4,096 segments (`SEGMENT_CAP`). Any other key (the retired `media` included) is `unknown-key`, and the whole `history` is then dropped. |
