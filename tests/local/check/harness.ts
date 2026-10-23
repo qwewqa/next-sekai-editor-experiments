@@ -6,7 +6,8 @@ import { inspectNxsp } from '../../../src/local/nxsp/inspect'
 import { distinctRootChunks } from '../../../src/local/nxsp/manifest'
 import { readNxsp } from '../../../src/local/nxsp/read'
 import { loadBodies, reachedHashes } from '../../../src/local/save/bodies'
-import { checkHandlers } from '../../../src/local/worker/checkHandlers'
+import type { Tab } from '../../../src/local/testing/world'
+import { checkHandlers, type CheckHandlers } from '../../../src/local/worker/checkHandlers'
 import type { StorageCore, TestFlags } from '../../../src/local/worker/core'
 import { workerCore } from '../flush/harness'
 import { save, type Fixture } from '../save/fixture'
@@ -38,7 +39,7 @@ export const savedChain = async (fixture: Fixture) => {
  * A tab of the fixture's profile with its own storage worker running the check handlers. Each
  * transaction starts as a task of that tab, as the fixture's store does: the test core's rule.
  */
-export const checker = async (fixture: Fixture, flags?: TestFlags) => {
+export const checker = async (fixture: Fixture, flags?: TestFlags): Promise<Checker> => {
     const tab = fixture.world.tab(`check-${tabs++}`)
     const core = workerCore(fixture.world, tab, flags ? { flags } : {})
     await tab.run(() => core.start())
@@ -52,19 +53,20 @@ export const checker = async (fixture: Fixture, flags?: TestFlags) => {
     return { tab, core, handlers }
 }
 
-export type Checker = Awaited<ReturnType<typeof checker>>
+export type Checker = { tab: Tab; core: StorageCore; handlers: CheckHandlers }
 
 /** The file phase: whether the file is damaged, by the open's checks and every chunk. */
 export const checkFile = async ({ tab, handlers }: Checker, file: Blob) => {
     const opened = await tab.run(() => handlers.checkFileOpen(file))
     if (opened.kind !== 'read') return opened.kind
+    const { id } = opened
     let damaged = false
     for (let n = 0; n < opened.batches; n++) {
-        const batch = await tab.run(() => handlers.checkFileBatch({ id: opened.id, n }))
+        const batch = await tab.run(() => handlers.checkFileBatch({ id, n }))
         assert.equal(batch.kind, 'done')
         if (batch.kind === 'done' && batch.bad.length) damaged = true
     }
-    await tab.run(() => handlers.checkDrop(opened.id))
+    await tab.run(() => handlers.checkDrop(id))
     return damaged ? 'damaged' : 'clean'
 }
 
@@ -73,12 +75,10 @@ export const checkStored = async ({ tab, handlers }: Checker, chainId: string) =
     const opened = await tab.run(() => handlers.checkStoredOpen(chainId))
     assert.equal(opened.kind, 'opened')
     if (opened.kind !== 'opened') throw new Error('Not opened')
+    const { id } = opened
     for (let n = 0; n < opened.batches; n++)
-        assert.equal(
-            (await tab.run(() => handlers.checkStoredBatch({ id: opened.id, n }))).kind,
-            'done',
-        )
-    return opened.id
+        assert.equal((await tab.run(() => handlers.checkStoredBatch({ id, n }))).kind, 'done')
+    return id
 }
 
 export const finish = async ({ tab, handlers }: Checker, id: string, file?: Blob) => {
