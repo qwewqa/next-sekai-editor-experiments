@@ -580,7 +580,8 @@ test('a chain counted as saved whose file is taken over or revoked after the rea
     // Another tab’s picker overwrote the file: `takeOver` drops the binding, as it leaves `updatedAt`.
     await edit(world, async (tx) => {
         const row = (await tx.get('chains', takenOver.first.chainId)) as Record<string, unknown>
-        const { file: _, ...rest } = row
+        const rest = { ...row }
+        delete rest.file
         await tx.put('chains', { ...rest, replaced: { by: 'other', at: NOW, name: 'a.nxsp' } })
     })
     // A revocation storage could not take: only the localStorage key says so.

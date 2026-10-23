@@ -156,7 +156,8 @@ test('a head session whose stack was removed keeps its last entry’s BGM', asyn
     world.checks.lock = false
     await tamper(world, async (tx) => {
         const [session] = (await tx.getAll('sessions')) as Record<string, unknown>[]
-        const { stack: _, ...rest } = session ?? {}
+        const rest = { ...session }
+        delete rest.stack
         await tx.put('sessions', rest)
         for (const key of await tx.getAllKeys('stackBlocks')) await tx.delete('stackBlocks', key)
     })
@@ -170,16 +171,17 @@ test('a head session whose stack was removed keeps its last entry’s BGM', asyn
 })
 
 test('an Undo onto a step whose BGM went stores it again when the tab attached it without a step', async () => {
-    let live: State | undefined
+    const live: { state?: State } = {}
     const { world, page, clean, states, toHead } = await stored(8, {
-        liveHeld: () => (live ? heldMediaOf(live) : []),
+        liveHeld: () => (live.state ? heldMediaOf(live.state) : []),
     })
     await daysPass(world)
     assert.equal((await clean(Number.MAX_SAFE_INTEGER)).items, 2)
     // A restored slot names its audio by hash only; the tab's cache attaches the bytes to the live
     // state without a step.
-    const { source: _, ...bgm } = states.middle.bgm
-    live = states.middle
+    const bgm = { ...states.middle.bgm }
+    delete bgm.source
+    live.state = states.middle
     page.flusher.append({ kind: 'undo', step: toHead }, { ...states.middle, bgm }, false)
     await page.flusher.flush({ strict: true })
     assert.deepEqual(media(world), new Set([hashOf(states.middle), hashOf(states.head)]))

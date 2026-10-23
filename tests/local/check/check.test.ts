@@ -7,7 +7,7 @@ import { unpackHashes } from '../../../src/local/records/rows'
 import { RECORDS_V } from '../../../src/local/records/version'
 import { stillBad } from '../../../src/local/save/bodies'
 import { COVER } from '../nxsp/helpers'
-import { Fixture } from '../save/fixture'
+import { Fixture, heldRows, save } from '../save/fixture'
 import {
     checker,
     checkFile,
@@ -139,6 +139,24 @@ test('a stored cover damaged with no copy is removed; one stored again meanwhile
     const later = await finish(check, id)
     assert.deepEqual(later.media, [{ hash: COVER.ref.hash, kinds: ['cover'], outcome: 'repaired' }])
     assert.deepEqual(await coverRow(fixture), good)
+})
+
+test('after Check removes a damaged cover with no copy, the next Save writes that state without it', async () => {
+    const fixture = await Fixture.create()
+    await savedChain(fixture)
+    await damageCover(fixture)
+    const { result } = await runCheck(await checker(fixture), fixture.chainId)
+    assert.equal(result.media[0]?.outcome, 'removed')
+
+    const { built, file } = await save(fixture, { kind: 'copy' })
+    assert.ok(!('refused' in built) && file)
+    assert.deepEqual(built.without, ['cover'])
+    const { read } = await heldRows(file)
+    assert.equal(read.open, 'full')
+    assert.equal(read.media.cover, undefined)
+    assert.notEqual(read.media.preview, undefined)
+    assert.equal(read.project?.metadata?.cover?.hash, COVER.ref.hash)
+    assert.equal(read.project?.metadata?.cover?.file, undefined)
 })
 
 test('read-only storage (?safe): the same report, and nothing written', async () => {
