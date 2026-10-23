@@ -14,7 +14,7 @@ const id = useId()
 </script>
 
 <template>
-    <BaseField :label :label-id="id">
+    <BaseField :label :label-id="id" class="level-info-media">
         <div role="group" :aria-labelledby="id" class="flex min-w-0 flex-wrap items-center gap-2">
             <slot name="lead" />
             <span

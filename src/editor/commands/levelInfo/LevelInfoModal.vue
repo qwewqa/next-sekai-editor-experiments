@@ -241,6 +241,9 @@ const changeBgmFromHere = () => {
 }
 
 const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
+// The cover's buttons share a column, so a long label wraps rather than truncates.
+const stackedButtonClass =
+    'btn btn-secondary min-h-9 w-full max-w-full whitespace-normal rounded-[1.125rem] px-3 py-1 text-center leading-tight'
 </script>
 
 <template>
@@ -256,7 +259,12 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                 v-scroll-edges
                 class="relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
             >
-                <BaseField v-if="!peekedSession" :label="i18n.levelInfo.file" :label-id="fileId">
+                <BaseField
+                    v-if="!peekedSession"
+                    :label="i18n.levelInfo.file"
+                    :label-id="fileId"
+                    class="level-info-media"
+                >
                     <div class="flex min-w-0 flex-wrap items-center gap-2">
                         <p
                             class="min-w-0 flex-1 basis-32 select-text whitespace-pre-wrap [overflow-wrap:anywhere]"
@@ -276,40 +284,76 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                 </BaseField>
 
                 <fieldset class="contents" :disabled="readOnly">
-                    <div class="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-x-4">
+                    <div
+                        class="flex flex-col gap-3 sm:grid sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-x-4"
+                    >
                         <div
                             role="group"
                             :aria-label="i18n.historyChanges.fields.cover"
-                            class="flex flex-col gap-1.5"
+                            class="flex gap-3 sm:flex-col sm:gap-2"
                             data-level-info-cover
                         >
-                            <span>{{ i18n.historyChanges.fields.cover }}</span>
-                            <div
-                                class="flex size-24 items-center justify-center overflow-hidden rounded-xl bg-button shadow-md sm:size-36"
-                            >
-                                <img
-                                    v-if="draft.cover && cover.status.value === 'ready'"
-                                    :src="cover.url.value"
-                                    alt=""
-                                    class="size-full object-contain"
-                                    data-level-info-thumbnail
-                                />
-                                <span
-                                    v-else-if="!draft.cover"
-                                    class="px-2 text-center text-sm text-fg/80"
-                                    >{{ i18n.modals.form.notSet }}</span
+                            <div class="flex w-24 shrink-0 flex-col gap-1.5 sm:w-36">
+                                <span class="flex min-h-8 items-center">{{
+                                    i18n.historyChanges.fields.cover
+                                }}</span>
+                                <div
+                                    class="flex size-24 items-center justify-center overflow-hidden rounded-xl bg-button shadow-md sm:size-36"
                                 >
+                                    <img
+                                        v-if="draft.cover && cover.status.value === 'ready'"
+                                        :src="cover.url.value"
+                                        alt=""
+                                        class="size-full object-contain"
+                                        data-level-info-thumbnail
+                                    />
+                                    <span
+                                        v-else-if="!draft.cover"
+                                        class="px-2 text-center text-sm text-fg/80"
+                                        >{{ i18n.modals.form.notSet }}</span
+                                    >
+                                </div>
+                                <p
+                                    v-if="draft.cover"
+                                    class="select-text break-words text-sm text-fg/80 [overflow-wrap:anywhere]"
+                                    data-level-info-cover-name
+                                >
+                                    {{ coverCaption }}
+                                </p>
                             </div>
-                            <p
-                                v-if="draft.cover"
-                                class="w-24 select-text break-words text-sm text-fg/80 [overflow-wrap:anywhere] sm:w-36"
-                                data-level-info-cover-name
+                            <div
+                                class="flex min-w-0 flex-1 flex-col gap-2 pt-10 sm:flex-none sm:pt-0"
                             >
-                                {{ coverCaption }}
-                            </p>
+                                <button
+                                    type="button"
+                                    :class="stackedButtonClass"
+                                    data-level-info-cover-choose
+                                    @click="choose('cover')"
+                                >
+                                    {{ i18n.commands.previewAssets.choose }}
+                                </button>
+                                <button
+                                    type="button"
+                                    :class="stackedButtonClass"
+                                    :disabled="cover.status.value !== 'ready'"
+                                    data-level-info-cover-edit
+                                    @click="editCover"
+                                >
+                                    {{ i18n.levelInfo.editCover }}
+                                </button>
+                                <button
+                                    type="button"
+                                    :class="stackedButtonClass"
+                                    :disabled="!draft.cover"
+                                    data-level-info-cover-remove
+                                    @click="draft.cover = undefined"
+                                >
+                                    {{ i18n.commands.previewAssets.remove }}
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="flex min-w-0 flex-col gap-3">
+                        <div class="level-info-aside flex min-w-0 flex-col gap-3">
                             <OptionalTextField
                                 v-model="draft.title"
                                 :label="i18n.historyChanges.fields.title"
@@ -327,51 +371,18 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                                 :label="i18n.historyChanges.fields.rating"
                                 step="any"
                             />
-                        </div>
-
-                        <div
-                            role="group"
-                            :aria-label="i18n.historyChanges.fields.cover"
-                            class="flex flex-wrap gap-2 sm:col-span-2"
-                        >
-                            <button
-                                type="button"
-                                :class="buttonClass"
-                                data-level-info-cover-choose
-                                @click="choose('cover')"
-                            >
-                                {{ i18n.commands.previewAssets.choose }}
-                            </button>
-                            <button
-                                type="button"
-                                :class="buttonClass"
-                                :disabled="cover.status.value !== 'ready'"
-                                data-level-info-cover-edit
-                                @click="editCover"
-                            >
-                                {{ i18n.levelInfo.editCover }}
-                            </button>
-                            <button
-                                type="button"
-                                :class="buttonClass"
-                                :disabled="!draft.cover"
-                                data-level-info-cover-remove
-                                @click="draft.cover = undefined"
-                            >
-                                {{ i18n.commands.previewAssets.remove }}
-                            </button>
+                            <OptionalTextField
+                                v-model="draft.tags"
+                                :label="i18n.historyChanges.fields.tags"
+                                :placeholder="i18n.levelInfo.tagsPlaceholder"
+                            />
+                            <TextAreaField
+                                v-model="draft.description"
+                                class="level-info-area"
+                                :label="i18n.historyChanges.fields.description"
+                            />
                         </div>
                     </div>
-
-                    <OptionalTextField
-                        v-model="draft.tags"
-                        :label="i18n.historyChanges.fields.tags"
-                        :placeholder="i18n.levelInfo.tagsPlaceholder"
-                    />
-                    <TextAreaField
-                        v-model="draft.description"
-                        :label="i18n.historyChanges.fields.description"
-                    />
                 </fieldset>
 
                 <MediaRow :label="i18n.levelInfo.bgm" :summary="bgmLine" data-level-info-bgm>
@@ -471,3 +482,50 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
         </form>
     </BaseModal>
 </template>
+
+<style>
+/* Labels sit at the first line of their value, which may be several lines or a taller control. */
+[data-level-info] .form-field-row {
+    align-items: flex-start;
+}
+
+[data-level-info] .level-info-media .form-field-label {
+    min-height: 2.25rem;
+}
+
+/* A row of buttons beside its label has little room on a phone: the value goes below the label. */
+@container (max-width: 26rem) {
+    [data-level-info] .level-info-media .form-field-row {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+
+    [data-level-info] .level-info-media .form-field-label {
+        width: auto;
+        min-height: 2rem;
+    }
+
+    /* The narrow-dock rule pads the value; here it is as wide as the label. */
+    [data-level-info] .level-info-media .form-field-row > div {
+        padding-inline: 0;
+    }
+}
+
+/* From sm the cover sits beside the text fields, so every row keeps its values in one column:
+   the labels of the rows beside the cover are as much shorter as the cover column is wide
+   (9rem and its 1rem gap). Rows that stack a long value keep the field's own layout. */
+@media (min-width: 640px) {
+    [data-level-info] .form-field:not(.form-field-value-stacked) .form-field-label {
+        width: 18rem;
+    }
+
+    [data-level-info]
+        .level-info-aside
+        .form-field:not(.form-field-value-stacked)
+        .form-field-label {
+        width: 8rem;
+    }
+}
+</style>
