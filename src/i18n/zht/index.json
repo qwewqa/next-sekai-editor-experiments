@@ -764,9 +764,9 @@
     },
     "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知。之後按 Esc 可將其關閉。",
     "shiftF10": "按 Shift+F10 或功能表鍵可開啟目前焦點所在項目的選單。",
-    "recentSessions": "未儲存到檔案的作品在「歷史記錄 › 最近工作階段」中。",
+    "recentSessions": "未儲存到檔案的內容在「歷史記錄 › 最近工作階段」中。",
     "fileTitle": "檔案",
-    "moveBetweenDevices": "要將作品移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
+    "moveBetweenDevices": "要將工作移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
     "crswap": "儲存時發生當機，可能會在專案檔案旁留下 .crswap 檔案。可以放心刪除。"
   },
   "elevation": {
@@ -1190,7 +1190,7 @@
     "updated": "已更新至版本 {0}",
     "whatsNew": "新功能",
     "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
-    "olderVersion": "此版本早於資料的版本。請重新載入，或將內容儲存為檔案。",
+    "olderVersion": "此瀏覽器中已開啟過較新版本的編輯器。請重新載入，或將內容儲存為檔案。",
     "tryAgain": "重試",
     "continued": "已從 {1} 繼續 \"{0}\"。",
     "continuedUntitled": "已繼續 {0} 的工作階段。",
@@ -1228,7 +1228,7 @@
     "reason": {
       "full": "瀏覽器儲存空間已滿。",
       "olderTabs": "請關閉其他 {0} 分頁，以繼續存放變更。",
-      "upgrading": "另一個分頁正在更新編輯器。"
+      "upgrading": "另一個分頁中開啟了較新版本的編輯器。"
     },
     "unavailable": "編輯器無法在此瀏覽器中存放變更。請儲存到檔案中以保留您的工作。",
     "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
@@ -2187,7 +2187,7 @@
     "notDescendant": "此版本並非基於您的版本 ({0})。",
     "separate": "另存為獨立檔案",
     "openOther": "開啟另一個版本",
-    "openOtherNote": "你的變更會保持未儲存。",
+    "openOtherNote": "你的變更仍未儲存。",
     "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
