@@ -216,6 +216,7 @@ test('the ⋯ button has no tab stop and a label, and Shift+F10 opens the same m
     await expect(menu.getByRole('menuitem')).toHaveText([
         messages.open.restoreIt,
         sessions.saveToFile,
+        sessions.delete,
     ])
     await page.keyboard.press('Escape')
     await expect(menu).toHaveCount(0)
@@ -225,6 +226,7 @@ test('the ⋯ button has no tab stop and a label, and Shift+F10 opens the same m
     await expect(menu.getByRole('menuitem')).toHaveText([
         messages.open.restoreIt,
         sessions.saveToFile,
+        sessions.delete,
     ])
     await page.keyboard.press('Escape')
     await page.keyboard.press('ContextMenu')
@@ -282,6 +284,7 @@ test('a session open in another tab has the badge, offers Restore as a Copy and 
     await expect(menu.getByRole('menuitem')).toHaveText([
         messages.load.restoreAsCopy,
         sessions.saveToFile,
+        sessions.delete,
     ])
     await menu.getByRole('menuitem', { name: messages.load.restoreAsCopy }).click()
 
@@ -492,9 +495,12 @@ test('a session written by a newer version is listed but cannot be peeked or res
     await expect(peekBar(page)).toHaveCount(0)
     await row.locator('[data-sessions-more]').click()
     const items = page.getByRole('menuitem')
-    await expect(items).toHaveCount(2)
+    await expect(items).toHaveCount(3)
     await expect(items.nth(0)).toBeDisabled()
     await expect(items.nth(1)).toBeDisabled()
+    // Delete is the user's own act and works on any chain; the others say why they are off.
+    await expect(items.nth(2)).toBeEnabled()
+    await expect(page.getByRole('menu')).toContainText(messages.load.sessionLater)
 })
 
 test('Save to File… of a closed session opens the save dialog for it', async ({ page }) => {

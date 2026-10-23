@@ -306,7 +306,13 @@ watch(
 )
 
 // --- Rows hold still while the pointer is over the list or focus is in it.
-const onFocusin = () => {
+const onFocusin = (event: FocusEvent) => {
+    // The cursor follows focus onto a row, so a key acts on the row that has it.
+    const id =
+        event.target instanceof HTMLElement
+            ? event.target.closest<HTMLElement>('[data-sessions-row]')?.dataset.chain
+            : undefined
+    if (id && rowById(id)) cursorId.value = id
     focusInside.value = true
     list.hold('focus', true)
 }
