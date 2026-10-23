@@ -4,7 +4,7 @@ import type { ShownName } from '../local/startup/events'
 import { interpolateRaw } from '../utils/interpolate'
 import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { displayedName } from './labelText'
-import { notify } from './notification'
+import { notifyNotOpened } from './openFailure'
 import { copySourceName, shownName } from './shownName'
 import { confirmSwitch, notifyLeft } from './switch'
 import { withSwitchRequest } from './switchRequest'
@@ -17,15 +17,6 @@ import { withSwitchRequest } from './switchRequest'
 export type RestoreResult =
     | { opened: true; forked: boolean }
     | { opened: false; why: 'none' | 'deleted' | 'missing' | 'later' | 'damaged' | 'blank' }
-
-const failureLine = (why: 'deleted' | 'missing' | 'later' | 'damaged') => {
-    const { load } = i18n.value
-    return why === 'deleted'
-        ? load.sessionDeleted
-        : why === 'later'
-          ? load.sessionLater
-          : load.sessionDamaged
-}
 
 /**
  * Restore Session, or Restore as a Copy (`mode`), of a stored session: after the not-stored
@@ -49,10 +40,7 @@ export const restoreStored = (
         )
         if (!request.isCurrent()) return result
         if (!result.opened) {
-            if (result.why !== 'none' && result.why !== 'blank') {
-                const { why } = result
-                notify(() => failureLine(why))
-            }
+            notifyNotOpened(result)
             return result
         }
         const open = session.value

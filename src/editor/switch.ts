@@ -19,6 +19,7 @@ import {
     type NoticeAction,
     type NoticeLine,
 } from './notification'
+import { notifyNotOpened } from './openFailure'
 import { shownName } from './shownName'
 import { withSwitchRequest, type SwitchRequest } from './switchRequest'
 
@@ -109,13 +110,25 @@ const reopenAction = (left: Left): NoticeAction => {
 export const reopenPrevious = () =>
     withSwitchRequest(undefined, async (request) => {
         if (!previousSession.value || !(await confirmSwitch()) || !request.isCurrent()) return false
-        const { reopen } = await import('../local/startup/api')
+        const { reopenSession } = await import('../local/startup/api')
         if (!request.isCurrent()) return false
         reopening = request
+        const left = previousSession.value
         try {
-            const opened = await reopen(request)
-            if (opened && request.isCurrent()) await afterSwitch()
-            return opened
+            const result = await reopenSession(request)
+            if (result.opened && request.isCurrent()) await afterSwitch()
+            else if (!result.opened && request.isCurrent()) {
+                // A session that is gone is offered no more: its card goes, and does not turn plain.
+                if (
+                    (result.why === 'deleted' || result.why === 'missing') &&
+                    previousSession.value === left
+                ) {
+                    dismissNoticeCard()
+                    previousSession.value = undefined
+                }
+                notifyNotOpened(result)
+            }
+            return result.opened
         } finally {
             if (reopening === request) reopening = undefined
         }
@@ -139,9 +152,11 @@ export const restoreCopy = (sessionId: string) =>
         if (!(await confirmSwitch()) || !request.isCurrent()) return false
         const { restoreAsCopy } = await import('../local/startup/api')
         if (!request.isCurrent()) return false
-        const { opened } = await restoreAsCopy(sessionId, request)
-        if (opened && request.isCurrent()) await afterSwitch()
-        return opened
+        const result = await restoreAsCopy(sessionId, request)
+        if (!request.isCurrent()) return result.opened
+        if (result.opened) await afterSwitch()
+        else notifyNotOpened(result)
+        return result.opened
     })
 
 /**
