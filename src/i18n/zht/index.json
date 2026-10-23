@@ -30,7 +30,8 @@
         "offset": "偏移（毫秒）",
         "loading": "正在載入檔案…",
         "decoding": "正在解碼音訊…",
-        "generating": "生成波形…"
+        "generating": "生成波形…",
+        "download": "下載 BGM"
       },
       "fileChanged": "已更改 BGM 檔案",
       "offsetSet": "已將 BGM 偏移設為 {0} 毫秒"
@@ -2152,6 +2153,8 @@
     "sameFileMaybeElsewhere": "\"{0}\" 可能已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
+    "bgmDiffers": "這與原本的 BGM \"{0}\" 不是同一個檔案。",
+    "bgmDiffersUnnamed": "這與原本的 BGM 不是同一個檔案。",
     "newLevel": "新關卡",
     "reopen": "重新開啟 \"{0}\"",
     "reopenUntitled": "重新開啟 {0} 的工作階段",

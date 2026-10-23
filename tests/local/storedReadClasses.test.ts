@@ -44,6 +44,7 @@ const CLASSES = {
     estimateSaveSize: 'read',
     saveNeeds: 'read',
     mediaHeld: 'read',
+    readMedia: 'read',
     readSessionStarts: 'read',
     openRead: 'read',
     checkFileOpen: 'read',
@@ -123,6 +124,7 @@ const MODULES: [file: string, factory: string][] = [
     ['worker/checkHandlers.ts', 'checkHandlers'],
     ['worker/diagnosticHandlers.ts', 'diagnosticHandlers'],
     ['worker/maintHandlers.ts', 'maintHandlers'],
+    ['worker/mediaHandlers.ts', 'mediaHandlers'],
 ]
 
 const covered = (Object.keys(CLASSES) as (keyof typeof CLASSES)[]).filter(

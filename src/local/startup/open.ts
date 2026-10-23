@@ -1,5 +1,6 @@
 import { restoreExportMemory } from '../../editor/commands/exportLevel/memory'
 import { sameFileContent } from '../../editor/file/content'
+import { bgmStatus, claimNotice, isHeldHere, runHeld } from '../../editor/media/heldBgm'
 import type { SwitchRequest } from '../../editor/switchRequest'
 import { captureStep, type JsonValue } from '../../history/operations'
 import {
@@ -391,7 +392,8 @@ export const openStored = async (
                 (request && !request.isCurrent())
             )
                 return
-            if (shown.bgm.meta && !shown.bgm.buffer) deps.events({ kind: 'bgmNotLoaded' })
+            // A load says so; a switch the user made says it in its own card (§1.6.8.4).
+            if (!replace) runHeld(sayIfUnheld(deps, id, shown.bgm))
             onShown?.(leaving)
         }
         if (request) request.publish({ state: shown, sessionId: id, reset: false }, publish)
@@ -400,6 +402,19 @@ export const openStored = async (
     } finally {
         own?.release()
     }
+}
+
+/**
+ * The load notice for a BGM the state names and nothing holds: asked of the media store, since a
+ * state read from storage has no audio yet. A store that could not be asked says nothing.
+ */
+const sayIfUnheld = async (deps: OpenDeps, id: string, bgm: State['bgm']) => {
+    const meta = bgm.meta
+    if (!meta || isHeldHere(bgm)) return
+    if ((await bgmStatus(meta.hash, meta.size)) !== 'absent') return
+    // Said for the session shown, once per hash.
+    if (currentSession.value.sessionId === id && claimNotice(meta.hash))
+        deps.events({ kind: 'bgmNotLoaded' })
 }
 
 const isParent = (value: unknown): value is { id: string; uptoSeq: number } =>

@@ -64,7 +64,7 @@ A **snapshot** is one chart state: the chart and the header (Initial Life, dynam
 - **Split** (`split.ts`): a record goes in the chunk of its 16-beat window; a window of more than 24 records (`PART_LIMIT`) splits at 4-beat parts, then 1-beat parts, then runs of 24. A kind other than `slides` with at most 64 records (`SMALL_KIND_LIMIT`) is one chunk. Readers do not assume a split.
 - **Kind node.** `[kind, depth, [hash16...]]`. Depth 0 lists at most 16 chunks in order (`NODE_FANOUT`); depth 1 lists depth-0 nodes.
 - **Root.** `[v, headerHash, [[kindName, nodeHash], ...], noteCount]`, `v = RECORDS_V`. Kinds appear only when they have records, in the order `slides, bpms, timeScales, cameraEvents, stageMaskEvents, stagePivotEvents, stageStyleEvents, stageTransformEvents`. The root hash is the snapshot id.
-- **Header chunk.** `[initialLife, isDynamicStages, bgmOffset, groups, stages, groupFolders, stageFolders, levelInfo, bgm?]`. Media (BGM, cover, preview) are named by hash inside it and stored in `media`; a state whose media are not held restores with them "not loaded".
+- **Header chunk.** `[initialLife, isDynamicStages, bgmOffset, groups, stages, groupFolders, stageFolders, levelInfo, bgm?]`. Media (BGM, cover, preview) are named by hash inside it and stored in `media`; a state read from storage names its BGM and holds none of its audio (section 2.2, "Held audio").
 
 Row forms (`src/local/records/rows.ts`):
 
@@ -84,6 +84,13 @@ Row forms (`src/local/records/rows.ts`):
 - `markFileEvent('save' | 'export', operation)` emits an entry without touching the stack.
 - `resetStates` replaces the stack with one `init` slot and emits `reset`; the storing side starts a new session whose first entry is `init` (`Flusher.begin`). `restoreStates` installs a stored stack (slots lazy, head loaded) and emits nothing; the storing side resumes or continues the session itself.
 - A published state is frozen outside release builds (`src/history/freeze.ts`): the flush finds unchanged kinds and entities by identity, so a change in place would store a stale record under a valid hash.
+
+**Held audio** (`src/editor/media/heldBgm.ts`). A state built from records has `bgm.meta` and no `buffer`. The BGM is **held** when this tab has its bytes (`Bgm.source`, or the cache below) or the media store does; only a BGM neither holds is "not loaded".
+
+- **One `Bgm` per hash.** A cache of three entries (least recently used first out, never the live head's hash) holds the decoded buffer, waveform and original bytes. A pick, an opened file's BGM and a read from the store fill it; a new session empties it, since the reset revokes every waveform. The slot loader gives a slot built from records the cached audio of its `meta.hash` (`withCachedBgm`), so Undo and Redo land with audio.
+- **The live watcher.** A live state (never a peek) with `bgm.meta` and no `buffer` gets its audio from the cache, else from the media store (`readMedia`, a worker read that re-hashes the bytes and answers nothing for a missing or damaged row), then decodes it. It attaches with `replaceState` only if the session, the hash and "not peeking" are unchanged after the awaits. An attach is no step and no new root (`sameParts` compares the meta by identity), and the file state is unchanged. A read that failed says nothing and is tried again at the next change of the live BGM.
+- **The not-loaded notice** is said at most once per hash per session (`claimNotice`), and only after the store answered "absent": by the load notice (a continue, resume or journal), the Open File card, a switch card's second line (`takeBgmLine`), or, for an Undo or Redo that reaches the BGM, a card of its own. A Timeline Restore keeps the current audio (section 4.6), so it never makes another BGM live.
+- **Choose Audio…** opens the system chooser and decides on the picked file's hash alone (`decidePick`). The hash the live `meta` names: attach it, keep the recorded `meta` and name, and store the bytes again (`storeMedia`), as no step. Any other hash: one `nse.bgm.change` step, with the offset unchanged.
 
 `isDirty` means "changed since the last file event": a pushed step is dirty, a `save` entry clean.
 
@@ -525,7 +532,7 @@ The builders are in `src/editor/headerLabelText.ts`, wrapped by `src/editor/head
 
 **`nse.bgm.change`** `{file: {before, after: NameText | null}, offset?: {before, after}}` (the file name without extension; `offset` only when it changed).
 
-- *Produced by:* the BGM dialog and `changeBgm` (Open of an audio file, the "Choose Audio…" notice actions) when the buffer or file name changed; otherwise the same action gives `nse.header.set`. Re-picking the same bytes is not a no-op: every pick decodes a new buffer and `sameChart` compares it by identity, so the step has equal names.
+- *Produced by:* the BGM dialog and `changeBgm` (Open of an audio file) and Choose Audio… (the "Choose Audio…" notice actions) with a file other than the one the state names, when the buffer or file name changed; otherwise the same action gives `nse.header.set`. Re-picking the same bytes is not a no-op: every pick decodes a new buffer and `sameChart` compares it by identity, so the step has equal names.
 - *Apply:* replaces `state.bgm` (name, buffer, waveform, bytes, metadata, offset).
 - *Step Details:* "Changed BGM" (with `offset`) or "Changed BGM file"; a "File" change row, or a value row when both names are equal; an "Offset (ms)" row when stored; a missing name reads "Not set". Never grouped.
 
@@ -731,6 +738,7 @@ Each rule says what must never happen, where the code enforces it and the tests 
 - Replacing a journal key this page did not write, or clearing one before a strict commit covers it.
 - A notice that is not true: a queued Undo reports only when it lands; a step notice only when `pushState` returned `true`.
 - Writing from a peeked state, or editing while peeking.
+- Attaching audio to a state that names another hash, another session or a peek, or making a step or a new root by doing so; saying "not loaded" for a BGM that memory or the media store holds, or twice for one hash in a session.
 - Changing a published state in place.
 - Dropping `extra` keys on a Save (`local/nxsp/roundTrip.test.ts`), or trusting what they or an `x` hold.
 

@@ -30,7 +30,8 @@
         "offset": "オフセット (ミリ秒)",
         "loading": "ファイルを読み込み中…",
         "decoding": "音源をデコード中…",
-        "generating": "波形を生成中…"
+        "generating": "波形を生成中…",
+        "download": "BGM をダウンロード"
       },
       "fileChanged": "BGMファイルを変更しました",
       "offsetSet": "BGMのオフセットを{0}ミリ秒に設定しました"
@@ -2152,6 +2153,8 @@
     "sameFileMaybeElsewhere": "「{0}」は別のタブまたはウィンドウで開かれている可能性があるため、これは別のコピーです。",
     "storageUnavailable": "このブラウザーのストレージにアクセスできませんでした。もう一度お試しください。",
     "chooseAudio": "音声を選択…",
+    "bgmDiffers": "元の BGM「{0}」とは別のファイルです。",
+    "bgmDiffersUnnamed": "元の BGM とは別のファイルです。",
     "newLevel": "新しい譜面",
     "reopen": "「{0}」を再び開く",
     "reopenUntitled": "{0}のセッションを再び開く",

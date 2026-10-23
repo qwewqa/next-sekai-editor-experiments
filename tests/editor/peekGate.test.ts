@@ -324,7 +324,7 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
         const names = commandFolders[folder] ?? [folder]
         if (path === 'src/history/dynamicStages.ts')
             assert.match(read(path), /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)/)
-        // A load notice's Choose Audio… reaches changeBgm without runCommand.
+        // The BGM command's own flow, which a drop on the page reaches without runCommand.
         else if (path === 'src/editor/commands/bgm/index.ts') {
             const body = declaration(path, 'changeBgm') ?? ''
             assert.match(body, /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)[^]*showModal\(/)
@@ -396,6 +396,18 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
         // Side by side, its own drag or marquee ends.
         assert.match(peekStartBody('src/editor/elevation/ElevationEditor.vue'), /\bcancel\(\)/)
         assert.match(read('src/editor/elevation/ElevationEditor.vue'), /v-if="isPeeking"/)
+    },
+    // The attach waits while a peek shows: it replaces the live state only with none.
+    attach: (path) => {
+        const body = declaration(path, 'attachHeld') ?? ''
+        assert.match(body, /isPeeking\.value \|\|/)
+    },
+    // Choose Audio…: refused while peeking, and applied only if no peek began while it loaded.
+    pick: () => {
+        const body = declaration('src/editor/commands/bgm/chooseAudio.ts', 'chooseAudio') ?? ''
+        assert.match(body, /if \(isPeeking\.value\) \{\s*refuseWhilePeeking\(\)/)
+        assert.match(body, /const current = \(\) =>[^]*?!isPeeking\.value/)
+        assert.match(body, /if \(!current\(\)\) \{[^]*?return[^]*?applyPick\(/)
     },
     // Level Info: shown read-only, and nothing is pushed while peeking.
     levelInfo: (path) => {

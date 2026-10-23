@@ -39,10 +39,11 @@ import { getFilename } from '../../../utils/file'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
+import { bgmStatus, claimNotice } from '../../media/heldBgm'
 import { dismissNoticeCard, notify, type NoticeLine } from '../../notification'
 import { notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
-import { changeBgm } from '../bgm'
+import { chooseAudioAction } from '../bgm/chooseAudio'
 
 // Open File… on a `.nxsp` (Part 1 §1.5.4): read and checked in the storage worker, its level
 // through the level-data path, the confirms first (a newer major version, values this build
@@ -469,8 +470,16 @@ const openRequestedProject = async (
     }
     if (!request.isCurrent()) return
     const bgm = opened.media.bgm
-    const bgmMissing =
+    const missingMeta =
         live.bgm.meta !== undefined && (!bgm || mediaHash(bgm.form) !== live.bgm.meta.hash)
+            ? live.bgm.meta
+            : undefined
+    // Not loaded only when the media store lacks it too, and said once per hash.
+    const bgmUnheld =
+        missingMeta !== undefined &&
+        (await bgmStatus(missingMeta.hash, missingMeta.size)) === 'absent'
+    if (!request.isCurrent()) return
+    const bgmMissing = () => bgmUnheld && claimNotice(missingMeta.hash)
     // A newer `patch` is a line of its own, which a whole open shows beside what else it has to
     // say: bound in another tab, or a BGM that is not loaded. Only an earlier session's unsaved
     // changes take the card from it, since that notice has the action that keeps work.
@@ -482,12 +491,7 @@ const openRequestedProject = async (
         message: () => i18n.value.notice.bgmNotLoaded,
         severity: 'info',
         // A BGM the file records but doesn't hold (§1.5.4 step 5): not loaded, with Choose Audio….
-        action: {
-            label: () => i18n.value.notice.chooseAudio,
-            run: () => {
-                void changeBgm()
-            },
-        },
+        action: chooseAudioAction,
     }
     const showRows = (rows: NoticeLine[]) => {
         const [only] = rows
@@ -529,8 +533,8 @@ const openRequestedProject = async (
         else notify(() => message, { card: true, severity: 'warning' })
     } else if (patchRow && !earlier) {
         dismissNoticeCard()
-        showRows([patchRow, ...(bgmMissing ? [bgmRow] : [])])
-    } else if (!earlier && bgmMissing) {
+        showRows([patchRow, ...(bgmMissing() ? [bgmRow] : [])])
+    } else if (!earlier && bgmMissing()) {
         dismissNoticeCard()
         showRows([bgmRow])
     } else notifyOpened(name, earlier, left, unchecked)

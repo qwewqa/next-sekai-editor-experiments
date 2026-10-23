@@ -5,11 +5,11 @@ import {
     rememberExport,
 } from '../../editor/commands/exportLevel/memory'
 import { LOAD_ORDER } from '../../editor/loadOrder'
+import { attachHeld, cachedHeld, cacheHeld, type HeldParts } from '../../editor/media/heldBgm'
 import { addLoadNotice, notify } from '../../editor/notification'
 import type { SwitchRequest } from '../../editor/switchRequest'
 import type { JsonValue } from '../../history/operations'
 import { session as currentSession } from '../../history/session'
-import { isPeeking, liveState, replaceState } from '../../history/stack'
 import { i18n } from '../../i18n'
 import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
@@ -511,20 +511,24 @@ export const attachOpenedBgm = async (
     decode: (data: ArrayBuffer) => Promise<Partial<Bgm>>,
     destination: string,
 ) => {
+    // One `Bgm` per hash: audio this tab already holds is not decoded again.
+    const held = cachedHeld(hash)
+    if (held) return attachHeld(destination, hash, held)
     const data = await bytes.arrayBuffer()
     const source = data.slice(0)
     const decoded = await decode(data)
-    const live = liveState.value
-    // A peek holds its own state: the live one isn't replaced under it.
-    if (
-        currentSession.value.sessionId !== destination ||
-        isPeeking.value ||
-        live.bgm.meta?.hash !== hash ||
-        live.bgm.buffer
-    ) {
+    // A session that was left has cleaned up its waveforms.
+    if (currentSession.value.sessionId !== destination || !decoded.buffer) {
         releaseWaveform(decoded.waveform)
         return false
     }
-    replaceState({ ...live, bgm: { ...live.bgm, ...decoded, source } })
-    return true
+    // Kept for the states naming this hash; the live one gets it unless a peek, another BGM or
+    // audio of its own is there (the slot keeps its root, and the file state is unchanged).
+    const parts: HeldParts = {
+        buffer: decoded.buffer,
+        source,
+        ...(decoded.waveform ? { waveform: decoded.waveform } : {}),
+    }
+    cacheHeld(hash, parts)
+    return attachHeld(destination, hash, parts)
 }
