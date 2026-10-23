@@ -5,6 +5,7 @@ import type { CheckedMedia } from '../../local/check/finish'
 import { requestRead } from '../../local/handles'
 import { hasWebLocks, MAINT_LOCK } from '../../local/locks'
 import type { MediaKind } from '../../local/nxsp/read'
+import type { ModelRefusal } from '../../local/save/model'
 import { readValue, storedRead } from '../../local/storedRead'
 import { platform, type DiskState } from '../../platform'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
@@ -17,7 +18,7 @@ import { readDiskFacts } from '../save/disk'
 import { waitForChainImports, type PreparingSlot } from '../save/imports'
 import { enqueueSave } from '../save/queue'
 import { unlinkSession } from '../save/unlink'
-import { reportLines, type CheckText, type Findings } from './report'
+import { refusalLine, reportLines, type CheckText, type Findings } from './report'
 
 // Check File and History… on the page (Part 1 §1.4.21; step 11 design §3.3): which file, then the
 // run inside the Save queue: the wait for the chain's imports, `nse-maint` shared from there to
@@ -60,6 +61,12 @@ const storageFailed = (): CheckOutcome => ({
 const changedFailure = (name: string): CheckOutcome => ({
     kind: 'failed',
     message: interpolate(() => i18n.value.check.changed, name),
+})
+
+/** A chain this build cannot judge ends the run with its own line, not the storage one. */
+const refusedFailure = (reason: ModelRefusal, name: string): CheckOutcome => ({
+    kind: 'failed',
+    message: refusalLine(reason, name, checkText),
 })
 
 /** Ends the run with this outcome from any depth. */
@@ -186,7 +193,7 @@ const testDelay = async () => {
 
 /** The strings of the report, each named where it is read. */
 const checkText = (): CheckText => {
-    const { check, open } = i18n.value
+    const { check, open, load, save } = i18n.value
     return {
         check: {
             noDamage: check.noDamage,
@@ -198,6 +205,7 @@ const checkText = (): CheckText => {
             scopeStored: check.scopeStored,
         },
         media: open.media,
+        refusal: { later: load.sessionLater, unreadable: save.readFailed },
     }
 }
 
@@ -316,7 +324,8 @@ const perform = async (
     let storedId: string | undefined
     const opened = await storedRead(env.worker, 'checkStoredOpen', env.chainId)
     if (opened.storedRead === 'failed') throw new End(storageFailed())
-    if (opened.storedValue.kind === 'refused') throw new End(storageFailed())
+    if (opened.storedValue.kind === 'refused')
+        throw new End(refusedFailure(opened.storedValue.reason, name))
     if (opened.storedValue.kind === 'opened') {
         const stored = opened.storedValue
         storedId = stored.id
@@ -327,8 +336,10 @@ const perform = async (
             checkpoint()
             say(storedMessage(done, stored.roots))
             const batch = await storedRead(env.worker, 'checkStoredBatch', { id: stored.id, n })
-            if (batch.storedRead === 'failed' || batch.storedValue.kind !== 'done')
-                throw new End(storageFailed())
+            if (batch.storedRead === 'failed') throw new End(storageFailed())
+            if (batch.storedValue.kind === 'refused')
+                throw new End(refusedFailure(batch.storedValue.reason, name))
+            if (batch.storedValue.kind !== 'done') throw new End(storageFailed())
             done += batch.storedValue.roots
         }
         say(storedMessage(stored.roots, stored.roots))
@@ -370,6 +381,7 @@ const perform = async (
             throw new End(storageFailed())
         }
         held.ids.delete(id)
+        if (finished.kind === 'refused') throw new End(refusedFailure(finished.reason, name))
         if (finished.kind !== 'done') throw new End(storageFailed())
         // Rows that could not be marked would be called damaged without being so.
         if (finished.markFailed) throw new End(storageFailed())

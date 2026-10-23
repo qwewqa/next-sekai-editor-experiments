@@ -1,16 +1,31 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { reportLines, type CheckText, type Findings } from '../../src/editor/check/report'
+import {
+    refusalLine,
+    reportLines,
+    type CheckText,
+    type Findings,
+} from '../../src/editor/check/report'
 
 // The lines Check File and History… ends with (Part 1 §1.4.21).
 
 const en = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
-) as { check: CheckText['check']; open: { media: CheckText['media'] } }
+) as {
+    check: CheckText['check']
+    open: { media: CheckText['media'] }
+    load: { sessionLater: string }
+    save: { readFailed: string }
+}
 
-const text = (found: Findings) =>
-    reportLines(found, () => ({ check: en.check, media: en.open.media })).map((line) => line())
+const strings = (): CheckText => ({
+    check: en.check,
+    media: en.open.media,
+    refusal: { later: en.load.sessionLater, unreadable: en.save.readFailed },
+})
+
+const text = (found: Findings) => reportLines(found, strings).map((line) => line())
 
 test('nothing found: "No damage found." first, then the scope', () => {
     assert.deepEqual(text({ file: { name: 'coconut.nxsp' }, repaired: 0, damaged: 0, media: [] }), [
@@ -63,4 +78,16 @@ test('a history-only check says so, and a reason line follows the scope', () => 
         'Checked the history stored in this browser.',
         '"coconut.nxsp": changed on disk since you opened or saved it here.',
     ])
+})
+
+test('a chain this build cannot judge says so, never that storage is unavailable', () => {
+    assert.equal(
+        refusalLine('needsNewer', 'coconut.nxsp', strings)(),
+        'This session needs a newer version of the editor.',
+    )
+    for (const reason of ['unreadableHead', 'order'] as const)
+        assert.equal(
+            refusalLine(reason, 'coconut.nxsp', strings)(),
+            '"coconut.nxsp" could not be read.',
+        )
 })
