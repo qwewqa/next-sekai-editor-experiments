@@ -242,11 +242,7 @@ test('two pickers on one unknown file: the last to take nse-bind owns it, and th
     const bChain = await chainOf(b)
 
     await release(a)
-    await expect(
-        notice(a).filter({
-            hasText: 'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
-        }),
-    ).toBeVisible()
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     await noDialog(a)
     const aChain = await chainOf(a)
     expect((await projectOf(a, 'coconut.nxsp')).id).toBe(aChain.docId)

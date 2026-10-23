@@ -325,18 +325,17 @@ const bindWrite = async (
     }
 }
 
-const savedOf = (built: BuiltSave, kind: 'saved' | 'download', name: string, tookOver = false) => ({
+const savedOf = (built: BuiltSave, kind: 'saved' | 'download', name: string) => ({
     kind,
     name,
     size: built.blob.size,
     stepsLine: built.stepsLine,
-    tookOver,
     without: built.without,
     tooLarge: built.tooLarge,
 })
 
-const feedback = (built: BuiltSave, kind: 'saved' | 'download', name: string, tookOver = false) => {
-    saveUi.saved(savedOf(built, kind, name, tookOver))
+const feedback = (built: BuiltSave, kind: 'saved' | 'download', name: string) => {
+    saveUi.saved(savedOf(built, kind, name))
 }
 
 /**
@@ -635,7 +634,6 @@ export const projectPicked = async (
     const { handle } = target
     const name = handle.name
     let built: BuiltSave | undefined = prebuilt
-    let tookOver = false
     let bound = binding
     switch (identity.kind) {
         case 'refused':
@@ -757,7 +755,7 @@ export const projectPicked = async (
                 preBind,
             )
             if (!done.ok) return notTakenOver(name)
-            tookOver = done.revoked
+            const tookOver = done.revoked
             if (done.preBound) {
                 await followPreBind(env, reservation, name)
                 const reread = await readBinding(env)
@@ -810,7 +808,7 @@ export const projectPicked = async (
         ...file,
         ...(result.disk ? { disk: result.disk } : {}),
     })
-    feedback(written, 'saved', name, tookOver)
+    feedback(written, 'saved', name)
     return { kind: 'done' }
 }
 
@@ -1415,7 +1413,6 @@ const downloadBytes = async (name: string, bytes: Blob) => {
                 name,
                 size: bytes.size,
                 stepsLine: 'none' as const,
-                tookOver: false,
                 without: [],
                 tooLarge: [],
             })
@@ -2098,7 +2095,7 @@ const sessionFilePicked = async (
     }
     if (tookOver) broadcastUpdated()
     saveUi.saved({
-        ...savedOf(built, 'saved', name, tookOver),
+        ...savedOf(built, 'saved', name),
         committedState: request.committed,
     })
     markFirstSaveDone()

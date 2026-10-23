@@ -2129,7 +2129,6 @@
     "someStepsMayNotBeIncluded": "{0} dosyasına kaydedildi. Zaman Çizgisi’ndeki bazı önceki adımlar dahil edilmemiş olabilir.",
     "someStepsMayNotBeIncludedLine": "Zaman Çizgisi’ndeki bazı önceki adımlar dahil edilmemiş olabilir.",
     "committedState": "Dosya, başka bir sekmede açık olan oturumun en son saklanan sürümünü içeriyor.",
-    "tookOver": "{0} dosyasına kaydedildi. Önceki çalışması Son Oturumlar’da.",
     "noChanges": "{0} indirildiğinden beri değişiklik yok",
     "noChangesSaved": "{0} kaydedildiğinden beri değişiklik yok",
     "noChangesOpened": "{0} açıldığından beri değişiklik yok",

@@ -99,9 +99,7 @@ test('an unedited tab whose file is taken over shows it, and prompts on close', 
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(
-        notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
-    ).toBeVisible()
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
 
     await b.bringToFront()
     await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
@@ -155,9 +153,7 @@ test('a write-back that finds itself revoked opens the Save dialog with the reas
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(
-        notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
-    ).toBeVisible()
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
 
     // B's Save finds the revocation under nse-bind (R10), and says why it asks.
     expect((await sessionOf(b)).file?.name).toBe('coconut.nxsp')
@@ -182,9 +178,7 @@ test('a pre-bind shows at once, ends a revocation, and carries Save As…’s ne
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(
-        notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
-    ).toBeVisible()
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
 
     // B, revoked, saves to a new file: paused before the write, it's bound to it already.
     await b.bringToFront()

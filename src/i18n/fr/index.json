@@ -2129,7 +2129,6 @@
     "someStepsMayNotBeIncluded": "Sauvegardé dans {0}. Certaines étapes antérieures de la chronologie n’y figurent peut-être pas.",
     "someStepsMayNotBeIncludedLine": "Certaines étapes antérieures de la chronologie n’y figurent peut-être pas.",
     "committedState": "Le fichier contient la dernière version stockée de la session ouverte dans un autre onglet.",
-    "tookOver": "Sauvegardé dans {0}. Son travail antérieur se trouve dans les sessions récentes.",
     "noChanges": "Aucune modification depuis le téléchargement de {0}",
     "noChangesSaved": "Aucune modification depuis la sauvegarde de {0}",
     "noChangesOpened": "Aucune modification depuis l’ouverture de {0}",

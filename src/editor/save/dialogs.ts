@@ -133,8 +133,6 @@ export type SavedFeedback = {
      * kept" for steps known missing, "may not be included" otherwise.
      */
     stepsLine: 'none' | 'notKept' | 'mayNotBeIncluded'
-    /** A save picker took the file from another chain: "Its earlier work is in Recent Sessions." */
-    tookOver: boolean
     /** Media written as metadata only, in BGM, cover, preview order. */
     without: MediaKind[]
     /** Those of `without` over the 1 GB cap: no "which is not loaded" (D25). */
@@ -234,7 +232,7 @@ const withoutKey = (feedback: SavedFeedback) => {
 
 /** A Save with nothing to add to "Saved to {0}". */
 const simple = (feedback: SavedFeedback) =>
-    feedback.stepsLine === 'none' && !feedback.tookOver && feedback.without.length === 0
+    feedback.stepsLine === 'none' && feedback.without.length === 0
 
 /** The feedback's text: the first line, then the steps line (`stepsLine`) where it applies. */
 export const savedText = (feedback: SavedFeedback) => {
@@ -256,10 +254,6 @@ export const savedText = (feedback: SavedFeedback) => {
     const without = withoutKey(feedback)
     if (without) {
         const first = interpolate(() => without, feedback.name)()
-        return withLine(first)
-    }
-    if (feedback.tookOver) {
-        const first = interpolate(() => save.tookOver, feedback.name)()
         return withLine(first)
     }
     if (feedback.stepsLine !== 'none')
