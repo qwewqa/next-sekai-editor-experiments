@@ -234,7 +234,7 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
     const ticket = ++started
     const fresh: Entry[] = []
     let next: Cursor | undefined
-    let missing = false
+    let missing: boolean
     try {
         const page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
         fresh.push(...page.entries.map(entryOf))

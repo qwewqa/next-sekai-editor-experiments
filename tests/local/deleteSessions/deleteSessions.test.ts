@@ -495,7 +495,8 @@ test('a damaged chain (no head id) is included, counted as not saved, and delete
     const [damaged, plain] = chains as [Chain, Chain]
     await edit(world, async (tx) => {
         const chain = (await tx.get('chains', damaged.first.chainId)) as Record<string, unknown>
-        const { head: _head, ...rest } = chain
+        const rest = { ...chain }
+        delete rest.head
         await tx.put('chains', rest)
     })
     // It even claims a file that is unchanged: a chain this build cannot read counts as not saved.

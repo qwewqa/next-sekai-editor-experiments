@@ -4,6 +4,7 @@ import type { RecentChain, RecentReadable } from '../../local/recent'
 import type { StoredRead } from '../../local/storedRead'
 import type { Calendar } from './calendarClock'
 import type { Header } from './rows'
+import type { DeletedEntry } from './sessionDelete'
 
 // Recent Sessions' list (Part 1 §1.4.10.6): the rows built from the chains' read, and the read's
 // refresh rules. Pure and light (Vue refs only), so Node tests run it without the page; the tab
@@ -25,9 +26,24 @@ export type ChainRow = {
     readable: RecentReadable
 }
 
-/** What the list holds: day headers and chain rows. Package C adds the inline Undo row here. */
+/**
+ * A chain this tab marked for Delete, standing where its row was: "Deleted "X"" with Undo, or,
+ * once the sweep has removed it, that it can no longer be undone.
+ */
+export type DeletedRow = {
+    type: 'deleted'
+    /** The chain's id: the row it replaces. */
+    id: string
+    chain: RecentChain
+    name: string
+    status: DeletedEntry['status']
+}
+
+/** What the list holds: day headers, chain rows and inline Undo rows. */
 export type SessionRow = ChainRow
-export type ListRow = Header | SessionRow
+export type ListRow = Header | SessionRow | DeletedRow
+/** The rows the arrow keys reach. */
+export type NavRow = ChainRow | DeletedRow
 
 export type ListContext = {
     calendar: Calendar
@@ -37,13 +53,36 @@ export type ListContext = {
     elsewhere: ReadonlySet<string>
     /** Rows a peek or Restore found unreadable since the read, by chain. */
     failed: ReadonlyMap<string, 'damaged' | 'newer'>
+    /** Chains this tab marked for Delete: they stand as inline Undo rows. */
+    deleted: ReadonlyMap<string, DeletedEntry>
+}
+
+/**
+ * The chains with the inline rows in them: a listed chain that is marked stands as its row, and a
+ * marked chain the read no longer lists goes in by its last edit, where it was.
+ */
+const withDeleted = (
+    chains: readonly RecentChain[],
+    deleted: ReadonlyMap<string, DeletedEntry>,
+) => {
+    const listed = new Set(chains.map((chain) => chain.chainId))
+    const out: { chain: RecentChain; deleted?: DeletedEntry }[] = chains.map((chain) => {
+        const entry = deleted.get(chain.chainId)
+        return entry ? { chain, deleted: entry } : { chain }
+    })
+    for (const entry of deleted.values()) {
+        if (listed.has(entry.chain.chainId)) continue
+        const at = out.findIndex((each) => each.chain.updatedAt < entry.chain.updatedAt)
+        out.splice(at === -1 ? out.length : at, 0, { chain: entry.chain, deleted: entry })
+    }
+    return out
 }
 
 /** The rows, newest chain first under a day header for each day. */
 export const buildRows = (chains: readonly RecentChain[], context: ListContext): ListRow[] => {
     const rows: ListRow[] = []
     let day: number | undefined
-    for (const chain of chains) {
+    for (const { chain, deleted } of withDeleted(chains, context.deleted)) {
         const own = dayKey(chain.updatedAt, context.calendar.zone)
         if (own !== day) {
             day = own
@@ -55,6 +94,16 @@ export const buildRows = (chains: readonly RecentChain[], context: ListContext):
                 time: chain.updatedAt,
                 day: own,
             })
+        }
+        if (deleted) {
+            rows.push({
+                type: 'deleted',
+                id: chain.chainId,
+                chain: deleted.chain,
+                name: deleted.name,
+                status: deleted.status,
+            })
+            continue
         }
         const thisTab = chain.chainId === context.thisChain
         const badge: Badge | undefined = thisTab

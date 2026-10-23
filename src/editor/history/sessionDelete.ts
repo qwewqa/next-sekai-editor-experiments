@@ -94,7 +94,10 @@ export const createDeleteModel = (deps: DeleteDeps) => {
         cardIsDelete = true
         cardId = deps.card({
             message: deletedMessage,
-            action: { label: () => i18n.value.commands.undo.title, run: () => void undo(cardIds.value) },
+            action: {
+                label: () => i18n.value.commands.undo.title,
+                run: () => void undo(cardIds.value),
+            },
         })
     }
 

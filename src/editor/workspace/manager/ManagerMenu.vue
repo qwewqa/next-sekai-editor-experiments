@@ -337,9 +337,10 @@ const onSelect = (event: MouseEvent, item: ManagerMenuItem) => {
                         >
                             {{ section.group }}
                         </div>
-                        <template v-for="item in section.items" :key="item.key">
+                        <template v-for="(item, at) in section.items" :key="item.key">
+                            <!-- A destructive item first in the menu has nothing to be set apart from. -->
                             <div
-                                v-if="item.separated || item.destructive"
+                                v-if="item.separated || (item.destructive && (index > 0 || at > 0))"
                                 role="separator"
                                 class="popup-separator"
                             />

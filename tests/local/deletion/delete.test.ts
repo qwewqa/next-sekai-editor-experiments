@@ -334,7 +334,8 @@ test('a damaged chain (no head id, or a head with no session row) is Deleted and
         world.checks.lock = false
         await tamper(world, async (tx) => {
             const chain = (await tx.get('chains', first.chainId)) as Record<string, unknown>
-            const { head: _head, ...rest } = chain
+            const rest = { ...chain }
+            delete rest.head
             await tx.put('chains', damage === 'noHead' ? rest : { ...rest, head: 'vanished' })
         })
         world.checks.lock = true

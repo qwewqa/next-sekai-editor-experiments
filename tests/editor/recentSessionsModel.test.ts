@@ -37,6 +37,7 @@ const context = (rest: Partial<ListContext> = {}): ListContext => ({
     thisChain: undefined,
     elsewhere: new Set(),
     failed: new Map(),
+    deleted: new Map(),
     ...rest,
 })
 
