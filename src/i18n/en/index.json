@@ -302,7 +302,7 @@
             "redid": "Redid \"{0}\""
         },
         "reset": {
-            "title": "Reset"
+            "title": "New"
         },
         "save": {
             "title": "Save"
@@ -825,7 +825,7 @@
                 "off": "Off",
                 "fft": "FFT",
                 "volume": "Volume",
-                "changed": "You have changed waveform visualization, select BGM file again in order for this change to take effect."
+                "changed": "Select the BGM file again to apply the new waveform setting."
             },
             "maxScrollX": "Max Scroll X (lanes)",
             "zeroWidthNotes": {

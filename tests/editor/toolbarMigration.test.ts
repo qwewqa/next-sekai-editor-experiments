@@ -99,7 +99,7 @@ test('the three steps on a customised toolbar change only what each step promise
             ['copy', 'undo'],
         ],
     )
-    // A default File group that dropped Reset is not the old default, so it keeps its shape.
+    // A default File group that dropped New (`reset`) is not the old default, so it keeps its shape.
     assert.deepEqual(chain([['utilities', 'properties', 'save', 'open']]), [
         ['utilities', 'properties', 'exportLevel', 'save', 'open'],
     ])
