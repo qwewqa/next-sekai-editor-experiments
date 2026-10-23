@@ -127,3 +127,50 @@ test('origin abort and disposal invalidate permanently while independent prompts
         other.dispose()
     }
 })
+
+// The held-BGM attach changes the live state with no step while a dialog or a confirm is open;
+// what the user typed or picked must still apply (final review R2 #1).
+const bgmMeta = { hash: 'h', filename: 'a.mp3', size: 4, type: 'audio/mpeg' }
+const unattached = { bgm: { offset: 0, meta: bgmMeta }, selectedEntities: [] } as unknown as State
+const withAudio = (state: State, offset = state.bgm.offset) =>
+    ({
+        ...state,
+        bgm: {
+            ...state.bgm,
+            offset,
+            buffer: {} as AudioBuffer,
+            source: new ArrayBuffer(4),
+        },
+    }) as State
+
+test('attaching the named audio leaves confirmation valid; any other change does not', () => {
+    resetStates({ isDirty: false, state: unattached, step: { kind: 'init', operation: init } })
+    const guard = createAsyncEditGuard()
+    const other = createAsyncEditGuard()
+    try {
+        replaceState(withAudio(unattached))
+        assert.equal(guard.isCurrent(), true)
+        // An offset changed along with the audio is not an attach.
+        replaceState(withAudio(unattached, 5))
+        assert.equal(guard.isCurrent(), false)
+        assert.equal(other.isCurrent(), false)
+    } finally {
+        guard.dispose()
+        other.dispose()
+    }
+})
+
+test('audio attached to another hash invalidates confirmation', () => {
+    resetStates({ isDirty: false, state: unattached, step: { kind: 'init', operation: init } })
+    const guard = createAsyncEditGuard()
+    try {
+        const attached = withAudio(unattached)
+        replaceState({
+            ...attached,
+            bgm: { ...attached.bgm, meta: { ...bgmMeta, hash: 'other' } },
+        })
+        assert.equal(guard.isCurrent(), false)
+    } finally {
+        guard.dispose()
+    }
+})

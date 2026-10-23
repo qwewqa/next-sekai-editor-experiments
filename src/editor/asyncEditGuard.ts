@@ -1,6 +1,25 @@
 import { watch } from 'vue'
 import { onHistoryAction } from '../history/actions'
 import { isPeeking, liveState, stackGeneration } from '../history/stack'
+import type { State } from '../state'
+
+const sameExcept = (a: object, b: object, skip: readonly string[]) =>
+    Object.keys({ ...a, ...b }).every(
+        (key) =>
+            skip.includes(key) ||
+            (a as Record<string, unknown>)[key] === (b as Record<string, unknown>)[key],
+    )
+
+/**
+ * Whether `next` is `prev` with only the audio of its named BGM attached (the held-BGM attach, a
+ * background change that is no edit): nothing a dialog or a confirm read has changed.
+ */
+export const isAudioAttach = (prev: State, next: State) => {
+    const was = prev.bgm
+    const now = next.bgm
+    if (!was?.meta || was.buffer || !now?.buffer || now.meta?.hash !== was.meta.hash) return false
+    return sameExcept(prev, next, ['bgm']) && sameExcept(was, now, ['buffer', 'source', 'waveform'])
+}
 
 export const createAsyncEditGuard = (signal?: AbortSignal) => {
     const generation = stackGeneration()
@@ -8,7 +27,14 @@ export const createAsyncEditGuard = (signal?: AbortSignal) => {
     const invalidate = () => {
         current = false
     }
-    const stopState = watch([liveState, isPeeking], invalidate, { flush: 'sync' })
+    const stopState = watch(
+        [liveState, isPeeking],
+        ([state, peeking], [before, wasPeeking]) => {
+            if (peeking === wasPeeking && isAudioAttach(before, state)) return
+            invalidate()
+        },
+        { flush: 'sync' },
+    )
     const stopActions = onHistoryAction(({ kind }) => {
         if (kind !== 'save' && kind !== 'export') invalidate()
     })
