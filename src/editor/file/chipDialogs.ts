@@ -14,20 +14,20 @@ import { tryStoringAgain } from './tryAgain'
 // The chip's text and the dialog a tap opens (Part 1 §1.3.4): the first state's dialog, with the
 // lower-priority states as extra lines.
 
-/** The chip's string: the full one, or the phone's short label (< 768 px). */
-export const chipText = (kind: ChipKind, short = false) => {
+/** The chip's string. */
+export const chipText = (kind: ChipKind) => {
     const { state } = i18n.value
     switch (kind) {
         case 'fileMissing':
-            return short ? state.short.fileMissing : state.fileMissing
+            return state.fileMissing
         case 'changedOnDisk':
-            return short ? state.short.changedOnDisk : state.changedOnDisk
+            return state.changedOnDisk
         case 'newerOnDisk':
-            return short ? state.short.newerOnDisk : state.newerOnDisk
+            return state.newerOnDisk
         case 'notConfirmed':
-            return short ? state.short.notConfirmed : state.notConfirmed
+            return state.notConfirmed
         case 'notStored':
-            return short ? state.short.notStored : state.notStored
+            return state.notStored
     }
 }
 
@@ -72,7 +72,7 @@ const reasonLine = (cause: NotStoredCause | undefined) => {
     }
 }
 
-type NotStoredChoice = 'localData' | 'retry' | 'reload' | 'save'
+type NotStoredChoice = 'localData' | 'retry' | 'reload' | 'confirm' | 'save'
 
 /** The buttons between Cancel and Save, by cause: a way to get storing going again. */
 const notStoredChoices = (cause: NotStoredCause | undefined): Choice<NotStoredChoice>[] => {
@@ -101,12 +101,19 @@ const openNotStored = async (rest: readonly ChipKind[]) => {
         message: () => lines(chipSentence('notStored'), rest, reasonLine(notStored.value ?? cause)),
         choices: [
             ...notStoredChoices(cause),
+            // The download line is there, so the way to settle it is too (§1.3.4).
+            ...(rest.includes('notConfirmed')
+                ? [{ value: 'confirm', label: () => i18n.value.confirm.haveFile } as const]
+                : []),
             { value: 'save', label: () => i18n.value.prompt.save, default: true },
         ],
     })
     switch (choice) {
         case 'save':
             await runCommand(save)
+            return
+        case 'confirm':
+            confirmFile()
             return
         case 'localData':
             void import('../settings/openSettings').then(({ openSettings }) =>

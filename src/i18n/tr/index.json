@@ -2122,9 +2122,7 @@
     "include": "Dahil Edilecekler",
     "historySize": "{0} adım · {1}",
     "historyNote": "Dosyaya sahip herkes dosyanın geçmişini görebilir.",
-    "noBgm": "BGM yok",
     "bgmNotLoaded": "BGM yüklenmedi",
-    "bgmSize": "{0} · {1}",
     "keptOptions": "Zaten {0} içinde",
     "noHistoryHere": "Geçmiş için güvenli bir bağlantı gerekir.",
     "sizeTotal": "Toplam: yaklaşık {0}",
@@ -2193,7 +2191,7 @@
     "peekSessionFailed": "Bu oturum görüntülenemedi",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Önceki adımlar Geçmiş’te",
-    "bgmNotLoaded": "BGM yüklenmedi",
+    "bgmNotLoaded": "BGM yüklenmedi.",
     "savedCurrent": "Güncel sürüm {0} dosyasına kaydedildi"
   },
   "entry": {
@@ -2273,13 +2271,6 @@
     "changedOnDisk": "Diskte değişti",
     "newerOnDisk": "Diskte daha yeni",
     "notConfirmed": "İndirme onaylanmadı",
-    "short": {
-      "fileMissing": "Yok",
-      "changedOnDisk": "Değişti",
-      "newerOnDisk": "Daha yeni",
-      "notConfirmed": "Onaylanmadı",
-      "notStored": "Saklanmıyor"
-    },
     "changedOnDiskName": "\"{0}\": burada açtığınızdan veya kaydettiğinizden bu yana diskte değişti.",
     "newerOnDiskName": "\"{0}\": diskte daha yeni bir sürüm var.",
     "notStored": "Saklanmıyor"

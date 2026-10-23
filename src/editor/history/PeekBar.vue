@@ -24,7 +24,14 @@ import { useRootFontSize } from '../useRootFontSize'
 import { useHistoryCalendar } from './calendarClock'
 import { historyFormat } from './historyFormat'
 import { historyOperationContext } from './historyOperationContext'
-import { measurePeekWidths, peekLayout, peekText, peekWidths } from './peekFit'
+import {
+    measurePeekWidths,
+    peekLayout,
+    peekText,
+    peekWidths,
+    SESSION_STRIP_MAX,
+    sessionPeekText,
+} from './peekFit'
 import { backToNow, peekedInfo, peekedLabel, peekedSession, requestRestore } from './selection'
 import { openOperationDetails } from './operationDetails'
 import { focusAfterRemoval } from '../../utils/focusFallback'
@@ -112,37 +119,45 @@ onBeforeUnmount(() => {
 watch(() => [settings.locale, settings.beatDisplay], measure)
 // The widths are in px at the root font size they were measured at: a change measures them again.
 watch(useRootFontSize(), measure)
-// The session strip names the session beside its time, in two lines; the date is the strip's
-// measured one, and the name takes what the fit leaves, 64 px at least.
+// The session strip names the session beside its time, in two lines; the time has no seconds, and
+// the name takes what the fit leaves, 64 px at least. It has no change capsule to keep its width
+// with, so it may be wider than the Timeline's strip.
 const layout = computed(() => {
     const widths = peekWidths.value
     const session = peekedSession.value
     if (!session || !widths) return peekLayout(view.w, widths)
     const room = (64 * widths.rem) / 16
-    return peekLayout(view.w, {
-        ...widths,
-        restore: sessionRestoreWidth.value,
-        today: widths.today + room,
-        earlier: widths.earlier + room,
-        compact: widths.compact + room,
-    })
+    const time = (widths.session ?? widths.earlier) + room
+    return peekLayout(
+        view.w,
+        {
+            ...widths,
+            restore: sessionRestoreWidth.value,
+            today: time,
+            earlier: time,
+            compact: time,
+        },
+        SESSION_STRIP_MAX,
+    )
 })
 // A session's strip is two rows in a narrow pane, so its name has the room: the text, then the
 // buttons, which keep their labels where the row has room for both.
 const stacked = computed(() => !!peekedSession.value && view.w < 420)
+// The stacked strip takes the pane less its gutters, as the Timeline's strip does.
+const stackedWidth = computed(() => view.w - (16 * (peekWidths.value?.rem ?? 16)) / 16)
 const backLabel = computed(() => {
     const widths = peekWidths.value
     if (!stacked.value || !widths) return layout.value.back === 'label'
     const k = widths.rem / 16
     const row = (4 + 8 + 8 + 4 + 32 + 32) * k + widths.back + sessionRestoreWidth.value
-    return row <= Math.min(view.w - 16 * k, 480 * k)
+    return row <= stackedWidth.value
 })
 const sessionText = computed(() => {
     const info = peekedSession.value
     return info
         ? {
               name: interpolateRaw(i18n.value.history.quoted, info.name),
-              time: peekText(calendar.value, settings.locale, info.time, layout.value.wide),
+              time: sessionPeekText(calendar.value, settings.locale, info.time),
               restore: sessionLabels.value[info.action],
           }
         : undefined
@@ -217,7 +232,7 @@ const onKeydown = (event: KeyboardEvent) => {
         <div
             class="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-2 px-2"
             :class="layout.inset"
-            :style="{ '--peek-w': `${layout.width}px` }"
+            :style="{ '--peek-w': `${stacked ? stackedWidth : layout.width}px` }"
             data-peek-bar
             @keydown="onKeydown"
         >

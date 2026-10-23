@@ -37,14 +37,15 @@ const titleId = useId()
 
 <template>
     <div
-        class="flex h-12 shrink-0 items-center justify-between gap-2 bg-header pr-1.5 font-bold"
+        class="flex min-h-12 shrink-0 items-center justify-between gap-2 bg-header pr-1.5 font-bold"
         :class="[modalTitle ? 'text-base' : 'text-lg', slots.header ? 'pl-1.5' : 'pl-4']"
     >
         <span
             :id="titleId"
-            :class="slots.header ? 'sr-only' : 'min-w-0 truncate'"
+            :class="
+                slots.header ? 'sr-only' : 'min-w-0 py-1.5 leading-tight [overflow-wrap:anywhere]'
+            "
             data-modal-title
-            :title="slots.header ? undefined : title"
             >{{ title }}</span
         >
         <slot name="header" />

@@ -784,7 +784,7 @@ test('the toolbar step adds Save As and History to the old default groups once',
     await start(page, opfs)
     const toolbar = () => page.evaluate(() => window.editorTest.settings.toolbar)
     expect(await toolbar()).toEqual([
-        ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
+        ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
         ['play'],
         ['paste', 'cut', 'copy', 'history', 'redo', 'undo'],
         ['select'],

@@ -2122,9 +2122,7 @@
     "include": "包含",
     "historySize": "{0} 步 · {1}",
     "historyNote": "拥有该文件的人可以查看其中的历史记录。",
-    "noBgm": "无 BGM",
     "bgmNotLoaded": "BGM 未加载",
-    "bgmSize": "{0} · {1}",
     "keptOptions": "已在 {0} 中",
     "noHistoryHere": "包含历史记录需要安全连接。",
     "sizeTotal": "总计：约 {0}",
@@ -2193,7 +2191,7 @@
     "peekSessionFailed": "无法查看此会话",
     "openHistory": "打开历史记录",
     "earlierInHistory": "更早的步骤在历史记录中",
-    "bgmNotLoaded": "BGM 未加载",
+    "bgmNotLoaded": "BGM 未加载。",
     "savedCurrent": "已将当前版本保存到 {0}"
   },
   "entry": {
@@ -2273,13 +2271,6 @@
     "changedOnDisk": "磁盘上已更改",
     "newerOnDisk": "磁盘上有更新版本",
     "notConfirmed": "下载未确认",
-    "short": {
-      "fileMissing": "丢失",
-      "changedOnDisk": "已更改",
-      "newerOnDisk": "较新",
-      "notConfirmed": "未确认",
-      "notStored": "未存储"
-    },
     "changedOnDiskName": "“{0}”：自你在此处打开或保存后，磁盘上的文件已更改。",
     "newerOnDiskName": "“{0}”：磁盘上有更新版本。",
     "notStored": "未存储"

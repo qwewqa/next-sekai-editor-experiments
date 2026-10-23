@@ -35,14 +35,14 @@ const model = shallowReactive({
 let request: AbortController | undefined
 let ownedWaveform: Waveform | undefined
 // Whether a file was picked here: the dialog then shows that file, not the live BGM.
-let picked = false
+const picked = ref(false)
 
 // The live BGM may get its audio while this is open (it is read back from storage after a
 // reload). The dialog takes it, so confirming does not drop the audio.
 watch(
     () => liveState.value.bgm,
     (live) => {
-        if (picked || !live.buffer || live.meta !== props.bgm.meta || model.buffer) return
+        if (picked.value || !live.buffer || live.meta !== props.bgm.meta || model.buffer) return
         model.buffer = live.buffer
         model.source = live.source
         model.waveform = live.waveform
@@ -84,7 +84,7 @@ const onSelect = (file: File) => {
     request?.abort()
     const current = new AbortController()
     request = current
-    picked = true
+    picked.value = true
 
     void showModal(LoadingModal, {
         title: () => i18n.value.commands.bgm.title,
@@ -142,13 +142,15 @@ const onSubmit = () => {
     <FormModal :title="i18n.commands.bgm.title" @close="onClose" @submit="onSubmit">
         <FileField :label="i18n.commands.bgm.modal.file" :value="shownFile" @select="onSelect" />
         <NumberField v-model="model.offset" :label="i18n.commands.bgm.modal.offset" step="any" />
-        <button
-            class="btn btn-secondary w-full rounded-full px-4 py-1"
-            type="button"
-            :disabled="!heldSource"
-            @click="downloadBgm(liveState.bgm)"
-        >
-            {{ i18n.commands.bgm.modal.download }}
-        </button>
+        <!-- Only for the live BGM's bytes: not once another file is picked here, and not without any. -->
+        <template v-if="heldSource && !picked" #actions>
+            <button
+                class="btn btn-secondary h-9 min-w-24 max-w-full rounded-full px-4"
+                type="button"
+                @click="downloadBgm(liveState.bgm)"
+            >
+                {{ i18n.commands.bgm.modal.download }}
+            </button>
+        </template>
     </FormModal>
 </template>

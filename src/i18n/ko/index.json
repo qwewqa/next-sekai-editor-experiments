@@ -2122,9 +2122,7 @@
     "include": "포함",
     "historySize": "{0}단계 · {1}",
     "historyNote": "파일이 있는 사람은 해당 파일의 기록을 볼 수 있습니다.",
-    "noBgm": "BGM 없음",
     "bgmNotLoaded": "BGM을 불러오지 않음",
-    "bgmSize": "{0} · {1}",
     "keptOptions": "이미 {0}에 있음",
     "noHistoryHere": "기록을 포함하려면 보안 연결이 필요합니다.",
     "sizeTotal": "합계: 약 {0}",
@@ -2193,7 +2191,7 @@
     "peekSessionFailed": "이 세션을 볼 수 없음",
     "openHistory": "기록 열기",
     "earlierInHistory": "이전 단계는 기록에 있습니다",
-    "bgmNotLoaded": "BGM을 불러오지 않음",
+    "bgmNotLoaded": "BGM이 불러와지지 않았습니다.",
     "savedCurrent": "현재 버전을 {0}에 저장함"
   },
   "entry": {
@@ -2273,13 +2271,6 @@
     "changedOnDisk": "디스크에서 변경됨",
     "newerOnDisk": "디스크에 더 새로운 버전 있음",
     "notConfirmed": "다운로드 확인되지 않음",
-    "short": {
-      "fileMissing": "파일 없음",
-      "changedOnDisk": "변경됨",
-      "newerOnDisk": "더 새로움",
-      "notConfirmed": "확인되지 않음",
-      "notStored": "보관되지 않음"
-    },
     "changedOnDiskName": "\"{0}\": 여기서 열거나 저장한 후 디스크에서 변경되었습니다.",
     "newerOnDiskName": "\"{0}\": 디스크에 더 새로운 버전이 있습니다.",
     "notStored": "보관되지 않음"

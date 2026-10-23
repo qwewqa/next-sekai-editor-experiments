@@ -4,10 +4,10 @@ import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import InfoModal from '../../../modals/InfoModal.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
-import CheckIcon from '../../history/CheckIcon.vue'
 import { displayedName } from '../../labelText'
 import { notify } from '../../notification'
 import { environment } from '../../save/binding'
+import CheckProjectIcon from './CheckProjectIcon.vue'
 
 // Check File and History… (Part 1 §1.4.21): reads the bound file in full and the history stored in
 // this browser, repairs what the file can repair, and tells what is left in a few lines. It is
@@ -16,7 +16,7 @@ import { environment } from '../../save/binding'
 export const checkProject: Command = {
     title: () => i18n.value.check.command,
     icon: {
-        is: CheckIcon,
+        is: CheckProjectIcon,
     },
 
     // It changes no chart state, so it runs while peeking.
@@ -66,6 +66,7 @@ export const checkProject: Command = {
         await showModal(InfoModal, {
             title: () => i18n.value.check.title,
             message: () => lines.map((line) => line()).join('\n'),
+            lines,
         })
     },
 }
