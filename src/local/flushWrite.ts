@@ -439,8 +439,9 @@ export const writeFlush = async (
     // (§1.3.1's compare-and-set); another tab's continuation that moved it first makes this a fork.
     const continuing =
         !session && batch.session.parent !== undefined && chain?.head === batch.session.parent.id
-    // The head check (r12-arch-web L4): another tab continued the chain meanwhile.
-    if (chain && chain.head !== batch.session.id && !continuing)
+    // The head check (r12-arch-web L4): another tab continued the chain meanwhile. A chain marked
+    // for Delete takes nothing new either (as in journal apply), so the work forks out of it.
+    if (chain && (chain.deleting !== undefined || (chain.head !== batch.session.id && !continuing)))
         return {
             kind: 'notHead',
             chainId,

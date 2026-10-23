@@ -6,7 +6,11 @@ import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld } from '../../../src/local/testing/world'
 import { maintHandlers } from '../../../src/local/worker/maintHandlers'
 import '../../helpers/lockChecks'
-import { rows, workerCore } from '../flush/harness'
+import { listRecent } from '../../../src/local/recent'
+import { editStep, futureFixtureOperation } from '../../helpers/historySteps'
+import { openPage, rows, workerCore } from '../flush/harness'
+import { continueIn, handlersOf, readOpen } from '../startup/harness'
+import { widen } from '../timeline/helpers'
 import { closedChain, MemoryStorage, openDeleter, tamper, visible, WALL } from './harness'
 
 // Delete, Undo and the sweep (deletion design §3.3, §3.4): R3 (lock every session or skip),
@@ -315,4 +319,37 @@ test('a pending import of a chain marked for Delete is not resumed', async () =>
     assert.deepEqual(await pending(), [{ sessionId: second.id, chainId: first.chainId }])
     assert.equal((await deleter.mark(first.chainId)).kind, 'marked')
     assert.deepEqual(await pending(), [])
+})
+
+test('a continuation whose chain is marked before its first write forks into a visible chain, and the sweep leaves it whole', async () => {
+    const world = createWorld({ seed: 12 })
+    const storage = new MemoryStorage()
+    const { first, second, states } = await closedChain(world, storage)
+    const page = await openPage(world, world.tab('a'))
+    // The tab read the chain as the newest and continued it; it holds nothing of the chain yet.
+    continueIn(page, await readOpen(page, second.id))
+    const deleter = await openDeleter(world, world.tab('b'), storage)
+    assert.equal((await deleter.mark(first.chainId)).kind, 'marked')
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('After the mark')) },
+        widen(states.b, 3),
+        true,
+    )
+    await page.flusher.flush({ strict: true })
+    const forked = [...rows(world, 'chains').keys()].filter((id) => id !== first.chainId)
+    assert.equal(forked.length, 1)
+    assert.equal(rows(world, 'chains').get(first.chainId)?.head, second.id)
+    const handlers = handlersOf(page)
+    const list = await listRecent({ call: () => page.tab.run(() => handlers.listRecent()) })
+    assert.deepEqual(
+        list.storedRead === 'value' ? list.storedValue.map((each) => each.chainId) : [],
+        forked,
+    )
+    assert.deepEqual(await deleter.sweep(), { removed: 1, busy: false })
+    assert.equal(rows(world, 'chains').get(first.chainId), undefined)
+    assert.ok(rows(world, 'chains').get(forked[0] ?? ''))
+    const head = String(rows(world, 'chains').get(forked[0] ?? '')?.head)
+    assert.equal((await readOpen(page, head)).kind, 'open')
+    assert.deepEqual(checkStored(world.memory), [])
+    await world.idle()
 })
