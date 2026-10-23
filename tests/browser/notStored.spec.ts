@@ -160,12 +160,12 @@ test('a change of cause while shown keeps the chip, and the dialog follows the c
         ],
         [
             { mode: 'stored', reason: 'upgrading' },
-            'Another tab is upgrading the editor.',
+            'A newer version of the editor is open in another tab.',
             ['Cancel', 'Reload', 'Save'],
         ],
         [
             { mode: 'readOnly' },
-            'This version is older than your data.',
+            'A newer version of the editor has been opened in this browser.',
             ['Cancel', 'Reload', 'Save'],
         ],
         [{ mode: 'memory' }, undefined, ['Cancel', 'Save']],

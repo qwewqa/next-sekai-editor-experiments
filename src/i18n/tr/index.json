@@ -764,7 +764,7 @@
     },
     "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır.",
     "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki öğenin menüsünü açar.",
-    "recentSessions": "Bir dosyaya kaydetmediğiniz çalışma Geçmiş › Son Oturumlar içinde bulunur.",
+    "recentSessions": "Dosyaya kaydedilmemiş çalışma Geçmiş › Son Oturumlar’da.",
     "fileTitle": "Dosyalar",
     "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın.",
     "crswap": "Kaydederken bir çökme olursa proje dosyasının yanında bir .crswap dosyası kalabilir. Silmek güvenlidir."
@@ -950,8 +950,8 @@
       "discard": "Sil…",
       "discardConfirm": "Sil",
       "cannotOpen": "(bu sürümde açılamıyor)",
-      "discardAutoSave": "Eski otomatik kaydetme verisini ({0}) silmek istiyor musunuz?",
-      "discardUnreadable": "{0} tarihli okunamayan kurtarılmış çalışmayı ({1}) silmek istiyor musunuz?",
+      "discardAutoSave": "Eski otomatik kaydetme verisi ({0}) silinsin mi?",
+      "discardUnreadable": "{0} tarihli okunamayan kurtarılmış çalışma ({1}) silinsin mi?",
       "recovery": {
         "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
@@ -977,7 +977,7 @@
       "deleteConfirm": "{0} oturum silinsin mi?",
       "notSaved": "{0} oturum dosyaya kaydedilmedi: {1}.",
       "namesMore": "{0} ve {1} tane daha",
-      "newer": "Editörün daha yeni bir sürümünü gerektiren oturumlar var.",
+      "newer": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.|Bu oturumlardan bazıları için editörün daha yeni bir sürümü gerekiyor.",
       "deleting": "Siliniyor…",
       "exportRawNote": "Sorun bildirmek için.",
       "exportRawUnreadable": "Saklanan çalışma okunamadı.",
@@ -1190,7 +1190,7 @@
     "updated": "{0} sürümüne güncellendi",
     "whatsNew": "Yenilikler",
     "upgradeBlocked": "Saklanan çalışmanızı açmak için diğer {0} sekmelerini kapatın.",
-    "olderVersion": "Bu sürüm verilerinizden daha eski. Sayfayı yeniden yükleyin veya çalışmanızı dosyalara kaydedin.",
+    "olderVersion": "Bu tarayıcıda editörün daha yeni bir sürümü açıldı. Sayfayı yeniden yükleyin veya çalışmanızı dosyalara kaydedin.",
     "tryAgain": "Tekrar Dene",
     "continued": "\"{0}\" devam ettirildi ({1}).",
     "continuedUntitled": "Oturumunuz devam ettirildi ({0}).",
@@ -1228,7 +1228,7 @@
     "reason": {
       "full": "Tarayıcının depolama alanı dolu.",
       "olderTabs": "Değişiklikleri saklamaya devam etmek için diğer {0} sekmelerini kapatın.",
-      "upgrading": "Başka bir sekme editörü güncelliyor."
+      "upgrading": "Editörün daha yeni bir sürümü başka bir sekmede açık."
     },
     "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",

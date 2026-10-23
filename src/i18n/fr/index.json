@@ -976,7 +976,7 @@
       "deleteNext": "Supprimer…",
       "deleteConfirm": "Supprimer {0} session ?|Supprimer {0} sessions ?",
       "notSaved": "{0} session n’est pas sauvegardée dans un fichier : {1}.|{0} sessions ne sont pas sauvegardées dans un fichier : {1}.",
-      "namesMore": "{0} et {1} de plus",
+      "namesMore": "{0} et {1} autres",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
       "exportRawNote": "Pour signaler un problème.",
@@ -1190,7 +1190,7 @@
     "updated": "Mis à jour vers la version {0}",
     "whatsNew": "Nouveautés",
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
-    "olderVersion": "Cette version est plus ancienne que vos données. Rechargez la page, ou sauvegardez votre travail dans des fichiers.",
+    "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou sauvegardez votre travail dans des fichiers.",
     "tryAgain": "Réessayer",
     "continued": "Session reprise : \"{0}\" ({1}).",
     "continuedUntitled": "Votre session a été reprise ({0}).",
@@ -1228,7 +1228,7 @@
     "reason": {
       "full": "Le stockage du navigateur est plein.",
       "olderTabs": "Fermez les autres onglets de {0} pour continuer à stocker les modifications.",
-      "upgrading": "Un autre onglet met à jour l’éditeur."
+      "upgrading": "Une version plus récente de l’éditeur est ouverte dans un autre onglet."
     },
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
@@ -2162,7 +2162,7 @@
     "fileDamaged": "\"{0}\" est endommagé. La sauvegarde crée un fichier séparé.",
     "repaired": "{0} étape de la chronologie réparée.|{0} étapes de la chronologie réparées.",
     "storedDamaged": "{0} étape de la chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la chronologie stockées dans ce navigateur sont endommagées.",
-    "mediaDamaged": "Élément endommagé dans ce navigateur : {0}."
+    "mediaDamaged": "La copie de {0} stockée dans ce navigateur était endommagée."
   },
   "levelInfo": {
     "file": "Fichier",

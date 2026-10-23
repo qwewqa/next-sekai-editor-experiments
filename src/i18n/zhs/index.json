@@ -764,9 +764,9 @@
     },
     "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知。之后按 Esc 可将其关闭。",
     "shiftF10": "按 Shift+F10 或菜单键可打开当前焦点项的菜单。",
-    "recentSessions": "未保存到文件的作品在“历史记录 › 最近会话”中。",
+    "recentSessions": "未保存到文件的内容在“历史记录 › 最近会话”中。",
     "fileTitle": "文件",
-    "moveBetweenDevices": "要将作品移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
+    "moveBetweenDevices": "要将工作移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
     "crswap": "保存时发生崩溃，可能会在项目文件旁留下 .crswap 文件。可以放心删除。"
   },
   "elevation": {
@@ -1190,7 +1190,7 @@
     "updated": "已更新到版本 {0}",
     "whatsNew": "新功能",
     "upgradeBlocked": "请关闭其他 {0} 标签页，以打开已存储的内容。",
-    "olderVersion": "此版本早于数据的版本。请重新加载，或将内容保存为文件。",
+    "olderVersion": "此浏览器中已打开过更新版本的编辑器。请重新加载，或将内容保存为文件。",
     "tryAgain": "重试",
     "continued": "已从 {1} 继续“{0}”。",
     "continuedUntitled": "已继续 {0} 的会话。",
@@ -1228,7 +1228,7 @@
     "reason": {
       "full": "浏览器存储空间已满。",
       "olderTabs": "请关闭其他 {0} 标签页，以继续存储更改。",
-      "upgrading": "另一个标签页正在更新编辑器。"
+      "upgrading": "另一个标签页中打开了更新版本的编辑器。"
     },
     "unavailable": "编辑器无法在此浏览器中存储更改。请保存到文件中以保留你的工作。",
     "private": "如果这是隐私窗口，此处存储的所有内容会在关闭窗口时丢失。请将内容保存到文件中以保留。",
@@ -2187,7 +2187,7 @@
     "notDescendant": "此版本并非基于您的版本 ({0})。",
     "separate": "另存为单独文件",
     "openOther": "打开另一个版本",
-    "openOtherNote": "你的更改保持未保存。",
+    "openOtherNote": "你的更改仍未保存。",
     "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
     "keptName": "{0}（{1} 被替换）",
     "replaceNewer": "由更新版本的 {0} 创建。",
