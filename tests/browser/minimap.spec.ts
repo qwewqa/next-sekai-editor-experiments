@@ -522,7 +522,16 @@ test.describe('peek', () => {
             [time] as const,
         )
 
+    // A missed edit path throws in development (pushState while viewing history).
+    const errors = new WeakMap<Page, string[]>()
+    test.afterEach(({ page }) => {
+        expect(errors.get(page)).toEqual([])
+    })
+
     test.beforeEach(async ({ page }) => {
+        const seen: string[] = []
+        errors.set(page, seen)
+        page.on('pageerror', (error) => seen.push(error.message))
         await open(page, { size: { width: 1280, height: 800 }, long: false })
         await expect(minimapStrip(page).box).toBeVisible()
         // The short chart's note is an edit away from a long one; storing follows the shown chart.

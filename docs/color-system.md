@@ -766,6 +766,7 @@ C5 toolbar notes:
 Chart content keeps its own colours:
 
 - notes, connectors, guides, grid and stages;
+- the minimap's content and change ticks (its box and cursor are UI: white on `bg`);
 - the elevation canvas and the preview renderer;
 - NoteShapeIcon;
 - the BPM and time-scale chips;
