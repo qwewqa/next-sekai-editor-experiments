@@ -1234,6 +1234,7 @@
         "reason": {
             "full": "Browser storage is full.",
             "olderTabs": "Close other {0} tabs to keep storing changes.",
+            "readOnly": "A newer version of the editor has been opened.",
             "upgrading": "A newer version of the editor is open in another tab."
         },
         "unavailable": "The editor cannot store changes in this browser. Save to a file to keep your work.",

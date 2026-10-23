@@ -1234,6 +1234,7 @@
     "reason": {
       "full": "Le stockage du navigateur est plein.",
       "olderTabs": "Fermez les autres onglets de {0} pour continuer à stocker les modifications.",
+      "readOnly": "Une version plus récente de l’éditeur a été ouverte.",
       "upgrading": "Une version plus récente de l’éditeur est ouverte dans un autre onglet."
     },
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",

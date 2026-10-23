@@ -1234,6 +1234,7 @@
     "reason": {
       "full": "Tarayıcının depolama alanı dolu.",
       "olderTabs": "Değişiklikleri saklamaya devam etmek için diğer {0} sekmelerini kapatın.",
+      "readOnly": "Editörün daha yeni bir sürümü açıldı.",
       "upgrading": "Editörün daha yeni bir sürümü başka bir sekmede açık."
     },
     "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
