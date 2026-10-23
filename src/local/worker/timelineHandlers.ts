@@ -206,7 +206,10 @@ const readOlder = async (
         }
     }
     await fillFrom(tx, entries)
-    return { entries, ...(next ? { next } : earlierMissing ? { earlierMissing: true as const } : {}) }
+    return {
+        entries,
+        ...(next ? { next } : earlierMissing ? { earlierMissing: true as const } : {}),
+    }
 }
 
 /** The session a session continued, and the entry it continued from. */

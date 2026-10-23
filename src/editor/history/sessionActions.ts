@@ -33,12 +33,10 @@ export const shownNameOf = (chain: RecentChain): ShownName => ({
 
 /** Restore Session, or Restore as a Copy; true when it opened, and History then shows its Timeline. */
 export const restoreRow = async (row: ChainRow, mode: 'restore' | 'copy') => {
+    // The row's peek (the menu peeks its row) ends first: the session shown next is another.
+    backToNow()
     const { opened } = await restoreStored(row.chain.head.sessionId, mode, shownNameOf(row.chain))
-    if (opened) {
-        // The session peeked (the menu peeks its row) was of the session left.
-        backToNow()
-        historyTab.value = 'timeline'
-    }
+    if (opened) historyTab.value = 'timeline'
     return opened
 }
 

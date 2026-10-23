@@ -156,7 +156,7 @@ const nameOf = (row: ChainRow) =>
 /** The inline row's text: Deleted "X", or that it can no longer be undone. */
 const deletedLabel = (row: DeletedRow) =>
     row.status === 'failed'
-        ? `${deletedText(row)}. ${i18n.value.session.undoFailed}`
+        ? [deletedText(row), i18n.value.session.undoFailed].join(', ')
         : deletedText(row)
 const deletedText = (row: DeletedRow) =>
     interpolateRaw(
