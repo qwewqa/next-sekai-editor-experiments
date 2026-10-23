@@ -272,6 +272,40 @@ test.describe('the iOS bar', () => {
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
     })
 
+    test('an unconfirmed download is settled from the Not stored dialog with I Have the File', async ({
+        page,
+        context,
+    }) => {
+        await seed(context, {}, ios)
+        await visit(page)
+        await edit(page, 990)
+        await setStatus(page, pausedFull)
+        await expect(bar(page)).toBeVisible({ timeout: 8000 })
+        await bar(page).getByRole('button', { name: 'Save', exact: true }).click()
+        await submitSave(page, 'coconut')
+        await expect(bar(page)).toHaveCount(0)
+        await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
+
+        await chip(page).click()
+        await afterGuard(page)
+        await expect(dialog(page)).toContainText('finished downloading')
+        expect(await buttons(page)).toEqual([
+            'Cancel',
+            'Local Data',
+            'Try Again',
+            'I Have the File',
+            'Save',
+        ])
+        await dialog(page).getByRole('button', { name: 'I Have the File' }).click()
+        await expect(dialog(page)).toHaveCount(0)
+
+        // The download line and its button are gone.
+        await chip(page).click()
+        await afterGuard(page)
+        await expect(dialog(page)).not.toContainText('finished downloading')
+        expect(await buttons(page)).toEqual(['Cancel', 'Local Data', 'Try Again', 'Save'])
+    })
+
     test('Save in the bar saves the work, and the bar goes', async ({ page, context }) => {
         await seed(context, {}, ios)
         await visit(page)

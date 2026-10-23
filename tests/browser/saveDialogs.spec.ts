@@ -233,7 +233,8 @@ test.describe('the Save dialog', () => {
 
         await page.evaluate((sizes) => window.saveSeen.estimate!(sizes), estimateOf)
         await expect(history).toContainText('1,840 steps · 3.1 MB')
-        await expect(bgm).toContainText('coconut.mp3 · 4.2 MB')
+        await expect(bgm).toContainText('coconut.mp3')
+        await expect(bgm).toContainText('4.2 MB')
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 7.6 MB')
 
         // Unticking follows at once, with no new estimate.
@@ -296,12 +297,10 @@ test.describe('the Save dialog', () => {
             estimate: { cached: estimateOf },
         })
         const history = dialog(page).getByRole('checkbox', { name: 'History' })
-        const bgm = dialog(page).getByRole('checkbox', { name: 'BGM' })
         await expect(history).toBeDisabled()
         await expect(history).not.toBeChecked()
         await expect(dialog(page)).toContainText('History requires a secure connection.')
-        await expect(bgm).toBeDisabled()
-        await expect(dialog(page).locator('[data-save-row="bgm"]')).toContainText('No BGM')
+        await expect(dialog(page).locator('[data-save-row="bgm"]')).toHaveCount(0)
         await expect(dialog(page).locator('[data-save-total]')).toHaveText('Total: about 300 kB')
     })
 
@@ -844,6 +843,26 @@ test.describe('the feedback after a write', () => {
         await page.waitForTimeout(400)
         await page.getByRole('button', { name: 'I Have the File' }).click()
         await expect(page.locator('[data-file-chip]')).toHaveCount(0)
+    })
+
+    test('while Not stored takes the chip, the card does not point to a chip that is not shown', async ({
+        page,
+        context,
+    }) => {
+        await seed(context, { fileSystemAccess: false })
+        await visit(page)
+        await page.evaluate(async () => {
+            const { bindFile, raised } =
+                (await import('/src/editor/file/state.ts')) as typeof import('../../src/editor/file/state')
+            const { liveState } =
+                (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+            bindFile({ name: 'coconut.nxsp', event: 'downloaded', at: Date.now() }, liveState.value)
+            raised.notStored.value = true
+        })
+        await feedback(page, { ...plain, kind: 'download', size: 12_400_000 })
+        await expect(notice(page)).toContainText('Download started: coconut.nxsp · 12.4 MB')
+        await expect(notice(page)).not.toContainText('To confirm it later')
+        await expect(page.getByRole('button', { name: 'I Have the File' })).toBeVisible()
     })
 
     test('a confirmed download carries no action', async ({ page, context }) => {

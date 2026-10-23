@@ -156,7 +156,7 @@ const storedCount = (page: Page, store: 'entries' | 'media') =>
     )
 
 const notLoaded = (page: Page) =>
-    page.locator('[data-notice-card]').getByText('BGM not loaded', { exact: true })
+    page.locator('[data-notice-card]').getByText('The BGM is not loaded.', { exact: true })
 
 const chooseAudio = async (page: Page, name: string, buffer: Buffer) => {
     const choosing = page.waitForEvent('filechooser')
@@ -240,6 +240,8 @@ test.describe('with a stored BGM', () => {
         expect(await storedCount(page, 'media')).toBe(0)
 
         await chooseAudio(page, 'renamed.wav', file)
+        // The line that offered it is gone with the card, since it is no longer true.
+        await expect(page.getByText('The BGM is not loaded.', { exact: true })).toHaveCount(0)
         // The recorded name stays; the audio is there, and no step was made.
         await expect.poll(() => liveBgm(page)).toEqual(picked)
         await expect.poll(() => storedCount(page, 'media')).toBe(1)
@@ -250,6 +252,24 @@ test.describe('with a stored BGM', () => {
         await expect.poll(() => liveBgm(page).then((bgm) => bgm.decoded)).toBe(true)
         expect(await liveBgm(page)).toEqual(picked)
         await expect(page.getByText('The BGM is not loaded.', { exact: true })).toHaveCount(0)
+    })
+
+    test('Choose Audio… with the same file takes the Undo card away', async ({ page }) => {
+        await visit(page)
+        await pickBgm(page, 'first.wav', wav(0.5, 5))
+        const first = await liveBgm(page)
+        await pickBgm(page, 'second.wav', wav(0.6, 9))
+        await dropMedia(page, first.hash!)
+        await reload(page)
+        await expect.poll(() => liveBgm(page).then((bgm) => bgm.decoded)).toBe(true)
+        await undo(page)
+        await expect(notLoaded(page)).toHaveCount(1)
+
+        await chooseAudio(page, 'first.wav', wav(0.5, 5))
+        await expect(notLoaded(page)).toHaveCount(0)
+        await expect
+            .poll(() => liveBgm(page))
+            .toEqual(expect.objectContaining({ hash: first.hash, decoded: true }))
     })
 
     test('Choose Audio… with another file is one BGM change that says it differs', async ({
@@ -309,6 +329,6 @@ test.describe('with a stored BGM', () => {
         await page.keyboard.press('m')
         const modal = page.getByRole('dialog')
         await expect(modal.locator('input[type="button"]')).toHaveValue('BGM not loaded')
-        await expect(modal.getByRole('button', { name: 'Download BGM' })).toBeDisabled()
+        await expect(modal.getByRole('button', { name: 'Download BGM' })).toHaveCount(0)
     })
 })

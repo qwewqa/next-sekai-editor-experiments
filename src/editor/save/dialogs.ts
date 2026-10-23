@@ -12,7 +12,7 @@ import { interpolate } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { formatSize, formatTime } from '../commands/exportLevel/format'
 import { showNotPutBack } from '../commands/exportLevel/ui'
-import { confirmFile, downloadNotConfirmed } from '../file'
+import { chip, confirmFile, downloadNotConfirmed } from '../file'
 import { savedOnText } from '../history/rowPresentation'
 import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
@@ -403,12 +403,14 @@ export const defaultSaveUi: SaveUi = {
             feedback.kind === 'saved' && isPeeking.value && simple(feedback)
                 ? interpolate(() => i18n.value.notice.savedCurrent, feedback.name)
                 : () => savedText(feedback)
+        // The chip it names is only shown when no higher state (Not stored) takes its place.
+        const pointer = interpolate(
+            () => i18n.value.confirm.announce,
+            text,
+            () => i18n.value.state.notConfirmed,
+        )
         const announced = unconfirmed
-            ? interpolate(
-                  () => i18n.value.confirm.announce,
-                  text,
-                  () => i18n.value.state.notConfirmed,
-              )
+            ? () => (chip.value?.kind === 'notConfirmed' ? pointer() : text())
             : undefined
         // Save to File… of a session another tab has open wrote its stored state: said to
         // assistive technology with the notice (§1.6.11.6), not shown as another line.

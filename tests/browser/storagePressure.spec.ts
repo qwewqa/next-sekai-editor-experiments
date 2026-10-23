@@ -160,7 +160,7 @@ const status = (page: Page) => page.evaluate(() => window.nseStorageTest?.status
 const chip = (page: Page) => page.locator('[data-file-chip]')
 
 const notLoaded = (page: Page) =>
-    page.locator('[data-notice-card]').getByText('BGM not loaded', { exact: true })
+    page.locator('[data-notice-card]').getByText('The BGM is not loaded.', { exact: true })
 
 test('a full browser removes a cached earlier BGM and storing resumes; its step says the BGM is not loaded', async ({
     page,
