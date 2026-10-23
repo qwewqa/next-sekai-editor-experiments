@@ -178,7 +178,6 @@ export const createDeletion = (deps: DeletionDeps) => {
             const result = await removeLocked({
                 chainId: chain.chainId,
                 locked: chain.sessions,
-                remove: { whole: true },
                 expect: { head: chain.head, updatedAt: chain.updatedAt, deleting: chain.at },
                 reason: 'delete',
             })

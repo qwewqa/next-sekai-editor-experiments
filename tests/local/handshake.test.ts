@@ -82,7 +82,6 @@ test('the first load creates every current store, index and meta row', async () 
         'lastUseDate',
         'maxSeenTime',
         'migratedHashes',
-        'removedForSpace',
     ])
     assert.equal(meta.formatVersion, 1)
     assert.equal(meta.createdBy, '0.6.0')
