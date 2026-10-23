@@ -656,6 +656,7 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 **Exempt files** (chart content), each with its reason:
 
 - `src/editor/canvas/**`
+- `src/editor/minimap/paint.ts` (the minimap's chart drawing)
 - the elevation canvas files (not `ElevationEditor.vue`)
 - `src/preview/render*` and `usePreviewRendering.ts`
 - `src/utils/colors.ts`

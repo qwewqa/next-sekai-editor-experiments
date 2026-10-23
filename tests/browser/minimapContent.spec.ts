@@ -381,3 +381,78 @@ test('a resize keeps the old image until the new one is ready, and dispose frees
     expect(result.tall.height).toBeLessThanOrEqual(4096)
     expect(result.freed).toEqual({ width: 0, height: 0 })
 })
+
+test('the content hook follows edits, ignores selection changes and stops with its scope', async ({
+    page,
+}) => {
+    await installHarness(page)
+    const result = await page.evaluate(async () => {
+        const h = window.minimapHarness
+        const { fixtures, show, appImport } = window.editorTest
+        const { mountMinimapContent } = await appImport<typeof import('../helpers/minimapContent')>(
+            '/tests/helpers/minimapContent.ts',
+        )
+        const { minimapStats } = h.pipelineModule
+        const single = fixtures.interaction.slides[0]![0]!
+        show({ ...fixtures.connectors, slides: [[{ ...single, beat: 5, left: -2 }]] }, 5)
+        const canvas = document.createElement('canvas')
+        canvas.style.cssText = 'position:fixed;left:0;top:0;width:40px;height:500px;opacity:0'
+        document.body.append(canvas)
+        const until = async (done: () => boolean) => {
+            for (let i = 0; i < 600 && !done(); i++) await h.frame()
+            return done()
+        }
+        const mounted = mountMinimapContent(canvas)
+        const first = await until(() => !!mounted.mapping.value)
+        const geometry = mounted.mapping.value?.geometry
+        const settle = async () => {
+            // Two frames: a pass, then anything it schedules.
+            await h.frame()
+            await h.frame()
+        }
+        await settle()
+        const base = { ...minimapStats }
+        // A selection change replaces the state but no watched identity.
+        const note = [...h.history.state.value.store.slides.note.values()].flat()[0]!
+        h.history.replaceState({ ...h.history.state.value, selectedEntities: [note] })
+        await settle()
+        const afterSelection = { ...minimapStats }
+        h.edit((transaction) => {
+            h.slideNotes.replaceNote(transaction, note, { ...note, beat: 8 })
+        })
+        const painted = await until(() => minimapStats.paints > afterSelection.paints)
+        const afterEdit = { ...minimapStats }
+        mounted.unmount()
+        await settle()
+        h.edit((transaction) => {
+            const moved = [...h.history.state.value.store.slides.note.values()].flat()[0]!
+            h.slideNotes.replaceNote(transaction, moved, { ...moved, beat: 9 })
+        })
+        await settle()
+        const afterUnmount = { ...minimapStats }
+        const freed = { width: canvas.width, height: canvas.height }
+        canvas.remove()
+        return {
+            first,
+            geometry,
+            selectionPasses: afterSelection.passes - base.passes,
+            selectionPaints: afterSelection.paints - base.paints,
+            painted,
+            bands: afterEdit.bandPasses - afterSelection.bandPasses,
+            paintsAfterUnmount: afterUnmount.paints - afterEdit.paints,
+            passesAfterUnmount: afterUnmount.passes - afterEdit.passes,
+            freed,
+        }
+    })
+    expect(result.first).toBe(true)
+    expect(result.geometry).toMatchObject({ width: 40, height: 500 })
+    // A selection change touches none of the watched identities.
+    expect(result.selectionPasses).toBe(0)
+    expect(result.selectionPaints).toBe(0)
+    expect(result.painted).toBe(true)
+    expect(result.bands).toBe(1)
+    // Hidden means free: nothing runs after the scope stops.
+    expect(result.passesAfterUnmount).toBe(0)
+    expect(result.paintsAfterUnmount).toBe(0)
+    expect(result.freed).toEqual({ width: 0, height: 0 })
+})

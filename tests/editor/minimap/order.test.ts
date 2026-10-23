@@ -18,16 +18,16 @@ const shuffled = <T>(items: readonly T[]) => {
 }
 
 const state = chartState([
-    [note(6, { left: -4 }), note(12, { left: 1 })],
-    [note(2, { left: 0 }), note(9, { left: -2 })],
-    [note(2, { left: 3 }), note(5, { left: 1 })],
+    [note(6, -4), note(12, 1)],
+    [note(2, 0), note(9, -2)],
+    [note(2, 3), note(5, 1)],
     // Zero length: not a visible body.
-    [note(7), note(7, { left: 2 })],
+    [note(7), note(7, 2)],
     [
-        note(4, { connectorType: 'guide', connectorGuideAlpha: 0 }),
-        note(8, { connectorType: 'guide', connectorGuideAlpha: 0 }),
+        note(4, 0, { connectorType: 'guide', connectorGuideAlpha: 0 }),
+        note(8, 0, { connectorType: 'guide', connectorGuideAlpha: 0 }),
     ],
-    [note(11, { left: 1 })],
+    [note(11, 1)],
     [note(3.2), note(3.7), note(3.4)],
 ])
 const connectors = [...state.store.slides.connector.values()].flat()

@@ -26,13 +26,7 @@ const moved = (entity: NoteEntity, beat: number) => ({ ...entity, beat })
 
 // Beats 10 and 10.5 share a bucket. The slide at 4 and 8 has a body across keys 4 to 8.
 const start = () =>
-    chartState([
-        [note(2)],
-        [note(10)],
-        [note(10.5)],
-        [note(20)],
-        [note(4, { left: -3 }), note(8, { left: 2 })],
-    ])
+    chartState([[note(2)], [note(10)], [note(10.5)], [note(20)], [note(4, -3), note(8, 2)]])
 
 test('a note move gives its two keys', () => {
     const state = start()
