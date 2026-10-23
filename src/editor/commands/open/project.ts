@@ -138,7 +138,7 @@ const restoreAction = (sessionId: string) => ({
             if (!(await confirmSwitch()) || !request.isCurrent()) return
             const { restoreSession } = await import('../../../local/startup/api')
             if (!request.isCurrent()) return
-            if ((await restoreSession(sessionId, request)) && request.isCurrent())
+            if ((await restoreSession(sessionId, request)).opened && request.isCurrent())
                 dismissNoticeCard()
         })
     },

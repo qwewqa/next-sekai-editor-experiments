@@ -51,7 +51,11 @@ export const leftSession = (
 
 /** What opening a stored session in this tab did; when it didn't, why. */
 export type OpenResult =
-    | { opened: true }
+    | {
+          opened: true
+          /** It opened as a separate copy (asked for, open elsewhere, no longer the latest, bound elsewhere). */
+          forked: boolean
+      }
     | {
           opened: false
           /** `none`: nothing to reopen, or startup hasn't run; `blank`: what's open stays. */
@@ -61,7 +65,8 @@ export type OpenResult =
 /**
  * Opens a stored session in this tab, replacing what's open: its pending journal applied first
  * under its lock (§1.6.4, between loads), then a continuation, or a fork when it isn't its
- * chain's latest session or is open in another tab.
+ * chain's latest session or is open in another tab. In safe mode it only reads: no journal is
+ * replayed, and it opens as a copy that stores nothing.
  */
 const openSession = async (
     asked: string,
@@ -79,7 +84,10 @@ const openSession = async (
     await flusher?.outgoing
     if (!request.isCurrent() || context !== captured) return { opened: false, why: 'blank' }
     const own = leaving?.id === sessionId || previousSession.value?.sessionId === sessionId
-    const lock = await claimSessionLock(open.locks, sessionId, own ? MARKER_WAIT_MS : 0)
+    // Safe mode reads only: the replay is a write, and its exclusive lock is not taken.
+    const lock = open.safe
+        ? undefined
+        : await claimSessionLock(open.locks, sessionId, own ? MARKER_WAIT_MS : 0)
     let shared: LockLease | undefined
     try {
         // Its pending journal first (§1.6.4, between loads): a stale session is never opened
@@ -117,7 +125,11 @@ const openSession = async (
         const elsewhere =
             !held && hasWebLocks() && (await open.client.heldElsewhere(sessionLock(sessionId)))
         const fork =
-            asCopy || elsewhere || !read.isHead || (await boundElsewhere(open, read)) !== 'no'
+            asCopy ||
+            open.safe ||
+            elsewhere ||
+            !read.isHead ||
+            (await boundElsewhere(open, read)) !== 'no'
         const copyOf = copyOfOf(read)
         // The exclusive hold taken for the replay stands for the parent's shared one (§1.3.6).
         const parentLock = held ?? (shared = await holdShared(open.locks, sessionId))
@@ -139,7 +151,7 @@ const openSession = async (
         )
         if (!state) return { opened: false, why: 'blank' }
         // The session this replaced is offered by Reopen in turn (§1.4.1).
-        return { opened: true }
+        return { opened: true, forked: fork || !parentLock }
     } finally {
         // The opened session took the leases it holds; anything else goes.
         lock?.release()
@@ -160,17 +172,13 @@ export const reopenSession = (supplied?: SwitchRequest): Promise<OpenResult> =>
 
 export const reopen = async (request?: SwitchRequest) => (await reopenSession(request)).opened
 
-export const restoreAsCopy = (sessionId: string, supplied?: SwitchRequest) =>
-    withSwitchRequest(
-        supplied,
-        async (request) => (await openSession(sessionId, true, request)).opened,
-    )
+/** Restore as a Copy: the session opens as a separate copy (`forked` is always true). */
+export const restoreAsCopy = (sessionId: string, supplied?: SwitchRequest): Promise<OpenResult> =>
+    withSwitchRequest(supplied, (request) => openSession(sessionId, true, request))
 
-export const restoreSession = (sessionId: string, supplied?: SwitchRequest) =>
-    withSwitchRequest(
-        supplied,
-        async (request) => (await openSession(sessionId, false, request)).opened,
-    )
+/** Restore Session: continues the session, or opens a copy when it can't (`forked`). */
+export const restoreSession = (sessionId: string, supplied?: SwitchRequest): Promise<OpenResult> =>
+    withSwitchRequest(supplied, (request) => openSession(sessionId, false, request))
 
 /** What opening a session in this tab needs, once startup has run. */
 export const sessionContext = () => context

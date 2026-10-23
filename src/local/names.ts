@@ -54,10 +54,13 @@ export const namePartsOf = (chain: Record<string, unknown> | undefined, state?: 
     const parts: NameParts = {}
     const name = text(chain?.name)
     const fileName = text(file?.name)
-    const summary = chain?.summary as { title?: unknown } | undefined
+    const summary = chain?.summary as { title?: unknown; bgmName?: unknown } | undefined
     const title = text(state?.levelInfo.title) ?? text(summary?.title)
     const sourceName = text(chain?.sourceName)
-    const bgmName = text(state?.bgm.meta?.filename) ?? text(state?.bgm.filename)
+    // A stored chain has no state here: its summary keeps the BGM's name.
+    const bgmName = state
+        ? (text(state.bgm.meta?.filename) ?? text(state.bgm.filename))
+        : text(summary?.bgmName)
     if (name) parts.name = name
     if (fileName) parts.fileName = fileName
     if (title) parts.title = title

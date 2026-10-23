@@ -59,6 +59,7 @@ ruleTester.run('local/stored-reads', rule, {
             'readRecovered',
             'listKept',
             'findEdits',
+            'listRecent',
         ].map((method) => ({
             code: `await worker.call('${method}', arg)`,
             filename: `${root}/src/local/open/project.ts`,

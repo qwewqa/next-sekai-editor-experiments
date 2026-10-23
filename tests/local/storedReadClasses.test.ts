@@ -26,6 +26,7 @@ const CLASSES = {
     readRecovered: 'covered',
     listKept: 'covered',
     findEdits: 'covered',
+    listRecent: 'covered',
     // Other reads: a failure is handled in place, by review.
     readSnapshot: 'read',
     readSnapshotVerified: 'read',

@@ -363,6 +363,13 @@ test('a journal of a chain marked for Delete becomes a recovery session, never s
     const outcome = recovery.outcomes[0]
     assert.ok(outcome && 'result' in outcome && outcome.result.kind === 'recovery')
     assert.equal(rows(world, 'chains').get(outcome.result.chainId)?.head, outcome.result.sessionId)
+    // [Restore Session] opens the recovery session, not the session whose journal was kept.
+    const [kept] = events
+    assert.equal(
+        kept?.kind === 'journalKept' ? kept.sessionId : undefined,
+        outcome.result.sessionId,
+    )
+    assert.notEqual(outcome.result.sessionId, session.id)
     assert.deepEqual(checkStored(world.memory), [])
 })
 

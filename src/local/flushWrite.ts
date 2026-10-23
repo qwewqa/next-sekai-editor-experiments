@@ -63,6 +63,8 @@ export type ChainSummary = {
     author?: string
     rating?: number
     tags?: string[]
+    /** The BGM's file name, so a chart named by its song keeps that name in Recent Sessions. */
+    bgmName?: string
     noteCount: number
 }
 
@@ -220,6 +222,8 @@ export type FlushResult =
           stackRemoved?: boolean
           /** The chain record as written, for the journal's descriptor (§1.6.11.3). */
           chain: Record<string, unknown>
+          /** The chain record was made, or its `head` moved here: Recent Sessions lists change. */
+          chainMoved?: true
           /** Whether the batch's identity unit was stored. */
           identity?: boolean
           /** The batch's identity unit was dropped: its binding was taken over meanwhile. */
@@ -829,6 +833,7 @@ export const writeFlush = async (
         stackWritten: stack !== undefined,
         ...(stackRemoved ? { stackRemoved } : {}),
         chain: chainValue,
+        ...(!chain || continuing ? { chainMoved: true as const } : {}),
         ...(identity === undefined ? {} : { identity }),
         ...(stale ? { staleIdentity: true } : {}),
         stats,

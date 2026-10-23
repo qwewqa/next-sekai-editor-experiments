@@ -308,6 +308,7 @@ const COVERED_READS = [
     'readRecovered',
     'listKept',
     'findEdits',
+    'listRecent',
 ]
 
 /** A method name written out: a string literal, or a template literal without holes. */

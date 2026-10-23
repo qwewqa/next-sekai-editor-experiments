@@ -22,6 +22,7 @@ import {
     recoveryItems,
     reopenSession,
     restoreAsCopy,
+    restoreSession,
     setSessionContext,
 } from '../../../src/local/startup/api'
 import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY } from '../../../src/local/startup/legacy'
@@ -78,7 +79,7 @@ test('Reopen right after a switch continues the session left, and offers the one
     setSessionContext({ ...loaded.deps, onLeft: (each) => lefts.push(each) }, loaded.recovery)
 
     const result = await page.tab.run(() => reopenSession())
-    assert.deepEqual(result, { opened: true })
+    assert.deepEqual(result, { opened: true, forked: false })
     const reopened = openSession(loaded)
     assert.equal(reopened.continuation, true)
     assert.equal(reopened.forkOf, undefined)
@@ -116,7 +117,10 @@ test('Restore as a Copy forks the session open in another tab', async () => {
     const loaded = await load(world, 'tab', storage)
     assert.ok(loaded.events.some((event) => event.kind === 'openElsewhere'))
     setSessionContext(loaded.deps, loaded.recovery)
-    assert.equal(await loaded.page.tab.run(() => restoreAsCopy(session.id)), true)
+    assert.deepEqual(await loaded.page.tab.run(() => restoreAsCopy(session.id)), {
+        opened: true,
+        forked: true,
+    })
     const copy = openSession(loaded)
     assert.notEqual(copy.forkOf, undefined)
     assert.equal(copy.parent?.id, session.id)
@@ -301,7 +305,7 @@ test('Reopen of a session whose journal fails to apply starts from the journalâ€
     })
     leftSession(session.id, { kind: 'date' }, 0, Promise.resolve(true))
     const result = await loaded.page.tab.run(() => reopenSession())
-    assert.deepEqual(result, { opened: true })
+    assert.deepEqual(result, { opened: true, forked: false })
     const reopened = openSession(loaded)
     assert.equal(reopened.parent?.id, session.id)
     assert.equal(reopened.forkOf, undefined)
@@ -321,7 +325,10 @@ test('Reopen of a session whose journal a newer build wrote opens nothing, and s
     setSessionContext(loaded.deps, loaded.recovery)
     leftSession(session.id, { kind: 'date' }, 0, Promise.resolve(true))
     const shown = rootOf(loaded.page.live.state)
-    assert.deepEqual(await loaded.page.tab.run(() => restoreAsCopy(session.id)), false)
+    assert.deepEqual(await loaded.page.tab.run(() => restoreAsCopy(session.id)), {
+        opened: false,
+        why: 'later',
+    })
     assert.deepEqual(await loaded.page.tab.run(() => reopenSession()), {
         opened: false,
         why: 'later',
@@ -359,7 +366,10 @@ test('Reopen over a failed journal a flush covered since takes up the stored ses
         },
     })
     leftSession(session.id, { kind: 'date' }, 0, Promise.resolve(true))
-    assert.deepEqual(await loaded.page.tab.run(() => reopenSession()), { opened: true })
+    assert.deepEqual(await loaded.page.tab.run(() => reopenSession()), {
+        opened: true,
+        forked: false,
+    })
     assert.equal(rootOf(loaded.page.live.state), stored)
     assert.equal(storage.getItem(`nse.journal.${session.id}`), null)
 })
@@ -424,7 +434,7 @@ for (const mode of ['newer-request', 'throw'] as const) {
         try {
             const opening = loaded.page.tab.run(() => restoreAsCopy(source.id))
             if (mode === 'throw') await assert.rejects(opening, /post-install hook/)
-            else assert.equal(await opening, true)
+            else assert.deepEqual(await opening, { opened: true, forked: true })
             assert.ok(installedId)
             assert.equal(editorSession.value.sessionId, installedId)
             assert.equal(loaded.page.flusher.session?.id, installedId)
@@ -449,3 +459,99 @@ for (const mode of ['newer-request', 'throw'] as const) {
         }
     })
 }
+
+test('Restore Session says whether it forked: not when it continues, yes when it is not the latest or is open elsewhere', async () => {
+    const world = createWorld({ seed: 20 })
+    const storage = new MemoryStorage()
+    const other = await openJournalPage(world, 'other', storage)
+    const a = stateOf(goldenChart())
+    const first = beginSession(other, a, 'import')
+    await other.flusher.flush({ strict: true })
+    const loaded = await load(world, 'tab', storage)
+    setSessionContext(loaded.deps, loaded.recovery)
+    // Held by the other tab: a copy.
+    assert.deepEqual(await loaded.page.tab.run(() => restoreSession(first.id)), {
+        opened: true,
+        forked: true,
+    })
+    assert.notEqual(openSession(loaded).forkOf, undefined)
+    other.tab.kill()
+    // Free and the chain's latest: the chain continues.
+    const free = await load(world, 'free', storage)
+    setSessionContext(free.deps, free.recovery)
+    assert.deepEqual(await free.page.tab.run(() => restoreSession(first.id)), {
+        opened: true,
+        forked: false,
+    })
+    const continuation = openSession(free)
+    assert.equal(continuation.forkOf, undefined)
+    assert.equal(continuation.parent?.id, first.id)
+    append(
+        free.page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Continued')) },
+        widen(a, 1),
+    )
+    await free.page.tab.run(() => free.page.flusher.flush({ strict: true }))
+    free.page.tab.kill()
+    // The chain went on since: the first session is no longer its latest, so this is a copy.
+    const later = await load(world, 'later', storage)
+    setSessionContext(later.deps, later.recovery)
+    assert.deepEqual(await later.page.tab.run(() => restoreSession(first.id)), {
+        opened: true,
+        forked: true,
+    })
+    assert.notEqual(openSession(later).forkOf, undefined)
+})
+
+test('Restore Session says why it opened nothing', async () => {
+    const world = createWorld({ seed: 21 })
+    const storage = new MemoryStorage()
+    const loaded = await load(world, 'tab', storage)
+    setSessionContext(loaded.deps, loaded.recovery)
+    assert.deepEqual(await loaded.page.tab.run(() => restoreSession('nobody')), {
+        opened: false,
+        why: 'missing',
+    })
+    assert.deepEqual(await loaded.page.tab.run(() => restoreAsCopy('nobody')), {
+        opened: false,
+        why: 'missing',
+    })
+})
+
+test('in safe mode a restore forks without replaying the journal and stores nothing', async () => {
+    const world = createWorld({ seed: 22 })
+    const storage = new MemoryStorage()
+    const loaded = await load(world, 'tab', storage)
+    const { session, root } = await pendingJournal(world, storage)
+    const stores = ['sessions', 'chains', 'entries', 'stackBlocks', 'nodes', 'chunks', 'media']
+    const dump = () => JSON.stringify(stores.map((store) => [...rows(world, store)]))
+    const before = dump()
+    const journal = storage.getItem(`nse.journal.${session.id}`)
+    let replays = 0
+    setSessionContext(
+        { ...loaded.deps, safe: true },
+        {
+            ...loaded.recovery,
+            worker: {
+                ...loaded.recovery.worker,
+                applyJournal: () => {
+                    replays++
+                    return Promise.reject(new Error('Safe mode writes nothing'))
+                },
+            },
+        },
+    )
+    // Even Restore Session, which would continue a free session, opens a copy.
+    assert.deepEqual(await loaded.page.tab.run(() => restoreSession(session.id)), {
+        opened: true,
+        forked: true,
+    })
+    const copy = openSession(loaded)
+    assert.notEqual(copy.forkOf, undefined)
+    assert.equal(copy.parent?.id, session.id)
+    // The stored state, not the journal's: the journal stays for a normal load to apply.
+    assert.notEqual(rootOf(loaded.page.live.state), root)
+    assert.equal(replays, 0)
+    assert.equal(storage.getItem(`nse.journal.${session.id}`), journal)
+    assert.equal(dump(), before)
+})

@@ -1,6 +1,7 @@
 import { readMeta } from '../db'
 import { prepareFlush, type FlushBatch } from '../flushWrite'
 import { HANDLES } from '../handleRows'
+import { readRecent } from '../recent'
 import { directWaiter, type Waiter } from '../scheduler'
 import {
     MIGRATION_STORES,
@@ -56,6 +57,10 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
         /** The most recent session a new visit continues (§1.4.2). */
         readNewestSession: (_: undefined, scope?: CallScope) =>
             context.core.read(READ_STORES, readNewestSession, scope),
+
+        /** Recent Sessions' list: every chain not marked for Delete, newest first. */
+        listRecent: () =>
+            context.core.read(['chains', 'sessions', 'stackBlocks', 'tombstones'], readRecent),
 
         /** The bindings of sessions open in other tabs, for the bound-elsewhere check. */
         readBindings: (sessionIds: string[]) =>
