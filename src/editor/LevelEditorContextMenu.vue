@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { isPeeking, replaceState, state } from '../history'
 import { selectedEntities } from '../history/selectedEntities'
+import { peekedSession } from './history/selection'
 import { i18n } from '../i18n'
 import { settings } from '../settings'
 import { isEditableEntity } from '../state/operations/editable'
@@ -73,7 +74,8 @@ const actions = computed(() => {
             groups.push(['selectSlideNotes'])
         if (editable) groups.push(['copy'])
         if (canEditSelectionProperties.value) groups.push(['editProperties'])
-        groups.push(['editsHere'])
+        // Not for a session's peek: it would filter this Timeline by another chain's chart.
+        if (!peekedSession.value) groups.push(['editsHere'])
         return toActions(groups)
     }
     // Elevations belong to notes: offer the editor for notes or empty space.

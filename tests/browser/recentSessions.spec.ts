@@ -506,3 +506,23 @@ test('Save to File… of a closed session opens the save dialog for it', async (
     await page.getByRole('menuitem', { name: sessions.saveToFile }).click()
     await expect(page.getByRole('dialog', { name: /Save/ }).last()).toBeVisible()
 })
+
+test('a session’s peek ends with the tab, and offers no Find Edits Here', async ({ page }) => {
+    errorsFail(page)
+    await load(page)
+    await closedChain(page, { title: 'Alpha', life: 990 })
+    await openSessions(page)
+    await rowFor(page, 'Alpha').click()
+    await expect.poll(() => peekedLife(page)).toBe(990)
+    // Another chain’s chart says nothing of this Timeline’s beats.
+    await page.locator('[data-history-surface="dialog"] [data-history-close]').click()
+    await page.mouse.click(800, 500, { button: 'right' })
+    await expect(page.getByRole('menu')).toBeVisible()
+    await expect(
+        page.getByRole('menuitem', { name: messages.commands.editsHere.title }),
+    ).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Shift+H')
+    await page.getByRole('tab', { name: messages.history.timeline }).click()
+    await expect(peekBar(page)).toHaveCount(0)
+})

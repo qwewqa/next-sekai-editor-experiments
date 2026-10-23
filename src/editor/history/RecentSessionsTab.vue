@@ -28,7 +28,15 @@ import { formatCount } from '../../utils/size'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
-import { diskFinding, fileChanged, fileEvent, writesInPlace } from '../file/state'
+import { downloadConfirmed } from '../file/flags'
+import {
+    diskFinding,
+    downloadNotConfirmed,
+    fileChanged,
+    fileEvent,
+    writesInPlace,
+} from '../file/state'
+import { platform } from '../../platform'
 import { labelAccessibleName, labelLine, labelOf } from '../fileLabel'
 import { readBrowserFacts, storageLineKey } from '../settings/storageLine'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
@@ -149,11 +157,20 @@ const liveLabel = computed(() =>
         name: liveName.value,
         changed: fileChanged.value,
         writesInPlace: writesInPlace(),
+        notConfirmed: downloadNotConfirmed.value,
         ...(liveFile.value ? { file: liveFile.value } : {}),
         ...(session.value.copyOf ? { copyOf: session.value.copyOf } : {}),
         ...(diskFinding.value ? { diskFinding: diskFinding.value } : {}),
     }),
 )
+
+/** A download not confirmed: the status bar's rule (state.ts `downloadNotConfirmed`) for a stored file. */
+const notConfirmed = (file: RecentChain['file']) =>
+    !!file &&
+    file.event !== 'saved' &&
+    file.event !== 'opened' &&
+    !file.confirmed &&
+    (platform.capabilities.unconfirmedDownloads || !downloadConfirmed.value)
 
 const nameOf = (row: ChainRow) =>
     row.thisTab
@@ -195,6 +212,7 @@ const captionOf = (row: ChainRow) => {
               name: nameOf(row),
               changed: row.chain.changed,
               writesInPlace: writesInPlace(),
+              notConfirmed: notConfirmed(row.chain.file),
               ...(row.chain.file ? { file: row.chain.file } : {}),
           })
     return [timeOf(row.chain), labelLine({ ...label, name: '' }), flagText(row) ?? notesText(row)]
@@ -212,6 +230,7 @@ const accessibleOf = (row: ChainRow) => {
                   name,
                   changed: row.chain.changed,
                   writesInPlace: writesInPlace(),
+                  notConfirmed: notConfirmed(file),
                   ...(file ? { file } : {}),
               }),
               name,
