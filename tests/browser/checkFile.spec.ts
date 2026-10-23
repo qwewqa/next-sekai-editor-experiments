@@ -74,12 +74,9 @@ const opened = async (page: Page, bytes: Uint8Array<ArrayBuffer>) => {
     await imported(page)
 }
 
-/** Slows each batch of the check, and logs the points a run reaches (nothing pauses). */
-const slowCheck = (page: Page, ms: number) =>
-    page.evaluate((ms) => {
-        localStorage.setItem('nse.test.checkDelay', String(ms))
-        localStorage.setItem('nse.test.savePause', 'never')
-    }, ms)
+/** Logs the points a run reaches (nothing pauses). */
+const logPoints = (page: Page) =>
+    page.evaluate(() => localStorage.setItem('nse.test.savePause', 'never'))
 
 const runCheck = (page: Page) =>
     page.evaluate(async () => {
@@ -87,6 +84,56 @@ const runCheck = (page: Page) =>
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
         void runCommand(commands.checkProject)
     })
+
+type Hold = { held: number; release: () => void }
+declare global {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+    interface Window {
+        checkHold?: Hold
+    }
+}
+
+/**
+ * Holds the worker call that opens a phase of the check (`checkFileBatch`, `checkStoredOpen`,
+ * `checkStoredBatch`; a batch call only its first) until the spec releases it, then starts the
+ * check: the spec acts while the run is in that phase, however slow the page is.
+ */
+const holdCheck = async (
+    page: Page,
+    method: 'checkFileBatch' | 'checkStoredOpen' | 'checkStoredBatch',
+) => {
+    await logPoints(page)
+    await page.evaluate((method) => {
+        const worker = window.nseStorageTest!.worker
+        const original = worker.call
+        let open!: () => void
+        const gate = new Promise<void>((resolve) => (open = resolve))
+        const hold: Hold = {
+            held: 0,
+            release: () => {
+                worker.call = original
+                open()
+            },
+        }
+        window.checkHold = hold
+        worker.call = new Proxy(original, {
+            async apply(target, self, args: [string, { n?: number }?]) {
+                if (args[0] === method && (args[1]?.n ?? 0) === 0) {
+                    hold.held++
+                    await gate
+                    hold.held--
+                }
+                return Reflect.apply(target, self, args) as unknown
+            },
+        })
+    }, method)
+    await runCheck(page)
+    await expect.poll(() => page.evaluate(() => window.checkHold?.held)).toBe(1)
+    return {
+        held: () => page.evaluate(() => window.checkHold?.held ?? 0),
+        release: () => page.evaluate(() => window.checkHold?.release()),
+    }
+}
 
 const checkDialog = (page: Page) =>
     page.getByRole('dialog').filter({ hasText: 'Check File and History' })
@@ -199,11 +246,11 @@ test('Cancel mid-check writes nothing, then the run ends', async ({ page }) => {
     await writeFile(page, 'coconut.nxsp', await withBadChunk(good))
     const before = await readFile(page, 'coconut.nxsp')
     const rowsBefore = await stored(page)
-    await slowCheck(page, 800)
-    await runCheck(page)
+    const hold = await holdCheck(page, 'checkFileBatch')
     const progress = checkDialog(page)
     await expect(progress).toContainText('Checking')
     await progress.getByRole('button', { name: 'Close' }).click()
+    await hold.release()
     await reached(page, 'checkEnd')
     await expect(checkDialog(page)).toHaveCount(0)
     // The damage was not acted on: still bound, nothing marked, nothing written.
@@ -219,13 +266,13 @@ test('the file rewritten mid-check: it changed, and nothing is written', async (
     await opened(page, good)
     await damageRow(page)
     const rowsBefore = await stored(page)
-    await slowCheck(page, 1200)
-    await runCheck(page)
+    const hold = await holdCheck(page, 'checkStoredBatch')
     const dialog = checkDialog(page)
     // The file phase is over; the finish has not started.
     await expect(dialog).toContainText('Checking stored history')
     const other = await distinctBytes()
     await writeFile(page, 'coconut.nxsp', other)
+    await hold.release()
     await expect(dialog).toContainText('"coconut.nxsp" changed while it was being checked.', {
         timeout: 20_000,
     })
@@ -283,16 +330,20 @@ test('stored damage with no file to repair it from: the steps are marked', async
 test('a Save pressed during a check waits for it', async ({ page }) => {
     await start(page)
     await edit(page, 1)
-    await slowCheck(page, 800)
-    await runCheck(page)
+    const hold = await holdCheck(page, 'checkStoredOpen')
     await expect(checkDialog(page)).toContainText('Checking')
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
         void runCommand(commands.save)
     })
+    // The check is held in the worker, so the Save is behind it: no dialog beside the run.
+    expect(await hold.held()).toBe(1)
+    await expect(saveDialog(page)).toHaveCount(0)
+    expect(await page.evaluate(() => window.nseSaveTest?.reached ?? [])).not.toContain('checkEnd')
+    await hold.release()
     await expect(saveDialog(page)).toBeVisible()
-    // One queue: the Save's dialog came after the check's end, never beside its run.
+    // One queue: the Save's dialog came after the check's end.
     expect(await page.evaluate(() => window.nseSaveTest?.reached ?? [])).toContain('checkEnd')
 })
 
@@ -302,13 +353,13 @@ test('a session switch cancels the check', async ({ page }) => {
     await opened(page, good)
     await writeFile(page, 'coconut.nxsp', await withBadChunk(good))
     const { chainId } = await chainOf(page)
-    await slowCheck(page, 800)
-    await runCheck(page)
+    const hold = await holdCheck(page, 'checkFileBatch')
     await expect(checkDialog(page)).toContainText('Checking')
     await page.evaluate(async () => {
         const { resetState } = await import('/src/history/index.ts')
         resetState(false)
     })
+    await hold.release()
     await reached(page, 'checkEnd')
     await expect(checkDialog(page)).toHaveCount(0)
     // The old chain's file was not unlinked by a check that no longer owned its session.

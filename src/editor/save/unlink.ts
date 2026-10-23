@@ -2,7 +2,7 @@ import { session as currentSession } from '../../history/session'
 import { journalWriter } from '../../local/storing'
 import { appVersion } from '../../platform'
 import { exportMemory } from '../commands/exportLevel/memory'
-import { unbindFile } from '../file'
+import { unbindFile } from '../file/state'
 import type { Env } from './binding'
 import { forgetHandle } from './env'
 
@@ -25,6 +25,11 @@ export const unlinkSession = async (env: Env, name: string) => {
         env.session.docId = docId
         env.session.chain = record
         journalWriter?.rewrite()
+        // A switch landed in the round trip: the session now open is not this chain's.
+        if (currentSession.value.sessionId !== env.session.id) {
+            forgetHandle(env.chainId)
+            return
+        }
         unbindFile()
         currentSession.value = { ...currentSession.value, docId, copyOf: { name, bound: true } }
         exportMemory.partial = true
