@@ -960,7 +960,9 @@
         "atLoad": "啟動通知"
       },
       "openHistory": "開啟歷史記錄",
-      "confirmClose": "關閉前詢問未儲存的變更"
+      "confirmClose": "關閉前詢問未儲存的變更",
+      "exportRaw": "匯出原始資料…",
+      "exportRawName": "{0} 原始資料 {1}.zip"
     }
   },
   "sidebars": {

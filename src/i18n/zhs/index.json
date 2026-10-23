@@ -960,7 +960,9 @@
         "atLoad": "启动通知"
       },
       "openHistory": "打开历史记录",
-      "confirmClose": "关闭前询问未保存的更改"
+      "confirmClose": "关闭前询问未保存的更改",
+      "exportRaw": "导出原始数据…",
+      "exportRawName": "{0} 原始数据 {1}.zip"
     }
   },
   "sidebars": {

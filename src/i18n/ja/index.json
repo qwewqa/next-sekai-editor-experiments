@@ -960,7 +960,9 @@
         "atLoad": "起動時の通知"
       },
       "openHistory": "履歴を開く",
-      "confirmClose": "未保存の変更があるときは閉じる前に確認する"
+      "confirmClose": "未保存の変更があるときは閉じる前に確認する",
+      "exportRaw": "生データを出力…",
+      "exportRawName": "{0} 生データ {1}.zip"
     }
   },
   "sidebars": {

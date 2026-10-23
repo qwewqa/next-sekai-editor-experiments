@@ -960,7 +960,9 @@
         "atLoad": "시작 알림"
       },
       "openHistory": "기록 열기",
-      "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인"
+      "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
+      "exportRaw": "원시 데이터 내보내기…",
+      "exportRawName": "{0} 원시 데이터 {1}.zip"
     }
   },
   "sidebars": {
