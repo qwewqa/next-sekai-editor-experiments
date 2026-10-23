@@ -232,7 +232,7 @@ const ownWriteOf = async (
 ) => {
     if (!identity || !asHead) return
     const env = environment()
-    if (!env || env.session.id !== session.value.sessionId) return
+    if (env?.session.id !== session.value.sessionId) return
     const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
     if (read.storedRead === 'failed') return
     const record = read.storedValue

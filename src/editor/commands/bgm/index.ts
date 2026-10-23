@@ -51,7 +51,7 @@ export const changeBgm = async (file?: File) => {
         const { meta, buffer, source } = newBgm
         if (meta && buffer && source && !named.buffer && named.meta?.hash === meta.hash) {
             const picked: PickedBgm = {
-                filename: newBgm.filename ?? meta.filename ?? '',
+                filename: newBgm.filename ?? meta.filename,
                 buffer,
                 ...(newBgm.waveform ? { waveform: newBgm.waveform } : {}),
                 source,
