@@ -45,7 +45,7 @@ export type MetaValues = {
     deviceId: string
     daysOfUse: UseDay
     lastUseDate: string
-    lastGcAt: { day: UseDay; time: number } | null
+    lastGcAt: { day: UseDay; time: number; unsafe?: true } | null
     deletionsPending: boolean
     migratedHashes: string[]
     /** Cleanup under pressure removed something: the next load says so once. */

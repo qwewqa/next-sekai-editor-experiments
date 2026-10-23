@@ -2,13 +2,14 @@ import { detection } from '../platform/detect'
 import type { JournalStore, LockService } from '../platform/types'
 import { broadcastChannel } from './channel'
 import { createDeletion, runGc, setDeletion, type DeletionDeps, type SweepResult } from './deletion'
-import { realTimers, type Timers } from './locks'
+import { hasWebLocks, realTimers, type Timers } from './locks'
 import type { ReadWorker } from './storedRead'
 
 // The maintenance runner (deletion design §3.10): when the deleting jobs run. One run at a time,
 // in order: reclaim what deleted chains left outside storage, sweep chains marked for Delete long
 // enough ago, GC, and at load a silent `persist()`. A trigger during a run queues one more run.
-// Jobs start only while the page is visible; one already running when it hides runs to its end.
+// Jobs start only while the page is visible (the load's too); one already running when it hides runs
+// to its end. A page hidden at load still asks for `persist()`.
 
 /** Becoming visible triggers a run at most this often. */
 const VISIBLE_EVERY_MS = 60_000
@@ -51,19 +52,27 @@ export const createRunner = (deps: RunnerDeps) => {
         }, BUSY_RETRY_MS)
     }
 
+    let persisted = false
+    const askPersist = () => {
+        if (persisted) return
+        persisted = true
+        void Promise.resolve(deps.persist?.()).catch(() => undefined)
+    }
+
     const runOnce = async (load: boolean) => {
         await deps.reclaim().catch(() => undefined)
         const swept = await deps.sweep()
-        // A sweep that removed something has run GC already.
-        const gc = swept.removed ? undefined : await runGc(deps.worker, false)
+        // Due after a removal through `deletionsPending`; a busy or aborted pass is retried.
+        const gc = await runGc(deps.worker, false)
         if (swept.busy || gc?.kind === 'busy' || gc?.kind === 'aborted') retryLater()
-        if (load) void Promise.resolve(deps.persist?.()).catch(() => undefined)
+        if (load) askPersist()
     }
 
     /** Runs the steps, or queues one more run behind the one running. */
     const trigger = (load = false): Promise<void> => {
-        if (!load && !deps.visible()) {
+        if (!deps.visible()) {
             owed = true
+            if (load) askPersist()
             return Promise.resolve()
         }
         if (running) {
@@ -167,6 +176,8 @@ export const startMaintenance = (deps: MaintenanceDeps) => {
             runner.sweepAt(at)
         },
     })
+    // Without Web Locks nothing can be locked: Delete reports failed, and no job runs.
+    if (!hasWebLocks()) return { deletion, start: () => Promise.resolve() }
     setDeletion(deletion)
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') void runner.visible()

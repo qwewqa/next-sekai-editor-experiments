@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { SweepResult } from '../../../src/local/deletion'
-import { createRunner } from '../../../src/local/maintenance'
+import { markDeleted, type SweepResult } from '../../../src/local/deletion'
+import { createRunner, startMaintenance } from '../../../src/local/maintenance'
 
 // The maintenance runner (deletion design §3.10): when the deleting jobs run.
 
@@ -10,12 +10,13 @@ const setup = () => {
     const clock = { now: 0, visible: true }
     const log: string[] = []
     const sweeps: SweepResult[] = []
+    const passes: { kind: string }[] = []
     let hold: Promise<void> = Promise.resolve()
     const runner = createRunner({
         worker: {
             call: (method) => {
                 log.push(String(method))
-                return Promise.resolve({ kind: 'skipped' })
+                return Promise.resolve(passes.shift() ?? { kind: 'skipped' })
             },
         },
         sweep: async () => {
@@ -57,6 +58,7 @@ const setup = () => {
         runner,
         log,
         sweeps,
+        passes,
         clock,
         timers,
         advance,
@@ -114,4 +116,70 @@ test('a Delete’s sweep runs when its mark is old enough', async () => {
     assert.equal(log.filter((each) => each === 'sweep').length, 1)
     await advance(300_000)
     assert.equal(log.filter((each) => each === 'sweep').length, 2)
+})
+
+test('GC is asked for after every sweep, and a busy or stopped pass is tried again 30 s later', async () => {
+    for (const kind of ['busy', 'aborted']) {
+        const { runner, log, sweeps, passes, advance } = setup()
+        // A sweep that removed something: the runner's one GC call follows it.
+        sweeps.push({ removed: 1, busy: false })
+        passes.push({ kind })
+        await runner.trigger()
+        assert.deepEqual(log, ['reclaim', 'sweep', 'gcPass'], kind)
+        await advance(29_999)
+        assert.equal(log.filter((each) => each === 'gcPass').length, 1, kind)
+        await advance(1)
+        assert.equal(log.filter((each) => each === 'gcPass').length, 2, kind)
+        // Done this time: no further try.
+        await advance(60_000)
+        assert.equal(log.filter((each) => each === 'gcPass').length, 2, kind)
+    }
+})
+
+test('a load in a hidden page runs nothing but persist(); the page’s first visibility runs the jobs', async () => {
+    const { runner, log, clock } = setup()
+    clock.visible = false
+    await runner.start()
+    assert.deepEqual(log, ['persist'])
+    clock.visible = true
+    await runner.visible()
+    assert.deepEqual(log, ['persist', 'reclaim', 'sweep', 'gcPass'], 'persist is asked for once')
+})
+
+test('without Web Locks no job runs, no listener is added, and Delete reports failed', async () => {
+    const navigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    const listeners: string[] = []
+    Object.defineProperty(globalThis, 'navigator', { value: {}, configurable: true })
+    Object.defineProperty(globalThis, 'document', {
+        value: {
+            addEventListener: (type: string) => listeners.push(type),
+            visibilityState: 'visible',
+        },
+        configurable: true,
+    })
+    try {
+        const calls: string[] = []
+        const maintenance = startMaintenance({
+            worker: {
+                call: (method) => {
+                    calls.push(String(method))
+                    return Promise.resolve(undefined)
+                },
+            },
+            locks: {
+                request: () => Promise.reject(new Error('No locks')),
+                query: () => Promise.reject(new Error('No locks')),
+            },
+            journal: { read: () => Promise.resolve([]) } as never,
+            replayJournal: () => Promise.resolve(undefined),
+            reclaim: () => Promise.resolve(),
+        })
+        await maintenance.start()
+        assert.deepEqual(calls, [])
+        assert.deepEqual(listeners, [])
+        assert.deepEqual(await markDeleted('c'), { kind: 'failed' })
+    } finally {
+        if (navigator) Object.defineProperty(globalThis, 'navigator', navigator)
+        Reflect.deleteProperty(globalThis, 'document')
+    }
 })

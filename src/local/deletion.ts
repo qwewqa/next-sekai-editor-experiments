@@ -164,7 +164,7 @@ export const createDeletion = (deps: DeletionDeps) => {
         return { kind: 'done', ...result }
     }
 
-    /** Removes the chains marked at least `minAgeMs` ago, then runs GC when any went. */
+    /** Removes the chains marked at least `minAgeMs` ago; the runner's GC follows. */
     const sweepDeleted = async (minAgeMs = SWEEP_AGE_MS): Promise<SweepResult> => {
         let marked: Marked[]
         try {
@@ -185,7 +185,6 @@ export const createDeletion = (deps: DeletionDeps) => {
             if (result.kind === 'removed') removed++
             else if (result.kind === 'busy') busy = true
         }
-        if (removed) await runGc(worker, true)
         return { removed, busy }
     }
 

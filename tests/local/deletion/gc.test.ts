@@ -127,6 +127,17 @@ const bodies = (world: World) =>
 
 const meta = (world: World, key: string) => rows(world, 'meta').get(key)?.value
 
+/** A core whose exclusive hold reports a waiting writer after `looks` looks for one. */
+const waitingAfter = (deleter: Awaited<ReturnType<typeof fresh>>['deleter'], looks: number) => {
+    let asked = 0
+    const waiting = Object.create(deleter.core) as StorageCore
+    waiting.exclusive = (body) =>
+        deleter.core.exclusive((hold) =>
+            body({ ...hold, writerWaiting: () => Promise.resolve(++asked > looks) }),
+        )
+    return waiting
+}
+
 const fresh = async (seed: number) => {
     const world = createWorld({ seed, checks: false })
     const deleter = await openDeleter(world, world.tab('gc'), new MemoryStorage())
@@ -244,7 +255,8 @@ test('a Deleted chain holding newer data is swept with its bodies; while it is t
     assert.ok(bodies(world).size > 0)
     assert.equal((await deleter.mark(first.chainId)).kind, 'marked')
     assert.deepEqual(await deleter.sweep(), { removed: 1, busy: false })
-    // The sweep's own GC removed every body: nothing else was stored.
+    // The runner's GC follows the sweep and removes every body: nothing else was stored.
+    assert.equal((await deleter.gc())?.kind, 'done')
     assert.deepEqual(bodies(world), new Set())
     assert.deepEqual(await deleter.gc(), { kind: 'done', swept: 0 })
 })
@@ -277,6 +289,7 @@ test('a flush that reuses a hash GC swept stores it again (the closure check)', 
     const deleter = await openDeleter(world, world.tab('b'), storage)
     assert.equal((await deleter.mark(old.chainId)).kind, 'marked')
     assert.deepEqual(await deleter.sweep(), { removed: 1, busy: false })
+    assert.equal((await deleter.gc())?.kind, 'done')
     const { encodeSnapshot } = await import('../../../src/local/records/snapshot')
     const { toRecords } = await import('../../../src/local/records/records')
     const root = encodeSnapshot(toRecords(a)).root.hash
@@ -310,17 +323,15 @@ test('GC is busy while a writer holds nse-maint, and stops for a waiting writer 
     await world.idle()
 
     // A writer asks after the first sweep batch: the pass stops there, that batch committed.
-    let asked = 0
-    const waiting = Object.create(deleter.core) as StorageCore
-    waiting.exclusive = (body) =>
-        deleter.core.exclusive((hold) =>
-            body({ ...hold, writerWaiting: () => Promise.resolve(++asked > 1) }),
-        )
+    // (Three looks come before it, one ahead of each body store's key read.)
     const epoch = meta(world, 'epoch') as number
-    assert.deepEqual(await deleter.tab.run(() => gcPass(waiting, { always: true })), {
-        kind: 'aborted',
-        swept: 500,
-    })
+    assert.deepEqual(
+        await deleter.tab.run(() => gcPass(waitingAfter(deleter, 4), { always: true })),
+        {
+            kind: 'aborted',
+            swept: 500,
+        },
+    )
     assert.equal(meta(world, 'epoch'), epoch + 1)
     assert.equal(rows(world, 'chunks').size, 100)
     // The next pass marks again and sweeps the rest.
@@ -382,4 +393,56 @@ test('with storing paused for a full browser, a removal and GC still run and lea
     assert.equal((await deleter.gc())?.kind, 'done')
     assert.deepEqual(bodies(world), new Set())
     assert.deepEqual(deleter.core.status, { mode: 'stored', reason: 'full' })
+})
+
+test('GC is busy while an import is pending, and sweeps only what nothing reaches once it ends', async () => {
+    const { world, deleter } = await fresh(9)
+    const h = await seedBodies(world)
+    // An import that deduped against an old orphan body: its parent node is a later batch.
+    await tamper(world, (tx) =>
+        tx
+            .put('sessions', { id: 'p', chainId: 'c', v: SESSION_V, importPending: true })
+            .then(() => undefined),
+    )
+    const before = bodies(world)
+    assert.deepEqual(await deleter.gc(), { kind: 'busy' })
+    assert.deepEqual(bodies(world), before)
+    assert.ok(bodies(world).has(toHex(h.orphanNode)))
+    await tamper(world, (tx) =>
+        tx.put('sessions', { id: 'p', chainId: 'c', v: SESSION_V }).then(() => undefined),
+    )
+    assert.deepEqual(await deleter.gc(), { kind: 'done', swept: 4 })
+})
+
+test('a pass that finds newer data is not repeated before the next day of use, and leaves the deletion pending', async () => {
+    const { world, deleter } = await fresh(10)
+    await seedBodies(world)
+    await tamper(world, async (tx) => {
+        await tx.put('entries', { sessionId: 's', seq: 2, kind: 'future' })
+        await writeMeta(tx, 'deletionsPending', true)
+    })
+    assert.deepEqual(await deleter.gc(false), {
+        kind: 'unsafe',
+        why: 'an entry of an unknown kind',
+    })
+    assert.equal(meta(world, 'deletionsPending'), true)
+    assert.equal((meta(world, 'lastGcAt') as { day: number }).day, DAYS)
+    assert.deepEqual(await deleter.gc(false), { kind: 'skipped' })
+    // The next day of use tries again.
+    await daysPass(world, 1)
+    assert.equal((await deleter.gc(false))?.kind, 'unsafe')
+})
+
+test('a writer who waits during the key reads ends the pass before anything is swept', async () => {
+    const { world, deleter } = await fresh(11)
+    await seedBodies(world)
+    const before = bodies(world)
+    assert.deepEqual(
+        await deleter.tab.run(() => gcPass(waitingAfter(deleter, 1), { always: true })),
+        {
+            kind: 'aborted',
+            swept: 0,
+        },
+    )
+    assert.deepEqual(bodies(world), before)
 })
