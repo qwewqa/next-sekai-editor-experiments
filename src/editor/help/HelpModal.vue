@@ -34,10 +34,12 @@ import HelpSection from './HelpSection.vue'
             <li>{{ i18n.help.modal.keyboard.single }}</li>
             <li>{{ i18n.help.modal.keyboard.multiple }}</li>
             <li>{{ i18n.help.altN }}</li>
+            <li>{{ i18n.help.shiftF10 }}</li>
         </HelpSection>
 
         <HelpSection :title="i18n.help.fileTitle">
             <li>{{ i18n.help.moveBetweenDevices }}</li>
+            <li>{{ i18n.help.recentSessions }}</li>
             <!-- Only a browser that writes through a swap file leaves one. -->
             <li v-if="platform.capabilities.writeBack">{{ i18n.help.crswap }}</li>
         </HelpSection>

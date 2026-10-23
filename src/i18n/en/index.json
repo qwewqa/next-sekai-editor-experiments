@@ -763,6 +763,8 @@
             }
         },
         "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.",
+        "shiftF10": "Shift+F10 or the Menu key opens the menu of a focused row.",
+        "recentSessions": "Work you did not save to a file is in History › Recent Sessions.",
         "fileTitle": "Files",
         "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there.",
         "crswap": "A crash while saving can leave a .crswap file next to the project file. It is safe to delete."
@@ -1352,7 +1354,9 @@
             "thisTab": "This tab",
             "elsewhere": "Open in another tab or window",
             "actions": "More Actions for \"{0}\"",
-            "saveToFile": "Save to File…"
+            "saveToFile": "Save to File…",
+            "delete": "Delete",
+            "openReason": "It is open in another tab or window."
         },
         "details": {
             "title": "Step Details",
@@ -2210,7 +2214,14 @@
     "session": {
         "untitled": "Untitled · {0}",
         "restored": "Restored \"{0}\"",
-        "restoredCopy": "Restored a copy of \"{0}\""
+        "restoredCopy": "Restored a copy of \"{0}\"",
+        "deleted": "Deleted \"{0}\"",
+        "deletedMany": "Deleted {0} sessions",
+        "deleteRefused": "Not deleted. \"{0}\" is open in another tab or window.",
+        "deleteFailed": "Could not delete \"{0}\"",
+        "undoLost": "Deleted \"{0}\". It can no longer be undone.",
+        "undoLostMany": "Deleted {0} sessions. They can no longer be undone.",
+        "undoFailed": "Undo failed"
     },
     "prompt": {
         "title": "Changes Not Stored",

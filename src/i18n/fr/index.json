@@ -763,6 +763,8 @@
       }
     },
     "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite.",
+    "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de la ligne sélectionnée.",
+    "recentSessions": "Le travail non sauvegardé dans un fichier se trouve dans Historique › Sessions récentes.",
     "fileTitle": "Fichiers",
     "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
     "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer sans risque."
@@ -1352,7 +1354,9 @@
       "thisTab": "Cet onglet",
       "elsewhere": "Ouverte dans un autre onglet ou une autre fenêtre",
       "actions": "Plus d’actions pour \"{0}\"",
-      "saveToFile": "Sauvegarder dans un fichier…"
+      "saveToFile": "Sauvegarder dans un fichier…",
+      "delete": "Supprimer",
+      "openReason": "Elle est ouverte dans un autre onglet ou une autre fenêtre."
     },
     "details": {
       "title": "Détails de l’étape",
@@ -2210,7 +2214,14 @@
   "session": {
     "untitled": "Sans titre · {0}",
     "restored": "\"{0}\" restaurée",
-    "restoredCopy": "Copie de \"{0}\" restaurée"
+    "restoredCopy": "Copie de \"{0}\" restaurée",
+    "deleted": "\"{0}\" supprimée",
+    "deletedMany": "{0} sessions supprimées",
+    "deleteRefused": "Non supprimée. \"{0}\" est ouverte dans un autre onglet ou une autre fenêtre.",
+    "deleteFailed": "Impossible de supprimer \"{0}\"",
+    "undoLost": "\"{0}\" supprimée. Cette action ne peut plus être annulée.",
+    "undoLostMany": "{0} sessions supprimées. Cette action ne peut plus être annulée.",
+    "undoFailed": "L’annulation a échoué"
   },
   "prompt": {
     "title": "Modifications non stockées",

@@ -763,6 +763,8 @@
       }
     },
     "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知。之後按 Esc 可將其關閉。",
+    "shiftF10": "按 Shift+F10 或功能表鍵可開啟目前焦點所在列的選單。",
+    "recentSessions": "未儲存到檔案的作品在「歷史記錄 › 最近工作階段」中。",
     "fileTitle": "檔案",
     "moveBetweenDevices": "要將作品移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
     "crswap": "儲存時發生當機，可能會在專案檔案旁留下 .crswap 檔案。可以放心刪除。"
@@ -1352,7 +1354,9 @@
       "thisTab": "此分頁",
       "elsewhere": "已在另一個分頁或視窗中開啟",
       "actions": "\"{0}\" 的更多操作",
-      "saveToFile": "儲存到檔案…"
+      "saveToFile": "儲存到檔案…",
+      "delete": "刪除",
+      "openReason": "已在另一個分頁或視窗中開啟。"
     },
     "details": {
       "title": "步驟詳細資訊",
@@ -2210,7 +2214,14 @@
   "session": {
     "untitled": "未命名 · {0}",
     "restored": "已還原 \"{0}\"",
-    "restoredCopy": "已還原 \"{0}\" 的副本"
+    "restoredCopy": "已還原 \"{0}\" 的副本",
+    "deleted": "已刪除 \"{0}\"",
+    "deletedMany": "已刪除 {0} 個工作階段",
+    "deleteRefused": "未刪除。\"{0}\" 已在另一個分頁或視窗中開啟。",
+    "deleteFailed": "無法刪除 \"{0}\"",
+    "undoLost": "已刪除 \"{0}\"。無法再撤銷。",
+    "undoLostMany": "已刪除 {0} 個工作階段。無法再撤銷。",
+    "undoFailed": "撤銷失敗"
   },
   "prompt": {
     "title": "變更未存放",
