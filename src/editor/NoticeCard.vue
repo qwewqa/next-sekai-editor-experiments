@@ -22,6 +22,8 @@ const heading = computed(() =>
     (props.notice.lines ?? []).filter((line) => line.heading).map((line) => line.message()),
 )
 const rows = computed(() => (props.notice.lines ?? []).filter((line) => !line.heading))
+// Rows with no heading over them (the switch card with a BGM line): the first row holds the ×.
+const headless = computed(() => heading.value.length === 0)
 
 // Swipe: the card follows the finger sideways, and goes past 30% of its width or on a flick.
 const SWIPE_FRACTION = 0.3
@@ -185,6 +187,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
         >
             <template v-if="notice.lines">
                 <div
+                    v-if="!headless"
                     class="sticky -top-1 z-10 flex shrink-0 items-center p-0.5"
                     :class="over ? 'bg-popup' : 'bg-modal'"
                 >
@@ -229,7 +232,12 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                 <div
                     v-for="(line, i) in rows"
                     :key="i"
-                    class="relative flex shrink-0 flex-wrap items-center px-0.5 py-1 before:absolute before:inset-x-3 before:top-0 before:border-t before:border-fg/15 last:pb-0.5"
+                    class="relative flex shrink-0 flex-wrap items-center px-0.5 py-1 last:pb-0.5"
+                    :class="
+                        headless && i === 0
+                            ? 'pt-0.5'
+                            : 'before:absolute before:inset-x-3 before:top-0 before:border-t before:border-fg/15'
+                    "
                 >
                     <div class="flex min-w-0 flex-auto items-start">
                         <span
@@ -242,12 +250,42 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                                 :severity="line.severity"
                             />
                         </span>
-                        <p :class="[messageClass, 'py-1.5', glyphColumn ? 'pl-2' : 'pl-2.5']">
+                        <p
+                            :id="headless && i === 0 ? messageId : undefined"
+                            :class="[messageClass, 'py-1.5', glyphColumn ? 'pl-2' : 'pl-2.5']"
+                        >
                             {{ line.message() }}
                         </p>
                     </div>
+                    <!-- With no heading the first row also holds the ×, beside its action. -->
+                    <div
+                        v-if="headless && i === 0"
+                        class="ml-auto flex max-w-full shrink-0 items-center"
+                    >
+                        <button
+                            v-if="line.action"
+                            type="button"
+                            data-notice-action
+                            :class="rowActionClass"
+                            :title="line.action.label()"
+                            @click="line.action.run()"
+                        >
+                            {{ line.action.label() }}
+                        </button>
+                        <button
+                            type="button"
+                            data-notice-close
+                            :class="rowCloseClass"
+                            :aria-label="label"
+                            :aria-describedby="messageId"
+                            :title="label"
+                            @click="dismissNoticeCard()"
+                        >
+                            <CloseIcon class="size-3.5" />
+                        </button>
+                    </div>
                     <button
-                        v-if="line.action"
+                        v-else-if="line.action"
                         type="button"
                         data-notice-action
                         :class="rowActionClass"
