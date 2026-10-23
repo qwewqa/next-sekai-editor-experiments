@@ -1,3 +1,4 @@
+import { dayKey, hostZone } from '../calendar/calendar'
 import { downloadConfirmed } from '../editor/file/flags'
 import { LOAD_ORDER } from '../editor/loadOrder'
 import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
@@ -9,10 +10,11 @@ import { appVersion, platform } from '../platform'
 import { testKeysOpen } from '../platform/testKeys'
 import { PRODUCT_NAME } from '../product'
 import { isSafeMode } from '../safe'
-import { storageGet, storageKey } from '../storage'
+import { storageGet, storageKey, storageSet } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { createDeleteSessions, setDeleteSessions } from './deleteSessions'
 import { startMaintenance } from './maintenance'
+import { noticeIfNearlyFull } from './nearlyFull'
 import { keptCopyChains, removeKeptCopy } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { retryStoring } from './retryStoring'
@@ -201,6 +203,35 @@ declare global {
  * The startup sequence (§1.4.2): resolves once the session this load continues is open, and
  * rejects when a journal, a row or the migration triggered a bug; the startup gate follows it.
  */
+/** The day the "almost full" notice last showed (a stamp, so a reload does not repeat it). */
+const NEARLY_FULL_KEY = 'nearlyFullDay'
+
+/**
+ * After the load's maintenance run: storage still nearly full gets its load notice, once a day. A
+ * page hidden at load had no run to wait for, so it says nothing until a later load.
+ */
+const announceNearlyFull = () => {
+    if (document.visibilityState !== 'visible') return
+    return noticeIfNearlyFull({
+        estimate: () => navigator.storage.estimate(),
+        today: () => String(dayKey(Date.now(), hostZone())),
+        lastDay: () => {
+            const day = storageGet(NEARLY_FULL_KEY, undefined)
+            return typeof day === 'string' ? day : undefined
+        },
+        saveDay: (day) => {
+            try {
+                storageSet(NEARLY_FULL_KEY, day)
+            } catch {
+                // Without the stamp it may say it again at the next load.
+            }
+        },
+        notice: () => {
+            addLoadEvent({ kind: 'storageNearlyFull' })
+        },
+    })
+}
+
 export const startStorage = async () => {
     if (storageWorker) return
     const { flags, test } = readFlags()
@@ -355,7 +386,7 @@ export const startStorage = async () => {
                     window.nseStorageTest.sweepDeleted = (minAgeMs) =>
                         maintenance.deletion.sweepDeleted(minAgeMs)
                 const run = () => {
-                    void maintenance.start()
+                    void maintenance.start().then(() => announceNearlyFull())
                 }
                 if (typeof requestIdleCallback === 'function')
                     requestIdleCallback(run, { timeout: 5000 })

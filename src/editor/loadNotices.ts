@@ -135,6 +135,12 @@ export const loadNoticeOf: Handlers = {
         message: () => load().journalFailed,
         action: localData,
     }),
+    storageNearlyFull: () => ({
+        order: LOAD_ORDER.storageNearlyFull,
+        severity: 'warning',
+        message: () => load().storageNearlyFull,
+        action: localData,
+    }),
     journalsFull: () => ({
         order: LOAD_ORDER.journalsFull,
         severity: 'warning',

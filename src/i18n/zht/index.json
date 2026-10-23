@@ -1208,6 +1208,7 @@
     "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
     "journalFailed": "無法存放已恢復的變更。副本在本機資料中。",
+    "storageNearlyFull": "瀏覽器存放空間幾乎已滿。",
     "journalsFull": "先前造訪中未儲存的內容正在佔滿此瀏覽器的空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
     "sessionDamaged": "無法開啟此工作階段。",

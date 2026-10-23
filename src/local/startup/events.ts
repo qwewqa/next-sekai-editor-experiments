@@ -41,6 +41,8 @@ export type LoadEvent =
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }
     /** "A recovered change needs a newer version of the editor." */
     | { kind: 'journalLater' }
+    /** After GC and cleanup, usage is still above the cleanup threshold: "Browser storage is almost full." [Local Data]. */
+    | { kind: 'storageNearlyFull' }
     /** A journal couldn't be applied or kept at this load (storage full or busy): it stays for the next. */
     | { kind: 'journalFailed' }
     /** Earlier visits' journals kept while storage is unavailable fill much of their budget (§1.6.4). */
