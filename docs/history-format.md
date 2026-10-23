@@ -421,9 +421,9 @@ Guarded by `tests/editor/noOpSteps.test.ts`.
 | `nse.object.flip` | `edit` | Flip, Flip Vertical | `{axis, subject, changed, displaced?, retainedInitialBpm?}` |
 | `nse.object.scale` | `edit` | Scale Beat, Width, Elevation | `{axis, subject, changed, transform, displaced?, retainedInitialBpm?}` |
 | `nse.property.set` | `edit` | Properties panel, quick edits, Move to Group or Stage | property data |
-| `nse.header.set` | `edit` | Level Properties, Offset tool, BGM dialog | `{field, before, after}` |
+| `nse.header.set` | `edit` | Level Info (Initial Life alone), Offset tool, BGM dialog | `{field, before, after}` |
 | `nse.bgm.change` | `edit` | BGM dialog, audio open | `{file, offset?}` |
-| `nse.levelInfo.set` | `edit` | Nothing yet (Level Info dialog, Step 11) | `{changes}` |
+| `nse.levelInfo.set` | `edit` | Level Info dialog (one Apply) | `{changes}` |
 | `nse.dynamicStages.enable` | `edit` | Enabling dynamic stages | `{created}` |
 | `nse.owner.create` | `edit` | Add Group, Add Stage, New Folder | `{target, destination, gathered}` |
 | `nse.owner.rename` | `edit` | Rename; the Properties dialogs' Name | `{target, before, after}` |
@@ -529,7 +529,7 @@ The builders are in `src/editor/headerLabelText.ts`, wrapped by `src/editor/head
 
 **`nse.header.set`** `{field: initialLife | bgmOffset, before, after}` (finite numbers; `bgmOffset` in seconds).
 
-- *Produced by:* Level Properties for Initial Life (`src/editor/commands/properties/index.ts`), the Offset tool drop, and the BGM dialog when only the offset changed (`bgmInput`). The codec allows `before === after`; producers return first when the value is unchanged or the dialog was cancelled.
+- *Produced by:* Level Info for Initial Life alone (`applyLevelInfo`, `src/editor/levelInfo/apply.ts`), the Offset tool drop, and the BGM dialog when only the offset changed (`bgmInput`). The codec allows `before === after`; producers return first when the value is unchanged or the dialog was cancelled.
 - *Step Details:* "Set Initial Life to {0}" or "Set BGM Offset to {0} ms" (an exact decimal shift); one change row, `life` ("Initial Life") or `offset` ("Offset (ms)").
 - *Groups:* family `header` by field ("Changed Initial Life"); group Details show one net row.
 
@@ -542,7 +542,7 @@ The builders are in `src/editor/headerLabelText.ts`, wrapped by `src/editor/head
 **`nse.levelInfo.set`** `{changes}`: 1 to 9 changes in the dialog's order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not a lone `initialLife` (that is `nse.header.set`).
 
 - Shapes: `title`, `artists`, `author`, `description` `{before, after: NameText}` (unset is the empty name); `rating` `{before, after: number | null}`; `tags` `{added, removed, changed?: positive, reordered?: true}` (counts by title); `cover`, `preview` `{before, after: NameText | null}`; `initialLife` `{before, after}`. A name pair is unchanged only when the texts are equal and neither is cut.
-- *Produced by:* nothing yet. `levelInfoInput` builds it for the Level Info dialog (Step 11; one Apply is one step) and returns `undefined` when nothing changed; only tests call it. Today the status label opens Level Properties, which edits Initial Life only.
+- *Produced by:* the Level Info dialog (`applyLevelInfo`, `src/editor/levelInfo/apply.ts`). One Apply is at most one step: `levelInfoInput` compares the live state's level info with the fields the user changed, laid over it (the dialog's own BGM steps stay), and returns `undefined` when nothing changed, which pushes no step. A cover or preview picked in the dialog is held (`holdMedia`) at the pick, before the step names it, so the flush that stores the step carries its bytes.
 - *Step Details:* "Changed level info"; change rows per field (`historyChanges.fields.*`, "Preview Audio" for preview), tags as "Tags Added", "Tags Removed", "Tags Changed" and "Tags: Changed" for a reorder. Never grouped.
 
 **`nse.dynamicStages.enable`** `{created: nativeCounts}`.
@@ -796,6 +796,6 @@ Before the ship an operation changes in place at version 1; after it, any change
 ## 7. Future work
 
 - **Deleting History (Steps 8 and 10).** Delete Sessions… has its core (section 2.3) but no dialog yet, and cleanup under pressure is not built; both remove through `removeLocked` (section 2.3), and cleanup never removes a chain's latest session. Nothing marks a row `kept: false` for space. `observeTimes` in `time.ts` has no caller.
-- **Level Info (Step 11).** `nse.levelInfo.set` has its codec, presentation, strings and `levelInfoInput`, but no producer until the Level Info dialog. It has no inventory case in `historyOperationDetails.cases.json` yet.
+- **Level Info (Step 11).** `nse.levelInfo.set` has a producer, the Level Info dialog, but no inventory case in `historyOperationDetails.cases.json` yet.
 - **Per-id operation versions.** The envelope has one literal `version: 1`. The first change after the ship needs a per-id version table and the old codec kept for reading.
 - **Native apps.** The apps' reader and writer are not in this repository (Step 7 is paused); the conformance cases and the checker are what they must match.

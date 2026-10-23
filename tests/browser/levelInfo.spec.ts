@@ -1,0 +1,376 @@
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import { confirmWhenReady } from './confirmWhenReady'
+import { png, wav } from './levelInfoFiles'
+import {
+    flushed,
+    notice,
+    pressSave,
+    queuePicks,
+    readFile,
+    rows,
+    start,
+    submitSave,
+    writeFile,
+} from './saveFlows'
+
+// Level Info (Part 1 §1.4.12, Step 11 design §3.1): the form, its draft and the one step an Apply
+// makes, the discard confirm, the utilities that return their result to it, the "not loaded" rows,
+// and a picked cover and preview reaching storage and a saved file.
+
+const label = (page: Page) => page.locator('[data-status-label]')
+const dialog = (page: Page) => page.getByRole('dialog', { name: 'Level Info', exact: true })
+
+const openLevelInfo = async (page: Page) => {
+    await label(page).click()
+    await expect(dialog(page)).toBeVisible()
+    return dialog(page)
+}
+
+const field = (form: Locator, name: string) => form.getByRole('textbox', { name, exact: true })
+
+/** Types into a text field and leaves it, which commits the value to the draft. */
+const type = async (input: Locator, value: string) => {
+    await input.fill(value)
+    await input.press('Tab')
+}
+
+const apply = (form: Locator) => form.getByRole('button', { name: 'Apply', exact: true })
+
+/** Presses a button that opens the file chooser, and gives it a file. */
+const pick = async (
+    page: Page,
+    button: Locator,
+    file: { name: string; mimeType: string; buffer: Buffer },
+) => {
+    const chooser = page.waitForEvent('filechooser')
+    await button.click()
+    await (await chooser).setFiles(file)
+}
+
+const levelInfoOf = (page: Page) =>
+    page.evaluate(async () => {
+        const { liveState } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        const { levelInfo, initialLife } = liveState.value
+        return JSON.parse(JSON.stringify({ ...levelInfo, initialLife })) as Record<string, unknown>
+    })
+
+/** The live state's BGM, picked as the BGM dialog does. */
+const pickBgm = async (page: Page, buffer: Buffer) => {
+    await page.evaluate(async (base64) => {
+        const bytes = Uint8Array.from(atob(base64), (value) => value.charCodeAt(0))
+        const { changeBgm } =
+            (await import('/src/editor/commands/bgm/index.ts')) as typeof import('../../src/editor/commands/bgm')
+        void changeBgm(new File([bytes], 'bgm.wav', { type: 'audio/wav' }))
+    }, buffer.toString('base64'))
+    const bgmDialog = page.getByRole('dialog', { name: 'BGM', exact: true })
+    await expect(bgmDialog.locator('input[type="button"]')).toHaveValue(/\d/)
+    await bgmDialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect(bgmDialog).toHaveCount(0)
+}
+
+/** Steps the stack holds: Undo reaches each one. */
+const undoable = (page: Page) =>
+    page.evaluate(async () => {
+        const { canUndo } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        return canUndo.value
+    })
+
+const cover = png(64, 64, [40, 120, 200])
+const clip = wav(1)
+
+test.beforeEach(async ({ page }) => {
+    await start(page)
+})
+
+test('every field, a cover and a preview survive Apply, Save and opening the file in a fresh profile', async ({
+    page,
+    browser,
+}) => {
+    test.slow()
+    const form = await openLevelInfo(page)
+    await type(field(form, 'Title'), 'Coconut (Master)')
+    await type(field(form, 'Artists'), 'Camellia')
+    await type(field(form, 'Author'), 'qwewqa')
+    await type(form.getByRole('spinbutton', { name: 'Rating', exact: true }), '29')
+    await type(field(form, 'Tags'), 'Fan-made,  Expert')
+    await type(field(form, 'Description'), 'A long chart.\nSecond line.')
+    await form.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('777')
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'cover.png',
+        mimeType: 'image/png',
+        buffer: cover,
+    })
+    await expect(form.locator('[data-level-info-thumbnail]')).toBeVisible()
+    await pick(page, form.locator('[data-level-info-preview-choose]'), {
+        name: 'preview.wav',
+        mimeType: 'audio/wav',
+        buffer: clip,
+    })
+    await expect(form.locator('[data-level-info-preview-play]')).toBeVisible()
+    await apply(form).click()
+    await expect(dialog(page)).toHaveCount(0)
+
+    const expected = {
+        title: 'Coconut (Master)',
+        artists: 'Camellia',
+        author: 'qwewqa',
+        description: 'A long chart.\nSecond line.',
+        rating: 29,
+        tags: [{ title: 'Fan-made' }, { title: 'Expert' }],
+        cover: { filename: 'cover.png', size: cover.length, type: 'image/png' },
+        preview: { filename: 'preview.wav', size: clip.length, type: 'audio/wav' },
+        initialLife: 777,
+    }
+    expect(await levelInfoOf(page)).toMatchObject(expected)
+
+    // Both pictures reached storage with the step that names them.
+    await flushed(page)
+    const { media } = await rows(page, ['media'])
+    expect(media!.map((row) => row.value.kind).sort()).toEqual(['cover', 'preview'])
+
+    await pressSave(page)
+    await submitSave(page, 'level')
+    await expect(notice(page).filter({ hasText: 'Saved to level.nxsp' }).first()).toBeVisible()
+    const bytes = await readFile(page, 'level.nxsp')
+
+    // A fresh profile holds nothing: the file alone brings everything back.
+    const context = await browser.newContext()
+    try {
+        const other = await context.newPage()
+        await start(other)
+        await writeFile(other, 'level.nxsp', bytes!)
+        await queuePicks(other, ['level.nxsp'])
+        await other.keyboard.press('o')
+        await expect(notice(other).filter({ hasText: 'level.nxsp' }).first()).toBeVisible()
+        await expect.poll(() => levelInfoOf(other)).toMatchObject(expected)
+
+        const reopened = await openLevelInfo(other)
+        await expect(field(reopened, 'Title')).toHaveValue('Coconut (Master)')
+        await expect(field(reopened, 'Tags')).toHaveValue('Fan-made, Expert')
+        await expect(field(reopened, 'Description')).toHaveValue('A long chart.\nSecond line.')
+        await expect(reopened.getByRole('spinbutton', { name: 'Initial Life' })).toHaveValue('777')
+        const thumbnail = reopened.locator('[data-level-info-thumbnail]')
+        await expect(thumbnail).toBeVisible()
+        expect(await thumbnail.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(64)
+        await expect(reopened.locator('[data-level-info-preview-play]')).toBeVisible()
+        await expect(reopened).not.toContainText('not loaded')
+    } finally {
+        await context.close()
+    }
+})
+
+test('Escape with changes asks, Keep Editing keeps them, and without changes it closes', async ({
+    page,
+}) => {
+    const form = await openLevelInfo(page)
+    // Nothing changed: Escape closes at once.
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+
+    await openLevelInfo(page)
+    await type(field(form, 'Title'), 'Changed')
+    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?', exact: true })
+    for (const leave of ['Escape', 'Close', 'Cancel']) {
+        if (leave === 'Escape') await page.keyboard.press('Escape')
+        else await form.getByRole('button', { name: leave, exact: true }).click()
+        await expect(ask).toBeVisible()
+        // Keep Editing is the focused default.
+        await expect(ask.getByRole('button', { name: 'Keep Editing', exact: true })).toBeFocused()
+        await confirmWhenReady(ask.getByRole('button', { name: 'Keep Editing', exact: true }), ask)
+        await expect(field(form, 'Title')).toHaveValue('Changed')
+    }
+
+    await page.keyboard.press('Escape')
+    await confirmWhenReady(ask.getByRole('button', { name: 'Discard', exact: true }), ask)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect((await levelInfoOf(page)).title).toBe('')
+    expect(await undoable(page)).toBe(false)
+})
+
+test('one Apply that changes the title and Initial Life is one step, and Undo reverts both', async ({
+    page,
+}) => {
+    const form = await openLevelInfo(page)
+    await type(field(form, 'Title'), 'Coconut')
+    await form.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('700')
+    await apply(form).click()
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await levelInfoOf(page)).toMatchObject({ title: 'Coconut', initialLife: 700 })
+    const operation = await page.evaluate(async () => {
+        const { headStep } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        return (headStep.value?.operation as { id: string } | undefined)?.id
+    })
+    expect(operation).toBe('nse.levelInfo.set')
+
+    await page.evaluate(async () => {
+        const { undoState } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        undoState()
+    })
+    await expect.poll(() => levelInfoOf(page)).toMatchObject({ title: '', initialLife: 1000 })
+    expect(await undoable(page)).toBe(false)
+})
+
+test('Apply leaves a field the user did not change as it is now, so the dialog’s own BGM step stays', async ({
+    page,
+}) => {
+    const form = await openLevelInfo(page)
+    await type(field(form, 'Title'), 'Coconut')
+    // The BGM row acts at once, as a step of its own, while the form is open.
+    await form.locator('[data-level-info-bgm-change]').click()
+    const bgm = page.getByRole('dialog', { name: 'BGM', exact: true })
+    const choosing = page.waitForEvent('filechooser')
+    await bgm.locator('input[type="button"]').click()
+    await (await choosing).setFiles({ name: 'bgm.wav', mimeType: 'audio/wav', buffer: wav(1) })
+    await expect(bgm.locator('input[type="button"]')).toHaveValue(/\d/)
+    await bgm.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect(form.locator('[data-level-info-bgm]')).toContainText('bgm.wav · 0:01')
+
+    await apply(form).click()
+    await expect(dialog(page)).toHaveCount(0)
+    // Two steps, and the BGM is still the one chosen.
+    const state = await page.evaluate(async () => {
+        const { liveState, undoState } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        const shown = {
+            title: liveState.value.levelInfo.title,
+            bgm: liveState.value.bgm.meta?.filename,
+        }
+        undoState()
+        return {
+            shown,
+            afterUndo: liveState.value.levelInfo.title,
+            bgm: liveState.value.bgm.meta?.filename,
+        }
+    })
+    expect(state).toEqual({
+        shown: { title: 'Coconut', bgm: 'bgm.wav' },
+        afterUndo: '',
+        bgm: 'bgm.wav',
+    })
+})
+
+test('Make from BGM… and Edit in Cover Editor… return their result with the typed fields kept', async ({
+    page,
+}) => {
+    const form = await openLevelInfo(page)
+    // Always offered, with no BGM loaded.
+    await expect(form.locator('[data-level-info-preview-make]')).toBeEnabled()
+    await expect(form.locator('[data-level-info-cover-edit]')).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+    await pickBgm(page, wav(2))
+
+    await openLevelInfo(page)
+    await type(field(form, 'Title'), 'Typed before')
+    await form.locator('[data-level-info-preview-make]').click()
+    const preview = page.getByRole('dialog', { name: 'Preview Editor', exact: true })
+    await expect(preview).toBeVisible()
+    await preview.getByRole('button', { name: 'Generate', exact: true }).click()
+    await expect(preview).toHaveCount(0)
+    await expect(form.locator('[data-level-info-preview]')).toContainText('preview.mp3')
+    await expect(form.locator('[data-level-info-preview-play]')).toBeVisible()
+    await expect(field(form, 'Title')).toHaveValue('Typed before')
+
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'picked.png',
+        mimeType: 'image/png',
+        buffer: cover,
+    })
+    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('picked.png')
+    await form.locator('[data-level-info-cover-edit]').click()
+    // The loading dialog over it has the same title.
+    const editor = page.getByRole('dialog', { name: 'Cover Editor', exact: true }).first()
+    // It starts from the cover in the form.
+    await expect(editor.getByRole('button', { name: '64×64', exact: true })).toBeVisible()
+    await editor.getByRole('button', { name: 'Generate', exact: true }).click()
+    await expect(editor).toHaveCount(0)
+    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png')
+    await expect(field(form, 'Title')).toHaveValue('Typed before')
+
+    // Closing a utility without Generate changes nothing.
+    await form.locator('[data-level-info-cover-edit]').click()
+    await expect(editor.getByRole('button', { name: '400×400', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(editor).toHaveCount(0)
+    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png')
+
+    await apply(form).click()
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await levelInfoOf(page)).toMatchObject({
+        title: 'Typed before',
+        cover: { filename: 'cover.png', type: 'image/png' },
+        preview: { filename: 'preview.mp3' },
+    })
+})
+
+test('a cover that is not loaded says so, and the same file brings it back without an edit', async ({
+    page,
+}) => {
+    // A state that names a cover nothing holds, as after the bytes were cleared elsewhere.
+    await page.evaluate(async (base64) => {
+        const bytes = Uint8Array.from(atob(base64), (value) => value.charCodeAt(0))
+        const { captureMedia } =
+            (await import('/src/local/media.ts')) as typeof import('../../src/local/media')
+        const { liveState, replaceState } =
+            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
+        const { meta } = await captureMedia(
+            bytes.buffer,
+            { name: 'cover.png', type: 'image/png' },
+            'image',
+        )
+        replaceState({
+            ...liveState.value,
+            levelInfo: {
+                ...liveState.value.levelInfo,
+                cover: { hash: meta.hash, filename: 'cover.png', size: meta.size, type: meta.type },
+            },
+        })
+    }, cover.toString('base64'))
+
+    let form = await openLevelInfo(page)
+    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png · not loaded')
+    await expect(form.locator('[data-level-info-thumbnail]')).toHaveCount(0)
+    await expect(form.locator('[data-level-info-cover-edit]')).toBeDisabled()
+
+    // Another file is an ordinary change of the draft.
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'other.png',
+        mimeType: 'image/png',
+        buffer: png(32, 32, [200, 40, 40]),
+    })
+    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('other.png')
+    await page.keyboard.press('Escape')
+    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?' })
+    await confirmWhenReady(ask.getByRole('button', { name: 'Discard', exact: true }), ask)
+    await expect(dialog(page)).toHaveCount(0)
+
+    // The same file: stored at once, shown, and the draft is as it opened.
+    form = await openLevelInfo(page)
+    await pick(page, form.locator('[data-level-info-cover-choose]'), {
+        name: 'copy of cover.png',
+        mimeType: 'image/png',
+        buffer: cover,
+    })
+    await expect(form.locator('[data-level-info-thumbnail]')).toBeVisible()
+    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png')
+    await expect
+        .poll(async () => (await rows(page, ['media'])).media!.map((row) => row.value.kind))
+        .toEqual(['cover'])
+    expect(await undoable(page)).toBe(false)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+})
+
+test('Check… on the file line runs Check File and History', async ({ page }) => {
+    const form = await openLevelInfo(page)
+    await form.getByRole('button', { name: 'Check…', exact: true }).click()
+    const report = page.getByRole('dialog', { name: 'Check File and History', exact: true })
+    await expect(report).toContainText('No damage found.')
+    await report.getByRole('button', { name: 'Close', exact: true }).last().click()
+    await expect(report).toHaveCount(0)
+    await expect(dialog(page)).toBeVisible()
+})

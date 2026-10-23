@@ -734,9 +734,9 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 
 | Id | `data` | Meaning | Title |
 | --- | --- | --- | --- |
-| `nse.header.set` | `{field: initialLife \| bgmOffset, before: finite, after: finite}` | Level Properties (Initial Life), the Offset tool, the BGM dialog when only the offset changed. `bgmOffset` in seconds. | "Set Initial Life to {after}", "Set BGM Offset to {after × 1000} ms" |
+| `nse.header.set` | `{field: initialLife \| bgmOffset, before: finite, after: finite}` | Level Info (Initial Life alone), the Offset tool, the BGM dialog when only the offset changed. `bgmOffset` in seconds. | "Set Initial Life to {after}", "Set BGM Offset to {after × 1000} ms" |
 | `nse.bgm.change` | `{file: {before, after: NameText \| null}, offset?: {before, after: finite}}` | The BGM dialog or opening an audio file: a new BGM (file name without extension; `null` for none); `offset` only when it changed. Re-picking the same file is still a change. | "Changed BGM" (with `offset`), else "Changed BGM file" |
-| `nse.levelInfo.set` | `{changes: [...]}` | One Apply of the Level Info dialog (no producer yet). 1 to 9 changes in the order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not `initialLife` alone. Shapes: `{field: title \| artists \| author \| description, before, after: NameText}`; `{field: rating, before, after: finite \| null}`; `{field: tags, added: count, removed: count, changed?: positive, reordered?: true}` (at least one non-zero or `reordered`); `{field: cover \| preview, before, after: NameText \| null}`; `{field: initialLife, before, after: finite}`. A name pair is no change only when the texts are equal and neither is cut. | "Changed level info" |
+| `nse.levelInfo.set` | `{changes: [...]}` | One Apply of the Level Info dialog. 1 to 9 changes in the order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not `initialLife` alone. Shapes: `{field: title \| artists \| author \| description, before, after: NameText}`; `{field: rating, before, after: finite \| null}`; `{field: tags, added: count, removed: count, changed?: positive, reordered?: true}` (at least one non-zero or `reordered`); `{field: cover \| preview, before, after: NameText \| null}`; `{field: initialLife, before, after: finite}`. A name pair is no change only when the texts are equal and neither is cut. | "Changed level info" |
 | `nse.dynamicStages.enable` | `{created: NC}` | Enabling dynamic stages: a mask, a pivot and a style event at beat 0 on the default stage (`{stageMaskEvent: 1, stagePivotEvent: 1, stageStyleEvent: 1}`). | "Enabled dynamic stages" |
 
 ### 12.7 Groups, stages and folders
@@ -788,9 +788,9 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 | Scale Beat, Scale Width, Scale Elevation | edit | `nse.object.scale` |
 | Combine into Slide, Split Slide, Make Vertical | edit | `nse.note.combine`, `nse.note.split`, `nse.note.vertical` |
 | Properties panel, property dialogs, note and slide presets, Move to Group, Move to Stage | edit | `nse.property.set` |
-| Level Properties (Initial Life), Offset tool | edit | `nse.header.set` |
+| Level Info (Initial Life alone), Offset tool | edit | `nse.header.set` |
 | BGM dialog, opening an audio file | edit | `nse.bgm.change` (`nse.header.set` when only the offset changed) |
-| Level Info dialog (not built yet) | edit | `nse.levelInfo.set` |
+| Level Info dialog (one Apply) | edit | `nse.levelInfo.set` |
 | Enabling dynamic stages (event and stage commands, the Stages panel, pasting stage events) | edit | `nse.dynamicStages.enable` |
 | Add Group, Add Stage, New Folder | edit | `nse.owner.create` |
 | Rename, Name field | edit | `nse.owner.rename` |

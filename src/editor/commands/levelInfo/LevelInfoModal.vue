@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, provide, reactive, ref, useId, watch } from 'vue'
+import { computed, onBeforeUnmount, provide, ref, shallowReactive, useId, watch } from 'vue'
 import { vScrollEdges } from '../../../directives/scrollEdges'
 import { state } from '../../../history'
 import { i18n } from '../../../i18n'
@@ -58,7 +58,9 @@ const emit = defineEmits<{
 // Long values go below their label, as in Settings.
 provide(stackLongValuesKey, true)
 
-const draft = reactive<Draft>({ ...props.opening })
+// Shallow: a picked file's record goes into a step as it is, and a reactive proxy of it cannot be
+// cloned to the storage worker.
+const draft = shallowReactive<Draft>({ ...props.opening })
 const dirty = computed(() => changedFields(props.opening, draft).length > 0)
 
 // --- Leaving: with changes, asks first. Escape reaches `modalcancel` while the form is "busy".
@@ -89,6 +91,7 @@ const leave = () => {
 const submit = () => {
     if (props.readOnly) emit('close')
     // A plain copy: the form's own object is reactive.
+    // eslint-disable-next-line @typescript-eslint/no-misused-spread
     else emit('close', { ...draft })
 }
 
