@@ -21,4 +21,3 @@ export const stampNow = async (tx: KvTx, wall: number = Date.now()) => {
     await writeMeta(tx, 'maxSeenTime', now)
     return now
 }
-
