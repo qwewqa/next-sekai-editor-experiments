@@ -5,7 +5,7 @@ import type { RecentChain } from '../../local/recent'
 import type { ShownName } from '../../local/startup/events'
 import { isSafeMode } from '../../safe'
 import { restoreStored } from '../restoreStored'
-import { requestSessionPeek } from './selection'
+import { backToNow, requestSessionPeek } from './selection'
 import { restoreMode, type ChainRow, type SessionRow } from './sessions'
 import { historyTab } from './state'
 
@@ -21,6 +21,8 @@ export type SessionMenuItem = {
     disabled?: boolean
     destructive?: boolean
     description?: string
+    /** The heading over the items: the row's name. */
+    group?: string
 }
 
 /** The name the row shows: the chain's, or its date when it has none. */
@@ -32,7 +34,11 @@ export const shownNameOf = (chain: RecentChain): ShownName => ({
 /** Restore Session, or Restore as a Copy; true when it opened, and History then shows its Timeline. */
 export const restoreRow = async (row: ChainRow, mode: 'restore' | 'copy') => {
     const { opened } = await restoreStored(row.chain.head.sessionId, mode, shownNameOf(row.chain))
-    if (opened) historyTab.value = 'timeline'
+    if (opened) {
+        // The session peeked (the menu peeks its row) was of the session left.
+        backToNow()
+        historyTab.value = 'timeline'
+    }
     return opened
 }
 
@@ -57,8 +63,9 @@ export const sessionMenuItems = (
     // The head may be held since the list was read: the item reads as of now.
     const elsewhere = row.badge === 'elsewhere' || held.has(row.chain.head.sessionId)
     const mode = safe || elsewhere ? 'copy' : 'restore'
-    const off =
-        row.readable === 'newer' ? { disabled: true, description: strings.load.sessionLater } : {}
+    // A row that needs a newer version says why once, under Restore; Save to File… is off the same way.
+    const off = row.readable === 'newer' ? { disabled: true } : {}
+    const why = row.readable === 'newer' ? { description: strings.load.sessionLater } : {}
     const items: SessionMenuItem[] =
         row.readable === 'damaged'
             ? []
@@ -67,6 +74,7 @@ export const sessionMenuItems = (
                       key: mode,
                       label: mode === 'copy' ? strings.load.restoreAsCopy : strings.open.restoreIt,
                       ...off,
+                      ...why,
                   },
                   { key: 'saveToFile', label: strings.history.sessions.saveToFile, ...off },
               ]

@@ -9,7 +9,6 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { dayKey } from '../../calendar/calendar'
 import { peekedKey } from '../../history/peek'
 import { session } from '../../history/session'
 import { liveState } from '../../history/stack'
@@ -155,6 +154,10 @@ const nameOf = (row: ChainRow) =>
         : namedBy(displayName(row.chain.nameParts), row.chain.head.startedAt)
 
 /** The inline row's text: Deleted "X", or that it can no longer be undone. */
+const deletedLabel = (row: DeletedRow) =>
+    row.status === 'failed'
+        ? `${deletedText(row)}. ${i18n.value.session.undoFailed}`
+        : deletedText(row)
 const deletedText = (row: DeletedRow) =>
     interpolateRaw(
         row.status === 'lost' ? i18n.value.session.undoLost : i18n.value.session.deleted,
@@ -175,11 +178,8 @@ const flagText = (row: ChainRow) =>
           ? i18n.value.history.needsNewer
           : undefined
 
-/** The time under the day's header; an older day is named again, as the Timeline's dividers do. */
-const timeOf = (chain: RecentChain) => {
-    const ago = calendar.value.today - dayKey(chain.updatedAt, calendar.value.zone)
-    return ago <= 1 ? format.value.clock(chain.updatedAt) : format.value.dateTime(chain.updatedAt)
-}
+/** The time under the day's header, which already names the day. */
+const timeOf = (chain: RecentChain) => format.value.clock(chain.updatedAt)
 
 const notesText = (row: ChainRow) => {
     const count = row.thisTab ? notesIn(liveState.value) : row.chain.noteCount
@@ -199,7 +199,8 @@ const captionOf = (row: ChainRow) => {
               notConfirmed: notConfirmed(row.chain.file),
               ...(row.chain.file ? { file: row.chain.file } : {}),
           })
-    return [timeOf(row.chain), labelLine({ ...label, name: '' }), flagText(row) ?? notesText(row)]
+    // The file part last: in a narrow row it is cut first, never the reason or the count.
+    return [timeOf(row.chain), flagText(row) ?? notesText(row), labelLine({ ...label, name: '' })]
         .filter(Boolean)
         .join(' · ')
 }
@@ -330,12 +331,18 @@ const deletable = (row: NavRow | undefined): row is ChainRow =>
 const deleteRow = async (row: NavRow | undefined) => {
     if (!deletable(row)) return
     const inside = !!scroller.value?.contains(document.activeElement)
+    // Focus goes to the next real row, else the previous one, never onto an inline Undo row.
     const all = navRows.value
     const at = all.findIndex((each) => each.id === row.id)
-    const next = all[at + 1] ?? all[at - 1]
+    const next =
+        all.slice(at + 1).find((each) => each.type === 'chain') ??
+        all
+            .slice(0, at)
+            .reverse()
+            .find((each) => each.type === 'chain')
     const outcome = await sessionDelete.remove(row.chain, nameOf(row))
     if (disposed || outcome !== 'marked' || !next || !inside) return
-    // The row that had focus is replaced: focus goes to the next row, else the previous one.
+    // The row that had focus is replaced.
     await nextTick()
     void refocus(next.id)
 }
@@ -346,7 +353,7 @@ const refocus = async (id: string) => {
 }
 
 const undoRow = (row: DeletedRow) => {
-    if (row.status === 'deleted') void sessionDelete.undo([row.id])
+    if (row.status !== 'lost') void sessionDelete.undo(row.id)
 }
 
 // --- Menu: Restore Session or Restore as a Copy, and Save to File….
@@ -360,12 +367,19 @@ let menuToken = 0
 const openMenu = async (row: ChainRow, anchor: HTMLElement, touch = false) => {
     if (menu.value?.row.id === row.id) return
     const token = ++menuToken
+    // The row whose menu opens is the row peeked and with the cursor, so focus and peek agree.
+    if (cursorId.value !== row.id || (peekable(row) && peekedSession.value?.chainId !== row.id))
+        moveTo(row)
     cursorId.value = row.id
     focusToken++
     // The item reads as of now: who holds the session is asked again.
     const held = await heldElsewhere()
     if (disposed || token !== menuToken) return
-    const items = sessionMenuItems(row, held, safe)
+    // The row's name is the menu's heading, so a sheet over the chart says whose menu it is.
+    const items = sessionMenuItems(row, held, safe).map((item) => ({
+        ...item,
+        group: nameOf(row),
+    }))
     if (!items.length) return
     list.hold('menu', true)
     menu.value = { row, anchor, touch, items }
@@ -706,27 +720,38 @@ const notePointer = (event: PointerEvent) => {
                             :data-status="row.status"
                             :tabindex="row.id === cursorId ? 0 : -1"
                             class="sessions-row scroll-mt-7"
-                            :aria-label="deletedText(row)"
+                            :aria-label="deletedLabel(row)"
                             @click="onRowClick(row)"
                         >
                             <div role="gridcell" class="sessions-text">
                                 <span class="sessions-title">
                                     <span
-                                        class="line-clamp-2 min-w-0 flex-1"
+                                        class="min-w-0 flex-1"
+                                        :class="row.status === 'lost' ? 'line-clamp-2' : 'truncate'"
                                         data-sessions-deleted-text
                                         >{{ deletedText(row) }}</span
                                     >
                                 </span>
+                                <span
+                                    v-if="row.status === 'failed'"
+                                    class="sessions-caption"
+                                    data-sessions-undo-failed
+                                    >{{ i18n.session.undoFailed }}</span
+                                >
                             </div>
                             <button
-                                v-if="row.status === 'deleted'"
+                                v-if="row.status !== 'lost'"
                                 type="button"
                                 tabindex="-1"
                                 class="btn btn-secondary mr-0.5 h-8 min-w-0 max-w-[40%] shrink-0 truncate rounded-full px-4"
                                 data-sessions-undo
                                 @click.stop="undoRow(row)"
                             >
-                                {{ i18n.commands.undo.title }}
+                                {{
+                                    row.status === 'failed'
+                                        ? i18n.history.tryAgain
+                                        : i18n.commands.undo.title
+                                }}
                             </button>
                             <span v-else class="size-9 shrink-0" aria-hidden="true" />
                         </div>
@@ -745,7 +770,6 @@ const notePointer = (event: PointerEvent) => {
                             }"
                             :aria-selected="selectedId === row.id"
                             :aria-label="accessibleOf(row)"
-                            :title="accessibleOf(row)"
                             @click="onRowClick(row)"
                             @contextmenu="onContextMenu($event, row)"
                             @pointerdown="onRowPointerdown($event, row)"
@@ -794,6 +818,10 @@ const notePointer = (event: PointerEvent) => {
                     {{ footer }}
                 </p>
             </template>
+        </div>
+        <!-- Says each outcome of a Delete or an Undo to a screen reader. -->
+        <div class="sr-only" role="status" aria-live="polite" data-sessions-live>
+            {{ sessionDelete.announcement.value }}
         </div>
         <OverlayScrollbar :target="scroller" />
         <ManagerMenu

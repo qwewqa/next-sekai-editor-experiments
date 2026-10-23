@@ -369,11 +369,7 @@ test('a step of a group shows its own flag after its label', async ({ page }) =>
         { memberFlags: { 0: { removed: true, damaged: false } } },
     )
     const labels = details(page).locator('[data-operation-step] > span.flex-1')
-    await expect(labels).toHaveText([
-        'Added 2 notes',
-        'Added 2 notes',
-        'Added 2 notes · not kept',
-    ])
+    await expect(labels).toHaveText(['Added 2 notes', 'Added 2 notes', 'Added 2 notes · not kept'])
     await expect(labels.last().locator('span', { hasText: '·' })).toHaveClass(/text-fg\/80/)
 })
 

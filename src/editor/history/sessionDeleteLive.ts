@@ -1,24 +1,19 @@
 import { markDeleted, undoDeleted } from '../../local/deletion'
-import { dismissNoticeCard, noticeCard, notify } from '../notification'
+import { notify } from '../notification'
 import { backToNow, peekedSession } from './selection'
 import { createDeleteModel } from './sessionDelete'
 
-// This tab's Delete model, over the page's deletion core and the notice card.
+// This tab's Delete model, over the page's deletion core. A Delete that did not happen has no
+// inline row to say so: it is a card.
 
-const model = createDeleteModel({
+const listeners = new Set<() => void>()
+
+export const sessionDelete = createDeleteModel({
     mark: markDeleted,
     undo: undoDeleted,
-    card: ({ message, action, severity }) =>
-        notify(message, {
-            card: true,
-            ...(action ? { action } : {}),
-            ...(severity ? { severity } : {}),
-        }),
-    cardShown: (id) => noticeCard.value?.id === id,
-    closeCard: (id) => {
-        if (noticeCard.value?.id === id) dismissNoticeCard()
+    report: (message) => {
+        notify(message, { card: true, severity: 'error' })
     },
-    // The lists read again themselves: they hand `changed` their refresh while shown.
     changed: () => {
         for (const listener of listeners) listener()
     },
@@ -27,12 +22,8 @@ const model = createDeleteModel({
     },
 })
 
-const listeners = new Set<() => void>()
-
-/** Lists show the model's changes by reading again; returns how to stop. */
+/** Lists read again when the model changes; returns how to stop. */
 export const onDeleteChanged = (listener: () => void) => {
     listeners.add(listener)
     return () => listeners.delete(listener)
 }
-
-export const sessionDelete = model

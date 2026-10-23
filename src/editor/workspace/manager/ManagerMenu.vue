@@ -162,7 +162,8 @@ onMounted(async () => {
     await nextTick()
     if (!active) return
     const list = buttons()
-    ;(props.focusLast ? list.at(-1) : list[0])?.focus({
+    // With every item disabled the menu itself holds focus, so Escape closes only the menu.
+    ;((props.focusLast ? list.at(-1) : list[0]) ?? menu.value)?.focus({
         preventScroll: true,
         ...(props.touch && { focusVisible: false }),
     })
@@ -333,7 +334,7 @@ const onSelect = (event: MouseEvent, item: ManagerMenuItem) => {
                             v-if="section.group !== undefined"
                             :id="`${headingId}-${index}`"
                             aria-hidden="true"
-                            class="manager-menu-heading popup-heading"
+                            class="manager-menu-heading popup-heading truncate"
                         >
                             {{ section.group }}
                         </div>

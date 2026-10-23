@@ -763,7 +763,7 @@
       }
     },
     "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır.",
-    "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki satırın menüsünü açar.",
+    "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki öğenin menüsünü açar.",
     "recentSessions": "Bir dosyaya kaydetmediğiniz çalışma Geçmiş › Son Oturumlar içinde bulunur.",
     "fileTitle": "Dosyalar",
     "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın.",
@@ -2216,11 +2216,9 @@
     "restored": "\"{0}\" geri yüklendi",
     "restoredCopy": "\"{0}\" kopyası geri yüklendi",
     "deleted": "\"{0}\" silindi",
-    "deletedMany": "{0} oturum silindi",
     "deleteRefused": "Silinmedi. \"{0}\" başka bir sekmede veya pencerede açık.",
     "deleteFailed": "\"{0}\" silinemedi",
     "undoLost": "\"{0}\" silindi. Artık geri alınamaz.",
-    "undoLostMany": "{0} oturum silindi. Artık geri alınamaz.",
     "undoFailed": "Geri alma başarısız oldu"
   },
   "prompt": {

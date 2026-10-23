@@ -763,7 +763,7 @@
       }
     },
     "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知。之後按 Esc 可將其關閉。",
-    "shiftF10": "按 Shift+F10 或功能表鍵可開啟目前焦點所在列的選單。",
+    "shiftF10": "按 Shift+F10 或功能表鍵可開啟目前焦點所在項目的選單。",
     "recentSessions": "未儲存到檔案的作品在「歷史記錄 › 最近工作階段」中。",
     "fileTitle": "檔案",
     "moveBetweenDevices": "要將作品移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
@@ -2216,11 +2216,9 @@
     "restored": "已還原 \"{0}\"",
     "restoredCopy": "已還原 \"{0}\" 的副本",
     "deleted": "已刪除 \"{0}\"",
-    "deletedMany": "已刪除 {0} 個工作階段",
     "deleteRefused": "未刪除。\"{0}\" 已在另一個分頁或視窗中開啟。",
     "deleteFailed": "無法刪除 \"{0}\"",
     "undoLost": "已刪除 \"{0}\"。無法再撤銷。",
-    "undoLostMany": "已刪除 {0} 個工作階段。無法再撤銷。",
     "undoFailed": "撤銷失敗"
   },
   "prompt": {

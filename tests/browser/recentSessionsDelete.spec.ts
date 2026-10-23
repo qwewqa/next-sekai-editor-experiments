@@ -154,7 +154,7 @@ const notesIn = (page: Page) =>
         return count
     })
 
-test('Delete from the menu turns the row into an inline Undo row with a card; Undo from the card brings it back', async ({
+test('Delete from the menu turns the row into an inline Undo row; its Undo brings it back', async ({
     page,
 }) => {
     errorsFail(page)
@@ -170,26 +170,28 @@ test('Delete from the menu turns the row into an inline Undo row with a card; Un
         sessions.saveToFile,
         sessions.delete,
     ])
+    // The menu names its chain.
+    await expect(menu).toContainText('Alpha')
     await menu.getByRole('menuitem', { name: sessions.delete }).click()
 
-    // The row stands in its place as "Deleted", and the card offers Undo.
+    // The row stands in its place as "Deleted" with its Undo, and a live region says so. The list
+    // is on screen, so no notice repeats it.
     await expect(rowFor(page, 'Alpha')).toHaveCount(0)
     const inline = deletedFor(page, 'Alpha')
     await expect(inline).toHaveCount(1)
     await expect(rowsOf(page).nth(1)).toHaveAttribute('data-sessions-deleted', '')
-    const note = card(page, 'Deleted "Alpha"')
-    await expect(note).toBeVisible()
+    await expect(page.locator('[data-sessions-live]')).toHaveText('Deleted "Alpha"')
+    await expect(page.locator('[data-notice-card]')).toHaveCount(0)
     expect(await stored(page, alpha.chainId)).toBe(true)
 
-    await note.getByRole('button', { name: messages.commands.undo.title }).click()
+    await inline.getByRole('button', { name: messages.commands.undo.title }).click()
     await expect(deletedRows(page)).toHaveCount(0)
     await expect(rowFor(page, 'Alpha')).toHaveCount(1)
-    // Nothing more is said, and the row is back where it was.
+    // The row is back where it was.
     await expect(rowsOf(page).nth(1)).toContainText('Alpha')
-    await expect(note).toHaveCount(0)
 })
 
-test('the Delete key deletes the focused row, focus moves on, three presses delete three and merge, and a held key deletes one', async ({
+test('the Delete key deletes the focused row, focus moves to the next real row, three presses delete three, and a held key deletes one', async ({
     page,
 }) => {
     errorsFail(page)
@@ -228,7 +230,6 @@ test('the Delete key deletes the focused row, focus moves on, three presses dele
     await page.keyboard.up('Delete')
     expect(await page.evaluate(() => Reflect.get(window, 'deleteReads'))).toBe(1)
     await expect(deletedRows(page)).toHaveCount(1)
-    await expect(card(page, 'Deleted "Delta"')).toBeVisible()
     // Focus went to the next row, so the next press deletes it.
     await expect(rowFor(page, 'Gamma')).toBeFocused()
     await page.keyboard.press('Delete')
@@ -236,14 +237,12 @@ test('the Delete key deletes the focused row, focus moves on, three presses dele
     await expect(rowFor(page, 'Beta')).toBeFocused()
     await page.keyboard.press('Delete')
     await expect(deletedRows(page)).toHaveCount(3)
-    // One card for all three.
-    await expect(card(page, 'Deleted 3 sessions')).toHaveCount(1)
-    await expect(card(page, 'Deleted "Delta"')).toHaveCount(0)
-
-    // Its Undo brings all three back.
-    await card(page, 'Deleted 3 sessions')
-        .getByRole('button', { name: messages.commands.undo.title })
-        .click()
+    // No notice for any of them; each row has its own Undo.
+    await expect(page.locator('[data-notice-card]')).toHaveCount(0)
+    for (const title of ['Delta', 'Gamma', 'Beta'])
+        await deletedFor(page, title)
+            .getByRole('button', { name: messages.commands.undo.title })
+            .click()
     await expect(deletedRows(page)).toHaveCount(0)
     for (const title of ['Alpha', 'Beta', 'Gamma', 'Delta'])
         await expect(rowFor(page, title)).toHaveCount(1)
@@ -372,12 +371,14 @@ test('Undo after the sweep says the chain can no longer be undone', async ({ pag
     await sweep(page)
     expect(await stored(page, alpha.chainId)).toBe(false)
 
-    await card(page, 'Deleted "Alpha"')
+    await deletedFor(page, 'Alpha')
         .getByRole('button', { name: messages.commands.undo.title })
         .click()
-    await expect(card(page, 'Deleted "Alpha". It can no longer be undone.')).toBeVisible()
-    // The inline row says so too, with no Undo left.
-    await expect(deletedFor(page, 'Alpha')).toContainText('can no longer be undone')
+    // The inline row says so, with no Undo left, and the live region reads it.
+    await expect(deletedRows(page)).toContainText('Deleted "Alpha". It can no longer be undone.')
+    await expect(page.locator('[data-sessions-live]')).toHaveText(
+        'Deleted "Alpha". It can no longer be undone.',
+    )
     await expect(deletedRows(page).getByRole('button')).toHaveCount(0)
     await expect(rowFor(page, 'Alpha')).toHaveCount(0)
 })
@@ -414,15 +415,14 @@ test('Undo with storing failing says Undo failed, and Try Again works once it is
     await expect(deletedFor(page, 'Alpha')).toHaveCount(1)
 
     const hold = await holdWorker(page, 'undoDeleting')
-    await card(page, 'Deleted "Alpha"')
+    await deletedFor(page, 'Alpha')
         .getByRole('button', { name: messages.commands.undo.title })
         .click()
     await hold.reached()
     await hold.release(true)
-    const failed = card(page, 'Undo failed')
-    await expect(failed).toBeVisible()
-    // The inline row keeps its Undo.
-    await expect(deletedFor(page, 'Alpha').getByRole('button')).toHaveCount(1)
+    // The row itself says it failed and offers Try Again for the same Delete.
+    const failed = deletedFor(page, 'Alpha')
+    await expect(failed.locator('[data-sessions-undo-failed]')).toHaveText('Undo failed')
     await failed.getByRole('button', { name: messages.history.tryAgain }).click()
     await expect(rowFor(page, 'Alpha')).toHaveCount(1)
     await expect(deletedRows(page)).toHaveCount(0)
@@ -459,8 +459,8 @@ test('a row that needs a newer version is deleted, though it cannot be restored 
     await expect(items.nth(0)).toBeDisabled()
     await expect(items.nth(1)).toBeDisabled()
     await expect(items.nth(2)).toBeEnabled()
-    // The disabled items say why, through the menu's description lines.
-    await expect(page.getByRole('menu')).toContainText(messages.load.sessionLater)
+    // The reason is said once, under Restore.
+    await expect(page.getByRole('menu').getByText(messages.load.sessionLater)).toHaveCount(1)
     await items.nth(2).click()
     await expect(deletedFor(page, 'Alpha')).toHaveCount(1)
     await sweep(page)
@@ -506,6 +506,7 @@ test('a fork whose parent chain was deleted ends its Timeline with a line, and R
     await openSessions(other)
     await rowFor(other, 'Alpha').locator('[data-sessions-more]').click()
     await other.getByRole('menuitem', { name: messages.load.restoreAsCopy }).click()
+    await expect(notice(other, 'Restored a copy of "Alpha"')).toBeVisible()
     await expect.poll(() => lifeOf(other)).toBe(990)
     await edit(other, { title: 'Alpha', life: 950 })
     await flush(other)

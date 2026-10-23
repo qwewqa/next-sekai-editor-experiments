@@ -763,7 +763,7 @@
       }
     },
     "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知。之后按 Esc 可将其关闭。",
-    "shiftF10": "按 Shift+F10 或菜单键可打开当前焦点行的菜单。",
+    "shiftF10": "按 Shift+F10 或菜单键可打开当前焦点项的菜单。",
     "recentSessions": "未保存到文件的作品在“历史记录 › 最近会话”中。",
     "fileTitle": "文件",
     "moveBetweenDevices": "要将作品移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
@@ -2216,11 +2216,9 @@
     "restored": "已还原“{0}”",
     "restoredCopy": "已还原“{0}”的副本",
     "deleted": "已删除“{0}”",
-    "deletedMany": "已删除 {0} 个会话",
     "deleteRefused": "未删除。“{0}”已在另一个标签页或窗口中打开。",
     "deleteFailed": "无法删除“{0}”",
     "undoLost": "已删除“{0}”。无法再撤销。",
-    "undoLostMany": "已删除 {0} 个会话。无法再撤销。",
     "undoFailed": "撤销失败"
   },
   "prompt": {
