@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { removeCachedMedia, type CleanupResult } from '../../../src/local/cleanup'
 import { DB_NAME, hashKey, writeMeta } from '../../../src/local/db'
+import { heldMediaOf, type FlushDeps } from '../../../src/local/flush'
 import { importLock, MAINT_LOCK } from '../../../src/local/locks'
 import { captureMedia } from '../../../src/local/media'
 import { headOf } from '../../../src/local/open/earlier'
@@ -45,9 +46,9 @@ const hashOf = (state: State) => state.bgm.meta?.hash ?? ''
  * A chain whose steps picked three songs in turn: `early` (the largest) and `middle` are only in
  * earlier steps, `head` is in its latest state. The page that stored it is still open.
  */
-const stored = async (seed: number) => {
+const stored = async (seed: number, deps: Partial<FlushDeps> = {}) => {
     const world = createWorld({ seed })
-    const page = await openPage(world, world.tab('a'))
+    const page = await openPage(world, world.tab('a'), deps)
     const early = await withSong(stateOf(goldenChart()), 1, 8192)
     page.flusher.begin({
         id: testId(),
@@ -144,6 +145,45 @@ test('a chain marked for Delete keeps its latest state’s BGM: Undo brings it b
     assert.equal((await deleter.mark(chainId)).kind, 'marked')
     assert.equal((await clean(Number.MAX_SAFE_INTEGER)).kind, 'removed')
     assert.deepEqual(media(world), new Set([hashOf(states.head)]))
+})
+
+test('a head session whose stack was removed keeps its last entry’s BGM', async () => {
+    const { world, page, clean, states } = await stored(7)
+    await daysPass(world)
+    page.tab.kill()
+    await world.idle()
+    // As `stackRemoved` leaves it: no stack index and no blocks; replay rebuilds the stack.
+    world.checks.lock = false
+    await tamper(world, async (tx) => {
+        const [session] = (await tx.getAll('sessions')) as Record<string, unknown>[]
+        const { stack: _, ...rest } = session ?? {}
+        await tx.put('sessions', rest)
+        for (const key of await tx.getAllKeys('stackBlocks')) await tx.delete('stackBlocks', key)
+    })
+    world.checks.lock = true
+    assert.deepEqual(await clean(Number.MAX_SAFE_INTEGER), {
+        kind: 'removed',
+        bytes: 8192 + 2048,
+        items: 2,
+    })
+    assert.deepEqual(media(world), new Set([hashOf(states.head)]))
+})
+
+test('an Undo onto a step whose BGM went stores it again when the tab attached it without a step', async () => {
+    let live: State | undefined
+    const { world, page, clean, states, toHead } = await stored(8, {
+        liveHeld: () => (live ? heldMediaOf(live) : []),
+    })
+    await daysPass(world)
+    assert.equal((await clean(Number.MAX_SAFE_INTEGER)).items, 2)
+    // A restored slot names its audio by hash only; the tab's cache attaches the bytes to the live
+    // state without a step.
+    const { source: _, ...bgm } = states.middle.bgm
+    live = states.middle
+    page.flusher.append({ kind: 'undo', step: toHead }, { ...states.middle, bgm }, false)
+    await page.flusher.flush({ strict: true })
+    assert.deepEqual(media(world), new Set([hashOf(states.middle), hashOf(states.head)]))
+    assert.deepEqual(checkStored(world.memory), [])
 })
 
 test('nothing is removed while a head root, a session or the database is of a newer version', async () => {

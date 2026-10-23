@@ -270,6 +270,7 @@ export const startStoring = (
             ),
         storeMedia: (item) =>
             worker.call('storeMedia', item, { timeoutMs: mediaTimeoutMs(item.bytes.byteLength) }),
+        liveHeld: () => heldMediaOf(liveState.value),
         view: () => ({
             scroll: view.time,
             zoom: getVerticalScale(),

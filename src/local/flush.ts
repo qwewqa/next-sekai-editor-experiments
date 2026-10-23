@@ -305,6 +305,8 @@ export type FlushDeps = {
      * it's stored right now. Without it the item is left not held in storage.
      */
     storeMedia?: (item: BatchMedia) => Promise<boolean>
+    /** The media the live state holds, which may have been attached after its step (§2.3). */
+    liveHeld?: () => BatchMedia[]
     onFlushed?: (report: FlushReport) => void
     /** The roots a flush stored for its entries' states, so peek can find them in memory. */
     onRoots?: (roots: readonly (readonly [State, Uint8Array])[]) => void
@@ -1334,6 +1336,14 @@ export class Flusher {
                     held.push(item.hash)
                 else media.push(item)
             }
+        // Bytes attached without a step: checked as held, so a head's missing media is stored again.
+        for (const item of this.deps.liveHeld?.() ?? []) {
+            if (!referenced.has(item.hash) || sent.has(item.hash) || this.failedMedia.has(item.hash))
+                continue
+            sent.add(item.hash)
+            if (this.resendMedia.has(item.hash)) media.push(item)
+            else held.push(item.hash)
+        }
 
         // The last entry's state is the head once this batch is stored.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
