@@ -771,7 +771,6 @@ test.describe('the feedback after a write', () => {
         name: 'coconut.nxsp',
         size: 1,
         stepsLine: 'none',
-        tookOver: false,
         without: [],
         tooLarge: [],
     }
@@ -794,10 +793,6 @@ test.describe('the feedback after a write', () => {
         await feedback(page, { ...plain, without: ['bgm'], tooLarge: [] })
         await expect(notice(page)).toHaveText(
             'Saved to coconut.nxsp without its BGM, which is not loaded',
-        )
-        await feedback(page, { ...plain, tookOver: true })
-        await expect(notice(page)).toHaveText(
-            'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
         )
     })
 

@@ -2129,7 +2129,6 @@
     "someStepsMayNotBeIncluded": "已儲存到 {0}。可能未包含時間軸中部分較早的步驟。",
     "someStepsMayNotBeIncludedLine": "可能未包含時間軸中部分較早的步驟。",
     "committedState": "該檔案包含在另一個分頁中開啟之工作階段最後存放的版本。",
-    "tookOver": "已儲存到 {0}。其先前的工作在「最近工作階段」中。",
     "noChanges": "自下載 {0} 以來沒有變更",
     "noChangesSaved": "自儲存 {0} 以來沒有變更",
     "noChangesOpened": "自開啟 {0} 以來沒有變更",

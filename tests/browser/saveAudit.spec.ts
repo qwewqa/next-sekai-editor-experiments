@@ -339,7 +339,6 @@ test('a feedback for a session another tab holds says so to assistive technology
             name: 'restored.nxsp',
             size: 1000,
             stepsLine: 'none' as const,
-            tookOver: false,
             without: [],
             tooLarge: [],
         }
@@ -514,11 +513,7 @@ test.describe('a picker that renames the file', () => {
         await queuePicks(a, ['coconut.nxsp'])
         await pressSave(a)
         await submitSave(a, 'mine')
-        await expect(
-            notice(a).filter({
-                hasText: 'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
-            }),
-        ).toBeVisible()
+        await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
         const written = await projectOf(a, 'coconut.nxsp')
         expect((written.revision as Row).fileName).toBe('coconut.nxsp')
         expect(written.id).toBe((await chainOf(a)).docId)

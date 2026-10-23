@@ -2129,7 +2129,6 @@
     "someStepsMayNotBeIncluded": "已保存到 {0}。可能未包含时间线中部分较早的步骤。",
     "someStepsMayNotBeIncludedLine": "可能未包含时间线中部分较早的步骤。",
     "committedState": "该文件包含在另一个标签页中打开的会话最后存储的版本。",
-    "tookOver": "已保存到 {0}。其之前的工作在“最近会话”中。",
     "noChanges": "自下载 {0} 以来没有更改",
     "noChangesSaved": "自保存 {0} 以来没有更改",
     "noChangesOpened": "自打开 {0} 以来没有更改",

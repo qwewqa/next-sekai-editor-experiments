@@ -2129,7 +2129,6 @@
         "someStepsMayNotBeIncluded": "Saved to {0}. Some earlier Timeline steps may not be included.",
         "someStepsMayNotBeIncludedLine": "Some earlier Timeline steps may not be included.",
         "committedState": "The file holds the last stored version of the session open in another tab.",
-        "tookOver": "Saved to {0}. Its earlier work is in Recent Sessions.",
         "noChanges": "No changes since {0} was downloaded",
         "noChangesSaved": "No changes since {0} was saved",
         "noChangesOpened": "No changes since {0} was opened",

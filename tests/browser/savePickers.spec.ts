@@ -58,11 +58,7 @@ test('a takeover: A picks the file B is bound to; B loses it passively and its n
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(
-        notice(a).filter({
-            hasText: 'Saved to coconut.nxsp. Its earlier work is in Recent Sessions.',
-        }),
-    ).toBeVisible()
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
     const written = await projectOf(a, 'coconut.nxsp')
     const aChain = await chainOf(a)
     expect(written.id).toBe(aChain.docId)
@@ -466,9 +462,9 @@ test('B mid-write: A’s pick waits for B to finish, then takes the file over', 
         .poll(async () => ((await chainById(a, bChain.chainId))?.revision as Row | undefined)?.n)
         .toBe(2)
     await expect(b.getByRole('dialog')).toHaveCount(0)
-    await expect(
-        notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
-    ).toBeVisible({ timeout: 15_000 })
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible({
+        timeout: 15_000,
+    })
     expect((await projectOf(a, 'coconut.nxsp')).id).toBe((await chainOf(a)).docId)
     const { chains } = await rows(a, ['chains'])
     const revoked = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!
@@ -490,9 +486,7 @@ test('B frozen while A takes its file: once shown, B’s label goes and its Save
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(
-        notice(a).filter({ hasText: 'Its earlier work is in Recent Sessions.' }),
-    ).toBeVisible()
+    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
 
     await cdp.send('Page.setWebLifecycleState', { state: 'active' })
     await b.bringToFront()
