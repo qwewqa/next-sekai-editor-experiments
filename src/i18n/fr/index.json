@@ -2123,6 +2123,21 @@
     "sizeTotal": "Total : environ {0}",
     "sizePending": "Estimation de la taille…"
   },
+  "check": {
+    "command": "Vérifier le fichier et l’historique…",
+    "title": "Vérifier fichier et historique",
+    "checkingFile": "Vérification de {0}… {1} %",
+    "checkingStored": "Vérification de l’historique stocké… {0} %",
+    "changed": "\"{0}\" a changé pendant la vérification. Réessayez.",
+    "stillOpening": "\"{0}\" est encore en cours d’ouverture. Réessayez.",
+    "noDamage": "Aucun dommage trouvé.",
+    "scopeBoth": "\"{0}\" et l’historique stocké dans ce navigateur ont été vérifiés.",
+    "scopeStored": "L’historique stocké dans ce navigateur a été vérifié.",
+    "fileDamaged": "\"{0}\" est endommagé. La sauvegarde crée un fichier séparé.",
+    "repaired": "{0} étape de la chronologie réparée.|{0} étapes de la chronologie réparées.",
+    "storedDamaged": "{0} étape de la chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la chronologie stockées dans ce navigateur sont endommagées.",
+    "mediaDamaged": "Élément endommagé dans ce navigateur : {0}."
+  },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",
     "exportBody": "\"{0}\" a changé depuis votre dernière exportation.",

@@ -2123,6 +2123,21 @@
     "sizeTotal": "總計：約 {0}",
     "sizePending": "正在估算大小…"
   },
+  "check": {
+    "command": "檢查檔案和歷史記錄…",
+    "title": "檢查檔案和歷史記錄",
+    "checkingFile": "正在檢查 {0}… {1}%",
+    "checkingStored": "正在檢查已存放的歷史記錄… {0}%",
+    "changed": "\"{0}\" 在檢查期間已變更。請重試。",
+    "stillOpening": "\"{0}\" 仍在開啟中。請重試。",
+    "noDamage": "未發現損毀。",
+    "scopeBoth": "已檢查 \"{0}\" 和此瀏覽器中存放的歷史記錄。",
+    "scopeStored": "已檢查此瀏覽器中存放的歷史記錄。",
+    "fileDamaged": "\"{0}\" 已損毀。儲存時會建立獨立的檔案。",
+    "repaired": "已修復 {0} 個時間軸步驟。",
+    "storedDamaged": "此瀏覽器中存放的 {0} 個時間軸步驟已損毀。",
+    "mediaDamaged": "此瀏覽器中存放的{0}已損毀。"
+  },
   "conflict": {
     "exportTitle": "\"{0}\" 已變更",
     "exportBody": "\"{0}\" 在上次匯出後已變更。",

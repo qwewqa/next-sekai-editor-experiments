@@ -20,7 +20,6 @@ import type { BuiltSave } from '../../local/save/execute'
 import { bindingHasHistory } from '../../local/save/model'
 import { storageStatus } from '../../local/startup/events'
 import { readValue, storedRead } from '../../local/storedRead'
-import { journalWriter } from '../../local/storing'
 import { appVersion, FileError, platform, type DiskState, type SaveResult } from '../../platform'
 import { sameContent } from '../../platform/fingerprint'
 import { requestWrite } from '../../platform/handover'
@@ -35,7 +34,7 @@ import { validName } from '../commands/exportLevel/fileName'
 import { clearExportDestination, exportMemory } from '../commands/exportLevel/memory'
 import { knownTargetAvailable } from '../commands/exportLevel/ownership'
 import { fileErrorText } from '../commands/exportLevel/ui'
-import { bindFile, unbindFile } from '../file'
+import { bindFile } from '../file'
 import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
 import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
@@ -97,6 +96,7 @@ import {
 } from './preview'
 import { exclusive } from './queue'
 import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
+import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
 
 // Save, Save As… and Save to File… (Part 1 §1.4.7; owner decision log D5): write-back with
@@ -1098,23 +1098,7 @@ const writeBack = async (
 
 /** An append that met damage in the chain's own file: the chain unlinks, and Save As… follows. */
 const unlinkAndSaveAs = async (env: Env, name: string): Promise<Outcome> => {
-    const docId = crypto.randomUUID()
-    const record = await env.worker
-        .call('unlinkChain', {
-            chainId: env.chainId,
-            docId,
-            appVersion: appVersion().appVersion,
-        })
-        .catch(() => undefined)
-    if (record) {
-        env.session.docId = docId
-        env.session.chain = record
-        journalWriter?.rewrite()
-        unbindFile()
-        currentSession.value = { ...currentSession.value, docId, copyOf: { name, bound: true } }
-        exportMemory.partial = true
-    }
-    forgetHandle(env.chainId)
+    await unlinkSession(env, name)
     return { kind: 'unlinked', name }
 }
 

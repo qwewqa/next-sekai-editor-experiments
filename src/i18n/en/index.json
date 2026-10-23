@@ -2123,6 +2123,21 @@
         "sizeTotal": "Total: about {0}",
         "sizePending": "Estimating size…"
     },
+    "check": {
+        "command": "Check File and History…",
+        "title": "Check File and History",
+        "checkingFile": "Checking {0}… {1}%",
+        "checkingStored": "Checking stored history… {0}%",
+        "changed": "\"{0}\" changed while it was being checked. Try again.",
+        "stillOpening": "\"{0}\" is still being opened. Try again.",
+        "noDamage": "No damage found.",
+        "scopeBoth": "Checked \"{0}\" and the history stored in this browser.",
+        "scopeStored": "Checked the history stored in this browser.",
+        "fileDamaged": "\"{0}\" is damaged. Saving makes a separate file.",
+        "repaired": "Repaired {0} Timeline step.|Repaired {0} Timeline steps.",
+        "storedDamaged": "{0} Timeline step stored in this browser is damaged.|{0} Timeline steps stored in this browser are damaged.",
+        "mediaDamaged": "The {0} stored in this browser was damaged."
+    },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",
         "exportBody": "\"{0}\" changed since your last export.",

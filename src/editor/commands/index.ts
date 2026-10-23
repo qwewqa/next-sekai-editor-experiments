@@ -2,6 +2,7 @@ import { shallowReactive, type Component } from 'vue'
 import { bgm } from './bgm'
 import { bpm } from './bpm'
 import { brush } from './brush'
+import { checkProject } from './checkProject'
 import { combineNotes } from './combineNotes'
 import { openContextMenu } from './contextMenu'
 import { copy } from './copy'
@@ -111,6 +112,7 @@ const builtInCommands = {
     exportLevel,
     reset,
     properties,
+    checkProject,
     utilities,
 
     play,
