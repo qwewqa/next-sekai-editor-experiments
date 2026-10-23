@@ -270,7 +270,11 @@ test('a changelog that breaks its format stops the cut', () => {
 test('the cut works on today’s changelog', () => {
     const text = readFileSync(new URL('../../CHANGELOG.md', import.meta.url), 'utf8')
     const notes = ['- A new line.']
-    const result = cut(text.replace('## Unreleased\n', '## Unreleased\n\n- A new line.\n'), {
+    // The new line goes first, whether ## Unreleased already lists lines or not.
+    const withLine = text.includes('## Unreleased\n\n- ')
+        ? text.replace('## Unreleased\n\n', '## Unreleased\n\n- A new line.\n')
+        : text.replace('## Unreleased\n', '## Unreleased\n\n- A new line.\n')
+    const result = cut(withLine, {
         released: notes,
         notes,
     })
