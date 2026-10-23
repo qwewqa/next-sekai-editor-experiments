@@ -41,6 +41,7 @@ import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
 import { bgmStatus, claimNotice } from '../../media/heldBgm'
 import { dismissNoticeCard, notify, type NoticeLine } from '../../notification'
+import { restoreStored } from '../../restoreStored'
 import { notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { chooseAudioAction } from '../bgm/chooseAudio'
@@ -133,15 +134,9 @@ const thisDevice = () => {
 
 const restoreAction = (sessionId: string) => ({
     label: () => i18n.value.open.restoreIt,
+    // The one Restore Session: its card, Reopen and the BGM line, and a copy says it is one.
     run: () => {
-        void withSwitchRequest(undefined, async (request) => {
-            const { confirmSwitch } = await import('../../switch')
-            if (!(await confirmSwitch()) || !request.isCurrent()) return
-            const { restoreSession } = await import('../../../local/startup/api')
-            if (!request.isCurrent()) return
-            if ((await restoreSession(sessionId, request)).opened && request.isCurrent())
-                dismissNoticeCard()
-        })
+        void restoreStored(sessionId, 'restore')
     },
 })
 

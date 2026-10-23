@@ -1346,6 +1346,13 @@
     "announceViewingChange": "{0} görüntüleniyor, {1}",
     "openedFile": "{0} açıldı",
     "viewChart": "Çizelgeyi Görüntüle",
+    "sessions": {
+      "loadFailed": "Son Oturumlar yüklenemedi.",
+      "thisTab": "Bu sekme",
+      "elsewhere": "Başka bir sekmede veya pencerede açık",
+      "actions": "\"{0}\" için diğer işlemler",
+      "saveToFile": "Dosyaya Kaydet…"
+    },
     "details": {
       "title": "Adım ayrıntıları",
       "named": "Adım ayrıntıları: {0}",
@@ -2183,6 +2190,7 @@
     "alreadyMatches": "Zaten geçerli çizelgeyle aynı",
     "restoreFailed": "Geri yüklenemedi",
     "peekFailed": "Bu adım görüntülenemedi",
+    "peekSessionFailed": "Bu oturum görüntülenemedi",
     "openHistory": "Geçmişi Aç",
     "earlierInHistory": "Önceki adımlar Geçmiş’te",
     "bgmNotLoaded": "BGM yüklenmedi",
@@ -2199,7 +2207,9 @@
     "recoveredChanges": "Değişiklikler kurtarıldı"
   },
   "session": {
-    "untitled": "Adsız · {0}"
+    "untitled": "Adsız · {0}",
+    "restored": "\"{0}\" geri yüklendi",
+    "restoredCopy": "\"{0}\" kopyası geri yüklendi"
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",

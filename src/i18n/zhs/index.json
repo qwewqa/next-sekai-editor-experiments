@@ -1346,6 +1346,13 @@
     "announceViewingChange": "正在查看 {0}，{1}",
     "openedFile": "已打开 {0}",
     "viewChart": "查看谱面",
+    "sessions": {
+      "loadFailed": "无法加载最近会话。",
+      "thisTab": "此标签页",
+      "elsewhere": "已在另一个标签页或窗口中打开",
+      "actions": "“{0}”的更多操作",
+      "saveToFile": "保存到文件…"
+    },
     "details": {
       "title": "步骤详情",
       "named": "步骤详情：{0}",
@@ -2183,6 +2190,7 @@
     "alreadyMatches": "已与当前谱面一致",
     "restoreFailed": "无法还原",
     "peekFailed": "无法查看此步骤",
+    "peekSessionFailed": "无法查看此会话",
     "openHistory": "打开历史记录",
     "earlierInHistory": "更早的步骤在历史记录中",
     "bgmNotLoaded": "BGM 未加载",
@@ -2199,7 +2207,9 @@
     "recoveredChanges": "已恢复更改"
   },
   "session": {
-    "untitled": "未命名 · {0}"
+    "untitled": "未命名 · {0}",
+    "restored": "已还原“{0}”",
+    "restoredCopy": "已还原“{0}”的副本"
   },
   "prompt": {
     "title": "更改未存储",

@@ -4,6 +4,7 @@ import { beatToMeasure, roundBoundary, timeToBeat, type GridBpm } from '../../st
 import { formatBeatPosition } from '../beatDisplay'
 import { bandTimes } from './changes'
 import { showHistoryLink } from './openHistory'
+import { peekedSession } from './selection'
 import { hereRange, historyFilter } from './state'
 
 // Edits Here (Part 1 §1.4.10.5): the Timeline filtered to the entries that changed a range of
@@ -66,6 +67,8 @@ export const filterHere = () => {
 
 /** Find Edits Here: the filter on, and History shown the way links show it. */
 export const findEditsHere = () => {
+    // A session's peek shows another chain's chart: its beats say nothing of this Timeline.
+    if (peekedSession.value) return
     filterHere()
     showHistoryLink('timeline')
 }

@@ -86,6 +86,19 @@ test('a download browser adds the event, an unknown event reads as a download', 
     )
 })
 
+test('a row says a download is not confirmed, after the event and before what a check found', () => {
+    const file: LabelFile = { name: 'a.nxsp', event: 'downloaded', at }
+    const state = (rest: Partial<LabelInput>) =>
+        labelOf(input({ writesInPlace: false, file, ...rest })).state ?? ''
+    assert.match(state({ notConfirmed: true }), /^downloaded .* · download not confirmed$/)
+    assert.match(
+        state({ notConfirmed: true, diskFinding: 'changed' }),
+        /download not confirmed · changed on disk$/,
+    )
+    // The status bar does not pass it: its chip says so.
+    assert.doesNotMatch(state({}), /not confirmed/)
+})
+
 test('what a check found on disk joins the state', () => {
     const file: LabelFile = { name: 'a.nxsp', event: 'saved', at }
     assert.equal(labelOf(input({ file, diskFinding: 'missing' })).state, 'file missing')

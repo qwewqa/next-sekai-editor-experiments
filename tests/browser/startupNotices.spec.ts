@@ -235,6 +235,36 @@ test.describe('load notices in the start-up pill', () => {
         ])
     })
 
+    for (const kind of ['journalKept', 'unsavedRecovered'] as const)
+        test(`the ${kind} notice has Restore Session, which opens the session it names`, async ({
+            page,
+        }) => {
+            await visit(page)
+            await edit(page, 990)
+            await settled(page)
+            const sessionId = await page.evaluate(() => window.nseFlushTest!.flusher.session!.id)
+            // The session is left behind, stored and not open anywhere.
+            await page.evaluate(async () => {
+                const { resetState } =
+                    (await import('/src/history/index.ts')) as typeof import('../../src/history')
+                resetState(false)
+            })
+            expect(await lifeOf(page)).toBe(1000)
+            const name = { name: { kind: 'name', text: 'Coconut (Master)' }, at: Date.now() }
+            await addEvent(
+                page,
+                kind === 'journalKept' ? { kind, name, sessionId } : { kind, sessionId },
+            )
+            await pill(page).getByRole('button', { name: 'Restore Session' }).click()
+            await expect.poll(() => lifeOf(page)).toBe(990)
+            expect(await page.evaluate(() => window.nseFlushTest!.flusher.session!.id)).not.toBe(
+                sessionId,
+            )
+            await expect(
+                page.locator('.notification-pill, .notification').filter({ hasText: /^Restored / }),
+            ).toBeVisible()
+        })
+
     test('notices are ordered by the table, three show, and the rest are "and N more in Local Data"', async ({
         page,
     }) => {
@@ -531,7 +561,7 @@ test.describe('the status bar label', () => {
         await expect(page).toHaveTitle('Coconut · not saved to a file – Next SEKAI Editor')
     })
 
-    test('a bound session shows the file name, and the name before it when they differ', async ({
+    test('a bound session shows the file name alone, whatever its Name', async ({
         page,
         context,
     }) => {
@@ -557,8 +587,9 @@ test.describe('the status bar label', () => {
                 (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
             session.value = { ...session.value, name: 'Coconut (Master)' }
         })
-        await expect(label(next)).toHaveText('Coconut (Master) · coconut.nxsp')
-        await expect(next).toHaveTitle('Coconut (Master) · coconut.nxsp – Next SEKAI Editor')
+        // The file outranks a Name: it stays the displayed name.
+        await expect(label(next)).toHaveText('coconut.nxsp')
+        await expect(next).toHaveTitle('coconut.nxsp – Next SEKAI Editor')
     })
 
     test('a separate copy says which file it is a copy of', async ({ page, context }) => {

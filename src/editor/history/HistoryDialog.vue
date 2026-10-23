@@ -17,7 +17,7 @@ import { settings } from '../../settings'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
 import HistoryPanel from './HistoryPanel.vue'
 import type { HistoryCloseResult, HistoryPresentation } from './presentation'
-import { peekedInfo } from './selection'
+import { peekedInfo, peekedSession } from './selection'
 
 // The sheet and compact dialog share the panel's band and lists, without another title row.
 
@@ -40,7 +40,8 @@ const canViewChart = computed(
     () =>
         isPeeking.value &&
         !!peekedKey.value &&
-        peekedInfo.value?.key === peekedKey.value &&
+        (peekedInfo.value?.key === peekedKey.value ||
+            peekedSession.value?.key === peekedKey.value) &&
         displayedPeekKey.value === peekedKey.value,
 )
 const captureView = () => {

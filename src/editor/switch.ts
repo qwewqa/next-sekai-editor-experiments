@@ -6,10 +6,17 @@ import { previousSession } from '../local/startup/events'
 import { showChoice } from '../modals/choice'
 import { setLeaveSafeModeGuard } from '../safe'
 import { interpolate } from '../utils/interpolate'
+import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
 import { hasChangesNotInFile } from './file/closePrompt'
-import { dismissNoticeCard, noticeCard, notify, type NoticeAction } from './notification'
+import {
+    dismissNoticeCard,
+    noticeCard,
+    notify,
+    type NoticeAction,
+    type NoticeLine,
+} from './notification'
 import { shownName } from './shownName'
 import { withSwitchRequest, type SwitchRequest } from './switchRequest'
 
@@ -91,12 +98,24 @@ export const reopenPrevious = () =>
         reopening = request
         try {
             const opened = await reopen(request)
-            if (opened && request.isCurrent()) dismissNoticeCard()
+            if (opened && request.isCurrent()) await afterSwitch()
             return opened
         } finally {
             if (reopening === request) reopening = undefined
         }
     })
+
+/** The card a Reopen or a Restore as a Copy from a load notice leaves: gone, or the BGM line alone. */
+const afterSwitch = async () => {
+    dismissNoticeCard()
+    const line = await takeBgmLine()
+    if (line)
+        notify(line.message, {
+            card: true,
+            ...(line.severity ? { severity: line.severity } : {}),
+            ...(line.action ? { action: line.action } : {}),
+        })
+}
 
 /** Restore as a Copy from a load notice. */
 export const restoreCopy = (sessionId: string) =>
@@ -105,24 +124,30 @@ export const restoreCopy = (sessionId: string) =>
         const { restoreAsCopy } = await import('../local/startup/api')
         if (!request.isCurrent()) return false
         const { opened } = await restoreAsCopy(sessionId, request)
-        if (opened && request.isCurrent()) dismissNoticeCard()
+        if (opened && request.isCurrent()) await afterSwitch()
         return opened
     })
 
 /**
  * The notice after a switch: its message, and Reopen "<previous>" while the session left can be
  * reopened (§1.4.1), unless `offer` is false. When it turns out not to be (Leave Anyway), the
- * notice is plain.
+ * notice is plain. `line` is a second row of the card (the BGM that is not loaded).
  */
-export const notifyLeft = (message: () => string, offer = true) => {
+export const notifyLeft = (message: () => string, offer = true, line?: NoticeLine) => {
     // The switch ends the session the cards were raised in (Part 1 §1.4.1).
     dismissNoticeCard()
     const left = previousSession.value
+    const plain = () => {
+        if (line) notify(message, { lines: [{ message }, line] })
+        else notify(message)
+    }
     if (!left || !offer) {
-        notify(message)
+        plain()
         return
     }
-    const shown = notify(message, { action: reopenAction(left) })
+    const shown = line
+        ? notify(message, { lines: [{ message, action: reopenAction(left) }, line] })
+        : notify(message, { action: reopenAction(left) })
     // Stops once the card is gone however it went (dismissed, replaced, used), so a switch leaves
     // no watcher behind.
     const stop = watch(
@@ -134,7 +159,7 @@ export const notifyLeft = (message: () => string, offer = true) => {
             // Nothing to reopen after all (Leave Anyway): a card still showing turns plain.
             if (reopening || noticeCard.value?.id !== shown) return
             dismissNoticeCard()
-            notify(message)
+            plain()
         },
     )
 }

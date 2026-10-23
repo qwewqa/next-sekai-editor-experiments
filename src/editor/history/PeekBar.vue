@@ -25,7 +25,7 @@ import { useHistoryCalendar } from './calendarClock'
 import { historyFormat } from './historyFormat'
 import { historyOperationContext } from './historyOperationContext'
 import { measurePeekWidths, peekLayout, peekText, peekWidths } from './peekFit'
-import { backToNow, peekedInfo, peekedLabel, requestRestore } from './selection'
+import { backToNow, peekedInfo, peekedLabel, peekedSession, requestRestore } from './selection'
 import { openOperationDetails } from './operationDetails'
 import { focusAfterRemoval } from '../../utils/focusFallback'
 
@@ -50,6 +50,14 @@ watch(
     },
     { immediate: true },
 )
+watch(peekedSession, (info) => {
+    if (!info) return
+    announcedAt = performance.now()
+    announcement.value = interpolateRaw(
+        i18n.value.history.announceViewing,
+        `${interpolateRaw(i18n.value.history.quoted, info.name)} · ${format.value.dateTimeSeconds(info.time)}`,
+    )
+})
 watch(changeLine, (line) => {
     const info = peekedInfo.value
     if (!line || !info) return
@@ -66,20 +74,32 @@ watch(changeLine, (line) => {
 const strings = computed(() => i18n.value.peek)
 
 // --- One width per language and width class, so the arrows below never move (peekFit.ts).
-const measure = () => {
-    peekWidths.value = measurePeekWidths(
+const measureWith = (restore: string) =>
+    measurePeekWidths(
         document.body,
         settings.locale,
         settings.beatDisplay,
         {
             back: strings.value.backToNow,
-            restore: strings.value.restore,
+            restore,
             states: fixedLines.short.map(fixedLine),
             statesWide: fixedLines.wide.map(fixedLine),
             summary: fixedLines.summary.map(fixedLine),
             counted: countedLines(),
         },
         calendar.value,
+    )
+// A session's button reads Restore Session or Restore as a Copy: the widest of the two.
+const sessionLabels = computed(() => ({
+    restore: i18n.value.open.restoreIt,
+    copy: i18n.value.load.restoreAsCopy,
+}))
+const sessionRestoreWidth = ref(0)
+const measure = () => {
+    peekWidths.value = measureWith(strings.value.restore)
+    sessionRestoreWidth.value = Math.max(
+        measureWith(sessionLabels.value.restore).restore,
+        measureWith(sessionLabels.value.copy).restore,
     )
 }
 onMounted(() => {
@@ -92,7 +112,41 @@ onBeforeUnmount(() => {
 watch(() => [settings.locale, settings.beatDisplay], measure)
 // The widths are in px at the root font size they were measured at: a change measures them again.
 watch(useRootFontSize(), measure)
-const layout = computed(() => peekLayout(view.w, peekWidths.value))
+// The session strip names the session beside its time, in two lines; the date is the strip's
+// measured one, and the name takes what the fit leaves, 64 px at least.
+const layout = computed(() => {
+    const widths = peekWidths.value
+    const session = peekedSession.value
+    if (!session || !widths) return peekLayout(view.w, widths)
+    const room = (64 * widths.rem) / 16
+    return peekLayout(view.w, {
+        ...widths,
+        restore: sessionRestoreWidth.value,
+        today: widths.today + room,
+        earlier: widths.earlier + room,
+        compact: widths.compact + room,
+    })
+})
+// A session's strip is two rows in a narrow pane, so its name has the room: the text, then the
+// buttons, which keep their labels where the row has room for both.
+const stacked = computed(() => !!peekedSession.value && view.w < 420)
+const backLabel = computed(() => {
+    const widths = peekWidths.value
+    if (!stacked.value || !widths) return layout.value.back === 'label'
+    const k = widths.rem / 16
+    const row = (4 + 8 + 8 + 4 + 32 + 32) * k + widths.back + sessionRestoreWidth.value
+    return row <= Math.min(view.w - 16 * k, 480 * k)
+})
+const sessionText = computed(() => {
+    const info = peekedSession.value
+    return info
+        ? {
+              name: interpolateRaw(i18n.value.history.quoted, info.name),
+              time: peekText(calendar.value, settings.locale, info.time, layout.value.wide),
+              restore: sessionLabels.value[info.action],
+          }
+        : undefined
+})
 // The step the bar names: the last one's until the next one's change is read (changes.ts).
 const shownInfo = barInfo
 const text = computed(() => {
@@ -113,7 +167,8 @@ watch(
 )
 
 const restore = () => {
-    if (peekedKey.value) void requestRestore(peekedKey.value)
+    if (peekedSession.value) peekedSession.value.restore()
+    else if (peekedKey.value) void requestRestore(peekedKey.value)
 }
 // A press while the last step is held opens the new step's details once its change is read.
 const details = () => {
@@ -167,11 +222,29 @@ const onKeydown = (event: KeyboardEvent) => {
             @keydown="onKeydown"
         >
             <div
-                class="pointer-events-auto flex w-[--peek-w] max-w-full items-center gap-2 rounded-full bg-modal p-1 text-sm text-fg shadow-xl ring-1 ring-fg/10"
+                class="pointer-events-auto flex w-[--peek-w] max-w-full items-center gap-2 bg-modal p-1 text-sm text-fg shadow-xl ring-1 ring-fg/10"
+                :class="stacked ? 'flex-wrap justify-end rounded-[1.375rem]' : 'rounded-full'"
                 data-peek-main
             >
+                <!-- A session: its name over its time, no details to open. -->
+                <div
+                    v-if="sessionText"
+                    class="mr-auto flex h-9 min-w-0 flex-col justify-center px-2.5"
+                    :class="{ 'w-full': stacked }"
+                    :title="`${sessionText.name} · ${sessionText.time}`"
+                    data-peek-text
+                    data-peek-session
+                >
+                    <span class="block truncate text-sm leading-[1.125rem]">{{
+                        sessionText.name
+                    }}</span>
+                    <span class="block truncate text-xs tabular-nums leading-4 text-fg/80">{{
+                        sessionText.time
+                    }}</span>
+                </div>
                 <!-- The date at the start, its glyph concentric with the strip's end cap. -->
                 <button
+                    v-else
                     type="button"
                     class="peek-hit ghost mr-auto flex h-9 min-w-0 items-center gap-2 rounded-full"
                     :class="[
@@ -197,13 +270,13 @@ const onKeydown = (event: KeyboardEvent) => {
                 <button
                     type="button"
                     class="peek-hit btn btn-secondary flex h-9 shrink-0 items-center justify-center rounded-full"
-                    :class="layout.back === 'label' ? 'px-4' : 'w-9'"
+                    :class="backLabel ? 'px-4' : 'w-9'"
                     :aria-label="strings.backToNow"
                     :title="strings.backToNow"
                     data-peek-back
                     @click="backToNow"
                 >
-                    <template v-if="layout.back === 'label'">{{ strings.backToNow }}</template
+                    <template v-if="backLabel">{{ strings.backToNow }}</template
                     ><ChevronIcon v-else direction="left" centered />
                 </button>
                 <button
@@ -213,14 +286,16 @@ const onKeydown = (event: KeyboardEvent) => {
                         layout.snug ? 'px-3' : 'px-4',
                         layout.restoreFits ? 'shrink-0' : 'min-w-0',
                     ]"
-                    :title="layout.restoreFits ? undefined : strings.restore"
+                    :title="
+                        layout.restoreFits ? undefined : (sessionText?.restore ?? strings.restore)
+                    "
                     data-peek-restore
                     @click="restore"
                 >
-                    <span class="truncate">{{ strings.restore }}</span>
+                    <span class="truncate">{{ sessionText?.restore ?? strings.restore }}</span>
                 </button>
             </div>
-            <ChangeArrows />
+            <ChangeArrows v-if="!sessionText" />
         </div>
     </template>
 </template>

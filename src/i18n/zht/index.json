@@ -1346,6 +1346,13 @@
     "announceViewingChange": "正在檢視 {0}，{1}",
     "openedFile": "已開啟 {0}",
     "viewChart": "檢視譜面",
+    "sessions": {
+      "loadFailed": "無法載入最近工作階段。",
+      "thisTab": "此分頁",
+      "elsewhere": "已在另一個分頁或視窗中開啟",
+      "actions": "\"{0}\" 的更多操作",
+      "saveToFile": "儲存到檔案…"
+    },
     "details": {
       "title": "步驟詳細資訊",
       "named": "步驟詳細資訊：{0}",
@@ -2183,6 +2190,7 @@
     "alreadyMatches": "已與目前譜面一致",
     "restoreFailed": "無法還原",
     "peekFailed": "無法檢視此步驟",
+    "peekSessionFailed": "無法檢視此工作階段",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中",
     "bgmNotLoaded": "BGM 未載入",
@@ -2199,7 +2207,9 @@
     "recoveredChanges": "已復原變更"
   },
   "session": {
-    "untitled": "未命名 · {0}"
+    "untitled": "未命名 · {0}",
+    "restored": "已還原 \"{0}\"",
+    "restoredCopy": "已還原 \"{0}\" 的副本"
   },
   "prompt": {
     "title": "變更未存放",

@@ -30,6 +30,11 @@ export type LabelInput = {
     changed: boolean
     /** What a separate copy was made from; a stored chain does not know it. */
     copyOf?: { name: string }
+    /**
+     * The bound file is a download not confirmed (§1.3.4): a row says so, as the chip does in the
+     * status bar, which does not pass it.
+     */
+    notConfirmed?: boolean
     /** What a check found on disk; a list does not check. */
     diskFinding?: 'missing' | 'changed' | 'newer'
     /** Whether Save writes the file in place; a download browser adds the event to the label. */
@@ -65,6 +70,7 @@ export const labelOf = ({
     file,
     changed,
     copyOf,
+    notConfirmed,
     diskFinding,
     writesInPlace,
 }: LabelInput): StatusLabel => {
@@ -78,7 +84,13 @@ export const labelOf = ({
             : file.event === 'opened'
               ? eventFragment(strings.opened, file.at)
               : eventFragment(strings.downloaded, file.at)
-        const state = [event, diskFragment(diskFinding)].filter(Boolean).join(' · ')
+        const state = [
+            event,
+            notConfirmed ? fragment(i18n.value.state.notConfirmed) : undefined,
+            diskFragment(diskFinding),
+        ]
+            .filter(Boolean)
+            .join(' · ')
         return {
             name: stem ? '' : name,
             file: file.name,

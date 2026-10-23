@@ -1346,6 +1346,13 @@
         "announceViewingChange": "Viewing {0}, {1}",
         "openedFile": "Opened {0}",
         "viewChart": "View Chart",
+        "sessions": {
+            "loadFailed": "Recent Sessions could not be loaded.",
+            "thisTab": "This tab",
+            "elsewhere": "Open in another tab or window",
+            "actions": "More Actions for \"{0}\"",
+            "saveToFile": "Save to File…"
+        },
         "details": {
             "title": "Step Details",
             "named": "Step Details: {0}",
@@ -2183,6 +2190,7 @@
         "alreadyMatches": "Already matches the current chart",
         "restoreFailed": "Could not restore",
         "peekFailed": "Could not view this step",
+        "peekSessionFailed": "Could not view this session",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier steps are in History",
         "bgmNotLoaded": "BGM not loaded",
@@ -2199,7 +2207,9 @@
         "recoveredChanges": "Recovered changes"
     },
     "session": {
-        "untitled": "Untitled · {0}"
+        "untitled": "Untitled · {0}",
+        "restored": "Restored \"{0}\"",
+        "restoredCopy": "Restored a copy of \"{0}\""
     },
     "prompt": {
         "title": "Changes Not Stored",

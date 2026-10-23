@@ -44,12 +44,31 @@ export type PeekedInfo = {
     pinned?: readonly EntryKey[]
 }
 
+/**
+ * A session as the peek bar names it (Recent Sessions' peek, §1.4.10.6): the head's last entry,
+ * shown without BGM. It has no change view, so it is kept apart from the steps' `PeekedInfo`.
+ */
+export type PeekedSession = {
+    key: EntryKey
+    chainId: string
+    /** The row's name, as shown. */
+    name: string
+    time: number
+    /** What the bar's button is: Restore Session, or Restore as a Copy. */
+    action: 'restore' | 'copy'
+    /** The button's action: the session action of the row it was peeked from. */
+    restore: () => void
+}
+
 /** An entry's key in the peek. */
 export const keyOf = (entry: { sessionId: string; seq: number }): EntryKey =>
     entryKey(entry.sessionId, entry.seq)
 
 /** What the bar names, set when the list asks for a peek. */
 export const peekedInfo = shallowRef<PeekedInfo>()
+
+/** What the bar names while a session is peeked: the steps' `peekedInfo` is empty then. */
+export const peekedSession = shallowRef<PeekedSession>()
 
 export const peekedLabel = (info: PeekedInfo, context: OperationTextContext) => {
     const title = renderOperationRecipe(info.recipe, context)
@@ -94,6 +113,7 @@ const markFailed = (error: unknown, key: string) => {
 /** Peeks an entry; the peek itself waits a moment when requests come close together. */
 export const requestPeek = (info: PeekedInfo) => {
     const generation = peekSourceGeneration.value
+    peekedSession.value = undefined
     peekedInfo.value = info
     peekEntry(info.key).catch((error: unknown) => {
         if (generation !== peekSourceGeneration.value) return
@@ -102,6 +122,27 @@ export const requestPeek = (info: PeekedInfo) => {
         markFailed(error, info.key)
         reportFailure(error, () => i18n.value.notice.peekFailed, ['missing'])
         if (peekedInfo.value === info) peekedInfo.value = undefined
+    })
+}
+
+/**
+ * Peeks a session's head: shown without BGM, named by the bar. A session that cannot be read
+ * (`onFailed`: damaged, or from a newer version) is marked by the list; the peek ends and says
+ * so only for a failure the row does not show.
+ */
+export const requestSessionPeek = (
+    info: PeekedSession,
+    onFailed?: (reason: 'damaged' | 'newer') => void,
+) => {
+    const generation = peekSourceGeneration.value
+    peekedInfo.value = undefined
+    peekedSession.value = info
+    peekEntry(info.key, { audio: 'none' }).catch((error: unknown) => {
+        if (generation !== peekSourceGeneration.value) return
+        if (error instanceof PeekError && (error.reason === 'damaged' || error.reason === 'newer'))
+            onFailed?.(error.reason)
+        reportFailure(error, () => i18n.value.notice.peekSessionFailed, ['missing'])
+        if (peekedSession.value === info) peekedSession.value = undefined
     })
 }
 
@@ -127,10 +168,13 @@ export const requestRestore = async (key: EntryKey) => {
 /** Back to Now: leaves the peek. */
 export const backToNow = () => {
     peekedInfo.value = undefined
+    peekedSession.value = undefined
     leavePeek()
 }
 
 // A peek ended elsewhere (Undo, an edit, New) leaves nothing to name.
 watch(peekedKey, (key) => {
-    if (!key) peekedInfo.value = undefined
+    if (key) return
+    peekedInfo.value = undefined
+    peekedSession.value = undefined
 })

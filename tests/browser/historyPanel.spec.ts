@@ -632,8 +632,8 @@ test.describe('links', () => {
             'aria-selected',
             'true',
         )
-        // Recent Sessions is a stub until Step 7; Go To keeps its place without showing.
-        await expect(page.getByRole('tabpanel')).toBeEmpty()
+        // Go To keeps its place without showing.
+        await expect(page.getByRole('tabpanel').locator('[data-recent-sessions]')).toBeVisible()
         await expect(page.locator('[data-history-goto-button]')).toBeHidden()
     })
 

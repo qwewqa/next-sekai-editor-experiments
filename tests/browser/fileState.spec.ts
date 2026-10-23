@@ -181,7 +181,7 @@ test.describe('the label and the title', () => {
         await expect(label(page)).toHaveText('coconut.nxsp')
     })
 
-    test('a named session shows its name before the file, and the bullet after', async ({
+    test('a bound session is named by its file, whatever its Name, and the bullet follows', async ({
         page,
         context,
     }) => {
@@ -194,10 +194,10 @@ test.describe('the label and the title', () => {
             session.value = { ...session.value, name: 'Coconut (Master)' }
         })
         await edit(page, 990)
-        await expect(label(page)).toHaveText('Coconut (Master) · coconut.nxsp •')
-        await expect(page).toHaveTitle('Coconut (Master) · coconut.nxsp • – Next SEKAI Editor')
+        await expect(label(page)).toHaveText('coconut.nxsp •')
+        await expect(page).toHaveTitle('coconut.nxsp • – Next SEKAI Editor')
         await expect(button(page)).toHaveAccessibleName(
-            'Coconut (Master), changed since coconut.nxsp was saved',
+            'coconut, changed since coconut.nxsp was saved',
         )
     })
 
@@ -278,7 +278,7 @@ test.describe('the label and the title', () => {
             )
             await expect(page.locator('[data-status-changed]')).toBeVisible()
             await expect(button(page)).toHaveAccessibleName(
-                'A Very Long Distinct Display Name, changed since coconut-long-working-copy.nxsp was saved',
+                'coconut-long-working-copy, changed since coconut-long-working-copy.nxsp was saved',
             )
             const geometry = await statusGeometry(page)
             expect(geometry.file).toMatch(/^coconut/)
@@ -469,17 +469,12 @@ test.describe('the label and the title', () => {
         }) => {
             await seed(context)
             await visit(page)
-            const file = `coconut-${'abcdefghij'.repeat(22)}.nxsp`
+            // The file names the session, so the long identity is the file’s own name.
+            const file = `coconut-${'abcdefghij'.repeat(60)}.nxsp`
             await bindFile(page, { name: file, event: 'saved' })
             await page.evaluate(async () => {
-                const { session } =
-                    (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
                 const { settings } =
                     (await import('/src/settings.ts')) as typeof import('../../src/settings')
-                session.value = {
-                    ...session.value,
-                    name: 'A Long Distinct Session Name '.repeat(24).trim(),
-                }
                 settings.toolbar = [['properties']]
             })
             await edit(page, 990)
