@@ -317,13 +317,15 @@ test.describe('the iOS bar', () => {
 
         await chip(page).click()
         await expect(dialog(page)).toContainText('finished downloading')
+        // Nothing changed since the download: Save would only offer it again, so it is left out
+        // and I Have the File is the default.
         expect(await buttons(page)).toEqual([
             'Cancel',
             'Local Data',
             'Try Again',
             'I Have the File',
-            'Save',
         ])
+        await expect(dialog(page).getByRole('button', { name: 'I Have the File' })).toBeFocused()
         await press(page, 'I Have the File')
 
         // The download line and its button are gone.

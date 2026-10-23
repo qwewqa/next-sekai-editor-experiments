@@ -369,7 +369,9 @@ const openMenu = async (row: ChainRow, anchor: HTMLElement, touch = false) => {
     if (menu.value?.row.id === row.id) return
     const token = ++menuToken
     // The row whose menu opens is the row peeked and with the cursor, so focus and peek agree.
-    if (cursorId.value !== row.id || (peekable(row) && peekedSession.value?.chainId !== row.id))
+    // A row that cannot be peeked leaves no peek behind either.
+    const peeked = peekedSession.value?.chainId
+    if (cursorId.value !== row.id || (peekable(row) ? peeked !== row.id : peeked !== undefined))
         moveTo(row)
     cursorId.value = row.id
     focusToken++

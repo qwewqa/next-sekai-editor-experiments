@@ -379,7 +379,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                 <input
                     class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                     type="submit"
-                    :value="i18n.modals.form.confirm"
+                    :value="readOnly ? i18n.modals.info.ok : i18n.modals.form.confirm"
                 />
             </div>
         </form>

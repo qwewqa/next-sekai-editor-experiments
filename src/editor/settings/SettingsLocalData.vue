@@ -179,6 +179,7 @@ const download = async (item: RecoveryItem) => {
                     result.name,
                     formatSize(file.blob.size),
                 ),
+                { card: true },
             )
     } catch (error) {
         if (!(error instanceof FileError)) throw error
@@ -266,7 +267,7 @@ const deleteSessions = async () => {
         // Cancel is the default: a stray Enter deletes nothing.
         const confirmed = await showChoice({
             title: () => strings.value.deleteTitle,
-            message: () => {
+            lines: () => {
                 const { history, modals } = i18n.value
                 return confirmLines(targets, (chain) => shownName(chain.name), {
                     confirm: strings.value.deleteConfirm,
@@ -275,7 +276,7 @@ const deleteSessions = async () => {
                     newer: strings.value.newer,
                     listJoin: modals.form.listJoin,
                     quoted: history.quoted,
-                }).join('\n')
+                })
             },
             choices: [{ value: true, label: () => i18n.value.modals.confirm.delete, danger: true }],
             cancelIsDefault: true,
@@ -305,18 +306,23 @@ const deleteSessions = async () => {
             },
         })
         const result = await outcome
-        if (result.deleted > 0)
-            notify(interpolate(() => i18n.value.session.deletedMany, String(result.deleted)))
-        // What was asked for and did not go is never silent; closing the dialog asked to stop.
-        const notDeleted = targets.length - result.deleted
-        if (notDeleted > 0 && !abort.signal.aborted)
-            notify(
-                interpolate(() => strings.value.notDeleted, String(notDeleted)),
-                {
-                    card: true,
-                    severity: 'error',
-                },
-            )
+        // A card, not a quick toast that fades over the open dialog. What was asked for and did not
+        // go is never silent; closing the dialog asked to stop.
+        const notDeleted = abort.signal.aborted ? 0 : targets.length - result.deleted
+        const done =
+            result.deleted > 0
+                ? interpolate(() => i18n.value.session.deletedMany, String(result.deleted))
+                : undefined
+        const failed =
+            notDeleted > 0
+                ? interpolate(() => strings.value.notDeleted, String(notDeleted))
+                : undefined
+        if (done && failed)
+            notify(() => done() + '\n' + failed(), {
+                lines: [{ message: done }, { message: failed, severity: 'error' }],
+            })
+        else if (done) notify(done, { card: true })
+        else if (failed) notify(failed, { card: true, severity: 'error' })
         await readTotal()
     } finally {
         deleting.value = false
@@ -347,7 +353,10 @@ const exportRaw = async () => {
     if (done.databaseUnreadable)
         notify(() => strings.value.exportRawUnreadable, { card: true, severity: 'warning' })
     else if (done.started)
-        notify(interpolate(() => i18n.value.save.downloadStarted, done.name, formatSize(done.size)))
+        notify(
+            interpolate(() => i18n.value.save.downloadStarted, done.name, formatSize(done.size)),
+            { card: true },
+        )
 }
 </script>
 
@@ -361,9 +370,9 @@ const exportRaw = async () => {
         />
 
         <div v-if="hasStorage" class="flex flex-col gap-3" data-local-data-storage>
-            <h3 class="text-sm font-bold opacity-75">{{ strings.storageHeading }}</h3>
+            <h3 class="text-sm font-bold text-fg/80">{{ strings.storageHeading }}</h3>
 
-            <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
+            <p v-if="storageLine" class="text-sm text-fg/80" data-storage-line>{{ storageLine }}</p>
 
             <p v-if="storedText" data-stored-total>{{ storedText }}</p>
 
@@ -410,7 +419,7 @@ const exportRaw = async () => {
         </div>
 
         <div class="flex flex-col gap-3" data-local-data-recovery>
-            <h3 class="text-sm font-bold opacity-75">{{ strings.recoveryHeading }}</h3>
+            <h3 class="text-sm font-bold text-fg/80">{{ strings.recoveryHeading }}</h3>
 
             <div>
                 <button type="button" :class="buttonClass" data-open-history @click="openHistory">
@@ -464,11 +473,11 @@ const exportRaw = async () => {
                 <button type="button" :class="buttonClass" data-export-raw @click="exportRaw">
                     {{ strings.exportRaw }}
                 </button>
-                <span class="text-sm opacity-75">{{ strings.exportRawNote }}</span>
+                <span class="text-sm text-fg/80">{{ strings.exportRawNote }}</span>
             </div>
 
             <div v-if="loadNotices.length" class="flex flex-col gap-1" data-at-load>
-                <div class="text-sm font-bold opacity-75">{{ strings.recovery.atLoad }}</div>
+                <div class="text-sm font-bold text-fg/80">{{ strings.recovery.atLoad }}</div>
                 <ul class="flex list-disc flex-col gap-1 pl-5">
                     <li v-for="(notice, i) in loadNotices" :key="i">
                         {{ notice.message() }}

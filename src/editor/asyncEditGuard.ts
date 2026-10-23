@@ -15,8 +15,9 @@ const sameExcept = (a: object, b: object, skip: readonly string[]) =>
  * background change that is no edit): nothing a dialog or a confirm read has changed.
  */
 export const isAudioAttach = (prev: State, next: State) => {
-    const was = prev.bgm
-    const now = next.bgm
+    // Fixtures of tests have no BGM.
+    const was = prev.bgm as State['bgm'] | undefined
+    const now = next.bgm as State['bgm'] | undefined
     if (!was?.meta || was.buffer || !now?.buffer || now.meta?.hash !== was.meta.hash) return false
     return sameExcept(prev, next, ['bgm']) && sameExcept(was, now, ['buffer', 'source', 'waveform'])
 }

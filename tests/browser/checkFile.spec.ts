@@ -87,7 +87,6 @@ const runCheck = (page: Page) =>
 
 type Hold = { held: number; release: () => void }
 declare global {
-    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
     interface Window {
         checkHold?: Hold
     }

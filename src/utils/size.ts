@@ -17,12 +17,17 @@ export const formatSize = (bytes: number, locale: string = currentLocale()) => {
     const [unit, scale] =
         bytes >= 1e9 ? ['gigabyte', 1e9] : bytes >= 1e6 ? ['megabyte', 1e6] : ['kilobyte', 1e3]
     const value = Math.max(bytes / scale, bytes ? 0.1 : 0)
-    return new Intl.NumberFormat(languageTag(locale), {
-        style: 'unit',
-        unit,
-        unitDisplay: 'short',
-        maximumFractionDigits: value >= 99.95 ? 0 : 1,
-    }).format(value)
+    return (
+        new Intl.NumberFormat(languageTag(locale), {
+            style: 'unit',
+            unit,
+            unitDisplay: 'short',
+            maximumFractionDigits: value >= 99.95 ? 0 : 1,
+        })
+            .format(value)
+            // The unit stays with its number when the line wraps.
+            .replaceAll(' ', '\u00a0')
+    )
 }
 
 /** A count in the UI locale's own grouping: "1,840". */

@@ -503,7 +503,7 @@ test('a session written by a newer version is listed but cannot be peeked or res
     await expect(page.getByRole('menu').getByText(messages.load.sessionLater)).toHaveCount(1)
 })
 
-test('arrowing onto a row that cannot be peeked leaves the previous row’s peek', async ({
+test('moving onto a row that cannot be peeked (arrow, click, ⋯) leaves the previous row’s peek', async ({
     page,
 }) => {
     errorsFail(page)
@@ -536,6 +536,17 @@ test('arrowing onto a row that cannot be peeked leaves the previous row’s peek
     // Newest first: Alpha, which needs a newer version, is the row below.
     await page.keyboard.press('ArrowDown')
     await expect(rowFor(page, 'Alpha')).toBeFocused()
+    await expect(peekBar(page)).toHaveCount(0)
+    expect(await lifeOf(page)).toBe(1000)
+    // A click and the ⋯ menu on that row leave no earlier peek either.
+    await rowFor(page, 'Beta').click()
+    await expect.poll(() => peekedLife(page)).toBe(980)
+    await rowFor(page, 'Alpha').click()
+    await expect(peekBar(page)).toHaveCount(0)
+    await rowFor(page, 'Beta').click()
+    await expect.poll(() => peekedLife(page)).toBe(980)
+    await rowFor(page, 'Alpha').locator('[data-sessions-more]').click()
+    await expect(page.getByRole('menu')).toBeVisible()
     await expect(peekBar(page)).toHaveCount(0)
     expect(await lifeOf(page)).toBe(1000)
 })

@@ -184,6 +184,8 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
     await page.locator('[data-delete-next]').click()
     const confirm = confirmDialog(page)
     await expect(confirm).toContainText('Delete 5 sessions?')
+    // Each sentence is its own paragraph, so they do not run together on a phone.
+    await expect(confirm.locator('p')).toHaveCount(3)
     // Newest first; the fixture’s chain has no work to lose, so it is not named.
     await expect(confirm).toContainText(
         '4 sessions are not saved to a file: "Fresh", "Week", "Month" and 1 more.',
@@ -217,7 +219,10 @@ test('with the box unticked the unsaved work is kept, and what is deleted leaves
         confirm.getByRole('button', { name: messages.modals.confirm.delete }),
         deleteDialog(page),
     )
-    await expect(notice(page, 'Deleted 1 session')).toBeVisible()
+    // A card: a quick toast would fade over the open dialog.
+    await expect(
+        page.locator('[data-notice-card]').filter({ hasText: 'Deleted 1 session' }),
+    ).toBeVisible()
     await expect(deleteDialog(page)).toHaveCount(0)
     await page.keyboard.press('Escape')
     const rows = await recentRows(page)
