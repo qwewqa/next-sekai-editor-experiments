@@ -19,16 +19,16 @@ import type { PauseReason } from './worker/core'
 /** One chain as the dialog counts and names it. */
 export type DeleteChain = {
     chainId: string
-    /** The removal's `expect`, and the sessions the page locks. */
-    head: string
+    /** The removal's `expect` (a damaged chain has no `head`), and the sessions the page locks. */
+    head?: string
     updatedAt: number
     sessions: string[]
     /** Whole local calendar days between the last edit and the worker's `now`. */
     ageDays: number
     /** `notSavedToFile`; a chain this build can't read counts as not saved. */
     notSaved: boolean
-    /** `newer`: it has a session this build can't read; it is deleted all the same. */
-    readable: 'yes' | 'newer'
+    /** `newer` or `damaged`: it has a session this build can't read, or no head; deleted all the same. */
+    readable: 'yes' | 'newer' | 'damaged'
     name: ShownName
 }
 
@@ -100,7 +100,7 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
             if (chain.sessions.some((id) => held.has(id))) continue
             out.push({
                 chainId: chain.chainId,
-                head: chain.head,
+                ...(chain.head === undefined ? {} : { head: chain.head }),
                 updatedAt: chain.updatedAt,
                 sessions: chain.sessions,
                 ageDays: Math.max(0, daysBetween(dayKey(chain.updatedAt, zone), today)),

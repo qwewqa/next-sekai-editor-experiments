@@ -489,3 +489,31 @@ test('a signal stops between chains; a read that cannot list is a failure, never
     })
     assert.equal((await broken.readDeleteChoices()).storedRead, 'failed')
 })
+
+test('a damaged chain (no head id) is included, counted as not saved, and deleted', async () => {
+    const { world, chains, read, remove } = await setup(2)
+    const [damaged, plain] = chains as [Chain, Chain]
+    await edit(world, async (tx) => {
+        const chain = (await tx.get('chains', damaged.first.chainId)) as Record<string, unknown>
+        const { head: _head, ...rest } = chain
+        await tx.put('chains', rest)
+    })
+    // It even claims a file that is unchanged: a chain this build cannot read counts as not saved.
+    await patchChain(world, damaged, {
+        file: { name: 'a.nxsp', event: 'saved', hash: new Uint8Array(16) },
+    })
+    const found = await read()
+    const entry = byChain(found, damaged)
+    assert.equal(entry?.readable, 'damaged')
+    assert.equal(entry?.head, undefined)
+    assert.equal(entry?.notSaved, true)
+    assert.equal(byChain(found, plain)?.readable, 'yes')
+    assert.deepEqual(await remove(found.filter((chain) => chain.readable === 'damaged')), {
+        deleted: 1,
+        skipped: 0,
+    })
+    assert.ok(!stored(world, damaged))
+    assert.ok(stored(world, plain))
+    assert.deepEqual(checkStored(world.memory), [])
+    await world.idle()
+})
