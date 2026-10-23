@@ -59,8 +59,7 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
             context.core.read(READ_STORES, readNewestSession, scope),
 
         /** Recent Sessions' list: every chain not marked for Delete, newest first. */
-        listRecent: () =>
-            context.core.read(['chains', 'sessions', 'stackBlocks'], readRecent),
+        listRecent: () => context.core.read(['chains', 'sessions', 'stackBlocks'], readRecent),
 
         /** The bindings of sessions open in other tabs, for the bound-elsewhere check. */
         readBindings: (sessionIds: string[]) =>
