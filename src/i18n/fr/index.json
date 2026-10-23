@@ -1206,7 +1206,12 @@
     "linkNotCopied": "Impossible de copier le lien"
   },
   "storage": {
-    "reload": "Rechargez la page pour continuer à stocker les modifications.",
+    "reason": {
+      "full": "Le stockage du navigateur est plein.",
+      "failed": "Le navigateur a cessé de stocker les modifications.",
+      "olderTabs": "Fermez les autres onglets de {0} pour continuer à stocker les modifications.",
+      "upgrading": "Un autre onglet met à jour l’éditeur."
+    },
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application, qui peut supprimer le travail stocké. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
@@ -2264,6 +2269,9 @@
   },
   "notSaving": {
     "bar": "Les modifications ne sont pas stockées dans ce navigateur."
+  },
+  "notStored": {
+    "reload": "Recharger"
   },
   "historyChanges": {
     "title": "Propriétés modifiées",

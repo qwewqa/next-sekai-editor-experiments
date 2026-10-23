@@ -42,6 +42,7 @@ import { displayName, forkNameOf, namePartsOf, sessionCopyOf } from './names'
 import { isImporting, whenImported } from './open/importLoop'
 import { createPeekSource, rememberRoots, slotLoader } from './peekSource'
 import { inspectSnapshot } from './records/inspect'
+import { setRetrySource } from './retryStoring'
 import { holdSessionLock, TabClient } from './sessions'
 import { leftSession } from './startup/api'
 import { previousSession } from './startup/events'
@@ -323,6 +324,7 @@ export const startStoring = (
     })
     flusher = instance
     storingWorker = worker
+    setRetrySource(() => ({ worker, flusher }))
     // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7 R11).
     if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal

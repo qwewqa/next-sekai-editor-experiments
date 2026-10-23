@@ -1206,7 +1206,12 @@
         "linkNotCopied": "Could not copy the link"
     },
     "storage": {
-        "reload": "Reload to keep storing changes.",
+        "reason": {
+            "full": "Browser storage is full.",
+            "failed": "The browser stopped storing changes.",
+            "olderTabs": "Close other {0} tabs to keep storing changes.",
+            "upgrading": "Another tab is upgrading the editor."
+        },
         "unavailable": "The editor cannot store changes in this browser. Save to a file to keep your work.",
         "private": "If this is a private window, everything stored here is lost when it closes. Save to a file to keep your work.",
         "inAppBrowser": "This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.",
@@ -2264,6 +2269,9 @@
     },
     "notSaving": {
         "bar": "Changes are not being stored in this browser."
+    },
+    "notStored": {
+        "reload": "Reload"
     },
     "historyChanges": {
         "title": "Property Changes",

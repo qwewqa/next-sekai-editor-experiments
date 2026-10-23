@@ -1,12 +1,13 @@
 import { computed, shallowRef, watch } from 'vue'
 import { session, type SessionFile } from '../../history/session'
-import { headSnapshot, liveState, loadedHeadSnapshot } from '../../history/stack'
+import { headSnapshot, isDirty, liveState, loadedHeadSnapshot } from '../../history/stack'
 import { platform } from '../../platform'
 import type { State } from '../../state'
 import { fileActions } from './actions'
 import { chipStates, type ChipKind } from './chip'
 import { sameFileContent } from './content'
 import { confirmDownloads, downloadConfirmed } from './flags'
+import { notStored } from './notStored'
 
 // The passive file state of the open session (Part 1 §1.3.4): what the status label, the chip,
 // `document.title` and the close prompt read. The save flows (`src/editor/save`) set it.
@@ -112,6 +113,12 @@ export const downloadNotConfirmed = computed(() => {
     return platform.capabilities.unconfirmedDownloads || !downloadConfirmed.value
 })
 
+/**
+ * Whether the open session has work no file holds: changed since the file event when bound,
+ * otherwise any edit. A download counts as the file here, confirmed or not.
+ */
+export const workNotInFile = computed(() => (boundFile.value ? fileChanged.value : isDirty.value))
+
 /** Whether Save writes the bound file in place (Chromium) rather than downloading a copy. */
 export const writesInPlace = () => platform.capabilities.writeBack
 
@@ -119,10 +126,22 @@ const found = computed(() =>
     finding.value?.sessionId === session.value.sessionId ? finding.value.kind : undefined,
 )
 
-/** The states other modules raise (Not stored belongs to Step 8's storage chip). */
+/** The states other modules raise. */
 export const raised = {
     notStored: shallowRef(false),
 }
+
+// Not stored follows the storage status once its cause has held for a moment (`notStored.ts`).
+watch(
+    notStored,
+    (cause) => {
+        raised.notStored.value = cause !== undefined
+    },
+    {
+        flush: 'sync',
+        immediate: true,
+    },
+)
 
 /** Every state raised for the open session, highest priority first. */
 export const chipKinds = computed(() => {

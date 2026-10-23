@@ -8,6 +8,7 @@ import { setLeaveSafeModeGuard } from '../safe'
 import { interpolate } from '../utils/interpolate'
 import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
+import { hasChangesNotInFile } from './file/closePrompt'
 import { dismissNoticeCard, noticeCard, notify, type NoticeAction } from './notification'
 import { shownName } from './shownName'
 import { withSwitchRequest, type SwitchRequest } from './switchRequest'
@@ -26,7 +27,8 @@ const wouldLoseWork = async () => {
     // Before storing starts, or in safe mode, nothing is stored: today's changes flag decides.
     const edited = session ? session.edited && isDirty.value : isDirty.value
     if (!edited) return false
-    return !(session && isDurablyStored())
+    // A file that holds the work (a Save, an open) is as good as a store; an unconfirmed download is not.
+    return !(session && isDurablyStored()) && hasChangesNotInFile()
 }
 
 /**
@@ -43,8 +45,7 @@ export const confirmSwitch = async () => {
             { value: 'save', label: () => i18n.value.prompt.save, default: true },
         ],
     })
-    // This session's Save (§1.4.7); the switch is left for the user to repeat, and Step 8 adds
-    // the "Saved to … · Continue" follow-up.
+    // This session's Save (§1.4.7); the switch is left for the user to repeat.
     if (choice === 'save') await runCommand(save)
     return choice === 'leave'
 }

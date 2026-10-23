@@ -800,6 +800,46 @@ test.describe('the not-stored prompt', () => {
         expect(await lifeOf(page)).toBe(990)
     })
 
+    // A file that holds the work is as good as a store, so the repeated switch goes on; a
+    // download that is not confirmed is not.
+    for (const confirmed of [true, false])
+        test(`after a Save to a file the repeated switch ${confirmed ? 'does not ask' : 'still asks while the download is unconfirmed'}`, async ({
+            page,
+        }) => {
+            await page.addInitScript(
+                ({ prefix, confirmed }) => {
+                    localStorage.setItem(
+                        'nse.test.platform',
+                        JSON.stringify({ fileSystemAccess: false }),
+                    )
+                    if (confirmed) localStorage.setItem(`${prefix}downloadConfirmed`, 'true')
+                },
+                { prefix, confirmed },
+            )
+            await visit(page)
+            await edit(page, 990)
+            const going = run(page, 'reset')
+            const download = page.waitForEvent('download')
+            await confirmWhenReady(prompt(page).getByRole('button', { name: 'Save' }), prompt(page))
+            const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
+            await save.getByRole('button', { name: 'Save', exact: true }).click()
+            await download
+            await going
+            expect(await lifeOf(page)).toBe(990)
+            const repeated = run(page, 'reset')
+            if (confirmed) {
+                await repeated
+                await expect.poll(() => lifeOf(page)).toBe(1000)
+                await expect(prompt(page)).toHaveCount(0)
+            } else {
+                await expect(prompt(page)).toBeVisible()
+                await page.waitForTimeout(400)
+                await prompt(page).getByRole('button', { name: 'Cancel' }).click()
+                await repeated
+                expect(await lifeOf(page)).toBe(990)
+            }
+        })
+
     test('Open, Restore as a Copy and Reopen ask the same', async ({ page }) => {
         await visit(page)
         await edit(page, 990)

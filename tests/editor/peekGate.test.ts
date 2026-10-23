@@ -239,6 +239,7 @@ const sources = readdirSync(new URL('src/', root), { recursive: true, encoding: 
 const entryPoints = [
     'src/editor/LevelEditor.vue',
     'src/editor/LevelEditorContextMenu.vue',
+    'src/editor/NotStoredBar.vue',
     'src/editor/commands/events/index.ts',
     'src/editor/contextMenu.ts',
     'src/editor/controls/gestures/recognizers/threeTap.ts',
@@ -246,6 +247,7 @@ const entryPoints = [
     'src/editor/controls/keyboard.ts',
     'src/editor/controls/mouse.ts',
     'src/editor/elevation/ElevationEditor.vue',
+    'src/editor/file/chipDialogs.ts',
     'src/editor/history/TimelineList.vue',
     'src/editor/levelInfo.ts',
     'src/editor/save/flow.ts',
