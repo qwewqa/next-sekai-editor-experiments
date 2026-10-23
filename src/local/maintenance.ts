@@ -11,7 +11,7 @@ import type { StorageStatus } from './worker/core'
 // The maintenance runner (deletion design §3.10): when the deleting jobs run. One run at a time,
 // in order: reclaim what deleted chains left outside storage, sweep chains marked for Delete long
 // enough ago, GC, cleanup under pressure (at load when usage is high, and after storing paused for
-// a full browser), and at load a silent `persist()`. A trigger during a run queues one more run.
+// a full browser), and at load `persist()`. A trigger during a run queues one more run.
 // Jobs start only while the page is visible (the load's too); one already running when it hides runs
 // to its end. A page hidden at load still asks for `persist()`.
 
