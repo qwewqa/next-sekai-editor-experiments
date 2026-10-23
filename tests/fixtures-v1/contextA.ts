@@ -338,8 +338,11 @@ export const stepA6 = async (a: A, tab: Tab) => {
     const visit = await profile.visit()
     await visit.command('a')
     await visit.focus(1000)
-    // Two taps in one 16-beat window: the first row's chunk for it is no other row's.
+    // A tap whose chunk for its 16-beat window is no other row's, then undone and branched over:
+    // its row stays in the chain (it is the damaged one), its state leaves the undo stack, so Undo
+    // never meets it.
     const damaged = await tapAt(visit, -5, 1002)
+    await undo(visit)
     await tapAt(visit, -1, 1002)
     await pickBgm(visit, 'bgm-2.wav', wav(3, 9))
     await editLevelInfo(visit, {

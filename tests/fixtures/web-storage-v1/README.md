@@ -1,7 +1,7 @@
 # Web storage v1 fixtures
 
 Written once by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) from the editor build
-`0.5.22+ace3545d`, in the same run as `../../native/fixtures/nxsp-v1`. `SHA256SUMS` pins each file. They are
+`0.5.22+fbabcfff`, in the same run as `../../native/fixtures/nxsp-v1`. `SHA256SUMS` pins each file. They are
 frozen when v0.6.0 is tagged and never changed after it; every later build reads them
 (`tests/browser/formats/webStorageV1.spec.ts`, `tests/local/journalV1.test.ts`,
 `tests/local/fixturesV1.test.ts`).

@@ -1,7 +1,7 @@
 # `.nxsp` v1 fixtures
 
 Written once by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) from the editor build
-`0.5.22+ace3545d`: the real editor in Chromium on a dev server, driven through the scenario of Part 1
+`0.5.22+fbabcfff`: the real editor in Chromium on a dev server, driven through the scenario of Part 1
 §1.6.11.9. Each file is what that build wrote, and `SHA256SUMS` pins its bytes.
 
 They are frozen when v0.6.0 is tagged and never changed after it. Every later build opens each one
