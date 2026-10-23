@@ -31,7 +31,7 @@
         "loading": "Chargement du fichier…",
         "decoding": "Décodage audio…",
         "generating": "Génération de forme d’onde…",
-        "download": "Télécharger la BGM"
+        "download": "Télécharger la musique"
       },
       "fileChanged": "Fichier de la musique modifié",
       "offsetSet": "Décalage de la musique défini sur {0} ms"
@@ -763,7 +763,7 @@
       }
     },
     "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite.",
-    "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément sélectionné.",
+    "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément qui a le focus.",
     "recentSessions": "Le travail non sauvegardé dans un fichier se trouve dans Historique › Sessions récentes.",
     "fileTitle": "Fichiers",
     "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
@@ -979,9 +979,9 @@
       "namesMore": "{0} et {1} de plus",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
-      "deleteFailed": "Les sessions n’ont pas pu être supprimées.",
       "exportRawNote": "Pour signaler un problème.",
-      "exportRawUnreadable": "Le travail stocké n’a pas pu être lu."
+      "exportRawUnreadable": "Le travail stocké n’a pas pu être lu.",
+      "notDeleted": "{0} session n’a pas pu être supprimée.|{0} sessions n’ont pas pu être supprimées."
     }
   },
   "sidebars": {
@@ -1192,8 +1192,8 @@
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
     "olderVersion": "Cette version est plus ancienne que vos données. Rechargez la page, ou sauvegardez votre travail dans des fichiers.",
     "tryAgain": "Réessayer",
-    "continued": "Session du {1} reprise : \"{0}\".",
-    "continuedUntitled": "Votre session du {0} a été reprise.",
+    "continued": "Session reprise : \"{0}\" ({1}).",
+    "continuedUntitled": "Votre session a été reprise ({0}).",
     "continuedUndated": "Session reprise : \"{0}\".",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
@@ -1227,7 +1227,6 @@
   "storage": {
     "reason": {
       "full": "Le stockage du navigateur est plein.",
-      "failed": "Le navigateur a cessé de stocker les modifications.",
       "olderTabs": "Fermez les autres onglets de {0} pour continuer à stocker les modifications.",
       "upgrading": "Un autre onglet met à jour l’éditeur."
     },
@@ -1369,7 +1368,7 @@
     "sessions": {
       "loadFailed": "Les sessions récentes n’ont pas pu être chargées.",
       "thisTab": "Cet onglet",
-      "elsewhere": "Ouverte dans un autre onglet ou une autre fenêtre",
+      "elsewhere": "Autre onglet",
       "actions": "Plus d’actions pour \"{0}\"",
       "saveToFile": "Sauvegarder dans un fichier…",
       "delete": "Supprimer",
@@ -2152,7 +2151,7 @@
   },
   "check": {
     "command": "Vérifier le fichier et l’historique…",
-    "title": "Vérifier fichier et historique",
+    "title": "Vérifier le fichier et l’historique",
     "checkingFile": "Vérification de {0}… {1} %",
     "checkingStored": "Vérification de l’historique stocké… {0} %",
     "changed": "\"{0}\" a changé pendant la vérification. Réessayez.",
@@ -2169,7 +2168,7 @@
     "file": "Fichier",
     "check": "Vérifier…",
     "tagsPlaceholder": "Séparés par des virgules",
-    "editCover": "Modifier dans l’éditeur…",
+    "editCover": "Éditeur de la couverture…",
     "makePreview": "Créer à partir de la musique…",
     "notLoaded": "non chargé",
     "discard": "Abandonner les modifications des informations du niveau ?"
@@ -2222,7 +2221,6 @@
     "peekSessionFailed": "Impossible de consulter cette session",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes précédentes sont dans l’historique",
-    "bgmNotLoaded": "La BGM n’est pas chargée.",
     "savedCurrent": "Version actuelle sauvegardée dans {0}"
   },
   "entry": {
@@ -2241,10 +2239,9 @@
     "restoredCopy": "Copie de \"{0}\" restaurée",
     "deletedMany": "{0} session supprimée|{0} sessions supprimées",
     "deleted": "\"{0}\" supprimée",
-    "deleteRefused": "Non supprimée. \"{0}\" est ouverte dans un autre onglet ou une autre fenêtre.",
-    "deleteFailed": "Impossible de supprimer \"{0}\"",
-    "undoLost": "\"{0}\" supprimée. Cette action ne peut plus être annulée.",
-    "undoFailed": "L’annulation a échoué"
+    "deleteRefused": "Non supprimée. \"{0}\" est utilisée dans un onglet ou une fenêtre.",
+    "deleteFailed": "\"{0}\" n’a pas pu être supprimée.",
+    "undoLost": "\"{0}\" supprimée. Cette action ne peut plus être annulée."
   },
   "prompt": {
     "title": "Modifications non stockées",
@@ -2286,12 +2283,12 @@
       "body": "Ce niveau utilise des valeurs que cette version de l’éditeur ne prend pas en charge. L’ouverture d’une copie séparée remplace ces valeurs par les valeurs par défaut.",
       "openCopy": "Ouvrir une copie"
     },
-    "unsavedChanges": "{0} ouvert. Ce fichier a des modifications du {1} non sauvegardées.",
+    "unsavedChanges": "{0} ouvert. Ce fichier a des modifications non sauvegardées ({1}).",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans Sessions récentes.",
     "earlierUnchecked": "{0} ouvert. Impossible de vérifier si Sessions récentes contient d’autres versions de ce fichier.",
     "unsavedEarlierMaybe": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont peut-être dans Sessions récentes.",
-    "unsavedChangesMaybe": "{0} ouvert. Ce fichier a peut-être des modifications du {1} non sauvegardées.",
-    "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente du {1} est dans Sessions récentes.",
+    "unsavedChangesMaybe": "{0} ouvert. Ce fichier a peut-être des modifications non sauvegardées ({1}).",
+    "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente ({1}) est dans Sessions récentes.",
     "restoreIt": "Restaurer la session",
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
   },

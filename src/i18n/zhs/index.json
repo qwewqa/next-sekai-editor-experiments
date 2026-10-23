@@ -31,7 +31,7 @@
         "loading": "正在加载文件…",
         "decoding": "正在解码音频…",
         "generating": "正在生成波形…",
-        "download": "下载 BGM"
+        "download": "下载背景音乐"
       },
       "fileChanged": "已更改背景音乐文件",
       "offsetSet": "已将背景音乐偏移设为 {0} 毫秒"
@@ -979,9 +979,9 @@
       "namesMore": "{0} 及其他 {1} 个",
       "newer": "其中有会话需要更新版本的编辑器。",
       "deleting": "正在删除…",
-      "deleteFailed": "无法删除会话。",
       "exportRawNote": "用于报告问题。",
-      "exportRawUnreadable": "无法读取已存储的内容。"
+      "exportRawUnreadable": "无法读取已存储的内容。",
+      "notDeleted": "有 {0} 个会话无法删除。"
     }
   },
   "sidebars": {
@@ -1227,7 +1227,6 @@
   "storage": {
     "reason": {
       "full": "浏览器存储空间已满。",
-      "failed": "浏览器已停止存储更改。",
       "olderTabs": "请关闭其他 {0} 标签页，以继续存储更改。",
       "upgrading": "另一个标签页正在更新编辑器。"
     },
@@ -1369,7 +1368,7 @@
     "sessions": {
       "loadFailed": "无法加载最近会话。",
       "thisTab": "此标签页",
-      "elsewhere": "已在另一个标签页或窗口中打开",
+      "elsewhere": "其他标签页",
       "actions": "“{0}”的更多操作",
       "saveToFile": "保存到文件…",
       "delete": "删除",
@@ -2222,7 +2221,6 @@
     "peekSessionFailed": "无法查看此会话",
     "openHistory": "打开历史记录",
     "earlierInHistory": "更早的步骤在历史记录中",
-    "bgmNotLoaded": "BGM 未加载。",
     "savedCurrent": "已将当前版本保存到 {0}"
   },
   "entry": {
@@ -2241,10 +2239,9 @@
     "restoredCopy": "已还原“{0}”的副本",
     "deletedMany": "已删除 {0} 个会话",
     "deleted": "已删除“{0}”",
-    "deleteRefused": "未删除。“{0}”已在另一个标签页或窗口中打开。",
-    "deleteFailed": "无法删除“{0}”",
-    "undoLost": "已删除“{0}”。无法再撤销。",
-    "undoFailed": "撤销失败"
+    "deleteRefused": "未删除。“{0}”正在某个标签页或窗口中使用。",
+    "deleteFailed": "无法删除“{0}”。",
+    "undoLost": "已删除“{0}”。无法再撤销。"
   },
   "prompt": {
     "title": "更改未存储",

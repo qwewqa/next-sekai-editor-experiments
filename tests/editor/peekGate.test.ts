@@ -446,7 +446,10 @@ test('the shared async modal gate refuses current and intervening peeks', () => 
     const source = declaration('src/editor/asyncEditGuard.ts', 'createAsyncEditGuard') ?? ''
     assert.match(source, /let current = !isPeeking\.value/)
     assert.match(source, /const invalidate = \(\) => \{\s*current = false/)
-    assert.match(source, /watch\(\[liveState, isPeeking\], invalidate, \{ flush: 'sync' \}\)/)
+    assert.match(
+        source,
+        /watch\(\s*\[liveState, isPeeking\],[^]*?invalidate\(\)[^]*?\{ flush: 'sync' \}/,
+    )
     assert.match(source, /isCurrent: \(\) => current && !isPeeking\.value/)
 })
 

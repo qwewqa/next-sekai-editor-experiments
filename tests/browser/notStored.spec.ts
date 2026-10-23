@@ -152,11 +152,7 @@ test('a change of cause while shown keeps the chip, and the dialog follows the c
     await setStatus(page, pausedFull)
     await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored', { timeout: 8000 })
     const causes: [object, string | undefined, string[]][] = [
-        [
-            { mode: 'stored', reason: 'failed' },
-            'The browser stopped storing changes.',
-            ['Cancel', 'Try Again', 'Save'],
-        ],
+        [{ mode: 'stored', reason: 'failed' }, undefined, ['Cancel', 'Try Again', 'Save']],
         [
             { mode: 'memory', reason: 'olderTabs' },
             'Close other Next SEKAI Editor tabs to keep storing changes.',

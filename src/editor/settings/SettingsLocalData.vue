@@ -16,7 +16,8 @@ import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
-import { notStored, pausedReasonLine } from '../file/notStored'
+import { notStored } from '../file/notStored'
+import { pausedReasonLine } from '../file/notStoredReason'
 import { tryStoringAgain } from '../file/tryAgain'
 import { showHistoryLink } from '../history/openHistory'
 import { loadNotices, notify } from '../notification'
@@ -306,9 +307,16 @@ const deleteSessions = async () => {
         const result = await outcome
         if (result.deleted > 0)
             notify(interpolate(() => i18n.value.session.deletedMany, String(result.deleted)))
-        else if ('kind' in result || result.skipped > 0)
-            // Something was asked for and nothing went: never silent.
-            notify(() => strings.value.deleteFailed, { card: true, severity: 'error' })
+        // What was asked for and did not go is never silent; closing the dialog asked to stop.
+        const notDeleted = targets.length - result.deleted
+        if (notDeleted > 0 && !abort.signal.aborted)
+            notify(
+                interpolate(() => strings.value.notDeleted, String(notDeleted)),
+                {
+                    card: true,
+                    severity: 'error',
+                },
+            )
         await readTotal()
     } finally {
         deleting.value = false
@@ -368,7 +376,9 @@ const exportRaw = async () => {
                     <SeverityIcon severity="warning" class="mt-1 size-4" />
                     <div class="flex min-w-0 flex-col">
                         <span>{{ i18n.notSaving.bar }}</span>
-                        <span data-not-stored-reason>{{ notStoredLine.text }}</span>
+                        <span v-if="notStoredLine.text" data-not-stored-reason>{{
+                            notStoredLine.text
+                        }}</span>
                     </div>
                 </div>
                 <button

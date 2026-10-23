@@ -603,7 +603,7 @@ const openRequestedProject = async (
             ? { message: () => partialMessage(line), severity: 'warning' }
             : undefined
     const bgmRow: NoticeLine = {
-        message: () => i18n.value.notice.bgmNotLoaded,
+        message: () => i18n.value.load.bgmNotLoaded,
         severity: 'info',
         // A BGM the file records but doesn't hold (§1.5.4 step 5): not loaded, with Choose Audio….
         action: chooseAudioAction,

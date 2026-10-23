@@ -979,9 +979,9 @@
             "namesMore": "{0} and {1} more",
             "newer": "This session needs a newer version of the editor.|Some of these sessions need a newer version of the editor.",
             "deleting": "Deleting…",
-            "deleteFailed": "The sessions could not be deleted.",
             "exportRawNote": "For reporting a problem.",
-            "exportRawUnreadable": "The stored work could not be read."
+            "exportRawUnreadable": "The stored work could not be read.",
+            "notDeleted": "{0} session could not be deleted.|{0} sessions could not be deleted."
         }
     },
     "sidebars": {
@@ -1227,7 +1227,6 @@
     "storage": {
         "reason": {
             "full": "Browser storage is full.",
-            "failed": "The browser stopped storing changes.",
             "olderTabs": "Close other {0} tabs to keep storing changes.",
             "upgrading": "Another tab is upgrading the editor."
         },
@@ -1369,7 +1368,7 @@
         "sessions": {
             "loadFailed": "Recent Sessions could not be loaded.",
             "thisTab": "This tab",
-            "elsewhere": "Open in another tab or window",
+            "elsewhere": "Another tab",
             "actions": "More Actions for \"{0}\"",
             "saveToFile": "Save to File…",
             "delete": "Delete",
@@ -2222,7 +2221,6 @@
         "peekSessionFailed": "Could not view this session",
         "openHistory": "Open History",
         "earlierInHistory": "Earlier steps are in History",
-        "bgmNotLoaded": "The BGM is not loaded.",
         "savedCurrent": "Saved the current version to {0}"
     },
     "entry": {
@@ -2241,10 +2239,9 @@
         "restoredCopy": "Restored a copy of \"{0}\"",
         "deletedMany": "Deleted {0} session|Deleted {0} sessions",
         "deleted": "Deleted \"{0}\"",
-        "deleteRefused": "Not deleted. \"{0}\" is open in another tab or window.",
-        "deleteFailed": "Could not delete \"{0}\"",
-        "undoLost": "Deleted \"{0}\". It can no longer be undone.",
-        "undoFailed": "Undo failed"
+        "deleteRefused": "Not deleted. \"{0}\" is in use in a tab or window.",
+        "deleteFailed": "\"{0}\" could not be deleted.",
+        "undoLost": "Deleted \"{0}\". It can no longer be undone."
     },
     "prompt": {
         "title": "Changes Not Stored",

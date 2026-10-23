@@ -156,7 +156,7 @@ const nameOf = (row: ChainRow) =>
 /** The inline row's text: Deleted "X", or that it can no longer be undone. */
 const deletedLabel = (row: DeletedRow) =>
     row.status === 'failed'
-        ? [deletedText(row), i18n.value.session.undoFailed].join(', ')
+        ? [deletedText(row), i18n.value.commands.undo.failed].join(', ')
         : deletedText(row)
 const deletedText = (row: DeletedRow) =>
     interpolateRaw(
@@ -736,7 +736,7 @@ const notePointer = (event: PointerEvent) => {
                                     v-if="row.status === 'failed'"
                                     class="sessions-caption"
                                     data-sessions-undo-failed
-                                    >{{ i18n.session.undoFailed }}</span
+                                    >{{ i18n.commands.undo.failed }}</span
                                 >
                             </div>
                             <button

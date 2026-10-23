@@ -966,7 +966,7 @@
       "confirmClose": "關閉前詢問未儲存的變更",
       "exportRaw": "匯出原始資料…",
       "exportRawName": "{0} 原始資料 {1}.zip",
-      "storageHeading": "存放空間",
+      "storageHeading": "儲存空間",
       "stored": "此瀏覽器中已存放：{0}，總容量約 {1}",
       "deleteSessions": "刪除工作階段…",
       "deleteTitle": "刪除工作階段",
@@ -979,9 +979,9 @@
       "namesMore": "{0} 及其他 {1} 個",
       "newer": "其中有工作階段需要較新版本的編輯器。",
       "deleting": "正在刪除…",
-      "deleteFailed": "無法刪除工作階段。",
       "exportRawNote": "用於回報問題。",
-      "exportRawUnreadable": "無法讀取已存放的內容。"
+      "exportRawUnreadable": "無法讀取已存放的內容。",
+      "notDeleted": "有 {0} 個工作階段無法刪除。"
     }
   },
   "sidebars": {
@@ -1210,8 +1210,8 @@
     "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
     "journalFailed": "無法存放已恢復的變更。副本在本機資料中。",
-    "storageNearlyFull": "瀏覽器存放空間幾乎已滿。",
-    "journalsFull": "先前造訪中未儲存的內容正在佔滿瀏覽器存放空間。",
+    "storageNearlyFull": "瀏覽器儲存空間幾乎已滿。",
+    "journalsFull": "先前造訪中未儲存的內容正在佔滿瀏覽器儲存空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
     "sessionDamaged": "無法開啟此工作階段。",
     "newestLater": "最近的工作階段需要較新版本的編輯器。",
@@ -1226,8 +1226,7 @@
   },
   "storage": {
     "reason": {
-      "full": "瀏覽器存放空間已滿。",
-      "failed": "瀏覽器已停止存放變更。",
+      "full": "瀏覽器儲存空間已滿。",
       "olderTabs": "請關閉其他 {0} 分頁，以繼續存放變更。",
       "upgrading": "另一個分頁正在更新編輯器。"
     },
@@ -1369,7 +1368,7 @@
     "sessions": {
       "loadFailed": "無法載入最近工作階段。",
       "thisTab": "此分頁",
-      "elsewhere": "已在另一個分頁或視窗中開啟",
+      "elsewhere": "其他分頁",
       "actions": "\"{0}\" 的更多操作",
       "saveToFile": "儲存到檔案…",
       "delete": "刪除",
@@ -2222,7 +2221,6 @@
     "peekSessionFailed": "無法檢視此工作階段",
     "openHistory": "開啟歷史記錄",
     "earlierInHistory": "更早的步驟在歷史記錄中",
-    "bgmNotLoaded": "BGM 未載入。",
     "savedCurrent": "已將目前版本儲存到 {0}"
   },
   "entry": {
@@ -2241,10 +2239,9 @@
     "restoredCopy": "已還原 \"{0}\" 的副本",
     "deletedMany": "已刪除 {0} 個工作階段",
     "deleted": "已刪除 \"{0}\"",
-    "deleteRefused": "未刪除。\"{0}\" 已在另一個分頁或視窗中開啟。",
-    "deleteFailed": "無法刪除 \"{0}\"",
-    "undoLost": "已刪除 \"{0}\"。無法再撤銷。",
-    "undoFailed": "撤銷失敗"
+    "deleteRefused": "未刪除。\"{0}\" 正在某個分頁或視窗中使用。",
+    "deleteFailed": "無法刪除 \"{0}\"。",
+    "undoLost": "已刪除 \"{0}\"。無法再撤銷。"
   },
   "prompt": {
     "title": "變更未存放",
