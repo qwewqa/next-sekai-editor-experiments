@@ -2,7 +2,7 @@
 
 How the editor's stored and exchanged formats change, and what each version number does. Read this before changing anything a file, a database row, a journal or an operation holds.
 
-The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms); this page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in the owner's `work/nxsp-format.md`.
+The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms); this page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in [nxsp-format.md](nxsp-format.md).
 
 ## 1. The ruling
 
@@ -85,7 +85,7 @@ Work down the list in order. The first row that fits decides the number.
    - the independent checker `tools/nxsp_check.py` (strict mode and `--read`), and `tools/fields-v1.json` through `npm run format:gen` for any record change;
    - the goldens, **in this order**: `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts` (the builder golden, `tests/local/nxsp/golden-v1/`), then `NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts` (the conformance cases are built from it), then `uv run python -I tools/nxsp_check.py` over `golden-v1/write-*.nxsp` and every `plan-conformance-v1/*/expected.nxsp`; for a record change `npm run format:gen` and the records goldens (`tests/local/records/golden-v1/`, `schema-v1/`). The long-history sample (`npm run samples:long-history`) lives in the owner's `samples/` folder, outside the repository: regenerate it and run `tests/samples/sampleFormat.test.ts`. After the ship a golden is never edited: a new generation adds a new golden;
    - `tests/local/nxsp/agreement.test.ts` (a plan-derived expectation for the new case, beside the readers' agreement);
-   - the plan (Part 1 §1.6.11.4–§1.6.11.8, then rebuild `plan/plan.md` with the README's cat command), the byte-level description `work/nxsp-format.md`, this page, and `CHANGELOG.md` under Unreleased when users see it;
+   - the plan (Part 1 §1.6.11.4–§1.6.11.8, then rebuild `plan/plan.md` with the README's cat command), the byte-level description `docs/nxsp-format.md`, this page, and `CHANGELOG.md` under Unreleased when users see it;
    - the user-facing line, if the open should say something, in all seven locales.
 4. **Run** the reader agreement test (both readers must open every probe alike), the checker over the regenerated goldens, `npm test`, and the open, save and history browser specs.
 5. **Say it in the commit:** which number moved and why, and that readers ship first.

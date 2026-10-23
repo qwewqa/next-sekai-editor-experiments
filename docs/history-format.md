@@ -215,7 +215,7 @@ A session's own rows never go back in time: each flush or journal row is its own
 
 ## 3. The `.nxsp` history
 
-A `.nxsp` is a plain ZIP; `level.json` is the chart now, and the history is optional extra. The container rules (headers, CRC, timestamps, ZIP64, names) are in `src/zip/` and `src/local/nxsp/execute.ts`, and the full byte-level description in the owner's `work/nxsp-format.md`. What an older reader does with a newer file is format-versioning sections 2 to 4.
+A `.nxsp` is a plain ZIP; `level.json` is the chart now, and the history is optional extra. The container rules (headers, CRC, timestamps, ZIP64, names) are in `src/zip/` and `src/local/nxsp/execute.ts`, and the full byte-level description in [nxsp-format.md](nxsp-format.md). What an older reader does with a newer file is format-versioning sections 2 to 4.
 
 ### 3.1 Entries
 
