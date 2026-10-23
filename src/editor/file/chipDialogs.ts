@@ -1,13 +1,13 @@
 import { i18n } from '../../i18n'
 import { formatWhen } from '../../i18n/when'
 import { showChoice, type Choice } from '../../modals/choice'
-import { PRODUCT_NAME } from '../../product'
 import { interpolateRaw } from '../../utils/interpolate'
 import { runCommand } from '../commands/runCommand'
 import { save } from '../commands/save'
+import { confirmSwitch } from '../switch'
 import { fileActions } from './actions'
 import type { ChipKind } from './chip'
-import { notStored, type NotStoredCause } from './notStored'
+import { notStored, pausedReasonLine, type NotStoredCause } from './notStored'
 import { boundFile, chip, confirmFile } from './state'
 import { tryStoringAgain } from './tryAgain'
 
@@ -57,19 +57,8 @@ const lines = (first: string, rest: readonly ChipKind[], reason?: string) =>
 
 /** Why changes are not stored, by cause; a browser without storage has nothing more to say. */
 const reasonLine = (cause: NotStoredCause | undefined) => {
-    const { storage, load } = i18n.value
-    if (cause?.kind === 'readOnly') return load.olderVersion
-    if (cause?.kind !== 'paused') return undefined
-    switch (cause.reason) {
-        case 'full':
-            return storage.reason.full
-        case 'failed':
-            return storage.reason.failed
-        case 'upgrading':
-            return storage.reason.upgrading
-        case 'olderTabs':
-            return interpolateRaw(storage.reason.olderTabs, PRODUCT_NAME)
-    }
+    if (cause?.kind === 'readOnly') return i18n.value.load.olderVersion
+    return cause?.kind === 'paused' ? pausedReasonLine(cause.reason) : undefined
 }
 
 type NotStoredChoice = 'localData' | 'retry' | 'reload' | 'confirm' | 'save'
@@ -124,7 +113,8 @@ const openNotStored = async (rest: readonly ChipKind[]) => {
             await tryStoringAgain()
             return
         case 'reload':
-            location.reload()
+            // iOS has no leave prompt, so unstored work is asked about here.
+            if (await confirmSwitch()) location.reload()
             return
         case undefined:
             return

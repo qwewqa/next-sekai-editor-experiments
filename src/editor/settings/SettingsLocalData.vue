@@ -11,13 +11,12 @@ import { showChoice } from '../../modals/choice'
 import ToggleField from '../../modals/form/ToggleField.vue'
 import LoadingModal from '../../modals/LoadingModal.vue'
 import { FileError, platform } from '../../platform'
-import { PRODUCT_NAME } from '../../product'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
-import { notStored } from '../file/notStored'
+import { notStored, pausedReasonLine } from '../file/notStored'
 import { tryStoringAgain } from '../file/tryAgain'
 import { showHistoryLink } from '../history/openHistory'
 import { loadNotices, notify } from '../notification'
@@ -81,25 +80,16 @@ const storedText = computed(() => {
 const notStoredLine = computed(() => {
     const cause = notStored.value
     if (cause?.kind !== 'paused') return
-    const { reason } = i18n.value.storage
-    switch (cause.reason) {
-        case 'full':
-            return { text: reason.full, action: 'retry' as const }
-        case 'failed':
-            return { text: reason.failed, action: 'retry' as const }
-        case 'olderTabs':
-            return {
-                text: interpolateRaw(reason.olderTabs, PRODUCT_NAME),
-                action: 'retry' as const,
-            }
-        case 'upgrading':
-            return { text: reason.upgrading, action: 'reload' as const }
+    return {
+        text: pausedReasonLine(cause.reason),
+        action: cause.reason === 'upgrading' ? ('reload' as const) : ('retry' as const),
     }
 })
 const retrying = ref(false)
 const retryOrReload = async (action: 'retry' | 'reload') => {
     if (action === 'reload') {
-        location.reload()
+        // iOS has no leave prompt, so unstored work is asked about here.
+        if (await confirmSwitch()) location.reload()
         return
     }
     retrying.value = true

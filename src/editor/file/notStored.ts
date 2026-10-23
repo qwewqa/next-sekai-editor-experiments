@@ -1,7 +1,10 @@
 import { computed, shallowRef, watch, type ComputedRef, type ShallowRef } from 'vue'
+import { i18n } from '../../i18n'
 import { storageStatus } from '../../local/startup/events'
 import type { PauseReason, StorageStatus } from '../../local/worker/core'
+import { PRODUCT_NAME } from '../../product'
 import { isSafeMode } from '../../safe'
+import { interpolateRaw } from '../../utils/interpolate'
 
 // The "Not stored" state (Part 1 §1.6.7): raised from the storage status alone, once a cause has
 // held for a moment, so a brief stall never flickers. The chip, the status label, the iOS bar and
@@ -96,3 +99,18 @@ export const notStoredCause = state.notStoredCause
 
 /** The cause once it has held for `NOT_STORED_DELAY_MS`; drives the chip, the bar and the line. */
 export const notStored = state.notStored
+
+/** Why storing is paused, as a sentence: the one wording for the Not stored dialog and Local Data. */
+export const pausedReasonLine = (reason: PauseReason) => {
+    const { storage } = i18n.value
+    switch (reason) {
+        case 'full':
+            return storage.reason.full
+        case 'failed':
+            return storage.reason.failed
+        case 'upgrading':
+            return storage.reason.upgrading
+        case 'olderTabs':
+            return interpolateRaw(storage.reason.olderTabs, PRODUCT_NAME)
+    }
+}

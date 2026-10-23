@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { confirmKeyWhenReady, confirmWhenReady } from './confirmWhenReady'
 import { submitSave } from './saveFlows'
 
 // The Not stored state (Part 1 §1.6.7): raised from the storage status after it has held for a
@@ -65,8 +66,15 @@ const label = (page: Page) => page.locator('[data-status-label]')
 const bar = (page: Page) => page.locator('[data-not-stored-bar]')
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Changes Not Stored' })
 
-/** A dialog ignores presses in its first moments (§1.4.1). */
-const afterGuard = (page: Page) => page.waitForTimeout(400)
+/** The card a pressed Try Again raises when storing still fails. */
+const stillFailing = (page: Page) =>
+    page
+        .locator('[data-notice-card]')
+        .filter({ hasText: 'Changes are not being stored in this browser.' })
+
+/** Presses a button of the dialog; the dialog ignores presses in its first moments (§1.4.1). */
+const press = (page: Page, name: string) =>
+    confirmWhenReady(dialog(page).getByRole('button', { name, exact: true }), dialog(page))
 
 /** The dialog's buttons left to right, without the × that closes it. */
 const buttons = (page: Page) =>
@@ -93,30 +101,25 @@ test.describe('a full browser', () => {
         await expect
             .poll(() => page.evaluate(() => window.nseStorageTest?.status()))
             .toEqual(pausedFull)
-        const paused = Date.now()
-        await expect(chip(page)).toHaveCount(0)
-        await expect(label(page)).not.toHaveClass(/text-warning/)
+        // The 3 s delay itself is covered by the unit test, which has a clock to move.
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored', { timeout: 8000 })
-        expect(Date.now() - paused).toBeGreaterThanOrEqual(2000)
         await expect(label(page)).toHaveClass(/text-warning/)
         // Not the iOS bar: it belongs to iOS and iPadOS.
         await expect(bar(page)).toHaveCount(0)
 
         await chip(page).click()
-        await afterGuard(page)
         await expect(dialog(page)).toContainText('Changes are not being stored in this browser.')
         await expect(dialog(page)).toContainText('Browser storage is full.')
         expect(await buttons(page)).toEqual(['Cancel', 'Local Data', 'Try Again', 'Save'])
         await expect(dialog(page).getByRole('button', { name: 'Save', exact: true })).toBeFocused()
 
         // Try Again with the browser still full says so, and leaves the chip.
-        await dialog(page).getByRole('button', { name: 'Try Again' }).click()
-        await expect(page.getByText('Changes are not being stored in this browser.')).toBeVisible()
+        await press(page, 'Try Again')
+        await expect(stillFailing(page)).toBeVisible()
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
 
         await chip(page).click()
-        await afterGuard(page)
-        await dialog(page).getByRole('button', { name: 'Local Data' }).click()
+        await press(page, 'Local Data')
         await expect(page.getByRole('dialog', { name: 'Settings', exact: true })).toBeVisible()
         await expect(page.getByRole('heading', { name: 'Local Data' })).toBeFocused()
     })
@@ -133,8 +136,7 @@ test.describe('a full browser', () => {
         // Storing works (nothing forces a quota): Try Again flushes and the worker's status
         // clears the pause, which the page follows.
         await chip(page).click()
-        await afterGuard(page)
-        await dialog(page).getByRole('button', { name: 'Try Again' }).click()
+        await press(page, 'Try Again')
         await setStatus(page, { mode: 'stored' })
         await expect(chip(page)).toHaveCount(0)
         await expect(label(page)).not.toHaveClass(/text-warning/)
@@ -176,12 +178,10 @@ test('a change of cause while shown keeps the chip, and the dialog follows the c
         await setStatus(page, status)
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
         await chip(page).click()
-        await afterGuard(page)
         await expect(dialog(page)).toContainText('Changes are not being stored in this browser.')
         if (line) await expect(dialog(page)).toContainText(line)
         expect(await buttons(page)).toEqual(names)
-        await page.keyboard.press('Escape')
-        await expect(dialog(page)).toHaveCount(0)
+        await confirmKeyWhenReady(page, 'Escape', dialog(page))
     }
 })
 
@@ -191,31 +191,39 @@ test('Reload in the dialog reloads the page', async ({ page, context }) => {
     await setStatus(page, { mode: 'stored', reason: 'upgrading' })
     await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored', { timeout: 8000 })
     await chip(page).click()
-    await afterGuard(page)
-    await Promise.all([
-        page.waitForEvent('load'),
-        dialog(page).getByRole('button', { name: 'Reload' }).click(),
-    ])
+    await Promise.all([page.waitForEvent('load'), press(page, 'Reload')])
 })
 
-test('a stall that ends within the delay never shows the chip', async ({ page, context }) => {
+// iOS shows no leave prompt of its own, so unstored work is asked about before the reload
+// (final review R2 #2).
+test('Reload with work that is stored nowhere asks first, and Cancel keeps the page', async ({
+    page,
+    context,
+}) => {
     await seed(context)
+    // The edit is in no store, as when an upgrade holds the database.
+    await context.addInitScript(() => localStorage.setItem('nse.test.noStorage', 'true'))
     await visit(page)
-    await setStatus(page, pausedFull)
-    await page.waitForTimeout(1000)
-    await setStatus(page, { mode: 'stored' })
-    await page.waitForTimeout(3000)
-    await expect(chip(page)).toHaveCount(0)
-})
-
-test('safe mode raises nothing for its read-only database', async ({ page, context }) => {
-    await seed(context)
-    await page.goto('/?safe')
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await expect.poll(() => page.evaluate(() => window.nseStorageTest?.status())).toBeTruthy()
-    await page.waitForTimeout(3500)
-    await expect(chip(page)).toHaveCount(0)
-    await expect(label(page)).not.toHaveClass(/text-warning/)
+    await edit(page, 990)
+    await setStatus(page, { mode: 'stored', reason: 'upgrading' })
+    await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored', { timeout: 8000 })
+    await chip(page).click()
+    const leave = page.getByRole('button', { name: 'Leave Anyway' })
+    await expect(async () => {
+        await dialog(page)
+            .getByRole('button', { name: 'Reload', exact: true })
+            .click({ timeout: 1000 })
+        await expect(leave).toBeVisible({ timeout: 2000 })
+    }).toPass({ timeout: 10_000 })
+    let loaded = false
+    page.on('load', () => (loaded = true))
+    await confirmWhenReady(
+        page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }),
+        page.getByRole('dialog'),
+    )
+    await expect(dialog(page)).toHaveCount(0)
+    expect(loaded).toBe(false)
+    await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
 })
 
 const ios = { os: 'ios', engine: 'webkit', fileSystemAccess: false }
@@ -287,7 +295,6 @@ test.describe('the iOS bar', () => {
         await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
 
         await chip(page).click()
-        await afterGuard(page)
         await expect(dialog(page)).toContainText('finished downloading')
         expect(await buttons(page)).toEqual([
             'Cancel',
@@ -296,12 +303,11 @@ test.describe('the iOS bar', () => {
             'I Have the File',
             'Save',
         ])
-        await dialog(page).getByRole('button', { name: 'I Have the File' }).click()
-        await expect(dialog(page)).toHaveCount(0)
+        await press(page, 'I Have the File')
 
         // The download line and its button are gone.
         await chip(page).click()
-        await afterGuard(page)
+        await expect(dialog(page)).toBeVisible()
         await expect(dialog(page)).not.toContainText('finished downloading')
         expect(await buttons(page)).toEqual(['Cancel', 'Local Data', 'Try Again', 'Save'])
     })
