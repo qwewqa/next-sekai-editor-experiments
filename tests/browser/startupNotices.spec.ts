@@ -561,7 +561,7 @@ test.describe('the status bar label', () => {
         await expect(page).toHaveTitle('Coconut · not saved to a file – Next SEKAI Editor')
     })
 
-    test('a bound session shows the file name, and the name before it when they differ', async ({
+    test('a bound session shows the file name alone, whatever its Name', async ({
         page,
         context,
     }) => {
@@ -587,8 +587,9 @@ test.describe('the status bar label', () => {
                 (await import('/src/history/session.ts')) as typeof import('../../src/history/session')
             session.value = { ...session.value, name: 'Coconut (Master)' }
         })
-        await expect(label(next)).toHaveText('Coconut (Master) · coconut.nxsp')
-        await expect(next).toHaveTitle('Coconut (Master) · coconut.nxsp – Next SEKAI Editor')
+        // The file outranks a Name: it stays the displayed name.
+        await expect(label(next)).toHaveText('coconut.nxsp')
+        await expect(next).toHaveTitle('coconut.nxsp – Next SEKAI Editor')
     })
 
     test('a separate copy says which file it is a copy of', async ({ page, context }) => {
