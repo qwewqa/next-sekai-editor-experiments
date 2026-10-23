@@ -17,7 +17,7 @@ import { readDiskFacts } from '../save/disk'
 import { waitForChainImports, type PreparingSlot } from '../save/imports'
 import { enqueueSave } from '../save/queue'
 import { unlinkSession } from '../save/unlink'
-import { reportLines, type Findings } from './report'
+import { reportLines, type CheckText, type Findings } from './report'
 
 // Check File and History… on the page (Part 1 §1.4.21; step 11 design §3.3): which file, then the
 // run inside the Save queue: the wait for the chain's imports, `nse-maint` shared from there to
@@ -182,6 +182,23 @@ const testDelay = async () => {
         // No localStorage: no hook.
     }
     if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** The strings of the report, each named where it is read. */
+const checkText = (): CheckText => {
+    const { check, open } = i18n.value
+    return {
+        check: {
+            noDamage: check.noDamage,
+            fileDamaged: check.fileDamaged,
+            repaired: check.repaired,
+            storedDamaged: check.storedDamaged,
+            mediaDamaged: check.mediaDamaged,
+            scopeBoth: check.scopeBoth,
+            scopeStored: check.scopeStored,
+        },
+        media: open.media,
+    }
 }
 
 /** The options an open's file read takes (`readProjectFile`). */
@@ -377,10 +394,7 @@ const perform = async (
     }
     return {
         kind: 'report',
-        lines: reportLines(found, () => ({
-            check: i18n.value.check,
-            media: i18n.value.open.media,
-        })),
+        lines: reportLines(found, checkText),
     }
 }
 

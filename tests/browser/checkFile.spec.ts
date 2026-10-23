@@ -26,8 +26,6 @@ import {
 // session and leaves the file as it was; Cancel and a changed file write nothing; a download
 // binding checks the stored history only.
 
-type Row = Record<string, unknown>
-
 const freshBytes = async () =>
     new Uint8Array(await (await executePlan(planNxsp(fresh().input).plan, new Map())).arrayBuffer())
 
