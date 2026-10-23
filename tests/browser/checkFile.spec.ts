@@ -316,3 +316,23 @@ test('a session switch cancels the check', async ({ page }) => {
     const old = chains!.map((row) => row.value).find((row) => row.chainId === chainId)
     expect(old?.file).toBeDefined()
 })
+
+test('unbound work with a stored step damaged: Check marks it, and Save As… still succeeds', async ({
+    page,
+}) => {
+    await start(page)
+    await edit(page, 1)
+    await edit(page, 2)
+    await damageRow(page)
+    await runCheck(page)
+    const dialog = checkDialog(page)
+    await expect(dialog).toContainText(/Timeline steps? stored in this browser (is|are) damaged\./)
+    await expect(dialog).toContainText('Checked the history stored in this browser.')
+    expect(await keptFalse(page)).toBeGreaterThan(0)
+    await dialog.getByRole('button', { name: 'OK' }).click()
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    // The marked step never refuses the Save: it is written, without that step's own state.
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'could not be read completely' })).toHaveCount(0)
+})
