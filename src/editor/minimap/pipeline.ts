@@ -39,6 +39,8 @@ export type MinimapPipeline = {
     setSources: (sources: MinimapSources) => void
     /** The mapping the front canvas shows, at the current CSS size; undefined before the first swap. */
     mapping: Readonly<ShallowRef<MinimapMapping | undefined>>
+    /** Whether nothing is waiting: no pass, no job and no geometry change. Specs wait on it. */
+    isIdle: () => boolean
     dispose: () => void
 }
 
@@ -278,14 +280,19 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         step(running)
     }
 
-    /** Repaints the rows of the changed keys; false when a full redraw is cheaper. */
+    /**
+     * Repaints the rows of the changed keys; false when a full redraw is cheaper. Each band is
+     * painted whole items at a time into the back buffer, then its rows are copied to the front.
+     * A canvas clip would move the antialiased edges of slanted bodies, so a band would differ
+     * from the full redraw it stands in for; unclipped, every item rasterises as it does there.
+     */
     const paintBands = (
         shown: State,
         layout: PaintSource['layout'],
         keys: number[],
         current: Baseline,
     ) => {
-        if (!frontContext) return true
+        if (!frontContext || !backContext) return true
         const start = now()
         const shownMapping = createMapping(current.geometry, current.end)
         const bands = keysToBands(keys, shown.bpms, shownMapping)
@@ -294,14 +301,13 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         const source: PaintSource = { state: shown, layout, mapping: shownMapping }
         const { grid } = shown.store
         let entities = 0
+        backContext.globalAlpha = 1
+        backContext.globalCompositeOperation = 'source-over'
         for (const band of bands) {
             const { lo, hi } = bandKeyRange(band, shown.bpms, shownMapping)
-            frontContext.save()
-            frontContext.beginPath()
-            frontContext.rect(0, band.top, width, band.bottom - band.top)
-            frontContext.clip()
-            frontContext.clearRect(0, band.top, width, band.bottom - band.top)
-            const painter = createPainter(frontContext, source)
+            const rows = band.bottom - band.top
+            backContext.clearRect(0, band.top, width, rows)
+            const painter = createPainter(backContext, source)
             painter.rules(height)
             for (const connector of collectConnectors(grid.connector, lo, hi)) {
                 painter.connector(connector)
@@ -311,7 +317,10 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
                 painter.note(note)
                 entities++
             }
-            frontContext.restore()
+            // Clearing first makes the copy exact: over nothing, source-over is the source.
+            flush(backContext)
+            frontContext.clearRect(0, band.top, width, rows)
+            frontContext.drawImage(back, 0, band.top, width, rows, 0, band.top, width, rows)
         }
         flush(frontContext)
         minimapStats.bandPasses++
@@ -356,7 +365,9 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         drawn = undefined
         schedulePass()
     }
-    const onContextLost = (event: Event) => event.preventDefault()
+    const onContextLost = (event: Event) => {
+        event.preventDefault()
+    }
     front.addEventListener('contextlost', onContextLost)
     front.addEventListener('contextrestored', restart)
 
@@ -388,6 +399,8 @@ export const createMinimapPipeline = (front: HTMLCanvasElement): MinimapPipeline
         },
 
         mapping,
+
+        isIdle: () => passFrame === undefined && !job && geometryTimer === undefined,
 
         dispose() {
             disposed = true

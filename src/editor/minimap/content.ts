@@ -52,8 +52,9 @@ export const useMinimapContent = (canvas: Readonly<Ref<HTMLCanvasElement | null 
 
             let width = 0
             let height = 0
-            const setGeometry = () =>
+            const setGeometry = () => {
                 created.setGeometry(width, height, window.devicePixelRatio || 1)
+            }
             const observer = new ResizeObserver((entries) => {
                 const box = entries.at(-1)?.contentRect
                 if (!box) return
