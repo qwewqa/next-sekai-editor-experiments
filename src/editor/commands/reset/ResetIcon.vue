@@ -1,8 +1,9 @@
 <template>
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
-        <!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc. -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512">
+        <!-- The file of Font Awesome Free 6.6.0 (https://fontawesome.com/license/free, Copyright 2024 Fonticons, Inc.), with a plus cut out. -->
         <path
-            d="M135.2 17.7L128 32 32 32C14.3 32 0 46.3 0 64S14.3 96 32 96l384 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-96 0-7.2-14.3C307.4 6.8 296.3 0 284.2 0L163.8 0c-12.1 0-23.2 6.8-28.6 17.7zM416 128L32 128 53.2 467c1.6 25.3 22.6 45 47.9 45l245.8 0c25.3 0 46.3-19.7 47.9-45L416 128z"
+            fill-rule="evenodd"
+            d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 288c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128z M168 256h48v56h56v48h-56v56h-48v-56h-56v-48h56z"
         />
     </svg>
 </template>
