@@ -91,6 +91,14 @@ const artworkColors = (entity: NoteEntity, type: NoteVisualType) => {
     }
 }
 
+/** The one colour the minimap paints a note in: the artwork's own, by the part the note plays. */
+export const noteMinimapFill = (entity: NoteEntity, type: NoteVisualType) => {
+    const fills = artworkColors(entity, type)
+    if (type === 'trace' || type === 'damage') return fills.flat
+    if (type === 'tick') return fills.diamond
+    return fills.body[0]
+}
+
 const drawArtwork = (
     ctx: WebGLDrawContext,
     entity: NoteEntity,

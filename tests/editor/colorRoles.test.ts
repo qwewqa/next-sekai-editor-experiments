@@ -23,6 +23,7 @@ const definitions = ['src/themes.css', 'src/controls.css']
 /** Chart content: its colours name chart objects, not UI roles (docs/color-system.md, "Out of scope"). */
 const chart: [RegExp, string][] = [
     [/^src\/editor\/canvas\//, 'chart drawing'],
+    [/^src\/editor\/minimap\/paint\.ts$/, 'minimap chart drawing'],
     [/^src\/editor\/elevation\/(?!ElevationEditor\.vue)/, 'elevation canvas drawing'],
     [/^src\/preview\/(render|usePreviewRendering)/, 'preview renderer and its overlay'],
     [/^src\/utils\/colors\.ts$/, 'note style colours'],
