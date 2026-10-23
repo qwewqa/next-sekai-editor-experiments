@@ -697,7 +697,11 @@ test('a separate copy of an untitled session names its source by when it started
     const first = await openJournalPage(world, 'first', storage)
     const titled = stateOf(goldenChart())
     // No title, source name or BGM name: nothing but the date names it.
-    const a = { ...titled, levelInfo: { ...titled.levelInfo, title: '' } }
+    const a = {
+        ...titled,
+        levelInfo: { ...titled.levelInfo, title: '' },
+        bgm: { offset: titled.bgm.offset },
+    }
     const parent = beginSession(first, a)
     await first.flusher.flush({ strict: true })
     first.tab.kill()
@@ -711,6 +715,23 @@ test('a separate copy of an untitled session names its source by when it started
         of: { name: '', bound: false, at: parent.startedAt },
     })
     assert.equal(typeof parent.startedAt, 'number')
+})
+
+// A chart named by its song is the copy's source as that name, as its status bar showed it.
+test('a separate copy of a chart named by its song names its source by the song', async () => {
+    const world = createWorld({ seed: 17 })
+    const storage = new MemoryStorage()
+    const first = await openJournalPage(world, 'first', storage)
+    const titled = stateOf(goldenChart())
+    const a = { ...titled, levelInfo: { ...titled.levelInfo, title: '' } }
+    beginSession(first, a)
+    await first.flusher.flush({ strict: true })
+    first.tab.kill()
+    const visit = await load(world, 'visit', storage)
+    openSession(visit)
+    const copy = await load(world, 'copy', storage, { tab: new Map(visit.tab) })
+    const event = copy.events.find((each) => each.kind === 'separateCopy')
+    assert.deepEqual(event, { kind: 'separateCopy', of: { name: 'song', bound: false } })
 })
 
 test('a copy’s source is its file, else its own name, else the date it started', () => {

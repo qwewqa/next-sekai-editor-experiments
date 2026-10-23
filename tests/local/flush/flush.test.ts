@@ -106,6 +106,7 @@ test('a blank start is stored from its first edit, with its chain record', async
         author: 'Charter',
         rating: 12,
         tags: ['Tag', 'Icon tag'],
+        bgmName: 'song.mp3',
         noteCount: toRecords(edited).kinds[0]?.records.reduce(
             (n, { record }) => n + record.length,
             0,

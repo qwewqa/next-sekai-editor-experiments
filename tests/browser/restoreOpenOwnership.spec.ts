@@ -210,7 +210,7 @@ test('Reopen forks when a different tab now binds the same physical file', async
             (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
         return restoreSession(first)
     }, first)
-    expect(result).toBe(true)
+    expect(result).toEqual({ opened: true, forked: true })
     const copy = await snapshot(page)
     expect(copy.session.file).toBeUndefined()
     expect(copy.session.docId).not.toBe(second.docId)
@@ -230,7 +230,7 @@ for (const change of ['edit-undo', 'new', 'newer-restore'] as const) {
                 (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
             void restoreSession(target).then((result) => {
                 window.switchRace.done = true
-                window.switchRace.result = result
+                window.switchRace.result = result.opened
             })
         }, target)
         await held(page)
