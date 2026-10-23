@@ -30,7 +30,8 @@
         "offset": "Zaman Kayması (ms)",
         "loading": "Dosya yükleniyor…",
         "decoding": "Ses çözümleniyor…",
-        "generating": "Dalga formu oluşturuluyor…"
+        "generating": "Dalga formu oluşturuluyor…",
+        "download": "BGM’yi İndir"
       },
       "fileChanged": "Arka plan müziği dosyası değiştirildi",
       "offsetSet": "Arka plan müziğinin zaman kayması {0} ms olarak ayarlandı"
@@ -2150,6 +2151,8 @@
     "sameFileMaybeElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık olabilir, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
+    "bgmDiffers": "Bu, özgün BGM olan \"{0}\" dosyasından farklı bir dosya.",
+    "bgmDiffersUnnamed": "Bu, özgün BGM dosyasından farklı bir dosya.",
     "newLevel": "Yeni seviye",
     "reopen": "\"{0}\" Yeniden Aç",
     "reopenUntitled": "{0} Tarihli Oturumu Yeniden Aç",

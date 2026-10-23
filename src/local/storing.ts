@@ -498,12 +498,11 @@ export const startStoring = (
     // A restored undo slot is built from its stored records, verified, when Undo or Redo reaches it.
     // Right after a reload, a slot the resumed import hasn't brought yet loads once it has: the
     // load waits for the resume to start, then for the import, and tries again (§1.5.4).
-    const read = slotLoader((hex) => worker.call('readSnapshotVerified', hex))
+    const load = slotLoader((hex) => worker.call('readSnapshotVerified', hex))
     // A BGM this tab holds is attached to the slot it names, so Undo and Redo land with audio.
-    const load = async (snapshot: Uint8Array) => withCachedBgm(await read(snapshot))
     setSlotLoader(async (snapshot) => {
         try {
-            return await load(snapshot)
+            return withCachedBgm(await load(snapshot))
         } catch (error) {
             const id = instance.session?.id
             // Only a session whose open's import hasn't finished waits for it.
@@ -519,7 +518,7 @@ export const startStoring = (
                 throw error
             if (!(await importStarted(id))) throw error
             await whenImported(id)
-            return load(snapshot)
+            return withCachedBgm(await load(snapshot))
         }
     })
 

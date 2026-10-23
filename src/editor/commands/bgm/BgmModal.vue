@@ -1,20 +1,19 @@
 <script setup lang="ts">
-import { onBeforeUnmount, shallowReactive, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowReactive, watch } from 'vue'
 import { isPeeking, liveState } from '../../../history'
 import { i18n } from '../../../i18n'
-import { captureMedia, durationMsOf } from '../../../local/media'
 import { showModal } from '../../../modals'
 import FileField from '../../../modals/form/FileField.vue'
 import FormModal from '../../../modals/form/FormModal.vue'
 import NumberField from '../../../modals/form/NumberField.vue'
 import LoadingModal from '../../../modals/LoadingModal.vue'
-import { loadBgm } from '../../../player'
-import { settings } from '../../../settings'
 import type { Bgm } from '../../../state/bgm'
-import { getFilename } from '../../../utils/file'
 import { formatTime } from '../../../utils/format'
-import { timeout } from '../../../utils/promise'
-import { createWaveform, releaseWaveform, type Waveform } from '../../../waveform'
+import { releaseWaveform, type Waveform } from '../../../waveform'
+import { bgmStatus } from '../../media/heldBgm'
+import { downloadBgm } from './downloadBgm'
+import type { PickedBgm } from '../../media/applyPick'
+import { loadPickedBgm } from './loadPicked'
 
 const props = defineProps<{
     bgm: Bgm
@@ -35,6 +34,39 @@ const model = shallowReactive({
 
 let request: AbortController | undefined
 let ownedWaveform: Waveform | undefined
+// Whether a file was picked here: the dialog then shows that file, not the live BGM.
+let picked = false
+
+// The live BGM may get its audio while this is open (it is read back from storage after a
+// reload). The dialog takes it, so confirming does not drop the audio.
+watch(
+    () => liveState.value.bgm,
+    (live) => {
+        if (picked || !live.buffer || live.meta !== props.bgm.meta || model.buffer) return
+        model.buffer = live.buffer
+        model.source = live.source
+        model.waveform = live.waveform
+    },
+)
+
+// A BGM nothing holds is said so; one that is held and still being decoded shows nothing yet.
+const unheld = ref(false)
+if (props.bgm.meta && !props.bgm.buffer) {
+    const { hash, size } = props.bgm.meta
+    void bgmStatus(hash, size).then((status) => {
+        unheld.value = status === 'absent'
+    })
+}
+const shownFile = computed(() =>
+    model.buffer
+        ? formatTime(model.buffer.duration)
+        : unheld.value
+          ? i18n.value.save.bgmNotLoaded
+          : undefined,
+)
+
+// The live BGM's bytes, when this tab has them (not what was picked here).
+const heldSource = computed(() => liveState.value.bgm.source)
 
 const onClose = () => {
     request?.abort()
@@ -52,6 +84,7 @@ const onSelect = (file: File) => {
     request?.abort()
     const current = new AbortController()
     request = current
+    picked = true
 
     void showModal(LoadingModal, {
         title: () => i18n.value.commands.bgm.title,
@@ -59,52 +92,26 @@ const onSelect = (file: File) => {
             const cancel = () => {
                 current.abort()
             }
-            const checkCancelled = () => {
-                if (current.signal.aborted || signal.aborted) {
-                    throw new DOMException('BGM import cancelled', 'AbortError')
-                }
-            }
             signal.addEventListener('abort', cancel, { once: true })
-            let waveform: Waveform | undefined
+            let loaded: PickedBgm | undefined
             let published = false
             try {
-                checkCancelled()
-                yield () => i18n.value.commands.bgm.modal.loading
-
-                const data = await file.arrayBuffer()
-                checkCancelled()
-                // Hashed and copied before decoding, which detaches the buffer (§1.6.8.4).
-                const captured = await captureMedia(data, file)
-                checkCancelled()
-
-                yield () => i18n.value.commands.bgm.modal.decoding
-
-                const buffer = await loadBgm(data)
-                checkCancelled()
-
-                yield () => i18n.value.commands.bgm.modal.generating
-                await timeout(50)
-                checkCancelled()
-
-                waveform = await createWaveform(buffer, settings.waveform, current.signal)
-                checkCancelled()
-
+                loaded = yield* loadPickedBgm(
+                    file,
+                    () => current.signal.aborted || signal.aborted,
+                    current.signal,
+                )
                 releaseWaveform(ownedWaveform)
-                ownedWaveform = waveform
-                model.filename = getFilename(file)
-                model.buffer = buffer
-                model.waveform = waveform
-                // Every pick records its own metadata and bytes, never the previous BGM's.
-                model.source = captured.source
-                const durationMs = durationMsOf(buffer.duration)
-                model.meta = {
-                    ...captured.meta,
-                    ...(durationMs === undefined ? {} : { durationMs }),
-                }
+                ownedWaveform = loaded.waveform
+                model.filename = loaded.filename
+                model.buffer = loaded.buffer
+                model.waveform = loaded.waveform
+                model.source = loaded.source
+                model.meta = loaded.meta
                 published = true
             } finally {
                 signal.removeEventListener('abort', cancel)
-                if (!published) releaseWaveform(waveform)
+                if (!published) releaseWaveform(loaded?.waveform)
                 if (request === current) request = undefined
             }
         },
@@ -133,11 +140,15 @@ const onSubmit = () => {
 
 <template>
     <FormModal :title="i18n.commands.bgm.title" @close="onClose" @submit="onSubmit">
-        <FileField
-            :label="i18n.commands.bgm.modal.file"
-            :value="model.buffer && formatTime(model.buffer.duration)"
-            @select="onSelect"
-        />
+        <FileField :label="i18n.commands.bgm.modal.file" :value="shownFile" @select="onSelect" />
         <NumberField v-model="model.offset" :label="i18n.commands.bgm.modal.offset" step="any" />
+        <button
+            class="btn btn-secondary w-full rounded-full px-4 py-1"
+            type="button"
+            :disabled="!heldSource"
+            @click="downloadBgm(liveState.bgm)"
+        >
+            {{ i18n.commands.bgm.modal.download }}
+        </button>
     </FormModal>
 </template>

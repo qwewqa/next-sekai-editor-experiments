@@ -8,6 +8,7 @@ import type { Bgm } from '../../../state/bgm'
 import { releaseWaveform } from '../../../waveform'
 import { createAsyncEditGuard } from '../../asyncEditGuard'
 import { bgmOperation } from '../../headerLabels'
+import { cacheBgm } from '../../media/heldBgm'
 import { notify } from '../../notification'
 import BgmIcon from './BgmIcon.vue'
 import BgmModal from './BgmModal.vue'
@@ -24,7 +25,7 @@ export const bgm: Command = {
 }
 
 export const changeBgm = async (file?: File) => {
-    // Choose Audio… (a load notice's) is an edit: refused while peeking (§1.4.11).
+    // An edit: refused while peeking (§1.4.11).
     if (isPeeking.value) {
         refuseWhilePeeking()
         return
@@ -57,7 +58,11 @@ export const changeBgm = async (file?: File) => {
             bgm: newBgm,
         })
 
-        if (pushed) notify(() => operation.fallback.text)
+        if (pushed) {
+            // Undo and Redo across this change land with its audio.
+            cacheBgm(newBgm)
+            notify(() => operation.fallback.text)
+        }
     } finally {
         guard.dispose()
     }

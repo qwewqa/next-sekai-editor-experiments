@@ -30,7 +30,8 @@
         "offset": "偏移（毫秒）",
         "loading": "正在加载文件…",
         "decoding": "正在解码音频…",
-        "generating": "正在生成波形…"
+        "generating": "正在生成波形…",
+        "download": "下载 BGM"
       },
       "fileChanged": "已更改背景音乐文件",
       "offsetSet": "已将背景音乐偏移设为 {0} 毫秒"
@@ -2150,6 +2151,8 @@
     "sameFileMaybeElsewhere": "“{0}”可能已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",
+    "bgmDiffers": "这与原来的 BGM“{0}”不是同一个文件。",
+    "bgmDiffersUnnamed": "这与原来的 BGM 不是同一个文件。",
     "newLevel": "新关卡",
     "reopen": "重新打开“{0}”",
     "reopenUntitled": "重新打开 {0} 的会话",

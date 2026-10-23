@@ -14,6 +14,8 @@
  * - elevation: the Elevation Editor, closed or behind an overlay while peeking
  * - levelInfo: Level Info, read-only while peeking
  * - restore: Restore of a History entry, which leaves the peek first
+ * - attach: audio brought back to the live state, which waits while a peek shows
+ * - pick: a Choose Audio… pick, refused while peeking and applied only while no peek shows
  */
 export type Gate =
     | 'command'
@@ -25,6 +27,8 @@ export type Gate =
     | 'elevation'
     | 'levelInfo'
     | 'restore'
+    | 'attach'
+    | 'pick'
 
 export const callSites: Record<string, { push: number; replace: number; gate: Gate }> = {
     'src/editor/LevelEditorContextMenu.vue': { push: 0, replace: 1, gate: 'selection' },
@@ -74,8 +78,9 @@ export const callSites: Record<string, { push: number; replace: number; gate: Ga
     'src/editor/workspace/manager/objects.ts': { push: 0, replace: 1, gate: 'selection' },
     'src/editor/workspace/manager/stages.ts': { push: 2, replace: 0, gate: 'panel' },
     'src/editor/workspace/properties/selectOnly.ts': { push: 0, replace: 1, gate: 'selection' },
-    // The opened file's BGM attached to the live state once decoded, never while peeking.
-    'src/local/open/project.ts': { push: 0, replace: 1, gate: 'selection' },
+    // The BGM attached to the live state once decoded (an opened file's, a stored one), never while peeking.
+    'src/editor/media/heldBgm.ts': { push: 0, replace: 1, gate: 'attach' },
+    'src/editor/media/applyPick.ts': { push: 1, replace: 0, gate: 'pick' },
     // Enabling dynamic stages, from the stage commands and the stage event tools.
     'src/history/dynamicStages.ts': { push: 1, replace: 0, gate: 'command' },
     'src/history/peek.ts': { push: 1, replace: 0, gate: 'restore' },

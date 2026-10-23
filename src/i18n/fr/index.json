@@ -30,7 +30,8 @@
         "offset": "Décalage (ms)",
         "loading": "Chargement du fichier…",
         "decoding": "Décodage audio…",
-        "generating": "Génération de forme d’onde…"
+        "generating": "Génération de forme d’onde…",
+        "download": "Télécharger la BGM"
       },
       "fileChanged": "Fichier de la musique modifié",
       "offsetSet": "Décalage de la musique défini sur {0} ms"
@@ -2150,6 +2151,8 @@
     "sameFileMaybeElsewhere": "\"{0}\" est peut-être ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
+    "bgmDiffers": "Ce fichier est différent de la BGM d’origine, \"{0}\".",
+    "bgmDiffersUnnamed": "Ce fichier est différent de la BGM d’origine.",
     "newLevel": "Nouveau niveau",
     "reopen": "Rouvrir \"{0}\"",
     "reopenUntitled": "Rouvrir la session du {0}",
