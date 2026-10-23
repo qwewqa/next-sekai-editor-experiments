@@ -127,6 +127,16 @@ const layout = computed(() => {
         compact: widths.compact + room,
     })
 })
+// A session's strip is two rows in a narrow pane, so its name has the room: the text, then the
+// buttons, which keep their labels where the row has room for both.
+const stacked = computed(() => !!peekedSession.value && view.w < 420)
+const backLabel = computed(() => {
+    const widths = peekWidths.value
+    if (!stacked.value || !widths) return layout.value.back === 'label'
+    const k = widths.rem / 16
+    const row = (4 + 8 + 8 + 4 + 32 + 32) * k + widths.back + sessionRestoreWidth.value
+    return row <= Math.min(view.w - 16 * k, 480 * k)
+})
 const sessionText = computed(() => {
     const info = peekedSession.value
     return info
@@ -212,13 +222,15 @@ const onKeydown = (event: KeyboardEvent) => {
             @keydown="onKeydown"
         >
             <div
-                class="pointer-events-auto flex w-[--peek-w] max-w-full items-center gap-2 rounded-full bg-modal p-1 text-sm text-fg shadow-xl ring-1 ring-fg/10"
+                class="pointer-events-auto flex w-[--peek-w] max-w-full items-center gap-2 bg-modal p-1 text-sm text-fg shadow-xl ring-1 ring-fg/10"
+                :class="stacked ? 'flex-wrap justify-end rounded-[1.375rem]' : 'rounded-full'"
                 data-peek-main
             >
                 <!-- A session: its name over its time, no details to open. -->
                 <div
                     v-if="sessionText"
                     class="mr-auto flex h-9 min-w-0 flex-col justify-center px-2.5"
+                    :class="{ 'w-full': stacked }"
                     :title="`${sessionText.name} · ${sessionText.time}`"
                     data-peek-text
                     data-peek-session
@@ -258,13 +270,13 @@ const onKeydown = (event: KeyboardEvent) => {
                 <button
                     type="button"
                     class="peek-hit btn btn-secondary flex h-9 shrink-0 items-center justify-center rounded-full"
-                    :class="layout.back === 'label' ? 'px-4' : 'w-9'"
+                    :class="backLabel ? 'px-4' : 'w-9'"
                     :aria-label="strings.backToNow"
                     :title="strings.backToNow"
                     data-peek-back
                     @click="backToNow"
                 >
-                    <template v-if="layout.back === 'label'">{{ strings.backToNow }}</template
+                    <template v-if="backLabel">{{ strings.backToNow }}</template
                     ><ChevronIcon v-else direction="left" centered />
                 </button>
                 <button
