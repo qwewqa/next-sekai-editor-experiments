@@ -44,6 +44,7 @@ const SEVERITY: Record<string, string | undefined> = {
     journalLater: 'warning',
     journalFailed: 'warning',
     journalsFull: 'warning',
+    storageNearlyFull: 'warning',
     notOpened: 'warning',
     openElsewhere: 'info',
     deletedElsewhere: 'warning',

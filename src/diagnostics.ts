@@ -139,6 +139,8 @@ export type DiagnosticFields = {
     standalone: boolean
     userAgent: string
     estimate?: { usage?: number; quota?: number }
+    /** Whether the browser keeps this origin's data (`navigator.storage.persisted()`); absent when unknown. */
+    persisted?: boolean
     storing?: StoringFields
     entries: readonly RingEntry[]
 }
@@ -168,6 +170,7 @@ export const formatDiagnostics = (fields: DiagnosticFields) => {
         `OS: ${fields.os}`,
         `Standalone: ${fields.standalone ? 'yes' : 'no'}`,
         `Storage: ${storageText(estimate)}`,
+        `Persistent storage: ${fields.persisted === undefined ? 'unknown' : fields.persisted ? 'yes' : 'no'}`,
         ...storingLines(fields.storing),
         `User agent: ${fields.userAgent}`,
         '',

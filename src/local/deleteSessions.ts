@@ -14,7 +14,8 @@ import type { PauseReason } from './worker/core'
 // (`readDeleteChoices`), the dialog counts and names them, and `deleteSessions` then removes
 // exactly the chains it is given, each whole through the removal primitive: a chain opened, given
 // a journal or edited since the read is skipped. It runs GC afterwards, so a full browser finds
-// the space, and asks storing to try again when it was paused for being full.
+// the space (after the reclaim of what the chains left outside storage), and asks storing to try
+// again when it was paused for being full.
 
 /** One chain as the dialog counts and names it. */
 export type DeleteChain = {
@@ -54,6 +55,8 @@ export type DeleteSessionsDeps = {
     retryStoring: () => Promise<unknown>
     /** Whether a revocation of the chain's binding is pending (`revoke.<chainId>` in localStorage). */
     revoked?: (chainId: string) => boolean
+    /** Removes what deleted chains left outside storage (markers, revocations, kept copies). */
+    reclaim?: () => Promise<void>
     zone?: () => Zone
     now?: () => number
     sleep?: (ms: number) => Promise<void>
@@ -152,6 +155,8 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
             onProgress?.(index + 1, targets.length)
         }
         if (deleted) {
+            // Before GC and Try Again, so a full browser finds the space the kept copies held.
+            await deps.reclaim?.().catch(() => undefined)
             await gc()
             if (deps.paused() === 'full') await deps.retryStoring().catch(() => undefined)
         }

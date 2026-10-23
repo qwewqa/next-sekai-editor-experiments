@@ -993,3 +993,44 @@ for (const reset of [
         expect(await read(reset.changed)).not.toBe(before)
     })
 }
+
+test('in safe mode Local Data only reads: no Delete Sessions…, no Discard…, and the line does not say the browser cannot store', async ({
+    page,
+}) => {
+    await page.addInitScript(() => {
+        localStorage.setItem('nse.test.storage', '{}')
+        // An old auto save this build cannot read: a row that would offer Discard… outside safe mode.
+        localStorage.setItem(
+            'sonolus-next-sekai-editor.autoSave.unreadable',
+            JSON.stringify({ version: 99, levelData: 'xx', filename: 'old.nsld' }),
+        )
+        StorageManager.prototype.estimate = () =>
+            Promise.resolve({ usage: 84_000_000, quota: 2_100_000_000 })
+    })
+    await page.goto('/?safe')
+    await expect(page.locator('[data-safe-bar]')).toBeVisible()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await expect
+        .poll(() => page.evaluate(() => window.nseStorageTest?.status()?.mode))
+        .toBe('readOnly')
+    await page.evaluate(async () => {
+        const { openSettings } =
+            (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+        void openSettings('localData')
+    })
+    const section = page.locator('#settings-localData')
+    await expect(section.locator('[data-storage-line]')).toBeVisible()
+    await expect(section.locator('[data-storage-line]')).not.toContainText('cannot store')
+    // What the browser holds shows; nothing that writes does.
+    await expect(section.locator('[data-stored-total]')).toHaveText(
+        'Stored in this browser: 84 MB of about 2.1 GB',
+    )
+    await expect(section.locator('[data-delete-sessions-open]')).toHaveCount(0)
+    await expect(section.locator('[data-not-stored-line]')).toHaveCount(0)
+    const autoSave = section.locator('[data-recovery-row="autoSave"]')
+    await expect(autoSave.getByRole('button')).toHaveText(['Download'])
+    await expect(section.locator('[data-recovery-discard]')).toHaveCount(0)
+    // Reading is still offered.
+    await expect(section.getByRole('button', { name: 'Export Raw Data…' })).toBeVisible()
+    await expect(section.getByRole('button', { name: 'Open History' })).toBeVisible()
+})

@@ -3,27 +3,42 @@ import { computed, inject, onMounted, ref } from 'vue'
 import { vFocusRescue } from '../../directives/focusRescue'
 import { i18n } from '../../i18n'
 import { formatDate } from '../../i18n/when'
+import { showModal } from '../../modals'
+import type { DeleteChain } from '../../local/deleteSessions'
 import { storageStatus } from '../../local/startup/events'
 import type { RecoveryItem } from '../../local/startup/api'
 import { showChoice } from '../../modals/choice'
 import ToggleField from '../../modals/form/ToggleField.vue'
+import LoadingModal from '../../modals/LoadingModal.vue'
 import { FileError, platform } from '../../platform'
+import { PRODUCT_NAME } from '../../product'
+import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
+import { notStored } from '../file/notStored'
+import { tryStoringAgain } from '../file/tryAgain'
 import { showHistoryLink } from '../history/openHistory'
 import { loadNotices, notify } from '../notification'
+import SeverityIcon from '../SeverityIcon.vue'
+import type { RawExportRun } from '../../startup/rawExportNote'
+import { shownName } from '../shownName'
 import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
+import { confirmLines } from './deleteChoices'
+import DeleteSessionsDialog from './DeleteSessionsDialog.vue'
 import SettingsSection from './SettingsSection.vue'
-import { readBrowserFacts, storageLineKey } from './storageLine'
+import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
 
-// Settings › Local Data (Part 1 §1.4.14): the storage line, and the Recovery rows for what the
-// recovery order set aside, with this load's notices. The Storage subsection follows in later steps.
+// Settings › Local Data (Part 1 §1.4.14): the storage line, the Storage subsection (what the
+// browser holds, why changes are not being stored, Delete Sessions…) and Recovery: Open History,
+// the rows for what the recovery order set aside, Export Raw Data… and this load's notices. In
+// safe mode it only reads: no Delete Sessions…, no Discard….
 
 const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
+const safe = isSafeMode()
 
 // --- The storage line (§1.4.13).
 const facts = ref<Awaited<ReturnType<typeof readBrowserFacts>>>()
@@ -35,12 +50,78 @@ const storageLine = computed(() => {
     const status = storageStatus.value
     if (!known || !status) return
     return i18n.value.storage[
-        storageLineKey({
-            ...known,
-            unavailable: status.mode === 'memory' || status.mode === 'readOnly',
-        })
+        storageLineKey({ ...known, unavailable: storageUnavailable(status, safe) })
     ]
 })
+
+// --- Storage: the total the browser holds, the not-stored line, Delete Sessions….
+const stored = ref<{ usage: number; quota: number }>()
+// Without both figures no number shows: a guess would be worse than none.
+const readTotal = async () => {
+    try {
+        const { usage, quota } = await navigator.storage.estimate()
+        stored.value =
+            usage !== undefined && quota !== undefined && Number.isFinite(usage) && quota > 0
+                ? { usage, quota }
+                : undefined
+    } catch {
+        stored.value = undefined
+    }
+}
+onMounted(readTotal)
+const storedText = computed(() => {
+    const total = stored.value
+    // In memory nothing is stored here, whatever the browser holds for the origin.
+    if (!total || !storageStatus.value || storageStatus.value.mode === 'memory') return
+    return interpolateRaw(strings.value.stored, formatSize(total.usage), formatSize(total.quota))
+})
+
+// Why changes are not stored, for the causes with a reason and something to do about it; an
+// unavailable browser and a newer database already change the storage line above.
+const notStoredLine = computed(() => {
+    const cause = notStored.value
+    if (cause?.kind !== 'paused') return
+    const { reason } = i18n.value.storage
+    switch (cause.reason) {
+        case 'full':
+            return { text: reason.full, action: 'retry' as const }
+        case 'failed':
+            return { text: reason.failed, action: 'retry' as const }
+        case 'olderTabs':
+            return {
+                text: interpolateRaw(reason.olderTabs, PRODUCT_NAME),
+                action: 'retry' as const,
+            }
+        case 'upgrading':
+            return { text: reason.upgrading, action: 'reload' as const }
+    }
+})
+const retrying = ref(false)
+const retryOrReload = async (action: 'retry' | 'reload') => {
+    if (action === 'reload') {
+        location.reload()
+        return
+    }
+    retrying.value = true
+    try {
+        await tryStoringAgain()
+    } finally {
+        retrying.value = false
+    }
+}
+
+// Delete Sessions… acts on the stored database: not while an upgrade holds it, not in safe mode.
+const canDelete = computed(() => {
+    const status = storageStatus.value
+    return !safe && status?.mode === 'stored' && status.reason !== 'upgrading'
+})
+const hasStorage = computed(
+    () =>
+        storageLine.value !== undefined ||
+        storedText.value !== undefined ||
+        notStoredLine.value !== undefined ||
+        canDelete.value,
+)
 
 // --- Recovery rows. The storage-side modules load when a row is acted on.
 const api = () => import('../../local/startup/api')
@@ -174,29 +255,168 @@ const afterRowGone = () =>
     document.querySelector<HTMLElement>('[data-recovery-row] button') ??
     document.querySelector<HTMLElement>('[data-open-history]')
 
-const hasRecovery = computed(
-    () => items.value.length > 0 || unreadable.value || loadNotices.value.length > 0,
-)
+// --- Delete Sessions…: the choice, the confirm, then the removal with its progress.
+const deleting = ref(false)
+const deleteSessions = async () => {
+    if (deleting.value) return
+    deleting.value = true
+    try {
+        const sessions = await import('../../local/deleteSessions')
+        // Read first, so the dialog never shows counts it does not know.
+        const read = await sessions.readDeleteChoices()
+        if (read.storedRead === 'failed') {
+            notify(() => i18n.value.history.sessions.loadFailed, { card: true, severity: 'error' })
+            return
+        }
+        const targets: DeleteChain[] | undefined = await showModal(DeleteSessionsDialog, {
+            chains: read.storedValue,
+        })
+        if (!targets?.length) return
+        // Cancel is the default: a stray Enter deletes nothing.
+        const confirmed = await showChoice({
+            title: () => strings.value.deleteTitle,
+            message: () => {
+                const { history, modals } = i18n.value
+                return confirmLines(targets, (chain) => shownName(chain.name), {
+                    confirm: strings.value.deleteConfirm,
+                    notSaved: strings.value.notSaved,
+                    namesMore: strings.value.namesMore,
+                    newer: strings.value.newer,
+                    listJoin: modals.form.listJoin,
+                    quoted: history.quoted,
+                }).join('\n')
+            },
+            choices: [{ value: true, label: () => i18n.value.modals.confirm.delete, danger: true }],
+            cancelIsDefault: true,
+        })
+        if (!confirmed) return
+        const abort = new AbortController()
+        const outcome = sessions
+            .deleteSessions(targets, undefined, abort.signal)
+            .catch((error: unknown) => {
+                console.error(error)
+                return { kind: 'failed' as const, deleted: 0 }
+            })
+        // Closing the dialog stops the run between chains; each chain's removal is whole.
+        await showModal(LoadingModal, {
+            title: () => strings.value.deleteTitle,
+            async *task(signal: AbortSignal) {
+                const cancel = () => {
+                    abort.abort()
+                }
+                signal.addEventListener('abort', cancel, { once: true })
+                yield () => strings.value.deleting
+                try {
+                    await outcome
+                } finally {
+                    signal.removeEventListener('abort', cancel)
+                }
+            },
+        })
+        const result = await outcome
+        if (result.deleted > 0)
+            notify(interpolate(() => i18n.value.session.deletedMany, String(result.deleted)))
+        else if ('kind' in result || result.skipped > 0)
+            // Something was asked for and nothing went: never silent.
+            notify(() => strings.value.deleteFailed, { card: true, severity: 'error' })
+        await readTotal()
+    } finally {
+        deleting.value = false
+    }
+}
+
+// --- Export Raw Data…: everything stored, as stored, for reporting a problem.
+const exportRaw = async () => {
+    const outcome: { run?: RawExportRun } = {}
+    await showModal(LoadingModal, {
+        title: () => strings.value.exportRaw,
+        async *task() {
+            yield () => i18n.value.modals.loading.loading
+            const action = await import('../../startup/rawExportAction')
+            const run = (outcome.run = await action.runRawExportAction())
+            // The modal says what failed, and stays for the user to close.
+            if (run.kind === 'failed')
+                throw new Error(
+                    run.error instanceof FileError
+                        ? fileErrorText(run.name, run.error)
+                        : interpolateRaw(i18n.value.save.downloadFailed, run.name),
+                )
+        },
+    })
+    const done = outcome.run
+    if (done?.kind !== 'done') return
+    // One notice: the warning when the stored work was left out, else the download's.
+    if (done.databaseUnreadable)
+        notify(() => strings.value.exportRawUnreadable, { card: true, severity: 'warning' })
+    else if (done.started)
+        notify(interpolate(() => i18n.value.save.downloadStarted, done.name, formatSize(done.size)))
+}
 </script>
 
 <template>
     <SettingsSection id="localData" :title="strings.title">
-        <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
-
         <ToggleField
             v-if="showsClosePrompt"
             v-model="settings.confirmCloseUnsavedFile"
             :label="strings.confirmClose"
             data-confirm-close
         />
-        <div>
-            <button type="button" :class="buttonClass" data-open-history @click="openHistory">
-                {{ strings.openHistory }}
-            </button>
+
+        <div v-if="hasStorage" class="flex flex-col gap-3" data-local-data-storage>
+            <h3 class="text-sm font-bold opacity-75">{{ strings.storageHeading }}</h3>
+
+            <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
+
+            <p v-if="storedText" data-stored-total>{{ storedText }}</p>
+
+            <div
+                v-if="notStoredLine"
+                class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
+                data-not-stored-line
+            >
+                <div class="flex min-w-0 flex-1 basis-60 items-start gap-2">
+                    <SeverityIcon severity="warning" class="mt-1 size-4" />
+                    <div class="flex min-w-0 flex-col">
+                        <span>{{ i18n.notSaving.bar }}</span>
+                        <span data-not-stored-reason>{{ notStoredLine.text }}</span>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    :class="buttonClass"
+                    :disabled="retrying"
+                    data-not-stored-action
+                    @click="retryOrReload(notStoredLine.action)"
+                >
+                    {{
+                        notStoredLine.action === 'reload'
+                            ? i18n.notStored.reload
+                            : i18n.load.tryAgain
+                    }}
+                </button>
+            </div>
+
+            <div v-if="canDelete">
+                <button
+                    type="button"
+                    :class="buttonClass"
+                    :disabled="deleting"
+                    data-delete-sessions-open
+                    @click="deleteSessions"
+                >
+                    {{ strings.deleteSessions }}
+                </button>
+            </div>
         </div>
 
-        <div v-if="hasRecovery" class="flex flex-col gap-3" data-local-data-recovery>
+        <div class="flex flex-col gap-3" data-local-data-recovery>
             <h3 class="text-sm font-bold opacity-75">{{ strings.recoveryHeading }}</h3>
+
+            <div>
+                <button type="button" :class="buttonClass" data-open-history @click="openHistory">
+                    {{ strings.openHistory }}
+                </button>
+            </div>
 
             <div
                 v-for="item in items"
@@ -227,7 +447,7 @@ const hasRecovery = computed(
                         {{ i18n.save.download }}
                     </button>
                     <button
-                        v-if="item.kind === 'autoSave' || item.kind === 'recovered'"
+                        v-if="!safe && (item.kind === 'autoSave' || item.kind === 'recovered')"
                         type="button"
                         :class="buttonClass"
                         data-recovery-discard
@@ -239,6 +459,13 @@ const hasRecovery = computed(
             </div>
 
             <p v-if="unreadable" data-recovery-unreadable>{{ strings.recovery.listFailed }}</p>
+
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <button type="button" :class="buttonClass" data-export-raw @click="exportRaw">
+                    {{ strings.exportRaw }}
+                </button>
+                <span class="text-sm opacity-75">{{ strings.exportRawNote }}</span>
+            </div>
 
             <div v-if="loadNotices.length" class="flex flex-col gap-1" data-at-load>
                 <div class="text-sm font-bold opacity-75">{{ strings.recovery.atLoad }}</div>

@@ -963,7 +963,23 @@
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
       "exportRaw": "Ham Verileri Dışa Aktar…",
-      "exportRawName": "{0} ham veriler {1}.zip"
+      "exportRawName": "{0} ham veriler {1}.zip",
+      "storageHeading": "Saklama Alanı",
+      "stored": "Bu tarayıcıda saklanan: {0} / yaklaşık {1}",
+      "deleteSessions": "Oturumları Sil…",
+      "deleteTitle": "Oturumları Sil",
+      "lastEdited": "Son düzenleme {0} günden uzun süre önce",
+      "all": "Tümü",
+      "includeNotSaved": "Dosyaya Kaydedilmemiş Çalışmayı Dahil Et",
+      "deleteNext": "Sil…",
+      "deleteConfirm": "{0} oturum silinsin mi?",
+      "notSaved": "{0} oturum dosyaya kaydedilmedi: {1}.",
+      "namesMore": "{0} ve {1} tane daha",
+      "newer": "Editörün daha yeni bir sürümünü gerektiren oturumlar var.",
+      "deleting": "Siliniyor…",
+      "deleteFailed": "Oturumlar silinemedi.",
+      "exportRawNote": "Sorun bildirmek için.",
+      "exportRawUnreadable": "Saklanan çalışma okunamadı."
     }
   },
   "sidebars": {
@@ -1192,7 +1208,8 @@
     "autoSaveKept": "\"{0}\", otomatik kaydetmeden ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
     "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Bir kopyası Yerel Veriler’de.",
-    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma bu tarayıcının alanını dolduruyor.",
+    "storageNearlyFull": "Tarayıcının saklama alanı neredeyse dolu.",
+    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma tarayıcının saklama alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
     "sessionDamaged": "Bu oturum açılamadı.",
     "newestLater": "En son oturumunuz için editörün daha yeni bir sürümü gerekiyor.",
@@ -2218,7 +2235,8 @@
   "session": {
     "untitled": "Adsız · {0}",
     "restored": "\"{0}\" geri yüklendi",
-    "restoredCopy": "\"{0}\" kopyası geri yüklendi"
+    "restoredCopy": "\"{0}\" kopyası geri yüklendi",
+    "deletedMany": "{0} oturum silindi"
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",

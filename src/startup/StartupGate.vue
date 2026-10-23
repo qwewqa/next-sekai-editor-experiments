@@ -3,7 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch
 import { i18n } from '../i18n'
 import { openInSafeMode } from '../safe'
 import { interpolate } from '../utils/interpolate'
-import { SPINNER_DELAY_MS, registerGateElement, startBlank, startupGate } from './gate'
+import {
+    SPINNER_DELAY_MS,
+    registerGateElement,
+    runRawExport,
+    startBlank,
+    startupGate,
+} from './gate'
 
 // The startup gate (Part 1 §1.4.2): a modal dialog, so the page behind it is inert, over the
 // editor from the first frame. Nothing shows for the first 150 ms; then a spinner with the
@@ -125,11 +131,15 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
                     v-if="startupGate.phase === 'error' && startupGate.rawExport"
                     type="button"
                     :class="buttonClass"
-                    @click="startupGate.rawExport.run()"
+                    data-raw-export
+                    @click="runRawExport()"
                 >
                     {{ startupGate.rawExport.label() }}
                 </button>
             </div>
+            <p v-if="startupGate.rawExportNote" role="alert" data-raw-export-note>
+                {{ startupGate.rawExportNote }}
+            </p>
         </template>
         <template v-else>
             <!-- Named for the dialog's label while nothing shows. -->

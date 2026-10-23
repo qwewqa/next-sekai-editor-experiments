@@ -1,6 +1,13 @@
+import { dayKey, hostZone } from '../calendar/calendar'
 import { downloadConfirmed } from '../editor/file/flags'
 import { LOAD_ORDER } from '../editor/loadOrder'
-import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
+import {
+    addLoadNotice,
+    noticeCard,
+    notification,
+    notify,
+    type NoticeAction,
+} from '../editor/notification'
 import { readRevocation, reclaimOrphans } from '../editor/save/env'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
@@ -9,15 +16,16 @@ import { appVersion, platform } from '../platform'
 import { testKeysOpen } from '../platform/testKeys'
 import { PRODUCT_NAME } from '../product'
 import { isSafeMode } from '../safe'
-import { storageGet, storageKey } from '../storage'
+import { storageGet, storageKey, storageSet } from '../storage'
 import { interpolate } from '../utils/interpolate'
 import { createDeleteSessions, setDeleteSessions } from './deleteSessions'
 import { startMaintenance } from './maintenance'
+import { noticeIfNearlyFull } from './nearlyFull'
 import { keptCopyChains, removeKeptCopy } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { retryStoring } from './retryStoring'
 import { setSessionContext } from './startup/api'
-import { addLoadEvent, storageStatus } from './startup/events'
+import { addLoadEvent, loadEvents, storageStatus } from './startup/events'
 import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
 import { showSession, showState } from './startup/show'
 import { replaySessionJournal, runRecovery, type RecoveryContext } from './startup/steps'
@@ -201,6 +209,44 @@ declare global {
  * The startup sequence (§1.4.2): resolves once the session this load continues is open, and
  * rejects when a journal, a row or the migration triggered a bug; the startup gate follows it.
  */
+/** The day the "almost full" notice last showed (a stamp, so a reload does not repeat it). */
+const NEARLY_FULL_KEY = 'nearlyFullDay'
+
+/**
+ * After the load's maintenance run: storage still nearly full gets its load notice, once a day, and
+ * only while the start-up card is up. A page hidden at load had no run to wait for, so it says
+ * nothing until a later load.
+ */
+const announceNearlyFull = () => {
+    if (document.visibilityState !== 'visible') return
+    return noticeIfNearlyFull({
+        estimate: () => navigator.storage.estimate(),
+        today: () => String(dayKey(Date.now(), hostZone())),
+        lastDay: () => {
+            const day = storageGet(NEARLY_FULL_KEY, undefined)
+            return typeof day === 'string' ? day : undefined
+        },
+        saveDay: (day) => {
+            try {
+                storageSet(NEARLY_FULL_KEY, day)
+            } catch {
+                // Without the stamp it may say it again at the next load.
+            }
+        },
+        skip: () =>
+            !(notification.value.startup === true || noticeCard.value?.startup === true) ||
+            // Paused, or unavailable: the chip's dialog and Local Data cover it.
+            storageStatus.value?.mode !== 'stored' ||
+            storageStatus.value.reason !== undefined ||
+            loadEvents.value.some(
+                (event) => event.kind === 'journalsFull' || event.kind === 'journalFailed',
+            ),
+        notice: () => {
+            addLoadEvent({ kind: 'storageNearlyFull' })
+        },
+    })
+}
+
 export const startStorage = async () => {
     if (storageWorker) return
     const { flags, test } = readFlags()
@@ -326,14 +372,15 @@ export const startStorage = async () => {
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
                 const context = recovery
+                // Only what definitely deleted chains left can be reclaimed.
+                const reclaim = () =>
+                    reclaimOrphans(worker, { chains: keptCopyChains, remove: removeKeptCopy })
                 const maintenance = startMaintenance({
                     worker,
                     locks: platform.locks,
                     journal: platform.journal,
                     replayJournal: (sessionId) => replaySessionJournal(context, sessionId),
-                    // Only what definitely deleted chains left can be reclaimed.
-                    reclaim: () =>
-                        reclaimOrphans(worker, { chains: keptCopyChains, remove: removeKeptCopy }),
+                    reclaim,
                 })
                 // Delete Sessions… in Local Data acts through this.
                 setDeleteSessions(
@@ -346,6 +393,7 @@ export const startStorage = async () => {
                         paused: () =>
                             worker.status?.mode === 'stored' ? worker.status.reason : undefined,
                         retryStoring,
+                        reclaim,
                         revoked: (chainId) => readRevocation(chainId) !== undefined,
                     }),
                 )
@@ -353,7 +401,7 @@ export const startStorage = async () => {
                     window.nseStorageTest.sweepDeleted = (minAgeMs) =>
                         maintenance.deletion.sweepDeleted(minAgeMs)
                 const run = () => {
-                    void maintenance.start()
+                    void maintenance.start().then(() => announceNearlyFull())
                 }
                 if (typeof requestIdleCallback === 'function')
                     requestIdleCallback(run, { timeout: 5000 })

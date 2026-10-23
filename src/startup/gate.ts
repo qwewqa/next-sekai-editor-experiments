@@ -34,8 +34,11 @@ declare global {
 
 export type StartupPhase = 'opening' | 'error' | 'done'
 
-/** The error state's Export Raw Data… (§1.4.14): its label, in the app's language, and what it does. */
-export type RawExport = { label: () => string; run: () => void | Promise<void> }
+/**
+ * The error state's Export Raw Data… (§1.4.14): its label, in the app's language, and what it does.
+ * `run` resolves to a line to show under the buttons, when the export did not go through whole.
+ */
+export type RawExport = { label: () => string; run: () => Promise<string | undefined> }
 
 type GateState = {
     phase: StartupPhase
@@ -47,6 +50,8 @@ type GateState = {
     error: string
     /** Export Raw Data… on the error state, once it is built (Step 8); undefined until then. */
     rawExport: RawExport | undefined
+    /** What the last Export Raw Data… press says, if it did not go through whole. */
+    rawExportNote: string | undefined
 }
 
 export const startupGate = shallowReactive<GateState>({
@@ -55,6 +60,7 @@ export const startupGate = shallowReactive<GateState>({
     slow: false,
     error: '',
     rawExport: undefined,
+    rawExportNote: undefined,
 })
 
 const readFlags = (): StartupFlags => {
@@ -192,4 +198,17 @@ export const startBlank = async () => {
 /** Export Raw Data… (§1.4.14) registers here once built, and the error state offers it. */
 export const setRawExport = (rawExport: RawExport | undefined) => {
     startupGate.rawExport = rawExport
+}
+
+/** The error state's button: runs the export and shows its line, a failure included. */
+export const runRawExport = async () => {
+    const { rawExport } = startupGate
+    if (!rawExport) return
+    startupGate.rawExportNote = undefined
+    try {
+        startupGate.rawExportNote = await rawExport.run()
+    } catch (error) {
+        // The export says its own failures; this is a bug in it.
+        console.error(error)
+    }
 }

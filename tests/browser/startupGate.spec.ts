@@ -268,6 +268,53 @@ test.describe('the startup gate', () => {
         await expect(gate(page)).toBeVisible()
     })
 
+    test('a download that cannot start says so on the gate, with the file’s name', async ({
+        page,
+    }) => {
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await boot(page)
+        await page.evaluate(async () => {
+            const { platform } = await import('/src/platform/index.ts')
+            platform.saveFile = () => Promise.reject(new Error('blocked'))
+        })
+        await gate(page).getByRole('button', { name: 'Export Raw Data…' }).click()
+        await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
+            /^"Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip" could not be downloaded\.$/,
+        )
+    })
+
+    test('a database that will not open is said so, and the rest is still exported', async ({
+        page,
+    }) => {
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await page.addInitScript(
+            (key) => localStorage.setItem(key, '"db-test"'),
+            `${prefix}rawExportTest`,
+        )
+        await boot(page)
+        // The database is there (the editor opened it); the export's own open is refused.
+        await page.evaluate(() => {
+            indexedDB.open = () => {
+                const request = {} as IDBOpenDBRequest
+                setTimeout(() => {
+                    Object.defineProperty(request, 'error', {
+                        value: new DOMException('disk', 'UnknownError'),
+                    })
+                    request.onerror?.(new Event('error'))
+                })
+                return request
+            }
+        })
+        const download = page.waitForEvent('download')
+        await gate(page).getByRole('button', { name: 'Export Raw Data…' }).click()
+        const dump = dumpOfZip(readFileSync(await (await download).path()))
+        expect(dump.stores).toEqual([])
+        expect(dump.localStorage[`${prefix}rawExportTest`]).toBe('"db-test"')
+        await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
+            'The stored work could not be read.',
+        )
+    })
+
     test('the export reads a real database, and never creates a missing one', async ({ page }) => {
         // A page of the app's origin that is not the editor, so nothing else opens the database.
         await page.goto('/gate.js')

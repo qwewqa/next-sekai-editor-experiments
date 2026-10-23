@@ -11,10 +11,9 @@ import './themes.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'
-import { i18n } from './i18n'
 import { installSelectLists } from './modals/form/selectLists'
-import { appVersion, platform } from './platform'
-import { setRawExport, trackStartup } from './startup/gate'
+import { trackStartup } from './startup/gate'
+import { registerGateRawExport } from './startup/rawExportAction'
 import { startsBlankForTests } from './startup/testHook'
 // After App: settings' import cycle must be entered from App's side.
 import './theme'
@@ -55,23 +54,4 @@ if (startsBlank) {
 
 // Export Raw Data… on the gate's error state (Part 1 §1.4.14): it reads the stored data on the page,
 // without the code that failed. The module loads when it is used.
-setRawExport({
-    label: () => i18n.value.settings.localData.exportRaw,
-    run: async () => {
-        try {
-            const { exportRawData, rawExportName } = await import('./local/rawExport')
-            await exportRawData(
-                appVersion().appVersion,
-                rawExportName(i18n.value.settings.localData.exportRawName),
-                (name, blob) =>
-                    platform.saveFile({
-                        kind: 'recovery',
-                        suggestedName: name,
-                        build: () => Promise.resolve(blob),
-                    }),
-            )
-        } catch (error) {
-            console.error(error)
-        }
-    },
-})
+registerGateRawExport()

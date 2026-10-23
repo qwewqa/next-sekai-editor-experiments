@@ -1,3 +1,4 @@
+import type { StorageStatus } from '../../local/worker/core'
 import { platform } from '../../platform'
 import {
     detection,
@@ -33,6 +34,14 @@ export type StorageFacts = {
     /** A Home Screen web app (§1.7.5). */
     standalone: boolean
 }
+
+/**
+ * Whether the browser cannot store: no storage at all, or a database from a newer build. A memory
+ * tab waiting on older tabs has a browser that stores, and safe mode opens the database read-only
+ * on purpose; the line describes the browser, so neither counts.
+ */
+export const storageUnavailable = (status: StorageStatus, safe: boolean) =>
+    status.mode === 'memory' ? status.reason === undefined : status.mode === 'readOnly' && !safe
 
 export const storageLineKey = (facts: StorageFacts): StorageLineKey => {
     if (facts.unavailable) return 'unavailable'

@@ -5,11 +5,13 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { DB_NAME, STORES_V1 } from '../../src/local/db'
 import { dumpDatabase, readDump, toBase64, type Dump } from '../../src/local/dump'
-import type { KvDatabase } from '../../src/local/kv/types'
+import type { KvDatabase, KvFactory } from '../../src/local/kv/types'
 import {
     buildRawExport,
+    buildRawExportResult,
     dateStamp,
     DUMP_ENTRY,
+    exportRawData,
     rawExportName,
     type RawSources,
 } from '../../src/local/rawExport'
@@ -223,5 +225,88 @@ test('the file is named for the product and the local date', () => {
     assert.equal(
         rawExportName('{0} raw data {1}.zip', new Date(2026, 9, 23)),
         'Next SEKAI Editor raw data 2026-10-23.zip',
+    )
+})
+
+test('a database that exists but will not open is left out and said so, never taken for an empty one', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = stored()
+    await tab.run(() => seedDump(tab.kv, readDump(dump), { setItem: () => undefined }))
+    const keys = { [storageKey('canary')]: '"x"' }
+    const storage = fakeStorage(keys)
+    // The browser refuses the open: the database is there, the export cannot read it.
+    const refusing: RawSources = {
+        factory: {
+            ...tab.kv,
+            open: () => Promise.reject(new DOMException('disk', 'UnknownError')),
+        },
+        storage,
+    }
+    const built = await buildRawExportResult('0.6.0', refusing)
+    assert.equal(built.databaseUnreadable, true)
+    // The localStorage side still goes, so the file has the journals.
+    const exported = readDump(await readExport(built.zip))
+    assert.deepEqual(exported.stores, [])
+    assert.deepEqual(exported.localStorage, keys)
+    // A database that opens but fails halfway is the same.
+    const flaky: RawSources = {
+        factory: {
+            ...tab.kv,
+            open: async (...args: Parameters<typeof tab.kv.open>) => {
+                const db = await tab.kv.open(...args)
+                return {
+                    ...db,
+                    storeNames: db.storeNames,
+                    transaction: () => Promise.reject(new DOMException('read', 'UnknownError')),
+                    close: () => db.close(),
+                }
+            },
+        },
+        storage,
+    }
+    const log = console.error
+    console.error = () => undefined
+    try {
+        assert.equal((await buildRawExportResult('0.6.0', flaky)).databaseUnreadable, true)
+    } finally {
+        console.error = log
+    }
+    // And the plain cases are not reported: a readable database, a missing one, no storage.
+    const fine = await buildRawExportResult('0.6.0', { factory: tab.kv, storage })
+    assert.equal(fine.databaseUnreadable, false)
+    const missing = await buildRawExportResult('0.6.0', {
+        factory: createWorld().tab('m').kv,
+        storage,
+    })
+    assert.equal(missing.databaseUnreadable, false)
+    assert.equal((await buildRawExportResult('0.6.0', {})).databaseUnreadable, false)
+    await world.idle()
+})
+
+test('exporting says whether the database was left out, and still throws when the hand-over fails', async () => {
+    const refusing: RawSources = {
+        factory: {
+            open: () => Promise.reject(new DOMException('disk', 'UnknownError')),
+        } as unknown as KvFactory,
+        storage: fakeStorage({}),
+    }
+    const handed: string[] = []
+    assert.deepEqual(
+        await exportRawData(
+            '0.6.0',
+            'a.zip',
+            (name) => {
+                handed.push(name)
+                return Promise.resolve()
+            },
+            refusing,
+        ),
+        { databaseUnreadable: true },
+    )
+    assert.deepEqual(handed, ['a.zip'])
+    await assert.rejects(
+        exportRawData('0.6.0', 'a.zip', () => Promise.reject(new Error('blocked')), refusing),
+        /blocked/,
     )
 })

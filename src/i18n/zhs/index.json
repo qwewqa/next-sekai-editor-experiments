@@ -963,7 +963,23 @@
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改",
       "exportRaw": "导出原始数据…",
-      "exportRawName": "{0} 原始数据 {1}.zip"
+      "exportRawName": "{0} 原始数据 {1}.zip",
+      "storageHeading": "存储",
+      "stored": "此浏览器中已存储：{0}，总容量约 {1}",
+      "deleteSessions": "删除会话…",
+      "deleteTitle": "删除会话",
+      "lastEdited": "上次编辑已超过 {0} 天",
+      "all": "全部",
+      "includeNotSaved": "包含未保存到文件的内容",
+      "deleteNext": "删除…",
+      "deleteConfirm": "要删除 {0} 个会话吗？",
+      "notSaved": "有 {0} 个会话未保存到文件：{1}。",
+      "namesMore": "{0} 及其他 {1} 个",
+      "newer": "其中有会话需要更新版本的编辑器。",
+      "deleting": "正在删除…",
+      "deleteFailed": "无法删除会话。",
+      "exportRawNote": "用于报告问题。",
+      "exportRawUnreadable": "无法读取已存储的内容。"
     }
   },
   "sidebars": {
@@ -1192,7 +1208,8 @@
     "autoSaveKept": "已将自动保存中的“{0}”保留为单独的会话。",
     "autoSaveOpened": "已打开旧的自动保存。",
     "journalFailed": "无法存储已恢复的更改。副本在本地数据中。",
-    "journalsFull": "以往访问中未保存的内容正在占满此浏览器的空间。",
+    "storageNearlyFull": "浏览器存储空间几乎已满。",
+    "journalsFull": "以往访问中未保存的内容正在占满浏览器存储空间。",
     "sessionLater": "此会话需要更新版本的编辑器。",
     "sessionDamaged": "无法打开此会话。",
     "newestLater": "最近的会话需要更新版本的编辑器。",
@@ -2218,7 +2235,8 @@
   "session": {
     "untitled": "未命名 · {0}",
     "restored": "已还原“{0}”",
-    "restoredCopy": "已还原“{0}”的副本"
+    "restoredCopy": "已还原“{0}”的副本",
+    "deletedMany": "已删除 {0} 个会话"
   },
   "prompt": {
     "title": "更改未存储",

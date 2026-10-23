@@ -48,46 +48,69 @@ const pageSources = (): RawSources => {
 }
 
 /**
- * The database as it is, or none. The database is opened without a version and with
- * an upgrade that throws, so a missing one aborts the open and is never created: an empty
- * version-1 database would have no stores, and the editor's next open would not upgrade it.
+ * The database as it is, none, or one that exists and would not open. The database is opened
+ * without a version and with an upgrade that throws, so a missing one aborts the open and is never
+ * created: an empty version-1 database would have no stores, and the editor's next open would not
+ * upgrade it.
  */
 const openExisting = async (factory: KvFactory | undefined) => {
+    if (!factory) return { kind: 'none' } as const
+    const seen = { missing: false }
     try {
-        return await factory?.open(DB_NAME, undefined, {
+        const db = await factory.open(DB_NAME, undefined, {
             upgrade: () => {
+                seen.missing = true
                 throw new Error('There is no database to export')
             },
         })
+        return { kind: 'open', db } as const
     } catch {
-        // No database, or storage unavailable here.
-        return undefined
+        // The upgrade ran: there is no database. Otherwise one exists and would not open.
+        return seen.missing ? ({ kind: 'none' } as const) : ({ kind: 'unreadable' } as const)
     }
 }
 
-/** The ZIP of the stored data; with no database or no storage it holds `localStorage` only. */
-export const buildRawExport = async (
+/** The ZIP, and whether the stored database was left out because it could not be read. */
+export type RawBuild = { zip: Blob; databaseUnreadable: boolean }
+
+/**
+ * The ZIP of the stored data; with no database or no storage it holds `localStorage` only. A
+ * database that exists but cannot be opened or read is left out and reported, so the file is
+ * never taken for a complete export.
+ */
+export const buildRawExportResult = async (
     appVersion: string,
     { factory, storage }: RawSources = pageSources(),
-): Promise<Blob> => {
+): Promise<RawBuild> => {
     let keys: Record<string, string> = {}
     try {
         if (storage) keys = dumpLocalStorage(storage, storageKey(''))
     } catch {
         // Storage can throw on access.
     }
-    const db = await openExisting(factory)
-    let dump: Dump
-    try {
-        dump = db
-            ? await dumpDatabase(db, { appVersion, localStorage: keys })
-            : emptyDump(appVersion, keys)
-    } finally {
-        db?.close()
+    const opened = await openExisting(factory)
+    let databaseUnreadable = opened.kind === 'unreadable'
+    let dump: Dump | undefined
+    if (opened.kind === 'open') {
+        try {
+            dump = await dumpDatabase(opened.db, { appVersion, localStorage: keys })
+        } catch (error) {
+            console.error(error)
+            databaseUnreadable = true
+        } finally {
+            opened.db.close()
+        }
     }
-    const data = new TextEncoder().encode(JSON.stringify(dump))
-    return buildZip([{ name: DUMP_ENTRY, method: 'deflate', data }])
+    const data = new TextEncoder().encode(JSON.stringify(dump ?? emptyDump(appVersion, keys)))
+    return {
+        zip: await buildZip([{ name: DUMP_ENTRY, method: 'deflate', data }]),
+        databaseUnreadable,
+    }
 }
+
+/** The ZIP of the stored data (see `buildRawExportResult`). */
+export const buildRawExport = async (appVersion: string, sources?: RawSources): Promise<Blob> =>
+    (await buildRawExportResult(appVersion, sources)).zip
 
 /** A local date as 2026-10-23. */
 export const dateStamp = (date: Date) =>
@@ -99,11 +122,17 @@ export const dateStamp = (date: Date) =>
 export const rawExportName = (pattern: string, now: Date = new Date()) =>
     interpolateRaw(pattern, PRODUCT_NAME, dateStamp(now))
 
-/** Builds the file and hands it over; `save` is the platform's download. Throws on failure. */
+/**
+ * Builds the file and hands it over; `save` is the platform's download. Throws when the hand-over
+ * fails, and says whether the database was left out because it could not be read.
+ */
 export const exportRawData = async (
     appVersion: string,
     name: string,
     save: (name: string, blob: Blob) => Promise<unknown>,
-) => {
-    await save(name, await buildRawExport(appVersion))
+    sources?: RawSources,
+): Promise<{ databaseUnreadable: boolean }> => {
+    const { zip, databaseUnreadable } = await buildRawExportResult(appVersion, sources)
+    await save(name, zip)
+    return { databaseUnreadable }
 }

@@ -174,3 +174,14 @@ test('an error keeps its message when the stack leaves it out', () => {
     assert.equal(messageOf(full), 'Error: storing is paused\n    at a (x:1:2)')
     assert.equal(messageOf('plain'), 'plain')
 })
+
+test('the text says whether the browser keeps the data, and that it is unknown when it cannot say', () => {
+    const line = (persisted: boolean | undefined) =>
+        formatDiagnostics({
+            ...fields([]),
+            ...(persisted === undefined ? {} : { persisted }),
+        }).match(/^Persistent storage: (.*)$/m)?.[1]
+    assert.equal(line(true), 'yes')
+    assert.equal(line(false), 'no')
+    assert.equal(line(undefined), 'unknown')
+})

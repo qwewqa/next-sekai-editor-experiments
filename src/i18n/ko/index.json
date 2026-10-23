@@ -963,7 +963,23 @@
       "openHistory": "기록 열기",
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
       "exportRaw": "원시 데이터 내보내기…",
-      "exportRawName": "{0} 원시 데이터 {1}.zip"
+      "exportRawName": "{0} 원시 데이터 {1}.zip",
+      "storageHeading": "보관 공간",
+      "stored": "이 브라우저에 보관됨: {0} / 약 {1}",
+      "deleteSessions": "세션 삭제…",
+      "deleteTitle": "세션 삭제",
+      "lastEdited": "마지막 편집이 {0}일보다 오래 전",
+      "all": "전체",
+      "includeNotSaved": "파일에 저장되지 않은 작업 포함",
+      "deleteNext": "삭제…",
+      "deleteConfirm": "세션 {0}개를 삭제하시겠습니까?",
+      "notSaved": "파일에 저장되지 않은 세션 {0}개: {1}.",
+      "namesMore": "{0} 외 {1}개",
+      "newer": "더 새로운 버전의 편집기가 필요한 세션이 포함되어 있습니다.",
+      "deleting": "삭제하는 중…",
+      "deleteFailed": "세션을 삭제하지 못했습니다.",
+      "exportRawNote": "문제를 신고할 때 사용합니다.",
+      "exportRawUnreadable": "보관된 작업을 읽지 못했습니다."
     }
   },
   "sidebars": {
@@ -1192,7 +1208,8 @@
     "autoSaveKept": "자동 저장의 \"{0}\" 작업을 별도의 세션으로 보관했습니다.",
     "autoSaveOpened": "이전 자동 저장을 열었습니다.",
     "journalFailed": "복구된 변경 사항을 보관할 수 없습니다. 사본이 로컬 데이터에 있습니다.",
-    "journalsFull": "이전 방문의 저장되지 않은 작업이 이 브라우저의 공간을 차지하고 있습니다.",
+    "storageNearlyFull": "브라우저 보관 공간이 거의 가득 찼습니다.",
+    "journalsFull": "이전 방문의 저장되지 않은 작업이 브라우저 보관 공간을 차지하고 있습니다.",
     "sessionLater": "이 세션에는 더 새로운 버전의 편집기가 필요합니다.",
     "sessionDamaged": "이 세션을 열 수 없습니다.",
     "newestLater": "가장 최근 세션에는 더 새로운 버전의 편집기가 필요합니다.",
@@ -2218,7 +2235,8 @@
   "session": {
     "untitled": "제목 없음 · {0}",
     "restored": "\"{0}\" 복원됨",
-    "restoredCopy": "\"{0}\"의 사본 복원됨"
+    "restoredCopy": "\"{0}\"의 사본 복원됨",
+    "deletedMany": "세션 {0}개 삭제됨"
   },
   "prompt": {
     "title": "변경 사항이 보관되지 않음",

@@ -44,6 +44,12 @@ export const collectDiagnosticText = async () => {
     } catch {
         // Not every browser can estimate.
     }
+    let persisted: boolean | undefined
+    try {
+        persisted = await navigator.storage.persisted()
+    } catch {
+        // Unknown.
+    }
     const storing = await storingFacts().catch(() => undefined)
     return formatDiagnostics({
         productName: PRODUCT_NAME,
@@ -56,6 +62,7 @@ export const collectDiagnosticText = async () => {
         standalone: info.standalone,
         userAgent: info.userAgent,
         estimate,
+        ...(persisted === undefined ? {} : { persisted }),
         ...(storing ? { storing } : {}),
         entries: ringEntries(),
     })

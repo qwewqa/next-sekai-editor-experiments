@@ -963,7 +963,23 @@
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更",
       "exportRaw": "匯出原始資料…",
-      "exportRawName": "{0} 原始資料 {1}.zip"
+      "exportRawName": "{0} 原始資料 {1}.zip",
+      "storageHeading": "存放空間",
+      "stored": "此瀏覽器中已存放：{0}，總容量約 {1}",
+      "deleteSessions": "刪除工作階段…",
+      "deleteTitle": "刪除工作階段",
+      "lastEdited": "上次編輯已超過 {0} 天",
+      "all": "全部",
+      "includeNotSaved": "包含未儲存到檔案的內容",
+      "deleteNext": "刪除…",
+      "deleteConfirm": "要刪除 {0} 個工作階段嗎？",
+      "notSaved": "有 {0} 個工作階段未儲存到檔案：{1}。",
+      "namesMore": "{0} 及其他 {1} 個",
+      "newer": "其中有工作階段需要較新版本的編輯器。",
+      "deleting": "正在刪除…",
+      "deleteFailed": "無法刪除工作階段。",
+      "exportRawNote": "用於回報問題。",
+      "exportRawUnreadable": "無法讀取已存放的內容。"
     }
   },
   "sidebars": {
@@ -1192,7 +1208,8 @@
     "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
     "journalFailed": "無法存放已恢復的變更。副本在本機資料中。",
-    "journalsFull": "先前造訪中未儲存的內容正在佔滿此瀏覽器的空間。",
+    "storageNearlyFull": "瀏覽器存放空間幾乎已滿。",
+    "journalsFull": "先前造訪中未儲存的內容正在佔滿瀏覽器存放空間。",
     "sessionLater": "此工作階段需要較新版本的編輯器。",
     "sessionDamaged": "無法開啟此工作階段。",
     "newestLater": "最近的工作階段需要較新版本的編輯器。",
@@ -2218,7 +2235,8 @@
   "session": {
     "untitled": "未命名 · {0}",
     "restored": "已還原 \"{0}\"",
-    "restoredCopy": "已還原 \"{0}\" 的副本"
+    "restoredCopy": "已還原 \"{0}\" 的副本",
+    "deletedMany": "已刪除 {0} 個工作階段"
   },
   "prompt": {
     "title": "變更未存放",

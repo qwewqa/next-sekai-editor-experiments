@@ -963,7 +963,23 @@
       "openHistory": "履歴を開く",
       "confirmClose": "未保存の変更があるときは閉じる前に確認する",
       "exportRaw": "生データを出力…",
-      "exportRawName": "{0} 生データ {1}.zip"
+      "exportRawName": "{0} 生データ {1}.zip",
+      "storageHeading": "ストレージ",
+      "stored": "このブラウザーに保管: {0} / 約 {1}",
+      "deleteSessions": "セッションを削除…",
+      "deleteTitle": "セッションを削除",
+      "lastEdited": "最終編集が {0} 日より前",
+      "all": "すべて",
+      "includeNotSaved": "ファイルに保存されていない作業を含める",
+      "deleteNext": "削除…",
+      "deleteConfirm": "{0} 件のセッションを削除しますか？",
+      "notSaved": "ファイルに保存されていないセッションが {0} 件あります：{1}。",
+      "namesMore": "{0} ほか {1} 件",
+      "newer": "より新しいバージョンのエディターが必要なセッションが含まれています。",
+      "deleting": "削除中…",
+      "deleteFailed": "セッションを削除できませんでした。",
+      "exportRawNote": "問題を報告するときに使います。",
+      "exportRawUnreadable": "保管されている作業を読み取れませんでした。"
     }
   },
   "sidebars": {
@@ -1192,7 +1208,8 @@
     "autoSaveKept": "自動保存の「{0}」を別のセッションとして保持しました。",
     "autoSaveOpened": "以前の自動保存を開きました。",
     "journalFailed": "回復された変更を保管できませんでした。コピーがローカルデータにあります。",
-    "journalsFull": "以前の訪問時の未保存の作業がこのブラウザーの容量を圧迫しています。",
+    "storageNearlyFull": "ブラウザーのストレージがほぼいっぱいです。",
+    "journalsFull": "以前の訪問時の未保存の作業がブラウザーのストレージを圧迫しています。",
     "sessionLater": "このセッションには、より新しいバージョンのエディターが必要です。",
     "sessionDamaged": "このセッションを開けませんでした。",
     "newestLater": "最新のセッションには、より新しいバージョンのエディターが必要です。",
@@ -2218,7 +2235,8 @@
   "session": {
     "untitled": "無題 · {0}",
     "restored": "「{0}」を復元しました",
-    "restoredCopy": "「{0}」のコピーを復元しました"
+    "restoredCopy": "「{0}」のコピーを復元しました",
+    "deletedMany": "{0} 件のセッションを削除しました"
   },
   "prompt": {
     "title": "変更が保管されていません",
