@@ -222,6 +222,31 @@ test('Reload with work that is stored nowhere asks first, and Cancel keeps the p
     await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored')
 })
 
+test('Local Data’s Reload asks first about work that is stored nowhere', async ({
+    page,
+    context,
+}) => {
+    await seed(context)
+    await context.addInitScript(() => localStorage.setItem('nse.test.noStorage', 'true'))
+    await visit(page)
+    await edit(page, 990)
+    await setStatus(page, { mode: 'stored', reason: 'upgrading' })
+    await expect(chip(page)).toHaveAttribute('data-file-chip', 'notStored', { timeout: 8000 })
+    await page.evaluate(async () => {
+        const { openSettings } =
+            (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+        void openSettings('localData')
+    })
+    const action = page.locator('[data-not-stored-action]')
+    await expect(action).toHaveText('Reload')
+    await expect(async () => {
+        await action.click({ timeout: 1000 })
+        await expect(page.getByRole('button', { name: 'Leave Anyway' })).toBeVisible({
+            timeout: 2000,
+        })
+    }).toPass({ timeout: 10_000 })
+})
+
 const ios = { os: 'ios', engine: 'webkit', fileSystemAccess: false }
 
 test.describe('the iOS bar', () => {
