@@ -1222,7 +1222,7 @@ test.describe('Settings › Local Data', () => {
             const autoSave = later.locator('[data-recovery-row="autoSave"]')
             await autoSave.getByRole('button', { name: 'Discard…' }).click()
             const dialog = later.getByRole('dialog', { name: 'Discard' })
-            await expect(dialog).toContainText(/Discard the old auto save \(\d+(\.\d)? kB\)\?/)
+            await expect(dialog).toContainText(/Discard the old auto save \(\d+(\.\d)?\skB\)\?/)
             await expect(dialog.locator('[data-choice-buttons] button')).toHaveText([
                 'Cancel',
                 'Discard',
