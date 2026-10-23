@@ -32,7 +32,6 @@ test('safe mode writes only settings and keys outside the editor’s own', () =>
         'canary',
         'deviceId',
         'lastAppVersion',
-        'lastPersistFailure',
         'journal.1f0c',
         'revoke.chain',
         'diagnostics',

@@ -459,8 +459,8 @@ export class Fixture {
     }
 
     /**
-     * Cleanup under pressure, as Step 10's: a row whose state nothing else needs is made
-     * `kept: false` and its root removed. False when another row or a slot still needs it.
+     * A "not kept" row: a row whose state nothing else needs is made `kept: false` and its root
+     * removed. False when another row or a slot still needs it.
      */
     async thin(sessionIndex: number, rowIndex: number) {
         const row = this.sessions[sessionIndex]?.rows[rowIndex]

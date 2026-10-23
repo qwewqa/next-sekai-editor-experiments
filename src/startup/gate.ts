@@ -48,7 +48,7 @@ type GateState = {
     slow: boolean
     /** The failed startup's own text. */
     error: string
-    /** Export Raw Data… on the error state, once it is built (Step 8); undefined until then. */
+    /** Export Raw Data… on the error state; undefined until the page sets it. */
     rawExport: RawExport | undefined
     /** What the last Export Raw Data… press says, if it did not go through whole. */
     rawExportNote: string | undefined

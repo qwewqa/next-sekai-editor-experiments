@@ -578,7 +578,7 @@ The chart at entry *k* is entry *k*'s `snapshot`, decoded (§8.6):
 - root present but a chunk failing (§9.3): **damaged**;
 - a root of a newer `v` cannot be in a readable file (it makes the history unread).
 
-A `kept: false` row whose root is present may still be decoded; the editor labels such a row removed. Equal snapshot ids mean equal states; unequal ids do not prove a difference. A state's media: `project.json` holds at most the head's BGM, cover and preview; a step whose BGM, cover or preview is another file's shows it as not loaded.
+A `kept: false` row whose root is present may still be decoded; the editor labels such a row "not kept". Equal snapshot ids mean equal states; unequal ids do not prove a difference. A state's media: `project.json` holds at most the head's BGM, cover and preview; a step whose BGM, cover or preview is another file's shows it as not loaded.
 
 ### 10.4 Time, `dirty`, `noteCount`
 

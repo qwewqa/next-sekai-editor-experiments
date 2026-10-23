@@ -115,9 +115,11 @@ The History redesign is the newest large body of UI; it follows the rules above 
 
 **Peek strip** (`src/editor/history/PeekBar.vue`, fit in `peekFit.ts`)
 - A floating strip, `rounded-full bg-modal p-1 text-sm shadow-xl ring-1 ring-fg/10`: 36 px buttons plus 4 px padding, 44 px tall, `gap-2`. A mint `ring-2 ring-inset` around the pane shows that the chart is not live.
-- Contents, left to right: the date as a `ghost` button (an info glyph, or a spinner while it loads), `Back to Now` (`btn-secondary`) and `Restore` (`btn-primary`, the commit of the mode). Hit areas reach 4 px past each face.
+- Contents, left to right (a step): the date as a `ghost` button (an info glyph, or a spinner while it loads), `Back to Now` (`btn-secondary`) and `Restore` (`btn-primary`, the commit of the mode). Hit areas reach 4 px past each face.
 - Its width is one value per language and width class, measured once from the widest text it can show (`measurePeekWidths`), never from the live date. Stepping between entries cannot resize it, so the change capsule under it never moves.
 - It is at most 480 px wide. As space runs out `Back to Now` becomes a chevron first, then the date drops to its glyph, and `Restore` keeps its whole label until last. Restore's padding narrows in panes under 340 px, and the strip sits lower (`pt-7`) where the chart's corner time labels would otherwise touch it.
+
+- A session's peek (Recent Sessions) uses the same strip with the session's name over its time (`text-sm` over `text-xs text-fg/80`, the time without seconds, no button and no change capsule), then `Back to Now` and `Restore Session` or `Restore as a Copy`. With no capsule to match it may be up to 560 px wide (`SESSION_STRIP_MAX`). The name keeps at least 64 px; under 420 px the strip stacks into two rows (`rounded-[1.375rem]`), the text over the buttons, as wide as the pane less its gutters.
 
 **Change capsule** (`ChangeArrows.vue`)
 - A second strip under the first: `h-8 rounded-full bg-modal p-1 text-xs shadow-md ring-1 ring-fg/10`, as wide as the strip less 12 px, so its end caps are concentric with the strip's.
@@ -139,12 +141,25 @@ The History redesign is the newest large body of UI; it follows the rules above 
 - Members carry a 2 px `bg-fg/30` rail in their leading slot, from under the parent's disclosure to the end of the run.
 - An unavailable row fades its marks and text to 60 % while its reason and every focus ring stay full strength.
 
+**Recent Sessions** (`RecentSessionsTab.vue`)
+- The Timeline's row grid in its own tab: 44 px rows (40 px pill), the same raised current row, hover and press, and sticky 28 px day headers (`text-xs font-bold`). Each row is two lines: the name (`text-sm`) with an optional badge (`text-xs`, a 1 px `ring-fg/25` pill, for this tab or another), over a caption (`text-xs text-fg/80`) of the time, then the reason or note count, then the file part last, so a narrow row cuts the file part first.
+- A 36 px `ghost` ⋯ button at the end opens the row's menu; a row without one keeps the slot, so text edges agree. A damaged or newer row fades its title to 60 % and keeps its caption strong. The storage line ends the list as a `text-xs text-fg/80` footer.
+- A Delete turns the row in place into an inline row: "Deleted "X"" with an `Undo` pill (`btn-secondary h-8`, Try Again after a failed Undo with "Undo failed" as its caption), and the text alone once it can no longer be undone. It is the only surface for a Delete; a polite live region says each outcome to a screen reader, and an error card says only a Delete that did not happen.
+
 **Notice cards** (`src/editor/NoticeCard.vue`, `SeverityIcon.vue`, `notification.ts`)
 - The peek strip's surface: `rounded-[1.375rem] bg-modal p-1 text-sm shadow-xl ring-1 ring-fg/10`, up to `min(36rem, 100%)` wide. Over a blocking dialog it takes the menus' surface instead (`over`: `bg-popup`, popup outline and ring) so it separates from the dialog.
 - Contents: an optional severity glyph in the leading slot, the message, one `btn-secondary h-9` action and a `ghost size-9` close button. The message block keeps its one-line width as its basis, so the action and close wrap under it exactly when they cannot share its line.
 - Severity is a second cue next to the words. Error is a circle with an exclamation mark in `text-danger`, warning a triangle in `text-warning`, info a circle with an `i` in `text-info`. No severity, no glyph: a neutral confirmation or a route back is plain. Choose it by what happened: error when what was asked for did not happen, warning when work is at risk or was affected, info when it is only worth knowing.
 - The start-up card is the same surface as a column of rows. A heading row holds the product name and version, with the name giving way first so the version is never cut. Each other row has a message and at most one 32 px action pill. Once any row has a severity, every row reserves the glyph column so the text edges agree. When the rows are taller than the room, the card scrolls and keeps its close button.
+- The switch card (Restored "X" with Reopen, plus a BGM line) is that column of rows with no heading: its first row holds the close button beside its action, and the rows below it are divided by the 1 px hairline. A row whose action is done (the BGM attached) goes, and the card with it when nothing else is left (`dropCardAction`).
 - A touch or pen drag sideways dismisses it (past 30 % of the width or a quick flick); a mouse does not swipe. A card stays about 6 s and holds while hovered or focused. A quick toast (no action, no `card`) keeps its original look and never carries a glyph.
+
+**Level Info** (`src/editor/commands/levelInfo/LevelInfoModal.vue`, `src/editor/levelInfo/MediaRow.vue`)
+- A `BaseModal` form with one label column: the file line (the status label's text) with Check File and History…, the text fields, then the Cover and Preview rows. The cover is a 96 px tile (`rounded-xl bg-button shadow-md`) beside its summary; each media row's actions are `btn-secondary h-9` pills that wrap under the summary. One `btn-primary` Confirm ends it. While peeking every field is read-only.
+
+**Not stored** (`src/editor/file/FileChip.vue`, `chipDialogs.ts`, `src/editor/NotStoredBar.vue`)
+- The status bar's file chip: a `ghost` button with a 12 px warning or info glyph and short text, the glyph alone in a compact bar. It shows one state at a time, the others as lines in its dialog; Not stored's dialog gives the cause, a way to get storing going (Try Again, Reload or Local Data, by cause), I Have the File when a download is not confirmed, and Save.
+- On iOS and iPadOS, which have no leave prompt, a `bg-header` band above the chart (warning glyph, one line, a Save pill) shows while work is not stored and not in a file.
 
 **Menus and dialogs**
 - `GoToPopover`, `GoToList` and `ChangeOptionsMenu` use the shared `.popup-*` classes, the font-awesome check, a reserved icon column, and the phone sheet with its backdrop.

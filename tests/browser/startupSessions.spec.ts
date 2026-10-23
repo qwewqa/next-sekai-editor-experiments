@@ -356,7 +356,7 @@ test('a reload after the session was deleted in another tab starts blank, with t
     const { chainId } = await flushSession(page)
     page.on('dialog', (dialog) => void dialog.accept())
     await closePage(page, { runBeforeUnload: true })
-    // Delete's mark, from another tab (Step 7 adds Delete itself).
+    // Delete's mark, from another tab, as Recent Sessions' Delete writes it.
     const other = await context.newPage()
     await other.goto('/privacy/')
     await other.evaluate(

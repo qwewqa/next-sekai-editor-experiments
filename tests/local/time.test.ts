@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { readMeta } from '../../src/local/db'
+import { writeMeta } from '../../src/local/db'
 import { openLocalData } from '../../src/local/testing/db'
 import { CI_SEEDS, createWorld } from '../../src/local/testing/world'
-import { clampTime, DAY_MS, nextTime, observeTimes, stampNow } from '../../src/local/time'
+import { clampTime, DAY_MS, nextTime, stampNow } from '../../src/local/time'
 import { onFlushCommitted, runFlushHooks } from '../../src/local/worker/flushHooks'
 
 // Strictly increasing now (§1.6.8.7), and the post-flush hook point (§1.6.11.10).
@@ -44,13 +44,9 @@ test('a later clock is taken as it is; a time far ahead from elsewhere is clampe
     const world = createWorld({ seed: 1 })
     const tab = world.tab('a')
     const db = await openLocalData(tab)
-    const seen = await tab.run(() =>
-        db.transaction(['meta'], 'readwrite', async (tx) => {
-            await observeTimes(tx, [500, 1000 + 2 * DAY_MS], 1000)
-            return readMeta(tx, 'maxSeenTime')
-        }),
+    await tab.run(() =>
+        db.transaction(['meta'], 'readwrite', (tx) => writeMeta(tx, 'maxSeenTime', 1000)),
     )
-    assert.equal(seen, 1000)
     const next = await tab.run(() =>
         db.transaction(['meta'], 'readwrite', (tx) => stampNow(tx, 900)),
     )

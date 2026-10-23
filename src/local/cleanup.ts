@@ -20,7 +20,15 @@ export type CleanupResult =
     | { kind: 'unsafe'; why: string }
 
 /** The stores the removing transaction reads and writes. */
-export const CLEANUP_STORES = ['chains', 'sessions', 'stackBlocks', 'nodes', 'media', 'meta']
+export const CLEANUP_STORES = [
+    'chains',
+    'sessions',
+    'entries',
+    'stackBlocks',
+    'nodes',
+    'media',
+    'meta',
+]
 
 type Row = Record<string, unknown>
 
@@ -35,6 +43,13 @@ const packed = (value: unknown): Uint8Array[] => {
 
 class Unsafe extends Error {}
 
+/** A session's last entry's snapshot: where it landed when its stack was removed (§2.5). */
+const lastSnapshot = async (tx: KvTx, session: Row) => {
+    if (typeof session.lastSeq !== 'number') return
+    const entry = await tx.get('entries', [session.id as string, session.lastSeq])
+    return isRow(entry) ? entry.snapshot : undefined
+}
+
 /** What every chain's latest state reaches directly (its root's `refs`, media among them). */
 const usedByHeads = async (tx: KvTx) => {
     const used = new Set<string>()
@@ -43,7 +58,7 @@ const usedByHeads = async (tx: KvTx) => {
         if (!isRow(chain) || typeof chain.head !== 'string') continue
         const session = await tx.get('sessions', chain.head)
         if (!isRow(session)) continue
-        const root = await headOf(tx, session)
+        const root = (await headOf(tx, session)) ?? (await lastSnapshot(tx, session))
         if (!(root instanceof Uint8Array) || root.byteLength !== 16) continue
         const node = await tx.get('nodes', hashKey(root))
         if (!isRow(node)) continue

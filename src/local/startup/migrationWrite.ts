@@ -51,15 +51,10 @@ export const writeMigration = async (
     let maxSeen = (await readMeta(tx, 'maxSeenTime')) ?? 0
     const time = (maxSeen = nextTime(maxSeen, batch.wall))
     const day = await countDayOfUse(tx, time)
-    let ownBytes = 0
-    for (const chunk of prepared.chunks) {
-        const row = await putChunk(tx, chunk, day)
-        if (row) ownBytes += row.bytes.length
-    }
+    for (const chunk of prepared.chunks) await putChunk(tx, chunk, day)
     for (const node of nodes) {
         const row = node === root ? rootRow(root, day) : nodeRow(node as never, day)
         await tx.put('nodes', row, hashKey(node.hash))
-        ownBytes += row.size
     }
     const { chainId, docId, lineageId, sessionId } = batch.ids
     const snapshot = root.hash.slice()
@@ -92,7 +87,6 @@ export const writeMigration = async (
         lastSeq: 1,
         entryCount: 1,
         activeMs: 0,
-        ownBytes,
         appVersion: batch.appVersion,
     })
     await tx.put('entries', {

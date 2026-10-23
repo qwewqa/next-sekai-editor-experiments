@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { MEDIA_RETRY_MS, removeBadMedia, type MediaRemoval } from '../../../src/local/check/finish'
 import { hashKey } from '../../../src/local/db'
 import { fromHex16, toHex } from '../../../src/local/hash'
 import { unpackHashes } from '../../../src/local/records/rows'
+import { RECORDS_V } from '../../../src/local/records/version'
 import { stillBad } from '../../../src/local/save/bodies'
 import { COVER } from '../nxsp/helpers'
-import { Fixture } from '../save/fixture'
+import { Fixture, heldRows, save } from '../save/fixture'
 import {
     checker,
     checkFile,
@@ -139,6 +141,26 @@ test('a stored cover damaged with no copy is removed; one stored again meanwhile
     assert.deepEqual(await coverRow(fixture), good)
 })
 
+test('after Check removes a damaged cover with no copy, the next Save writes that state without it', async () => {
+    const fixture = await Fixture.create()
+    await savedChain(fixture)
+    await damageCover(fixture)
+    const { result } = await runCheck(await checker(fixture), fixture.chainId)
+    assert.equal(result.media[0]?.outcome, 'removed')
+
+    const { built, file } = await save(fixture, { kind: 'copy' })
+    assert.ok(!('refused' in built) && file)
+    assert.deepEqual(built.without, ['cover'])
+    const { read } = await heldRows(file)
+    assert.equal(read.open, 'full')
+    assert.equal(read.media.cover, undefined)
+    assert.notEqual(read.media.preview, undefined)
+    // The state still names it, as metadata only.
+    const cover = read.project?.metadata?.cover
+    assert.ok(cover && cover.file === undefined)
+    assert.equal(cover.hash, COVER.ref.hash)
+})
+
 test('read-only storage (?safe): the same report, and nothing written', async () => {
     const report = async (flags?: { readOnly: true }) => {
         const fixture = await Fixture.create()
@@ -165,4 +187,75 @@ test('read-only storage (?safe): the same report, and nothing written', async ()
     )
     assert.deepEqual(safe.after, safe.before)
     assert.notDeepEqual(stored.after, stored.before)
+})
+
+/** `nse-maint` exclusive held elsewhere `busy` times, then free: each removal runs on the store. */
+const busyRemoval = (fixture: Fixture, busy: number) => {
+    const sleeps: number[] = []
+    let calls = 0
+    const removal: MediaRemoval = {
+        sleep: (ms) => {
+            sleeps.push(ms)
+            return Promise.resolve()
+        },
+        exclusive: async (body) => {
+            if (calls++ < busy) return { ran: false }
+            const value = await body((hash) =>
+                fixture.store.write(['media'], (tx) =>
+                    tx.delete('media', hashKey(fromHex16(hash))),
+                ),
+            )
+            return { ran: true, value }
+        },
+    }
+    return { removal, sleeps, calls: () => calls }
+}
+
+test('a bad media row waits out a busy nse-maint 200 ms apart, six tries at most, and is left when it stays busy', async () => {
+    const fixture = await Fixture.create()
+    await savedChain(fixture)
+    await damageCover(fixture)
+
+    const always = busyRemoval(fixture, Infinity)
+    assert.equal(await removeBadMedia(fixture.store, COVER.ref.hash, always.removal), 'left')
+    assert.equal(always.calls(), 6)
+    assert.deepEqual(always.sleeps, Array(5).fill(MEDIA_RETRY_MS))
+    assert.notEqual(await coverRow(fixture), undefined)
+
+    const twice = busyRemoval(fixture, 2)
+    assert.equal(await removeBadMedia(fixture.store, COVER.ref.hash, twice.removal), 'removed')
+    assert.deepEqual(twice.sleeps, [MEDIA_RETRY_MS, MEDIA_RETRY_MS])
+    assert.equal(await coverRow(fixture), undefined)
+})
+
+test('a damaged root rewritten by a newer build before the finish: the finish refuses, marking nothing', async () => {
+    const fixture = await Fixture.create()
+    await savedChain(fixture)
+    const { chunk, hex } = await ownChunk(fixture)
+    await damageChunkRow(fixture, chunk)
+    const check = await checker(fixture)
+    const id = await checkStored(check, fixture.chainId)
+    await fixture.store.write(['nodes'], async (tx) => {
+        const key = hashKey(fromHex16(hex))
+        const row = (await tx.get('nodes', key)) as Record<string, unknown>
+        await tx.put('nodes', { ...row, v: RECORDS_V + 1 }, key)
+    })
+    const result = await check.tab.run(() => check.handlers.checkFinish({ id }))
+    assert.deepEqual(result, { kind: 'refused', reason: 'needsNewer' })
+    assert.ok(allKept(await keptFlags(fixture)))
+})
+
+test('marks that cannot be stored say so: the result is never a clean one', async () => {
+    const fixture = await Fixture.create()
+    await savedChain(fixture)
+    const { chunk } = await ownChunk(fixture)
+    await damageChunkRow(fixture, chunk)
+    const { result } = await runCheck(
+        await checker(fixture, undefined, { failWrites: true }),
+        fixture.chainId,
+    )
+    assert.equal(result.markFailed, true)
+    assert.equal(result.marked, undefined)
+    assert.ok(result.damaged > 0)
+    assert.ok(allKept(await keptFlags(fixture)))
 })

@@ -23,6 +23,7 @@ export type DeleteChain = {
     /** The removal's `expect` (a damaged chain has no `head`), and the sessions the page locks. */
     head?: string
     updatedAt: number
+    fileAt?: number
     sessions: string[]
     /** Whole local calendar days between the last edit and the worker's `now`. */
     ageDays: number
@@ -105,6 +106,7 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
                 chainId: chain.chainId,
                 ...(chain.head === undefined ? {} : { head: chain.head }),
                 updatedAt: chain.updatedAt,
+                ...(chain.fileAt === undefined ? {} : { fileAt: chain.fileAt }),
                 sessions: chain.sessions,
                 ageDays: Math.max(0, daysBetween(dayKey(chain.updatedAt, zone), today)),
                 notSaved: notSavedToFile(
@@ -134,12 +136,18 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
         let waited = 0
         for (const [index, chain] of targets.entries()) {
             if (signal?.aborted) break
+            // Counted as saved, then revoked by a takeover this storage could not take: skipped.
+            if (!chain.notSaved && deps.revoked?.(chain.chainId) === true) {
+                skipped++
+                onProgress?.(index + 1, targets.length)
+                continue
+            }
             let result: RemoveLockedResult
             for (;;) {
                 result = await deps.removeLocked({
                     chainId: chain.chainId,
                     locked: chain.sessions,
-                    expect: { head: chain.head, updatedAt: chain.updatedAt },
+                    expect: { head: chain.head, updatedAt: chain.updatedAt, fileAt: chain.fileAt },
                     reason: 'deleteSessions',
                 })
                 if (result.kind !== 'busy' || waited >= BUSY_LIMIT_MS) break

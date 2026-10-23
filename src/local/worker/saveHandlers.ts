@@ -132,8 +132,8 @@ export const saveHandlers = (context: WorkerContext) => {
         },
 
         /**
-         * Test: cleanup under pressure, as Step 10's will: a stored row made `kept: false` and its
-         * root removed (the specs' storage-short cases).
+         * Test: a stored row made `kept: false` and its root removed, as a "not kept" row reads
+         * (the specs' storage-short cases).
          */
         testThin: ({ sessionId, seq }: { sessionId: string; seq: number }) => {
             if (!context.test) throw new Error('Test hooks need a test flag')

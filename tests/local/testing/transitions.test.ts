@@ -338,7 +338,7 @@ test('an opened session that is not the head keeps I-5 but for the import’s fi
     const fileEnd = new Map([['F', 5]])
     const fill = commit(state, {
         entries: [entry('F', 3)],
-        sessions: [{ ...open, entryCount: 4, ownBytes: 10 }],
+        sessions: [{ ...open, entryCount: 4 }],
     })
     assert.deepEqual(transitionViolations(fill, {}, fileEnd), [])
     const finished = commit(state, { sessions: [{ ...open, importPending: undefined }] })

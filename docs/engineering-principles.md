@@ -91,3 +91,11 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 **Why.** The owner, 2026-10-21: “We should lean towards not having things of dubious usefulness. We should never forget that new features and elements are not free. They have a maintained cost. Depending on the nature of the element, it may negatively impact users in some ways. An element might have almost no use to users, but waste real estate. In the end, we’ve wasted effort, taken on more maintenance burden, and made our users worse off.”
 
 **Example.** The Groups and Stages managers had a collapsed “Current Group” / “Current Stage” row at the top of the list. It only revealed the current item’s path and its shown count, which the status bar’s scope label and the list’s current row already show; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the “Use only items you are allowed to use.” line the same day.
+
+## 12. Users delete history; automatic processes do not
+
+**Rule.** A user's explicit delete always works from the UI: Delete in Recent Sessions and Delete Sessions… remove a chain whatever it holds (a damaged head, a session of a newer version), refusing only while a tab has it open. Automatic processes never remove a user's history: cleanup under pressure removes only cached media that no chain's latest state uses and that storage can get again from a tab or a file, and GC removes only what nothing reaches.
+
+**Why.** History is the safeguard users rely on, so losing it without being asked is the worst failure, and a stored chain the user cannot remove is a dead end when the browser is full. Rules that let an automatic process pick history to drop (by age, by size, by whether a file holds it) kept growing exceptions, each a new way to lose work; one simple split is easy to keep true.
+
+**Example.** Delete first refused a chain holding a newer session; that was reversed, and the removal goes by key range without reading the rows. Cleanup was first designed to thin old sessions and drop whole chains already in a file; it was cut to cached earlier media, with no `kept: false` marks for space, and the head's media are protected even when its stored stack is missing.

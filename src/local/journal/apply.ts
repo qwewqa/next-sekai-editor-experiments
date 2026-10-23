@@ -292,15 +292,10 @@ export const writeJournalApply = async (
     const now = nextTime(maxSeen, batch.wall)
     const stamp = (time: number) => (maxSeen = nextTime(maxSeen, clampTime(time, now)))
     const day = await countDayOfUse(tx, now)
-    let ownBytes = 0
-    for (const chunk of prepared.chunks) {
-        const row = await putChunk(tx, chunk, day)
-        if (row) ownBytes += row.bytes.length
-    }
+    for (const chunk of prepared.chunks) await putChunk(tx, chunk, day)
     for (const node of nodesToPut) {
         const row = node === root ? rootRow(root, day) : nodeRow(node as never, day)
         await tx.put('nodes', row, hashKey(node.hash))
-        ownBytes += row.size
     }
     const time = stamp(now)
     applyHook?.(force)
@@ -333,7 +328,6 @@ export const writeJournalApply = async (
             lastSeq: 1,
             entryCount: 1,
             activeMs: 0,
-            ownBytes,
             appVersion: batch.appVersion,
         })
         const snapshot = root.hash.slice()
@@ -419,8 +413,6 @@ export const writeJournalApply = async (
                   ...session,
                   ...sessionFields,
                   entryCount: (typeof session.entryCount === 'number' ? session.entryCount : 0) + 1,
-                  ownBytes:
-                      (typeof session.ownBytes === 'number' ? session.ownBytes : 0) + ownBytes,
               }
             : {
                   id: sessionId,
@@ -432,7 +424,6 @@ export const writeJournalApply = async (
                   ...sessionFields,
                   entryCount: 1,
                   activeMs: 0,
-                  ownBytes,
               },
     )
 

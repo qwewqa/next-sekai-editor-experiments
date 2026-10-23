@@ -39,13 +39,20 @@ export const savedChain = async (fixture: Fixture) => {
  * A tab of the fixture's profile with its own storage worker running the check handlers. Each
  * transaction starts as a task of that tab, as the fixture's store does: the test core's rule.
  */
-export const checker = async (fixture: Fixture, flags?: TestFlags): Promise<Checker> => {
+export const checker = async (
+    fixture: Fixture,
+    flags?: TestFlags,
+    { failWrites = false }: { failWrites?: boolean } = {},
+): Promise<Checker> => {
     const tab = fixture.world.tab(`check-${tabs++}`)
     const core = workerCore(fixture.world, tab, flags ? { flags } : {})
     await tab.run(() => core.start())
     const scheduled = Object.create(core) as StorageCore
     scheduled.read = (stores, fn, progress) => tab.run(() => core.read(stores, fn, progress))
-    scheduled.write = (stores, fn, options) => tab.run(() => core.write(stores, fn, options))
+    scheduled.write = (stores, fn, options) =>
+        failWrites
+            ? Promise.reject(new DOMException('The write failed', 'UnknownError'))
+            : tab.run(() => core.write(stores, fn, options))
     scheduled.exclusive = (body) =>
         tab.run(() =>
             core.exclusive((hold) =>

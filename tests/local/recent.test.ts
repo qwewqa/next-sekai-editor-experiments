@@ -5,6 +5,7 @@ import { captureMedia } from '../../src/local/media'
 import { displayName, namePartsOf } from '../../src/local/names'
 import { listRecent, type RecentChain } from '../../src/local/recent'
 import { createWorld, type World } from '../../src/local/testing/world'
+import { readTimeline } from '../../src/local/worker/timelineHandlers'
 import type { State } from '../../src/state'
 import { editStep, futureFixtureOperation } from '../helpers/historySteps'
 import '../helpers/lockChecks'
@@ -249,4 +250,45 @@ test('an untitled chain is dated by its first start: a later visit does not rena
     const forked = (await listed(page)).find((row) => row.chainId === fork.chainId)
     assert.equal(forked?.head.startedAt, (await readOpen(page, fork.id)).session.startedAt)
     assert.notEqual(forked?.head.startedAt, read.session.startedAt)
+})
+
+test('a chain of three sessions is one row, and its restored Timeline shows a divider for each', async () => {
+    const world = createWorld({ seed: 10 })
+    const page = await openPage(world, world.tab('a'))
+    let state = stateOf(goldenChart())
+    const first = await chainIn(page, state)
+    let head = first.id
+    for (const label of ['Second', 'Third']) {
+        const visit = continueIn(page, await readOpen(page, head))
+        state = widen(state, 2)
+        page.flusher.append(
+            { kind: 'edit', step: editStep(futureFixtureOperation(label)) },
+            state,
+            true,
+        )
+        await page.flusher.flush()
+        head = visit.id
+    }
+    const rows = await listed(page)
+    assert.deepEqual(
+        rows.map((row) => [row.chainId, row.head.sessionId]),
+        [[first.chainId, head]],
+    )
+    // Restore Session continues the head, as a new session of the chain.
+    const restored = continueIn(page, await readOpen(page, rows[0]!.head.sessionId))
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Restored')) },
+        widen(state, 2),
+        true,
+    )
+    await page.flusher.flush()
+    const timeline = await page.tab.run(() =>
+        page.core.read(['sessions', 'entries', 'chains', 'nodes'], (tx) =>
+            readTimeline(tx, { sessionId: restored.id, limit: 100 }),
+        ),
+    )
+    assert.equal(timeline.next, undefined)
+    assert.equal(timeline.entries.filter((entry) => entry.kind === 'continue').length, 3)
+    assert.equal(new Set(timeline.entries.map((entry) => entry.sessionId)).size, 4)
+    assert.equal((await listed(page)).length, 1)
 })

@@ -306,7 +306,6 @@ const COVERED_READS = [
     'openImportTarget',
     'listRecovered',
     'readRecovered',
-    'listKept',
     'findEdits',
     'deleteTarget',
     'checkStoredOpen',

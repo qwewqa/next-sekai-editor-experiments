@@ -1,11 +1,10 @@
-import { deleteHandleRow, HANDLES, KEPT_ROLE } from '../handleRows'
+import { HANDLES } from '../handleRows'
 import { writeUnlink } from '../open/importWrite'
 import {
     applyRevocation,
     BIND_STORES,
     keepHandle,
     listHandleOwners,
-    listKept,
     readChainRecord,
     readSessionStarts,
     recordOwnSave,
@@ -35,16 +34,6 @@ export const bindHandlers = (context: WorkerContext) => ({
     /** The handle of a partial or unlinked open's file, kept while its session is open (D26). */
     keepHandle: ({ chainId, name, handle }: { chainId: string; name: string; handle: unknown }) =>
         context.core.write(['chains', HANDLES], (tx) => keepHandle(tx, chainId, name, handle)),
-
-    /**
-     * A kept file's handle let go: its session closed (§1.5.4). A planned seam for Step 7's
-     * Recent Sessions and sweep, like `listKept`: nothing calls either until then.
-     */
-    dropKept: (chainId: string) =>
-        context.core.write([HANDLES], (tx) => deleteHandleRow(tx, chainId, KEPT_ROLE)),
-
-    /** The chains with a kept file, for a load's sweep. */
-    listKept: () => context.core.read(['chains', HANDLES], listKept),
 
     /** A save picker's revocation and pre-bind, in one transaction (R5). */
     takeOver: (request: TakeOver) =>

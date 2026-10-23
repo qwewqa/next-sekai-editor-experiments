@@ -50,8 +50,6 @@ export type TestFlags = {
     /** A full browser that cleanup can free: quota errors until a deleting job frees space. */
     quotaUntilFreed?: boolean
     forceUnknownError?: boolean
-    /** Step 8's GC reads it. */
-    slowGc?: boolean
     /** A simulated later build: requests this version, with an empty upgrade. */
     dbVersion?: number
     /** A frozen tab: never answers onversionchange or upgradeWanted. */

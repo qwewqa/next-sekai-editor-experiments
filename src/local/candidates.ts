@@ -2,7 +2,7 @@ import { readMeta } from './db'
 import type { KvTx } from './kv/types'
 import type { NameParts } from './names'
 import { readRecent, type RecentFile, type RecentReadable } from './recent'
-import { ids, sessionsOf } from './removal'
+import { fileAtOf, ids, sessionsOf } from './removal'
 import { nextTime } from './time'
 
 // What Delete Sessions… reads of the stored chains (deletion design §3.6; Local Data design §3.7),
@@ -14,6 +14,8 @@ export type DeleteCandidate = {
     /** The head session (absent on a damaged chain) and the chain's last write: the removal's `expect`. */
     head?: string
     updatedAt: number
+    /** The file binding's `at`, which the removal expects unchanged. */
+    fileAt?: number
     /** Every session of the chain, oldest first: what the page locks. */
     sessions: string[]
     /** The head's start: dates an untitled name. */
@@ -40,10 +42,12 @@ export const readDeleteCandidates = async (tx: KvTx, wall: number): Promise<Dele
         const record = (await tx.get('chains', recent.chainId)) as
             Record<string, unknown> | undefined
         const { file } = recent
+        const fileAt = record ? fileAtOf(record) : undefined
         chains.push({
             chainId: recent.chainId,
             ...(recent.head.sessionId ? { head: recent.head.sessionId } : {}),
             updatedAt: recent.updatedAt,
+            ...(fileAt === undefined ? {} : { fileAt }),
             sessions: ids(await sessionsOf(tx, recent.chainId)),
             startedAt: recent.head.startedAt,
             nameParts: recent.nameParts,
