@@ -831,16 +831,24 @@ test.describe('Reopen', () => {
                 (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
             const { reopenPrevious } =
                 (await import('/src/editor/switch.ts')) as typeof import('../../src/editor/switch')
+            const { createSwitchRequest } =
+                (await import('/src/editor/switchRequest.ts')) as typeof import('../../src/editor/switchRequest')
             const offered = previousSession.value
             // Not stored: an attempt on it would fail and clear the offer.
             previousSession.value = {
                 sessionId: 'nothing',
                 name: { name: { kind: 'name', text: 'Later' }, at: 0 },
             }
+            // A switch that is finishing stays current: the stale card does not supersede it.
+            const finishing = createSwitchRequest()
             const opened = await reopenPrevious(offered)
-            return { opened, still: previousSession.value?.sessionId }
+            return {
+                opened,
+                still: previousSession.value?.sessionId,
+                finishingCurrent: finishing.isCurrent(),
+            }
         })
-        expect(result).toEqual({ opened: false, still: 'nothing' })
+        expect(result).toEqual({ opened: false, still: 'nothing', finishingCurrent: true })
         expect(await lifeOf(page)).toBe(1000)
     })
 

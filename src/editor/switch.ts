@@ -109,32 +109,35 @@ const reopenAction = (left: Left): NoticeAction => {
  * another since, nothing opens.
  */
 export const reopenPrevious = (offered?: Left) =>
-    withSwitchRequest(undefined, async (request) => {
-        const left = previousSession.value
-        if (!left || (offered && left !== offered)) return false
-        if (!(await confirmSwitch()) || !request.isCurrent()) return false
-        const { reopenSession } = await import('../local/startup/api')
-        if (!request.isCurrent()) return false
-        reopening = request
-        try {
-            const result = await reopenSession(request)
-            if (result.opened && request.isCurrent()) await afterSwitch()
-            else if (!result.opened && request.isCurrent()) {
-                // A session that is gone is offered no more: its card goes, and does not turn plain.
-                if (
-                    (result.why === 'deleted' || result.why === 'missing') &&
-                    previousSession.value === left
-                ) {
-                    dismissNoticeCard()
-                    previousSession.value = undefined
-                }
-                notifyNotOpened(result)
-            }
-            return result.opened
-        } finally {
-            if (reopening === request) reopening = undefined
-        }
-    })
+    // Checked before a request exists: a request supersedes the switch that is finishing.
+    offered && previousSession.value !== offered
+        ? Promise.resolve(false)
+        : withSwitchRequest(undefined, async (request) => {
+              const left = previousSession.value
+              if (!left) return false
+              if (!(await confirmSwitch()) || !request.isCurrent()) return false
+              const { reopenSession } = await import('../local/startup/api')
+              if (!request.isCurrent()) return false
+              reopening = request
+              try {
+                  const result = await reopenSession(request)
+                  if (result.opened && request.isCurrent()) await afterSwitch()
+                  else if (!result.opened && request.isCurrent()) {
+                      // A session that is gone is offered no more: its card goes, and does not turn plain.
+                      if (
+                          (result.why === 'deleted' || result.why === 'missing') &&
+                          previousSession.value === left
+                      ) {
+                          dismissNoticeCard()
+                          previousSession.value = undefined
+                      }
+                      notifyNotOpened(result)
+                  }
+                  return result.opened
+              } finally {
+                  if (reopening === request) reopening = undefined
+              }
+          })
 
 /** The card a Reopen or a Restore as a Copy from a load notice leaves: gone, or the BGM line alone. */
 const afterSwitch = async () => {
