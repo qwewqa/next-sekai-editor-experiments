@@ -5,13 +5,17 @@ import { validateChart } from '../../../chart/validate'
 import { openState } from '../../../history'
 import { createHistoryOperation } from '../../../history/createHistoryOperation'
 import { captureName } from '../../../history/operations'
-import { createSessionDescriptor } from '../../../history/session'
+import { leavePeek } from '../../../history/peek'
+import { createSessionDescriptor, session } from '../../../history/session'
+import { liveState } from '../../../history/stack'
 import { i18n } from '../../../i18n'
 import { formatDateInSentence } from '../../../i18n/when'
 import { parseLevelData } from '../../../levelData/parse'
 import { LevelDataReport } from '../../../levelData/report'
 import { getLevelDataRevision, LATEST_REVISION } from '../../../levelData/revision'
 import { summaryOf } from '../../../local/flush'
+import { toHex } from '../../../local/hash'
+import { heldItem } from '../../../local/heldMedia'
 import {
     bindingName,
     bindingOptions,
@@ -24,8 +28,10 @@ import {
     type PartialLine,
 } from '../../../local/open/decide'
 import type { NxspReply } from '../../../local/open/project'
+import { reopensOwnFile, type ReopenFacts } from '../../../local/open/reopen'
 import { noteCountOf, stateFromRecords } from '../../../local/records/records'
 import { stateBatch } from '../../../local/stateBatch'
+import { storedRead } from '../../../local/storedRead'
 import { showModal } from '../../../modals'
 import { showChoice } from '../../../modals/choice'
 import LoadingModal from '../../../modals/LoadingModal.vue'
@@ -39,9 +45,12 @@ import { getFilename } from '../../../utils/file'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
 import { confirmDownloads } from '../../file/flags'
-import { bgmStatus, claimNotice } from '../../media/heldBgm'
+import { confirmFile, fileChanged } from '../../file/state'
+import { bgmStatus, claimNotice, isHeldHere } from '../../media/heldBgm'
 import { dismissNoticeCard, notify, type NoticeLine } from '../../notification'
 import { restoreStored } from '../../restoreStored'
+import { bindingHandle, bindingOf, environment, type Env } from '../../save/binding'
+import { revokedOf } from '../../save/watch'
 import { notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { chooseAudioAction } from '../bgm/chooseAudio'
@@ -173,22 +182,104 @@ const openedLine = (name: string, unchecked: boolean) =>
         name,
     )
 
-/** Shows the open's notice: an earlier session's, or "Opened coconut.nxsp" with Reopen. */
+/**
+ * Shows the open's notice: an earlier session's, or "Opened coconut.nxsp" with Reopen (none when
+ * the open kept the session, `offer` false).
+ */
 const notifyOpened = (
     name: string,
     notice: EarlierNotice | undefined,
     leftSessionId: string | undefined,
     unchecked: boolean,
+    offer = true,
 ) => {
     // The chain with unsaved changes is the session just left: only Reopen shows (§1.4.1).
     if (!notice || (notice.kind === 'unsavedChanges' && notice.chain.sessionId === leftSessionId)) {
-        notifyLeft(openedLine(name, unchecked))
+        notifyLeft(openedLine(name, unchecked), offer)
         return
     }
     dismissNoticeCard()
     const message = earlierMessage(notice, name)
     if (notice.kind === 'unsavedEarlier') notify(message, { card: true, severity: 'info' })
     else notify(message, { action: restoreAction(notice.chain.sessionId), severity: 'info' })
+}
+
+type Row = Record<string, unknown>
+
+const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
+
+/** Whether every media hash the live state names is held in this tab or in storage. */
+const mediaHeld = async (env: Env, state: State) => {
+    const asked: string[] = []
+    if (state.bgm.meta && !isHeldHere(state.bgm)) asked.push(state.bgm.meta.hash)
+    for (const ref of [state.levelInfo.cover, state.levelInfo.preview])
+        if (ref && !heldItem(ref.hash)) asked.push(ref.hash)
+    if (!asked.length) return true
+    const held = await env.worker.call('mediaHeld', asked).catch(() => undefined)
+    return !!held && asked.every((hash) => held.includes(hash))
+}
+
+/**
+ * The open session's chain, when the opened file is its own last write, unchanged on both sides
+ * (`reopensOwnFile`): Open then keeps the session. Every fact is read as the next Save would read
+ * it; a read that fails is no match, and the open goes on as any other.
+ */
+const ownWriteOf = async (
+    opened: NxspReply,
+    handle: FileSystemFileHandle | undefined,
+    identity: boolean,
+    asHead: boolean,
+) => {
+    if (!identity || !asHead) return
+    const env = environment()
+    if (env?.session.id !== session.value.sessionId) return
+    const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
+    if (read.storedRead === 'failed') return
+    const record = read.storedValue
+    const replaced = !!revokedOf(record, env.session)
+    const binding = bindingOf(record, env.session)
+    const file = binding.file
+    const bound = file ? await bindingHandle(env, file) : undefined
+    if (bound?.storedRead === 'failed') return
+    const boundHandle = bound?.storedValue
+    const sameEntry =
+        !!handle && !!boundHandle && (await handle.isSameEntry(boundHandle).catch(() => false))
+    const state = liveState.value
+    const labelHash = session.value.file?.hash
+    const facts: ReopenFacts = {
+        identity,
+        asHead,
+        file: {
+            ...(opened.project ? { docId: opened.project.id } : {}),
+            ...(opened.project?.revision ? { revisionId: opened.project.revision.id } : {}),
+            ...(opened.history ? { head: opened.history.head } : {}),
+            ...(opened.disk ? { disk: opened.disk } : {}),
+            handle: !!handle,
+        },
+        binding: {
+            docId: binding.docId,
+            ...(binding.revision ? { revisionId: binding.revision.id } : {}),
+            replaced,
+            ...(file
+                ? {
+                      file: {
+                          event: file.event,
+                          hash: toHex(file.hash),
+                          ...(file.disk ? { disk: file.disk } : {}),
+                          handle: !!boundHandle,
+                      },
+                  }
+                : {}),
+        },
+        // The label's binding is this one, and the live state is the one it holds.
+        changed: fileChanged.value || !file || labelHash !== toHex(file.hash),
+        sameEntry,
+        badChunks: isRow(record) && record.badChunks !== undefined,
+        mediaHeld: await mediaHeld(env, state),
+    }
+    // The live state moved while the facts were read: no match.
+    if (!reopensOwnFile(facts) || !file || liveState.value !== state) return
+    return { chainId: env.chainId, file }
 }
 
 /** Decodes the BGM read from the file, as Choose Audio… does, without its dialog. */
@@ -342,6 +433,35 @@ const openRequestedProject = async (
 
     // Earlier sessions on this file, recognised by revision (§1.5.4 step 4).
     const revision = identity ? opened.project?.revision : undefined
+
+    // The file the open session's chain last wrote, unchanged since: Open keeps the session, with
+    // the earlier sessions' notice any open of it gives (§1.5.4).
+    const own = await ownWriteOf(opened, handle, identity, asHead)
+    if (!request.isCurrent()) {
+        cancel()
+        return
+    }
+    if (own) {
+        cancel()
+        let earlier: EarlierNotice | undefined
+        let unchecked = false
+        if (revision) {
+            const chains = await project.earlierChains(opened.project?.id ?? '', own.chainId)
+            if (chains.storedRead === 'value')
+                earlier = earlierNotice(
+                    { id: revision.id, ancestors: revision.ancestors },
+                    chains.storedValue,
+                )
+            else unchecked = true
+        }
+        if (!request.isCurrent()) return
+        // Last: leaving a peek ends the request.
+        leavePeek()
+        // Opening it proves the user has the download (§1.3.4).
+        if (own.file.event === 'downloaded') confirmFile()
+        notifyOpened(name, earlier, undefined, unchecked, false)
+        return
+    }
 
     // Nothing can be stored (safe mode, a newer database): the level opens, as an import does.
     const { storageStatus } = await import('../../../local/startup/events')

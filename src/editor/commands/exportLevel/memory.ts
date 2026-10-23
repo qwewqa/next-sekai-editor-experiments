@@ -1,5 +1,6 @@
 import { onResetState } from '../../../history/resetHooks'
 import { storableHandleNow } from '../../../local/handles'
+import { nextCopyName } from '../../../local/names'
 import type { StoredRead } from '../../../local/storedRead'
 import type { DiskState } from '../../../platform'
 
@@ -233,8 +234,8 @@ export const restoreExportMemory = (chain: Record<string, unknown>) => {
     if (chain.partialImport === true) exportMemory.partial = true
 }
 
-/** The name a picker suggests: "<name> (2)" for an unlinked copy, so it is not the original's. */
-export const copyName = (name: string) => (name && exportMemory.partial ? `${name} (2)` : name)
+/** The name a picker suggests: the next copy's for an unlinked copy, so it is not the original's. */
+export const copyName = (name: string) => (name && exportMemory.partial ? nextCopyName(name) : name)
 
 /** Whether two handles name one file; false where the browser cannot tell. */
 export const sameEntry = async (a: FileSystemFileHandle, b: FileSystemFileHandle) => {

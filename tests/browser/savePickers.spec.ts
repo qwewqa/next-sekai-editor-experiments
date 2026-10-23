@@ -73,10 +73,13 @@ test('a takeover: A picks the file B is bound to; B loses it passively and its n
     expect(revoked.file).toBeUndefined()
     expect(revoked.replaced).toMatchObject({ by: aChain.chainId, name: 'coconut.nxsp' })
     expect(revoked.edited).toBe(true)
+    // It keeps the file's stem as its name: its row and label do not fall back to the title.
+    expect(revoked.name).toBe('coconut')
 
     // B's label goes, with no notice (the broadcast, or becoming visible), and B prompts.
     await b.bringToFront()
     await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
+    expect((await sessionOf(b)).name).toBe('coconut')
     await expect(notice(b).filter({ hasText: 'replaced' })).toHaveCount(0)
     expect(await prompts(b)).toBe(true)
     await pressSave(b)
@@ -86,6 +89,38 @@ test('a takeover: A picks the file B is bound to; B loses it passively and its n
     await submitSave(b)
     await expect(notice(b).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
     expect((await projectOf(b, 'coconut (2).nxsp')).id).toBe(bChain.docId)
+})
+
+/** Opens an OPFS file with its handle, as Open File… on a save picker's platform does. */
+const openFile = (page: Page, name: string) =>
+    page.evaluate(async (name) => {
+        const root = await navigator.storage.getDirectory()
+        const handle = await root.getFileHandle(name)
+        const { openProject } = await import('/src/editor/commands/open/project.ts')
+        await openProject(await handle.getFile(), handle)
+    }, name)
+
+test('opening the file just saved keeps the session; a copy of it elsewhere is a new chain', async ({
+    page,
+}) => {
+    await start(page)
+    await savedTo(page, 'coconut.nxsp')
+    const saved = await chainOf(page)
+    const { sessionId } = await sessionOf(page)
+    await openFile(page, 'coconut.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Reopen/ })).toHaveCount(0)
+    expect((await rows(page, ['chains'])).chains).toHaveLength(1)
+    expect((await sessionOf(page)).sessionId).toBe(sessionId)
+
+    // The same bytes at another path: the next Save must write the file the user opened.
+    await writeFile(page, 'copy.nxsp', (await readFile(page, 'coconut.nxsp'))!)
+    await openFile(page, 'copy.nxsp')
+    await expect(notice(page).filter({ hasText: 'Opened copy.nxsp' })).toBeVisible()
+    expect((await rows(page, ['chains'])).chains).toHaveLength(2)
+    const opened = await chainOf(page)
+    expect(opened.chainId).not.toBe(saved.chainId)
+    expect(opened.file).toMatchObject({ name: 'copy.nxsp', event: 'opened' })
 })
 
 test('a self-pick at the base keeps the docId and ancestry, with no line', async ({ page }) => {
@@ -161,6 +196,14 @@ test('the chain’s own file changed on disk: a pick puts its bytes back and ope
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
 })
 
+test('Save As… suggests a dotted file name whole, as it is shown', async ({ page }) => {
+    await start(page)
+    await savedTo(page, 'feat. Miku.nxsp')
+    await saveAs(page)
+    // The shown name is the stem already: "feat. Miku", never cut again to "feat".
+    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('feat. Miku (2)')
+})
+
 test('suggestions never name a known file: a taken "(2)" gets one more', async ({ page }) => {
     await start(page)
     await savedTo(page, 'coconut.nxsp')
@@ -169,7 +212,7 @@ test('suggestions never name a known file: a taken "(2)" gets one more', async (
     await expect(notice(page).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
     // The chain is bound to "coconut (2)" now; its Save As… suggests the next free name.
     await saveAs(page)
-    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (2) (2)')
+    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (3)')
 })
 
 test('the project picker lists .nxsp only, and a build that outlasted the press asks for Save', async ({

@@ -12,6 +12,7 @@ import { liveState, stackGeneration, type RestoredSlot } from '../../history/sta
 import type { JournalFound, JournalStore, LockService } from '../../platform/types'
 import { setOpeningName } from '../../startup/gate'
 import type { State } from '../../state'
+import { chainStartOf } from '../chainFields'
 import type { FlushSession, StoredStack } from '../flush'
 import { resolveHandle } from '../handles'
 import { toHex } from '../hash'
@@ -140,10 +141,13 @@ const boundFileOf = (chain: Record<string, unknown>) => {
     }
 }
 
-const shownOf = (read: SessionRead & { kind: 'open' }, state: State): ShownName => ({
-    name: displayName(namePartsOf(read.chain, state)),
-    ...(typeof read.session.startedAt === 'number' ? { at: read.session.startedAt } : {}),
-})
+const shownOf = (read: SessionRead & { kind: 'open' }, state: State): ShownName => {
+    const at = chainStartOf(read.chain, read.session.startedAt)
+    return {
+        name: displayName(namePartsOf(read.chain, state)),
+        ...(at === undefined ? {} : { at }),
+    }
+}
 
 const headState = async (worker: OpenDeps['worker'], head: Uint8Array) => {
     const parts = await worker.call('readSnapshot', toHex(head))
@@ -257,13 +261,15 @@ export const openStored = async (
         const boundFile = boundFileOf(chain)
         const docId = fork ? newId() : (text(chain.docId) ?? newId())
         const name = fork ? forkName : text(chain.name)
+        const start = chainStartOf(chain, session.startedAt)
         const descriptor = createSessionDescriptor({
             sessionId: id,
             docId,
             ...(name === undefined ? {} : { name }),
             ...(sourceName === undefined ? {} : { sourceName }),
             ...(how.mode === 'fork' ? { copyOf: how.copyOf } : {}),
-            ...(typeof session.startedAt === 'number' ? { startedAt: session.startedAt } : {}),
+            // The chain's first start dates an untitled name; a fork's is its own, now.
+            ...(start === undefined || fork ? {} : { startedAt: start }),
             ...(boundFile && how.mode !== 'fork' ? { file: boundFile } : {}),
         })
         const expectedGeneration = stackGeneration() + 1
@@ -443,7 +449,7 @@ export const copyOfOf = (read: SessionRead & { kind: 'open' }, state?: State): C
     const shown = displayName(namePartsOf(read.chain, state))
     return sessionCopyOf(
         shown.kind === 'date' ? undefined : shown.text,
-        typeof read.session.startedAt === 'number' ? read.session.startedAt : undefined,
+        chainStartOf(read.chain, read.session.startedAt),
     )
 }
 

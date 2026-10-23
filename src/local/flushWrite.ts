@@ -783,6 +783,8 @@ export const writeFlush = async (
                   : { sourceName: batch.chain.sourceName }),
               ...(hasContentAtStart ? { hasContent: true } : {}),
               ...(batch.chain.name === undefined ? {} : { name: batch.chain.name }),
+              // Its first start, its own for a fork: an untitled name stays put (§1.3.5).
+              startedAt,
               ...chainFields,
           }
     // Fields the session set before its first write: written field by field, `null` removing; a

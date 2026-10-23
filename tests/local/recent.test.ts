@@ -10,7 +10,7 @@ import { editStep, futureFixtureOperation } from '../helpers/historySteps'
 import '../helpers/lockChecks'
 import { openPage, workerCore } from './flush/harness'
 import { goldenChart, stateOf } from './records/charts'
-import { beginIn, handlersOf, readOpen } from './startup/harness'
+import { beginIn, continueIn, handlersOf, readOpen } from './startup/harness'
 import { widen } from './timeline/helpers'
 
 // Recent Sessions' list read (§1.4.10.6, step 7 design 3.2): one row per chain, newest first, not
@@ -208,4 +208,45 @@ test('a title outranks the song in the list, as in the live label', async () => 
     const [row] = await listed(page)
     assert.deepEqual(displayName(row!.nameParts), displayName(namePartsOf({}, titled)))
     assert.equal(displayName(row!.nameParts).kind, 'title')
+})
+
+test('an untitled chain is dated by its first start: a later visit does not rename it', async () => {
+    const world = createWorld({ seed: 9 })
+    const page = await openPage(world, world.tab('a'))
+    const base = stateOf(goldenChart())
+    const untitled = {
+        ...base,
+        levelInfo: { ...base.levelInfo, title: '' },
+        bgm: { offset: base.bgm.offset },
+    }
+    const first = await chainIn(page, untitled)
+    const [before] = await listed(page)
+    // A second visit continues the chain as a new session, which starts later.
+    const read = await readOpen(page, first.id)
+    const later = continueIn(page, read)
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Later')) },
+        widen(untitled, 2),
+        true,
+    )
+    await page.flusher.flush()
+    const head = await readOpen(page, later.id)
+    assert.equal(head.chain.head, later.id)
+    assert.notEqual(head.session.startedAt, read.session.startedAt)
+    const [after] = await listed(page)
+    assert.equal(displayName(after!.nameParts).kind, 'date')
+    assert.equal(after!.head.startedAt, before!.head.startedAt)
+    assert.equal(after!.head.startedAt, read.session.startedAt)
+
+    // A fork is dated by its own start, not its source's.
+    const fork = continueIn(page, head, { asFork: true })
+    page.flusher.append(
+        { kind: 'edit', step: editStep(futureFixtureOperation('Fork')) },
+        widen(untitled, 3),
+        true,
+    )
+    await page.flusher.flush()
+    const forked = (await listed(page)).find((row) => row.chainId === fork.chainId)
+    assert.equal(forked?.head.startedAt, (await readOpen(page, fork.id)).session.startedAt)
+    assert.notEqual(forked?.head.startedAt, read.session.startedAt)
 })

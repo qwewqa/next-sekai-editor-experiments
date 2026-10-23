@@ -10,7 +10,14 @@ import { launch } from '../../launch'
 import type { SaveReservation } from '../../local/flush'
 import { storableHandle } from '../../local/handles'
 import { toHex } from '../../local/hash'
-import { displayName, namePartsOf, stemOf } from '../../local/names'
+import {
+    displayName,
+    hasCopyNumber,
+    namePartsOf,
+    nextCopyName,
+    prefillOf,
+    stemOf,
+} from '../../local/names'
 import { NXSP_MINOR, NXSP_VERSION } from '../../local/nxsp/version'
 import { isImporting, whenImported } from '../../local/open/importLoop'
 import type { HandleOwner } from '../../local/save/bind'
@@ -359,24 +366,31 @@ const knownNames = async (env: Env) => {
     return new Set(read.storedValue.map((owner) => owner.name.normalize('NFC').toLocaleLowerCase()))
 }
 
-/** A suggestion made valid and, when a stored binding or target has its name, " (2)", " (3)"… */
+/**
+ * A suggestion made valid and, where a save picker suggests it and a stored binding or target has
+ * its name, numbered upward: "coconut (2)", then "coconut (3)". A download takes nothing over, and
+ * the browser renames a clash, so R1 is for pickers only.
+ */
 const suggestion = async (env: Env, stem: string) => {
-    const known = await knownNames(env)
     const base = validName(stem)
+    if (!platform.pickSaveFile) return base
+    const known = await knownNames(env)
     const taken = (name: string) => known.has(`${name}.nxsp`.normalize('NFC').toLocaleLowerCase())
-    if (!taken(base)) return base
-    for (let n = 2; ; n++) if (!taken(`${base} (${n})`)) return `${base} (${n})`
+    let name = base
+    while (taken(name)) name = nextCopyName(name)
+    return name
 }
 
 /** The displayed name as a file name, or empty for the date fallback (§1.3.5, round 8). */
-const shownStem = (env: Env, state: State) => {
-    const shown = displayName(namePartsOf(env.session.chain, state))
-    if (shown.kind === 'date') return ''
-    const text = shown.kind === 'name' || shown.kind === 'title' ? shown.text : stemOf(shown.text)
-    return text === 'LevelData' ? '' : text
-}
+const shownStem = (env: Env, state: State) =>
+    prefillOf(displayName(namePartsOf(env.session.chain, state)))
 
-const copyStem = (stem: string) => (!stem || / \(\d+\)$/.test(stem) ? stem : `${stem} (2)`)
+/**
+ * A copy's prefill: a bound file's stem numbered upward, "coconut (2)" after "coconut"; another name
+ * ending in a copy number is a copy's own, "Coconut (2)" for a fork (§1.3.1).
+ */
+const copyStem = (stem: string, ofFile: boolean) =>
+    !stem || (!ofFile && hasCopyNumber(stem)) ? stem : nextCopyName(stem)
 
 /** A file time for a name: "Oct 16, 2.41 PM" (no colon in a file name). */
 const nameTime = (time: number) => formatDateTime(settings.locale, time).replaceAll(':', '.')
@@ -1413,7 +1427,9 @@ const downloadBytes = async (name: string, bytes: Blob) => {
 /** The not-found dialog's Save As…: keeps the identity and Export target, writes a new file. */
 const notFoundSaveAs = async (env: Env) => {
     const binding = quickBinding(env)
-    const stem = copyStem(binding.file ? stemOf(binding.file.name) : shownStem(env, savedState()))
+    const stem = binding.file
+        ? copyStem(stemOf(binding.file.name), true)
+        : copyStem(shownStem(env, savedState()), false)
     const name = await suggestion(env, stem)
     const input = await dialogInput(env, 'saveAs', name, [])
     const result = await saveUi.saveDialog(input)
@@ -1621,7 +1637,7 @@ const dialogSave = async (
         currentSession.value.copyOf !== undefined ||
         exportMemory.partial === true
     const stem = shownStem(env, state) || (binding.replaced ? stemOf(binding.replaced.name) : '')
-    const name = await suggestion(env, copy ? copyStem(stem) : stem)
+    const name = await suggestion(env, copy ? copyStem(stem, !!binding.file) : stem)
     const replaced = binding.replaced
     const replacedLine = replaced
         ? [interpolate(() => i18n.value.file.replacedElsewhere, replaced.name)]
@@ -1849,13 +1865,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
         return
     }
     const chainId = read.session.chainId as string
-    const shown = displayName(namePartsOf(read.chain))
-    const stem =
-        shown.kind === 'date'
-            ? ''
-            : shown.kind === 'name' || shown.kind === 'title'
-              ? shown.text
-              : stemOf(shown.text)
+    const stem = prefillOf(displayName(namePartsOf(read.chain)))
     const updatedAt =
         typeof read.session.updatedAt === 'number' ? read.session.updatedAt : Date.now()
     const name = await suggestion(

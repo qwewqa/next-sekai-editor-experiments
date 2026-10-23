@@ -18,6 +18,7 @@ import { releaseWaveform } from '../../waveform'
 import type { ChainSummary } from '../flushWrite'
 import { storableHandle } from '../handles'
 import { hasWebLocks, sessionLock } from '../locks'
+import { keptNameOf } from '../names'
 import { placedCompleteFrom } from '../nxsp/project'
 import { holdSessionLock } from '../sessions'
 import { sessionContext } from '../startup/api'
@@ -447,9 +448,16 @@ const unlinkedSession = (
         journalWriter?.rewrite()
     }
     if (currentSession.value.sessionId === sessionId) {
-        const { file: _bound, ...rest } = currentSession.value
+        const { file: bound, ...rest } = currentSession.value
         const copyOf = { name, bound: true }
-        currentSession.value = { ...rest, docId, copyOf }
+        // Its file's stem stays its name, as the record's (§1.3.5).
+        const keptName = keptNameOf(rest.name, bound?.name)
+        currentSession.value = {
+            ...rest,
+            docId,
+            copyOf,
+            ...(keptName === undefined ? {} : { name: keptName }),
+        }
         writeTabRecord({ sessionId, start: 'stored', copyOf })
         exportMemory.partial = true
         void rememberExport()

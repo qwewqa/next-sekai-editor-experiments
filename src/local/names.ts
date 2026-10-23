@@ -70,8 +70,35 @@ export const namePartsOf = (chain: Record<string, unknown> | undefined, state?: 
     return parts
 }
 
+// A copy number: " (2)" to " (99)" at the end. "Song (2020)" has none, so its copy is
+// "Song (2020) (2)", never "Song (2021)".
+const COPY_NUMBER = / \((\d{1,2})\)$/
+
+/** Whether a name ends in a copy number, " (2)". */
+export const hasCopyNumber = (name: string) => COPY_NUMBER.test(name)
+
+/** The next copy's name: "Coconut (3)" after "Coconut (2)", else "Coconut (2)" (§1.3.1). */
+export const nextCopyName = (name: string) => {
+    const match = COPY_NUMBER.exec(name)
+    return match ? `${name.slice(0, match.index)} (${Number(match[1]) + 1})` : `${name} (2)`
+}
+
 /** A fork's name, "<name> (2)" (§1.3.1); none when the displayed name is the date fallback. */
 export const forkNameOf = (parts: NameParts) => {
     const shown = displayName(parts)
-    return shown.kind === 'date' ? undefined : `${shown.text} (2)`
+    return shown.kind === 'date' ? undefined : nextCopyName(shown.text)
 }
+
+/**
+ * The name a chain takes when it loses its file (§1.3.5): the file's stem, over any name it had.
+ * Every web name is automatic, and the file name is the one the user chose last, by saving.
+ */
+export const keptNameOf = (name: unknown, fileName: unknown) =>
+    text(fileName) ? stemOf(fileName as string) : text(name)
+
+/**
+ * The displayed name as a file name (§1.4.7's prefill): as shown, since the shown name is already a
+ * stem; empty for the date fallback and for "LevelData", which names nothing.
+ */
+export const prefillOf = (shown: DisplayName) =>
+    shown.kind === 'date' || shown.text === 'LevelData' ? '' : shown.text

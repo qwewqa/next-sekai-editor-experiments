@@ -137,7 +137,7 @@ const writers: {
 }[] = [
     // Save writes the live session, never a peeked state (§1.4.7).
     { file: 'src/editor/save/env.ts', imports: { stack: ['liveState'] } },
-    { file: 'src/editor/commands/exportLevel/index.ts', imports: { live: ['filename'] } },
+    { file: 'src/editor/commands/exportLevel/index.ts', imports: { stack: ['liveState'] } },
     // Save and Export build level data here.
     {
         file: 'src/editor/commands/exportLevel/build.ts',
