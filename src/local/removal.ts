@@ -1,7 +1,6 @@
 import { readMeta, writeMeta } from './db'
 import { HANDLES } from './handleRows'
 import { KeyRange, type KvTx } from './kv/types'
-import { isReadableSessionVersion } from './records/unknownValues'
 import { nextTime, stampNow } from './time'
 
 // Removing stored sessions and chains, and Delete's mark (deletion design §3.3, §3.4). The page
@@ -40,12 +39,10 @@ export type RemoveRequest = {
     chainId: string
     /** The chain's sessions as the page read and locked them, oldest first. */
     locked: string[]
-    /** Which of them to remove: all of them (`whole`), or the oldest `count`. */
-    remove: { whole: true } | { whole: false; count: number }
     /** The chain as read: removal is refused when it changed since. A damaged chain has no `head`. */
     expect: { head?: string; updatedAt: number; deleting?: number }
-    /** `delete` removes only a chain carrying this mark; the others only an unmarked one. */
-    reason: 'delete' | 'deleteSessions' | 'cleanup'
+    /** `delete` removes only a chain carrying this mark; `deleteSessions` only an unmarked one. */
+    reason: 'delete' | 'deleteSessions'
 }
 
 export type RemoveResult =
@@ -54,16 +51,14 @@ export type RemoveResult =
     | { kind: 'busy' }
     /** The chain, its sessions or its mark differ from what was locked. */
     | { kind: 'changed' }
-    /** A session this build can't read, for a removal that is not a user's whole Delete. */
-    | { kind: 'later' }
 
 /**
- * The removal transaction (R4): whole sessions, with their entries and stack blocks, oldest first;
- * the chain's record and handles only with its last session. Newer data goes only by a user's
- * whole-chain Delete or Delete Sessions… (R7).
+ * The removal transaction (R4): a whole chain, its sessions with their entries and stack blocks,
+ * its record and its handles. Only a user's Delete or Delete Sessions… calls it, so a session of
+ * a newer version goes too, by key range, unread (R7).
  */
 export const removeTx = async (tx: KvTx, request: RemoveRequest): Promise<RemoveResult> => {
-    const { chainId, locked, remove, expect, reason } = request
+    const { chainId, locked, expect, reason } = request
     const changed = { kind: 'changed' } as const
     const chain = await tx.get('chains', chainId)
     if (!isRow(chain) || headIdOf(chain) !== expect.head || chain.updatedAt !== expect.updatedAt)
@@ -72,42 +67,16 @@ export const removeTx = async (tx: KvTx, request: RemoveRequest): Promise<Remove
     if (mark !== expect.deleting || (reason === 'delete') !== (mark !== undefined)) return changed
     const rows = await sessionsOf(tx, chainId)
     if (!sameSet(ids(rows), locked)) return changed
-    let removed = rows
-    if (!remove.whole) {
-        const { count } = remove
-        if (!Number.isSafeInteger(count) || count < 1 || count >= rows.length) return changed
-        const byId = new Map(rows.map((row) => [String(row.id), row]))
-        removed = locked.slice(0, count).flatMap((id): Row[] => {
-            const row = byId.get(id)
-            return row ? [row] : []
-        })
-        const kept = rows.filter((row) => !removed.includes(row))
-        // Only the oldest go: every removed session started before every kept one.
-        const latest = Math.max(...removed.map((row) => Number(row.startedAt)))
-        if (
-            removed.some((row) => String(row.id) === chain.head) ||
-            !kept.every((row) => Number(row.startedAt) > latest)
-        )
-            return changed
-    }
-    if (
-        (!remove.whole || reason === 'cleanup') &&
-        rows.some((row) => !isReadableSessionVersion(row.v))
-    )
-        return { kind: 'later' }
-    for (const id of ids(removed)) {
+    for (const id of ids(rows)) {
         const range = KeyRange.bound([id, -Infinity], [id, Infinity])
         await tx.delete('entries', range)
         await tx.delete('stackBlocks', range)
         await tx.delete('sessions', id)
     }
-    if (remove.whole) {
-        await tx.delete(HANDLES, KeyRange.bound([chainId, ''], [chainId, '￿']))
-        await tx.delete('chains', chainId)
-    }
+    await tx.delete(HANDLES, KeyRange.bound([chainId, ''], [chainId, '￿']))
+    await tx.delete('chains', chainId)
     await writeMeta(tx, 'deletionsPending', true)
-    if (reason === 'cleanup') await writeMeta(tx, 'removedForSpace', true)
-    return { kind: 'removed', sessions: removed.length }
+    return { kind: 'removed', sessions: rows.length }
 }
 
 /** What Delete reads of a chain before it locks it. */

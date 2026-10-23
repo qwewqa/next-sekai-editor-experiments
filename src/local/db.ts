@@ -48,8 +48,6 @@ export type MetaValues = {
     lastGcAt: { day: UseDay; time: number; unsafe?: true } | null
     deletionsPending: boolean
     migratedHashes: string[]
-    /** Cleanup under pressure removed something: the next load says so once. */
-    removedForSpace: boolean
 }
 
 export type MetaKey = keyof MetaValues
@@ -76,7 +74,6 @@ export const startingMeta = (context: CreateContext): MetaValues => ({
     lastGcAt: null,
     deletionsPending: false,
     migratedHashes: [],
-    removedForSpace: false,
 })
 
 const createV1 = (upgrade: KvUpgrade, context: CreateContext) => {

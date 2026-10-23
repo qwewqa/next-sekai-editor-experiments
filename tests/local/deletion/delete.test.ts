@@ -192,7 +192,6 @@ test('the sweep skips a chain with a journal; the next load makes it a recovery 
                 locked: [...rows(world, 'sessions').values()]
                     .filter((row) => row.chainId === second.chainId)
                     .map((row) => String(row.id)),
-                remove: { whole: true },
                 expect: { head: second.id, updatedAt: 0 },
                 reason: 'deleteSessions',
             })
@@ -226,7 +225,6 @@ test('a removal whose page holds no lock of the session breaks the lock rule', a
         handlers.removeSessions({
             chainId: first.chainId,
             locked: [first.id, second.id],
-            remove: { whole: true },
             expect: { head: second.id, updatedAt: chain.updatedAt as number },
             reason: 'deleteSessions',
         }),
@@ -245,7 +243,6 @@ test('removal re-reads what was locked: a changed head, session set or mark is r
     const base = {
         chainId: first.chainId,
         locked: [first.id, second.id],
-        remove: { whole: true as const },
         expect: { head: second.id, updatedAt },
         reason: 'deleteSessions' as const,
     }
@@ -255,27 +252,15 @@ test('removal re-reads what was locked: a changed head, session set or mark is r
         { ...base, expect: { ...base.expect, updatedAt: updatedAt - 1 } },
         // Delete's sweep only takes a chain carrying its mark.
         { ...base, reason: 'delete' as const },
-        // A partial removal never takes the head.
-        { ...base, remove: { whole: false as const, count: 2 } },
     ]
     for (const request of refused)
         assert.equal((await deleter.remove(request)).kind, 'changed', JSON.stringify(request))
-    // The oldest session alone, the head kept.
-    assert.deepEqual(
-        await deleter.remove({ ...base, remove: { whole: false, count: 1 }, reason: 'cleanup' }),
-        { kind: 'removed', sessions: 1 },
-    )
-    assert.deepEqual(
-        chainRows(world, first.chainId).sessions.map((row) => row.id),
-        [second.id],
-    )
-    assert.equal(rows(world, 'meta').get('removedForSpace')?.value, true)
+    assert.deepEqual(await deleter.remove(base), { kind: 'removed', sessions: 2 })
+    assert.deepEqual(chainRows(world, first.chainId), { chain: undefined, sessions: [] })
     assert.equal(rows(world, 'meta').get('deletionsPending')?.value, true)
-    // The head still opens with its parent gone.
-    assert.deepEqual(await visible(world, first.chainId), { opens: true, newest: true })
 })
 
-test('a chain whose head needs a newer version is deleted whole on request; cleanup leaves it', async () => {
+test('a chain whose head needs a newer version is deleted whole on request', async () => {
     const world = createWorld({ seed: 10 })
     const storage = new MemoryStorage()
     const { first, second } = await closedChain(world, storage)
@@ -286,19 +271,6 @@ test('a chain whose head needs a newer version is deleted whole on request; clea
     })
     world.checks.lock = true
     const deleter = await openDeleter(world, world.tab('b'), storage)
-    const updatedAt = rows(world, 'chains').get(first.chainId)?.updatedAt as number
-    assert.equal(
-        (
-            await deleter.remove({
-                chainId: first.chainId,
-                locked: [first.id, second.id],
-                remove: { whole: false, count: 1 },
-                expect: { head: second.id, updatedAt },
-                reason: 'cleanup',
-            })
-        ).kind,
-        'later',
-    )
     assert.equal((await deleter.mark(first.chainId)).kind, 'marked')
     assert.deepEqual(await deleter.sweep(), { removed: 1, busy: false })
     assert.deepEqual(chainRows(world, first.chainId), { chain: undefined, sessions: [] })
