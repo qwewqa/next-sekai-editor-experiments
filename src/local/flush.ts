@@ -30,6 +30,7 @@ import type {
     WriteStats,
 } from './flushWrite'
 import { toHex } from './hash'
+import { heldItemsOf } from './heldMedia'
 import type { IdentityUnit } from './save/commit'
 import type { LockLease } from './sessions'
 import {
@@ -353,21 +354,8 @@ export const flushTimeoutMs = (batch: FlushBatch) =>
         batch.text.byteLength + batch.media.reduce((sum, item) => sum + item.bytes.byteLength, 0),
     )
 
-/** A media item a state holds the bytes of: the BGM's `Bgm.source` (§1.6.8.4). */
-export const heldMediaOf = (state: State): BatchMedia[] => {
-    const { meta, source } = state.bgm
-    return meta && source
-        ? [
-              {
-                  hash: meta.hash,
-                  bytes: source,
-                  type: meta.type,
-                  ...(meta.filename ? { filename: meta.filename } : {}),
-                  kind: 'bgm',
-              },
-          ]
-        : []
-}
+/** The media items a state holds the bytes of: the BGM's, the cover's and the preview's (§1.6.8.4). */
+export const heldMediaOf = (state: State): BatchMedia[] => heldItemsOf(state)
 
 /** The unit as a batch carries it. */
 const unitOf = ({

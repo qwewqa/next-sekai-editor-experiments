@@ -92,6 +92,8 @@ Row forms (`src/local/records/rows.ts`):
 - **The not-loaded notice** is said at most once per hash per session (`claimNotice`), and only after the store answered "absent": by the load notice (a continue, resume or journal), the Open File card, a switch card's second line (`takeBgmLine`), or, for an Undo or Redo that reaches the BGM, a card of its own. A Timeline Restore keeps the current audio (section 4.6), so it never makes another BGM live.
 - **Choose Audio…** opens the system chooser and decides on the picked file's hash alone (`decidePick`). The hash the live `meta` names: attach it, keep the recorded `meta` and name, and store the bytes again (`storeMedia`), as no step. Any other hash: one `nse.bgm.change` step, with the offset unchanged.
 
+**Held cover and preview** (`src/local/heldMedia.ts`). A picked cover or preview clip is kept by hash for the tab’s life (`holdMedia`, `heldItem`); the BGM keeps its own rule above. `heldItemsOf(state)` lists the held items the state names (BGM, cover, preview; each hash once, with its slot’s kind), and both the flush (`heldMediaOf`) and a Save’s build (`heldMedia`) read it, so the cover and preview are stored with the entry first naming them, read back, stored again when their row went missing, and written into a file as the BGM is. A state read from storage holds none; `readMedia` brings the bytes back.
+
 `isDirty` means "changed since the last file event": a pushed step is dirty, a `save` entry clean.
 
 ### 2.3 IndexedDB stores
