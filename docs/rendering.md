@@ -99,15 +99,15 @@ The minimap strip (`src/editor/minimap/`) draws its content with Canvas2D, a sec
 - **Zero work while moving.** A wheel scroll, playback with Follow and a held chart drag paint nothing: the box and the cursor move by transform, written by one watcher outside the template. `minimapStats.paints` and `.annotationPaints` (read through `editorTest.appImport`) stay unchanged over those, which `tests/browser/minimap.spec.ts` checks.
 - **Hidden means free.** The strip is unmounted when off, so its watchers, observers and canvases do not exist.
 
-Measured on coconut (1,679 notes) in Chromium, with the CPU throttled 4× for a mid-range phone. The 4× column is the quietest run on a shared machine; busier runs were up to twice as slow.
+Measured on coconut (1,679 notes) in Chromium, with the CPU throttled 4× for a mid-range phone. Every figure is a median. The 4× runs were measured under contention, on a machine shared with other test runs, so they are on the slow side: the quietest 4× runs were about twice as fast (Basic 10 ms, Composed 15 ms in total).
 
 | | Desktop | 4× |
 | --- | --- | --- |
-| Basic full redraw, total | 2.5 ms in 1 slice | 10 ms in 4 slices |
-| Composed full redraw, total | 3.1 ms in 2 slices | 15 ms in 8 slices |
-| Longest slice | 2.4 ms | 3.3 ms |
-| Swap blit | 0.1 ms | 0.8 ms |
-| One note moved (band) | 0.3 ms | 1.6 ms |
+| Basic full redraw, total | 2.5 ms in 1 slice | 20 ms in 7 slices |
+| Composed full redraw, total | 3.1 ms in 2 slices | 36 ms in 13 slices |
+| Longest slice | 2.4 ms | 3.2 ms |
+| Swap blit | 0.1 ms | 1.0 ms |
+| One note moved (band) | 0.3 ms | 1.7 ms |
 
 ## Pinned Pixi seams and upgrade gate
 
