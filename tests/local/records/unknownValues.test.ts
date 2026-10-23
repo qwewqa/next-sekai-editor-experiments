@@ -9,7 +9,6 @@ import {
     isReadableChain,
     isReadableRootVersion,
     isReadableSession,
-    isShownTombstone,
     readFileEvent,
     readMediaKind,
     readOrigin,
@@ -51,8 +50,6 @@ test('unknown enum values follow §1.6.11.2’s table', () => {
     assert.equal(readMediaKind('thumbnail'), undefined)
     assert.equal(isListedUserAsset('skin'), true)
     assert.equal(isListedUserAsset('font'), false)
-    assert.equal(isShownTombstone('session'), true)
-    assert.equal(isShownTombstone('chain'), false)
     assert.equal(isKnownNodeType('root'), true)
     assert.equal(isKnownNodeType('tree'), false)
 })

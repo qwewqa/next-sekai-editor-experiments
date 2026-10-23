@@ -99,12 +99,11 @@ Database `nse-local-data`, `DB_VERSION` 1 (`src/local/db.ts`). Upgrades only add
 | `stackBlocks` | `[sessionId, block]` | The stored undo stack (section 2.5) |
 | `nodes`, `chunks` | 16-byte hash | Root and node rows; chunk rows |
 | `media` | 16-byte hash | `{blob, sha256, size, type, filename?, kind, day}` |
-| `tombstones` | `id` | Marks of removed sessions |
 | `recovered` | `id` | Bytes of journals that could not be read (section 2.9) |
 | `userAssets` | `key`; index `type` | Not History |
 | `meta` | `key` | `formatVersion`, `epoch`, `maxSeenTime`, `dbInstanceId`, `deviceId`, `daysOfUse`, `lastUseDate`, `lastGcAt`, `deletionsPending`, `migratedHashes`, `usage`, `lastPersistFailure`, `createdBy` |
 
-**Nothing deletes History yet** (GC, Delete Sessions and tombstone writing are Step 8). `tombstones` is only read: a tombstoned session opens as deleted (`src/local/startup/stored.ts`) and journal apply treats it as removed. The Timeline's "removed to save space" label comes from `kept: false` rows, not tombstones. `meta.epoch` is meant to rise in any transaction that deletes (`bumpEpoch`, no caller yet). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair.
+**Nothing deletes History yet** (GC and Delete Sessions are Step 8). A removed session has no marker: its rows are simply gone. The Timeline's "removed to save space" label comes from `kept: false` rows, not tombstones. `meta.epoch` is meant to rise in any transaction that deletes (`bumpEpoch`, no caller yet). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair.
 
 ### 2.4 Entries
 
@@ -754,7 +753,7 @@ Before the ship an operation changes in place at version 1; after it, any change
 
 ## 7. Future work
 
-- **Deleting History (Step 8).** GC, Delete Sessions and space reduction are not built: nothing writes `tombstones`, bumps `meta.epoch` (`bumpEpoch` and `missingHashes` in `db.ts` and `observeTimes` in `time.ts` have no callers, and each says so) or marks a row `kept: false` for space. When they land, every deleting transaction must bump the epoch, which the flush's closure check depends on.
+- **Deleting History (Step 8).** GC, Delete Sessions and space reduction are not built: nothing bumps `meta.epoch` (`bumpEpoch` and `missingHashes` in `db.ts` and `observeTimes` in `time.ts` have no callers, and each says so) or marks a row `kept: false` for space. When they land, every deleting transaction must bump the epoch, which the flush's closure check depends on.
 - **Level Info (Step 11).** `nse.levelInfo.set` has its codec, presentation, strings and `levelInfoInput`, but no producer until the Level Info dialog. It has no inventory case in `historyOperationDetails.cases.json` yet.
 - **Per-id operation versions.** The envelope has one literal `version: 1`. The first change after the ship needs a per-id version table and the old codec kept for reading.
 - **Native apps.** The apps' reader and writer are not in this repository (Step 7 is paused); the conformance cases and the checker are what they must match.

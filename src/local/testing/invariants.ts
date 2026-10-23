@@ -103,11 +103,6 @@ export const storedViolations = (rows: Rows, options: SessionOptions = {}): stri
     }
     if (options.replay !== false) violations.push(...replayViolations(rows))
     violations.push(...sessionViolations(rows, options))
-    for (const row of all('tombstones')) {
-        const tombstone = record(row.value)
-        if (!chains.has(String(tombstone.chainId)))
-            violations.push(`tombstone ${keyText(row.key)}: chain is missing`)
-    }
     for (const row of all('nodes')) {
         const node = record(row.value)
         let refs = packed(node.refs)

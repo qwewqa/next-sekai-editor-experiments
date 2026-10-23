@@ -73,9 +73,6 @@ export type UserAssetType = (typeof userAssetTypes)[number]
 export const isListedUserAsset = (type: unknown): type is UserAssetType =>
     known(userAssetTypes, type)
 
-/** `tombstones.kind`: an unknown value is kept, not shown. */
-export const isShownTombstone = (kind: unknown) => kind === 'session'
-
 /** `recovered.source`: a row of any source, known or not, is listed as unreadable recovered work. */
 export const recoveredSources = ['journal', 'journalFile'] as const
 

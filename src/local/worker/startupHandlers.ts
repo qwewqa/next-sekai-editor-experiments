@@ -23,7 +23,7 @@ import type { CallScope } from './rpc'
 // a session to open it, the most recent session, chain-field writes from the head, and the auto
 // save migration's transaction.
 
-const READ_STORES = ['sessions', 'chains', 'entries', 'stackBlocks', 'tombstones', 'nodes', 'meta']
+const READ_STORES = ['sessions', 'chains', 'entries', 'stackBlocks', 'nodes', 'meta']
 
 export const startupHandlers = (context: WorkerContext, outside: Waiter = directWaiter) => {
     const waiterOf = (progress: Progress): Waiter => ({

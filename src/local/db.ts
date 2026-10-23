@@ -26,7 +26,6 @@ export const STORES_V1 = {
     nodes: { keyPath: null, indexes: {} },
     chunks: { keyPath: null, indexes: {} },
     media: { keyPath: null, indexes: {} },
-    tombstones: { keyPath: 'id', indexes: {} },
     recovered: { keyPath: 'id', indexes: {} },
     userAssets: { keyPath: 'key', indexes: { type: 'type' } },
     meta: { keyPath: 'key', indexes: {} },
