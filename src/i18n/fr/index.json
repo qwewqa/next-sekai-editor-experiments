@@ -2148,13 +2148,9 @@
   "levelInfo": {
     "file": "Fichier",
     "check": "Vérifier…",
-    "apply": "Appliquer",
     "tagsPlaceholder": "Séparés par des virgules",
-    "editCover": "Modifier dans l’éditeur de la couverture…",
+    "editCover": "Modifier dans l’éditeur…",
     "makePreview": "Créer à partir de la musique…",
-    "bgm": "Musique",
-    "change": "Changer…",
-    "changeBgmLabel": "Changer la musique",
     "notLoaded": "non chargé",
     "discard": "Abandonner les modifications des informations du niveau ?"
   },
@@ -2336,7 +2332,7 @@
       "description": "Description",
       "tags": "Tags",
       "rating": "Difficulté",
-      "cover": "Jaquette",
+      "cover": "Couverture",
       "previewAudio": "Extrait audio",
       "duration": "Durée",
       "size": "Taille",

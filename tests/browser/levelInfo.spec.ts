@@ -13,7 +13,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// Level Info (Part 1 §1.4.12, Step 11 design §3.1): the form, its draft and the one step an Apply
+// Level Info (Part 1 §1.4.12, Step 11 design §3.1): the form, its draft and the one step a Confirm
 // makes, the discard confirm, the utilities that return their result to it, the "not loaded" rows,
 // and a picked cover and preview reaching storage and a saved file.
 
@@ -34,7 +34,7 @@ const type = async (input: Locator, value: string) => {
     await input.press('Tab')
 }
 
-const apply = (form: Locator) => form.getByRole('button', { name: 'Apply', exact: true })
+const confirm = (form: Locator) => form.getByRole('button', { name: 'Confirm', exact: true })
 
 /** Presses a button that opens the file chooser, and gives it a file. */
 const pick = async (
@@ -109,7 +109,7 @@ test('every field, a cover and a preview survive Apply, Save and opening the fil
         buffer: clip,
     })
     await expect(form.locator('[data-level-info-preview-play]')).toBeVisible()
-    await apply(form).click()
+    await confirm(form).click()
     await expect(dialog(page)).toHaveCount(0)
 
     const expected = {
@@ -172,7 +172,7 @@ test('Escape with changes asks, Keep Editing keeps them, and without changes it 
     await openLevelInfo(page)
     await type(field(form, 'Title'), 'Changed')
     const ask = page.getByRole('dialog', { name: 'Discard changes to level info?', exact: true })
-    for (const leave of ['Escape', 'Close', 'Cancel']) {
+    for (const leave of ['Escape', 'Close']) {
         if (leave === 'Escape') await page.keyboard.press('Escape')
         else await form.getByRole('button', { name: leave, exact: true }).click()
         await expect(ask).toBeVisible()
@@ -195,7 +195,7 @@ test('one Apply that changes the title and Initial Life is one step, and Undo re
     const form = await openLevelInfo(page)
     await type(field(form, 'Title'), 'Coconut')
     await form.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('700')
-    await apply(form).click()
+    await confirm(form).click()
     await expect(dialog(page)).toHaveCount(0)
     expect(await levelInfoOf(page)).toMatchObject({ title: 'Coconut', initialLife: 700 })
     const operation = await page.evaluate(async () => {
@@ -214,43 +214,19 @@ test('one Apply that changes the title and Initial Life is one step, and Undo re
     expect(await undoable(page)).toBe(false)
 })
 
-test('Apply leaves a field the user did not change as it is now, so the dialog’s own BGM step stays', async ({
-    page,
-}) => {
+test('Escape in the description asks before it throws the typed text away', async ({ page }) => {
     const form = await openLevelInfo(page)
-    await type(field(form, 'Title'), 'Coconut')
-    // The BGM row acts at once, as a step of its own, while the form is open.
-    await form.locator('[data-level-info-bgm-change]').click()
-    const bgm = page.getByRole('dialog', { name: 'BGM', exact: true })
-    const choosing = page.waitForEvent('filechooser')
-    await bgm.locator('input[type="button"]').click()
-    await (await choosing).setFiles({ name: 'bgm.wav', mimeType: 'audio/wav', buffer: wav(1) })
-    await expect(bgm.locator('input[type="button"]')).toHaveValue(/\d/)
-    await bgm.getByRole('button', { name: 'Confirm', exact: true }).click()
-    await expect(form.locator('[data-level-info-bgm]')).toContainText('bgm.wav · 0:01')
-
-    await apply(form).click()
+    const description = field(form, 'Description')
+    // Typed, not left: the text is already part of what the dialog guards.
+    await description.fill('Typed but not left')
+    await page.keyboard.press('Escape')
+    const ask = page.getByRole('dialog', { name: 'Discard changes to level info?', exact: true })
+    await expect(ask).toBeVisible()
+    await confirmWhenReady(ask.getByRole('button', { name: 'Keep Editing', exact: true }), ask)
+    await expect(description).toHaveValue('Typed but not left')
+    await confirm(form).click()
     await expect(dialog(page)).toHaveCount(0)
-    // Two steps, and the BGM is still the one chosen.
-    const state = await page.evaluate(async () => {
-        const { liveState, undoState } =
-            (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')
-        const shown = {
-            title: liveState.value.levelInfo.title,
-            bgm: liveState.value.bgm.meta?.filename,
-        }
-        undoState()
-        return {
-            shown,
-            afterUndo: liveState.value.levelInfo.title,
-            bgm: liveState.value.bgm.meta?.filename,
-        }
-    })
-    expect(state).toEqual({
-        shown: { title: 'Coconut', bgm: 'bgm.wav' },
-        afterUndo: '',
-        bgm: 'bgm.wav',
-    })
+    expect((await levelInfoOf(page)).description).toBe('Typed but not left')
 })
 
 test('Make from BGM… and Edit in Cover Editor… return their result with the typed fields kept', async ({
@@ -280,7 +256,7 @@ test('Make from BGM… and Edit in Cover Editor… return their result with the 
         mimeType: 'image/png',
         buffer: cover,
     })
-    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('picked.png')
+    await expect(form.locator('[data-level-info-cover]')).toContainText('picked.png')
     await form.locator('[data-level-info-cover-edit]').click()
     // The loading dialog over it has the same title.
     const editor = page.getByRole('dialog', { name: 'Cover Editor', exact: true }).first()
@@ -288,7 +264,7 @@ test('Make from BGM… and Edit in Cover Editor… return their result with the 
     await expect(editor.getByRole('button', { name: '64×64', exact: true })).toBeVisible()
     await editor.getByRole('button', { name: 'Generate', exact: true }).click()
     await expect(editor).toHaveCount(0)
-    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png')
+    await expect(form.locator('[data-level-info-cover]')).toContainText('cover.png')
     await expect(field(form, 'Title')).toHaveValue('Typed before')
 
     // Closing a utility without Generate changes nothing.
@@ -296,9 +272,9 @@ test('Make from BGM… and Edit in Cover Editor… return their result with the 
     await expect(editor.getByRole('button', { name: '400×400', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(editor).toHaveCount(0)
-    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png')
+    await expect(form.locator('[data-level-info-cover]')).toContainText('cover.png')
 
-    await apply(form).click()
+    await confirm(form).click()
     await expect(dialog(page)).toHaveCount(0)
     expect(await levelInfoOf(page)).toMatchObject({
         title: 'Typed before',
@@ -332,7 +308,8 @@ test('a cover that is not loaded says so, and the same file brings it back witho
     }, cover.toString('base64'))
 
     let form = await openLevelInfo(page)
-    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png · not loaded')
+    await expect(form.locator('[data-level-info-cover]')).toContainText('cover.png')
+    await expect(form.locator('[data-level-info-cover-tile]')).toHaveText('not loaded')
     await expect(form.locator('[data-level-info-thumbnail]')).toHaveCount(0)
     await expect(form.locator('[data-level-info-cover-edit]')).toBeDisabled()
 
@@ -342,7 +319,7 @@ test('a cover that is not loaded says so, and the same file brings it back witho
         mimeType: 'image/png',
         buffer: png(32, 32, [200, 40, 40]),
     })
-    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('other.png')
+    await expect(form.locator('[data-level-info-cover]')).toContainText('other.png')
     await page.keyboard.press('Escape')
     const ask = page.getByRole('dialog', { name: 'Discard changes to level info?' })
     await confirmWhenReady(ask.getByRole('button', { name: 'Discard', exact: true }), ask)
@@ -356,7 +333,7 @@ test('a cover that is not loaded says so, and the same file brings it back witho
         buffer: cover,
     })
     await expect(form.locator('[data-level-info-thumbnail]')).toBeVisible()
-    await expect(form.locator('[data-level-info-cover-name]')).toHaveText('cover.png')
+    await expect(form.locator('[data-level-info-cover]')).toContainText('cover.png')
     await expect
         .poll(async () => (await rows(page, ['media'])).media!.map((row) => row.value.kind))
         .toEqual(['cover'])

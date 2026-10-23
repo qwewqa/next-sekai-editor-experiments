@@ -2148,13 +2148,9 @@
   "levelInfo": {
     "file": "文件",
     "check": "检查…",
-    "apply": "应用",
     "tagsPlaceholder": "用逗号分隔",
     "editCover": "在封面编辑器中编辑…",
     "makePreview": "从背景音乐生成…",
-    "bgm": "背景音乐",
-    "change": "更改…",
-    "changeBgmLabel": "更改背景音乐",
     "notLoaded": "未加载",
     "discard": "要放弃对关卡信息的更改吗？"
   },

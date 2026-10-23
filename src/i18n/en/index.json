@@ -2148,13 +2148,9 @@
     "levelInfo": {
         "file": "File",
         "check": "Check…",
-        "apply": "Apply",
         "tagsPlaceholder": "Separated by commas",
         "editCover": "Edit in Cover Editor…",
         "makePreview": "Make from BGM…",
-        "bgm": "BGM",
-        "change": "Change…",
-        "changeBgmLabel": "Change BGM",
         "notLoaded": "not loaded",
         "discard": "Discard changes to level info?"
     },

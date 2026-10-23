@@ -2148,13 +2148,9 @@
   "levelInfo": {
     "file": "ファイル",
     "check": "確認…",
-    "apply": "適用",
     "tagsPlaceholder": "カンマ区切り",
     "editCover": "ジャケットエディターで編集…",
     "makePreview": "BGM から作成…",
-    "bgm": "BGM",
-    "change": "変更…",
-    "changeBgmLabel": "BGM を変更",
     "notLoaded": "未読み込み",
     "discard": "譜面情報の変更を破棄しますか？"
   },

@@ -399,7 +399,7 @@ test('an Initial Life dialog keeps a chart edit made while it was open', async (
         window.managerOperations = []
         return window.editorTest.history.liveState.value.groups.size
     })
-    await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     // The later edit stays, and only the field the dialog changed is written over it.
     expect(await operations(page)).toHaveLength(1)
     expect((await operations(page))[0]).toMatchObject({
@@ -559,7 +559,7 @@ test('Initial Life still opens read-only while peeking and cannot commit its dia
     await expect(
         dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }),
     ).toBeDisabled()
-    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     expect(await operations(page)).toEqual([])
     expect(await page.evaluate(() => window.editorTest.history.liveState.value.initialLife)).toBe(
         1000,
@@ -746,7 +746,7 @@ test('Initial Life command and BGM dialog capture exact accepted before and afte
     })
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('999')
-    await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     expect((await operations(page)).at(-1)).toMatchObject({
         id: 'nse.header.set',
         data: { field: 'initialLife', before: 1000, after: 999 },

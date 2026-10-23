@@ -393,7 +393,7 @@ test('selection and metadata edits including a metadata Undo/Redo preserve the s
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('777')
-    await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
     await metadata
     await page.evaluate(() => {
         const { history } = window.editorTest

@@ -567,7 +567,7 @@ test.describe('the label and the title', () => {
                     await dialog.getByRole('button', { name: 'Close', exact: true }).click()
                 else {
                     await afterGuard(page)
-                    await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+                    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
                 }
                 await expect(page.getByRole('dialog')).toHaveCount(0)
                 expect(await seq()).toBe(before)
@@ -575,7 +575,7 @@ test.describe('the label and the title', () => {
             await button(page).tap()
             await page.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('995')
             await afterGuard(page)
-            await page.getByRole('button', { name: 'Apply', exact: true }).click()
+            await page.getByRole('button', { name: 'Confirm', exact: true }).click()
             expect(
                 await page.evaluate(
                     async () =>
@@ -631,7 +631,7 @@ test.describe('the label and the title', () => {
                     .evaluate((element) => element.closest('fieldset')),
             ).toBeNull()
             await afterGuard(page)
-            await page.getByRole('button', { name: 'Close', exact: true }).last().click()
+            await page.getByRole('button', { name: 'Confirm', exact: true }).click()
             const after = await page.evaluate(async () => {
                 const { state, liveState, isPeeking } =
                     (await import('/src/history/stack.ts')) as typeof import('../../src/history/stack')

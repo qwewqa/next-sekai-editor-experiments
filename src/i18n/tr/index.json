@@ -2148,13 +2148,9 @@
   "levelInfo": {
     "file": "Dosya",
     "check": "Denetle…",
-    "apply": "Uygula",
     "tagsPlaceholder": "Virgülle ayrılmış",
     "editCover": "Kapak Editöründe Düzenle…",
     "makePreview": "Arka Plan Müziğinden Oluştur…",
-    "bgm": "Arka Plan Müziği",
-    "change": "Değiştir…",
-    "changeBgmLabel": "Arka Plan Müziğini Değiştir",
     "notLoaded": "yüklenmedi",
     "discard": "Seviye bilgilerindeki değişiklikler silinsin mi?"
   },

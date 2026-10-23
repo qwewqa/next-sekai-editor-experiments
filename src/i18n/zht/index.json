@@ -2148,13 +2148,9 @@
   "levelInfo": {
     "file": "檔案",
     "check": "檢查…",
-    "apply": "套用",
     "tagsPlaceholder": "以逗號分隔",
     "editCover": "在封面編輯器中編輯…",
     "makePreview": "從 BGM 產生…",
-    "bgm": "BGM",
-    "change": "變更…",
-    "changeBgmLabel": "變更 BGM",
     "notLoaded": "未載入",
     "discard": "要捨棄對關卡資訊的變更嗎？"
   },

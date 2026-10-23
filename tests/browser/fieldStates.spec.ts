@@ -276,10 +276,7 @@ test('a form dialog stays open on an invalid number and changes nothing', async 
             await open(command)
             const field = dialog.getByRole('spinbutton', { name: label, exact: true })
             await field.fill(value)
-            if (submit === 'click')
-                await dialog
-                    .getByRole('button', { name: command === 'properties' ? 'Apply' : 'Confirm' })
-                    .click()
+            if (submit === 'click') await dialog.getByRole('button', { name: 'Confirm' }).click()
             else await field.press('Enter')
             // The native message shows on the field, which keeps the entry.
             await expect(dialog, context).toBeVisible()
