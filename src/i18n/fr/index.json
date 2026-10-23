@@ -286,7 +286,7 @@
       "title": "Lire"
     },
     "properties": {
-      "title": "Propriétés du niveau",
+      "title": "Informations du niveau",
       "modal": {
         "life": "Vie initiale"
       },
@@ -2145,6 +2145,19 @@
     "storedDamaged": "{0} étape de la chronologie stockée dans ce navigateur est endommagée.|{0} étapes de la chronologie stockées dans ce navigateur sont endommagées.",
     "mediaDamaged": "Élément endommagé dans ce navigateur : {0}."
   },
+  "levelInfo": {
+    "file": "Fichier",
+    "check": "Vérifier…",
+    "apply": "Appliquer",
+    "tagsPlaceholder": "Séparés par des virgules",
+    "editCover": "Modifier dans l’éditeur de la couverture…",
+    "makePreview": "Créer à partir de la musique…",
+    "bgm": "Musique",
+    "change": "Changer…",
+    "changeBgmLabel": "Changer la musique",
+    "notLoaded": "non chargé",
+    "discard": "Abandonner les modifications des informations du niveau ?"
+  },
   "conflict": {
     "exportTitle": "\"{0}\" a changé",
     "exportBody": "\"{0}\" a changé depuis votre dernière exportation.",
@@ -2314,6 +2327,7 @@
     "folder": "Dossier",
     "groupFolder": "Dossier de groupes",
     "stageFolder": "Dossier de scènes",
+    "level": "Niveau",
     "levelInfo": "Informations du niveau",
     "fields": {
       "title": "Titre",

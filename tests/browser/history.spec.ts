@@ -611,7 +611,10 @@ for (const dialog of ['properties', 'bgm'] as const)
             >('/src/editor/commands/index.ts')
             await commands[dialog].execute()
         }, dialog)
-        await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click()
+        await page
+            .getByRole('dialog')
+            .getByRole('button', { name: dialog === 'properties' ? 'Apply' : 'Confirm' })
+            .click()
         await command
         await expect(page.getByRole('dialog')).toHaveCount(0)
         // The command has finished. Let the page draw twice, so nothing it queued is still to run.

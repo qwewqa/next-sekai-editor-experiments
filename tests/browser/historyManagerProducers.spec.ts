@@ -382,25 +382,36 @@ for (const domain of ['group', 'stage'] as const) {
     })
 }
 
-test('an Initial Life dialog cannot overwrite a later chart edit', async ({ page }) => {
+test('an Initial Life dialog keeps a chart edit made while it was open', async ({ page }) => {
     await page.evaluate(async () => {
-        const { properties } = await window.editorTest.appImport<
-            typeof import('../../src/editor/commands/properties')
-        >('/src/editor/commands/properties/index.ts')
-        void properties.execute()
+        const { levelInfo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/levelInfo')
+        >('/src/editor/commands/levelInfo/index.ts')
+        void levelInfo.execute()
     })
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('123')
-    await page.evaluate(async () => {
+    const groups = await page.evaluate(async () => {
         const { addGroup } = await window.editorTest.appImport<
             typeof import('../../src/editor/workspace/manager/groups')
         >('/src/editor/workspace/manager/groups.ts')
         addGroup()
         window.managerOperations = []
+        return window.editorTest.history.liveState.value.groups.size
     })
-    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
-    expect(await operations(page)).toEqual([])
-    expect(await page.evaluate(() => window.editorTest.history.state.value.initialLife)).toBe(1000)
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+    // The later edit stays, and only the field the dialog changed is written over it.
+    expect(await operations(page)).toHaveLength(1)
+    expect((await operations(page))[0]).toMatchObject({
+        id: 'nse.header.set',
+        data: { field: 'initialLife', before: 1000, after: 123 },
+    })
+    expect(
+        await page.evaluate(() => ({
+            life: window.editorTest.history.state.value.initialLife,
+            groups: window.editorTest.history.state.value.groups.size,
+        })),
+    ).toEqual({ life: 123, groups })
 })
 
 test('same-basename BGM picks remain file operations and compound changes preserve offsets', async ({
@@ -539,16 +550,16 @@ test('Initial Life still opens read-only while peeking and cannot commit its dia
     await page.evaluate(async () => {
         const { history, appImport } = window.editorTest
         history.peek.value = { source: {}, state: history.liveState.value }
-        const { properties } = await appImport<
-            typeof import('../../src/editor/commands/properties')
-        >('/src/editor/commands/properties/index.ts')
-        void properties.execute()
+        const { levelInfo } = await appImport<typeof import('../../src/editor/commands/levelInfo')>(
+            '/src/editor/commands/levelInfo/index.ts',
+        )
+        void levelInfo.execute()
     })
     const dialog = page.getByRole('dialog')
     await expect(
         dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }),
     ).toBeDisabled()
-    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Close', exact: true }).click()
     expect(await operations(page)).toEqual([])
     expect(await page.evaluate(() => window.editorTest.history.liveState.value.initialLife)).toBe(
         1000,
@@ -728,14 +739,14 @@ test('Initial Life command and BGM dialog capture exact accepted before and afte
     page,
 }) => {
     await page.evaluate(async () => {
-        const { properties } = await window.editorTest.appImport<
-            typeof import('../../src/editor/commands/properties')
-        >('/src/editor/commands/properties/index.ts')
-        void properties.execute()
+        const { levelInfo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/levelInfo')
+        >('/src/editor/commands/levelInfo/index.ts')
+        void levelInfo.execute()
     })
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('999')
-    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
     expect((await operations(page)).at(-1)).toMatchObject({
         id: 'nse.header.set',
         data: { field: 'initialLife', before: 1000, after: 999 },

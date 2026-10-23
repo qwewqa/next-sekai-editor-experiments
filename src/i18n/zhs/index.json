@@ -286,7 +286,7 @@
       "title": "播放"
     },
     "properties": {
-      "title": "关卡属性",
+      "title": "关卡信息",
       "modal": {
         "life": "初始生命值"
       },
@@ -2145,6 +2145,19 @@
     "storedDamaged": "此浏览器中存储的 {0} 个时间线步骤已损坏。",
     "mediaDamaged": "此浏览器中存储的{0}已损坏。"
   },
+  "levelInfo": {
+    "file": "文件",
+    "check": "检查…",
+    "apply": "应用",
+    "tagsPlaceholder": "用逗号分隔",
+    "editCover": "在封面编辑器中编辑…",
+    "makePreview": "从背景音乐生成…",
+    "bgm": "背景音乐",
+    "change": "更改…",
+    "changeBgmLabel": "更改背景音乐",
+    "notLoaded": "未加载",
+    "discard": "要放弃对关卡信息的更改吗？"
+  },
   "conflict": {
     "exportTitle": "“{0}”已更改",
     "exportBody": "“{0}”在上次导出后已更改。",
@@ -2314,6 +2327,7 @@
     "folder": "文件夹",
     "groupFolder": "群组文件夹",
     "stageFolder": "舞台文件夹",
+    "level": "关卡",
     "levelInfo": "关卡信息",
     "fields": {
       "title": "标题",

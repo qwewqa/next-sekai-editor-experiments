@@ -286,7 +286,7 @@
       "title": "再生"
     },
     "properties": {
-      "title": "譜面設定",
+      "title": "譜面情報",
       "modal": {
         "life": "初期ライフ"
       },
@@ -2145,6 +2145,19 @@
     "storedDamaged": "このブラウザーに保管されているタイムラインの操作 {0} 件が破損しています。",
     "mediaDamaged": "このブラウザーに保管されている{0}が破損していました。"
   },
+  "levelInfo": {
+    "file": "ファイル",
+    "check": "確認…",
+    "apply": "適用",
+    "tagsPlaceholder": "カンマ区切り",
+    "editCover": "ジャケットエディターで編集…",
+    "makePreview": "BGM から作成…",
+    "bgm": "BGM",
+    "change": "変更…",
+    "changeBgmLabel": "BGM を変更",
+    "notLoaded": "未読み込み",
+    "discard": "譜面情報の変更を破棄しますか？"
+  },
   "conflict": {
     "exportTitle": "「{0}」が変更されました",
     "exportBody": "「{0}」は前回の出力後に変更されています。",
@@ -2314,7 +2327,8 @@
     "folder": "フォルダー",
     "groupFolder": "グループフォルダー",
     "stageFolder": "ステージフォルダー",
-    "levelInfo": "レベル情報",
+    "level": "譜面",
+    "levelInfo": "譜面情報",
     "fields": {
       "title": "タイトル",
       "artists": "アーティスト",

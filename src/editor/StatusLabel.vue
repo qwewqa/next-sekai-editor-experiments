@@ -3,7 +3,8 @@ import { computed, onMounted, ref, useId } from 'vue'
 import { session } from '../history/session'
 import { i18n } from '../i18n'
 import { readBrowserFacts } from './settings/storageLine'
-import { openLevelInfoStub } from './levelInfo'
+import { levelInfo } from './commands/levelInfo'
+import { runCommand } from './commands/runCommand'
 import { raised } from './file/state'
 import { statusLabel, statusName } from './labelText'
 
@@ -32,7 +33,7 @@ const shortReason = computed(() =>
     session.value.copyOf ? i18n.value.status.separateCopyShort : i18n.value.file.short.notSaved,
 )
 const onClick = (event: MouseEvent) => {
-    openLevelInfoStub()
+    void runCommand(levelInfo)
     // Pointer clicks return keyboard shortcuts to the editor.
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }

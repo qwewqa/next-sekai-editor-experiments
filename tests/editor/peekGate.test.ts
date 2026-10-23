@@ -242,7 +242,9 @@ const entryPoints = [
     'src/editor/LevelEditor.vue',
     'src/editor/LevelEditorContextMenu.vue',
     'src/editor/NotStoredBar.vue',
+    'src/editor/StatusLabel.vue',
     'src/editor/commands/events/index.ts',
+    'src/editor/commands/levelInfo/LevelInfoModal.vue',
     'src/editor/contextMenu.ts',
     'src/editor/controls/gestures/recognizers/threeTap.ts',
     'src/editor/controls/gestures/recognizers/twoTap.ts',
@@ -252,7 +254,6 @@ const entryPoints = [
     'src/editor/file/chipDialogs.ts',
     'src/editor/history/RecentSessionsTab.vue',
     'src/editor/history/TimelineList.vue',
-    'src/editor/levelInfo.ts',
     'src/editor/save/flow.ts',
     'src/editor/switch.ts',
     'src/editor/toolbar/LevelEditorToolbar.vue',
@@ -414,9 +415,17 @@ const gateChecks: Record<string, (path: string, source: string) => void> = {
         assert.match(body, /const current = \(\) =>[^]*?!isPeeking\.value/)
         assert.match(body, /if \(!current\(\)\) \{[^]*?return[^]*?applyPick\(/)
     },
-    // Level Info: shown read-only, and nothing is pushed while peeking.
+    // Level Info: shown read-only; Apply is refused when a peek began or the session changed
+    // since the dialog opened, and the command applies nothing after a read-only dialog.
     levelInfo: (path) => {
-        asyncModalGate(declaration(path, 'properties') ?? '')
+        assert.match(
+            declaration(path, 'applyLevelInfo') ?? '',
+            /if \(isPeeking\.value \|\| generation !== stackGeneration\(\)\) return 'refused'[^]*?\bpushState\(/,
+        )
+        assert.match(
+            read('src/editor/commands/levelInfo/index.ts'),
+            /const generation = stackGeneration\(\)[^]*?await showModal\([^]*?if \(!draft \|\| isPeeking\.value\) return[^]*?applyLevelInfo\(/,
+        )
     },
 }
 

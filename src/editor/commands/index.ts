@@ -34,6 +34,7 @@ import { history } from './history'
 import { jumpDown } from './jumps/jumpDown'
 import { jumpUp } from './jumps/jumpUp'
 import { laneLimitCustom, laneLimitNone, laneLimitSix } from './laneLimits'
+import { levelInfo } from './levelInfo'
 import { makeVertical } from './makeVertical'
 import { manageGroups } from './manageGroups'
 import { manageStages } from './manageStages'
@@ -45,7 +46,6 @@ import { open } from './open'
 import { paste } from './paste'
 import { play } from './play'
 import { previewAssets } from './previewAssets'
-import { properties } from './properties'
 import { redo } from './redo'
 import { reset } from './reset'
 import { save } from './save'
@@ -111,7 +111,7 @@ const builtInCommands = {
     saveAs,
     exportLevel,
     reset,
-    properties,
+    properties: levelInfo,
     checkProject,
     utilities,
 

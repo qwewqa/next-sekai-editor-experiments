@@ -171,9 +171,9 @@ class Session {
     async levelLife(life: number) {
         await this.act('level properties', async () => {
             await this.page.locator('[data-status-label]').click()
-            const dialog = this.page.getByRole('dialog', { name: 'Level Properties' })
+            const dialog = this.page.getByRole('dialog', { name: 'Level Info' })
             await dialog.getByRole('spinbutton', { name: 'Initial Life' }).fill(String(life))
-            await dialog.getByRole('button', { name: 'Confirm' }).click()
+            await dialog.getByRole('button', { name: 'Apply' }).click()
         })
     }
 
