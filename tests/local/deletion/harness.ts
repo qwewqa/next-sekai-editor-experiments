@@ -111,7 +111,17 @@ export const tamper = async (world: World, change: (tx: KvTx) => Promise<void>) 
     await tab.run(() => core.start())
     await tab.run(() =>
         core.write(
-            ['sessions', 'chains', 'entries', 'stackBlocks', 'nodes', 'chunks', 'media', 'meta'],
+            [
+                'sessions',
+                'chains',
+                'entries',
+                'stackBlocks',
+                'nodes',
+                'chunks',
+                'media',
+                'meta',
+                'userAssets',
+            ],
             change,
         ),
     )
