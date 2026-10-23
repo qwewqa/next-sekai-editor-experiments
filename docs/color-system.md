@@ -673,12 +673,10 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 
 Adding to either list needs a reason in the entry.
 
-### 11.4 Transition
+### 11.4 Transition (closed)
 
-- An allowlist file per package, `tests/editor/colorRoles/legacy-C1.txt` … `legacy-C7.txt`, and for the History package C8 one file per History package (`legacy-C8-H1.txt`, `legacy-C8-H2.txt`, `legacy-C8-H3.txt`), lists only that package's flagged files, that is, the files that still violate the guard. A package file that is already clean (a token file, `choice.ts`, `activationGuard.ts`, a locale file) is not listed, because the test fails on a listed file that is clean. The foundation package, C0, has no list: its files are fixed in its own commit.
-- The test fails if a listed file is already clean, so stale entries cannot linger.
-- Each package deletes its own list file as its last commit, so the lists are disjoint and conflict-free.
-- C10 deletes the directory and its loader.
+- During the migration each colour package kept an allowlist file, `tests/editor/colorRoles/legacy-C<n>.txt` (C8 one per History package, `legacy-C8-H<n>.txt`), of the files it had not migrated yet. Each package deleted its own list as its last commit, and the directory is gone: **no file is exempt now** except those in 11.3.
+- The test still reads such lists if the directory exists and tolerates its absence, so a later migration can add lists again. It fails on a listed file that is already clean, so stale entries cannot linger, and on a violating file that is not listed.
 
 ### 11.5 Fixtures
 
@@ -690,7 +688,7 @@ A unit test feeds one synthetic snippet per inventoried form through the detecto
 
 **Process:**
 
-- The foundation, package C0, lands first and alone. Packages C1–C7 then land in any order, and no release is made until the close-out (C10). Between packages the UI is mixed (some dialogs ink, some mint).
+- **Closed.** The packages landed and their allowlists are deleted (11.4); this section records what each moved, for reading the history. C9 (the change token) was optional and is not built, and `changes.ts` still holds `#ff9b42` (section 13). The foundation, package C0, landed first and alone; packages C1–C7 then landed in any order, with the UI mixed (some dialogs ink, some mint) in between.
 - Every file belongs to exactly one package.
 - Each package runs its targeted specs. The full Playwright suite runs once, after C10.
 - **Naming.** These are *colour packages*, apart from the numbered steps of the main plan.
@@ -707,7 +705,7 @@ A unit test feeds one synthetic snippet per inventoried form through the detecto
 | Dialog shell and footers | `src/modals/BaseModal.vue` (the × is `ghost ghost-band`, with its size and shape), `src/modals/InfoModal.vue` (OK) and `src/modals/form/FormModal.vue` (submit): `btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4` |
 | Reset and Remove confirmations (8.3, 8.4) | `src/editor/settings/SettingsModal.vue`, `src/editor/commands/previewAssets/StoredAssets.vue`, `src/i18n/{en,ja,ko,zhs,zht,fr,tr}/index.json` (three new keys: `settings.resetSettingsMessage`, `settings.resetKeybindsMessage`, `commands.previewAssets.removeUnused`) |
 | Retune consumers | `src/editor/workspace/manager/ManagerRow.vue`: the whole file, which keeps its own class names (`manager-row-selected`, `manager-row-drop`), so `managerSelection.spec` and `managerFolders.spec` need no change |
-| Tests | `tests/editor/colorRoles.test.ts` and `tests/editor/colorRoles/legacy-C1.txt` … `legacy-C7.txt`, `legacy-C8-H1.txt`, `legacy-C8-H2.txt`, `legacy-C8-H3.txt`; `tests/browser/confirmDialog.spec.ts`; `tests/browser/confirmWhenReady.ts` |
+| Tests | `tests/editor/colorRoles.test.ts` (its allowlists are gone, 11.4); `tests/browser/confirmDialog.spec.ts`; `tests/browser/confirmWhenReady.ts` |
 | | Updated: `settings.spec.ts`, `defaultPanels.spec.ts`, `previewHitboxes.spec.ts`, `shortcuts.spec.ts`, `localizations.spec.ts`, `forcedColors.spec.ts` (Reset buttons, dialogs, Manager) |
 | | Updated: `choiceDialog.spec.ts` expected three distinct backgrounds for Cancel, Replace and Save as a Separate File; with Replace quiet there are two, so it asserts the danger choice's text colour or class instead. `themes.spec.ts` clicks Reset Settings, which now opens a confirmation. `previewAssetsFile.spec.ts` ("One that is not in use goes at once") now confirms |
 | | Run: `managerSelection.spec.ts`, `managerFolders.spec.ts`, `managerModal.spec.ts`, and, because they touch ManagerRow, `managerPanels.spec.ts` (the computed background of a dragged row), `managerDuplicate.spec.ts` and `hitAreas.spec.ts` |
@@ -754,9 +752,9 @@ C5 toolbar notes:
 
 ### C8–C10
 
-- **C8, History:** `src/editor/history/{ChangeArrows, GoToIcon, GoToList, HistoryDialog, HistoryPanel, PeekBar, TimelineList}.vue`, with its legacy list split per History package: H1 `ChangeArrows`, `PeekBar`; H2 `GoToIcon`, `GoToList`, `HistoryDialog`, `HistoryPanel`; H3 `TimelineList`. It lands with the History redesign, which applies section 10 directly after C0. Spec: `historyPanel.spec`.
+- **C8, History:** `src/editor/history/{ChangeArrows, GoToIcon, GoToList, HistoryDialog, HistoryPanel, PeekBar, TimelineList}.vue`, in three History packages: H1 `ChangeArrows`, `PeekBar`; H2 `GoToIcon`, `GoToList`, `HistoryDialog`, `HistoryPanel`; H3 `TimelineList`. It lands with the History redesign, which applies section 10 directly after C0. Spec: `historyPanel.spec`.
 - **C9, change token (optional):** `src/editor/canvas/changes.ts` reads `--color-change` in place of its `#ff9b42`.
-- **C10, close-out:** delete `tests/editor/colorRoles/` and its loader in `colorRoles.test.ts`. Remove leftover `peer-checked:peer-active` patches. Then run the full suite once.
+- **C10, close-out:** done for the guard: the `tests/editor/colorRoles/` directory is deleted (its loader stays, tolerating the absence). Remove leftover `peer-checked:peer-active` patches (none remain in `src`).
 
 **Scope.** About 300 class-string edits in 85 files, mostly mechanical; 7 browser specs with about 15 assertions on classes; three new strings in seven locales.
 
