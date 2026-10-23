@@ -53,6 +53,8 @@ const boot = async (
     page: Page,
     viewport: { width: number; height: number },
     saved: Record<string, unknown> = {},
+    // The minimap is off, as the fixture seeds it, unless the width decides.
+    minimap = false,
 ) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
     await page.route('**/resource/particle.scp*', (route) =>
@@ -61,17 +63,18 @@ const boot = async (
     await page.setViewportSize(viewport)
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript(
-        ({ prefix, keys, saved }) => {
+        ({ prefix, keys, saved, minimap }) => {
             // Undo the closed Preview and Properties the counters seed.
             localStorage.removeItem(prefix + 'showPreview')
             localStorage.removeItem(prefix + 'showSidebar')
+            if (minimap) localStorage.removeItem(prefix + 'showMinimap')
             if (sessionStorage.getItem('booted')) return
             sessionStorage.setItem('booted', '1')
             for (const key of keys) localStorage.removeItem(prefix + key)
             for (const [key, value] of Object.entries(saved))
                 localStorage.setItem(prefix + key, JSON.stringify(value))
         },
-        { prefix, keys: panelKeys, saved },
+        { prefix, keys: panelKeys, saved, minimap },
     )
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
@@ -211,6 +214,51 @@ test('an overlaid playback strip keeps a short window as it was', async ({ page 
     await settle(page)
     await expectShown(page, 'left', { Preview: true, Groups: false, Stages: false })
     expect(await stored(page)).toEqual({ showGroups: false, showStages: false })
+})
+
+// The panels, the toolbar's height and the chart's width, as the minimap's room leaves them.
+const arrangement = (page: Page) =>
+    page.evaluate(() => {
+        const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect()
+        return {
+            minimap: document.querySelectorAll('[data-minimap]').length,
+            tabs: [...document.querySelectorAll('[data-workspace-dock] [role="tab"]')].map(
+                (tab) => `${tab.textContent}:${tab.getAttribute('aria-selected')}`,
+            ),
+            toolbar: box('[data-editor-toolbar] > div')?.height,
+            pane: box('.chart-pane')?.width,
+        }
+    })
+
+for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 1366, height: 768 },
+])
+    test(`the minimap's room leaves the panels and the toolbar's row as they were at ${viewport.width}x${viewport.height}`, async ({
+        page,
+    }) => {
+        await boot(page, viewport)
+        const without = await arrangement(page)
+        expect(without.minimap).toBe(0)
+        // The strip is on by default at this width.
+        const other = await page.context().newPage()
+        await boot(other, viewport, {}, true)
+        const withStrip = await arrangement(other)
+        expect(withStrip.minimap).toBe(1)
+        expect(withStrip.tabs).toEqual(without.tabs)
+        expect(withStrip.toolbar).toBe(without.toolbar)
+        // The docks gave the strip its 40 px, so the chart keeps its width.
+        expect(Math.abs(withStrip.pane! - without.pane!)).toBeLessThan(2)
+        expect(await stored(other)).toEqual({})
+    })
+
+test('turning the minimap on or off saves the panels the default showed', async ({ page }) => {
+    await boot(page, { width: 1280, height: 800 })
+    await expectShown(page, 'left', { Preview: true, Groups: true, Stages: true })
+    await page.evaluate(() => (window.editorTest.settings.showMinimap = true))
+    await settle(page)
+    await expectShown(page, 'left', { Preview: true, Groups: true, Stages: true })
+    expect(await stored(page)).toEqual({ showGroups: true, showStages: true })
 })
 
 test('moving a panel saves the panels the default showed', async ({ page }) => {

@@ -79,7 +79,7 @@ export const installCanvasCounters = (legacyCanvas = false) => {
         }
     }
     observe(CanvasRenderingContext2D.prototype)
-    for (const setting of ['showPreview', 'showSidebar']) {
+    for (const setting of ['showPreview', 'showSidebar', 'showMinimap']) {
         localStorage.setItem(`sonolus-next-sekai-editor.${setting}`, 'false')
     }
     // The fixture hook (Part 1 §1.4.2): every load starts blank and at once, as specs expect.
