@@ -33,7 +33,7 @@ export type FileCheckOpen =
     | { kind: 'read'; check: FileCheck; bytes: number }
 
 /** Whether a read failed on the file itself: Chromium's `NotReadableError` after a change. */
-export const isReadError = (error: unknown) =>
+const isReadError = (error: unknown) =>
     error instanceof DOMException ||
     (error instanceof Error &&
         (error.name === 'NotReadableError' || error.name === 'NotFoundError'))
