@@ -312,6 +312,7 @@ const COVERED_READS = [
     'checkStoredOpen',
     'checkStoredBatch',
     'listRecent',
+    'deleteCandidates',
 ]
 
 /** A method name written out: a string literal, or a template literal without holes. */

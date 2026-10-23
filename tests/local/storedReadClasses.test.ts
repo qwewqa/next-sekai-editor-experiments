@@ -30,6 +30,7 @@ const CLASSES = {
     checkStoredOpen: 'covered',
     checkStoredBatch: 'covered',
     listRecent: 'covered',
+    deleteCandidates: 'covered',
     // Other reads: a failure is handled in place, by review.
     readSnapshot: 'read',
     readSnapshotVerified: 'read',

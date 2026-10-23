@@ -23,12 +23,12 @@ export const markOf = (chain: Row): number | 'other' | undefined => {
 }
 
 /** A chain's sessions, oldest first. */
-const sessionsOf = async (tx: KvTx, chainId: string) =>
+export const sessionsOf = async (tx: KvTx, chainId: string) =>
     (await tx.index('sessions', 'chainId').getAll(chainId))
         .filter(isRow)
         .sort((a, b) => Number(a.startedAt) - Number(b.startedAt))
 
-const ids = (rows: Row[]) => rows.map((row) => String(row.id))
+export const ids = (rows: Row[]) => rows.map((row) => String(row.id))
 
 const sameSet = (a: readonly string[], b: readonly string[]) =>
     a.length === b.length && new Set([...a, ...b]).size === a.length && new Set(a).size === a.length
