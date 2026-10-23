@@ -364,17 +364,30 @@ export class StorageCore {
 
     /**
      * Runs a deleting job holding `nse-maint` exclusive, requested with ifAvailable (R1): `ran:
-     * false` when any tab holds or waits for it, and the job is retried later. Stored only.
+     * false` when any tab holds or waits for it, and the job is retried later. It runs while
+     * storing is paused (it is the way out of a full browser), and its failures leave the pause.
      */
     async exclusive<T>(
         body: (hold: ExclusiveHold) => Promise<T>,
     ): Promise<{ ran: true; value: T } | { ran: false }> {
         while (this.moving) await this.moving
         const { mode, reason } = this.current
-        if (mode !== 'stored')
-            throw new StorageRefusedError(mode === 'readOnly' ? 'readOnly' : 'failed')
+        if (mode === 'readOnly') throw new StorageRefusedError('readOnly')
         if (reason === 'upgrading') throw new StorageRefusedError('upgrading')
         const { locks } = this.deps
+        const memory = mode === 'memory' ? this.db : undefined
+        // This tab's own in-memory store: no other tab, so no lock.
+        if (memory)
+            return {
+                ran: true,
+                value: await body({
+                    read: (stores, fn) => this.read(stores, fn),
+                    write: (stores, fn, options = {}) =>
+                        memory.transaction(stores, 'readwrite', fn, options),
+                    writerWaiting: () => Promise.resolve(false),
+                }),
+            }
+        if (mode !== 'stored') throw new StorageRefusedError('failed')
         const hold: ExclusiveHold = {
             read: (stores, fn) => this.read(stores, fn),
             write: (stores, fn, options = {}) => this.attempt(stores, fn, options, false),

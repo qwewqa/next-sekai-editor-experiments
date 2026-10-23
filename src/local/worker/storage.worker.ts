@@ -1,6 +1,7 @@
 import { journalHandlers } from '../journal/handlers'
 import { bindHandlers } from './bindHandlers'
 import { changeHandlers } from './changeHandlers'
+import { checkHandlers } from './checkHandlers'
 import { diagnosticHandlers } from './diagnosticHandlers'
 import { flushHandlers } from './flushHandlers'
 import { createContext } from './handlers'
@@ -36,6 +37,7 @@ const handlers = {
     ...saveHandlers(context),
     ...bindHandlers(context),
     ...openHandlers(context),
+    ...checkHandlers(context),
     ...diagnosticHandlers(context),
     ...maintHandlers(context),
 }
