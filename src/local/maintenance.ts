@@ -107,12 +107,14 @@ export const createRunner = (deps: RunnerDeps) => {
 
     /** Runs the steps, or queues one more run behind the one running. */
     const trigger = (load = false): Promise<void> => {
-        if (!deps.visible()) {
+        const hidden = !deps.visible()
+        // A load that can't run now keeps its pressure check for the next run.
+        if (load && (hidden || running)) {
+            owedPressure.load = true
+            askPersist()
+        }
+        if (hidden) {
             owed = true
-            if (load) {
-                owedPressure.load = true
-                askPersist()
-            }
             return Promise.resolve()
         }
         if (running) {

@@ -177,6 +177,19 @@ test('a trigger during a run queues one more run, not one per trigger', async ()
     assert.equal(log.filter((each) => each === 'sweep').length, 2)
 })
 
+test('a load that arrives during a run keeps its pressure check and persist() for the queued run', async () => {
+    const { runner, log, holdSweep } = setup()
+    const release = holdSweep()
+    // Storing paused full before the load's idle: its run is going when the load arrives.
+    const first = runner.full()
+    void runner.start()
+    release()
+    await first
+    assert.equal(log.filter((each) => each === 'sweep').length, 2)
+    assert.equal(log.filter((each) => each === 'atLoad').length, 1)
+    assert.equal(log.filter((each) => each === 'persist').length, 1)
+})
+
 test('a busy run tries again 30 s later; a hidden page waits until it is visible', async () => {
     const { runner, log, sweeps, clock, advance } = setup()
     sweeps.push({ removed: 0, busy: true })
