@@ -960,7 +960,9 @@
                 "atLoad": "Startup Notices"
             },
             "openHistory": "Open History",
-            "confirmClose": "Ask Before Closing with Unsaved Changes"
+            "confirmClose": "Ask Before Closing with Unsaved Changes",
+            "exportRaw": "Export Raw Data…",
+            "exportRawName": "{0} raw data {1}.zip"
         }
     },
     "sidebars": {

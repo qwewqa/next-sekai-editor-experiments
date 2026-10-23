@@ -960,7 +960,9 @@
         "atLoad": "Notifications au démarrage"
       },
       "openHistory": "Ouvrir l’historique",
-      "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées"
+      "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
+      "exportRaw": "Exporter les données brutes…",
+      "exportRawName": "{0} données brutes {1}.zip"
     }
   },
   "sidebars": {

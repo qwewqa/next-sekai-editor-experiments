@@ -960,7 +960,9 @@
         "atLoad": "Başlangıç Bildirimleri"
       },
       "openHistory": "Geçmişi Aç",
-      "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor"
+      "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
+      "exportRaw": "Ham Verileri Dışa Aktar…",
+      "exportRawName": "{0} ham veriler {1}.zip"
     }
   },
   "sidebars": {

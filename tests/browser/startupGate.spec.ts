@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { inflateRawSync } from 'node:zlib'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
@@ -218,28 +220,89 @@ test.describe('the startup gate', () => {
         await expect(gate(page).locator('[data-startup-error]')).toHaveText(
             'A row could not be read',
         )
-        // No Start Blank on a failure, and no raw export until it is built.
-        await expect(gate(page).getByRole('button')).toHaveText(['Open in Safe Mode'])
-        await page.evaluate(installEditorFixture)
-        await page.evaluate(async () => {
-            const gate =
-                await window.editorTest.appImport<typeof import('../../src/startup/gate')>(
-                    '/src/startup/gate.ts',
-                )
-            gate.setRawExport({
-                label: () => 'Export Raw Data…',
-                run: () => {
-                    window.asked = 7
-                },
-            })
-        })
+        // No Start Blank on a failure.
         await expect(gate(page).getByRole('button')).toHaveText([
             'Open in Safe Mode',
             'Export Raw Data…',
         ])
-        await gate(page).getByRole('button', { name: 'Export Raw Data…' }).click()
-        expect(await page.evaluate(() => window.asked)).toBe(7)
         expect(errors.some((text) => text.includes('A row could not be read'))).toBe(true)
+    })
+
+    type RawDump = {
+        format: string
+        stores: { name: string; records: { key: unknown }[] }[]
+        localStorage: Record<string, string>
+    }
+
+    /** dump.json out of an exported ZIP: one DEFLATE entry, the local header's sizes locate its data. */
+    const dumpOfZip = (bytes: Buffer) => {
+        expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK\x03\x04')
+        const nameLength = bytes.readUInt16LE(26)
+        const extraLength = bytes.readUInt16LE(28)
+        expect(bytes.subarray(30, 30 + nameLength).toString()).toBe('dump.json')
+        const start = 30 + nameLength + extraLength
+        return JSON.parse(
+            inflateRawSync(bytes.subarray(start, start + bytes.readUInt32LE(18))).toString(),
+        ) as RawDump
+    }
+
+    test('Export Raw Data… on the error state downloads the stored data as one ZIP', async ({
+        page,
+    }) => {
+        await startupFlags(page, { fail: 'A row could not be read' })
+        await page.addInitScript(
+            (key) => localStorage.setItem(key, '"db-test"'),
+            `${prefix}rawExportTest`,
+        )
+        await boot(page)
+        const download = page.waitForEvent('download')
+        await gate(page).getByRole('button', { name: 'Export Raw Data…' }).click()
+        const file = await download
+        expect(file.suggestedFilename()).toMatch(
+            /^Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip$/,
+        )
+        const dump = dumpOfZip(readFileSync(await file.path()))
+        expect(dump.format).toBe('nse-local-data-dump')
+        expect(dump.localStorage[`${prefix}rawExportTest`]).toBe('"db-test"')
+        // The gate stays: exporting is not a way out.
+        await expect(gate(page)).toBeVisible()
+    })
+
+    test('the export reads a real database, and never creates a missing one', async ({ page }) => {
+        // A page of the app's origin that is not the editor, so nothing else opens the database.
+        await page.goto('/gate.js')
+        const run = () =>
+            page.evaluate(async () => {
+                const path = '/src/local/rawExport.ts'
+                const { buildRawExport } = (await import(
+                    path
+                )) as typeof import('../../src/local/rawExport')
+                const zip = await buildRawExport('0.0.0')
+                const names = (await indexedDB.databases()).map((db) => db.name)
+                return { bytes: Array.from(new Uint8Array(await zip.arrayBuffer())), names }
+            })
+        const missing = await run()
+        expect(missing.names).not.toContain('nse-local-data')
+        expect(dumpOfZip(Buffer.from(missing.bytes)).stores).toEqual([])
+        await page.evaluate(
+            () =>
+                new Promise<void>((resolve, reject) => {
+                    const open = indexedDB.open('nse-local-data', 1)
+                    open.onupgradeneeded = () => {
+                        open.result.createObjectStore('chains', { keyPath: 'chainId' })
+                        open.transaction!.objectStore('chains').put({ chainId: 'c1', head: 7 })
+                    }
+                    open.onsuccess = () => {
+                        open.result.close()
+                        resolve()
+                    }
+                    open.onerror = () => reject(open.error)
+                }),
+        )
+        const stored = dumpOfZip(Buffer.from((await run()).bytes))
+        expect(stored.stores.map((store) => [store.name, store.records.length])).toEqual([
+            ['chains', 1],
+        ])
     })
 
     test('Escape does not close it', async ({ page }) => {
