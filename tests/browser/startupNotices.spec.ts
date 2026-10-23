@@ -797,9 +797,10 @@ test.describe('Reopen', () => {
             chainId,
         )
         await reopen.click()
+        // A card: the request was the user's, and a quick toast would fade before it is read.
         await expect(
             page
-                .locator('.notification, .notification-pill')
+                .locator('.notification-pill')
                 .filter({ hasText: 'This session was deleted in another tab or window.' }),
         ).toBeVisible()
         await expect(page.getByRole('button', { name: /^Reopen / })).toHaveCount(0)
@@ -813,6 +814,36 @@ test.describe('Reopen', () => {
         ).toBeUndefined()
     })
 
+    // The card names the session it was raised for. Another switch can leave a different one
+    // while the card still shows, and the button must not open that one.
+    test('a Reopen offered for a session this tab has since left reopens nothing', async ({
+        page,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        await run(page, 'reset')
+        await expect(
+            page.locator('.notification-pill').getByRole('button', { name: /^Reopen / }),
+        ).toBeVisible()
+        const result = await page.evaluate(async () => {
+            const { previousSession } =
+                (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
+            const { reopenPrevious } =
+                (await import('/src/editor/switch.ts')) as typeof import('../../src/editor/switch')
+            const offered = previousSession.value
+            // Not stored: an attempt on it would fail and clear the offer.
+            previousSession.value = {
+                sessionId: 'nothing',
+                name: { name: { kind: 'name', text: 'Later' }, at: 0 },
+            }
+            const opened = await reopenPrevious(offered)
+            return { opened, still: previousSession.value?.sessionId }
+        })
+        expect(result).toEqual({ opened: false, still: 'nothing' })
+        expect(await lifeOf(page)).toBe(1000)
+    })
+
     test('Restore as a Copy from a load notice says why when the session is gone', async ({
         page,
     }) => {
@@ -824,7 +855,7 @@ test.describe('Reopen', () => {
         })
         await expect(
             page
-                .locator('.notification, .notification-pill')
+                .locator('.notification-pill')
                 .filter({ hasText: 'This session could not be opened.' }),
         ).toBeVisible()
     })

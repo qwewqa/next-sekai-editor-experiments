@@ -9,7 +9,7 @@ import { fileActions } from './actions'
 import type { ChipKind } from './chip'
 import { notStored, type NotStoredCause } from './notStored'
 import { pausedReasonLine } from './notStoredReason'
-import { boundFile, chip, confirmFile, fileChanged } from './state'
+import { boundFile, chip, confirmFile } from './state'
 import { tryStoringAgain } from './tryAgain'
 
 // The chip's text and the dialog a tap opens (Part 1 §1.3.4): the first state's dialog, with the
@@ -85,7 +85,8 @@ const notStoredChoices = (cause: NotStoredCause | undefined): Choice<NotStoredCh
 /** The Not stored dialog (Part 1 §1.6.7): why, what to do about it, and Save as the way out. */
 const openNotStored = async (rest: readonly ChipKind[]) => {
     const cause = notStored.value
-    const settling = rest.includes('notConfirmed') && !fileChanged.value
+    // The chip lists the download line only while nothing has changed since (`chipKinds`).
+    const settling = rest.includes('notConfirmed')
     const choice = await showChoice<NotStoredChoice>({
         title: () => i18n.value.prompt.title,
         // The reason is read again, so a change while the dialog is open shows.
@@ -104,14 +105,6 @@ const openNotStored = async (rest: readonly ChipKind[]) => {
                       } as const,
                   ]
                 : [
-                      ...(rest.includes('notConfirmed')
-                          ? [
-                                {
-                                    value: 'confirm',
-                                    label: () => i18n.value.confirm.haveFile,
-                                } as const,
-                            ]
-                          : []),
                       {
                           value: 'save',
                           label: () => i18n.value.prompt.save,
