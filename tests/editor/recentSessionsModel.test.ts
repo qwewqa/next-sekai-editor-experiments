@@ -269,3 +269,38 @@ test('the first read lands even when the pointer is already over the list', asyn
     await list.refresh()
     assert.deepEqual(ids(list), ['a'])
 })
+
+test('a chain marked for Delete stands as its inline row where it was, also once the read drops it', () => {
+    const deleted = (id: string, ago: number, status: 'deleted' | 'lost' = 'deleted') =>
+        [
+            id,
+            { chain: chain(id, ago), name: id.toUpperCase(), mark: { chainId: id, at: 1 }, status },
+        ] as const
+    // Listed and marked: the inline row replaces the chain's row.
+    let rows = buildRows(
+        [chain('a', HOUR), chain('b', 2 * HOUR)],
+        context({ deleted: new Map([deleted('a', HOUR)]) }),
+    )
+    assert.deepEqual(
+        rows.map((row) => (row.type === 'header' ? 'day' : `${row.type}:${row.id}`)),
+        ['day', 'deleted:a', 'chain:b'],
+    )
+    // The read no longer lists it (it is marked in storage): it goes back in by its last edit.
+    rows = buildRows(
+        [chain('a', HOUR), chain('c', 3 * HOUR)],
+        context({ deleted: new Map([deleted('b', 2 * HOUR, 'lost')]) }),
+    )
+    assert.deepEqual(
+        rows.map((row) => (row.type === 'header' ? 'day' : `${row.type}:${row.id}`)),
+        ['day', 'chain:a', 'deleted:b', 'chain:c'],
+    )
+    // Newest of all, and oldest of all.
+    rows = buildRows(
+        [chain('b', 2 * HOUR)],
+        context({ deleted: new Map([deleted('a', HOUR), deleted('z', 40 * HOUR)]) }),
+    )
+    assert.deepEqual(
+        rows.map((row) => (row.type === 'header' ? 'day' : `${row.type}:${row.id}`)),
+        ['day', 'deleted:a', 'chain:b', 'day', 'deleted:z'],
+    )
+})
