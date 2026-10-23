@@ -771,7 +771,7 @@
     "shiftF10": "按 Shift+F10 或菜单键可打开当前焦点项的菜单。",
     "recentSessions": "未保存到文件的内容在“历史记录 › 最近会话”中。",
     "fileTitle": "文件",
-    "moveBetweenDevices": "要将工作移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
+    "moveBetweenDevices": "要将内容移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
     "crswap": "保存时发生崩溃，可能会在项目文件旁留下 .crswap 文件。可以放心删除。"
   },
   "elevation": {
@@ -1237,7 +1237,7 @@
       "readOnly": "已打开过更新版本的编辑器。",
       "upgrading": "另一个标签页中打开了更新版本的编辑器。"
     },
-    "unavailable": "编辑器无法在此浏览器中存储更改。请保存到文件中以保留你的工作。",
+    "unavailable": "编辑器无法在此浏览器中存储更改。请将内容保存到文件中以保留。",
     "private": "如果这是隐私窗口，此处存储的所有内容会在关闭窗口时丢失。请将内容保存到文件中以保留。",
     "inAppBrowser": "这似乎是应用内浏览器，它可能会删除已存储的内容。如需保留内容，请在浏览器中打开此页面。",
     "ios": "此浏览器会在 7 天未访问后删除已存储的内容。请将内容保存到文件中以保留。",
@@ -2193,7 +2193,7 @@
     "notDescendant": "此版本并非基于您的版本 ({0})。",
     "separate": "另存为单独文件",
     "openOther": "打开另一个版本",
-    "openOtherNote": "你的更改仍未保存。",
+    "openOtherNote": "您的更改仍未保存。",
     "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
     "keptName": "{0}（{1} 被替换）",
     "replaceNewer": "由更新版本的 {0} 创建。",
@@ -2289,11 +2289,11 @@
       "body": "此关卡使用了此版本编辑器不支持的值。打开单独的副本时，这些值会替换为默认值。",
       "openCopy": "打开副本"
     },
-    "unsavedChanges": "已打开 {0}。你在 {1} 对它有未保存的更改。",
+    "unsavedChanges": "已打开 {0}。您在 {1} 对它有未保存的更改。",
     "unsavedEarlier": "对 {0} 早期版本的未保存更改（{1}）在“最近会话”中。",
     "earlierUnchecked": "已打开 {0}。无法检查“最近会话”中是否有它的其他版本。",
     "unsavedEarlierMaybe": "对 {0} 早期版本的未保存更改（{1}）可能在“最近会话”中。",
-    "unsavedChangesMaybe": "已打开 {0}。你在 {1} 对它可能有未保存的更改。",
+    "unsavedChangesMaybe": "已打开 {0}。您在 {1} 对它可能有未保存的更改。",
     "olderVersion": "这是 {0} 的旧版本。{1} 的较新版本在“最近会话”中。",
     "restoreIt": "还原会话",
     "damagedHistory": "“{0}”的历史记录已损坏。保存时会创建单独的文件。"
@@ -2311,7 +2311,7 @@
     "changedOnDisk": "磁盘上已更改",
     "newerOnDisk": "磁盘上有更新版本",
     "notConfirmed": "下载未确认",
-    "changedOnDiskName": "“{0}”：自你在此处打开或保存后，磁盘上的文件已更改。",
+    "changedOnDiskName": "“{0}”：自您在此处打开或保存后，磁盘上的文件已更改。",
     "newerOnDiskName": "“{0}”：磁盘上有更新版本。",
     "notStored": "未存储"
   },
