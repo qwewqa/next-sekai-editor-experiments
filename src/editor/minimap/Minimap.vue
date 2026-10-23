@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { times } from '..'
+import { undimmed } from '../history/changes'
 import { view } from '../view'
 import { MINIMAP_REM } from '../workspace'
 import type { MinimapAnnotation } from './annotations'
+import { changeTicks } from './changeTicks'
 import { useMinimapContent } from './content'
 import { boxGeometry, useMinimapInput } from './input'
 import { backingSize } from './mapping'
@@ -41,9 +43,9 @@ watch(
     { flush: 'post' },
 )
 
-// The annotation painters are a static list (Part 1 §1.4.22); none is shipped yet.
+// The annotation painters are a static list (Part 1 §1.4.22).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const painters: MinimapAnnotation<any>[] = []
+const painters: MinimapAnnotation<any>[] = [changeTicks]
 
 // The canvas exists only while a painter has something to draw.
 const hasAnnotations = computed(() => painters.some((painter) => painter.inputs() !== undefined))
@@ -98,7 +100,11 @@ onBeforeUnmount(() => {
         @lostpointercapture="onPointerEnd"
         @wheel.prevent="onWheel"
     >
-        <canvas ref="canvas" class="absolute inset-0 size-full" />
+        <canvas
+            ref="canvas"
+            class="absolute inset-0 size-full"
+            :style="{ opacity: undimmed !== undefined ? 0.45 : undefined }"
+        />
         <canvas
             v-if="hasAnnotations"
             ref="annotations"

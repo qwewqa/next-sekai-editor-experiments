@@ -512,6 +512,9 @@ const places = computed((): Place[] => {
         .sort((a, b) => a.time - b.time)
 })
 
+/** The places the minimap marks: those of the change the chart marks, none when it marks none. */
+export const minimapChangePlaces = computed(() => (changeMarks.value ? places.value : undefined))
+
 /** Changes beyond the band's top and bottom edges. */
 export const usableBand = computed(() => changeBand.value.top + changeBand.value.bottom < view.h)
 export const offBand = computed(() =>
