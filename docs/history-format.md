@@ -386,7 +386,7 @@ Strict mode checks the container byte for byte, `project.json` and `revision` (a
 
 The checker's hard-coded values are listed in format-versioning section 4, step 3. `ENTRY_KEYS` appears twice in it (strict and `--read`); change both.
 
-Tests: `tests/local/nxsp/` (`read`, `build`, `roundTrip`, `golden` with `golden-v1/`, `checker`, `agreement` (every probe through both readers), `graph`, `project`, `execute`), `tests/zip/` (`zip`, `planConformance` with `plan-conformance-v1/`), `tests/local/records/` (`fields`, `golden`, `schema`, `split`, `canonical`, `chunkVerify`, `hash`, `formatGen`), `tests/local/formatVersions.test.ts`, and the Save tests that run the checker over saved files (`tests/local/save/fixture.ts` `checkFiles`). Checker tests skip without `uv`.
+Tests: `tests/local/nxsp/` (`read`, `build`, `roundTrip`, `golden` with `golden-v1/`, `checker`, `agreement` (every probe through both readers), `graph`, `project`, `execute`), `tests/zip/` (`zip`, `planConformance` with `plan-conformance-v1/`, `nxspV1` over the v1 fixtures), `tests/local/records/` (`fields`, `golden`, `schema`, `split`, `canonical`, `chunkVerify`, `hash`, `formatGen`), `tests/local/formatVersions.test.ts`, and the Save tests that run the checker over saved files (`tests/local/save/fixture.ts` `checkFiles`). Checker tests skip without `uv`.
 
 ## 4. Operations
 
@@ -796,6 +796,7 @@ Before the ship an operation changes in place at version 1; after it, any change
 | `tests/browser/historyNativeProducers.spec.ts`, `historyManagerProducers.spec.ts`, `historySelectionProducers.spec.ts` | The real producer end to end. |
 | `tests/editor/localizations.test.ts`, `localizationUsage.test.ts` | Run as is: every locale has every key with the same placeholders, and every key is read. |
 | Goldens | Only when an id the golden chain holds (`nse.origin`, `nse.continue`, `nse.file.save`) changes shape; regenerate in format-versioning section 4's order. |
+| The v1 fixtures: `tests/native/fixtures/nxsp-v1/`, `tests/fixtures/web-storage-v1/` | The v0.6.0 editor's own files and dumps, frozen with the tag (format-versioning section 8). Read by `tests/zip/nxspV1.test.ts`, `tests/local/journalV1.test.ts`, `tests/local/fixturesV1.test.ts` and `tests/browser/formats/` (`webStorageV1`, `nxspWriteBackV1`). Before the ship, a change to a stored row, a journal or a file regenerates them (`npm run fixtures:v1`); after it, never: a row or entry that a v1 reader must still read keeps its fixture, and a new shape gets new fixtures beside it. |
 
 `tools/fields-v1.json` and `tools/nxsp_check.py` do not change for an operation: operations are not records, and the checker only bounds their bytes.
 
