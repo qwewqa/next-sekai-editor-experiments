@@ -620,7 +620,7 @@
                 "tap": "One-finger tap to use the current tool.",
                 "drag": "One-finger drag to use the current tool.",
                 "quickScroll": "One-finger drag in the quick scroll zone to scroll.",
-                "minimap": "One-finger tap in the minimap to scroll there, or drag its box.",
+                "minimap": "One-finger tap in the minimap to scroll there, or drag the box that marks the visible area.",
                 "deselect": "Two-finger tap to deselect.",
                 "scrollY": "Two-finger pan vertically to scroll.",
                 "scrollX": "Two-finger pan horizontally to scroll.",

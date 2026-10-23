@@ -215,6 +215,9 @@
         "added": "{0} 스테이지 추가됨"
       }
     },
+    "minimap": {
+      "title": "미니맵"
+    },
     "note": {
       "title": {
         "default": "노트",
@@ -617,6 +620,7 @@
         "tap": "한 손가락 탭: 현재 도구 사용",
         "drag": "한 손가락 드래그: 현재 도구 사용",
         "quickScroll": "빠른 스크롤 영역에서 한 손가락 드래그: 스크롤",
+        "minimap": "미니맵에서 한 손가락 탭 또는 보이는 영역을 나타내는 상자 드래그: 해당 위치로 스크롤",
         "deselect": "두 손가락으로 탭하여 선택을 해제하세요.",
         "scrollY": "두 손가락 수직 드래그: 스크롤",
         "scrollX": "두 손가락 수평 드래그: 스크롤",
@@ -632,6 +636,7 @@
         "dragSecondary": "오른쪽 클릭 + 드래그: 보조 도구로 드래그",
         "scrollY": "휠 스크롤: 수직 스크롤",
         "scrollX": "Shift + 휠 스크롤: 수평 스크롤",
+        "minimap": "미니맵에서 왼쪽 클릭 또는 드래그: 해당 위치로 스크롤",
         "zoomY": "Ctrl + 휠 스크롤: 세로 확대/축소",
         "zoomX": "Ctrl + Shift + 휠 스크롤: 가로 확대/축소"
       },
@@ -814,6 +819,7 @@
       },
       "elevationSideBySide": "높이 편집기 나란히 표시",
       "elevationConnectorArrows": "높이 편집기 커넥터 화살표",
+      "minimap": "미니맵 표시",
       "waveformVisualization": {
         "title": "파형 시각화",
         "off": "꺼짐",

@@ -215,6 +215,9 @@
         "added": "已添加{0}舞台"
       }
     },
+    "minimap": {
+      "title": "小地图"
+    },
     "note": {
       "title": {
         "default": "音符",
@@ -617,6 +620,7 @@
         "tap": "单指轻触即可使用当前工具。",
         "drag": "单指拖动即可使用当前工具。",
         "quickScroll": "在快速滚动区域内单指拖动即可滚动。",
+        "minimap": "在小地图中单指轻触即可滚动到该位置，或拖动标出可见区域的方框。",
         "deselect": "双指轻触即可取消选择。",
         "scrollY": "双指垂直平移即可纵向滚动。",
         "scrollX": "双指水平平移即可横向滚动。",
@@ -632,6 +636,7 @@
         "dragSecondary": "按住右键拖动，使用辅助工具进行拖动操作。",
         "scrollY": "滚动滚轮即可垂直滚动。",
         "scrollX": "按下 Shift 键并滚动滚轮以水平滚动。",
+        "minimap": "在小地图中左键单击或拖动即可滚动到该位置。",
         "zoomY": "按下 Ctrl 键并滚动滚轮以垂直缩放。",
         "zoomX": "按下 Ctrl 和 Shift 键并滚动滚轮以水平缩放。"
       },
@@ -814,6 +819,7 @@
       },
       "elevationSideBySide": "高度编辑器并排显示",
       "elevationConnectorArrows": "高度编辑器连接箭头",
+      "minimap": "显示小地图",
       "waveformVisualization": {
         "title": "波形可视化",
         "off": "关",
