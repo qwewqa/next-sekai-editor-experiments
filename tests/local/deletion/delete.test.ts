@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { importLock, sessionLock } from '../../../src/local/locks'
-import { listRecent } from '../../../src/local/recent'
+import { listRecent, readRecent } from '../../../src/local/recent'
 import { SESSION_V } from '../../../src/local/records/version'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld } from '../../../src/local/testing/world'
@@ -324,4 +324,42 @@ test('a continuation whose chain is marked before its first write forks into a v
     assert.equal((await readOpen(page, head)).kind, 'open')
     assert.deepEqual(checkStored(world.memory), [])
     await world.idle()
+})
+
+test('a damaged chain (no head id, or a head with no session row) is Deleted and swept like any other', async () => {
+    for (const damage of ['noHead', 'missingHead'] as const) {
+        const world = createWorld({ seed: 12 })
+        const storage = new MemoryStorage()
+        const { first, second } = await closedChain(world, storage)
+        world.checks.lock = false
+        await tamper(world, async (tx) => {
+            const chain = (await tx.get('chains', first.chainId)) as Record<string, unknown>
+            const rest = { ...chain }
+            delete rest.head
+            await tx.put('chains', damage === 'noHead' ? rest : { ...rest, head: 'vanished' })
+        })
+        world.checks.lock = true
+        const deleter = await openDeleter(world, world.tab('b'), storage)
+        // Recent Sessions lists it as damaged; Delete from its row works all the same.
+        const listed = await deleter.tab.run(() =>
+            deleter.core.read(['chains', 'sessions', 'stackBlocks'], readRecent),
+        )
+        assert.equal(listed.find((each) => each.chainId === first.chainId)?.readable, 'damaged')
+        const marked = await deleter.mark(first.chainId)
+        assert.equal(marked.kind, 'marked', damage)
+        if (marked.kind !== 'marked') return
+        assert.equal(rows(world, 'chains').get(first.chainId)?.deleting !== undefined, true, damage)
+        // Undo brings it back; marked again, the sweep removes it whole.
+        assert.deepEqual(await deleter.undo([marked.mark]), {
+            kind: 'done',
+            restored: [first.chainId],
+            lost: [],
+        })
+        assert.equal((await deleter.mark(first.chainId)).kind, 'marked', damage)
+        assert.deepEqual(await deleter.sweep(), { removed: 1, busy: false }, damage)
+        assert.deepEqual(chainRows(world, first.chainId), { chain: undefined, sessions: [] })
+        for (const id of [first.id, second.id])
+            assert.ok(![...rows(world, 'entries').values()].some((row) => row.sessionId === id))
+        await world.idle()
+    }
 })

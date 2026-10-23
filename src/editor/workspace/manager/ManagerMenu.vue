@@ -32,6 +32,8 @@ export type ManagerMenuItem = {
     group?: string
     /** A name the user gave: truncated to the menu's width, in full as its tooltip. */
     title?: string
+    /** A muted second line under the item, such as why it is off; the item refers to it. */
+    description?: string
 }
 
 const props = defineProps<{
@@ -160,7 +162,8 @@ onMounted(async () => {
     await nextTick()
     if (!active) return
     const list = buttons()
-    ;(props.focusLast ? list.at(-1) : list[0])?.focus({
+    // With every item disabled the menu itself holds focus, so Escape closes only the menu.
+    ;((props.focusLast ? list.at(-1) : list[0]) ?? menu.value)?.focus({
         preventScroll: true,
         ...(props.touch && { focusVisible: false }),
     })
@@ -331,13 +334,14 @@ const onSelect = (event: MouseEvent, item: ManagerMenuItem) => {
                             v-if="section.group !== undefined"
                             :id="`${headingId}-${index}`"
                             aria-hidden="true"
-                            class="manager-menu-heading popup-heading"
+                            class="manager-menu-heading popup-heading truncate"
                         >
                             {{ section.group }}
                         </div>
-                        <template v-for="item in section.items" :key="item.key">
+                        <template v-for="(item, at) in section.items" :key="item.key">
+                            <!-- A destructive item first in the menu has nothing to be set apart from. -->
                             <div
-                                v-if="item.separated || item.destructive"
+                                v-if="item.separated || (item.destructive && (index > 0 || at > 0))"
                                 role="separator"
                                 class="popup-separator"
                             />
@@ -351,6 +355,11 @@ const onSelect = (event: MouseEvent, item: ManagerMenuItem) => {
                                 :disabled="item.disabled"
                                 :data-menu-key="item.key"
                                 :title="item.title"
+                                :aria-describedby="
+                                    item.description === undefined
+                                        ? undefined
+                                        : `${headingId}-d-${item.key}`
+                                "
                                 @click="onSelect($event, item)"
                             >
                                 <component
@@ -381,6 +390,15 @@ const onSelect = (event: MouseEvent, item: ManagerMenuItem) => {
                                     >{{ item.label }}</span
                                 >
                             </button>
+                            <!-- Under its item, on the label's edge; not dimmed with a disabled item. -->
+                            <p
+                                v-if="item.description !== undefined"
+                                :id="`${headingId}-d-${item.key}`"
+                                class="manager-menu-description -mt-1.5 shrink-0 pb-2 pr-3 text-xs text-fg/80"
+                                :class="glyphless ? 'pl-3' : 'pl-10'"
+                            >
+                                {{ item.description }}
+                            </p>
                         </template>
                     </div>
                 </template>

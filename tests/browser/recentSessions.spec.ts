@@ -123,7 +123,7 @@ test('one row for each chain, newest first, and a click peeks it with a bar that
         messages.history.today,
     )
     await expect(rowFor(page, 'Alpha').locator('[data-sessions-caption]')).toContainText(
-        /not saved to a file · 0 notes$/,
+        / · 0 notes · not saved to a file$/,
     )
 
     await rowFor(page, 'Alpha').click()
@@ -216,6 +216,7 @@ test('the ⋯ button has no tab stop and a label, and Shift+F10 opens the same m
     await expect(menu.getByRole('menuitem')).toHaveText([
         messages.open.restoreIt,
         sessions.saveToFile,
+        sessions.delete,
     ])
     await page.keyboard.press('Escape')
     await expect(menu).toHaveCount(0)
@@ -225,6 +226,7 @@ test('the ⋯ button has no tab stop and a label, and Shift+F10 opens the same m
     await expect(menu.getByRole('menuitem')).toHaveText([
         messages.open.restoreIt,
         sessions.saveToFile,
+        sessions.delete,
     ])
     await page.keyboard.press('Escape')
     await page.keyboard.press('ContextMenu')
@@ -282,6 +284,7 @@ test('a session open in another tab has the badge, offers Restore as a Copy and 
     await expect(menu.getByRole('menuitem')).toHaveText([
         messages.load.restoreAsCopy,
         sessions.saveToFile,
+        sessions.delete,
     ])
     await menu.getByRole('menuitem', { name: messages.load.restoreAsCopy }).click()
 
@@ -492,9 +495,12 @@ test('a session written by a newer version is listed but cannot be peeked or res
     await expect(peekBar(page)).toHaveCount(0)
     await row.locator('[data-sessions-more]').click()
     const items = page.getByRole('menuitem')
-    await expect(items).toHaveCount(2)
+    await expect(items).toHaveCount(3)
     await expect(items.nth(0)).toBeDisabled()
     await expect(items.nth(1)).toBeDisabled()
+    // Delete is the user's own act and works on any chain; the others say why they are off.
+    await expect(items.nth(2)).toBeEnabled()
+    await expect(page.getByRole('menu').getByText(messages.load.sessionLater)).toHaveCount(1)
 })
 
 test('Save to File… of a closed session opens the save dialog for it', async ({ page }) => {
@@ -525,4 +531,24 @@ test('a session’s peek ends with the tab, and offers no Find Edits Here', asyn
     await page.keyboard.press('Shift+H')
     await page.getByRole('tab', { name: messages.history.timeline }).click()
     await expect(peekBar(page)).toHaveCount(0)
+})
+
+test('opening the ⋯ menu of a row peeks that row, and the menu names its chain', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    await closedChain(page, { title: 'Alpha', life: 990 })
+    await closedChain(page, { title: 'Beta', life: 980 })
+    await openSessions(page)
+    await rowFor(page, 'Alpha').click()
+    await expect.poll(() => peekedLife(page)).toBe(990)
+    // The menu of another row moves the peek there, so focus and peek stay on one row.
+    await rowFor(page, 'Beta').locator('[data-sessions-more]').click()
+    await expect.poll(() => peekedLife(page)).toBe(980)
+    await expect(rowFor(page, 'Beta')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('menu')).toContainText('Beta')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).toHaveCount(0)
+    await expect(rowFor(page, 'Beta')).toBeFocused()
 })

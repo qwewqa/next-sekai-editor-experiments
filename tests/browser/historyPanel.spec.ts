@@ -967,7 +967,7 @@ test.describe('the Timeline', () => {
         await seedOlder(page)
         await openTab(page)
         const removed = row(page, 'Removed notes')
-        await expect(removed.locator('[data-history-flag]')).toContainText('removed to save space')
+        await expect(removed.locator('[data-history-flag]')).toContainText('not kept')
         await expect(removed).not.toHaveAttribute('aria-disabled')
         await removed.getByRole('button', { name: /^Step Details: Removed notes,/ }).click()
         await expect(page.getByRole('dialog', { name: 'Step Details', exact: true })).toBeVisible()
@@ -975,7 +975,7 @@ test.describe('the Timeline', () => {
         await page.keyboard.press('Escape')
         await page.setViewportSize({ width: 390, height: 844 })
         await settle(page)
-        await expect(removed.locator('[data-history-flag]')).toContainText('removed to save space')
+        await expect(removed.locator('[data-history-flag]')).toContainText('not kept')
     })
 })
 

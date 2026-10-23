@@ -373,12 +373,12 @@ test('damage found by the import unlinks the session: a new docId, no binding, t
     const again = await chainOf(page, session.sessionId)
     expect(again.badChunks).toEqual(chain.badChunks)
     expect(again.file).toBeUndefined()
-    // History reads the stored marks: the row says damaged, never "removed to save space".
+    // History reads the stored marks: the row says damaged, never "not kept".
     await openHistory(page)
     const flags = timeline(page).locator('[data-history-flag]')
     await expect(flags).toHaveCount(1)
     await expect(flags).toContainText('damaged')
-    await expect(timeline(page)).not.toContainText('removed to save space')
+    await expect(timeline(page)).not.toContainText('not kept')
 })
 
 /** Slows the import, so a spec acts while it runs. */

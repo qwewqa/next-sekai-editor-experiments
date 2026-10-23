@@ -11,6 +11,9 @@ type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
+/** A chain's head session id; a damaged chain has none, and removal is then expected against none. */
+const headIdOf = (chain: Row) => (typeof chain.head === 'string' ? chain.head : undefined)
+
 /** The stores a removal writes. */
 export const REMOVE_STORES = ['chains', 'sessions', 'entries', 'stackBlocks', HANDLES, 'meta']
 
@@ -36,8 +39,8 @@ export type RemoveRequest = {
     chainId: string
     /** The chain's sessions as the page read and locked them, oldest first. */
     locked: string[]
-    /** The chain as read: removal is refused when it changed since. */
-    expect: { head: string; updatedAt: number; deleting?: number }
+    /** The chain as read: removal is refused when it changed since. A damaged chain has no `head`. */
+    expect: { head?: string; updatedAt: number; deleting?: number }
     /** `delete` removes only a chain carrying this mark; `deleteSessions` only an unmarked one. */
     reason: 'delete' | 'deleteSessions'
 }
@@ -58,7 +61,7 @@ export const removeTx = async (tx: KvTx, request: RemoveRequest): Promise<Remove
     const { chainId, locked, expect, reason } = request
     const changed = { kind: 'changed' } as const
     const chain = await tx.get('chains', chainId)
-    if (!isRow(chain) || chain.head !== expect.head || chain.updatedAt !== expect.updatedAt)
+    if (!isRow(chain) || headIdOf(chain) !== expect.head || chain.updatedAt !== expect.updatedAt)
         return changed
     const mark = markOf(chain)
     if (mark !== expect.deleting || (reason === 'delete') !== (mark !== undefined)) return changed
@@ -78,22 +81,25 @@ export const removeTx = async (tx: KvTx, request: RemoveRequest): Promise<Remove
 
 /** What Delete reads of a chain before it locks it. */
 export type DeleteTarget =
-    { kind: 'gone' } | { kind: 'chain'; head: string; updatedAt: number; sessions: string[] }
+    { kind: 'gone' } | { kind: 'chain'; head?: string; updatedAt: number; sessions: string[] }
 
-/** A chain to Delete: gone when there is no record or it is marked already. */
+/**
+ * A chain to Delete: gone when there is no record or it is marked already. A damaged chain (no head
+ * id, or a head session that is missing) is a target all the same: the user's Delete always works.
+ */
 export const readDeleteTarget = async (tx: KvTx, chainId: string): Promise<DeleteTarget> => {
     const chain = await tx.get('chains', chainId)
-    if (!isRow(chain) || markOf(chain) !== undefined || typeof chain.head !== 'string')
-        return { kind: 'gone' }
+    if (!isRow(chain) || markOf(chain) !== undefined) return { kind: 'gone' }
+    const head = headIdOf(chain)
     return {
         kind: 'chain',
-        head: chain.head,
+        ...(head === undefined ? {} : { head }),
         updatedAt: Number(chain.updatedAt),
         sessions: ids(await sessionsOf(tx, chainId)),
     }
 }
 
-export type MarkRequest = { chainId: string; sessions: string[]; head: string; wall: number }
+export type MarkRequest = { chainId: string; sessions: string[]; head?: string; wall: number }
 
 export type MarkResult = { kind: 'marked'; at: number } | { kind: 'changed' } | { kind: 'gone' }
 
@@ -101,7 +107,7 @@ export type MarkResult = { kind: 'marked'; at: number } | { kind: 'changed' } | 
 export const markTx = async (tx: KvTx, request: MarkRequest): Promise<MarkResult> => {
     const chain = await tx.get('chains', request.chainId)
     if (!isRow(chain) || markOf(chain) !== undefined) return { kind: 'gone' }
-    if (chain.head !== request.head) return { kind: 'changed' }
+    if (headIdOf(chain) !== request.head) return { kind: 'changed' }
     if (!sameSet(ids(await sessionsOf(tx, request.chainId)), request.sessions))
         return { kind: 'changed' }
     const at = await stampNow(tx, request.wall)
@@ -131,7 +137,7 @@ export const undoTx = async (tx: KvTx, marks: readonly Mark[]) => {
 export type Marked = {
     chainId: string
     at: number
-    head: string
+    head?: string
     updatedAt: number
     sessions: string[]
 }
@@ -144,14 +150,15 @@ export const readMarked = async (
     const now = nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, wall)
     const out: Marked[] = []
     for (const chain of await tx.getAll('chains')) {
-        if (!isRow(chain) || typeof chain.head !== 'string') continue
+        if (!isRow(chain)) continue
         const at = markOf(chain)
         if (typeof at !== 'number' || now - at < minAgeMs) continue
         const chainId = String(chain.chainId)
+        const head = headIdOf(chain)
         out.push({
             chainId,
             at,
-            head: chain.head,
+            ...(head === undefined ? {} : { head }),
             updatedAt: Number(chain.updatedAt),
             sessions: ids(await sessionsOf(tx, chainId)),
         })

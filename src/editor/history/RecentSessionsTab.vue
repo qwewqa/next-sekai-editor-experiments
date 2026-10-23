@@ -9,11 +9,10 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { dayKey } from '../../calendar/calendar'
 import { peekedKey } from '../../history/peek'
 import { session } from '../../history/session'
 import { liveState } from '../../history/stack'
-import { displayName, namePartsOf, type DisplayName } from '../../local/names'
+import { displayName, type DisplayName } from '../../local/names'
 import { i18n } from '../../i18n'
 import { storageWorker } from '../../local/start'
 import { listRecent, type RecentChain } from '../../local/recent'
@@ -29,15 +28,10 @@ import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
 import { downloadConfirmed } from '../file/flags'
-import {
-    diskFinding,
-    downloadNotConfirmed,
-    fileChanged,
-    fileEvent,
-    writesInPlace,
-} from '../file/state'
+import { writesInPlace } from '../file/state'
 import { platform } from '../../platform'
 import { labelAccessibleName, labelLine, labelOf } from '../fileLabel'
+import { liveRow } from '../liveRow'
 import { readBrowserFacts, storageLineKey } from '../settings/storageLine'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import MoreIcon from '../workspace/manager/icons/MoreIcon.vue'
@@ -54,7 +48,16 @@ import {
     sessionMenuItems,
     type SessionMenuItem,
 } from './sessionActions'
-import { buildRows, createRecentList, peekable, restoreMode, type ChainRow } from './sessions'
+import {
+    buildRows,
+    createRecentList,
+    peekable,
+    restoreMode,
+    type ChainRow,
+    type DeletedRow,
+    type NavRow,
+} from './sessions'
+import { onDeleteChanged, sessionDelete } from './sessionDeleteLive'
 import { listFocus } from './state'
 
 // Recent Sessions (Part 1 §1.4.10.6): one row per chain, newest first, under the Timeline's day
@@ -111,13 +114,18 @@ const rows = computed(() =>
         thisChain: thisChain.value,
         elsewhere: list.elsewhere.value,
         failed: failedRows.value,
+        deleted: sessionDelete.inline.value,
     }),
 )
+// The rows the cursor visits: chains, and the inline Undo rows that stand where chains were.
+const navRows = computed(() =>
+    rows.value.filter((row): row is NavRow => row.type === 'chain' || row.type === 'deleted'),
+)
 const chainRows = computed(() => rows.value.filter((row): row is ChainRow => row.type === 'chain'))
-const rowById = (id: string) => chainRows.value.find((row) => row.id === id)
+const rowById = (id: string) => navRows.value.find((row) => row.id === id)
 
-// --- Text. A row's file part is the status bar's own (`labelOf`); this tab's row reads the live
-// session, so it is right before the first flush.
+// --- Text. A row's file part is the status bar's own (`labelOf`); this tab's row is `liveRow`,
+// the open session's, so it is right before the first flush.
 const notesIn = (state: typeof liveState.value) => {
     let count = 0
     for (const notes of state.store.slides.note.values()) count += notes.length
@@ -132,38 +140,6 @@ const namedBy = (shown: DisplayName, startedAt: number | undefined) =>
           ? i18n.value.save.placeholder
           : interpolateRaw(i18n.value.session.untitled, format.value.dateTime(startedAt))
 
-// This tab's name and label are the open session's, as the status bar has them (labelText.ts).
-const liveName = computed(() => {
-    const open = session.value
-    return namedBy(
-        displayName(
-            namePartsOf(
-                {
-                    name: open.name,
-                    sourceName: open.sourceName,
-                    ...(open.file ? { file: { name: open.file.name } } : {}),
-                },
-                liveState.value,
-            ),
-        ),
-        open.startedAt,
-    )
-})
-const liveFile = computed(() =>
-    session.value.file ? { ...session.value.file, event: fileEvent.value } : undefined,
-)
-const liveLabel = computed(() =>
-    labelOf({
-        name: liveName.value,
-        changed: fileChanged.value,
-        writesInPlace: writesInPlace(),
-        notConfirmed: downloadNotConfirmed.value,
-        ...(liveFile.value ? { file: liveFile.value } : {}),
-        ...(session.value.copyOf ? { copyOf: session.value.copyOf } : {}),
-        ...(diskFinding.value ? { diskFinding: diskFinding.value } : {}),
-    }),
-)
-
 /** A download not confirmed: the status bar's rule (state.ts `downloadNotConfirmed`) for a stored file. */
 const notConfirmed = (file: RecentChain['file']) =>
     !!file &&
@@ -174,8 +150,19 @@ const notConfirmed = (file: RecentChain['file']) =>
 
 const nameOf = (row: ChainRow) =>
     row.thisTab
-        ? liveName.value
+        ? liveRow.value.name
         : namedBy(displayName(row.chain.nameParts), row.chain.head.startedAt)
+
+/** The inline row's text: Deleted "X", or that it can no longer be undone. */
+const deletedLabel = (row: DeletedRow) =>
+    row.status === 'failed'
+        ? [deletedText(row), i18n.value.session.undoFailed].join(', ')
+        : deletedText(row)
+const deletedText = (row: DeletedRow) =>
+    interpolateRaw(
+        row.status === 'lost' ? i18n.value.session.undoLost : i18n.value.session.deleted,
+        row.name,
+    )
 
 const badgeText = (row: ChainRow) =>
     row.badge === 'thisTab'
@@ -191,11 +178,8 @@ const flagText = (row: ChainRow) =>
           ? i18n.value.history.needsNewer
           : undefined
 
-/** The time under the day's header; an older day is named again, as the Timeline's dividers do. */
-const timeOf = (chain: RecentChain) => {
-    const ago = calendar.value.today - dayKey(chain.updatedAt, calendar.value.zone)
-    return ago <= 1 ? format.value.clock(chain.updatedAt) : format.value.dateTime(chain.updatedAt)
-}
+/** The time under the day's header, which already names the day. */
+const timeOf = (chain: RecentChain) => format.value.clock(chain.updatedAt)
 
 const notesText = (row: ChainRow) => {
     const count = row.thisTab ? notesIn(liveState.value) : row.chain.noteCount
@@ -207,7 +191,7 @@ const notesText = (row: ChainRow) => {
 /** The caption: time, the file part, the notes (or why the session cannot be opened). */
 const captionOf = (row: ChainRow) => {
     const label = row.thisTab
-        ? liveLabel.value
+        ? liveRow.value.label
         : labelOf({
               name: nameOf(row),
               changed: row.chain.changed,
@@ -215,7 +199,8 @@ const captionOf = (row: ChainRow) => {
               notConfirmed: notConfirmed(row.chain.file),
               ...(row.chain.file ? { file: row.chain.file } : {}),
           })
-    return [timeOf(row.chain), labelLine({ ...label, name: '' }), flagText(row) ?? notesText(row)]
+    // The file part last: in a narrow row it is cut first, never the reason or the count.
+    return [timeOf(row.chain), flagText(row) ?? notesText(row), labelLine({ ...label, name: '' })]
         .filter(Boolean)
         .join(' · ')
 }
@@ -224,7 +209,7 @@ const accessibleOf = (row: ChainRow) => {
     const name = nameOf(row)
     const file = row.chain.file
     const label = row.thisTab
-        ? labelAccessibleName(liveLabel.value, name, liveFile.value)
+        ? liveRow.value.accessible
         : labelAccessibleName(
               labelOf({
                   name,
@@ -278,15 +263,16 @@ const markFailed = (row: ChainRow) => (reason: 'damaged' | 'newer') => {
     failedRows.value = new Map(failedRows.value).set(row.id, reason)
 }
 
-const moveTo = (row: ChainRow) => {
+const moveTo = (row: NavRow) => {
     cursorId.value = row.id
-    if (row.thisTab) backToNow()
+    // An inline Undo row has nothing to peek: the chart goes back to now, as on this tab's row.
+    if (row.type === 'deleted' || row.thisTab) backToNow()
     else if (peekable(row)) peekSession(row, safe, nameOf(row), markFailed(row))
     void focusRow(row.id)
 }
 
 const step = (delta: number) => {
-    const all = chainRows.value
+    const all = navRows.value
     if (!all.length) return
     const at = all.findIndex((row) => row.id === cursorId.value)
     const next = all[Math.max(0, Math.min(all.length - 1, (at < 0 ? 0 : at) + delta))]
@@ -310,10 +296,10 @@ const focusRow = async (id = cursorId.value, scroll = true) => {
 
 // Without a cursor the list starts on this tab's row, else the first.
 watch(
-    chainRows,
+    navRows,
     (all) => {
         if (all.some((row) => row.id === cursorId.value)) return
-        const target = all.find((row) => row.thisTab) ?? all[0]
+        const target = all.find((row) => row.type === 'chain' && row.thisTab) ?? all[0]
         cursorId.value = target?.id ?? ''
         if (focusInside.value && target) void focusRow(target.id, false)
     },
@@ -321,7 +307,13 @@ watch(
 )
 
 // --- Rows hold still while the pointer is over the list or focus is in it.
-const onFocusin = () => {
+const onFocusin = (event: FocusEvent) => {
+    // The cursor follows focus onto a row, so a key acts on the row that has it.
+    const id =
+        event.target instanceof HTMLElement
+            ? event.target.closest<HTMLElement>('[data-sessions-row]')?.dataset.chain
+            : undefined
+    if (id && rowById(id)) cursorId.value = id
     focusInside.value = true
     list.hold('focus', true)
 }
@@ -329,6 +321,39 @@ const onFocusout = (event: FocusEvent) => {
     if (event.relatedTarget instanceof Node && scroller.value?.contains(event.relatedTarget)) return
     focusInside.value = false
     list.hold('focus', false)
+}
+
+// --- Delete: the chain is marked, and its row becomes an inline Undo row where it stood. `?safe`
+// is read-only and this tab's own chain is open, so neither is deleted from here.
+const deletable = (row: NavRow | undefined): row is ChainRow =>
+    !safe && row?.type === 'chain' && !row.thisTab
+
+const deleteRow = async (row: NavRow | undefined) => {
+    if (!deletable(row)) return
+    const inside = !!scroller.value?.contains(document.activeElement)
+    // Focus goes to the next real row, else the previous one, never onto an inline Undo row.
+    const all = navRows.value
+    const at = all.findIndex((each) => each.id === row.id)
+    const next =
+        all.slice(at + 1).find((each) => each.type === 'chain') ??
+        all
+            .slice(0, at)
+            .reverse()
+            .find((each) => each.type === 'chain')
+    const outcome = await sessionDelete.remove(row.chain, nameOf(row))
+    if (disposed || outcome !== 'marked' || !next || !inside) return
+    // The row that had focus is replaced.
+    await nextTick()
+    void refocus(next.id)
+}
+/** Puts focus on a row once the one that had it is replaced, unless it has gone elsewhere. */
+const refocus = async (id: string) => {
+    if (disposed) return
+    if (focusLost() || scroller.value?.contains(document.activeElement)) await focusRow(id, false)
+}
+
+const undoRow = (row: DeletedRow) => {
+    if (row.status !== 'lost') void sessionDelete.undo(row.id)
 }
 
 // --- Menu: Restore Session or Restore as a Copy, and Save to File….
@@ -342,12 +367,19 @@ let menuToken = 0
 const openMenu = async (row: ChainRow, anchor: HTMLElement, touch = false) => {
     if (menu.value?.row.id === row.id) return
     const token = ++menuToken
+    // The row whose menu opens is the row peeked and with the cursor, so focus and peek agree.
+    if (cursorId.value !== row.id || (peekable(row) && peekedSession.value?.chainId !== row.id))
+        moveTo(row)
     cursorId.value = row.id
     focusToken++
     // The item reads as of now: who holds the session is asked again.
     const held = await heldElsewhere()
     if (disposed || token !== menuToken) return
-    const items = sessionMenuItems(row, held, safe)
+    // The row's name is the menu's heading, so a sheet over the chart says whose menu it is.
+    const items = sessionMenuItems(row, held, safe).map((item) => ({
+        ...item,
+        group: nameOf(row),
+    }))
     if (!items.length) return
     list.hold('menu', true)
     menu.value = { row, anchor, touch, items }
@@ -363,7 +395,9 @@ const closeMenu = (restoreFocus: boolean) => {
 const onMenuSelect = (key: string, keyboard: boolean) => {
     const open = menu.value
     closeMenu(keyboard)
-    if (open) runSessionItem(key, open.row)
+    if (!open) return
+    if (key === 'delete') void deleteRow(open.row)
+    else runSessionItem(key, open.row)
 }
 
 // iOS fires no contextmenu event for a long press: a touch held still opens the menu itself.
@@ -421,7 +455,7 @@ const onMoreClick = (event: MouseEvent, row: ChainRow) => {
     void openMenu(row, event.currentTarget as HTMLElement, lastPointerType === 'touch')
 }
 
-const onRowClick = (row: ChainRow) => {
+const onRowClick = (row: NavRow) => {
     if (suppressClick) {
         suppressClick = false
         return
@@ -450,13 +484,13 @@ const onKeydown = (event: KeyboardEvent) => {
     if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
         handled()
         const element = row && rowElement(row.id)
-        if (row && element) void openMenu(row, element)
+        if (row?.type === 'chain' && element) void openMenu(row, element)
         return
     }
     if (event.target instanceof HTMLButtonElement && (event.key === 'Enter' || event.key === ' '))
         return
     if (plain && !event.shiftKey) {
-        const all = chainRows.value
+        const all = navRows.value
         switch (event.key) {
             case 'ArrowDown':
             case 'ArrowUp':
@@ -480,10 +514,26 @@ const onKeydown = (event: KeyboardEvent) => {
                 if (row) {
                     handled()
                     if (event.repeat) return
+                    if (row.type === 'deleted') {
+                        undoRow(row)
+                        return
+                    }
                     const mode = restoreMode(row, safe)
                     if (row.thisTab) backToNow()
                     else if (mode) runSessionItem(mode, row)
                 }
+                return
+            case 'Delete':
+                // Only while focus is in the list, so the chart's Delete never runs from here and
+                // this never runs from the chart. A held key deletes one chain.
+                handled()
+                if (!event.repeat) void deleteRow(row)
+                return
+            case ' ':
+                // Space is Undo on an inline row; elsewhere it plays, as the chart's.
+                if (row?.type !== 'deleted') break
+                handled()
+                if (!event.repeat) undoRow(row)
                 return
             case 'Escape':
                 handled()
@@ -519,7 +569,11 @@ const onVisible = () => {
     if (document.visibilityState === 'visible') refresh()
 }
 let channel: BroadcastChannel | undefined
+// A Delete, an Undo or a chain found gone changes the list: it reads at once, the user's own act.
+let stopDeleteChanges: (() => void) | undefined
 onMounted(() => {
+    sessionDelete.listShown(true)
+    stopDeleteChanges = onDeleteChanged(() => void list.refresh({ now: true }))
     void list.refresh({ now: true })
     void readBrowserFacts().then(
         (known) => {
@@ -550,6 +604,8 @@ onBeforeUnmount(() => {
     disposed = true
     focusToken++
     list.dispose()
+    stopDeleteChanges?.()
+    sessionDelete.listShown(false)
     cancelLongPress()
     window.removeEventListener('pageshow', refresh)
     document.removeEventListener('visibilitychange', onVisible)
@@ -641,7 +697,7 @@ const notePointer = (event: PointerEvent) => {
                     v-else
                     role="grid"
                     :aria-label="i18n.history.recentSessions"
-                    :aria-rowcount="chainRows.length"
+                    :aria-rowcount="navRows.length"
                     class="pt-1"
                 >
                     <template v-for="row in rows" :key="row.id">
@@ -652,6 +708,52 @@ const notePointer = (event: PointerEvent) => {
                             class="sessions-header sticky top-0 z-10 flex h-7 select-none items-end bg-modal pb-1 pl-3 pr-3 text-xs font-bold text-fg"
                         >
                             <span class="min-w-0 truncate">{{ headerText(row, calendar) }}</span>
+                        </div>
+                        <!-- A chain marked for Delete stands where it was, with its Undo. -->
+                        <div
+                            v-else-if="row.type === 'deleted'"
+                            :id="domId(row.id)"
+                            role="row"
+                            data-sessions-row
+                            data-sessions-deleted
+                            :data-chain="row.id"
+                            :data-status="row.status"
+                            :tabindex="row.id === cursorId ? 0 : -1"
+                            class="sessions-row scroll-mt-7"
+                            :aria-label="deletedLabel(row)"
+                            @click="onRowClick(row)"
+                        >
+                            <div role="gridcell" class="sessions-text">
+                                <span class="sessions-title">
+                                    <span
+                                        class="min-w-0 flex-1"
+                                        :class="row.status === 'lost' ? 'line-clamp-2' : 'truncate'"
+                                        data-sessions-deleted-text
+                                        >{{ deletedText(row) }}</span
+                                    >
+                                </span>
+                                <span
+                                    v-if="row.status === 'failed'"
+                                    class="sessions-caption"
+                                    data-sessions-undo-failed
+                                    >{{ i18n.session.undoFailed }}</span
+                                >
+                            </div>
+                            <button
+                                v-if="row.status !== 'lost'"
+                                type="button"
+                                tabindex="-1"
+                                class="btn btn-secondary mr-0.5 h-8 min-w-0 max-w-[40%] shrink-0 truncate rounded-full px-4"
+                                data-sessions-undo
+                                @click.stop="undoRow(row)"
+                            >
+                                {{
+                                    row.status === 'failed'
+                                        ? i18n.history.tryAgain
+                                        : i18n.commands.undo.title
+                                }}
+                            </button>
+                            <span v-else class="size-9 shrink-0" aria-hidden="true" />
                         </div>
                         <div
                             v-else
@@ -668,7 +770,6 @@ const notePointer = (event: PointerEvent) => {
                             }"
                             :aria-selected="selectedId === row.id"
                             :aria-label="accessibleOf(row)"
-                            :title="accessibleOf(row)"
                             @click="onRowClick(row)"
                             @contextmenu="onContextMenu($event, row)"
                             @pointerdown="onRowPointerdown($event, row)"
@@ -717,6 +818,10 @@ const notePointer = (event: PointerEvent) => {
                     {{ footer }}
                 </p>
             </template>
+        </div>
+        <!-- Says each outcome of a Delete or an Undo to a screen reader. -->
+        <div class="sr-only" role="status" aria-live="polite" data-sessions-live>
+            {{ sessionDelete.announcement.value }}
         </div>
         <OverlayScrollbar :target="scroller" />
         <ManagerMenu

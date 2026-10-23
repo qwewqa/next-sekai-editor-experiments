@@ -47,6 +47,8 @@ const newer = shallowRef<{ sessionId: string; after: number; path: readonly Path
 const newerCount = ref(0)
 /** Whether older entries remain in storage. */
 export const canLoadMore = ref(false)
+/** The oldest stored session continues one that is no longer stored: the Timeline ends there. */
+export const earlierMissing = ref(false)
 /** The first page's read: loading until it lands, failed when it could not be read. */
 export const status = ref<'loading' | 'ready' | 'failed'>('loading')
 /** An older page is being read. */
@@ -232,10 +234,12 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
     const ticket = ++started
     const fresh: Entry[] = []
     let next: Cursor | undefined
+    let missing: boolean
     try {
         const page = await worker.call('readTimeline', { ...startOf(id), limit: PAGE })
         fresh.push(...page.entries.map(entryOf))
         next = page.next
+        missing = page.earlierMissing === true
         // More than a page can have come in since the last read (a held Undo key stores a burst
         // between two refreshes): read older pages until the run joins the loaded one, so the
         // older pages and the reader's place stay.
@@ -246,6 +250,7 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
             const older = await worker.call('readTimeline', { ...next, limit: PAGE })
             fresh.push(...older.entries.map(entryOf))
             next = older.next
+            missing = older.earlierMissing === true
         }
     } catch {
         if (session.value.sessionId !== id || mark !== epoch || isJumped()) return
@@ -263,6 +268,7 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
     } else {
         stored.value = fresh
         cursor = next
+        earlierMissing.value = missing
     }
     loadedFor.value = id
     canLoadMore.value = !!cursor
@@ -290,6 +296,7 @@ export const loadMore = () => {
             if (session.value.sessionId !== id || cursor !== at || mark !== epoch) return
             stored.value = [...stored.value, ...page.entries.map(entryOf)]
             cursor = page.next
+            earlierMissing.value = page.earlierMissing === true
             canLoadMore.value = !!cursor
             landings.value++
         } catch {
@@ -468,6 +475,7 @@ export const jumpTo = async (target: Target, filter: Filter): Promise<Entry | un
     stored.value = window
     loadedFor.value = id
     cursor = below.next
+    earlierMissing.value = below.earlierMissing === true
     canLoadMore.value = !!cursor
     status.value = 'ready'
     if (above.newer) {
@@ -569,6 +577,7 @@ export const followEntries = () => {
             newerCount.value = 0
             loadedFor.value = undefined
             canLoadMore.value = false
+            earlierMissing.value = false
             status.value = 'loading'
         }
         changed()

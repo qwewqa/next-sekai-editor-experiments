@@ -20,7 +20,7 @@ export type Entry = EntryDescription & {
     time: number
     /** Absent while the entry is only in memory. */
     noteCount?: number
-    /** False for a snapshot removed to save space (§1.6.8). */
+    /** False for a snapshot not kept (§1.6.8). */
     kept: boolean
     /** A `kept: false` entry whose snapshot reaches a part found bad: it reads damaged (§1.4.10.5). */
     damaged?: boolean
@@ -143,7 +143,7 @@ export const buildRows = (
     { filter, expanded, damaged, newer, removed, calendar, gap, more, pinned }: BuildOptions,
 ): Row[] => {
     // A `kept: false` entry is damaged when the worker found its snapshot reaching a bad part, or
-    // when a peek or Restore of it failed in this tab; else it was removed to save space.
+    // when a peek or Restore of it failed in this tab; else it was not kept.
     // An entry a newer version wrote is neither: it is unavailable, and never called damaged.
     const flagsOf = (entry: Entry): Flags => {
         const isNewer = newer?.has(entryId(entry)) === true || entry.unreadable === 'newer'

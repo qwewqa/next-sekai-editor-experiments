@@ -763,6 +763,8 @@
             }
         },
         "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.",
+        "shiftF10": "Shift+F10 or the Menu key opens the menu of the focused item.",
+        "recentSessions": "Work you did not save to a file is in History › Recent Sessions.",
         "fileTitle": "Files",
         "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there.",
         "crswap": "A crash while saving can leave a .crswap file next to the project file. It is safe to delete."
@@ -1345,7 +1347,8 @@
         "tryAgain": "Try Again",
         "steps": "{0} step|{0} steps",
         "newerSteps": "{0} newer step|{0} newer steps",
-        "removedForSpace": "removed to save space",
+        "notKept": "not kept",
+        "earlierNotStored": "Earlier Timeline steps are not stored in this browser.",
         "damaged": "damaged",
         "needsNewer": "needs a newer version",
         "savedOn": "Saved on {0}",
@@ -1368,7 +1371,9 @@
             "thisTab": "This tab",
             "elsewhere": "Open in another tab or window",
             "actions": "More Actions for \"{0}\"",
-            "saveToFile": "Save to File…"
+            "saveToFile": "Save to File…",
+            "delete": "Delete",
+            "openReason": "It is open in another tab or window."
         },
         "details": {
             "title": "Step Details",
@@ -2236,7 +2241,12 @@
         "untitled": "Untitled · {0}",
         "restored": "Restored \"{0}\"",
         "restoredCopy": "Restored a copy of \"{0}\"",
-        "deletedMany": "Deleted {0} session|Deleted {0} sessions"
+        "deletedMany": "Deleted {0} session|Deleted {0} sessions",
+        "deleted": "Deleted \"{0}\"",
+        "deleteRefused": "Not deleted. \"{0}\" is open in another tab or window.",
+        "deleteFailed": "Could not delete \"{0}\"",
+        "undoLost": "Deleted \"{0}\". It can no longer be undone.",
+        "undoFailed": "Undo failed"
     },
     "prompt": {
         "title": "Changes Not Stored",

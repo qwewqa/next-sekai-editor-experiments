@@ -54,7 +54,7 @@ const flagText = (flags: Flags | undefined) =>
         : flags?.newer
           ? i18n.value.history.needsNewer
           : flags?.removed
-            ? i18n.value.history.removedForSpace
+            ? i18n.value.history.notKept
             : undefined
 const meta = computed(() =>
     [

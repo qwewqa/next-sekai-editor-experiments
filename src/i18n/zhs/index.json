@@ -763,6 +763,8 @@
       }
     },
     "altN": "按 Alt+N（macOS 上为 Option+N）可将焦点移至最新通知。之后按 Esc 可将其关闭。",
+    "shiftF10": "按 Shift+F10 或菜单键可打开当前焦点项的菜单。",
+    "recentSessions": "未保存到文件的作品在“历史记录 › 最近会话”中。",
     "fileTitle": "文件",
     "moveBetweenDevices": "要将作品移到另一台设备，请保存为 .nxsp 文件，然后在那台设备上打开该文件。",
     "crswap": "保存时发生崩溃，可能会在项目文件旁留下 .crswap 文件。可以放心删除。"
@@ -1345,7 +1347,8 @@
     "tryAgain": "重试",
     "steps": "{0} 步",
     "newerSteps": "{0} 个较新的步骤",
-    "removedForSpace": "已为节省空间而移除",
+    "notKept": "未保留",
+    "earlierNotStored": "时间线中较早的步骤未存储在此浏览器中。",
     "damaged": "已损坏",
     "needsNewer": "需要更新版本",
     "savedOn": "保存于 {0}",
@@ -1368,7 +1371,9 @@
       "thisTab": "此标签页",
       "elsewhere": "已在另一个标签页或窗口中打开",
       "actions": "“{0}”的更多操作",
-      "saveToFile": "保存到文件…"
+      "saveToFile": "保存到文件…",
+      "delete": "删除",
+      "openReason": "已在另一个标签页或窗口中打开。"
     },
     "details": {
       "title": "步骤详情",
@@ -2236,7 +2241,12 @@
     "untitled": "未命名 · {0}",
     "restored": "已还原“{0}”",
     "restoredCopy": "已还原“{0}”的副本",
-    "deletedMany": "已删除 {0} 个会话"
+    "deletedMany": "已删除 {0} 个会话",
+    "deleted": "已删除“{0}”",
+    "deleteRefused": "未删除。“{0}”已在另一个标签页或窗口中打开。",
+    "deleteFailed": "无法删除“{0}”",
+    "undoLost": "已删除“{0}”。无法再撤销。",
+    "undoFailed": "撤销失败"
   },
   "prompt": {
     "title": "更改未存储",

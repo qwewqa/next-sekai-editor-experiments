@@ -32,7 +32,7 @@ export type TimelineEntry = EntryDescription & {
     kept: boolean
     /**
      * A `kept: false` entry whose snapshot reaches a part found bad (the chain's `badChunks`): it
-     * reads damaged, not removed to save space (§1.4.10.5). Absent otherwise.
+     * reads damaged, not not kept (§1.4.10.5). Absent otherwise.
      */
     damaged?: true
     /**
@@ -67,6 +67,11 @@ export type TimelinePage = {
     entries: TimelineEntry[]
     /** Where the next page starts; absent at the start of the chain. */
     next?: { sessionId: string; before: number }
+    /**
+     * With the start of the chain (no `next`): its oldest stored session continues a session that is
+     * no longer stored (its chain was deleted, or a parent was removed), so earlier steps are gone.
+     */
+    earlierMissing?: true
     /** With `after`: where the next newer page starts and how many stored entries are newer. */
     newer?: { sessionId: string; after: number; count: number }
 }
@@ -163,6 +168,7 @@ const readOlder = async (
     // Exclusive: the entries below this `seq`.
     let upto = before
     let next: TimelinePage['next']
+    let earlierMissing = false
     // Every parent link is followed, however long the chain; a cycle in damaged rows ends it.
     const seen = new Set<string>()
     while (!seen.has(id)) {
@@ -187,6 +193,11 @@ const readOlder = async (
         const session = await tx.get('sessions', id)
         const parent = isRow(session) && isRow(session.parent) ? session.parent : undefined
         if (typeof parent?.id !== 'string' || typeof parent.uptoSeq !== 'number') break
+        // A parent with no row is gone with its entries: the Timeline ends here and says so.
+        if (!isRow(await tx.get('sessions', parent.id))) {
+            earlierMissing = true
+            break
+        }
         id = parent.id
         upto = parent.uptoSeq + 1
         if (entries.length >= limit) {
@@ -195,7 +206,10 @@ const readOlder = async (
         }
     }
     await fillFrom(tx, entries)
-    return next ? { entries, next } : { entries }
+    return {
+        entries,
+        ...(next ? { next } : earlierMissing ? { earlierMissing: true as const } : {}),
+    }
 }
 
 /** The session a session continued, and the entry it continued from. */

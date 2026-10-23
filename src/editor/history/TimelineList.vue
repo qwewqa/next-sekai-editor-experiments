@@ -1,6 +1,3 @@
-// The dialog closes and keeps a peek. The tab goes back to now first, then hands focus // to the
-chart. if (props.surface === 'dialog') emit('close') else if (peekedKey.value || peekedInfo.value)
-moveTo(rows.value[0])
 <script setup lang="ts">
 import {
     computed,
@@ -69,6 +66,7 @@ import {
 } from './selection'
 import {
     canLoadMore,
+    earlierMissing,
     entries,
     followEntries,
     gap,
@@ -239,6 +237,9 @@ const tail = computed(() => {
         return { kind: 'skeleton', height: SKELETON_ROWS * rowHeight.value }
     if (isEmpty.value) return { kind: 'empty', height: MESSAGE.value }
     if (loadingMore.value) return { kind: 'more', height: rowHeight.value }
+    // The chain's oldest stored session continues one that is gone: the list ends with a line.
+    if (earlierMissing.value && !canLoadMore.value)
+        return { kind: 'ended', height: rowHeight.value }
     return { kind: 'none', height: 0 }
 })
 const contentHeight = computed(() => geometry.value.total + tail.value.height + PAD_BOTTOM.value)
@@ -1293,7 +1294,7 @@ const flagTextOf = (row: EntryRow) =>
         : row.flags.newer
           ? i18n.value.history.needsNewer
           : row.flags.removed
-            ? i18n.value.history.removedForSpace
+            ? i18n.value.history.notKept
             : undefined
 
 // A row from a newer version is unavailable, like a removed one, and is not damaged.
@@ -1692,6 +1693,14 @@ defineExpose({
                     >
                         {{ i18n.history.tryAgain }}
                     </button>
+                </div>
+                <div
+                    v-else-if="tail.kind === 'ended'"
+                    class="absolute inset-x-1.5 flex items-center justify-center px-3 text-center text-xs text-fg/80"
+                    :style="{ top: `${geometry.total}px`, height: `${rowHeight}px` }"
+                    data-history-end
+                >
+                    <span class="line-clamp-2 min-w-0">{{ i18n.history.earlierNotStored }}</span>
                 </div>
                 <div
                     v-else-if="tail.kind === 'more'"

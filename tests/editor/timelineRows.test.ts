@@ -422,7 +422,7 @@ test('exact pinned membership survives page arrival at either side of a partial 
     )
 })
 
-test('a kept: false entry the worker found damaged reads damaged, not removed to save space', () => {
+test('a kept: false entry the worker found damaged reads damaged rather than not kept', () => {
     const removed = entry(add(), noon, { kept: false })
     const bad = entry(add(), noon, { kept: false, damaged: true })
     const whole = entry(add(), noon, { damaged: true })

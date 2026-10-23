@@ -763,6 +763,8 @@
       }
     },
     "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır.",
+    "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki öğenin menüsünü açar.",
+    "recentSessions": "Bir dosyaya kaydetmediğiniz çalışma Geçmiş › Son Oturumlar içinde bulunur.",
     "fileTitle": "Dosyalar",
     "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın.",
     "crswap": "Kaydederken bir çökme olursa proje dosyasının yanında bir .crswap dosyası kalabilir. Silmek güvenlidir."
@@ -1345,7 +1347,8 @@
     "tryAgain": "Tekrar Dene",
     "steps": "{0} adım",
     "newerSteps": "{0} yeni adım",
-    "removedForSpace": "yer açmak için kaldırıldı",
+    "notKept": "korunmadı",
+    "earlierNotStored": "Zaman Çizgisi’ndeki önceki adımlar bu tarayıcıda saklanmıyor.",
     "damaged": "hasarlı",
     "needsNewer": "daha yeni bir sürüm gerekiyor",
     "savedOn": "{0} üzerinde kaydedildi",
@@ -1368,7 +1371,9 @@
       "thisTab": "Bu sekme",
       "elsewhere": "Başka bir sekmede veya pencerede açık",
       "actions": "\"{0}\" için diğer işlemler",
-      "saveToFile": "Dosyaya Kaydet…"
+      "saveToFile": "Dosyaya Kaydet…",
+      "delete": "Sil",
+      "openReason": "Başka bir sekmede veya pencerede açık."
     },
     "details": {
       "title": "Adım ayrıntıları",
@@ -2236,7 +2241,12 @@
     "untitled": "Adsız · {0}",
     "restored": "\"{0}\" geri yüklendi",
     "restoredCopy": "\"{0}\" kopyası geri yüklendi",
-    "deletedMany": "{0} oturum silindi"
+    "deletedMany": "{0} oturum silindi",
+    "deleted": "\"{0}\" silindi",
+    "deleteRefused": "Silinmedi. \"{0}\" başka bir sekmede veya pencerede açık.",
+    "deleteFailed": "\"{0}\" silinemedi",
+    "undoLost": "\"{0}\" silindi. Artık geri alınamaz.",
+    "undoFailed": "Geri alma başarısız oldu"
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
