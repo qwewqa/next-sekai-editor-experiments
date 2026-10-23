@@ -252,6 +252,47 @@ test.describe('with a stored BGM', () => {
         await expect(page.getByText('The BGM is not loaded.', { exact: true })).toHaveCount(0)
     })
 
+    test('the BGM dialog with the same file attaches it as Choose Audio… does; an offset with it is one step', async ({
+        page,
+    }) => {
+        await visit(page)
+        const file = wav(0.5)
+        await pickBgm(page, 'pick.wav', file)
+        const picked = await liveBgm(page)
+        await dropMedia(page, picked.hash!)
+        await reload(page)
+        await expect(page.getByText('The BGM is not loaded.', { exact: true })).toBeVisible()
+        const entries = await storedCount(page, 'entries')
+
+        // Picked where the dialog says "BGM not loaded": no "Changed BGM" step from it to itself.
+        await pickBgm(page, 'renamed.wav', file)
+        await expect.poll(() => liveBgm(page)).toEqual(picked)
+        await expect.poll(() => storedCount(page, 'media')).toBe(1)
+        expect(await storedCount(page, 'entries')).toBe(entries)
+
+        // Lost again, then picked with a new offset: the offset is the one step.
+        await dropMedia(page, picked.hash!)
+        await reload(page)
+        await expect(page.getByText('The BGM is not loaded.', { exact: true })).toBeVisible()
+        const before = await storedCount(page, 'entries')
+        await page.keyboard.press('m')
+        const modal = page.getByRole('dialog')
+        const field = modal.locator('input[type="button"]')
+        const choosing = page.waitForEvent('filechooser')
+        await field.click()
+        await (
+            await choosing
+        ).setFiles({ name: 'renamed.wav', mimeType: 'audio/wav', buffer: file })
+        await expect(field).toHaveValue(/^00:/)
+        await modal.getByRole('spinbutton', { name: 'Offset (ms)' }).fill('25')
+        await modal.getByRole('button', { name: 'Confirm', exact: true }).click()
+        await expect(modal).toHaveCount(0)
+        await settled(page)
+        expect(await liveBgm(page)).toEqual({ ...picked, offset: 0.025 })
+        await expect.poll(() => storedCount(page, 'entries')).toBe(before + 1)
+        await expect(page.getByText('Set BGM Offset to 25 ms')).toBeVisible()
+    })
+
     test('Choose Audio… with another file is one BGM change that says it differs', async ({
         page,
     }) => {

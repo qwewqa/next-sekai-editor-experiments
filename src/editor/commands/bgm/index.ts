@@ -2,12 +2,14 @@ import type { Command } from '..'
 import { isPeeking, liveState, pushState } from '../../../history'
 import { bgm as currentBgm } from '../../../history/live'
 import { refuseWhilePeeking } from '../../../history/peek'
+import { session } from '../../../history/session'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import type { Bgm } from '../../../state/bgm'
 import { releaseWaveform } from '../../../waveform'
 import { createAsyncEditGuard } from '../../asyncEditGuard'
 import { bgmOperation } from '../../headerLabels'
+import { applyPick, type PickedBgm } from '../../media/applyPick'
 import { cacheBgm } from '../../media/heldBgm'
 import { notify } from '../../notification'
 import BgmIcon from './BgmIcon.vue'
@@ -33,7 +35,7 @@ export const changeBgm = async (file?: File) => {
     const guard = createAsyncEditGuard()
     const openingBgm = currentBgm.value
     try {
-        const newBgm: Bgm | undefined = await showModal(BgmModal, {
+        let newBgm: Bgm | undefined = await showModal(BgmModal, {
             bgm: openingBgm,
             file,
         })
@@ -42,6 +44,21 @@ export const changeBgm = async (file?: File) => {
         if (!guard.isCurrent()) {
             if (newBgm.waveform !== openingBgm.waveform) releaseWaveform(newBgm.waveform)
             return
+        }
+        // The file the state names, picked while it has no audio: attached as Choose Audio…
+        // attaches it, with no step (§1.6.8.4); only an offset changed with it is one.
+        const named = currentBgm.value
+        const { meta, buffer, source } = newBgm
+        if (meta && buffer && source && !named.buffer && named.meta?.hash === meta.hash) {
+            const picked: PickedBgm = {
+                filename: newBgm.filename ?? meta.filename ?? '',
+                buffer,
+                ...(newBgm.waveform ? { waveform: newBgm.waveform } : {}),
+                source,
+                meta,
+            }
+            applyPick(picked, session.value.sessionId, bgmOperation)
+            newBgm = { ...currentBgm.value, offset: newBgm.offset }
         }
         // Confirming it unchanged is no edit.
         const old = currentBgm.value
