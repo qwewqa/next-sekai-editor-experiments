@@ -281,3 +281,126 @@ test('a chain edited since the dialog read it is skipped, and a run that deletes
     // Edited since it was read: skipped, so nothing went, and the failure says so.
     await expect(notice(page, local.deleteFailed)).toBeVisible()
 })
+
+// --- The Storage subsection, Recovery's Export Raw Data…, and the almost-full notice.
+
+/** The browser's estimate, as a fixed answer (or none). */
+const estimateOf = (page: Page, answer: { usage?: number; quota?: number } | undefined) =>
+    page.addInitScript((value) => {
+        StorageManager.prototype.estimate = () =>
+            value ? Promise.resolve(value) : Promise.reject(new Error('unsupported'))
+    }, answer)
+
+const stored = (page: Page) => page.locator('[data-stored-total]')
+
+test('Storage shows what the browser holds, only when the estimate says both figures', async ({
+    page,
+}) => {
+    await estimateOf(page, { usage: 84_000_000, quota: 2_100_000_000 })
+    errorsFail(page)
+    await load(page)
+    await openLocalData(page)
+    await expect(stored(page)).toHaveText('Stored in this browser: 84 MB of about 2.1 GB')
+    // Delete Sessions… sits under it; Open History moved into Recovery.
+    await expect(
+        page.locator('[data-local-data-storage] [data-delete-sessions-open]'),
+    ).toBeVisible()
+    await expect(page.locator('[data-local-data-recovery] [data-open-history]')).toBeVisible()
+    await expect(page.locator('[data-local-data-storage] [data-not-stored-line]')).toHaveCount(0)
+})
+
+test('no figure is guessed: without a quota the total is left out', async ({ page }) => {
+    await estimateOf(page, { usage: 84_000_000 })
+    errorsFail(page)
+    await load(page)
+    await openLocalData(page)
+    await expect(page.locator('[data-delete-sessions-open]')).toBeVisible()
+    await expect(stored(page)).toHaveCount(0)
+})
+
+test('a full browser: Local Data says why, Try Again says it is still full, Delete Sessions… is there', async ({
+    page,
+}) => {
+    // A full browser logs each failed flush.
+    errorsFail(page, { allow: [/Storing paused: full/] })
+    await load(page, { storage: { forceQuota: true } })
+    await edit(page, 'Full', 990)
+    await expect
+        .poll(() => page.evaluate(() => window.nseStorageTest?.status()))
+        .toEqual({ mode: 'stored', reason: 'full' })
+    await openLocalData(page)
+    const line = page.locator('[data-not-stored-line]')
+    await expect(line).toContainText('Changes are not being stored in this browser.', {
+        timeout: 8000,
+    })
+    await expect(line).toContainText('Browser storage is full.')
+    await expect(page.locator('[data-delete-sessions-open]')).toBeVisible()
+    await line.getByRole('button', { name: 'Try Again' }).click()
+    await expect(notice(page, 'Changes are not being stored in this browser.')).toBeVisible()
+    await expect(line).toBeVisible()
+})
+
+test('Export Raw Data… downloads the stored data and says so', async ({ page }) => {
+    errorsFail(page)
+    await load(page)
+    await openLocalData(page)
+    await expect(page.locator('[data-local-data-recovery]')).toContainText(local.exportRawNote)
+    const download = page.waitForEvent('download')
+    await page.locator('[data-export-raw]').click()
+    expect((await download).suggestedFilename()).toMatch(
+        /^Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip$/,
+    )
+    await expect(notice(page, /^Download started: Next SEKAI Editor raw data/)).toBeVisible()
+    // The progress dialog is gone.
+    await expect(page.getByRole('dialog', { name: local.exportRaw })).toHaveCount(0)
+})
+
+test.describe('almost full', () => {
+    const nearlyFull = { usage: 900_000_000, quota: 1_000_000_000 }
+    const line = (page: Page) => notice(page, messages.load.storageNearlyFull)
+
+    test('says so once per day, with Local Data as its action, and not when there is room', async ({
+        page,
+    }) => {
+        await estimateOf(page, nearlyFull)
+        errorsFail(page)
+        await load(page)
+        await expect(line(page)).toBeVisible({ timeout: 15_000 })
+        await line(page).getByRole('button', { name: messages.load.localData }).click()
+        await expect(page.locator('[data-local-data-storage]')).toBeVisible()
+        // Local Data lists it among this load's notices.
+        await expect(page.locator('[data-at-load] li')).toContainText([
+            messages.load.storageNearlyFull,
+        ])
+        // A reload the same day says nothing.
+        await page.reload()
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await expect
+            .poll(() => page.evaluate(() => window.nseStorageTest?.status()?.mode))
+            .toBe('stored')
+        await expect(line(page)).toHaveCount(0)
+        // Another day says it again.
+        await page.evaluate(() => {
+            localStorage.setItem('sonolus-next-sekai-editor.nearlyFullDay', '"1"')
+        })
+        await page.reload()
+        await expect(line(page)).toBeVisible({ timeout: 15_000 })
+    })
+
+    test('with room left there is no notice and no stamp', async ({ page }) => {
+        await estimateOf(page, { usage: 500_000_000, quota: 1_000_000_000 })
+        errorsFail(page)
+        await load(page)
+        await expect
+            .poll(() => page.evaluate(() => window.nseStorageTest?.status()?.mode))
+            .toBe('stored')
+        // The load's run has had its idle time.
+        await page.waitForFunction(() => document.readyState === 'complete')
+        await expect(line(page)).toHaveCount(0)
+        expect(
+            await page.evaluate(() =>
+                localStorage.getItem('sonolus-next-sekai-editor.nearlyFullDay'),
+            ),
+        ).toBeNull()
+    })
+})
