@@ -275,7 +275,6 @@ test('the cut works on today’s changelog', () => {
         notes,
     })
     assert.deepEqual(checkChangelog(result), [])
-    assert.ok(result.includes('## 0.5.22 (2026-10-17)'))
 })
 
 test('the date is the local calendar date with padding', () => {

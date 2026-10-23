@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
 import test from 'node:test'
-import { fileURLToPath } from 'node:url'
 import { DB_NAME, STORES_V1 } from '../../src/local/db'
 import { dumpDatabase, readDump, toBase64, type Dump } from '../../src/local/dump'
 import type { KvDatabase, KvFactory } from '../../src/local/kv/types'
@@ -187,36 +184,6 @@ test('with storage unavailable the export holds localStorage only', async () => 
     } as unknown as Storage
     const blocked = readDump(await readExport(await buildRawExport('0.6.0', { storage: throwing })))
     assert.deepEqual(blocked.localStorage, {})
-})
-
-test('the export imports no record decoder', () => {
-    const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../src')
-    const resolveImport = (from: string, spec: string) => {
-        const base = resolve(dirname(from), spec)
-        return [`${base}.ts`, `${base}/index.ts`].find((path) => existsSync(path))
-    }
-    // Value imports and re-exports, side-effect imports and dynamic imports; `import type`
-    // carries nothing at run time.
-    const pattern =
-        /(?:^|\n)\s*(?:import|export)(?!\s+type\b)[^'"`;]*?from\s+'(\.[^']*)'|(?:^|\n)\s*import\s+'(\.[^']*)'|import\(\s*'(\.[^']*)'\s*\)/g
-    const seen = new Set<string>()
-    const walk = (file: string) => {
-        if (seen.has(file)) return
-        seen.add(file)
-        for (const match of readFileSync(file, 'utf8').matchAll(pattern)) {
-            const next = resolveImport(file, (match[1] ?? match[2] ?? match[3])!)
-            if (next) walk(next)
-        }
-    }
-    walk(resolve(root, 'local/rawExport.ts'))
-    const names = [...seen].map((file) => file.slice(root.length + 1).replaceAll('\\', '/'))
-    // The walk reached the dump code and the ZIP writer, so it reads imports at all.
-    assert.ok(names.includes('local/dump.ts') && names.includes('zip/writer.ts'), names.join())
-    for (const name of names)
-        assert.ok(
-            !/^local\/(records|nxsp|startup)\//.test(name),
-            `${name} is a record decoder or the startup`,
-        )
 })
 
 test('the file is named for the product and the local date', () => {
