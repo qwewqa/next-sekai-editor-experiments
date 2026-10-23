@@ -230,7 +230,7 @@ test('a changed target meets the conflict dialog’s Export form; Replace keeps 
     const conflict = dialog(page)
     await expect(conflict).toHaveAccessibleName('"LevelData" Changed')
     await expect(conflict).toContainText('"LevelData" changed since you opened it here.')
-    await expect(conflict).toContainText(/[\d.]+ kB.* · /)
+    await expect(conflict).toContainText(/[\d.]+\skB.* · /)
     const buttons = conflict.locator('[data-choice-buttons] button')
     await expect(buttons).toHaveText(['Cancel', 'Replace', 'Choose Another…'])
     await expect(conflict.getByRole('button', { name: 'Choose Another…' })).toBeFocused()
@@ -647,7 +647,7 @@ test('on a download browser, an imported LevelData keeps its own name', async ({
     let download = page.waitForEvent('download')
     await page.keyboard.press('Enter')
     expect((await download).suggestedFilename()).toBe('LevelData')
-    await expect(notice(page)).toHaveText(/^Download started: LevelData · [\d.]+ kB/)
+    await expect(notice(page)).toHaveText(/^Download started: LevelData · [\d.]+\skB/)
 
     // An edited name gets the extension.
     await openExport(page)
@@ -663,7 +663,7 @@ test('a build that outlasted the gesture asks for one more tap', async ({ page }
     await openExport(page)
     await page.keyboard.press('Enter')
     const preparing = dialog(page).locator('[data-export-preparing]')
-    await expect(preparing).toHaveText(/^Preparing LevelData\.nsld… [\d.]+ kB/)
+    await expect(preparing).toHaveText(/^Preparing LevelData\.nsld… [\d.]+\skB/)
     const button = dialog(page).getByRole('button', { name: 'Download' })
     await expect(button).toBeFocused()
     const download = page.waitForEvent('download')
