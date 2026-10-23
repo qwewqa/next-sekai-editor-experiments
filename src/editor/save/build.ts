@@ -1,6 +1,7 @@
 import { captureStep, type JsonValue, type UndoableStep } from '../../history/operations'
 import type { Flusher, FlushSession } from '../../local/flush'
 import { fromHex16, toHex } from '../../local/hash'
+import { heldItemsOf } from '../../local/heldMedia'
 import { toRecords } from '../../local/records/records'
 import { encodeSnapshot } from '../../local/records/snapshot'
 import type { PendingRecords } from '../../local/save/bodies'
@@ -37,18 +38,13 @@ export type BuildEnv = {
 export const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
 /** The head's media this tab holds the bytes of (§1.6.11.6's first source). */
-const heldMedia = (state: State): HeldMedia[] => {
-    const { meta, source } = state.bgm
-    if (!meta || !source) return []
-    return [
-        {
-            hash: meta.hash,
-            bytes: new Uint8Array(source),
-            type: meta.type,
-            ...(meta.filename ? { filename: meta.filename } : {}),
-        },
-    ]
-}
+const heldMedia = (state: State): HeldMedia[] =>
+    heldItemsOf(state).map(({ hash, bytes, type, filename }) => ({
+        hash,
+        bytes: new Uint8Array(bytes),
+        type,
+        ...(filename ? { filename } : {}),
+    }))
 
 /**
  * This tab's part of the saved session no store holds yet, as the writer takes it (§1.6.11.6):
