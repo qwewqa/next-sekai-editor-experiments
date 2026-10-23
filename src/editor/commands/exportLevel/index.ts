@@ -1,7 +1,9 @@
 import type { Command } from '..'
 import { isPeeking } from '../../../history'
-import { filename } from '../../../history/live'
+import { session } from '../../../history/session'
+import { liveState } from '../../../history/stack'
 import { i18n } from '../../../i18n'
+import { displayName, namePartsOf, prefillOf } from '../../../local/names'
 import { showModal } from '../../../modals'
 import { platform } from '../../../platform'
 import type { ReadResult } from '../../save/pickSession'
@@ -25,13 +27,27 @@ const openExport = async () => {
     }
 }
 
+/** The displayed name as a file name (§1.4.8), empty for the date fallback. */
+const shownStem = () => {
+    const open = session.value
+    const parts = namePartsOf(
+        {
+            name: open.name,
+            sourceName: open.sourceName,
+            ...(open.file ? { file: { name: open.file.name } } : {}),
+        },
+        liveState.value,
+    )
+    return prefillOf(displayName(parts))
+}
+
 const openExportDialog = async () => {
     const target = platform.capabilities.writeBack ? await loadExportTarget() : undefined
     const { exportName, sourceName } = exportMemory
     // The name used last; else the source file's own name; else the displayed name, made
     // valid, as "<name> (2)" for a partial import so the picker never suggests the original.
     const fromSource = exportName === undefined && sourceName !== undefined
-    const name = exportName ?? sourceName ?? copyName(validName(filename.value ?? ''))
+    const name = exportName ?? sourceName ?? copyName(validName(shownStem()))
     // The chain's own file is read first when a pick of it could lose what it holds (R2).
     const read: Promise<ReadResult> = import('../../save/exportPick').then(
         (pick) => pick.startExportRead(),

@@ -154,6 +154,24 @@ test('Export names a new chart LevelData, from an empty field with the placehold
     )
 })
 
+test('Export suggests the displayed name: the title before the BGM’s', async ({ page }) => {
+    await start(page, opfs)
+    await page.evaluate(() => {
+        const { history, historySteps } = window.editorTest
+        const state = history.state.value
+        history.pushState(historySteps.futureInitialLife(state.initialLife, 990, 'Life 990'), {
+            ...state,
+            initialLife: 990,
+            levelInfo: { ...state.levelInfo, title: 'Coconut (Master)' },
+            bgm: { ...state.bgm, filename: 'song.mp3' },
+        })
+    })
+    await openExport(page)
+    await expect(dialog(page).getByRole('textbox', { name: 'File Name' })).toHaveValue(
+        'Coconut (Master)',
+    )
+})
+
 test('a typed name is checked, and a forbidden character disables Export at once', async ({
     page,
 }) => {

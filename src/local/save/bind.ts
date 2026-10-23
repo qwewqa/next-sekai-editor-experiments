@@ -8,6 +8,7 @@ import {
     withoutHandles,
 } from '../handleRows'
 import type { KvTx } from '../kv/types'
+import { keptNameOf } from '../names'
 import {
     clearIdentityExport,
     sessionVersionReader,
@@ -25,6 +26,12 @@ import {
 type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
+
+/** A chain losing its file keeps the file's stem as its name, when it has none (§1.3.5). */
+const keepName = (record: Row, fileName: string) => {
+    const name = keptNameOf(record.name, fileName)
+    if (name !== undefined) record.name = name
+}
 
 /** The stores these transactions touch. */
 export const BIND_STORES = ['chains', 'sessions', 'entries', HANDLES] as const
@@ -134,6 +141,7 @@ export const takeOver = async (tx: KvTx, request: TakeOver) => {
             const record: Row = { ...chain }
             Reflect.deleteProperty(record, owner.role)
             if (owner.role === 'file') {
+                keepName(record, owner.name)
                 record.replaced = { by: request.by, at: request.at, name: owner.name }
                 record.edited = true
                 record.hasContent = true
@@ -174,6 +182,7 @@ export const applyRevocation = async (tx: KvTx, chainId: string, revoke: Revocat
     if (!isRow(chain) || !isRow(chain.file) || chain.file.at !== revoke.fileAt) return false
     const record: Row = { ...chain }
     delete record.file
+    keepName(record, revoke.name)
     record.replaced = { by: revoke.by, at: revoke.at, name: revoke.name }
     record.edited = true
     record.hasContent = true

@@ -12,6 +12,7 @@ import { prepareForeign, writeForeign, type PreparedForeign } from '../foreign'
 import { deleteHandleRow, splitHandles } from '../handleRows'
 import { fromHex16, sha256, toHex } from '../hash'
 import { KeyRange, type KvTx } from '../kv/types'
+import { keptNameOf } from '../names'
 import type { ReadHistory } from '../nxsp'
 import type { EntryForm } from '../nxsp/manifest'
 import { putChunk } from '../putChunk'
@@ -685,10 +686,13 @@ export const writeUnlink = async (tx: KvTx, request: UnlinkRequest) => {
     const old =
         chain.badChunks instanceof Uint8Array ? unpackHashes(chain.badChunks).map(toHex) : []
     const bad = [...new Set([...old, ...request.hashes])].map(fromHex16)
-    const { revision: _revision, file: _file, ...rest } = chain
+    const { revision: _revision, file, ...rest } = chain
     await deleteHandleRow(tx, request.chainId, 'file')
+    // Its file's stem stays its name (§1.3.5), so the label and its row keep naming it.
+    const name = keptNameOf(rest.name, isRow(file) ? file.name : undefined)
     const record: Row = {
         ...rest,
+        ...(name === undefined ? {} : { name }),
         docId: request.docId,
         partialImport: true,
         badChunks: packHashes(bad),

@@ -1,6 +1,7 @@
 import { computed, shallowRef, watch } from 'vue'
 import { session, type SessionFile } from '../../history/session'
 import { headSnapshot, isDirty, liveState, loadedHeadSnapshot } from '../../history/stack'
+import { keptNameOf } from '../../local/names'
 import { platform } from '../../platform'
 import type { State } from '../../state'
 import { fileActions } from './actions'
@@ -35,10 +36,11 @@ export const bindFile = (file: SessionFile, state?: State) => {
     finding.value = undefined
 }
 
-/** Binds nothing: Save As… to a new place starts from `bindFile`; a fork has no file. */
+/** Binds nothing: the session lost its file, whose stem stays its name (§1.3.5). */
 export const unbindFile = () => {
-    const { file: _, ...rest } = session.value
-    session.value = rest
+    const { file, ...rest } = session.value
+    const name = keptNameOf(rest.name, file?.name)
+    session.value = name === undefined ? rest : { ...rest, name }
     eventState.value = undefined
     finding.value = undefined
 }

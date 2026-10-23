@@ -1,5 +1,6 @@
 import { session as currentSession } from '../../history/session'
 import type { Flusher, FlushSession } from '../../local/flush'
+import { keptNameOf } from '../../local/names'
 import { storedRead, type ReadWorker } from '../../local/storedRead'
 import type { StorageWorker } from '../../local/worker/client'
 import { unbindFile } from '../file'
@@ -32,7 +33,15 @@ export const refreshBinding = async (worker: ReadWorker, flusher: Flusher | unde
     // A binding kept in memory (storage paused) was made before the takeover: it goes too.
     session.identity = undefined
     const { file: _gone, ...rest } = record ?? session.chain ?? {}
-    session.chain = { ...rest, replaced, edited: true, hasContent: true }
+    // A revocation kept in localStorage: the chain keeps the file's stem, as storage would.
+    const name = keptNameOf(rest.name, replaced.name)
+    session.chain = {
+        ...rest,
+        ...(name === undefined ? {} : { name }),
+        replaced,
+        edited: true,
+        hasContent: true,
+    }
     session.edited = true
     if (currentSession.value.sessionId === session.id && currentSession.value.file) unbindFile()
 }

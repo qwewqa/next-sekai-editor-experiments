@@ -169,7 +169,7 @@ test('suggestions never name a known file: a taken "(2)" gets one more', async (
     await expect(notice(page).filter({ hasText: 'Saved to coconut (2).nxsp' })).toBeVisible()
     // The chain is bound to "coconut (2)" now; its Save As… suggests the next free name.
     await saveAs(page)
-    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (2) (2)')
+    await expect(saveDialog(page, 'Save As').getByRole('textbox')).toHaveValue('coconut (3)')
 })
 
 test('the project picker lists .nxsp only, and a build that outlasted the press asks for Save', async ({
