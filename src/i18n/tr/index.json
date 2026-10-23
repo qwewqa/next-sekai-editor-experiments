@@ -286,7 +286,7 @@
       "title": "Oynat"
     },
     "properties": {
-      "title": "Seviye Özellikleri",
+      "title": "Seviye Bilgileri",
       "modal": {
         "life": "Başlangıç Canı"
       },
@@ -2145,6 +2145,15 @@
     "storedDamaged": "Bu tarayıcıda saklanan {0} Zaman Çizgisi adımı hasarlı.",
     "mediaDamaged": "Bu tarayıcıda saklanan {0} hasarlıydı."
   },
+  "levelInfo": {
+    "file": "Dosya",
+    "check": "Denetle…",
+    "tagsPlaceholder": "Virgülle ayrılmış",
+    "editCover": "Kapak Editöründe Düzenle…",
+    "makePreview": "Arka Plan Müziğinden Oluştur…",
+    "notLoaded": "yüklenmedi",
+    "discard": "Seviye bilgilerindeki değişiklikler silinsin mi?"
+  },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
     "exportBody": "\"{0}\", son dışa aktarmanızdan bu yana değişti.",
@@ -2314,6 +2323,7 @@
     "folder": "Klasör",
     "groupFolder": "Grup Klasörü",
     "stageFolder": "Sahne Klasörü",
+    "level": "Seviye",
     "levelInfo": "Seviye Bilgileri",
     "fields": {
       "title": "Başlık",

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { UtilityResult } from '../../levelInfo/picked'
 import { ref, provide, onUnmounted } from 'vue'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
@@ -15,6 +16,17 @@ import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
 // Long values go below their label, as in Settings.
 provide(stackLongValuesKey, true)
 
+const props = defineProps<{
+    /** Level Info's Edit in Cover Editor…: the cover to start from. */
+    start?: Blob
+    /** Opened from Level Info: Generate hands the cover back instead of downloading it. */
+    apply?: boolean
+}>()
+
+const emit = defineEmits<{
+    close: [result?: UtilityResult]
+}>()
+
 const image = ref<HTMLImageElement>()
 
 const size = ref(400)
@@ -23,7 +35,7 @@ onUnmounted(() => {
     exporter.dispose()
 })
 
-const onSelect = (file: File) => {
+const onSelect = (file: Blob) => {
     void showModal(LoadingModal, {
         title: () => i18n.value.utilities.coverEditor.title,
         async *task(signal: AbortSignal) {
@@ -70,8 +82,11 @@ const onSelect = (file: File) => {
     })
 }
 
-const onGenerate = () => {
-    void showModal(LoadingModal, {
+if (props.start) onSelect(props.start)
+
+const onGenerate = async () => {
+    const made: { blob?: Blob } = {}
+    await showModal(LoadingModal, {
         title: () => i18n.value.utilities.coverEditor.title,
         async *task(signal: AbortSignal) {
             yield () => i18n.value.utilities.coverEditor.generating
@@ -82,6 +97,10 @@ const onGenerate = () => {
 
             const blob = await exporter.createBlob(image.value, size.value, signal)
             signal.throwIfAborted()
+            if (props.apply) {
+                made.blob = blob
+                return
+            }
             await platform.saveFile({
                 kind: 'image',
                 suggestedName: 'cover.png',
@@ -89,11 +108,15 @@ const onGenerate = () => {
             })
         },
     })
+    if (made.blob) emit('close', { blob: made.blob, filename: 'cover.png' })
+}
+const generate = () => {
+    void onGenerate()
 }
 </script>
 
 <template>
-    <BaseModal :title="i18n.utilities.coverEditor.title">
+    <BaseModal :title="i18n.utilities.coverEditor.title" @close="emit('close')">
         <div class="flex flex-col gap-3">
             <FileField
                 :label="i18n.utilities.coverEditor.cover"
@@ -111,7 +134,7 @@ const onGenerate = () => {
         <div v-if="image" class="flex justify-end">
             <button
                 class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                @click="onGenerate"
+                @click="generate"
             >
                 {{ i18n.utilities.coverEditor.generate }}
             </button>

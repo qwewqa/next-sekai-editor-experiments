@@ -286,7 +286,7 @@
       "title": "플레이"
     },
     "properties": {
-      "title": "레벨 속성",
+      "title": "레벨 정보",
       "modal": {
         "life": "초기 라이프"
       },
@@ -2145,6 +2145,15 @@
     "storedDamaged": "이 브라우저에 보관된 타임라인 단계 {0}개가 손상되었습니다.",
     "mediaDamaged": "이 브라우저에 보관된 {0}이(가) 손상되었습니다."
   },
+  "levelInfo": {
+    "file": "파일",
+    "check": "확인…",
+    "tagsPlaceholder": "쉼표로 구분",
+    "editCover": "커버 편집기에서 편집…",
+    "makePreview": "배경음으로 만들기…",
+    "notLoaded": "불러오지 않음",
+    "discard": "레벨 정보의 변경 내용을 버릴까요?"
+  },
   "conflict": {
     "exportTitle": "\"{0}\" 변경됨",
     "exportBody": "\"{0}\"이(가) 마지막으로 내보낸 후 변경되었습니다.",
@@ -2314,6 +2323,7 @@
     "folder": "폴더",
     "groupFolder": "그룹 폴더",
     "stageFolder": "스테이지 폴더",
+    "level": "레벨",
     "levelInfo": "레벨 정보",
     "fields": {
       "title": "제목",
@@ -2322,7 +2332,7 @@
       "description": "설명",
       "tags": "태그",
       "rating": "난이도",
-      "cover": "재킷",
+      "cover": "커버",
       "previewAudio": "미리 듣기",
       "duration": "길이",
       "size": "크기",

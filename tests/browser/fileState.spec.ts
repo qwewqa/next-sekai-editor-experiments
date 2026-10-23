@@ -334,7 +334,13 @@ test.describe('the label and the title', () => {
                 await expect(button(page)).toHaveAccessibleName(
                     /coconut-source-with-an-extremely-long-file-name\.nxsp/,
                 )
-                const full = (await button(page).getAttribute('aria-label'))!
+                // The file line is the status label's text.
+                const full = await page.evaluate(
+                    async () =>
+                        (
+                            (await import('/src/editor/labelText.ts')) as typeof import('../../src/editor/labelText')
+                        ).statusText.value,
+                )
                 await button(page).click()
                 await expect(page.locator('[data-status-summary]')).toHaveText(full)
                 await expect(page.locator('[data-status-summary]')).toContainText(
@@ -408,7 +414,7 @@ test.describe('the label and the title', () => {
             expect(targets[2]!.top).toBe(targets[0]!.top)
             expect(targets[3]!.top).toBe(targets[2]!.top)
             const dialogs = [
-                'Level Properties',
+                'Level Info',
                 '"coconut.nxsp" Changed',
                 'Manage Groups',
                 'Manage Stages',
@@ -478,7 +484,13 @@ test.describe('the label and the title', () => {
                 settings.toolbar = [['properties']]
             })
             await edit(page, 990)
-            const full = (await button(page).getAttribute('aria-label'))!
+            // The file line is the status label's text.
+            const full = await page.evaluate(
+                async () =>
+                    (
+                        (await import('/src/editor/labelText.ts')) as typeof import('../../src/editor/labelText')
+                    ).statusText.value,
+            )
             const seq = () =>
                 page.evaluate(() => {
                     const flusher = window.nseFlushTest!.flusher
@@ -488,18 +500,16 @@ test.describe('the label and the title', () => {
             for (const route of ['status', 'toolbar', 'command']) {
                 if (route === 'status') await button(page).tap()
                 else if (route === 'toolbar')
-                    await page
-                        .locator('[data-editor-toolbar] button[title="Level Properties"]')
-                        .click()
+                    await page.locator('[data-editor-toolbar] button[title="Level Info"]').click()
                 else
                     await page.evaluate(async () => {
-                        const { properties } =
-                            (await import('/src/editor/commands/properties/index.ts')) as typeof import('../../src/editor/commands/properties')
+                        const { levelInfo } =
+                            (await import('/src/editor/commands/levelInfo/index.ts')) as typeof import('../../src/editor/commands/levelInfo')
                         const { runCommand } =
                             (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
-                        void runCommand(properties)
+                        void runCommand(levelInfo)
                     })
-                const dialog = page.getByRole('dialog', { name: 'Level Properties' })
+                const dialog = page.getByRole('dialog', { name: 'Level Info' })
                 const summary = page.locator('[data-status-summary]')
                 await expect(summary).toHaveText(full)
                 await expect(page.getByRole('dialog')).toHaveCount(1)
@@ -563,7 +573,7 @@ test.describe('the label and the title', () => {
                 expect(await seq()).toBe(before)
             }
             await button(page).tap()
-            await page.getByRole('spinbutton').fill('995')
+            await page.getByRole('spinbutton', { name: 'Initial Life', exact: true }).fill('995')
             await afterGuard(page)
             await page.getByRole('button', { name: 'Confirm', exact: true }).click()
             expect(
@@ -603,11 +613,18 @@ test.describe('the label and the title', () => {
                 await peekEntry(entryKey(flusher.session!.id, seq - 1))
                 return seq
             })
-            const full = (await button(page).getAttribute('aria-label'))!
+            // The file line is the status label's text.
+            const full = await page.evaluate(
+                async () =>
+                    (
+                        (await import('/src/editor/labelText.ts')) as typeof import('../../src/editor/labelText')
+                    ).statusText.value,
+            )
             await button(page).tap()
             await expect(page.locator('[data-status-summary]')).toHaveText(full)
-            await expect(page.getByRole('spinbutton')).toHaveValue('990')
-            await expect(page.getByRole('spinbutton')).toBeDisabled()
+            const life = page.getByRole('spinbutton', { name: 'Initial Life', exact: true })
+            await expect(life).toHaveValue('990')
+            await expect(life).toBeDisabled()
             expect(
                 await page
                     .locator('[data-status-summary]')
@@ -865,7 +882,7 @@ test.describe('the chip', () => {
             ).toBeVisible()
             await page.keyboard.press('Escape')
             await button(page).click()
-            await expect(page.getByRole('dialog', { name: 'Level Properties' })).toBeVisible()
+            await expect(page.getByRole('dialog', { name: 'Level Info' })).toBeVisible()
         })
 
         test('compact spacing preserves useful file and scope names beside a warning', async ({
@@ -959,7 +976,7 @@ test.describe('single-line disclosures', () => {
         await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toBeFocused()
         await page.keyboard.press('Escape')
         await button(page).click()
-        await expect(page.getByRole('dialog', { name: 'Level Properties' })).toBeVisible()
+        await expect(page.getByRole('dialog', { name: 'Level Info' })).toBeVisible()
     })
 })
 

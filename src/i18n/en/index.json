@@ -286,7 +286,7 @@
             "title": "Play"
         },
         "properties": {
-            "title": "Level Properties",
+            "title": "Level Info",
             "modal": {
                 "life": "Initial Life"
             },
@@ -2145,6 +2145,15 @@
         "storedDamaged": "{0} Timeline step stored in this browser is damaged.|{0} Timeline steps stored in this browser are damaged.",
         "mediaDamaged": "The {0} stored in this browser was damaged."
     },
+    "levelInfo": {
+        "file": "File",
+        "check": "Check…",
+        "tagsPlaceholder": "Separated by commas",
+        "editCover": "Edit in Cover Editor…",
+        "makePreview": "Make from BGM…",
+        "notLoaded": "not loaded",
+        "discard": "Discard changes to level info?"
+    },
     "conflict": {
         "exportTitle": "\"{0}\" Changed",
         "exportBody": "\"{0}\" changed since your last export.",
@@ -2314,6 +2323,7 @@
         "folder": "Folder",
         "groupFolder": "Group Folder",
         "stageFolder": "Stage Folder",
+        "level": "Level",
         "levelInfo": "Level Info",
         "fields": {
             "title": "Title",

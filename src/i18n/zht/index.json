@@ -286,7 +286,7 @@
       "title": "播放"
     },
     "properties": {
-      "title": "關卡屬性",
+      "title": "關卡資訊",
       "modal": {
         "life": "初始生命值"
       },
@@ -2145,6 +2145,15 @@
     "storedDamaged": "此瀏覽器中存放的 {0} 個時間軸步驟已損毀。",
     "mediaDamaged": "此瀏覽器中存放的{0}已損毀。"
   },
+  "levelInfo": {
+    "file": "檔案",
+    "check": "檢查…",
+    "tagsPlaceholder": "以逗號分隔",
+    "editCover": "在封面編輯器中編輯…",
+    "makePreview": "從 BGM 產生…",
+    "notLoaded": "未載入",
+    "discard": "要捨棄對關卡資訊的變更嗎？"
+  },
   "conflict": {
     "exportTitle": "\"{0}\" 已變更",
     "exportBody": "\"{0}\" 在上次匯出後已變更。",
@@ -2314,6 +2323,7 @@
     "folder": "資料夾",
     "groupFolder": "圖層資料夾",
     "stageFolder": "舞台資料夾",
+    "level": "關卡",
     "levelInfo": "關卡資訊",
     "fields": {
       "title": "標題",

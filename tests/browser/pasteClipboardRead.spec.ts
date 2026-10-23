@@ -385,10 +385,10 @@ test('selection and metadata edits including a metadata Undo/Redo preserve the s
     await clickWaiting(page, 6)
     await expect.poll(() => waiting(page)).toBe(true)
     const metadata = page.evaluate(async () => {
-        const { properties } = await window.editorTest.appImport<
-            typeof import('../../src/editor/commands/properties')
-        >('/src/editor/commands/properties/index.ts')
-        await properties.execute()
+        const { levelInfo } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/levelInfo')
+        >('/src/editor/commands/levelInfo/index.ts')
+        await levelInfo.execute()
     })
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()

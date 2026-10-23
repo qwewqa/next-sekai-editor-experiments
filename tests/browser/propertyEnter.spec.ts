@@ -203,7 +203,7 @@ test('elevation Beat commits on Enter, while scaling and validating dialogs stil
     expect((await state(page)).undo).toBe(true)
     await run(page, 'properties')
     const dialog = page.locator('dialog[open]')
-    const life = dialog.getByRole('spinbutton')
+    const life = dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true })
     await life.fill('0')
     await page.keyboard.press('Enter')
     await expect(dialog).toBeVisible()

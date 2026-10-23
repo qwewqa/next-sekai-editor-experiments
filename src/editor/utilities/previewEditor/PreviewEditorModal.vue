@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { UtilityResult } from '../../levelInfo/picked'
 import { computed, ref, provide, useTemplateRef } from 'vue'
 import { bgm } from '../../../history/live'
 import { i18n } from '../../../i18n'
@@ -16,6 +17,15 @@ import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
 
 // Long values go below their label, as in Settings.
 provide(stackLongValuesKey, true)
+
+const props = defineProps<{
+    /** Opened from Level Info: Generate hands the clip back instead of downloading it. */
+    apply?: boolean
+}>()
+
+const emit = defineEmits<{
+    close: [result?: UtilityResult]
+}>()
 
 const buffer = ref(bgm.value.buffer)
 
@@ -82,6 +92,7 @@ const onGenerate = () => {
         return
     }
 
+    const made: { blob?: Blob } = {}
     void showModal(LoadingModal, {
         title: () => i18n.value.utilities.previewEditor.title,
         async *task(signal: AbortSignal) {
@@ -152,18 +163,24 @@ const onGenerate = () => {
             const blob = new Blob(buffers, {
                 type: 'audio/mp3',
             })
+            if (props.apply) {
+                made.blob = blob
+                return
+            }
             await platform.saveFile({
                 kind: 'audio',
                 suggestedName: 'preview.mp3',
                 build: () => Promise.resolve(blob),
             })
         },
+    }).then(() => {
+        if (made.blob) emit('close', { blob: made.blob, filename: 'preview.mp3' })
     })
 }
 </script>
 
 <template>
-    <BaseModal :title="i18n.utilities.previewEditor.title">
+    <BaseModal :title="i18n.utilities.previewEditor.title" @close="emit('close')">
         <div ref="fields" class="flex flex-col gap-3">
             <FileField
                 :label="i18n.utilities.previewEditor.bgm"

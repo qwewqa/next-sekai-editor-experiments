@@ -14,7 +14,7 @@ import {
 export const propertySectionLabel = (kind: PropertySectionKind) => {
     const strings = i18n.value
     return {
-        level: strings.commands.properties.title,
+        level: strings.historyChanges.level,
         bgm: strings.commands.bgm.title,
         levelInfo: strings.historyChanges.levelInfo,
         cover: strings.historyChanges.fields.cover,
