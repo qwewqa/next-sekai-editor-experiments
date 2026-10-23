@@ -1,6 +1,6 @@
 import { LOAD_ORDER } from '../editor/loadOrder'
 import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
-import { sweepMarkers } from '../editor/save/env'
+import { reclaimOrphans } from '../editor/save/env'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
@@ -10,12 +10,14 @@ import { PRODUCT_NAME } from '../product'
 import { isSafeMode } from '../safe'
 import { storageGet, storageKey } from '../storage'
 import { interpolate } from '../utils/interpolate'
+import { startMaintenance } from './maintenance'
+import { keptCopyChains, removeKeptCopy } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { setSessionContext } from './startup/api'
 import { addLoadEvent, storageStatus } from './startup/events'
 import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
 import { showSession, showState } from './startup/show'
-import { runRecovery, type RecoveryContext } from './startup/steps'
+import { replaySessionJournal, runRecovery, type RecoveryContext } from './startup/steps'
 import { watchMarker } from './startup/tab'
 import {
     flusher,
@@ -186,6 +188,8 @@ declare global {
         nseStorageTest?: {
             worker: StorageWorker
             status: () => StorageStatus | undefined
+            /** Delete's sweep now, for any mark at least this old (0: every one). */
+            sweepDeleted?: (minAgeMs: number) => Promise<unknown>
         }
     }
 }
@@ -318,13 +322,25 @@ export const startStorage = async () => {
             // An open's import a tab didn't finish: resumed or ended once startup is done (§1.5.4).
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
-                // Only markers of definitely deleted chains can be reclaimed here.
-                const sweep = () => {
-                    void sweepMarkers(worker)
+                const context = recovery
+                const maintenance = startMaintenance({
+                    worker,
+                    locks: platform.locks,
+                    journal: platform.journal,
+                    replayJournal: (sessionId) => replaySessionJournal(context, sessionId),
+                    // Only what definitely deleted chains left can be reclaimed.
+                    reclaim: () =>
+                        reclaimOrphans(worker, { chains: keptCopyChains, remove: removeKeptCopy }),
+                })
+                if (window.nseStorageTest)
+                    window.nseStorageTest.sweepDeleted = (minAgeMs) =>
+                        maintenance.deletion.sweepDeleted(minAgeMs)
+                const run = () => {
+                    void maintenance.start()
                 }
                 if (typeof requestIdleCallback === 'function')
-                    requestIdleCallback(sweep, { timeout: 5000 })
-                else setTimeout(sweep, 1000)
+                    requestIdleCallback(run, { timeout: 5000 })
+                else setTimeout(run, 1000)
             }
         }
     } finally {

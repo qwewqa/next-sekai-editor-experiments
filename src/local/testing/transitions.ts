@@ -185,6 +185,17 @@ export const transitionViolations = (
                 )
             }
 
+    // R3: a session is removed only by a page holding its lock exclusively.
+    if (lock)
+        for (const gone of report.deletes) {
+            if (gone.store !== 'sessions') continue
+            for (const { key } of gone.rows)
+                if (!context.sessions.has(keyId(key)))
+                    violations.push(
+                        `lock: session ${keyId(key)} was removed while the page did not hold nse-session:${keyId(key)} exclusively`,
+                    )
+        }
+
     // I-4: a chain's binding is recorded only while none of its sessions is importing.
     if (transitions)
         for (const put of putsOf('chains')) {

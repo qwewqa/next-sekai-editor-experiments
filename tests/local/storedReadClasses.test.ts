@@ -26,6 +26,7 @@ const CLASSES = {
     readRecovered: 'covered',
     listKept: 'covered',
     findEdits: 'covered',
+    deleteTarget: 'covered',
     // Other reads: a failure is handled in place, by review.
     readSnapshot: 'read',
     readSnapshotVerified: 'read',
@@ -46,6 +47,7 @@ const CLASSES = {
     buildSave: 'read',
     userAssetList: 'read',
     userAssetGet: 'read',
+    listMarked: 'read',
     // Writes.
     flush: 'write',
     storeMedia: 'write',
@@ -73,6 +75,10 @@ const CLASSES = {
     openBatch: 'write',
     openUnlink: 'write',
     openAbandon: 'write',
+    markDeleting: 'write',
+    undoDeleting: 'write',
+    removeSessions: 'write',
+    gcPass: 'write',
     // Lifecycle.
     init: 'lifecycle',
     status: 'lifecycle',
@@ -108,6 +114,7 @@ const MODULES: [file: string, factory: string][] = [
     ['worker/bindHandlers.ts', 'bindHandlers'],
     ['worker/openHandlers.ts', 'openHandlers'],
     ['worker/diagnosticHandlers.ts', 'diagnosticHandlers'],
+    ['worker/maintHandlers.ts', 'maintHandlers'],
 ]
 
 const covered = (Object.keys(CLASSES) as (keyof typeof CLASSES)[]).filter(
