@@ -6,7 +6,6 @@ import {
     chosen,
     confirmLines,
     inRange,
-    notSavedCount,
     rangeCounts,
     type ConfirmTexts,
 } from '../../src/editor/settings/deleteChoices'
@@ -51,15 +50,12 @@ test('a range holds the chains last edited over that many days ago; All holds ev
     assert.equal(inRange(row(0, 'Today'), 'all'), true)
 })
 
-test('each count follows the box, and the box counts the not-saved chains in the selected range', () => {
+test('each count follows the box', () => {
     const counts = (box: boolean) =>
         Object.fromEntries(rangeCounts(profile, box).map(({ range, count }) => [range, count]))
     // Unticked: work not saved to a file is never counted, so it is never deleted.
     assert.deepEqual(counts(false), { 1: 2, 7: 1, 30: 1, 90: 0, all: 2 })
     assert.deepEqual(counts(true), { 1: 4, 7: 3, 30: 2, 90: 1, all: 4 })
-    assert.equal(notSavedCount(profile, 90), 1)
-    assert.equal(notSavedCount(profile, 7), 2)
-    assert.equal(notSavedCount(profile, 'all'), 2)
     // The counts are what is chosen.
     for (const box of [false, true])
         for (const { range, count } of rangeCounts(profile, box))

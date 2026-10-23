@@ -2,7 +2,15 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import type english from '../../src/i18n/en/index.json'
 import { confirmKeyWhenReady, confirmWhenReady } from './confirmWhenReady'
-import { errorsFail, flush, load, noErrors, notice, openHistory } from './historyJourney'
+import {
+    errorsFail,
+    flush,
+    load,
+    noErrors,
+    notice,
+    openHistory,
+    type LoadOptions,
+} from './historyJourney'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -91,9 +99,9 @@ const storedChains = (page: Page) =>
  * to lose at 100 (`Fixture`), and three edited ones at 40, 8 and 2 days. The tab's own blank
  * session is open, so it is left out of the choices.
  */
-const seed = async (page: Page) => {
+const seed = async (page: Page, options: LoadOptions = {}) => {
     errorsFail(page)
-    await load(page)
+    await load(page, options)
     await flush(page)
     const [fixture] = await storedChains(page)
     expect(fixture).toBeDefined()
@@ -115,7 +123,6 @@ const openLocalData = async (page: Page) => {
     await expect(page.locator('[data-local-data-storage]')).toBeVisible()
 }
 
-const settingsDialog = (page: Page) => page.getByRole('dialog', { name: messages.settings.title })
 const deleteDialog = (page: Page) => page.getByRole('dialog', { name: local.deleteTitle })
 
 const openDelete = async (page: Page) => {
@@ -125,8 +132,6 @@ const openDelete = async (page: Page) => {
 
 const countOf = (page: Page, range: string | number): Locator =>
     page.locator(`[data-delete-range="${range}"] [data-delete-count]`)
-
-const boxCount = (page: Page) => page.locator('[data-delete-include] [data-delete-count]')
 
 const counts = async (page: Page) => {
     const out: Record<string, string | null> = {}
@@ -156,12 +161,8 @@ test('the dialog opens on over 90 days with the box unticked, and its counts fol
     await expect(page.locator('[data-delete-include] input')).not.toBeChecked()
     // Unticked: only the chains with nothing to lose are counted (the fixture’s, 100 days).
     expect(await counts(page)).toEqual({ '1': '1', '7': '1', '30': '1', '90': '1', all: '1' })
-    // The box counts the work not saved to a file in the selected range: the 120 day newer one.
-    await expect(boxCount(page)).toHaveText('1')
-    await page.locator('[data-delete-range="all"]').click()
-    await expect(boxCount(page)).toHaveText('4')
-    await page.locator('[data-delete-range="30"]').click()
-    await expect(boxCount(page)).toHaveText('2')
+    // The box has no count of its own: the ranges carry it.
+    await expect(page.locator('[data-delete-include] [data-delete-count]')).toHaveCount(0)
     await page.locator('[data-delete-include]').click()
     expect(await counts(page)).toEqual({ '1': '5', '7': '4', '30': '3', '90': '2', all: '5' })
     await expect(page.locator('[data-delete-next]')).toBeEnabled()
@@ -385,6 +386,18 @@ test.describe('almost full', () => {
         })
         await page.reload()
         await expect(line(page)).toBeVisible({ timeout: 15_000 })
+    })
+
+    test('is left to the chip when storing is already paused', async ({ page }) => {
+        await estimateOf(page, nearlyFull)
+        errorsFail(page, { allow: [/Storing paused: full/] })
+        await load(page, { storage: { forceQuota: true } })
+        await edit(page, 'Full', 990)
+        await expect
+            .poll(() => page.evaluate(() => window.nseStorageTest?.status()))
+            .toEqual({ mode: 'stored', reason: 'full' })
+        await page.waitForFunction(() => document.readyState === 'complete')
+        await expect(line(page)).toHaveCount(0)
     })
 
     test('with room left there is no notice and no stamp', async ({ page }) => {

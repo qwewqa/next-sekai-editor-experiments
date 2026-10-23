@@ -116,7 +116,11 @@ const canDelete = computed(() => {
     return !safe && status?.mode === 'stored' && status.reason !== 'upgrading'
 })
 const hasStorage = computed(
-    () => storedText.value !== undefined || notStoredLine.value !== undefined || canDelete.value,
+    () =>
+        storageLine.value !== undefined ||
+        storedText.value !== undefined ||
+        notStoredLine.value !== undefined ||
+        canDelete.value,
 )
 
 // --- Recovery rows. The storage-side modules load when a row is acted on.
@@ -273,12 +277,11 @@ const deleteSessions = async () => {
             title: () => strings.value.deleteTitle,
             message: () => {
                 const { history, modals } = i18n.value
-                const text = strings.value
                 return confirmLines(targets, (chain) => shownName(chain.name), {
-                    confirm: text.deleteConfirm,
-                    notSaved: text.notSaved,
-                    namesMore: text.namesMore,
-                    newer: text.newer,
+                    confirm: strings.value.deleteConfirm,
+                    notSaved: strings.value.notSaved,
+                    namesMore: strings.value.namesMore,
+                    newer: strings.value.newer,
                     listJoin: modals.form.listJoin,
                     quoted: history.quoted,
                 }).join('\n')
@@ -342,17 +345,16 @@ const exportRaw = async () => {
     })
     const done = outcome.run
     if (done?.kind !== 'done') return
-    if (done.started)
-        notify(interpolate(() => i18n.value.save.downloadStarted, done.name, formatSize(done.size)))
+    // One notice: the warning when the stored work was left out, else the download's.
     if (done.databaseUnreadable)
         notify(() => strings.value.exportRawUnreadable, { card: true, severity: 'warning' })
+    else if (done.started)
+        notify(interpolate(() => i18n.value.save.downloadStarted, done.name, formatSize(done.size)))
 }
 </script>
 
 <template>
     <SettingsSection id="localData" :title="strings.title">
-        <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
-
         <ToggleField
             v-if="showsClosePrompt"
             v-model="settings.confirmCloseUnsavedFile"
@@ -362,6 +364,8 @@ const exportRaw = async () => {
 
         <div v-if="hasStorage" class="flex flex-col gap-3" data-local-data-storage>
             <h3 class="text-sm font-bold opacity-75">{{ strings.storageHeading }}</h3>
+
+            <p v-if="storageLine" class="text-sm opacity-75" data-storage-line>{{ storageLine }}</p>
 
             <p v-if="storedText" data-stored-total>{{ storedText }}</p>
 

@@ -998,6 +998,7 @@ test('in safe mode Local Data only reads: no Delete Sessions…, no Discard…, 
     page,
 }) => {
     await page.addInitScript(() => {
+        localStorage.setItem('nse.test.storage', '{}')
         // An old auto save this build cannot read: a row that would offer Discard… outside safe mode.
         localStorage.setItem(
             'sonolus-next-sekai-editor.autoSave.unreadable',

@@ -1209,7 +1209,7 @@
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
     "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Bir kopyası Yerel Veriler’de.",
     "storageNearlyFull": "Tarayıcının saklama alanı neredeyse dolu.",
-    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma bu tarayıcının alanını dolduruyor.",
+    "journalsFull": "Önceki ziyaretlerden kaydedilmemiş çalışma tarayıcının saklama alanını dolduruyor.",
     "sessionLater": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.",
     "sessionDamaged": "Bu oturum açılamadı.",
     "newestLater": "En son oturumunuz için editörün daha yeni bir sürümü gerekiyor.",

@@ -9,12 +9,13 @@ import { HIGH_SHARE } from '../../../src/local/pressure'
 const QUOTA = 1_000_000_000
 
 const setup = (usage: number | undefined, quota: number | undefined = QUOTA, saved?: string) => {
-    const state = { day: saved, notices: 0, today: '20000' }
+    const state = { day: saved, notices: 0, today: '20000', skip: false }
     const run = () =>
         noticeIfNearlyFull({
             estimate: () => Promise.resolve({ usage, quota }),
             today: () => state.today,
             lastDay: () => state.day,
+            skip: () => state.skip,
             saveDay: (day) => {
                 state.day = day
             },
@@ -59,6 +60,7 @@ test('a browser that cannot estimate says nothing', async () => {
             estimate: () => Promise.reject(new Error('unsupported')),
             today: () => '1',
             lastDay: () => undefined,
+            skip: () => false,
             saveDay: () => undefined,
             notice: () => {
                 state.notices++
@@ -66,4 +68,31 @@ test('a browser that cannot estimate says nothing', async () => {
         })
     assert.equal(await run(), false)
     assert.equal(state.notices, 0)
+})
+
+test('nothing is said once the start-up card has gone, storing is paused or the load already says storage is full', async () => {
+    // Skipped before the estimate, and with no stamp, so a later load may say it.
+    const gone = setup(0.9 * QUOTA)
+    gone.state.skip = true
+    assert.equal(await gone.run(), false)
+    assert.deepEqual([gone.state.notices, gone.state.day], [0, undefined])
+    // The card went while the estimate was read: never a late card.
+    let late = false
+    const state = { notices: 0, stamped: false }
+    const result = await noticeIfNearlyFull({
+        estimate: () => {
+            late = true
+            return Promise.resolve({ usage: 0.9 * QUOTA, quota: QUOTA })
+        },
+        today: () => '1',
+        lastDay: () => undefined,
+        skip: () => late,
+        saveDay: () => {
+            state.stamped = true
+        },
+        notice: () => {
+            state.notices++
+        },
+    })
+    assert.deepEqual([result, state], [false, { notices: 0, stamped: false }])
 })

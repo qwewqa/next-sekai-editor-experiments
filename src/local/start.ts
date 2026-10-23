@@ -1,7 +1,13 @@
 import { dayKey, hostZone } from '../calendar/calendar'
 import { downloadConfirmed } from '../editor/file/flags'
 import { LOAD_ORDER } from '../editor/loadOrder'
-import { addLoadNotice, notify, type NoticeAction } from '../editor/notification'
+import {
+    addLoadNotice,
+    noticeCard,
+    notification,
+    notify,
+    type NoticeAction,
+} from '../editor/notification'
 import { readRevocation, reclaimOrphans } from '../editor/save/env'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
@@ -19,7 +25,7 @@ import { keptCopyChains, removeKeptCopy } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { retryStoring } from './retryStoring'
 import { setSessionContext } from './startup/api'
-import { addLoadEvent, storageStatus } from './startup/events'
+import { addLoadEvent, loadEvents, storageStatus } from './startup/events'
 import { claimTab, openAtStart, type Claim, type OpenDeps } from './startup/open'
 import { showSession, showState } from './startup/show'
 import { replaySessionJournal, runRecovery, type RecoveryContext } from './startup/steps'
@@ -207,8 +213,9 @@ declare global {
 const NEARLY_FULL_KEY = 'nearlyFullDay'
 
 /**
- * After the load's maintenance run: storage still nearly full gets its load notice, once a day. A
- * page hidden at load had no run to wait for, so it says nothing until a later load.
+ * After the load's maintenance run: storage still nearly full gets its load notice, once a day, and
+ * only while the start-up card is up. A page hidden at load had no run to wait for, so it says
+ * nothing until a later load.
  */
 const announceNearlyFull = () => {
     if (document.visibilityState !== 'visible') return
@@ -226,6 +233,14 @@ const announceNearlyFull = () => {
                 // Without the stamp it may say it again at the next load.
             }
         },
+        skip: () =>
+            !(notification.value.startup === true || noticeCard.value?.startup === true) ||
+            // Paused, or unavailable: the chip's dialog and Local Data cover it.
+            storageStatus.value?.mode !== 'stored' ||
+            storageStatus.value.reason !== undefined ||
+            loadEvents.value.some(
+                (event) => event.kind === 'journalsFull' || event.kind === 'journalFailed',
+            ),
         notice: () => {
             addLoadEvent({ kind: 'storageNearlyFull' })
         },

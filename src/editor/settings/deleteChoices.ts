@@ -28,10 +28,6 @@ export const chosen = <T extends Pickable>(
 export const rangeCounts = (chains: readonly Pickable[], includeNotSaved: boolean) =>
     RANGES.map((range) => ({ range, count: chosen(chains, range, includeNotSaved).length }))
 
-/** The box's count: the not-saved chains in the selected range. */
-export const notSavedCount = (chains: readonly Pickable[], range: DeleteRange) =>
-    chains.filter((chain) => inRange(chain, range) && chain.notSaved).length
-
 /** At most this many not-saved names are listed in the confirm. */
 export const NAMES_SHOWN = 3
 

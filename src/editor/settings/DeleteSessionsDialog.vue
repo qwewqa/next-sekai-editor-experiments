@@ -5,13 +5,7 @@ import type { DeleteChain } from '../../local/deleteSessions'
 import BaseModal from '../../modals/BaseModal.vue'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
-import {
-    DEFAULT_RANGE,
-    chosen,
-    notSavedCount,
-    rangeCounts,
-    type DeleteRange,
-} from './deleteChoices'
+import { DEFAULT_RANGE, chosen, rangeCounts, type DeleteRange } from './deleteChoices'
 
 // Delete Sessions…, the choice (Local Data design §3.7): how old, and whether work not saved to a
 // file goes too. Each count follows the box, so it is what the confirm will name and delete. It
@@ -28,7 +22,6 @@ const includeNotSaved = ref(false)
 
 const counts = computed(() => rangeCounts(props.chains, includeNotSaved.value))
 const picked = computed(() => chosen(props.chains, range.value, includeNotSaved.value))
-const unsaved = computed(() => notSavedCount(props.chains, range.value))
 
 const label = (item: DeleteRange) =>
     item === 'all' ? strings.value.all : interpolateRaw(strings.value.lastEdited, String(item))
@@ -92,11 +85,6 @@ const boxClass =
                     <span class="pointer-events-none min-w-0 flex-1">{{
                         strings.includeNotSaved
                     }}</span>
-                    <span
-                        class="pointer-events-none shrink-0 tabular-nums opacity-75"
-                        data-delete-count
-                        >{{ formatCount(unsaved) }}</span
-                    >
                 </label>
             </div>
 
