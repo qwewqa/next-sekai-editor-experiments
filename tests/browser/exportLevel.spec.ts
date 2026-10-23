@@ -756,3 +756,54 @@ test('the toolbar step adds Export Level Data before Save once', async ({ page }
     await page.evaluate(installEditorFixture)
     expect((await toolbar())[0]).toEqual(['undo', 'save'])
 })
+
+test('the toolbar step adds Save As and History to the old default groups once', async ({
+    page,
+}) => {
+    const file = ['utilities', 'properties', 'reset', 'exportLevel', 'save', 'open']
+    const undo = ['paste', 'cut', 'copy', 'redo', 'undo']
+    await page.addInitScript(
+        ([file, undo]) => {
+            if (sessionStorage.getItem('seeded')) return
+            sessionStorage.setItem('seeded', '1')
+            localStorage.setItem(
+                'sonolus-next-sekai-editor.toolbar',
+                JSON.stringify([file, ['play'], undo, ['select']]),
+            )
+            localStorage.removeItem('sonolus-next-sekai-editor.toolbarSessionRestoreMigrated')
+            // The earlier steps are done, so only this one is seen.
+            for (const flag of [
+                'toolbarEditorLayoutMigrated',
+                'toolbarExportMigrated',
+                'toolbarPreviewAssetsMigrated',
+            ])
+                localStorage.setItem(`sonolus-next-sekai-editor.${flag}`, 'true')
+        },
+        [file, undo],
+    )
+    await start(page, opfs)
+    const toolbar = () => page.evaluate(() => window.editorTest.settings.toolbar)
+    expect(await toolbar()).toEqual([
+        ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
+        ['play'],
+        ['paste', 'cut', 'copy', 'history', 'redo', 'undo'],
+        ['select'],
+    ])
+    expect(
+        await page.evaluate(() =>
+            localStorage.getItem('sonolus-next-sekai-editor.toolbarSessionRestoreMigrated'),
+        ),
+    ).toBe('true')
+
+    // Removing Save As afterwards is a customisation, kept across a reload.
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.toolbar = settings.toolbar.map((group) =>
+            group.filter((name) => name !== 'saveAs'),
+        )
+    })
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    expect((await toolbar())[0]).toEqual(file)
+})

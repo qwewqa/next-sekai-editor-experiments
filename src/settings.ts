@@ -23,6 +23,7 @@ import {
 import { registerSettingKeys } from './safe'
 import { insertExportLevel } from './settings/toolbarExport'
 import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
+import { insertSessionRestore } from './settings/toolbarSessionRestore'
 import { storedBindings, storedNames } from './settingsCodecs'
 import { storageGet, storageRemove, storageSet } from './storage'
 import { themes, type Theme } from './themes'
@@ -295,7 +296,7 @@ const settingsProperties = {
     toolbar: Type.Codec(
         Type.Array(storedNames(), {
             default: [
-                ['utilities', 'properties', 'reset', 'exportLevel', 'save', 'open'],
+                ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
                 [
                     'previewAssets',
                     'offset',
@@ -617,6 +618,7 @@ const loadSetting = (key: string, defaultValue: unknown) => {
             ['toolbarEditorLayoutMigrated', migrateToolbar],
             ['toolbarExportMigrated', insertExportLevel],
             ['toolbarPreviewAssetsMigrated', insertPreviewAssets],
+            ['toolbarSessionRestoreMigrated', insertSessionRestore],
         ] as const
         const pending = steps.filter(([flag]) => storageGet(flag, false) !== true)
         const loaded = storageGet(key, defaultValue)
