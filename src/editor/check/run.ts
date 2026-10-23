@@ -375,7 +375,13 @@ const perform = async (
         damaged,
         media: media.map((each) => each.kinds as readonly MediaKind[]),
     }
-    return { kind: 'report', lines: reportLines(found) }
+    return {
+        kind: 'report',
+        lines: reportLines(found, () => ({
+            check: i18n.value.check,
+            media: i18n.value.open.media,
+        })),
+    }
 }
 
 /** Reads the Timeline's newest page again, and the pages loaded before it. */

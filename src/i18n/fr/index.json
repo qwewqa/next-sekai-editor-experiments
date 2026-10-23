@@ -2119,7 +2119,7 @@
   },
   "check": {
     "command": "Vérifier le fichier et l’historique…",
-    "title": "Vérifier le fichier et l’historique",
+    "title": "Vérifier fichier et historique",
     "checkingFile": "Vérification de {0}… {1} %",
     "checkingStored": "Vérification de l’historique stocké… {0} %",
     "changed": "\"{0}\" a changé pendant la vérification. Réessayez.",
