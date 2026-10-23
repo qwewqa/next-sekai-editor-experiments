@@ -14,7 +14,7 @@ defineEmits<{
 
 <template>
     <BaseModal :title="title()" @close="$emit('close')">
-        <div>{{ message() }}</div>
+        <div class="whitespace-pre-line">{{ message() }}</div>
 
         <div class="flex justify-end">
             <button

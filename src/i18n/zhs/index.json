@@ -2117,6 +2117,21 @@
     "sizeTotal": "总计：约 {0}",
     "sizePending": "正在估算大小…"
   },
+  "check": {
+    "command": "检查文件和历史记录…",
+    "title": "检查文件和历史记录",
+    "checkingFile": "正在检查 {0}… {1}%",
+    "checkingStored": "正在检查已存储的历史记录… {0}%",
+    "changed": "“{0}”在检查期间已更改。请重试。",
+    "stillOpening": "“{0}”仍在打开中。请重试。",
+    "noDamage": "未发现损坏。",
+    "scopeBoth": "已检查“{0}”和此浏览器中存储的历史记录。",
+    "scopeStored": "已检查此浏览器中存储的历史记录。",
+    "fileDamaged": "“{0}”已损坏。保存时会创建单独的文件。",
+    "repaired": "已修复 {0} 个时间线步骤。",
+    "storedDamaged": "此浏览器中存储的 {0} 个时间线步骤已损坏。",
+    "mediaDamaged": "此浏览器中存储的{0}已损坏。"
+  },
   "conflict": {
     "exportTitle": "“{0}”已更改",
     "exportBody": "“{0}”在上次导出后已更改。",

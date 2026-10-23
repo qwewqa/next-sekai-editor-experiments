@@ -2117,6 +2117,21 @@
     "sizeTotal": "Toplam: yaklaşık {0}",
     "sizePending": "Boyut tahmin ediliyor…"
   },
+  "check": {
+    "command": "Dosyayı ve Geçmişi Denetle…",
+    "title": "Dosyayı ve Geçmişi Denetle",
+    "checkingFile": "{0} denetleniyor… %{1}",
+    "checkingStored": "Saklanan geçmiş denetleniyor… %{0}",
+    "changed": "\"{0}\" denetlenirken değişti. Tekrar deneyin.",
+    "stillOpening": "\"{0}\" hâlâ açılıyor. Tekrar deneyin.",
+    "noDamage": "Hasar bulunamadı.",
+    "scopeBoth": "\"{0}\" ile bu tarayıcıda saklanan geçmiş denetlendi.",
+    "scopeStored": "Bu tarayıcıda saklanan geçmiş denetlendi.",
+    "fileDamaged": "\"{0}\" hasarlı. Kaydetmek ayrı bir dosya oluşturur.",
+    "repaired": "{0} Zaman Çizgisi adımı onarıldı.",
+    "storedDamaged": "Bu tarayıcıda saklanan {0} Zaman Çizgisi adımı hasarlı.",
+    "mediaDamaged": "Bu tarayıcıda saklanan {0} hasarlıydı."
+  },
   "conflict": {
     "exportTitle": "\"{0}\" Değişti",
     "exportBody": "\"{0}\", son dışa aktarmanızdan bu yana değişti.",
