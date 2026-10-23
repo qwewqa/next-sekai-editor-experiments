@@ -61,6 +61,7 @@ SPDX-License-Identifier = "LicenseRef-Upstream-Unconfirmed"
 path = [
     "src/editor/commands/bgm/BgmIcon.vue",
     "src/editor/commands/brush/BrushIcon.vue",
+    "src/editor/commands/checkProject/CheckProjectIcon.vue",
     "src/editor/commands/copy/CopyIcon.vue",
     "src/editor/commands/cut/CutIcon.vue",
     "src/editor/commands/deselect/DeselectIcon.vue",
@@ -88,6 +89,7 @@ path = [
     "src/editor/commands/redo/RedoIcon.vue",
     "src/editor/commands/reset/ResetIcon.vue",
     "src/editor/commands/save/SaveIcon.vue",
+    "src/editor/commands/saveAs/SaveAsIcon.vue",
     "src/editor/commands/scrolls/ScrollDownIcon.vue",
     "src/editor/commands/scrolls/ScrollLeftIcon.vue",
     "src/editor/commands/scrolls/ScrollPageDownIcon.vue",

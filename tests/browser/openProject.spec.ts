@@ -652,7 +652,7 @@ test('a BGM recorded without its bytes opens bound with the BGM not loaded, and 
     })
     await writeFile(page, 'coconut.nxsp', bytes)
     await openFile(page, 'coconut.nxsp')
-    await expect(notice(page).filter({ hasText: 'BGM not loaded' })).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'The BGM is not loaded.' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
     await imported(page)
     const session = await sessionOf(page)
@@ -995,7 +995,7 @@ test('a newer patch beside a BGM that is not loaded: both lines, with Choose Aud
     await openFile(page, 'coconut.nxsp')
     const card = notice(page).filter({ hasText: PATCH_LINE })
     await expect(card).toBeVisible()
-    await expect(card).toContainText('BGM not loaded')
+    await expect(card).toContainText('The BGM is not loaded.')
     await expect(card.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
     // Bound, with its history, as a whole open is.
     await imported(page)
@@ -1085,7 +1085,7 @@ test('an open whose earlier chains cannot be read puts the line above a BGM that
     // One other row, and still the heading: alone, it would read as nothing to report.
     const card = notice(page).filter({ hasText: UNCHECKED })
     await expect(card).toBeVisible()
-    await expect(card).toContainText('BGM not loaded')
+    await expect(card).toContainText('The BGM is not loaded.')
     await expect(card.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
     await imported(page)
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')

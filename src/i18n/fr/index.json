@@ -2144,9 +2144,7 @@
     "include": "Inclure",
     "historySize": "{0} étape · {1}|{0} étapes · {1}",
     "historyNote": "Toute personne disposant du fichier peut consulter son historique.",
-    "noBgm": "Pas de BGM",
     "bgmNotLoaded": "BGM non chargée",
-    "bgmSize": "{0} · {1}",
     "keptOptions": "Déjà dans {0}",
     "noHistoryHere": "L’historique nécessite une connexion sécurisée.",
     "sizeTotal": "Total : environ {0}",
@@ -2224,7 +2222,7 @@
     "peekSessionFailed": "Impossible de consulter cette session",
     "openHistory": "Ouvrir l’historique",
     "earlierInHistory": "Les étapes précédentes sont dans l’historique",
-    "bgmNotLoaded": "BGM non chargée",
+    "bgmNotLoaded": "La BGM n’est pas chargée.",
     "savedCurrent": "Version actuelle sauvegardée dans {0}"
   },
   "entry": {
@@ -2310,13 +2308,6 @@
     "changedOnDisk": "Modifié sur le disque",
     "newerOnDisk": "Plus récent sur le disque",
     "notConfirmed": "Téléchargement non confirmé",
-    "short": {
-      "fileMissing": "Introuvable",
-      "changedOnDisk": "Modifié",
-      "newerOnDisk": "Plus récent",
-      "notConfirmed": "Non confirmé",
-      "notStored": "Non stocké"
-    },
     "changedOnDiskName": "\"{0}\" : modifié sur le disque depuis que vous l’avez ouvert ou sauvegardé ici.",
     "newerOnDiskName": "\"{0}\" : une version plus récente est sur le disque.",
     "notStored": "Non stocké"

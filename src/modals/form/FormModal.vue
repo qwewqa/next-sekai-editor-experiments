@@ -24,7 +24,8 @@ defineEmits<{
                 <slot />
             </div>
 
-            <div class="mt-4 flex justify-end">
+            <div class="mt-4 flex flex-wrap justify-end gap-2">
+                <slot name="actions" />
                 <input
                     class="btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4"
                     type="submit"

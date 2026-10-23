@@ -22,7 +22,7 @@ const chain = (groups: unknown[][]) =>
 
 test('Save As and History join exactly matching default groups', () => {
     assert.deepEqual(insertSessionRestore([file, ['play'], undo]), [
-        ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
+        ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
         ['play'],
         ['paste', 'cut', 'copy', 'history', 'redo', 'undo'],
     ])
@@ -30,7 +30,7 @@ test('Save As and History join exactly matching default groups', () => {
 
 test('each command is added on its own: one matching group does not need the other', () => {
     assert.deepEqual(insertSessionRestore([file, ['undo']]), [
-        ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
+        ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
         ['undo'],
     ])
     assert.deepEqual(insertSessionRestore([['open'], undo]), [
@@ -61,7 +61,7 @@ test('a toolbar that has the commands anywhere is left as it is', () => {
     assert.equal(insertSessionRestore(hasSaveAs), hasSaveAs)
     // History elsewhere stops only History; Save As still joins its group.
     assert.deepEqual(insertSessionRestore([file, ['history'], undo]), [
-        ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
+        ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
         ['history'],
         undo,
     ])
@@ -76,7 +76,7 @@ test('the three steps in order take a v0.5.22 default to the new default', () =>
     assert.deepEqual(
         chain([['utilities', 'properties', 'reset', 'save', 'open'], playback, undo, ['select']]),
         [
-            ['utilities', 'properties', 'reset', 'saveAs', 'exportLevel', 'save', 'open'],
+            ['utilities', 'properties', 'reset', 'exportLevel', 'saveAs', 'save', 'open'],
             ['previewAssets', ...playback],
             ['paste', 'cut', 'copy', 'history', 'redo', 'undo'],
             ['select'],

@@ -15,6 +15,8 @@ export type PeekWidths = {
     earlier: number
     /** The compact date and time: earlier entries in narrow panes, and other years. */
     compact: number
+    /** A session strip's time, which has no seconds: a clock, a date and time, or the compact form. */
+    session?: number
     back: number
     restore: number
     /** The corner time labels' widest forms at 16 px, with their 4 px inset and 8 px clearance. */
@@ -116,6 +118,10 @@ export const measurePeekWidths = (
         times.map((at) => format.compact(at)),
         14,
     )
+    const sessionSpans = spans(
+        times.flatMap((at) => [format.clock(at), format.dateTime(at)]),
+        14,
+    )
     const backSpans = spans([labels.back], 14)
     const restoreSpans = spans([labels.restore], 14)
     const corner = spans(['00:00.000', BEAT_SAMPLES[beatDisplay]], 16)
@@ -133,6 +139,7 @@ export const measurePeekWidths = (
         today: widest(today),
         earlier: Math.max(widest(thisYear), compactW),
         compact: compactW,
+        session: Math.max(widest(sessionSpans), compactW),
         back: widest(backSpans),
         restore: widest(restoreSpans),
         labels: widest(corner) + ((4 + 8) / 16) * rem,
@@ -154,11 +161,14 @@ export const peekWidths = shallowRef<PeekWidths>()
 const DATE_BUTTON = 10 + 16 + 8 + 10
 const ICON = 36
 
-export const peekLayout = (pane: number, w: PeekWidths | undefined): PeekLayout => {
+/** The strip's widest width: a session's strip has no change capsule to keep its width with. */
+export const SESSION_STRIP_MAX = 560
+
+export const peekLayout = (pane: number, w: PeekWidths | undefined, cap = 480): PeekLayout => {
     const snug = pane < 340
     const wide = pane >= 480
     const k = (w?.rem ?? 16) / 16
-    const avail = Math.min(pane - 16 * k, 480 * k)
+    const avail = Math.min(pane - 16 * k, cap * k)
     if (!w)
         return {
             width: avail,
@@ -226,5 +236,13 @@ export const peekText = (cal: Calendar, locale: string, at: number, wide: boolea
     const format = historyFormat(cal, locale)
     if (sameDay(at, cal.now, cal.zone)) return format.clockSeconds(at)
     if (wide && sameYear(at, cal.now, cal.zone)) return format.dateTimeSeconds(at)
+    return format.compact(at)
+}
+
+/** A session strip's time, without seconds: today's clock, this year's date and time, or the compact form. */
+export const sessionPeekText = (cal: Calendar, locale: string, at: number) => {
+    const format = historyFormat(cal, locale)
+    if (sameDay(at, cal.now, cal.zone)) return format.clock(at)
+    if (sameYear(at, cal.now, cal.zone)) return format.dateTime(at)
     return format.compact(at)
 }

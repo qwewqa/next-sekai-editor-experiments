@@ -9,7 +9,9 @@ import { interpolate } from '../utils/interpolate'
 import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
+import { chipSentence } from './file/chipDialogs'
 import { hasChangesNotInFile } from './file/closePrompt'
+import { confirmFile, downloadNotConfirmed, fileChanged } from './file/state'
 import {
     dismissNoticeCard,
     noticeCard,
@@ -44,6 +46,20 @@ const wouldLoseWork = async () => {
  */
 export const confirmSwitch = async () => {
     if (!(await wouldLoseWork())) return true
+    // The work is in a download that is not confirmed: Save would only offer it again, so the
+    // way out is the confirm (§1.3.4).
+    if (downloadNotConfirmed.value && !fileChanged.value) {
+        const choice = await showChoice<'leave' | 'confirm'>({
+            title: () => i18n.value.confirm.title,
+            message: () => chipSentence('notConfirmed'),
+            choices: [
+                { value: 'leave', label: () => i18n.value.prompt.leaveAnyway, danger: true },
+                { value: 'confirm', label: () => i18n.value.confirm.haveFile, default: true },
+            ],
+        })
+        if (choice === 'confirm') confirmFile()
+        return choice !== undefined
+    }
     const choice = await showChoice<'leave' | 'save'>({
         title: () => i18n.value.prompt.title,
         message: () => i18n.value.prompt.notStored,
@@ -151,9 +167,11 @@ export const notifyLeft = (message: () => string, offer = true, line?: NoticeLin
     // Stops once the card is gone however it went (dismissed, replaced, used), so a switch leaves
     // no watcher behind.
     const stop = watch(
-        [() => previousSession.value === left, () => noticeCard.value?.id === shown],
-        ([still, showing]) => {
-            if (showing && still) return
+        [() => previousSession.value, () => noticeCard.value?.id === shown],
+        ([now, showing]) => {
+            // Another switch replaces the session while its own notice is on the way: not a
+            // sign that there is nothing to reopen.
+            if (showing && now !== undefined) return
             stop()
             if (!showing) return
             // Nothing to reopen after all (Leave Anyway): a card still showing turns plain.

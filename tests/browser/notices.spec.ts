@@ -1007,6 +1007,43 @@ test.describe('when a card goes by itself', () => {
         await expect(quick(page)).toHaveText('New level')
     })
 
+    test('a switch card turns plain only when nothing is left to reopen, not when another session replaces it', async ({
+        page,
+    }) => {
+        await boot(page)
+        const leave = (id: string | undefined) =>
+            page.evaluate(async (id) => {
+                const { previousSession } = await window.editorTest.appImport<
+                    typeof import('../../src/local/startup/events')
+                >('/src/local/startup/events.ts')
+                previousSession.value = id
+                    ? { sessionId: id, name: { name: { kind: 'name', text: id }, at: Date.now() } }
+                    : undefined
+                // The watcher runs before the next render.
+                await new Promise((done) =>
+                    requestAnimationFrame(() => requestAnimationFrame(done)),
+                )
+            }, id)
+        await leave('A')
+        await page.evaluate(async () => {
+            const { notifyLeft } =
+                await window.editorTest.appImport<typeof import('../../src/editor/switch')>(
+                    '/src/editor/switch.ts',
+                )
+            notifyLeft(() => 'Restored “A”')
+        })
+        await expect(pill(page)).toContainText('Reopen')
+        // Another switch has left B: the card stays until that switch's own notice replaces it,
+        // and no toast repeats it.
+        await leave('B')
+        await expect(pill(page)).toContainText('Restored “A”')
+        await expect(quick(page).filter({ hasText: 'Restored “A”' })).toHaveCount(0)
+        // Leave Anyway: nothing to reopen, so the card turns into a plain toast.
+        await leave(undefined)
+        await expect(pill(page)).toHaveCount(0)
+        await expect(quick(page)).toHaveText('Restored “A”')
+    })
+
     test('saving and exporting leave a card alone', async ({ page }) => {
         await boot(page)
         await prepare(page)

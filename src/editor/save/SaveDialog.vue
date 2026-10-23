@@ -82,13 +82,15 @@ const historyDetail = computed(() => {
         formatSize(estimate.value.history),
     )()
 })
+// The BGM's size is on the label's line, as History's is; the file name is the second line.
+const bgmSizeText = computed(() => {
+    const bytes = estimate.value?.bgm
+    return bgmRow.value.kind === 'held' && bytes !== undefined ? formatSize(bytes) : ''
+})
 const bgmDetail = computed(() => {
     const row = bgmRow.value
-    if (row.kind === 'none') return i18n.value.save.noBgm
     if (row.kind === 'notLoaded') return i18n.value.save.bgmNotLoaded
-    return estimate.value?.bgm === undefined
-        ? row.name
-        : interpolate(() => i18n.value.save.bgmSize, row.name, formatSize(estimate.value.bgm))()
+    return row.kind === 'held' ? row.name : ''
 })
 
 // The total follows the ticks at once, with no new estimate.
@@ -195,7 +197,7 @@ const boxClass =
             </div>
 
             <fieldset class="flex flex-col" data-save-include>
-                <legend class="mb-1 px-3 opacity-75">{{ i18n.save.include }}</legend>
+                <legend class="mb-1 px-3 text-fg/80">{{ i18n.save.include }}</legend>
                 <label :class="rowClass" data-save-row="history">
                     <input
                         v-model="history"
@@ -209,11 +211,11 @@ const boxClass =
                     <span class="pointer-events-none flex min-w-0 flex-1 flex-col">
                         <span class="flex flex-wrap justify-between gap-x-3">
                             <span :id="`${ids}-history-label`">{{ i18n.save.history }}</span>
-                            <span v-if="historyDetail" class="opacity-75" data-save-size>{{
+                            <span v-if="historyDetail" class="text-fg/80" data-save-size>{{
                                 historyDetail
                             }}</span>
                         </span>
-                        <span :id="`${ids}-history`" class="flex flex-col text-sm opacity-75">
+                        <span :id="`${ids}-history`" class="flex flex-col text-sm text-fg/80">
                             <span v-if="historyRow.kind === 'insecure'">{{
                                 i18n.save.noHistoryHere
                             }}</span>
@@ -226,7 +228,7 @@ const boxClass =
                         </span>
                     </span>
                 </label>
-                <label :class="rowClass" data-save-row="bgm">
+                <label v-if="bgmRow.kind !== 'none'" :class="rowClass" data-save-row="bgm">
                     <input
                         v-model="bgm"
                         type="checkbox"
@@ -239,9 +241,14 @@ const boxClass =
                     <span class="pointer-events-none flex min-w-0 flex-1 flex-col">
                         <span class="flex flex-wrap justify-between gap-x-3">
                             <span :id="`${ids}-bgm-label`">{{ i18n.save.bgm }}</span>
+                            <span v-if="bgmSizeText" class="text-fg/80" data-save-size>{{
+                                bgmSizeText
+                            }}</span>
                         </span>
-                        <span :id="`${ids}-bgm`" class="flex flex-col text-sm opacity-75">
-                            <span class="break-all" data-save-size>{{ bgmDetail }}</span>
+                        <span :id="`${ids}-bgm`" class="flex flex-col text-sm text-fg/80">
+                            <span v-if="bgmDetail" class="break-all" data-save-name-line>{{
+                                bgmDetail
+                            }}</span>
                             <span v-if="bgmRow.kind === 'held' && bgmRow.keptIn" data-save-kept>{{
                                 keptText(bgmRow.keptIn)
                             }}</span>
@@ -275,10 +282,10 @@ const boxClass =
                         {{ hint }}
                     </button>
                 </p>
-                <p v-if="input.storageLine" class="opacity-75" data-save-storage-line>
+                <p v-if="input.storageLine" class="text-fg/80" data-save-storage-line>
                     {{ input.storageLine() }}
                 </p>
-                <p v-if="input.peeking" class="opacity-75" data-save-peeking>
+                <p v-if="input.peeking" class="text-fg/80" data-save-peeking>
                     {{ i18n.peek.savesCurrent }}
                 </p>
             </div>
