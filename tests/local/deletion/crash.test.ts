@@ -34,6 +34,7 @@ test('a kill anywhere in Delete, the sweep or GC leaves a chain whole or gone, a
             const deleter = await openDeleter(world, victim, storage)
             await deleter.mark(deleted)
             await deleter.sweep()
+            await deleter.gc(false)
         },
         recover: async ({ world }) => {
             const { storage } = setups.get(world)!

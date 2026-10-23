@@ -1,4 +1,4 @@
-import { NO_USE_DAY } from './days'
+import { NO_USE_DAY, type UseDay } from './days'
 import { bumpEpoch, FORMAT_VERSION, readMeta, writeMeta } from './db'
 import { toHex } from './hash'
 import { KeyRange, type Key, type KvTx } from './kv/types'
@@ -20,12 +20,12 @@ import type { ExclusiveHold, StorageCore } from './worker/core'
 export type GcResult =
     /** Not due: no deletion pending and run already on this day of use. */
     | { kind: 'skipped' }
-    /** `nse-maint` is held or wanted. */
+    /** `nse-maint` is held or wanted, or an import is still writing (its deduped bodies are unmarked). */
     | { kind: 'busy' }
     | { kind: 'done'; swept: number }
     /** A writer waited: stopped, with the batches swept so far committed. */
     | { kind: 'aborted'; swept: number }
-    /** Data a newer build wrote: nothing removed. */
+    /** Data a newer build wrote: nothing removed, and not tried again until the next day of use. */
     | { kind: 'unsafe'; why: string }
 
 /** A body first stored within this many days of use is kept: an import's or flush's parts in flight. */
@@ -33,6 +33,8 @@ export const GC_GRACE_DAYS = 2
 
 const READ_BATCH = 2000
 const SWEEP_BATCH = 500
+/** Pops of the traversal between looks for a waiting writer. */
+const TRAVERSE_STEP = 5000
 
 const BODY_STORES = ['nodes', 'chunks', 'media'] as const
 
@@ -76,11 +78,15 @@ const pass = async (
         pending: (await readMeta(tx, 'deletionsPending')) === true,
     }))
     if (state.format > FORMAT_VERSION) return { kind: 'unsafe', why: 'a newer database format' }
-    const due = state.pending || !state.last || state.last.day < state.days
+    // An unsafe pass today waits for the next day of use even with a deletion pending.
+    const unsafeToday = state.last?.unsafe === true && state.last.day >= state.days
+    const due = (state.pending && !unsafeToday) || !state.last || state.last.day < state.days
     if (!always && !due) return { kind: 'skipped' }
     const sessions = await hold.read(['sessions'], (tx) => tx.getAll('sessions'))
     if (sessions.some((row) => isRow(row) && isNewerSessionVersion(row.v)))
-        return { kind: 'unsafe', why: 'a session of a newer version' }
+        return unsafe(hold, state.days, 'a session of a newer version')
+    // An import skips bodies already stored, which only its later batches reach (§3.5): wait.
+    if (sessions.some((row) => isRow(row) && row.importPending === true)) return { kind: 'busy' }
 
     let swept = 0
     /** Between batches: a waiting writer ends the pass. */
@@ -115,7 +121,9 @@ const pass = async (
             refs.set(hex, packed(row.refs))
         })
         const stack = [...marked]
+        let pops = 0
         for (let hex = stack.pop(); hex !== undefined; hex = stack.pop()) {
+            if (++pops % TRAVERSE_STEP === 0) await yieldTo()
             const why = unread.get(hex)
             if (why) throw new Unsafe(why)
             for (const child of refs.get(hex) ?? []) {
@@ -127,9 +135,11 @@ const pass = async (
         }
 
         const candidates: { store: string; key: Key }[] = []
-        for (const store of BODY_STORES)
+        for (const store of BODY_STORES) {
+            await yieldTo()
             for (const key of await hold.read([store], (tx) => tx.getAllKeys(store)))
                 if (!marked.has(keyHex(key))) candidates.push({ store, key })
+        }
 
         // Sweep, keeping what was first stored within the grace period or has no day.
         for (let at = 0; at < candidates.length; at += SWEEP_BATCH) {
@@ -149,7 +159,7 @@ const pass = async (
             })
         }
     } catch (error) {
-        if (error instanceof Unsafe) return { kind: 'unsafe', why: error.message }
+        if (error instanceof Unsafe) return unsafe(hold, state.days, error.message)
         if (error instanceof Aborted) return { kind: 'aborted', swept }
         throw error
     }
@@ -158,6 +168,14 @@ const pass = async (
         await writeMeta(tx, 'deletionsPending', false)
     })
     return { kind: 'done', swept }
+}
+
+/** Records that the pass ran (so it isn't repeated today), leaving `deletionsPending` as it is. */
+const unsafe = async (hold: ExclusiveHold, day: UseDay, why: string): Promise<GcResult> => {
+    await hold.write(['meta'], async (tx) =>
+        writeMeta(tx, 'lastGcAt', { day, time: await stampNow(tx), unsafe: true }),
+    )
+    return { kind: 'unsafe', why }
 }
 
 /** Every row of a store in key order, a read transaction per batch, yielding between them. */

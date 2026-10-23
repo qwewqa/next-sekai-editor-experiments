@@ -29,6 +29,8 @@ The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for t
 | Dump `version` (`DUMP_VERSION`) | 1 | the dump format | The raw-data dump. | Refused. |
 | operation `version`, per id | 1 | the operation envelope | One operation's `data` shape. | An unknown id or version renders its `fallback`; a known id whose `data` fails its codec reads "cannot read the details", never damage. |
 
+A build that adds a new reference to stored bodies (a field or store that names a node, chunk or media row) must also raise a version that this build's GC treats as newer (a session `v`, a root `v`, an entry kind, `formatVersion` or `DB_VERSION`), so that an older build's GC stops instead of sweeping what the new reference keeps.
+
 The constants are `src/local/nxsp/version.ts`, `src/local/records/version.ts`, `src/levelData/levelVersion.ts`, `src/levelData/revision.ts`, `src/local/journal/format.ts`, `src/local/db.ts` and `src/local/dump.ts` (`DUMP_VERSION`); `tests/local/formatVersions.test.ts` asserts each. Every version number is 1 (`project.json` `minor` and `patch` are 0): nothing has shipped, so no number has been raised, no reader rule treats an earlier value as an older form, and there are no upgrade steps for earlier test builds. A change to the schema before Stage 1 is made in place.
 
 ### Why `minor` and `patch` are two numbers
