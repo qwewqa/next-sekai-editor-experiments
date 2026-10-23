@@ -872,7 +872,9 @@ test('the auto save rows are gone, and Beat Display sits with the display rows',
     const at = (label: string) => labels.indexOf(label)
     // Retired with the auto save (Part 1 §1.8): a new visit continues the most recent session.
     expect(labels.filter((label) => label.startsWith('Auto Save'))).toEqual([])
-    expect(at('Beat Display')).toBe(at('Elevation Editor Connector Arrows') + 1)
+    // The minimap row follows the Elevation Editor's.
+    expect(at('Show Minimap')).toBe(at('Elevation Editor Connector Arrows') + 1)
+    expect(at('Beat Display')).toBe(at('Show Minimap') + 1)
     expect(at('Waveform Visualization')).toBe(at('Beat Display') + 1)
 })
 
