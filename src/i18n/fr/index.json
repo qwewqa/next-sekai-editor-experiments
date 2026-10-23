@@ -215,6 +215,9 @@
         "added": "Scène {0} ajoutée"
       }
     },
+    "minimap": {
+      "title": "Minicarte"
+    },
     "note": {
       "title": {
         "default": "Note",
@@ -617,6 +620,7 @@
         "tap": "Appuyez avec un doigt pour utiliser l’outil actuel.",
         "drag": "Glissez d’un seul doigt pour utiliser l’outil actuel.",
         "quickScroll": "Glissez un doigt dans la zone de défilement rapide pour faire défiler.",
+        "minimap": "Appuyez avec un doigt sur la minicarte pour faire défiler jusqu’à cet endroit, ou faites glisser le cadre qui indique la zone visible.",
         "deselect": "Appuyez avec deux doigts pour désélectionner.",
         "scrollY": "Glissez deux doigts verticalement pour faire défiler.",
         "scrollX": "Glissez deux doigts horizontalement pour faire défiler.",
@@ -632,6 +636,7 @@
         "dragSecondary": "Cliquez avec le bouton droit et glissez pour utiliser l’outil secondaire.",
         "scrollY": "Utilisez la molette pour faire défiler verticalement.",
         "scrollX": "Utilisez la molette avec la touche Maj pour faire défiler horizontalement.",
+        "minimap": "Cliquez avec le bouton gauche ou glissez sur la minicarte pour faire défiler jusqu’à cet endroit.",
         "zoomY": "Utilisez la molette avec la touche Ctrl pour zoomer verticalement.",
         "zoomX": "Utilisez la molette avec les touches Ctrl et Maj pour zoomer horizontalement."
       },
@@ -814,6 +819,7 @@
       },
       "elevationSideBySide": "Éditeur d’élévation côte à côte",
       "elevationConnectorArrows": "Flèches des connecteurs dans l’éditeur d’élévation",
+      "minimap": "Afficher la minicarte",
       "waveformVisualization": {
         "title": "Visualisation de la forme d’onde",
         "off": "Désactivée",

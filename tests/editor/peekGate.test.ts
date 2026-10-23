@@ -28,6 +28,7 @@ const allowed = [
     'zoomYOut',
     'jumpUp',
     'jumpDown',
+    'minimap',
     'fullscreen',
     'settings',
     'help',

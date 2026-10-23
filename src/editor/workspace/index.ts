@@ -119,6 +119,21 @@ const toolbarWidth = computed(() =>
     ),
 )
 
+/** The minimap strip's width, which the strip and the side docks' room share. */
+export const MINIMAP_REM = 2.5
+
+const minimapWidth = 1000
+
+const minimapShownFor = (setting: boolean | null, width: number) => setting ?? width >= minimapWidth
+
+/** Whether the minimap is shown: the saved choice, else by the workspace's width. */
+export const isMinimapShown = computed(() =>
+    minimapShownFor(settings.showMinimap, autoShape.value.width),
+)
+
+// The strip takes room from the chart, so default side docks leave it for the toolbar's row.
+const minimapRoomFor = (shown: boolean) => (shown ? MINIMAP_REM * rootFontSize.value : 0)
+
 const layoutInput = (state: WorkspaceToggleState) => ({
     ...workspaceSize.value,
     autoShape: autoShape.value,
@@ -135,7 +150,7 @@ const layoutInput = (state: WorkspaceToggleState) => ({
     coarse: isCoarsePointer.value,
     previewOverlay: settings.previewTransportPosition === 'overlay',
     rootFontSize: rootFontSize.value,
-    toolbarWidth: toolbarWidth.value,
+    toolbarWidth: toolbarWidth.value + minimapRoomFor(isMinimapShown.value),
 })
 
 const layoutOf = (state: WorkspaceToggleState) => computeWorkspaceLayout(layoutInput(state))
@@ -218,18 +233,17 @@ export const keepDefaultsAcrossDisplay = () =>
             () => settings.previewAspectRatio,
             () => settings.previewTransportPosition,
             () => toolbarGroups(registeredGroups(settings.toolbar, isCommandName)).length,
+            () => settings.showMinimap,
         ],
-        (_, [previewAspectRatio, transport, tools]) => {
+        (_, [previewAspectRatio, transport, tools, minimap]) => {
             if (!isPanelStateUnset.value || isResettingSettings()) return
             commit(
                 resolveToggleState({
                     previewAspectRatio,
                     previewOverlay: transport === 'overlay',
-                    toolbarWidth: oneRowToolbarWidth(
-                        tools,
-                        rootFontSize.value,
-                        isCoarsePointer.value,
-                    ),
+                    toolbarWidth:
+                        oneRowToolbarWidth(tools, rootFontSize.value, isCoarsePointer.value) +
+                        minimapRoomFor(minimapShownFor(minimap, autoShape.value.width)),
                 }),
             )
         },

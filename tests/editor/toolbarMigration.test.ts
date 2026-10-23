@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { insertExportLevel } from '../../src/settings/toolbarExport'
+import { insertMinimap } from '../../src/settings/toolbarMinimap'
 import { insertPreviewAssets } from '../../src/settings/toolbarPreviewAssets'
 import { insertSessionRestore } from '../../src/settings/toolbarSessionRestore'
 
@@ -102,4 +103,44 @@ test('the three steps on a customised toolbar change only what each step promise
     assert.deepEqual(chain([['utilities', 'properties', 'save', 'open']]), [
         ['utilities', 'properties', 'exportLevel', 'save', 'open'],
     ])
+})
+
+const navigation = [
+    'scrollLeft',
+    'scrollRight',
+    'jumpUp',
+    'scrollPageUp',
+    'scrollUp',
+    'scrollDown',
+    'scrollPageDown',
+    'jumpDown',
+]
+
+test('Minimap goes first in the exact old navigation group, so Jump to Start stays its face', () => {
+    assert.deepEqual(insertMinimap([['select'], navigation, ['play']]), [
+        ['select'],
+        ['minimap', ...navigation],
+        ['play'],
+    ])
+})
+
+test('a customised navigation group is left as it is', () => {
+    for (const groups of [
+        [navigation.slice(0, -1)],
+        [[...navigation, 'zoomYIn']],
+        [[...navigation].reverse()],
+        [['jumpDown']],
+    ]) {
+        assert.equal(insertMinimap(groups), groups)
+    }
+})
+
+test('a toolbar that has Minimap anywhere is left as it is', () => {
+    const groups = [['minimap'], navigation]
+    assert.equal(insertMinimap(groups), groups)
+})
+
+test('the Minimap step is idempotent', () => {
+    const once = insertMinimap([navigation])
+    assert.equal(insertMinimap(once), once)
 })

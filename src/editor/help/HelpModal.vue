@@ -11,6 +11,7 @@ import HelpSection from './HelpSection.vue'
             <li>{{ i18n.help.modal.touchscreen.tap }}</li>
             <li>{{ i18n.help.modal.touchscreen.drag }}</li>
             <li>{{ i18n.help.modal.touchscreen.quickScroll }}</li>
+            <li>{{ i18n.help.modal.touchscreen.minimap }}</li>
             <li>{{ i18n.help.modal.touchscreen.deselect }}</li>
             <li>{{ i18n.help.modal.touchscreen.scrollY }}</li>
             <li>{{ i18n.help.modal.touchscreen.scrollX }}</li>
@@ -26,6 +27,7 @@ import HelpSection from './HelpSection.vue'
             <li>{{ i18n.help.modal.mouse.dragSecondary }}</li>
             <li>{{ i18n.help.modal.mouse.scrollY }}</li>
             <li>{{ i18n.help.modal.mouse.scrollX }}</li>
+            <li>{{ i18n.help.modal.mouse.minimap }}</li>
             <li>{{ i18n.help.modal.mouse.zoomY }}</li>
             <li>{{ i18n.help.modal.mouse.zoomX }}</li>
         </HelpSection>

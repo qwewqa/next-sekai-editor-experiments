@@ -215,6 +215,9 @@
                 "added": "Added {0} stage"
             }
         },
+        "minimap": {
+            "title": "Minimap"
+        },
         "note": {
             "title": {
                 "default": "Note",
@@ -617,6 +620,7 @@
                 "tap": "One-finger tap to use the current tool.",
                 "drag": "One-finger drag to use the current tool.",
                 "quickScroll": "One-finger drag in the quick scroll zone to scroll.",
+                "minimap": "One-finger tap in the minimap to scroll there, or drag the box that marks the visible area.",
                 "deselect": "Two-finger tap to deselect.",
                 "scrollY": "Two-finger pan vertically to scroll.",
                 "scrollX": "Two-finger pan horizontally to scroll.",
@@ -632,6 +636,7 @@
                 "dragSecondary": "Right click and drag to drag with secondary tool.",
                 "scrollY": "Wheel scroll to scroll vertically.",
                 "scrollX": "Wheel scroll with Shift key to scroll horizontally.",
+                "minimap": "Left click or drag in the minimap to scroll there.",
                 "zoomY": "Wheel scroll with Ctrl key to zoom vertically.",
                 "zoomX": "Wheel scroll with Ctrl and Shift keys to zoom horizontally."
             },
@@ -814,6 +819,7 @@
             },
             "elevationSideBySide": "Elevation Editor Side by Side",
             "elevationConnectorArrows": "Elevation Editor Connector Arrows",
+            "minimap": "Show Minimap",
             "waveformVisualization": {
                 "title": "Waveform Visualization",
                 "off": "Off",

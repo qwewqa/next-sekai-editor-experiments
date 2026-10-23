@@ -215,6 +215,9 @@
         "added": "{0} sahnesi eklendi"
       }
     },
+    "minimap": {
+      "title": "Mini Harita"
+    },
     "note": {
       "title": {
         "default": "Nota",
@@ -617,6 +620,7 @@
         "tap": "Geçerli aracı kullanmak için tek parmakla dokunun.",
         "drag": "Geçerli aracı kullanmak için tek parmakla sürükleyin.",
         "quickScroll": "Kaydırmak için hızlı kaydırma alanında tek parmakla sürükleyin.",
+        "minimap": "O konuma kaydırmak için mini haritada tek parmakla dokunun veya görünür alanı gösteren çerçeveyi sürükleyin.",
         "deselect": "Seçimi kaldırmak için iki parmakla dokunun.",
         "scrollY": "Kaydırmak için iki parmağınızı dikey olarak kaydırın.",
         "scrollX": "Kaydırmak için iki parmağınızı yatay olarak kaydırın.",
@@ -632,6 +636,7 @@
         "dragSecondary": "Sağ tıklayıp sürükleyerek ikincil aracı kullanın.",
         "scrollY": "Dikey kaydırma için tekerleği çevirin.",
         "scrollX": "Yatay kaydırma için Shift tuşuyla birlikte tekerlek kaydırması yapın.",
+        "minimap": "O konuma kaydırmak için mini haritada sol tıklayın veya sürükleyin.",
         "zoomY": "Dikey yakınlaştırma için Ctrl tuşuyla birlikte tekerleği kaydırın.",
         "zoomX": "Yatay yakınlaştırma için Ctrl ve Shift tuşlarıyla tekerlek kaydırması yapın."
       },
@@ -814,6 +819,7 @@
       },
       "elevationSideBySide": "Yükseklik Editörünü Yan Yana Göster",
       "elevationConnectorArrows": "Yükseklik Editöründe Bağlayıcı Okları",
+      "minimap": "Mini Haritayı Göster",
       "waveformVisualization": {
         "title": "Dalga Formu Görselleştirmesi",
         "off": "Kapalı",
