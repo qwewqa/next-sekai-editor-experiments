@@ -26,6 +26,7 @@ const CLASSES = {
     readRecovered: 'covered',
     listKept: 'covered',
     findEdits: 'covered',
+    deleteTarget: 'covered',
     checkStoredOpen: 'covered',
     checkStoredBatch: 'covered',
     listRecent: 'covered',
@@ -43,6 +44,7 @@ const CLASSES = {
     estimateSaveSize: 'read',
     saveNeeds: 'read',
     mediaHeld: 'read',
+    readMedia: 'read',
     readSessionStarts: 'read',
     openRead: 'read',
     checkFileOpen: 'read',
@@ -51,6 +53,7 @@ const CLASSES = {
     buildSave: 'read',
     userAssetList: 'read',
     userAssetGet: 'read',
+    listMarked: 'read',
     // Writes.
     flush: 'write',
     storeMedia: 'write',
@@ -78,6 +81,10 @@ const CLASSES = {
     openBatch: 'write',
     openUnlink: 'write',
     openAbandon: 'write',
+    markDeleting: 'write',
+    undoDeleting: 'write',
+    removeSessions: 'write',
+    gcPass: 'write',
     checkFinish: 'write',
     checkDrop: 'write',
     // Lifecycle.
@@ -116,6 +123,8 @@ const MODULES: [file: string, factory: string][] = [
     ['worker/openHandlers.ts', 'openHandlers'],
     ['worker/checkHandlers.ts', 'checkHandlers'],
     ['worker/diagnosticHandlers.ts', 'diagnosticHandlers'],
+    ['worker/maintHandlers.ts', 'maintHandlers'],
+    ['worker/mediaHandlers.ts', 'mediaHandlers'],
 ]
 
 const covered = (Object.keys(CLASSES) as (keyof typeof CLASSES)[]).filter(

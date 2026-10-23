@@ -2,10 +2,11 @@ import { session } from '../history/session'
 import { i18n } from '../i18n'
 import type { ShownName } from '../local/startup/events'
 import { interpolateRaw } from '../utils/interpolate'
+import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { displayedName } from './labelText'
 import { notify } from './notification'
 import { copySourceName, shownName } from './shownName'
-import { confirmSwitch, notifyLeft, takeBgmLine } from './switch'
+import { confirmSwitch, notifyLeft } from './switch'
 import { withSwitchRequest } from './switchRequest'
 
 // Restore Session and Restore as a Copy of a stored session (Part 1 §1.4.10.6, §1.4.3): from

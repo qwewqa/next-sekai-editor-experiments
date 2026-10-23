@@ -64,7 +64,7 @@ A **snapshot** is one chart state: the chart and the header (Initial Life, dynam
 - **Split** (`split.ts`): a record goes in the chunk of its 16-beat window; a window of more than 24 records (`PART_LIMIT`) splits at 4-beat parts, then 1-beat parts, then runs of 24. A kind other than `slides` with at most 64 records (`SMALL_KIND_LIMIT`) is one chunk. Readers do not assume a split.
 - **Kind node.** `[kind, depth, [hash16...]]`. Depth 0 lists at most 16 chunks in order (`NODE_FANOUT`); depth 1 lists depth-0 nodes.
 - **Root.** `[v, headerHash, [[kindName, nodeHash], ...], noteCount]`, `v = RECORDS_V`. Kinds appear only when they have records, in the order `slides, bpms, timeScales, cameraEvents, stageMaskEvents, stagePivotEvents, stageStyleEvents, stageTransformEvents`. The root hash is the snapshot id.
-- **Header chunk.** `[initialLife, isDynamicStages, bgmOffset, groups, stages, groupFolders, stageFolders, levelInfo, bgm?]`. Media (BGM, cover, preview) are named by hash inside it and stored in `media`; a state whose media are not held restores with them "not loaded".
+- **Header chunk.** `[initialLife, isDynamicStages, bgmOffset, groups, stages, groupFolders, stageFolders, levelInfo, bgm?]`. Media (BGM, cover, preview) are named by hash inside it and stored in `media`; a state read from storage names its BGM and holds none of its audio (section 2.2, "Held audio").
 
 Row forms (`src/local/records/rows.ts`):
 
@@ -85,6 +85,13 @@ Row forms (`src/local/records/rows.ts`):
 - `resetStates` replaces the stack with one `init` slot and emits `reset`; the storing side starts a new session whose first entry is `init` (`Flusher.begin`). `restoreStates` installs a stored stack (slots lazy, head loaded) and emits nothing; the storing side resumes or continues the session itself.
 - A published state is frozen outside release builds (`src/history/freeze.ts`): the flush finds unchanged kinds and entities by identity, so a change in place would store a stale record under a valid hash.
 
+**Held audio** (`src/editor/media/heldBgm.ts`). A state built from records has `bgm.meta` and no `buffer`. The BGM is **held** when this tab has its bytes (`Bgm.source`, or the cache below) or the media store does; only a BGM neither holds is "not loaded".
+
+- **One `Bgm` per hash.** A cache of three entries (least recently used first out, never the live head's hash) holds the decoded buffer, waveform and original bytes. A pick, an opened file's BGM and a read from the store fill it; a new session empties it, since the reset revokes every waveform. The slot loader gives a slot built from records the cached audio of its `meta.hash` (`withCachedBgm`), so Undo and Redo land with audio.
+- **The live watcher.** A live state (never a peek) with `bgm.meta` and no `buffer` gets its audio from the cache, else from the media store (`readMedia`, a worker read that re-hashes the bytes and answers nothing for a missing or damaged row), then decodes it. It attaches with `replaceState` only if the session, the hash and "not peeking" are unchanged after the awaits. An attach is no step and no new root (`sameParts` compares the meta by identity), and the file state is unchanged. A read that failed says nothing and is tried again at the next change of the live BGM.
+- **The not-loaded notice** is said at most once per hash per session (`claimNotice`), and only after the store answered "absent": by the load notice (a continue, resume or journal), the Open File card, a switch card's second line (`takeBgmLine`), or, for an Undo or Redo that reaches the BGM, a card of its own. A Timeline Restore keeps the current audio (section 4.6), so it never makes another BGM live.
+- **Choose Audio…** opens the system chooser and decides on the picked file's hash alone (`decidePick`). The hash the live `meta` names: attach it, keep the recorded `meta` and name, and store the bytes again (`storeMedia`), as no step. Any other hash: one `nse.bgm.change` step, with the offset unchanged.
+
 `isDirty` means "changed since the last file event": a pushed step is dirty, a `save` entry clean.
 
 ### 2.3 IndexedDB stores
@@ -100,12 +107,19 @@ Database `nse-local-data`, `DB_VERSION` 1 (`src/local/db.ts`). Upgrades only add
 | `stackBlocks` | `[sessionId, block]` | The stored undo stack (section 2.5) |
 | `nodes`, `chunks` | 16-byte hash | Root and node rows; chunk rows |
 | `media` | 16-byte hash | `{blob, sha256, size, type, filename?, kind, day}` |
-| `tombstones` | `id` | Marks of removed sessions |
 | `recovered` | `id` | Bytes of journals that could not be read (section 2.9) |
 | `userAssets` | `key`; index `type` | Not History |
-| `meta` | `key` | `formatVersion`, `epoch`, `maxSeenTime`, `dbInstanceId`, `deviceId`, `daysOfUse`, `lastUseDate`, `lastGcAt`, `deletionsPending`, `migratedHashes`, `usage`, `lastPersistFailure`, `createdBy` |
+| `meta` | `key` | `formatVersion`, `epoch`, `maxSeenTime`, `dbInstanceId`, `deviceId`, `daysOfUse`, `lastUseDate`, `lastGcAt`, `deletionsPending`, `migratedHashes`, `removedForSpace`, `createdBy` |
 
-**Nothing deletes History yet** (GC, Delete Sessions and tombstone writing are Step 8). The one removal so far is Check File and History…'s: a media row that still fails its re-hash under `nse-maint` exclusive (section 2.8), with no epoch bump, since every flush checks media by key. `tombstones` is only read: a tombstoned session opens as deleted (`src/local/startup/stored.ts`) and journal apply treats it as removed. The Timeline's "removed to save space" label comes from `kept: false` rows, not tombstones. `meta.epoch` is meant to rise in any transaction that deletes (`bumpEpoch`, no caller yet). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair.
+**Deleting.** Rows go only as whole sessions, and bodies only by GC (rules R1–R9 in sections 5.3 and 5.4):
+
+- **Delete** (Recent Sessions) marks the chain `deleting: {at}` (`markDeleted`, `src/local/deletion.ts`): it locks every session and import lock of the chain, applies their pending journals, and writes the mark strictly (`markTx`, `src/local/removal.ts`). A marked chain is gone to every reader but GC's mark. Undo clears the mark only while `at` is still its own (`undoTx`).
+- **The sweep** (`sweepDeleted`) removes chains marked about 10 minutes ago through the removal primitive (`removeLocked`): the page locks every session and import of the chain or skips it, and skips it while any of its sessions has a journal key; the worker's one transaction (`removeTx`) re-reads the chain, its sessions and its mark and refuses when anything differs. It deletes whole sessions with their entries and stack blocks, oldest first, and the chain record and its `handles` only with its last session. It sets `deletionsPending`; a `cleanup` removal also sets `removedForSpace`. A removed session leaves no marker.
+- **GC** (`gcPass`, `src/local/gc.ts`) marks from every entry's snapshot, every `recovered` entry's pushed snapshots and every stack block's hashes, follows `refs`, and deletes the `nodes`, `chunks` and `media` rows nothing reaches that were first stored at least 2 days of use ago. It runs when `deletionsPending` is set or once per day of use, under one `nse-maint` exclusive hold, and stops as soon as a writer waits. It never reads `userAssets` or `recovered`.
+- **Check File and History…** removes a media row that still fails its re-hash inside the same exclusive hold (section 2.8), with no epoch bump, since every flush checks media by key.
+- **When.** The maintenance runner (`src/local/maintenance.ts`) runs the reclaim, the sweep and GC at load idle, on becoming visible (at most once a minute), when a mark falls due, and 30 s after a run that found `nse-maint` held. The reclaim (`reclaimOrphans`, `src/editor/save/env.ts`) removes a deleted chain's `saving.*` marker, `revoke.*` key and `nse-kept` copy once a record read finds no chain.
+
+`meta.epoch` rises in every transaction that deletes a node or chunk (GC's, which bumps for media too). Each flush records the `(dbInstanceId, epoch)` at which it knew a chunk was stored, and `writeFlush` re-checks with `getKey` every reused chunk not known at the current pair, so a hash GC removed is stored again. The Timeline's "removed to save space" label comes from `kept: false` rows.
 
 ### 2.4 Entries
 
@@ -167,11 +181,11 @@ The chain record (`chains`):
 
 - Identity: `chainId`, `head` (the head session), `docId` (`project.json` `id`), `lineageId` (provenance), `sourceName`, `name`, `renames`, `exportName`.
 - File: `file {name, event, at, hash, entry, completeFrom, disk, options, confirmed}` (handle in `handles`), `revision {id, n, ancestors}`, `replaced {by, at, name}` after a takeover, `extra` (unknown `project.json` keys, written back by Save), `exportTarget` (handle in `handles`).
-- Flags and display: `hasContent`, `edited`, `partialImport`, `summary {title, artists, author, rating, tags, bgmName, noteCount}`, `badChunks`, `deleting`, `updatedAt`, `day`, `appVersion`.
+- Flags and display: `hasContent`, `edited`, `partialImport`, `summary {title, artists, author, rating, tags, bgmName, noteCount}`, `badChunks`, `deleting` (`{at}`: marked for Delete, section 2.3), `updatedAt`, `day`, `appVersion`.
 
 The `summary` is IndexedDB-only (no file carries it) and is written with the head's state by every writer of a chain record. `bgmName` is the head's BGM file name (`meta.filename`, else the buffer's): a stored chain has no state, and the displayed name falls back to the BGM's stem (section 1.3.5), so without it a chart named by its song would be called "Untitled" in Recent Sessions once left. `noteCount` absent means unknown, never 0.
 
-**Recent Sessions' list** (`listRecent`, `src/local/recent.ts`; a covered `storedRead`, so a failed read is a failure, never an empty list) is read in one transaction in the storage worker: every chain in `updatedAt` order, newest first, except those with a `deleting` mark or a removed (tombstoned) head. A row has the chain's id and `updatedAt`, its head session (`sessionId`, `lastSeq`, `startedAt`), the name parts (`namePartsOf` with the summary's `bgmName`), the bound `file` (`name`, `event`, `at`, `confirmed`), `changed` (the head's root against `file.hash`; a file without a hash is changed, as for an earlier chain at an open), `noteCount` and `readable`: `newer` when any session of the chain has a newer `v`, `damaged` when one has an unsupported `v` or the head's row is missing. Such rows are listed, never hidden. A flush that makes a chain record or moves its head (a continuation's or fork's first write) reports `chainMoved`, which the flusher passes to `onChainMoved` so the page can tell other tabs' lists (`sessionUpdated`).
+**Recent Sessions' list** (`listRecent`, `src/local/recent.ts`; a covered `storedRead`, so a failed read is a failure, never an empty list) is read in one transaction in the storage worker: every chain in `updatedAt` order, newest first, except those with a `deleting` mark. A row has the chain's id and `updatedAt`, its head session (`sessionId`, `lastSeq`, `startedAt`), the name parts (`namePartsOf` with the summary's `bgmName`), the bound `file` (`name`, `event`, `at`, `confirmed`), `changed` (the head's root against `file.hash`; a file without a hash is changed, as for an earlier chain at an open), `noteCount` and `readable`: `newer` when any session of the chain has a newer `v`, `damaged` when one has an unsupported `v` or the head's row is missing. Such rows are listed, never hidden. A flush that makes a chain record or moves its head (a continuation's or fork's first write) reports `chainMoved`, which the flusher passes to `onChainMoved` so the page can tell other tabs' lists (`sessionUpdated`).
 
 **Continuing.** A continuation stores nothing and holds a shared lock on its parent until its first write, which moves the chain's `head` from the parent to it only if the parent is still the head (a compare-and-set in `writeFlush`). Each open session holds an exclusive Web Lock (`src/local/sessions.ts`); a tab never writes a session it does not hold.
 
@@ -518,7 +532,7 @@ The builders are in `src/editor/headerLabelText.ts`, wrapped by `src/editor/head
 
 **`nse.bgm.change`** `{file: {before, after: NameText | null}, offset?: {before, after}}` (the file name without extension; `offset` only when it changed).
 
-- *Produced by:* the BGM dialog and `changeBgm` (Open of an audio file, the "Choose Audio…" notice actions) when the buffer or file name changed; otherwise the same action gives `nse.header.set`. Re-picking the same bytes is not a no-op: every pick decodes a new buffer and `sameChart` compares it by identity, so the step has equal names.
+- *Produced by:* the BGM dialog and `changeBgm` (Open of an audio file) and Choose Audio… (the "Choose Audio…" notice actions) with a file other than the one the state names, when the buffer or file name changed; otherwise the same action gives `nse.header.set`. Re-picking the same bytes is not a no-op: every pick decodes a new buffer and `sameChart` compares it by identity, so the step has equal names.
 - *Apply:* replaces `state.bgm` (name, buffer, waveform, bytes, metadata, offset).
 - *Step Details:* "Changed BGM" (with `offset`) or "Changed BGM file"; a "File" change row, or a value row when both names are equal; an "Offset (ms)" row when stored; a missing name reads "Not set". Never grouped.
 
@@ -648,12 +662,22 @@ Each rule says what must never happen, where the code enforces it and the tests 
 | A transaction that names a store the database lacks fails, and no handle or row is dropped for it. | `UPGRADES`, `StorageCore` | `local/handshake.test.ts`, `local/formatVersions.test.ts`, browser `storageHandshake.spec.ts` |
 | A start listener that throws never stops the others or the storing setup; a cancelled one never runs. | `notifyFlusherStart`, `onFlusherStart` | `local/flusherStart.test.ts` |
 | Every session lock has one owner at a time and passes only where the flusher takes it at registration; its creator releases it otherwise. | `LockLease` (`src/local/sessions.ts`), `Flusher` registration | `local/startup/leases.test.ts`, `local/startup/open.test.ts`, `local/leaseGuard.test.ts` |
+| R1. Every transaction that deletes rows or bodies runs inside `nse-maint` exclusive, requested with ifAvailable (never queued: `busy` retries later); its writes take no shared hold, never pause storing, and run while storing is paused for a full browser. | `StorageCore.exclusive` | `local/deletion/gc.test.ts` (busy, paused), `local/testing/testCore.test.ts` |
+| R2. A transaction that deletes a node or chunk bumps the epoch in that transaction; removing session rows bumps nothing. | `gcPass` (`bumpEpoch`) | `local/deletion/gc.test.ts` (one bump per sweep transaction; the closure check) |
+| R3. A remover locks every session lock and import lock of a chain, exclusive and ifAvailable, across its transaction, or skips the chain: open tabs, continuations' parent holds, Save to File…, builds and imports are never touched. | `removeLocked`, `markDeleted` (`lockChain`); the test core's lock rule | `local/deletion/delete.test.ts` (each holder; the lock rule fires) |
+| R4. A session goes whole (entries, stack blocks, row) in one transaction, only the oldest of a chain, the head only with the chain, the record and handles only with the last session; the transaction refuses (`changed`) when the chain, its sessions or its mark differ from what was locked. | `removeTx` | `local/deletion/delete.test.ts`, `local/deletion/crash.test.ts` |
+| R5. No remover deletes a journal: Delete applies the chain's journals before the mark, and every remover skips a chain with a `journal.<sessionId>` key; a marked chain's journal becomes a recovery chain at the next load. | `markDeleted`, `removeLocked`, `writeJournalApply` (`CHAIN_DELETING`) | `local/deletion/delete.test.ts` |
+| R6. GC holds one exclusive hold from its mark to its last sweep, never resumes from an earlier mark, stops when a writer waits with its swept batches committed, and keeps a body first stored within the last 2 days of use. | `gcPass` | `local/deletion/gc.test.ts` |
+| R8. A marked chain is gone to every reader but GC's mark: the newest session, an open, the open notice and pending imports skip it. | `readSessionForOpen`, `readNewestSession`, `openPendingImports`, `readEarlierChains` | `local/startup/stored.test.ts`, `local/deletion/delete.test.ts` |
+| R9. Undo clears a mark only while its `at` is the one its Delete wrote; a chain the sweep removed first is reported lost. | `undoTx` | `local/deletion/delete.test.ts` |
+| A kill at any await of Delete, the sweep or GC leaves each chain whole (marked or not) or gone, and the next load's sweep and GC finish it. | the single removal transaction, `storedViolations` | `local/deletion/crash.test.ts` |
 
 ### 5.4 Newer data
 
 | Rule | Enforced by | Tests |
 | --- | --- | --- |
 | A newer session `v`, an unknown entry kind or a root `v` above `RECORDS_V` is "Needs a newer version", never damage: never continued, restored, reduced, saved or rewritten, and a chain holding one is refused whole. An older or malformed `v` is not newer and not read. | `sessionReadability`, `checkReadable`, `ModelError` | `local/records/unknownValues.test.ts`, `local/save/versionGuards.test.ts`, `local/journal/replay.test.ts` |
+| R7. Automatic removal never reduces newer data: a partial removal or cleanup refuses a chain with a session this build cannot read (`later`), and GC removes nothing while `meta.formatVersion` is newer, a session is newer or an entry kind is unknown, or when its traversal reaches a node of an unknown `t` or a root above `RECORDS_V` (an unreachable one is swept). A user's whole-chain Delete or Delete Sessions… removes such a chain: its rows go by key range, unread. | `removeTx`, `gcPass` | `local/deletion/delete.test.ts`, `local/deletion/gc.test.ts` |
 | Version constants and tables are pinned. | — | `local/formatVersions.test.ts` |
 | An `x` follows one rule on every carrier (a JSON object, at most 256 KiB, at most 32 levels below it, damage otherwise whatever `patch` says) and is never counted in its host's caps; a writer writes the lowest `minor` and `patch` the content needs. | `isExtensionValue`, `withoutExtension`, `minorOf`, `patchOf`, `nxsp_check.py` (`extension_form`, `expected_minor`, `expected_patch`) | `editor/historyOperations.test.ts`, `local/nxsp/agreement.test.ts`, `checker.test.ts`, `local/formatVersions.test.ts` |
 
@@ -714,6 +738,7 @@ Each rule says what must never happen, where the code enforces it and the tests 
 - Replacing a journal key this page did not write, or clearing one before a strict commit covers it.
 - A notice that is not true: a queued Undo reports only when it lands; a step notice only when `pushState` returned `true`.
 - Writing from a peeked state, or editing while peeking.
+- Attaching audio to a state that names another hash, another session or a peek, or making a step or a new root by doing so; saying "not loaded" for a BGM that memory or the media store holds, or twice for one hash in a session.
 - Changing a published state in place.
 - Dropping `extra` keys on a Save (`local/nxsp/roundTrip.test.ts`), or trusting what they or an `x` hold.
 
@@ -764,7 +789,7 @@ Before the ship an operation changes in place at version 1; after it, any change
 
 ## 7. Future work
 
-- **Deleting History (Step 8).** GC, Delete Sessions and space reduction are not built: nothing writes `tombstones`, bumps `meta.epoch` (`bumpEpoch` and `missingHashes` in `db.ts` and `observeTimes` in `time.ts` have no callers, and each says so) or marks a row `kept: false` for space. When they land, every deleting transaction must bump the epoch, which the flush's closure check depends on.
+- **Deleting History (Steps 8 and 10).** Delete Sessions… and cleanup under pressure are not built; both remove through `removeLocked` (section 2.3), and cleanup never removes a chain's latest session. Nothing marks a row `kept: false` for space. `observeTimes` in `time.ts` has no caller.
 - **Level Info (Step 11).** `nse.levelInfo.set` has its codec, presentation, strings and `levelInfoInput`, but no producer until the Level Info dialog. It has no inventory case in `historyOperationDetails.cases.json` yet.
 - **Per-id operation versions.** The envelope has one literal `version: 1`. The first change after the ship needs a per-id version table and the old codec kept for reading.
 - **Native apps.** The apps' reader and writer are not in this repository (Step 7 is paused); the conformance cases and the checker are what they must match.

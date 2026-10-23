@@ -476,10 +476,7 @@ const tamper = async (world: World, change: (tx: KvTx) => Promise<void>) => {
     const core = workerCore(world, tab)
     await tab.run(() => core.start())
     await tab.run(() =>
-        core.write(
-            ['sessions', 'chains', 'entries', 'tombstones', 'stackBlocks', 'handles'],
-            change,
-        ),
+        core.write(['sessions', 'chains', 'entries', 'stackBlocks', 'handles'], change),
     )
 }
 

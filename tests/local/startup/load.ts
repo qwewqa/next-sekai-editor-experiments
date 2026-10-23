@@ -1,3 +1,4 @@
+import { settleHeldBgm, type HeldEnvironment } from '../../../src/editor/media/heldBgm'
 import { createSessionDescriptor, session } from '../../../src/history/session'
 import { resetStates, restoreStates } from '../../../src/history/stack'
 import type { FlushSession } from '../../../src/local/flush'
@@ -25,6 +26,7 @@ import { initialStep, nativeOperation, originOperation } from '../../helpers/his
 import { testId } from '../flush/harness'
 import { beginSession, openJournalPage, type JournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
+import { watchMedia } from './mediaRead'
 
 // A whole load on the test core, as `start.ts` runs it: the tab's claim, the recovery order over
 // the page's journal store, the page's own blank start, then `openAtStart`. The tab's
@@ -71,6 +73,8 @@ export type LoadOptions = {
     appVersion?: string
     /** The page's journal writer's options (D14's no-durability commits, say). */
     writer?: Partial<JournalWriterDeps>
+    /** The page's media reads, as the live watcher makes them (one that fails, say). */
+    media?: Partial<HeldEnvironment>
     /** Runs before the editor side shows a session (one that throws, say). */
     show?: (shown: Shown) => void
 }
@@ -198,7 +202,10 @@ export const load = async (
         },
         events: (event) => events.push(event),
     }
+    // The page reads the media store for a BGM the state names without audio.
+    watchMedia(context, (work) => page.tab.run(work), options.media)
     const opened = await page.tab.run(() => openAtStart(deps, claim))
+    await settleHeldBgm()
     saveTab(tab)
     return { page, tab, claim, recovery, deps, events, opened, shown, shownStates, blank }
 }

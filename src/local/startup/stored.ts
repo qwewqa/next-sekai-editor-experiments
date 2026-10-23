@@ -50,7 +50,7 @@ export type SessionRead =
       }
     /** No row: a session never stored. */
     | { kind: 'missing' }
-    /** Removed (a tombstone), or its chain is being deleted. */
+    /** Its chain is marked for Delete. */
     | { kind: 'deleted' }
     /** It, or its chain, needs a newer version: never continued (§1.6.11.8). */
     | { kind: 'later'; why: string }
@@ -164,7 +164,6 @@ const isWindow = (value: unknown): value is StackWindow =>
 
 /** Reads a session to open it: continued by a new visit or Reopen, or taken up by a reload. */
 export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<SessionRead> => {
-    if ((await tx.getKey('tombstones', sessionId)) !== undefined) return { kind: 'deleted' }
     const session = await tx.get('sessions', sessionId)
     if (!isRow(session)) return { kind: 'missing' }
     if (typeof session.chainId !== 'string') return { kind: 'damaged', why: 'no chainId' }

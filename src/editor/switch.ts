@@ -6,6 +6,7 @@ import { previousSession } from '../local/startup/events'
 import { showChoice } from '../modals/choice'
 import { setLeaveSafeModeGuard } from '../safe'
 import { interpolate } from '../utils/interpolate'
+import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
 import {
@@ -59,10 +60,6 @@ export const confirmSwitch = async () => {
 setLeaveSafeModeGuard(confirmSwitch)
 
 type Left = NonNullable<typeof previousSession.value>
-
-// The second line of a switch's card when the BGM just shown is not loaded (Part 1 §1.6.8.4).
-// TODO(package M): replace with takeBgmLine from commands/bgm/chooseAudio, which says it once per hash.
-export const takeBgmLine = (): Promise<NoticeLine | undefined> => Promise.resolve(undefined)
 
 // Reopen clears the session it opens, which is no sign that there was nothing to reopen.
 let reopening: SwitchRequest | undefined

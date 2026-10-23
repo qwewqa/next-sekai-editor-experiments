@@ -308,6 +308,7 @@ const COVERED_READS = [
     'readRecovered',
     'listKept',
     'findEdits',
+    'deleteTarget',
     'checkStoredOpen',
     'checkStoredBatch',
     'listRecent',

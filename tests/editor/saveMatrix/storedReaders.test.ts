@@ -6,7 +6,7 @@ import './env'
 // removes a marker only when the read worked and found no chain, and the binding refresh, which
 // changes nothing when the record can't be read.
 
-const { sweepMarkers, writeMarker, readMarker, writeRevocation } =
+const { reclaimOrphans, writeMarker, readMarker, readRevocation, writeRevocation } =
     await import('../../../src/editor/save/env')
 const { refreshBinding } = await import('../../../src/editor/save/watch')
 
@@ -20,18 +20,38 @@ const marker = (chainId: string) =>
         unit: { docId: `doc-${chainId}`, file: { hash: 'ab' } },
     }) as never
 
-test('a marker is removed for a chain storage no longer holds, and kept when the read fails', async () => {
+test('a deleted chain’s marker, revocation and kept bytes are removed, and kept when the read fails', async () => {
     localStorage.clear()
-    for (const chainId of ['gone', 'held', 'unreadable']) assert.ok(writeMarker(marker(chainId)))
-    await sweepMarkers({
-        call: (_method, chainId) => {
-            if (chainId === 'unreadable') return Promise.reject(failure())
-            return Promise.resolve(chainId === 'gone' ? undefined : { chainId })
+    const revoke = { by: 'other', at: 9, name: 'a.nxsp', fileAt: 7 }
+    for (const chainId of ['gone', 'held', 'unreadable']) {
+        assert.ok(writeMarker(marker(chainId)))
+        assert.ok(writeRevocation(chainId, revoke))
+    }
+    const copies = new Set(['gone', 'held', 'unreadable', 'goneCopy'])
+    await reclaimOrphans(
+        {
+            call: (_method, chainId) => {
+                if (chainId === 'unreadable') return Promise.reject(failure())
+                return Promise.resolve(
+                    chainId === 'gone' || chainId === 'goneCopy' ? undefined : { chainId },
+                )
+            },
         },
-    })
+        {
+            chains: () => Promise.resolve([...copies]),
+            remove: (chainId) => {
+                copies.delete(chainId)
+                return Promise.resolve()
+            },
+        },
+    )
     assert.equal(readMarker('gone'), undefined)
+    assert.equal(readRevocation('gone'), undefined)
     assert.ok(readMarker('held'))
+    assert.ok(readRevocation('held'))
     assert.ok(readMarker('unreadable'), 'a failed read keeps the marker')
+    assert.ok(readRevocation('unreadable'))
+    assert.deepEqual([...copies].sort(), ['held', 'unreadable'])
 })
 
 test('a binding refresh whose record read fails changes nothing', async () => {

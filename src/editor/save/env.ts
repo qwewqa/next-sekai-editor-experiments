@@ -168,23 +168,36 @@ export const removeMarker = (chainId: string, revisionId?: string) => {
     }
 }
 
-/** Removes the markers of chains storage no longer holds (deleted), at a load's idle time. */
-export const sweepMarkers = async (worker: ReadWorker) => {
-    const prefix = storageKey('saving.')
-    const chains: string[] = []
+/** A chain's kept bytes in OPFS: listed and removed by the reclaim. */
+export type KeptCopies = {
+    chains: () => Promise<string[]>
+    remove: (chainId: string) => Promise<void>
+}
+
+/**
+ * Removes what a deleted chain left on this side of storage: its Save marker, its revocation and
+ * its kept bytes, at a load's idle time. Each goes only when the record read worked and found no
+ * chain (definite deletion).
+ */
+export const reclaimOrphans = async (worker: ReadWorker, kept?: KeptCopies) => {
+    const chains = new Set<string>()
     try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i)
-            if (key?.startsWith(prefix)) chains.push(key.slice(prefix.length))
-        }
+        for (const prefix of [storageKey('saving.'), storageKey('revoke.')])
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i)
+                if (key?.startsWith(prefix)) chains.add(key.slice(prefix.length))
+            }
     } catch {
-        return
+        // No localStorage: only kept bytes to look at.
     }
-    for (const chainId of chains) {
+    const copies = new Set(kept ? await kept.chains() : [])
+    for (const chainId of [...chains, ...copies]) {
         const read = await storedRead(worker, 'readChainRecord', chainId)
-        // A failed read keeps the marker: it is removed only when the read worked and found no
-        // chain.
-        if (read.storedRead === 'value' && read.storedValue === undefined) removeMarker(chainId)
+        // A failed read keeps everything: it goes only when the read worked and found no chain.
+        if (read.storedRead !== 'value' || read.storedValue !== undefined) continue
+        removeMarker(chainId)
+        removeRevocation(chainId)
+        if (copies.has(chainId)) await kept?.remove(chainId)
     }
 }
 

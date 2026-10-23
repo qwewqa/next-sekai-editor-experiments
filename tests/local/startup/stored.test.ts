@@ -44,7 +44,7 @@ const tamper = async (
     const tab = world.tab('tamper')
     const core = workerCore(world, tab)
     await tab.run(() => core.start())
-    await tab.run(() => core.write(['sessions', 'chains', 'entries', 'tombstones'], change))
+    await tab.run(() => core.write(['sessions', 'chains', 'entries'], change))
 }
 
 test('a stored session reads with its chain, its stack and its head', async () => {
@@ -61,20 +61,11 @@ test('a stored session reads with its chain, its stack and its head', async () =
     assert.equal(toHex(read.head), toHex(stack.slots[1]!.snapshot))
 })
 
-test('missing, removed, deleting and newer sessions are never opened', async () => {
+test('missing, deleting and newer sessions are never opened', async () => {
     const world = createWorld({ seed: 2 })
-    const { page, older, newer } = await twoChains(world)
+    const { page, newer } = await twoChains(world)
     const read = (id: string) => page.tab.run(() => handlersOf(page).readSession(id))
     assert.equal((await read('nobody')).kind, 'missing')
-    await tamper(world, async (tx) => {
-        await tx.put('tombstones', {
-            id: older.id,
-            kind: 'session',
-            removedAt: 1,
-            chainId: older.chainId,
-        })
-    })
-    assert.equal((await read(older.id)).kind, 'deleted')
     await tamper(world, async (tx) => {
         const chain = (await tx.get('chains', newer.chainId)) as Record<string, unknown>
         await tx.put('chains', { ...chain, deleting: { at: 1 } })

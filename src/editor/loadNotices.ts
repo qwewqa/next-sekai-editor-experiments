@@ -3,7 +3,7 @@ import { formatDateInSentence } from '../i18n/when'
 import { loadEvents, onLoadEvent, type LoadEvent, type ShownName } from '../local/startup/events'
 import { platform } from '../platform'
 import { interpolate, interpolateRaw } from '../utils/interpolate'
-import { changeBgm } from './commands/bgm'
+import { chooseAudioAction } from './commands/bgm/chooseAudio'
 import { copyPageLink } from './copyLink'
 import { openHistoryAction } from './history/openHistory'
 import { LOAD_ORDER } from './loadOrder'
@@ -43,13 +43,6 @@ const restoreSession = (sessionId: string, name?: ShownName): NoticeAction => ({
         void restoreStored(sessionId, 'restore', name)
     },
 })
-
-const chooseAudio: NoticeAction = {
-    label: () => i18n.value.notice.chooseAudio,
-    run: () => {
-        void changeBgm()
-    },
-}
 
 type Line = {
     order: number
@@ -186,7 +179,7 @@ export const loadNoticeOf: Handlers = {
         order: LOAD_ORDER.bgmNotLoaded,
         severity: 'info',
         message: () => load().bgmNotLoaded,
-        action: chooseAudio,
+        action: chooseAudioAction,
     }),
 }
 

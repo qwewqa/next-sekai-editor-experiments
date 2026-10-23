@@ -637,15 +637,10 @@ test('a journal recovery, a replayed journal and a migrated auto save give the s
     const core = workerCore(world, sweeper)
     await sweeper.run(() => core.start())
     await sweeper.run(() =>
-        core.write(['tombstones'], (tx) =>
-            tx.put('tombstones', {
-                id: other.id,
-                kind: 'session',
-                removedAt: 1,
-                chainId: other.chainId,
-                label: { time: 1, name: '' },
-            }),
-        ),
+        core.write(['chains'], async (tx) => {
+            const chain = (await tx.get('chains', other.chainId)) as Record<string, unknown>
+            await tx.put('chains', { ...chain, deleting: { at: 1 } })
+        }),
     )
     const recovered = await replayAll(world, storage, 'next2')
     assert.ok(recovered.outcomes.some((outcome) => outcome.kind === 'recovery'))

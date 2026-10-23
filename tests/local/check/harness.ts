@@ -46,10 +46,17 @@ export const checker = async (fixture: Fixture, flags?: TestFlags): Promise<Chec
     const scheduled = Object.create(core) as StorageCore
     scheduled.read = (stores, fn, progress) => tab.run(() => core.read(stores, fn, progress))
     scheduled.write = (stores, fn, options) => tab.run(() => core.write(stores, fn, options))
-    const handlers = checkHandlers(
-        { core: scheduled, test: true, emit: () => undefined },
-        { locks: tab.locks },
-    )
+    scheduled.exclusive = (body) =>
+        tab.run(() =>
+            core.exclusive((hold) =>
+                body({
+                    ...hold,
+                    read: (stores, fn) => tab.run(() => hold.read(stores, fn)),
+                    write: (stores, fn, options) => tab.run(() => hold.write(stores, fn, options)),
+                }),
+            ),
+        )
+    const handlers = checkHandlers({ core: scheduled, test: true, emit: () => undefined })
     return { tab, core, handlers }
 }
 

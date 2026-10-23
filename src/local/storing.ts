@@ -7,6 +7,7 @@ import {
 } from '../editor/commands/exportLevel/memory'
 import { setTargetLock } from '../editor/commands/exportLevel/targetLock'
 import { setFileActions } from '../editor/file'
+import { configureHeldBgm, decodeBgmData, withCachedBgm } from '../editor/media/heldBgm'
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
@@ -23,6 +24,7 @@ import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { startupGate } from '../startup/gate'
 import type { State } from '../state'
+import { postSessionUpdated } from './channel'
 import { isDurablyStoredWith } from './durable'
 import {
     Flusher,
@@ -243,6 +245,10 @@ export const startStoring = (
             journalWriter?.committed(session.id, seq, strict)
         },
         syncStrict: () => worker.call('syncStrict'),
+        // A chain made or its head moved: other tabs' Recent Sessions lists refresh.
+        onChainMoved: () => {
+            postSessionUpdated()
+        },
         // A Save's binding stored: its marker goes (§1.4.7, our own completed Save).
         onIdentity: (session, identity) => {
             removeMarker(session.chainId, identity.revision.id)
@@ -498,9 +504,10 @@ export const startStoring = (
     // Right after a reload, a slot the resumed import hasn't brought yet loads once it has: the
     // load waits for the resume to start, then for the import, and tries again (§1.5.4).
     const load = slotLoader((hex) => worker.call('readSnapshotVerified', hex))
+    // A BGM this tab holds is attached to the slot it names, so Undo and Redo land with audio.
     setSlotLoader(async (snapshot) => {
         try {
-            return await load(snapshot)
+            return withCachedBgm(await load(snapshot))
         } catch (error) {
             const id = instance.session?.id
             // Only a session whose open's import hasn't finished waits for it.
@@ -516,8 +523,17 @@ export const startStoring = (
                 throw error
             if (!(await importStarted(id))) throw error
             await whenImported(id)
-            return load(snapshot)
+            return withCachedBgm(await load(snapshot))
         }
+    })
+
+    // A state that names audio it does not hold gets it from the media store (§1.6.8.4).
+    configureHeldBgm({
+        read: (hash, size) =>
+            worker.call('readMedia', hash, { timeoutMs: mediaTimeoutMs(size ?? 0) }),
+        decode: decodeBgmData,
+        store: (item) =>
+            worker.call('storeMedia', item, { timeoutMs: mediaTimeoutMs(item.bytes.byteLength) }),
     })
 
     // History's entries are peeked from memory or their stored snapshots (§1.4.11).

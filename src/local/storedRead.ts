@@ -16,8 +16,8 @@ export type StoredRead<T> =
 /**
  * The methods whose empty or absent answer a caller acts on: no handle, no owners, no binding, no
  * chain, no guard, no earlier chains, no pending import, no import target, nothing to recover, a
- * recovered row gone, no kept copy, no edits here, no damage found, no Recent Sessions. A new
- * storage method is classified when it is added (`storedReadClasses.test.ts`).
+ * recovered row gone, no kept copy, no edits here, no damage found, no Recent Sessions, no chain
+ * to Delete. A new storage method is classified when it is added (`storedReadClasses.test.ts`).
  */
 export const COVERED_READS = [
     'readHandle',
@@ -32,6 +32,7 @@ export const COVERED_READS = [
     'readRecovered',
     'listKept',
     'findEdits',
+    'deleteTarget',
     'checkStoredOpen',
     'checkStoredBatch',
     'listRecent',

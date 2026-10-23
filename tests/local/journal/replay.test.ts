@@ -151,27 +151,22 @@ test('a session that never flushed is made from the descriptor, with its ids', a
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-/** Another tab removes the session under storage pressure: its tombstone. */
-const tombstone = async (world: World, session: FlushSession) => {
+/** Another tab marks the session's chain for Delete. */
+const markDeleting = async (world: World, session: FlushSession) => {
     const other = world.tab('sweeper')
     const core = workerCore(world, other)
     await other.run(() => core.start())
     await other.run(() =>
-        core.write(['tombstones'], (tx) =>
-            tx.put('tombstones', {
-                id: session.id,
-                kind: 'session',
-                removedAt: 1,
-                chainId: session.chainId,
-                label: { time: 1, name: '' },
-            }),
-        ),
+        core.write(['chains'], async (tx) => {
+            const chain = (await tx.get('chains', session.chainId)) as Record<string, unknown>
+            await tx.put('chains', { ...chain, deleting: { at: 1 } })
+        }),
     )
 }
 
-test('a deleted session’s journal becomes a recovery session in a new chain', async () => {
+test('a deleted chain’s journal becomes a recovery session in a new chain', async () => {
     const { world, page, session } = await killedAfterEdits(5)
-    await tombstone(world, session)
+    await markDeleting(world, session)
     const { outcomes } = await replayAll(world, page.storage)
     const outcome = outcomes[0]
     assert.equal(outcome?.kind, 'recovery')
@@ -502,7 +497,7 @@ const chainsOf = (world: World) => [...rows(world, 'chains').values()]
 
 test('a kill between a recovery session’s commit and the key’s delete makes no second one', async () => {
     const { world, page, session } = await killedAfterEdits(15)
-    await tombstone(world, session)
+    await markDeleting(world, session)
     const first = await replayIn(
         world,
         world.tab('first'),

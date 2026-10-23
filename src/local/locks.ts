@@ -1,9 +1,9 @@
 import type { LockMode, LockService, LockSnapshot } from '../platform/types'
 
 // The maintenance lock (Part 1 §1.6.5, §1.6.6). Writers hold `nse-maint` shared only around their
-// transaction, after deflate, verify and hash, and wait at most 3 s for it. Deleters (GC, cleanup,
-// Delete Sessions…, Delete's sweep) take it exclusive, always with ifAvailable, so they never
-// queue in front of a writer, and release it between batches.
+// transaction, after deflate, verify and hash, and wait at most 3 s for it. Every transaction that
+// deletes rows or bodies runs inside it exclusive (`StorageCore.exclusive`, R1), always requested
+// with ifAvailable, so a deleter never queues in front of a writer.
 
 export const MAINT_LOCK = 'nse-maint'
 export const sessionLock = (sessionId: string) => `nse-session:${sessionId}`
@@ -73,14 +73,6 @@ export const withMaintExclusive = <T>(locks: LockService, batch: () => Promise<T
     locks.request(MAINT_LOCK, { mode: 'exclusive', ifAvailable: true }, async (held) =>
         held ? { ran: true as const, value: await batch() } : { ran: false as const },
     )
-
-/**
- * Named stub (Step 3a) for the maintenance pass: no deleter exists until Step 7's sweep, so it
- * only shows the exclusive side's shape. A planned seam: nothing calls it until Step 7.
- */
-export const maintNoop = async (locks: LockService) => {
-    await withMaintExclusive(locks, () => Promise.resolve())
-}
 
 type NavigatorLocks = {
     request: (
