@@ -121,7 +121,6 @@ Operation codecs are strict: a member the codec does not list makes the data fai
 ## 7. What the readers do not do
 
 - They do not expect a chain to outlive an older build: a user's Delete or Delete Sessions… in an older build removes a whole chain whatever its sessions' versions, by key range. A newer build reads a missing chain, parent session or body as removed, as this one does.
-
 - They do not read the history of a file whose `minor` is newer, or of one that is damaged.
 - They do not carry through a Save any content they do not read, except `extra` and the contents of `x` and an operation.
 - They do not recover a missing or unreadable `level.json` from the history. A later build may; it changes how a build treats damaged files, not what files contain.
