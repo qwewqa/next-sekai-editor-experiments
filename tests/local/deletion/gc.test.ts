@@ -136,7 +136,9 @@ const fresh = async (seed: number) => {
 test('GC keeps every body a row reaches through refs and the grace period, and sweeps the rest with one epoch bump', async () => {
     const { world, deleter } = await fresh(1)
     const h = await seedBodies(world)
-    await tamper(world, (tx) => tx.put('userAssets', { key: 'skin', type: 'skin', day: 1 }))
+    await tamper(world, async (tx) => {
+        await tx.put('userAssets', { key: 'skin', type: 'skin', day: 1 })
+    })
     const requested = new Set<string>()
     world.memory.faults.request = (stores) => {
         for (const store of stores) requested.add(store)
@@ -238,7 +240,7 @@ test('a Deleted chain holding newer data is swept with its bodies; while it is t
     world.checks.transitions = true
     await daysPass(world)
     const deleter = await openDeleter(world, world.tab('b'), storage)
-    assert.equal((await deleter.gc()).kind, 'unsafe')
+    assert.equal((await deleter.gc())?.kind, 'unsafe')
     assert.ok(bodies(world).size > 0)
     assert.equal((await deleter.mark(first.chainId)).kind, 'marked')
     assert.deepEqual(await deleter.sweep(), { removed: 1, busy: false })
@@ -377,7 +379,7 @@ test('with storing paused for a full browser, a removal and GC still run and lea
     world.memory.faults.request = undefined
     assert.deepEqual(deleter.core.status, { mode: 'stored', reason: 'full' })
     assert.deepEqual(await deleter.remove(request), { kind: 'removed', sessions: 2 })
-    assert.equal((await deleter.gc()).kind, 'done')
+    assert.equal((await deleter.gc())?.kind, 'done')
     assert.deepEqual(bodies(world), new Set())
     assert.deepEqual(deleter.core.status, { mode: 'stored', reason: 'full' })
 })

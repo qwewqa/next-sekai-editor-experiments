@@ -39,7 +39,7 @@ test('a kill anywhere in Delete, the sweep or GC leaves a chain whole or gone, a
             const { storage } = setups.get(world)!
             const next = await openDeleter(world, world.tab('next'), storage)
             await next.sweep()
-            assert.equal((await next.gc()).kind, 'done')
+            assert.equal((await next.gc())?.kind, 'done')
         },
         check: async ({ world, killedAt }) => {
             const { deleted, kept } = setups.get(world)!
