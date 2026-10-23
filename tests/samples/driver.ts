@@ -1,4 +1,5 @@
 import { expect, type BrowserContext, type Page } from '@playwright/test'
+import { readDump, type Dump } from '../../src/local/dump'
 
 // Drives the real editor for the sample generators: pointer and keyboard input at chart positions,
 // and a clock shared by the page (Playwright's) and the storage worker (a Date shim).
@@ -294,6 +295,39 @@ export class Editor {
             await window.nseFlushTest!.flusher.flush({ strict: true })
         })
     }
+}
+
+/** Reads the database in a page that loads no editor code, through the dumper alone (a blank same-origin page). */
+export const dump = async (context: BrowserContext, version?: string) => {
+    const page = await context.newPage()
+    await page.route('**/__sample-dump', (route) =>
+        route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>dump</title>' }),
+    )
+    await page.goto('/__sample-dump')
+    const result = await page.evaluate(
+        async ([prefix, version]) => {
+            const { dumpDatabase, dumpLocalStorage } =
+                (await import('/src/local/dump.ts')) as typeof import('../../src/local/dump')
+            const { idbFactory } =
+                (await import('/src/local/kv/idb.ts')) as typeof import('../../src/local/kv/idb')
+            const { appVersion } =
+                (await import('/src/platform/version.ts')) as typeof import('../../src/platform/version')
+            const db = await idbFactory(indexedDB).open('nse-local-data', undefined)
+            const storage = dumpLocalStorage(localStorage, prefix)
+            // The panels the generator hid for speed are not part of the sample.
+            delete storage[`${prefix}showPreview`]
+            const dumped = await dumpDatabase(db, {
+                // The blank page has no build define, so a caller that knows the version gives it.
+                appVersion: version ?? appVersion().appVersion,
+                localStorage: storage,
+            })
+            db.close()
+            return JSON.stringify(dumped)
+        },
+        [prefix, version] as const,
+    )
+    await page.close()
+    return readDump(JSON.parse(result)) as Dump
 }
 
 export { prefix }

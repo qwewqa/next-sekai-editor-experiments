@@ -25,6 +25,7 @@
         "test:release": "node --test tests/release/*.test.mjs",
         "release:tag": "node scripts/release/tag.mjs",
         "samples:long-history": "playwright test --config playwright.samples.config.ts longHistory",
+        "fixtures:v1": "playwright test --config playwright.fixtures.config.ts",
         "probe:handles": "playwright test --config playwright.probe.config.ts",
         "dev": "vite --host",
         "build": "node scripts/check-lyon.mjs && vite build",

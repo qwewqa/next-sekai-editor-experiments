@@ -9,6 +9,8 @@ tests/local/records/golden-v1/** -text
 tests/local/records/schema-v1/** -text
 src/local/records/fields-v1.json text eol=lf
 tests/local/nxsp/golden-v1/** -text
+tests/native/fixtures/nxsp-v1/** -text
+tests/fixtures/web-storage-v1/** -text
 *.nxsp binary
 tools/fields-v1.json text eol=lf
 tests/zip/plan-conformance-v1/** -text
