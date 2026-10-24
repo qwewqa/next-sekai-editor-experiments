@@ -111,7 +111,26 @@ const redrawVersion = ref(0)
 const waveformVersion = ref(0)
 // Bumped once shifted stage pixels have held still for a motion's gap, to redraw them exactly.
 const stageSettle = ref(0)
+// Each chart draw with shifted stage pixels moves the deadline; one timer follows it, so a
+// sustained motion arms a timer about once per gap instead of once per frame.
+let stageSettleDue: number | undefined
 let stageSettleTimer: ReturnType<typeof setTimeout> | undefined
+const armStageSettle = () => {
+    if (stageSettleTimer !== undefined || stageSettleDue === undefined) return
+    stageSettleTimer = setTimeout(
+        () => {
+            stageSettleTimer = undefined
+            if (stageSettleDue === undefined) return
+            if (performance.now() < stageSettleDue) {
+                armStageSettle()
+                return
+            }
+            stageSettleDue = undefined
+            stageSettle.value++
+        },
+        Math.max(0, stageSettleDue - performance.now()),
+    )
+}
 const chartFrame = createFrameScheduler()
 const overlayFrame = createFrameScheduler()
 const notes = createNoteRenderer()
@@ -661,7 +680,7 @@ watchEffect(
                 scope,
                 laneDivision,
             )
-            clearTimeout(stageSettleTimer)
+            stageSettleDue = undefined
             drawGridLines(context, currentBeats, division, laneDivision, beatDisplay, grid)
             ctx.save()
             ctx.strokeStyle = '#fff'
@@ -741,7 +760,8 @@ watchEffect(
             if (shiftedStages) {
                 // Idle time begins after the whole chart is submitted. Slow object
                 // drawing must not consume the pause before an exact settled redraw.
-                stageSettleTimer = setTimeout(() => stageSettle.value++, SUSTAINED_MS)
+                stageSettleDue = performance.now() + SUSTAINED_MS
+                armStageSettle()
             }
         })
     },
@@ -938,7 +958,9 @@ onMounted(() => {
 onUnmounted(() => {
     vectors.clear()
     annotations.clear()
+    stageSettleDue = undefined
     clearTimeout(stageSettleTimer)
+    stageSettleTimer = undefined
     chartFrame.cancel()
     overlayFrame.cancel()
     notes.clear()
