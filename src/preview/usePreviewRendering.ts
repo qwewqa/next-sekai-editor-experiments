@@ -305,19 +305,23 @@ export const usePreviewRendering = (
                         clearSurface(ctx, overlay.width, overlay.height)
                         if (edges.length) {
                             const scale = args[4] / 2
-                            ctx.beginPath()
-                            for (const { a, b } of edges) {
-                                ctx.moveTo(args[3] / 2 + a.x * scale, args[4] / 2 - a.y * scale)
-                                ctx.lineTo(args[3] / 2 + b.x * scale, args[4] / 2 - b.y * scale)
-                            }
-                            ctx.lineJoin = 'round'
+                            const segments: number[] = []
+                            for (const { a, b } of edges)
+                                segments.push(
+                                    args[3] / 2 + a.x * scale,
+                                    args[4] / 2 - a.y * scale,
+                                    args[3] / 2 + b.x * scale,
+                                    args[4] / 2 - b.y * scale,
+                                )
+                            // The edges change every playback frame: stroking them as a
+                            // path would tessellate a new path twice a frame.
                             ctx.lineCap = 'round'
                             ctx.strokeStyle = '#06151d'
                             ctx.lineWidth = 5
-                            ctx.stroke()
+                            ctx.strokeSegments(segments)
                             ctx.strokeStyle = '#67e8f9'
                             ctx.lineWidth = 2
-                            ctx.stroke()
+                            ctx.strokeSegments(segments)
                         }
                         ctx.flush()
                         drawnOverlay = edges.length ? overlay : undefined

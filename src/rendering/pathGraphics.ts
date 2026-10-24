@@ -18,7 +18,7 @@ type Point = [number, number]
 type MatrixValues = Extract<PathCommand, readonly ['transform', unknown]>[1]
 type Extras = { dash: readonly number[]; dashOffset: number }
 const tau = 2 * Math.PI
-const curveTolerance = 0.1
+export const curveTolerance = 0.1
 
 /** Quantized maximum stretch, including the editor's device-pixel transform. */
 export function resolutionScale(matrix: readonly number[]) {

@@ -167,6 +167,7 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 - `--affinity <hex mask>` does this on Windows. It pins the harness first, so the browser inherits the affinity, and re-applies the priority (`--priority`, default AboveNormal) after launch and after every cell. Each record's `offPin` counts processes that left the set.
 - Example: a Ryzen 9 9950X3D has two CCDs. CCD0 (logical processors 0–15) carries the 3D V-cache and CCD1 (16–31) the higher clocks, so runs use `--affinity 0xFFFF0000`.
 - Run analysis and everything else on the other CCD, and run one measurement at a time with nothing else busy.
+- On a shared machine, check before each run that no other perf run is active (processes with `nse-perf` in their command line) and that both CCDs are quiet, and sample each CCD's load during the run. Run again any run that met other work: other tests at 100% on both CCDs doubled a playback run's clock p95.
 - Name the run's folders and command lines so a priority watcher can exempt them. Ours exempts anything with `nse-perf` in its command line.
 
 ### Charts
@@ -242,7 +243,11 @@ New:
 
 - **Grid path-cache churn:** the grid builds new paths every frame (`grid.ts`), and the path cache, keyed by the path object (`pathGraphics.ts`), stores them though nothing reuses them. It fills its 128 MiB budget and evicts in bursts: a 7–10 ms frame at 1× about every 6 s of playback.
 - **The storage-unavailable journal:** with storage unavailable, the whole chart is serialized and gzipped every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. The idle callback's 5 s timeout can land it in the middle of a scroll.
-- **The selection outline during playback:** with every note selected, the preview strokes the outline twice per frame through tessellation (`usePreviewRendering.ts`): a desktop clock p95 of 7.6 ms, 30% of frames late, and 15–20 ms major GCs.
+- **The selection outline during playback** (fixed by f3-outline): with every note selected, the preview stroked the outline twice per frame as a new path, tessellated and cached each time (`usePreviewRendering.ts`). It now draws the edges as triangles (`strokeSegments`, see `docs/rendering.md`). Coconut playback with every note selected, Composed, before and after:
+    - desktop at 239 Hz, with Elevation: clock p95 7.7 → 3.7 ms, preview p95 5.9 → 1.6 ms, frames drawn 59% → 91%;
+    - desktop, without Elevation: clock p95 5.7 → 2.4 ms, frames drawn 86% → 98%;
+    - phone at 4×, with Elevation: clock p95 41 → 20 ms, preview p95 40 → 10 ms;
+    - the 15–40 ms major GCs stay at the same rate: they finish marking a 300–400 MB heap, and are not the outline's.
 - **The idle vector compile** (fixed by pr2-gc): after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asked again whenever the idle period was shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread. It now retries 100 ms later, up to ten times, then waits for a frame that draws.
 
 Still present:
