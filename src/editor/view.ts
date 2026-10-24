@@ -445,10 +445,23 @@ export const focusEntityAtBeat = (beat: number) => {
     markTouch('entity', beat)
 }
 
+// Set while a drag's edge pan scrolls the view vertically, which it then owns.
+let isEdgePanningY = false
+
+/** Runs a drag update; in a frame its edge pan scrolled vertically, focuses don't pan. */
+export const withEdgePanY = (isPanning: boolean, update: () => void) => {
+    isEdgePanningY = isPanning
+    try {
+        update()
+    } finally {
+        isEdgePanningY = false
+    }
+}
+
 const panView = (t: number, allowDirectJump = true) => {
     updateViewLastActive()
 
-    if (t >= times.value.min && t <= times.value.max) return
+    if (isEdgePanningY || (t >= times.value.min && t <= times.value.max)) return
 
     // Long focus jumps skip unseen intermediate scenes; nearby navigation keeps
     // its ease. Use the full viewport, including its area before chart time zero.

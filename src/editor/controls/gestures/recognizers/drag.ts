@@ -14,6 +14,7 @@ import {
     snappingSources,
     view,
     viewBox,
+    withEdgePanY,
 } from '../../../view'
 import type { HoldPoint, Modifiers } from '../pointer'
 import type { Recognizer } from './recognizer'
@@ -35,6 +36,14 @@ const panZone = (held: number | undefined) => ({
 })
 // A point inside an edge zone, else none.
 const holdIn = (p: number) => (p < 0.2 || p > 0.8 ? p : undefined)
+// The chart's vertical pan speed in pane heights a second, at depth d from a zone's inner border
+// (0) to the pane edge (1): d + 3.5·d⁶. Within 11% of linear over the inner half, it rises
+// smoothly to 4.5 at the edge. Other panes, such as the Elevation Editor, keep the linear d.
+const panRateY = (depth: number) => {
+    if (editorNavigation.value) return depth
+    const d = Math.min(depth, 1)
+    return d + 3.5 * d ** 6
+}
 
 export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
     // A scroll follows the finger; the tool gets the held point.
@@ -92,20 +101,26 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
             }
         }
 
+        let pannedY = false
         if (settings.dragToPanY) {
             const py = (y - bounds.y) / bounds.h
             if (holdIn(py) === undefined) held.y = undefined
             const { low, high } = panZone(held.y)
             if (py < low) {
-                scrollViewYBy(unlerp(low, 0, py) * bounds.h * delta)
-                updated++
+                scrollViewYBy(panRateY(unlerp(low, 0, py)) * bounds.h * delta)
+                pannedY = true
             } else if (py > high) {
-                scrollViewYBy(-unlerp(high, 1, py) * bounds.h * delta)
-                updated++
+                scrollViewYBy(-panRateY(unlerp(high, 1, py)) * bounds.h * delta)
+                pannedY = true
             }
+            if (pannedY) updated++
         }
 
-        if (active?.type === 'drag') updateDrag(x, y, modifiers)
+        // While the edge pan scrolls, it owns the view: focusing the dragged entity adds no ease.
+        if (active?.type === 'drag')
+            withEdgePanY(pannedY, () => {
+                updateDrag(x, y, modifiers)
+            })
 
         if (!updated) {
             update = undefined
