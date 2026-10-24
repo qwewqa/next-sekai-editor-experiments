@@ -953,6 +953,7 @@
         "localData": {
             "title": "Local Data",
             "recoveryHeading": "Recovery",
+            "startupNoticesHeading": "Startup Notices",
             "discard": "Discard…",
             "discardConfirm": "Discard",
             "cannotOpen": "(cannot be opened in this version)",
@@ -964,8 +965,7 @@
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
                 "listFailed": "Recovered work could not be read",
-                "downloadFailed": "The recovered work could not be downloaded.",
-                "atLoad": "Startup Notices"
+                "downloadFailed": "The recovered work could not be downloaded."
             },
             "openHistory": "Open History",
             "confirmClose": "Ask Before Closing with Unsaved Changes",

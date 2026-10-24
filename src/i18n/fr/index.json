@@ -953,6 +953,7 @@
     "localData": {
       "title": "Données locales",
       "recoveryHeading": "Récupération",
+      "startupNoticesHeading": "Notifications au démarrage",
       "discard": "Abandonner…",
       "discardConfirm": "Abandonner",
       "cannotOpen": "(ne peut pas être ouvert dans cette version)",
@@ -964,8 +965,7 @@
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
         "listFailed": "Le travail récupéré n’a pas pu être lu",
-        "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé.",
-        "atLoad": "Notifications au démarrage"
+        "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé."
       },
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",

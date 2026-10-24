@@ -953,6 +953,7 @@
     "localData": {
       "title": "Yerel Veriler",
       "recoveryHeading": "Kurtarma",
+      "startupNoticesHeading": "Başlangıç Bildirimleri",
       "discard": "Sil…",
       "discardConfirm": "Sil",
       "cannotOpen": "(bu sürümde açılamıyor)",
@@ -964,8 +965,7 @@
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "listFailed": "Kurtarılmış çalışma okunamadı",
-        "downloadFailed": "Kurtarılmış çalışma indirilemedi.",
-        "atLoad": "Başlangıç Bildirimleri"
+        "downloadFailed": "Kurtarılmış çalışma indirilemedi."
       },
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",

@@ -307,7 +307,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(heading).toBeInViewport()
         // Every notice of this load is listed there, not only the three on the pill.
         const atLoad = page.locator('[data-at-load]')
-        await expect(atLoad).toContainText('Startup Notices')
+        await expect(atLoad.getByRole('heading', { name: 'Startup Notices' })).toBeVisible()
         await expect(atLoad.locator('li')).toHaveText([
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',

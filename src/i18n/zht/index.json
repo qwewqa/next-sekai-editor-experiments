@@ -953,6 +953,7 @@
     "localData": {
       "title": "本機資料",
       "recoveryHeading": "恢復",
+      "startupNoticesHeading": "啟動通知",
       "discard": "捨棄…",
       "discardConfirm": "捨棄",
       "cannotOpen": "（此版本無法開啟）",
@@ -964,8 +965,7 @@
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
         "listFailed": "無法讀取已恢復的內容",
-        "downloadFailed": "無法下載已恢復的內容。",
-        "atLoad": "啟動通知"
+        "downloadFailed": "無法下載已恢復的內容。"
       },
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更",
