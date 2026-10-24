@@ -1,6 +1,15 @@
 import { cancelFrame, isFrameOpen, requestFrame } from '../../frame'
-import { getDrawContext, type RenderSurface, type WebGLDrawContext } from '../../rendering/context'
+import { onResetState } from '../../history/resetHooks'
+import {
+    getDrawContext,
+    releaseUnusedPaths,
+    type RenderSurface,
+    type WebGLDrawContext,
+} from '../../rendering/context'
 import type { CanvasBounds } from './types'
+
+// A new or opened chart leaves the previous one's geometry unused.
+onResetState(releaseUnusedPaths)
 
 /** Erases a surface in backing pixels, independently of the scene transform. */
 export const clearSurface = (ctx: WebGLDrawContext, width: number, height: number) => {

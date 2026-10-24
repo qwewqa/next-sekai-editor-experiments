@@ -845,6 +845,9 @@ export class PathGraphicsCache {
     private protectedBytes = 0
     private frame = 0
     private access = 0
+    // `access` at the last chart switch: entries last drawn before it are released
+    // like frame-only ones, once unpinned.
+    private switchedAt = 0
     readonly stats = {
         hits: 0,
         native: 0,
@@ -906,7 +909,7 @@ export class PathGraphicsCache {
                 if (!entry.pins) continue // The entire cache may have been destroyed.
                 if (!--entry.pins) {
                     this.protectedBytes -= entry.bytes
-                    if (entry.frameOnly) this.frameOnly.push(entry)
+                    if (this.stale(entry)) this.frameOnly.push(entry)
                     else if (entry.frame !== this.frame && this.entries.has(entry))
                         this.addEvictable(entry)
                 }
@@ -921,18 +924,39 @@ export class PathGraphicsCache {
             this.release(entry)
         }
         this.overflow.clear()
-        for (const entry of this.frameOnly) {
-            // An entry can be listed twice; the first release removes it.
-            if (entry.pins || !this.entries.delete(entry)) continue
-            this.bytes -= entry.bytes
-            this.release(entry)
-        }
+        // An entry drawn again since the switch is no longer stale; `touched` holds it.
+        for (const entry of this.frameOnly) if (!entry.pins && this.stale(entry)) this.drop(entry)
         this.frameOnly.length = 0
         this.frame++
         // Visit only resources used by the preceding frame. The large retained
         // scene working set does not need reordering or scanning on each draw.
-        for (const entry of this.touched) if (!entry.pins) this.addEvictable(entry)
+        for (const entry of this.touched) {
+            if (entry.pins) continue
+            if (this.stale(entry)) this.drop(entry)
+            else this.addEvictable(entry)
+        }
         this.touched.length = 0
+    }
+
+    /**
+     * Another chart was installed: release the geometry no frame since has drawn. Pinned and
+     * queued entries stay; each goes at the first frame boundary that finds it unpinned, unless
+     * a draw has used it again by then.
+     */
+    releaseUnused() {
+        this.switchedAt = this.access
+        for (let entry = this.evictable[0]; entry; entry = this.evictable[0]) this.drop(entry)
+    }
+
+    private stale(entry: Entry) {
+        return entry.frameOnly || entry.accessed <= this.switchedAt
+    }
+
+    private drop(entry: Entry) {
+        // An entry can be listed twice; the first release removes it.
+        if (!this.entries.delete(entry)) return
+        this.bytes -= entry.bytes
+        this.release(entry)
     }
 
     /** `frameOnly`: no later frame draws this path, as with a context's current path. */
@@ -1388,5 +1412,6 @@ export class PathGraphicsCache {
         this.bytes = 0
         this.protectedBytes = 0
         this.access = 0
+        this.switchedAt = 0
     }
 }

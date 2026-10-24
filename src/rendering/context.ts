@@ -99,6 +99,8 @@ const canvasScalar = (value: number) =>
     Math.max(-3.4028234663852886e38, Math.min(3.4028234663852886e38, Math.fround(value)))
 
 const contexts = new WeakMap<HTMLCanvasElement, WebGLDrawContext>()
+// Every context not yet disposed, surfaces included, for `releaseUnusedPaths`.
+const live = new Set<WeakRef<WebGLDrawContext>>()
 const pixiMatrix = (m: Matrix) => new PixiMatrix(...m)
 export class RenderSurface {
     private readonly context: WebGLDrawContext
@@ -272,12 +274,14 @@ export class WebGLDrawContext {
     private readonly waveforms = new WaveformMeshes()
     private readonly stageMeshes = new StageMeshes()
     private segmentVertices = new Float64Array(0)
+    private readonly ref = new WeakRef(this)
     constructor(
         readonly canvas: HTMLCanvasElement | RenderSurface,
         resources?: RenderingResources,
     ) {
         this.resources = resources ?? new RenderingResources(canvas as HTMLCanvasElement)
         this.resources.clients.add(this)
+        live.add(this.ref)
         this.ensure()
     }
     get ready() {
@@ -349,6 +353,7 @@ export class WebGLDrawContext {
         this.disposed = true
         this.resetSurface()
         this.resources.clients.delete(this)
+        live.delete(this.ref)
         for (const texture of this.frames) texture.destroy()
         for (const node of this.graphicPool) node.destroy({ context: false })
         for (const nodes of this.graphicsByContext.values())
@@ -764,6 +769,10 @@ export class WebGLDrawContext {
         range.group.destroy()
         range.releaseGeometry?.()
         range.released = true
+    }
+    /** Another chart was installed: release the path geometry no frame since has drawn. */
+    releaseUnusedPaths() {
+        this.paths.releaseUnused()
     }
     flush() {
         if (!this.ensure() || !this.resources.initialized) return
@@ -2434,6 +2443,14 @@ export const getDrawContext = (canvas: HTMLCanvasElement | RenderSurface): WebGL
     return context
 }
 export const peekDrawContext = (canvas: HTMLCanvasElement) => contexts.get(canvas)
+/** Another chart was installed: every context releases the path geometry no frame since has drawn. */
+export const releaseUnusedPaths = () => {
+    for (const ref of live) {
+        const context = ref.deref()
+        if (context) context.releaseUnusedPaths()
+        else live.delete(ref)
+    }
+}
 export const disposeDrawContext = (canvas: HTMLCanvasElement | RenderSurface) => {
     if ('dispose' in canvas) canvas.dispose()
     else contexts.get(canvas)?.dispose()
