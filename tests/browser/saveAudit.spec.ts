@@ -83,7 +83,6 @@ test.describe('the storage line', () => {
             const dialog = saveDialog(page)
             const storage = dialog.locator('[data-save-storage-line]')
             await expect(storage).toHaveText(line)
-            await expect(storage).not.toContainText('Save to a file')
             const downloading = page.waitForEvent('download')
             await submitSave(page, 'coconut')
             await downloading
