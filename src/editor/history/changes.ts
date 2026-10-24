@@ -40,7 +40,7 @@ import { settings } from '../../settings'
 import { createState, type State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
 import { beatToTime } from '../../state/integrals/bpms'
-import { time } from '../../time'
+import { clockNow } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { getComposedLayout } from '../composedView'
@@ -620,10 +620,11 @@ const scrollTo = (stop: Stop) => {
         view.scrollingY = undefined
         view.time = target
     } else {
+        const start = clockNow()
         view.scrollingY = {
             type: 'ease',
-            from: { time: time.value.now, viewTime: view.time },
-            to: { time: time.value.now + 0.25, viewTime: target },
+            from: { time: start, viewTime: view.time },
+            to: { time: start + 0.25, viewTime: target },
         }
     }
     // Lanes pan when the stop lies off the lanes in view.

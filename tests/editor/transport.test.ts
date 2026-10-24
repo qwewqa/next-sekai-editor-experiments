@@ -177,6 +177,28 @@ test('stepping during playback preserves the displayed position while speed chan
     assert.deepEqual(auditions, [3.01])
 })
 
+// The app clock runs while this is true, so it must change as playback starts and ends.
+test('whether it plays is reactive, also when the next frame finds the audio stopped', (t) => {
+    const { transport, view, clock } = fixture(t)
+    const seen: boolean[] = []
+    const scope = effectScope()
+    scope.run(() =>
+        watch(
+            () => transport.isPlaying,
+            (playing) => seen.push(playing),
+            { flush: 'sync' },
+        ),
+    )
+    t.after(() => scope.stop())
+    transport.play(view.cursorTime)
+    // Stopped outside the transport, as a failed audio resume does.
+    clock.audio = undefined
+    transport.update()
+    transport.play(view.cursorTime)
+    transport.pause()
+    assert.deepEqual(seen, [true, false, true, false])
+})
+
 test('stop returns to the original play position after speed changes', async (t) => {
     const { transport, view, clock, notifications } = fixture(t)
     transport.play(3)
