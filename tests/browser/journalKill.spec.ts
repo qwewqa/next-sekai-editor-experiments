@@ -399,7 +399,7 @@ test('two guides, the default-coloured one created second and earlier, recover w
     expect(hex(entry.snapshot)).toBe(expected.root)
 })
 
-test('a second hide for the same seq writes nothing, and the key goes only after a strict commit', async ({
+test('a second hide for the same seq writes nothing, and the key goes once a commit covers it', async ({
     page,
 }) => {
     await boot(page)
@@ -486,7 +486,7 @@ test('a kill with a flush in flight leaves the edit stored or journalled, and a 
     const outcomes = await next.evaluate(() =>
         window.nseJournalTest!.outcomes.map((outcome) => outcome.kind),
     )
-    // Applied, covered by the flush that landed, or nothing left once a strict commit cleared it.
+    // Applied, covered by the flush that landed, or nothing left once a commit cleared it.
     expect(outcomes.every((kind) => kind === 'applied' || kind === 'covered')).toBe(true)
     const rows = await rowsOf(next, ['entries'])
     const entries = rows

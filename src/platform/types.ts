@@ -188,7 +188,7 @@ export type JournalStore = {
     writeWhole: (journal: JournalLike) => boolean
     /** Every pending journal. */
     read: () => Promise<JournalFound[]>
-    /** Drops this page's journal of a session once a strict committed flush covers its `seq`. */
+    /** Drops this page's journal of a session once a committed flush covers its `seq`. */
     clear: (sessionId: string, coveredSeq: number) => void
     /** A journal this page loaded to go on writing (a same-tab reload’s own, §1.6.7). */
     adopt: (found: JournalFound) => void

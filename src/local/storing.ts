@@ -51,8 +51,8 @@ import { transfer } from './worker/rpc'
 
 // Storing (Part 1 §1.6.4): every change to the undo stack becomes an entry; the flush stores them
 // about 1 s after the last change, at once and strictly on hide, and right after a media pick.
-// The journal covers what isn't committed strictly; while storage is unavailable it's written on
-// a slow idle timer too.
+// The journal covers what isn't committed to the database; while storage is unavailable it's
+// written on a slow idle timer too.
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -113,7 +113,7 @@ export const recordBlankStart = () => {
 }
 
 /**
- * Reopen offers a session this tab left, once its strict commit holds (§1.4.1): an unstored,
+ * Reopen offers a session this tab left, once its commit holds (§1.4.1): an unstored,
  * unedited continuation stands for the session it continues.
  */
 export const offerReopen = (leaving: FlushSession, outgoing: Promise<boolean>) => {
@@ -230,9 +230,9 @@ export const startStoring = (
     const writes: JournalWrite[] = []
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
-        // A strict commit clears the journal it covers (§1.6.4 #7).
-        onCommitted: (session, { seq, strict }) => {
-            journalWriter?.committed(session.id, seq, strict)
+        // A commit clears the journal it covers (§1.6.4 #7).
+        onCommitted: (session, seq) => {
+            journalWriter?.committed(session.id, seq)
         },
         syncStrict: () => worker.call('syncStrict'),
         // A chain made or its head moved: other tabs' Recent Sessions lists refresh.
@@ -329,8 +329,6 @@ export const startStoring = (
               flusher: () => flusher,
               state: () => liveState.value,
               pausedForSpace: () => worker.status?.reason === 'full',
-              strictCommits:
-                  typeof IDBTransaction !== 'undefined' && 'durability' in IDBTransaction.prototype,
               appVersion: appVersion().appVersion,
               onWrite: (write) => {
                   if (test) writes.push(write)

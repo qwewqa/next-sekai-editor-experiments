@@ -361,48 +361,13 @@ test('a journal-only reload’s recovered entry is no hole: if it is lost, the c
 })
 
 // ---------------------------------------------------------------------------------------------
-// The two power losses (R2-5, R3-6). `loseCommits(n)` models Firefox before 126, which ignores
-// durability, so it runs with the journal writer as the page runs it there, `strictCommits:
-// false`: no commit clears a journal. With the default writer a strict commit clears the journal
-// and the loss then undoes that commit, a state no browser in the gate reaches.
+// The two power losses (R2-5, R3-6): `loseRelaxed(k)` models Chromium and Firefox 126 and later,
+// which honour `strict`; `loseCommits(n)` Firefox before 126, which does not. A commit clears the
+// journal it covers (§1.6.4 #7), so a loss that undoes that commit loses its edits with it: the
+// stated residual. The store stays whole, and the session opens at what is left.
 
-const lostEdit = async (seed: number, strictCommits: boolean | undefined) => {
+const lostEdit = async (seed: number, strict: boolean, lose: (world: World) => number) => {
     const world = createWorld({ seed, commitLog: true })
-    const storage = new MemoryStorage()
-    const page = await openJournalPage(
-        world,
-        'a',
-        storage,
-        strictCommits === undefined ? {} : { strictCommits },
-    )
-    const a = sampleState(LARGE)
-    const session = beginSession(page, a)
-    await page.flusher.flush({ strict: true })
-    append(page, { kind: 'edit', step: CHANGED() }, widen(a))
-    page.live.state = widen(a)
-    assert.equal(page.writer.write(), true, 'hide: the journal names entry 2')
-    // Strict: Chromium keeps it; Firefox before 126 may not have it on disk.
-    await page.flusher.flush({ strict: true })
-    page.tab.kill()
-    assert.equal(world.memory.loseCommits(1), 1)
-    assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 1)
-    await replayAll(world, storage, 'reload')
-    return [...rows(world, 'entries').values()].find(
-        (row) => row.sessionId === session.id && row.seq === 2,
-    )
-}
-
-test('loseCommits with strictCommits: false (Firefox before 126 as it runs): the journal recovers the edit', async () => {
-    const row = await lostEdit(3402, false)
-    assert.equal(row?.kind, 'recovered')
-})
-
-test('loseCommits with the default journal writer loses the edit: a state no browser in the gate is known to reach (WebKit: D14), so not modelled', async () => {
-    assert.equal(await lostEdit(3401, undefined), undefined)
-})
-
-test('loseRelaxed with the default writer: the journal a relaxed flush left keeps the edit as a recovery session (Chromium, Firefox 126 and later)', async () => {
-    const world = createWorld({ seed: 3403, commitLog: true })
     const storage = new MemoryStorage()
     const page = await openJournalPage(world, 'a', storage)
     const a = sampleState(LARGE)
@@ -410,23 +375,29 @@ test('loseRelaxed with the default writer: the journal a relaxed flush left keep
     await page.flusher.flush({ strict: true })
     append(page, { kind: 'edit', step: CHANGED() }, widen(a))
     page.live.state = widen(a)
-    await page.flusher.flush()
-    assert.equal(world.memory.relaxedCommits, 1)
-    assert.equal(page.writer.write(), true, 'hide: a relaxed entry is journalled')
+    assert.equal(page.writer.write(), true, 'hide: the journal names entry 2')
+    await page.flusher.flush({ strict })
+    assert.equal(storage.length, 0, 'the commit cleared the journal')
     page.tab.kill()
-    world.memory.loseRelaxed(1)
+    assert.equal(lose(world), 1)
     assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 1)
-    // The stored stack went back with the loss, so the journal's kept slots are outside it: the
-    // edit is kept as a recovery session of its own, never lost.
     const { outcomes } = await replayAll(world, storage, 'reload')
-    assert.equal(outcomes[0]?.kind, 'recovery')
-    assert.equal(storage.length, 0)
+    assert.deepEqual(outcomes, [])
+    assert.deepEqual(checkStored(world.memory, world.sessionOptions), [])
     assert.deepEqual(kinds(world, session.id), [[1, 'init']])
+}
+
+test('loseRelaxed after a relaxed commit cleared the journal: the edit is lost, the store whole', async () => {
+    await lostEdit(3403, false, (world) => world.memory.loseRelaxed(1))
+})
+
+test('loseCommits (Firefox before 126) after a strict commit cleared the journal: the edit is lost, the store whole', async () => {
+    await lostEdit(3402, true, (world) => world.memory.loseCommits(1))
 })
 
 // ---------------------------------------------------------------------------------------------
-// F2's setup: a relaxed commit a power loss undid and the journal recovered. Row 3 is acknowledged
-// relaxed when the Save reserves 4.
+// F2's setup: a relaxed commit a power loss undid. Row 3 is acknowledged relaxed when the Save
+// reserves 4, and the Save's file holds it.
 
 const reloadAfter = async (seed: number) => {
     const world = createWorld({ seed, commitLog: true })
@@ -447,10 +418,12 @@ const reloadAfter = async (seed: number) => {
     assert.equal(reservation.seq, 4)
     assert.equal(page.flusher.unstored(live).entries.length, 0, 'the build takes no pending row')
     page.live.state = a
+    // Every entry is committed: the hide writes no journal.
     assert.equal(page.writer.write(), true)
+    assert.equal(storage.length, 0)
     page.tab.kill()
     world.memory.loseRelaxed(world.memory.relaxedCommits)
-    await replayAll(world, storage, 'reload')
+    assert.deepEqual((await replayAll(world, storage, 'reload')).outcomes, [])
     const reloaded = await openJournalPage(world, 'reload2', new MemoryStorage())
     markedAt(reloaded, 4)
     const read = await readOpen(reloaded, session.id)
@@ -559,7 +532,7 @@ const hasSaveRow = (world: World, sessionId: string, seq: number) =>
 // chain lacks, so it does not carry. Each is a Save whose row a power loss, a journal or a
 // recovery had taken the place of (F2, AR-8, AR-8b).
 
-test('F2: a Save recognised over a row a power loss undid and a journal recovered adds no row and does not carry', async () => {
+test('F2: a Save recognised over a row a power loss undid adds no row and does not carry', async () => {
     const { world, session } = await f2(921)
     assert.equal(hasSaveRow(world, session.id, 4), false)
     assert.equal(carriesNow(world, session.id, session.chainId), false)

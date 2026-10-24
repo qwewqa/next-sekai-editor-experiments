@@ -13,7 +13,7 @@ import {
 } from './apply'
 
 // The storage worker's journal methods (Part 1 §1.6.4 #7): replay's transaction, an unreadable
-// journal's bytes kept in the `recovered` store, and the strict commit that lets a journal go.
+// journal's bytes kept in the `recovered` store, and the strict commit a hide's flush ends with.
 
 /** A journal key that couldn't be read: its text, kept as it was (§1.6.11.2's `recovered`). */
 export type RecoveredBytes = {
@@ -139,10 +139,9 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
             ),
 
         /**
-         * Commits strictly, so what relaxed flushes stored before it is durable too and their
-         * journals can be cleared (§1.6.4: a key is cleared only after a strict commit covers it).
-         * Resolves whether it committed to the database: an in-memory store's commit covers
-         * nothing the database holds.
+         * Commits strictly, so what relaxed flushes stored before it is on disk too (§1.6.4: a
+         * hide's and a switch's flush is strict). Resolves whether it committed to the database:
+         * an in-memory store's commit syncs nothing the database holds.
          */
         syncStrict: async (_: undefined, scope?: CallScope): Promise<boolean> => {
             if (context.core.status.mode !== 'stored') return false

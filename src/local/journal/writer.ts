@@ -5,10 +5,10 @@ import type { Flusher, FlushSession } from '../flush'
 import { buildJournal } from './build'
 
 // The last-chance journal's writer (Part 1 §1.6.4 #7): written synchronously on hide, pagehide,
-// beforeunload and freeze whenever the open session has entries not committed strictly, and
-// verified by reading it back. One key per session, overwritten each time and cleared only once
-// a strict flush covering its `seq` commits; a second trigger for the same `seq` writes nothing.
-// A fork's journal takes over its old session's key (§1.3.1).
+// beforeunload and freeze whenever the open session has entries not committed to a database, and
+// verified by reading it back. One key per session, overwritten each time and cleared once a
+// commit covers its `seq`; a second trigger for the same `seq` writes nothing. A fork's journal
+// takes over its old session's key (§1.3.1).
 
 export type JournalWriterDeps = {
     store: JournalStore
@@ -20,12 +20,6 @@ export type JournalWriterDeps = {
      * however its write went, since localStorage is likely short too (§1.6.4).
      */
     pausedForSpace: () => boolean
-    /**
-     * Whether a strict commit is on disk when it resolves: false where IndexedDB has no
-     * `durability` option (Firefox before 126), and then no commit clears a journal; the next
-     * load finds it covered and deletes it (D14).
-     */
-    strictCommits?: boolean
     appVersion: string
     now?: () => number
     /** Each write's figures, for the timing specs. */
@@ -46,8 +40,8 @@ export class JournalWriter {
     private readonly written = new Map<string, { seq: number; verified: boolean }>()
     /**
      * Keys of sessions a fork took the entries of, by the fork, with the fork's last moved `seq`:
-     * cleared once the fork's own journal verifies or a strict commit covers what moved, since
-     * the next load would otherwise keep them as a recovery chain duplicating the fork.
+     * cleared once the fork's own journal verifies or a commit covers what moved, since the next
+     * load would otherwise keep them as a recovery chain duplicating the fork.
      */
     private readonly superseded = new Map<
         string,
@@ -55,16 +49,9 @@ export class JournalWriter {
     >()
 
     /**
-     * Keys a "strict" commit covered where commits aren't durable on resolve (D14), by session:
-     * left for the next load, and removed once another session's newer journal verifies, so a
-     * visit doesn't pile them up in the budget.
-     */
-    private readonly covered = new Map<string, number>()
-
-    /**
      * Journals whose work another session took over, by that session (a reload's own journal it
      * couldn't apply, §1.6.4): each removed, if unchanged, once the session's own journal verifies
-     * or a strict commit covers the entry that holds the work.
+     * or a commit covers the entry that holds the work.
      */
     private readonly retiring = new Map<
         string,
@@ -74,8 +61,8 @@ export class JournalWriter {
     constructor(private readonly deps: JournalWriterDeps) {}
 
     /**
-     * Writes the open session's journal when it has entries not committed strictly. True when
-     * nothing needed writing or the write verified: the session's pending entries are covered.
+     * Writes the open session's journal when it has entries not committed to a database. True
+     * when nothing needed writing or the write verified: the session's pending entries are covered.
      */
     write(): boolean {
         const flusher = this.deps.flusher()
@@ -110,9 +97,6 @@ export class JournalWriter {
         if (verified) {
             this.dropRetired(session.id)
             this.dropSuperseded(session.id)
-            this.covered.delete(session.id)
-            for (const [id, coveredSeq] of this.covered) this.deps.store.clear(id, coveredSeq)
-            this.covered.clear()
         }
         this.deps.onWrite?.({
             sessionId: session.id,
@@ -145,18 +129,9 @@ export class JournalWriter {
         )
     }
 
-    /**
-     * A flush committed the session's entries up to `seq`: a strict one clears its journal; a
-     * relaxed one leaves the key for the next strict one, which a power loss can't undo. Where
-     * strict commits aren't (D14), none clears it.
-     */
-    committed(sessionId: string, seq: number, strict: boolean) {
-        if (!strict) return
+    /** A flush committed the session's entries up to `seq` to a database: what it covers goes. */
+    committed(sessionId: string, seq: number) {
         const last = this.written.get(sessionId)
-        if (this.deps.strictCommits === false) {
-            if (last && last.seq <= seq) this.covered.set(sessionId, seq)
-            return
-        }
         if (seq >= (this.superseded.get(sessionId)?.moved ?? Infinity))
             this.dropSuperseded(sessionId)
         this.dropRetired(sessionId, seq)

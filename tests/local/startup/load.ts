@@ -5,7 +5,6 @@ import type { FlushSession } from '../../../src/local/flush'
 import { readHandleRow, type HandleRole } from '../../../src/local/handleRows'
 import { journalHandlers } from '../../../src/local/journal/handlers'
 import type { MemoryStorage } from '../../../src/local/journal/store'
-import type { JournalWriterDeps } from '../../../src/local/journal/writer'
 import { TabClient } from '../../../src/local/sessions'
 import type { LoadEvent } from '../../../src/local/startup/events'
 import {
@@ -71,8 +70,8 @@ export type LoadOptions = {
     /** Runs between the blank start and the open: an edit made meanwhile, say. */
     meanwhile?: (page: JournalPage) => void
     appVersion?: string
-    /** The page's journal writer's options (D14's no-durability commits, say). */
-    writer?: Partial<JournalWriterDeps>
+    /** While `on`, the page's flushes never reach the worker, as a stalled store's. */
+    stall?: { on: boolean }
     /** The page's media reads, as the live watcher makes them (one that fails, say). */
     media?: Partial<HeldEnvironment>
     /** Runs before the editor side shows a session (one that throws, say). */
@@ -90,13 +89,18 @@ export const load = async (
 ) => {
     const tab = options.tab ?? new Map<string, string>()
     useTab(tab)
-    const page = await openJournalPage(
-        world,
-        name,
-        storage,
-        options.writer ?? {},
-        options.core ?? {},
-    )
+    const page = await openJournalPage(world, name, storage, {}, options.core ?? {})
+    const stall = options.stall
+    if (stall) {
+        const own = page.flusher as unknown as {
+            deps: { transport: (...args: never[]) => unknown }
+        }
+        const transport = own.deps.transport
+        own.deps.transport = async (...args) => {
+            while (stall.on) await new Promise((resolve) => setTimeout(resolve, 5))
+            return transport(...args)
+        }
+    }
     const claim: Claim = await page.tab.run(() => claimTab(page.tab.locks))
     const context = { core: page.core, test: true, emit: () => undefined }
     const journal = journalHandlers(context, page.tab.waiter)

@@ -22,8 +22,8 @@ test('a key retired to a session that forks goes once the fork holds the entries
     // C's entries moved to a fork, numbered 1 and 2 there.
     writer.forked({ id: 'C' } as FlushSession, { id: 'F', nextSeq: 3, entrySeq: 2 } as FlushSession)
     // Entry 1 of 2 committed: the key still holds work the fork has not stored.
-    writer.committed('F', 1, true)
+    writer.committed('F', 1)
     assert.equal(storage.getItem('nse.journal.S'), '{"seq":4}')
-    writer.committed('F', 2, true)
+    writer.committed('F', 2)
     assert.equal(storage.getItem('nse.journal.S'), null)
 })
