@@ -3,7 +3,8 @@
 //   npm run perf:preview -- <level.json> [--start 0] [--seconds 10] [--fps 240] [--digest]
 //     [--src <dir>]
 // --src renders with another copy of src/, such as `git archive <commit> src` unpacked under
-// perf-results/, so two commits can be compared on the same chart.
+// perf-results/, so two commits can be compared on the same chart. Hashing slows the frames, so
+// take timings from a run without --digest.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -154,5 +155,18 @@ const pct = (p) => sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sor
 const mean = times.reduce((a, b) => a + b, 0) / times.length
 console.log(
     `${frames} frames: mean ${mean.toFixed(3)}, p50 ${pct(50).toFixed(3)}, p95 ${pct(95).toFixed(3)}, p99 ${pct(99).toFixed(3)}, max ${sorted.at(-1).toFixed(3)} ms; ${(quads / frames).toFixed(0)} quads a frame`,
+)
+// Where to point a plan's playback cells: the chart's opening is often far cheaper.
+const perSecond = []
+for (let i = 0; i < frames; i++) {
+    const second = Math.floor(start + i / fps)
+    perSecond[second] = (perSecond[second] ?? 0) + times[i] / fps
+}
+console.log(
+    `heaviest seconds (ms a frame): ${Object.entries(perSecond)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([second, ms]) => `${second} s ${ms.toFixed(2)}`)
+        .join(', ')}`,
 )
 if (hash) console.log(`digest ${hash.digest('hex')}`)
