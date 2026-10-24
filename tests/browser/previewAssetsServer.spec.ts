@@ -574,7 +574,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, BASE)
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
-            'This server needs you to sign in, which the editor does not support.',
+            'The editor cannot use servers that need you to sign in.',
         )
     })
 
@@ -585,7 +585,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, 'http://server.test/api')
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
-            'This server uses http, which the editor cannot load.',
+            'The editor cannot use http servers.',
         )
         expect(server.state.requests).toEqual([])
         await field(page).fill('')
@@ -1049,13 +1049,13 @@ test.describe('looks', () => {
                 await shot(page, name('error-unreachable'))
                 server.state.down = false
                 await connect(page, `${ORIGIN}/auth`)
-                await expect(errorOf(page)).toContainText('needs you to sign in')
+                await expect(errorOf(page)).toContainText('need you to sign in')
                 await shot(page, name('error-auth'))
                 await connect(page, `${ORIGIN}/broken`)
                 await expect(errorOf(page)).toContainText('answered with an error (503)')
                 await shot(page, name('error-status'))
                 await connect(page, 'http://server.test/api')
-                await expect(errorOf(page)).toContainText('uses http')
+                await expect(errorOf(page)).toContainText('http servers')
                 await shot(page, name('error-http'))
                 await context.setOffline(true)
                 await connect(page, BASE)

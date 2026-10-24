@@ -1166,7 +1166,7 @@ test.describe('Settings › Local Data', () => {
         await visit(page)
         await openLocalData(page)
         await expect(page.locator('[data-storage-line]')).toHaveText(
-            'Recent Sessions are kept in this browser, which may clear them if space runs low. Save to a file to keep your work.',
+            'Recent Sessions are kept in this browser unless it runs low on space. Save to a file to keep your work.',
         )
     })
 
@@ -1386,7 +1386,7 @@ test.describe('the in-app browser line', () => {
     const inApp =
         'This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your browser.'
     const inAppStorage =
-        'This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.'
+        'This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.'
     const androidWebView =
         'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0.6613.127 Mobile Safari/537.36'
     const iosWebView =

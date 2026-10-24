@@ -534,7 +534,7 @@
             "import": {
                 "damaged": "This file is damaged or is not a Sonolus package.",
                 "fileUnreadable": "This file could not be read.",
-                "zip64": "This file uses ZIP64, which the editor cannot read.",
+                "zip64": "The editor cannot read ZIP64 files.",
                 "fileTooLarge": "This file is larger than {0}.",
                 "tooManyEntries": "This file has more than {0} entries.",
                 "badName": "This file has an entry name that is not allowed.",
@@ -569,8 +569,8 @@
             "noneFound": "No items found",
             "server": {
                 "unreachable": "Could not reach this server. Check the address, or try again later.",
-                "auth": "This server needs you to sign in, which the editor does not support.",
-                "insecure": "This server uses http, which the editor cannot load.",
+                "auth": "The editor cannot use servers that need you to sign in.",
+                "insecure": "The editor cannot use http servers.",
                 "checksum": "The server’s checksum for this item does not match what it sent.",
                 "notFound": "This server does not have that item.",
                 "invalid": "This address is not a Sonolus server.",
@@ -1239,12 +1239,12 @@
         },
         "unavailable": "The editor cannot store changes in this browser. Save to a file to keep your work.",
         "private": "If this is a private window, everything stored here is lost when it closes. Save to a file to keep your work.",
-        "inAppBrowser": "This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.",
+        "inAppBrowser": "This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.",
         "ios": "This browser deletes stored work after 7 days without a visit. Save to a file to keep your work.",
         "safari": "Safari deletes stored work after 7 days without a visit. Save to a file to keep your work.",
         "installedWebkit": "Recent Sessions are kept here until this icon is removed from the Home Screen. Save to a file to keep your work.",
         "persisted": "Recent Sessions are kept in this browser unless you clear its data. Save to a file to keep your work.",
-        "default": "Recent Sessions are kept in this browser, which may clear them if space runs low. Save to a file to keep your work."
+        "default": "Recent Sessions are kept in this browser unless it runs low on space. Save to a file to keep your work."
     },
     "player": {
         "started": "Started playing",

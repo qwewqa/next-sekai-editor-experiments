@@ -135,12 +135,7 @@ test('a bad end record is refused', async () => {
 
 test('ZIP64 is refused', async () => {
     const bytes = rawZip(scpEntries('skin'), { zip64End: true })
-    await expectRefused(
-        'skin',
-        bytes,
-        'zip64',
-        'This file uses ZIP64, which the editor cannot read.',
-    )
+    await expectRefused('skin', bytes, 'zip64', 'The editor cannot read ZIP64 files.')
 })
 
 test('ZIP64 fields in an entry of a ZIP32 file are refused', async () => {
