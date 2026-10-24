@@ -1516,7 +1516,8 @@ test('idle compilation uses the frame’s transform, and none when the drawing s
     assert.deepEqual(renderer.matrix, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })
 })
 
-test('an idle period too short for the nearest section waits for a frame, and a cleared cache drops it', () => {
+test('after an idle period too short for the nearest section, it asks again later and then waits for a frame', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
     const state = aheadFixture()
     const plan = vectorSections(state)
     const idle = manualIdle()
@@ -1545,7 +1546,19 @@ test('an idle period too short for the nearest section waits for a frame, and a 
         // Each capture took 10 ms; 1 ms of idle time fits none of them.
         idle.run(1)
         assert.equal(cache.stats.ahead, 0)
-        assert.equal(idle.queue.length, 0, 'it does not ask again before a frame')
+        assert.equal(idle.queue.length, 0, 'it does not ask again at once')
+        t.mock.timers.tick(99)
+        assert.equal(idle.queue.length, 0)
+        t.mock.timers.tick(1)
+        assert.equal(idle.queue.length, 1, 'it asks again 100 ms later')
+        let asked = 1
+        while (asked < 20 && idle.run(1)) {
+            t.mock.timers.tick(100)
+            asked++
+        }
+        assert.equal(asked, 10, 'ten short periods in a row, then it waits for a frame')
+        t.mock.timers.tick(10_000)
+        assert.equal(idle.queue.length, 0)
         render(plan, plan.slice(0, 2))
         assert.equal(idle.queue.length, 1, 'a frame that draws asks again')
         cache.clear()
