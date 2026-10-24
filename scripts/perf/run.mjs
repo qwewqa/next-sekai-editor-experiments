@@ -1,0 +1,871 @@
+// Runs a perf plan against a perf build in headed Chromium (docs/performance-testing.md).
+//   npm run perf -- <plan.json> [--name <run>] [--out perf-results] [--port 5360]
+//     [--affinity 0xFFFF0000] [--priority AboveNormal] [--url <served build>] [--no-build]
+// Builds with NSE_PERF=1 and sourcemaps into <out>/dist, serves it with vite preview, runs each
+// group in a fresh browser profile and writes <out>/<run>/results.jsonl, traces and screenshots.
+import { chromium } from '@playwright/test'
+import { execFileSync, spawn } from 'node:child_process'
+import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { performance } from 'node:perf_hooks'
+import { fileURLToPath } from 'node:url'
+import { gzipSync } from 'node:zlib'
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+
+const parseArgs = (argv) => {
+    const args = { positional: [] }
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i]
+        if (arg === '--no-build') args.noBuild = true
+        else if (arg.startsWith('--')) args[arg.slice(2)] = argv[++i]
+        else args.positional.push(arg)
+    }
+    return args
+}
+const args = parseArgs(process.argv.slice(2))
+const planPath = args.positional[0]
+if (!planPath) throw new Error('Usage: npm run perf -- <plan.json> [--name <run>]')
+const plan = JSON.parse(readFileSync(resolve(planPath), 'utf8'))
+const name = args.name ?? new Date().toISOString().replace(/[:.]/g, '-')
+const out = resolve(root, args.out ?? 'perf-results')
+const runDir = `${out}/${name}`
+const traceDir = `${runDir}/traces`
+const dist = `${out}/dist`
+const port = Number(args.port ?? 5360)
+mkdirSync(traceDir, { recursive: true })
+
+const log = (...items) => {
+    const text = items.map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
+    const line = `[${new Date().toISOString()}] ${text.join(' ')}`
+    console.log(line)
+    appendFileSync(`${runDir}/log.txt`, line + '\n')
+}
+
+// Pins a process tree to one set of cores at a raised priority (Windows), so runs are comparable.
+// PowerShell variables ignore case: $affinity must not be named $mask, the string parameter.
+const pinScript = `
+param([string]$Roots, [string]$Mask, [string]$Priority)
+$affinity = [IntPtr][Convert]::ToInt64($Mask, 16)
+$all = Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,Name
+$queue = New-Object System.Collections.Queue
+foreach ($r in ($Roots -split ',')) { $queue.Enqueue([uint32]$r) }
+$seen = @{}; $out = @()
+while ($queue.Count) {
+    $id = $queue.Dequeue(); if ($seen.ContainsKey($id)) { continue }; $seen[$id] = $true
+    try {
+        $p = Get-Process -Id $id -ErrorAction Stop
+        if ($p.ProcessorAffinity -ne $affinity) { $p.ProcessorAffinity = $affinity }
+        if ("$($p.PriorityClass)" -ne $Priority) { $p.PriorityClass = $Priority }
+        $p.Refresh()
+        $out += [pscustomobject]@{ pid = $id; affinity = ('0x{0:X}' -f $p.ProcessorAffinity.ToInt64()); priority = "$($p.PriorityClass)" }
+    } catch { }
+    foreach ($c in $all) { if ($c.ParentProcessId -eq $id) { $queue.Enqueue([uint32]$c.ProcessId) } }
+}
+$out | ConvertTo-Json -Compress`
+const pinFile = `${runDir}/pin.ps1`
+writeFileSync(pinFile, pinScript)
+const affinity = args.affinity?.replace(/^0x/i, '')
+const priority = args.priority ?? 'AboveNormal'
+/** Pins the given processes and their descendants; returns what it touched. */
+const pin = (pids) => {
+    if (!affinity || process.platform !== 'win32') return []
+    try {
+        const text = execFileSync(
+            'powershell',
+            ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', pinFile].concat([
+                '-Roots',
+                pids.join(','),
+                '-Mask',
+                affinity,
+                '-Priority',
+                priority,
+            ]),
+            { encoding: 'utf8' },
+        )
+        const list = JSON.parse(text || '[]')
+        return Array.isArray(list) ? list : [list]
+    } catch (error) {
+        log('pin failed', String(error))
+        return []
+    }
+}
+const expectedAffinity = affinity && `0x${affinity.toUpperCase()}`
+const offPin = (list) =>
+    list.filter((p) => p.affinity !== expectedAffinity || p.priority !== priority).length
+
+const PROFILES = {
+    desktop1600: { viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1, throttle: 1 },
+    desktop1280: { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, throttle: 1 },
+    desktop1280x4: { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, throttle: 4 },
+    phone: {
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        hasTouch: true,
+        isMobile: true,
+        throttle: 4,
+    },
+}
+
+const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
+/** Runs `events` ([{ at, fn }]) on schedule from now; sends are not awaited. */
+const schedule = async (events) => {
+    const start = performance.now()
+    const late = []
+    for (const event of events) {
+        const wait = start + event.at - performance.now()
+        if (wait > 1.5) await sleep(wait - 1)
+        while (performance.now() < start + event.at) await new Promise((done) => setImmediate(done))
+        late.push(performance.now() - start - event.at)
+        event.fn()
+    }
+    late.sort((a, b) => a - b)
+    return { lateP50: late[late.length >> 1] ?? 0, lateMax: late.at(-1) ?? 0 }
+}
+
+// In the page: frames, long animation frames, long tasks and the app's probes over one run.
+const installCollector = () => {
+    window.nsePerfRun = {
+        start() {
+            const P = window.nsePerf
+            const r = (this.r = { frames: [], loaf: [], longtasks: [], on: true })
+            P.perfSamples.samples = {}
+            P.perfSamples.on = true
+            r.paints = P.minimapStats.paints
+            r.annotationPaints = P.minimapStats.annotationPaints
+            const loop = (t) => {
+                if (!r.on) return
+                r.frames.push([t, P.view.time, P.view.cursorTime])
+                requestAnimationFrame(loop)
+            }
+            requestAnimationFrame(loop)
+            r.loafObserver = new PerformanceObserver((list) => {
+                for (const e of list.getEntries())
+                    r.loaf.push({
+                        start: e.startTime,
+                        duration: e.duration,
+                        blocking: e.blockingDuration,
+                        renderStart: e.renderStart,
+                        scripts: e.scripts.map((s) => ({
+                            invoker: s.invoker,
+                            fn: s.sourceFunctionName,
+                            url: s.sourceURL,
+                            duration: s.duration,
+                            forced: s.forcedStyleAndLayoutDuration,
+                        })),
+                    })
+            })
+            r.loafObserver.observe({ type: 'long-animation-frame' })
+            r.taskObserver = new PerformanceObserver((list) => {
+                for (const e of list.getEntries())
+                    r.longtasks.push({ start: e.startTime, duration: e.duration })
+            })
+            r.taskObserver.observe({ type: 'longtask' })
+        },
+        stop() {
+            const P = window.nsePerf
+            const r = this.r
+            r.on = false
+            r.loafObserver.disconnect()
+            r.taskObserver.disconnect()
+            P.perfSamples.on = false
+            return {
+                frames: r.frames,
+                loaf: r.loaf,
+                longtasks: r.longtasks,
+                probes: P.perfSamples.samples,
+                paints: P.minimapStats.paints - r.paints,
+                annotationPaints: P.minimapStats.annotationPaints - r.annotationPaints,
+                visibility: document.visibilityState,
+            }
+        },
+    }
+}
+
+// A display slower than the monitor: animation frames run on every nth vsync.
+const gateFrames = (hz) => {
+    const native = window.requestAnimationFrame.bind(window)
+    const period = 1000 / hz
+    let queue = new Map()
+    let nextId = 1
+    let scheduled = false
+    let last = -Infinity
+    const pump = (t) => {
+        if (t - last < period - 2) {
+            native(pump)
+            return
+        }
+        last = t
+        scheduled = false
+        const callbacks = queue
+        queue = new Map()
+        for (const callback of callbacks.values())
+            try {
+                callback(t)
+            } catch (error) {
+                reportError(error)
+            }
+    }
+    window.requestAnimationFrame = (callback) => {
+        const id = nextId++
+        queue.set(id, callback)
+        if (!scheduled) {
+            scheduled = true
+            native(pump)
+        }
+        return id
+    }
+    window.cancelAnimationFrame = (id) => queue.delete(id)
+}
+
+// ---- statistics
+
+const pct = (sorted, p) =>
+    sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))] : NaN
+/** Frame intervals over the moving window (`view` or `cursor` changes), or every frame (`all`). */
+const summarizeFrames = (frames, key, hz) => {
+    const k = key === 'cursor' ? 2 : 1
+    let first = -1
+    let last = -1
+    if (key === 'all' && frames.length > 2) [first, last] = [0, frames.length - 2]
+    else
+        for (let i = 1; i < frames.length; i++)
+            if (frames[i][k] !== frames[i - 1][k]) {
+                if (first < 0) first = i - 1
+                last = i
+            }
+    if (first < 0) return { frames: 0 }
+    const end = Math.min(frames.length - 1, last + 1)
+    const intervals = []
+    for (let i = first + 1; i <= end; i++) intervals.push(frames[i][0] - frames[i - 1][0])
+    const sorted = [...intervals].sort((a, b) => a - b)
+    const budget = 1000 / hz
+    const mean = intervals.reduce((a, x) => a + x, 0) / intervals.length
+    const span = frames[end][0] - frames[first][0]
+    const share = (test) => intervals.filter(test).length / intervals.length
+    return {
+        frames: intervals.length,
+        spanMs: span,
+        fps: (intervals.length / span) * 1000,
+        p50: pct(sorted, 50),
+        p95: pct(sorted, 95),
+        p99: pct(sorted, 99),
+        max: sorted.at(-1),
+        late: share((x) => x > budget * 1.5),
+        over33: share((x) => x > 33.4),
+        over2x: intervals.filter((x) => x > budget * 2.08).length,
+        over4x: intervals.filter((x) => x > budget * 4.16).length,
+        sd: Math.sqrt(intervals.reduce((a, x) => a + (x - mean) ** 2, 0) / intervals.length),
+        jumps:
+            intervals.slice(1).filter((x, i) => Math.abs(x - intervals[i]) > budget * 0.9).length /
+            Math.max(1, intervals.length - 1),
+        moved: Math.abs(frames[end][k] - frames[first][k]),
+        windowStart: frames[first][0],
+        windowEnd: frames[end][0],
+    }
+}
+/** Each probe's spread, and how many samples pass the work budget and twice and four times it. */
+const summarizeProbes = (probes, budget) =>
+    Object.fromEntries(
+        Object.entries(probes).map(([probe, list]) => {
+            const sorted = [...list].sort((a, b) => a - b)
+            const over = (n) => list.filter((x) => x > n * budget).length
+            return [
+                probe,
+                {
+                    n: list.length,
+                    sum: list.reduce((a, b) => a + b, 0),
+                    p50: pct(sorted, 50),
+                    p95: pct(sorted, 95),
+                    p99: pct(sorted, 99),
+                    max: sorted.at(-1),
+                    overBudget: over(1),
+                    over2x: over(2),
+                    over4x: over(4),
+                },
+            ]
+        }),
+    )
+const summarizeLongFrames = (loaf, frames) => {
+    const inWindow = loaf.filter(
+        (e) => e.start + e.duration >= frames.windowStart && e.start <= frames.windowEnd,
+    )
+    return {
+        count: inWindow.length,
+        maxMs: Math.max(0, ...inWindow.map((e) => e.duration)),
+        forcedLayoutMs: inWindow.reduce(
+            (a, e) => a + e.scripts.reduce((b, s) => b + s.forced, 0),
+            0,
+        ),
+    }
+}
+
+// ---- tracing
+
+const traceCategories = [
+    'devtools.timeline',
+    'disabled-by-default-devtools.timeline',
+    'disabled-by-default-devtools.timeline.frame',
+    'disabled-by-default-devtools.timeline.stack',
+    'disabled-by-default-v8.cpu_profiler',
+    'disabled-by-default-v8.gc',
+    'v8.execute',
+    'v8',
+    'blink.user_timing',
+    'blink',
+    'gpu',
+    'viz',
+    'cc',
+    'benchmark',
+    'latencyInfo',
+    'input',
+    'toplevel',
+    'loading',
+]
+const startTrace = (cdp) =>
+    cdp.send('Tracing.start', {
+        transferMode: 'ReturnAsStream',
+        traceConfig: { includedCategories: traceCategories, recordMode: 'recordAsMuchAsPossible' },
+    })
+const endTrace = async (cdp) => {
+    const complete = new Promise((done) => cdp.once('Tracing.tracingComplete', done))
+    await cdp.send('Tracing.end')
+    const { stream } = await complete
+    const chunks = []
+    for (;;) {
+        const { data, eof, base64Encoded } = await cdp.send('IO.read', {
+            handle: stream,
+            size: 1 << 20,
+        })
+        chunks.push(Buffer.from(data, base64Encoded ? 'base64' : 'utf8'))
+        if (eof) break
+    }
+    await cdp.send('IO.close', { handle: stream })
+    return Buffer.concat(chunks)
+}
+
+// ---- scenarios
+
+const pane = (page) =>
+    page.evaluate(() => {
+        const { view } = window.nsePerf
+        return {
+            x: view.x + view.w / 2,
+            y: view.y + view.h / 2,
+            left: view.x,
+            top: view.y,
+            w: view.w,
+            h: view.h,
+        }
+    })
+const send = (cdp, method, params) => () => void cdp.send(method, params).catch(() => {})
+const wheel = (cdp, x, y, deltaY) =>
+    send(cdp, 'Input.dispatchMouseEvent', { type: 'mouseWheel', x, y, deltaX: 0, deltaY })
+const touch = (cdp, type, x, y) =>
+    send(cdp, 'Input.dispatchTouchEvent', {
+        type,
+        touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1, radiusX: 4, radiusY: 4, force: 1 }],
+    })
+const mouse = (cdp, type, x, y) =>
+    send(cdp, 'Input.dispatchMouseEvent', {
+        type,
+        x,
+        y,
+        button: 'left',
+        buttons: type === 'mouseReleased' ? 0 : 1,
+        clickCount: 1,
+    })
+const tick = 1000 / 120
+
+const scenarios = {
+    // Mouse wheel: 120-delta notches, 8 a burst 40 ms apart, 150 ms between bursts, 3 s.
+    async wheel(page, cdp) {
+        const c = await pane(page)
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y })
+        const events = []
+        for (let t = 0; t < 3000; t += 150)
+            for (let i = 0; i < 8; i++, t += 40)
+                events.push({ at: t, fn: wheel(cdp, c.x, c.y, -120) })
+        return schedule(events)
+    },
+    // Trackpad: pixel deltas at 120 Hz, three pushes with momentum, 3 s.
+    async trackpad(page, cdp) {
+        const c = await pane(page)
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y })
+        const events = []
+        for (let g = 0; g < 3; g++)
+            for (let s = 0; s < 900; s += tick) {
+                const v = s < 150 ? 4000 * (s / 150) : 4000 * Math.exp(-(s - 150) / 250)
+                const d = Math.round((v * tick) / 1000)
+                if (d >= 1) events.push({ at: g * 1000 + s, fn: wheel(cdp, c.x, c.y, -d) })
+            }
+        return schedule(events)
+    },
+    // Page Up held: key repeats at 30 Hz for 3 s.
+    async pagekeys(page, cdp) {
+        const key = {
+            key: 'PageUp',
+            code: 'PageUp',
+            windowsVirtualKeyCode: 33,
+            nativeVirtualKeyCode: 33,
+        }
+        const events = []
+        for (let i = 0; i < 90; i++)
+            events.push({
+                at: i * 33.3,
+                fn: send(cdp, 'Input.dispatchKeyEvent', {
+                    type: 'rawKeyDown',
+                    ...key,
+                    autoRepeat: i > 0,
+                }),
+            })
+        events.push({
+            at: 3000,
+            fn: send(cdp, 'Input.dispatchKeyEvent', { type: 'keyUp', ...key }),
+        })
+        return schedule(events)
+    },
+    // A held touch drag in the quick-scroll zone, 0.7 panes down and back each second, 3 s.
+    async quicktouch(page, cdp) {
+        const c = await pane(page)
+        const x = c.left + c.w - 12
+        const y0 = c.top + c.h * 0.85
+        const events = [{ at: 0, fn: touch(cdp, 'touchStart', x, y0) }]
+        for (let s = tick; s <= 3000; s += tick) {
+            const phase = (s % 1000) / 1000
+            const fold = phase < 0.5 ? phase * 2 : 2 - phase * 2
+            events.push({ at: s, fn: touch(cdp, 'touchMove', x, y0 - fold * c.h * 0.7) })
+        }
+        events.push({ at: 3000 + tick, fn: touch(cdp, 'touchEnd', x, y0) })
+        return schedule(events)
+    },
+    // About 25 screens in 2.5 s: a trackpad fling on desktop, quick-scroll flicks on touch.
+    async flick(page, cdp, cell, profile) {
+        const c = await pane(page)
+        const events = []
+        if (profile.hasTouch) {
+            const x = c.left + c.w - 12
+            const y0 = c.top + c.h * 0.15
+            for (let f = 0; f < 10; f++) {
+                const t0 = f * 250
+                events.push({ at: t0, fn: touch(cdp, 'touchStart', x, y0) })
+                for (let i = 1; i <= 12; i++)
+                    events.push({
+                        at: t0 + i * tick,
+                        fn: touch(cdp, 'touchMove', x, y0 + (i / 12) * c.h * 0.75),
+                    })
+                events.push({ at: t0 + 13 * tick, fn: touch(cdp, 'touchEnd', x, 0) })
+            }
+        } else {
+            await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y })
+            const tau = 700
+            const v0 = (25 * c.h) / tau
+            for (let s = 0; s < 2500; s += tick) {
+                const d = Math.round(v0 * Math.exp(-s / tau) * tick)
+                if (d >= 1) events.push({ at: s, fn: wheel(cdp, c.x, c.y, -d) })
+            }
+        }
+        return schedule(events)
+    },
+    // Grab the minimap box and drag it to the strip's foot over 2 s.
+    async minimapdrag(page, cdp, cell, profile) {
+        const strip = await page.locator('[data-minimap]').boundingBox()
+        const box = await page.locator('[data-minimap-box]').boundingBox()
+        if (!strip || !box) throw new Error('The minimap is not shown')
+        const x = box.x + box.width / 2
+        const y0 = box.y + box.height / 2
+        const y1 = strip.y + strip.height * 0.95
+        const [down, move, up] = profile.hasTouch
+            ? [
+                  (y) => touch(cdp, 'touchStart', x, y),
+                  (y) => touch(cdp, 'touchMove', x, y),
+                  (y) => touch(cdp, 'touchEnd', x, y),
+              ]
+            : [
+                  (y) => mouse(cdp, 'mousePressed', x, y),
+                  (y) => mouse(cdp, 'mouseMoved', x, y),
+                  (y) => mouse(cdp, 'mouseReleased', x, y),
+              ]
+        if (!profile.hasTouch)
+            await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y: y0 })
+        const steps = Math.round(2000 / tick)
+        const events = [{ at: 0, fn: down(y0) }]
+        for (let i = 1; i <= steps; i++)
+            events.push({ at: i * tick, fn: move(y0 + ((y1 - y0) * i) / steps) })
+        events.push({ at: (steps + 1) * tick, fn: up(y1) })
+        return schedule(events)
+    },
+    // Playback with Follow from the view's start, `seconds` long at `speed`.
+    async play(page, cdp, cell) {
+        const steps = { 1: 0, 1.5: 1, 2: 2 }[cell.speed ?? 1] ?? 0
+        await page.evaluate((steps) => {
+            const P = window.nsePerf
+            for (let i = 0; i < steps; i++) P.changePlayerSpeed(1)
+            P.startOrStopPlayer()
+        }, steps)
+        await sleep((cell.seconds ?? 15) * 1000)
+        await page.evaluate((steps) => {
+            const P = window.nsePerf
+            if (P.isPlaying.value) P.startOrStopPlayer()
+            for (let i = 0; i < steps; i++) P.changePlayerSpeed(-1)
+        }, steps)
+    },
+    // A separator drag (`handle`: its accessible name), out by `dx` and back twice over 2 s.
+    async resizedrag(page, cdp, cell) {
+        const b = await page
+            .getByRole('separator', { name: cell.handle, exact: true })
+            .boundingBox()
+        if (!b) throw new Error(`No separator "${cell.handle}"`)
+        const x0 = b.x + b.width / 2
+        const y = b.y + b.height / 2
+        const dx = cell.dx ?? -80
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x0, y })
+        const steps = Math.round(2000 / tick)
+        const events = [{ at: 0, fn: mouse(cdp, 'mousePressed', x0, y) }]
+        for (let i = 1; i <= steps; i++) {
+            const phase = ((i / steps) * 2) % 1
+            const fold = phase < 0.5 ? phase * 2 : 2 - phase * 2
+            events.push({ at: i * tick, fn: mouse(cdp, 'mouseMoved', x0 + dx * fold, y) })
+        }
+        events.push({ at: (steps + 1) * tick, fn: mouse(cdp, 'mouseReleased', x0, y) })
+        return schedule(events)
+    },
+    // Nothing for 5 s: what the editor does while idle.
+    async idle() {
+        await sleep(5000)
+    },
+}
+
+// ---- runs
+
+const openChart = async (page, group) => {
+    await page.goto(baseUrl)
+    await page.locator('canvas.editor-chart').waitFor({ state: 'visible', timeout: 60_000 })
+    await page.waitForFunction(() => !!window.nsePerf, null, { timeout: 30_000 })
+    await page.evaluate(installCollector)
+    await page.mouse.move(5, 5)
+    await page.waitForTimeout(1000)
+    const chart = resolve(root, group.chart)
+    const opening = page.waitForEvent('filechooser')
+    await page.keyboard.press('o')
+    await (
+        await opening
+    ).setFiles({ name: 'level.json', mimeType: 'application/json', buffer: readFileSync(chart) })
+    await page
+        .locator('.notification, .notification-pill')
+        .filter({ hasText: /^Opened level/ })
+        .waitFor({ timeout: 120_000 })
+    // Level data from an older engine revision opens with a warning.
+    await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'OK' })
+        .click({ timeout: 5000 })
+        .catch(() => {})
+    if (group.bgm) {
+        await page.waitForTimeout(500)
+        await page.keyboard.press('m')
+        const modal = page.getByRole('dialog')
+        const field = modal.locator('input[type="button"]')
+        const choosing = page.waitForEvent('filechooser')
+        await field.click()
+        await (
+            await choosing
+        ).setFiles({
+            name: 'bgm.mp3',
+            mimeType: 'audio/mpeg',
+            buffer: readFileSync(resolve(root, group.bgm)),
+        })
+        for (let i = 0; i < 600 && !/^\d\d:/.test(await field.inputValue()); i++)
+            await page.waitForTimeout(100)
+        await modal.getByRole('button', { name: 'Confirm', exact: true }).click()
+        await modal.waitFor({ state: 'detached', timeout: 30_000 })
+    }
+    await page.waitForTimeout(1500)
+    return page.evaluate(() => {
+        const P = window.nsePerf
+        const gl = document.createElement('canvas').getContext('webgl2')
+        const debug = gl?.getExtension('WEBGL_debug_renderer_info')
+        const s = P.state.value
+        return {
+            renderer: debug
+                ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)
+                : gl?.getParameter(gl.RENDERER),
+            notes: [...s.store.slides.note.values()].flat().length,
+            isDynamicStages: s.isDynamicStages,
+            bgm: !!s.bgm.buffer,
+            dpr: devicePixelRatio,
+            userAgent: navigator.userAgent,
+        }
+    })
+}
+
+const configure = (page, cell) =>
+    page.evaluate(async (cell) => {
+        const P = window.nsePerf
+        if (P.isPlaying.value) P.startOrStopPlayer()
+        P.settings.showMinimap = cell.minimap ?? true
+        P.settings.showPreview = cell.preview ?? true
+        P.settings.pps = cell.pps ?? 1000
+        P.view.layout = cell.layout ?? 'basic'
+        // Beside the chart when open, whatever the width.
+        P.settings.elevationEditorSideBySide = cell.elevation ? 'allow' : 'auto'
+        if (cell.elevation && !P.isElevationEditorOpen.value) P.openElevationEditor()
+        if (!cell.elevation && P.isElevationEditorOpen.value) P.closeElevationEditor()
+        const selected = P.selectNotes(!!cell.selection)
+        for (let i = 0; i < 20; i++) await new Promise((done) => requestAnimationFrame(done))
+        return { selected, w: P.view.w, h: P.view.h, pps: P.settings.pps }
+    }, cell)
+
+const settle = (page, start) =>
+    page.evaluate(async (start) => {
+        const { view } = window.nsePerf
+        view.scrollingY = view.scrollingX = undefined
+        view.time = view.cursorTime = start
+        for (let i = 0; i < 30; i++) await new Promise((done) => requestAnimationFrame(done))
+    }, start)
+
+const waitStill = (page) =>
+    page.evaluate(async () => {
+        const { view } = window.nsePerf
+        let still = 0
+        let last = view.time
+        for (let i = 0; i < 2000 && still < 20; i++) {
+            await new Promise((done) => requestAnimationFrame(done))
+            still = view.time === last && !view.scrollingY ? still + 1 : 0
+            last = view.time
+        }
+    })
+
+const runOnce = async (page, cdp, cell, profile, hz, label) => {
+    const scenario = cell.scenario.startsWith('play') ? 'play' : cell.scenario
+    await settle(page, cell.start ?? (scenario === 'play' ? 0 : 40))
+    await page.evaluate(() => window.nsePerfRun.start())
+    let sync
+    if (label) {
+        await startTrace(cdp)
+        sync = await page.evaluate(() => performance.mark('nse-perf-sync').startTime)
+    }
+    const input = await scenarios[scenario](page, cdp, cell, profile)
+    if (!['play', 'idle', 'resizedrag'].includes(scenario)) await waitStill(page)
+    await page.waitForTimeout(150)
+    let trace
+    if (label) {
+        trace = `${traceDir}/${label}.json.gz`
+        writeFileSync(trace, gzipSync(await endTrace(cdp)))
+    }
+    const raw = await page.evaluate(() => window.nsePerfRun.stop())
+    const key =
+        scenario === 'play' ? 'cursor' : ['idle', 'resizedrag'].includes(scenario) ? 'all' : 'view'
+    const frames = summarizeFrames(raw.frames, key, hz)
+    return {
+        input,
+        frames,
+        probes: summarizeProbes(raw.probes, profile.throttle > 1 ? 1000 / 120 : 1000 / 240),
+        longFrames: summarizeLongFrames(raw.loaf, frames),
+        longTasks: {
+            count: raw.longtasks.length,
+            maxMs: Math.max(0, ...raw.longtasks.map((e) => e.duration)),
+        },
+        minimapPaints: raw.paints + raw.annotationPaints,
+        visibility: raw.visibility,
+        trace,
+        sync,
+    }
+}
+
+const cellId = (group, cell) =>
+    [
+        group.id,
+        cell.layout ?? 'basic',
+        cell.scenario,
+        cell.pps && cell.pps !== 1000 ? `pps${cell.pps}` : '',
+        cell.minimap === false ? 'nomm' : '',
+        cell.preview === false ? 'nopv' : '',
+        cell.elevation ? 'el' : '',
+        cell.selection ? 'sel' : '',
+        cell.tag,
+    ]
+        .filter(Boolean)
+        .join('-')
+
+// ---- main
+
+const children = []
+let baseUrl = args.url
+if (!baseUrl) {
+    if (!args.noBuild) {
+        log('building', dist)
+        execFileSync(
+            process.execPath,
+            [
+                'node_modules/vite/bin/vite.js',
+                'build',
+                '--sourcemap',
+                '--outDir',
+                dist,
+                '--emptyOutDir',
+            ],
+            {
+                cwd: root,
+                env: { ...process.env, NSE_PERF: '1' },
+                stdio: 'inherit',
+            },
+        )
+    }
+    const server = spawn(
+        process.execPath,
+        [
+            'node_modules/vite/bin/vite.js',
+            'preview',
+            '--outDir',
+            dist,
+            '--host',
+            '127.0.0.1',
+            '--port',
+            String(port),
+            '--strictPort',
+        ],
+        { cwd: root, stdio: 'ignore' },
+    )
+    children.push(server)
+    baseUrl = `http://127.0.0.1:${port}/`
+    for (let i = 0; i < 100; i++) {
+        if (
+            await fetch(baseUrl).then(
+                (r) => r.ok,
+                () => false,
+            )
+        )
+            break
+        await sleep(200)
+    }
+}
+const stopChildren = () => {
+    for (const child of children) if (child.exitCode === null) child.kill()
+}
+process.on('exit', stopChildren)
+writeFileSync(
+    `${runDir}/meta.json`,
+    JSON.stringify(
+        { plan: resolve(planPath), dist, baseUrl, affinity: expectedAffinity, priority },
+        null,
+        1,
+    ),
+)
+log('run', name, 'pinned', pin([process.pid, ...children.map((c) => c.pid)]).length)
+
+try {
+    for (const group of plan.groups) {
+        const profile = typeof group.profile === 'string' ? PROFILES[group.profile] : group.profile
+        if (!profile) throw new Error(`Unknown profile ${group.profile}`)
+        const hz = group.hz === 'native' ? 240 : (group.hz ?? 60)
+        const userDataDir = `${out}/profiles/${name}-${group.id}`
+        rmSync(userDataDir, { recursive: true, force: true })
+        const context = await chromium.launchPersistentContext(userDataDir, {
+            headless: false,
+            viewport: profile.viewport,
+            deviceScaleFactor: profile.deviceScaleFactor,
+            hasTouch: !!profile.hasTouch,
+            isMobile: !!profile.isMobile,
+            locale: 'en-US',
+            args: [
+                '--autoplay-policy=no-user-gesture-required',
+                `--window-size=${profile.viewport.width + 40},${profile.viewport.height + 160}`,
+            ],
+        })
+        try {
+            const page = context.pages()[0] ?? (await context.newPage())
+            await page.addInitScript(() => {
+                // The file input path: the native picker cannot be driven.
+                Object.defineProperty(window, 'showOpenFilePicker', {
+                    configurable: true,
+                    value: undefined,
+                })
+                localStorage.setItem('nse.test.startBlank', 'true')
+                localStorage.setItem(
+                    'nse.test.version',
+                    JSON.stringify({ appVersion: '0.6.0', atTag: true }),
+                )
+                localStorage.setItem(
+                    'sonolus-next-sekai-editor.lastAppVersion',
+                    JSON.stringify('0.6.0'),
+                )
+            })
+            if (group.hz !== 'native') await page.addInitScript(gateFrames, hz)
+            page.on('pageerror', (error) => log('pageerror', error.message))
+            const info = await openChart(page, group)
+            log('group', group.id, info, 'pinned', pin([process.pid]).length)
+            const cdp = await context.newCDPSession(page)
+            await cdp.send('Emulation.setCPUThrottlingRate', { rate: profile.throttle })
+            for (const base of group.cells) {
+                const cell = { ...plan.defaults, ...group.defaults, ...base }
+                const id = cellId(group, cell)
+                try {
+                    const config = await configure(page, cell)
+                    await page.screenshot({ path: `${runDir}/${id}.png` })
+                    const runs = []
+                    let cold
+                    for (let i = 0; i < (cell.warmup ?? 1); i++) {
+                        const r = await runOnce(
+                            page,
+                            cdp,
+                            cell,
+                            profile,
+                            hz,
+                            i === 0 && cell.traceCold ? `${id}-cold` : undefined,
+                        )
+                        cold ??= r
+                    }
+                    for (let i = 0; i < (cell.reps ?? 5); i++)
+                        runs.push(await runOnce(page, cdp, cell, profile, hz))
+                    const traced = cell.trace
+                        ? await runOnce(page, cdp, cell, profile, hz, id)
+                        : undefined
+                    const procs = pin([process.pid])
+                    appendFileSync(
+                        `${runDir}/results.jsonl`,
+                        JSON.stringify({
+                            id,
+                            group: group.id,
+                            profile: group.profile,
+                            hz,
+                            chart: group.chart,
+                            cell,
+                            config,
+                            info,
+                            cold,
+                            runs,
+                            traced,
+                            procs: procs.length,
+                            offPin: offPin(procs),
+                        }) + '\n',
+                    )
+                    const med = (fn) => runs.map(fn).sort((a, b) => a - b)[runs.length >> 1]
+                    log('cell', id, {
+                        chart: [
+                            med((r) => r.probes.chartDraw?.p50),
+                            med((r) => r.probes.chartDraw?.p95),
+                        ],
+                        clock: [
+                            med((r) => r.probes.clockFrame?.p50),
+                            med((r) => r.probes.clockFrame?.p95),
+                        ],
+                        interval: [
+                            med((r) => r.frames.p50),
+                            med((r) => r.frames.p95),
+                            med((r) => r.frames.max),
+                        ],
+                    })
+                } catch (error) {
+                    log('cell failed', id, String(error.stack ?? error))
+                    await page.keyboard.press('Escape').catch(() => {})
+                }
+            }
+        } finally {
+            await context.close()
+        }
+    }
+} finally {
+    stopChildren()
+}
+log('done')

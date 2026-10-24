@@ -8,8 +8,9 @@ import type { MinimapAnnotation } from './annotations'
 import { changeTicks } from './changeTicks'
 import { useMinimapContent } from './content'
 import { boxGeometry, useMinimapInput } from './input'
-import { backingSize } from './mapping'
+import { backingSize, type MinimapMapping } from './mapping'
 import { minimapStats } from './pipeline'
+import { timed } from '../../perf/probe'
 
 // A single word reads as a native element to the linter.
 defineOptions({ name: 'MinimapStrip' })
@@ -32,9 +33,15 @@ let shown = false
 let lastBoxTop = Number.NaN
 let lastCursorY = Number.NaN
 let edgeShown = false
-watch(
-    [() => times.value, () => view.cursorTime, mapping, box, cursor, edge],
-    ([, cursorTime, current, boxElement, cursorElement, edgeElement]) => {
+const placeOverlay = timed(
+    'minimapOverlay',
+    (
+        cursorTime: number,
+        current: MinimapMapping | undefined,
+        boxElement: HTMLElement | null,
+        cursorElement: HTMLElement | null,
+        edgeElement: HTMLElement | SVGElement | null,
+    ) => {
         if (!boxElement || !cursorElement || !edgeElement) return
         const show = current !== undefined
         if (show !== shown) {
@@ -71,6 +78,12 @@ watch(
             edgeShown = past
             edgeElement.style.visibility = past ? '' : 'hidden'
         }
+    },
+)
+watch(
+    [() => times.value, () => view.cursorTime, mapping, box, cursor, edge],
+    ([, cursorTime, current, boxElement, cursorElement, edgeElement]) => {
+        placeOverlay(cursorTime, current, boxElement, cursorElement, edgeElement)
     },
     { flush: 'post' },
 )

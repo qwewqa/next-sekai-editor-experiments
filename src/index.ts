@@ -1,3 +1,5 @@
+declare const __NSE_PERF__: boolean
+
 import 'pixi.js/unsafe-eval'
 import './csp'
 // Stops the bundle before the app's modules where the support gate has shown its page.
@@ -24,6 +26,9 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('seedSample'
     const { seedSampleFromUrl } = await import('./local/seed')
     if (await seedSampleFromUrl()) await new Promise<never>(() => undefined)
 }
+
+// Perf builds only (`NSE_PERF=1`): the harness's handle (docs/performance-testing.md).
+if (typeof __NSE_PERF__ === 'boolean' && __NSE_PERF__) void import('./perf/hook')
 
 installSelectLists()
 

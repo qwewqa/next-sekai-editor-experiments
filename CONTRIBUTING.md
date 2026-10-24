@@ -105,6 +105,12 @@ Read this before you write or review code or tests:
 
 - [docs/engineering-principles.md](docs/engineering-principles.md): defaults and unknowns, one source per fact, owned module state, failures that are not empty, honest tests, shared spec helpers, true text, no compatibility code before ship, proportionate protection, and tests and UI elements that earn their place.
 
+## Performance
+
+Read this before you measure or optimize scrolling or playback:
+
+- [docs/performance-testing.md](docs/performance-testing.md): the perf harness (`npm run perf`), what to judge (per-frame work against 4.17 ms and 8.33 ms), the setup that gives stable numbers, the charts to use and the current baseline.
+
 ## Forks
 
 A fork builds everything unsigned with no setup beyond the Node version: `npm install`, then `npm run build` or `npm run build:native`.

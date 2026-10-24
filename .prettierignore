@@ -10,6 +10,9 @@
 !src/**/*
 !tests/**/*
 !scripts/*.mjs
+!scripts/perf/*.mjs
+!scripts/perf/plans/*.json
+!docs/performance-testing.md
 !builtin-assets/*.mjs
 !deployment/*.json
 !deployment/*.md

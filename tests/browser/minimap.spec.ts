@@ -391,10 +391,11 @@ test.describe('resize', () => {
             window.editorTest.settings.showMinimap = true
         })
         await expect(handleOf(page)).toBeVisible()
+        // The narrow workspace's cap arrives after the resize settles; End before it used 160.
+        await expect(handleOf(page)).toHaveAttribute('aria-valuemax', '97')
         await handleOf(page).focus()
         await page.keyboard.press('End')
-        expect((await widths(page)).strip).toBe(97)
-        await expect(handleOf(page)).toHaveAttribute('aria-valuemax', '97')
+        await expect.poll(async () => (await widths(page)).strip).toBe(97)
     })
 
     test('Reset Settings returns the default width', async ({ page }) => {
