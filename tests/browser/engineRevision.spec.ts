@@ -405,7 +405,7 @@ test('an auto save from a newer revision stays as stored on every start, never m
     }
 })
 
-test('an auto save set aside by an older build stays, and the last one migrates silently', async ({
+test('an auto save set aside by an older build stays, and the last one migrates without a dialog or a second line', async ({
     page,
 }) => {
     const aside = JSON.stringify(level(undefined, 1.5))
@@ -421,4 +421,6 @@ test('an auto save set aside by an older build stays, and the last one migrates 
     await expectNoDialogs(page)
     await expect.poll(async () => (await current(page)).elevations).toEqual([0, 0])
     expect(await page.evaluate((key) => localStorage.getItem(key), asideKey)).toBe(aside)
+    // The migrated slot's line stands alone; the set-aside one stays listed in Local Data.
+    expect(await loadEvents(page)).not.toContain('migrationFailed')
 })

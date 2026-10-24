@@ -836,6 +836,25 @@ const reopenedTab = async (context: BrowserContext, record: string) => {
     return page
 }
 
+/**
+ * Whether a page of the context waits for the session's lock: a reload in the marker's wait
+ * (`MARKER_WAIT_MS`), which ends in a separate copy when the lock is still held 2 s on.
+ */
+const waitsForLock = (page: Page, sessionId: string) =>
+    expect
+        .poll(
+            () =>
+                page.evaluate(
+                    async (name) =>
+                        (await navigator.locks.query()).pending?.some(
+                            (lock) => lock.name === name,
+                        ) ?? false,
+                    `nse-session:${sessionId}`,
+                ),
+            { intervals: [50], timeout: 20_000 },
+        )
+        .toBe(true)
+
 test('Reopen Closed Tab: the lock coming free within the wait is a reload; held past it, a separate copy', async ({
     page,
     context,
@@ -856,7 +875,7 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     // It closes within the wait: a reload of the same session.
     const reopened = await reopenedTab(context, record)
     const visiting = visit(reopened)
-    await reopened.waitForTimeout(500)
+    await waitsForLock(page, sessionId)
     await page.close({ runBeforeUnload: false })
     await visiting
     expect(await claimOf(reopened)).toBe('reload')
@@ -877,12 +896,14 @@ test('a late flush landing during the marker’s wait is in the session the relo
     await edit(page, 960)
     const reloaded = await reopenedTab(context, record)
     const visiting = visit(reloaded)
-    await reloaded.waitForTimeout(300)
-    // The unloading page's flush lands while the reload waits, then the page goes.
-    await page.evaluate(() => {
-        window.nseFlushTest!.stall = false
+    await waitsForLock(page, sessionId)
+    // The unloading page's flush lands while the reload waits, then the page goes at once: the
+    // wait is only 2 s, so nothing between them polls.
+    await page.evaluate(async () => {
+        const hooks = window.nseFlushTest!
+        hooks.stall = false
+        await hooks.flusher.flush()
     })
-    await settled(page)
     await page.close({ runBeforeUnload: false })
     await visiting
     expect(await claimOf(reloaded)).toBe('reload')

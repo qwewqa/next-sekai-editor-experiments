@@ -262,7 +262,9 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
     if (session.value.sessionId !== id || mark !== epoch || isJumped() || ticket < landed) return
     landed = ticket
     // The run joins the loaded one at the oldest fresh entry already loaded; its older pages follow.
-    const join = !replace && loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
+    // A run that reached the chain's end is taken whole: a fork's parent chain may be gone since.
+    const join =
+        !replace && next && loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
     if (join) {
         stored.value = [...fresh.slice(0, join.at + 1), ...stored.value.slice(join.place + 1)]
     } else {

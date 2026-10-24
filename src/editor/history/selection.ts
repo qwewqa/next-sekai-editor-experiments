@@ -19,7 +19,7 @@ import {
 } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { notify } from '../notification'
-import { historyViewGeneration } from './state'
+import { historyTab, historyViewGeneration } from './state'
 
 // What the History list asks the peek to show (Part 1 §1.4.10.5, §1.4.11): the entry's key, and
 // what the peek bar says of it. Light, so the canvas's bar loads without the panel.
@@ -178,3 +178,12 @@ watch(peekedKey, (key) => {
     peekedInfo.value = undefined
     peekedSession.value = undefined
 })
+
+// A session's peek belongs to its list: every way to the Timeline (its tab, Open History) ends it.
+watch(
+    historyTab,
+    (tab) => {
+        if (tab !== 'sessions' && peekedSession.value) backToNow()
+    },
+    { flush: 'sync' },
+)

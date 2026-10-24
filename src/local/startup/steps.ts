@@ -21,7 +21,7 @@ import { displayName, namePartsOf } from '../names'
 import { stateBatch } from '../stateBatch'
 import type { StorageStatus } from '../worker/core'
 import type { LoadEvent, ShownName } from './events'
-import { AUTO_SAVE_KEY } from './legacy'
+import { AUTO_SAVE_KEY, AUTO_SAVE_UNREADABLE_KEY } from './legacy'
 import type { MigrationBatch, MigrationResult } from './migrationWrite'
 import { RecoverySteps } from './recovery'
 
@@ -295,14 +295,26 @@ const migrationBatch = (context: RecoveryContext, text: string, hash: string) =>
  * deduplicated by `meta.migratedHashes`, and the key is deleted after the transaction commits
  * (without `durability`, at the next load), only if its value is unchanged since it was read.
  * A failed transaction leaves the key, with its load notice. Without IndexedDB the key stays,
- * offered in Local Data; an unreadable slot stays too, and says so.
+ * offered in Local Data; an unreadable slot stays too, and says so, as does a slot an older
+ * build set aside as unreadable, unless the primary slot migrated this load.
  */
 export const migrationStep = async (context: RecoveryContext) => {
+    const said = await migrateSlot(context)
+    // One line for both slots, and none beside "Continued … from auto save.": the set-aside
+    // slot stays listed in Local Data.
+    if (said || context.migrated || read(context, AUTO_SAVE_UNREADABLE_KEY) === undefined) return
+    if (context.status.mode === 'stored')
+        context.events({ kind: 'migrationFailed', unreadable: true })
+    else unsavedInLocalData(context)
+}
+
+/** The primary slot's migration; true when it raised a load notice of its own. */
+const migrateSlot = async (context: RecoveryContext): Promise<boolean> => {
     const text = read(context, AUTO_SAVE_KEY)
-    if (text === undefined) return
+    if (text === undefined) return false
     if (context.status.mode !== 'stored') {
         unsavedInLocalData(context)
-        return
+        return true
     }
     const hash = toHex(await sha256(new TextEncoder().encode(text)))
     // A slot migrated before (an old tab's write-back, a key a kill left) isn't parsed again.
@@ -312,7 +324,7 @@ export const migrationStep = async (context: RecoveryContext) => {
         const made = migrationBatch(context, text, hash)
         if (!made) {
             context.events({ kind: 'migrationFailed', unreadable: true })
-            return
+            return true
         }
         let result: MigrationResult
         try {
@@ -321,7 +333,7 @@ export const migrationStep = async (context: RecoveryContext) => {
             recordError(error)
             console.error('The old auto save could not be migrated', error)
             context.events({ kind: 'migrationFailed' })
-            return
+            return true
         }
         if (result.kind === 'migrated') {
             // Its line waits for the open, which knows whether it's the session that opened.
@@ -333,7 +345,7 @@ export const migrationStep = async (context: RecoveryContext) => {
                 context.events({ kind: 'migratedRevision', sessionId: result.sessionId })
             // No commit is synced, and the key's removal could reach disk before this one: the
             // next load, which finds its hash migrated, deletes the key.
-            if (context.noDurability) return
+            if (context.noDurability) return false
         }
     }
     // Migrated and committed, now or before. An old tab's newer write survives, and the next
@@ -344,6 +356,7 @@ export const migrationStep = async (context: RecoveryContext) => {
         } catch {
             // Left: its hash is migrated, so the next load only deletes it.
         }
+    return false
 }
 
 export type { JournalOutcome }

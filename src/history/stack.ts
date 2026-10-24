@@ -34,8 +34,11 @@ const index = ref(0)
 
 const states = shallowReactive<Slot[]>([])
 
-/** A state shown in place of the current one, read-only, while viewing history. */
-export const peek = shallowRef<{ source: unknown; state: State }>()
+/**
+ * A state shown in place of the current one, read-only, while viewing history. With `audio:
+ * 'none'` it plays without BGM (a session's peek); else playback keeps the live audio.
+ */
+export const peek = shallowRef<{ source: unknown; state: State; audio?: 'live' | 'none' }>()
 
 export const isPeeking = computed(() => !!peek.value)
 

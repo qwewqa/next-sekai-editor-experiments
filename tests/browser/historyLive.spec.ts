@@ -165,19 +165,30 @@ const leaveList = (page: Page) =>
         if (active instanceof HTMLElement && active !== document.body) active.blur()
     })
 
-/** Scrolls the panel's Timeline down until the row titled `title` is rendered, then onto the screen. */
+/**
+ * Scrolls the panel's Timeline down a screen at a time until the row titled `title` is rendered,
+ * then onto the screen. Each screen waits for the older page it asked for and its drawing, so
+ * slow reads never run out a poll.
+ */
 const scrollToRow = async (page: Page, title: string) => {
     const list = timeline(page, 'panel')
     const target = row(page, title, 'panel')
-    await expect
-        .poll(async () => {
-            if ((await target.count()) > 0) return true
-            await list.evaluate((element) => {
-                element.scrollTop += element.clientHeight
-            })
-            return false
+    const drawn = () =>
+        list.evaluate(
+            () =>
+                new Promise<void>((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+                ),
+        )
+    for (let screens = 0; (await target.count()) === 0; screens++) {
+        expect(screens, `"${title}" is listed`).toBeLessThan(100)
+        await list.evaluate((element) => {
+            element.scrollTop += element.clientHeight
         })
-        .toBe(true)
+        await drawn()
+        await expect.poll(async () => (await source(page)).loadingMore).toBe(false)
+        await drawn()
+    }
     await target.scrollIntoViewIfNeeded()
 }
 

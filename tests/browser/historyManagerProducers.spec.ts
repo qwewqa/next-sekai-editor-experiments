@@ -559,7 +559,10 @@ test('Initial Life still opens read-only while peeking and cannot commit its dia
     await expect(
         dialog.getByRole('spinbutton', { name: 'Initial Life', exact: true }),
     ).toBeDisabled()
-    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    // Read-only, its footer button is OK, which only closes it.
+    await expect(dialog.getByRole('button', { name: 'Confirm', exact: true })).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'OK', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
     expect(await operations(page)).toEqual([])
     expect(await page.evaluate(() => window.editorTest.history.liveState.value.initialLife)).toBe(
         1000,

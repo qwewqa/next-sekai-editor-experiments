@@ -20,7 +20,6 @@ import GoToList from './GoToList.vue'
 import GoToPopover from './GoToPopover.vue'
 import { hereRangeText } from './editsHere'
 import RecentSessionsTab from './RecentSessionsTab.vue'
-import { backToNow, peekedSession } from './selection'
 import type { Target } from './source'
 import {
     hereRange,
@@ -256,8 +255,6 @@ const showAll = (event: MouseEvent) => {
 }
 
 const select = (tab: HistoryTab) => {
-    // A session's peek belongs to its list: the Timeline shows this session's steps.
-    if (tab !== historyTab.value && peekedSession.value) backToNow()
     historyTab.value = tab
     goToOpen.value = false
 }
