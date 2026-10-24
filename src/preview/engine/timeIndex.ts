@@ -1,4 +1,4 @@
-type Entry<T> = {
+export type TimeIndexEntry<T> = {
     item: T
     index: number
     start: number
@@ -6,7 +6,7 @@ type Entry<T> = {
 }
 
 export type TimeIndex<T> = {
-    entries: Entry<T>[]
+    entries: TimeIndexEntry<T>[]
     maxEnds: Float64Array
     offset: number
 }
@@ -17,10 +17,14 @@ export const createTimeIndex = <T>(
     items: T[],
     start: (item: T) => number,
     end: (item: T) => number,
-): TimeIndex<T> => {
-    const entries = items
-        .map((item, index) => ({ item, index, start: start(item), end: end(item) }))
-        .sort((a, b) => a.start - b.start)
+): TimeIndex<T> =>
+    createTimeIndexOfEntries(
+        items.map((item, index) => ({ item, index, start: start(item), end: end(item) })),
+    )
+
+// The same over entries listed in order of their `index`. It sorts the array in place.
+export const createTimeIndexOfEntries = <T>(entries: TimeIndexEntry<T>[]): TimeIndex<T> => {
+    entries.sort((a, b) => a.start - b.start)
     let offset = 1
     while (offset < entries.length) offset *= 2
     const maxEnds = new Float64Array(offset * 2).fill(-Infinity)
@@ -45,7 +49,7 @@ export const queryTimeIndex = <T>(
     leftLimit = false,
     preserveInputOrder = true,
 ) => {
-    const matches: Entry<T>[] = []
+    const matches: TimeIndexEntry<T>[] = []
     const visit = (node: number, left: number, right: number) => {
         const entry = index.entries[left]
         if (
