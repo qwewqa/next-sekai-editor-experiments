@@ -11,7 +11,7 @@ import {
 } from '../../../src/local/journal/store'
 import { holdSessionLock } from '../../../src/local/sessions'
 import type { LoadEvent } from '../../../src/local/startup/events'
-import { AUTO_SAVE_KEY } from '../../../src/local/startup/legacy'
+import { AUTO_SAVE_KEY, AUTO_SAVE_UNREADABLE_KEY } from '../../../src/local/startup/legacy'
 import { RecoverySteps } from '../../../src/local/startup/recovery'
 import { recoverySteps, runRecovery, type RecoveryContext } from '../../../src/local/startup/steps'
 import { checkStored } from '../../../src/local/testing/invariants'
@@ -261,6 +261,42 @@ test('an absent slot makes no session, and one this build can’t read whole sta
     assert.deepEqual(part.events, [{ kind: 'migrationFailed', unreadable: true }])
     assert.equal(rows(world, 'sessions').size, 0)
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), partial)
+})
+
+test('a slot an older build set aside as unreadable stays, and says so once at each load', async () => {
+    const world = createWorld({ seed: 31 })
+    const storage = new MemoryStorage()
+    const aside = '{"version":1,"levelData":"set aside'
+    storage.setItem(key(AUTO_SAVE_UNREADABLE_KEY), aside)
+    // Alone (§1.8 step 4): its own line.
+    const alone = await loadIn(world, world.tab('a'), storage)
+    await runRecovery(alone.recovery)
+    assert.deepEqual(alone.events, [{ kind: 'migrationFailed', unreadable: true }])
+    // Beside a primary slot this build can't read: one line for both.
+    storage.setItem(key(AUTO_SAVE_KEY), '{"version":1,"levelData":"not base64 gzip')
+    const both = await loadIn(world, world.tab('b'), storage)
+    await runRecovery(both.recovery)
+    assert.deepEqual(both.events, [{ kind: 'migrationFailed', unreadable: true }])
+    // Beside a primary slot that migrates: the set-aside one still says so.
+    storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
+    const migrated = await loadIn(world, world.tab('c'), storage)
+    await runRecovery(migrated.recovery)
+    assert.deepEqual(migrated.events, [{ kind: 'migrationFailed', unreadable: true }])
+    assert.equal(rows(world, 'sessions').size, 1)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
+    // Without IndexedDB: Local Data's line, once, with the primary slot or without it.
+    const unavailable = async (name: string) => {
+        const tab = world.tab(name)
+        const core = workerCore(world, tab, { flags: { noStorage: true } })
+        const { recovery, events } = await loadIn(world, tab, storage, {}, core)
+        await runRecovery(recovery)
+        return events
+    }
+    storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
+    assert.deepEqual(await unavailable('d'), [{ kind: 'unsavedInLocalData' }])
+    storage.removeItem(key(AUTO_SAVE_KEY))
+    assert.deepEqual(await unavailable('e'), [{ kind: 'unsavedInLocalData' }])
+    assert.equal(storage.getItem(key(AUTO_SAVE_UNREADABLE_KEY)), aside)
 })
 
 test('a failed migration transaction leaves the key, with its load event', async () => {
