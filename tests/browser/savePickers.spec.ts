@@ -345,7 +345,7 @@ test('with storing paused, a takeover writes nothing, and the owner’s binding 
     expect(after.replaced).toBeUndefined()
 })
 
-test('Save to File… writes a session that isn’t open as a new file, binding nothing', async ({
+test('Recent Sessions’ Save… writes a session that isn’t open as a new file, binding nothing', async ({
     page,
 }) => {
     await start(page)

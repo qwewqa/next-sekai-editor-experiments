@@ -9,7 +9,7 @@ import type { SaveUi } from './dialogs'
 import { removeMarker, savedState, writeMarker, type SaveMarker } from './env'
 import { openPreparing, PREPARING_MS, waitForChainImports, type PreparingSlot } from './imports'
 
-// One Save attempt: every Save, Export's pick and Save to File… that may
+// One Save attempt: every Save, Export's pick and Recent Sessions' Save… that may
 // write a file runs in one. It owns the Save's cancel and its one "Preparing…", the wait for the chain's
 // imports, the reservation and how that reservation ends, and the failure the user is shown. The
 // flows own what is built and what is asked; they never end a reservation themselves.
@@ -42,7 +42,7 @@ export type AttemptSpec = {
     readonly commitFirst: boolean
     /** 'chain': waits for every import of the chain, a failed list counting as pending. */
     readonly importWait: 'none' | 'chain'
-    /** The chain whose imports are waited for, when it is not the environment's (Save to File…). */
+    /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
     /** A write-back's, requested at the press and awaited after the commit. */
     readonly permission?: Promise<PermissionState>

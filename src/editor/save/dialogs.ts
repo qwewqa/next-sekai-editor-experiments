@@ -21,7 +21,7 @@ import SaveDialog from './SaveDialog.vue'
 // The Save flows' dialogs and feedback, as the core calls them. Tests swap them
 // through `saveUi`; the specs rely on these signatures and accessible names.
 
-/** Which Save dialog: the first Save, Save As…, or Recent Sessions' Save to File…. */
+/** Which Save dialog: the first Save, Save As…, or Recent Sessions' Save…. */
 export type SaveDialogKind = 'save' | 'saveAs' | 'saveToFile'
 
 /** The History row. */
@@ -137,7 +137,7 @@ export type SavedFeedback = {
      * line. Media that is not loaded gets no line (the user knows it is not loaded).
      */
     tooLarge: MediaKind[]
-    /** Save to File… of a session open in another tab wrote its committed state. */
+    /** Recent Sessions' Save… of a session open in another tab wrote its committed state. */
     committedState?: boolean
 }
 
@@ -161,7 +161,7 @@ export type SaveUi = {
     ) => Promise<'chooseAnother' | 'export' | undefined>
     /**
      * Bytes held of a picked file that could not be put back; Download keeps them. Without
-     * `downloadable` there is nothing to give: [OK] only. `replaced`: Save to File… wrote another
+     * `downloadable` there is nothing to give: [OK] only. `replaced`: Recent Sessions' Save… wrote another
      * document over the chain's own file.
      */
     notPutBack: (
@@ -399,7 +399,7 @@ export const defaultSaveUi: SaveUi = {
         const announced = unconfirmed
             ? () => (chip.value?.kind === 'notConfirmed' ? pointer() : text())
             : undefined
-        // Save to File… of a session another tab has open wrote its stored state: said to
+        // Recent Sessions' Save… of a session another tab has open wrote its stored state: said to
         // assistive technology with the notice, not shown as another line.
         const announcement = feedback.committedState
             ? () => `${(announced ?? text)()} ${i18n.value.save.committedState}`

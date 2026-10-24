@@ -414,7 +414,7 @@ const createWorld = async (setup: Setup = {}) => {
                 return []
             case 'estimateSaveSize': // the real estimate reads the stored snapshot rows
                 return undefined
-            case 'readSession': // answers the other chain for Save to File…; the seeded sessions have no snapshot rows to open
+            case 'readSession': // answers the other chain for Recent Sessions' Save…; the seeded sessions have no snapshot rows to open
                 return {
                     kind: 'open',
                     session: { chainId: 'chain-other', updatedAt: NOW },

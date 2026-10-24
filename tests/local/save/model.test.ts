@@ -297,7 +297,7 @@ test('a byte flipped in the built chunks.bin fails the post-build check; nothing
     }
 })
 
-test('Save to File… of a session with a damaged head refuses; nothing is written', async () => {
+test('Recent Sessions’ Save… of a session with a damaged head refuses; nothing is written', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(5)
@@ -331,7 +331,7 @@ test('a stored BGM gone bad is marked damaged; a write-back copies the file’s 
     assert.equal(read.media.bgm?.form.sha256, BGM.sha256)
 })
 
-test('Save to File… changes nothing on the chain; a later write-back holds every row once', async () => {
+test('Recent Sessions’ Save… changes nothing on the chain; a later write-back holds every row once', async () => {
     const { fixture, file } = await bound()
     await fixture.edit(2)
     await fixture.flush()

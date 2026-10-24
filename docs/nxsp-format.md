@@ -803,7 +803,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 | Ungroup | edit | `nse.owner.ungroup` |
 | Undo, Redo | `undo`, `redo` | the crossed step's operation |
 | Restore (Timeline) | `restore` | `nse.restore` |
-| Save, Save As…, Save to File…, Download | `save` | `nse.file.save` |
+| Save, Save As…, Recent Sessions' Save…, Download | `save` | `nse.file.save` |
 | Export Level Data | `export` | `nse.file.export` |
 | Crash recovery (journal) | `recovered`, or an `edit` | `nse.recovery` |
 | Selection, view, zoom, scroll, visibility (shown, dimmed or hidden groups and stages), playback, Copy, settings | nothing | — |
@@ -893,7 +893,7 @@ A reader needs none of this. A writer that wants its files to open as the editor
 
 ### 16.2 History
 
-- A **new or rebuilt** chronology (Save As, Save to File, a copy, a write that cannot append) is cut into segments of 500 entries while more than 500 remain; the manifest holds the last 1 to 500 and always the write's own `save` entry, last.
+- A **new or rebuilt** chronology (Save As, Recent Sessions' Save…, a copy, a write that cannot append) is cut into segments of 500 entries while more than 500 remain; the manifest holds the last 1 to 500 and always the write's own `save` entry, last.
 - An **append** (a write-back to the chain's own file at its base): the source's segments are copied whole in order (same bytes and method); its `chunks.bin` is the new one's prefix, unchanged; its manifest becomes a new segment when it holds 500 or more entries, else its entries, roots, nodes and chunks carry into the new manifest; the new rows follow in the manifest, never split. A write-back to a file without history has nothing to copy. When that Save includes History, it writes the chain's chronology as a new one is written, keeping the file's `id` and taking its revision as `parent`, so the file gains history.
 - Each part holds the roots, nodes and chunks its entries first reference, in first-reference order: entries in order (the snapshot, then a `recovered` entry's pushes), then the undo slots, then any other roots; for each root its header chunk, then its kinds in order, each node's chunks in order. New chunks are appended to `chunks.bin` in that order.
 - Entry keys in the order `kind`, `step` or `operation`, `recoveryContext`, `time`, `snapshot`, `noteCount`, `dirty`, `kept`, `revisionId`, `device`, `appVersion`, `stack`, `x`. A row whose state the writer does not hold whole is written `kept: false`, never left out; a row's `noteCount` is written only when known.

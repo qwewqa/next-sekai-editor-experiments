@@ -9,7 +9,7 @@ import { nameProblem, showsAtOnce } from '../commands/exportLevel/fileName'
 import type { SaveDialogInput, SaveDialogResult } from './dialogs'
 import { totalOf } from './total'
 
-// The Save dialog: the first Save, Save As… and Save to File…. File Name,
+// The Save dialog: the first Save, Save As… and Recent Sessions' Save…. File Name,
 // History and BGM with their sizes and disabled states, the total, and
 // the notes that apply. It names the file only: the session's Name is Level Info's.
 const props = defineProps<{ input: SaveDialogInput }>()

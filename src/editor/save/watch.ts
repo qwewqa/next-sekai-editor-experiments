@@ -5,7 +5,7 @@ import type { StorageWorker } from '../../local/worker/client'
 import { unbindFile } from '../file'
 
 // What other tabs' saves change in this one: a binding a save picker took over
-// shows as not saved to a file once this tab reads its record again, on the `sessionUpdated`
+// shows as unsaved once this tab reads its record again, on the `sessionUpdated`
 // broadcast, `pageshow` or becoming visible, with no notice.
 
 type Row = Record<string, unknown>

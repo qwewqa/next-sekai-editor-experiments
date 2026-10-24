@@ -317,7 +317,7 @@ export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
     readonly purpose: 'save' | 'export' | 'saveToFile'
     /** The dialog's read of the chain's own file, or `'start'`: one starting now, with a grant held. */
     readonly read: Promise<ReadResult> | 'start'
-    /** The chain whose imports are waited for, when it is not the environment's (Save to File…). */
+    /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
     /** Called at the commit point, when the picker returned a file. */
     readonly committed?: () => void
@@ -565,7 +565,7 @@ export const withPickSession = <T>(
                 }
                 if (!identity) return
                 if (landed) {
-                    // Save to File… wrote another document over the chain's own file: what was read
+                    // Recent Sessions' Save… wrote another document over the chain's own file: what was read
                     // of it first is offered, since the file no longer holds it.
                     const earlier = slot?.blob
                     if (spec.purpose === 'saveToFile' && identity.kind === 'own' && earlier?.size)
@@ -597,7 +597,7 @@ export const withPickSession = <T>(
                 // put-back whose read-back failed); anything else lost them, and they are offered.
                 const emptied = await isEmpty()
                 if (!emptied && (await beginsWith(target, bytes))) return
-                // Save to File… took the chain's own file for another document: it holds that now.
+                // Recent Sessions' Save… took the chain's own file for another document: it holds that now.
                 const replaced =
                     spec.purpose === 'saveToFile' && identity.kind === 'own' && !emptied
                 offer = { emptied, bytes, ...(replaced ? { replaced } : {}) }

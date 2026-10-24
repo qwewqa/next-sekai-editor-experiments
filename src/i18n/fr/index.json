@@ -769,7 +769,7 @@
     },
     "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite.",
     "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément qui a le focus.",
-    "recentSessions": "Le travail non sauvegardé dans un fichier se trouve dans Historique › Récentes.",
+    "recentSessions": "Le travail non sauvegardé se trouve dans Historique › Récentes.",
     "fileTitle": "Fichiers",
     "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
     "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer sans risque."
@@ -977,10 +977,10 @@
       "deleteTitle": "Supprimer des sessions",
       "lastEdited": "Dernière modification il y a plus de {0} jour|Dernière modification il y a plus de {0} jours",
       "all": "Tout",
-      "includeNotSaved": "Inclure le travail non sauvegardé dans un fichier",
+      "includeNotSaved": "Inclure le travail non sauvegardé",
       "deleteNext": "Supprimer…",
       "deleteConfirm": "Supprimer {0} session ?|Supprimer {0} sessions ?",
-      "notSaved": "{0} session n’est pas sauvegardée dans un fichier : {1}.|{0} sessions ne sont pas sauvegardées dans un fichier : {1}.",
+      "notSaved": "{0} session a des modifications non sauvegardées : {1}.|{0} sessions ont des modifications non sauvegardées : {1}.",
       "namesMore": "{0} et {1} autres",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
@@ -1195,7 +1195,7 @@
     "updated": "Mis à jour vers la version {0}",
     "whatsNew": "Nouveautés",
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
-    "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou sauvegardez dans un fichier pour conserver votre travail.",
+    "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou sauvegardez pour conserver votre travail.",
     "tryAgain": "Réessayer",
     "continued": "Session reprise : \"{0}\" ({1}).",
     "continuedUntitled": "Votre session a été reprise ({0}).",
@@ -1236,14 +1236,14 @@
       "readOnly": "Une version plus récente de l’éditeur a été ouverte.",
       "upgrading": "Une version plus récente de l’éditeur est ouverte dans un autre onglet."
     },
-    "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",
-    "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
+    "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez pour conserver votre travail.",
+    "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez pour conserver votre travail.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
-    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
-    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
-    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que vous supprimiez cette application. Sauvegardez dans un fichier pour conserver votre travail.",
-    "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez dans un fichier pour conserver votre travail.",
-    "default": "Les sessions récentes sont conservées dans ce navigateur, sauf si l’espace vient à manquer. Sauvegardez dans un fichier pour conserver votre travail."
+    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
+    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
+    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que vous supprimiez cette application. Sauvegardez pour conserver votre travail.",
+    "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez pour conserver votre travail.",
+    "default": "Les sessions récentes sont conservées dans ce navigateur, sauf si l’espace vient à manquer. Sauvegardez pour conserver votre travail."
   },
   "player": {
     "started": "Lecture démarrée",
@@ -1376,7 +1376,7 @@
       "thisTab": "Cet onglet",
       "elsewhere": "Autre onglet",
       "actions": "Plus d’actions pour \"{0}\"",
-      "saveToFile": "Sauvegarder dans un fichier…",
+      "saveToFile": "Sauvegarder…",
       "delete": "Supprimer",
       "openReason": "Elle est ouverte dans un autre onglet ou une autre fenêtre."
     },
@@ -1385,7 +1385,7 @@
       "named": "Détails de l’étape : {0}",
       "action": "Détails",
       "unsupported": "Cet éditeur ne peut pas lire les détails de cette étape.",
-      "newer": "Cette étape a été enregistrée par une version plus récente de l’éditeur.",
+      "newer": "Cette étape a été créée par une version plus récente de l’éditeur.",
       "textShortened": "Texte affiché en abrégé",
       "varying": "Variable",
       "changed": "Modification",
@@ -2253,7 +2253,7 @@
   },
   "status": {
     "separateCopyShort": "Copie séparée",
-    "notInFile": "Non sauvegardé dans un fichier",
+    "notInFile": "Non sauvegardé",
     "separateCopy": "Copie séparée de {0}",
     "opensLevelInfo": "Ouvre les informations du niveau",
     "changedSaved": "{0}, modifié depuis la sauvegarde de {1}",
@@ -2294,10 +2294,7 @@
   "file": {
     "replacedElsewhere": "\"{0}\" a été remplacé depuis un autre onglet ou une autre fenêtre.",
     "downloaded": "{0} · téléchargé {1}",
-    "opened": "{0} · ouvert {1}",
-    "short": {
-      "notSaved": "non sauvegardé"
-    }
+    "opened": "{0} · ouvert {1}"
   },
   "state": {
     "fileMissing": "Fichier introuvable",

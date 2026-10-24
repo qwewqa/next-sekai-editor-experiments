@@ -37,7 +37,7 @@ import {
 
 // The property-based Save test, as fast-check commands that
 // shrink to the shortest failing script: edits, Saves of every kind (write-backs, downloads,
-// Replace, Save As…, Save to File…), cleanup (thinning, and flags that leave a shared state's
+// Replace, Save As…, Recent Sessions' Save…), cleanup (thinning, and flags that leave a shared state's
 // bodies: the cleanup case), session deletion, damage, a touched file, and storing paused and resumed
 // (the binding in memory, `pending`). After each write:
 // - no over-claim: the file holds every row with its state of each file its `completeFrom` names;

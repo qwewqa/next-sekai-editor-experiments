@@ -9,7 +9,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 skipWhereTheEditorCannotStart()
 
 // `?safe`: Recent Sessions lists what is stored and reads it, and the
-// only way into a session is a copy that stores nothing. Save to File… still writes the file.
+// only way into a session is a copy that stores nothing. Recent Sessions' Save… still writes the file.
 
 const messages = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
@@ -90,7 +90,7 @@ test('safe mode lists the stored sessions, peeks them, and Restore as a Copy ope
     expect(await storedRows(page)).toBe(before)
 })
 
-test('safe mode’s menu is Restore as a Copy and Save to File…, and Save to File… writes the file', async ({
+test('safe mode’s menu is Restore as a Copy and Save…, and Save… writes the file', async ({
     page,
 }) => {
     await safePage(page)

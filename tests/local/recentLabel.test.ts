@@ -37,7 +37,7 @@ registerHooks({
 
 const { labelLine, labelOf } = await import('../../src/editor/fileLabel')
 
-test('a row whose file another chain took over reads "Not saved to a file"', async () => {
+test('a row whose file another chain took over reads "Unsaved"', async () => {
     const world = createWorld({ seed: 1 })
     const page = await openPage(world, world.tab('a'))
     const state = stateOf(goldenChart())
@@ -92,5 +92,5 @@ test('a row whose file another chain took over reads "Not saved to a file"', asy
         })
         assert.ok(revoked)
     })
-    assert.equal(await row(), 'not saved to a file')
+    assert.equal(await row(), 'unsaved')
 })

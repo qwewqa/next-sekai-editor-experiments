@@ -6,6 +6,7 @@ import { readBrowserFacts } from './settings/storageLine'
 import { levelInfo } from './commands/levelInfo'
 import { runCommand } from './commands/runCommand'
 import { raised } from './file/state'
+import { fragment } from './fileLabel'
 import { statusLabel, statusName } from './labelText'
 
 const props = defineProps<{ compact: boolean }>()
@@ -30,7 +31,9 @@ const compactReason = computed(
     () => props.compact && !statusLabel.value.file && (keepState.value || !!session.value.copyOf),
 )
 const shortReason = computed(() =>
-    session.value.copyOf ? i18n.value.status.separateCopyShort : i18n.value.file.short.notSaved,
+    session.value.copyOf
+        ? i18n.value.status.separateCopyShort
+        : fragment(i18n.value.status.notInFile),
 )
 const onClick = (event: MouseEvent) => {
     void runCommand(levelInfo)

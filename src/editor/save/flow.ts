@@ -106,7 +106,7 @@ import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './s
 import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
 
-// Save, Save As… and Save to File…: write-back with
+// Save, Save As… and Recent Sessions' Save…: write-back with
 // `requestPermission` first, the changed-on-disk check, our own completed Save, the Save dialog,
 // the save picker under `nse-bind`, downloads, and the follow-up dialogs. The
 // dialogs are `saveUi`'s; the writer is the storage worker's (`buildSave`).
@@ -1458,7 +1458,7 @@ const storageLineOf = async () => {
 }
 
 /**
- * The BGM row of a session that isn't open (Save to File…), from what storage holds of its head: a
+ * The BGM row of a session that isn't open (Recent Sessions' Save…), from what storage holds of its head: a
  * stored BGM is held, a head media item storage lacks is "not loaded", and none is "No BGM". With
  * no estimate to tell, the row stays ticked, which never strips a BGM.
  */
@@ -1775,10 +1775,10 @@ export const saveAs = () =>
         await dialogSave(env, 'saveAs')
     })
 
-// Save to File… (Recent Sessions' ⋯): Save As for a session that isn't open.
+// Recent Sessions' Save… (⋯): Save As for a session that isn't open.
 
 /**
- * Save to File…: the session's pending journal applied first under its lock, its head with its
+ * Recent Sessions' Save…: the session's pending journal applied first under its lock, its head with its
  * history written as a new `.nxsp` with a new `docId`, binding nothing. Its picker follows the
  * rules above: a file a chain is bound to is taken from it. A session open in another
  * tab is written as storage holds it, and the feedback says so. Recent Sessions' ⋯ menu is its
@@ -1877,7 +1877,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
             ...(ownRead ? { read: ownRead } : {}),
         }),
     )
-    // Choose Another… is Save to File… for this session again, never the open one's Save.
+    // Choose Another… is Recent Sessions' Save… for this session again, never the open one's Save.
     await afterOutcome(env, outcome, () => saveToFileNow(env, sessionId))
 }
 
@@ -1892,7 +1892,7 @@ const withSessionHold = async <T>(sessionId: string, run: () => Promise<T>) => {
     }
 }
 
-/** What Save to File… writes: another session, as a new file. */
+/** What Recent Sessions' Save… writes: another session, as a new file. */
 type SessionFileRequest = {
     chainId: string
     sessionId: string
@@ -2057,7 +2057,7 @@ const sessionFilePicked = async (
     return { kind: 'done' }
 }
 
-/** The open chain lost its file to this tab's own Save to File…: its label follows. */
+/** The open chain lost its file to this tab's own Recent Sessions' Save…: its label follows. */
 const refreshOwn = (env: Env) => refreshBinding(env.worker, env.flusher)
 
 /** A destination never registered here still cannot write over another known owner. */

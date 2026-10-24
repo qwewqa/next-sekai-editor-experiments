@@ -287,6 +287,7 @@ const removed = [
     'file.short.downloaded',
     'file.short.opened',
     'file.short.notConfirmed',
+    'file.short.notSaved',
     'state.short.fileMissing',
     'state.short.changedOnDisk',
     'state.short.newerOnDisk',

@@ -35,8 +35,9 @@ The strings in `src/i18n/`, Help, notices, the release notes in `CHANGELOG.md` a
 - Buttons and command names are Title Case. A command that asks for more before it acts ends with an ellipsis.
 - Put session names in double quotes. Put a file name in double quotes only when it is the subject or starts the sentence: "Saved to coconut.nxsp", but ""coconut.nxsp" could not be written."
 - Change all seven locales (`en`, `fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit, and reuse each locale’s existing terms.
+- "Saved" means saved as a project file, and "unsaved" means not saved as one. Work kept only in this browser, such as Recent Sessions and the Timeline, is "stored" or "kept", never "saved". An export does not save.
 - Say what happened and what to do, in words the user already knows.
   - Leave out internal terms such as chain, journal, worker, binding and slot. The maintainer docs may name them.
   - History lines say "Timeline steps", so they cannot be read as chart content being lost.
 - Leave out what an action obviously does, and what does not happen.
-- Reuse an existing phrasing ("could not be read", "Save to a file to keep your work.") rather than writing a new one.
+- Reuse an existing phrasing ("could not be read", "Save to keep your work.") rather than writing a new one.

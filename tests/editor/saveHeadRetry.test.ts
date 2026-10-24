@@ -13,7 +13,7 @@ import { Fixture, heldRows, stateAt } from '../local/save/fixture'
 
 // The head written from the live state: a build refused for a head storage
 // can't read is made once more with the live head's records added to this tab's pending part,
-// which keeps every record it had; Save to File… of a session that isn't open never retries.
+// which keeps every record it had; Recent Sessions' Save… of a session that isn't open never retries.
 
 const refusedHead = { refused: 'unreadableHead' as const }
 const built = { saveEntry: { snapshot: '00'.repeat(16) } }
@@ -108,7 +108,7 @@ test('a refused head with nothing unflushed is built again from the live head’
     assert.ok(pending.records.roots[rootOf(stateAt(3).state)])
 })
 
-test('Save to File… of a session that isn’t open never builds again: the refusal stands', async () => {
+test('Recent Sessions’ Save… of a session that isn’t open never builds again: the refusal stands', async () => {
     const { env, calls } = envWith([edit(5, 2)])
     await assert.rejects(
         runBuild(env, request('other')),

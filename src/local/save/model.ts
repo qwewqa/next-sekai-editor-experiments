@@ -79,7 +79,7 @@ export const orderSessions = (sessions: readonly SessionRow[]): SessionRow[] => 
 
 /**
  * The chain's rows in chain order: its sessions by `startedAt`, each by `seq`. With `upto`, only
- * the sessions up to that one (Save to File… of an earlier session).
+ * the sessions up to that one (Recent Sessions' Save… of an earlier session).
  */
 export const chainRows = (cut: ChainCut, upto?: string): ChainRow[] => {
     const rows: ChainRow[] = []
