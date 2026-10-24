@@ -391,7 +391,7 @@ test('old read cleanup and batches cannot address a replacement worker read', as
                 lineageId: crypto.randomUUID(),
             },
             chain: {
-                file: { name: 'race.nxsp', event: 'opened', options: { history: true, bgm: true } },
+                file: { name: 'race.nxsp', event: 'opened' },
             },
             operations: {
                 opened: createHistoryOperation({ id: 'nse.origin', data: { origin: 'import' } }),

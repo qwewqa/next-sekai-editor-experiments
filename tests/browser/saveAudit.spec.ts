@@ -15,9 +15,9 @@ import {
 } from './saveFlows'
 
 // The Save flow's values were checked against what the dialogs say (audit AUD-A): the storage line,
-// the BGM row after a reload, the name of the file the picker returned, "Already in" on the BGM
-// row, the cached estimate, and "Preparing…" at once for a large download on a touch device. Each
-// asserts the text the user reads, never the input the flow built.
+// the BGM row after a reload, the name of the file the picker returned, "Already in" on the
+// History row, the cached estimate, and "Preparing…" at once for a large download on a touch
+// device. Each asserts the text the user reads, never the input the flow built.
 
 type Row = Record<string, unknown>
 
@@ -197,7 +197,7 @@ test('Save asks the estimate once per state: a reopen shows it at once, a change
     expect(await asked()).toBe(2)
 })
 
-test('the file opened by name keeps its BGM: ticked, disabled, "Already in" it', async ({
+test('the file opened by name keeps its history, "Already in" it; its BGM row is ticked and a choice', async ({
     page,
 }) => {
     await start(page, { fileSystemAccess: false })
@@ -222,14 +222,15 @@ test('the file opened by name keeps its BGM: ticked, disabled, "Already in" it',
     const history = dialog.locator('[data-save-row="history"]')
     const bgm = dialog.locator('[data-save-row="bgm"]')
     await expect(history).toContainText('Already in coconut.nxsp')
-    await expect(bgm).toContainText('Already in coconut.nxsp')
-    await expect(bgm.getByRole('checkbox')).toBeDisabled()
+    await expect(history.getByRole('checkbox')).toBeDisabled()
+    await expect(bgm).not.toContainText('Already in')
+    await expect(bgm.getByRole('checkbox')).toBeEnabled()
     await expect(bgm.getByRole('checkbox')).toBeChecked()
     await expect(sizeText(dialog, 'bgm')).toHaveText('200 kB')
     await expect(bgm.locator('[data-save-name-line]')).toHaveText('song.mp3')
 })
 
-test('a file without history opened by name: History is unticked and can be ticked (SF-4)', async ({
+test('a file without history opened by name: History is ticked and can be unticked (SF-4)', async ({
     page,
 }) => {
     await start(page, { fileSystemAccess: false })
@@ -251,7 +252,7 @@ test('a file without history opened by name: History is unticked and can be tick
     await expect(history).toBeVisible()
     await expect(history).not.toContainText('Already in')
     await expect(history.getByRole('checkbox')).toBeEnabled()
-    await expect(history.getByRole('checkbox')).not.toBeChecked()
+    await expect(history.getByRole('checkbox')).toBeChecked()
 })
 
 test.describe('Save to File…', () => {
@@ -339,7 +340,6 @@ test('a feedback for a session another tab holds says so to assistive technology
             name: 'restored.nxsp',
             size: 1000,
             stepsLine: 'none' as const,
-            without: [],
             tooLarge: [],
         }
         defaultSaveUi.saved({ ...feedback, committedState: true })

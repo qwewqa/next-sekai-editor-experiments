@@ -716,7 +716,6 @@ const createWorld = async (setup: Setup = {}) => {
                     count: 4,
                     notKept: 0,
                 },
-                options: { history: true, bgm: true },
             },
         })
         handleRows.set(`${ownSession.chainId}:file`, handle(OWN))
@@ -743,7 +742,6 @@ const createWorld = async (setup: Setup = {}) => {
                 at: 2000,
                 hash: new Uint8Array(16).fill(9),
                 disk,
-                options: { history: true, bgm: true },
             },
         })
         handleRows.set('chain-other:file', handle('other.nxsp'))

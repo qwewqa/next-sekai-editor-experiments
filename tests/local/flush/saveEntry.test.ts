@@ -122,7 +122,6 @@ test('a save entry takes its reserved seq; edits during the build wait and follo
                 at: reservation.wall,
                 hash: fromHex16(rootOf(first)),
                 entry: { sessionId: session.id, seq: 2, startedAt: 0, count: 2, notKept: 0 },
-                options: { history: true, bgm: true },
             },
             marks: [],
         },
@@ -210,7 +209,6 @@ test('a mark the identity unit needs that isn’t stored keeps the binding in me
                 event: 'saved',
                 at: reservation.wall,
                 hash: fromHex16(rootOf(first)),
-                options: { history: true, bgm: true },
             },
             // A row of this session that was never stored.
             marks: [{ sessionId: session.id, seq: 9 }],
@@ -259,7 +257,6 @@ test('an identity unit whose binding was taken over meanwhile is dropped, never 
                 event: 'saved',
                 at: reservation.wall,
                 hash: fromHex16(rootOf(first)),
-                options: { history: true, bgm: true },
             },
             marks: [],
             // The record had no binding and no revocation when the Save began.
@@ -477,7 +474,6 @@ const ownSave = (
             event: 'saved',
             at: 5,
             hash: fromHex16(rootOf(state)),
-            options: { history: true, bgm: true },
             ...(count === undefined
                 ? {}
                 : { entry: { sessionId, seq, startedAt: 0, count, notKept: 0 } }),

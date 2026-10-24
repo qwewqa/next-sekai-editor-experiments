@@ -18,7 +18,6 @@ import { toHex } from '../../../local/hash'
 import { heldItem } from '../../../local/heldMedia'
 import {
     bindingName,
-    bindingOptions,
     earlierNotice,
     levelState,
     matchesHead,
@@ -498,10 +497,7 @@ const openRequestedProject = async (
                         ...(handle ? { handle } : {}),
                         ...(identity && opened.project
                             ? {
-                                  bind: {
-                                      name,
-                                      options: bindingOptions(opened.project, live),
-                                  },
+                                  bind: { name },
                               }
                             : {}),
                         identity,

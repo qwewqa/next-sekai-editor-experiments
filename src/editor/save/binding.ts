@@ -25,7 +25,6 @@ export type StoredFile = {
     }
     completeFrom?: string
     disk?: DiskState
-    options: { history: boolean; bgm: boolean }
     confirmed?: true
 }
 

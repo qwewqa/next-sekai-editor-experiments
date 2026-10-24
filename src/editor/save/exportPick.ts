@@ -6,6 +6,7 @@ import { environment, quickBinding, type Env } from './binding'
 import {
     afterOutcome,
     broadcastUpdated,
+    DEFAULT_OPTIONS,
     notTakenOver,
     pickUi,
     projectPicked,
@@ -190,7 +191,7 @@ const ownProject = async (
                   env,
                   reserved,
                   undefined,
-                  { dialog: 'save', fileName: name, ...file.options, target: 'copy' },
+                  { dialog: 'save', fileName: name, ...DEFAULT_OPTIONS, target: 'copy' },
                   binding,
                   picked,
               )

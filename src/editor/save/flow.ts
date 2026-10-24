@@ -194,7 +194,6 @@ const bindingFile = async (
         event: 'saved' | 'downloaded'
         handle?: FileSystemFileHandle
         disk?: DiskState
-        options: { history: boolean; bgm: boolean }
     },
 ): Promise<Row> => {
     const { identity } = built
@@ -217,7 +216,6 @@ const bindingFile = async (
             : {}),
         ...(identity.completeFrom === undefined ? {} : { completeFrom: identity.completeFrom }),
         ...(request.disk ? { disk: request.disk } : {}),
-        options: request.options,
     }
 }
 
@@ -330,7 +328,6 @@ const savedOf = (built: BuiltSave, kind: 'saved' | 'download', name: string) => 
     name,
     size: built.blob.size,
     stepsLine: built.stepsLine,
-    without: built.without,
     tooLarge: built.tooLarge,
 })
 
@@ -454,6 +451,12 @@ const followPreBind = async (env: Env, reservation: SaveReservation, name: strin
     currentSession.value = { ...rest, docId: env.session.docId }
     bindFile({ name, event: 'saved', at: reservation.wall, hash: toHex(NO_HASH) })
 }
+
+/**
+ * What every Save writes unless its Save dialog's ticks say otherwise (§1.4.7): History, and the
+ * head's BGM, its audio when held, else as metadata. Ticks apply to one write and are never kept.
+ */
+export const DEFAULT_OPTIONS = { history: true, bgm: true } as const
 
 /** What a Save that picks wants written. */
 type PickRequest = {
@@ -605,7 +608,6 @@ const downloadBuilt = async (
     const file = await bindingFile(built, reservation, {
         name: request.fileName,
         event: 'downloaded',
-        options: { history: request.history, bgm: request.bgm },
     })
     await bindWrite(env, session, reservation, built, state, file)
     forgetHandle(env.chainId)
@@ -650,15 +652,15 @@ export const projectPicked = async (
             // Not at the base: the version read goes back (the session, offered as a download when
             // it can't, R7), and the conflict dialog shows it.
             if (pre && !pre.atBase) return { kind: 'conflict', handle, binding }
-            const options = binding.file?.options ?? { history: true, bgm: request.bgm }
-            const history = binding.file ? bindingHasHistory(binding.file) : options.history
+            // The dialog's ticks apply to this write, but history the file holds stays (H-5).
+            const history = bindingHasHistory(binding.file) || request.history
             const rebuild = () =>
                 runBuild(
                     env,
                     {
                         target: pre ? { kind: 'append', source: 'pre' } : { kind: 'copy' },
                         history,
-                        bgm: options.bgm,
+                        bgm: request.bgm,
                         fileName: name,
                         save: { time: reservation.wall, operation: saveOperation(name, false) },
                         state,
@@ -684,16 +686,10 @@ export const projectPicked = async (
             } catch (error) {
                 // Nothing read first: the emptied file gets what this rebuild would have written
                 // (SF2-2, ADV-4), the chain's own identity, History and BGM. The build before the
-                // picker is that only when it was made so: a Save (`copy`) with the file's options.
+                // picker is that only when it was made so: a Save (`copy`) with the same History.
                 // Else the file stays empty, which the next Save fills from storage (R9), and the
                 // bytes read, if any, go back (the session).
-                if (
-                    !pre &&
-                    prebuilt &&
-                    request.target === 'copy' &&
-                    request.history === history &&
-                    request.bgm === options.bgm
-                ) {
+                if (!pre && prebuilt && request.target === 'copy' && request.history === history) {
                     recordError(error)
                     break
                 }
@@ -744,7 +740,6 @@ export const projectPicked = async (
                     hash: NO_HASH,
                     // A sync client's bytes are never the pre-bind's: the next Save meets them.
                     disk: filled && !ownersOwn ? EMPTY_DISK : found,
-                    options: { history: request.history, bgm: request.bgm },
                 },
                 // Save As…'s new identity goes with its file (§1.3.2: one unit).
                 ...(request.target === 'new' ? { docId: built.identity.docId } : {}),
@@ -778,14 +773,6 @@ export const projectPicked = async (
         name,
         event: 'saved',
         handle,
-        options: {
-            history: !!built.identity.entry,
-            // The chain's own file keeps its option, unless the first build is what's written.
-            bgm:
-                identity.kind === 'own' && built !== prebuilt
-                    ? (binding.file?.options.bgm ?? request.bgm)
-                    : request.bgm,
-        },
     })
     const written = built
     const parent = written.identity.revision.ancestors.length ? (bound.revision?.id ?? null) : null
@@ -1063,8 +1050,7 @@ const writeBack = async (
                                 : source && binding.revision
                                   ? { kind: 'append', source: 'target' }
                                   : { kind: 'copy' },
-                            history: file.options.history,
-                            bgm: file.options.bgm,
+                            ...DEFAULT_OPTIONS,
                             fileName: file.name,
                             save: {
                                 time: reservation.wall,
@@ -1079,7 +1065,6 @@ const writeBack = async (
                         name: file.name,
                         event: 'saved',
                         handle,
-                        options: { history: !!made.identity.entry, bgm: file.options.bgm },
                     })
                     return { kind: 'blob', blob: made.blob }
                 },
@@ -1295,14 +1280,12 @@ const separateFile = async (
     const stem = stemOf(handle.name)
     const engine = deviceForm().label.replace(/^Web \((.*)\)$/, '$1')
     const name = await suggestion(env, `${stem} (${engine}, ${nameTime(Date.now())})`)
-    const options = binding.file?.options ?? { history: true, bgm: true }
     await afterOutcome(
         env,
         await pickAndWrite(env, {
             dialog: 'separate',
             fileName: `${name}.nxsp`,
-            history: options.history,
-            bgm: options.bgm,
+            ...DEFAULT_OPTIONS,
             target: 'copy',
             startIn: handle,
             ...(read ? { read } : {}),
@@ -1413,7 +1396,6 @@ const downloadBytes = async (name: string, bytes: Blob) => {
                 name,
                 size: bytes.size,
                 stepsLine: 'none' as const,
-                without: [],
                 tooLarge: [],
             })
     } catch {
@@ -1436,8 +1418,8 @@ const notFoundSaveAs = async (env: Env) => {
         await pickAndWrite(env, {
             dialog: 'notFound',
             fileName: result.fileName,
-            ...answered(input, result, binding),
-            ...estimateOf(input, result, binding),
+            ...answered(input, result),
+            ...estimateOf(input, result),
             target: 'copy',
         }),
         () => notFoundSaveAs(env),
@@ -1488,9 +1470,9 @@ const storageLineOf = async () => {
  * no estimate to tell, the row stays ticked, which never strips a BGM.
  */
 const sessionBgmRow = (estimate: SaveSizeEstimate | undefined): BgmRow => {
-    if (!estimate) return { kind: 'held', name: 'BGM', ticked: true, locked: false }
+    if (!estimate) return { kind: 'held', name: 'BGM', ticked: true }
     if (estimate.bgm !== undefined)
-        return { kind: 'held', name: estimate.bgmName ?? 'BGM', ticked: true, locked: false }
+        return { kind: 'held', name: estimate.bgmName ?? 'BGM', ticked: true }
     return estimate.mediaMissing ? { kind: 'notLoaded' } : { kind: 'none' }
 }
 
@@ -1502,17 +1484,12 @@ const dialogInput = async (
 ): Promise<SaveDialogInput> => {
     const state = savedState()
     const binding = quickBinding(env)
-    const options = binding.file?.options
     const meta = state.bgm.meta
     const held = await bgmHeld(env, state)
     // A first Save after an open by name writes that file again: its history stays (§0.9.7).
+    // Every other row opens ticked (the defaults): a tick applies to this write only.
     const kept =
         kind === 'save' && binding.file?.event === 'opened' && bindingHasHistory(binding.file)
-    // The file holds the head's BGM (r11g-bgm #10) when nothing changed since the open; whatever
-    // the options, an included BGM stays in it (§0.9.7), ticked and disabled.
-    const bgmKept = kept && held && options?.bgm !== false
-    const fileHash = binding.file?.hash
-    const bgmSame = bgmKept && fileHash instanceof Uint8Array && rootOf(state) === toHex(fileHash)
     const hash = meta?.hash
     const key = () => estimateKey(env.session, hash)
     const cached = knownEstimate(env.chainId, key())
@@ -1524,7 +1501,7 @@ const dialogInput = async (
         history: globalThis.isSecureContext
             ? {
                   kind: 'available',
-                  ticked: kept || (options?.history ?? true),
+                  ticked: true,
                   locked: kept,
                   ...(kept && binding.file ? { keptIn: binding.file.name } : {}),
               }
@@ -1534,9 +1511,7 @@ const dialogInput = async (
                 ? {
                       kind: 'held',
                       name: meta.filename || (state.bgm.filename ?? 'BGM'),
-                      ticked: kind === 'saveAs' ? true : bgmKept || (options?.bgm ?? true),
-                      locked: bgmKept,
-                      ...(bgmSame && binding.file ? { keptIn: binding.file.name } : {}),
+                      ticked: true,
                   }
                 : { kind: 'notLoaded' }
             : { kind: 'none' },
@@ -1593,28 +1568,17 @@ const failedEstimate = (error: unknown) => {
 }
 
 /**
- * The options a dialog's answer sets (§1.4.7): a disabled row never changes its option, so only a
- * user's untick sets `bgm` false; with no hashing, no history.
+ * The options a dialog's answer sets for its one write (§1.4.7): only a user's untick leaves the
+ * BGM out, so a row that isn't shown or isn't loaded includes it; with no hashing, no history.
  */
-const answered = (
-    input: SaveDialogInput,
-    result: { history: boolean; bgm: boolean },
-    binding: Binding,
-) => ({
+const answered = (input: SaveDialogInput, result: { history: boolean; bgm: boolean }) => ({
     history: input.history.kind === 'available' && result.history,
-    bgm:
-        input.bgm.kind === 'held' && !input.bgm.locked
-            ? result.bgm
-            : (binding.file?.options.bgm ?? true),
+    bgm: input.bgm.kind === 'held' ? result.bgm : true,
 })
 
 /** The size the dialog estimated for the options a Save will use, once an estimate loaded. */
-const estimateOf = (
-    input: SaveDialogInput,
-    result: { history: boolean; bgm: boolean },
-    binding: Binding,
-) => {
-    const estimated = estimatedTotal(input, answered(input, result, binding))
+const estimateOf = (input: SaveDialogInput, result: { history: boolean; bgm: boolean }) => {
+    const estimated = estimatedTotal(input, answered(input, result))
     return estimated === undefined ? {} : { estimated }
 }
 
@@ -1654,8 +1618,8 @@ const dialogSave = async (
         await pickAndWrite(env, {
             dialog: kind,
             fileName: result.fileName,
-            ...answered(input, result, binding),
-            ...estimateOf(input, result, binding),
+            ...answered(input, result),
+            ...estimateOf(input, result),
             // Save As… gives a new `docId`; a first Save, a fork's and a taken-over chain's keep it.
             target: kind === 'saveAs' && !unlinked ? 'new' : 'copy',
             ...(read ? { read } : {}),
@@ -1687,8 +1651,7 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
                 built = await attempt.preparing(() =>
                     runBuild(env, {
                         target: { kind: 'copy' },
-                        history: file.options.history,
-                        bgm: file.options.bgm,
+                        ...DEFAULT_OPTIONS,
                         fileName: file.name,
                         save: { time: reservation.wall, operation: saveOperation(file.name, true) },
                         state,
@@ -1715,7 +1678,6 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
             const record = await bindingFile(built, reservation, {
                 name: file.name,
                 event: 'downloaded',
-                options: file.options,
             })
             await bindWrite(env, attempt, reservation, built, state, record)
             forgetHandle(env.chainId)
@@ -1907,7 +1869,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
         : undefined
     const result = await saveUi.saveDialog(input)
     if (result?.action !== 'save') return
-    const options = answered(input, result, { docId: '' })
+    const options = answered(input, result)
     const estimated = estimatedTotal(input, options)
     // Its session hold before the build, so Delete Sessions… skips it (§1.6.6). Released
     // before what follows, so Choose Another… holds it again for its own write.

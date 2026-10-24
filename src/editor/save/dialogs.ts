@@ -36,8 +36,8 @@ export type HistoryRow =
 export type BgmRow =
     | { kind: 'none' }
     | { kind: 'notLoaded' }
-    /** `keptIn` only when the target file's `bgm` is the head's ("Already in …"). */
-    | { kind: 'held'; name: string; ticked: boolean; locked: boolean; keptIn?: string }
+    /** Ticked or not: a choice for this write only. */
+    | { kind: 'held'; name: string; ticked: boolean }
 
 export type SaveDialogInput = {
     kind: SaveDialogKind
@@ -133,9 +133,10 @@ export type SavedFeedback = {
      * kept" for steps known missing, "may not be included" otherwise.
      */
     stepsLine: 'none' | 'notKept' | 'mayNotBeIncluded'
-    /** Media written as metadata only, in BGM, cover, preview order. */
-    without: MediaKind[]
-    /** Those of `without` over the 1 GB cap: no "which is not loaded" (D25). */
+    /**
+     * Media held but left out for the 1 GB media cap, in BGM, cover, preview order: the "without"
+     * line. Media that is not loaded gets no line (the user knows it is not loaded).
+     */
     tooLarge: MediaKind[]
     /** Save to File… of a session open in another tab wrote its committed state. */
     committedState?: boolean
@@ -213,26 +214,19 @@ const describe = (disk: DiskVersion) => {
 
 const withoutKey = (feedback: SavedFeedback) => {
     const { save } = i18n.value
-    const [only, ...more] = feedback.without
+    const [only, ...more] = feedback.tooLarge
     if (!only) return
-    const large = feedback.without.every((kind) => feedback.tooLarge.includes(kind))
-    if (more.length) return large ? save.savedWithoutMediaLarge : save.savedWithoutMedia
-    if (large)
-        return only === 'bgm'
-            ? save.savedWithoutBgmLarge
-            : only === 'cover'
-              ? save.savedWithoutCoverLarge
-              : save.savedWithoutPreviewLarge
+    if (more.length) return save.savedWithoutMediaLarge
     return only === 'bgm'
-        ? save.savedWithoutBgm
+        ? save.savedWithoutBgmLarge
         : only === 'cover'
-          ? save.savedWithoutCover
-          : save.savedWithoutPreview
+          ? save.savedWithoutCoverLarge
+          : save.savedWithoutPreviewLarge
 }
 
 /** A Save with nothing to add to "Saved to {0}". */
 const simple = (feedback: SavedFeedback) =>
-    feedback.stepsLine === 'none' && feedback.without.length === 0
+    feedback.stepsLine === 'none' && feedback.tooLarge.length === 0
 
 /** The feedback's text: the first line, then the steps line (`stepsLine`) where it applies. */
 export const savedText = (feedback: SavedFeedback) => {

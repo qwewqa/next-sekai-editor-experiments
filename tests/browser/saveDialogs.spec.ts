@@ -56,7 +56,7 @@ const base: Input = {
     name: 'Coconut (Master)',
     lines: [],
     history: { kind: 'available', ticked: true, locked: false },
-    bgm: { kind: 'held', name: 'coconut.mp3', ticked: true, locked: false },
+    bgm: { kind: 'held', name: 'coconut.mp3', ticked: true },
     exportLine: false,
     peeking: false,
     estimate: { load: () => Promise.resolve(undefined) },
@@ -313,7 +313,7 @@ test.describe('the Save dialog', () => {
         await expect(dialog(page).locator('[data-save-row="bgm"]')).not.toContainText(/\d [kM]B/)
     })
 
-    test('a file that holds history and the BGM locks its rows, ticked, with "Already in"', async ({
+    test('a file that holds history locks its row, ticked, with "Already in"; the BGM stays a choice', async ({
         page,
         context,
     }) => {
@@ -326,37 +326,19 @@ test.describe('the Save dialog', () => {
                 locked: true,
                 keptIn: 'coconut.nxsp',
             },
-            bgm: {
-                kind: 'held',
-                name: 'coconut.mp3',
-                ticked: true,
-                locked: true,
-                keptIn: 'coconut.nxsp',
-            },
         })
-        for (const name of ['History', 'BGM']) {
-            const box = dialog(page).getByRole('checkbox', { name })
-            await expect(box).toBeDisabled()
-            await expect(box).toBeChecked()
-        }
+        const history = dialog(page).getByRole('checkbox', { name: 'History' })
+        await expect(history).toBeDisabled()
+        await expect(history).toBeChecked()
+        const bgm = dialog(page).getByRole('checkbox', { name: 'BGM' })
+        await expect(bgm).toBeEnabled()
+        await expect(bgm).toBeChecked()
         await expect(dialog(page).locator('[data-save-kept]')).toHaveText([
             'Already in coconut.nxsp',
-            'Already in coconut.nxsp',
         ])
+        await bgm.uncheck()
         await page.keyboard.press('Enter')
-        await expect.poll(() => result(page)).toMatchObject({ history: true, bgm: true })
-    })
-
-    test('a BGM the file holds under another head shows no "Already in"', async ({
-        page,
-        context,
-    }) => {
-        await seed(context)
-        await visit(page)
-        await openSave(page, {
-            bgm: { kind: 'held', name: 'coconut.mp3', ticked: true, locked: true },
-        })
-        await expect(dialog(page).locator('[data-save-row="bgm"]')).not.toContainText('Already in')
+        await expect.poll(() => result(page)).toMatchObject({ history: true, bgm: false })
     })
 
     test('the notes: the first lines, Export, the storage line, peeking', async ({
@@ -771,11 +753,10 @@ test.describe('the feedback after a write', () => {
         name: 'coconut.nxsp',
         size: 1,
         stepsLine: 'none',
-        without: [],
         tooLarge: [],
     }
 
-    test('says where the file went, and what it left out', async ({ page, context }) => {
+    test('says where the file went, and what it left out for size', async ({ page, context }) => {
         await seed(context)
         await visit(page)
         await feedback(page, plain)
@@ -788,12 +769,12 @@ test.describe('the feedback after a write', () => {
         await expect(notice(page)).toHaveText(
             'Saved to coconut.nxsp. Some earlier Timeline steps may not be included.',
         )
-        await feedback(page, { ...plain, without: ['bgm'], tooLarge: ['bgm'] })
+        await feedback(page, { ...plain, tooLarge: ['bgm'] })
         await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its BGM')
-        await feedback(page, { ...plain, without: ['bgm'], tooLarge: [] })
-        await expect(notice(page)).toHaveText(
-            'Saved to coconut.nxsp without its BGM, which is not loaded',
-        )
+        await feedback(page, { ...plain, tooLarge: ['cover'] })
+        await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its cover')
+        await feedback(page, { ...plain, tooLarge: ['bgm', 'cover'] })
+        await expect(notice(page)).toHaveText('Saved to coconut.nxsp without its media')
     })
 
     test('a write while viewing history says the current version was saved', async ({

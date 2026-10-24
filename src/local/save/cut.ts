@@ -66,7 +66,6 @@ export type StoredBinding = {
     }
     completeFrom?: string
     disk?: { revisionId?: string; fingerprint: string; size: number; lastModified: number }
-    options?: { history: boolean; bgm: boolean }
 }
 
 export type ChainRecord = Row & {

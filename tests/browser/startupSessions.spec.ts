@@ -135,7 +135,6 @@ const bind = (page: Page, name: string) =>
                     event: 'saved',
                     at: Date.now(),
                     hash: new Uint8Array(16),
-                    options: { history: true, bgm: true },
                 },
             }),
         name,

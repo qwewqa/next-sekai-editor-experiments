@@ -71,7 +71,6 @@ const ownSaveUnit = (sessionId: string, seq: number, state: State, count: number
         event: 'saved',
         at: time,
         hash: fromHex16(rootOf(state)),
-        options: { history: true, bgm: true },
         entry: { sessionId, seq, startedAt: 0, count, notKept: 0 },
     },
     marks: [],

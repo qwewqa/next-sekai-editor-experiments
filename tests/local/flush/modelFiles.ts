@@ -21,7 +21,7 @@ export const storeRequest = (id: string, ids: ReturnType<typeof importIds>): Ope
     ids,
     chain: {
         name: 'Coconut (Master)',
-        file: { name: 'coconut.nxsp', event: 'opened', options: { history: true, bgm: true } },
+        file: { name: 'coconut.nxsp', event: 'opened' },
     },
     operations: {
         opened: originOperation('import'),

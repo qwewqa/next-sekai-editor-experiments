@@ -75,7 +75,6 @@ const setup = async () => {
                 event: 'saved',
                 at: 1,
                 hash: new Uint8Array(16),
-                options: { history: true, bgm: true },
             },
         } as Record<string, unknown>,
     }

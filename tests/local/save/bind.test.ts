@@ -48,7 +48,6 @@ const recordOf = (
             handle: { name: 'coconut.nxsp' },
             // The cut as the build made it: startedAt is the session row's, set when recorded.
             entry: { sessionId, seq: 4, startedAt: 0, count: 4, notKept: 0 },
-            options: { history: true, bgm: true },
         },
         marks: [],
         from: {},

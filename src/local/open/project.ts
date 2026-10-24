@@ -133,7 +133,7 @@ export type StoreOpen = {
     file: File
     handle?: FileSystemFileHandle
     /** Bound to the file: a whole open, not open in another tab. */
-    bind?: { name: string; options: { history: boolean; bgm: boolean } }
+    bind?: { name: string }
     /** Takes the file's identity: a whole open (§1.3.3); otherwise a new `docId` and no revision. */
     identity: boolean
     /** The live state when it isn't the history's head. */
@@ -180,7 +180,6 @@ const chainFields = async (open: StoreOpen) => {
             event: 'opened',
             ...(completeFrom === undefined ? {} : { completeFrom }),
             ...(disk ? { disk } : {}),
-            options: open.bind.options,
         }
     } else if (open.bind) {
         // A file from before revisions: bound, and its next write starts the ancestry.
@@ -190,7 +189,6 @@ const chainFields = async (open: StoreOpen) => {
             ...(handle ? { handle } : {}),
             event: 'opened',
             ...(disk ? { disk } : {}),
-            options: open.bind.options,
         }
     }
     return fields

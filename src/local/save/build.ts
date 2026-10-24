@@ -144,9 +144,12 @@ export type HeadInput = {
 }
 
 export type SaveOptions = {
-    /** History included: the binding's option, or the Save dialog's tick for a new file. */
+    /**
+     * History included: true unless the Save dialog's tick for this write left it out. An append
+     * source with history keeps it either way.
+     */
     history: boolean
-    /** The head's BGM included: `options.bgm`, false only by the user's untick (§1.6.11.6). */
+    /** The head's BGM included: true unless the Save dialog's tick for this write left it out. */
     bgm: boolean
     /** `revision.fileName`: the name this write uses. */
     fileName?: string
@@ -220,9 +223,9 @@ export type SavePlan = {
      * steps known missing, "may not be included" when none is known missing, none otherwise.
      */
     stepsLine: 'none' | 'notKept' | 'mayNotBeIncluded'
-    /** Media written as metadata only (the "without its …" lines), in BGM, cover, preview order. */
+    /** Media written as metadata only, in BGM, cover, preview order. */
     without: MediaKind[]
-    /** Those of `without` this tab holds but that pass the 1 GB media cap: no "which is not loaded". */
+    /** Those of `without` this tab holds but that pass the 1 GB media cap: the "without its …" line. */
     tooLarge: MediaKind[]
     identity: SaveIdentity
     /** The `save` entry the file ends with; it always knows its count, the head's. */
@@ -464,15 +467,15 @@ export const planSave = async (
         )
             return refuse('notAtBase')
     }
-    // A write-back's history follows its file, so no option strips it (explicit options apply
-    // to new files only).
-    const history = source ? !!source.manifest : options.history
-    if (source && history !== options.history)
+    // A file's history is never stripped (H-5): an append source with a manifest is appended to,
+    // whatever option is passed. A source without history gains it when the option includes it:
+    // its one version, its head, is a state of the chain's rows, which are written whole.
+    const appending = !!source?.manifest
+    const history = appending || options.history
+    if (appending && !options.history)
         console.error('A write-back’s history option differs from its file’s; the file’s is kept', {
             chainId,
-            history,
         })
-    const appending = !!source && history
     const cutEntry = chain.file?.entry
     let sourceKeys: SourceKeys | undefined
     if (appending && source) {

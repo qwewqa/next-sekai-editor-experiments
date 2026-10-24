@@ -334,7 +334,6 @@ test('restoring the chain’s latest session continues it with its file', async 
                 event: 'saved',
                 at: Date.now(),
                 hash: new Uint8Array(16),
-                options: { history: true, bgm: true },
             },
         }),
     )
