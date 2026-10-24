@@ -57,7 +57,7 @@ A feature the web cannot do safely lives in `src/library/` or `src/projects/` an
 To add one:
 
 1. Put the code in `src/library/` or `src/projects/`. Nothing else imports it, statically or with `import()`; the lint stops that.
-2. Register its commands and views from the native loader, which only the native build includes.
+2. Register its commands and views from the native loader. Only the native build includes the loader.
 3. Add a capability only if shared code must know whether the feature exists.
 4. Run `npm run build:native` and `npm run check:native-bundle`.
 
@@ -130,12 +130,12 @@ Read this before you write or review code or tests:
 
 Read this before you measure or optimize scrolling or playback:
 
-- [docs/performance-testing.md](docs/performance-testing.md): the perf harness (`npm run perf`), what to judge (per-frame work against 4.17 ms and 8.33 ms), the setup that gives stable numbers, the charts to use and the current baseline.
+- [docs/performance-testing.md](docs/performance-testing.md): the perf harness (`npm run perf`), what to judge (per-frame work against 4.17 ms and 8.33 ms), the setup that gives stable numbers, the charts to use and the known costs.
 
 ## Releasing
 
 1. Add each user-visible change as a line under `## Unreleased` in `CHANGELOG.md`, in the commit that makes it. A line is `- `, an optional `(Web)` or `(Apps)`, then plain text with no contractions and ’ for apostrophes. `npm run test:release` checks the format.
-2. Once Check and Deploy Pages have passed for the commit on `main`, run `npm run release:tag -- X.Y.Z` there (`--commit <sha>` tags an earlier commit; `--edit` opens the notes first). It needs `gh`, signed in. It makes the annotated tag `vX.Y.Z` with the `## Unreleased` lines as its message, then the commit "Changelog for X.Y.Z", which moves those lines under `## X.Y.Z (date)` and sets the version in `package.json` and `package-lock.json`. It refuses a patch version (Z above 0) when a format version changed since the last tag.
+2. Once Check and Deploy Pages have passed for the commit on `main`, run `npm run release:tag -- X.Y.Z` there (`--commit <sha>` tags an earlier commit; `--edit` opens the notes first). It needs `gh`, signed in. It makes the annotated tag `vX.Y.Z` with the `## Unreleased` lines as its message, then the commit "Changelog for X.Y.Z". That commit moves those lines under `## X.Y.Z (date)` and sets the version in `package.json` and `package-lock.json`. It refuses a patch version (Z above 0) when a format version changed since the last tag.
 3. Run the push it prints, `git push --atomic origin main vX.Y.Z`. Pushing the tag is the release. Deploy Pages then runs Check, builds with `npm run build:release`, runs `npm run test:production` and `npm run check:release`, and deploys when the tag is the highest `v*` tag. A push to `main` deploys nothing. A pushed tag is never moved or deleted.
 4. For a fix while `main` holds unfinished work, make a branch from the last tag, commit the fix there and run the script on it. CI does not check that branch before the tag, so the script prints the local checks to run first. Merge the branch into `main` afterwards.
 5. After the deploy, check the live site: `PRODUCTION_TEST_URL=https://nse.qwewqa.dev npm run test:production`.

@@ -37,12 +37,7 @@ const RULES = [
         name: 'a build step',
         pattern: /\bSteps? \d+[a-z]\b|\(Step \d+[,)]|\bStep \d+(?:'s| design)\b/,
     },
-    {
-        name: 'a review round',
-        pattern: /\b[Rr]ound \d+\b|\br\d+-[a-z]+/,
-        // Its rounds are the perf plans in scripts/perf/plans/.
-        applies: (path) => path !== 'docs/performance-testing.md',
-    },
+    { name: 'a review round', pattern: /\b[Rr]ound \d+\b|\br\d+-[a-z]+/ },
     {
         name: 'a decision record',
         pattern: /\(owner,(?: \d{4}-|\s*$)|\bowner decision\b|\bdecision log\b|\bspec[- ][A-Z]\b/,
