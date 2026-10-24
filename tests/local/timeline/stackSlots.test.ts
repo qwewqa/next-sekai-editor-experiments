@@ -16,8 +16,8 @@ import type { State } from '../../../src/state'
 import { editStep, futureFixtureOperation, initialLife } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
-// The restored slots of the undo stack: the LRU holds only slots still in the stack (HS-4), and
-// a replacement keeps a slot's stored root only while the chart is the one it names (HS-5).
+// The restored slots of the undo stack: the LRU holds only slots still in the stack, and
+// a replacement keeps a slot's stored root only while the chart is the one it names.
 
 const base = stateOf(goldenChart())
 const states = Array.from({ length: 20 }, (_, i) => ({ ...base, initialLife: 100 + i }))

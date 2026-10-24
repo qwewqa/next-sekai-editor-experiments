@@ -245,10 +245,10 @@ test('a Save without History reads only the head: a bad state elsewhere on the s
     assert.ok(full.damaged.length > 0)
 })
 
-// ADV3-1: our own completed Save recognised later, its `save` row not written (a kept gap below
+// Our own completed Save recognised later, its `save` row not written (a kept gap below
 // it), keeps its cut as the file holds it. The next write that isn't an append then doesn't carry
 // the file's `completeFrom`, which would claim the `save` row the chain lacks: it shows the line.
-test('a recognised Save whose row the chain lacks is never carried by the next copy (ADV3-1)', async () => {
+test('a recognised Save whose row the chain lacks is never carried by the next copy', async () => {
     const fixture = await Fixture.create(71)
     await fixture.storeMedia()
     await fixture.start(0)

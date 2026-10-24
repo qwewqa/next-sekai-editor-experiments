@@ -1,6 +1,6 @@
 # UI design and review checklist
 
-Questions to ask when you build or review UI. They come from defects that shipped or nearly shipped in the History redesign and the colour migration. Read it with [design-language.md](design-language.md) (how the UI is built) and [color-system.md](color-system.md) (colour roles and control recipes).
+Questions to ask when you build or review UI. They come from defects that shipped or nearly shipped. Read it with [design-language.md](design-language.md) (how the UI is built) and [color-system.md](color-system.md) (colour roles and control recipes).
 
 **How to use and maintain it:**
 - These are principles with their reasons, not hard rules. Apply judgement. When one does not fit a case, depart from it and say why in the review.
@@ -38,7 +38,7 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **A token retune lands with all of its consumers.** (`selected` at 40 % in `ManagerRow`.)
 - **Check a recipe's premise before applying it.** A recipe built for a transparent ghost on a band does not fit a button that is itself the band's fill. A `currentColor` ring does not fit an element that hides its own text.
 - **When you add a global rule, search for code that suppresses or overrides it** (a leftover `outline-none`), and run the guard test for that rule on the change.
-- **Validate a guard on today's tree:** it should fail for every inventoried case. Test the end state of a transition too, such as "no legacy lists left".
+- **Validate a guard on the current tree:** it should fail for every inventoried case. Test a transition's end state too, such as an allowlist with no files left on it.
 
 ## Layout, content and devices
 - **Hidden content still takes space.** Opacity, visibility and a delayed animation keep an element in flow. A "Loading" line meant to appear only after a delay opened a 32 px gap under the chosen row for the whole load. Delay by not rendering: gate the element on a timer so it takes no space until it is shown. For any transient element, assert in a browser spec that the neighbouring boxes stay put on every frame, not only that the element appears.
@@ -76,14 +76,14 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Tests wait on observable, durable state,** not fixed sleeps or transient queues. Wait on a lock query, a new session's sequence number, the focus target, or the canvas size, not on "the dialog is probably open".
 - **Check that the server serves what you think it does** before capturing. Fetch the served CSS and look for a recently added rule. Long-lived dev servers can be stale.
 - **Make sure the prototype matches the spec** before anyone judges it, ideally by generating it from the spec. (Captures showed 12 px chevrons; the spec said 16 px.)
-- **Cover the realistic content variants and states,** not just the default, in the longest locale.
+- **Cover the realistic content variants and states,** not only the default, in the longest locale.
 - **Exercise real input.** Capture press, hover and focus the way a user produces them (a real pointer down, real keyboard focus), not by forcing pseudo-classes. Forced states skip parent and sibling rules and the hover and press ordering.
 - **Suspect identical state captures.** If rest, hover and press images are byte-identical, the locator probably missed the element.
 - **Use both numbers and eyes.** Measurements show alignment; close-up images show whether it looks right.
 - **Experiment in a worktree,** not on a checkout that a live server is serving.
 
 ## Browser floor
-- **Check selectors against the build target** (set in the Vite configuration; today Chrome 106, Edge 106, Firefox 105, Safari 16 and iOS 16). An unsupported selector, such as `:has()` before Firefox 121, invalidates the whole rule it sits in, including its selector list.
+- **Check selectors against the build target** (set in the Vite configuration: Chrome 106, Edge 106, Firefox 105, Safari 16 and iOS 16). An unsupported selector, such as `:has()` before Firefox 121, invalidates the whole rule it sits in, including its selector list.
 
 ## Scope
 - **Follow standard best practice** where it is natural and cheap: contrast in both themes, semantic colour roles and visible keyboard focus.

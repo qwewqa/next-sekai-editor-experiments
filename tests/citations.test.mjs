@@ -27,6 +27,10 @@ const RULES = [
         pattern: /(?<!['"`])\b(?:D(?!65\b)|U)\d{1,3}\b|\bX-\d+\b|\bI-\d+\b/,
     },
     {
+        name: 'a review finding id',
+        pattern: /\b(?:ADV|SF|UI|AR|HS|PF|SP|DEF|INV|RM|TH)\d*-\d+[a-z]?\b/,
+    },
+    {
         name: 'an invariant id',
         pattern: /\bI\d{1,3}\b/,
         // The fault matrix names its own invariants I1 to I10.
@@ -37,12 +41,7 @@ const RULES = [
         name: 'a build step',
         pattern: /\bSteps? \d+[a-z]\b|\(Step \d+[,)]|\bStep \d+(?:'s| design)\b/,
     },
-    {
-        name: 'a review round',
-        pattern: /\b[Rr]ound \d+\b|\br\d+-[a-z]+/,
-        // Its rounds are the perf plans in scripts/perf/plans/.
-        applies: (path) => path !== 'docs/performance-testing.md',
-    },
+    { name: 'a review round', pattern: /\b[Rr]ound \d+\b|\br\d+-[a-z]+/ },
     {
         name: 'a decision record',
         pattern: /\(owner,(?: \d{4}-|\s*$)|\bowner decision\b|\bdecision log\b|\bspec[- ][A-Z]\b/,

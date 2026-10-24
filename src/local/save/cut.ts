@@ -30,7 +30,7 @@ export type EntryRow = EntryDescription & {
     seq: number
     time: number
     snapshot: Uint8Array
-    /** The state's note count; absent when the row doesn't say (never taken as 0, HS-1). */
+    /** The state's note count; absent when the row doesn't say (never taken as 0). */
     noteCount?: number
     dirty: boolean
     kept: boolean

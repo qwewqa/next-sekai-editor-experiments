@@ -434,7 +434,7 @@ const createWorld = async (setup: Setup = {}) => {
         const target = a.target as Row
         const options = a.options as Row
         const sources = (a.sources as { token: string; file: Blob }[] | undefined) ?? []
-        // A pending import that never started: the build refuses it as importing (SF2-6).
+        // A pending import that never started: the build refuses it as importing.
         if (pendingImports.has(ownSession.id) && options.sessionId === ownSession.id)
             return { refused: 'importing' }
         if (how && typeof how === 'object' && 'refuse' in how)

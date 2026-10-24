@@ -6,7 +6,7 @@ import { KeyRange } from '../../../src/local/kv/types'
 import { readEntryRow } from '../../../src/local/save/cut'
 import { Fixture, heldRows, save, stateAt } from './fixture'
 
-// A stored entry row's `noteCount` (PF2-5, the HS-1 principle): a row that doesn't say its count
+// A stored entry row's `noteCount`: a row that doesn't say its count
 // reads without one, never as 0, and a Save writes its state's own count from the root it holds.
 
 test('an entry row without a note count reads without one, never as 0', async () => {

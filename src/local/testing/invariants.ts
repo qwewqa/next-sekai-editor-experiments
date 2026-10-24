@@ -279,7 +279,7 @@ export const sessionViolations = (
 }
 
 /**
- * Sessions with rows but no stored stack (AR-3): replay rebuilds it, so this is the degraded path,
+ * Sessions with rows but no stored stack: replay rebuilds it, so this is the degraded path,
  * not damage. A late writer's net removes it; a late flush past a replayed journal drops it by
  * design, and a hand-built fixture may never have written one. So `checkStored` leaves it
  * out, and a test asks for it where no writer should have removed one.
@@ -309,7 +309,7 @@ export const checkStored = (memory: MemoryKv, options: SessionOptions = {}) =>
 
 /**
  * `checkStored` and the sessions with rows but no stored stack: for a run whose writers all hold
- * their session's lock in order, where nothing should have removed one (AR-3).
+ * their session's lock in order, where nothing should have removed one.
  */
 export const checkStrict = (memory: MemoryKv, options: SessionOptions = {}) => {
     const dump = memory.dump(DB_NAME)
