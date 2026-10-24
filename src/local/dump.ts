@@ -5,7 +5,7 @@ import type { Key, KeyPath, KvDatabase } from './kv/types'
 // plain cursors and written undecoded, plus the editor's localStorage keys. It uses no record
 // decoder, so a bug there can't stop it. The reader validates a dump and turns it back into values.
 // A Blob is inline base64 (`$blob`) in a JSON dump, and a `$blobEntry` naming a ZIP entry beside
-// `dump.json` in Export Raw Data…'s ZIP, so the export never reads media into memory.
+// `dump.json` in Export Raw Data…'s ZIP, so the export never holds a Blob's bytes whole.
 
 export const DUMP_FORMAT = 'nse-local-data-dump'
 export const DUMP_VERSION = 1
