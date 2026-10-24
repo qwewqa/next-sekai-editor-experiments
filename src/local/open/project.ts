@@ -76,7 +76,7 @@ export type BoundElsewhere = 'yes' | 'no' | 'unknown'
 /**
  * Whether another tab's open session is bound to this file (§1.3.2, `isSameEntry`): such an open
  * is a separate copy, and so is one that can't be told apart (`unknown`: a failed read, a handle
- * this page can't hold, or a throw), which the notice says with "may".
+ * this page can't hold, or a throw).
  */
 export const boundInAnotherTab = async (handle: FileSystemFileHandle): Promise<BoundElsewhere> => {
     const { open } = context()
@@ -92,7 +92,7 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle): Promise<B
             handle,
         )
     } catch {
-        // Uncertain ownership opens a separate copy, and says so.
+        // Uncertain ownership opens a separate copy.
         return 'unknown'
     }
 }
@@ -104,15 +104,15 @@ export const earlierChains = async (
 ): Promise<StoredRead<EarlierChain[]>> => {
     const { open, recovery } = context()
     const read = await storedRead(open.worker, 'openEarlierChains', { docId, exclude })
-    // The failure goes to the open, which still succeeds and says so.
+    // The failure goes to the open, which still succeeds.
     if (read.storedRead === 'failed') return read
     const stored = read.storedValue
     // A dead tab's pending journal holds changes storage doesn't: Restore applies it first. When
-    // the journals cannot be read, a bound chain that looks unchanged has unknown changes.
+    // the journals cannot be read, only the changes storage holds count.
     const journals = await recovery.journal
         .read()
         .then((found) => new Set(found.map((each) => each.sessionId)))
-        .catch(() => undefined)
+        .catch(() => new Set<string>())
     return readValue(
         await Promise.all(
             stored.map(async (chain) => ({

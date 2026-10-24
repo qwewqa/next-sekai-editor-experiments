@@ -227,39 +227,11 @@ test('earlier sessions on the file are recognised by revision', () => {
     assert.equal(earlierNotice(undefined, [same]), undefined)
 })
 
-test('a chain whose journal could not be checked has unknown changes, never none', () => {
+test('a bound chain’s pending journal counts as a change', () => {
     const base = { changed: false, bound: { handle: true }, sessionId: 's' }
     assert.equal(changedOf(base, new Set()), false)
     assert.equal(changedOf(base, new Set(['s'])), true)
-    assert.equal(changedOf(base, undefined), undefined)
     // Already changed in storage, or not bound (a journal is only Restore's for a bound chain).
-    assert.equal(changedOf({ ...base, changed: true }, undefined), true)
-    assert.equal(changedOf({ ...base, bound: undefined }, undefined), false)
-})
-
-test('unknown changes are named as possible, never as none', () => {
-    const file = { id: 'r3', ancestors: ['r2', 'r1'] }
-    const unknown = chain({
-        revision: { id: 'r3', ancestors: ['r2'] },
-        bound: { handle: false },
-        changed: undefined,
-    })
-    assert.deepEqual(earlierNotice(file, [unknown]), {
-        kind: 'unsavedChanges',
-        chain: unknown,
-        restore: true,
-        maybe: true,
-    })
-    const earlier = chain({
-        revision: { id: 'r1', ancestors: [] },
-        bound: { handle: false },
-        changed: undefined,
-    })
-    assert.deepEqual(earlierNotice(file, [earlier]), {
-        kind: 'unsavedEarlier',
-        chain: earlier,
-        maybe: true,
-    })
-    // A known change is stated plainly.
-    assert.ok(!('maybe' in (earlierNotice(file, [{ ...unknown, changed: true }]) ?? {})))
+    assert.equal(changedOf({ ...base, changed: true }, new Set()), true)
+    assert.equal(changedOf({ ...base, bound: undefined }, new Set(['s'])), false)
 })

@@ -498,7 +498,7 @@ export const fileBoundIn = async (
  * Whether another tab's open session is bound to this chain's file (§1.3.2, `isSameEntry`). Stored
  * handles are read only when another tab holds a session bound to a file of the same name, so a
  * load with no such tab reads none (D24). `unknown` (a failed read, a handle this page can't
- * hold, or a throw) forks all the same, and the notice says "may".
+ * hold, or a throw) forks all the same.
  */
 export const boundElsewhere = async (
     deps: OpenDeps,
@@ -549,7 +549,8 @@ const newVisit = async (deps: OpenDeps): Promise<boolean> => {
         return false
     }
     const bound = await boundElsewhere(deps, read)
-    if (bound !== 'no') return forked(deps, read, headId, { maybe: bound === 'unknown' })
+    // A check that could not tell forks without a line: the status bar names the copy.
+    if (bound !== 'no') return forked(deps, read, headId, { quiet: bound === 'unknown' })
     const parentLock = await holdShared(deps.locks, headId)
     if (!parentLock) {
         const state = await headState(deps.worker, read.head)
@@ -581,13 +582,13 @@ const forked = async (
         held,
         copyOf = copyOfOf(read),
         recovered,
-        maybe,
+        quiet,
     }: {
         held?: LockLease
         copyOf?: CopyOf
         recovered?: { found: JournalFound; state: State }
-        /** The fork is for a binding check that couldn't tell (`unknown`): the notice says "may". */
-        maybe?: boolean
+        /** No opening notice. */
+        quiet?: boolean
     } = {},
 ): Promise<boolean> => {
     // The hold taken here is released here; a passed one is its creator's.
@@ -604,7 +605,7 @@ const forked = async (
     } finally {
         shared?.release()
     }
-    if (state) deps.events({ kind: 'separateCopy', of: copyOf, ...(maybe ? { maybe: true } : {}) })
+    if (state && !quiet) deps.events({ kind: 'separateCopy', of: copyOf })
     return !!state
 }
 

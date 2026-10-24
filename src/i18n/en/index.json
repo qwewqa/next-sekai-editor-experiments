@@ -2207,7 +2207,6 @@
     "notice": {
         "useOpenFile": "To open a file, use Open.",
         "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
-        "sameFileMaybeElsewhere": "\"{0}\" may be open in another tab or window, so this is a separate copy.",
         "storageUnavailable": "The editor could not access this browser’s storage. Try again.",
         "chooseAudio": "Choose Audio…",
         "bgmDiffers": "This is a different file from the original BGM, \"{0}\".",
@@ -2288,9 +2287,6 @@
         },
         "unsavedChanges": "Opened {0}. You have unsaved changes to it from {1}.",
         "unsavedEarlier": "Unsaved changes to an earlier version of {0} ({1}) are in Recent Sessions.",
-        "earlierUnchecked": "Opened {0}. Recent Sessions could not be checked for other versions of it.",
-        "unsavedEarlierMaybe": "There may be unsaved changes to an earlier version of {0} ({1}) in Recent Sessions.",
-        "unsavedChangesMaybe": "Opened {0}. You may have unsaved changes to it from {1}.",
         "olderVersion": "This is an older version of {0}. A newer one from {1} is in Recent Sessions.",
         "restoreIt": "Restore Session",
         "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."

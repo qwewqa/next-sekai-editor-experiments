@@ -1026,8 +1026,8 @@ test('a newer patch gives way to an earlier session’s unsaved-changes notice, 
 })
 
 // A read of storage that fails is a failure, not "nothing" (Part 1 §1.5.4, §1.6.5). The open has
-// succeeded whatever its earlier-chains read says; its binding check says "may" when it cannot be
-// answered.
+// succeeded whatever its earlier-chains read says, and shows its ordinary notice; a binding check
+// that cannot be answered opens a separate copy.
 
 /** Makes the storage worker's `method` reject from now on, as a worker that stopped answering. */
 const failReads = (page: Page, methods: string[]) =>
@@ -1045,10 +1045,7 @@ const failReads = (page: Page, methods: string[]) =>
         })
     }, methods)
 
-const UNCHECKED =
-    'Opened coconut.nxsp. Recent Sessions could not be checked for other versions of it.'
-
-test('an open whose earlier chains cannot be read still opens: the line alone, with Reopen, and no error', async ({
+test('an open whose earlier chains cannot be read still opens, with the ordinary line, Reopen and no error', async ({
     page,
 }) => {
     await start(page)
@@ -1057,57 +1054,15 @@ test('an open whose earlier chains cannot be read still opens: the line alone, w
     await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
     await failReads(page, ['openEarlierChains'])
     await openFile(page, 'coconut.nxsp')
-    const card = notice(page).filter({ hasText: UNCHECKED })
-    await expect(card).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Reopen/ })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await imported(page)
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
 
-test('an open whose earlier chains cannot be read puts the line above a BGM that is not loaded', async ({
-    page,
-}) => {
-    await start(page)
-    await writeFile(
-        page,
-        'coconut.nxsp',
-        await patchBytes((items) => {
-            const project = jsonOf(items, 'project.json')
-            project.patch = undefined
-            const { filename, type, sha256, size } = project.bgm
-            project.bgm = { filename, type, hash: sha256.slice(0, 32), size }
-            setJson(items, 'project.json', project)
-            return items.filter((item) => !item.name.startsWith('bgm/'))
-        }),
-    )
-    await failReads(page, ['openEarlierChains'])
-    await openFile(page, 'coconut.nxsp')
-    // One other row, and still the heading: alone, it would read as nothing to report.
-    const card = notice(page).filter({ hasText: UNCHECKED })
-    await expect(card).toBeVisible()
-    await expect(card).toContainText('The BGM is not loaded.')
-    await expect(card.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
-    await imported(page)
-    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
-})
-
-test('an open whose earlier chains cannot be read puts the line above a newer patch', async ({
-    page,
-}) => {
-    await start(page)
-    await writeFile(page, 'coconut.nxsp', await patchBytes())
-    await failReads(page, ['openEarlierChains'])
-    await openFile(page, 'coconut.nxsp')
-    const card = notice(page).filter({ hasText: UNCHECKED })
-    await expect(card).toBeVisible()
-    await expect(card).toContainText(PATCH_LINE)
-    await imported(page)
-    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
-})
-
 for (const method of ['readBindings', 'readHandle'])
-    test(`a binding check that cannot be answered (${method} fails) opens a separate copy and says "may"`, async ({
+    test(`a binding check that cannot be answered (${method} fails) opens a separate copy with the ordinary line`, async ({
         page,
         context,
     }) => {
@@ -1120,15 +1075,15 @@ for (const method of ['readBindings', 'readHandle'])
         await start(other)
         await failReads(other, [method])
         await openFile(other, 'coconut.nxsp')
-        await expect(
-            notice(other).filter({
-                hasText:
-                    '"coconut.nxsp" may be open in another tab or window, so this is a separate copy.',
-            }),
-        ).toBeVisible()
+        await expect(notice(other).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+        await expect(notice(other).filter({ hasText: 'another tab or window' })).toHaveCount(0)
         const session = await sessionOf(other)
         expect(session.file).toBeUndefined()
         expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+        // The status bar says it is a copy.
+        await expect(other.locator('[data-status-text]')).toContainText(
+            'separate copy of coconut.nxsp',
+        )
         // The first tab keeps its binding.
         expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
     })

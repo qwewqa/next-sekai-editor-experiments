@@ -649,7 +649,7 @@ for (const [name, fails] of [
     ['the bindings read fails', 'readBindings'],
     ['a handle read fails', 'readHandle'],
 ] as const)
-    test(`a new visit whose binding check cannot be answered (${name}) forks and says "may"`, async () => {
+    test(`a new visit whose binding check cannot be answered (${name}) forks without a line`, async () => {
         const { world, storage, lock } = await boundElsewhereSetup(14)
         const file = { isSameEntry: (other: unknown) => Promise.resolve(other === file) }
         const visit = await load(world, 'visit', storage, {
@@ -660,9 +660,14 @@ for (const [name, fails] of [
         })
         const copy = openSession(visit)
         assert.notEqual(copy.forkOf, undefined)
-        assert.deepEqual(
+        // The status bar names the copy, as for any fork.
+        assert.deepEqual(visit.shown.at(-1)?.descriptor.copyOf, {
+            name: 'coconut.nxsp',
+            bound: true,
+        })
+        assert.equal(
             visit.events.find((event) => event.kind === 'separateCopy'),
-            { kind: 'separateCopy', of: { name: 'coconut.nxsp', bound: true }, maybe: true },
+            undefined,
         )
         lock.release()
     })

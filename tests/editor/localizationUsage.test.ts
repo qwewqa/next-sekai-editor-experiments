@@ -317,6 +317,10 @@ const removed = [
     'workspace.folders.duplicated',
     'history.details.nameShortened',
     'settings.localData.recovery.legacy',
+    'notice.sameFileMaybeElsewhere',
+    'open.earlierUnchecked',
+    'open.unsavedEarlierMaybe',
+    'open.unsavedChangesMaybe',
 ]
 
 test('every English message is read by some source file', () => {
