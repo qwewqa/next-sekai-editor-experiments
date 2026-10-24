@@ -19,24 +19,6 @@ const annotationCanvas = useTemplateRef<HTMLCanvasElement>('annotations')
 const box = useTemplateRef<HTMLElement>('box')
 const cursor = useTemplateRef<HTMLElement>('cursor')
 const edge = useTemplateRef<SVGElement>('edge')
-const shadeAbove = useTemplateRef<HTMLElement>('shadeAbove')
-const shadeBelow = useTemplateRef<HTMLElement>('shadeBelow')
-
-/**
- * How the box (the part of the chart in view) is drawn; the owner's choice, one line:
- * - plain: a 1 px white/70 border and a white/10 fill;
- * - contrast: a 2 px white border inside a 1 px dark ring, and a white/16 fill, so it reads over
- *   light and dark notes; it starts right of the change ticks' column;
- * - lens: contrast, and the strip outside the box is shaded black/30, by two strip-tall elements
- *   moved by transform with the box.
- */
-const BOX_STYLE = 'plain' as 'plain' | 'contrast' | 'lens'
-const boxClass = {
-    plain: 'inset-x-px border border-white/70 bg-white/10',
-    contrast:
-        'left-[6px] right-px border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)]',
-    lens: 'left-[6px] right-px border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6),-6px_0_0_0_rgb(0_0_0/0.3)]',
-}[BOX_STYLE]
 
 const { mapping } = useMinimapContent(canvas)
 const { isGrabbing, onPointerDown, onPointerMove, onPointerUp, onPointerEnd, onWheel } =
@@ -49,21 +31,17 @@ let boxHeight = -1
 let shown = false
 let lastBoxTop = Number.NaN
 let lastCursorY = Number.NaN
-let lastShadeTop = Number.NaN
-let lastShadeBottom = Number.NaN
 let edgeShown = false
 watch(
-    [() => times.value, () => view.cursorTime, mapping, box, cursor, edge, shadeAbove, shadeBelow],
-    ([, cursorTime, current, boxElement, cursorElement, edgeElement, above, below]) => {
+    [() => times.value, () => view.cursorTime, mapping, box, cursor, edge],
+    ([, cursorTime, current, boxElement, cursorElement, edgeElement]) => {
         if (!boxElement || !cursorElement || !edgeElement) return
         const show = current !== undefined
         if (show !== shown) {
             shown = show
             boxElement.style.visibility = cursorElement.style.visibility = show ? '' : 'hidden'
             // The transforms are written again when the strip comes back.
-            lastBoxTop = lastCursorY = lastShadeTop = lastShadeBottom = Number.NaN
-            if (above && below)
-                above.style.visibility = below.style.visibility = show ? '' : 'hidden'
+            lastBoxTop = lastCursorY = Number.NaN
             if (!show) {
                 edgeShown = false
                 edgeElement.style.visibility = 'hidden'
@@ -76,20 +54,6 @@ watch(
         if (boxTop !== lastBoxTop) {
             lastBoxTop = boxTop
             boxElement.style.transform = `translateY(${boxTop}px)`
-        }
-        // The shades are strip-tall, so they move by transform only: one ends at the box's top,
-        // the other starts at its bottom.
-        if (above && below) {
-            const shadeTop = boxTop - current.geometry.height
-            const shadeBottom = Math.round((boxTop + geometry.height) * scale) / scale
-            if (shadeTop !== lastShadeTop) {
-                lastShadeTop = shadeTop
-                above.style.transform = `translateY(${shadeTop}px)`
-            }
-            if (shadeBottom !== lastShadeBottom) {
-                lastShadeBottom = shadeBottom
-                below.style.transform = `translateY(${shadeBottom}px)`
-            }
         }
         // A layout of one element, so only when the zoom, pane or mapping changes it.
         if (geometry.height !== boxHeight) {
@@ -176,25 +140,12 @@ onBeforeUnmount(() => {
         <canvas
             v-if="hasAnnotations"
             ref="annotations"
-            class="pointer-events-none absolute inset-0 size-full"
-            :class="{ 'z-[1]': BOX_STYLE !== 'plain' }"
+            class="pointer-events-none absolute inset-0 z-[1] size-full"
         />
-        <template v-if="BOX_STYLE === 'lens'">
-            <div
-                ref="shadeAbove"
-                class="pointer-events-none absolute inset-x-0 top-0 h-full bg-black/30"
-                style="visibility: hidden"
-            />
-            <div
-                ref="shadeBelow"
-                class="pointer-events-none absolute inset-x-0 top-0 h-full bg-black/30"
-                style="visibility: hidden"
-            />
-        </template>
         <div
             ref="box"
-            class="absolute top-0 forced-colors:border-[CanvasText]"
-            :class="[boxClass, isGrabbing ? 'cursor-grabbing' : 'cursor-grab']"
+            class="absolute left-[6px] right-px top-0 border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
+            :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
             data-minimap-box
             style="visibility: hidden"
         />
