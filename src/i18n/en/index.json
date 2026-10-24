@@ -1932,7 +1932,8 @@
         "resize": {
             "left": "Resize Left Panels",
             "right": "Resize Right Panels",
-            "top": "Resize Top Panels"
+            "top": "Resize Top Panels",
+            "minimap": "Resize Minimap"
         },
         "resizeTiles": "Resize {0} and {1}",
         "dock": {

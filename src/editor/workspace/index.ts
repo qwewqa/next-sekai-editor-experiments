@@ -1,5 +1,5 @@
 import { computed, ref, shallowRef, watch } from 'vue'
-import { isResettingSettings, settings } from '../../settings'
+import { isResettingSettings, MINIMAP_WIDTH, settings } from '../../settings'
 import { isCommandName } from '../commands'
 import { oneRowToolbarWidth, registeredGroups, toolbarGroups } from '../toolbar/layout'
 import {
@@ -119,12 +119,27 @@ const toolbarWidth = computed(() =>
     ),
 )
 
-/** The minimap strip's width, which the strip and the side docks' room share. */
-export const MINIMAP_REM = 2.5
+// The strip may take at most this part of the workspace's width, so the chart keeps its room.
+const MINIMAP_SHARE = 4
 
-const minimapWidth = 1000
+/** The widest the strip can be now: its range, limited by the workspace. */
+export const minimapMaxWidth = computed(() =>
+    Math.max(
+        MINIMAP_WIDTH.min,
+        Math.min(MINIMAP_WIDTH.max, Math.floor(workspaceSize.value.width / MINIMAP_SHARE)),
+    ),
+)
 
-const minimapShownFor = (setting: boolean | null, width: number) => setting ?? width >= minimapWidth
+const minimapWidthFor = (saved: number) =>
+    Math.min(Math.max(saved, MINIMAP_WIDTH.min), minimapMaxWidth.value)
+
+/** The minimap strip's width in CSS pixels, which the strip and the side docks' room share. */
+export const minimapWidth = computed(() => minimapWidthFor(settings.minimapWidth))
+
+const minimapFromWidth = 1000
+
+const minimapShownFor = (setting: boolean | null, width: number) =>
+    setting ?? width >= minimapFromWidth
 
 /** Whether the minimap is shown: the saved choice, else by the workspace's width. */
 export const isMinimapShown = computed(() =>
@@ -132,7 +147,7 @@ export const isMinimapShown = computed(() =>
 )
 
 // The strip takes room from the chart, so default side docks leave it for the toolbar's row.
-const minimapRoomFor = (shown: boolean) => (shown ? MINIMAP_REM * rootFontSize.value : 0)
+const minimapRoomFor = (shown: boolean, width = minimapWidth.value) => (shown ? width : 0)
 
 const layoutInput = (state: WorkspaceToggleState) => ({
     ...workspaceSize.value,
@@ -234,8 +249,9 @@ export const keepDefaultsAcrossDisplay = () =>
             () => settings.previewTransportPosition,
             () => toolbarGroups(registeredGroups(settings.toolbar, isCommandName)).length,
             () => settings.showMinimap,
+            () => settings.minimapWidth,
         ],
-        (_, [previewAspectRatio, transport, tools, minimap]) => {
+        (_, [previewAspectRatio, transport, tools, minimap, stripWidth]) => {
             if (!isPanelStateUnset.value || isResettingSettings()) return
             commit(
                 resolveToggleState({
@@ -243,7 +259,10 @@ export const keepDefaultsAcrossDisplay = () =>
                     previewOverlay: transport === 'overlay',
                     toolbarWidth:
                         oneRowToolbarWidth(tools, rootFontSize.value, isCoarsePointer.value) +
-                        minimapRoomFor(minimapShownFor(minimap, autoShape.value.width)),
+                        minimapRoomFor(
+                            minimapShownFor(minimap, autoShape.value.width),
+                            minimapWidthFor(stripWidth),
+                        ),
                 }),
             )
         },

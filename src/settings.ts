@@ -30,6 +30,9 @@ import { storageGet, storageRemove, storageSet } from './storage'
 import { themes, type Theme } from './themes'
 import { clamp } from './utils/math'
 
+/** The minimap strip's width in CSS pixels: the default and the range the user can set. */
+export const MINIMAP_WIDTH = { default: 40, min: 24, max: 160 }
+
 const number = (def: number, min: number, max: number) =>
     Type.Codec(Type.Number({ default: def }))
         .Decode((value) => clamp(value, min, max))
@@ -134,6 +137,7 @@ const settingsProperties = {
     showHistory: Type.Boolean({ default: false }),
     // Null: shown where the workspace is wide enough (Part 1 §1.4.22).
     showMinimap: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
+    minimapWidth: number(MINIMAP_WIDTH.default, MINIMAP_WIDTH.min, MINIMAP_WIDTH.max),
 
     panelRecency: Type.Codec(
         Type.Array(Type.String(), {

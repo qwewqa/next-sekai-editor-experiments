@@ -1932,7 +1932,8 @@
     "resize": {
       "left": "Redimensionner les panneaux de gauche",
       "right": "Redimensionner les panneaux de droite",
-      "top": "Redimensionner les panneaux du haut"
+      "top": "Redimensionner les panneaux du haut",
+      "minimap": "Redimensionner la minicarte"
     },
     "resizeTiles": "Redimensionner {0} et {1}",
     "dock": {

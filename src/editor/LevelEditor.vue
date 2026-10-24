@@ -7,7 +7,7 @@ import { groupFolders, groups } from '../history/groups'
 import { stageFolders, stages } from '../history/stages'
 import { i18n } from '../i18n'
 import { detection } from '../platform/detect'
-import { settings } from '../settings'
+import { MINIMAP_WIDTH, settings } from '../settings'
 import { interpolateRaw } from '../utils/interpolate'
 import { vFocusRescue } from '../directives/focusRescue'
 import LevelEditorCanvas from './canvas/LevelEditorCanvas.vue'
@@ -40,7 +40,7 @@ import { hasToolModal } from './toolModals'
 import { switchToolTo, tool, toolName, type ToolName } from './tools'
 import { brushProperties } from './tools/brush'
 import { view } from './view'
-import { workspaceLayout } from './workspace'
+import { minimapMaxWidth, minimapWidth, workspaceLayout } from './workspace'
 import ResizeHandle from './workspace/ResizeHandle.vue'
 import { formatCount } from '../utils/size'
 
@@ -100,6 +100,27 @@ const onResizeEnd = () => {
 const onResizeCancel = () => {
     if (resizing) settings.elevationEditorWidth = resizing.original
     resizing = undefined
+}
+
+// The strip is on the right, so moving its edge right (a positive pixel delta) narrows it.
+const setMinimapWidth = (width: number) => {
+    settings.minimapWidth = Math.round(
+        Math.max(MINIMAP_WIDTH.min, Math.min(minimapMaxWidth.value, width)),
+    )
+}
+let minimapResizing: { original: number; origin: number } | undefined
+const onMinimapResizeStart = () => {
+    minimapResizing = { original: settings.minimapWidth, origin: minimapWidth.value }
+}
+const onMinimapResizeMove = (delta: number) => {
+    if (minimapResizing) setMinimapWidth(minimapResizing.origin - delta)
+}
+const onMinimapResizeEnd = () => {
+    minimapResizing = undefined
+}
+const onMinimapResizeCancel = () => {
+    if (minimapResizing) settings.minimapWidth = minimapResizing.original
+    minimapResizing = undefined
 }
 
 // iOS and iPadOS have no leave prompt, so the bar is their strong sign while work is only here.
@@ -298,7 +319,25 @@ const stageCount = computed(() =>
                 <LevelEditorToolbar v-if="!hasToolModal('main')" pane="main" />
                 <EditorToolModalHost pane="main" />
             </div>
-            <Minimap v-if="isMinimapShown && (!isElevationEditorOpen || isElevationSideBySide)" />
+            <template v-if="isMinimapShown && (!isElevationEditorOpen || isElevationSideBySide)">
+                <div class="relative z-10 w-0 flex-none">
+                    <ResizeHandle
+                        axis="x"
+                        :label="i18n.workspace.resize.minimap"
+                        :value="minimapWidth"
+                        :min="MINIMAP_WIDTH.min"
+                        :max="minimapMaxWidth"
+                        @start="onMinimapResizeStart"
+                        @move="onMinimapResizeMove"
+                        @end="onMinimapResizeEnd"
+                        @cancel="onMinimapResizeCancel"
+                        @step="setMinimapWidth(minimapWidth - $event)"
+                        @set="setMinimapWidth"
+                        @reset="settings.minimapWidth = MINIMAP_WIDTH.default"
+                    />
+                </div>
+                <Minimap />
+            </template>
             <div
                 v-if="isElevationEditorOpen && isElevationSideBySide"
                 class="relative z-10 w-px flex-none bg-white/10"

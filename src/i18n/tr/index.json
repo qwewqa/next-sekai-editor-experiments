@@ -1932,7 +1932,8 @@
     "resize": {
       "left": "Sol panelleri yeniden boyutlandır",
       "right": "Sağ panelleri yeniden boyutlandır",
-      "top": "Üst panelleri yeniden boyutlandır"
+      "top": "Üst panelleri yeniden boyutlandır",
+      "minimap": "Mini haritayı yeniden boyutlandır"
     },
     "resizeTiles": "{0} ve {1} panellerini yeniden boyutlandır",
     "dock": {
