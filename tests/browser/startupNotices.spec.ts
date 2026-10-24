@@ -585,11 +585,11 @@ test.describe('load notices in the start-up pill', () => {
     })
 
     test.describe('on a phone with the dock open', () => {
-        // The pane under the dock is wider than tall, so History opens down its right side and
-        // would leave the card about 113 px beside it.
+        // The pane under the dock is 360 × 312: too narrow for the right sheet, and too short for a
+        // bottom sheet with a useful list, so History opens as the full dialog over the card.
         test.use({ viewport: { width: 360, height: 640 }, hasTouch: true, isMobile: true })
 
-        test('the card waits while History’s side sheet leaves it no room, its time held', async ({
+        test('History opens as the full dialog, and the card under it keeps its time', async ({
             page,
             context,
         }) => {
@@ -604,13 +604,13 @@ test.describe('load notices in the start-up pill', () => {
             const text = await pill(page).innerText()
             const { width } = (await pill(page).boundingBox())!
             await run(page, 'history')
-            const sheet = page.locator('[data-tool-dialog][data-sheet]')
-            await expect(sheet).toHaveAttribute('data-sheet', 'right')
-            await expect(pill(page)).toHaveCount(0)
-            // Out of sight, its time does not run.
+            const history = page.locator('[data-history-presentation]')
+            await expect(history).toHaveAttribute('data-history-presentation', 'compact')
+            await expect(page.locator('[data-tool-dialog]')).toHaveCount(0)
+            // Under the dialog, its time does not run.
             await page.clock.runFor(20_000)
             await page.keyboard.press('Escape')
-            await expect(sheet).toHaveCount(0)
+            await expect(history).toHaveCount(0)
             await expect(pill(page)).toBeVisible()
             expect(await pill(page).innerText()).toBe(text)
             expect((await pill(page).boundingBox())!.width).toBe(width)

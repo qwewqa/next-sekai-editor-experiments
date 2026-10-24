@@ -23,7 +23,7 @@ const matching = computed(() =>
     modals.filter((modal) => modal.presentation === 'tool' && modal.pane === props.pane),
 )
 const current = computed(() => matching.value.at(-1))
-// The History sheet: along the pane's bottom, or down its right side in a short landscape pane.
+// The History sheet: along the pane's bottom, or down its right side in a short, wide pane.
 const sheet = computed(() => !!current.value?.sheet)
 const geometry = computed(() =>
     getSheetGeometry({
