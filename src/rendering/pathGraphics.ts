@@ -836,8 +836,8 @@ export class PathGraphicsCache {
     private readonly evictable: Entry[] = []
     private readonly touched: Entry[] = []
     private readonly overflow = new Set<Entry>()
-    // Geometry of paths no later frame can draw again; it goes once its frame
-    // is presented, or when the last scene pin on it is released.
+    // Geometry of paths no later frame draws again. It is released at the
+    // first frame boundary that finds it unpinned, and never enters the LRU.
     private readonly frameOnly: Entry[] = []
     private contexts = new WeakMap<PathGraphicsResource, Entry>()
     private empty = new WeakSet<PathGraphicsResource>()
