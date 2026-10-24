@@ -263,7 +263,7 @@ test('an absent slot makes no session, and one this build can’t read whole sta
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), partial)
 })
 
-test('a slot an older build set aside as unreadable stays, and says so once at each load', async () => {
+test('a slot an older build set aside as unreadable stays, and says so once at a load that migrates no slot', async () => {
     const world = createWorld({ seed: 31 })
     const storage = new MemoryStorage()
     const aside = '{"version":1,"levelData":"set aside'
@@ -277,11 +277,13 @@ test('a slot an older build set aside as unreadable stays, and says so once at e
     const both = await loadIn(world, world.tab('b'), storage)
     await runRecovery(both.recovery)
     assert.deepEqual(both.events, [{ kind: 'migrationFailed', unreadable: true }])
-    // Beside a primary slot that migrates: the set-aside one still says so.
+    // Beside a primary slot that migrates: no line beside "Continued … from auto save.", and
+    // the set-aside slot stays.
     storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
     const migrated = await loadIn(world, world.tab('c'), storage)
     await runRecovery(migrated.recovery)
-    assert.deepEqual(migrated.events, [{ kind: 'migrationFailed', unreadable: true }])
+    assert.deepEqual(migrated.events, [])
+    assert.ok(migrated.recovery.migrated)
     assert.equal(rows(world, 'sessions').size, 1)
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
     // Without IndexedDB: Local Data's line, once, with the primary slot or without it.

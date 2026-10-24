@@ -296,12 +296,13 @@ const migrationBatch = (context: RecoveryContext, text: string, hash: string) =>
  * (without `durability`, at the next load), only if its value is unchanged since it was read.
  * A failed transaction leaves the key, with its load notice. Without IndexedDB the key stays,
  * offered in Local Data; an unreadable slot stays too, and says so, as does a slot an older
- * build set aside as unreadable.
+ * build set aside as unreadable, unless the primary slot migrated this load.
  */
 export const migrationStep = async (context: RecoveryContext) => {
     const said = await migrateSlot(context)
-    // One line for both slots: the set-aside one's, unless the primary slot raised it.
-    if (said || read(context, AUTO_SAVE_UNREADABLE_KEY) === undefined) return
+    // One line for both slots, and none beside "Continued … from auto save.": the set-aside
+    // slot stays listed in Local Data.
+    if (said || context.migrated || read(context, AUTO_SAVE_UNREADABLE_KEY) === undefined) return
     if (context.status.mode === 'stored')
         context.events({ kind: 'migrationFailed', unreadable: true })
     else unsavedInLocalData(context)
