@@ -272,7 +272,7 @@ test.describe('From a File', () => {
         // It is stored, the footer counts it and the preview shows it.
         expect(await stored(page)).toHaveLength(1)
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(
-            /^Stored: 1 item, [\d.]+ kB$/,
+            /^Stored: 1 item, [\d.]+\skB$/,
         )
         await expect
             .poll(() => slot(page, 'skin'))
@@ -677,7 +677,7 @@ test.describe('the Stored tab', () => {
         const neon = items.filter({ hasText: 'Neon Skin' })
         const spark = items.filter({ hasText: 'Spark' })
         await expect(neon).toContainText('Skin · neon.scp')
-        await expect(neon.locator('[data-stored-size]')).toHaveText(/^[\d.]+ kB$/)
+        await expect(neon.locator('[data-stored-size]')).toHaveText(/^[\d.]+\skB$/)
         await expect(neon.locator('[data-stored-in-use]')).toHaveText('In use')
         await expect(spark.locator('[data-stored-in-use]')).toHaveCount(0)
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(/^Stored: 2 items, /)
@@ -746,7 +746,7 @@ test.describe('the Stored tab', () => {
             await refreshStored()
         })
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(
-            /^Stored: 1 item, [\d.]+ kB$/,
+            /^Stored: 1 item, [\d.]+\skB$/,
         )
     })
 })
