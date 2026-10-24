@@ -609,6 +609,7 @@ const openRequestedProject = async (
         dismissNoticeCard()
         showRows([bgmRow])
     } else notifyOpened(name, earlier, left)
+    stored.noticed()
 }
 
 /** How Replace's keep-first went (§1.4.7): only `kept` lets it write. */

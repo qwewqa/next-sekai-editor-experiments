@@ -378,6 +378,33 @@ test('damage found by the import unlinks the session: a new docId, no binding, t
     await expect(timeline(page)).not.toContainText('not kept')
 })
 
+test('damage the import finds before the open is shown still gets its card', async ({ page }) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await damagedBytes())
+    // The show waits until the import has unlinked the session, as on a busy machine.
+    await page.evaluate(() => {
+        const worker = window.nseStorageTest!.worker as unknown as {
+            call: (name: string, ...rest: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        let found = () => {}
+        const unlinked = new Promise<void>((resolve) => (found = resolve))
+        worker.call = async (name, ...rest) => {
+            if (name === 'readSession') await unlinked
+            const result = await call(name, ...rest)
+            if (name === 'openUnlink') found()
+            return result
+        }
+    })
+    await openFile(page, 'coconut.nxsp')
+    await expect(
+        notice(page).filter({
+            hasText: '"coconut.nxsp" has damaged history. Saving makes a separate file.',
+        }),
+    ).toBeVisible()
+    expect((await sessionOf(page)).copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+})
+
 /** Slows the import, so a spec acts while it runs. */
 const slowImport = (page: Page, ms: number) =>
     page.evaluate((ms) => {
