@@ -67,7 +67,7 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
             }
             draw()
             for (let i = 0; i < 40; i++) {
-                const surface = ctx.createStageSurface(16, 16)
+                const surface = ctx.createSurface(16, 16)
                 try {
                     const child = surface.getContext()
                     child.fillStyle = '#00ff00'

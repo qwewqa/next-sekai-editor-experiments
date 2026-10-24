@@ -27,8 +27,30 @@ export class StageMesh extends Mesh<Geometry, Shader> {}
 export class StageMeshes {
     private shader: Shader | undefined
     private readonly live = new Set<StageMesh>()
+    // Owned by a caller's cache across frames; recycling a frame leaves them intact.
+    private readonly retained = new Set<StageMesh>()
 
     draw(vertices: readonly number[], matrix: Matrix) {
+        const mesh = this.create(vertices, matrix)
+        this.live.add(mesh)
+        return mesh
+    }
+
+    /** A mesh the caller keeps across frames and returns with `release`. */
+    retain(vertices: readonly number[], matrix: Matrix) {
+        const mesh = this.create(vertices, matrix)
+        this.retained.add(mesh)
+        return mesh
+    }
+
+    release(mesh: StageMesh) {
+        if (!this.retained.delete(mesh)) return
+        mesh.removeFromParent()
+        mesh.geometry.destroy(true)
+        mesh.destroy()
+    }
+
+    private create(vertices: readonly number[], matrix: Matrix) {
         this.shader ??= new Shader({
             glProgram: GlProgram.from({ name: 'editor-stage-colors', vertex, fragment }),
             resources: {},
@@ -50,9 +72,7 @@ export class StageMeshes {
                 aColor: { buffer, format: 'float32x4', stride: 24, offset: 8 },
             },
         })
-        const mesh = new StageMesh({ geometry, shader: this.shader })
-        this.live.add(mesh)
-        return mesh
+        return new StageMesh({ geometry, shader: this.shader })
     }
 
     recycle(mesh: StageMesh) {
@@ -63,6 +83,7 @@ export class StageMeshes {
 
     destroy() {
         for (const mesh of this.live) this.recycle(mesh)
+        for (const mesh of this.retained) this.release(mesh)
         this.shader?.destroy()
         this.shader = undefined
     }

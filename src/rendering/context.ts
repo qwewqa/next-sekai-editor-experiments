@@ -98,7 +98,6 @@ export class RenderSurface {
         resources: RenderingResources,
         private w: number,
         private h: number,
-        readonly stageCache = false,
     ) {
         this.context = new WebGLDrawContext(this, resources)
     }
@@ -294,9 +293,7 @@ export class WebGLDrawContext {
             this.width = this.canvas.width
             this.height = this.canvas.height
             if (this.canvas instanceof RenderSurface)
-                this.target = this.canvas.stageCache
-                    ? this.resources.stageTarget(this.width, this.height)
-                    : this.resources.target(this.width, this.height)
+                this.target = this.resources.target(this.width, this.height)
             else this.resources.renderer.resize(this.width, this.height, 1)
         }
         return true
@@ -369,14 +366,28 @@ export class WebGLDrawContext {
     createSurface(width: number, height: number) {
         return new RenderSurface(this.resources, width, height)
     }
-    /** Full-redraw stage pixels keep no MSAA or stencil storage between updates. */
-    createStageSurface(width: number, height: number) {
-        return new RenderSurface(this.resources, width, height, true)
-    }
     /** Ordered, premultiplied stage slice triangles already include their paint opacity. */
     drawStageTriangles(vertices: readonly number[]) {
         if (!vertices.length || !this.mutate()) return
         this.parent().addChild(this.stageMeshes.draw(vertices, this.state.matrix))
+    }
+    /**
+     * Packs stage triangles with `matrix` into a mesh the caller owns across
+     * frames, until `releaseStageMesh` or this context's disposal.
+     */
+    createStageMesh(vertices: readonly number[], matrix: Matrix) {
+        return this.stageMeshes.retain(vertices, matrix)
+    }
+    /** Queues a retained stage mesh offset by whole or fractional device pixels, ignoring the transform. */
+    drawStageMesh(mesh: StageMesh, x: number, y: number) {
+        if (!this.mutate()) return
+        mesh.position.set(x, y)
+        this.parent().addChild(mesh)
+    }
+    releaseStageMesh(mesh: StageMesh) {
+        // A queued mesh must not be destroyed before its frame is submitted.
+        if (mesh.parent) this.flush()
+        this.stageMeshes.release(mesh)
     }
     private recycleNodes(container: Container) {
         for (const child of container.removeChildren()) {

@@ -157,6 +157,55 @@ test('context queues stage meshes through its current clip parent and recycles t
     }
 })
 
+test('retained stage meshes survive frame recycling and are freed once by release or disposal', () => {
+    const { meshes } = meshesWithoutGpu()
+    const parent = new Container()
+    const context = Object.assign(Object.create(WebGLDrawContext.prototype) as object, {
+        state: { matrix: [2, 0, 0, 3, 10, 20], globalAlpha: 1 },
+        stageMeshes: meshes,
+        mutate: () => true,
+        parent: () => parent,
+        flush: () => {
+            ;(context as unknown as { recycleNodes(container: Container): void }).recycleNodes(
+                parent,
+            )
+        },
+        retained: new Map(),
+        retainedNoteBodies: new Map(),
+        waveforms: { recycle: () => {} },
+    }) as unknown as WebGLDrawContext
+    const stream = new StageTriangles()
+    stream.append(triangle(), 0xffffff, 1)
+    const kept = context.createStageMesh(stream.vertices, [2, 0, 0, 3, 0, -6])
+    const freed = context.createStageMesh(stream.vertices, [1, 0, 0, 1, 0, 0])
+    let keptDestroyed = 0
+    let freedDestroyed = 0
+    kept.geometry.getBuffer('aPosition').on('destroy', () => keptDestroyed++)
+    freed.geometry.getBuffer('aPosition').on('destroy', () => freedDestroyed++)
+    try {
+        // Packed with its own matrix, positioned in device pixels, not the current transform.
+        assert.deepEqual(Array.from(kept.geometry.getBuffer('aPosition').data.slice(0, 2)), [0, -6])
+        context.drawStageMesh(kept, 12.5, -3.25)
+        assert.deepEqual([kept.position.x, kept.position.y], [12.5, -3.25])
+        assert.equal(kept.parent, parent)
+        ;(context as unknown as { recycleNodes(container: Container): void }).recycleNodes(parent)
+        assert.equal(kept.parent, null)
+        assert.equal(keptDestroyed, 0, 'a frame never frees a retained mesh')
+        context.drawStageMesh(kept, 0, 0)
+        context.drawStageMesh(freed, 0, 0)
+        // A queued mesh is submitted before it is freed.
+        context.releaseStageMesh(freed)
+        context.releaseStageMesh(freed)
+        assert.equal(freedDestroyed, 1)
+        assert.equal(parent.children.length, 0)
+        meshes.destroy()
+        assert.equal(keptDestroyed, 1)
+    } finally {
+        meshes.destroy()
+        parent.destroy()
+    }
+})
+
 type Paint = { kind: 'mesh' | 'fill' | 'stroke'; data: number[]; alpha?: number }
 
 const stageProps = (left = -2, right = 2, pivot = 0, borders = 1) => ({

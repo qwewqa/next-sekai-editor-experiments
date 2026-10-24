@@ -1,18 +1,18 @@
-import { expect, test } from '@playwright/test'
-import type { RenderSurface } from '../../src/rendering/context'
+import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 declare global {
     interface Window {
         stageSurfaceTest: {
-            draws: number
-            blits: number
-            surface?: RenderSurface
+            // Retained stage meshes built, drawn on the chart and released.
+            built: number
+            drawn: number
+            released: number
         }
     }
 }
 
-const settle = async (page: import('@playwright/test').Page) =>
+const settle = async (page: Page) =>
     page.evaluate(async () => {
         await window.editorTest.nextTick()
         await new Promise<void>((resolve) =>
@@ -26,34 +26,24 @@ test.beforeEach(async ({ page }) => {
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
     await page.evaluate(async () => {
-        window.stageSurfaceTest = { draws: 0, blits: 0 }
-        const surfaces = new WeakSet<RenderSurface>()
-        const { RenderSurface, WebGLDrawContext } = await window.editorTest.appImport<
+        window.stageSurfaceTest = { built: 0, drawn: 0, released: 0 }
+        const { WebGLDrawContext } = await window.editorTest.appImport<
             typeof import('../../src/rendering/context')
         >('/src/rendering/context.ts')
-        const clear = WebGLDrawContext.prototype.clear
-        WebGLDrawContext.prototype.clear = function () {
-            if (this.canvas instanceof RenderSurface && this.canvas.stageCache) {
-                surfaces.add(this.canvas)
-                window.stageSurfaceTest.draws++
-            }
-            return clear.call(this)
+        const chart = (ctx: InstanceType<typeof WebGLDrawContext>) =>
+            ctx.canvas instanceof HTMLCanvasElement && ctx.canvas.classList.contains('editor-chart')
+        const { createStageMesh, drawStageMesh, releaseStageMesh } = WebGLDrawContext.prototype
+        WebGLDrawContext.prototype.createStageMesh = function (...args) {
+            if (chart(this)) window.stageSurfaceTest.built++
+            return createStageMesh.apply(this, args)
         }
-        const drawImage = WebGLDrawContext.prototype.drawImage
-        WebGLDrawContext.prototype.drawImage = function (
-            source: Parameters<typeof drawImage>[0],
-            ...args: number[]
-        ) {
-            if (
-                this.canvas instanceof HTMLCanvasElement &&
-                this.canvas.classList.contains('editor-chart') &&
-                source instanceof RenderSurface &&
-                surfaces.has(source)
-            ) {
-                window.stageSurfaceTest.blits++
-                window.stageSurfaceTest.surface = source
-            }
-            return Reflect.apply(drawImage, this, [source, ...args])
+        WebGLDrawContext.prototype.drawStageMesh = function (...args) {
+            if (chart(this)) window.stageSurfaceTest.drawn++
+            return drawStageMesh.apply(this, args)
+        }
+        WebGLDrawContext.prototype.releaseStageMesh = function (...args) {
+            if (chart(this)) window.stageSurfaceTest.released++
+            return releaseStageMesh.apply(this, args)
         }
     })
     await page.evaluate(async () => {
@@ -84,17 +74,14 @@ test.beforeEach(async ({ page }) => {
     await settle(page)
 })
 
-test('stationary chart redraws reuse stage pixels; preview edits, scopes and view changes invalidate them', async ({
+const counters = (page: Page) =>
+    page.evaluate(() => ({ ...window.stageSurfaceTest, frames: window.editorFrames.chart }))
+
+test('chart redraws reuse stage tiles; preview edits, scopes and zoom build them again', async ({
     page,
 }) => {
-    const counters = () =>
-        page.evaluate(() => ({
-            draws: window.stageSurfaceTest.draws,
-            blits: window.stageSurfaceTest.blits,
-            frames: window.editorFrames.chart,
-        }))
-    const baseline = await counters()
-    expect(baseline.draws).toBeGreaterThan(0)
+    const baseline = await counters(page)
+    expect(baseline.built).toBeGreaterThan(0)
     const canvas = page.locator('canvas.editor-chart')
     const original = await canvas.screenshot()
     const probes = await page.evaluate(async () => {
@@ -108,8 +95,7 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
             1 as import('../../src/chart/stages').StageId,
             beat,
         )!
-        // Interior of the old/new masks, deliberately away from antialiased
-        // borders. GPU canvas promotion can rasterize edge pixels differently.
+        // Interior of the old/new masks, deliberately away from antialiased borders.
         return [stage.left + 0.75, (stage.left + stage.right) / 2, stage.right + 0.75].map(
             (lane) => {
                 const p = point(lane, beat)
@@ -141,17 +127,17 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
     })
     await settle(page)
-    const selected = await counters()
+    const selected = await counters(page)
     expect(selected.frames).toBeGreaterThan(baseline.frames)
-    expect(selected.blits).toBeGreaterThan(baseline.blits)
-    expect(selected.draws).toBe(baseline.draws)
+    expect(selected.drawn).toBeGreaterThan(baseline.drawn)
+    expect(selected.built).toBe(baseline.built)
     await page.evaluate(() => {
         const { history, view } = window.editorTest
         history.replaceState({ ...history.state.value, selectedEntities: [] })
         view.cursorTime = 4
     })
     await settle(page)
-    expect((await counters()).draws).toBe(baseline.draws)
+    expect((await counters(page)).built).toBe(baseline.built)
     await page.evaluate(() => {
         window.editorTest.view.cursorTime = 100
     })
@@ -159,7 +145,7 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
     expect((await canvas.screenshot()).equals(original)).toBe(true)
 
     // A note transaction replaces the store, but retains the independent stage
-    // event grids. Moving the note and restoring it must also hit the cache.
+    // event grids. Moving the note and restoring it must also reuse the tiles.
     for (const delta of [1, -1]) {
         await page.evaluate(async (delta) => {
             const { history, store, appImport } = window.editorTest
@@ -178,7 +164,7 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
             history.replaceState(tx.commit([]))
         }, delta)
         await settle(page)
-        expect((await counters()).draws).toBe(baseline.draws)
+        expect((await counters(page)).built).toBe(baseline.built)
     }
 
     await page.evaluate(async () => {
@@ -206,8 +192,9 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
         })
     })
     await settle(page)
-    const preview = await counters()
-    expect(preview.draws).toBeGreaterThan(selected.draws)
+    const preview = await counters(page)
+    expect(preview.built).toBeGreaterThan(selected.built)
+    expect(preview.released).toBeGreaterThanOrEqual(baseline.built)
     expect(await sample(await canvas.screenshot())).not.toEqual(originalSamples)
     await page.evaluate(async () => {
         const { clearPreviewEdit } =
@@ -219,8 +206,8 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
     await settle(page)
     expect(await sample(await canvas.screenshot())).toEqual(originalSamples)
 
-    for (const change of ['subdivision', 'pan', 'scroll', 'zoom', 'dim', 'hidden'] as const) {
-        const before = await counters()
+    for (const change of ['pan', 'scroll', 'subdivision', 'zoom', 'dim', 'hidden'] as const) {
+        const before = await counters(page)
         const pixels = await canvas.screenshot()
         await page.evaluate((change) => {
             const { settings, view } = window.editorTest
@@ -232,37 +219,82 @@ test('stationary chart redraws reuse stage pixels; preview edits, scopes and vie
             if (change === 'hidden') settings.showOtherStages = false
         }, change)
         await settle(page)
-        if (change !== 'hidden')
-            expect((await counters()).draws, change).toBeGreaterThan(before.draws)
-        expect((await counters()).blits, change).toBeGreaterThan(before.blits)
+        const after = await counters(page)
+        // A short pan only moves the tiles.
+        if (change === 'pan') expect(after.built, change).toBe(before.built)
+        else if (change !== 'scroll' && change !== 'hidden')
+            expect(after.built, change).toBeGreaterThan(before.built)
+        if (change !== 'scroll' && change !== 'pan')
+            expect(after.released, change).toBeGreaterThan(before.released)
+        // The one stage left in scope is out of view.
+        if (change !== 'hidden') expect(after.drawn, change).toBeGreaterThan(before.drawn)
         expect((await canvas.screenshot()).equals(pixels), change).toBe(false)
     }
-    const beforeResize = await counters()
+    const beforeResize = await counters(page)
     await page.setViewportSize({ width: 1493, height: 917 })
     await settle(page)
-    expect((await counters()).frames).toBeGreaterThan(beforeResize.frames)
+    expect((await counters(page)).frames).toBeGreaterThan(beforeResize.frames)
 
-    const released = await page.evaluate(async () => {
-        const canvas = window.stageSurfaceTest.surface!
+    await page.evaluate(async () => {
         window.editorTest.view.layout = 'basic'
         await window.editorTest.nextTick()
         await new Promise<void>((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
-        return canvas.getContext().isContextLost()
     })
-    expect(released).toBe(true)
+    const basic = await counters(page)
+    expect(basic.released).toBe(basic.built)
 })
 
-test('other stages draw on a new store and release the old one', async ({ page }) => {
-    const result = await page.evaluate(async () => {
+test('a lost and restored renderer builds its stage tiles again', async ({ page }) => {
+    const canvas = page.locator('canvas.editor-chart')
+    const original = await canvas.screenshot()
+    const before = await counters(page)
+    await page.evaluate(async () => {
+        const chart = document.querySelector<HTMLCanvasElement>('canvas.editor-chart')!
+        const extension = chart.getContext('webgl2')!.getExtension('WEBGL_lose_context')!
+        const lost = new Promise<void>((resolve) =>
+            chart.addEventListener('webglcontextlost', () => resolve(), { once: true }),
+        )
+        extension.loseContext()
+        await lost
+        // Restoring within the loss event's task is ignored.
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        const restored = new Promise<void>((resolve) =>
+            chart.addEventListener('renderingready', () => resolve(), { once: true }),
+        )
+        extension.restoreContext()
+        await restored
+    })
+    await settle(page)
+    const after = await counters(page)
+    expect(after.released).toBeGreaterThanOrEqual(before.built)
+    expect(after.built).toBeGreaterThan(before.built)
+    // Restored uploads can round a few edge pixels by one level.
+    const difference = await page.evaluate(
+        async ([a, b]) => {
+            const read = async (png: string) => {
+                const bitmap = await createImageBitmap(
+                    await (await fetch(`data:image/png;base64,${png}`)).blob(),
+                )
+                const context = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d')!
+                context.drawImage(bitmap, 0, 0)
+                return context.getImageData(0, 0, bitmap.width, bitmap.height).data
+            }
+            const [x, y] = await Promise.all([read(a), read(b)])
+            let max = 0
+            x.forEach((value, index) => (max = Math.max(max, Math.abs(value - y[index]!))))
+            return max
+        },
+        [original.toString('base64'), (await canvas.screenshot()).toString('base64')] as const,
+    )
+    expect(difference).toBeLessThanOrEqual(2)
+})
+
+test('other stages draw new tiles and release the old ones', async ({ page }) => {
+    const before = await counters(page)
+    await page.evaluate(async () => {
         const { fixtures, show, view, nextTick } = window.editorTest
-        const frame = () =>
-            new Promise<void>((resolve) =>
-                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-            )
-        const old = window.stageSurfaceTest.surface!
-        // A 'copy' clear could leave the old chart's stages showing through.
         show(
             {
                 ...fixtures.events,
@@ -275,14 +307,16 @@ test('other stages draw on a new store and release the old one', async ({ page }
         )
         view.layout = 'composed'
         await nextTick()
-        await frame()
-        const current = window.stageSurfaceTest.surface!
-        return { released: old.getContext().isContextLost(), replaced: current !== old }
     })
-    expect(result).toEqual({ released: true, replaced: true })
+    await settle(page)
+    const after = await counters(page)
+    expect(after.released).toBeGreaterThanOrEqual(before.built)
+    expect(after.built).toBeGreaterThan(before.built)
 })
 
-test('cached stage pixels match an uncached surface across fractional DPR, viewport and style changes', async ({
+// Draws the fixture's stages through a retained tile surface, a newly made one and
+// the direct draw, for each change in turn, and compares their pixels.
+test('retained stage tiles match newly built ones and the direct draw across edits and view changes', async ({
     page,
 }) => {
     const result = await page.evaluate(async () => {
@@ -300,6 +334,9 @@ test('cached stage pixels match an uncached surface across fractional DPR, viewp
             await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
         const { createState } =
             await appImport<typeof import('../../src/state')>('/src/state/index.ts')
+        const { timeToBeat } = await appImport<typeof import('../../src/state/integrals/bpms')>(
+            '/src/state/integrals/bpms.ts',
+        )
         const { fullScope, createScopeLookup } = await appImport<
             typeof import('../../src/editor/scopeRules')
         >('/src/editor/scopeRules.ts')
@@ -312,37 +349,43 @@ test('cached stage pixels match an uncached surface across fractional DPR, viewp
         let pixelRatio = 1.25
         let scope = fullScope
         let laneDivision = 1
-        const errors: {
-            variant: string
-            count: number
-            max: number
-            alpha: number
-            first: number[]
-        }[] = []
-        const direct = document.createElement('canvas')
-        const cached = document.createElement('canvas')
+        const builds: Record<string, number> = {}
+        const fresh: { variant: string; count: number; max: number }[] = []
+        const direct: { variant: string; pixels: number; over: number }[] = []
+        const canvases = [0, 1, 2].map(() => document.createElement('canvas'))
         await Promise.all(
-            [direct, cached].map((canvas) => window.editorRendering.getDrawContext(canvas).ready),
+            canvases.map((canvas) => window.editorRendering.getDrawContext(canvas).ready),
         )
-        // Compare caching with a newly drawn ordinary child target. The browser's
-        // default framebuffer can use a different MSAA sample phase; including it
-        // on only one side would measure that raster difference instead of reuse.
-        const reference = window.editorRendering.getDrawContext(direct).createSurface(1, 1)
+        const { WebGLDrawContext } = await appImport<typeof import('../../src/rendering/context')>(
+            '/src/rendering/context.ts',
+        )
+        const create = WebGLDrawContext.prototype.createStageMesh
+        let built = 0
+        WebGLDrawContext.prototype.createStageMesh = function (...args) {
+            if (this.canvas === canvases[0]) built++
+            return create.apply(this, args)
+        }
+        const read = (canvas: HTMLCanvasElement) =>
+            window.editorRendering
+                .getDrawContext(canvas)
+                .getImageData(0, 0, canvas.width, canvas.height).data
         for (const variant of [
             'initial',
             'repeat',
+            'scroll',
             'pan',
             'DPR',
             'resize',
             'subdivision',
             'dim',
             'hidden',
-            'tempo',
             'restore',
+            'stage event',
+            'tempo',
+            'far scroll',
             'clear',
         ]) {
-            // Both targets retain their WebGL owner while their surfaces resize.
-            // The stage bitmap stays attached to the cached target's GPU context.
+            if (variant === 'scroll') bounds = { ...bounds, t: bounds.t - 0.37, b: bounds.b - 0.37 }
             if (variant === 'pan') bounds = { ...bounds, l: -9.75, r: 10.25 }
             if (variant === 'DPR') pixelRatio = 1.75
             if (variant === 'resize') {
@@ -359,62 +402,191 @@ test('cached stage pixels match an uncached surface across fractional DPR, viewp
                     stageId: 2 as import('../../src/chart/stages').StageId,
                     showOtherStages: false,
                 })
+            if (variant === 'restore') scope = fullScope
+            if (variant === 'stage event') {
+                state = createState(
+                    {
+                        ...fixtures.events,
+                        stageMaskEvents: fixtures.events.stageMaskEvents.map((event) => ({
+                            ...event,
+                            maskLeft: event.maskLeft + 0.5,
+                        })),
+                    },
+                    0,
+                )
+                composed = createComposedLayout(state)
+            }
             if (variant === 'tempo') {
                 state = createState({ ...fixtures.events, bpms: [{ beat: 0, bpm: 90 }] }, 0)
                 composed = createComposedLayout(state)
             }
-            if (variant === 'restore') scope = fullScope
+            if (variant === 'far scroll') bounds = { ...bounds, t: bounds.t - 4, b: bounds.b - 4 }
             if (variant === 'clear') surface.clear()
-            const directTarget = prepareSurface(direct, width, height, pixelRatio, bounds)!
-            const context = {
-                state,
-                composed,
-                bounds,
-                pixelRatio,
-                scale: width / bounds.w,
-                ups: -2,
-                ctx: prepareSurface(reference, width, height, pixelRatio, bounds)!,
-            } as import('../../src/editor/canvas/types').EditorDrawContext
-            drawComposedStages(context, { min: 0, max: 12 }, scope, laneDivision)
-            directTarget.save()
-            directTarget.setTransform(1, 0, 0, 1, 0, 0)
-            directTarget.globalAlpha = 1
-            directTarget.drawImage(reference, 0, 0)
-            directTarget.restore()
-            surface.draw(
-                { ...context, ctx: prepareSurface(cached, width, height, pixelRatio, bounds)! },
-                width,
-                height,
-                { min: 0, max: 12 },
-                scope,
-                laneDivision,
-            )
-            const a = window.editorRendering
-                .getDrawContext(direct)
-                .getImageData(0, 0, direct.width, direct.height).data
-            const b = window.editorRendering
-                .getDrawContext(cached)
-                .getImageData(0, 0, cached.width, cached.height).data
+            const ups = -2
+            // The view reaches the canvas bottom, as the editor's does.
+            const h = (height * bounds.w) / width
+            const view = { ...bounds, b: bounds.t + h, h }
+            const beats = {
+                min: timeToBeat(state.bpms, Math.max(0, view.b / ups)),
+                max: timeToBeat(state.bpms, view.t / ups),
+            }
+            const context = (canvas: HTMLCanvasElement) =>
+                ({
+                    state,
+                    composed,
+                    bounds: view,
+                    pixelRatio,
+                    scale: width / bounds.w,
+                    ups,
+                    ctx: prepareSurface(canvas, width, height, pixelRatio, view)!,
+                }) as import('../../src/editor/canvas/types').EditorDrawContext
+            const [retained, made, drawn] = canvases as [
+                HTMLCanvasElement,
+                HTMLCanvasElement,
+                HTMLCanvasElement,
+            ]
+            built = 0
+            surface.draw(context(retained), width, height, beats, scope, laneDivision)
+            builds[variant] = built
+            const newSurface = createStageSurface()
+            newSurface.draw(context(made), width, height, beats, scope, laneDivision)
+            drawComposedStages(context(drawn), beats, scope, laneDivision)
+            const a = read(retained)
+            const b = read(made)
+            const c = read(drawn)
+            newSurface.clear()
             let count = 0,
-                max = 0,
-                alpha = 0
-            const first: number[] = []
+                max = 0
             a.forEach((value, index) => {
                 const difference = Math.abs(value - b[index]!)
-                if (difference) {
-                    count++
-                    max = Math.max(max, difference)
-                    if (index % 4 === 3) alpha = Math.max(alpha, difference)
-                    if (first.length < 15) first.push(index, value, b[index]!)
-                }
+                if (difference) count++
+                max = Math.max(max, difference)
             })
-            if (count) errors.push({ variant, count, max, alpha, first })
+            if (count) fresh.push({ variant, count, max })
+            let over = 0
+            for (let i = 0; i < a.length; i += 4)
+                for (let k = 0; k < 4; k++)
+                    if (Math.abs(a[i + k]! - c[i + k]!) > 24) {
+                        over++
+                        break
+                    }
+            direct.push({ variant, pixels: a.length / 4, over })
         }
         surface.clear()
-        reference.dispose()
-        window.editorRendering.disposeDrawContext(direct)
-        window.editorRendering.disposeDrawContext(cached)
-        return errors
+        WebGLDrawContext.prototype.createStageMesh = create
+        for (const canvas of canvases) window.editorRendering.disposeDrawContext(canvas)
+        return { builds, fresh, direct }
     })
-    expect(result).toEqual([])
+    // Retained tiles are offset, never redrawn differently.
+    expect(result.fresh).toEqual([])
+    // A redraw or a short pan builds no tiles; a short scroll at most the next one ahead.
+    expect(result.builds.initial).toBeGreaterThan(1)
+    expect(result.builds.repeat).toBe(0)
+    expect(result.builds.pan).toBe(0)
+    expect(result.builds.scroll).toBeLessThanOrEqual(1)
+    for (const variant of ['DPR', 'subdivision', 'dim', 'stage event', 'tempo', 'clear'])
+        expect(result.builds[variant], variant).toBeGreaterThan(1)
+    // Tiles sample curves from their own edges, so slanted dividers and curved edges can
+    // land up to the 0.01-lane sampling tolerance away from a draw of the whole view: at
+    // most 0.2% of pixels here. A missing tile or a stale stage changes far more; the
+    // seam test below covers tile edges.
+    for (const { variant, pixels, over } of result.direct)
+        expect(over, variant).toBeLessThan(pixels / 200)
+})
+
+test('a stationary stage has no seams at tile edges at any scroll offset or fractional DPR', async ({
+    page,
+}) => {
+    const rows = await page.evaluate(async () => {
+        const { appImport, fixtures } = window.editorTest
+        const { createState } =
+            await appImport<typeof import('../../src/state')>('/src/state/index.ts')
+        const { createComposedLayout } =
+            await appImport<typeof import('../../src/editor/composed')>('/src/editor/composed.ts')
+        const { createStageSurface } = await appImport<
+            typeof import('../../src/editor/canvas/stageSurface')
+        >('/src/editor/canvas/stageSurface.ts')
+        const { prepareSurface } = await appImport<
+            typeof import('../../src/editor/canvas/surface')
+        >('/src/editor/canvas/surface.ts')
+        const { fullScope } = await appImport<typeof import('../../src/editor/scopeRules')>(
+            '/src/editor/scopeRules.ts',
+        )
+        const source = fixtures.events
+        const mask = source.stageMaskEvents[0]!
+        const state = createState(
+            {
+                ...source,
+                isDynamicStages: true,
+                bpms: [{ beat: 0, bpm: 120 }],
+                stages: new Map([
+                    [
+                        mask.stageId,
+                        {
+                            ...source.stages.get(mask.stageId)!,
+                            isFromStart: false,
+                            isUntilEnd: false,
+                        },
+                    ],
+                ]),
+                stageMaskEvents: [0.25, 63.37].map((beat) => ({
+                    ...mask,
+                    beat,
+                    maskLeft: -2,
+                    maskSize: 4,
+                })),
+                stagePivotEvents: [
+                    { ...source.stagePivotEvents[0]!, beat: 0.25, pivotLane: 0, divisionSize: 2 },
+                ],
+                stageStyleEvents: [{ ...source.stageStyleEvents[0]!, beat: 0.25, laneAlpha: 1 }],
+                stageTransformEvents: [],
+            },
+            0,
+        )
+        const composed = createComposedLayout(state)
+        const rows: { ratio: number; offset: number; alphas: number[] }[] = []
+        const width = 280
+        const height = 480
+        for (const ratio of [1, 1.25, 1.5, 2]) {
+            const canvas = document.createElement('canvas')
+            const ctx = window.editorRendering.getDrawContext(canvas)
+            await ctx.ready
+            const surface = createStageSurface()
+            // Fractional scrolls offset the same tiles; tile edges cross the column.
+            for (const offset of [0, 0.137, 1.5, 7.71]) {
+                const bounds = { l: -7, r: 7, t: -36 - offset, b: -12 - offset, w: 14, h: 24 }
+                surface.draw(
+                    {
+                        ctx: prepareSurface(canvas, width, height, ratio, bounds)!,
+                        state,
+                        composed,
+                        scale: 20,
+                        ups: -3,
+                        pixelRatio: ratio,
+                        bounds,
+                    } as import('../../src/editor/canvas/types').EditorDrawContext,
+                    width,
+                    height,
+                    { min: 0, max: 64 },
+                    fullScope,
+                    4,
+                )
+                // Halfway between dividers.
+                const pixels = ctx.getImageData(
+                    Math.floor(142.5 * ratio),
+                    0,
+                    1,
+                    Math.floor(height * ratio),
+                ).data
+                const alphas = new Set<number>()
+                for (let i = 3; i < pixels.length; i += 4) alphas.add(pixels[i]!)
+                rows.push({ ratio, offset, alphas: [...alphas] })
+            }
+            surface.clear()
+            window.editorRendering.disposeDrawContext(canvas)
+        }
+        return rows
+    })
+    for (const { ratio, offset, alphas } of rows)
+        expect(alphas, `DPR ${ratio}, offset ${offset}`).toEqual([41])
 })

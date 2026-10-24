@@ -92,7 +92,7 @@ import { clearTextWidths, FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle 
 import type { EdgeLabelYs, EditorDrawContext } from './types'
 import { createWaveformRenderer } from './waveform'
 import { createComposedLayout } from '../composed'
-import { createStageSurface, SUSTAINED_MS } from './stageSurface'
+import { createStageSurface } from './stageSurface'
 import { VectorRanges } from './vectorRanges'
 import { SectionPlanner, selectSections, type SectionPlan } from './sections'
 
@@ -110,28 +110,6 @@ const fontMiddle = ref(0.25)
 const figureMiddle = ref(FIGURE_MIDDLE)
 const redrawVersion = ref(0)
 const waveformVersion = ref(0)
-// Bumped once shifted stage pixels have held still for a motion's gap, to redraw them exactly.
-const stageSettle = ref(0)
-// Each chart draw with shifted stage pixels moves the deadline; one timer follows it, so a
-// sustained motion arms a timer about once per gap instead of once per frame.
-let stageSettleDue: number | undefined
-let stageSettleTimer: ReturnType<typeof setTimeout> | undefined
-const armStageSettle = () => {
-    if (stageSettleTimer !== undefined || stageSettleDue === undefined) return
-    stageSettleTimer = setTimeout(
-        () => {
-            stageSettleTimer = undefined
-            if (stageSettleDue === undefined) return
-            if (performance.now() < stageSettleDue) {
-                armStageSettle()
-                return
-            }
-            stageSettleDue = undefined
-            stageSettle.value++
-        },
-        Math.max(0, stageSettleDue - performance.now()),
-    )
-}
 const chartFrame = createFrameScheduler()
 const overlayFrame = createFrameScheduler()
 const notes = createNoteRenderer()
@@ -615,7 +593,6 @@ watchEffect(
         const currentWaveform = settings.waveform === 'off' ? undefined : inputs.state.bgm.waveform
         const offset = inputs.state.bgm.offset + bgmOffsetDelta.value
         void waveformVersion.value
-        void stageSettle.value
         const draw = (timestamp: number) => {
             notes.beginFrame(timestamp)
             nameSprites.beginFrame(timestamp)
@@ -668,15 +645,7 @@ watchEffect(
                 notes.prepareRuns(context, objects, raisedAt, preview?.entities)
             }
             waveform.draw(context, currentWaveform, offset, currentTimes)
-            const shiftedStages = stages.draw(
-                context,
-                inputs.width,
-                inputs.height,
-                currentBeats,
-                scope,
-                laneDivision,
-            )
-            stageSettleDue = undefined
+            stages.draw(context, inputs.width, inputs.height, currentBeats, scope, laneDivision)
             drawGridLines(context, currentBeats, division, laneDivision, beatDisplay, grid)
             ctx.save()
             ctx.strokeStyle = '#fff'
@@ -752,13 +721,6 @@ watchEffect(
             notes.endFrame()
             vectors.endFrame()
             annotations.endFrame()
-            stages.finishFrame()
-            if (shiftedStages) {
-                // Idle time begins after the whole chart is submitted. Slow object
-                // drawing must not consume the pause before an exact settled redraw.
-                stageSettleDue = performance.now() + SUSTAINED_MS
-                armStageSettle()
-            }
         }
         chartFrame.schedule(timed('chartDraw', draw))
     },
@@ -956,9 +918,6 @@ onMounted(() => {
 onUnmounted(() => {
     vectors.clear()
     annotations.clear()
-    stageSettleDue = undefined
-    clearTimeout(stageSettleTimer)
-    stageSettleTimer = undefined
     chartFrame.cancel()
     overlayFrame.cancel()
     notes.clear()
