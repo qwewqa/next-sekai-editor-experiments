@@ -12,6 +12,4 @@ uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/write-1.nxsp tes
 
 Written by `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts`. Never again once v0.6.0 ships.
 
-`plan-2.json` and `write-2.nxsp` were regenerated before v0.6.0 shipped, because `nse.continue` dropped its `source` field. This follows the owner ruling of 2026-10-19: until Stage 1 ships, codecs and formats change in place at v1, as nothing has shipped. No other operation in the golden chain changed shape.
-
-The format freeze package regenerated all four files before v0.6.0 shipped (the same ruling): `project.json` gained `patch` (0, after `minor`), and each `save` entry gained `appVersion` (the app version that wrote that Save). Nothing else in the chain changed shape. The policy for changing a format after the ship is `docs/format-versioning.md`.
+Until v0.6.0 ships, formats change in place at v1, and these files are regenerated with them. After that, follow `docs/format-versioning.md`.

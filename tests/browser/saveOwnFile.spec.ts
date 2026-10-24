@@ -367,7 +367,7 @@ test('a Save whose import startup never resumed resumes it and saves, never "cou
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
 })
 
-test('a pick of the chain’s own file that storage can’t place is still the own file: the bytes read are appended to (ADV3-2)', async ({
+test('a pick of the chain’s own file that storage can’t place is still the own file: the bytes read are appended to', async ({
     page,
 }) => {
     const { before } = await shortChain(page)
@@ -400,7 +400,7 @@ test('a pick of the chain’s own file that storage can’t place is still the o
     expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
 })
 
-test('a put-back over a file filled meanwhile learns it from its size, never reading it whole (SF3-2)', async ({
+test('a put-back over a file filled meanwhile learns it from its size, never reading it whole', async ({
     page,
 }) => {
     await shortChain(page)
@@ -444,7 +444,7 @@ test('a put-back over a file filled meanwhile learns it from its size, never rea
     expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
 
-test('Export waits for an open’s import before its picker, so a pick of the file never stops the import (SF3-1)', async ({
+test('Export waits for an open’s import before its picker, so a pick of the file never stops the import', async ({
     page,
 }) => {
     await start(page)
@@ -474,7 +474,7 @@ test('Export waits for an open’s import before its picker, so a pick of the fi
     expect(sessions!.some((row) => row.value.importPending === true)).toBe(false)
 })
 
-test('Recent Sessions’ Save… shows no count while an open’s import runs, and counts once it ends (SF3-3)', async ({
+test('Recent Sessions’ Save… shows no count while an open’s import runs, and counts once it ends', async ({
     page,
 }) => {
     await start(page)
@@ -497,7 +497,7 @@ test('Recent Sessions’ Save… shows no count while an open’s import runs, a
     await expect(dialog).toContainText(/\d steps? ·/)
 })
 
-test('the Save dialog stops counting again when an import stays pending that never runs (ADV3-3, UI3-2)', async ({
+test('the Save dialog stops counting again when an import stays pending that never runs', async ({
     page,
 }) => {
     await reloadMidImport(page, 'never')
