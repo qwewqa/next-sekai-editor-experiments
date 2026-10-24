@@ -66,7 +66,7 @@ Read these before you change the UI and when you review a UI change:
 - [docs/design-language.md](docs/design-language.md): surfaces, shape, sizes, spacing and the History surfaces.
 - [docs/color-system.md](docs/color-system.md): colour roles and the control recipes in `src/controls.css`.
 - [docs/ui-review-checklist.md](docs/ui-review-checklist.md): the questions to ask in review, from past defects.
-- [docs/writing.md](docs/writing.md): the rules for user-facing text: strings, Help, notices, the release notes and the privacy page.
+- [docs/writing.md](docs/writing.md): the rules for user-facing text in strings, Help, notices, the release notes and the privacy page.
 
 They are principles with reasons. Depart from one when a case needs it, and say why in the change. If a change makes a claim in them false, fix the page in the same change.
 
