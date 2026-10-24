@@ -11,7 +11,7 @@ export type MediaRef = {
     readonly type: string
 }
 
-export type LevelInfoTag = { readonly title: string; readonly icon?: string }
+export type LevelInfoTag = { readonly title: string }
 
 /** Level info: chart state, in the snapshot header. Empty strings are unset. */
 export type LevelInfo = {

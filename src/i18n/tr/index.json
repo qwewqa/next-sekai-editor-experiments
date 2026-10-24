@@ -2330,7 +2330,6 @@
     "removed": "Kaldırıldı",
     "tagsAdded": "Eklenen Etiketler",
     "tagsRemoved": "Kaldırılan Etiketler",
-    "tagsChanged": "Değiştirilen Etiketler",
     "order": "Sıra",
     "folder": "Klasör",
     "groupFolder": "Grup Klasörü",
@@ -2348,8 +2347,7 @@
       "previewAudio": "Önizleme Sesi",
       "duration": "Süre",
       "size": "Boyut",
-      "type": "Tür",
-      "icon": "Simge"
+      "type": "Tür"
     },
     "contentsChanged": "İçerik değişti",
     "showMore": "Daha Fazla Göster",

@@ -49,7 +49,7 @@ export type PropertyReference = {
     folder?: { id: number; name?: string }
 }
 
-export type PropertyItem = PropertyReference | { kind: 'tag'; title: string; icon?: string }
+export type PropertyItem = PropertyReference | { kind: 'tag'; title: string }
 
 /** Unformatted historical values; no decoded media or chart objects are retained here. */
 export type PropertyValue =
@@ -219,11 +219,7 @@ export const comparePropertyChanges = (
         items.length
             ? {
                   kind: 'list',
-                  items: items.map(({ title, icon }) => ({
-                      kind: 'tag',
-                      title,
-                      ...(icon === undefined ? {} : { icon }),
-                  })),
+                  items: items.map(({ title }) => ({ kind: 'tag', title })),
               }
             : notSet
     row(info, 'tags', tags(before.levelInfo.tags), tags(after.levelInfo.tags))
@@ -355,6 +351,3 @@ export const propertyItems = (
 })
 
 export { formatPropertyNumber } from '../../utils/formatPropertyNumber'
-
-/** A tag's icon, or Not set when it has none or an empty one. */
-export const propertyTagIcon = (tag: Extract<PropertyItem, { kind: 'tag' }>) => text(tag.icon)

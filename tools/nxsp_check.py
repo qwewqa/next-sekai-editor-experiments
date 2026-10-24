@@ -744,8 +744,8 @@ def check_file(path):
     if "tags" in meta:
         need(isinstance(meta["tags"], list) and meta["tags"], "metadata.tags: empty or not an array")
         for i, tag in enumerate(meta["tags"]):
-            keys_within(tag, ["title", "icon"], f"metadata.tags[{i}]")
-            need(is_str(tag.get("title")) and is_str(tag.get("icon", "")), f"metadata.tags[{i}]")
+            keys_within(tag, ["title"], f"metadata.tags[{i}]")
+            need(is_str(tag.get("title")), f"metadata.tags[{i}]")
     for kind in ("cover", "preview"):
         if kind in meta:
             f = media_form(meta[kind], f"metadata.{kind}", f"assets/{kind}.", by_name)
@@ -1528,11 +1528,11 @@ def read_project(p):
                         issues.append(("schema", path))
                         continue
                     for i, tag in enumerate(item):
-                        if not isinstance(tag, dict) or not is_str(tag.get("title")) or ("icon" in tag and not is_str(tag["icon"])):
+                        if not isinstance(tag, dict) or not is_str(tag.get("title")):
                             issues.append(("schema", f"{path}[{i}]"))
                             continue
                         for name in tag:
-                            if name not in ("title", "icon"):
+                            if name != "title":
                                 issues.append(("unknown-key", f"{path}[{i}].{name}"))
                 elif key in ("cover", "preview"):
                     media = read_media_form(item, path, issues)

@@ -56,8 +56,7 @@
         { "name": "rating", "type": "number", "optional": true }
     ],
     "tag": [
-        { "name": "title", "type": "string" },
-        { "name": "icon", "type": "string", "optional": true }
+        { "name": "title", "type": "string" }
     ],
     "mediaRef": [
         { "name": "hash", "type": "hash16" },

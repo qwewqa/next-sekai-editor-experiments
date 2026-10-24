@@ -2330,7 +2330,6 @@
     "removed": "已移除",
     "tagsAdded": "已新增的標籤",
     "tagsRemoved": "已移除的標籤",
-    "tagsChanged": "已修改的標籤",
     "order": "順序",
     "folder": "資料夾",
     "groupFolder": "圖層資料夾",
@@ -2348,8 +2347,7 @@
       "previewAudio": "預覽音訊",
       "duration": "長度",
       "size": "大小",
-      "type": "類型",
-      "icon": "圖示"
+      "type": "類型"
     },
     "contentsChanged": "內容已變更",
     "showMore": "顯示更多",

@@ -369,6 +369,8 @@ test('unknown top-level and metadata keys are kept as extra; anywhere else they 
         ['metadata.cover.zz', (p: Loose) => (p.metadata.cover.zz = 1)],
         ['metadata.preview.zz', (p: Loose) => (p.metadata.preview.zz = 1)],
         ['metadata.tags[0].zz', (p: Loose) => (p.metadata.tags[0].zz = 1)],
+        // A tag is `{ title }` only.
+        ['metadata.tags[0].icon', (p: Loose) => (p.metadata.tags[0].icon = 'star')],
     ] as const) {
         const read = nxsp(
             await readCrafted((items) => {

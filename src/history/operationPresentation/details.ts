@@ -376,7 +376,6 @@ const nativeRecord = (
                         for (const [key, text, value] of [
                             ['tagsAdded', t.historyChanges.tagsAdded, change.added],
                             ['tagsRemoved', t.historyChanges.tagsRemoved, change.removed],
-                            ['tagsChanged', t.historyChanges.tagsChanged, change.changed ?? 0],
                         ] as const)
                             if (value)
                                 rows.push(...valueRow(key, text, plain(numberText(value, context))))

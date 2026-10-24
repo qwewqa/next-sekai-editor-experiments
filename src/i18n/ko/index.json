@@ -2330,7 +2330,6 @@
     "removed": "삭제됨",
     "tagsAdded": "추가된 태그",
     "tagsRemoved": "삭제된 태그",
-    "tagsChanged": "변경된 태그",
     "order": "순서",
     "folder": "폴더",
     "groupFolder": "그룹 폴더",
@@ -2348,8 +2347,7 @@
       "previewAudio": "미리보기 오디오",
       "duration": "길이",
       "size": "크기",
-      "type": "유형",
-      "icon": "아이콘"
+      "type": "유형"
     },
     "contentsChanged": "내용이 변경됨",
     "showMore": "더 보기",

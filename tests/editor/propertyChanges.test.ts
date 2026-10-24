@@ -7,7 +7,6 @@ import {
     propertyPage,
     propertyRowKey,
     propertySectionKey,
-    propertyTagIcon,
     type PropertyChanges,
     type PropertyField,
     type PropertySectionKind,
@@ -80,17 +79,6 @@ const cases: [string, (value: State) => void, PropertySectionKind, PropertyField
         'tag order',
         (s) => {
             s.levelInfo = { ...s.levelInfo, tags: [...s.levelInfo.tags].reverse() }
-        },
-        'levelInfo',
-        'tags',
-    ],
-    [
-        'tag icon',
-        (s) => {
-            s.levelInfo = {
-                ...s.levelInfo,
-                tags: s.levelInfo.tags.map((tag) => ({ ...tag, icon: '' })),
-            }
         },
         'levelInfo',
         'tags',
@@ -262,39 +250,26 @@ test('normalization, required empty strings, whitespace, false and zero remain d
         after: { kind: 'number', value: 0 },
     })
     assert.equal(changes.rowCount, 2)
-    assert.deepEqual(propertyTagIcon({ kind: 'tag', title: '' }), { kind: 'notSet' })
-    // An empty icon reads as Not set, the one empty word.
-    assert.deepEqual(propertyTagIcon({ kind: 'tag', title: '', icon: '' }), { kind: 'notSet' })
-    assert.deepEqual(propertyTagIcon({ kind: 'tag', title: '', icon: ' ' }), {
-        kind: 'text',
-        value: ' ',
-    })
 })
 
-test('optional tag icon presence and tag order survive the unformatted projection', () => {
+test('tag titles and order survive the unformatted projection', () => {
     const before = state(),
         after = state()
-    before.levelInfo = { ...before.levelInfo, tags: [{ title: ' A ' }, { title: 'B', icon: '' }] }
-    after.levelInfo = {
-        ...after.levelInfo,
-        tags: [
-            { title: 'B', icon: '' },
-            { title: ' A ', icon: '' },
-        ],
-    }
+    before.levelInfo = { ...before.levelInfo, tags: [{ title: ' A ' }, { title: 'B' }] }
+    after.levelInfo = { ...after.levelInfo, tags: [{ title: 'B' }, { title: ' A ' }] }
     const change = row(comparePropertyChanges(before, after), 'levelInfo', 'tags')
     assert.deepEqual(change.before, {
         kind: 'list',
         items: [
             { kind: 'tag', title: ' A ' },
-            { kind: 'tag', title: 'B', icon: '' },
+            { kind: 'tag', title: 'B' },
         ],
     })
     assert.deepEqual(change.after, {
         kind: 'list',
         items: [
-            { kind: 'tag', title: 'B', icon: '' },
-            { kind: 'tag', title: ' A ', icon: '' },
+            { kind: 'tag', title: 'B' },
+            { kind: 'tag', title: ' A ' },
         ],
     })
 })
@@ -407,7 +382,7 @@ test('renaming a folder does not pretend its unchanged members moved', () => {
 test('stored reconstruction and raw memory state produce the same property projection', () => {
     const before = state(),
         after = state()
-    after.levelInfo = { ...after.levelInfo, tags: [{ title: '', icon: '' }], rating: 0 }
+    after.levelInfo = { ...after.levelInfo, tags: [{ title: '' }], rating: 0 }
     after.bgm = { ...after.bgm, offset: 1e-12, meta: { ...after.bgm.meta!, durationMs: 0 } }
     assert.deepEqual(
         comparePropertyChanges(

@@ -5,7 +5,6 @@ import { interpolateRaw } from '../../utils/interpolate'
 import {
     PROPERTY_PAGE_SIZE,
     propertyItems,
-    propertyTagIcon,
     type PropertyField,
     type PropertyValue,
 } from './propertyChanges'
@@ -51,15 +50,9 @@ const page = computed(() =>
                     <template v-if="item.kind === 'reference'">{{
                         propertyReferenceText(item)
                     }}</template>
-                    <template v-else>
-                        <span :class="item.title ? undefined : 'text-fg/80'">{{
-                            item.title || i18n.historyChanges.notSet
-                        }}</span>
-                        <div class="mt-1 flex flex-wrap gap-x-2 text-xs text-fg/80">
-                            <span>{{ i18n.historyChanges.fields.icon }}</span>
-                            <PropertyChangeValue :value="propertyTagIcon(item)" />
-                        </div>
-                    </template>
+                    <span v-else :class="item.title ? undefined : 'text-fg/80'">{{
+                        item.title || i18n.historyChanges.notSet
+                    }}</span>
                 </li>
             </ol>
             <!-- "Items: n/m" only while more remain, as Properties: n/m. -->

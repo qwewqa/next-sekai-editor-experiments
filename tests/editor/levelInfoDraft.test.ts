@@ -58,7 +58,7 @@ test('a changed Initial Life, rating and removed cover are written; an emptied t
 })
 
 test('tags are parsed only when the line was edited, against the live tags', () => {
-    const tags = [{ title: 'Fan-made', icon: 'star' }, { title: 'Expert' }]
+    const tags = [{ title: 'Fan-made' }, { title: 'Expert' }]
     const opening = draftOf({ ...emptyLevelInfo, tags }, 1000)
     const kept = draftOver(opening, { ...opening }, live({ tags }))
     assert.equal(kept.levelInfo.tags, tags)

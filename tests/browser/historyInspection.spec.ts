@@ -86,11 +86,7 @@ const seed = async (
                 title: 'Before title',
                 description: '  first\n\nlast  ',
                 rating: 1.0000001,
-                tags: [
-                    { title: 'Absent icon' },
-                    { title: 'Empty icon', icon: '' },
-                    { title: 'Whitespace icon', icon: '  ' },
-                ],
+                tags: [{ title: 'Tag' }, { title: '' }, { title: '  ' }],
             },
             bgm: {
                 ...live.bgm,
@@ -112,7 +108,7 @@ const seed = async (
                 title: 'After title',
                 description: '  changed\n\nlast  ',
                 rating: 1.0000002,
-                tags: [...before.levelInfo.tags, { title: 'Added tag', icon: 'new' }],
+                tags: [...before.levelInfo.tags, { title: 'Added tag' }],
                 cover: {
                     hash: '2'.repeat(32),
                     filename: 'cover.png',
@@ -659,13 +655,10 @@ test('a removed media section keeps only its before value, and a placeholder is 
     await expect(cover.locator('[data-property-before]')).not.toHaveCount(0)
     await expect(cover.locator('[data-property-after]')).toHaveCount(0)
     await expect(dialog(page)).not.toContainText('Not present')
-    // A tag without an icon, and one with an empty icon, both read Not set, quietly.
-    const tags = row(page, 'tags').locator('[data-property-before]')
-    for (const index of [0, 1]) {
-        const icon = tags.locator('li').nth(index).locator('[data-property-value]')
-        await expect(icon).toHaveText('Not set')
-        await expect(icon).toHaveClass(/text-fg\/80/)
-    }
+    // A tag with an empty title shows Not set in the muted style.
+    const empty = row(page, 'tags').locator('[data-property-before] li').nth(1).locator('span')
+    await expect(empty).toHaveText('Not set')
+    await expect(empty).toHaveClass(/text-fg\/80/)
 })
 
 test('property inspection keeps exact chronological values, whitespace and the live chart', async ({
@@ -1518,12 +1511,9 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
             ['fr', 'tr'].includes(locale) ? '1,0000002' : '1.0000002',
         )
         const tags = modal.locator('[data-property-row="tags"] [data-property-before]')
-        await expect(tags.locator('li').nth(0)).toContainText(messages.historyChanges.notSet)
-        // An empty icon reads as Not set too: Step Details uses one empty word.
-        await expect(tags.locator('li').nth(1)).toContainText(messages.historyChanges.notSet)
-        expect(await tags.locator('li').nth(2).locator('[data-property-value]').textContent()).toBe(
-            '  ',
-        )
+        // An empty title reads Not set; a title of spaces is kept as it is.
+        await expect(tags.locator('li').nth(1)).toHaveText(messages.historyChanges.notSet)
+        expect(await tags.locator('li').nth(2).locator('span').textContent()).toBe('  ')
         for (const field of ['description', 'rating', 'size', 'duration', 'tags']) {
             const comparison = modal.locator(`[data-property-row="${field}"]`).first()
             const geometry = await comparison.evaluate((element) => {

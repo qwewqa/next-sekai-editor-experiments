@@ -7,8 +7,8 @@
     {
       "name": "project.json",
       "method": 8,
-      "crc32": 2574006069,
-      "uncompressedSize": 1496,
+      "crc32": 856638821,
+      "uncompressedSize": 1484,
       "parts": [
         {
           "kind": "bytes",
@@ -70,8 +70,7 @@
                   "title": "Tag"
                 },
                 {
-                  "title": "Icon tag",
-                  "icon": "star"
+                  "title": "Second tag"
                 }
               ],
               "description": "Line one\nLine two",
@@ -1520,7 +1519,7 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 3482912830,
+      "crc32": 2168104888,
       "uncompressedSize": 4850,
       "parts": [
         {
@@ -1542,7 +1541,7 @@
                   }
                 },
                 "time": 1792126795000,
-                "snapshot": "6f38b02f6367f5d66a255253ba873eeb",
+                "snapshot": "999562af272c130cbe25b7c543276a01",
                 "noteCount": 9
               },
               {
@@ -1560,7 +1559,7 @@
                   }
                 },
                 "time": 1792126796000,
-                "snapshot": "fe800dbfd4e0a5df36f976b3895eb373",
+                "snapshot": "bb7bab6e564b8db94bcd0c317104139b",
                 "noteCount": 12,
                 "kept": false
               },
@@ -1579,7 +1578,7 @@
                   }
                 },
                 "time": 1792126797000,
-                "snapshot": "378b9e27d9a17db01b7d279c5d05bc8d",
+                "snapshot": "482a1283f29361be2e822e39136d3cec",
                 "noteCount": 10,
                 "dirty": true
               },
@@ -1598,7 +1597,7 @@
                   }
                 },
                 "time": 1792126798000,
-                "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
+                "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
                 "noteCount": 10
               },
               {
@@ -1618,7 +1617,7 @@
                   }
                 },
                 "time": 1792126799000,
-                "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
+                "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
                 "noteCount": 10,
                 "revisionId": "r001-0000-4000-8000-000000000000",
                 "device": {
@@ -1629,9 +1628,9 @@
               }
             ],
             "roots": {
-              "6f38b02f6367f5d66a255253ba873eeb": [
+              "999562af272c130cbe25b7c543276a01": [
                 1,
-                "682a80bc1a00cfab534aa4fdeae2c440",
+                "de34b56c8236920918fa1ac0efe6cec6",
                 [
                   [
                     "slides",
@@ -1668,9 +1667,9 @@
                 ],
                 9
               ],
-              "378b9e27d9a17db01b7d279c5d05bc8d": [
+              "482a1283f29361be2e822e39136d3cec": [
                 1,
-                "682a80bc1a00cfab534aa4fdeae2c440",
+                "de34b56c8236920918fa1ac0efe6cec6",
                 [
                   [
                     "slides",
@@ -1707,9 +1706,9 @@
                 ],
                 10
               ],
-              "77c0e9da1303c6408802ce6b6c3ad54c": [
+              "b5ba26df2283cb1cd7ac48c385a4e4e8": [
                 1,
-                "131e2143922e8938d0cdd01a620d73cb",
+                "9fff73c5f19f09738772d05baf18b54e",
                 [
                   [
                     "slides",
@@ -1815,66 +1814,66 @@
             },
             "chunks": [
               [
-                "682a80bc1a00cfab534aa4fdeae2c440",
+                "de34b56c8236920918fa1ac0efe6cec6",
                 0,
-                319
+                315
               ],
               [
                 "afdaecb84dce6bbf59f2b3d94fda7cf4",
-                319,
+                315,
                 183
               ],
               [
                 "1402f2c7f6c666905ccf3e5bb4003757",
-                502,
+                498,
                 23
               ],
               [
                 "1014738dcba13b60478ce43afd5339a2",
-                525,
+                521,
                 44
               ],
               [
                 "e9a279deffd46e42dbea2c852e1d9489",
-                569,
+                565,
                 55
               ],
               [
                 "b93755a48d7dca74378d1e854a3e52ac",
-                624,
+                620,
                 49
               ],
               [
                 "fc69f5483924d4aff06683335ded65d1",
-                673,
+                669,
                 35
               ],
               [
                 "40b783550034e9d28d76681825a58fed",
-                708,
+                704,
                 53
               ],
               [
                 "785cf7fc1d8caf4021845009ea643c09",
-                761,
+                757,
                 43
               ],
               [
                 "985cec3836fc092b8502871a62e8a0b7",
-                804,
+                800,
                 75
               ],
               [
-                "131e2143922e8938d0cdd01a620d73cb",
-                879,
-                318
+                "9fff73c5f19f09738772d05baf18b54e",
+                875,
+                314
               ]
             ],
             "undoStack": {
               "base": 0,
               "slots": [
                 {
-                  "snapshot": "6f38b02f6367f5d66a255253ba873eeb",
+                  "snapshot": "999562af272c130cbe25b7c543276a01",
                   "step": {
                     "kind": "init",
                     "operation": {
@@ -1891,7 +1890,7 @@
                   }
                 },
                 {
-                  "snapshot": "378b9e27d9a17db01b7d279c5d05bc8d",
+                  "snapshot": "482a1283f29361be2e822e39136d3cec",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -1906,7 +1905,7 @@
                   }
                 },
                 {
-                  "snapshot": "77c0e9da1303c6408802ce6b6c3ad54c",
+                  "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -1930,12 +1929,12 @@
     {
       "name": "history/chunks.bin",
       "method": 0,
-      "crc32": 2853292100,
-      "uncompressedSize": 1197,
+      "crc32": 375097878,
+      "uncompressedSize": 1189,
       "parts": [
         {
           "kind": "bytes",
-          "base64": "bZFBboMwEEWvgmY9IrYBQ9apUkVqV+mOsjB4TC2BjcBJTlGp+96id2rPURmaXTej+TP/P1uamjPGMMwXQpZyUWBdc4QHMuoyBECGvMFaIBzVEgB51M3meVbWwZZcC/SDb9UAm/9sNQEaNSz3tV38oAJpQHFHHP2gaQZk6yCmguopMX/j+HSGcHIuKrHl4DFuHSAc/Dj5hebEkAppcraujz44vKk5rN2TdZR4R69u7cLNA9Y1vKg+/hJOnXdJUD0gLEHNsOI7uZdd1haS56IsOG+FyYysulZkXVsxDgidv9KcTq4H5AWCHVVPuyhjnlReir0xiuUFE7olksxoristJdeZAYRppqulWzpOGSAvEdRFW78bJ4oILiKm0ExXJZPUlnm2L6TMKkZSSCnKXLJKAsLP51fy/fH+LwbjWZvmF82UwQ7CIAxA/6XnZhnM6ccQDrh1SkKYQfD7DeIu29ymxiAHQoA2L68FIQRDhiWWRY3QUqeC8TC76pS5EpZFNRrIn0dge0vDvXEcqMbrGwGC0ZaUG/bTzBB8f5nESnzQRb5lNu9CJrSifgWnbHPuXU5vfNXbOluYZv+KTKIQHBlWm9kOkW+TqlPQ7fumIs3uT2iinVi5UVMdTaAZmI0d9JmWiLHPjZG6hScfjtrF2iBP/8AP3pOUd4uONtAxNDLQMYnVibbQMTQ10DGOjQUAi4421DHRMdAx1DPVMdBRysnMS00sUtJRKsnMTQ1OTsxJVdJJS8wpTo2NBQCLjjbQ0TXTMTTSMdQx0DHQUUpJTUsszSlRgvByMvNSE4uUYnWijXQM9IzRgI6ZnhkKMMdvSiwAi4421DHQ0TXTMTTSSUvMKU7VUcrJzEtNLFKK1Yk21DHSMdAz1zHQM9YpKSpFkosFAIuONtQx1DHQMdJRyk9JUdIx0DPVMdRRyi8tCSxNTFGKjQUAi4421DHUMdBRSq5MzFPSUUpJTUsszSlR0lHKyUzPKEEWSUvMKU7VMYRCpZzMvNTEIqXYWACLjjbSMdYxNNUx1NE11DHQMzLVUUpOzStJLVLSUcrM8y8tCc7MS1WKjQUAi46ONtQx1DEz0THQUUpJTUsszSlRwspKS8wpTtUx0DGCspTy8vNSYcLoypQSk0syy1KVdJRyMvNSE4tg4hDSUEepJL8AQ29sbCwAVZFBb4MwDIX/CvJpk6w2CRDg3KlTpfXU3VgPhjgMCRIEof37U2h72CXys9/7nCi1FEJgmFdGsZMqx7qWCB9saR0CoEB5xVohHGkJgDLq68Nzpt7BI7kd0A2+oQEe/ktvGNDSsLzG/eIHCmwA1Qtx9IPhGVBsjZgK1HFin+24OkU4OReVeuTgM04dIBz8OPmF58QyhV1y6V0XfXD4pTls1VfvOPGOf9xWhbsHrGv4pi7eEk6td0mgDhCWQDNs+FZXuk2bXMtMFbmUjbKp1WXbqLRtSiEBofU3nneT6wBljtCP1PE+yphnygpVWUsiy4UyDbMW1khTGq2lSS0gTDPfer7vxikFlAUCrab3+3HiiJAqYkotUqOKpjK2lU1GggrKK6UrY0stcrG9v/VuDcnbmZbA8/uTp/7xMP7v9foH"
+          "base64": "bZFNTsMwEIWvEs16lPoncdJ1URESrMouZOHE42ApsaPEbU+BxJ5bcCc4B3IKOzaj+Wbee7Y0DWeMYVzOhCznosSm4Qh3ZPV5jIAMeYuNQDjqNQLyxO1N86Sdh5tzKzCModMj3PQnZwjQ6nH9W7s1jDqSARR/EccwGloA2TZIrqgHyuzvOD0tER68TyRuPrhPWw8IhzDNYaUls6Rjnp2cH5IODq96iVv36DxlwdOL37p4DYBNA896SL+EE/XBmywmTNyrveplVypeiKrkvBNWWlX3nZB9VzMOCH240JLPfgDkJYKb9EC7hMlPuqjE3lrNipIJ0xEpZg03tVGKG2kBYV7o4uiaT7ME5BWCPhsXdtNMKYKLFFMaZuqKKeqqQu5LpWTNSAmlRFUoVitA+P74zL7e3/6NwXTRtv0BzZTBDsIgDED/pedmGczpxxAOuHVKQphB8PsN4i7b3KbGIAdCgDYvrwUhBEOGJZZFjdBSp4LxMLvqlLkSlkU1GsifR2B7S8O9cRyoxusbAYLRlpQb9tPMEHx/mcRKfNBFvmU270ImtKJ+Badsc+5dTm981ds6W5hm/4pMohAcGVab2Q6Rb5OqU9Dt+6Yize5PaKKdWLlRUx1NoBmYjR30mZaIsc+NkbqFJx+O2sXaIE//wA/ek5R3i4420DE0MtAxidWJttAxNDXQMY6NBQCLjjbUMdEx0DHUM9Ux0FHKycxLTSxS0lEqycxNDU5OzElV0klLzClOjY0FAIuONtDRNdMxNNIx1DHQMdBRSklNSyzNKVGC8HIy81ITi5RidaKNdAz0jNGAjpmeGQowx29KLACLjjbUMdDRNdMxNNJJS8wpTtVRysnMS00sUorViTbUMdIx0DPXMdAz1ikpKkWSiwUAi4421DHUMdAx0lHKT0lR0jHQM9Ux1FHKLy0JLE1MUYqNBQCLjjbUMdQx0FFKrkzMU9JRSklNSyzNKVHSUcrJTM8oQRZJS8wpTtUxhEKlnMy81MQipdhYAIuONtIx1jE01THU0TXUMdAzMtVRSk7NK0ktUtJRyszzLy0JzsxLVYqNBQCLjo421DHUMTPRMdBRSklNSyzNKVHCykpLzClO1THQMYKylPLy81JhwujKlBKTSzLLUpV0lHIy81ITi2DiENJQR6kkvwBDb2xsLABVkUFvgzAMhf8K8mmTrC4JEODcqdOk9dTdWA+GOAwJEgSh/ftToD3sEvnZ731OlFoKITDMK6M4SJVjXUuEd7a0DgFQoLxirRBOtARAGfV195ypd7AntwO6wTc0wO6/9IYBLQ3Lc9wvfqDABlA9ESc/GJ4BxdaIqUAdJ/bRjqtThE/nolJ7Dj7i1AHC0Y+TX3hOLFM4JJfeddEHx1+aw1Z99Y4T7/jHbVW4e8C6hm/q4i3hwq13JglRRt3qSrdpk2uZqSKXslE2tbpsG5W2TSkkILT+xvNhch2gzBH6kTp+izLmmbJCVdaSyHKhTMOshTXSlEZraVILCNPMt57vh3FKAWWBQKvp/ds4cURIFTGlFqlRRVMZ28omI0EF5ZXSlbGlFrnYnt56t4bk5UxL4Pn1wVP/eBi/9nr9Aw=="
         }
       ]
     },

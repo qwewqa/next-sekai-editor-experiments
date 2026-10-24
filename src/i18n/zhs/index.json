@@ -2330,7 +2330,6 @@
     "removed": "已移除",
     "tagsAdded": "已添加的标签",
     "tagsRemoved": "已移除的标签",
-    "tagsChanged": "已修改的标签",
     "order": "顺序",
     "folder": "文件夹",
     "groupFolder": "群组文件夹",
@@ -2348,8 +2347,7 @@
       "previewAudio": "预览音频",
       "duration": "时长",
       "size": "大小",
-      "type": "类型",
-      "icon": "图标"
+      "type": "类型"
     },
     "contentsChanged": "内容已更改",
     "showMore": "显示更多",

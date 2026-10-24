@@ -2330,7 +2330,6 @@
     "removed": "Supprimé",
     "tagsAdded": "Tags ajoutés",
     "tagsRemoved": "Tags supprimés",
-    "tagsChanged": "Tags modifiés",
     "order": "Ordre",
     "folder": "Dossier",
     "groupFolder": "Dossier de groupes",
@@ -2348,8 +2347,7 @@
       "previewAudio": "Aperçu audio",
       "duration": "Durée",
       "size": "Taille",
-      "type": "Type",
-      "icon": "Icône"
+      "type": "Type"
     },
     "contentsChanged": "Contenu modifié",
     "showMore": "Afficher plus",

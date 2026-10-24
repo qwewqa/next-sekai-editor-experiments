@@ -242,7 +242,7 @@ export const records = {
         f('preview', 'mediaRefOrEmpty'),
         f('rating', 'number', optional),
     ],
-    tag: [f('title', 'string'), f('icon', 'string', optional)],
+    tag: [f('title', 'string')],
     mediaRef: [
         f('hash', 'hash16'),
         f('filename', 'string'),
