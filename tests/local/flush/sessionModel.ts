@@ -157,7 +157,7 @@ export class Run {
     build: SaveBuild | undefined
     /** Saves whose file landed and whose binding was not recorded by the page that wrote it. */
     readonly unbound: SaveBuild[] = []
-    /** The newest Save of each chain whose binding is recorded: I-11 is judged against it. */
+    /** The newest Save of each chain whose binding is recorded, for `cutCheck`. */
     readonly bound = new Map<string, SaveBuild>()
     saves = 0
     other: Visit | undefined
@@ -253,7 +253,8 @@ export class Run {
             { now: () => 1_792_130_467_000 + ++this.journalWrites },
         )
         const visit = Object.assign(page, { name }) as Visit
-        // Every write the page's journal makes is noted for J3, whoever asks for it (a hide, a fork).
+        // Every write the page's journal makes is noted for `checkJournals`, whoever asks for it (a
+        // hide, a fork).
         const write = visit.writer.write.bind(visit.writer)
         visit.writer.write = () => {
             const session = visit.flusher.session
@@ -444,25 +445,25 @@ export class Run {
             this.storage.getItem(key) !== before
         )
             this.fail(
-                `J4: a second hide at seq ${earlier.seq} of session ${session.id} rewrote the journal key`,
+                `a second hide at seq ${earlier.seq} of session ${session.id} rewrote the journal key`,
             )
-        // I-14: a hide whose journal verified names the newest entry the page holds, and the
+        // A hide whose journal verified names the newest entry the page holds, and the
         // state it gives back is the one the user sees: the ledger keeps it.
         if (unflushed && written) {
             const seq = this.journalSeqs().get(session.id) ?? 0
             if (seq < flusher.newestSeq(session))
                 this.fail(
-                    `I-14: the hide reported a journal covering seq ${flusher.newestSeq(session)} and none does`,
+                    `the hide reported a journal covering seq ${flusher.newestSeq(session)} and none does`,
                 )
             const list = this.hid.get(session.id) ?? []
             const live = this.slots[this.index]!
             list.push({ seq, root: this.exact.has(live) ? rootOf(live) : undefined })
             this.hid.set(session.id, list)
         }
-        // I-17: a page whose entries are all committed writes no journal (one an earlier page
+        // A page whose entries are all committed writes no journal (one an earlier page
         // left stays until a load finds it covered).
         if (!unflushed && this.storage.getItem(key) !== before)
-            this.fail('I-17: a journal written while nothing is unflushed')
+            this.fail('a journal written while nothing is unflushed')
     }
 
     // The Save: reserve and build, the write, the end (the binding).
@@ -481,7 +482,7 @@ export class Run {
             const second = this.flusher.reserveSave()
             if (second)
                 this.fail(
-                    `P6: a second reservation (seq ${second.seq}) was handed out in session ${held.sessionId} while seq ${held.seq} is held`,
+                    `a second reservation (seq ${second.seq}) was handed out in session ${held.sessionId} while seq ${held.seq} is held`,
                 )
         }
         // The build refuses while an import of the chain runs ('importing').
@@ -570,7 +571,7 @@ export class Run {
             const expected = stayed ? 'added' : 'notCurrent'
             if (result !== expected)
                 this.fail(
-                    `I-14: the Save at ${String(build.seq)} of ${build.sessionId} ended ${result}, not ${expected}`,
+                    `the Save at ${String(build.seq)} of ${build.sessionId} ended ${result}, not ${expected}`,
                 )
             // Bound by this page: nothing left for another to recognise. A session the page left
             // got neither the entry nor the binding: the file waits to be recognised.
@@ -672,7 +673,7 @@ export class Run {
     }
 
     /**
-     * I-11: the cut only under-claims. A cut that carries means the chain's rows up to it are the
+     * The cut only under-claims. A cut that carries means the chain's rows up to it are the
      * file's, by (kind, time, snapshot). Judged after every operation, for the chain's newest Save.
      */
     private async cutCheck(build: SaveBuild) {
@@ -707,7 +708,7 @@ export class Run {
         )
             return
         this.violations.push(
-            `I-11: the cut of ${build.revisionId} carries, but the chain's ${have.length} rows up to it differ from the file's ${held.length}`,
+            `the cut of ${build.revisionId} carries, but the chain's ${have.length} rows up to it differ from the file's ${held.length}`,
         )
     }
 
@@ -798,7 +799,7 @@ export class Run {
             }
             if (!ok)
                 this.fail(
-                    `I-14: the journal of session ${outcome.sessionId} at seq ${seq} came out as ${outcome.kind}, and the state the user left in it is nowhere`,
+                    `the journal of session ${outcome.sessionId} at seq ${seq} came out as ${outcome.kind}, and the state the user left in it is nowhere`,
                 )
         }
     }
@@ -858,7 +859,7 @@ export class Run {
             this.index = index + 1
             this.append('edit', taken)
             // As the startup does (`open.ts`): the journal's key goes once the continuation's
-            // entry holding its work is committed (J3).
+            // entry holding its work is committed.
             if (found) {
                 const seq = visit.flusher.newestSeq(session)
                 visit.writer.retire(found, session.id, seq)
@@ -1279,9 +1280,7 @@ export class Run {
             (row) => row.sessionId === session.id && row.kind === 'recovered',
         )
         if (!recovered || toHex(recovered.snapshot as Uint8Array) !== rootOf(state))
-            this.fail(
-                `I-14: the journal-only reload of session ${session.id} did not store the edits`,
-            )
+            this.fail(`the journal-only reload of session ${session.id} did not store the edits`)
     }
 
     // ---- the oracle ----
@@ -1305,21 +1304,21 @@ export class Run {
                 for (const entry of session.pending)
                     if (!earlier.has(entry))
                         this.fail(
-                            `after ${after}: P1: session ${session.id} (${visit.name}) is not the current one and gained the pending ${entry.kind} entry ${entry.seq}`,
+                            `after ${after}: session ${session.id} (${visit.name}) is not the current one and gained the pending ${entry.kind} entry ${entry.seq}`,
                         )
             this.seenPending.set(session, new Set(session.pending))
             // Committed and strict `seq`s never go back.
             const seen = this.seenSeqs.get(session)
             if (seen && (session.ackedSeq < seen.acked || session.strictSeq < seen.strict))
                 this.fail(
-                    `after ${after}: P4: session ${session.id} (${visit.name}) went back to ackedSeq ${session.ackedSeq}, strictSeq ${session.strictSeq} from ${seen.acked}, ${seen.strict}`,
+                    `after ${after}: session ${session.id} (${visit.name}) went back to ackedSeq ${session.ackedSeq}, strictSeq ${session.strictSeq} from ${seen.acked}, ${seen.strict}`,
                 )
             this.seenSeqs.set(session, { acked: session.ackedSeq, strict: session.strictSeq })
         }
         this.checkJournals(after)
     }
 
-    /** J3: once a commit covers a journal's `seq` and the page is idle, that journal key is gone. */
+    /** Once a commit covers a journal's `seq` and the page is idle, that journal key is gone. */
     private checkJournals(after: string) {
         for (const [key, journal] of this.journals) {
             const { visit, session } = journal
@@ -1335,7 +1334,7 @@ export class Run {
                 !session.memoryOnly.length
             )
                 this.fail(
-                    `after ${after}: J3: the journal of session ${session.id} at seq ${journal.seq} is still stored after a commit covered seq ${session.ackedSeq} (${visit.name})`,
+                    `after ${after}: the journal of session ${session.id} at seq ${journal.seq} is still stored after a commit covered seq ${session.ackedSeq} (${visit.name})`,
                 )
         }
     }
@@ -1355,7 +1354,6 @@ export class Run {
         )
         for (const line of world.violations.slice(this.checked)) found.push(line)
         this.checked = world.violations.length
-        // I-11 for the newest Save of each chain, after every operation.
         if (this.visit.page.alive && !this.paused && !this.flags.noStorage)
             for (const build of this.bound.values()) await this.cutCheck(build)
         for (const line of this.violations.splice(0)) found.push(line)
@@ -1398,7 +1396,7 @@ export class Run {
                     const commit = this.rowCommit.get(`${session.id}#${seq}`)
                     if (commit !== undefined && commit > this.lastStrict)
                         this.fail(
-                            `after ${after}: I-14: the flusher takes seq ${seq} of session ${session.id} for strict (strictSeq ${session.strictSeq}), but only a relaxed commit holds it`,
+                            `after ${after}: the flusher takes seq ${seq} of session ${session.id} for strict (strictSeq ${session.strictSeq}), but only a relaxed commit holds it`,
                         )
                 }
             }
@@ -1466,7 +1464,7 @@ export class Run {
             for (const session of sessionsOf(flusher))
                 if (flusher.unflushed(session))
                     this.fail(
-                        `I-14: session ${session.id} (${visit.name}) has entries not committed after a strict flush: ${JSON.stringify([session.pending.length, session.memoryOnly.length, session.ackedSeq, session.strictSeq, session.reserved?.seq, session.stored, flusher.session === session])}`,
+                        `session ${session.id} (${visit.name}) has entries not committed after a strict flush: ${JSON.stringify([session.pending.length, session.memoryOnly.length, session.ackedSeq, session.strictSeq, session.reserved?.seq, session.stored, flusher.session === session])}`,
                     )
         }
         await this.check('finish')
@@ -1474,7 +1472,7 @@ export class Run {
         await this.replay()
         await this.settle()
         await this.check('finish')
-        // I-14: every row a strict commit held before a kill or power loss is still stored, or
+        // Every row a strict commit held before a kill or power loss is still stored, or
         // covered by a `recovered` row above it.
         const stored = rows(this.world, 'entries')
         for (const [key, entry] of this.mustSurvive) {
@@ -1485,7 +1483,7 @@ export class Run {
             )
             if (!has && !covered && rows(this.world, 'sessions').has(entry.sessionId))
                 this.fail(
-                    `I-14: entry ${entry.seq} (${entry.kind}) of session ${entry.sessionId} was stored strictly and is gone (${key})`,
+                    `entry ${entry.seq} (${entry.kind}) of session ${entry.sessionId} was stored strictly and is gone (${key})`,
                 )
         }
     }

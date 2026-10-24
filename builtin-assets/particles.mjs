@@ -3,7 +3,7 @@
 // runs up from the judge line at -1, one unit a lane) over their own 0 to 1 progress; sprite indexes
 // follow particleSprites in manifest.mjs. Particles blend normally, so a white-hot core is a white
 // particle over a tinted one.
-// Each kind works like the base set's effect of the same role (Next SEKAI 01, work/assets/a1b5.md):
+// Each kind works like the base set's effect of the same role (Next SEKAI 01):
 // the same groups and counts, the same motion (where each part starts, how it moves, grows and
 // fades), drawn with our own sprites of the same kind. Streams of small particles stay streams;
 // fixed placements (bursts, fans, confetti rings) are generated here rather than copied.

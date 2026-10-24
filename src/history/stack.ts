@@ -368,7 +368,7 @@ const sameSelection = (a: State, b: State) =>
 
 /**
  * Pushes a state: an edit, or Restore of a History entry, which leaves the peek first.
- * An edit that leaves the chart as it was is no step (owner, 2026-10-19): the chart is compared
+ * An edit that leaves the chart as it was is no step: the chart is compared
  * as its stored records, so it holds however the entities were rebuilt. A selection it changed
  * still takes effect, as every selection change does, without a step. Returns whether a step
  * was pushed, so a caller tells the user of an edit only when there was one.

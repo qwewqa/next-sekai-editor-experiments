@@ -80,7 +80,7 @@ for (const chart of charts) {
             body: JSON.stringify({ ...figure, editsMs: edits.ms }),
             contentType: 'application/json',
         })
-        // 14% (owner, 2026-10-24): the History and Save work grew the heap by about 11.8%, and Stage 1's
+        // 14%: the History and Save work grew the heap by about 11.8%, and Stage 1's
         // later features and the idle vector compile (bounded by its cap) bring it to about 13%.
         expect(heap / MB).toBeGreaterThanOrEqual(chart.baselineMb * 0.9)
         expect(heap / MB).toBeLessThanOrEqual(chart.baselineMb * 1.14)

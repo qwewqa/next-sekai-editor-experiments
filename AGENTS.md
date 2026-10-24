@@ -12,6 +12,7 @@ It holds only what is specific to agents. Read the project's own docs first:
 
 - When a rule in these docs gets in the way or misses a case, name the rule, the case and a proposed change, and raise it. Do not bend or rewrite a rule silently. Once the change is agreed, update every place that states the rule in the same change.
 - Commit only what stays useful to later, unrelated work (CONTRIBUTING, "Docs"). Status reports, fix logs and specs for a single feature stay out of the repository.
+- Never cite plans, briefs, reviews or any other file outside the repository in code, tests or docs, and keep each rule at the scope it was made for (CONTRIBUTING, "Docs").
 
 ## Writing
 

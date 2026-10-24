@@ -78,7 +78,7 @@ export default tsEslint.config(
         },
     },
 
-    // Where platform names may appear (Part 0, 0.11.1): native code stays out of shared code.
+    // Where platform names may appear: native code stays out of shared code.
     {
         files: ['src/**/*.{ts,vue}'],
         // The native implementation, the native-only folders and the one loader that imports them.
@@ -179,7 +179,7 @@ export default tsEslint.config(
         },
     },
 
-    // History's time (Part 1 §1.6.8.7): local time is read only by the calendar module, and every
+    // History's time: local time is read only by the calendar module, and every
     // date and time on a History surface is written through the History clock and `historyFormat`.
     // These are two rules of the local plugin and add no `no-restricted-imports` object: a second
     // one would replace the native-code bans above.
@@ -194,7 +194,7 @@ export default tsEslint.config(
         plugins: { local },
         rules: { 'local/no-local-time': 'error' },
     },
-    // A day of use is not a calendar day (I-11): only countDayOfUse and NO_USE_DAY (days.ts) and
+    // A day of use is not a calendar day: only countDayOfUse and NO_USE_DAY (days.ts) and
     // the row types and storedDay (records/rows.ts) make a UseDay.
     {
         files: ['src/**/*.{ts,vue}'],
@@ -214,7 +214,7 @@ export default tsEslint.config(
         rules: { 'local/history-imports': 'error' },
     },
 
-    // The storage worker's covered reads go through the storedRead gate (Part 1 §1.6.5).
+    // The storage worker's covered reads go through the storedRead gate.
     {
         files: ['src/**/*.{ts,vue}'],
         plugins: { local },

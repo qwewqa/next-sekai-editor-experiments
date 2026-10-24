@@ -2,13 +2,13 @@
 
 How the editor's stored and exchanged formats change, and what each version number does. Read this before changing anything a file, a database row, a journal or an operation holds.
 
-The code is the record: where this page and the code disagree, the code wins. The design record is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms), kept outside this repository; this page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in [nxsp-format.md](nxsp-format.md).
+The code is the record: where this page and the code disagree, the code wins. This page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in [nxsp-format.md](nxsp-format.md).
 
 ## 1. The ruling
 
-- **Until Stage 1 ships (v0.6.0), formats change in place at their current version**, with no version bump and no compatibility code, because nothing has shipped (owner, 2026-10-19). Keep the goldens, the codec tests and `tools/fields-v1.json` in step with every such change. Regenerate a golden with `NSE_WRITE_GOLDEN=1` and say so in the commit.
+- **Until Stage 1 ships (v0.6.0), formats change in place at their current version**, with no version bump and no compatibility code, because nothing has shipped. Keep the goldens, the codec tests and `tools/fields-v1.json` in step with every such change. Regenerate a golden with `NSE_WRITE_GOLDEN=1` and say so in the commit.
 - **From the ship, every rule below applies.** A format byte, a reader rule or a version value that is out in people's browsers and apps cannot be taken back: stale tabs, store builds and the APK keep reading with the rule they shipped.
-- **Readers before writers.** A reader that understands a thing ships (and reaches users) before any writer writes it. Auto-updating web builds soften this; stores, the APK and stale tabs do not (Part 4 4.9.4).
+- **Readers before writers.** A reader that understands a thing ships (and reaches users) before any writer writes it. Auto-updating web builds soften this; stores, the APK and stale tabs do not.
 - **The lowest-version rule.** A writer writes the lowest version number that holds what it writes, so a file that uses no newer feature stays readable, with unchanged hashes, by older builds.
 
 ## 2. Every version number
@@ -24,8 +24,8 @@ The code is the record: where this page and the code disagree, the code wins. Th
 | `RECORDS_V` (root `v`; journals' `recordsV`) | 1 | every root; every journal | The snapshot records: positions, the root and node form, the canonical rule. Rises when a record's positions or values change, and with `LATEST_REVISION`; also with `levelVersion` when level data gains something the records must hold too (a new field or choice value). `levelVersion` can rise alone for a change the records already express (nested folders). | A file: `newer-history`. A stored root: the session or entry is "Needs a newer version", never damaged. A journal: left in place. |
 | `SESSION_V` | 1 | session rows | How a session's stack and entries are read. | Newer: "Needs a newer version" for the session and its whole chain. Any other value (0, a non-integer, absent): not read, and not called newer. |
 | `JOURNAL_VERSION` | 1 | journals | A journal field an older build must not drop or misread. | Newer: left in place for a later build. Any other value (0, a non-integer): its bytes go to the `recovered` store, nothing is lost. |
-| `DB_VERSION` | 1 | IndexedDB | A store or index added; the "stop old tabs" lever. | A newer database opens read-only (Part 1 §1.6.1). |
-| `meta.formatVersion` (`FORMAT_VERSION`) | 1 | the `meta` store | The rules GC and cleanup use (§1.6.8.6). | An unknown value stops GC and cleanup. |
+| `DB_VERSION` | 1 | IndexedDB | A store or index added; the "stop old tabs" lever. | A newer database opens read-only. |
+| `meta.formatVersion` (`FORMAT_VERSION`) | 1 | the `meta` store | The rules GC and cleanup use. | An unknown value stops GC and cleanup. |
 | Dump `version` (`DUMP_VERSION`) | 1 | the dump format | The raw-data dump. | Refused. |
 | operation `version`, per id | 1 | the operation envelope | One operation's `data` shape. | An unknown id or version renders its `fallback`; a known id whose `data` fails its codec reads "cannot read the details", never damage. |
 
@@ -51,7 +51,7 @@ What a later build may add without changing an older reader's behaviour, and wha
 | `parts` | `project.json` | Any key is unknown (partial open); `parts` is never kept. | Reserved for keys that name a new ZIP entry, so an older build's separate copy never carries a pointer without its entry. Raises `patch`. |
 | `cache/` | ZIP entries | Ignored, never copied. | Derived data only, each item tied to a `revision.id` or a SHA-256; it must work without it. |
 | New operation ids | operation envelope | Renders `fallback`; no partial open, no version. | See §5. |
-| Trailing record fields, new enum values, new archetypes | records, level data | Positional records with hashes cannot carry ignorable extras. Raises `RECORDS_V` and `levelVersion`; an older reader meets such a chain as "Needs a newer version". | Readers before writers. `npm run format:bump` is planned release tooling (Part 4 4.9.4); until it exists, raise `levelVersion`, the root `v` and `RECORDS_V` together and freeze the old table by hand. |
+| Trailing record fields, new enum values, new archetypes | records, level data | Positional records with hashes cannot carry ignorable extras. Raises `RECORDS_V` and `levelVersion`; an older reader meets such a chain as "Needs a newer version". | Readers before writers. `npm run format:bump` is planned release tooling; until it exists, raise `levelVersion`, the root `v` and `RECORDS_V` together and freeze the old table by hand. |
 | `revision`, `summary` | `project.json` | Unknown keys inside are ignored; every write replaces both. | A derived value carries the `revisionId` it was computed for. |
 | `patch` | `project.json` | See §2. | Raise it for additive content (§4). |
 
@@ -87,8 +87,8 @@ Work down the list in order. The first row that fits decides the number.
    - for an `x` a build starts to write: its row in `PATCH_TABLE.carrier`, which is what makes `patchOf` write the new `patch` (the writer scans what it emits and what it carries, with `carriersIn`);
    - the independent checker `tools/nxsp_check.py` (strict mode and `--read`), and `tools/fields-v1.json` through `npm run format:gen` for any record change;
    - the goldens, **in this order**: `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts` (the builder golden, `tests/local/nxsp/golden-v1/`), then `NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts` (the conformance cases are built from it), then `uv run python -I tools/nxsp_check.py` over `golden-v1/write-*.nxsp` and every `plan-conformance-v1/*/expected.nxsp`; for a record change `npm run format:gen` and the records goldens (`tests/local/records/golden-v1/`, `schema-v1/`). The long-history sample (`npm run samples:long-history`) is kept outside the repository, in the nearest `samples/` folder above the checkout or in `NSE_SAMPLES_DIR` (`scripts/samples.mjs`). Regenerate it and run `tests/samples/sampleFormat.test.ts`. After the ship a golden is never edited: a new generation adds a new golden;
-   - `tests/local/nxsp/agreement.test.ts` (a plan-derived expectation for the new case, beside the readers' agreement);
-   - the design record (Part 1 §1.6.11.4–§1.6.11.8), the byte-level description `docs/nxsp-format.md`, this page, and `CHANGELOG.md` under Unreleased when users see it;
+   - `tests/local/nxsp/agreement.test.ts` (an expectation for the new case, beside the readers' agreement);
+   - the byte-level description `docs/nxsp-format.md`, this page, and `CHANGELOG.md` under Unreleased when users see it;
    - the user-facing line, if the open should say something, in all seven locales.
 4. **Run** the reader agreement test (both readers must open every probe alike), the checker over the regenerated goldens, `npm test`, and the open, save and history browser specs.
 5. **Say it in the commit:** which number moved and why, and that readers ship first.

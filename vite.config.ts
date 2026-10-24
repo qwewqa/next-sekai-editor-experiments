@@ -17,7 +17,7 @@ import { themes } from './src/themes'
 const repository = process.env.GITHUB_REPOSITORY || 'qwewqa/next-sekai-editor-experiments'
 const root = fileURLToPath(new URL('.', import.meta.url))
 
-// The Vite entries (Part 5, 5.1.3); the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
+// The Vite entries; the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
 const pages = (mode: string) => ({
     index: resolve(root, 'index.html'),
     ...(mode !== 'native' && existsSync(resolve(root, 'privacy/index.html'))
@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => ({
         watch: { ignored: ['**/test-results*/**', '**/playwright-report/**'] },
     },
     resolve: {
-        // Native mode (Part 2, 2.4.1): #platform and #asset-defaults take their native targets.
+        // Native mode: #platform and #asset-defaults take their native targets.
         conditions: mode === 'native' ? ['native', ...defaultClientConditions] : undefined,
     },
     build: {
@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => ({
         rolldownOptions: { input: pages(mode) },
     },
     // The storage worker is written as a module worker and emitted as a classic one: Firefox 105
-    // has no module workers, and an iife build can't split (Part 1 §1.6.5).
+    // has no module workers, and an iife build can't split.
     worker: {
         format: 'iife',
     },
@@ -85,7 +85,7 @@ export default defineConfig(({ mode }) => ({
             },
         },
         {
-            // The apps' page has no web-only tags or icon (Part 2, 2.7.1).
+            // The apps' page has no web-only tags or icon.
             name: 'native-html',
             apply: () => mode === 'native',
             transformIndexHtml: nativeIndexHtml,
@@ -97,7 +97,7 @@ export default defineConfig(({ mode }) => ({
             transformIndexHtml: applyTestSite,
         },
         {
-            // The policy (Part 0 §0.9.2) as the first child of <head>, hashing the inline scripts as they
+            // The policy as the first child of <head>, hashing the inline scripts as they
             // end up, so it runs after theme-script. `vite dev` has none unless NSE_DEV_CSP=1.
             name: 'csp',
             apply: (_config, { command }) => command === 'build' || process.env.NSE_DEV_CSP === '1',

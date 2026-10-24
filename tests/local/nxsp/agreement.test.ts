@@ -598,7 +598,7 @@ test('the reader and the checker open every probe alike', { skip: !hasUv }, asyn
             }
             assert.deepEqual(py, js, `${name}: ${JSON.stringify(line.report)}`)
             const planned = expectedByPlan[name]
-            if (planned) assert.deepEqual(js, planned, `${name} by the plan`)
+            if (planned) assert.deepEqual(js, planned, `${name} by the format`)
             // Never the dangerous direction: a file the checker passes always opens fully.
             if (strict.includes(`ok ${paths[i] ?? ''}`))
                 assert.deepEqual([js.kind, js.open], ['nxsp', 'full'], name)

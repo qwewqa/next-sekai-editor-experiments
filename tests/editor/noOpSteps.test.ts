@@ -11,8 +11,8 @@ import { createTransaction } from '../../src/state/transaction'
 import { initialLife, initialStep, noteAdd } from '../helpers/historySteps'
 import { add, baseState, edits, entityAt, groupId, kinds, stageId } from './sameBeatKinds'
 
-// An action whose result equals the chart it started from adds no History step (owner,
-// 2026-10-19). Equal means the same stored records in the same order, so a rebuilt entity with
+// An action whose result equals the chart it started from adds no History step.
+// Equal means the same stored records in the same order, so a rebuilt entity with
 // the same values is no change, and a reorder of same-beat objects is one.
 
 const note = (beat: number, left = 0): NoteObject => ({

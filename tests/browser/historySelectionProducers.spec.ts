@@ -81,7 +81,7 @@ test('Cut retains protected BPM and excludes derived connector operands from act
 })
 
 // A connector has no remover, so a connector-only Cut removes nothing: it copies, as Cut of the
-// protected initial BPM does, and pushes no step (owner, 2026-10-19: no step for a no-op).
+// protected initial BPM does, and pushes no step.
 test('connector-only Cut copies and leaves no step', async ({ page }) => {
     await seed(page, [[{ beat: 2 }, { beat: 4 }]])
     await page.evaluate(async () => {
@@ -312,8 +312,8 @@ test('Scale retains displaced principal participation and exact survivor lineage
     })
 })
 
-// Dragging the factor back to where it started leaves the chart as it was: no step (owner,
-// 2026-10-19). The session ends and the selection is as the session left it.
+// Dragging the factor back to where it started leaves the chart as it was: no step.
+// The session ends and the selection is as the session left it.
 test('a net-zero Scale Apply pushes no step', async ({ page }) => {
     await seed(page, [[{ beat: 2 }], [{ beat: 4 }]])
     await page.evaluate(async () => {
