@@ -85,5 +85,5 @@ export const callSites: Record<string, { push: number; replace: number; gate: Ga
     'src/history/dynamicStages.ts': { push: 1, replace: 0, gate: 'command' },
     'src/history/peek.ts': { push: 1, replace: 0, gate: 'restore' },
     // The perf harness's selection, in perf builds only.
-    'src/perf/hook.ts': { push: 0, replace: 1, gate: 'selection' },
+    'src/perf/hook.ts': { push: 0, replace: 2, gate: 'selection' },
 }
