@@ -1,7 +1,7 @@
 # `.nxsp` v1 fixtures
 
 Written once by `npm run fixtures:v1` (`tests/fixtures-v1/write.fixtures.ts`) from the editor build
-`0.5.22+fbabcfff`: the real editor in Chromium on a dev server, driven through the scenario of Part 1
+`0.5.22+f2f4d8a8`: the real editor in Chromium on a dev server, driven through the scenario of Part 1
 §1.6.11.9. Each file is what that build wrote, and `SHA256SUMS` pins its bytes.
 
 They are frozen when v0.6.0 is tagged and never changed after it. Every later build opens each one
@@ -18,9 +18,9 @@ contexts):
 | `kept-first.nxsp` | B: the file on its disk replaced by A10's, then Save and the conflict dialog's Replace | `revision.replaces` names the revision the Replace wrote over; the base's `completeFrom` is carried |
 | `carried.nxsp` | D: `full.nxsp` opened in a browser without pickers, edited and saved (a download) | The base's `completeFrom`, carried |
 | `not-carried.nxsp` | D: a stored chunk only a row of `full.nxsp` needs goes bad, and the next Save finds it | `completeFrom` is its own revision; the damaged row `kept: false` |
-| `media-not-held.nxsp` | D: Undo to a state whose BGM, cover and preview this browser does not hold, then Save As… | `bgm`, `metadata.cover` and `metadata.preview` without a file, with `hash`, `size` and `type`; `options.bgm` true |
+| `media-not-held.nxsp` | D: Undo to a state whose BGM, cover and preview this browser does not hold, then Save As… | `bgm`, `metadata.cover` and `metadata.preview` without a file, with `hash`, `size` and `type` |
 | `bgm-unticked.nxsp` | D: back at the head, Save As… with BGM unticked | No `bgm` key while the head records a BGM |
-| `no-history.nxsp` | A8: a level file opened (chain I), one edit, Save As… with History unticked | No history |
+| `no-history.nxsp` | A8: a level file opened (chain I), one edit, Save with History unticked | No history |
 | `no-media.nxsp` | A7: File › New (chain N), one edit, Save As… | History from the new level's `init` (`init`, `edit`, `save`); no BGM, cover or preview in any state |
 
 A file's `project.json` `appVersion` is the build's. Readers never compare it.

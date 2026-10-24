@@ -116,7 +116,6 @@ export const runD = async (browser: Browser, products: Products) => {
     }
     products.put('media-not-held.nxsp', notHeld.bytes)
     await tab.stored_()
-    expect(((await tab.chain()).file as Row).options).toMatchObject({ history: true, bgm: true })
 
     // bgm-unticked.nxsp: back at the head, whose BGM is held, Save As… without it.
     await redo(tab, undone)
@@ -127,7 +126,6 @@ export const runD = async (browser: Browser, products: Products) => {
     expect(untickedRead.history.headRecords.header[8]).toBeDefined()
     products.put('bgm-unticked.nxsp', unticked.bytes)
     await tab.stored_()
-    expect(((await tab.chain()).file as Row).options).toMatchObject({ history: true, bgm: false })
     // The last download is confirmed. Reopening it is no confirmation here: the chain has damaged
     // parts (`badChunks`), and an open of a chain's own last write needs none (history-format 3.4),
     // so the chip's I Have the File does it.

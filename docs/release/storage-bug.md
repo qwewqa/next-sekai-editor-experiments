@@ -57,10 +57,10 @@ Send the files back privately, as a link by email. Then delete the user’s ZIP,
 
 ## 8. Tried once
 
-The steps above were tried on 2026-10-23, at commit `3cd87808` (branch `release-fixtures`), with the dev server on port 5335, `NSE_SAMPLES_DIR` set to a scratch folder and a fresh Chromium profile, driven by a script.
+The steps above were tried on 2026-10-23, at commit `f2f4d8a8` (branch `release-fixtures`, after the Save change), with the dev server on port 5335, `NSE_SAMPLES_DIR` set to a scratch folder and a fresh Chromium profile, driven by a script.
 
-- `tests/fixtures/web-storage-v1/raw-export.zip` holds one entry, `dump.json` (1.7 MB): `format` `nse-local-data-dump`, `version` 1, `appVersion` `0.5.22+fbabcfff`, database `nse-local-data` version 1.
+- `tests/fixtures/web-storage-v1/raw-export.zip` holds one entry, `dump.json` (1.8 MB): `format` `nse-local-data-dump`, `version` 1, `appVersion` `0.5.22+f2f4d8a8`, database `nse-local-data` version 1.
 - `/?seedSample=<case>` seeded the profile, the console said it was reloading, and the editor opened.
-- History › Recent Sessions listed six chains: `fixture-history` (the one the editor continued, 544 notes), `fork.nxsp`, `no-history.nxsp`, `fork` (not saved to a file), `no-media.nxsp` and `Untitled`.
+- History › Recent Sessions listed six chains: `fixture` (the one the editor continued, 544 notes), `fork.nxsp`, `no-history.nxsp`, `fork` (not saved to a file), `no-media.nxsp` and `Untitled`.
 - Restore Session of `no-media.nxsp` opened it.
 - ⋯ › Save to File… on `fork.nxsp` opened the Save dialog (the profile has no handle for the file), and Save downloaded `fork (restored Nov 5).nxsp` (82.9 kB). The editor’s reader opens it fully.

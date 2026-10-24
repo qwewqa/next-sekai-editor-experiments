@@ -571,13 +571,9 @@ test('the main dump holds every stored row form of v1', async () => {
         assert.ok(chainFields.has(field), `chains.${field}`)
     const files = chains.flatMap((chain) => (chain.file ? [chain.file as Row] : []))
     assert.deepEqual([...new Set(files.map((file) => file.event))].sort(), ['opened', 'saved'])
-    for (const field of ['entry', 'completeFrom', 'disk', 'options', 'hash', 'at'])
+    for (const field of ['entry', 'completeFrom', 'disk', 'hash', 'at'])
         assert.ok(fieldsOf(files).has(field), `file.${field}`)
     assert.ok(files.some((file) => (file.entry as Row | undefined)?.notKept))
-    assert.deepEqual([...new Set(files.map((file) => (file.options as Row).history))].sort(), [
-        false,
-        true,
-    ])
     const targets = chains.flatMap((chain) =>
         chain.exportTarget ? [chain.exportTarget as Row] : [],
     )

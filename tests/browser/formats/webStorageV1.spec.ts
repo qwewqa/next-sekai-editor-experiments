@@ -153,7 +153,7 @@ test('the pending journal applies as a recovered entry, and the saving marker is
     })
     // A continues, under its file's name.
     expect(await page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId)).toBe(chains.A)
-    await expect(page.locator('[data-status-label]')).toContainText('fixture-history.nxsp')
+    await expect(page.locator('[data-status-label]')).toContainText('fixture.nxsp')
     await context.close()
 })
 
@@ -169,7 +169,7 @@ test('a Save whose file was written but whose binding was not recorded is recogn
     if (marker.kind !== 'nxsp') throw new Error('The marker file does not open')
     const markerRevision = marker.projectJson.revision as { id: string; n: number }
     // A's file handle is not in a dump; the override's token stands for it, as in a real profile.
-    const name = 'fixture-history.nxsp'
+    const name = 'fixture.nxsp'
     const dump: DumpJson = {
         ...main,
         stores: main.stores.map((store) =>
@@ -200,6 +200,19 @@ test('a Save whose file was written but whose binding was not recorded is recogn
             timeout: 30_000,
         })
         .toBe(false)
+    // The Save then writes on top of the marker's file.
+    await expect
+        .poll(
+            async () => {
+                const bytes = await readFile(page, name)
+                const now = bytes && (await readNxsp(new Blob([new Uint8Array(bytes)])))
+                return now && now.kind === 'nxsp'
+                    ? (now.projectJson.revision as { n: number }).n
+                    : 0
+            },
+            { timeout: 30_000 },
+        )
+        .toBeGreaterThan(markerRevision.n)
     // No conflict was offered, and the file is the marker's write plus this Save.
     await expect(page.getByRole('dialog')).toHaveCount(0)
     const after = await readNxsp(new Blob([new Uint8Array((await readFile(page, name))!)]))
@@ -278,7 +291,7 @@ test('A’s Timeline shows its dividers, the recovered entry and the damaged row
     ).toBeGreaterThanOrEqual(1)
     expect([...seen.labels].some((label) => label.includes(', damaged,'))).toBe(true)
     expect(
-        [...seen.labels].filter((label) => label.startsWith('Saved fixture-history.nxsp')).length,
+        [...seen.labels].filter((label) => label.startsWith('Saved fixture.nxsp')).length,
     ).toBeGreaterThanOrEqual(2)
     await page.keyboard.press('Escape')
 

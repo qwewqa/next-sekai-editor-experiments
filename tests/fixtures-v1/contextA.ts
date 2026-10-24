@@ -296,25 +296,26 @@ export const stepA4 = async (a: A, tab: Tab) => {
     return visit
 }
 
-/** A's own file from step 5 on: the first history write goes to a new file (see stepA5). */
-export const aFile = 'fixture-history.nxsp'
+/** A's own file: the one step 2 opened. */
+export const aFile = fixtureName
 
 /** Step 5: Save, the chain's first history write. */
 export const stepA5 = async (tab: Tab) => {
-    // The file was opened without history, so a plain Save keeps writing none, and a Save As… that picks
-    // the file again keeps its options (flow.ts, R4). History is ticked in a Save As… to a new file.
-    await saveAs(tab, { pick: aFile, name: 'fixture-history', history: true })
+    // The file was opened without history; a plain Save of it adds history from the open onward
+    // (History and BGM are chosen per Save, and a Save with no dialog writes both).
+    await tab.page.locator('canvas.editor-chart').focus()
+    await tab.page.keyboard.press('p')
     await expect(tab.notice(`Saved to ${aFile}`)).toBeVisible()
     await tab.stored_()
     const chain = await tab.chain()
-    expect(chain.file).toMatchObject({ name: aFile, event: 'saved', options: { history: true } })
+    expect(chain.file).toMatchObject({ name: aFile, event: 'saved' })
     const read = await readNxsp(new Blob([new Uint8Array(await readOpfs(tab.page, aFile))]))
     if (read.kind !== 'nxsp' || !read.history) throw new Error('The Save wrote no history')
     expect(read.open).toBe('full')
     const revision = (read.projectJson.revision ?? {}) as Row
-    // A segment of 500 and the head manifest; completeFrom is the file's own revision.
+    // A segment of 500 and the head manifest; the history is complete from the revision opened.
     if (!fast) expect((read.projectJson.history as Row).segments).toHaveLength(1)
-    expect(revision.completeFrom).toBe(revision.id)
+    expect(revision.completeFrom).toBe(revision.parent)
     expect(read.history.entries.length).toBeGreaterThan(fast ? 40 : 500)
 }
 
@@ -350,8 +351,8 @@ export const stepA6 = async (a: A, tab: Tab) => {
         cover: { name: 'cover-2.png', buffer: png(64, 64, [200, 90, 60]) },
         preview: { name: 'preview-2.wav', buffer: wav(1, 11) },
     })
-    // Save As… cleared the Export target and name of step 5: Export again, so the file has them.
-    await exportLevel(visit, 'fixture-level')
+    // The Save of step 5 kept the Export target and name that step 4 made.
+    expect((await visit.chain()).exportTarget).toBeDefined()
     await visit.focus(1010)
     await tapAt(visit, 3, 1010)
     await visit.stored_()
@@ -463,11 +464,7 @@ export const stepA8 = async (a: A, tab: Tab) => {
     await saveAs(tab, { pick: noHistory, name: 'no-history', history: false, plain: true })
     await expect(tab.notice(`Saved to ${noHistory}`)).toBeVisible()
     await tab.stored_()
-    expect((await tab.chain()).file).toMatchObject({
-        name: noHistory,
-        event: 'saved',
-        options: { history: false },
-    })
+    expect((await tab.chain()).file).toMatchObject({ name: noHistory, event: 'saved' })
     expect((await tab.chain()).exportTarget).toMatchObject({ opened: true })
     const bytes = await readOpfs(tab.page, noHistory)
     const read = await readNxsp(new Blob([new Uint8Array(bytes)]))

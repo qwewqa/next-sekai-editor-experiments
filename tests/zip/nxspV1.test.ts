@@ -6,7 +6,7 @@ import test from 'node:test'
 import { parseLevelDataChart } from '../../src/chart/parse/levelData'
 import type { MediaForm, NxspRead } from '../../src/local/nxsp'
 import { mediaRefOf, placedCompleteFrom, readNxsp } from '../../src/local/nxsp'
-import { bindingOptions, levelState, matchesHead } from '../../src/local/open/decide'
+import { levelState, matchesHead } from '../../src/local/open/decide'
 import { stateFromRecords } from '../../src/local/records/records'
 import { crafted, jsonOf, setJson, unzip } from '../local/nxsp/craft'
 import { rawZip, type RawEntry } from './rawZip'
@@ -118,20 +118,11 @@ test('the media forms map to the head’s records: sha256 with a file, hash with
         assert.equal(fixture.read.media.cover !== undefined, forms[1] === 'file', name)
         assert.equal(fixture.read.media.preview !== undefined, forms[2] === 'file', name)
     }
-    // The head records a BGM the unticked file left out: the binding leaves it out of later writes,
-    // as the file did; media-not-held names it and keeps it (options.bgm true).
+    // The head records a BGM the unticked file left out: the file has no `bgm` key.
     const unticked = await whole('bgm-unticked.nxsp')
     const head = stateFromRecords(unticked.history.headRecords)
     assert.ok(head.bgm.meta)
-    assert.deepEqual(bindingOptions(unticked.project, head), { history: true, bgm: false })
-    const notHeld = await whole('media-not-held.nxsp')
-    assert.deepEqual(
-        bindingOptions(notHeld.project, stateFromRecords(notHeld.history.headRecords)),
-        {
-            history: true,
-            bgm: true,
-        },
-    )
+    assert.equal(unticked.project.bgm, undefined)
     // The head's chart is level.json as the editor parses it, so a binding is not an open of a changed file.
     const chart = parseLevelDataChart(
         level(unticked.read).entities,

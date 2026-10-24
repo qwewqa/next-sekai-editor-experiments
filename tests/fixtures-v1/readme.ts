@@ -20,9 +20,9 @@ contexts):
 | \`kept-first.nxsp\` | B: the file on its disk replaced by A10's, then Save and the conflict dialog's Replace | \`revision.replaces\` names the revision the Replace wrote over; the base's \`completeFrom\` is carried |
 | \`carried.nxsp\` | D: \`full.nxsp\` opened in a browser without pickers, edited and saved (a download) | The base's \`completeFrom\`, carried |
 | \`not-carried.nxsp\` | D: a stored chunk only a row of \`full.nxsp\` needs goes bad, and the next Save finds it | \`completeFrom\` is its own revision; the damaged row \`kept: false\` |
-| \`media-not-held.nxsp\` | D: Undo to a state whose BGM, cover and preview this browser does not hold, then Save As… | \`bgm\`, \`metadata.cover\` and \`metadata.preview\` without a file, with \`hash\`, \`size\` and \`type\`; \`options.bgm\` true |
+| \`media-not-held.nxsp\` | D: Undo to a state whose BGM, cover and preview this browser does not hold, then Save As… | \`bgm\`, \`metadata.cover\` and \`metadata.preview\` without a file, with \`hash\`, \`size\` and \`type\` |
 | \`bgm-unticked.nxsp\` | D: back at the head, Save As… with BGM unticked | No \`bgm\` key while the head records a BGM |
-| \`no-history.nxsp\` | A8: a level file opened (chain I), one edit, Save As… with History unticked | No history |
+| \`no-history.nxsp\` | A8: a level file opened (chain I), one edit, Save with History unticked | No history |
 | \`no-media.nxsp\` | A7: File › New (chain N), one edit, Save As… | History from the new level's \`init\` (\`init\`, \`edit\`, \`save\`); no BGM, cover or preview in any state |
 
 A file's \`project.json\` \`appVersion\` is the build's. Readers never compare it.
@@ -41,7 +41,7 @@ frozen when v0.6.0 is tagged and never changed after it; every later build reads
 | \`nse-local-data.json\` | Context A, step 13: the database and localStorage of a write-back browser after a week of use, dumped by \`dumpDatabase\` and \`dumpLocalStorage\` | Chains M (migrated from the old auto save), A (a file's chain with more than 500 entries), F (a fork, its file taken over), I (an imported level), N (deleted), P (a partial open) and Q (an import left pending), with every v1 store; a pending journal and a \`saving.*\` marker; \`legacyRecovery\` in its v1 form. Newer-build data added by the script: \`zzFixtureChainField\` on A, \`zzFixtureEntryField\` and \`x.zzFixtureX\` on two of its entries, a later session of P with an entry of the kind \`zzFixtureKind\` |
 | \`nse-local-data-download.json\` | Context D, at its end: a browser without pickers | A chain bound by a confirmed download (\`downloaded\`, \`confirmed\`) with \`badChunks\` |
 | \`raw-export.zip\` | Context A, step 12: Settings › Local Data › Recovery › Export Raw Data… | The ZIP the editor writes (\`dump.json\`), as the storage-bug guide loads it |
-| \`saving-marker-file.nxsp\` | Context A, step 13: A's file as the last Save wrote it, whose binding was never recorded | The file the \`saving.*\` marker in \`nse-local-data.json\` names: its revision, this browser's device and a \`save\` entry last |
+| \`saving-marker-file.nxsp\` | Context A, step 13: A's file as the last Save wrote it, whose binding was never recorded | The file the \`saving.*\` marker in \`nse-local-data.json\` names: its revision, a document device id derived from this browser's id, and a \`save\` entry last |
 | \`journal-unavailable.json\` | Context E: storage unavailable, one edit, the journal written after 10 seconds | A journal (\`keep\` 0), the raw value of its \`journal.*\` key |
 | \`legacy-raw.json\` | Context A, step 1: the old auto save the first load migrated | The raw level data a v0.5 build left in \`autoSave.levelData\` |
 
