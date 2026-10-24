@@ -294,8 +294,9 @@ let restoreGeneration = 0
 let cancelRestore: (() => void) | undefined
 
 /**
- * Restores an entry (§1.4.10.5): the snapshot's chart, offset and level info with the current
- * audio, pushed as an undoable `restore` entry. Leaves any peek first. When it already matches
+ * Restores an entry (§1.4.10.5): the snapshot's chart and level info with the current audio,
+ * and its offset when its BGM is the current one (else the current offset stays), pushed as an
+ * undoable `restore` entry. Leaves any peek first. When it already matches
  * the current chart, nothing is pushed. Current failures call onFailure synchronously or reject.
  */
 export const restoreEntry = async (
@@ -373,11 +374,16 @@ export const restoreEntry = async (
         leavePeek()
         ownLeave = undefined
     }
-    const withCurrentAudio = (entry: PeekedEntry): State => ({
-        ...entry.state,
-        bgm: { ...liveState.value.bgm, offset: entry.state.bgm.offset },
-        selectedEntities: [],
-    })
+    // The step's offset fits the step's BGM only: after a BGM change the current offset stays.
+    const withCurrentAudio = (entry: PeekedEntry): State => {
+        const live = liveState.value.bgm
+        const sameBgm = live.meta?.hash === entry.state.bgm.meta?.hash
+        return {
+            ...entry.state,
+            bgm: { ...live, offset: sameBgm ? entry.state.bgm.offset : live.offset },
+            selectedEntities: [],
+        }
+    }
 
     try {
         const entry = await loadEntry(key)

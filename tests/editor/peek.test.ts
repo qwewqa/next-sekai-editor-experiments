@@ -692,6 +692,42 @@ test('Restore pushes a restore entry with the snapshot’s chart and offset and 
     assert.equal(nameOf(liveState.value), 'live')
 })
 
+const bgmOf = (hash: string, offset: number) => ({
+    offset,
+    meta: { hash, filename: `${hash}.mp3`, size: 1, type: 'audio/mpeg' },
+})
+
+test('Restore after a BGM change keeps the current offset with the current audio', async () => {
+    const buffer = {} as AudioBuffer
+    resetStates({
+        isDirty: false,
+        step: initialStep(),
+        state: fake('live', 0, { bgm: { ...bgmOf('new', 7), buffer } }),
+    })
+    source({ [key(1)]: { state: fake('old', 0, { bgm: bgmOf('old', 3) }), time: 1 } })
+    await restoreEntry(key(1))
+    assert.equal(nameOf(liveState.value), 'old')
+    assert.equal(liveState.value.bgm.offset, 7)
+    assert.equal(liveState.value.bgm.meta?.hash, 'new')
+    assert.equal(liveState.value.bgm.buffer, buffer)
+    // Undo returns the offset too.
+    undoState()
+    assert.equal(nameOf(liveState.value), 'live')
+    assert.equal(liveState.value.bgm.offset, 7)
+})
+
+test('Restore with an unchanged BGM restores the step’s offset', async () => {
+    resetStates({
+        isDirty: false,
+        step: initialStep(),
+        state: fake('live', 0, { bgm: bgmOf('same', 7) }),
+    })
+    source({ [key(1)]: { state: fake('old', 0, { bgm: bgmOf('same', 3) }), time: 1 } })
+    await restoreEntry(key(1))
+    assert.equal(nameOf(liveState.value), 'old')
+    assert.equal(liveState.value.bgm.offset, 3)
+})
+
 test('Restore while the peek still loads reads the entry once', async () => {
     const loads = source({ [key(1)]: { state: fake('old'), time: 1 } })
     const peeking = peekEntry(key(1))
