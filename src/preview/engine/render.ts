@@ -637,7 +637,7 @@ export const renderPreviewFrame = (
         if (connector.activeTail && hasReached(connector.activeTail.targetTime)) continue
 
         // drawConnector draws nothing when both ends are before the approach or past the
-        // cutoff. Decide that from the progress alone, before building the endpoints: most
+        // cutoff. Decide that from the progress alone, before building the endpoints. Most
         // candidates are out of view.
         const passedHead = hasReached(head.targetTime) && !connector.throughJudgeLine
         const headFrac = passedHead ? safeUnlerpClamped(head.targetTime, tail.targetTime, now) : 0

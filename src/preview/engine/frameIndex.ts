@@ -28,7 +28,7 @@ type GroupTimeIndex<T> = Map<number, TimeIndex<T>>
 // A special group must not disable lookahead for the rest of the chart. An
 // attached note or connector can depend on several groups; index it under each
 // endpoint group, then union the candidates without changing submission order.
-// Each item has one entry, shared by its groups' partitions, whose `index` is the
+// Each item has one entry, shared by its groups' partitions. The entry's `index` is the
 // item's position in the chart.
 const createGroupTimeIndex = <T>(
     items: T[],

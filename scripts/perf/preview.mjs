@@ -156,7 +156,7 @@ const mean = times.reduce((a, b) => a + b, 0) / times.length
 console.log(
     `${frames} frames: mean ${mean.toFixed(3)}, p50 ${pct(50).toFixed(3)}, p95 ${pct(95).toFixed(3)}, p99 ${pct(99).toFixed(3)}, max ${sorted.at(-1).toFixed(3)} ms; ${(quads / frames).toFixed(0)} quads a frame`,
 )
-// Where to point a plan's playback cells: the chart's opening is often far cheaper.
+// Where to start a plan's playback cells. The chart's opening is often far cheaper.
 const perSecond = []
 for (let i = 0; i < frames; i++) {
     const second = Math.floor(start + i / fps)

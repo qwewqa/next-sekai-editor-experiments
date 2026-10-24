@@ -112,9 +112,9 @@ export type TimescaleGroup = {
 
 const identityTransfer = (): Transfer => ({ ratio: 1, forward: 0, backward: 0 })
 
-// A group keeps its transfer tree for its lifetime, while frames build transfers with the helpers
-// below all the time. The tree copies its transfers through this literal of its own: if it kept
-// the helpers' objects, V8 would allocate every transfer from those sites in the old generation
+// A group keeps its transfer tree for its lifetime, while every frame builds transfers with the
+// helpers below. The tree copies its transfers through this literal of its own. If it kept the
+// helpers' objects, V8 would allocate every transfer from those sites in the old generation
 // (pretenuring), and playback would run frequent major GCs.
 const storedTransfer = ({ ratio, forward, backward }: Transfer): Transfer => ({
     ratio,
