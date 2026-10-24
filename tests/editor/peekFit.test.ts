@@ -406,7 +406,7 @@ const jaWidths: PeekWidths = {
 
 test('the capsule takes the options button and narrow arrows by fit', () => {
     assert.equal(peekLayout(240, jaWidths).width, 148)
-    // 238 px from the strip's 250 would cut the summary's プロパティを変更 (109 px with its button, in
+    // 238 px from the strip's 250 would cut the summary's プロパティの変更 (109 px with its button, in
     // 70): the strip widens to 290, and to 296 for the counted line "変更：888個のノーツ" (115 px).
     assert.equal(peekLayout(320, jaWidths).width, 296)
     assert.equal(peekLayout(240, jaWidths).narrowArrows, true)

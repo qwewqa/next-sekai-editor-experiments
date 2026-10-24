@@ -1241,7 +1241,7 @@
         "inAppBrowser": "This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.",
         "ios": "This browser deletes stored work after 7 days without a visit. Save to a file to keep your work.",
         "safari": "Safari deletes stored work after 7 days without a visit. Save to a file to keep your work.",
-        "installedWebkit": "Recent Sessions are kept here until you remove this app from the Home Screen. Save to a file to keep your work.",
+        "installedWebkit": "Recent Sessions are kept here until you remove this app. Save to a file to keep your work.",
         "persisted": "Recent Sessions are kept in this browser unless you clear its data. Save to a file to keep your work.",
         "default": "Recent Sessions are kept in this browser unless it runs low on space. Save to a file to keep your work."
     },
@@ -2109,7 +2109,7 @@
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "\"{0}\" could not be written.",
         "notPutBack": "\"{0}\" was emptied and its contents could not be restored.",
-        "openedContentGone": "\"{0}\" no longer holds the version you opened.",
+        "openedContentGone": "\"{0}\" no longer holds its earlier contents.",
         "replacedContentGone": "\"{0}\" no longer holds its earlier contents.",
         "title": "Save Project File",
         "titleAs": "Save As",

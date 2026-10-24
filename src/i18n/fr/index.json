@@ -1241,7 +1241,7 @@
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
     "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
-    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que vous retiriez cette application de l’écran d’accueil. Sauvegardez dans un fichier pour conserver votre travail.",
+    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que vous supprimiez cette application. Sauvegardez dans un fichier pour conserver votre travail.",
     "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez dans un fichier pour conserver votre travail.",
     "default": "Les sessions récentes sont conservées dans ce navigateur, sauf si l’espace vient à manquer. Sauvegardez dans un fichier pour conserver votre travail."
   },
@@ -2109,7 +2109,7 @@
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
-    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert.",
+    "openedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
     "replacedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
     "title": "Sauvegarder le fichier de projet",
     "titleAs": "Sauvegarder sous",
