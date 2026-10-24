@@ -11,7 +11,7 @@ npm run perf:report -- perf-results/smoke work
 npm run perf:report -- perf-results/smoke long perf-results/smoke/traces/<cell>.json.gz 16
 ```
 
-`scripts/perf/plans/round2.json` is the full plan: every scenario below on coconut, the real charts and the stress chart, on the desktop and the phone stand-in. Its charts are read from `perf-results/data/` (see "Charts"), and a full run takes hours.
+`scripts/perf/plans/full.json` is the full plan: every scenario below on coconut, the real charts and the stress chart, on the desktop and the phone stand-in. Its charts are read from `perf-results/data/` (see "Charts"), and a full run takes hours.
 
 `npm run perf` runs these steps:
 
@@ -22,7 +22,7 @@ npm run perf:report -- perf-results/smoke long perf-results/smoke/traces/<cell>.
     - `results.jsonl`, one record per cell;
     - `log.txt`;
     - a screenshot per cell;
-    - `traces/*.json.gz`, which open in DevTools' Performance panel.
+    - `traces/*.json.gz`, to open in DevTools' Performance panel.
 
 `perf-results/` is ignored by git.
 
@@ -46,10 +46,10 @@ Options:
 
 A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 
-- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)`, which selects the plain notes nearest a time and returns their screen points, `chartEnd()`, the last entity's time, and `pathCaches()`, the chart and overlay canvases' path-cache counters and resident bytes.
+- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)` to select the plain notes nearest a time and return their screen points, `chartEnd()` for the last entity's time, and `pathCaches()` for the chart and overlay canvases' path-cache counters and resident bytes.
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
-    - `clockFrame`: the app clock's whole frame, which covers the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
+    - `clockFrame`: the app clock's whole frame, with the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
     - `previewDraw`, `elevationDraw` and `minimapOverlay`;
     - `stageTile`: each Composed stage tile build. `perf:report … frames` gives the builds per chart draw.
 
@@ -98,7 +98,7 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 - **Measure a production build with sourcemaps.** Vue's dev mode and unbundled modules change the timings.
     - The sourcemaps let `trace.mjs` turn minified frames back into `src/...:line`.
     - Use the dev server only to compare.
-- **Run headed with the real GPU.** Headless Chromium can fall back to SwiftShader, which makes every chart number meaningless.
+- **Run headed with the real GPU.** Headless Chromium can fall back to SwiftShader, and then every chart number is meaningless.
     - Every group records `UNMASKED_RENDERER_WEBGL` in `info.renderer`.
     - Check that it names your GPU (for example `ANGLE (NVIDIA, …, D3D11)`), not SwiftShader.
 - Open the chart through Open and load its BGM through the BGM dialog. This is the user's path: the waveform draws and the session counts as edited.
@@ -134,7 +134,7 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
         - each spike tied to its trace event with `perf:report … long`.
 
         One 400 ms frame a minute barely moves a median and is what a user remembers.
-- Spikes that recur on a timer show up in any scenario long enough to meet them: garbage collection passes and the storage journal. When a max jumps in one run of five, look for them before blaming the scenario (see "Recurring spikes").
+- Spikes that recur on a timer show up in any scenario long enough to meet them: garbage collection passes and the storage journal. When a max jumps in one run of five, look for them before blaming the scenario (see "Known costs").
 - **Dense cells vary 2 to 3 times between runs**, even pinned. Use medians of at least 5, and do not read a smaller difference as real.
 
 ### Tracing
@@ -151,9 +151,9 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 
 ### Scenario pitfalls
 
-- **Playwright keeps a background tab visible.** `hide` therefore sets `document.visibilityState` to hidden and dispatches `visibilitychange`, which is the path the app's lifecycle handler takes. It does not test the browser's own page lifecycle. The harness adds its own first and last listeners, so `vis` in a kept record shows the order.
+- **Playwright keeps a background tab visible.** `hide` therefore sets `document.visibilityState` to hidden and dispatches `visibilitychange`. This is the path the app's lifecycle handler takes. It does not test the browser's own page lifecycle. The harness adds its own first and last listeners, so `vis` in a kept record shows the order.
 - **The idle collector loop requests frames.** `idle` without `noLoop` measures the collector, not the editor. The loop also keeps frames coming while the app clock is stopped, so a wake from idle, such as `notch`'s wheel, needs `noLoop` and `traceEach` to be measured as a user meets it.
-- **The app's clock stops when nothing moves** (`docs/rendering.md`). An idle editor requests no animation frames: over 60 s on the desktop profile its browser processes use 1–2.6% of a core. Until 2026-10-24 the clock ticked on every vsync, as v0.5.22 did (about 240 a second at 240 Hz, 7–11% of a core), so idle traces and process-tree CPU from before then include it.
+- **The app's clock stops when nothing moves** (`docs/rendering.md`). An idle editor requests no animation frames, and over 60 s on the desktop profile its browser processes use 1–2.6% of a core. Idle CPU well above that means something keeps the clock or another frame loop running.
 - **The gate's pump adds animation frames to counts.** Under `hz: 60` or `120`, animation frame counts include the gate's, so compare counts only within one `hz`.
 - **`previewDraw` on an edit frame includes the preview's rebuild.** It is not the steady cost.
 - **The GC pass grows with the session.** Later in a session (`memory`, or after many cells in one group) it costs more than in a fresh one, because it walks every tracked resource. Compare cells from fresh groups.
@@ -193,72 +193,19 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 
 Note counts are the editor's where known, else level data's.
 
-`round2.json` reads these from `perf-results/data/`:
+`full.json` reads these from `perf-results/data/`:
 
 - `coconut.json` and `coconut.mp3`: copies of `test_level_data/coconut-next-sekai-24887.json` and its `.bgm.mp3`;
 - `real-<id>.json` for the four levels above (`real-21888.json`, `real-23792.json`, `real-16471.json`, `real-21506.json`), and `brainrot.mp3`, the `bgm` of `coconut-next-sekai-21506`;
 - `stress-x8.json`: `npm run perf:stress -- perf-results/data/coconut.json perf-results/data/stress-x8.json`.
 
-## Baseline
+## Known costs
 
-Commit `8fabd64e`, 2026-10-24. Machine: Ryzen 9 9950X3D pinned to CCD1 at AboveNormal, RTX 5090 (ANGLE D3D11), Chromium 153, 239 Hz display.
+These recur, and a spike in a run is often one of them. Check them before blaming the scenario.
 
-Each row gives the median over runs, in ms per frame: the chart draw, then the clock frame, as p50/p95 (max).
-
-| Case                                                       | Chart draw     | Clock frame | Against the budget                  |
-| ---------------------------------------------------------- | -------------- | ----------- | ----------------------------------- |
-| Desktop, coconut, Basic, any scroll                        | 0.5/0.8        | 0.8/1.3     | pass                                |
-| Desktop, coconut, Composed, Page Up held                   | 1.0/8.2 (21.6) | 1.3/8.3     | miss: stage surface every frame     |
-| Desktop, coconut, Composed flick                           | 0.6/8.5 (19.5) | 0.8/8.8     | miss at p95: stage windows          |
-| Desktop, 21888 zoomed out, Composed wheel (239 Hz)         | 1.9/3.0 (12.1) | 2.4/3.7     | pass on average                     |
-| Desktop, 21888 zoomed out, Composed playback (239 Hz)      | 0.8/1.7        | 4.1/7.8     | miss: 24% of frames late            |
-| Desktop, coconut ×8, playback                              | 0.5/0.9        | 6.5/9.7     | miss: preview 5.4/8.3               |
-| Phone 4×, coconut, Composed flick                          | 1.6/5.1 (35.5) | 2.2/5.7     | spikes of 35–75 ms                  |
-| Phone 4×, 21888 zoomed out, Composed quick-scroll (120 Hz) | 6.6/9.2        | 6.6/9.0     | miss at p95                         |
-| Phone 4×, 21888 zoomed out, playback (120 Hz)              | 2.8/4.8        | 17.5/25.3   | miss: preview about 14              |
-| Phone 4×, coconut ×8, playback                             | 2.4/5.2        | 33.8/47.9   | miss: about 25 fps                  |
-| Phone 4×, Brain Rot, Composed flick (120 Hz)               | 2.2/13.2 (82)  | 2.8/8.7     | tail: 7 frames over 4× budget a run |
-
-The minimap painted nothing in any scroll or playback frame. Its overlay costs 0.004 ms per frame on desktop and 0.014 ms at 4×.
-
-## Recurring spikes
-
-At the baseline commit `8fabd64e`, with the trace events behind them:
-
-- **Pixi's GC pass:** `GCSystem.run` every 30 s. 30 ms at 1×, 150 ms at 4×. It now runs at idle time, 1 s after the last render or once drawing has gone on for a minute past its due time, never inside a frame (`RenderingScheduler`). Its cost grows with what is live: late in a session 10–20 ms at 1× and up to 60 ms at 4×. In a trace it is an idle callback.
-- **V8 major GC under the preview's per-frame allocations:** 13–19 ms at 1×, 108–134 ms at 4×.
-- **First-visit section compiles:** `notes.ts` `prepareSections` and `vectorRanges.ts` `captureVectors`. 20–45 ms at 4×.
-
-Since then (round 2, commit `ea41be05`):
-
-Gone:
-
-- the legacy write on a timer;
-- the stage-window redraws in Composed scrolling;
-- V8 major GC under the preview (its per-frame cost fell 5 to 7 times).
-
-Changed:
-
-- **Pixi's GC pass** (`GCSystem.run` → `runOnHash`) walks every tracked resource. Its period is 10 s (`GC_FREQUENCY`), and since pr2-gc it runs at idle time, never inside a frame (`RenderingScheduler`; `docs/rendering.md`). A pass costs 2–8 ms early in a session and 10–20 ms later at 1×, and 15–30 ms rising to 60 ms at 4×; in a trace it is an idle callback.
-
-New:
-
-- **Grid path-cache churn** (fixed after round 2): the grid and the cursor line build new paths every frame (`grid.ts`, `LevelEditorCanvas.vue`), and the path cache, keyed by the path object (`pathGraphics.ts`), kept their geometry though nothing drew it again. In coconut's desktop playback, about five entries a frame filled the 128 MiB budget within a minute; from then on it trimmed about 1,200 entries a second. Chart draws of 10 ms or more followed, about every 7–11 s of playback on a loaded machine and about once a minute on a quiet one: 15–20 ms in `ownerFor`, where the cache's maps had grown to about 50,000 entries, and 14 ms major GCs of the long-lived garbage. Geometry of a context's current path now lasts one frame (`docs/rendering.md`): the cache holds about 1 MiB in that playback instead of 128, trims nothing, and the major GCs take about 7 ms.
-- **The storage-unavailable journal:** with storage unavailable, the whole chart is serialized and gzipped every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. The idle callback's 5 s timeout can land it in the middle of a scroll.
-- **The selection outline during playback** (fixed by f3-outline): with every note selected, the preview stroked the outline twice per frame as a new path, tessellated and cached each time (`usePreviewRendering.ts`). It now draws the edges as triangles (`strokeSegments`, see `docs/rendering.md`). Coconut playback with every note selected, Composed, before and after:
-    - desktop at 239 Hz, with Elevation: clock p95 7.7 → 3.7 ms, preview p95 5.9 → 1.6 ms, frames drawn 59% → 91%;
-    - desktop, without Elevation: clock p95 5.7 → 2.4 ms, frames drawn 86% → 98%;
-    - phone at 4×, with Elevation: clock p95 41 → 20 ms, preview p95 40 → 10 ms;
-    - the 15–40 ms major GCs stay at the same rate: they finish marking a 300–400 MB heap, and are not the outline's.
-- **Stage tile builds in zoomed-out Composed flicks** (fixed by f5-tiles): a flick crosses several 128 px tiles a frame, and at `pps` 100 a tile can hold over a thousand clipped divider strokes. Building one took 17 ms at 4× (p50, up to 44 ms), most of it arrays allocated for each stroke (`stageGeometry.ts`, `triangleClip.ts`). A build now appends straight to the tile's triangle stream (`docs/rendering.md`); the vertices are unchanged. Chart draw p50/p95/p99 (max) in ms and draws over 1×/2×/4× the budget, before and after, at `pps` 100 unless noted:
-    - phone at 4×, generated-large flick: 2.6/31.9/66.1 (84), 64/61/20 → 2.2/6.6/9.4 (12), 13/0/0; a tile build p50 17 → 2 ms;
-    - phone at 4×, Brain Rot flick: 2.5/7.2/14.3 (32), 20/6/0 → 2.4/6.9/10.1 (15), 19/0/0;
-    - phone at 4×, Brain Rot minimap drag at `pps` 1000: 3.1/14.3/18.7 (23), 26/3/0 → 2.8/5.9/7.0 (8), 0/0/0;
-    - desktop, generated-large flick: 0.8/1.9/24.6 (35), 23/16/12 → 0.7/2.1/2.5 (3.5), 0/0/0; at `pps` 1000, 0.6/17.8/26.7 (32), 117/53/26 → 0.5/1.4/2.1 (2.6), 0/0/0;
-    - desktop, Brain Rot flick: max 10.6 → 5.5 ms, and 5.7 → 2.1 ms at `pps` 1000.
-- **Idle compiles in pauses:** with the app clock stopped, an idle period lasts up to 50 ms, and the vector compile (`vectorRanges.ts`) captures sections in it. At first it chained captures through the whole period: at 4× on 21888 zoomed out, the longest idle task in the pause before a `notch` was 40 ms (median of 24 runs, up to 51 ms), and an input that landed in one waited for it. Since f2-idlecap, a callback chains captures only within about 8 ms: the longest is now 11 ms (median, up to 20 ms, one capture). The sections compiled ahead are the same.
-- **The idle vector compile** (fixed by pr2-gc): after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asked again whenever the idle period was shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread. It now retries 100 ms later, up to ten times, then waits for a frame that draws.
-
-Still present:
-
-- **First-visit section compiles:** 20–45 ms at 4×.
+- **Pixi's GC pass** (`GCSystem.run`, then `runOnHash`) walks every tracked resource, so its cost grows with what is live: 2–8 ms early in a session and 10–20 ms later at 1×, 15–30 ms rising to 60 ms at 4×. It runs every 10 s (`GC_FREQUENCY`), at idle time and never inside a frame (`RenderingScheduler`, `docs/rendering.md`). In a trace it is an idle callback.
+- **V8 major GCs** in long playback on dense charts take 15–40 ms, mostly to finish marking a 300–400 MB heap. Per-frame allocations in a draw path make them more frequent.
+- **First-visit section compiles** (`notes.ts` `prepareSections`, `vectorRanges.ts` `captureVectors`) take 20–45 ms at 4×. The idle compile ahead (`docs/rendering.md`) compiles sections near the view early, but a jump or the `cold` run still meets them. An idle capture can delay an input that lands in it, so measure a wake from a pause with `notch`.
+- **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report … frames`.
+- **Path-cache churn.** A path built anew every frame and kept in the path cache fills its 128 MiB budget with geometry nothing draws again, and the grown maps and garbage then stall chart frames. A context's current path lasts one frame for this reason (`docs/rendering.md`). A record whose `pathCache` shows steady `trimmed` counts during playback has a new case of it.
+- **The journal with storage unavailable** serializes and gzips the whole chart every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. Its idle callback's 5 s timeout can land it in the middle of a scroll. Measure it with `journal` and a group's `storage` flag.

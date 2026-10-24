@@ -1,6 +1,8 @@
 # Engineering principles
 
-Rules that past defects taught. Each has the rule, the reason and one real case. Use them when you write and when you review code or tests.
+Rules learned from past defects. Each has the rule, the reason and one real case. Use them when you write and when you review code or tests.
+
+Data loss is the top concern. A defect that can lose a user's work outranks any other kind, and principle 9 says how far to guard against it.
 
 Like the other pages, these are principles with reasons. Depart from one when a case needs it, and say why in the change.
 
@@ -10,7 +12,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** A plausible value reads as a fact, and a stored one is never questioned again.
 
-**Example.** A History entry whose count could not be read was stored with `noteCount: 0`, which gave its neighbours false deltas such as +1,200. The count is now optional and stays unknown in the row and in the file, and a row with an unknown count shows no delta (`src/editor/history/rows.ts`). The same rule for the file on disk in the Save conflict dialog: `DiskVersion.notes` is absent when the file has no summary (`src/editor/save/dialogs.ts`), and a Save total over a part of unknown size is unknown, not final (`src/editor/save/total.ts`).
+**Example.** A History entry whose count could not be read was stored with `noteCount: 0`, and its neighbours showed false deltas such as +1,200. The count is now optional and stays unknown in the row and in the file, and a row with an unknown count shows no delta (`src/editor/history/rows.ts`). The same rule for the file on disk in the Save conflict dialog: `DiskVersion.notes` is absent when the file has no summary (`src/editor/save/dialogs.ts`), and a Save total over a part of unknown size is unknown, not final (`src/editor/save/total.ts`).
 
 ## 2. One fact, one place
 
@@ -34,7 +36,7 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Why.** "None found" and "could not look" call for different action, and a user acting on the wrong one loses work.
 
-**Example.** A failed Edits Here scan read as "No edits here", and a recovery listing that failed read as "nothing to recover". A search that can fail has a third state beside found and nothing, with a retry. A `.catch(() => [])` needs a reason in a comment. Storage reads whose empty answer a caller acts on go through the `storedRead` gate (`src/local/storedRead.ts`), which returns the value or the failure and never rejects; `local/stored-reads` keeps those reads there. Each caller writes its failed case; a wrapper over such a read passes the failure on and never decides it for its callers.
+**Example.** A failed Edits Here scan read as "No edits here", and a recovery listing that failed read as "nothing to recover". A search that can fail has a third state beside found and nothing, with a retry. A `.catch(() => [])` needs a reason in a comment. Storage reads whose empty answer a caller acts on go through the `storedRead` gate (`src/local/storedRead.ts`). It returns the value or the failure and never rejects, and the `local/stored-reads` lint rule keeps those reads there. Each caller writes its failed case; a wrapper over such a read passes the failure on and never decides it for its callers.
 
 ## 5. Tests prove what they claim
 
@@ -56,15 +58,15 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Rule.** User-facing text states only what is known. Where completeness, or whether something changed, cannot be proved, the text says so, or leaves the clause out.
 
-**Why.** A line that is not true costs more trust than one that says what is unknown. The owner, 2026-10-20: “In a can’t prove situation, let’s word it to state the uncertainty.”
+**Why.** A line that is not true costs more trust than one that says what is unknown.
 
 **Example.** The Save conflict dialog said the file on disk had "0 notes" when it had no summary. It now has a line without the note count (`describe` in `src/editor/save/dialogs.ts`). A group count that may be incomplete reads "10+ steps" only while the scan can still find more. Wording stays as in `src/i18n/en/index.json`.
 
 ## 8. No compatibility code for builds that never shipped
 
-**Rule.** Until Stage 1 ships, formats, codecs and the IndexedDB schema change in place at their current version. Do not add migrations, repairs or version bumps for data from a build that was never released. Before code reads, repairs or migrates stored data, name the build that wrote it and check that it shipped; if it did not, clear the profile.
+**Rule.** Until v0.6.0 ships, formats, codecs and the IndexedDB schema change in place at their current version. Do not add migrations, repairs or version bumps for data from a build that was never released. Before code reads, repairs or migrates stored data, name the build that wrote it and check that it shipped; if it did not, clear the profile.
 
-**Why.** There is no user whose data it would protect, and every rule it adds must be kept forever once it ships. The owner, 2026-10-20: “We should not be adding cruft already to handle backwards compatibility between versions that have only been used a few seconds for testing.”
+**Why.** There is no user whose data it would protect, and every rule it adds must be kept forever once it ships. Code for builds that only ran in testing is cruft from the day it lands.
 
 **Example.** Database versions 2 and 3, `createMissingStores` and a dump-seeder repair existed only for test builds, and `MANIFEST_VERSION`, `SESSION_V` and `JOURNAL_VERSION` were raised to 2 before any release. All were returned to 1 with the rules that told the versions apart. See [format-versioning.md](format-versioning.md).
 
@@ -72,25 +74,25 @@ Like the other pages, these are principles with reasons. Depart from one when a 
 
 **Rule.** Guard the paths users really take with one simple, structural guarantee. A case that needs two independent failures at once, a failure inside a narrow window, or two tabs plus a failure is an accepted residual: state it once, in the spec, and add no code for it unless the fix is trivial. Session History, recoverable through Recent Sessions, is the main safeguard; protection on the file side matters for bytes that are in a file but not in this browser, and `.nxsp` is the source of truth, while `.nsld` is an import source and an Export artifact.
 
-**Why.** Every extra rule is code to keep and a new place for bugs, some of which lose data themselves. The owner, 2026-10-20: “Let’s be careful that we don’t overindex on edge cases”, and “session history will be robust, with recent sessions being a strong safeguard”.
+**Why.** Every extra rule is code to keep and a new place for bugs, and some of those bugs lose data themselves. Session History already lets a user recover from most rare failures.
 
-**Example.** The Save picker redesign grew through seven validation rounds, each finding a narrower case; it was cut to one attempt, one queue and one pick session, with the rarer cases listed as residuals. A partly imported `.nsld` written over after a reload, with storage failing as the pick is identified, is accepted: a user editing the chart would notice first, and the file is not the source of truth.
+**Example.** The Save picker design grew through seven reviews, each finding a narrower case; it was cut to one attempt, one queue and one pick session, with the rarer cases listed as residuals. A partly imported `.nsld` written over after a reload, with storage failing as the pick is identified, is accepted: a user editing the chart would notice first, and the file is not the source of truth.
 
 ## 10. A test earns its place
 
 **Rule.** Decide whether to write a test before writing it: write it when it would catch a realistic bug in something that matters, then make it well and show it fails without its fix. Keep tests that have value. Understand a failure that repeats; for a flake, find the test, then remove it if it is of little value, fix it if it is useful, or mark it flaky. Delete a test when, revisited, it costs more than it is worth, never to make a failure go away. Build no harness, oracle or load generator unless a realistic bug needs one.
 
-**Why.** Tests serve the product; a test of little value is upkeep without return. The owner, 2026-10-21: “A bad test is worse than no test”, and “what we really should balance is whether we write a test at all (this is the best time to consider whether it’s really worthwhile)”.
+**Why.** Tests serve the product. A test of little value is upkeep without return, and a bad test is worse than none. The cheapest time to weigh a test is before it is written.
 
-**Example.** Reviews stopped running mutation campaigns over whole changes; one targeted mutation still checks a key safety test. The matrix's Export cells waited a fixed 20 ms for a read, which failed under load once the real storage handlers made the read slower; they now wait until the storage door has no call in flight.
+**Example.** Reviews stopped running mutation campaigns over whole changes; one targeted mutation still checks a key safety test. The matrix's Export cells waited a fixed 20 ms for a read. Once the real storage handlers made the read slower, they failed under load; they now wait until the storage door has no call in flight.
 
 ## 11. An element earns its place
 
-**Rule.** Lean towards not having UI of dubious usefulness. Every element is code to maintain, and it can cost users real estate, clicks or confusion. Weigh removing it as a real option, before adding it and when revisiting it.
+**Rule.** Lean towards leaving out UI of doubtful use. Weigh removing an element as a real option, before adding it and when revisiting it.
 
-**Why.** The owner, 2026-10-21: “We should lean towards not having things of dubious usefulness. We should never forget that new features and elements are not free. They have a maintained cost. Depending on the nature of the element, it may negatively impact users in some ways. An element might have almost no use to users, but waste real estate. In the end, we’ve wasted effort, taken on more maintenance burden, and made our users worse off.”
+**Why.** No feature or element is free. Each is code to maintain, and one that users almost never need still costs them real estate, clicks or confusion. Such an element wastes effort, adds upkeep and leaves users worse off.
 
-**Example.** The Groups and Stages managers had a collapsed “Current Group” / “Current Stage” row at the top of the list. It only revealed the current item’s path and its shown count, which the status bar’s scope label and the list’s current row already show; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the “Use only items you are allowed to use.” line the same day.
+**Example.** The Groups and Stages managers had a collapsed “Current Group” / “Current Stage” row at the top of the list. It only revealed the current item’s path and its shown count, and the status bar’s scope label and the list’s current row already show both; it carried a watcher, an injected request, its own keyboard handling and seven translations. It was removed, as were the download note and the “Use only items you are allowed to use.” line the same day.
 
 ## 12. Users delete history; automatic processes do not
 
