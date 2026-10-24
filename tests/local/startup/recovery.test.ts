@@ -277,8 +277,8 @@ test('a slot an older build set aside as unreadable stays, and says so once at a
     const both = await loadIn(world, world.tab('b'), storage)
     await runRecovery(both.recovery)
     assert.deepEqual(both.events, [{ kind: 'migrationFailed', unreadable: true }])
-    // Beside a primary slot that migrates: no line beside "Continued … from auto save.", and
-    // the set-aside slot stays.
+    // Beside a primary slot that migrates: no line beside "Continued … from the old auto save.",
+    // and the set-aside slot stays.
     storage.setItem(key(AUTO_SAVE_KEY), autoSaveOf(stateOf(goldenChart())))
     const migrated = await loadIn(world, world.tab('c'), storage)
     await runRecovery(migrated.recovery)

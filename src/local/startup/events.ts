@@ -31,8 +31,8 @@ export type LoadEvent =
      */
     | { kind: 'migrationFailed'; unreadable?: true }
     /**
-     * The auto save migrated: "Continued "{0}" from auto save." (no "Continued…" line then) when
-     * it's the session that opened; otherwise it's kept as a session of its own.
+     * The auto save migrated: "Continued "{0}" from the old auto save." (no "Continued…" line
+     * then) when it's the session that opened; otherwise it's kept as a session of its own.
      */
     | { kind: 'migrated'; name: ShownName; sessionId: string; opened: boolean }
     /** The migrated auto save was made for an older engine revision (D18): today's warning. */
