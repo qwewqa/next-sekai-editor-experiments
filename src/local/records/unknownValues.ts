@@ -66,13 +66,6 @@ export type MediaKind = (typeof mediaKinds)[number]
 export const readMediaKind = (value: unknown): MediaKind | undefined =>
     known(mediaKinds, value) ? value : undefined
 
-export const userAssetTypes = ['skin', 'particle', 'background', 'effect'] as const
-export type UserAssetType = (typeof userAssetTypes)[number]
-
-/** `userAssets.type`: an unknown value isn't listed, and Manage… never removes it. */
-export const isListedUserAsset = (type: unknown): type is UserAssetType =>
-    known(userAssetTypes, type)
-
 /** `recovered.source`: a row of any source, known or not, is listed as unreadable recovered work. */
 export const recoveredSources = ['journal', 'journalFile'] as const
 
