@@ -234,7 +234,7 @@ test.describe('the startup gate', () => {
         localStorage: Record<string, string>
     }
 
-    /** dump.json out of an exported ZIP: one DEFLATE entry, found through the central directory. */
+    /** dump.json out of an exported ZIP: its first entry, DEFLATE, found through the central directory. */
     const dumpOfZip = (bytes: Buffer) => {
         expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK')
         // The end record is the last 22 bytes when the ZIP has no comment.

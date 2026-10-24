@@ -20,6 +20,8 @@ import { createWorld, type Tab } from '../../src/local/testing/world'
 
 const b64 = (bytes: number[]) => toBase64(new Uint8Array(bytes))
 
+const noBlob = (): never => assert.fail('No Blob here')
+
 const hash = (n: number) => ({ $ab: b64(Array.from({ length: 16 }, (_, i) => (i + n) % 256)) })
 
 /** A small v1 dump with every tag, in key order. */
@@ -211,18 +213,24 @@ test('the seeder refuses a database newer than the dump', async () => {
 
 test('the dumper writes a view’s own bytes and throws on what it has no tag for', () => {
     const buffer = new Uint8Array([0, 1, 2, 3, 4, 5]).buffer
-    assert.deepEqual(encodeValue(new Uint8Array(buffer, 2, 2), new Map()), { $u8: b64([2, 3]) })
-    assert.deepEqual(encodeValue(buffer, new Map()), { $ab: b64([0, 1, 2, 3, 4, 5]) })
-    assert.deepEqual(encodeValue({ $a: [undefined] }, new Map()), {
+    assert.deepEqual(encodeValue(new Uint8Array(buffer, 2, 2), noBlob), { $u8: b64([2, 3]) })
+    assert.deepEqual(encodeValue(buffer, noBlob), { $ab: b64([0, 1, 2, 3, 4, 5]) })
+    assert.deepEqual(encodeValue({ $a: [undefined] }, noBlob), {
         $$a: [{ $undefined: true }],
     })
     for (const value of [new Date(0), new Map(), 1n, NaN, Infinity, new Uint16Array(1)])
-        assert.throws(() => encodeValue({ value }, new Map()), DumpError)
+        assert.throws(() => encodeValue({ value }, noBlob), DumpError)
 })
 
 test('the reader checks tags, base64, key order and in-line keys', () => {
     assert.throws(() => decodeValue({ $ab: 'AQ' }), /padded/)
     assert.throws(() => decodeValue({ $new: 1 }), /unknown tag/)
+    // A Blob in a ZIP entry needs the ZIP, and names only `blobs/<n>`.
+    assert.throws(() => decodeValue({ $blobEntry: 'blobs/0', type: '' }), /not given/)
+    const entry = { blobEntry: (name: string) => name }
+    assert.equal(decodeValue({ $blobEntry: 'blobs/12', type: '' }, entry), 'blobs/12')
+    for (const name of ['blobs/01', 'dump.json', 'blobs/../x'])
+        assert.throws(() => decodeValue({ $blobEntry: name, type: '' }, entry), /Not a Blob entry/)
     assert.deepEqual(decodeValue({ $$x: { $undefined: true } }), { $x: undefined })
     const swap = sampleDump()
     swap.stores.find((store) => store.name === 'entries')!.records.reverse()
