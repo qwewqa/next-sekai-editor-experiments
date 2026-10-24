@@ -169,7 +169,7 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 - `--affinity <hex mask>` does this on Windows. It pins the harness first, so the browser inherits the affinity, and re-applies the priority (`--priority`, default AboveNormal) after launch and after every cell. Each record's `offPin` counts processes that left the set.
 - Example: a Ryzen 9 9950X3D has two CCDs. CCD0 (logical processors 0–15) carries the 3D V-cache and CCD1 (16–31) the higher clocks, so runs use `--affinity 0xFFFF0000`.
 - Run analysis and everything else on the other CCD, and run one measurement at a time with nothing else busy.
-- On a shared machine, check before each run that no other perf run is active (processes with `nse-perf` in their command line) and that both CCDs are quiet, and sample each CCD's load during the run. Run again any run that met other work: other tests at 100% on both CCDs doubled a playback run's clock p95.
+- On a shared machine, check before each run that no other perf run is active (processes with `nse-perf` in their command line) and that both CCDs are quiet, and sample each CCD's load during the run. Run again any run that met other work: other tests at 100% on both CCDs doubled a playback run's clock p95. Two runs waiting for a quiet machine can both see it in the same second, so check again a few seconds after the check passes.
 - Name the run's folders and command lines so a priority watcher can exempt them. Ours exempts anything with `nse-perf` in its command line.
 
 ### Charts
@@ -250,6 +250,12 @@ New:
     - desktop, without Elevation: clock p95 5.7 → 2.4 ms, frames drawn 86% → 98%;
     - phone at 4×, with Elevation: clock p95 41 → 20 ms, preview p95 40 → 10 ms;
     - the 15–40 ms major GCs stay at the same rate: they finish marking a 300–400 MB heap, and are not the outline's.
+- **Stage tile builds in zoomed-out Composed flicks** (fixed by f5-tiles): a flick crosses several 128 px tiles a frame, and at `pps` 100 a tile can hold over a thousand clipped divider strokes. Building one took 17 ms at 4× (p50, up to 44 ms), most of it arrays allocated for each stroke (`stageGeometry.ts`, `triangleClip.ts`). A build now appends straight to the tile's triangle stream (`docs/rendering.md`); the vertices are unchanged. Chart draw p50/p95/p99 (max) in ms and draws over 1×/2×/4× the budget, before and after, at `pps` 100 unless noted:
+    - phone at 4×, generated-large flick: 2.6/31.9/66.1 (84), 64/61/20 → 2.2/6.6/9.4 (12), 13/0/0; a tile build p50 17 → 2 ms;
+    - phone at 4×, Brain Rot flick: 2.5/7.2/14.3 (32), 20/6/0 → 2.4/6.9/10.1 (15), 19/0/0;
+    - phone at 4×, Brain Rot minimap drag at `pps` 1000: 3.1/14.3/18.7 (23), 26/3/0 → 2.8/5.9/7.0 (8), 0/0/0;
+    - desktop, generated-large flick: 0.8/1.9/24.6 (35), 23/16/12 → 0.7/2.1/2.5 (3.5), 0/0/0; at `pps` 1000, 0.6/17.8/26.7 (32), 117/53/26 → 0.5/1.4/2.1 (2.6), 0/0/0;
+    - desktop, Brain Rot flick: max 10.6 → 5.5 ms, and 5.7 → 2.1 ms at `pps` 1000.
 - **Idle compiles in pauses:** with the app clock stopped, an idle period lasts up to 50 ms, and the vector compile (`vectorRanges.ts`) captures sections in it. At first it chained captures through the whole period: at 4× on 21888 zoomed out, the longest idle task in the pause before a `notch` was 40 ms (median of 24 runs, up to 51 ms), and an input that landed in one waited for it. Since f2-idlecap, a callback chains captures only within about 8 ms: the longest is now 11 ms (median, up to 20 ms, one capture). The sections compiled ahead are the same.
 - **The idle vector compile** (fixed by pr2-gc): after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asked again whenever the idle period was shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread. It now retries 100 ms later, up to ten times, then waits for a frame that draws.
 
