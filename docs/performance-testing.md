@@ -26,7 +26,7 @@ npm run perf:report -- perf-results/smoke long perf-results/smoke/traces/<cell>.
 
 `perf-results/` is ignored by git.
 
-Each run in a record has `pathCache`, per canvas: the path cache's counters over the run (`hits`; builds, as `native` and `fallback`; `evictions`; and `trimmed` and `trimmedBytes`, the evictions that made room in its budget), and its resident `bytes` and `pinned` bytes at the end. `memory` snapshots record the same as `pathCaches`.
+Each run in a record has `startedAt` and `endedAt` (to compare with a load log) and `pathCache`, per canvas: the path cache's counters over the run (`hits`; builds, as `native` and `fallback`; `evictions`; and `trimmed` and `trimmedBytes`, the evictions that made room in its budget), and its resident `bytes` and `pinned` bytes at the end. `memory` snapshots record the same as `pathCaches`.
 
 `npm run perf:report` reads a run: `frames`, `work` and `long` as above, and for the scenarios that mark moments (`traceEach` cells):
 
@@ -34,7 +34,7 @@ Each run in a record has `pathCache`, per canvas: the path cache's counters over
 - `idle`: counts of tasks, callbacks, timers and frames in an idle trace;
 - `edit`: the cost of each edit, undo, drop and hide, and the work that follows it;
 - `callers` and `inside` (full traces): the chains above, and the `src/` code below, a function matching a pattern;
-- `heap`: a `memory` run's sampled live bytes by module and allocator.
+- `heap`: a `memory` run's sampled live bytes, or an `allocProfile` run's sampled allocations, by module and allocator.
 
 Options:
 
@@ -55,6 +55,12 @@ A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 
 Other builds define the flag false: `timed` returns its callback, and the hook is never imported or bundled. Probes collect only while a run has switched them on.
 
+## The preview in Node
+
+`npm run perf:preview -- <level.json> --start 15 --seconds 9` draws the preview's frames in Node with the real skin and particles, and a renderer that does the real one's CPU work: the vertices, the layer sort and the pack. It prints the per-frame times and the heaviest seconds. Start a plan's playback cells there.
+
+`--digest` adds a hash of every draw, and of paused frames with everything selected. A change that should draw exactly the same must leave the digest unchanged on several charts and windows. To compare with another commit, unpack its `src/` under `perf-results/` (`git archive <commit> src`) and pass it as `--src`. Hashing slows the frames, so take times from a run without `--digest`.
+
 ## Plans
 
 A plan is JSON (see `scripts/perf/plans/example.json`): `defaults` for every cell, then `groups`. Each group has:
@@ -64,6 +70,8 @@ A plan is JSON (see `scripts/perf/plans/example.json`): `defaults` for every cel
 - `hz`: `"native"`, or 60 or 120 for the frame gate;
 - `chart`: a level data path from the editor root;
 - optional `bgm`;
+- optional `settings`, app settings set before each cell, such as `{ "playFollow": false }`;
+- optional `browserArgs`, extra Chromium flags such as `--js-flags=--no-allocation-site-pretenuring`;
 - `cells`.
 
 Each cell can set:
@@ -77,6 +85,8 @@ Each cell can set:
     - `drag`: selects `count` notes, drags one of them `dx` px (60) over 1 s, waits `wait`, undoes, and waits again. It marks `nse-drag`, `nse-drop` and `nse-undo`;
     - `hide`: an edit of `count` (20) notes, then the page is hidden `after` ms (2000) later and shown again 2 s after that, then undone. It marks `nse-edit` and `nse-hide`. The hide is simulated (see the pitfalls), and the record has `hiddenMs`, the time the page's own listeners took;
     - `journal`: an edit, then scrolling back and forth for `seconds` (22) with a second edit halfway, across the 10 s journal ticks. Pair it with a group's `storage` flag;
+    - `edits`: selects `count` (50) notes near the view, then flips, undoes, redoes, deletes, undoes, copies, pastes (hovering the pasted notes for 1 s before placing them) and undoes, `wait` ms (1500) apart. Each step is marked (`nse-flip`, `nse-paste` and so on);
+    - preview interactions: `scrub`, a 3 s drag back and forth across the preview; `seek`, a tap on the step button named `button` (for example `Forward 100 ms`) every 120 ms for 3 s; `cursorjumps`, the cursor moved to a new time every 120 ms for 3 s; `notespeed`, the note speed changed every frame for 2 s, as a slider drag does; `reopen`, the chart opened again over itself, marked `nse-open` and `nse-opened`;
     - `memory`: one long run that records the JS heap and DOM counts after a forced GC at each stage: opened, after sweeps of the whole chart at several zooms and layouts, after `seconds` (200) of playback at `speed` (1, 1.5 or 2) sampled every `sampleEvery` s (40, without GC), after New, after Open again, and after one more sweep. It writes `heap-<stage>.json` sampling profiles to the run folder (read them with `perf:report … heap`) and records the process tree's memory at each stage;
 - `layout`;
 - `minimap`, `preview`, `elevation` (beside the chart) and `selection` (every note and connector);
@@ -86,6 +96,8 @@ Each cell can set:
 - `reps` and `warmup`;
 - `trace`, `traceCold` and `traceEach` (a light trace of every repeat, see "Tracing");
 - `noLoop`: the collector does not request frames. Use it with `idle`;
+- `settings`: app settings for this cell, applied after the group's. They stay set for the group's later cells;
+- `allocProfile`: sample allocations, every `allocInterval` bytes (32,768), over each untraced run, into `alloc-<cell>-<n>.json`;
 - `keepRaw`: keep the raw probe samples, long tasks and long animation frames in the record;
 - `tag`.
 
@@ -156,6 +168,8 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 - **The app's clock stops when nothing moves** (`docs/rendering.md`). An idle editor requests no animation frames, and over 60 s on the desktop profile its browser processes use 1–2.6% of a core. Idle CPU well above that means something keeps the clock or another frame loop running.
 - **The gate's pump adds animation frames to counts.** Under `hz: 60` or `120`, animation frame counts include the gate's, so compare counts only within one `hz`.
 - **`previewDraw` on an edit frame includes the preview's rebuild.** It is not the steady cost.
+- **Preview playback is cheapest at a chart's opening.** Dense passages cost 2–5 times more, so a playback cell for the preview should include them (`start`). `npm run perf:preview` prints the heaviest seconds.
+- **Moving the cursor plays a moment of BGM**, and Chrome then animates its tab audio indicator. That adds about a second of browser frames that the app does not cause. The harness launches Chromium with `--mute-audio` for this reason.
 - **The GC pass grows with the session.** Later in a session (`memory`, or after many cells in one group) it costs more than in a fresh one, because it walks every tracked resource. Compare cells from fresh groups.
 - **The process tree** (`idle`, `memory`) is read with `scripts/perf/proc.ps1` on Windows: CPU seconds, working set, private bytes, and GPU dedicated and shared memory per process.
 
@@ -169,7 +183,7 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 - `--affinity <hex mask>` does this on Windows. It pins the harness first, so the browser inherits the affinity, and re-applies the priority (`--priority`, default AboveNormal) after launch and after every cell. Each record's `offPin` counts processes that left the set.
 - Example: a Ryzen 9 9950X3D has two CCDs. CCD0 (logical processors 0–15) carries the 3D V-cache and CCD1 (16–31) the higher clocks, so runs use `--affinity 0xFFFF0000`.
 - Run analysis and everything else on the other CCD, and run one measurement at a time with nothing else busy.
-- On a shared machine, check before each run that no other perf run is active (processes with `nse-perf` in their command line) and that both CCDs are quiet, and sample each CCD's load during the run. Run again any run that met other work: other tests at 100% on both CCDs doubled a playback run's clock p95. Two runs waiting for a quiet machine can both see it in the same second, so check again a few seconds after the check passes.
+- On a shared machine, check before each run that no other perf run is active (processes with `nse-perf` in their command line) and that both CCDs are quiet, and sample each CCD's load during the run. Run again any run that met other work: other tests at 100% on both CCDs doubled a playback run's clock p95. Bursts last minutes, so compare each run's `startedAt` and `endedAt` with the load log. Two runs waiting for a quiet machine can both see it in the same second, so check again a few seconds after the check passes.
 - Name the run's folders and command lines so a priority watcher can exempt them. Ours exempts anything with `nse-perf` in its command line.
 
 ### Charts
@@ -204,7 +218,7 @@ Note counts are the editor's where known, else level data's.
 These recur, and a spike in a run is often one of them. Check them before blaming the scenario.
 
 - **Pixi's GC pass** (`GCSystem.run`, then `runOnHash`) walks every tracked resource, so its cost grows with what is live: 2–8 ms early in a session and 10–20 ms later at 1×, 15–30 ms rising to 60 ms at 4×. It runs every 10 s (`GC_FREQUENCY`), at idle time and never inside a frame (`RenderingScheduler`, `docs/rendering.md`). In a trace it is an idle callback.
-- **V8 major GCs** in long playback on dense charts take 15–40 ms, mostly to finish marking a 300–400 MB heap. Per-frame allocations in a draw path make them more frequent.
+- **V8 major GCs** in long playback on dense charts take 15–40 ms, mostly to finish marking a 300–400 MB heap. Per-frame allocations in a draw path make them more frequent. Major GCs every second or so during playback can mean that a per-frame allocation site also builds long-lived data, so V8 allocates the site's objects in the old generation (`docs/rendering.md`). To check, count `MajorGC` events in light traces with and without the `browserArgs` value `--js-flags=--no-allocation-site-pretenuring`. In Node, `node --trace-gc --import tsx scripts/perf/preview.mjs …` prints each `Mark-Compact`.
 - **First-visit section compiles** (`notes.ts` `prepareSections`, `vectorRanges.ts` `captureVectors`) take 20–45 ms at 4×. The idle compile ahead (`docs/rendering.md`) compiles sections near the view early, but a jump or the `cold` run still meets them. An idle capture can delay an input that lands in it, so measure a wake from a pause with `notch`.
 - **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report … frames`.
 - **Path-cache churn.** A path built anew every frame and kept in the path cache fills its 128 MiB budget with geometry nothing draws again, and the grown maps and garbage then stall chart frames. A context's current path lasts one frame for this reason (`docs/rendering.md`). A record whose `pathCache` shows steady `trimmed` counts during playback has a new case of it.
