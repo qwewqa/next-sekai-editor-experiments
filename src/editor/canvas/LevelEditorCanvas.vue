@@ -4,7 +4,7 @@ import { beats, keys, times } from '..'
 import { isAppActive } from '../../activity'
 import { state } from '../../history'
 import { defaultGroupId } from '../../history/groups'
-import { cullAllEntities } from '../../history/store'
+import { cullAllEntities, cullEntities } from '../../history/store'
 import { isPlaying } from '../../player'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
@@ -23,6 +23,7 @@ import { BPM_LABEL } from '../../state/entities/bpm'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, isSameTempo, timeToBeat } from '../../state/integrals/bpms'
 import { computedArray } from '../../utils/array'
+import { computedRange } from '../../utils/range'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { isDragging } from '../controls/gestures/recognizers/drag'
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
@@ -51,12 +52,14 @@ import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
 import QuickScrollZone from '../QuickScrollZone.vue'
 import { hitOffscreenIndicator, useOffscreenIndicators } from '../offscreenIndicators'
 import {
-    groupOffscreenNotes,
     isSameOffscreenGroups,
     OFFSCREEN_REACH,
     offscreenSlotNear,
+    placeOffscreenSlots,
     RANGE_LABEL_HEIGHT,
+    slotOffscreenNotes,
     type OffscreenNoteGroup,
+    type OffscreenSlots,
 } from '../offscreenNotes'
 import {
     edgeLabelBoxes,
@@ -229,11 +232,18 @@ const sceneHovered = computed(() =>
 const hoveredSet = computed(() => new Set(sceneHovered.value))
 // Badges count notes as far past the pane as their slots reach.
 const offscreenRange = computed(() => beatRange(OFFSCREEN_REACH + 4))
-// The culled entities already reach that far (see `keys`), and the grouping leaves out any note
-// past its slots, so the candidates need no range of their own outside a previewed drop.
-const offscreenNotes = computedArray(() =>
-    culledEntities.value.filter((entity) => entity.type === 'note'),
-)
+// The keys already reach that far, and the grouping leaves out any note past its slots, so the
+// candidates need no range of their own outside a previewed drop. Whole chunks of keys are taken,
+// so scrolling regroups them once a chunk.
+const OFFSCREEN_CHUNK = 8
+const offscreenKeys = computedRange(() => ({
+    min: Math.floor(keys.value.min / OFFSCREEN_CHUNK) * OFFSCREEN_CHUNK,
+    max: Math.ceil((keys.value.max + 1) / OFFSCREEN_CHUNK) * OFFSCREEN_CHUNK - 1,
+}))
+const offscreenNotes = computedArray(() => {
+    const { min, max } = offscreenKeys.value
+    return [...cullEntities('note', min, max, sceneState.value.store)]
+})
 // Only horizontal scrolling and zoom change which notes are off a side.
 const offscreenAxis = computed<{ l: number; scale: number; width: number }>((previous) => {
     const { l, w } = viewBox.value
@@ -291,9 +301,9 @@ const offscreenAnchor = computed(() => {
     const ratio = pixelRatio.value
     return Math.round(lastOffscreenAnchor * ratio) / ratio
 })
-const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
+// Scrolling only places these slots, and an unchanged slot keeps its badge.
+const offscreenSlots = computed<OffscreenSlots<NoteEntity>>((previous) => {
     const { time: origin, pixels } = offscreenOrigin.value
-    const anchor = offscreenAnchor.value
     const notes = offscreenSideNotes.value.map(({ entity, left, right, time, ...note }) => ({
         ...note,
         left,
@@ -303,8 +313,12 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
         // Dimmed notes are counted but not selectable.
         target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))
+    return slotOffscreenNotes(notes, view.w, previous)
+})
+const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
+    const anchor = offscreenAnchor.value
     // Clear of the range labels in the corners.
-    const groups = groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT, anchor)
+    const groups = placeOffscreenSlots(offscreenSlots.value, 0, view.h, RANGE_LABEL_HEIGHT, anchor)
     // Unchanged badges keep their array, so they don't re-render.
     return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
 })
