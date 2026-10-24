@@ -39,7 +39,6 @@ import { loadBgm } from '../../../player'
 import { PRODUCT_NAME } from '../../../product'
 import { settings } from '../../../settings'
 import type { State } from '../../../state'
-import { storageGet } from '../../../storage'
 import { getFilename } from '../../../utils/file'
 import { interpolate, interpolateRaw } from '../../../utils/interpolate'
 import { createWaveform } from '../../../waveform'
@@ -49,6 +48,7 @@ import { bgmStatus, claimNotice, isHeldHere } from '../../media/heldBgm'
 import { dismissNoticeCard, notify, type NoticeLine } from '../../notification'
 import { restoreStored } from '../../restoreStored'
 import { bindingHandle, bindingOf, environment, type Env } from '../../save/binding'
+import { ownDeviceId } from '../../save/env'
 import { revokedOf } from '../../save/watch'
 import { notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
@@ -132,12 +132,6 @@ const partialMessage = (line: PartialLine) => {
         case 'mediaBad':
             return interpolateRaw(open.mediaBad, open.media[line.media])
     }
-}
-
-/** The browser this one is, as revisions record it (§1.3.3): `deviceId` in localStorage. */
-const thisDevice = () => {
-    const id = storageGet('deviceId', undefined)
-    return typeof id === 'string' ? id : undefined
 }
 
 const restoreAction = (sessionId: string) => ({
@@ -556,8 +550,9 @@ const openRequestedProject = async (
     if (stored?.kind !== 'stored' || !stored.shown || !request.isCurrent()) return
 
     // A file this browser wrote confirms that its downloads work (§1.3.4); no other row changes.
-    const device = opened.project?.revision?.device.id
-    if (identity && device !== undefined && device === thisDevice()) confirmDownloads()
+    const written = opened.project
+    const device = written?.revision?.device.id
+    if (identity && written && device === ownDeviceId(written.lineageId)) confirmDownloads()
 
     // The session this open left, which Reopen offers.
     const left = previousSession.value?.sessionId

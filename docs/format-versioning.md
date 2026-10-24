@@ -116,6 +116,7 @@ Operation codecs are strict: a member the codec does not list makes the data fai
 - Counts in operations are safe integers: a scalar count (`created`, `targets`, `added`) is at least 0, and a map of counts (`changed`, `removed`, `displaced`) holds only positive values; a required map may be empty, an optional one is left out instead ([history-format.md](history-format.md) section 4.2).
 - Text in an operation is a `NameText` (`{ text, truncated? }`) of at most 256 code points; `fallback.text` is at most 1,024.
 - Hashes are 32 lowercase hex characters for 16 bytes in files and journals (64 for a full SHA-256), raw 16 bytes in IndexedDB.
+- A `device.id` in a file is **per document**: the web writes HMAC-SHA-256 of the file's `lineageId` under the browser's own `deviceId`, as a UUID version 8 (`documentDeviceId`, `src/local/deviceId.ts`; [nxsp-format.md](nxsp-format.md) §5.3). Readers compare it only with ids of the same lineage and otherwise treat it as opaque. The derivation is part of v1: a build that changed it would read this browser's earlier saves as another device's.
 - `rating` in level info is a plain finite number; no range is enforced.
 
 ## 7. What the readers do not do

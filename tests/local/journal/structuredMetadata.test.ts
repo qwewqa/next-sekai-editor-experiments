@@ -149,7 +149,7 @@ for (const existingPrefix of [false, true])
                     context: {
                         now: 1700000000000,
                         newId: () => '00000000-0000-4000-8000-000000000001',
-                        device: { id: 'test', label: 'Test' },
+                        device: { deviceId: 'test', label: 'Test' },
                         appVersion: '0.6.0',
                     },
                 },

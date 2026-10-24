@@ -13,7 +13,7 @@ import type { StorageWorker } from '../../local/worker/client'
 import type { BuildSaveOptions } from '../../local/worker/saveHandlers'
 import { appVersion, FileError, type PinnedSource } from '../../platform'
 import type { State } from '../../state'
-import { deviceForm } from './env'
+import { deviceSource } from './env'
 
 // A Save's build (Part 1 §1.6.11.6–§1.6.11.7): the options the storage worker's writer takes, with
 // what this tab holds that storage may not (its unflushed rows and stack, the live head, its media
@@ -145,7 +145,7 @@ export const buildOptions = async (
         save: request.save,
         ...(own ? { sessionId: env.session.id } : {}),
         ...(unstored ? { unstored } : {}),
-        context: { now: Date.now(), device: deviceForm(), appVersion: appVersion().appVersion },
+        context: { now: Date.now(), device: deviceSource(), appVersion: appVersion().appVersion },
         ...(request.sessionId === undefined ? {} : { sessionId: request.sessionId }),
         ...(pending ? { pending } : {}),
         ...(identity ? { identity } : {}),
