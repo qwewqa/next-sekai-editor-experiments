@@ -14,7 +14,7 @@ import {
     type TxMode,
 } from './types'
 
-// The IndexedDB implementation (§1.6.1). Requests are promises resolved in their success events,
+// The IndexedDB implementation. Requests are promises resolved in their success events,
 // so a transaction stays active across awaits of its own requests and commits explicitly.
 
 const request = <T>(req: IDBRequest<T>) =>

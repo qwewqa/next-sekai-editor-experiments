@@ -5,7 +5,7 @@ import { isObject, parseJsonBytes } from './json'
 import type { PinnedSource, SourceEntry } from './plan'
 import { NXSP_CAPS } from './read'
 
-// `inspect` (§1.6.11.7): a pinned file's metadata for the builder: its central directory with
+// `inspect`: a pinned file's metadata for the builder: its central directory with
 // where each entry's data starts (from its local header, never the directory's extra length),
 // its `project.json`, and its manifest and segments when they're there and inflate.
 

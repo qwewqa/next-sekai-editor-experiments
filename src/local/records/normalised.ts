@@ -11,7 +11,7 @@ import { emptyLevelInfo } from '../../state/levelInfo'
 import { canonical } from './canonical'
 import { chartToRecords, type SnapshotRecords } from './records'
 
-// "`level.json` matches a state" (§1.6.11.6): both sides through the same level-data path,
+// "`level.json` matches a state": both sides through the same level-data path,
 // renumbered, then compared as records, the header's level info and BGM left out.
 
 /**
@@ -119,7 +119,7 @@ export const normalisedText = ({ header, kinds }: SnapshotRecords) =>
         kinds.map(({ kind, records }) => [kind, records.map(({ record }) => record)]),
     ])
 
-/** Whether a `level.json` matches a state (§1.6.11.6). */
+/** Whether a `level.json` matches a state. */
 export const levelDataMatchesState = (
     entities: LevelDataEntity[],
     bgmOffset: number,

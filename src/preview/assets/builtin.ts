@@ -88,7 +88,7 @@ const loadEffect = async ({
     })
 }
 
-/** The Built-in set: four ordinary static files (Part 2, 2.5.6), read when chosen or needed. */
+/** The Built-in set: four ordinary static files, read when chosen or needed. */
 export const builtinProviders = {
     skin: ({ signal }) => loadPreviewResource(builtinUrl('skin'), loadSkinFromScp, signal),
     particle: ({ signal }) =>

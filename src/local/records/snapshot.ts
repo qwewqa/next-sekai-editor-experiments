@@ -14,7 +14,7 @@ import {
 import { groupChunks, splitKind } from './split'
 import { RECORDS_V } from './version'
 
-// A snapshot is a tree of records (§1.6.11.1): one root, one kind node (or a two-level group)
+// A snapshot is a tree of records: one root, one kind node (or a two-level group)
 // per kind with records, one header chunk and the body chunks. A record's hash is SHA-256 of
 // its canonical bytes, first 16 bytes; the stored form of chunks is raw DEFLATE (`chunkVerify.ts`).
 
@@ -82,7 +82,7 @@ export const rootRecord = (
 ): Rec => [v, toHex(header), kinds.map(([name, hash]) => [name, toHex(hash)]), noteCount]
 
 /**
- * A kind's nodes over its chunk hashes (§1.6.11.1): a depth-0 node for at most 16 chunks,
+ * A kind's nodes over its chunk hashes: a depth-0 node for at most 16 chunks,
  * otherwise a depth-1 node over depth-0 nodes of 16 consecutive chunks each. The last is the top.
  */
 export const buildKindNodes = (
@@ -164,7 +164,7 @@ export const rootVersion = (json: unknown) => {
 }
 
 /**
- * Checks a v1 root (§1.6.11.1): its form, and `kinds` in the v1 kind order with no name
+ * Checks a v1 root: its form, and `kinds` in the v1 kind order with no name
  * twice. A root whose `v` is above `RECORDS_V` is newer, never invalid: check `rootVersion` first.
  */
 export const checkRoot = (json: unknown): void => {
@@ -196,8 +196,8 @@ export type SnapshotSource = {
 }
 
 /**
- * A snapshot's records from its root (§1.6.11.1), checking every root, node and record
- * against the v1 schema, every group, stage and folder a record names against the header (D9),
+ * A snapshot's records from its root, checking every root, node and record
+ * against the v1 schema, every group, stage and folder a record names against the header,
  * and `noteCount` against the slides. Readers never assume the split; an empty body chunk
  * reads as no records.
  */

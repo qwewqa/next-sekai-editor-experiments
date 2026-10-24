@@ -6,7 +6,7 @@ import { formatImportMessage } from './importMessage'
 
 const number = (value: number) => formatCount(value)
 
-/** The plain message for a package that is refused (Part 2, 2.5.5), in the current language. */
+/** The plain message for a package that is refused, in the current language. */
 export const importMessage = (error: AssetImportError) => {
     const { import: text, part, noun } = i18n.value.commands.previewAssets
     return formatImportMessage(error, { import: text, part, noun }, number, formatSize)

@@ -3,7 +3,7 @@ import { LIMITS } from './limits'
 let cached: number | undefined
 
 /**
- * The largest texture side the device takes, at most 4096 (`gl.MAX_TEXTURE_SIZE`, Part 2, 2.5.5);
+ * The largest texture side the device takes, at most 4096 (`gl.MAX_TEXTURE_SIZE`);
  * read once from a throwaway context, 4096 where there is none.
  */
 export const maxTextureSide = () => {

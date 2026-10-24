@@ -5,7 +5,7 @@ import { AssetImportError, type ImportPart } from './errors'
 import { CapExceeded, gunzipCapped } from './gunzip'
 import { LIMITS } from './limits'
 
-// A Sonolus package (.scp) read lazily from a Blob, under the limits of Part 2, 2.5.5. The same
+// A Sonolus package (.scp) read lazily from a Blob, under the limits in ./limits. The same
 // reader opens the file a user picks (import) and the package we stored (load).
 
 export const categoryOf = {

@@ -3,7 +3,7 @@ import type { AssetType } from '../types'
 import type { AssetImportError, ImportErrorCode, ImportPart } from './errors'
 import { LIMITS } from './limits'
 
-// The words of a refused package (Part 2, 2.5.5). Kept free of the i18n module so tests can pass
+// The words of a refused package. Kept free of the i18n module so tests can pass
 // the English strings in.
 
 export type ImportStrings = {

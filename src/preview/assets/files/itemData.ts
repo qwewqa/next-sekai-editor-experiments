@@ -13,7 +13,7 @@ import { LIMITS } from './limits'
 import { isNoteBody } from './noteBodies'
 import { displayText } from './package'
 
-// The schemas and checks for the JSON of untrusted items (Part 2, 2.5.5): extra fields are
+// The schemas and checks for the JSON of untrusted items: extra fields are
 // allowed, every number is finite (TypeBox's Number refuses NaN and Infinity), and what the
 // preview reads is rebuilt from what passed, so nothing else reaches the renderer.
 

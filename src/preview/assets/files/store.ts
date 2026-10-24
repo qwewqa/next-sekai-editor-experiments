@@ -9,7 +9,7 @@ import type { StorageStatus } from '../../../local/worker/core'
 
 export type { UserAssetMeta, UserAssetRecord, UserAssetsPut }
 
-/** The stored preview packages (`userAssets`, Part 1 §1.5.8): the storage worker's, or a fake. */
+/** The stored preview packages (`userAssets`): the storage worker's, or a fake. */
 export type UserAssetStore = {
     list: () => Promise<UserAssetMeta[]>
     get: (key: string) => Promise<UserAssetRecord | undefined>

@@ -3,7 +3,7 @@ import type { CopyOf } from '../local/names'
 import { toWellFormed } from '../local/records/wellFormed'
 
 /**
- * The open session (§1.3.5): chain metadata that isn't chart state. The name
+ * The open session: chain metadata that isn't chart state. The name
  * and the imported file's stem live here, never in snapshots.
  */
 export type SessionDescriptor = {
@@ -12,13 +12,13 @@ export type SessionDescriptor = {
     readonly name?: string
     readonly sourceName?: string
     /**
-     * A separate copy (§1.3.1): the file it was copied from (`bound`), or the session's name, for
+     * A separate copy: the file it was copied from (`bound`), or the session's name, for
      * the status label's "Separate copy of …".
      */
     readonly copyOf?: CopyOf
-    /** When it started: the date fallback of the displayed name (§1.3.5). */
+    /** When it started: the date fallback of the displayed name. */
     readonly startedAt?: number
-    /** The file it is bound to, as the chain record has it (§1.3.2), for the status label. */
+    /** The file it is bound to, as the chain record has it, for the status label. */
     readonly file?: SessionFile
 }
 
@@ -27,7 +27,7 @@ export type SessionFile = {
     readonly name: string
     readonly event?: string
     readonly at?: number
-    /** I Have the File was pressed for this download (§1.3.4). */
+    /** I Have the File was pressed for this download. */
     readonly confirmed?: boolean
     readonly hash?: string
 }

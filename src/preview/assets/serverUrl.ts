@@ -1,4 +1,4 @@
-// What the From a Server field accepts (Part 2, 2.5.3): a server address, a share link to an item
+// What the From a Server field accepts: a server address, a share link to an item
 // (`https://{server}/skins/{name}`, or Sonolus's `https://open.sonolus.com/{server}/…`) and a
 // sonolus:// deep link. Pure, with no imports, so the release scripts can load it too.
 
@@ -137,7 +137,7 @@ const ipv6Groups = (host: string) => {
 
 /**
  * Whether a host is on this device or its network: `localhost`, a `.local` name, or a loopback,
- * private or link-local address (Part 2, 2.5.3's thumbnails; DECISIONS D11).
+ * private or link-local address (thumbnails).
  */
 export const isLocalHost = (hostname: string) => {
     const host = hostname

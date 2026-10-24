@@ -6,7 +6,7 @@ import { i18n } from '../i18n'
 import { panelText } from './assets/fallbackText'
 import { dismissFallback, panelFallbacks } from './assets/active'
 
-// The small line a fallback gets in the panel (Part 2, 2.4.2): at load or after the user's own
+// The small line a fallback gets in the panel: at load or after the user's own
 // change, once per choice and reason.
 const strings = computed(() => i18n.value.commands.previewAssets)
 </script>

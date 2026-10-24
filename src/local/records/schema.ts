@@ -29,10 +29,10 @@ import type { LevelInfo, LevelInfoTag, MediaRef } from '../../state/levelInfo'
 import { isHash16Hex } from '../hash'
 import type { RecordValue } from './canonical'
 
-// The one schema source for snapshot records (§1.6.11.1): record forms, field order, JSON
+// The one schema source for snapshot records: record forms, field order, JSON
 // types, defaults and choice value sets. `npm run format:gen` writes `fields-v1.json` from
 // it, and a test fails when that file drifts. Adding a field is one change here, at the end
-// of its record, optional, with a `format:bump` (Part 4, 4.9.4).
+// of its record, optional, with a `format:bump`.
 
 /**
  * The v1 kind order, one per array of the chart model. `fields-v1.json` carries it as the
@@ -156,7 +156,7 @@ export type FieldType =
     | `record:${string}`
 
 /**
- * The header map an id must name (§1.6.11.1, D9): `folders` is the folder map holding the
+ * The header map an id must name: `folders` is the folder map holding the
  * record itself. A snapshot whose records name an id its header lacks is invalid.
  */
 export type RefTarget = 'groups' | 'stages' | 'groupFolders' | 'stageFolders' | 'folders'
@@ -385,7 +385,7 @@ export const fieldsMatchModel: [
     Same<Names<'bgm'>, keyof BgmMeta>,
 ] = [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true]
 
-/** A record that breaks the v1 schema (§1.6.11.1): unreadable history, a damaged snapshot. */
+/** A record that breaks the v1 schema: unreadable history, a damaged snapshot. */
 export class SchemaError extends Error {
     override name = 'SchemaError'
     constructor(
@@ -463,7 +463,7 @@ const checkMinItems = (minItems: number | undefined, value: unknown, path: strin
 }
 
 /**
- * Checks a record's arity and JSON types against its form (§1.6.11.1): positions, optional
+ * Checks a record's arity and JSON types against its form: positions, optional
  * fields only trailing, enum membership, nested records. Ranges are the editor's, not the format's.
  */
 export const checkRecord = (name: RecordName, value: unknown, path: string = name): void => {
@@ -508,7 +508,7 @@ export const checkHeaderIds = (header: readonly RecordValue[]) => {
     unique(header[6], 'header.stageFolders', unique(header[5], 'header.groupFolders'))
 }
 
-/** The ids a header's maps define, for the references records make (D9). */
+/** The ids a header's maps define, for the references records make. */
 export type HeaderIds = Readonly<Record<Exclude<RefTarget, 'folders'>, ReadonlySet<unknown>>>
 
 const idsOf = (records: RecordValue | undefined) =>
@@ -523,7 +523,7 @@ export const headerIds = (header: readonly RecordValue[]): HeaderIds => ({
 
 /**
  * Checks that every `ref` field of a record that passed `checkRecord` names an id of its map
- * (D9): a note's group and stage, a time scale's group, a stage event's stage, and the folder
+ *: a note's group and stage, a time scale's group, a stage event's stage, and the folder
  * links of groups, stages and folders. `folders` is the map holding a folder record.
  */
 export const checkRefs = (
@@ -566,7 +566,7 @@ export const checkRefs = (
     }
 }
 
-/** Checks that a folder map's parent links never loop, a folder its own parent included (D9). */
+/** Checks that a folder map's parent links never loop, a folder its own parent included. */
 const checkAcyclic = (folders: readonly RecordValue[][], path: string) => {
     const at = (records.folder as readonly Field[]).findIndex((field) => field.acyclic)
     // Ids and links are safe integers once the form and refs are checked.

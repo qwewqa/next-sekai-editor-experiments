@@ -15,7 +15,7 @@ import type { RecordValue } from '../records/canonical'
 import { bgmObject, bgmRecord, levelInfoObject, levelInfoRecord } from '../records/records'
 import type { Journal, JournalIds } from './format'
 
-// The journal's whole state (§1.6.4 #7, §1.6.11.3): level data gzipped on its own at level 1,
+// The journal's whole state: level data gzipped on its own at level 1,
 // so a recovery file needs no parsing, plus what level data can't carry: the header's level info
 // and BGM records and every group, stage and folder id. Replay parses the level data and gives
 // each entry its id back, so the recovered state hashes as the stack around it does wherever its
@@ -108,7 +108,7 @@ const ascending = <K extends number>(map: ReadonlyMap<K, unknown>) =>
 const distinct = (ids: readonly number[]) => new Set(ids).size === ids.length
 
 /**
- * The chart with the journal's ids (§1.6.11.3): the entry the parser made n-th takes the n-th id.
+ * The chart with the journal's ids: the entry the parser made n-th takes the n-th id.
  * Groups, stages and folders (both maps, one id space) each keep theirs only when the counts
  * match the parsed level and the ids can be used; otherwise they keep the parser's fresh ids
  * (r11g-format M6), as stages do when level data has none.
@@ -213,7 +213,7 @@ export const journalState = (journal: Journal): JournalState => {
             undefined,
             report,
         )
-        // Replay never drops content a newer build wrote (§1.6.4 step 2).
+        // Replay never drops content a newer build wrote.
         if (!report.isEmpty) return { kind: 'later', why: 'level data this build does not read' }
         validateChart(chart)
     } catch (error) {

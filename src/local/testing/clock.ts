@@ -1,7 +1,7 @@
 import type { Timers } from '../locks'
 import type { Actor, Scheduler } from '../scheduler'
 
-// The test core's clock (§1.11's test notes): timers that fire only when a test moves the clock,
+// The test core's clock: timers that fire only when a test moves the clock,
 // each as a task of the actor that set it, on the seeded scheduler. So a seed replays their order
 // with everything else, and the crash sweep can kill at them.
 

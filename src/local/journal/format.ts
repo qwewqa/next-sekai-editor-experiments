@@ -6,12 +6,12 @@ import { RECORDS_V, SESSION_V } from '../records/version'
 
 // The structured journal: the object a `journal.<sessionId>` key holds,
 // and the checks a reader makes before it trusts one. A newer journal is left in place for a
-// later build; one this build can't read keeps its bytes in the `recovered` store (§1.6.4).
+// later build; one this build can't read keeps its bytes in the `recovered` store.
 
-/** The writer's own journal version (§1.6.11.8). */
+/** The writer's own journal version. */
 export const JOURNAL_VERSION = 1
 
-/** Group, stage and folder ids in level-data entity order (§1.6.11.3). */
+/** Group, stage and folder ids in level-data entity order. */
 export type JournalIds = {
     groups: number[]
     stages: number[]
@@ -19,7 +19,7 @@ export type JournalIds = {
     stageFolders: number[]
 }
 
-/** The stack the journalled state sits in (§1.6.11.3). */
+/** The stack the journalled state sits in. */
 export type JournalStack = {
     /** Slots `0 … keep − 1` of the committed stack stay. */
     keep: number
@@ -33,7 +33,7 @@ export type JournalStack = {
 }
 
 /**
- * The session descriptor (§1.6.11.3): the session's `v?`, `origin`, `parent?` and `startedAt`,
+ * The session descriptor: the session's `v?`, `origin`, `parent?` and `startedAt`,
  * then the chain record as it was at this write without handles, hashes as hex, every field a
  * fork copies kept by value.
  */
@@ -61,7 +61,7 @@ export type Journal = {
     /** `serializeToLevelData`'s output with folders, gzipped at level 1, in base64. */
     levelDataGz: string
     editorMetadata?: { defaultGuideColors?: number[] }
-    /** The header's `levelInfo` and `bgm` records (§1.6.11.1) and the ids. */
+    /** The header's `levelInfo` and `bgm` records and the ids. */
     header: { levelInfo: unknown[]; bgm?: unknown[]; ids: JournalIds }
     stack: JournalStack
 }
@@ -69,7 +69,7 @@ export type Journal = {
 /** What a reader makes of a journal's text. */
 export type JournalReading =
     | { kind: 'journal'; journal: Journal }
-    /** Written by a newer build: left in place (§1.6.4 step 2). */
+    /** Written by a newer build: left in place. */
     | { kind: 'later'; why: string }
     /** Not a journal this build can read: its bytes go to the `recovered` store. */
     | { kind: 'unreadable'; why: string }
