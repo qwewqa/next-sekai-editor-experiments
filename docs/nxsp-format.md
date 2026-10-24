@@ -2,7 +2,7 @@
 
 A complete description of the Next SEKAI Editor's project file, written so that a reader with no access to the editor's code can build a compatible viewer: open any v1 file, classify it as the editor does, rebuild the chart at the head and at every stored History step, and list and interpret the History timeline. A short section at the end gives the writer's rules for those who also write files.
 
-- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until Stage 1 ships (v0.6.0), v1 is changed in place, with no version bumps and no compatibility handling (owner, 2026-10-19). From the ship it is frozen (plan Part 1 §1.6.11), and any change follows [format-versioning.md](format-versioning.md).
+- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until Stage 1 ships (v0.6.0), v1 is changed in place, with no version bumps and no compatibility handling. From the ship it is frozen, and any change follows [format-versioning.md](format-versioning.md).
 - **Authority.** The code is the record (`src/local/nxsp/`, `src/local/records/`, `src/zip/`, `src/history/operations/`, `src/levelData/`, `src/chart/parse/levelData/`). Where this page and the code disagree, the code wins and this page is wrong. The design rationale is in [history-format.md](history-format.md) (§2–§4) and [format-versioning.md](format-versioning.md); this page does not repeat it.
 - **Background assumed.** Sonolus level data, the Next SEKAI engine's archetypes and what notes, slides, connectors, guides, time-scale groups, stages, the five event kinds, BGM and offset mean. ZIP, raw DEFLATE (RFC 1951), CRC-32, SHA-256, JSON and UTF-8.
 - **Cross-check tools.** `tools/nxsp_check.py` is an independent reader and strict checker that shares no code with the editor (§17). The goldens and conformance cases are listed in §17.
@@ -160,7 +160,7 @@ A JSON object, compact, UTF-8.
 | `id` | non-empty string | The document id. Required. |
 | `lineageId` | non-empty string | Provenance; copied by forks and Save As. Required. |
 | `revision` | object, optional on read | §5.3. Any form error: `invalid-key` and the whole `revision` reads as absent. |
-| `name` | string, optional | The chain's name. The apps name a file brought into their library by it (Part 3 ND15). The web reads it and does not write it: its names are automatic (a copy's "(2)", a lost file's stem). |
+| `name` | string, optional | The chain's name. The apps name a file brought into their library by it. The web reads it and does not write it: its names are automatic (a copy's "(2)", a lost file's stem). |
 | `exportName` | string, optional | The name Export uses (may be `""`). |
 | `level` | string | Must be `"level.json"` (§4). |
 | `editor` | object, optional (`{}`) | Only `defaultGuideColors`: an array of counts, indices into `level.json` `entities` (§7.6). Other keys: `unknown-key`. A bad array: `invalid-key`, read as absent. |

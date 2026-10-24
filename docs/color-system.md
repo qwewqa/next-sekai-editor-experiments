@@ -482,7 +482,7 @@ Three treatments were compared side by side, on a specimen of every control and 
 
 ```ts
 // src/modals/activationGuard.ts
-/** Activations within this long of a dialog opening are ignored (Part 1 §1.4.1). */
+/** Activations within this long of a dialog opening are ignored. */
 export const GUARD_MS = 300
 
 /** A press within the first moments, or a held key, is not a choice. Call during setup. */

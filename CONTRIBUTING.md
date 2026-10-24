@@ -67,6 +67,10 @@ To add one:
 
 The rules in these docs are principles with reasons. Depart from one when a case needs it, and say why in the change. To change a rule itself, because it gets in the way or misses a case, raise it with the maintainer and discuss it first. If a change makes a claim in the docs false, fix the page in the same change.
 
+In code, tests and docs, cite only what is in the repository: the docs, by file name and section, such as "history-format.md §4.6". Never cite an outside plan or design record. A reader cannot open it. `tests/citations.test.mjs` fails on the common forms of such a citation.
+
+Keep a rule at the scope it was made for. Do not turn a rule for one control or feature into a project-wide rule. Do not document a specific behaviour that the code already shows.
+
 ## UI design
 
 Read these before you change the UI and when you review a UI change:
@@ -121,8 +125,6 @@ Read these before you change a format:
 Read this before you write or review code or tests:
 
 - [docs/engineering-principles.md](docs/engineering-principles.md): defaults and unknowns, one source per fact, owned module state, failures that are not empty, honest tests, shared spec helpers, true text, no compatibility code before ship, proportionate protection, and tests and UI elements that earn their place.
-
-Section references such as "Part 1 §1.4.7" in comments and docs point to a design record kept outside the repository. `docs/` is the reference here.
 
 ## Performance
 

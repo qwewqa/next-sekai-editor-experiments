@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
 // The dev server's `/samples/<name>.json` and `/samples/<name>.zip`, for `?seedSample=<name>` and
-// `?seedSample=<name>.zip` (src/local/seed.ts): served from the nse-next `samples/` folder, never
+// `?seedSample=<name>.zip` (src/local/seed.ts): served from a `samples/` folder outside the checkout, never
 // from `public/`, so no build ever holds a sample.
 
 /** The nearest `samples/` folder above the checkout, or NSE_SAMPLES_DIR. */

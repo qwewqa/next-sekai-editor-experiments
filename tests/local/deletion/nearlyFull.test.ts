@@ -3,7 +3,7 @@ import test from 'node:test'
 import { isNearlyFull, noticeIfNearlyFull } from '../../../src/local/nearlyFull'
 import { HIGH_SHARE } from '../../../src/local/pressure'
 
-// "Browser storage is almost full." (owner, 2026-10-23): once a day, after GC and cleanup, when
+// "Browser storage is almost full.": once a day, after GC and cleanup, when
 // usage is still above the cleanup threshold.
 
 const QUOTA = 1_000_000_000

@@ -1,4 +1,4 @@
-// Clip synthesis: pure functions from a seeded PRNG and plain arithmetic to samples (Part 2, 2.9.6).
+// Clip synthesis: pure functions from a seeded PRNG and plain arithmetic to samples.
 // Only + - * / and Math.sin, Math.exp are used, so the bytes don't depend on the machine.
 
 export const sampleRate = 44100

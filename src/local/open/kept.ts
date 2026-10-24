@@ -47,7 +47,7 @@ export const removeKeptCopy = async (chainId: string) => {
     }
 }
 
-/** The copies being made now: a save picker waits for them (spec B, rule 3). */
+/** The copies being made now: a save picker waits for them. */
 const copying = new Set<Promise<unknown>>()
 
 /** Whether a copy of an opened file is still being kept. */

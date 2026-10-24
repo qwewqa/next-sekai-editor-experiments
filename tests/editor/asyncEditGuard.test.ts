@@ -62,7 +62,7 @@ test('an edit, Undo and Redo permanently invalidate confirmation', () => {
     }
 })
 
-// An edit that leaves the chart as it was is no step (owner, 2026-10-19), so what the user
+// An edit that leaves the chart as it was is no step, so what the user
 // confirmed still holds.
 test('an edit that changes nothing leaves confirmation valid', () => {
     const guard = createAsyncEditGuard()
