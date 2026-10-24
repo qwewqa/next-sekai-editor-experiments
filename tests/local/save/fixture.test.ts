@@ -6,10 +6,10 @@ import { rows } from '../flush/harness'
 import { Fixture, saveOptions } from './fixture'
 
 // The Fixture writes a session's rows itself, so its rows have to be the ones the product
-// leaves (spec E, E-7): `lastSeq` and `updatedAt` from the greatest `seq` and time, whatever
+// leaves: `lastSeq` and `updatedAt` from the greatest `seq` and time, whatever
 // order the rows were added in.
 
-test('a Save reserved before an edit leaves lastSeq at the edit and the rows in seq order (E-F4)', async () => {
+test('a Save reserved before an edit leaves lastSeq at the edit and the rows in seq order', async () => {
     const fixture = await Fixture.create(81)
     await fixture.storeMedia()
     await fixture.start(0)
@@ -45,7 +45,7 @@ test('a Save reserved before an edit leaves lastSeq at the edit and the rows in 
     assert.deepEqual(checkStored(fixture.world.memory, fixture.world.sessionOptions), [])
 })
 
-test('updatedAt is the greatest row time even when a lower seq carries it (E-F4)', async () => {
+test('updatedAt is the greatest row time even when a lower seq carries it', async () => {
     const fixture = await Fixture.create(82)
     await fixture.storeMedia()
     await fixture.start(0)

@@ -17,7 +17,7 @@ import {
 } from '../../../src/local/timeline'
 import { editStep, futureFixtureOperation, initialStep } from '../../helpers/historySteps'
 
-// The stack's pure rules (§1.3.9, §1.6.4 #6): the stored window, replay, and which blocks a flush
+// The stack's pure rules: the stored window, replay, and which blocks a flush
 // rewrites.
 
 const hash = (n: number) => {
@@ -76,7 +76,7 @@ test('the stored window is the newest 5,000 slots, or the 5,000 that keep the in
     assert.throws(() => storedWindow(3, 3), RangeError)
 })
 
-test('replay follows §1.3.9’s example: the stack after a save is the one the user had', () => {
+test('replay of the example: the stack after a save is the one the user had', () => {
     const entries = [
         entry('init', 1),
         entry('edit', 2),

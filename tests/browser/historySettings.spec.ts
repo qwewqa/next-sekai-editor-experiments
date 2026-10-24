@@ -49,9 +49,9 @@ const peekFirstRow = async (page: Page) => {
 const savedSetting = (page: Page) =>
     page.evaluate(() => window.editorTest.settings.dimUnchangedObjects)
 
-// --- S1: the Show Edits default and the local choice
+// --- The Show Edits default and the local choice
 
-test('S1: Show Edits starts from the setting, and the eye does not change it', async ({ page }) => {
+test('Show Edits starts from the setting, and the eye does not change it', async ({ page }) => {
     test.slow()
     errorsFail(page)
     await load(page)
@@ -111,9 +111,9 @@ test('S1: Show Edits starts from the setting, and the eye does not change it', a
     await expect(eye(page)).toHaveAttribute('aria-pressed', 'true')
 })
 
-// --- S2: rebinding History
+// --- Rebinding History
 
-test('S2: History follows its binding as a tool, a hotkey and in the command list', async ({
+test('History follows its binding as a tool, a hotkey and in the command list', async ({
     page,
 }) => {
     test.slow()
@@ -183,13 +183,13 @@ test('S2: History follows its binding as a tool, a hotkey and in the command lis
     await expect(sheet).toHaveCount(0)
 })
 
-// --- S3: the first key after opening (DEF-4)
+// --- The first key after opening
 
 const focusedRow = (page: Page) => timeline(page).locator('[data-history-row]:focus')
 const rovingEntries = (page: Page) =>
     timeline(page).locator('[data-history-row][tabindex="0"], [data-history-row] [tabindex="0"]')
 
-test.describe('S3: the first key after opening History is kept (DEF-4)', () => {
+test.describe('the first key after opening History is kept', () => {
     test('a key that reaches the list container acts on the cursor', async ({ page }) => {
         errorsFail(page)
         await load(page)
@@ -241,7 +241,7 @@ test.describe('S3: the first key after opening History is kept (DEF-4)', () => {
         await expect(rovingEntries(page)).toHaveCount(1)
     })
 
-    test('a newer focus is kept when the read finishes (INV 7)', async ({ page }) => {
+    test('a newer focus is kept when the read finishes', async ({ page }) => {
         errorsFail(page)
         await load(page)
         await placeTap(page, { lane: 0, beat: 1 })
@@ -269,7 +269,7 @@ test.describe('S3: the first key after opening History is kept (DEF-4)', () => {
     })
 })
 
-// --- DEF-5: a filter shows its list from the top
+// --- A filter shows its list from the top
 
 /** Pushes `count` separate rows (future extensions are never grouped). */
 const synthesise = (page: Page, count: number) =>
@@ -286,7 +286,7 @@ const synthesise = (page: Page, count: number) =>
             )
     }, count)
 
-test('DEF-5: choosing a filter shows its list from the top', async ({ page }) => {
+test('choosing a filter shows its list from the top', async ({ page }) => {
     errorsFail(page)
     // A short phone sheet: the banner takes 40 px of the list's height, so the empty list no
     // longer fits and a scroll position kept from the full list stays behind.

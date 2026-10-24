@@ -16,7 +16,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Settings › Local Data › Delete Sessions… (Local Data design §3.7, §5): ranges with counts that
+// Settings › Local Data › Delete Sessions…: ranges with counts that
 // follow the box, a confirm that names the work it deletes, and the removal.
 
 const messages = JSON.parse(
@@ -434,7 +434,7 @@ test.describe('almost full', () => {
         await expect(line(page)).toBeVisible({ timeout: 15_000 })
     })
 
-    // The notice would be a card turned up while the user is editing (final review R2 #4).
+    // The notice would be a card turned up while the user is editing.
     test('an edit made before the load’s run ends leaves it unsaid and unstamped', async ({
         page,
     }) => {

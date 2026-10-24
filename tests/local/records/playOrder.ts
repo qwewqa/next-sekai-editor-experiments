@@ -1,6 +1,6 @@
 import type { LevelDataEntity } from '@sonolus/core'
 
-// D4's oracle: the order in which level data plays its events, BPMs and time-scale changes, read
+// The oracle: the order in which level data plays its events, BPMs and time-scale changes, read
 // from the raw entities as the engine reads them (events and time scales along `next` from their
 // track's first ref, BPMs in entity order), with no editor code. Values are what the engine and
 // the editor read of each event, defaults filled, so two spellings of one event compare equal.
@@ -125,7 +125,7 @@ const stageChains = [
     ['transform', 'firstTransformChange', 'StageTransformChange'],
 ] as const
 
-/** The play order of level data's entities (D4). */
+/** The play order of level data's entities. */
 export const playOrder = (entities: readonly LevelDataEntity[]): PlayOrder => {
     const byName = new Map<string, LevelDataEntity>()
     for (const entity of entities) if (entity.name !== undefined) byName.set(entity.name, entity)

@@ -12,10 +12,9 @@ import {
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { Fixture, heldRows, save, stateAt } from './fixture'
 
-// The content predicate and the Replace guard (Part 0 §0.9.5–§0.9.6; Part 1 §1.6.11.6;
-// r12-history-critique §2, r12-freeze2 S5).
+// The content predicate and the Replace guard.
 
-test('N holds O by ancestry, completeFrom and entry count; relations as §0.9.5', () => {
+test('N holds O by ancestry, completeFrom and entry count', () => {
     const o = { revision: { id: 'b', ancestors: ['a'] }, cd: '11111111', entries: 4 }
     const n = {
         revision: { id: 'c', ancestors: ['b', 'a'], completeFrom: 'a' },
@@ -119,7 +118,7 @@ test('the Replace guard uses the build’s carry test: a flagged row a kept row 
     )
 })
 
-test('a binding has history when its cut counts an entry: no cut and count 0 are none (SF-3, SF-4)', () => {
+test('a binding has history when its cut counts an entry: no cut and count 0 are none', () => {
     const cut = { sessionId: 's', seq: 3, startedAt: 1, count: 3, notKept: 0 }
     assert.equal(bindingHasHistory({ entry: cut }), true)
     // An open of a file without history stores a cut of count 0; a Save without History, none.
@@ -129,7 +128,7 @@ test('a binding has history when its cut counts an entry: no cut and count 0 are
     assert.equal(bindingHasHistory(undefined), false)
 })
 
-test('a base without history holds no earlier steps: Replace stays available (SF-3, SF-4)', () => {
+test('a base without history holds no earlier steps: Replace stays available', () => {
     const chainCut = (entry?: { count: number }): ChainCut =>
         ({
             chain: {
@@ -177,7 +176,7 @@ test('a base without history holds no earlier steps: Replace stays available (SF
     })
 })
 
-test('a chain saved without History meets a descendant on disk: Replace stays available (SF-3)', async () => {
+test('a chain saved without History meets a descendant on disk: Replace stays available', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)

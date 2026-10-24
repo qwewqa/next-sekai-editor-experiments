@@ -601,7 +601,7 @@ test('an unset value reads Not set, a file with an offset change is not badged, 
 }) => {
     await seed(page, 'groups')
     await open(page)
-    // M1: an unset Force Note Speed is Not set, never 0.
+    // An unset Force Note Speed is Not set, never 0.
     const removed = dialog(page).locator('[data-property-section="groups:1"]')
     await expect(removed.locator('[data-property-badge]')).toHaveText('Removed')
     await expect(
@@ -611,11 +611,11 @@ test('an unset value reads Not set, a file with an offset change is not badged, 
     await expect(
         added.locator('[data-property-row="forceNoteSpeed"] [data-property-value]'),
     ).toHaveText('1.5')
-    // L8: the removed and the added group are both "Default", with no id after the name.
+    // The removed and the added group are both "Default", with no id after the name.
     await expect(removed.locator('h3')).toHaveText(/^Group Propertiess*Defaults*Removed$/)
     await expect(added.locator('h3')).toHaveText(/^Group Propertiess*Defaults*Added$/)
     await expect(dialog(page)).not.toContainText('(#')
-    // M2: the BGM section has a row on both sides, so it carries no badge and keeps the before.
+    // The BGM section has a row on both sides, so it carries no badge and keeps the before.
     const bgm = dialog(page).locator('[data-property-section="bgm:all"]')
     await expect(bgm.locator('[data-property-badge]')).toHaveCount(0)
     await expect(
@@ -624,7 +624,7 @@ test('an unset value reads Not set, a file with an offset change is not badged, 
     await expect(
         bgm.locator('[data-property-row="offset"] [data-property-after] [data-property-value]'),
     ).toHaveText('-120')
-    // L5: the file has one name, the one Step Details shows: without its extension.
+    // The file has one name, the one Step Details shows: without its extension.
     await expect(
         bgm.locator('[data-property-row="filename"] [data-property-before] [data-property-value]'),
     ).toHaveText('Not set')
@@ -1815,7 +1815,7 @@ test('composed old and new change destinations stay identical while Show Edits i
     await page.screenshot({ path: testInfo.outputPath('composed-navigation-edits-off.png') })
 })
 
-test('an outside press that closes Options for Changes gives focus back to its button (X-3)', async ({
+test('an outside press that closes Options for Changes gives focus back to its button', async ({
     page,
 }) => {
     await seed(page)
@@ -1831,7 +1831,7 @@ test('an outside press that closes Options for Changes gives focus back to its b
 
 test.describe('touch Options for Changes', () => {
     test.use({ hasTouch: true })
-    test('an outside tap that closes the sheet gives focus back to its button (X-3)', async ({
+    test('an outside tap that closes the sheet gives focus back to its button', async ({
         page,
     }) => {
         await seed(page)
@@ -1853,7 +1853,7 @@ test.describe('touch Options for Changes', () => {
     })
 })
 
-test('the Property Changes title is whole in a 304 px dialog in every language (X-4)', async ({
+test('the Property Changes title is whole in a 304 px dialog in every language', async ({
     page,
 }) => {
     await seed(page)

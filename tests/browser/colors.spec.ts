@@ -104,7 +104,7 @@ test('all note colors and connector families survive level data round trips and 
             previewStyles: preview.connectors.map((connector) => connector.style),
         }
     })
-    // Level data lists slides in the records' order (§1.6.11.6), not the source's.
+    // Level data lists slides in the records' order, not the source's.
     const sorted = (list: unknown[]) => list.map((item) => JSON.stringify(item)).sort()
     expect(sorted(result.actual)).toEqual(sorted(result.expected))
     expect(result.second).toEqual(result.first)
@@ -376,7 +376,7 @@ for (const command of ['copy', 'cut'] as const) {
             .poll(() =>
                 page.evaluate(async () => {
                     const { clipboardEntry } = await import('/src/clipboard/index.ts')
-                    // In the records' order (§1.6.11.6), so sorted here.
+                    // In the records' order, so sorted here.
                     return clipboardEntry.value?.data?.chart.slides
                         .flat()
                         .map((note) => note.connectorStyle)

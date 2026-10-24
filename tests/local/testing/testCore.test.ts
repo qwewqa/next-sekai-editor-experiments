@@ -8,7 +8,7 @@ import { checkStored } from '../../../src/local/testing/invariants'
 import { crashSweep } from '../../../src/local/testing/sweep'
 import { CI_SEEDS, createWorld, type Tab } from '../../../src/local/testing/world'
 
-// Step 3a's exit for the test core (§1.11.3): what breaks in browsers breaks here too.
+// The test core: what breaks in browsers breaks here too.
 
 const failureOf = (promise: Promise<unknown>) =>
     promise.then(

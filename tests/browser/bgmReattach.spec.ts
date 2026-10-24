@@ -3,7 +3,7 @@ import { installTestPlatform, waitForStartup } from './editorFixture'
 import { pressSave, submitSave } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// Media re-attach (Part 1 §1.6.8.4, Step 7 design §3.6): a session whose BGM is in the media store
+// Media re-attach: a session whose BGM is in the media store
 // plays after a reload, and "not loaded" is said only for a BGM neither memory nor the store holds.
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.

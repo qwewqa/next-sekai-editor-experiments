@@ -32,9 +32,9 @@ import { chartWith, headInput as headInputOf, levelOf } from '../nxsp/helpers'
 import { stateOf } from '../records/charts'
 import { damagedFile } from './files'
 
-// The open's first transaction and its background import (Part 1 §1.5.4): the head stored at
+// The open's first transaction and its background import: the head stored at
 // once with the stack and media, the file's rows, roots, nodes and chunks in batches, damage
-// found by the import unlinking the chain (§1.6.11.8), an import that can't go on marking the
+// found by the import unlinking the chain, an import that can't go on marking the
 // rows whose states never arrived, and peeks of states not imported yet read from the file.
 
 const setup = async (seed = 1) => {
@@ -182,7 +182,7 @@ test('an open stores its head at once, then imports every row, root, node and ch
     assert.equal(entries[0]?.time, 1000)
     assert.equal(entries[3]?.revisionId, 'r001-0000-4000-8000-000000000000')
     for (const hex of hashes) assert.ok(storedRecords(s.world, fromHex16(hex)))
-    // Replay of the stored rows gives the stored stack (§1.3.9).
+    // Replay of the stored rows gives the stored stack.
     const replayed = replay(entries as unknown as ReplayEntry[])
     assert.deepEqual(stackMismatches(storedStack(s.world), replayed), [])
 })
@@ -462,7 +462,7 @@ test('a long history’s rows come in batches after the first transaction', asyn
     )
 })
 
-test('a row the file flags kept: false whose root the file holds counts as held (D25)', async () => {
+test('a row the file flags kept: false whose root the file holds counts as held', async () => {
     const s = await setup(9)
     const { input } = fresh()
     const history = input.history!
@@ -617,8 +617,7 @@ test('a head root that holds no note count gives no count, never 0', () => {
     }
 })
 
-// The resume pass reads through the `storedRead` gate and keeps the ends it had (Part 1 §1.5.4,
-// §1.6.5): a failed read ends nothing it did not end before.
+// The resume pass reads through the `storedRead` gate and keeps the ends it had: a failed read ends nothing it did not end before.
 
 const resumeWith = async (t: TestContext, answers: Record<string, () => unknown>) => {
     const worker = new StorageWorker(

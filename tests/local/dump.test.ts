@@ -16,7 +16,7 @@ import { seedDump } from '../../src/local/seed'
 import { openLocalData } from '../../src/local/testing/db'
 import { createWorld, type Tab } from '../../src/local/testing/world'
 
-// The dump format (Part 1 §1.6.11.9) and the dev-only sample seeder.
+// The dump format and the dev-only sample seeder.
 
 const b64 = (bytes: number[]) => toBase64(new Uint8Array(bytes))
 
@@ -125,7 +125,7 @@ const fakeStorage = () => {
 const dumpOf = (tab: Tab, db: KvDatabase) =>
     tab.run(() => dumpDatabase(db, { appVersion: '0.6.0', localStorage: {} }))
 
-/** The dump without the handles, which the seeder leaves out: a `handles` row goes whole (D24). */
+/** The dump without the handles, which the seeder leaves out: a `handles` row goes whole. */
 const withoutHandle = (dump: Dump) => {
     const copy = structuredClone(dump)
     const chain = copy.stores.find((store) => store.name === 'chains')!.records[0]!

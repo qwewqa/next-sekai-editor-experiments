@@ -5,7 +5,7 @@ import { mapRead, readValue, storedRead, type StoredRead } from '../../src/local
 import { StorageWorker } from '../../src/local/worker/client'
 import { connect, serve, type Endpoint, type Handlers } from '../../src/local/worker/rpc'
 
-// The `storedRead` gate (Part 1 §1.6.5): a covered read resolves as its value or as `failed`, and
+// The `storedRead` gate: a covered read resolves as its value or as `failed`, and
 // never rejects. It runs here over a real `StorageWorker` client (the client's `call` needs its
 // `this`, which a detached call loses: the round-2 High bug) and over `connect`'s client.
 

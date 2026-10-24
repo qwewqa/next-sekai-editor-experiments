@@ -22,7 +22,7 @@ import { goldenChart, note } from '../records/charts'
 import { beginIn } from '../startup/harness'
 import { storedEntries } from '../timeline/helpers'
 
-// The worker's change reads over the test core (§1.6.5): what an entry changed, and Edits Here's
+// The worker's change reads over the test core: what an entry changed, and Edits Here's
 // scan in slices, newest first, leaving out entries whose state can't be read.
 
 const chart = (count: number) =>

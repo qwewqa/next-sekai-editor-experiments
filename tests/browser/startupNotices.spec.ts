@@ -3,7 +3,7 @@ import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
-// Step 4's UI (Part 1 §1.4.3, §1.3.4, §1.4.1, §1.4.9, §1.4.14): the load notices in the start-up
+// The load notices in the start-up
 // pill with their actions, the status bar label and the page title, the Reopen notice, the in-app
 // not-stored prompt, and Settings › Local Data's Recovery rows.
 
@@ -106,7 +106,7 @@ const run = (page: Page, id: string) =>
 
 const unsaved = (page: Page) => page.getByRole('dialog', { name: 'Unsaved Changes' })
 
-/** New on a chart with changes not saved to a file: it asks first, and New goes on (§1.4.9). */
+/** New on a chart with changes not saved to a file: it asks first, and New goes on. */
 const runNew = async (page: Page) => {
     const going = run(page, 'reset')
     await confirmNew(page)
@@ -143,7 +143,7 @@ test.describe('load notices in the start-up pill', () => {
         )
         // No storage line at load, on any override (Z22).
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
-        // Its one button is Open History (Step 5), so the pill sits with the action notices.
+        // Its one button is Open History, so the pill sits with the action notices.
         await expect(pill(next).locator('[data-notice-action]')).toHaveText(['Open History'])
         // It goes at the first edit.
         await edit(next, 980)
@@ -385,7 +385,7 @@ test.describe('load notices in the start-up pill', () => {
     })
 
     // A line found late (a resumed import finding damaged history) while the clean load's toast
-    // is still the quick notice: only kept, never a card at an arbitrary time (round 5 S5-1).
+    // is still the quick notice: only kept, never a card at an arbitrary time.
     for (const after of ['an edit', '12 s'] as const)
         test(`a load notice after ${after} is kept for Local Data, with no card`, async ({
             page,
@@ -444,7 +444,7 @@ test.describe('load notices in the start-up pill', () => {
     test.describe('on a touch tablet', () => {
         test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true })
 
-        test('the card goes back above the toolbar when the History sheet closes (X-8)', async ({
+        test('the card goes back above the toolbar when the History sheet closes', async ({
             page,
         }) => {
             await visit(page)
@@ -486,7 +486,7 @@ test.describe('load notices in the start-up pill', () => {
         // phone's, where the heading has 118 px.
         test.use({ viewport: { width: 560, height: 390 }, hasTouch: true, isMobile: true })
 
-        test('the heading keeps the version whole, on a line of its own when it must (X-9)', async ({
+        test('the heading keeps the version whole, on a line of its own when it must', async ({
             page,
             context,
         }) => {
@@ -715,7 +715,7 @@ test.describe('the status bar label', () => {
         )
     })
 
-    // X-13: an untitled chart has no name of its own, so its copy names it by its date, as the
+    // An untitled chart has no name of its own, so its copy names it by its date, as the
     // "open in another tab" notice does, and the label and title never carry an empty name.
     test('a Duplicate Tab of an untitled chart names its date and leaves no empty name', async ({
         page,
@@ -849,7 +849,7 @@ test.describe('Reopen', () => {
     })
 
     // Reopen and Restore as a Copy say why a session cannot be opened, as Restore Session does,
-    // and the card stops offering a Reopen that cannot work (final review R2 #3).
+    // and the card stops offering a Reopen that cannot work.
     test('Reopen of a session deleted since says so and is offered no more', async ({ page }) => {
         await visit(page)
         await edit(page, 990)
@@ -969,8 +969,7 @@ test.describe('Reopen', () => {
     })
 })
 
-// New (`n`) asks before it replaces a chart with changes not saved to a file (Part 1 §1.4.9,
-// owner 2026-10-23), as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
+// New (`n`) asks before it replaces a chart with changes not saved to a file (owner 2026-10-23), as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
 test.describe('New with unsaved changes', () => {
     test('n asks first: Cancel keeps the chart, New makes the new level with Reopen', async ({
         page,
@@ -1094,7 +1093,7 @@ test.describe('the not-stored prompt', () => {
         const going = run(page, 'reset')
         const download = page.waitForEvent('download')
         await confirmWhenReady(prompt(page).getByRole('button', { name: 'Save' }), prompt(page))
-        // An unbound session's Save asks for its file first (§1.4.7).
+        // An unbound session's Save asks for its file first.
         const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
         await save.getByRole('button', { name: 'Save', exact: true }).click()
         await download
@@ -1451,7 +1450,7 @@ test('safe mode opens read-only on purpose, so its pill has no "newer version" l
     )
 })
 
-// An app’s built-in browser (Part 1 §1.4.3, §1.4.13, §1.6.10): one more line on the start-up card
+// An app’s built-in browser: one more line on the start-up card
 // with Copy Link, and a storage line in Settings › Local Data.
 test.describe('the in-app browser line', () => {
     const inApp =

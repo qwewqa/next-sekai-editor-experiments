@@ -17,7 +17,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// A Save while an open's background import runs (Part 1 §1.4.7, §1.5.4; r12-arch-web M6): it
+// A Save while an open's background import runs: it
 // waits for the import inside "Preparing…", then appends; damage the import finds meanwhile
 // unlinks the session and the Save goes on as Save As…. And two follow-ups of the open package:
 // a kill right after the unlink with a pending journal comes back unlinked, and Undo right after a

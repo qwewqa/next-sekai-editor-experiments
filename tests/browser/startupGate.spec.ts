@@ -5,7 +5,7 @@ import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// The support gate, the startup gate and safe mode in a real browser (Part 1 §1.6.10, §1.4.2).
+// The support gate, the startup gate and safe mode in a real browser.
 
 skipWhereTheEditorCannotStart()
 

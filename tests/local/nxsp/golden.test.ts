@@ -17,7 +17,7 @@ import {
 } from './goldenChain'
 import { memorySource } from './helpers'
 
-// The builder golden (§1.6.11.9), frozen with v1: a fixed chain (two sessions, a BGM change and a
+// The builder golden, frozen with v1: a fixed chain (two sessions, a BGM change and a
 // cover change, a write-back to its own file) built with fixed `{ now, newId, device, appVersion }`.
 // It compares the plan: names, order, methods, CRCs, sizes, `modified`, and each part's kind,
 // source and range, with deflated parts compared inflated and JSON as parsed values. The chunks'

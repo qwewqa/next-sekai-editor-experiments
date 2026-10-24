@@ -10,7 +10,7 @@ import { continueIn, readOpen } from '../startup/harness'
 import { widen } from '../timeline/helpers'
 import { closedChain, MemoryStorage, openDeleter } from './harness'
 
-// The end of the Timeline (Part 1 §1.4.10.5): the oldest stored session of a chain that continues
+// The end of the Timeline: the oldest stored session of a chain that continues
 // a session no longer stored ends the Timeline with the report `earlierMissing`; a chain whose
 // oldest session starts it does not.
 

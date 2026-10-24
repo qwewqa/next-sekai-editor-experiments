@@ -230,7 +230,7 @@ test('the file opened by name keeps its history, "Already in" it; its BGM row is
     await expect(bgm.locator('[data-save-name-line]')).toHaveText('song.mp3')
 })
 
-test('a file without history opened by name: History is ticked and can be unticked (SF-4)', async ({
+test('a file without history opened by name: History is ticked and can be unticked', async ({
     page,
 }) => {
     await start(page, { fileSystemAccess: false })

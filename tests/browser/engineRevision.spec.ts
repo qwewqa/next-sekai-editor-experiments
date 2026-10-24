@@ -158,7 +158,7 @@ const save = async (page: Page) => {
             value: undefined,
         })
     })
-    // Level data is Export Level Data's (Shift+P); p saves a project file (§1.4.7).
+    // Level data is Export Level Data's (Shift+P); p saves a project file.
     const downloading = page.waitForEvent('download')
     await page.keyboard.press('Shift+P')
     const exporting = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
@@ -347,9 +347,9 @@ test('pasting copied data from an older revision with elevation never warns', as
 /** Waits until startup has opened the session this load continues. */
 const opened = waitForStartup
 
-// The old auto save migrates into a session at load (Part 1 §1.8): no dialog then, and a slot
+// The old auto save migrates into a session at load: no dialog then, and a slot
 // this build can't read whole (a newer revision) stays, never migrated. An older revision the
-// change can matter to says so at load, as Open warns (D18).
+// change can matter to says so at load, as Open warns.
 const loadEvents = (page: Page) =>
     page.evaluate(async () => {
         const { loadEvents } =

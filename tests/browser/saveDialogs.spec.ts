@@ -6,7 +6,7 @@ import type {
     SavedFeedback,
 } from '../../src/editor/save/dialogs'
 
-// Step 6's Save dialogs (Part 1 §1.4.7): the Save and Save As dialog with File Name's rules, the
+// The Save dialogs: the Save and Save As dialog with File Name's rules, the
 // History and BGM rows and the size preview, the Preparing dialog, the conflict dialog, the
 // not-found, denied and read-only dialogs, and the feedback after a write. They are opened through
 // `saveUi`, as the Save flows call them.
@@ -550,7 +550,7 @@ test.describe('the Preparing dialog', () => {
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.aborted)).toBe(true)
-        // A press asked for once the activation lapsed has nothing to wait for (SF-2).
+        // A press asked for once the activation lapsed has nothing to wait for.
         await page.evaluate(() => {
             void (
                 window.saveSeen.preparing as { ready: (a: string, s: number) => Promise<boolean> }

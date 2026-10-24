@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
 
-// The notice card's look (Part 1 §1.4.1, colour system §5.6): the severity glyph for warnings,
+// The notice card's look (colour system §5.6): the severity glyph for warnings,
 // errors and info and none for neutral notices, and the one-line-or-stacked layout of an action.
 
 type Severity = 'info' | 'warning' | 'error'

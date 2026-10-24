@@ -16,7 +16,7 @@ import { openPage, rows, testId } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { daysPass, MemoryStorage, openDeleter, tamper } from './harness'
 
-// Cleanup under pressure (deletion design §3.7, DEL-D1 final): it removes only cached earlier
+// Cleanup under pressure: it removes only cached earlier
 // media, the media rows no chain's latest state uses, past GC's grace period, largest first, in
 // one transaction under `nse-maint` exclusive; never a Timeline row, session or chain.
 

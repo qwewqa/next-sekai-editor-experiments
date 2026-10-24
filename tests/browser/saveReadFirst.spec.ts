@@ -18,7 +18,7 @@ import {
     thinUndone,
 } from './saveFlows'
 
-// R2 as written (Part 1 §1.4.7; owner decision log D26): the Save As… dialog reads the chain's own
+// The Save As… dialog reads the chain's own
 // file before its picker when storage lacks rows the file holds, asking for read access when it
 // opens if it isn't granted, so a pick of that file appends to what was read and keeps every
 // earlier step.
@@ -99,7 +99,7 @@ const saveAs = (page: import('@playwright/test').Page) =>
         void runCommand(commands.saveAs)
     })
 
-test('a pick of the chain’s own file whose append then fails gets the bytes read back (SF-1)', async ({
+test('a pick of the chain’s own file whose append then fails gets the bytes read back', async ({
     page,
 }) => {
     await start(page)
@@ -127,7 +127,7 @@ test('a pick of the chain’s own file whose append then fails gets the bytes re
     await builds(page, undefined)
 })
 
-test('Save As… picking the chain’s own file with nothing read: a rebuild that failed once is tried again, keeping the file’s identity and History (SF2-2, ADV-4)', async ({
+test('Save As… picking the chain’s own file with nothing read: a rebuild that failed once is tried again, keeping the file’s identity and History', async ({
     page,
 }) => {
     await start(page)
@@ -156,7 +156,7 @@ test('Save As… picking the chain’s own file with nothing read: a rebuild tha
     expect((after.history as Row | undefined)?.entries).toBeGreaterThan(0)
 })
 
-test('Save As… picking the chain’s own file with nothing read: a rebuild that keeps failing never writes Save As…’s identity, and the next Save fills it (SF2-2)', async ({
+test('Save As… picking the chain’s own file with nothing read: a rebuild that keeps failing never writes Save As…’s identity, and the next Save fills it', async ({
     page,
 }) => {
     await start(page)
@@ -173,7 +173,7 @@ test('Save As… picking the chain’s own file with nothing read: a rebuild tha
     await reached(page, 'picked')
     await builds(page, 'fail')
     await release(page)
-    // Shown as not written; storage holds all the file did, so it's left empty (R9).
+    // Shown as not written; storage holds all the file did, so it's left empty.
     const failed = page.getByRole('dialog').filter({ hasText: 'coconut.nxsp' })
     await expect(failed).toBeVisible()
     expect(await readFile(page, 'coconut.nxsp')).toEqual([])

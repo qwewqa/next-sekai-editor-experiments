@@ -28,9 +28,9 @@ import {
     checkedTest as test,
 } from './sessionCheck'
 
-// A Save's `save` entry (Part 1 §1.6.11.6): its `seq` reserved before the build, edits made
+// A Save's `save` entry: its `seq` reserved before the build, edits made
 // meanwhile after it and held until the entry is appended, its `revisionId` and `device` stored,
-// and the identity unit committed with it in one transaction (§1.3.2).
+// and the identity unit committed with it in one transaction.
 
 const widen = (state: State) => {
     const notes = [...state.store.slides.note.values()].flat()
@@ -228,7 +228,7 @@ test('an identity unit whose binding was taken over meanwhile is dropped, never 
     const session = begin(page, first)
     await page.flusher.flush()
     const reservation = page.flusher.reserveSave()!
-    // Another tab's save picker takes the file over while this Save writes (R5).
+    // Another tab's save picker takes the file over while this Save writes.
     const [chain] = rows(world, 'chains').values()
     const replaced = { by: 'other-chain', at: 5, name: 'coconut.nxsp' }
     await page.core.write(['chains'], (tx) =>
@@ -425,7 +425,7 @@ test('new Export metadata commits after a pending Save As identity and survives 
     assert.equal(rows(world, 'handles').size, 1)
 })
 
-// Our own completed Save (§1.4.7) records its binding and adds no row (I-10): the session's rows,
+// Our own completed Save records its binding and adds no row: the session's rows,
 // `lastSeq` and times are the flusher's, whatever the Save's kept `seq`.
 
 const editNote = (page: Page, state: State) => {
@@ -631,7 +631,7 @@ test('a flush stores pending entries a write put `lastSeq` past, never skipping 
     assert.equal(session.pending.length, 0)
 })
 
-test('a Save recognised while a batch past its `seq` is in flight leaves every session with rows its stored stack (AR-3)', async () => {
+test('a Save recognised while a batch past its `seq` is in flight leaves every session with rows its stored stack', async () => {
     const world = createWorld({ seed: 45 })
     const { page, gate } = await gated(world)
     const first = stateOf(goldenChart())
@@ -720,7 +720,7 @@ test('our own completed Save records its binding and adds no row, whether a jour
 })
 
 /**
- * AR-1's sequence: S stored through 2, a Save reserving 3 whose tab dies before the binding, a
+ * The sequence: S stored through 2, a Save reserving 3 whose tab dies before the binding, a
  * later visit continuing S as C (parent S at 2) and storing rows, then that visit recognising the
  * Save as its own.
  */
@@ -747,7 +747,7 @@ const recognisedInLaterVisit = async (seed: number) => {
     return { world, session }
 }
 
-test('AR-1: a Save recognised in a later visit writes nothing into the parent past the continuation’s branch point', async () => {
+test('a Save recognised in a later visit writes nothing into the parent past the continuation’s branch point', async () => {
     const { world, session } = await recognisedInLaterVisit(41)
     assert.deepEqual(checkStored(world.memory), [])
     assert.deepEqual(world.violations, [])

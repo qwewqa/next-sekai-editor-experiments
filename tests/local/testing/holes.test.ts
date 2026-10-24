@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { HoleLedger } from '../../../src/local/testing/holes'
 
-// The hole ledger (spec A, R2-2 and R3-7) on a stand-in flusher, so each way it learns is
+// The hole ledger on a stand-in flusher, so each way it learns is
 // shown alone: the scenario tests in `flush/ownSave.test.ts` run it on the real one. The stand-in
 // numbers as the real one does: a resume goes on from `max(lastSeq, marker) + 1`, and a
 // journal-only resume numbers its `recovered` entry itself, after the marker.

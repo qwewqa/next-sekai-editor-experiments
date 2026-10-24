@@ -18,11 +18,11 @@ import { readOpen, resumeIn } from '../startup/harness'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, replayAll } from './harness'
 
-// The journal names only real entries (architecture review A, AP; invariant I-17). A journal's
+// The journal names only real entries. A journal's
 // `seq` is the newest entry the session holds. A page resumed past a Save's marker holds none
 // above the stored session's `lastSeq`, so it writes no journal until it has an entry, and the
-// next load recovers nothing (F1). A journal-only reload numbers its recovered entry past the
-// marker, never at the `seq` the Save's file holds (F5, I-9).
+// next load recovers nothing. A journal-only reload numbers its recovered entry past the
+// marker, never at the `seq` the Save's file holds.
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
@@ -37,7 +37,7 @@ const marked = (seq: number) => ({ reservedSeq: () => seq })
 
 const chart = () => sampleState('tests/fixtures/generated-large.json')
 
-test('a reload past a marker journals nothing, and the next load recovers nothing (F1)', async () => {
+test('a reload past a marker journals nothing, and the next load recovers nothing', async () => {
     const world = createWorld({ seed: 2901 })
     const storage = new MemoryStorage()
     const page = await openJournalPage(world, 'a', storage)
@@ -76,7 +76,7 @@ test('a reload past a marker journals nothing, and the next load recovers nothin
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a reload past a marker and an earlier kept gap journals nothing; an edit is journalled at its own seq (F1)', async () => {
+test('a reload past a marker and an earlier kept gap journals nothing; an edit is journalled at its own seq', async () => {
     const world = createWorld({ seed: 2902 })
     const storage = new MemoryStorage()
     const page = await openJournalPage(world, 'a', storage)
@@ -213,7 +213,7 @@ test('a fork’s superseded journal stays until the fork holds all it moved', as
     assert.equal(storage.getItem(`nse.journal.${from.id}`), null)
 })
 
-test('a journal-only reload numbers its recovered entry past the marker (F5)', async () => {
+test('a journal-only reload numbers its recovered entry past the marker', async () => {
     const world = createWorld({ seed: 2903 })
     const storage = new MemoryStorage()
     // Storage never answers: the edits live in the journal alone.

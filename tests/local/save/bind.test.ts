@@ -4,7 +4,7 @@ import { fromHex16 } from '../../../src/local/hash'
 import { BIND_STORES, recordOwnSave, type OwnSaveRecord } from '../../../src/local/save/bind'
 import { Fixture } from './fixture'
 
-// Recording our own completed Save (Part 1 §1.4.7; spec A, I-4 and I-10): the binding and nothing
+// Recording our own completed Save: the binding and nothing
 // else, only from the chain's head, over the binding the Save started from, never while a session
 // of the chain imports. Each refusal leaves storage exactly as it was.
 

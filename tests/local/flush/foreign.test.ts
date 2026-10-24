@@ -11,7 +11,7 @@ import '../../helpers/lockChecks'
 import { edgeChart, recordsText, stateOf } from '../records/charts'
 import { openPage, rows, storedRecords } from './harness'
 
-// The closure check of foreign data (§1.6.4 step 4): nothing is written while a part is missing;
+// The closure check of foreign data: nothing is written while a part is missing;
 // the page sends the missing parts and it retries, at most twice.
 
 const parts = (snapshot: EncodedSnapshot) => ({

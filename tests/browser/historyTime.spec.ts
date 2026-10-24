@@ -114,7 +114,7 @@ const IMPORTED = en.history.operation.importedLevel
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 
-test('T1: day buckets follow the zone of the page, far from the host', async ({ browser }) => {
+test('day buckets follow the zone of the page, far from the host', async ({ browser }) => {
     test.slow()
     // Auckland (+12 in June), ten minutes before midnight.
     const { page, clock, close } = await clocked(
@@ -165,7 +165,7 @@ test('T1: day buckets follow the zone of the page, far from the host', async ({ 
     }
 })
 
-test('T2: the headers move on at midnight while History is open', async ({ browser }) => {
+test('the headers move on at midnight while History is open', async ({ browser }) => {
     test.slow()
     const { page, clock, close } = await clocked(browser, 'Asia/Tokyo', '2026-06-10T23:58:30+09:00')
     try {
@@ -196,7 +196,7 @@ test('T2: the headers move on at midnight while History is open', async ({ brows
     }
 })
 
-test('T3: after a sleep the headers move a tier and no row is lost', async ({ browser }) => {
+test('after a sleep the headers move a tier and no row is lost', async ({ browser }) => {
     test.slow()
     const { page, clock, close } = await clocked(browser, 'Asia/Tokyo', '2026-06-10T12:00:20+09:00')
     try {
@@ -215,7 +215,7 @@ test('T3: after a sleep the headers move a tier and no row is lost', async ({ br
     }
 })
 
-test('T4: at a daylight saving fall-back, each row sits under the hour it was made in', async ({
+test('at a daylight saving fall-back, each row sits under the hour it was made in', async ({
     browser,
 }) => {
     test.slow()
@@ -260,7 +260,7 @@ test('T4: at a daylight saving fall-back, each row sits under the hour it was ma
     }
 })
 
-test('T5: stored rows from a clock two hours ahead list with unique ids and End still works', async ({
+test('stored rows from a clock two hours ahead list with unique ids and End still works', async ({
     browser,
 }) => {
     test.slow()
@@ -368,7 +368,7 @@ const peekedTime = (page: Page) =>
         return peekedInfo.value?.time
     })
 
-test('T6: a group never spans midnight, and Go To’s Yesterday counts and peeks yesterday (X-1)', async ({
+test('a group never spans midnight, and Go To’s Yesterday counts and peeks yesterday', async ({
     browser,
 }) => {
     test.slow()
@@ -434,7 +434,7 @@ const dividers = (page: Page) =>
             elements.map((element) => (element.textContent ?? '').replace(/\s+/g, ' ').trim()),
         )
 
-test('T7: a zone change while History and Go To are open moves every time to the new zone', async ({
+test('a zone change while History and Go To are open moves every time to the new zone', async ({
     browser,
 }) => {
     test.slow()
@@ -590,7 +590,7 @@ const headerDays = (list: Line[]) => {
     return days
 }
 
-test('T8: an opened file whose times run out of order lists Go To’s days as the headers count them', async ({
+test('an opened file whose times run out of order lists Go To’s days as the headers count them', async ({
     browser,
 }) => {
     test.slow()

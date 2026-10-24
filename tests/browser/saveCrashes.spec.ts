@@ -22,8 +22,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// Crashes and races around a save picker (Part 1 §1.11.6's Exit items; §1.4.7 R5, R9; owner
-// decision log D5): a page killed at each point between the pick and the binding, two pickers on
+// Crashes and races around a save picker: a page killed at each point between the pick and the binding, two pickers on
 // one file, and a file replaced between the write and the read-back. A kill is a page closed
 // without its unload handlers; a new page of the context continues the session, as a new visit.
 
@@ -72,7 +71,7 @@ test('a kill after another tab’s pick: the owner’s next Save fills the empti
     expect(await readFile(a, 'coconut.nxsp')).toEqual([])
     await kill(a)
 
-    // B was edited since its Save: the emptied file holds nothing to keep (R9).
+    // B was edited since its Save: the emptied file holds nothing to keep.
     await edit(b, 2)
     await pressSave(b)
     await expect
@@ -102,7 +101,7 @@ test('a self-pick killed after the pick: the next Save fills the file, keeping t
     await reached(page, 'picked')
     await kill(page)
 
-    // Edited since: the file is empty, so it holds nothing to keep (R9).
+    // Edited since: the file is empty, so it holds nothing to keep.
     const next = await visitAgain(context)
     await expect.poll(async () => (await sessionOf(next)).file?.name).toBe('coconut.nxsp')
     await edit(next, 3)

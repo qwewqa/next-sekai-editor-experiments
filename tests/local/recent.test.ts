@@ -14,7 +14,7 @@ import { goldenChart, stateOf } from './records/charts'
 import { beginIn, continueIn, handlersOf, readOpen } from './startup/harness'
 import { widen } from './timeline/helpers'
 
-// Recent Sessions' list read (§1.4.10.6, step 7 design 3.2): one row per chain, newest first, not
+// Recent Sessions' list read: one row per chain, newest first, not
 // the chains marked for Delete, and a failed read is a failure, never an empty list.
 
 type Page = Awaited<ReturnType<typeof openPage>>

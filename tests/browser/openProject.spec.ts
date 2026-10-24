@@ -13,7 +13,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Opening a `.nxsp` (Part 1 §1.5.4): a new session stored at once and bound to the file, its
+// Opening a `.nxsp`: a new session stored at once and bound to the file, its
 // history imported in the background, Undo where the file left off, and the partial opens that
 // start a separate copy. Chromium's picker runs on OPFS handles through the platform override.
 
@@ -182,8 +182,8 @@ test('a .nxsp opens bound in a new session, with its history imported and Undo w
         event: 'opened',
         entry: { sessionId: session.sessionId, seq: 4, count: 4, notKept: 0 },
     })
-    // The handle has its own store (D24); a real OPFS handle never reaches IndexedDB under the
-    // override (D16).
+    // The handle has its own store; a real OPFS handle never reaches IndexedDB under the
+    // override.
     expect((chain.file as Row).handle).toBeUndefined()
     const { handles } = await rows(page, ['handles'])
     expect(handles!.map((row) => row.value)).toEqual([
@@ -302,7 +302,7 @@ const chainOf = async (page: Page, sessionId: string) => {
     return chains!.find((row) => row.value.head === sessionId)!.value
 }
 
-/** The token stored for a chain's handle under the override (D24). */
+/** The token stored for a chain's handle under the override. */
 const handleToken = async (page: Page, chainId: string, role: string) => {
     const { handles } = await rows(page, ['handles'])
     const row = handles!.find((each) => each.value.chainId === chainId && each.value.role === role)
@@ -466,7 +466,7 @@ test('a reload reads no stored handle at startup; a Save or an Export reads it a
     await page.reload()
     await waitForStartup(page)
     expect((await sessionOf(page)).sessionId).toBe(session.sessionId)
-    // Startup, recovery and the idle resume check read none (D24).
+    // Startup, recovery and the idle resume check read none.
     await page.waitForTimeout(500)
     expect(await handleReads(page)).toBe(0)
     expect(await storedHandleName(page, chain.chainId as string, 'file')).toBe('coconut.nxsp')
@@ -682,7 +682,7 @@ test('a BGM recorded without its bytes opens bound with the BGM not loaded, and 
     const session = await sessionOf(page)
     expect(session.file?.name).toBe('coconut.nxsp')
     const chain = await chainOf(page, session.sessionId)
-    // Included, but not held: a Save adds its bytes once chosen (§1.5.4 step 5); nothing is kept.
+    // Included, but not held: a Save adds its bytes once chosen; nothing is kept.
     expect('options' in (chain.file as Row)).toBe(false)
 })
 
@@ -964,7 +964,7 @@ test('any other ZIP is still "not a project file"', async ({ page }) => {
     )
 })
 
-// A newer `patch` (Part 1 §1.6.11.8) is a line of its own on a whole open: beside what else the
+// A newer `patch` is a line of its own on a whole open: beside what else the
 // open has to say, and given way only to an earlier session's unsaved-changes notice.
 
 const PATCH_LINE = 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.'
@@ -1047,7 +1047,7 @@ test('a newer patch gives way to an earlier session’s unsaved-changes notice, 
     await expect(notice(page).filter({ hasText: PATCH_LINE })).toHaveCount(0)
 })
 
-// A read of storage that fails is a failure, not "nothing" (Part 1 §1.5.4, §1.6.5). The open has
+// A read of storage that fails is a failure, not "nothing". The open has
 // succeeded whatever its earlier-chains read says, and shows its ordinary notice; a binding check
 // that cannot be answered opens a separate copy.
 

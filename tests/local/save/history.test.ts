@@ -4,7 +4,7 @@ import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, heldRows, save, sourceOf } from './fixture'
 
-// The settled history model (Part 1 §1.6.11.6) over chains in storage: appends, the cut,
+// The settled history model over chains in storage: appends, the cut,
 // `completeFrom` and the line, and what each write changes.
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))

@@ -17,7 +17,7 @@ import {
 import { StorageCore, type TestFlags } from '../../src/local/worker/core'
 import { userAssetHandlers } from '../../src/local/worker/userAssets'
 
-// The stored preview packages (Part 1 §1.5.8): put, list without bytes, get with bytes, touch, remove.
+// The stored preview packages: put, list without bytes, get with bytes, touch, remove.
 
 const record = (key: string, overrides: Partial<UserAssetRecord> = {}): UserAssetRecord => ({
     key,

@@ -158,7 +158,7 @@ const notes = (page: Page) =>
     })
 
 const open = async (page: Page, name: string, buffer: Buffer) => {
-    // Input reaches the editor once the startup gate lifts (Part 1 §1.4.2).
+    // Input reaches the editor once the startup gate lifts.
     await waitForStartup(page)
     const opening = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
@@ -324,11 +324,11 @@ const levelWithValue = async (page: Page) => {
 }
 
 test('level data with a value its format refuses names it, and is refused', async ({ page }) => {
-    // Each reload starts blank, not the session it continues (Part 1 §1.4.2's test hook).
+    // Each reload starts blank, not the session it continues (the test hook).
     await page.addInitScript(() => localStorage.setItem('nse.test.startBlank', 'true'))
     const withValue = await levelWithValue(page)
     for (const [name, value, message] of [
-        // A value of a choice field this build doesn't know asks first (Step 6, §1.5.4).
+        // A value of a choice field this build doesn't know asks first.
         ['connectorEase', 99, '"level-data" Uses Newer Features'],
         ['#BEAT', -1, 'Invalid level: invalid value for #BEAT'],
     ] as const) {
@@ -342,7 +342,7 @@ test('level data with a value its format refuses names it, and is refused', asyn
 })
 
 test('refusals read in the chosen language', async ({ page }) => {
-    // Each reload starts blank, not the session it continues (Part 1 §1.4.2's test hook).
+    // Each reload starts blank, not the session it continues (the test hook).
     await page.addInitScript(() => localStorage.setItem('nse.test.startBlank', 'true'))
     const withValue = await levelWithValue(page)
     const dialog = page.getByRole('dialog')
@@ -619,7 +619,7 @@ for (const [label, chart] of [
                 value: undefined,
             })
         })
-        // Level data is Export Level Data's (Shift+P); p saves a project file (§1.4.7).
+        // Level data is Export Level Data's (Shift+P); p saves a project file.
         const downloading = page.waitForEvent('download')
         await page.keyboard.press('Shift+P')
         const exporting = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })

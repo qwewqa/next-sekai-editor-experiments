@@ -8,7 +8,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, type JournalPage } from './harness'
 
-// The not-durably-stored predicate (§1.6.7): false while storage is unavailable or paused, before
+// The not-durably-stored predicate: false while storage is unavailable or paused, before
 // the session row is written, after a failed flush, and while unflushed entries have no verified
 // journal; true for an ordinary pending flush with a verified journal.
 

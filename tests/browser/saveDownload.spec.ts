@@ -20,7 +20,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Saving where there's no save picker (Part 1 §1.4.7; Firefox, WebKit, and Chromium with the
+// Saving where there's no save picker (Firefox, WebKit, and Chromium with the
 // override's `fileSystemAccess: false`): the first Save shows the dialog
 // and downloads; later Saves download with no dialog; an unchanged one offers Download Again; no
 // conflict dialog ever shows. The compatibility config's storage projects run it in Firefox and
@@ -144,7 +144,7 @@ test('opening a file this browser downloaded confirms its downloads', async ({ p
         await openProject(new File([new Uint8Array(bytes)], 'coconut.nxsp'), undefined)
     }, bytes)
     await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
-    // Later downloads are confirmed: no chip. The first Save after an open asks (§1.4.7).
+    // Later downloads are confirmed: no chip. The first Save after an open asks.
     await edit(page, 2)
     await downloaded(page, async () => {
         await pressSave(page)
@@ -180,7 +180,7 @@ test('a download browser never requests nse-bind', async ({ page }) => {
     expect(names).not.toContain('nse-bind')
 })
 
-test('Cancel in a slow Preparing… ends the Save: nothing asks or downloads, and the next Save runs (SF-2)', async ({
+test('Cancel in a slow Preparing… ends the Save: nothing asks or downloads, and the next Save runs', async ({
     page,
 }) => {
     // Every press's activation has lapsed, so each download asks for its own tap.
@@ -212,7 +212,7 @@ test('Cancel in a slow Preparing… ends the Save: nothing asks or downloads, an
     expect(next).toBe('coconut.nxsp')
 })
 
-// Open of the file the open session last saved (Part 1 §1.5.4): no new chain, and the session
+// Open of the file the open session last saved: no new chain, and the session
 // stays; with work since the Save, today's open, a new chain with Reopen.
 
 const chainCount = async (page: Page) => (await rows(page, ['chains'])).chains!.length
@@ -305,7 +305,7 @@ test('opening the download with work since the Save makes a new chain, and the w
     expect(left).toHaveLength(2)
 
     // The new chain's first Save asks, and suggests the file's own name: a download takes
-    // nothing over, so no " (2)" for the name the other chain is bound to (R1 is for pickers).
+    // nothing over, so no " (2)" for the name the other chain is bound to.
     await edit(page, 4)
     await pressSave(page)
     await expect(saveDialog(page).getByRole('textbox')).toHaveValue('coconut')

@@ -40,7 +40,7 @@ import {
     type FixtureChart,
 } from './charts'
 
-// The snapshot encoding's golden vectors (§1.6.11.1), frozen with v1: every later build
+// The snapshot encoding's golden vectors, frozen with v1: every later build
 // encodes the golden chart to exactly these records and hashes. `NSE_WRITE_GOLDEN=1` writes
 // them; that is done once, before v0.6.0 ships, and never again.
 

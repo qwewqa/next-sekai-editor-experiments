@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { reopensOwnFile, type ReopenFacts } from '../../../src/local/open/reopen'
 
-// Open of the file the open session's chain last wrote (Part 1 §1.5.4): it keeps the session only
+// Open of the file the open session's chain last wrote: it keeps the session only
 // when every fact holds. Each fact false sends the open the usual way, which makes a new chain:
 // the bug each catches is an Open that skips a changed file, or another file, and drops the new
 // chain that would have held it.

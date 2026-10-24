@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// The shared choice dialog (Part 1 §1.4.1): order, default focus, guards, stacking, danger styling.
+// The shared choice dialog: order, default focus, guards, stacking, danger styling.
 
 const boot = async (page: Page) => {
     await page.addInitScript(installCanvasCounters)

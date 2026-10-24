@@ -2,7 +2,7 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { confirmKeyWhenReady, confirmWhenReady } from './confirmWhenReady'
 import { submitSave } from './saveFlows'
 
-// The Not stored state (Part 1 §1.6.7): raised from the storage status after it has held for a
+// The Not stored state: raised from the storage status after it has held for a
 // moment, the chip's dialog by cause, Try Again, and the iOS bar that holds the chart still.
 
 /** Seeds every page of the context: the storage hooks (with the worker's flags), the panels away. */
@@ -72,7 +72,7 @@ const stillFailing = (page: Page) =>
         .locator('[data-notice-card]')
         .filter({ hasText: 'Changes are not being stored in this browser.' })
 
-/** Presses a button of the dialog; the dialog ignores presses in its first moments (§1.4.1). */
+/** Presses a button of the dialog; the dialog ignores presses in its first moments. */
 const press = (page: Page, name: string) =>
     confirmWhenReady(dialog(page).getByRole('button', { name, exact: true }), dialog(page))
 
@@ -191,7 +191,7 @@ test('Reload in the dialog reloads the page', async ({ page, context }) => {
 })
 
 // iOS shows no leave prompt of its own, so unstored work is asked about before the reload
-// (final review R2 #2).
+//.
 test('Reload with work that is stored nowhere asks first, and Cancel keeps the page', async ({
     page,
     context,

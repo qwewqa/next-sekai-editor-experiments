@@ -6,7 +6,7 @@ import { initialLife, initialStep } from '../../helpers/historySteps'
 import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 
-// The undo stack's actions, which the flush turns into entries (§1.3.8): a reset starts a
+// The undo stack's actions, which the flush turns into entries: a reset starts a
 // session; edits, undos and redos follow, each with the state it leaves on screen.
 
 test('the undo stack reports resets, edits, undos and redos, and replays those since the last reset once', () => {

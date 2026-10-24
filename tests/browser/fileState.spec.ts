@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 
-// Step 6's file state (Part 1 §1.3.4, §1.4.9): the label's "•" and title, the one chip slot and
+// The file state: the label's "•" and title, the one chip slot and
 // its dialogs, "Download not confirmed", the close prompts and their setting, and Help's file lines.
 
 const prefix = 'sonolus-next-sekai-editor.'
@@ -54,7 +54,7 @@ const settled = (page: Page) =>
         )
         .toBe(true)
 
-/** A dialog ignores presses in its first moments (§1.4.1). */
+/** A dialog ignores presses in its first moments. */
 const afterGuard = (page: Page) => page.waitForTimeout(400)
 
 const label = (page: Page) => page.locator('[data-status-text]')

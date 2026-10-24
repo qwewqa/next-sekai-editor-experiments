@@ -35,9 +35,9 @@ import { widen } from '../timeline/helpers'
 import { heldLocks, rows, type Page } from './harness'
 import { fileStates, flaggedFile, importIds, longFile, smallFile, storeRequest } from './modelFiles'
 
-// The model test of spec A (R2-6): random sequences over the real flusher, journal writer,
+// The model test: random sequences over the real flusher, journal writer,
 // worker core, journal replay and resume, in the test world, with the oracle run after every
-// operation. The operations are the design's for A0+: edits, undo and redo; relaxed and strict
+// operation. The operations are edits, undo and redo; relaxed and strict
 // flushes; the Save (reserve, build, the write landing, failing or failing ambiguously, the
 // binding) and its recognition; faults (hide, kill, power loss by `loseRelaxed` and
 // `loseCommits`); storage paused or full; a worker restart, also into memory mode; cleanup,
@@ -173,7 +173,7 @@ export class Run {
     // The ledgers: what the user did, apart from what the product says about it.
     /** For each hide that journalled: the state the journal must give back, by session and seq. */
     private readonly hid = new Map<string, { seq: number; root: string | undefined }[]>()
-    /** The seqs handed out to entries the page made, by session (spec E's flusher model). */
+    /** The seqs handed out to entries the page made, by session. */
     private readonly made = new Map<string, Map<number, string>>()
     /** Sessions whose stored rows are all in `made`: a row there the page never made is a fault. */
     private readonly madeFull = new Set<string>()
@@ -181,7 +181,7 @@ export class Run {
     private commits = 0
     private lastStrict = 0
     private readonly rowCommit = new Map<string, number>()
-    /** Rows stored strictly when a page died, which must survive (I-14). */
+    /** Rows stored strictly when a page died, which must survive. */
     private readonly mustSurvive = new Map<
         string,
         { sessionId: string; seq: number; kind: string }
@@ -191,21 +191,21 @@ export class Run {
     private visits = 0
     private checked = 0
 
-    // The ledgers of spec E's added oracles (E-O).
-    /** P1: the pending entries each session held when the oracle last looked. */
+    // The ledgers of the flusher oracles.
+    /** The pending entries each session held when the oracle last looked. */
     private readonly seenPending = new WeakMap<FlushSession, Set<unknown>>()
-    /** P4: each session's `ackedSeq` and `strictSeq` when the oracle last looked. */
+    /** Each session's `ackedSeq` and `strictSeq` when the oracle last looked. */
     private readonly watched = new Map<FlushSession, Visit>()
     private readonly seenSeqs = new WeakMap<FlushSession, { acked: number; strict: number }>()
     /**
-     * J3 and J4: the journal keys a live page wrote, or took over to retire, by key: the text it
+     * The journal keys a live page wrote, or took over to retire, by key: the text it
      * left, the `seq` it covers and the session whose commit clears it.
      */
     private readonly journals = new Map<
         string,
         { visit: Visit; session: FlushSession; seq: number; text: string; verified: boolean }
     >()
-    /** The journal writer's clock: every write is stamped differently, so a rewrite shows in the bytes (J4). */
+    /** The journal writer's clock: every write is stamped differently, so a rewrite shows in the bytes. */
     private journalWrites = 0
 
     constructor(
@@ -433,7 +433,7 @@ export class Run {
         const before = this.storage.getItem(key)
         const earlier = this.journals.get(key)
         const written = this.visit.writer.write()
-        // J4: a second hide at the same seq, the key still as this page left it, leaves its bytes.
+        // A second hide at the same seq, the key still as this page left it, leaves its bytes.
         if (
             unflushed &&
             earlier?.verified &&
@@ -474,7 +474,7 @@ export class Run {
     }
 
     async do_saveStart() {
-        // P6: a session holds one reservation at a time; a second asked for while the Save's
+        // A session holds one reservation at a time; a second asked for while the Save's
         // build holds the first is refused.
         const held = this.build
         if (held && !held.ended && this.alive && this.session === held.reservation.session) {
@@ -547,7 +547,7 @@ export class Run {
             return
         }
         // The page may have moved to another session while the Save ran (an opened file): the
-        // Save still ends, and the flusher adds nothing to the session it left (P1).
+        // Save still ends, and the flusher adds nothing to the session it left.
         const stayed = this.session?.id === build.sessionId
         build.ended = true
         this.build = undefined
@@ -565,7 +565,7 @@ export class Run {
                 },
                 this.unit(build),
             )
-            // The model's own expectation, not the flusher's word (I-14): the entry is added
+            // The model's own expectation, not the flusher's word: the entry is added
             // exactly when the page is still on the Save's session.
             const expected = stayed ? 'added' : 'notCurrent'
             if (result !== expected)
@@ -615,7 +615,7 @@ export class Run {
         }
     }
 
-    /** Recognises a Save whose file landed and whose binding no page recorded (§1.4.7). */
+    /** Recognises a Save whose file landed and whose binding no page recorded. */
     async do_recognise(a: number) {
         if (!this.alive || !this.unbound.length) return
         const build = this.unbound[a % this.unbound.length]!
@@ -693,8 +693,8 @@ export class Run {
         const have = upto.map(({ entry }) => rowKey(entry)).sort()
         const held = [...build.fileRows].sort()
         if (have.length === held.length && have.every((key, at) => key === held[at])) return
-        // The same rows with other times are accepted (spec A, section 4: another tab's write can
-        // move a row's time by a few milliseconds); rows that differ are AR-8, AR-8b, F2 or new.
+        // The same rows with other times are accepted (another tab's write can
+        // move a row's time by a few milliseconds); rows that differ are new.
         const withoutTime = (key: string) =>
             key
                 .split('|')
@@ -730,7 +730,7 @@ export class Run {
     }
 
     /**
-     * What a page that dies must still have afterwards (I-14): the rows a strict commit holds, or
+     * What a page that dies must still have afterwards: the rows a strict commit holds, or
      * that an earlier strict commit made durable. A kill keeps them and so does a power loss; where
      * commits are not durable when they resolve (Firefox before 126) the commits a loss undoes
      * take their pledges with them.
@@ -915,7 +915,7 @@ export class Run {
         if (this.unbound.length && pick % 2 === 0) await this.do_recognise(pick)
     }
 
-    /** A reload while storage never answers continues from the journal alone (§1.6.7). */
+    /** A reload while storage never answers continues from the journal alone. */
     private resumeJournal(
         visit: Visit,
         journalled: NonNullable<Awaited<ReturnType<Run['ownJournal']>>>,
@@ -1008,7 +1008,7 @@ export class Run {
         if (!row || !this.visit.page.alive) return
         this.purposeful = true
         const snapshot = row.snapshot as Uint8Array
-        // Kept by flag alone, with the bodies kept (M7), or with the root removed (a real loss).
+        // Kept by flag alone, with the bodies kept, or with the root removed (a real loss).
         const thin = b % 2 === 0
         await this.visit.host.call((_, core) =>
             core.write(['entries', 'nodes'], async (tx) => {
@@ -1158,7 +1158,7 @@ export class Run {
         this.imp = undefined
     }
 
-    /** A reload ended the page's import: it is resumed from the file, or abandoned (§1.5.4). */
+    /** A reload ended the page's import: it is resumed from the file, or abandoned. */
     private async settleImport(pick: number) {
         const imp = this.imp
         if (!imp) return
@@ -1241,7 +1241,7 @@ export class Run {
     }
 
     /**
-     * A page whose storage never answers keeps the edits in the journal alone (F5); the next
+     * A page whose storage never answers keeps the edits in the journal alone; the next
      * visit, with a Save's marker past them, continues from that journal while storage is down.
      */
     async do_journalOnly(a: number, b: number) {
@@ -1287,8 +1287,7 @@ export class Run {
     // ---- the oracle ----
 
     /**
-     * Spec E's oracles on the flusher's own state, judged after every operation (E-O): P1, P4 and
-     * J3. They read what the product holds beside what the stored-data checker reads.
+     * The oracles on the flusher's own state, judged after every operation. They read what the product holds beside what the stored-data checker reads.
      */
     private checkFlusher(after: string) {
         // Sessions the flusher let go stay watched: nothing may be added to them either.
@@ -1300,7 +1299,7 @@ export class Run {
                 this.watched.delete(session)
                 continue
             }
-            // P1: a session that is not the page's current one gains no pending entry.
+            // A session that is not the page's current one gains no pending entry.
             const earlier = this.seenPending.get(session)
             if (earlier && session !== visit.flusher.session)
                 for (const entry of session.pending)
@@ -1309,7 +1308,7 @@ export class Run {
                             `after ${after}: P1: session ${session.id} (${visit.name}) is not the current one and gained the pending ${entry.kind} entry ${entry.seq}`,
                         )
             this.seenPending.set(session, new Set(session.pending))
-            // P4: committed and strict `seq`s never go back.
+            // Committed and strict `seq`s never go back.
             const seen = this.seenSeqs.get(session)
             if (seen && (session.ackedSeq < seen.acked || session.strictSeq < seen.strict))
                 this.fail(
@@ -1388,7 +1387,7 @@ export class Run {
 
     /**
      * What the flusher believes strict is: every row it wrote above a resumed session's own
-     * `strictSeq` lies in a commit a strict commit has covered (spec E's flusher model).
+     * `strictSeq` lies in a commit a strict commit has covered.
      */
     private checkStrictClaim(after: string) {
         for (const visit of [this.visit, this.other]) {
@@ -1438,7 +1437,7 @@ export class Run {
                     )
     }
 
-    /** The end of a run: faults gone, every page flushed strictly, journals replayed (I-14). */
+    /** The end of a run: faults gone, every page flushed strictly, journals replayed. */
     async finish() {
         this.world.memory.faults.request = undefined
         this.paused = false
@@ -1511,7 +1510,7 @@ type Regression = {
 }
 
 const REGRESSIONS: readonly Regression[] = [
-    // Design E's validator found this failing on A0+'s first model: the recognition was written
+    // The recognition was written
     // relaxed (the product writes it strict), a power loss undid it, and the model had pledged it.
     {
         name: 'a recognition is strict',
@@ -1519,7 +1518,7 @@ const REGRESSIONS: readonly Regression[] = [
         fx: false,
         script: 'unpause:2:4,edit:9:6,saveEnd:7:1,save:5:1,otherTab:1:3,open:1:1,recognise:0:2,edit:6:8,open:8:1,pause:4:1,save:7:4,edit:9:8,edit:7:1,unpause:8:8,saveWrite:3:7,powerLoss:6:0,recognise:5:5,saveEnd:9:3,newVisit:3:6,flushStrict:5:4,saveWrite:8:2,edit:6:7,unpause:0:2,powerLoss:4:6',
     },
-    // The review of A0+ (M2): a reload while storage is paused leaves the page's own journal, and
+    // A reload while storage is paused leaves the page's own journal, and
     // the startup continues from it. Resuming under it, as the first model did, lost the journalled
     // edits (their seqs were reused) and the old oracle called the journal covered.
     {
@@ -1534,9 +1533,9 @@ const REGRESSIONS: readonly Regression[] = [
             assert.ok(continued.length > 0, 'the reload continued the session')
         },
     },
-    // E-O: a Save still reserved when the page moves to another session ends later (P1: the
+    // A Save still reserved when the page moves to another session ends later (the
     // flusher adds nothing to the session it left); a second reservation asked for while one is
-    // held (P6) and a second hide at the same seq (J4) change nothing.
+    // held and a second hide at the same seq change nothing.
     ...[false, true].flatMap((fx): Regression[] => [
         {
             name: 'a Save ends after the page moved to another session',
@@ -1568,7 +1567,7 @@ const REGRESSIONS: readonly Regression[] = [
             script: 'edit:1,flushStrict,edit:2,edit:3,hide,hide,flushStrict',
         },
     ]),
-    // The review of A0+ (M3): the page opens a file and edits, saves and reloads the opened
+    // The page opens a file and edits, saves and reloads the opened
     // session while the import runs.
     ...[false, true].map((fx): Regression => ({
         name: 'the page edits an opened session while its import runs',

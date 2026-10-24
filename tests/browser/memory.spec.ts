@@ -11,8 +11,8 @@ import {
 } from './memoryBaseline'
 
 // Chromium only: the heap comes from CDP. Memory after the edits, with storing on and every entry
-// flushed, stays within 14% of Step 0's baseline (§1.9.1, §1.9.3): 133.1 MB on the generated
-// chart and 131.8 MB on coconut, measured on `main` before any Step 3 code.
+// flushed, stays within 14% of the baseline: 133.1 MB on the generated
+// chart and 131.8 MB on coconut, measured on `main` before any storing code.
 const MB = 1_000_000
 const charts = [
     {

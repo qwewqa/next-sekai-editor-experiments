@@ -17,7 +17,7 @@ import {
 } from './previewAssetsPackages'
 import { resource } from './previewResourceFixture'
 
-// The Preview Assets dialog with From a File (Part 2, 2.5.2, 2.6; the A3 tests of 2.11). With
+// The Preview Assets dialog with From a File. With
 // A3_SHOTS_DIR set, each state is also saved there as a screenshot.
 const shotsDir = process.env.A3_SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })

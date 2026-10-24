@@ -14,7 +14,7 @@ import { createWorld, type World } from '../../../src/local/testing/world'
 import { openPage, rows, type Page } from '../flush/harness'
 import { goldenChart, mediaHash, stateOf } from './charts'
 
-// A foreign root's media `refs` come from its header chunk (§1.6.11.2), and a root above v1 is
+// A foreign root's media `refs` come from its header chunk, and a root above v1 is
 // "Needs a newer version", not damage.
 
 const batchOf = (snapshot: EncodedSnapshot, withHeader = true, media?: string[]): ForeignBatch => ({

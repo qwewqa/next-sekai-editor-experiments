@@ -18,7 +18,7 @@ import { append, beginSession, openJournalPage, replayAll } from './harness'
 
 const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as JsonValue))
 
-// The journal's writer (§1.6.4 #7): when it writes, what it writes, when it's cleared, and the
+// The journal's writer: when it writes, what it writes, when it's cleared, and the
 // size limits.
 
 /** Counts writes to a storage. */
@@ -213,9 +213,9 @@ test('a replaced session is committed strictly before it goes', async () => {
     await page.flusher.flush()
     assert.equal(journalIn(page.storage, session.id), undefined)
     assert.ok(session.ackedSeq > session.strictSeq)
-    // New replaces it (§1.3.8): the outgoing session is committed strictly first.
+    // New replaces it: the outgoing session is committed strictly first.
     beginSession(page, stateOf(goldenChart()), 'new')
-    // Its outcome, for Step 4's switch prompt: committed in the database.
+    // Its outcome, for the switch prompt: committed in the database.
     assert.equal(await page.flusher.outgoing, true)
     assert.equal(session.strictSeq, session.ackedSeq)
     assert.deepEqual(released, ['first'])
@@ -321,7 +321,7 @@ test('the budget counts today’s auto save, and leaves it room to grow to the j
 })
 
 test('each commit covering a key clears it, one per session, and a later load finds none', async () => {
-    // D14, reversed: the same where IndexedDB has no `durability` option (Firefox before 126).
+    // The same where IndexedDB has no `durability` option (Firefox before 126).
     const world = createWorld({ seed: 12 })
     const page = await openJournalPage(world, 'a')
     let state = stateOf(goldenChart())

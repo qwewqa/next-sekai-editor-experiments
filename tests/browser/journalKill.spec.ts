@@ -6,10 +6,10 @@ import type { StorageStatus } from '../../src/local/worker/core'
 import { closePage, installCanvasCounters, installEditorFixture } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// The journal kill tests (Part 1 §1.6.4 #7, Step 3b's exit): edits that only the journal holds
+// The journal kill tests: edits that only the journal holds
 // (flushes held, as a kill leaves them), then the tab killed, then a new visit whose
 // `startupApplyJournals` applies the journal to the session in IndexedDB. What each browser's
-// kill exercises (§1.11's test notes): Chromium page.close() and CDP Page.crash after a hidden
+// kill exercises: Chromium page.close() and CDP Page.crash after a hidden
 // visibilitychange; Firefox and WebKit page.close() only.
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.

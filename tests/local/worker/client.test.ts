@@ -5,7 +5,7 @@ import type { FlushBatch } from '../../../src/local/flushWrite'
 import { StorageWorker } from '../../../src/local/worker/client'
 import { serve, type CallScope, type Endpoint, type Handlers } from '../../../src/local/worker/rpc'
 
-// The page's watchdog over the storage worker (§1.6.5): an unanswered call pings the worker for
+// The page's watchdog over the storage worker: an unanswered call pings the worker for
 // that call's progress; one that has moved is slow, not hung, and is waited for, so a long write
 // is never cut off. One that makes no progress, whatever other calls do, or doesn't answer, is
 // restarted. Real timers, kept short.
