@@ -54,6 +54,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@jridgewell/trace-mapping": "^0.3.31",
         "@playwright/test": "^1.63.0",
         "@resvg/resvg-wasm": "2.6.2",
         "@tsconfig/node22": "^22.0.5",
