@@ -1,4 +1,4 @@
-/** A record's JSON form: arrays of strings, finite numbers and booleans (§1.6.11.1). */
+/** A record's JSON form: arrays of strings, finite numbers and booleans. */
 export type RecordValue = string | number | boolean | readonly RecordValue[]
 
 /**
@@ -25,7 +25,7 @@ const checkValue = (value: unknown): void => {
 }
 
 /**
- * The canonical text of a record (§1.6.11.1); throws on anything a record can't hold. For a
+ * The canonical text of a record; throws on anything a record can't hold. For a
  * checked value `JSON.stringify` writes exactly the canonical rule: each scalar as
  * `Number::toString` or `QuoteJSONString` gives it, items joined by commas, no whitespace.
  */

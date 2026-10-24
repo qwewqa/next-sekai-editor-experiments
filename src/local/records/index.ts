@@ -1,4 +1,4 @@
-// Snapshot records, Formats v1 (§1.6.11.1): the interface the flush, journal and file code use.
+// Snapshot records, Formats v1: the interface the flush, journal and file code use.
 export { canonical, canonicalBytes, type RecordValue } from './canonical'
 export { extractChart } from './extract'
 export { inspectChunk, inspectRecord, inspectSnapshot } from './inspect'

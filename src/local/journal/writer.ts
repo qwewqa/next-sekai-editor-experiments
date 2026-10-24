@@ -4,11 +4,11 @@ import type { State } from '../../state'
 import type { Flusher, FlushSession } from '../flush'
 import { buildJournal } from './build'
 
-// The last-chance journal's writer (Part 1 §1.6.4 #7): written synchronously on hide, pagehide,
+// The last-chance journal's writer: written synchronously on hide, pagehide,
 // beforeunload and freeze whenever the open session has entries not committed to a database, and
 // verified by reading it back. One key per session, overwritten each time and cleared once a
 // commit covers its `seq`; a second trigger for the same `seq` writes nothing. A fork's journal
-// takes over its old session's key (§1.3.1).
+// takes over its old session's key.
 
 export type JournalWriterDeps = {
     store: JournalStore
@@ -17,7 +17,7 @@ export type JournalWriterDeps = {
     state: () => State
     /**
      * Storing is paused by a quota error or `UnknownError`: a journal then counts as unverified
-     * however its write went, since localStorage is likely short too (§1.6.4).
+     * however its write went, since localStorage is likely short too.
      */
     pausedForSpace: () => boolean
     appVersion: string
@@ -50,7 +50,7 @@ export class JournalWriter {
 
     /**
      * Journals whose work another session took over, by that session (a reload's own journal it
-     * couldn't apply, §1.6.4): each removed, if unchanged, once the session's own journal verifies
+     * couldn't apply): each removed, if unchanged, once the session's own journal verifies
      * or a commit covers the entry that holds the work.
      */
     private readonly retiring = new Map<
@@ -110,7 +110,7 @@ export class JournalWriter {
 
     /**
      * Writes the open session's journal again whatever was written before: its identity changed
-     * (an unlink on damage, §1.6.11.8), so a replay can't put the old binding back.
+     * (an unlink on damage), so a replay can't put the old binding back.
      */
     rewrite(): boolean {
         const session = this.deps.flusher()?.session
@@ -141,7 +141,7 @@ export class JournalWriter {
     }
 
     /**
-     * A flush found the session continued elsewhere and moved its entries to a fork (D10): the
+     * A flush found the session continued elsewhere and moved its entries to a fork: the
      * fork's journal takes over the old key, written at once when the fork is the open session.
      */
     forked(from: FlushSession, fork: FlushSession) {

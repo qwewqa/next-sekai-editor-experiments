@@ -154,7 +154,7 @@ const fileChange = object({ before: fileName, after: fileName })
 const ownerDomain = oneOf(['group', 'stage'])
 
 /**
- * One field of a Level Info Apply (§1.4.12): its text fields before and after as captured names
+ * One field of a Level Info Apply: its text fields before and after as captured names
  * (an unset field is the empty name), the rating, how many tags by title were added and removed
  * (v1 edits titles only and keeps icons; the tags themselves are in the snapshots, which Property
  * Changes diffs), the cover and preview as files, and the Initial Life the dialog also holds.
@@ -175,7 +175,7 @@ const levelInfoChange = union(
     object({ field: literal('initialLife'), before: finite, after: finite }),
 )
 export type LevelInfoChange = ValueOf<typeof levelInfoChange>
-/** The dialog's field order, which a step's changes follow (§1.4.12). */
+/** The dialog's field order, which a step's changes follow. */
 export const levelInfoFields = [
     'title',
     'artists',

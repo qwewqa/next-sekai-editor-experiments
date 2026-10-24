@@ -4,7 +4,7 @@ import { fromHex16 } from '../hash'
 import { readNxsp, type ReadHistory, type ReportReason } from '../nxsp/read'
 import { BATCH_CHUNK_BYTES, BATCH_CHUNKS } from '../open/plan'
 
-// Check File and History…'s file phase (Part 1 §1.4.21): the bound file read in full, as an open
+// Check File and History…'s file phase: the bound file read in full, as an open
 // reads it, then every chunk in `chunks.bin` inflated and hashed with no stored shortcut. Chunks
 // are not schema-parsed: one that hashes to its key holds what its writer wrote.
 

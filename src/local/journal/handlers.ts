@@ -17,10 +17,10 @@ import {
     type JournalApplyResult,
 } from './apply'
 
-// The storage worker's journal methods (Part 1 §1.6.4 #7): replay's transaction, an unreadable
+// The storage worker's journal methods: replay's transaction, an unreadable
 // journal's bytes kept in the `recovered` store, and the strict commit a hide's flush ends with.
 
-/** A journal key that couldn't be read: its text, kept as it was (§1.6.11.2's `recovered`). */
+/** A journal key that couldn't be read: its text, kept as it was (`recovered`). */
 export type RecoveredBytes = {
     id: string
     source: 'journal'
@@ -65,7 +65,7 @@ export const isStorageFailure = (error: unknown) => {
 }
 
 export const journalHandlers = (context: WorkerContext, outside: Waiter = directWaiter) => {
-    // Each wait outside IndexedDB counts as the call's progress (§1.6.5).
+    // Each wait outside IndexedDB counts as the call's progress.
     const waiterOf = (progress: Progress): Waiter => ({
         wait: async (promise) => {
             try {
@@ -149,7 +149,7 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
         },
 
         /**
-         * Commits strictly, so what routine flushes stored before it is on disk too (§1.6.4: a
+         * Commits strictly, so what routine flushes stored before it is on disk too (a
          * hide's and a switch's flush is strict). Resolves whether it committed to the database:
          * an in-memory store's commit syncs nothing the database holds.
          */

@@ -11,8 +11,7 @@ import { readJournal, type Journal } from './format'
 import type { RecoveredBytes } from './handlers'
 import { recoveredId, recoveryIds } from './ids'
 
-// Journal replay (Part 1 §1.6.4 #7): at load, as the recovery order's second step (Part 0
-// §0.9.8), every pending `journal.*` key whose session no live tab holds is applied to its session
+// Journal replay: at load, as the recovery order's second step, every pending `journal.*` key whose session no live tab holds is applied to its session
 // in the database, kept as a recovery session when it can't be, or moved into the `recovered`
 // store when it can't be read; a journal from a newer build stays for a later one. The key goes
 // only after its transaction commits. Between loads, an operation on a session that isn't open
@@ -79,7 +78,7 @@ const planBatch = (
 
 /**
  * Replays one journal under its session's lock, taken only if no live tab holds it; with `held`,
- * this tab holds it already (its own reload, or an operation on that session, §1.6.4 step 1).
+ * this tab holds it already (its own reload, or an operation on that session).
  */
 export const replayJournal = (
     found: JournalFound,
@@ -88,7 +87,7 @@ export const replayJournal = (
 ): Promise<JournalOutcome> => {
     const body = async (held: boolean): Promise<JournalOutcome> => {
         const { sessionId } = found
-        // That tab owns its journal (§1.6.4 step 1).
+        // That tab owns its journal.
         if (!held) return { sessionId, kind: 'live' }
         const unreadable = async (why: string): Promise<JournalOutcome> => {
             const kept = await deps.worker.keepRecovered({
@@ -164,8 +163,8 @@ export const replayJournal = (
 }
 
 /**
- * The recovery order's journal step (Part 0 §0.9.8): every pending journal, in turn. `own` is the
- * session whose lock this tab already holds (its own reload, §1.4.2), replayed under that lock.
+ * The recovery order's journal step: every pending journal, in turn. `own` is the
+ * session whose lock this tab already holds (its own reload), replayed under that lock.
  */
 export const replayJournals = async (
     deps: ReplayDeps,

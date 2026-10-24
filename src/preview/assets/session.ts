@@ -22,7 +22,7 @@ export type AssetSession = ReturnType<typeof createAssetSession>
 const types: AssetType[] = ['skin', 'particle', 'background', 'effect']
 
 /**
- * What the preview shows of each asset type (Part 2, 2.4.2): one load per type, started on first
+ * What the preview shows of each asset type: one load per type, started on first
  * use and again when its choice changes. Only the shown asset is kept; a replaced one is closed.
  */
 export const createAssetSession = (options: {

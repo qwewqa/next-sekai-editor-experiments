@@ -2,7 +2,7 @@ import type { LockInfo, LockMode, LockService, LockSnapshot } from '../../platfo
 import { asError } from '../kv/types'
 import { Scheduler, type Actor } from '../scheduler'
 
-// FakeLockManager (§1.6.1): Web Locks in FIFO order with shared and exclusive modes and
+// FakeLockManager: Web Locks in FIFO order with shared and exclusive modes and
 // ifAvailable, pending requests in query(), and a killed actor's locks released. Grants and
 // callbacks are tasks of the requesting actor. No Node API, so the platform mock can use it.
 

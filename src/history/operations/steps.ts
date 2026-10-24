@@ -163,7 +163,7 @@ export const stepDescription = (step: UndoableStep): StepDescription =>
  * A step, a recovery context or an entry's description with the keys that no carrier of v1 has
  * removed, and where they were (paths relative to the value). A reader reports those as
  * `unknown-key`, newer content, and checks the rest as it would any other: only `x` is ignorable
- * (§1.6.11.8). The value is not otherwise checked.
+ *. The value is not otherwise checked.
  */
 export type Stripped = { value: unknown; unknown: string[] }
 

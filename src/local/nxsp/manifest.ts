@@ -16,7 +16,7 @@ import { isObject } from './json'
 import type { DeviceForm } from './project'
 import { MANIFEST_VERSION } from './version'
 
-// `history/manifest.json` and the segments (§1.6.11.5): the entry form, the strict schema of every
+// `history/manifest.json` and the segments: the entry form, the strict schema of every
 // part (an unknown key anywhere outside `x` makes the open partial), and what the parts must hold
 // together: one value per key, an index that tiles `chunks.bin`, every root and node under its own
 // hash and valid, and every reference resolved.
@@ -53,7 +53,7 @@ export type EntryForm = EntryDescription & {
     kept?: false
     revisionId?: string
     device?: DeviceForm
-    /** The app version that wrote a `save` entry; optional on read, always written (§1.6.11.5). */
+    /** The app version that wrote a `save` entry; optional on read, always written. */
     appVersion?: string
     stack?: { keep: number; push: SlotForm[]; index: number; x?: ExtensionForm }
     x?: ExtensionForm
@@ -75,7 +75,7 @@ export type SegmentForm = {
 export type ManifestForm = { version: number } & SegmentForm & { undoStack: UndoStackForm }
 
 /**
- * Why a history was not read (§1.6.11.5, §1.6.11.8): `newer` content (a manifest `version`, a
+ * Why a history was not read: `newer` content (a manifest `version`, a
  * root `v`, an entry kind or a root's kind name this build doesn't know), an `unknown-key`
  * outside `x`, or `damaged` history (a broken rule). Each makes the open partial.
  */
@@ -242,7 +242,7 @@ const checkEntry = (value: unknown, path: string, issues: Issues) => {
     }
     if (!isString(kind)) issues.push({ reason: 'damaged', path: `${path}.kind` })
     const fail = (key: string) => issues.push({ reason: 'damaged', path: `${path}.${key}` })
-    // A field another kind has: a key this kind doesn't (§1.6.11.8).
+    // A field another kind has: a key this kind doesn't.
     const foreign = (key: string) => issues.push({ reason: 'unknown-key', path: `${path}.${key}` })
     if (!isUint(time)) fail('time')
     // A key no carrier knows is newer content; the rest of the description is checked without it.
@@ -381,7 +381,7 @@ export const checkPart = (
         : { part: value as SegmentForm | ManifestForm, issues: [] }
 }
 
-/** A history whose parts were checked and put together (§1.6.11.5). */
+/** A history whose parts were checked and put together. */
 export type HistoryForm = {
     /** The chronology: the segments' entries in order, then the manifest's. */
     entries: EntryForm[]
@@ -398,7 +398,7 @@ const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringi
 
 /**
  * Puts checked parts together (segments in order, the manifest last) and checks what they must
- * hold together (§1.6.11.5): one value per key, the index tiling `chunks.bin` exactly, every root
+ * hold together: one value per key, the index tiling `chunks.bin` exactly, every root
  * and node hashing to its key and valid, every reference resolved, the stack in range, and
  * `history.entries` equal to the entry count.
  */
@@ -439,7 +439,7 @@ export const combineParts = (
     if (next !== expected.chunksSize) damaged('chunks', 'does not end at the end of chunks.bin')
     if (entries.length !== expected.entries) damaged('history.entries', `${entries.length} entries`)
 
-    // Every root and node under its own hash, of a known `v`, valid (§1.6.11.1).
+    // Every root and node under its own hash, of a known `v`, valid.
     const nodeKinds = new Map<string, { kind: KindName; depth: number }>()
     for (const [key, json] of nodes) {
         try {

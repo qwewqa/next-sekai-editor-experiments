@@ -8,8 +8,7 @@ import { AssetError, type AssetChoice, type AssetType, type LoadContext } from '
 import { ServerError, type ServerClient } from './client'
 import { createServerSource } from './source'
 
-// A server item whose package left storage is downloaded again when the preview loads (Part 2,
-// 2.5.4), in the apps: a background request to the server the user chose earlier, with no prompt.
+// A server item whose package left storage is downloaded again when the preview loads, in the apps: a background request to the server the user chose earlier, with no prompt.
 // A failure is the loader's fallback, whose line says why: offline, or not downloaded again.
 
 /**
@@ -102,7 +101,7 @@ export const createRedownload =
                 })
             throw error
         }
-        // Stored and read back, as Use stores (I24).
+        // Stored and read back, as Use stores.
         try {
             await storeRecords(store, [record])
         } catch (error) {

@@ -1,6 +1,6 @@
 import { AssetError, sfxSlots, type LoadedEffect, type SfxSlot } from './types'
 
-// The clip of each player slot, then its fallbacks (Part 2, 2.4.3).
+// The clip of each player slot, then its fallbacks.
 export const slotClips: Record<SfxSlot, string[]> = {
     normalTap: ['#PERFECT'],
     normalFlick: ['#PERFECT_ALTERNATIVE', '#PERFECT'],

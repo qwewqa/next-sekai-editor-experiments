@@ -1,12 +1,12 @@
 import type { JournalFound, JournalLike, JournalStore } from '../../platform/types'
 import { trimOptionalJournalContext } from './format'
 
-// `JournalStore` over localStorage (§1.6.4 #7, §1.6.11.3): one key per session, overwritten on
+// `JournalStore` over localStorage: one key per session, overwritten on
 // each write and verified by reading it back; a write that would pass the size limits isn't
 // made. A store is one page load's: it never replaces or clears a key whose text it neither wrote
-// nor loaded (§1.6.7's backstop). The mock runs the same code over an in-memory Storage.
+// nor loaded (the backstop). The mock runs the same code over an in-memory Storage.
 
-/** One key's most characters (§1.6.4: about 1 MB; coconut's journal is under 100 KB). */
+/** One key's most characters (about 1 MB; coconut's journal is under 100 KB). */
 export const JOURNAL_KEY_LIMIT = 1024 * 1024
 /**
  * All `journal.*` keys together, and until the migration retires it today's auto save, which
@@ -15,7 +15,7 @@ export const JOURNAL_KEY_LIMIT = 1024 * 1024
 export const JOURNAL_TOTAL_LIMIT = 4 * 1024 * 1024
 
 const JOURNAL = 'journal.'
-/** Today's auto save (`autoSave.levelData`, `autoSave.unreadable`), which Step 4 migrates. */
+/** Today's auto save (`autoSave.levelData`, `autoSave.unreadable`). */
 const AUTO_SAVE = 'autoSave.'
 const AUTO_SAVE_SLOT = 'autoSave.levelData'
 
@@ -85,7 +85,7 @@ export const storageJournalStore = (
                     text = JSON.stringify(candidate)
                 }
                 store.setItem(key, text)
-                // Only a write read back intact counts (§1.6.4): the same length and characters.
+                // Only a write read back intact counts: the same length and characters.
                 const back = store.getItem(key)
                 const verified = back !== null && back.length === text.length && back === text
                 owned.set(key, text)

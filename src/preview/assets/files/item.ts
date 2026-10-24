@@ -20,7 +20,7 @@ import {
 import { LIMITS } from './limits'
 import { displayText, isSrl, parseDataJson, type SourcePackage, type Srl } from './package'
 
-// Reading one item of a package and checking all of it (Part 2, 2.5.5): the same code at
+// Reading one item of a package and checking all of it: the same code at
 // import, where a problem refuses the file with a message, and at load, where it falls back.
 
 export type CheckedParts = {

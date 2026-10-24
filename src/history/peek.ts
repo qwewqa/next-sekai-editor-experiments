@@ -12,12 +12,12 @@ import {
     stackMoveRequestGeneration,
 } from './stack'
 
-// Peek (Part 1 §1.4.11): a History entry's state shown read-only in place of the current one,
-// and Restore (§1.4.10.5). Writers read `liveState`, so nothing peeked reaches storage or files.
+// Peek: a History entry's state shown read-only in place of the current one,
+// and Restore. Writers read `liveState`, so nothing peeked reaches storage or files.
 // Storage gives entries' states through `setPeekSource`; the editor adds its notices and the
 // Elevation Editor's reopening through `setPeekEffects` and `onPeekLeft`.
 
-/** A timeline entry: its session and `seq`, as `<sessionId>:<seq>` (§1.3.7, §1.6.11.2). */
+/** A timeline entry: its session and `seq`, as `<sessionId>:<seq>`. */
 export type EntryKey = `${string}:${number}`
 
 export const entryKey = (sessionId: string, seq: number): EntryKey => `${sessionId}:${seq}`
@@ -103,10 +103,10 @@ export const peekLoading: Readonly<Ref<boolean>> = computed(() => spinning.value
 
 const spinning = shallowRef(false)
 
-/** Requests closer together than this wait for the last (arrowing, §1.4.11). */
+/** Requests closer together than this wait for the last (arrowing). */
 export const PEEK_DEBOUNCE_MS = 100
 const SPINNER_AFTER_MS = 150
-/** States kept for peeking, most recently used last (§1.4.11's LRU). */
+/** States kept for peeking, most recently used last (an LRU). */
 export const PEEK_LRU = 8
 
 const cache = new Map<EntryKey, PeekedEntry>()
@@ -152,7 +152,7 @@ export type PeekOptions = { audio?: 'live' | 'none' }
 
 /**
  * What a peek shows: no selection at first, since the peeked state holds its own, and the live
- * audio and its waveform, which playback keeps while peeking (§1.4.11).
+ * audio and its waveform, which playback keeps while peeking.
  */
 const shown = (state: State, audio: PeekOptions['audio'] = 'live'): State => {
     if (audio === 'none') {
@@ -283,7 +283,7 @@ export const leavePeek = () => {
     for (const listener of [...leftListeners]) listener()
 }
 
-// A reset or a stored stack replacing the history ends any peek (§1.3.8).
+// A reset or a stored stack replacing the history ends any peek.
 watch(
     peek,
     (value) => {
@@ -302,7 +302,7 @@ let restoreGeneration = 0
 let cancelRestore: (() => void) | undefined
 
 /**
- * Restores an entry (§1.4.10.5): the snapshot's chart and level info with the current audio,
+ * Restores an entry: the snapshot's chart and level info with the current audio,
  * and its offset when its BGM is the current one (else the current offset stays), pushed as an
  * undoable `restore` entry. Leaves any peek first. When it already matches
  * the current chart, nothing is pushed. Current failures call onFailure synchronously or reject.

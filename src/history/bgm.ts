@@ -5,8 +5,8 @@ export const bgm = computed(() => state.value.bgm)
 
 /**
  * The displayed chart's BGM with the live audio, which playback keeps while peeking a step, and
- * the step's offset only when its BGM is the live one, as Restore keeps it (§1.4.10.5). A
- * session's peek plays without BGM (§1.4.10.6).
+ * the step's offset only when its BGM is the live one, as Restore keeps it. A
+ * session's peek plays without BGM.
  */
 export const playbackBgm = computed(() => {
     const shown = state.value.bgm

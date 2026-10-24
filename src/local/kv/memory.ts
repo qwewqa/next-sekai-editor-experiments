@@ -22,7 +22,7 @@ import {
     type TxMode,
 } from './types'
 
-// The in-memory key-value store (§1.6.1). It models what breaks real browsers: a transaction goes
+// The in-memory key-value store. It models what breaks real browsers: a transaction goes
 // inactive when its task ends with no request of its own pending, and commits then; overlapping
 // read-write transactions run in creation order across connections; values are cloned on write
 // and read; versions, versionchange, blocked and the connection queue follow IndexedDB. Every
@@ -460,7 +460,7 @@ export type WrittenRow = { store: string; key: Key; old: unknown; value: unknown
 /** Rows a transaction removed from a store. */
 export type DeletedRows = { store: string; rows: Row[] }
 
-/** A committed read-write transaction, as the observer sees it (§1.6.1's test hooks). */
+/** A committed read-write transaction, as the observer sees it (test hooks). */
 export type CommitReport = {
     readonly actor: Actor
     readonly db: string

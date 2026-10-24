@@ -1,9 +1,9 @@
 import { toWellFormed } from '../records/wellFormed'
 
-// JSON in a `.nxsp` (§1.6.11's conventions): UTF-8 decoded strictly, one leading byte-order mark
+// JSON in a `.nxsp`: UTF-8 decoded strictly, one leading byte-order mark
 // stripped, the last value of a duplicate key kept (as `JSON.parse` does), and nesting capped.
 
-/** The deepest nesting a reader accepts (§1.6.11.4): deeper is damage. */
+/** The deepest nesting a reader accepts: deeper is damage. */
 export const JSON_DEPTH_CAP = 64
 
 /** JSON that cannot be read: invalid UTF-8, invalid JSON, or nesting past the cap. */
@@ -60,7 +60,7 @@ export const setKey = (target: Record<string, unknown>, key: string, value: unkn
     })
 }
 
-/** A JSON value with every string, keys included, well-formed (§1.6.11's conventions). */
+/** A JSON value with every string, keys included, well-formed. */
 export const wellFormedJson = (value: unknown): unknown => {
     if (typeof value === 'string') return toWellFormed(value)
     if (Array.isArray(value)) return value.map(wellFormedJson)

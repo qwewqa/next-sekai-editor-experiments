@@ -4,7 +4,7 @@ import { toHex } from '../hash'
 import type { RecordValue } from './canonical'
 import type { EncodedNode, EncodedRoot } from './snapshot'
 
-// The `nodes` and `chunks` rows of `nse-local-data` v1 (§1.6.11.2). Hashes are 16 raw bytes:
+// The `nodes` and `chunks` rows of `nse-local-data` v1. Hashes are 16 raw bytes:
 // `ArrayBuffer` keys, `Uint8Array` values. `refs` lists a row's direct children only, so GC can
 // mark from it without understanding the rest.
 
@@ -101,7 +101,7 @@ export const nodeJsonFromRow = (row: NodeRow): RecordValue[] => [
     unpackHashes(row.refs).map(toHex),
 ]
 
-/** A chunk row's CRC-32 (§1.6.11.2): over its 16 key bytes, then its stored bytes. */
+/** A chunk row's CRC-32: over its 16 key bytes, then its stored bytes. */
 export const chunkCrc32 = (key: Uint8Array, bytes: Uint8Array) => crc32(bytes, crc32(key))
 
 /** Whether a chunk row holds what its key names, by its CRC: a value moved under another key fails. */
