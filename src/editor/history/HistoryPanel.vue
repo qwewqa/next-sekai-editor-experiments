@@ -174,8 +174,8 @@ const mode = computed<'label' | 'icon' | 'small'>(() => {
     return 'small'
 })
 // Timeline never truncates (§6): it does not shrink, and Recent Sessions takes the shortfall to its
-// 48 px floor. In the dialog's small band (the 242 px right sheet) that needs the band's chrome
-// tighter; the tab list clips rather than overlap Go To where nothing was measured.
+// 48 px floor. In the dialog's small band (a narrow sheet, about 300 px) that needs the band's
+// chrome tighter; the tab list clips rather than overlap Go To where nothing was measured.
 const tight = computed(() => mode.value === 'small' && props.surface === 'dialog')
 
 const filtered = computed(() => historyFilter.value !== 'all')
@@ -293,7 +293,7 @@ const goToButtonTitle = computed(() =>
     >
         <!-- The band: 48 px, one line, the 6 px panel gutter. Pill-and-marker tabs at its start, as
              the Properties band's; Go To, a flat band control, at its end. The dialog's small band
-             (the 242 px right sheet) closes its gaps to 2 px and its tab pills to 6 px a side, so
+             (a narrow sheet) closes its gaps to 2 px and its tab pills to 6 px a side, so
              Timeline stays whole beside Recent Sessions at its 48 px floor (X-6). -->
         <div
             ref="band"
