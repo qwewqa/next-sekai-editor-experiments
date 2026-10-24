@@ -507,3 +507,31 @@ test('sprite capacity declines an oversized section and clearing releases bodies
     render([section('after-clear', [step(note())])])
     assert.equal(captures.length, 2, 'the renderer remains reusable after explicit clearing')
 })
+
+test('a section with outlines keeps an idle and an active variant through activity flips', (t) => {
+    const { context, captures, draws, render } = fixture(t)
+    const anchor = step(note({ noteType: 'anchor' }))
+    const normal = step(note({ beat: 6 }))
+    const outlined = section('outlined', [anchor, normal])
+    const plain = section('plain', [step(note({ beat: 10 }))])
+    const all = [outlined, plain]
+    render(all)
+    assert.equal(captures.length, 2)
+    context.recentlyActive = true
+    render(all)
+    // Only the section with an anchor has an active variant, which draws the anchor's outline.
+    assert.equal(captures.length, 3)
+    assert.equal(captures[2]!.bodies.length, 2)
+    for (const active of [false, true, false, true]) {
+        context.recentlyActive = active
+        draws.length = 0
+        render(all)
+        assert.equal(captures.length, 3, 'a flip replays the variant it needs')
+        assert.equal(draws[0], captures[active ? 2 : 0]!.range)
+        assert.equal(draws[1], captures[1]!.range)
+    }
+    assert.ok(captures.every(({ range }) => !range.released))
+    render([plain])
+    assert.ok(captures[0]!.range.released && captures[2]!.range.released)
+    assert.equal(captures[1]!.range.released, false)
+})

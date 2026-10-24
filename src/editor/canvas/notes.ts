@@ -234,6 +234,12 @@ type SectionBody = {
 }
 const maxSectionBodies = 512
 const maxSectionSprites = 16384
+/**
+ * Sections with anchors or ticks keep an idle and an active variant (outlines drawn while the
+ * view is recently active), so a gesture's start and end replay instead of rebuilding them.
+ */
+const variantKey = (key: string, active: boolean) => (active ? `${key}:active` : key)
+const keyOf = (entry: SectionBody) => variantKey(entry.section.key, entry.active)
 const maxBodyRuns = 192
 const maxBodySprites = 4096
 const bodyRunKey = (step: DrawStep, pass: string) => {
@@ -372,10 +378,10 @@ export const createNoteRenderer = () => {
     let sectionDependencies: unknown[] = []
     let sectionSprites = 0
     const sectionStats = { captures: 0, replays: 0, declined: 0, ranges: 0, sprites: 0, touches: 0 }
-    const removeSection = (key: string, entry: SectionBody) => {
+    const removeSection = (entry: SectionBody) => {
         if (entry.body) sectionContext?.releaseNoteBodies(entry.body)
-        sectionBodies.delete(key)
-        readySections.delete(entry.section)
+        sectionBodies.delete(keyOf(entry))
+        if (readySections.get(entry.section) === entry) readySections.delete(entry.section)
         sectionSprites -= entry.body?.count ?? 0
         sectionStats.ranges = sectionBodies.size
         sectionStats.sprites = sectionSprites
@@ -565,15 +571,20 @@ export const createNoteRenderer = () => {
             anchors.push(time, sprite.y)
             if (bodies.length > maxSectionSprites) return
         }
-        // Keep one variant per section key. Reclaim inactive sections first;
-        // active groups and atlas artwork remain protected for this presentation.
+        // Reclaim inactive sections and other variants first; the variants this
+        // presentation uses and their atlas artwork remain protected.
+        const active = context.recentlyActive && !!outlineNotes.size
         while (
             sectionBodies.size >= maxSectionBodies ||
             sectionSprites + bodies.length > maxSectionSprites
         ) {
-            const oldest = [...sectionBodies].find(([key]) => !activeKeys.has(key))
+            const oldest = [...sectionBodies.values()].find(
+                (entry) =>
+                    !activeKeys.has(entry.section.key) ||
+                    entry.active !== (context.recentlyActive && !!entry.outlineNotes.size),
+            )
             if (!oldest) return
-            removeSection(...oldest)
+            removeSection(oldest)
         }
         const originTime = beatToTime(context.state.bpms, section.minBeat)
         const body = bodies.length
@@ -586,7 +597,7 @@ export const createNoteRenderer = () => {
             sprites: [...artwork],
             slides,
             outlineNotes,
-            active: context.recentlyActive && !!outlineNotes.size,
+            active,
             hovered: new Set(),
             reused: false,
             ups: context.ups,
@@ -595,7 +606,7 @@ export const createNoteRenderer = () => {
             ys: Float64Array.from(bodies, ({ y }) => y),
         }
         if (!entry.active) entry.hovered = sectionHover(entry, hovered)
-        sectionBodies.set(section.key, entry)
+        sectionBodies.set(keyOf(entry), entry)
         sectionSprites += body?.count ?? 0
         sectionStats.captures++
         return entry
@@ -637,21 +648,26 @@ export const createNoteRenderer = () => {
                 sectionContext !== ctx ||
                 dependencies.some((value, index) => value !== sectionDependencies[index])
             ) {
-                for (const [key, entry] of sectionBodies) removeSection(key, entry)
+                for (const entry of [...sectionBodies.values()]) removeSection(entry)
                 sectionContext = ctx
                 sectionDependencies = dependencies
             }
             if (sectionPlan !== allSections) {
                 const current = new Map(allSections.map((section) => [section.key, section]))
-                for (const [key, entry] of sectionBodies)
-                    if (current.get(key) !== entry.section) removeSection(key, entry)
+                for (const entry of [...sectionBodies.values()])
+                    if (current.get(entry.section.key) !== entry.section) removeSection(entry)
                 sectionPlan = allSections
             }
             const activeKeys = new Set(activeSections.map(({ key }) => key))
             // Protect all reusable artwork before a cold section allocates and evicts slots.
             for (const section of activeSections) {
                 if (section.live || section.steps[0]?.entity.type !== 'note') continue
-                const entry = sectionBodies.get(section.key)
+                // The idle variant serves both states when the section has no outlines.
+                const idle = sectionBodies.get(section.key)
+                const entry =
+                    context.recentlyActive && !(idle && !idle.outlineNotes.size)
+                        ? sectionBodies.get(variantKey(section.key, true))
+                        : idle
                 if (!entry) continue
                 const active = context.recentlyActive && !!entry.outlineNotes.size
                 const currentHover = active ? new Set<Entity>() : sectionHover(entry, hovered)
@@ -670,7 +686,7 @@ export const createNoteRenderer = () => {
                         (sprite) => sprites.get(sprite.key) === sprite && sprite.slot.valid(),
                     )
                 if (!valid) {
-                    removeSection(section.key, entry)
+                    removeSection(entry)
                     continue
                 }
                 if (entry.ups !== context.ups) {
@@ -687,7 +703,7 @@ export const createNoteRenderer = () => {
                             entry.originTime * context.ups,
                         )
                     ) {
-                        removeSection(section.key, entry)
+                        removeSection(entry)
                         continue
                     }
                     entry.ups = context.ups
@@ -699,8 +715,8 @@ export const createNoteRenderer = () => {
                     sprite.frame = frame
                     sectionStats.touches++
                 }
-                sectionBodies.delete(section.key)
-                sectionBodies.set(section.key, entry)
+                sectionBodies.delete(keyOf(entry))
+                sectionBodies.set(keyOf(entry), entry)
                 entry.reused = true
                 readySections.set(section, entry)
             }
@@ -725,7 +741,7 @@ export const createNoteRenderer = () => {
             const entry = readySections.get(section)
             if (!entry || sectionContext !== context.ctx) return false
             if (entry.body && !context.ctx.drawNoteBodies(entry.body)) {
-                removeSection(section.key, entry)
+                removeSection(entry)
                 return false
             }
             if (entry.reused) sectionStats.replays++
@@ -1020,7 +1036,7 @@ export const createNoteRenderer = () => {
             ctx.restore()
         },
         clear() {
-            for (const [key, entry] of sectionBodies) removeSection(key, entry)
+            for (const entry of [...sectionBodies.values()]) removeSection(entry)
             readySections.clear()
             sectionPlan = undefined
             sectionContext = undefined
