@@ -625,6 +625,221 @@ test.describe('zero work', () => {
     })
 })
 
+// The overlay follows the cursor and the view, shows an edge mark past the range, and writes a
+// style only when it changed (design §3.4 and Part 1 §1.4.22).
+test.describe('indicator', () => {
+    const cursorOf = (page: Page) => page.locator('[data-minimap-cursor]')
+    const edgeOf = (page: Page) => page.locator('[data-minimap-edge]')
+
+    /** Where the overlay is drawn, with the times it should show. */
+    const overlay = async (page: Page) => {
+        const strip = minimapStrip(page)
+        await settle(page)
+        const times = await page.evaluate(() => ({
+            cursor: window.editorTest.view.cursorTime,
+            view: window.editorTest.view.time,
+        }))
+        return {
+            ...times,
+            cursorY: (await cursorOf(page).boundingBox())!.y,
+            boxY: (await strip.box.boundingBox())!.y,
+        }
+    }
+
+    const setup = async (page: Page, { follow, cursor }: { follow: boolean; cursor: number }) => {
+        await open(page, { size: { width: 1280, height: 800 } })
+        await expect(minimapStrip(page).box).toBeVisible()
+        await page.evaluate(
+            ({ follow, cursor }) => {
+                const { settings, view } = window.editorTest
+                settings.playFollow = follow
+                settings.playStartPosition = 'cursor'
+                view.cursorTime = cursor
+                view.time = cursor
+            },
+            { follow, cursor },
+        )
+        await settle(page)
+    }
+
+    const playFrames = async (page: Page, count: number) => {
+        await startPlayback(page)
+        await expect.poll(() => isPlaying(page)).toBe(true)
+        await frames(page, count)
+        // A second toggle pauses and keeps the position.
+        await startPlayback(page)
+        await expect.poll(() => isPlaying(page)).toBe(false)
+    }
+
+    /** A preview seek: the scrubber's own path. */
+    const scrubTo = (page: Page, seconds: number) =>
+        page.evaluate(async (seconds) => {
+            const player =
+                await window.editorTest.appImport<typeof import('../../src/editor/player')>(
+                    '/src/editor/player.ts',
+                )
+            player.beginPreviewScrub('locked')
+            player.scrubPreviewTo(seconds)
+            player.endPreviewScrub(false)
+        }, seconds)
+
+    test('playback with Follow moves the cursor and the box and paints nothing', async ({
+        page,
+    }) => {
+        await setup(page, { follow: true, cursor: 40 })
+        const m = await minimapStrip(page).metrics()
+        const before = await overlay(page)
+        const paints = await statsOf(page)
+        await playFrames(page, 60)
+        const after = await overlay(page)
+
+        const played = after.cursor - before.cursor
+        expect(played).toBeGreaterThan(0.2)
+        expect(before.cursorY - after.cursorY).toBeGreaterThanOrEqual(played / m.row - 1)
+        expect(before.cursorY - after.cursorY).toBeLessThanOrEqual(played / m.row + 1)
+        const scrolled = after.view - before.view
+        expect(scrolled).toBeGreaterThan(0.2)
+        expect(Math.abs(before.boxY - after.boxY - scrolled / m.row)).toBeLessThanOrEqual(1.5)
+        const stats = await statsOf(page)
+        expect(stats.paints).toBe(paints.paints)
+        expect(stats.annotationPaints).toBe(paints.annotationPaints)
+    })
+
+    test('playback without Follow moves the cursor and leaves the box', async ({ page }) => {
+        await setup(page, { follow: false, cursor: 40 })
+        const m = await minimapStrip(page).metrics()
+        const before = await overlay(page)
+        await playFrames(page, 60)
+        const after = await overlay(page)
+
+        const played = after.cursor - before.cursor
+        expect(played).toBeGreaterThan(0.2)
+        expect(before.cursorY - after.cursorY).toBeGreaterThanOrEqual(played / m.row - 1)
+        expect(after.view).toBe(before.view)
+        expect(after.boxY).toBe(before.boxY)
+    })
+
+    test('a preview seek puts the cursor on its row, with Follow on or off', async ({ page }) => {
+        await setup(page, { follow: true, cursor: 10 })
+        const m = await minimapStrip(page).metrics()
+        for (const follow of [true, false]) {
+            await page.evaluate((follow) => {
+                window.editorTest.settings.playFollow = follow
+            }, follow)
+            for (const seconds of [30, 12.5, 70]) {
+                await scrubTo(page, seconds)
+                const now = await overlay(page)
+                expect(now.cursor).toBeCloseTo(seconds, 3)
+                expect(Math.abs(now.cursorY - m.yOf(now.cursor))).toBeLessThanOrEqual(1)
+            }
+        }
+    })
+
+    test('past the range end an edge mark shows, and seeking back hides it', async ({ page }) => {
+        await setup(page, { follow: true, cursor: 10 })
+        const m = await minimapStrip(page).metrics()
+        await expect(edgeOf(page)).toBeHidden()
+
+        // Seeking past the last note: the line and the box stay at the top, and the mark shows.
+        await scrubTo(page, m.end + 5)
+        await settle(page)
+        await expect(edgeOf(page)).toBeVisible()
+        const pinned = await overlay(page)
+        expect(pinned.cursorY).toBeCloseTo(m.rect.y + 4, 0)
+        // With Follow the box can still reach below the line; its top is at the top row or the line.
+        expect(pinned.boxY).toBeGreaterThanOrEqual(m.rect.y - 0.5)
+        expect(pinned.boxY).toBeLessThanOrEqual(m.rect.y + 4.5)
+        const edge = (await edgeOf(page).boundingBox())!
+        expect(edge.y).toBeLessThanOrEqual(m.rect.y + 1)
+        // Inside the strip and off the 4 px tick column at the left.
+        expect(edge.x).toBeGreaterThanOrEqual(m.rect.x + 5)
+        expect(edge.x + edge.width).toBeLessThanOrEqual(m.rect.x + m.rect.width)
+
+        await scrubTo(page, 20)
+        await settle(page)
+        await expect(edgeOf(page)).toBeHidden()
+        expect((await overlay(page)).cursorY).toBeCloseTo(m.yOf(20), 0)
+
+        // Playing past the last note shows it too.
+        await page.evaluate((time) => {
+            window.editorTest.settings.playFollow = false
+            window.editorTest.view.cursorTime = time
+            window.editorTest.view.time = 5
+        }, m.end - 0.3)
+        await settle(page)
+        await expect(edgeOf(page)).toBeHidden()
+        await playFrames(page, 60)
+        await expect(edgeOf(page)).toBeVisible()
+
+        // The view alone past the end shows it, with the cursor in range.
+        await page.evaluate(() => {
+            window.editorTest.view.cursorTime = 10
+        })
+        await setViewTime(page, 5)
+        await settle(page)
+        await expect(edgeOf(page)).toBeHidden()
+        await setViewTime(page, m.end + 50)
+        await settle(page)
+        await expect(edgeOf(page)).toBeVisible()
+        await setViewTime(page, 5)
+        await settle(page)
+        await expect(edgeOf(page)).toBeHidden()
+    })
+
+    test('the edge mark stays inside the strip, off the tick column, at 24 and 160 px', async ({
+        page,
+    }) => {
+        await setup(page, { follow: true, cursor: 10 })
+        for (const width of [24, 160]) {
+            await page.evaluate((width) => {
+                window.editorTest.settings.minimapWidth = width
+            }, width)
+            await settle(page)
+            const m = await minimapStrip(page).metrics()
+            expect(m.rect.width).toBe(width)
+            await scrubTo(page, m.end + 5)
+            await settle(page)
+            await expect(edgeOf(page)).toBeVisible()
+            const edge = (await edgeOf(page).boundingBox())!
+            expect(edge.x).toBeGreaterThanOrEqual(m.rect.x + 5)
+            expect(edge.x + edge.width).toBeLessThanOrEqual(m.rect.x + width)
+            await scrubTo(page, 10)
+            await settle(page)
+        }
+    })
+
+    test('over 60 playing frames the cursor is written about once per pixel it moved and the box not at all', async ({
+        page,
+    }) => {
+        await setup(page, { follow: false, cursor: 40 })
+        const before = await overlay(page)
+        await page.evaluate(() => {
+            const writes = { cursor: 0, box: 0 }
+            ;(window as unknown as { overlayWrites: typeof writes }).overlayWrites = writes
+            const watch = (selector: string, key: 'cursor' | 'box') =>
+                new MutationObserver((records) => (writes[key] += records.length)).observe(
+                    document.querySelector(selector)!,
+                    { attributes: true, attributeFilter: ['style'] },
+                )
+            watch('[data-minimap-cursor]', 'cursor')
+            watch('[data-minimap-box]', 'box')
+        })
+        await playFrames(page, 60)
+        const after = await overlay(page)
+        const writes = await page.evaluate(
+            () =>
+                (window as unknown as { overlayWrites: { cursor: number; box: number } })
+                    .overlayWrites,
+        )
+        const moved = Math.ceil(before.cursorY - after.cursorY)
+        expect(moved).toBeGreaterThan(2)
+        expect(writes.cursor).toBeGreaterThanOrEqual(1)
+        expect(writes.cursor).toBeLessThanOrEqual(moved + 2)
+        expect(writes.cursor).toBeLessThan(30)
+        expect(writes.box).toBe(0)
+    })
+})
+
 // The peek rows need the stored entries of a session, as the History panel has.
 test.describe('peek', () => {
     const session = (page: Page) =>
