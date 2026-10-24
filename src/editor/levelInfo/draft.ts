@@ -2,7 +2,7 @@ import type { State } from '../../state'
 import type { LevelInfo, MediaRef } from '../../state/levelInfo'
 import { parseTags, tagsText } from './tags'
 
-// The Level Info dialog's draft (Part 1 §1.4.12): what the form holds, the values it opened with,
+// The Level Info dialog's draft: what the form holds, the values it opened with,
 // and the fields an Apply writes (`apply.ts` pushes the step).
 
 export type Draft = {

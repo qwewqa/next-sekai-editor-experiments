@@ -19,7 +19,7 @@ export const editSelectedEditableEntities = (
     only?: (entity: Entity) => boolean,
     each?: EachEdit,
 ) => {
-    // Properties are read-only while peeking (§1.4.11).
+    // Properties are read-only while peeking.
     if (isPeeking.value) {
         refuseWhilePeeking()
         return

@@ -10,7 +10,7 @@ import type { Filter } from './rows'
 import { historyFilter } from './state'
 import type { GoToView } from './presentation'
 
-// The Go To popover (Part 1 §1.4.10.5): the Show list, All, Saves and Exports or Edits Here with
+// The Go To popover: the Show list, All, Saves and Exports or Edits Here with
 // the beats it would take, and under it the jump list, which the default slot holds. Under 640 px
 // it is the menus' bottom sheet over a dimmed backdrop.
 
@@ -48,7 +48,7 @@ const filterTitle = (filter: Filter) =>
           ? i18n.value.history.filterSaves
           : i18n.value.history.filterHere
 // The beats Edits Here would take now, as choosing it takes them: it follows the view and the
-// selection while the popover is open, so a pick names the range the banner then shows (X-7).
+// selection while the popover is open, so a pick names the range the banner then shows.
 const hereText = computed(() => hereRangeText(takeHereRange()))
 const hereId = useId()
 
@@ -127,7 +127,7 @@ onUnmounted(() => {
     window.removeEventListener('blur', onDismiss)
 })
 
-// Focus in it goes back to the button as it closes (X-3).
+// Focus in it goes back to the button as it closes.
 const onDismiss = () => {
     emit('close', !!popover.value?.contains(document.activeElement))
 }
@@ -138,7 +138,7 @@ const onOutside = (event: PointerEvent) => {
     // The button toggles the popover itself on click.
     if (popover.value?.contains(target) || props.anchor.contains(target)) return
     // The press only closes it, so closing never edits what lies under it, and it moves no focus:
-    // focus goes back to the button (X-3).
+    // focus goes back to the button.
     swallowPress(event)
     emit('close', true)
 }

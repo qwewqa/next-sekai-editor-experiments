@@ -6,8 +6,8 @@ import type { MediaRef } from '../../state/levelInfo'
 import { TaskFailure } from '../../utils/error'
 import { storeHeld } from '../media/heldBgm'
 
-// A cover or preview audio picked in Level Info (Part 1 §1.4.12): its bytes are checked to be
-// readable, then held by this tab before any step names them (Step 11 design §3.2), so the flush
+// A cover or preview audio picked in Level Info: its bytes are checked to be
+// readable, then held by this tab before any step names them, so the flush
 // that stores the step carries them in the same transaction.
 
 export type MediaSlot = 'cover' | 'preview'
@@ -23,7 +23,7 @@ export type Picked = { ref: MediaRef; item: BatchMedia }
 /** Checks a file is an image or audio the browser reads, and captures it. Unreadable files fail as the loading dialogs name them. */
 export const capturePicked = async (slot: MediaSlot, file: Source): Promise<Picked> => {
     const data = await file.arrayBuffer()
-    // Hashed and copied before decoding, which detaches the buffer (§1.6.8.4).
+    // Hashed and copied before decoding, which detaches the buffer.
     const captured = await captureMedia(data, file, slot === 'cover' ? 'image' : 'audio')
     if (slot === 'cover') {
         try {

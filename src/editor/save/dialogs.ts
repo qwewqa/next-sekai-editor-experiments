@@ -18,7 +18,7 @@ import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
 import SaveDialog from './SaveDialog.vue'
 
-// The Save flows' dialogs and feedback (Part 1 §1.4.7), as the core calls them. Tests swap them
+// The Save flows' dialogs and feedback, as the core calls them. Tests swap them
 // through `saveUi`; the specs rely on these signatures and accessible names.
 
 /** Which Save dialog: the first Save, Save As…, or Recent Sessions' Save to File…. */
@@ -64,13 +64,13 @@ export type SaveDialogInput = {
 }
 
 export type SaveDialogResult =
-    /** `fileName` ends in `.nxsp`, valid by Part 0 §0.9.9; an empty field gives `Untitled.nxsp`. */
+    /** `fileName` ends in `.nxsp`, a valid name; an empty field gives `Untitled.nxsp`. */
     | { action: 'save'; fileName: string; history: boolean; bgm: boolean }
     /** The Export line's link: this dialog closes and Export's opens. */
     | { action: 'export' }
     | undefined
 
-/** The small dialog a slow build shows (§1.4.7, §1.5.6), opened at once and kept to the end. */
+/** The small dialog a slow build shows, opened at once and kept to the end. */
 export type Preparing = {
     /** Aborted by the dialog's Cancel, × or Escape: the Save stops (an accepted pick runs on). */
     readonly signal: AbortSignal
@@ -94,7 +94,7 @@ export type PreparingModel = {
     closed: boolean
 }
 
-/** What the file on disk is, read from its `project.json` (Part 0 §0.9.6). */
+/** What the file on disk is, read from its `project.json`. */
 export type DiskVersion =
     | {
           kind: 'saved'
@@ -119,16 +119,16 @@ export type ConflictInput = {
 
 export type ConflictChoice = 'separate' | 'openOther' | 'replace'
 
-/** A save picker's pick of a file the editor won't write over (R7), or a takeover in `?safe`. */
+/** A save picker's pick of a file the editor won't write over, or a takeover in `?safe`. */
 export type RefusedReason = 'notKept' | 'notProject' | 'levelData' | 'safeMode'
 
-/** The feedback after a write (§1.4.7). */
+/** The feedback after a write. */
 export type SavedFeedback = {
     kind: 'saved' | 'download'
     name: string
     size: number
     /**
-     * The second line when the write doesn't carry its base's `completeFrom` (§1.6.11.6): "were not
+     * The second line when the write doesn't carry its base's `completeFrom`: "were not
      * kept" for steps known missing, "may not be included" otherwise.
      */
     stepsLine: 'none' | 'notKept' | 'mayNotBeIncluded'
@@ -143,7 +143,7 @@ export type SavedFeedback = {
 
 export type SaveUi = {
     saveDialog: (input: SaveDialogInput) => Promise<SaveDialogResult>
-    /** `export`: Export's picker waiting for an open's import (SF3-1), titled and pressed as Export. */
+    /** `export`: Export's picker waiting for an open's import, titled and pressed as Export. */
     preparing: (name: string, kind?: 'save' | 'export') => Preparing
     conflict: (input: ConflictInput) => Promise<ConflictChoice | undefined>
     /** ""coconut.nxsp" cannot be found." `[Cancel]` `[Save As…]` (focused). */
@@ -193,7 +193,7 @@ const describe = (disk: DiskVersion) => {
     const { conflict } = i18n.value
     switch (disk.kind) {
         case 'saved': {
-            // The device is worded as the Timeline words it, once (Part 0 §0.9.3).
+            // The device is worded as the Timeline words it, once.
             const device = savedOnText(getHistoryOperationContext(), disk.device.label)
             if (disk.notes === undefined)
                 return interpolate(() => conflict.savedNoNotes, device, formatTime(disk.savedAt))()
@@ -384,7 +384,7 @@ export const defaultSaveUi: SaveUi = {
         showNotPutBack(title, name, emptied, downloadable, replaced),
     saved: (feedback) => {
         // A download that leaves the session not confirmed carries the chip's action, so the
-        // confirm is where the user is looking (§1.3.4); its announcement names the chip.
+        // confirm is where the user is looking; its announcement names the chip.
         const unconfirmed = feedback.kind === 'download' && downloadNotConfirmed.value
         const text =
             feedback.kind === 'saved' && isPeeking.value && simple(feedback)
@@ -400,7 +400,7 @@ export const defaultSaveUi: SaveUi = {
             ? () => (chip.value?.kind === 'notConfirmed' ? pointer() : text())
             : undefined
         // Save to File… of a session another tab has open wrote its stored state: said to
-        // assistive technology with the notice (§1.6.11.6), not shown as another line.
+        // assistive technology with the notice, not shown as another line.
         const announcement = feedback.committedState
             ? () => `${(announced ?? text)()} ${i18n.value.save.committedState}`
             : announced

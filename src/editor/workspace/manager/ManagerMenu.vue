@@ -182,7 +182,7 @@ onUnmounted(() => {
     window.removeEventListener('blur', onDismiss)
 })
 
-// Focus in it goes back to its opener as it closes (X-3).
+// Focus in it goes back to its opener as it closes.
 const onDismiss = () => {
     emit('close', !!menu.value?.contains(document.activeElement))
 }
@@ -205,7 +205,7 @@ const onOutside = (event: PointerEvent) => {
         !(target instanceof Element) ||
         !(isInWorkspaceDock(target) || list?.contains(target))
     ) {
-        // A press that only closes moves no focus: focus goes back to the opener (X-3).
+        // A press that only closes moves no focus: focus goes back to the opener.
         swallowPress(event)
         emit('close', true)
         return

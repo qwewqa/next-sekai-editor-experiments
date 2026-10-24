@@ -24,7 +24,7 @@ import { historyFormat } from './history/historyFormat'
 import { notify } from './notification'
 import { view } from './view'
 
-// The editor's side of peek (Part 1 §1.4.11): the refusal and Restore notices, cancelling
+// The editor's side of peek: the refusal and Restore notices, cancelling
 // drags and scaling sessions on entering, and the Elevation Editor closed while peeking unless
 // side by side, then reopened on leaving.
 
@@ -93,7 +93,7 @@ onPeekLeft(() => {
     openElevationEditor(beat)
 })
 
-// Peek holds the beat (§1.4.11): entering, moving between and leaving peeks keeps the beat at the
+// Peek holds the beat: entering, moving between and leaving peeks keeps the beat at the
 // pane's middle in place, so a section stays put across tempo changes between entries. Edits at
 // Now keep the time, as before.
 watch([bpms, isPeeking], ([next, peeking], [previous, wasPeeking]) => {

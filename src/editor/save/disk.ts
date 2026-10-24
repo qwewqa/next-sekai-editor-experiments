@@ -3,9 +3,9 @@ import { isObject } from '../../local/nxsp/json'
 import { currentSummary, parseSavedAt, readProject } from '../../local/nxsp/project'
 import type { DiskVersion } from './dialogs'
 
-// What a `.nxsp` on disk is, read on the page from a `File` the check pinned (Part 0 §0.9.6): its
+// What a `.nxsp` on disk is, read on the page from a `File` the check pinned: its
 // `project.json` for the conflict dialog and the Replace guard, and its chronology's last entry for
-// our own completed Save (§1.4.7).
+// our own completed Save.
 
 export type DiskFacts = {
     projectJson?: unknown
@@ -38,7 +38,7 @@ export const readDiskFacts = async (file: Blob): Promise<DiskFacts> => {
         return { version: { kind: 'unknown' } }
     }
     // The reader's rules, not a looser copy: `savedAt` is RFC 3339 or absent, and `summary` counts
-    // only when it was computed for this revision (Part 0 §0.9.10).
+    // only when it was computed for this revision.
     const project =
         isObject(projectJson) && projectJson.format === 'nxsp'
             ? readProject(projectJson).project
@@ -65,7 +65,7 @@ export const readDiskFacts = async (file: Blob): Promise<DiskFacts> => {
 }
 
 /**
- * A file of another project: its `id` isn't the chain's (§0.9.5). It carries the project's name
+ * A file of another project: its `id` isn't the chain's. It carries the project's name
  * when the file has one; a file whose `project.json` has no `id` is not told apart.
  */
 export const otherProject = (facts: DiskFacts, docId: string): DiskVersion | undefined => {

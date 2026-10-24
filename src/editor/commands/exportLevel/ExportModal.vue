@@ -13,7 +13,7 @@ import { formatSize } from './format'
 import type { ExportTarget } from './memory'
 import { exportUi } from './ui'
 
-// Export Level Data… (Part 1 §1.4.8): the File Name row, or only the To row with a target.
+// Export Level Data…: the File Name row, or only the To row with a target.
 const props = defineProps<{
     target?: ExportTarget
     /** The field's first value. */
@@ -21,7 +21,7 @@ const props = defineProps<{
     /** The field shows the source file's own name, which the picker suggests as it is. */
     sourceName: boolean
     peeking: boolean
-    /** The chain's own file, read when the dialog opened (R2). */
+    /** The chain's own file, read when the dialog opened. */
     read: Promise<ReadResult>
 }>()
 
@@ -44,7 +44,7 @@ const fileName = computed(() =>
     (fromSource.value ? value.value : `${stem.value}.nsld`).normalize('NFC'),
 )
 
-// The source's own name is a file that exists; only a typed name is checked (§0.9.9).
+// The source's own name is a file that exists; only a typed name is checked.
 const problem = computed(() => (fromSource.value ? undefined : nameProblem(value.value)))
 const revealed = ref(false)
 let pause: ReturnType<typeof setTimeout> | undefined
@@ -108,7 +108,7 @@ const preparingText = computed(() =>
 )
 
 // Cancel, × and Escape stop a running export; once a follow-up dialog takes over, it runs on.
-// An accepted pick, which the picker emptied (D5), is written first, then the dialog closes.
+// An accepted pick, which the picker emptied, is written first, then the dialog closes.
 const controller = new AbortController()
 let left = false
 let committed = false

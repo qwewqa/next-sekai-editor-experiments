@@ -31,8 +31,8 @@ export const recipeOfRow = (row: EntryRow): OperationRecipe =>
 
 /**
  * The one device formatter for rows: "Saved on iPad" for an app device, "Saved in the web editor
- * (Chrome)" for a web label, which is never shown raw (Part 0 §0.9.3). A web label is
- * "Web (Chrome)", or "Web" when the browser is not known (§1.3.3).
+ * (Chrome)" for a web label, which is never shown raw. A web label is
+ * "Web (Chrome)", or "Web" when the browser is not known.
  */
 export const savedOnText = (context: OperationTextContext, label: string) => {
     const { history } = context.strings
@@ -42,7 +42,7 @@ export const savedOnText = (context: OperationTextContext, label: string) => {
 }
 
 /**
- * A save made on another device names it (§1.4.10.5): the entry's `device.id` is not this
+ * A save made on another device names it: the entry's `device.id` is not this
  * browser's `thisDevice`. A download is not a save of another device's: it reads as it does.
  */
 const otherDevice = (row: EntryRow, thisDevice: string | undefined) => {

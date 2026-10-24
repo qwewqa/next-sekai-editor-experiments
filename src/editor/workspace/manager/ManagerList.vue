@@ -1565,7 +1565,7 @@ const bulkFolderItems = (): ManagerMenuItem[] => {
 }
 
 // While peeking the list is read-only: focus, visibility, selecting objects and Properties (which
-// opens read-only) work (§1.4.11).
+// opens read-only) work.
 const editActions = new Set([
     'add',
     'rename',

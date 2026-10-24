@@ -25,7 +25,7 @@ export async function* loadPickedBgm(
 
     const data = await file.arrayBuffer()
     check()
-    // Hashed and copied before decoding, which detaches the buffer (§1.6.8.4).
+    // Hashed and copied before decoding, which detaches the buffer.
     const captured = await captureMedia(data, file)
     check()
 

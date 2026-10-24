@@ -4,7 +4,7 @@ import { releaseWaveform, type Waveform } from '../../waveform'
 import type { bgmOperation } from '../headerLabels'
 import { attachHeld, cacheBgm, cacheHeld, storeHeld, type HeldParts } from './heldBgm'
 
-// What Choose Audio… does with the file picked (Part 1 §1.6.8.4, Step 7 design §3.6), decided on
+// What Choose Audio… does with the file picked, decided on
 // its hash alone. The file the state names is attached and stored again as no step, with the
 // recorded meta kept; any other file is one BGM change.
 

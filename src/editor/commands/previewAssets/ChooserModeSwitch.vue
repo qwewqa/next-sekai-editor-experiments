@@ -2,7 +2,7 @@
 import { computed, useId } from 'vue'
 import { i18n } from '../../../i18n'
 
-// The chooser's switch between a file and a server (Part 2, 2.6): a segmented control in the
+// The chooser's switch between a file and a server: a segmented control in the
 // editor's style, two radios in a group.
 const mode = defineModel<'file' | 'server'>({ required: true })
 defineProps<{

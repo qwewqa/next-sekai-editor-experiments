@@ -97,7 +97,7 @@ import {
 } from './state'
 
 // The Timeline is a rows-first treegrid of the chain's entries, newest first and windowed.
-// Selecting a row peeks it; the controls for leaving or restoring are on the canvas (§1.4.11).
+// Selecting a row peeks it; the controls for leaving or restoring are on the canvas.
 
 const props = defineProps<{
     /** The tab in a dock, or the dialog: each keeps its own scroll and focus rules. */
@@ -121,8 +121,7 @@ followEntries()
 useScrollMemory(() => `${props.surface}:history`, list)
 
 // The headers' ages are measured against the History clock, rebuilt at each hour and when the
-// zone changes: a row changes tier only then, and always below the top of the list (Part 1
-// §1.4.10.5).
+// zone changes: a row changes tier only then, and always below the top of the list.
 const calendar = useHistoryCalendar()
 const format = computed(() => historyFormat(calendar.value, settings.locale))
 
@@ -244,7 +243,7 @@ const tail = computed(() => {
     return { kind: 'none', height: 0 }
 })
 const contentHeight = computed(() => geometry.value.total + tail.value.height + PAD_BOTTOM.value)
-// Try Again goes with the failure it answers: focus on it goes to the cursor's row (X-2).
+// Try Again goes with the failure it answers: focus on it goes to the cursor's row.
 watch(
     () => tail.value.kind,
     (kind, was) => {
@@ -799,7 +798,7 @@ const topEntry = (): Target | 'now' => {
 }
 
 // Rows inserted or removed above the first one on screen move the scroll position by as much,
-// so nothing under the pointer moves (Part 1 §1.4.10.5). At the very top, new rows simply appear.
+// so nothing under the pointer moves. At the very top, new rows simply appear.
 watch(
     geometry,
     (next, previous) => {
@@ -1283,7 +1282,7 @@ watch(
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
 // A save from another device names it: this browser's own carries its id for the chain's lineage,
-// which every session the Timeline lists shares (§1.3.3).
+// which every session the Timeline lists shares.
 const thisDevice = () => {
     const open = flusher?.session
     return open?.id === session.value.sessionId ? ownDeviceId(open.lineageId) : undefined
@@ -1309,8 +1308,8 @@ const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed'
 // 340 px at the default size, scaled with the root font size like the one-line threshold.
 const narrow = computed(() => width.value > 0 && width.value < 340 * k.value)
 // From 18rem a row is one line: its mark, title, count, delta and time on one centre line. Below,
-// the count, delta and time go under the title, at its edge (Part 1 §1.4.10.5).
-// One-line rows from 18rem: px at the 16 px rem, scaled like the slots (owner decision, 2026-10-19).
+// the count, delta and time go under the title, at its edge.
+// One-line rows from 18rem: px at the 16 px rem, scaled like the slots.
 const ONE_LINE = 18 * 16
 const oneLine = computed(() => width.value >= ONE_LINE * k.value)
 

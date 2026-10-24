@@ -1,7 +1,7 @@
 import type { DeleteChain } from '../../local/deleteSessions'
 import { interpolateRaw } from '../../utils/interpolate'
 
-// The pure view of Delete Sessions… (Local Data design §3.7): which chains each range picks, the
+// The pure view of Delete Sessions…: which chains each range picks, the
 // counts the dialog shows, and the confirm's lines. Counts and lines come from the same `chosen`,
 // so what the dialog promises is what the confirm names and what is deleted.
 

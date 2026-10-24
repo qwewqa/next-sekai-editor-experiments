@@ -12,7 +12,7 @@ import AssetGlyph from './AssetGlyph.vue'
 import AssetRow from './AssetRow.vue'
 import ChooserProgress from './ChooserProgress.vue'
 
-// The chooser's From a Server view (Part 2, 2.5.3, 2.6), in the apps: the address, the server's
+// The chooser's From a Server view, in the apps: the address, the server's
 // list with its quick search and More, and the other types' items of the same name. The footer is
 // the chooser's.
 const props = defineProps<{

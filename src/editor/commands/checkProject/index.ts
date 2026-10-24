@@ -9,7 +9,7 @@ import { notify } from '../../notification'
 import { environment } from '../../save/binding'
 import CheckProjectIcon from './CheckProjectIcon.vue'
 
-// Check File and History… (Part 1 §1.4.21): reads the bound file in full and the history stored in
+// Check File and History…: reads the bound file in full and the history stored in
 // this browser, repairs what the file can repair, and tells what is left in a few lines. It is
 // reachable from the command list and Level Info's file line; there is no default key.
 

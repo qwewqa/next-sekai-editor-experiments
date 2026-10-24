@@ -296,7 +296,7 @@ const stageCount = computed(() =>
 
 <template>
     <!-- An own stacking context keeps editor overlays below docks and their popups. -->
-    <!-- A move waiting about 150 ms for its undo slot shows the busy cursor (§1.6.4 #6). -->
+    <!-- A move waiting about 150 ms for its undo slot shows the busy cursor. -->
     <div ref="host" class="isolate flex flex-col" :class="{ 'slot-busy': slotLoading }">
         <NotStoredBar v-if="showNotStoredBar" />
         <div class="relative flex min-h-0 flex-grow select-none overflow-hidden">

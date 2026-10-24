@@ -62,7 +62,7 @@ const page = computed(() =>
                     </template>
                 </li>
             </ol>
-            <!-- "Items: n/m" only while more remain, as Properties: n/m (DEC-8.1). -->
+            <!-- "Items: n/m" only while more remain, as Properties: n/m. -->
             <div
                 v-if="page.items.length < page.total"
                 class="mt-2 flex flex-wrap items-center gap-2"

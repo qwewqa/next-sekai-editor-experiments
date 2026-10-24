@@ -1,7 +1,7 @@
 import type { MediaKind } from '../../local/nxsp/read'
 import { interpolate } from '../../utils/interpolate'
 
-// What Check File and History… tells (Part 1 §1.4.21): a few plain lines, in this order. The
+// What Check File and History… tells: a few plain lines, in this order. The
 // strings come in as a getter (the page's `i18n`), so this module loads in Node.
 
 /** The strings the lines use: `check.*` and the media names of `open.media`. */

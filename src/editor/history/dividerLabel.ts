@@ -8,7 +8,7 @@ import { decodeOperation } from '../../history/operations'
 import type { Entry } from './rows'
 
 /**
- * A boundary divider's label (Part 1 §1.4.10.5), from its own `continue` entry: an open reads
+ * A boundary divider's label, from its own `continue` entry: an open reads
  * "Opened coconut.nxsp", a continuation "Continued from" the time its operation holds, to the
  * minute. An opened file is one session with no parent links, so `from` (the parent's newest
  * entry, from storage) is only for an operation with no time, and the entry's own time is never

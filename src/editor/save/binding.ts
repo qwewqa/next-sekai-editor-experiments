@@ -6,10 +6,10 @@ import type { BuildEnv } from './build'
 import { heldHandle } from './env'
 import { revokedOf } from './watch'
 
-// The Save core's view of the open session's binding (Part 1 §1.3.2, §1.4.7): the environment the
-// flows run in, the binding a press decides by, the record read again (R10), and the handle.
+// The Save core's view of the open session's binding: the environment the
+// flows run in, the binding a press decides by, the record read again, and the handle.
 
-/** The binding as the chain record holds it (§1.6.11.2). */
+/** The binding as the chain record holds it. */
 export type StoredFile = {
     name: string
     event: 'opened' | 'saved' | 'downloaded'
@@ -56,7 +56,7 @@ export const setSaveEnvironment = (get: () => Env | undefined) => {
 /** The storage worker, the flusher and its open session now; none before storing started. */
 export const environment = (): Env | undefined => getEnvironment?.()
 
-/** The binding of a record, with the one kept in memory over it (storage paused, §1.3.2). */
+/** The binding of a record, with the one kept in memory over it (storage paused). */
 export const bindingOf = (record: Row | undefined, session: FlushSession): Binding => {
     const identity = session.identity
     const source: Row = identity
@@ -77,10 +77,10 @@ export const bindingOf = (record: Row | undefined, session: FlushSession): Bindi
 /** The record as this tab last wrote it: what a press decides by, before the check. */
 export const quickBinding = (env: Env) => bindingOf(env.session.chain, env.session)
 
-/** The record read again (R10). */
+/** The record read again. */
 export const readBinding = async (env: Env): Promise<StoredRead<Binding>> =>
     mapRead(await storedRead(env.worker, 'readChainRecord', env.chainId), (record) => {
-        // Taken over since (R5, R6).
+        // Taken over since.
         const replaced = revokedOf(record, env.session) as Binding['replaced'] | undefined
         if (replaced) {
             const binding = bindingOf(record, { ...env.session, identity: undefined })
@@ -94,7 +94,7 @@ export const readBinding = async (env: Env): Promise<StoredRead<Binding>> =>
     })
 
 /**
- * The handle of the chain's binding: this tab's, else the stored one, read when needed (D24).
+ * The handle of the chain's binding: this tab's, else the stored one, read when needed.
  * `undefined` is an answer (none stored, or another file's); a failed read is `failed`.
  */
 export const bindingHandle = async (

@@ -28,16 +28,16 @@ export const undo: Command = {
                 creating: [],
             }
 
-            // A move waiting for its slot is told when it lands (§1.6.4 #6).
+            // A move waiting for its slot is told when it lands.
             const queued = pendingMoveOutcome()
             if (queued) noticeOnLanding(queued)
             else notifyMove(-1, step)
         } else {
             // Right after New, an open or an import, with Reopen: the habit of pressing Undo
-            // after replacing the chart by mistake gets the work back (Part 1 §1.4.1). Else
+            // after replacing the chart by mistake gets the work back. Else
             // Open History, at Recent Sessions when the Timeline holds only its first entry.
             if (earlierSteps.value)
-                // A reloaded stack is capped (§1.6.4 #6): the steps before it are in the Timeline.
+                // A reloaded stack is capped: the steps before it are in the Timeline.
                 notify(() => i18n.value.notice.earlierInHistory, {
                     action: openHistoryAction(),
                 })

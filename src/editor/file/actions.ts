@@ -2,11 +2,11 @@
 // the chip's dialogs and the notices name no flow of their own.
 
 export type FileActions = {
-    /** Save As…, from the not-found dialog: keeps the chain's identity (§1.4.7). */
+    /** Save As…, from the not-found dialog: keeps the chain's identity. */
     saveAs: () => void
-    /** Builds and downloads the file again (§1.4.7, "Download Again"). */
+    /** Builds and downloads the file again ("Download Again"). */
     downloadAgain: () => void
-    /** Opens the file on disk as a new session in place of this one (§0.9.6). */
+    /** Opens the file on disk as a new session in place of this one. */
     openOtherVersion: () => void
     /** Stores that the open session's download is confirmed, beside the label's state. */
     persistConfirmed: () => void

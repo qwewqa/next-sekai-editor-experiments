@@ -16,7 +16,7 @@ import {
 import { readOwnFile, withPickSession, type PickedFile, type PickSession } from './pickSession'
 import { enqueueSave } from './queue'
 
-// Export Level Data…'s pick, on a pick session (Part 1 §1.4.8, spec B): the level data is built and
+// Export Level Data…'s pick, on a pick session: the level data is built and
 // verified in the session, which opens the picker and holds `nse-bind` from the pick to the end of
 // the write. This module only decides what each kind of picked file is for Export. It keeps
 // nothing between calls, and loads on first use.
@@ -35,10 +35,10 @@ export type PickedLevelData =
     /** What the Save core shows about the chain's own file or a takeover, after Export's dialog. */
     | { kind: 'show'; show: () => Promise<void> }
 
-/** Export's save picker: its folder, and the `.nsld` type or "All files" alone (§1.4.8). */
+/** Export's save picker: its folder, and the `.nsld` type or "All files" alone. */
 const levelDataPicker = (types: ExportContext['types']): SavePicker => ({ id: 'levelData', types })
 
-/** The read the dialog starts: the chain's own file, read now when it may hold more (R2). */
+/** The read the dialog starts: the chain's own file, read now when it may hold more. */
 export const startExportRead = () => {
     const env = environment()
     return env && platform.pickSaveFile
@@ -124,7 +124,7 @@ const levelDataPicked = async (
     const name = picked.target.handle.name
     switch (identity.kind) {
         case 'refused':
-            // A chart, level data with parts left out or a partial open's file (R7): the session
+            // A chart, level data with parts left out or a partial open's file: the session
             // puts back what the editor holds of it, or offers it.
             return {
                 kind: 'refused',
@@ -140,9 +140,9 @@ const levelDataPicked = async (
         case 'target':
         case 'unknown': {
             // Written since the pick (a sync client, or its owner): never written over unseen, and
-            // nothing is revoked for it (R9).
+            // nothing is revoked for it.
             if (filled) return { kind: 'failed', error: changed(name, picked.found) }
-            // Another chain's file or Export target is taken from it (R5).
+            // Another chain's file or Export target is taken from it.
             const owner =
                 identity.kind === 'other' ||
                 (identity.kind === 'target' && identity.owner.chainId !== env?.chainId)
@@ -171,7 +171,7 @@ const shown = (env: Env, outcome: Outcome): PickedLevelData => ({
 })
 
 /**
- * A pick of this chain's own `.nxsp`: written again like a Save (§1.4.8), with a continuation's
+ * A pick of this chain's own `.nxsp`: written again like a Save, with a continuation's
  * first row committed first. When that cannot be done the file is left empty for the session to put
  * back what it read, and the Save core says why.
  */

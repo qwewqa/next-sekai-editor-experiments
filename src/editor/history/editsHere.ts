@@ -7,7 +7,7 @@ import { showHistoryLink } from './openHistory'
 import { peekedSession } from './selection'
 import { hereRange, historyFilter } from './state'
 
-// Edits Here (Part 1 §1.4.10.5): the Timeline filtered to the entries that changed a range of
+// Edits Here: the Timeline filtered to the entries that changed a range of
 // beats, taken once as it is chosen: the selection's beats at Now, else the beats in view. Shared
 // by Go To's Show list, the chart's context menu and the Find Edits Here command.
 

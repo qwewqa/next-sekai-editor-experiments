@@ -1,7 +1,7 @@
 import { i18n } from '../../../i18n'
 import { notify } from '../../notification'
 
-// No drag-and-drop to open (Part 1 §1.5.3, Z22). Without a handler the browser would navigate
+// No drag-and-drop to open. Without a handler the browser would navigate
 // to a dropped file and leave the editor, so dragover and drop only call preventDefault().
 // Text dragged into a field keeps its default.
 

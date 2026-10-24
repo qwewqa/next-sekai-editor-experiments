@@ -16,7 +16,7 @@ const cardButton = () =>
     document.querySelector<HTMLElement>('[data-notice-card] [data-notice-action]') ??
     document.querySelector<HTMLElement>('[data-notice-card] [data-notice-close]')
 
-// Alt+N (Option+N on macOS, by code) focuses the latest card while it is shown (Part 1 §1.4.1).
+// Alt+N (Option+N on macOS, by code) focuses the latest card while it is shown.
 // A text field and IME composition keep the key: Option+N is the dead key of "ñ".
 const onKeydown = (event: KeyboardEvent) => {
     if (event.code !== 'KeyN' || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('focusout', onFocusOut, true)
 })
 
-// A card goes at the first edit after it (Part 1 §1.4.1, §1.4.3): a stack a new visit restored can
+// A card goes at the first edit after it: a stack a new visit restored can
 // already undo, so the action itself is what counts. A switch of session dismisses it elsewhere.
 const stopWatching = onHistoryAction((action) => {
     if (action.kind === 'reset' || action.kind === 'save' || action.kind === 'export') return

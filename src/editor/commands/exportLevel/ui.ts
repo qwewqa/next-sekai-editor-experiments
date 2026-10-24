@@ -9,7 +9,7 @@ import { fileErrorKey } from './errorText'
 import type { ExportUi } from './flow'
 import { formatSize, formatTime } from './format'
 
-// Export's follow-up dialogs and feedback (Part 1 §1.4.8, Part 0 §0.9.6).
+// Export's follow-up dialogs and feedback.
 
 const title = () => i18n.value.export.title
 
@@ -107,7 +107,7 @@ export const exportUi: ExportUi = {
     notFound: (name) =>
         showChoice({
             title,
-            // No hint to pick the moved file: a save picker would empty it (D5).
+            // No hint to pick the moved file: a save picker would empty it.
             message: interpolate(() => i18n.value.save.notFound, name),
             choices: [chooseAnother],
         }),
