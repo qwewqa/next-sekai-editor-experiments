@@ -18,9 +18,8 @@ import { notify } from '../notification'
 import PreparingDialog from './PreparingDialog.vue'
 import SaveDialog from './SaveDialog.vue'
 
-// The Save flows' dialogs and feedback (Part 1 §1.4.7), as the core calls them. These bodies are
-// minimal working defaults; the Save UI package replaces them, keeping the signatures and the
-// accessible names the specs use (work/step6/save-interface.md).
+// The Save flows' dialogs and feedback (Part 1 §1.4.7), as the core calls them. Tests swap them
+// through `saveUi`; the specs rely on these signatures and accessible names.
 
 /** Which Save dialog: the first Save, Save As…, or Recent Sessions' Save to File…. */
 export type SaveDialogKind = 'save' | 'saveAs' | 'saveToFile'
@@ -431,7 +430,7 @@ export const defaultSaveUi: SaveUi = {
     },
 }
 
-/** The Save flows' UI: the defaults until the Save UI package's bodies replace them. */
+/** The Save flows' UI; tests swap it. */
 export let saveUi: SaveUi = defaultSaveUi
 
 /** Tests swap the UI; undefined restores the defaults. */

@@ -1095,7 +1095,6 @@ const unlinkAndSaveAs = async (env: Env, name: string): Promise<Outcome> => {
 
 // The follow-up dialogs.
 
-/** "Saved on iPad, Oct 16, 2:41 PM · 1,220 notes." or another project's name. */
 /** The conflict dialog's facts, and the `File` and disk state Replace keeps and writes over. */
 const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
     let facts: DiskFacts = { version: { kind: 'unknown' } }
