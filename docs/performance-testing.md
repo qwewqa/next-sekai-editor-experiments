@@ -235,14 +235,14 @@ Gone:
 
 Changed:
 
-- **Pixi's GC pass** (`GCSystem.run` → `runOnHash`, in `postrender`) walks every tracked resource, and its period is now 3 s (`GC_FREQUENCY`). It runs every 3 s during motion, and on the first frame after any pause of 3 s or more, because the scheduler runs overdue tasks on the next render. It costs 2–8 ms early in a session and 10–20 ms later at 1×, and 15–30 ms rising to 60 ms at 4×.
+- **Pixi's GC pass** (`GCSystem.run` → `runOnHash`) walks every tracked resource. Its period is 10 s (`GC_FREQUENCY`), and since pr2-gc it runs at idle time, never inside a frame (`RenderingScheduler`; `docs/rendering.md`). A pass costs 2–8 ms early in a session and 10–20 ms later at 1×, and 15–30 ms rising to 60 ms at 4×; in a trace it is an idle callback.
 
 New:
 
 - **Grid path-cache churn:** the grid builds new paths every frame (`grid.ts`), and the path cache, keyed by the path object (`pathGraphics.ts`), stores them though nothing reuses them. It fills its 128 MiB budget and evicts in bursts: a 7–10 ms frame at 1× about every 6 s of playback.
 - **The storage-unavailable journal:** with storage unavailable, the whole chart is serialized and gzipped every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. The idle callback's 5 s timeout can land it in the middle of a scroll.
 - **The selection outline during playback:** with every note selected, the preview strokes the outline twice per frame through tessellation (`usePreviewRendering.ts`): a desktop clock p95 of 7.6 ms, 30% of frames late, and 15–20 ms major GCs.
-- **The idle vector compile:** after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asks again whenever the idle period is shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread, with no effect on frame time.
+- **The idle vector compile** (fixed by pr2-gc): after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asked again whenever the idle period was shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread. It now retries 100 ms later, up to ten times, then waits for a frame that draws.
 
 Still present:
 
