@@ -4,7 +4,7 @@ import { isHash16Hex } from '../hash'
 import { isNewerSessionVersion } from '../records/unknownValues'
 import { RECORDS_V, SESSION_V } from '../records/version'
 
-// Structured journal v2: the object a `journal.<sessionId>` key holds,
+// The structured journal: the object a `journal.<sessionId>` key holds,
 // and the checks a reader makes before it trusts one. A newer journal is left in place for a
 // later build; one this build can't read keeps its bytes in the `recovered` store (§1.6.4).
 

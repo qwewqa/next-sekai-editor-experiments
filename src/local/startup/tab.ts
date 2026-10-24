@@ -25,7 +25,10 @@ export type TabRecord = {
 }
 
 const TAB_KEY = storageKey('tab')
-/** `nse.unloaded`: the session whose page went away on `pagehide` or `freeze`. */
+/**
+ * The `unloaded` marker, `<prefix>unloaded` in sessionStorage: the session whose page went away on
+ * `pagehide` or `freeze`.
+ */
 const MARKER_KEY = storageKey('unloaded')
 
 const session = () => {

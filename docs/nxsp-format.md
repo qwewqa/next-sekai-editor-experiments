@@ -191,7 +191,7 @@ From the minimal file of §17.1 (a Save with History off):
 | `parent` | `null` (a new document) or a non-empty string: the revision this one descends from. |
 | `n` | Count, display only (parent's `n` + 1). |
 | `savedAt` | RFC 3339 `date-time`: `YYYY-MM-DDThh:mm:ss`, an optional `.fraction`, then `Z` or `±hh:mm`; uppercase `T` and `Z`; a date that exists; seconds 00–59 (no leap second). Anything else, a non-string included, reads as **absent**, never as a reason for a partial open. The writer writes UTC to the second (`2026-10-20T08:00:00Z`). |
-| `device` | `{id, label}`, both strings. `id` names the writing install **for this document's lineage**: the web writes HMAC-SHA-256 of `lineageId` under the browser's own `deviceId`, as a UUID version 8, so one install's files of two lineages carry different ids and files of one lineage the same. Readers treat it as opaque and compare it only within a lineage. `label` is the install's label, such as `Web (Chrome)`. |
+| `device` | `{id, label}`, both strings. `id` names the writing install **for this document's lineage**: the web computes HMAC-SHA-256 with the browser's own `deviceId` as the key and `lineageId` as the message, both UTF-8, takes the first 16 bytes, sets the high nibble of byte 6 to 8 (UUID version 8) and the top two bits of byte 8 to `10` (the variant), and writes them as a lowercase hyphenated UUID. So one install's files of two lineages carry different ids and files of one lineage the same. Readers treat it as opaque and compare it only within a lineage. `label` is the install's label, such as `Web (Chrome)`. |
 | `ancestors` | Array of non-empty strings, newest first; read as a set. The writer writes at most 1,024. |
 | `replaces` | Optional string, written only by Replace. |
 | `fileName` | Optional string: the file name this write used. |
@@ -584,7 +584,7 @@ A `kept: false` row whose root is present may still be decoded; the editor label
 
 - Times come from the writing devices. In a session made on one device, times never go back; a file's chronology as a whole may (sessions from several devices). The editor shows local dates and times from `time`.
 - `dirty` is informational (the Timeline does not show it).
-- `noteCount` is the root's note count when known; when the root is held it must agree with it, and a reader may take the root's.
+- `noteCount` is the root's note count when known: a writer writes the root's count, and a reader that holds the root takes the root's.
 
 ### 10.5 What the editor shows
 
@@ -945,7 +945,7 @@ The first note is `left 0, size 2` (lane centre 1, half-width 1); the second `le
 
 ### 17.2 A small history
 
-A first Save of a chain of three states (`05a-sessions-first-save.nxsp` of the corpus): `project.json` adds `"completeFrom":"e001-…"` to `revision`, `"name":"Small"` and `"history":{"manifest":"history/manifest.json","chunks":"history/chunks.bin","entries":5}`. The manifest (hashes shortened to 8 characters, fallbacks elided):
+A first Save of a chain of three states (`05a-sessions-first-save.nxsp` of the corpus): `project.json` adds `"completeFrom":"e001-…"` to `revision`, `"name":"Small"` (the builder was given a name, as the apps write one; the web writes none, §5.1) and `"history":{"manifest":"history/manifest.json","chunks":"history/chunks.bin","entries":5}`. The manifest (hashes shortened to 8 characters, fallbacks elided):
 
 ```json
 {"version":1,
@@ -976,5 +976,5 @@ The second Save of that chain (`05b-sessions-append.nxsp`) was written back over
 ### 17.4 Fixtures and tools
 
 - `tests/local/nxsp/golden-v1/` (`write-1.nxsp`, `write-2.nxsp`, an append): the builder golden. `tests/zip/plan-conformance-v1/`: plan-to-bytes cases, with failures, that any writer implementation must reproduce. `tests/local/records/golden-v1/`: record and snapshot vectors (the golden and edge charts). `tools/fields-v1.json`: every record form, the kind order and the enum sets, machine-readable.
-- The examples in §17.1–§17.3 are files of the clean-room test corpus, written by the editor's own builder (`planNxsp` and `executePlan`).
+- The examples in §17.1–§17.3 are files of a clean-room test corpus, written by the editor's own builder (`planNxsp` and `executePlan`). The corpus is not kept: the bytes and numbers here are its record.
 - `uv run python -I tools/nxsp_check.py --read FILE...`: an independent reader that prints one JSON line per file (kind, open, report) and agrees with the editor on every probe of `tests/local/nxsp/agreement.test.ts`. `uv run python -I tools/nxsp_check.py FILE...`: the strict writer check. `--show FILE HASH`: a record, chunk, root or node with field names.
