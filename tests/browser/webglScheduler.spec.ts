@@ -93,6 +93,7 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
             const red = [...ctx.getImageData(20, 20, 1, 1).data]
             const second = await make()
             const gcEnabled = renderer.gc.enabled
+            const gcFrequency = (renderer.gc as unknown as { _frequency: number })._frequency
             const eventSystem = !!renderer.events
             const touchAction = canvas.style.touchAction
             const firstGlError = resources.gl.getError()
@@ -112,6 +113,7 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
                 resumed,
                 idle,
                 gcEnabled,
+                gcFrequency,
                 eventSystem,
                 touchAction,
                 inputListeners,
@@ -135,6 +137,8 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
     expect(result.resumed).toEqual({ live: 1, tombstones: 0 })
     expect(result.idle).toEqual({ requests: 0, callbacks: 0 })
     expect(result.gcEnabled).toBe(true)
+    // Short passes keep each unload batch small; the 30 s default stalls a frame.
+    expect(result.gcFrequency).toBeLessThanOrEqual(5000)
     expect(result.eventSystem).toBe(false)
     expect(result.touchAction).toBe('pan-x')
     expect(result.inputListeners).toEqual([])
