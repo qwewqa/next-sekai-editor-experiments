@@ -18,7 +18,7 @@ import {
     wav,
 } from './fixtures'
 
-// A clip's length is read from its container before it decodes (Part 2, 2.5.5): a few MB can
+// A clip's length is read from its container before it decodes: a few MB can
 // decode to hours. The fixtures in `audio/` are 0.5 s of real audio, as an encoder made them.
 
 const fixture = (name: string) => new Uint8Array(readFileSync(`tests/preview/files/audio/${name}`))

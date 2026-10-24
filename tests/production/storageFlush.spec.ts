@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { skipWhereTheEditorCannotStart } from '../browser/webkitSupport'
 import { chart, instrumentRendering, stereoWav } from './fixtures'
 
-// The flush in the release build (Part 1 §1.6.4): the classic (iife) worker deflates, verifies,
+// The flush in the release build: the classic (iife) worker deflates, verifies,
 // hashes and stores an import at once and a BGM pick with its bytes, under the web policy, and
 // goes on storing after a restart from its Blob copy.
 

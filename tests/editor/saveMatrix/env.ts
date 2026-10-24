@@ -1,6 +1,6 @@
 import { registerHooks } from 'node:module'
 
-// What the Save core needs to load in Node (B0, work/arch/spec-B.md): its
+// What the Save core needs to load in Node: its
 // modules import Vue components, Vite worker URLs, assets and `import.meta.env`, and read two
 // singletons that only the browser's startup sets (the storage worker and the flusher). A hook
 // pair swaps those for stubs under ./stubs and the browser-only catalogue loader for the English

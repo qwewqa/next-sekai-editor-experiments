@@ -1,6 +1,6 @@
 import type { Platform } from '../types'
 
-// The native build's platform until Stage 2 writes it (Part 3, 3.2): every member fails loudly.
+// The native build's platform until Stage 2 writes it: every member fails loudly.
 
 const notImplemented = (): never => {
     throw new Error('Not implemented in this build.')

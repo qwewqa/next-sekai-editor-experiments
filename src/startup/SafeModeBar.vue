@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 import { i18n } from '../i18n'
 import { leaveSafeMode } from '../safe'
 
-// The bar over the editor in safe mode (Part 1 §1.4.2): nothing is stored, and Leave Safe Mode
+// The bar over the editor in safe mode: nothing is stored, and Leave Safe Mode
 // goes back to the editor, after the in-app not-stored prompt when the tab has edits (registered
 // by `editor/switch.ts` with setLeaveSafeModeGuard).
 

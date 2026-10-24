@@ -8,7 +8,7 @@ import {
     type Findings,
 } from '../../src/editor/check/report'
 
-// The lines Check File and History… ends with (Part 1 §1.4.21).
+// The lines Check File and History… ends with.
 
 const en = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),

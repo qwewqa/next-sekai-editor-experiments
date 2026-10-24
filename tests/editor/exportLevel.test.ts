@@ -220,7 +220,7 @@ test('a picked file this tab opened as a chart is refused and put back as it was
     const usc = new TextEncoder().encode('{"usc":{"objects":[],"offset":0},"version":2}')
     const handle = mock.createHandle('chart.usc')
     exportMemory.opened = { handle, levelData: false, partial: false, bytes: usc.buffer }
-    // The file holds the chart; the pick empties it before the editor sees it (D5).
+    // The file holds the chart; the pick empties it before the editor sees it.
     mock.writeFile('chart.usc', new Blob([usc]))
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('chart.usc') })
     const { ui, asked } = scriptedUi([undefined])
@@ -330,7 +330,7 @@ test('a picked level whose import left parts out is refused and put back as it w
     const original = new Uint8Array(await level(4).arrayBuffer())
     const handle = mock.createHandle('LevelData')
     exportMemory.opened = { handle, levelData: true, partial: true, bytes: original.slice().buffer }
-    // The file holds the level; the pick empties it (D5).
+    // The file holds the level; the pick empties it.
     mock.writeFile('LevelData', new Blob([original]))
     mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('LevelData') })
     const { ui, asked } = scriptedUi([undefined])
@@ -365,7 +365,7 @@ test('a picked chart that cannot be put back is reported, with its bytes to down
     assert.deepEqual(saveFeedback, [`download:chart.usc:${usc.byteLength}`])
 })
 
-/** A chart this tab opened from `chart.usc`, whose pick the picker emptied (D5). */
+/** A chart this tab opened from `chart.usc`, whose pick the picker emptied. */
 const openedChart = () => {
     const usc = new TextEncoder().encode('{"usc":{"objects":[],"offset":0},"version":2}')
     exportMemory.opened = {
@@ -374,7 +374,7 @@ const openedChart = () => {
         partial: false,
         bytes: usc.buffer,
     }
-    // The file holds the chart; the pick empties it (D5).
+    // The file holds the chart; the pick empties it.
     mock.writeFile('chart.usc', new Blob([usc]))
     return usc
 }
@@ -399,7 +399,7 @@ test('a refused pick another program wrote since is left as it is, and said so',
 
 test('a refused pick that is gone is not said to be emptied', async () => {
     openedChart()
-    // Deleted after the pick, which emptied it (D5).
+    // Deleted after the pick, which emptied it.
     const inspect = mock.inspect
     mock.inspect = (target) => {
         mock.files.delete('chart.usc')

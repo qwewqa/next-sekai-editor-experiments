@@ -7,7 +7,7 @@ import { appVersion } from './platform/version'
 import { isInternalKey } from './settings/migrationFlags'
 import { storageGet, storageKey, storageSet } from './storage'
 
-// What this load knows about earlier visits (Part 1 §1.7.3). It runs before the settings module,
+// What this load knows about earlier visits. It runs before the settings module,
 // whose first load writes flags of its own, so it is imported ahead of everything that imports it.
 
 /** Whether any key other than a migration flag or internal state is stored: a returning visitor. */
@@ -17,7 +17,7 @@ export const isExistingUser = (keys: readonly string[], prefix: string) =>
 /** The `X.Y.Z` part of a version. */
 export const releaseOf = (version: string) => version.split('+')[0] ?? version
 
-/** Whether the start-up pill says "Updated to version X.Y.Z" (Part 1 §1.7.3). */
+/** Whether the start-up pill says "Updated to version X.Y.Z". */
 export const isUpdate = (last: string | undefined, current: string, existing: boolean) =>
     last === undefined ? existing : releaseOf(last) !== releaseOf(current)
 

@@ -1,4 +1,4 @@
-// Builds the Built-in set into public/builtin/ and builtin-assets/ (Part 2, 2.9), or with --check
+// Builds the Built-in set into public/builtin/ and builtin-assets/, or with --check
 // rebuilds in memory and compares the bytes with the committed files. Run through tsx.
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'

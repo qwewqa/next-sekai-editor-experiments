@@ -135,7 +135,7 @@ const writers: {
     /** It also reads the displayed chart, as playback does. */
     readsDisplay?: true
 }[] = [
-    // Save writes the live session, never a peeked state (§1.4.7).
+    // Save writes the live session, never a peeked state.
     { file: 'src/editor/save/env.ts', imports: { stack: ['liveState'] } },
     { file: 'src/editor/commands/exportLevel/index.ts', imports: { stack: ['liveState'] } },
     // Save and Export build level data here.

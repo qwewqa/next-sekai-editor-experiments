@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createWorld, flow, settle } from './world'
 
-// Identifying a picked file (Part 1 §1.4.7 R3; spec D invariant 9): a failed owner list, or one
+// Identifying a picked file: a failed owner list, or one
 // owner's failed handle read, leaves the pick to the other facts, else it is `unknown`. A later
 // owner still places the pick. Here Save As… picks target.nsld, which another chain keeps as its
 // Export target: a placed pick is placed as level data and nothing is written, while an unknown

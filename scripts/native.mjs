@@ -1,7 +1,7 @@
-// The apps' frontend page (Part 2, 2.7.1): no web-only tags, icon or support gate, and the product name as its title.
+// The apps' frontend page: no web-only tags, icon or support gate, and the product name as its title.
 import product from '../src/product.json' with { type: 'json' }
 
-/** The shown product name (Part 4, 4.1), from the one constant in src/product.json. */
+/** The shown product name, from the one constant in src/product.json. */
 export const productName = product.name
 
 /** index.html for native mode: without og:* tags, the icon link and the support gate, titled with the product name. */

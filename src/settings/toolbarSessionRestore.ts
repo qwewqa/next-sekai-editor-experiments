@@ -21,7 +21,7 @@ const insertInto = (
 }
 
 /**
- * The toolbar step `toolbarSessionRestoreMigrated` (Part 1 §1.4.6): Save As goes before Save in
+ * The toolbar step `toolbarSessionRestoreMigrated`: Save As goes before Save in
  * a group that exactly matches the old default File group (as step one left it), and History
  * before Redo in one that exactly matches the old default Undo group, so Open and Undo stay the
  * faces. A customised toolbar, or one that has the command, is left as it is.

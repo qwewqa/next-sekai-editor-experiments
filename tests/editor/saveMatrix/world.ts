@@ -4,7 +4,7 @@ import type { MockPlatform } from '../../../src/platform/mock'
 import './env'
 import { activation } from './env'
 
-// The fault-matrix harness's world (B0, work/arch/spec-B.md): the Save
+// The fault-matrix harness's world: the Save
 // core's real flow.ts and Export's real flow over the existing mock platform and its lock manager,
 // with the storage side replaced by in-memory fakes that keep the facts the six invariants need:
 // every reservation and how it ended, every write to a picked file and the locks held then, every
@@ -97,11 +97,11 @@ export type Setup = {
     target?: boolean
     /** The session was opened from opened.nsld: a chart, level data, or a partial import. */
     opened?: 'notProject' | 'levelData' | 'partial'
-    /** The build reports damage in storage (SP-1): the own file is read again before the picker. */
+    /** The build reports damage in storage: the own file is read again before the picker. */
     damaged?: boolean
     /**
      * `afterReload`: the session was opened from opened.nsld and the page has reloaded since, so
-     * only storage knows the file: its handle is kept (D26) and its bytes are the OPFS copy.
+     * only storage knows the file: its handle is kept and its bytes are the OPFS copy.
      */
     kept?: 'afterReload'
 }
@@ -293,7 +293,7 @@ const createWorld = async (setup: Setup = {}) => {
         return wrapped
     }
 
-    // The picker: a target shifted off `saveTargets` is an opening. The mock empties the pick itself (D5).
+    // The picker: a target shifted off `saveTargets` is an opening. The mock empties the pick itself.
     const targets = mock.saveTargets
     const shift = targets.shift.bind(targets)
     targets.shift = () => {
@@ -390,7 +390,7 @@ const createWorld = async (setup: Setup = {}) => {
         },
     }
 
-    // The worker methods that stay fakes of our own code (E-1), each with its reason. The record
+    // The worker methods that stay fakes of our own code, each with its reason. The record
     // and handle methods run the real handlers behind `useRealDoor` (./door), so no case below
     // touches a chain or a handle row.
     const fake = async (method: string, arg: unknown, how: unknown): Promise<unknown> => {
@@ -760,7 +760,7 @@ const createWorld = async (setup: Setup = {}) => {
     }
     await put('unknown.nxsp', await nxsp('rev-unknown', 'a file nobody knows'))
     await put('fresh.nxsp', new Blob([])) // a new file the picker creates
-    // Kept rows the door stores with `keepHandle` (D26): the file a partial open came from.
+    // Kept rows the door stores with `keepHandle`: the file a partial open came from.
     const kept: { chainId: string; name: string; handle: FileSystemFileHandle }[] = []
     keptCopies.clear()
     if (s.kept === 'afterReload') {

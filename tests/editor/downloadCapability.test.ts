@@ -5,8 +5,8 @@ import { bindFile, downloadNotConfirmed } from '../../src/editor/file/state'
 import { setPlatformForTests } from '../../src/platform'
 import { createMockPlatform } from '../../src/platform/mock'
 
-// "Download not confirmed" on every download follows the `unconfirmedDownloads` capability
-// (Part 0 §0.9.1), not the operating system: the apps and the web read the same flag.
+// "Download not confirmed" on every download follows the `unconfirmedDownloads` capability, not the operating system:
+// the apps and the web read the same flag.
 
 test('a download stays unconfirmed where the platform says so, even after one was confirmed', () => {
     confirmDownloads()

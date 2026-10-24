@@ -23,7 +23,7 @@ const numberFormat = (locale: string, options?: Intl.NumberFormatOptions) => {
 }
 
 /**
- * A size as "12.4 kB", "1.2 MB" or "123 MB", for every size the editor shows (Part 1 §1.4.7):
+ * A size as "12.4 kB", "1.2 MB" or "123 MB", for every size the editor shows:
  * decimal units (1 MB = 1,000,000 bytes) in the UI locale, with at most one decimal below 100
  * of a unit and none from 100. A small file is "0.2 kB".
  */

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import './env'
 
-// Two readers that act on a chain record (Part 1 §1.4.7 R10, §1.6.5): the marker sweep, which
+// Two readers that act on a chain record: the marker sweep, which
 // removes a marker only when the read worked and found no chain, and the binding refresh, which
 // changes nothing when the record can't be read.
 

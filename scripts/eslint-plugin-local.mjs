@@ -1,4 +1,4 @@
-// The editor's own lint rules (Part 1 §1.6.8.7): History reads local time and formats dates only
+// The editor's own lint rules: History reads local time and formats dates only
 // through the calendar module, the History clock and `historyFormat`. The rules work by name, not
 // by type, so they are cheap and need no project. Where each rule applies, and its allowlist, is in
 // eslint.config.js.
@@ -262,7 +262,7 @@ const noUseDayCast = {
         type: 'problem',
         schema: [],
         messages: {
-            cast: 'A UseDay is made by countDayOfUse, NO_USE_DAY and the row types only (I-11). Do not cast to it; read a stored day with storedDay.',
+            cast: 'A UseDay is made by countDayOfUse, NO_USE_DAY and the row types only. Do not cast to it; read a stored day with storedDay.',
         },
     },
     create(context) {

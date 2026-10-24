@@ -21,7 +21,7 @@ import {
 import { rawExportNote } from '../../src/startup/rawExportNote'
 import { storageKey } from '../../src/storage'
 
-// Safe mode's rule and the startup gate's state (Part 1 §1.4.2).
+// Safe mode's rule and the startup gate's state.
 
 test('safe mode writes only settings and keys outside the editor’s own', () => {
     registerSettingKeys(['theme', 'locale'])

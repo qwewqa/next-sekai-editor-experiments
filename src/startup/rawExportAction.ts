@@ -3,7 +3,7 @@ import { appVersion, platform } from '../platform'
 import { setRawExport } from './gate'
 import { rawExportNote, type RawExportRun } from './rawExportNote'
 
-// Export Raw Data… as the page runs it (Part 1 §1.4.14): the gate's error state and Settings ›
+// Export Raw Data… as the page runs it: the gate's error state and Settings ›
 // Local Data both use it. The export module loads when it is used.
 
 export const runRawExportAction = async (): Promise<RawExportRun> => {

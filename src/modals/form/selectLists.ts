@@ -141,7 +141,7 @@ const onPointerDown = (event: PointerEvent) => {
     const select = document.querySelector('select:open')
     if (select && !(event.target instanceof Node && select.contains(event.target))) {
         // The press only closes the list: focus in it, which the closed list would drop to the
-        // page, goes back to its select (X-3).
+        // page, goes back to its select.
         afterPress(event, () => {
             const active = document.activeElement
             if (!(select instanceof HTMLElement) || !select.isConnected || active === select) return

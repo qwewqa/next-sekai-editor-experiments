@@ -1,4 +1,4 @@
-// The one calendar (Part 1 §1.6.8.7): local days, hours and minutes of a time in an explicit time
+// The one calendar: local days, hours and minutes of a time in an explicit time
 // zone. Pure: nothing here reads the clock or the host's zone except `hostZone`, which the History
 // clock and days of use call. Every function returns a value for any number (clamped into
 // [0, TIME_LIMIT]) and any zone (a name the engine rejects is UTC), so no surface fails to draw
@@ -9,7 +9,7 @@ export type Zone = string & { readonly __zone: true }
 export type DayKey = number & { readonly __dayKey: true }
 /** The instant the clock last showed :00 for the hour a time is in. */
 export type HourKey = number & { readonly __hourKey: true }
-/** A local day and hour together: what a ×N group stays inside (X-1). */
+/** A local day and hour together: what a ×N group stays inside. */
 export type SpanKey = string & { readonly __spanKey: true }
 
 /** The latest time a `Date` can hold, in ms. */
@@ -182,7 +182,7 @@ export const minuteKey = (time: number, zone: Zone) => {
     return Math.floor((Math.floor(clampToDomain(time)) - fields.second * 1000 - fields.ms) / MINUTE)
 }
 
-/** The day and hour together. A ×N group never crosses one (X-1). */
+/** The day and hour together. A ×N group never crosses one. */
 export const spanKey = (time: number, zone: Zone): SpanKey => {
     const fields = fieldsOf(time, zone)
     const day = Date.UTC(fields.year, fields.month - 1, fields.day) / DAY

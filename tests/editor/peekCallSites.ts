@@ -3,7 +3,7 @@
 
 /**
  * Every direct pushState and replaceState call, by file, and what keeps it from writing while
- * peeking (§1.4.11): pushState then throws in development and tests, and replaceState changes
+ * peeking: pushState then throws in development and tests, and replaceState changes
  * only the peeked state.
  * - command: runs from a command runCommand refuses while peeking
  * - tool: a tool other than select, suspended while peeking

@@ -38,7 +38,7 @@ export type ChoiceOptions<T> = {
     cancelLabel?: () => string
 }
 
-/** The buttons in order, left to right: Cancel, the choices, then the safe default (Part 1 §1.4.1). */
+/** The buttons in order, left to right: Cancel, the choices, then the safe default. */
 export const arrangeChoices = <T>(options: ChoiceOptions<T>): ChoiceButton[] => {
     const defaults = options.choices.filter((choice) => choice.default)
     const expected = options.cancelIsDefault ? 0 : 1

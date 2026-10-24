@@ -1,7 +1,7 @@
 import { isIosDevice, type UaEnv } from './detect'
 
 /**
- * Host apps whose user agent names them (Part 1 §1.6.10). On iOS most of the work is done here,
+ * Host apps whose user agent names them. On iOS most of the work is done here,
  * since several hosts now keep `Safari/` in their UA. Pinterest and Snapchat sit outside the group,
  * since neither has a word boundary before it (` [Pinterest/Android]`, `Safari/537.36Snapchat11…`).
  * Discord's mobile in-app view is a Custom Tab or SFSafariViewController with a plain browser UA,
@@ -20,7 +20,7 @@ export const HOST_GLOBALS = [
 
 /**
  * An app's built-in browser, by its user agent and the globals a host injects: best effort, for
- * wording only (Part 1 §1.6.10). A Home Screen web app is never one, whatever its UA.
+ * wording only. A Home Screen web app is never one, whatever its UA.
  */
 export const looksLikeInAppBrowser = (env: UaEnv, standalone: boolean, hostGlobals = false) => {
     if (standalone) return false

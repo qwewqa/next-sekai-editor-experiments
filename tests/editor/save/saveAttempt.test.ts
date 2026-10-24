@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import '../saveMatrix/env'
 
-// A Save attempt (spec B invariant 2): one reservation at a time, ended exactly once and as the
+// A Save attempt: one reservation at a time, ended exactly once and as the
 // landing needs; "Preparing…" closed on every exit; a throw shown; a throw after the file read back
 // as ours shown as the success. The fakes are a flusher that logs how each reservation ended and
 // the in-memory platform.

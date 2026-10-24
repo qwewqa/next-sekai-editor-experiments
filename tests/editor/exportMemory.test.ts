@@ -12,9 +12,9 @@ import {
 } from '../../src/editor/commands/exportLevel/memory'
 import { readValue } from '../../src/local/storedRead'
 
-// Export's memory as chain fields (Part 1 §1.4.8, §1.6.11.2): read back when a stored session
+// Export's memory as chain fields: read back when a stored session
 // opens, and stored whenever it changes, never dropping a field this tab didn't change. The
-// target's handle is read only when Export needs it (D24).
+// target's handle is read only when Export needs it.
 
 const stored = {
     exportTarget: { name: 'LevelData', disk: { size: 10, lastModified: 1, sha256: 'ab' } },

@@ -1,5 +1,5 @@
 /**
- * The toolbar step `toolbarExportMigrated` (Part 1 §1.4.6): Export Level Data goes immediately
+ * The toolbar step `toolbarExportMigrated`: Export Level Data goes immediately
  * before Save in whichever group holds it, even a customised one, since Save no longer writes
  * level data. A toolbar that already has it, or has no Save, is left as it is.
  */

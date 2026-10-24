@@ -2,7 +2,7 @@ import { shallowReactive } from 'vue'
 import { testKeysOpen } from '../platform/testKeys'
 import { errorMessage } from '../utils/error'
 
-// The startup gate (Part 1 §1.4.2): until the session is open, the editor refuses input, so
+// The startup gate: until the session is open, the editor refuses input, so
 // nothing typed into a default chart is lost to the open that replaces it. This is its state and
 // its input guard; StartupGate.vue draws it. It is imported ahead of the app (`launch.ts`), so
 // input is swallowed from the first frame.
@@ -35,7 +35,7 @@ declare global {
 export type StartupPhase = 'opening' | 'error' | 'done'
 
 /**
- * The error state's Export Raw Data… (§1.4.14): its label, in the app's language, and what it does.
+ * The error state's Export Raw Data…: its label, in the app's language, and what it does.
  * `run` resolves to a line to show under the buttons, when the export did not go through whole.
  */
 export type RawExport = { label: () => string; run: () => Promise<string | undefined> }
@@ -198,7 +198,7 @@ export const startBlank = async () => {
     finishStartup()
 }
 
-/** Export Raw Data… (§1.4.14) registers here once built, and the error state offers it. */
+/** Export Raw Data… registers here once built, and the error state offers it. */
 export const setRawExport = (rawExport: RawExport | undefined) => {
     startupGate.rawExport = rawExport
 }

@@ -4,7 +4,7 @@ import { changedFields, draftOf, draftOver } from '../../src/editor/levelInfo/dr
 import type { State } from '../../src/state'
 import { emptyLevelInfo, type LevelInfo, type MediaRef } from '../../src/state/levelInfo'
 
-// What a Level Info Apply writes (Part 1 §1.4.12): the fields the user changed, laid over the live
+// What a Level Info Apply writes: the fields the user changed, laid over the live
 // state, so a change made meanwhile (the dialog's own BGM steps, a rating set elsewhere) stays.
 
 const file = (hash: string, filename = 'cover.png'): MediaRef => ({

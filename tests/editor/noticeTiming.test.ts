@@ -8,7 +8,7 @@ import {
     STARTUP_NOTICE_MS,
 } from '../../src/editor/noticeTiming'
 
-// How long a notice card stays (Part 1 §1.4.1, §1.4.3): the longer of the base time and 2 s plus
+// How long a notice card stays: the longer of the base time and 2 s plus
 // 60 ms a character, at most 12 s.
 
 test('short messages keep the base time', () => {

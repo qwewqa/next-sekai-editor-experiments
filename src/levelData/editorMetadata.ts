@@ -15,7 +15,7 @@ export const serializeEditorMetadata = (
     entities: readonly LevelDataEntity[],
     store: Store,
 ): EditorMetadata => {
-    // The serializer emits notes in the records' order (§1.6.11.6); pair them in the same
+    // The serializer emits notes in the records' order; pair them in the same
     // order. Record entity indices because import can reorder standalone notes before named slides.
     const notes = orderStore(store).slides.flatMap(({ entity }) => entity)
     let noteIndex = 0

@@ -14,7 +14,7 @@ import {
 import type { RecentChain } from '../../src/local/recent'
 import type { StoredRead } from '../../src/local/storedRead'
 
-// Recent Sessions' list model (Part 1 §1.4.10.6): which rows there are and which badge each has,
+// Recent Sessions' list model: which rows there are and which badge each has,
 // what Restore does for each, and when a refresh may change rows under the pointer.
 
 const UTC = resolveZone('UTC')

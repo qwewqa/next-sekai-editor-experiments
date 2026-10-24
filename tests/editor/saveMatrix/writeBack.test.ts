@@ -2,9 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { bytesOf, createWorld, flow, settle } from './world'
 
-// A write-back whose record cannot be read (B0's WB-throw) used to end with nothing shown: the check
+// A write-back whose record cannot be read used to end with nothing shown: the check
 // threw out of the Save. It says the storage is not available, and writes nothing. The changed-on-
-// disk check (R10) still stands on the next press: a file another chain wrote while storage failed
+// disk check still stands on the next press: a file another chain wrote while storage failed
 // meets the conflict dialog, and is never written over.
 
 const ANOTHER = 'bytes another chain wrote to the file'

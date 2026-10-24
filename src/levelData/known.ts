@@ -41,7 +41,7 @@ export type IgnoredReason =
     | 'rewritten'
     /** It carries nothing the level needs. */
     | 'nothing'
-    /** The editor doesn't support it and leaves it out, as it always has (owner decision D2). */
+    /** The editor doesn't support it and leaves it out, as it always has. */
     | 'dropped'
 
 export type Ignored = { reason: IgnoredReason; note: string; since?: Since }

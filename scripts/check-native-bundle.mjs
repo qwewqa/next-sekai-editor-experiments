@@ -1,4 +1,4 @@
-// The rights gate over dist-native/ (Part 2, 2.7.2): no web-only file or reference, our own assets as locked,
+// The rights gate over dist-native/: no web-only file or reference, our own assets as locked,
 // the notices present. Node only. `--full` (release jobs) also checks the Rust crates in the notices.
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'

@@ -11,7 +11,7 @@ const formerPlayback = [
 ]
 
 /**
- * The toolbar step `toolbarPreviewAssetsMigrated` (Part 1 §1.4.6): Preview Assets… goes first in
+ * The toolbar step `toolbarPreviewAssetsMigrated`: Preview Assets… goes first in
  * a group that exactly matches the old default playback group, so Play stays its face. A
  * customised toolbar, or one that has the command, is left as it is.
  */

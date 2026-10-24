@@ -1,4 +1,4 @@
-// The support gate (Part 1 §1.6.10): a classic script that runs before the bundle and, when the
+// The support gate: a classic script that runs before the bundle and, when the
 // browser lacks a feature the editor needs, shows a plain page instead and flags the bundle's
 // entry (src/support.ts) to stop. It offers the old auto save as downloads. Plain ES5 with no
 // imports: it can't use the bundle, and it must run in browsers the bundle can't. English only
@@ -9,7 +9,7 @@
     // src/storage.ts's prefix (package.json's name); tests/platform/gate.test.ts checks they agree.
     var PREFIX = 'sonolus-next-sekai-editor.'
 
-    // The features the design needs (§1.6.10); the names are for tests and the console.
+    // The features the design needs; the names are for tests and the console.
     function missingFeatures(win) {
         var missing = []
         var nav = win.navigator || {}
@@ -165,7 +165,7 @@
     }
 
     // Returns true when the browser is unsupported. An insecure context skips the check: storage
-    // is unavailable there anyway (§1.6.5).
+    // is unavailable there anyway.
     function run(win) {
         if (win.isSecureContext === false) return false
         var missing = missingFeatures(win)

@@ -7,7 +7,7 @@ import { parser as tsParser } from 'typescript-eslint'
 import vueParser from 'vue-eslint-parser'
 import local from '../../../scripts/eslint-plugin-local.mjs'
 
-// `local/no-use-day-cast` (I-11): a `UseDay` is made by `countDayOfUse`, `NO_USE_DAY` and the row
+// `local/no-use-day-cast`: a `UseDay` is made by `countDayOfUse`, `NO_USE_DAY` and the row
 // types only. The rule works by name; the real eslint.config.js is asked where it applies.
 
 RuleTester.describe = describe

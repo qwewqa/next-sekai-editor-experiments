@@ -7,7 +7,7 @@ import { Editor, prefix, SampleClock, seedContext } from './driver'
 
 // The long-history sample (`npm run samples:long-history`): six days of use of coconut through the
 // editor's own UI, with Playwright's clock (and the storage worker's Date) moved between actions,
-// then a dump of the database (Part 1 §1.6.11.9) at samples/long-history.json. Load it with
+// then a dump of the database at samples/long-history.json. Load it with
 // `?seedSample=long-history` on a dev server (src/local/seed.ts).
 
 const root = resolve(import.meta.dirname, '../..')

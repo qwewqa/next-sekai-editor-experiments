@@ -9,7 +9,7 @@ import {
     type Zone,
 } from '../../../src/calendar/calendar'
 
-// I-8 and I-7: in every zone the runtime knows, from 2011 on, the day and hour keys never
+// In every zone the runtime knows, from 2011 on, the day and hour keys never
 // decrease along time, an hour starts at or before the time, and `nextBoundary` is the first
 // change. The scan looks at every zone weekly, finds each place the zone's offset moves, and
 // looks at that place minute by minute. NSE_CALENDAR_FULL=1 scans every year from 1970 to 2100.

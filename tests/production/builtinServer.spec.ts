@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-// The post-deploy smoke test of our own static server (Part 2, 2.5.7, 2.11), which the apps
+// The post-deploy smoke test of our own static server, which the apps
 // connect to: the live site's /builtin-server/ serves its info, its list and what the list names.
 // It runs against the deployed site and is skipped otherwise:
 //   PRODUCTION_TEST_URL=https://nse.qwewqa.dev npm run test:production -- builtinServer

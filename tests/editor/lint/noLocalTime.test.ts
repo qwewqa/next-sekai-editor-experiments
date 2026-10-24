@@ -6,7 +6,7 @@ import { describe, it, test } from 'node:test'
 import vueParser from 'vue-eslint-parser'
 import local from '../../../scripts/eslint-plugin-local.mjs'
 
-// The two History rules of the local lint plugin (Part 1 §1.6.8.7): `local/no-local-time` keeps
+// The two History rules of the local lint plugin: `local/no-local-time` keeps
 // local time reads in the calendar module, and `local/history-imports` keeps History's date and
 // time formatting on the History clock. The rule tests run through RuleTester; the real
 // eslint.config.js is asked which files each rule covers and whether, with the native-code bans,
@@ -39,7 +39,7 @@ ruleTester.run('local/no-local-time', rules['no-local-time']!, {
         { code: 'date.toISOString()', filename: history },
         { code: 'performance.now()', filename: history },
         { code: 'const f = fields.hour', filename: history },
-        // Accepted residuals (I-1, §3.6): a value that was copied or aliased, a computed key, and
+        // Accepted residuals: a value that was copied or aliased, a computed key, and
         // Date#toLocaleString are not seen by name. formatZones and the one-Calendar test back them.
         { code: 'const D = Date; D.now()', filename: history },
         { code: 'const read = (d) => d[key]()', filename: history },

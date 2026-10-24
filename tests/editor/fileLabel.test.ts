@@ -33,7 +33,7 @@ const { displayedName, statusLabel, statusName, statusText } =
 const { createSessionDescriptor, session } = await import('../../src/history/session')
 const { resetStates } = await import('../../src/history/stack')
 
-// The file part of a label (§1.3.4) comes from one function, `labelOf`: the status bar and a Recent
+// The file part of a label comes from one function, `labelOf`: the status bar and a Recent
 // Sessions row call it, so a row can never say what the status bar would not.
 
 const at = new Date(2026, 9, 14, 15, 15).getTime()

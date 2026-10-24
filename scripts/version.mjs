@@ -7,7 +7,7 @@ const versionTag = /^v(\d+)\.(\d+)\.(\d+)$/
 const git = (cwd, ...args) =>
     execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
 
-/** The release version from the newest reachable `vX.Y.Z` tag, else `package.json`'s (Part 4, 4.2.1). */
+/** The release version from the newest reachable `vX.Y.Z` tag, else `package.json`'s. */
 export function appVersion({ cwd = process.cwd() } = {}) {
     cwd = resolve(cwd)
     try {

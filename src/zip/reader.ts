@@ -127,7 +127,7 @@ export class ZipReader {
 
     /**
      * Refuses an entry whose real range (with its local extra field) holds another
-     * entry's start, or starts inside an earlier entry's real range (§1.6.11.4).
+     * entry's start, or starts inside an earlier entry's real range.
      */
     private async checkOverlap(entry: ZipEntry, end: number) {
         const { byOffset } = this
@@ -158,7 +158,7 @@ export class ZipReader {
 
     /**
      * The entries whose real ranges (from their local headers, with the extra fields) overlap,
-     * every entry included, ignored ones too (§1.6.11.4), so every reader calls the same file
+     * every entry included, ignored ones too, so every reader calls the same file
      * damaged. The headers are read in offset order through one window.
      */
     async realOverlaps() {

@@ -1,13 +1,13 @@
 import { dayKey, type DayKey, type Zone } from './calendar'
 
-// The one definition of a Go To piece (Part 1 §1.4.10.5, §1.6.8.7), used by the page and the
+// The one definition of a Go To piece, used by the page and the
 // storage worker: a piece is a maximal run of adjacent entries of a list, dividers left out, that
 // share a session and a local day. Pure, so Node tests load it.
 
 /** What a piece needs of an entry: where it is, when it was made, and the kind the Timeline draws. */
 export type PieceEntry = { sessionId: string; seq: number; time: number; kind: string }
 
-/** A run of a session's adjacent entries on one local day (Go To, §1.4.10.5). */
+/** A run of a session's adjacent entries on one local day (Go To). */
 export type TimelinePiece = {
     sessionId: string
     /** The newest and oldest entries by `seq`. */
@@ -93,7 +93,7 @@ export const joinPieces = (
     ]
 }
 
-/** A Go To day: adjacent pieces on one local day, as the Timeline's headers run (spec-C invariant 8). */
+/** A Go To day: adjacent pieces on one local day, as the Timeline's headers run. */
 export type GoToDay = { day: DayKey; pieces: TimelinePiece[]; count: number }
 
 /** Groups adjacent pieces of one day, in order. A day whose rows come back lower is listed again. */

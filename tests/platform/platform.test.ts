@@ -103,7 +103,7 @@ test('the mock downloads, writes to targets and dismisses its picker', async () 
     assert.equal(mock.downloads.length, 1)
     assert.equal(await mock.downloads[0]!.blob.text(), 'level')
 
-    // The save picker alone: dismissed, or a file it empties (D5).
+    // The save picker alone: dismissed, or a file it empties.
     const picker = { id: 'levelData', types: [] }
     mock.saveTargets.push('cancel')
     assert.equal(await mock.pickSaveFile!({ suggestedName: 'LevelData', picker }), undefined)

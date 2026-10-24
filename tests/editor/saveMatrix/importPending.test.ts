@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createWorld, startExportRead, type World } from './world'
 
-// A pending list that cannot be read counts as pending (spec D invariant 11): `waitForChainImports`
+// A pending list that cannot be read counts as pending: `waitForChainImports`
 // reads it again within the bound it uses for a real pending import, for every caller. At the bound
 // Export goes on to its picker. Treated as "no import pending", a failed read would let a Save
 // build over a chain whose file rows were still being copied in.

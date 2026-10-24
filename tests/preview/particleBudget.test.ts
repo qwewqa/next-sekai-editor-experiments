@@ -4,7 +4,7 @@ import type { Quad } from '../../src/preview/engine/math'
 import { drawParticleEffect, PARTICLE_DRAW_BUDGET } from '../../src/preview/engine/particleDraw'
 import type { ParticleEffect, ParticleProperty, ResolvedParticle } from '../../src/preview/particle'
 
-// The renderer's own cap (Part 2, 2.5.5): an effect that slipped past an older check draws at most
+// The renderer's own cap: an effect that slipped past an older check draws at most
 // 512 particles and walks at most 512 groups, so it cannot stall a frame.
 
 const layout: Quad = {

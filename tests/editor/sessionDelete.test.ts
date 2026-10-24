@@ -27,7 +27,7 @@ registerHooks({
 
 const { createDeleteModel } = await import('../../src/editor/history/sessionDelete')
 
-// Delete's UI model (Part 1 §1.4.10.6): marks, the inline Undo rows, Undo's three outcomes and the
+// Delete's UI model: marks, the inline Undo rows, Undo's three outcomes and the
 // live announcement, with fakes for the page.
 
 const chain = (id: string): RecentChain => ({
