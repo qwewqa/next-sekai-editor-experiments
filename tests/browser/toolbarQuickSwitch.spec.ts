@@ -39,6 +39,40 @@ const centre = async (page: Page, locator: ReturnType<typeof face>) => {
 const select = 3
 const note = 5
 
+// One row: Select's group, Note's group, BPM alone, then the fixed group.
+const rowToolbar = async (page: Page) => {
+    await page.evaluate(() => {
+        window.editorTest.settings.toolbar = [
+            ['brush', 'eraser', 'select'],
+            ['note1', 'note0', 'note'],
+            ['bpm'],
+        ]
+    })
+    await expect(face(page, 2)).toHaveAttribute('title', 'BPM')
+}
+
+// Records each face's aria-expanded change as "title:value", to count flyouts opening and closing.
+const watchExpanded = (page: Page) =>
+    page.evaluate(() => {
+        const log: string[] = []
+        ;(window as unknown as { expandedLog: string[] }).expandedLog = log
+        new MutationObserver((records) => {
+            for (const { target } of records)
+                if (target instanceof HTMLElement)
+                    log.push(`${target.title}:${target.getAttribute('aria-expanded')}`)
+        }).observe(document.querySelector('[data-editor-toolbar]')!, {
+            subtree: true,
+            attributeFilter: ['aria-expanded'],
+        })
+    })
+const expandedLog = (page: Page) =>
+    page.evaluate(() => (window as unknown as { expandedLog: string[] }).expandedLog)
+const toolbarHasFocus = (page: Page) =>
+    page.evaluate(() =>
+        document.querySelector('[data-editor-toolbar]')!.contains(document.activeElement),
+    )
+const pressed = /(^|\s)is-pressed(\s|$)/
+
 test.describe('mouse', () => {
     test('a drag from a face to a row picks the row', async ({ page }) => {
         const from = await centre(page, face(page, select))
@@ -71,7 +105,7 @@ test.describe('mouse', () => {
         await page.mouse.down()
         const over = await centre(page, row(page, 'Brush'))
         await page.mouse.move(over.x, over.y, { steps: 5 })
-        // Onto another group, then the chart.
+        // Slides onto another group, then off to the chart.
         const other = await centre(page, face(page, note))
         await page.mouse.move(other.x, other.y, { steps: 5 })
         await page.mouse.move(700, 300, { steps: 5 })
@@ -79,6 +113,172 @@ test.describe('mouse', () => {
         expect(await toolName(page)).toBe('select')
         await expect(face(page, select)).toHaveAttribute('title', 'Select')
         expect(await isOpen(page)).toBe(0)
+    })
+
+    test('a slide to another face on the row opens its flyout, and its row picks', async ({
+        page,
+    }) => {
+        await rowToolbar(page)
+        const from = await centre(page, face(page, 1))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        const to = await centre(page, face(page, 0))
+        await page.mouse.move(to.x, to.y, { steps: 10 })
+        await expect(face(page, 0)).toHaveAttribute('aria-expanded', 'true')
+        await expect(face(page, 1)).toHaveAttribute('aria-expanded', 'false')
+        await expect(face(page, 0)).toHaveClass(pressed)
+        // aria-controls names the flyout that is open.
+        expect(
+            await face(page, 0).evaluate(
+                (element) =>
+                    !!document
+                        .getElementById(element.getAttribute('aria-controls') ?? '')
+                        ?.querySelector('[title="Eraser"]'),
+            ),
+        ).toBe(true)
+        const over = await centre(page, row(page, 'Eraser'))
+        await page.mouse.move(over.x, over.y, { steps: 5 })
+        await page.mouse.up()
+        expect(await toolName(page)).toBe('eraser')
+        await expect(face(page, 0)).toHaveAttribute('title', 'Eraser')
+        expect(await isOpen(page)).toBe(0)
+    })
+
+    test('a release on the face slid to runs it', async ({ page }) => {
+        await rowToolbar(page)
+        const from = await centre(page, face(page, 0))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        const to = await centre(page, face(page, 1))
+        await page.mouse.move(to.x, to.y, { steps: 10 })
+        await page.mouse.up()
+        expect(await toolName(page)).toBe('note')
+        expect(await isOpen(page)).toBe(0)
+    })
+
+    // Note's face, which no other flyout turns inert, still holds focus at the release.
+    test('a slide to a single tool targets it without a flyout, and the toolbar keeps no focus', async ({
+        page,
+    }) => {
+        await rowToolbar(page)
+        const from = await centre(page, face(page, 1))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        const to = await centre(page, face(page, 2))
+        await page.mouse.move(to.x, to.y, { steps: 15 })
+        await expect(face(page, 2)).toHaveClass(pressed)
+        // Only the face under the pointer looks pressed.
+        expect(await face(page, 1).evaluate((element) => element.matches(':active'))).toBe(false)
+        expect(await isOpen(page)).toBe(0)
+        await page.mouse.up()
+        expect(await toolName(page)).toBe('bpm')
+        expect(await toolbarHasFocus(page)).toBe(false)
+    })
+
+    test('a slide over faces, edges, the flyout and below the row opens each flyout once', async ({
+        page,
+    }) => {
+        await rowToolbar(page)
+        await watchExpanded(page)
+        const from = await centre(page, face(page, 0))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        const to = await centre(page, face(page, 1))
+        await page.mouse.move(to.x, to.y, { steps: 10 })
+        await expect(face(page, 1)).toHaveAttribute('aria-expanded', 'true')
+        const box = (await face(page, 1).boundingBox())!
+        await page.mouse.move(box.x + 1, to.y, { steps: 5 })
+        await page.mouse.move(box.x + box.width - 1, to.y, { steps: 5 })
+        const up = await centre(page, row(page, 'Note #1'))
+        await page.mouse.move(up.x, up.y, { steps: 5 })
+        await page.mouse.move(to.x, to.y, { steps: 5 })
+        await page.mouse.move(to.x, box.y + box.height + 12, { steps: 5 })
+        await page.mouse.move(to.x, to.y, { steps: 5 })
+        await page.mouse.up()
+        expect(await toolName(page)).toBe('note')
+        expect(await expandedLog(page)).toEqual([
+            'Select:true',
+            'Select:false',
+            'Note:true',
+            'Note:false',
+        ])
+    })
+
+    test('a slide onto a face on another row changes nothing', async ({ page }) => {
+        await page.setViewportSize({ width: 360, height: 720 })
+        await page.evaluate(() => {
+            window.editorTest.settings.toolbar = [
+                ['brush', 'eraser', 'select'],
+                ['note1', 'note0', 'note'],
+                ['undo'],
+                ['redo'],
+                ['copy'],
+                ['cut'],
+                ['paste'],
+                ['deselect'],
+                ['scrollUp'],
+                ['scrollDown'],
+                ['jumpUp'],
+                ['jumpDown'],
+                ['bpm'],
+            ]
+        })
+        const bpm = face(page, 12)
+        await expect(bpm).toHaveAttribute('title', 'BPM')
+        const from = await centre(page, face(page, 0))
+        const to = await centre(page, bpm)
+        // BPM wraps to the next row.
+        expect(to.y - from.y).toBeGreaterThan(16)
+        await watchExpanded(page)
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(from.x, to.y, { steps: 5 })
+        await page.mouse.move(to.x, to.y, { steps: 10 })
+        await expect(face(page, 0)).toHaveAttribute('aria-expanded', 'true')
+        await expect(bpm).not.toHaveClass(pressed)
+        expect(await expandedLog(page)).toEqual(['Select:true'])
+        await page.mouse.up()
+        expect(await toolName(page)).toBe('select')
+        expect(await isOpen(page)).toBe(0)
+    })
+
+    test('Escape ends the press, so a later slide and release do nothing', async ({ page }) => {
+        await rowToolbar(page)
+        await watchExpanded(page)
+        const from = await centre(page, face(page, 0))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        const to = await centre(page, face(page, 1))
+        await page.mouse.move(to.x, to.y, { steps: 10 })
+        await expect(face(page, 1)).toHaveAttribute('aria-expanded', 'true')
+        await page.keyboard.press('Escape')
+        expect(await isOpen(page)).toBe(0)
+        await page.mouse.move(from.x, from.y, { steps: 10 })
+        await page.mouse.move(to.x, to.y, { steps: 10 })
+        await page.mouse.up()
+        expect(await toolName(page)).toBe('select')
+        expect(await expandedLog(page)).toEqual([
+            'Select:true',
+            'Select:false',
+            'Note:true',
+            'Note:false',
+        ])
+    })
+
+    test('off, a drag onto another face opens nothing there', async ({ page }) => {
+        await rowToolbar(page)
+        await page.evaluate(() => {
+            window.editorTest.settings.toolbarQuickSwitch = false
+        })
+        await watchExpanded(page)
+        const from = await centre(page, face(page, 0))
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        const to = await centre(page, face(page, 1))
+        await page.mouse.move(to.x, to.y, { steps: 10 })
+        await page.mouse.up()
+        expect(await expandedLog(page)).not.toContain('Note:true')
+        expect(await toolName(page)).toBe('select')
     })
 
     test('a click on a face whose flyout is closed runs it', async ({ page }) => {
@@ -115,10 +315,31 @@ test.describe('touch', () => {
             await touch('touchMove', [
                 [at.x + ((to.x - at.x) * step) / 5, at.y + ((to.y - at.y) * step) / 5],
             ])
-        await expect(row(page, 'Eraser')).toHaveClass(/(^|\s)is-pressed(\s|$)/)
+        await expect(row(page, 'Eraser')).toHaveClass(pressed)
         await touch('touchEnd', [])
         expect(await toolName(page)).toBe('eraser')
         await expect(face(page, select)).toHaveAttribute('title', 'Eraser')
+    })
+
+    test('a slide to another face opens its flyout, and a release on its row picks it', async ({
+        page,
+    }) => {
+        await rowToolbar(page)
+        const touch = await touchInput(page)
+        const at = await centre(page, face(page, 1))
+        await touch('touchStart', [[at.x, at.y]])
+        await expect.poll(() => isOpen(page)).toBe(1)
+        const to = await centre(page, face(page, 0))
+        for (let step = 1; step <= 5; step++)
+            await touch('touchMove', [[at.x + ((to.x - at.x) * step) / 5, at.y]])
+        await expect(face(page, 0)).toHaveAttribute('aria-expanded', 'true')
+        const over = await centre(page, row(page, 'Eraser'))
+        for (let step = 1; step <= 5; step++)
+            await touch('touchMove', [[to.x, to.y + ((over.y - to.y) * step) / 5]])
+        await expect(row(page, 'Eraser')).toHaveClass(pressed)
+        await touch('touchEnd', [])
+        expect(await toolName(page)).toBe('eraser')
+        expect(await isOpen(page)).toBe(0)
     })
 
     test('moving shows the flyout at once', async ({ page }) => {
