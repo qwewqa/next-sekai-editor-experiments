@@ -121,6 +121,54 @@ test('connectors, moving slide heads, and stage events highlight their visible o
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
+test('the outline follows playback frames without building path geometry', async ({ page }) => {
+    // Stroking the outline as a path tessellated and cached a new path every frame:
+    // 7–11 ms a frame with every note selected.
+    const pathBuilds = () =>
+        page.evaluate(() => {
+            const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')
+            const ctx = canvas && window.editorRendering.peekDrawContext(canvas)
+            if (!ctx) throw new Error('Missing outline context')
+            const { stats } = (
+                ctx as unknown as { paths: { stats: { native: number; fallback: number } } }
+            ).paths
+            return stats.native + stats.fallback
+        })
+    await page.evaluate(() => {
+        const { fixtures, show, view, history } = window.editorTest
+        const base = fixtures.interaction.slides[0]?.[0]
+        if (!base) throw new Error('Missing fixture')
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [
+                        { ...base, beat: 4 },
+                        { ...base, beat: 8 },
+                    ],
+                ],
+            },
+            3,
+        )
+        view.cursorTime = 3
+        const { note, connector } = history.state.value.store.slides
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...note.values(), ...connector.values()].flat(),
+        })
+    })
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
+    const builds = await pathBuilds()
+    for (const time of [3.05, 3.1, 3.15, 3.2]) {
+        await page.evaluate(async (time) => {
+            window.editorTest.view.cursorTime = time
+            for (let i = 0; i < 4; i++) await new Promise((done) => requestAnimationFrame(done))
+        }, time)
+        expect(await outlinePixels(page)).toBeGreaterThan(0)
+    }
+    expect(await pathBuilds()).toBe(builds)
+})
+
 test('selected invisible anchors show a preview line that respects the highlight toggle', async ({
     page,
 }) => {

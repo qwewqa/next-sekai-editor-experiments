@@ -23,14 +23,17 @@ void main() { outColor=vColor; }
 
 export class StageMesh extends Mesh<Geometry, Shader> {}
 
-/** Stage slices keep painter order in one triangle stream, without stencil barriers. */
+/**
+ * Flat-colored stage slices and stroked segments keep painter order in one
+ * triangle stream, without stencil barriers.
+ */
 export class StageMeshes {
     private shader: Shader | undefined
     private readonly live = new Set<StageMesh>()
     // Owned by a caller's cache across frames; recycling a frame leaves them intact.
     private readonly retained = new Set<StageMesh>()
 
-    draw(vertices: readonly number[], matrix: Matrix) {
+    draw(vertices: ArrayLike<number>, matrix: Matrix) {
         const mesh = this.create(vertices, matrix)
         this.live.add(mesh)
         return mesh
@@ -50,7 +53,7 @@ export class StageMeshes {
         mesh.destroy()
     }
 
-    private create(vertices: readonly number[], matrix: Matrix) {
+    private create(vertices: ArrayLike<number>, matrix: Matrix) {
         this.shader ??= new Shader({
             glProgram: GlProgram.from({ name: 'editor-stage-colors', vertex, fragment }),
             resources: {},

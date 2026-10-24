@@ -10,7 +10,7 @@ type Matrix = readonly [number, number, number, number, number, number, number, 
 
 // Internal loops prove each index against array length; do not add a runtime
 // bounds check to every coordinate access in tessellation.
-const indexed = <T>(values: readonly T[], index: number): T => values[index] as T
+const indexed = <T>(values: ArrayLike<T>, index: number): T => values[index] as T
 export type StrokeOptions = {
     width: number
     cap: CanvasLineCap
@@ -541,6 +541,64 @@ function dashed(contour: Contour, pattern: readonly number[], offset: number): C
     return result
 }
 
+/** Chords in an arc of `sweep` radians, each within `tolerance` of the circle. */
+export function arcSegments(sweep: number, radius: number, tolerance: number) {
+    const step = Math.min(Math.PI / 2, 2 * Math.acos(Math.max(-1, 1 - tolerance / radius)))
+    return Math.max(1, Math.ceil(Math.abs(sweep) / Math.max(1e-5, step)))
+}
+
+/**
+ * The triangles of separate round-capped segments (x0, y0, x1, y1, …), passed
+ * to `vertex` three points at a time. They are the bodies and caps that
+ * tessellateStroke unions for the same moveTo/lineTo pairs, left overlapping,
+ * so only an opaque paint draws them as that union.
+ */
+export function roundCappedSegments(
+    segments: ArrayLike<number>,
+    width: number,
+    tolerance: number,
+    vertex: (x: number, y: number) => void,
+) {
+    const half = width / 2
+    if (!(half > 0)) return
+    const count = arcSegments(Math.PI, half, tolerance)
+    const cap = (x: number, y: number, dx: number, dy: number) => {
+        const start = Math.atan2(dy, dx) - Math.PI / 2
+        let px = x + half * Math.cos(start)
+        let py = y + half * Math.sin(start)
+        for (let i = 1; i <= count; i++) {
+            const a = start + (Math.PI * i) / count
+            const qx = x + half * Math.cos(a)
+            const qy = y + half * Math.sin(a)
+            vertex(x, y)
+            vertex(px, py)
+            vertex(qx, qy)
+            px = qx
+            py = qy
+        }
+    }
+    for (let i = 0; i + 3 < segments.length; i += 4) {
+        const ax = indexed(segments, i)
+        const ay = indexed(segments, i + 1)
+        const bx = indexed(segments, i + 2)
+        const by = indexed(segments, i + 3)
+        if (!Number.isFinite(ax + ay + bx + by)) continue
+        // A zero-length lineTo adds no point, so the path strokes nothing there.
+        if (Math.abs(bx - ax) <= 1e-9 && Math.abs(by - ay) <= 1e-9) continue
+        const length = Math.hypot(bx - ax, by - ay)
+        const dx = (bx - ax) / length
+        const dy = (by - ay) / length
+        vertex(ax - dy * half, ay + dx * half)
+        vertex(bx - dy * half, by + dx * half)
+        vertex(bx + dy * half, by - dx * half)
+        vertex(ax - dy * half, ay + dx * half)
+        vertex(bx + dy * half, by - dx * half)
+        vertex(ax + dy * half, ay - dx * half)
+        cap(ax, ay, -dx, -dy)
+        cap(bx, by, dx, dy)
+    }
+}
+
 /** Build a geometric union of segment bodies, joins and caps. Tessellation of
  * that union applies alpha once even for crossing/overlapping subpaths. */
 export function tessellateStroke(
@@ -598,8 +656,7 @@ export function tessellateStroke(
         outlines.push({ points: points as Points, closed: true })
     }
     const arc = (center: Point, start: number, sweep: number, omitCenter = false) => {
-        const step = Math.min(Math.PI / 2, 2 * Math.acos(Math.max(-1, 1 - tolerance / half)))
-        const count = Math.max(1, Math.ceil(Math.abs(sweep) / Math.max(1e-5, step)))
+        const count = arcSegments(sweep, half, tolerance)
         const points: Point[] = omitCenter ? [] : [center]
         for (let i = 0; i <= count; i++) {
             const a = start + (sweep * i) / count
