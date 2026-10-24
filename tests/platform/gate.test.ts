@@ -150,7 +150,7 @@ test('the wording follows the platform module’s WebKit rule, on every user age
                 assert.equal(
                     gate.message(win),
                     webkit
-                        ? 'This editor needs Safari 17 or later.'
+                        ? 'This editor needs Safari 17 or later (iOS 17 or later on iPhone and iPad).'
                         : 'This browser is too old for the editor.',
                 )
             }
@@ -377,7 +377,7 @@ test('an unsupported browser flags the bundle to stop and says why', () => {
     gate.run(iphone)
     assert.equal(
         iphone.document.body.children[0]?.children[0]?.textContent,
-        'This editor needs Safari 17 or later.',
+        'This editor needs Safari 17 or later (iOS 17 or later on iPhone and iPad).',
     )
 })
 

@@ -189,7 +189,7 @@ test('a database newer than this build opens read-only, with its load notice', a
     // The heading with the product and the version, then a row for the load notice.
     await expect(old.locator('.notification-pill > div')).toHaveText([
         'Next SEKAI Editor · Version 0.6.0',
-        'A newer version of the editor has been opened in this browser. Reload, or save your work to files.',
+        'A newer version of the editor has been opened in this browser. Reload, or save to a file to keep your work.',
     ])
     await expect(old.locator('.notification-pill svg[data-severity="warning"]')).toHaveCount(1)
     expect(

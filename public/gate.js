@@ -39,7 +39,7 @@
 
     function message(win) {
         return isWebKit(win)
-            ? 'This editor needs Safari 17 or later.'
+            ? 'This editor needs Safari 17 or later (iOS 17 or later on iPhone and iPad).'
             : 'This browser is too old for the editor.'
     }
 

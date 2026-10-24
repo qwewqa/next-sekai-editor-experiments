@@ -815,7 +815,7 @@ test.describe('the chip', () => {
         // Keep Editing is the safe default, in Cancel's place.
         await expect(dialog.getByRole('button', { name: 'Keep Editing' })).toBeFocused()
         await expect(dialog.getByRole('button', { name: 'Open the Other Version' })).toBeVisible()
-        await expect(dialog.getByText('Your changes stay unsaved.')).toBeVisible()
+        await expect(dialog.getByText('Your changes stay in Recent Sessions.')).toBeVisible()
         await afterGuard(page)
         await dialog.getByRole('button', { name: 'Keep Editing' }).click()
 

@@ -521,7 +521,7 @@ T: Deleted "" group
 
 #owner.ungroup.3 en
 T: Ungrouped "Folder One" folder
-R: Moved out of Folder [released]: 3 groups
+R: Moved Out of Folder [released]: 3 groups
 
 #owner.ungroup.3 fr
 T: Dossier "Folder One" dissous

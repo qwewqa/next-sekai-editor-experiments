@@ -1183,7 +1183,7 @@ test.describe('keys with focus in the list', () => {
 })
 
 test.describe('after a reload', () => {
-    test('Undo at the first stored slot says earlier steps are in History, with Open History', async ({
+    test('Undo at the first stored slot says earlier Timeline steps are in History, with Open History', async ({
         page,
     }) => {
         // A stack restored from a capped window (Shown.earlier), as a reload gives it.
@@ -1206,7 +1206,7 @@ test.describe('after a reload', () => {
             )
         })
         await page.keyboard.press('z')
-        await expect(page.getByText('Earlier steps are in History').first()).toBeVisible()
+        await expect(page.getByText('Earlier Timeline steps are in History').first()).toBeVisible()
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(surface(page, 'panel')).toBeVisible()
         await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
@@ -1253,7 +1253,7 @@ test.describe('after a reload', () => {
         })
         await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
         await page.keyboard.press('z')
-        await expect(page.getByText('Earlier steps are in History').first()).toBeVisible()
+        await expect(page.getByText('Earlier Timeline steps are in History').first()).toBeVisible()
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(surface(page, 'panel')).toBeVisible()
     })

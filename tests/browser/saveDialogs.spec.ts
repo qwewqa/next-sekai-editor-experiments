@@ -605,7 +605,7 @@ test.describe('the conflict dialog', () => {
         await expect(
             dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
         ).toBeFocused()
-        await expect(dialog(page).getByText('Your changes stay unsaved.')).toBeVisible()
+        await expect(dialog(page).getByText('Your changes stay in Recent Sessions.')).toBeVisible()
         await expect(
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
         ).toBeVisible()
