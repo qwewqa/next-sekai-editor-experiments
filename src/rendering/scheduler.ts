@@ -20,7 +20,7 @@ export type Activity = { last: number; since: number }
 
 /** No render on any renderer for this long: drawing, playback included, has stopped. */
 export const QUIET_MS = 1000
-/** Due maintenance runs at the next idle period once drawing has gone on this long. */
+/** Due maintenance runs at the next idle period once unbroken drawing has gone on this long. */
 export const CEILING_MS = 60_000
 
 const sharedActivity: Activity = { last: -Infinity, since: -Infinity }
@@ -42,8 +42,9 @@ const requestIdle = (run: () => void) => {
  * Pixi's GC needs periodic resource and collection cleanup, but the editor owns
  * frame scheduling, and a GC pass walks every tracked resource: tens of ms late in a
  * session. Due maintenance runs at idle time, never inside a frame: after `QUIET_MS`
- * with no render on any renderer, or once renders have gone on for `CEILING_MS`
- * past its due time. Nothing is scheduled before a render, and no ticker runs.
+ * with no render on any renderer, or `CEILING_MS` after the later of its due time and
+ * the start of renders without such a pause. Nothing is scheduled before a render,
+ * and no ticker runs.
  */
 export class RenderingScheduler {
     static extension = { type: ExtensionType.WebGLSystem, name: 'scheduler' }
