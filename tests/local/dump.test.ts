@@ -156,6 +156,25 @@ test('a seeded dump reads back equal', async () => {
     await world.idle()
 })
 
+test('a Blob the export could not read seeds as an empty Blob of its type, in its row', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = sampleDump()
+    const media = dump.stores.find((store) => store.name === 'media')!.records[0]!
+    media.value = { blob: { $blobUnreadable: true, type: 'audio/mpeg', size: 3 }, size: 3 }
+    assert.deepEqual(await tab.run(() => seedDump(tab.kv, readDump(dump), fakeStorage())), {
+        seeded: true,
+    })
+    const seeded = withoutHandle(dump)
+    seeded.stores.find((store) => store.name === 'media')!.records[0]!.value = {
+        blob: { $blob: '', type: 'audio/mpeg' },
+        size: 3,
+    }
+    const db = await tab.kv.open('nse-local-data', undefined)
+    assert.deepEqual(await dumpOf(tab, db), seeded)
+    await world.idle()
+})
+
 test('the seeder refuses a database with chains or sessions, and changes nothing', async () => {
     for (const store of ['chains', 'sessions'] as const) {
         const world = createWorld()
@@ -231,6 +250,14 @@ test('the reader checks tags, base64, key order and in-line keys', () => {
     assert.equal(decodeValue({ $blobEntry: 'blobs/12', type: '' }, entry), 'blobs/12')
     for (const name of ['blobs/01', 'dump.json', 'blobs/../x'])
         assert.throws(() => decodeValue({ $blobEntry: name, type: '' }, entry), /Not a Blob entry/)
+    // A Blob the export could not read: `true`, its type and its size as a byte count.
+    for (const bad of [
+        { $blobUnreadable: false, type: '', size: 0 },
+        { $blobUnreadable: true, type: 1, size: 0 },
+        { $blobUnreadable: true, type: '', size: -1 },
+        { $blobUnreadable: true, type: '', size: 0.5 },
+    ])
+        assert.throws(() => decodeValue(bad), DumpError)
     assert.deepEqual(decodeValue({ $$x: { $undefined: true } }), { $x: undefined })
     const swap = sampleDump()
     swap.stores.find((store) => store.name === 'entries')!.records.reverse()

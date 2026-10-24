@@ -3,14 +3,7 @@ import { storageKey } from '../storage'
 import { interpolateRaw } from '../utils/interpolate'
 import { assembleZip, prepareEntry, type PreparedEntry } from '../zip/writer'
 import { DB_NAME } from './db'
-import {
-    blobEntryName,
-    DUMP_FORMAT,
-    DUMP_VERSION,
-    dumpDatabase,
-    dumpLocalStorage,
-    type Dump,
-} from './dump'
+import { DUMP_FORMAT, DUMP_VERSION, dumpDatabase, dumpLocalStorage, type Dump } from './dump'
 import { idbFactory } from './kv/idb'
 import type { KvFactory } from './kv/types'
 
@@ -21,7 +14,7 @@ import type { KvFactory } from './kv/types'
 
 /**
  * The ZIP's first entry: the dump format, each Blob a `$blobEntry` naming a STORE entry after it,
- * `blobs/<n>`, which holds its bytes as stored.
+ * `blobs/<n>`, which holds its bytes as stored, or a `$blobUnreadable` when it could not be read.
  */
 export const DUMP_ENTRY = 'dump.json'
 
@@ -86,7 +79,7 @@ export type RawBuild = { zip: Blob; databaseUnreadable: boolean }
 /**
  * The ZIP of the stored data; with no database or no storage it holds `localStorage` only. A
  * database that exists but cannot be opened or read is left out and reported, so the file is
- * never taken for a complete export.
+ * never taken for a complete export. A Blob that cannot be read is left out alone: its row says so.
  */
 export const buildRawExportResult = async (
     appVersion: string,
@@ -104,18 +97,21 @@ export const buildRawExportResult = async (
     let media: PreparedEntry[] = []
     if (opened.kind === 'open') {
         try {
-            const blobs: Blob[] = []
-            const read = await dumpDatabase(opened.db, {
+            dump = await dumpDatabase(opened.db, {
                 appVersion,
                 localStorage: keys,
-                blobEntries: blobs,
+                // One Blob at a time, its CRC read in slices: no Blob is ever held whole.
+                blobEntries: async (blob, name) => {
+                    try {
+                        media.push(await prepareEntry({ name, method: 'store', data: blob }))
+                        return true
+                    } catch (error) {
+                        // Its bytes are gone or unreadable; the rest is still exported.
+                        console.error(error)
+                        return false
+                    }
+                },
             })
-            // One Blob at a time, its CRC read in slices: no Blob is ever held whole.
-            for (const [n, blob] of blobs.entries())
-                media.push(
-                    await prepareEntry({ name: blobEntryName(n), method: 'store', data: blob }),
-                )
-            dump = read
         } catch (error) {
             console.error(error)
             media = []

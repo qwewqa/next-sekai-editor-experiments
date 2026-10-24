@@ -5,7 +5,8 @@ import type { Key, KeyPath, KvDatabase } from './kv/types'
 // plain cursors and written undecoded, plus the editor's localStorage keys. It uses no record
 // decoder, so a bug there can't stop it. The reader validates a dump and turns it back into values.
 // A Blob is inline base64 (`$blob`) in a JSON dump, and a `$blobEntry` naming a ZIP entry beside
-// `dump.json` in Export Raw Data…'s ZIP, so the export never holds a Blob's bytes whole.
+// `dump.json` in Export Raw Data…'s ZIP, so the export never holds a Blob's bytes whole; there, one
+// that could not be read is a `$blobUnreadable` with its type and size.
 
 export const DUMP_FORMAT = 'nse-local-data-dump'
 export const DUMP_VERSION = 1
@@ -66,7 +67,7 @@ const isPlainObject = (value: object): value is Record<string, unknown> => {
 const isFileHandle = (value: unknown): value is FileSystemFileHandle =>
     typeof FileSystemFileHandle !== 'undefined' && value instanceof FileSystemFileHandle
 
-/** Every Blob a value holds. */
+/** Every Blob a value holds, in the order `encodeValue` meets them. */
 const collectBlobs = (value: unknown, found: Set<Blob>) => {
     if (typeof value !== 'object' || value === null) return
     if (typeof Blob !== 'undefined' && value instanceof Blob) found.add(value)
@@ -75,11 +76,17 @@ const collectBlobs = (value: unknown, found: Set<Blob>) => {
         for (const item of Object.values(value)) collectBlobs(item, found)
 }
 
+const blobsOf = (values: unknown[]) => {
+    const found = new Set<Blob>()
+    for (const value of values) collectBlobs(value, found)
+    return found
+}
+
 const escapeKey = (key: string) => (key.startsWith('$') ? `$${key}` : key)
 
 const unescapeKey = (key: string) => (key.startsWith('$$') ? key.slice(1) : key)
 
-/** A Blob's tag: `$blob` with its bytes, or `$blobEntry` with its entry's name. */
+/** A Blob's tag: `$blob` with its bytes, `$blobEntry` with its entry's name, or `$blobUnreadable`. */
 export type BlobTag = (blob: Blob) => Record<string, unknown>
 
 /** A value as JSON with tags; throws on a type it has no tag for. */
@@ -113,10 +120,8 @@ export const encodeValue = (value: unknown, blobTag: BlobTag): unknown => {
 
 /** Each Blob read once, ahead, so encoding stays synchronous, and written as base64. */
 const inlineTags = async (values: unknown[]): Promise<BlobTag> => {
-    const found = new Set<Blob>()
-    for (const value of values) collectBlobs(value, found)
     const read = new Map<Blob, Uint8Array>()
-    for (const blob of found) read.set(blob, new Uint8Array(await blob.arrayBuffer()))
+    for (const blob of blobsOf(values)) read.set(blob, new Uint8Array(await blob.arrayBuffer()))
     return (blob) => {
         const bytes = read.get(blob)
         if (!bytes) throw new DumpError('A Blob was not read')
@@ -124,22 +129,34 @@ const inlineTags = async (values: unknown[]): Promise<BlobTag> => {
     }
 }
 
-/** Each Blob left unread and added to `out`, its tag naming its entry by its index there. */
-const entryTags = (out: Blob[]): BlobTag => {
+/**
+ * Writes a Blob's ZIP entry, and says whether it could. Each Blob is handed over once, ahead and in
+ * the order met, with the name its entry gets, `blobs/<n>`, `n` counting the entries written before
+ * it. One whose entry was not written is a `$blobUnreadable`.
+ */
+export type BlobEntries = (blob: Blob, name: string) => Promise<boolean>
+
+/** Each Blob handed to `take`, its tag naming its entry, or `$blobUnreadable` when not taken. */
+const entryTags = async (values: unknown[], take: BlobEntries): Promise<BlobTag> => {
     const names = new Map<Blob, string>()
+    const unreadable = new Set<Blob>()
+    for (const blob of blobsOf(values)) {
+        const name = blobEntryName(names.size)
+        if (await take(blob, name)) names.set(blob, name)
+        else unreadable.add(blob)
+    }
     return (blob) => {
-        let name = names.get(blob)
-        if (name === undefined) {
-            name = blobEntryName(out.push(blob) - 1)
-            names.set(blob, name)
-        }
-        return { $blobEntry: name, type: blob.type }
+        const name = names.get(blob)
+        if (name !== undefined) return { $blobEntry: name, type: blob.type }
+        if (!unreadable.has(blob)) throw new DumpError('A Blob was not handed over')
+        return { $blobUnreadable: true, type: blob.type, size: blob.size }
     }
 }
 
 /**
  * What `decodeValue` does with a `$handle` (by default the field is left out) and a `$blobEntry`
- * (`blobEntry` gives the Blob from the ZIP; without it the tag throws).
+ * (`blobEntry` gives the Blob from the ZIP; without it the tag throws). A `$blobUnreadable` is an
+ * empty Blob of its type.
  */
 export type DecodeOptions = {
     handle?: (name: string) => unknown
@@ -164,6 +181,12 @@ const decodeTag = (tag: Record<string, unknown>, options: DecodeOptions): unknow
         if (!BLOB_ENTRY.test(name)) throw new DumpError(`Not a Blob entry: ${name}`)
         if (!options.blobEntry) throw new DumpError(`${name} is in a ZIP that was not given`)
         return options.blobEntry(name, text('type'))
+    }
+    if (keys === '$blobUnreadable,size,type' && tag.$blobUnreadable === true) {
+        const size = tag.size
+        if (typeof size !== 'number' || !Number.isSafeInteger(size) || size < 0)
+            throw new DumpError("A tag's size is not a byte count")
+        return new Blob([], { type: text('type') })
     }
     if (keys === '$handle,name' && tag.$handle === 'file')
         return options.handle ? options.handle(text('name')) : OMIT
@@ -220,7 +243,7 @@ export const dumpLocalStorage = (storage: Storage, prefix: string) => {
 /**
  * Dumps every store of an open database, read in one transaction with plain cursors. Blobs are
  * read after it commits, since reading one would end the transaction. With `blobEntries` no Blob
- * is read: each is added there and written as a `$blobEntry`, for the caller to write its entry.
+ * is read here: each is handed to it for the caller to write its entry (see `BlobEntries`).
  */
 export const dumpDatabase = async (
     db: KvDatabase,
@@ -228,7 +251,7 @@ export const dumpDatabase = async (
         appVersion,
         localStorage = {},
         blobEntries,
-    }: { appVersion: string; localStorage?: Record<string, string>; blobEntries?: Blob[] },
+    }: { appVersion: string; localStorage?: Record<string, string>; blobEntries?: BlobEntries },
 ): Promise<Dump> => {
     const names = [...db.storeNames].sort()
     const read = names.length
@@ -242,9 +265,8 @@ export const dumpDatabase = async (
               return out
           })
         : []
-    const blobTag = blobEntries
-        ? entryTags(blobEntries)
-        : await inlineTags(read.flatMap(({ entries }) => entries.map((entry) => entry.value)))
+    const values = read.flatMap(({ entries }) => entries.map((entry) => entry.value))
+    const blobTag = blobEntries ? await entryTags(values, blobEntries) : await inlineTags(values)
     return {
         format: DUMP_FORMAT,
         version: DUMP_VERSION,
