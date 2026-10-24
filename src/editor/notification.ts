@@ -1,5 +1,6 @@
 import { ref, shallowRef, watch } from 'vue'
 import { RELEASE_NOTES_URL } from '../buildInfo'
+import { onHistoryAction } from '../history/actions'
 import { i18n } from '../i18n'
 import { launch } from '../launch'
 import { isBlockingModalOpen } from '../modals'
@@ -203,10 +204,33 @@ const pillLines = (): NoticeLine[] => {
     })
 }
 
+/** How long after the page loaded its start-up toast may still become the start-up card. */
+const STARTUP_WINDOW_MS = 12_000
+
+// An edit, undo, redo or restore since load: a card after it would interrupt the work.
+let workedSinceLoad = false
+onHistoryAction(({ kind }) => {
+    if (kind === 'edit' || kind === 'restore' || kind === 'undo' || kind === 'redo')
+        workedSinceLoad = true
+})
+
+/**
+ * Whether the start-up notice is still the one shown, so a load notice may join it (Part 1
+ * §1.4.3): its card, or the quick toast of a clean load while the page is under 12 s old and
+ * nothing was edited, undone, redone or restored. Never the faint text left after it.
+ */
+export const startupNoticeCurrent = () =>
+    noticeCard.value?.startup === true ||
+    (notification.value.startup === true &&
+        !workedSinceLoad &&
+        performance.now() < STARTUP_WINDOW_MS)
+
+// The start-up notice, not yet replaced by another: what the gate's lifting shows again.
+const startupKept = () => notification.value.startup === true || noticeCard.value?.startup === true
+
 // Shows the start-up notice again: with the gate lifted, or with a load notice found. With load
 // notices or the update line it is the start-up card; else quick feedback, as in v0.5.22.
 const refreshPill = () => {
-    if (!notification.value.startup && !noticeCard.value?.startup) return
     const next = noticeOf(pillLines())
     latestNotice.value = next
     if (isCard(next)) {
@@ -223,14 +247,15 @@ const refreshPill = () => {
 watch(
     () => startupGate.phase,
     (phase) => {
-        if (phase === 'done') refreshPill()
+        if (phase === 'done' && startupKept()) refreshPill()
     },
 )
 
 /**
- * Adds a load notice (Part 1 §1.4.3): a line on the start-up card while it still shows, which then
- * stays about 8 s. Once the card has gone (an edit, another card), the line is only kept, since
- * nothing appears at an arbitrary time.
+ * Adds a load notice (Part 1 §1.4.3). Before the gate lifts, it waits for it with the rest. After,
+ * it is a line on the start-up notice while that is current, and the card then stays about 8 s.
+ * Otherwise (an edit, another notice, 12 s) the line is only kept, since nothing appears at an
+ * arbitrary time.
  */
 export const addLoadNotice = (
     message: () => string,
@@ -245,7 +270,7 @@ export const addLoadNotice = (
         at === -1
             ? [...loadNotices.value, notice]
             : [...loadNotices.value.slice(0, at), notice, ...loadNotices.value.slice(at)]
-    refreshPill()
+    if (startupGate.phase === 'done' ? startupNoticeCurrent() : startupKept()) refreshPill()
 }
 
 /**

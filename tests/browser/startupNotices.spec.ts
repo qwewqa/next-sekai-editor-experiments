@@ -257,6 +257,10 @@ test.describe('load notices in the start-up pill', () => {
                     (await import('/src/history/index.ts')) as typeof import('../../src/history')
                 resetState(false)
             })
+            // A load notice comes at load, before any edit: a reload keeps this tab's blank session.
+            await page.reload()
+            await expect(page.locator('canvas.editor-chart')).toBeVisible()
+            await opened(page)
             expect(await lifeOf(page)).toBe(1000)
             const name = { name: { kind: 'name', text: 'Coconut (Master)' }, at: Date.now() }
             await addEvent(
@@ -379,6 +383,39 @@ test.describe('load notices in the start-up pill', () => {
         await expect(page.locator('.notification')).toHaveText('Next SEKAI Editor\nVersion 0.6.0')
         await expect(page.locator('[data-notice-close]')).toHaveCount(0)
     })
+
+    // A line found late (a resumed import finding damaged history) while the clean load's toast
+    // is still the quick notice: only kept, never a card at an arbitrary time (round 5 S5-1).
+    for (const after of ['an edit', '12 s'] as const)
+        test(`a load notice after ${after} is kept for Local Data, with no card`, async ({
+            page,
+        }) => {
+            await visit(page)
+            await expect(page.locator('.notification')).toHaveText(
+                'Next SEKAI Editor\nVersion 0.6.0',
+            )
+            if (after === 'an edit') await edit(page, 990)
+            else
+                await page.evaluate(() => {
+                    const now = performance.now.bind(performance)
+                    performance.now = () => now() + 12_000
+                })
+            const shown = await page.evaluate(async () => {
+                const n =
+                    (await import('/src/editor/notification.ts')) as typeof import('../../src/editor/notification')
+                const startup = n.notification.value.startup === true
+                n.addLoadNotice(() => 'Late line.', undefined, 0, 'warning')
+                return { startup, card: n.noticeCard.value !== undefined }
+            })
+            expect(shown).toEqual({ startup: true, card: false })
+            await expect(pill(page)).toHaveCount(0)
+            await page.evaluate(async () => {
+                const { openSettings } =
+                    (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+                void openSettings('localData')
+            })
+            await expect(page.locator('[data-at-load] li')).toHaveText(['Late line.'])
+        })
 
     test.describe('on a phone', () => {
         test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })

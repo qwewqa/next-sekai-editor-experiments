@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { times } from '..'
 import { undimmed } from '../history/changes'
@@ -88,7 +88,7 @@ watch(
     { flush: 'post' },
 )
 
-// The annotation painters are a static list (Part 1 Â§1.4.22).
+// The annotation painters are a static list (Part 1 §1.4.22).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const painters: MinimapAnnotation<any>[] = [changeTicks]
 
