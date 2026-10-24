@@ -8,8 +8,9 @@ import type { MinimapAnnotation } from './annotations'
 import { changeTicks } from './changeTicks'
 import { useMinimapContent } from './content'
 import { boxGeometry, useMinimapInput } from './input'
-import { backingSize } from './mapping'
+import { backingSize, type MinimapMapping } from './mapping'
 import { minimapStats } from './pipeline'
+import { timed } from '../../perf/probe'
 
 // A single word reads as a native element to the linter.
 defineOptions({ name: 'MinimapStrip' })
@@ -25,9 +26,14 @@ const { isGrabbing, onPointerDown, onPointerMove, onPointerUp, onPointerEnd, onW
 
 // The box and the cursor move by style, outside the template: one watcher, no canvas work.
 let boxHeight = -1
-watch(
-    [() => times.value, () => view.cursorTime, mapping, box, cursor],
-    ([, cursorTime, current, boxElement, cursorElement]) => {
+const placeOverlay = timed(
+    'minimapOverlay',
+    (
+        cursorTime: number,
+        current: MinimapMapping | undefined,
+        boxElement: HTMLElement | null,
+        cursorElement: HTMLElement | null,
+    ) => {
         if (!boxElement || !cursorElement) return
         boxElement.style.visibility = cursorElement.style.visibility = current ? '' : 'hidden'
         if (!current) return
@@ -39,6 +45,12 @@ watch(
             boxElement.style.height = `${geometry.height}px`
         }
         cursorElement.style.transform = `translateY(${current.timeToY(cursorTime)}px)`
+    },
+)
+watch(
+    [() => times.value, () => view.cursorTime, mapping, box, cursor],
+    ([, cursorTime, current, boxElement, cursorElement]) => {
+        placeOverlay(cursorTime, current, boxElement, cursorElement)
     },
     { flush: 'post' },
 )

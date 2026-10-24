@@ -87,6 +87,7 @@ import { createNoteRenderer } from './notes'
 import { raisedToolChain } from '../raisedTool'
 import { orderEntities, raisedChains, toDrawSteps, type DrawStep } from './ordering'
 import { createFrameScheduler, prepareSurface } from './surface'
+import { timed } from '../../perf/probe'
 import { clearTextWidths, FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
 import type { EdgeLabelYs, EditorDrawContext } from './types'
 import { createWaveformRenderer } from './waveform'
@@ -601,7 +602,7 @@ watchEffect(
         const offset = inputs.state.bgm.offset + bgmOffsetDelta.value
         void waveformVersion.value
         void stageSettle.value
-        chartFrame.schedule((timestamp) => {
+        const draw = (timestamp: number) => {
             notes.beginFrame(timestamp)
             nameSprites.beginFrame(timestamp)
             const ctx = prepareSurface(
@@ -743,7 +744,8 @@ watchEffect(
                 // drawing must not consume the pause before an exact settled redraw.
                 stageSettleTimer = setTimeout(() => stageSettle.value++, SUSTAINED_MS)
             }
-        })
+        }
+        chartFrame.schedule(timed('chartDraw', draw))
     },
     { flush: 'post' },
 )
@@ -784,7 +786,7 @@ watchEffect(
             hover === undefined
                 ? undefined
                 : timeLineEnds(inputs, 6, lineSpanAt(hoverLabelCenter.value, columnBoxes.value))
-        overlayFrame.schedule((timestamp) => {
+        const draw = (timestamp: number) => {
             notes.beginFrame(timestamp)
             nameSprites.beginFrame(timestamp)
             const ctx = prepareSurface(
@@ -885,7 +887,8 @@ watchEffect(
                 strokeDashedTimeLine(ctx, hoverEnds, hover * inputs.ups, inputs.scale)
             ctx.restore()
             ctx.flush()
-        })
+        }
+        overlayFrame.schedule(timed('overlayDraw', draw))
     },
     { flush: 'post' },
 )

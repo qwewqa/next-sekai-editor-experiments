@@ -1,0 +1,13 @@
+{
+    "groups": [
+        {
+            "id": "smoke",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "tests/fixtures/generated-large.json",
+            "cells": [
+                { "scenario": "wheel", "layout": "composed", "reps": 1, "warmup": 0, "trace": true }
+            ]
+        }
+    ]
+}

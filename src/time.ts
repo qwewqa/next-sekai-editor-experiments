@@ -1,6 +1,7 @@
 import { nextTick, ref, watch } from 'vue'
 import { isAppActive } from './activity'
 import { openFrame } from './frame'
+import { timedSince } from './perf/probe'
 
 export const time = ref({
     now: performance.now() / 1000,
@@ -17,7 +18,7 @@ const update = (timestamp: number) => {
     const now = Math.max(time.value.now, timestamp / 1000)
 
     // Draws invalidated by this tick render in this frame, after Vue's flush.
-    const close = openFrame(timestamp)
+    const close = timedSince('clockFrame', openFrame(timestamp))
     time.value = {
         now,
         delta: now - time.value.now,

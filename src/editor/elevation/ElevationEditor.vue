@@ -74,6 +74,7 @@ import { createNoteRenderer } from '../canvas/notes'
 import { compareShapeDistance, shapeDistance, shownNoteHitShape } from '../hitModel'
 import { isScenePreview, toCommittedEntity, toSceneEntity } from '../sceneState'
 import { createFrameScheduler, prepareSurface } from '../canvas/surface'
+import { timed } from '../../perf/probe'
 import type { EditorDrawContext } from '../canvas/types'
 import { getComposedLayout } from '../composedView'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
@@ -1654,7 +1655,7 @@ watchEffect(() => {
         if (element && isAppActive.value) element.width = element.height = 0
         return
     }
-    frame.schedule((timestamp) => {
+    const draw = (timestamp: number) => {
         const w = Math.max(1, Math.round(layout.width * ratio))
         const h = Math.max(1, Math.round(layout.height * ratio))
         if (element.width !== w) element.width = w
@@ -1913,7 +1914,8 @@ watchEffect(() => {
             ctx.fillText(labels.empty, 48, underNotice ? belowNotice(element, emptyY) : emptyY)
         }
         ctx.flush()
-    })
+    }
+    frame.schedule(timed('elevationDraw', draw))
 })
 onMounted(() => {
     mounted = true

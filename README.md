@@ -61,3 +61,4 @@ chrome resizing, and safe areas.
 
 See [renderer ownership and upgrades](docs/rendering.md) for GPU resource ownership,
 text policies, the pinned Pixi patches, and the verified Rust/Lyon geometry kernel.
+See [performance testing](docs/performance-testing.md) for measuring scrolling and playback.

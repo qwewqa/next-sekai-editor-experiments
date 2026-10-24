@@ -1,0 +1,30 @@
+{
+    "defaults": { "layout": "composed", "minimap": true, "preview": true, "reps": 5, "warmup": 1 },
+    "groups": [
+        {
+            "id": "desktop",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "tests/fixtures/generated-large.json",
+            "cells": [
+                { "scenario": "wheel", "trace": true },
+                { "scenario": "flick", "pps": 100, "trace": true, "traceCold": true },
+                { "scenario": "pagekeys" },
+                { "scenario": "minimapdrag" },
+                { "scenario": "play1x", "seconds": 15, "trace": true },
+                { "scenario": "wheel", "layout": "basic", "selection": true, "tag": "selected" }
+            ]
+        },
+        {
+            "id": "phone",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "tests/fixtures/generated-large.json",
+            "cells": [
+                { "scenario": "quicktouch" },
+                { "scenario": "flick", "trace": true },
+                { "scenario": "play1x", "seconds": 15 }
+            ]
+        }
+    ]
+}

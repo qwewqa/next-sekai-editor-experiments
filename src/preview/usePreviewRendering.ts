@@ -5,6 +5,7 @@ import { view } from '../editor/view'
 import { dockSizeDrafts, panelWeightsDraft } from '../editor/workspace'
 import { cancelFrame, requestFrame } from '../frame'
 import { state } from '../history'
+import { timed } from '../perf/probe'
 import { isPlaying } from '../player'
 import { disposeDrawContext } from '../rendering/context'
 import { useEditorRenderer } from '../rendering/useEditorRenderer'
@@ -342,10 +343,12 @@ export const usePreviewRendering = (
                 }
             }
             if (rafId) return
-            rafId = requestFrame(() => {
-                rafId = 0
-                if (isAppActive.value) renderFrame?.()
-            })
+            rafId = requestFrame(
+                timed('previewDraw', () => {
+                    rafId = 0
+                    if (isAppActive.value) renderFrame?.()
+                }),
+            )
         },
         { flush: 'post' },
     )

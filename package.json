@@ -16,6 +16,9 @@
     "scripts": {
         "postinstall": "node scripts/patch-pixi-default-batcher.mjs",
         "fixtures:generated-large": "node scripts/generate-large-chart.mjs",
+        "perf": "node scripts/perf/run.mjs",
+        "perf:report": "node scripts/perf/report.mjs",
+        "perf:stress": "node scripts/perf/stress.mjs",
         "format:gen": "tsx scripts/format-gen.mjs",
         "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs",
         "test:browser": "node scripts/test-browser.mjs",

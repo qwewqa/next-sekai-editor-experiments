@@ -114,6 +114,8 @@ export default defineConfig(({ mode }) => ({
     define: {
         __GITHUB_REPOSITORY__: JSON.stringify(repository),
         __NSE_SITE__: JSON.stringify(siteFromEnv()),
+        // NSE_PERF=1: a perf build with the frame probes (docs/performance-testing.md).
+        __NSE_PERF__: JSON.stringify(process.env.NSE_PERF === '1'),
         __HAS_PRIVACY_PAGE__: JSON.stringify('privacy' in pages(mode)),
         __NATIVE__: JSON.stringify(mode === 'native'),
         __APP_VERSION__: JSON.stringify(appVersion({ cwd: root }).appVersion),

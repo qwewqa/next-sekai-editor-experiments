@@ -4,6 +4,7 @@ dist
 dist-native
 playwright-report
 test-results*/
+perf-results/
 
 *.tsbuildinfo
 

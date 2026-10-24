@@ -14,6 +14,7 @@ export default tsEslint.config(
             '.vite-cache/**',
             'public/**',
             'test-results*/**',
+            'perf-results/**',
             'tests/design-capture*/**',
             '.idea/**',
         ],
@@ -238,6 +239,11 @@ export default tsEslint.config(
         languageOptions: {
             globals: globals.node,
         },
+    },
+    // The perf harness's page functions run in the browser.
+    {
+        files: ['scripts/perf/run.mjs'],
+        languageOptions: { globals: { ...globals.browser, ...globals.node } },
     },
 
     eslintConfigPrettier,
