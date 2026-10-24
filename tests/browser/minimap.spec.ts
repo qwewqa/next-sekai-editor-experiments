@@ -617,7 +617,7 @@ test.describe('peek', () => {
         await expect.poll(() => pixelsAround(page, 30)).toBe(withNote)
     })
 
-    // --- Change ticks (C): the peeked step's changed places, in the tick column.
+    // --- Change ticks (C): the peeked step's changed places, in the tick column, with a hairline across the strip.
 
     type Step =
         | { kind: 'move'; from: number; to: number }
@@ -701,17 +701,35 @@ test.describe('peek', () => {
             return runs
         })
 
-    /** Whether anything is drawn outside the tick column. */
-    const marksBeyondColumn = (page: Page) =>
+    /**
+     * What is drawn beyond the 5 px tick column: rows that are a faint orange hairline across the
+     * whole strip (in CSS px), and how many pixels are anything else.
+     */
+    const beyondColumn = (page: Page) =>
         page.evaluate(() => {
             const canvas = document.querySelectorAll<HTMLCanvasElement>('[data-minimap] canvas')[1]
-            if (!canvas) return false
+            if (!canvas) return { hairlines: [], other: 0 }
             const scale = canvas.width / canvas.clientWidth
-            const from = Math.ceil(3 * scale)
-            const { data } = canvas
-                .getContext('2d')!
-                .getImageData(from, 0, canvas.width - from, canvas.height)
-            return data.some((value, i) => i % 4 === 3 && value > 0)
+            const from = Math.ceil(5 * scale)
+            const width = canvas.width - from
+            const { data } = canvas.getContext('2d')!.getImageData(from, 0, width, canvas.height)
+            const hairlines: number[] = []
+            let other = 0
+            for (let y = 0; y < canvas.height; y++) {
+                let hairline = 0
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4
+                    const alpha = data[i + 3]!
+                    if (alpha === 0) continue
+                    // #ff9b42 at about 45%: alpha near 115 with the colour intact.
+                    if (alpha > 100 && alpha < 130 && data[i]! > 240 && data[i + 2]! < 90)
+                        hairline++
+                    else other++
+                }
+                if (hairline === width) hairlines.push(y / scale)
+                else other += hairline
+            }
+            return { hairlines, other }
         })
 
     /** Peeks a step by its row in the History panel, as the user does. */
@@ -753,9 +771,13 @@ test.describe('peek', () => {
         const runs = await tickRows(page)
         expect(near(runs, await rowOf(page, 2.5))).toBe(true)
         expect(near(runs, await rowOf(page, 50))).toBe(true)
-        // Only those two places, and only in the tick column.
+        // Only those two places: an edge tick each, and a hairline across the strip at each.
         expect(runs.length).toBe(2)
-        expect(await marksBeyondColumn(page)).toBe(false)
+        const beyond = await beyondColumn(page)
+        expect(beyond.other).toBe(0)
+        expect(beyond.hairlines.length).toBe(2)
+        const row = await rowOf(page, 2.5)
+        expect(beyond.hairlines.some((y) => Math.abs(y - row) <= 2)).toBe(true)
 
         await act(page, 'leavePeek')
         await expect.poll(() => contentOpacity(page)).toBe('')
