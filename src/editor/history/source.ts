@@ -154,7 +154,7 @@ export const listedEntries = computed((): Entry[] =>
 
 const isJumped = () => newer.value !== undefined
 
-/** Whether the loaded run reaches Now or is a window after a jump (spec-C invariant 11). */
+/** Whether the loaded run reaches Now or is a window after a jump. */
 const runState = computed(() => (isJumped() ? 'jumped' : 'joined'))
 
 /** After a jump, the entries between Now and the window; undefined while the run reaches Now. */
@@ -424,7 +424,7 @@ export const goToPieces = computed((): readonly TimelinePiece[] | undefined => {
     if (!at) return
     if (at.filter === 'here') return at.index.pieces
     // After a jump the loaded run is a window, so the open session's entries come from it and from
-    // the flusher's waiting entries; spec-C invariant 11 deduplicates them.
+    // the flusher's waiting entries, deduplicated.
     const listed =
         runState.value === 'jumped' ? [...pendingEntries(), ...stored.value] : entries.value
     return composeGoTo(

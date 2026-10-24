@@ -2,7 +2,7 @@ version = 1
 SPDX-PackageName = "Next SEKAI Editor"
 SPDX-PackageSupplier = "Next SEKAI Editor contributors"
 
-# Which licence covers which path (Part 2, 2.7.3). Later annotations win over earlier ones.
+# Which licence covers which path. Later annotations win over earlier ones.
 # tests/licensing.test.mjs checks that every binary or media file has an annotation of its own.
 
 [[annotations]]

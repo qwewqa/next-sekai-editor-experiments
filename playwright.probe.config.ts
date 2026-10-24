@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test'
 
-// The stored file handle probe (D16), kept out of test:browser: it runs in Edge and in Playwright's
+// The stored file handle probe, kept out of test:browser: it runs in Edge and in Playwright's
 // Chromium against the dev server's /probe/handles.html (npm run probe:handles).
 const port = process.env.PLAYWRIGHT_PORT ?? '5287'
 

@@ -15,13 +15,17 @@ const DOC_NAME =
 
 const RULES = [
     { name: 'a numbered part', pattern: /\bPart [0-6],? ?(?:§|[0-6]\.\d|#\d)/ },
-    { name: 'a three-level section', pattern: /§ ?[0-6]\.\d+\.\d+/ },
+    { name: 'a three-level section', pattern: /(?:§ ?|\b[Ss]ections? )[0-6]\.\d+\.\d+/ },
     {
         name: 'a section with no doc named',
         pattern: /§ ?\d/,
         applies: (path, line) => !/^docs\/[^/]+\.md$/.test(path) && !DOC_NAME.test(line),
     },
-    { name: 'a decision or entry id', pattern: /\b(?:D|U)\d{1,3}\b|\bX-\d+\b|\bI-\d+\b/ },
+    {
+        name: 'a decision or entry id',
+        // Not a quoted label in test data, or the CIE illuminant D65.
+        pattern: /(?<!['"`])\b(?:D(?!65\b)|U)\d{1,3}\b|\bX-\d+\b|\bI-\d+\b/,
+    },
     {
         name: 'an invariant id',
         pattern: /\bI\d{1,3}\b/,
@@ -40,8 +44,13 @@ const RULES = [
         applies: (path) => path !== 'docs/performance-testing.md',
     },
     {
+        name: 'a decision record',
+        pattern: /\(owner,(?: \d{4}-|\s*$)|\bowner decision\b|\bdecision log\b|\bspec[- ][A-Z]\b/,
+    },
+    {
         name: 'a path outside the repository',
-        pattern: /\bwork\/[\w.-]|\bplan\/parts\b|sonolus\/|\b[Pp]lan §/,
+        pattern:
+            /\b[A-Za-z]:[\\/]sonolus\b|\bnse-next[\\/]|\bwork\/[\w.-]|\bplan\/parts\b|\b[Pp]lan §/,
     },
 ]
 

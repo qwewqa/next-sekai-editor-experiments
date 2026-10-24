@@ -1,4 +1,4 @@
-// Shelf packing with a transparent or extruded gutter, and texture composition (Part 2, 2.9.3).
+// Shelf packing with a transparent or extruded gutter, and texture composition.
 import { createHash } from 'node:crypto'
 
 /** Pixels around every packed image. */

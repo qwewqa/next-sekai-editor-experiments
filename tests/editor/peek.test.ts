@@ -273,7 +273,7 @@ for (const change of ['edit and Undo', 'content replacement and return'] as cons
         assert.deepEqual(notices, [])
     })
 
-// An edit that leaves the chart as it was is no step (owner, 2026-10-19): nothing changed under
+// An edit that leaves the chart as it was is no step: nothing changed under
 // the pending Restore, so it still lands.
 test('pending Restore still lands after an edit that changes nothing', async () => {
     const held = heldEntry()

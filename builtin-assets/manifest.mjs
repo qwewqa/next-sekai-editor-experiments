@@ -15,13 +15,13 @@ import {
     traceColors,
 } from './palette.mjs'
 
-/** The shown product name (Part 4, 4.1), from the one constant in src/product.json. */
+/** The shown product name, from the one constant in src/product.json. */
 export const productName = product.name
 
 /** Bumped when the set's art changes. */
 export const setVersion = 1
 
-/** The one sprite the set leaves out on purpose (Part 2, 2.3.1). */
+/** The one sprite the set leaves out on purpose. */
 export const omittedSprites = ['Sekai Stage']
 
 const image = (template, vars = {}, options = {}) => ({
@@ -539,7 +539,7 @@ export const clipFiles = {
     'Sekai Critical Trace': 'critical-trace.wav',
 }
 
-/** The metadata shared by the four items (Part 2, 2.3.5). */
+/** The metadata shared by the four items. */
 export const itemMeta = {
     name: 'nse-builtin',
     title: 'Editor',
