@@ -78,7 +78,7 @@ This covers the strings in `src/i18n/`, Help, notices, `CHANGELOG.md` and the pr
 - Say what happened and what to do, in words the user already knows. Leave out internal terms (chain, journal, worker, binding, slot). History lines say "Timeline steps".
 - Leave out what the user can assume: what an action obviously does, and what does not happen.
 - Reuse an existing phrasing ("could not be read", "Save to a file to keep your work.") rather than writing a new one.
-- Use the everyday word: a file contains something (it does not hold it). A requirement is stated with "requires": "History requires a secure connection."
+- Choose the word that is idiomatic in the app’s register: plain software English, neither literary nor bureaucratic. A file contains something (it does not hold it), and a feature requires something. When unsure, follow the app’s existing strings, then common software usage.
 - Give extra information its own sentence, not a ", which …" tail.
 
 Machine-written text is harder to read. Clark, Martin and Mahowald (2026, [arXiv 2610.29162](https://arxiv.org/abs/2610.29162)) measured these features in recent language models’ output. Each is linked to slower reading:
