@@ -46,7 +46,7 @@ The lint enforces the boundary (`npm run check-lint`):
 
 ### Adding a string variant
 
-A string that must read differently by capability is one keyed variant, picked by one helper, not a forked component. Add both keys to `src/i18n/en/index.json` and to the other six locales (`fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit. Follow the existing strings: terse and plain, no contractions, Title Case buttons.
+A string that must read differently by capability is one keyed variant, picked by one helper, not a forked component. Add both keys to `src/i18n/en/index.json` and to the other six locales (`fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit. Follow [docs/writing.md](docs/writing.md).
 
 ### Native-only features
 
@@ -66,31 +66,9 @@ Read these before you change the UI and when you review a UI change:
 - [docs/design-language.md](docs/design-language.md): surfaces, shape, sizes, spacing and the History surfaces.
 - [docs/color-system.md](docs/color-system.md): colour roles and the control recipes in `src/controls.css`.
 - [docs/ui-review-checklist.md](docs/ui-review-checklist.md): the questions to ask in review, from past defects.
+- [docs/writing.md](docs/writing.md): the rules for user-facing text: strings, Help, notices, the release notes and the privacy page.
 
 They are principles with reasons. Depart from one when a case needs it, and say why in the change. If a change makes a claim in them false, fix the page in the same change.
-
-## User-facing text
-
-This covers the strings in `src/i18n/`, Help, notices, `CHANGELOG.md` and the privacy page.
-
-- Write terse, plain text. Use no contractions, and ’ for apostrophes. Buttons and command names are Title Case, with an ellipsis when the command asks for more before it acts.
-- Change all seven locales in the same commit, and reuse each locale’s existing terms.
-- Say what happened and what to do, in words the user already knows. Leave out internal terms (chain, journal, worker, binding, slot). History lines say "Timeline steps".
-- Leave out what the user can assume: what an action obviously does, and what does not happen.
-- Reuse an existing phrasing ("could not be read", "Save to a file to keep your work.") rather than writing a new one.
-- Choose the word that is idiomatic in the app’s register: plain software English, neither literary nor bureaucratic. A file contains something (it does not hold it), and a feature requires something. When unsure, follow the app’s existing strings, then common software usage.
-- Give extra information its own sentence, not a ", which …" tail.
-
-Machine-written text is harder to read. Clark, Martin and Mahowald (2026, [arXiv 2610.29162](https://arxiv.org/abs/2610.29162)) measured these features in recent language models’ output. Each is linked to slower reading:
-
-- **Things that act like people:** "storage did not answer". Use the plain verb: "returned an error", "could not be read".
-- **Three or more nouns in a row:** "storage quota warning threshold". Use a preposition or a verb: "the warning when storage is almost full".
-- **Verbs made from nouns on the spot:** "surface", "gate", "bucket". Use the ordinary verb.
-- **Dropped optional words:** keep the "that" in "the file that you opened".
-- **Rare word pairs:** use the usual pairing, "returned an error" rather than "answered with an error".
-- **Related words far apart:** keep a subject near its verb, with no clauses nested between them.
-
-Also avoid reassurance ("your work is safe"), "simply" and "just", "not X but Y", and colons or dashes that join two sentences.
 
 ## Built-in assets
 
