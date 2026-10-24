@@ -69,6 +69,28 @@ Read these before you change the UI and when you review a UI change:
 
 They are principles with reasons. Depart from one when a case needs it, and say why in the change. If a change makes a claim in them false, fix the page in the same change.
 
+## User-facing text
+
+This covers the strings in `src/i18n/`, Help, notices, `CHANGELOG.md` and the privacy page.
+
+- Write terse, plain text. Use no contractions, and ’ for apostrophes. Buttons and command names are Title Case, with an ellipsis when the command asks for more before it acts.
+- Change all seven locales in the same commit, and reuse each locale’s existing terms.
+- Say what happened and what to do, in words the user already knows. Leave out internal terms (chain, journal, worker, binding, slot). History lines say "Timeline steps".
+- Leave out what the user can assume: what an action obviously does, and what does not happen.
+- Reuse an existing phrasing ("could not be read", "Save to a file to keep your work.") rather than writing a new one.
+- Give extra information its own sentence, not a ", which …" tail.
+
+Machine-written text is harder to read. Clark, Martin and Mahowald (2026, [arXiv 2610.29162](https://arxiv.org/abs/2610.29162)) measured these features in recent language models’ output. Each is linked to slower reading:
+
+- **Things that act like people:** "storage did not answer". Use the plain verb: "returned an error", "could not be read".
+- **Three or more nouns in a row:** "storage quota warning threshold". Use a preposition or a verb: "the warning when storage is almost full".
+- **Verbs made from nouns on the spot:** "surface", "gate", "bucket". Use the ordinary verb.
+- **Dropped optional words:** keep the "that" in "the file that you opened".
+- **Rare word pairs:** use the usual pairing, "returned an error" rather than "answered with an error".
+- **Related words far apart:** keep a subject near its verb, with no clauses nested between them.
+
+Also avoid reassurance ("your work is safe"), "simply" and "just", "not X but Y", and colons or dashes that join two sentences.
+
 ## Built-in assets
 
 `builtin-assets/` makes the Built-in set (`public/builtin/*.scp`) and the app icon renders. Edit a template in `builtin-assets/svg/` or the manifest, then run `npm run build:builtin-assets` and commit the result. `npm run check:builtin-assets` fails when the committed files differ from a rebuild.
