@@ -14,6 +14,7 @@ import {
     snappingSources,
     view,
     viewBox,
+    withEdgePanY,
 } from '../../../view'
 import type { HoldPoint, Modifiers } from '../pointer'
 import type { Recognizer } from './recognizer'
@@ -90,20 +91,26 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
             }
         }
 
+        let pannedY = false
         if (settings.dragToPanY) {
             const py = (y - bounds.y) / bounds.h
             if (holdIn(py) === undefined) held.y = undefined
             const { low, high } = panZone(held.y)
             if (py < low) {
                 scrollViewYBy(unlerp(low, 0, py) * bounds.h * delta)
-                updated++
+                pannedY = true
             } else if (py > high) {
                 scrollViewYBy(-unlerp(high, 1, py) * bounds.h * delta)
-                updated++
+                pannedY = true
             }
+            if (pannedY) updated++
         }
 
-        if (active?.type === 'drag') updateDrag(x, y, modifiers)
+        // While the edge pan scrolls, it owns the view: focusing the dragged entity adds no ease.
+        if (active?.type === 'drag')
+            withEdgePanY(pannedY, () => {
+                updateDrag(x, y, modifiers)
+            })
 
         if (!updated) {
             update = undefined

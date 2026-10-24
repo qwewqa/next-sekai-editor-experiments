@@ -162,6 +162,33 @@ test('a drag starting in the left pan zone keeps the view still until it goes de
     await page.mouse.up()
 })
 
+test('a drag held past the top edge pans one pane height a second', async ({ page }) => {
+    await showNote(page, 0.5)
+    await settle(page)
+    const start = await point(page, 0, 8)
+    const top = await page.evaluate(() => window.editorTest.view.y)
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    // Past the pane the pointer counts as at its edge, where the zone pans fastest.
+    await page.mouse.move(start.x, top - 100, { steps: 5 })
+    await settle(page)
+    // In pane heights a second, on the editor's own clock.
+    const rate = await page.evaluate(async () => {
+        const { appImport, nextTick, settings, view } = window.editorTest
+        const { time } = await appImport<typeof import('../../src/time')>('/src/time.ts')
+        const frame = () =>
+            new Promise<void>((resolve) =>
+                requestAnimationFrame(() => void nextTick().then(() => resolve())),
+            )
+        const from = { now: time.value.now, time: view.time }
+        while (time.value.now - from.now < 0.3) await frame()
+        return ((view.time - from.time) * settings.pps) / view.h / (time.value.now - from.now)
+    })
+    await page.mouse.up()
+    // Focusing the dragged note, at the edge too, adds no ease of its own.
+    expect(rate).toBeCloseTo(1, 1)
+})
+
 test('a drag that leaves its bottom start zone pans from the zone edge on return', async ({
     page,
 }) => {
