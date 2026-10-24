@@ -2,7 +2,7 @@
 
 A complete description of the Next SEKAI Editor's project file, written so that a reader with no access to the editor's code can build a compatible viewer: open any v1 file, classify it as the editor does, rebuild the chart at the head and at every stored History step, and list and interpret the History timeline. A short section at the end gives the writer's rules for those who also write files.
 
-- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until Stage 1 ships (v0.6.0), v1 is changed in place, with no version bumps and no compatibility handling. From the ship it is frozen, and any change follows [format-versioning.md](format-versioning.md).
+- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until v0.6.0 ships, v1 is changed in place, with no version bumps and no compatibility handling. From the ship it is frozen, and any change follows [format-versioning.md](format-versioning.md).
 - **Authority.** The code is in `src/local/nxsp/`, `src/local/records/`, `src/zip/`, `src/history/operations/`, `src/levelData/` and `src/chart/parse/levelData/`. Where this page and the code disagree, the code wins and this page is wrong. The design rationale is in [history-format.md](history-format.md) (§2–§4) and [format-versioning.md](format-versioning.md), and this page does not repeat it.
 - **Background assumed.** Sonolus level data, the Next SEKAI engine's archetypes and what notes, slides, connectors, guides, time-scale groups, stages, the five event kinds, BGM and offset mean. ZIP, raw DEFLATE (RFC 1951), CRC-32, SHA-256, JSON and UTF-8.
 - **Cross-check tools.** `tools/nxsp_check.py` is an independent reader and strict checker that shares no code with the editor (§17). The goldens and conformance cases are listed in §17.
@@ -881,7 +881,7 @@ Entry names other than through pointers; the DOS times; `summary` (derive it); `
 
 ## 16. Writer rules (for round-tripping)
 
-A reader needs none of this. A writer follows it so that its files open as the editor's do and survive a round trip unchanged. `tools/nxsp_check.py` in strict mode checks it.
+A reader needs none of this. A writer that wants its files to open as the editor's do and survive a round trip unchanged follows it. `tools/nxsp_check.py` in strict mode checks it.
 
 ### 16.1 Container and `project.json`
 
