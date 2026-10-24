@@ -100,6 +100,15 @@ export class StoragePausedError extends Error {
     }
 }
 
+/**
+ * Refuses a write whose caller then removes its source (the old auto save key, a journal) unless
+ * the database takes it: a worker restarted over memory would commit it to memory.
+ */
+export const refuseUnlessStored = ({ mode }: StorageStatus) => {
+    if (mode !== 'stored')
+        throw new StorageRefusedError(mode === 'readOnly' ? 'readOnly' : 'failed')
+}
+
 /** Little free space by estimate(): Chrome reports a full disk as UnknownError (§1.6.1). */
 export const isLowSpace = ({ usage, quota }: { usage?: number; quota?: number }) =>
     usage !== undefined &&
