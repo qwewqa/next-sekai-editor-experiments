@@ -87,7 +87,7 @@ const inspectingTool: Tool = {
     secondaryTool: false,
 }
 
-/** While peeking every tool is suspended for a view-only Select (§1.4.11). */
+/** While peeking every tool is suspended for a view-only Select. */
 export const tool = computed(() =>
     isPeeking.value
         ? viewSelect

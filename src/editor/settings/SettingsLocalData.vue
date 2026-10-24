@@ -31,7 +31,7 @@ import DeleteSessionsDialog from './DeleteSessionsDialog.vue'
 import SettingsSection from './SettingsSection.vue'
 import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
 
-// Settings › Local Data (Part 1 §1.4.14): the storage line, the Storage subsection (what the
+// Settings › Local Data: the storage line, the Storage subsection (what the
 // browser holds, why changes are not being stored, Delete Sessions…), Recovery (Open History, the
 // rows for what the recovery order set aside, Export Raw Data…) and Startup Notices, this load's
 // notices. In safe mode it only reads: no Delete Sessions…, no Discard….
@@ -40,7 +40,7 @@ const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
 const safe = isSafeMode()
 
-// --- The storage line (§1.4.13).
+// --- The storage line.
 const facts = ref<Awaited<ReturnType<typeof readBrowserFacts>>>()
 onMounted(async () => {
     facts.value = await readBrowserFacts()
@@ -186,7 +186,7 @@ const download = async (item: RecoveryItem) => {
 }
 
 // Open replaces what this tab shows, so it asks first when that would lose work. The old auto
-// save opens when this build reads it (§1.8 step 5); its key stays until discarded.
+// save opens when this build reads it; its key stays until discarded.
 const open = async (item: RecoveryItem & { kind: 'journal' | 'autoSave' }) => {
     if (!(await confirmSwitch())) return
     const recovery = await api()
@@ -202,7 +202,7 @@ const open = async (item: RecoveryItem & { kind: 'journal' | 'autoSave' }) => {
     )
 }
 
-// Downloading is the safe default, and removes nothing (§1.4.14).
+// Downloading is the safe default, and removes nothing.
 const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) => {
     const size = formatSize(item.size)
     const choice = await showChoice<'discard' | 'download'>({
@@ -227,8 +227,8 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
     }
 }
 
-// The setting is the web's (§1.4.14): not offered where downloads are never confirmed (iPhone and
-// iPad never show the close prompt, §1.4.9), and not in the apps, which close on their own terms.
+// The setting is the web's: not offered where downloads are never confirmed (iPhone and
+// iPad never show the close prompt), and not in the apps, which close on their own terms.
 const showsClosePrompt =
     platform.capabilities.browserStorage && !platform.capabilities.unconfirmedDownloads
 

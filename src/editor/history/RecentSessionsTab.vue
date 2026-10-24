@@ -60,7 +60,7 @@ import {
 import { onDeleteChanged, sessionDelete } from './sessionDeleteLive'
 import { listFocus } from './state'
 
-// Recent Sessions (Part 1 §1.4.10.6): one row per chain, newest first, under the Timeline's day
+// Recent Sessions: one row per chain, newest first, under the Timeline's day
 // headers, in the Timeline's row styles and keys. A click or an arrow peeks the session without
 // BGM; Enter restores it; the ⋯ button, a right click, a long press, Shift+F10 and the Menu key
 // open its menu. This tab's own chain is the row with the badge, and a click on it is Back to Now.

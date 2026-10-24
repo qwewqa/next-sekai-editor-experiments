@@ -22,7 +22,7 @@ import { createPlaces, singleFlight } from './hereChecks'
 import { entryId, type Entry, type Filter } from './rows'
 import { hereRange, historyFilter } from './state'
 
-// The chain's entries for the Timeline (Part 1 §1.4.10.5): a page at a time from storage, newest
+// The chain's entries for the Timeline: a page at a time from storage, newest
 // first, with the open session's entries still waiting to be stored on top. After a jump (Go To,
 // End) the loaded run is a window read at the target: older pages load below it as before, and
 // newer ones into the gap between it and Now, until it reaches the newest entries again.
@@ -621,7 +621,7 @@ export const followEntries = () => {
     })
 }
 
-// --- Edits Here (§1.4.10.5): the entries whose change touches a range of beats, found newest
+// --- Edits Here: the entries whose change touches a range of beats, found newest
 // first by the worker's scan while the filter is on, and stopped when it goes off or the range
 // changes. Entries stored later are checked on their own and join at the top.
 

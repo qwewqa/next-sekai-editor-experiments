@@ -1,4 +1,4 @@
-// The minimap's time range (design §3.4): pure. The range runs from time 0 to the last note,
+// The minimap's time range: pure. The range runs from time 0 to the last note,
 // rounded up to a step that grows with the chart, so adding notes near the end rarely moves it.
 
 import type { State } from '../../state'

@@ -15,7 +15,7 @@ import { appVersion, FileError, type PinnedSource } from '../../platform'
 import type { State } from '../../state'
 import { deviceSource } from './env'
 
-// A Save's build (Part 1 §1.6.11.6–§1.6.11.7): the options the storage worker's writer takes, with
+// A Save's build: the options the storage worker's writer takes, with
 // what this tab holds that storage may not (its unflushed rows and stack, the live head, its media
 // and a binding kept in memory), and the writer's refusals as errors the flows tell apart.
 
@@ -34,10 +34,10 @@ export type BuildEnv = {
     session: FlushSession
 }
 
-/** A state's root as hex: the binding's hash and a head input's snapshot (§1.6.11.1). */
+/** A state's root as hex: the binding's hash and a head input's snapshot. */
 export const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
-/** The head's media this tab holds the bytes of (§1.6.11.6's first source). */
+/** The head's media this tab holds the bytes of. */
 const heldMedia = (state: State): HeldMedia[] =>
     heldItemsOf(state).map(({ hash, bytes, type, filename }) => ({
         hash,
@@ -47,7 +47,7 @@ const heldMedia = (state: State): HeldMedia[] =>
     }))
 
 /**
- * This tab's part of the saved session no store holds yet, as the writer takes it (§1.6.11.6):
+ * This tab's part of the saved session no store holds yet, as the writer takes it:
  * only while a flush didn't take everything (storage paused or full).
  */
 const pendingOf = (env: BuildEnv): PendingInput | undefined => {
@@ -80,7 +80,7 @@ const pendingOf = (env: BuildEnv): PendingInput | undefined => {
     }
 }
 
-/** The binding kept in memory while storage is paused (§1.3.2), its cut's start as stored. */
+/** The binding kept in memory while storage is paused, its cut's start as stored. */
 const identityOf = async (env: BuildEnv): Promise<IdentityInput | undefined> => {
     const identity = env.session.identity
     if (!identity) return
@@ -170,7 +170,7 @@ const BUILD_TIMEOUT_MS = 10 * 60_000
 /**
  * Builds the file in the storage worker, reading only the pinned sources given. A refusal
  * throws `BuildRefused`, except a changed source, which is a `conflict` `FileError`, so the
- * platform's path applies (Part 0 §0.9.1).
+ * platform's path applies.
  */
 export const runBuild = async (
     env: BuildEnv,
@@ -196,7 +196,7 @@ export const runBuild = async (
         )
     let built = await call(options)
     // The head's stored copy failed: an open session's head is always written, from the live
-    // state's records (§1.6.11.6). Save to File… of a session that isn't open refuses.
+    // state's records. Save to File… of a session that isn't open refuses.
     if ('refused' in built && built.refused === 'unreadableHead' && request.sessionId === undefined)
         built = await call({ ...options, pending: withHeadRecords(options.pending, request.state) })
     if ('refused' in built) {
@@ -207,5 +207,5 @@ export const runBuild = async (
     return built
 }
 
-/** The binding's hash: the saved head's root (§1.3.2). */
+/** The binding's hash: the saved head's root. */
 export const headHashOf = (built: BuiltSave) => fromHex16(built.saveEntry.snapshot)

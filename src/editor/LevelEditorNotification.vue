@@ -34,7 +34,7 @@ const measure = () => {
         observed = bar ?? undefined
         if (bar) observer?.observe(bar)
     }
-    // The toolbar unmounts while the History sheet is open (X-8): keep the last clearance until a
+    // The toolbar unmounts while the History sheet is open: keep the last clearance until a
     // new bar mounts, which the child list observer measures.
     if (!toolbar || !bar) return
     // While a drag hides the toolbar its size reads 0: keep the last clearance.

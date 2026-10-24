@@ -5,7 +5,7 @@ import { levelInfoInput } from '../headerLabelText'
 import { notify } from '../notification'
 import { draftOver, type Draft } from './draft'
 
-// A Level Info Apply (Part 1 §1.4.12): the draft as one step.
+// A Level Info Apply: the draft as one step.
 
 export type ApplyResult = 'applied' | 'unchanged' | 'refused'
 

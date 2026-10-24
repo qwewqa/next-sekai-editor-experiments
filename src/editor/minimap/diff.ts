@@ -1,4 +1,4 @@
-// What changed between what the strip shows and a state (design §3.3, steps 4 to 6): pure.
+// What changed between what the strip shows and a state: pure.
 // A bucket's identity is its content: a transaction copies a bucket on its first write and
 // deletes a key when its last entity goes, so an unchanged bucket is the same Set.
 

@@ -56,7 +56,7 @@ const notes = computed(() => {
             const chord = parseChord(key) ? undefined : commandChordBinding(key)
             const kind = chord && users.has(chord) ? undefined : browserShortcutOf(key)
             if (kind) list.push(browser[kind])
-            // Ctrl/Cmd+S, Save's fixed alias (§1.4.6), while no binding takes that chord.
+            // Ctrl/Cmd+S, Save's fixed alias, while no binding takes that chord.
             if (name === 'save' && !users.has('Mod+s'))
                 list.push(interpolateRaw(messages.fixedAlias, formatShortcut('Mod+s') ?? 'Ctrl+S'))
             return [name, list]

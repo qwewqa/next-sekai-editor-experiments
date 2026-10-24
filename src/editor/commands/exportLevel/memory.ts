@@ -4,13 +4,13 @@ import { nextCopyName } from '../../../local/names'
 import type { StoredRead } from '../../../local/storedRead'
 import type { DiskState } from '../../../platform'
 
-// Export's remembered target and names (Part 1 §1.4.8): this tab's view of the chain's
+// Export's remembered target and names: this tab's view of the chain's
 // `exportTarget`, `exportName` and the partial import's flag, stored on the chain record
-// (§1.3.1) whenever they change, and read back when a stored session opens. The target's handle
-// is stored apart (D24) and read only when Export needs it. A new chart clears it; a fork drops
-// the target and the name (Step 1c's stub `exportTargetMemory`, retired).
+// whenever they change, and read back when a stored session opens. The target's handle
+// is stored apart and read only when Export needs it. A new chart clears it; a fork drops
+// the target and the name.
 
-/** Bytes kept at an open for a picker that empties the file (§1.5.4, D5): in memory up to this. */
+/** Bytes kept at an open for a picker that empties the file: in memory up to this. */
 export const KEPT_BYTES_LIMIT = 64 * 1024 * 1024
 
 export type ExportTarget = {
@@ -28,20 +28,20 @@ export type OpenedSource = {
     handle: FileSystemFileHandle
     /** This engine's level data by content; a chart or another engine's level is not. */
     levelData: boolean
-    /** Level data whose import left parts out, so it is never written over (D2). */
+    /** Level data whose import left parts out, so it is never written over. */
     partial: boolean
-    /** The bytes read, for a file never written over, to put back if a picker empties it (D5). */
+    /** The bytes read, for a file never written over, to put back if a picker empties it. */
     bytes?: ArrayBuffer
-    /** A `.nxsp` (§1.5.4): whole, it's the chain's own bound file; partial, it's never written over. */
+    /** A `.nxsp`: whole, it's the chain's own bound file; partial, it's never written over. */
     project?: true
     /**
-     * A partial or unlinked `.nxsp` open's bytes, kept for a picker that empties the file (D26):
+     * A partial or unlinked `.nxsp` open's bytes, kept for a picker that empties the file:
      * resolves once they're kept, whatever their size.
      */
     keptCopy?: Promise<Blob | undefined>
     /**
-     * The bytes read, for the project picker (R7): it never writes over level data or a chart,
-     * which Export may (§1.4.7).
+     * The bytes read, for the project picker: it never writes over level data or a chart,
+     * which Export may.
      */
     kept?: ArrayBuffer
 }
@@ -52,7 +52,7 @@ export type ExportMemory = {
     exportName?: string
     /** The gzipped level data file this session was imported from, by its own name. */
     sourceName?: string
-    /** Imported from level data with parts left out: pickers suggest "<name> (2)" (§1.4.7). */
+    /** Imported from level data with parts left out: pickers suggest "<name> (2)". */
     partial?: boolean
     opened?: OpenedSource
 }
@@ -92,9 +92,9 @@ export const clearExportMemory = () => {
 
 onResetState(clearExportMemory)
 
-/** The chain fields this memory is stored as (§1.6.11.2), `undefined` removing one. */
+/** The chain fields this memory is stored as, `undefined` removing one. */
 export type ExportChainFields = {
-    /** `handle` goes to the `handles` store, never the record (D24). */
+    /** `handle` goes to the `handles` store, never the record. */
     exportTarget: { name: string; handle?: unknown; disk: DiskState; opened?: true }
     exportName: string
     /** Imported from level data with parts left out: pickers suggest "<name> (2)". */
@@ -187,7 +187,7 @@ export const ownsExportTarget = async (target: ExportTarget) => {
 const hasTarget = () => exportMemory.target !== undefined
 
 /**
- * The remembered target, its stored handle read when Export needs it (D24); undefined when there
+ * The remembered target, its stored handle read when Export needs it; undefined when there
  * is none, or no handle was stored (a picker then asks where).
  */
 export const loadExportTarget = async (): Promise<ExportTarget | undefined> => {
@@ -227,7 +227,7 @@ export const restoreExportMemory = (chain: Record<string, unknown>) => {
     if (isObject(target) && typeof target.name === 'string' && isObject(target.disk)) {
         // Its handle is read when Export needs it (`loadExportTarget`), never here at startup.
         storedTarget = target as ExportChainFields['exportTarget']
-        // The opened file's own name, which the picker suggests (§1.4.8).
+        // The opened file's own name, which the picker suggests.
         if (target.opened === true) exportMemory.sourceName = target.name
     }
     if (typeof chain.exportName === 'string') exportMemory.exportName = chain.exportName

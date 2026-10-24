@@ -591,7 +591,7 @@ export const select: Tool = {
 }
 
 /**
- * Select while peeking (§1.4.11): taps and box selection change only the peeked state's
+ * Select while peeking: taps and box selection change only the peeked state's
  * selection, and nothing moves or resizes.
  */
 export const viewSelect: Tool = {

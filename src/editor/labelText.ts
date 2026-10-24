@@ -12,13 +12,13 @@ import {
 import { labelAccessibleName, labelLine, labelOf, type StatusLabel } from './fileLabel'
 import { shownName } from './shownName'
 
-// The status bar's label and the page title (Part 1 §1.3.4): the displayed name, then the file
+// The status bar's label and the page title: the displayed name, then the file
 // the session is bound to or the reason it is not, and a "•" when the file has changes. The
 // parts are `labelOf`'s (`fileLabel.ts`), which Recent Sessions' rows call too.
 
 export type { StatusLabel }
 
-/** The displayed name (§1.3.5) of the open session. */
+/** The displayed name of the open session. */
 export const displayedName = computed(() => {
     const open = session.value
     const parts = namePartsOf(

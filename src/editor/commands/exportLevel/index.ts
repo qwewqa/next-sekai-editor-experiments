@@ -16,7 +16,7 @@ import { copyName, exportMemory, loadExportTarget } from './memory'
 // is being read would open a second dialog over the first, with its own read flags.
 let opening = false
 
-/** Opens the Export dialog; the remembered target's handle is read here, never at startup (D24). */
+/** Opens the Export dialog; the remembered target's handle is read here, never at startup. */
 const openExport = async () => {
     if (opening) return
     opening = true
@@ -27,7 +27,7 @@ const openExport = async () => {
     }
 }
 
-/** The displayed name as a file name (§1.4.8), empty for the date fallback. */
+/** The displayed name as a file name, empty for the date fallback. */
 const shownStem = () => {
     const open = session.value
     const parts = namePartsOf(
@@ -50,7 +50,7 @@ const openExportDialog = async () => {
     const fromSource = exportName === undefined && sourceName !== undefined
     const shown = shownStem() || (exportMemory.partial ? (session.value.sourceName ?? '') : '')
     const name = exportName ?? sourceName ?? copyName(validName(shown))
-    // The chain's own file is read first when a pick of it could lose what it holds (R2).
+    // The chain's own file is read first when a pick of it could lose what it holds.
     const read: Promise<ReadResult> = import('../../save/exportPick').then(
         (pick) => pick.startExportRead(),
         () => ({ kind: 'noAccess' }) as const,

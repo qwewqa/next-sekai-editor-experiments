@@ -125,7 +125,7 @@ const onKeydown = (event: KeyboardEvent) => {
         event,
         isApple,
     )
-    // Ctrl/Cmd+S is Save's fixed alias (§1.4.6), unless a binding takes that chord itself.
+    // Ctrl/Cmd+S is Save's fixed alias, unless a binding takes that chord itself.
     const alias = !matched.exact && isSaveChord(event)
     const names: CommandName[] = alias ? ['save'] : matched.names.filter(isCommandName)
     const exact = alias || matched.exact

@@ -68,7 +68,7 @@ const actions = computed(() => {
     const editable = selection.some(isEditableEntity)
     const point = contextMenu.value
     // While peeking, only what views or selects: Select Slide Notes (the peeked selection), Copy,
-    // Edit Properties (shown read-only) and Find Edits Here (§1.4.11).
+    // Edit Properties (shown read-only) and Find Edits Here.
     if (isPeeking.value) {
         if (canSelectSlideNotes(selection, state.value.store.slides.note, isEntityInScope))
             groups.push(['selectSlideNotes'])

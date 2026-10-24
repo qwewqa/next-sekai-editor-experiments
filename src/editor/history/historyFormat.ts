@@ -12,7 +12,7 @@ import {
 } from '../../i18n/dateTime'
 import type { Calendar } from './calendarClock'
 
-// History's only way to write a date or time (I-1): every text comes from one `Calendar`, so a
+// History's only way to write a date or time: every text comes from one `Calendar`, so a
 // label, a bucket and a header always agree on the zone and on today.
 
 export type HistoryFormat = {

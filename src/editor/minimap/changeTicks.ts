@@ -5,7 +5,7 @@ import type { MinimapAnnotation } from './annotations'
 import { HAIRLINE_ALPHA, TICK_WIDTH, hairlineRuns, tickRuns, type TickRun } from './tickRuns'
 
 /**
- * Orange marks at the places the peeked step changed (design §10.6): an edge tick per run, and
+ * Orange marks at the places the peeked step changed: an edge tick per run, and
  * for a few short runs a faint hairline across the strip, so a lone change reads against the notes.
  */
 export const changeTicks: MinimapAnnotation<readonly Place[]> = {

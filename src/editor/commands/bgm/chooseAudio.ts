@@ -14,13 +14,13 @@ import { bgmStatus, claimNotice, onUnheldAfterMove } from '../../media/heldBgm'
 import { dropCardAction, notify, type NoticeAction, type NoticeLine } from '../../notification'
 import { loadPickedBgm } from './loadPicked'
 
-// Choose Audio… (Part 1 §1.6.8.4, Step 7 design §3.6): the action of every "BGM not loaded" line.
+// Choose Audio…: the action of every "BGM not loaded" line.
 // It opens the system chooser at once, with no dialog and no change of the offset; `applyPick`
 // decides what the file is for.
 
 /** Picks an audio file for the live state's BGM. */
 export const chooseAudio = async () => {
-    // An edit: refused while peeking (§1.4.11).
+    // An edit: refused while peeking.
     if (isPeeking.value) {
         refuseWhilePeeking()
         return

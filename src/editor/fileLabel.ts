@@ -5,7 +5,7 @@ import { stemOf } from '../local/names'
 import { settings } from '../settings'
 import { interpolateRaw } from '../utils/interpolate'
 
-// The file part of a session's label (Part 1 §1.3.4), from plain inputs: the status bar calls it
+// The file part of a session's label, from plain inputs: the status bar calls it
 // with the open session's and a Recent Sessions row with a chain's, so the two never disagree.
 
 /** The bound file as the label shows it: `event` is 'saved', 'downloaded' or 'opened' (else a download). */
@@ -31,7 +31,7 @@ export type LabelInput = {
     /** What a separate copy was made from; a stored chain does not know it. */
     copyOf?: { name: string }
     /**
-     * The bound file is a download not confirmed (§1.3.4): a row says so, as the chip does in the
+     * The bound file is a download not confirmed: a row says so, as the chip does in the
      * status bar, which does not pass it.
      */
     notConfirmed?: boolean
@@ -41,7 +41,7 @@ export type LabelInput = {
     writesInPlace: boolean
 }
 
-// A state fragment of a line joined with " · " is lower case (§1.4.19), unless it opens with a
+// A state fragment of a line joined with " · " is lower case, unless it opens with a
 // name: only the first letter, and never a name's.
 const fragment = (text: string) =>
     text.startsWith('{')
@@ -50,7 +50,7 @@ const fragment = (text: string) =>
 
 /**
  * A `file.*` string as a joined fragment: "{0} · downloaded {1}" without its name, "downloaded
- * Oct 14" (§1.3.4): the time when the event was today, the date otherwise. Undefined when the
+ * Oct 14": the time when the event was today, the date otherwise. Undefined when the
  * event's time is not known: the fragment is left out.
  */
 const eventFragment = (template: string, at: number | undefined) =>

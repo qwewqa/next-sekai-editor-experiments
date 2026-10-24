@@ -5,7 +5,7 @@ import { dismissNoticeCard, holdNotice, type Notice } from './notification'
 import SeverityIcon from './SeverityIcon.vue'
 import CloseIcon from './workspace/CloseIcon.vue'
 
-// A notice card (Part 1 §1.4.1): the peek strip's surface (a 22 px pill), with a severity glyph, a
+// A notice card: the peek strip's surface (a 22 px pill), with a severity glyph, a
 // white action pill and a close button; the start-up card is the same surface as a column of rows.
 // A touch or pen drag sideways dismisses it. `over` draws it over a blocking dialog, on the menus'
 // surface.
@@ -17,7 +17,7 @@ const messageId = computed(() => `notice-card-${props.notice.id}`)
 
 // The name and version join into the start-up card's heading; the other lines are its rows. In a
 // narrow card the name gives way first, and when the version has no room beside it, the version
-// takes a line of its own, so it is never cut (X-9).
+// takes a line of its own, so it is never cut.
 const heading = computed(() =>
     (props.notice.lines ?? []).filter((line) => line.heading).map((line) => line.message()),
 )
@@ -199,7 +199,7 @@ const glyphColumn = computed(() => rows.value.some((line) => line.severity))
                              its own, wrapping at its space (or, narrower still, anywhere) rather
                              than lose a character. Each part after the name keeps its " · " in its
                              own 10 px start, which the list hides past its start edge when the
-                             part begins a line (X-9). -->
+                             part begins a line. -->
                         <span class="block overflow-hidden"
                             ><span class="-ml-2.5 flex flex-wrap"
                                 ><span

@@ -9,7 +9,7 @@ import { copySourceName, shownName } from './shownName'
 import { confirmSwitch, notifyLeft } from './switch'
 import { withSwitchRequest } from './switchRequest'
 
-// Restore Session and Restore as a Copy of a stored session (Part 1 §1.4.10.6, §1.4.3): from
+// Restore Session and Restore as a Copy of a stored session: from
 // Recent Sessions' rows and menu, its peek bar, and the load notices' [Restore Session]. Not in
 // `history/`, whose files format in the History calendar's zone: the card's name is a notice's.
 

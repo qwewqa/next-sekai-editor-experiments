@@ -144,7 +144,7 @@ export const getClipboardAnchor = (
     copiedStore: Store = copiedSlidesStore(entities),
 ) => {
     if (!note) return
-    // The serializer emits slides in the records' order (§1.6.11.6), so find the copied note there.
+    // The serializer emits slides in the records' order, so find the copied note there.
     const slides = getSlides(entities)
     const slideIndex = slides.findIndex((notes) => notes.includes(note))
     const copiedNote = [...copiedStore.slides.note.values()][slideIndex]?.[

@@ -1,4 +1,4 @@
-// Part 0 §0.9.9's portable name rules 1–4, which the web's File Name fields check, and the
+// The portable name rules 1–4, which the web's File Name fields check, and the
 // replacement that makes a name the editor suggests valid.
 
 export type NameProblem =
@@ -35,13 +35,13 @@ export const nameProblem = (name: string): NameProblem | undefined => {
     if (byteLength(name) > NAME_BYTE_LIMIT) return { reason: 'tooLong' }
 }
 
-/** A forbidden character or a reserved name shows at once; the rest after a pause (§0.9.9). */
+/** A forbidden character or a reserved name shows at once; the rest after a pause. */
 export const showsAtOnce = (problem: NameProblem) =>
     problem.reason === 'invalidChar' ||
     problem.reason === 'controlChar' ||
     problem.reason === 'reserved'
 
-/** Makes a name the editor suggests valid by the one replacement §0.9.9 gives. */
+/** Makes a name the editor suggests valid by the one replacement the rules give. */
 export const validName = (name: string) => {
     let result = name
         .normalize('NFC')

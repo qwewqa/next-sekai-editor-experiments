@@ -10,7 +10,7 @@ let opening = false
 let requests = 0
 
 /**
- * Opens Settings, scrolled to a section with its heading focused (Part 1 §1.4.14): the load
+ * Opens Settings, scrolled to a section with its heading focused: the load
  * notices' [Local Data] uses it. Settings already open only moves to the section.
  */
 export const openSettings = async (section?: SettingsSectionId) => {

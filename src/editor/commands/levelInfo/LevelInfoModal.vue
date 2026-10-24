@@ -34,7 +34,7 @@ import { checkProject } from '../checkProject'
 import PlayIcon from '../play/PlayIcon.vue'
 import StopIcon from '../stop/StopIcon.vue'
 
-// Level Info (Part 1 §1.4.12, Step 11 design §3.1): one form for the level's identity text,
+// Level Info: one form for the level's identity text,
 // Cover, Preview Audio and Initial Life. It keeps a draft, and Confirm hands it to the command,
 // which makes one step of the fields that changed. Cover Editor and Preview Editor open over it and return their result to the draft.
 

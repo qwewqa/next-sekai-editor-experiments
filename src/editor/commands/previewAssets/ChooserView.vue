@@ -15,7 +15,7 @@ import AssetRow from './AssetRow.vue'
 import ChooserModeSwitch from './ChooserModeSwitch.vue'
 import ServerBody from './ServerBody.vue'
 
-// The chooser, in the tab in place of the source list (Part 2, 2.6): From a File or, in the apps,
+// The chooser, in the tab in place of the source list: From a File or, in the apps,
 // From a Server, by the switch under the title (the server's view is ServerBody's); the web has no
 // switch, as it fetches no servers. Reading the file and
 // its errors show under Select File…, connecting and its errors under the address; storing or

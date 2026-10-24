@@ -88,7 +88,7 @@ watch(
     { flush: 'post' },
 )
 
-// The annotation painters are a static list (Part 1 §1.4.22).
+// The annotation painters are a static list.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const painters: MinimapAnnotation<any>[] = [changeTicks]
 
