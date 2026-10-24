@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch, watchEffe
 import { beats, keys, times } from '..'
 import { isAppActive } from '../../activity'
 import { state } from '../../history'
+import { playbackBgm } from '../../history/bgm'
 import { defaultGroupId } from '../../history/groups'
 import { cullAllEntities, cullEntities } from '../../history/store'
 import { isPlaying } from '../../player'
@@ -604,8 +605,10 @@ watchEffect(
         const covered = coveredYs.value
         const ghostYs = ghostBpmYs.value
         const currentLabels = labels.value
-        const currentWaveform = settings.waveform === 'off' ? undefined : inputs.state.bgm.waveform
-        const offset = inputs.state.bgm.offset + bgmOffsetDelta.value
+        // The audio that plays, where it plays: a step's peek may keep the live offset.
+        const playback = playbackBgm.value
+        const currentWaveform = settings.waveform === 'off' ? undefined : playback.waveform
+        const offset = playback.offset + bgmOffsetDelta.value
         void waveformVersion.value
         const draw = (timestamp: number) => {
             notes.beginFrame(timestamp)
