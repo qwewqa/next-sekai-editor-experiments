@@ -13,6 +13,9 @@ const maxSectionRanges = 1024
 const maxSectionGraphics = 50000
 // An idle period this long fits any one section; shorter ones take what their estimate fits.
 const fullIdleMs = 40
+// One idle callback starts more sections only while they fit this much work, so a long idle
+// period is never held by a run of them that an input would wait for.
+const idleSliceMs = 8
 // Without requestIdleCallback (Safari), a task after the frame with this budget.
 const fallbackIdleMs = 4
 // Sections compiled mid-zoom would be released by its next frame; this long without one ends it.
@@ -470,7 +473,13 @@ export class VectorRanges {
             if (left === 'done') this.aheadDone = key
             else if (left === 'more') {
                 this.aheadShort = 0
-                this.scheduleAhead()
+                // From a task, not this callback: one asked for inside an idle callback waits for
+                // the next idle period, which is about 50 ms away when no frames come.
+                this.aheadPending = true
+                setTimeout(() => {
+                    this.aheadPending = false
+                    this.scheduleAhead()
+                })
             } else if (++this.aheadShort < shortIdleRetries) {
                 // Asking at once would spin: while the app clock runs, every idle
                 // period ends before its next frame, and the one after a frame
@@ -529,10 +538,12 @@ export class VectorRanges {
             const state = drawState(ctx)
             if (state.some((value, index) => value !== source.state[index])) return 'done'
             let compiled = 0
+            const begun = performance.now()
             for (const section of candidates) {
                 const estimate = Math.max(this.msPerSection, this.msPerStep * section.steps.length)
                 if (deadline.timeRemaining() < Math.min(estimate, fullIdleMs))
                     return compiled ? 'more' : 'short'
+                if (compiled && performance.now() - begun + estimate > idleSliceMs) return 'more'
                 const stale = this.sections.get(section.key)
                 if (stale) this.removeSection(section.key, stale)
                 const start = performance.now()
