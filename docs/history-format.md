@@ -592,7 +592,7 @@ Made by the storage side and the file flows; none groups. Step Details shows the
 
 | Id | `data` | Title (en) |
 | --- | --- | --- |
-| `nse.origin` | `{origin: new \| import \| autoSave \| recovery, source?}`; `source` only with `import` | "Started a new level"; `import` "Opened {file}" with a source, else "Imported a level"; "Recovered from auto save"; "Recovered changes" |
+| `nse.origin` | `{origin: new \| import \| autoSave \| recovery, source?}`; `source` only with `import` | "Started a new level"; `import` "Opened {file}" with a source, else "Imported a level"; "Opened the old auto save"; "Recovered changes" |
 | `nse.continue` | `{fromTime}` ms | "Continued from {time}" |
 | `nse.file.save` | `{file, delivery: file \| download}` | "Saved {file}"; "Downloaded {file}" |
 | `nse.file.export` | `{file, delivery}` | "Exported {file}"; a download adds the fact "Downloaded {file}" |

@@ -2230,7 +2230,7 @@
         "saved": "Saved {0}",
         "downloaded": "Downloaded {0}",
         "continued": "Continued",
-        "migrated": "Recovered from auto save",
+        "migrated": "Opened the old auto save",
         "restoredTo": "Restored to {0}",
         "changedOutside": "Changed outside the editor",
         "recoveredChanges": "Recovered changes"

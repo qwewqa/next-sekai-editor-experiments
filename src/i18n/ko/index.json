@@ -2230,7 +2230,7 @@
     "saved": "{0} 저장됨",
     "downloaded": "{0} 다운로드됨",
     "continued": "이어서 열림",
-    "migrated": "자동 저장에서 복구됨",
+    "migrated": "이전 자동 저장 열림",
     "restoredTo": "{0} 시점으로 복원됨",
     "changedOutside": "편집기 밖에서 변경됨",
     "recoveredChanges": "변경 사항 복구됨"

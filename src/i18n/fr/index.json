@@ -2230,7 +2230,7 @@
     "saved": "{0} sauvegardé",
     "downloaded": "{0} téléchargé",
     "continued": "Session reprise",
-    "migrated": "Récupéré de la sauvegarde automatique",
+    "migrated": "Ancienne sauvegarde automatique ouverte",
     "restoredTo": "Restauré au {0}",
     "changedOutside": "Modifié en dehors de l’éditeur",
     "recoveredChanges": "Modifications récupérées"

@@ -2230,7 +2230,7 @@
     "saved": "已儲存 {0}",
     "downloaded": "已下載 {0}",
     "continued": "已繼續",
-    "migrated": "已從自動儲存恢復",
+    "migrated": "已開啟舊的自動儲存",
     "restoredTo": "已還原到 {0}",
     "changedOutside": "在編輯器外變更",
     "recoveredChanges": "已復原變更"
