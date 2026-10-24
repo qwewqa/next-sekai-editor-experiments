@@ -182,7 +182,11 @@ const read = async (target: FileTarget): Promise<Blob> => {
 const onCloseRequested = (handler: () => boolean | Promise<boolean>) => {
     const listener = (event: BeforeUnloadEvent) => {
         // beforeunload can't wait: only a synchronous false keeps the page.
-        if (handler() === false) event.preventDefault()
+        if (handler() !== false) return
+        // Chrome and Edge before 119 ask only when returnValue is set.
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        event.returnValue = true
+        event.preventDefault()
     }
     window.addEventListener('beforeunload', listener)
     return () => {
