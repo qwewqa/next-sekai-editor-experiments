@@ -39,7 +39,8 @@ export const createTransport = ({
 }: TransportDependencies) => {
     let speed = 1
     // floor: the frame shown before a speed change, which the display holds until it passes.
-    let playback: { returnTime: number; floor?: number } | undefined
+    // Reactive, so the app clock runs while playing.
+    const playback = shallowRef<{ returnTime: number; floor?: number }>()
     // Reactive, so drawing can tell a scrub from a rest.
     const scrub = shallowRef<'smooth' | 'locked'>()
     let followScroll: typeof view.scrollingY
@@ -52,7 +53,7 @@ export const createTransport = ({
         )
 
     const queueAudition = (time: number, source: 'cursor' | 'note' | 'transport') => {
-        if (playback || scrub.value) return
+        if (playback.value || scrub.value) return
         // A note audition has its own position, independent of cursor changes
         // made by the same editor interaction. Explicit transport actions replace it.
         if (source === 'cursor' && pendingAudition?.source === 'note') return
@@ -63,19 +64,20 @@ export const createTransport = ({
     const flushAudition = () => {
         const pending = pendingAudition
         pendingAudition = undefined
-        if (pending && !playback && !scrub.value) audio.audition(pending.time)
+        if (pending && !playback.value && !scrub.value) audio.audition(pending.time)
     }
 
     const update = () => {
-        if (!playback) return
+        const current = playback.value
+        if (!current) return
         let cursorTime = audio.getDisplayTime()
         if (cursorTime === undefined) {
-            playback = undefined
+            playback.value = undefined
             return
         }
-        if (playback.floor !== undefined) {
-            if (cursorTime < playback.floor) cursorTime = playback.floor
-            else playback.floor = undefined
+        if (current.floor !== undefined) {
+            if (cursorTime < current.floor) cursorTime = current.floor
+            else current.floor = undefined
         }
         view.cursorTime = cursorTime
         if (settings.playFollow) view.time = followTime(cursorTime)
@@ -89,10 +91,10 @@ export const createTransport = ({
     const stop = (shouldReturn = false) => {
         // Inactivity can stop a paused transport before its queued audition flushes.
         pendingAudition = undefined
-        if (!playback) return
-        const { returnTime } = playback
+        if (!playback.value) return
+        const { returnTime } = playback.value
         audio.stop()
-        playback = undefined
+        playback.value = undefined
         if (shouldReturn) focus(returnTime)
         onStop()
     }
@@ -153,7 +155,7 @@ export const createTransport = ({
         cancelFollow()
         pendingAudition = undefined
         audio.start(seconds, speed)
-        playback = { returnTime: seconds }
+        playback.value = { returnTime: seconds }
         onPlay()
     }
 
@@ -190,17 +192,17 @@ export const createTransport = ({
         const newSpeed = speeds[speeds.indexOf(speed) + direction] ?? speed
         if (newSpeed === speed) return
         speed = newSpeed
-        if (playback) {
+        if (playback.value) {
             // Audio restarts at its own clock, which the shown frame may lead.
             audio.start(audio.getTime() ?? view.cursorTime, speed, 0)
-            playback.floor = view.cursorTime
+            playback.value.floor = view.cursorTime
         }
         onSpeedChange(speed)
     }
 
     return {
         get isPlaying() {
-            return !!playback
+            return !!playback.value
         },
         isScrubbing: computed(() => !!scrub.value),
         update,

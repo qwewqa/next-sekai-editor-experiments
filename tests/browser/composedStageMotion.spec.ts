@@ -38,17 +38,19 @@ const counters = (page: Page) =>
 
 // Moves the view by `step` seconds on app clock ticks, as eased scrolls and playback do,
 // for `count` ticks or until `window.moving` is cleared. Ticks count as motion however
-// far apart load spaces them.
+// far apart load spaces them. The clock runs while this needs it, as it does for them.
 const moveOnTicks = (page: Page, step: number, count = Infinity) =>
     page.evaluate(
         async ({ step, count }) => {
             const { view, appImport } = window.editorTest
-            const { time } = await appImport<typeof import('../../src/time')>('/src/time.ts')
+            const { keepClockWhile, time } =
+                await appImport<typeof import('../../src/time')>('/src/time.ts')
             const vue = performance
                 .getEntriesByType('resource')
                 .find((entry) => new URL(entry.name).pathname.endsWith('/deps/vue.js'))!.name
             const { watch } = (await import(vue)) as typeof import('vue')
             window.moving = true
+            const release = keepClockWhile(() => true)
             await new Promise<void>((resolve) => {
                 let left = count
                 const stop = watch(
@@ -59,6 +61,7 @@ const moveOnTicks = (page: Page, step: number, count = Infinity) =>
                             return
                         }
                         stop()
+                        release()
                         resolve()
                     },
                     { flush: 'sync' },

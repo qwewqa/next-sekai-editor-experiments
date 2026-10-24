@@ -706,6 +706,46 @@ test('a fully scene-pinned cache preserves its budget and gives new draws only f
     }
 })
 
+test('frame-only geometry lasts until its frame is presented or its last scene pin goes', () => {
+    const cache = new PathGraphicsCache()
+    const rect = (x: number) => {
+        const path = new DrawPath()
+        path.rect(x, 0, 10, 10)
+        return path
+    }
+    const get = (path: DrawPath, frameOnly = true) =>
+        cache.get(path, { color: 0 }, false, 'nonzero', 'black', undefined, 1, frameOnly)
+    const kept = rect(0)
+    try {
+        cache.beginFrame()
+        const reused = get(kept, false)
+        const keptBytes = cache.retainedBytes
+        const current = rect(20)
+        const once = get(current)
+        assert.equal(get(current), once, 'its own frame shares it')
+        const captured = get(rect(40))
+        const release = cache.pin([captured])
+        assert.ok(release, 'a retained scene can capture it')
+        cache.endFrame()
+        assert.equal(once.destroyed, false, 'queued geometry survives presentation')
+        cache.beginFrame()
+        assert.equal(once.destroyed, true)
+        assert.equal(captured.destroyed, false)
+        assert.equal(get(kept, false), reused)
+        release()
+        assert.equal(captured.destroyed, false, 'its scene can still be in the submitted frame')
+        cache.endFrame()
+        cache.beginFrame()
+        assert.equal(captured.destroyed, true)
+        assert.equal(cache.retainedBytes, keptBytes)
+        assert.equal(cache.pinnedBytes, 0)
+        assert.equal(cache.stats.trimmed, 0)
+        assert.equal(reused.destroyed, false)
+    } finally {
+        cache.destroy()
+    }
+})
+
 test('destroyed scene pins release idempotently without corrupting later cache accounting', () => {
     const cache = new PathGraphicsCache()
     const path = new DrawPath('M0 0 H10 V10 H0Z')

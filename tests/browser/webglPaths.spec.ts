@@ -251,3 +251,63 @@ test('WebGL retained paths preserve native Canvas geometry and strokes', async (
         expect.soft(result.mismatchedInterior, JSON.stringify(result)).toBeLessThan(4)
     }
 })
+
+test('a frame’s own paths leave the path cache after the frame while passed paths stay', async ({
+    page,
+}) => {
+    await page.addInitScript(() => performance.setResourceTimingBufferSize(5000))
+    await page.route('**/__path-cache', (route) =>
+        route.fulfill({
+            contentType: 'text/html',
+            body: '<!doctype html><html><body></body></html>',
+        }),
+    )
+    await page.goto('/__path-cache')
+    const frames = await page.evaluate(async () => {
+        const { getDrawContext, disposeDrawContext } = await import('/src/rendering/context.ts')
+        // The context's own module instance, so the passed path is recognized as one.
+        const pathUrl = performance
+            .getEntriesByType('resource')
+            .reverse()
+            .find(({ name }) => new URL(name).pathname === '/src/rendering/path.ts')?.name
+        if (!pathUrl) throw new Error('The renderer did not load its path implementation')
+        const { DrawPath } = (await import(pathUrl)) as typeof import('/src/rendering/path.ts')
+        const canvas = document.createElement('canvas')
+        canvas.width = canvas.height = 64
+        const ctx = getDrawContext(canvas)
+        await ctx.ready
+        const { paths } = ctx as unknown as {
+            paths: { retainedBytes: number; stats: { native: number; fallback: number } }
+        }
+        const kept = new DrawPath()
+        kept.rect(4, 4, 8, 8)
+        const frames = []
+        try {
+            for (let y = 20; y < 28; y++) {
+                ctx.clear()
+                ctx.fillStyle = ctx.strokeStyle = '#fff'
+                ctx.fill(kept)
+                ctx.save()
+                ctx.beginPath()
+                ctx.rect(0, 0, 64, y + 10)
+                ctx.clip()
+                ctx.beginPath()
+                ctx.moveTo(0, y)
+                ctx.lineTo(64, y)
+                ctx.stroke()
+                ctx.restore()
+                ctx.flush()
+                frames.push({
+                    bytes: paths.retainedBytes,
+                    builds: paths.stats.native + paths.stats.fallback,
+                })
+            }
+        } finally {
+            disposeDrawContext(canvas)
+        }
+        return frames
+    })
+    // Each frame builds its own line and clip anew; the passed rectangle is built once.
+    expect(frames.map(({ builds }) => builds)).toEqual(frames.map((_, i) => 3 + 2 * i))
+    expect(frames.map(({ bytes }) => bytes)).toEqual(frames.map(() => frames[0]!.bytes))
+})

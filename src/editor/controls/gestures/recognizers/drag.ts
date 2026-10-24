@@ -1,7 +1,7 @@
 import { ref, watch } from 'vue'
 import { replaceState, state } from '../../../../history'
 import { settings } from '../../../../settings'
-import { time } from '../../../../time'
+import { clockNow, keepClockWhile, time } from '../../../../time'
 import { unlerp } from '../../../../utils/math'
 import { editorNavigation, getControlBounds } from '../../../navigation'
 import { clearNotification, notification } from '../../../notification'
@@ -20,6 +20,8 @@ import type { HoldPoint, Modifiers } from '../pointer'
 import type { Recognizer } from './recognizer'
 
 export const isDragging = ref(0)
+// A drag's update and its edge pan run on clock ticks.
+keepClockWhile(() => isDragging.value > 0)
 
 // Counts view moves the chart's own view box doesn't show, such as another pane's scroll.
 const paneMoves = ref(0)
@@ -226,7 +228,7 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                 const dy = p.y - active.sy
                 scrollViewYBy(dy)
                 updates.push({
-                    t: time.value.now,
+                    t: clockNow(),
                     dy,
                 })
                 active.sy = p.y
@@ -258,8 +260,9 @@ export const drag = (quickScroll: boolean, hold?: HoldPoint): Recognizer<1> => {
                 if (view.input === 'touch') view.touchMarker = cancelled.marker
             }
             if (!cancelled && active?.type === 'scroll' && settings.touchScrollInertia) {
+                const now = clockNow()
                 const dy = updates
-                    .filter(({ t }) => time.value.now - t <= 0.1)
+                    .filter(({ t }) => now - t <= 0.1)
                     .reduce((sum, { dy }) => sum + dy, 0)
                 view.scrollingY = {
                     type: 'inertia',
