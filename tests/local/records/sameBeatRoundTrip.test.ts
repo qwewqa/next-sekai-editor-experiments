@@ -122,9 +122,9 @@ test(
     },
 )
 
-// The corpus is third-party and never committed; this runs only where NSE_CORPUS_DIR names it.
-const corpusDir = process.env.NSE_CORPUS_DIR
-const corpus = corpusDir && existsSync(corpusDir) ? corpusDir : undefined
+// The corpus is third-party and never committed: local-only, like coconut, or where NSE_CORPUS_DIR names it.
+const corpusDir = process.env.NSE_CORPUS_DIR ?? 'test_level_data/same-beat-corpus'
+const corpus = existsSync(corpusDir) ? corpusDir : undefined
 
 test(
     'same-beat order survives the round trip in every corpus level',
