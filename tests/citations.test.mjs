@@ -27,6 +27,10 @@ const RULES = [
         pattern: /(?<!['"`])\b(?:D(?!65\b)|U)\d{1,3}\b|\bX-\d+\b|\bI-\d+\b/,
     },
     {
+        name: 'a review finding id',
+        pattern: /\b(?:ADV|SF|UI|AR|HS|PF|SP|DEF|INV|RM|TH)\d*-\d+[a-z]?\b/,
+    },
+    {
         name: 'an invariant id',
         pattern: /\bI\d{1,3}\b/,
         // The fault matrix names its own invariants I1 to I10.
