@@ -4,6 +4,7 @@ import { setImmediate as settleTasks } from 'node:timers/promises'
 import type { Command } from '../../src/editor/commands'
 import { runCommand } from '../../src/editor/commands/runCommand'
 import { onHistoryAction, type HistoryAction } from '../../src/history/actions'
+import { playbackBgm } from '../../src/history/bgm'
 import {
     displayedPeekKey,
     entryKey,
@@ -726,6 +727,29 @@ test('Restore with an unchanged BGM restores the step’s offset', async () => {
     await restoreEntry(key(1))
     assert.equal(nameOf(liveState.value), 'old')
     assert.equal(liveState.value.bgm.offset, 3)
+})
+
+test('a step’s peek plays with its offset only when its BGM is the current one', async () => {
+    const buffer = {} as AudioBuffer
+    resetStates({
+        isDirty: false,
+        step: initialStep(),
+        state: fake('live', 0, { bgm: { ...bgmOf('new', 7), buffer } }),
+    })
+    source({
+        [key(1)]: { state: fake('old', 0, { bgm: bgmOf('old', 3) }), time: 1 },
+        [key(2)]: { state: fake('same', 0, { bgm: bgmOf('new', 5) }), time: 2 },
+    })
+    await peekEntry(key(1))
+    // The peek shows the step’s offset; playback keeps the live one with the live audio.
+    assert.equal(state.value.bgm.offset, 3)
+    assert.equal(playbackBgm.value.offset, 7)
+    assert.equal(playbackBgm.value.buffer, buffer)
+    await peekEntry(key(2))
+    assert.equal(playbackBgm.value.offset, 5)
+    assert.equal(playbackBgm.value.buffer, buffer)
+    leavePeek()
+    assert.equal(playbackBgm.value.offset, 7)
 })
 
 test('Restore while the peek still loads reads the entry once', async () => {
