@@ -11,6 +11,7 @@ import {
     type TextureSource,
 } from 'pixi.js'
 import { EventStrokeGeometry, EventStrokeMesh, type PreparedEventStroke } from './eventStrokeMesh'
+import { arcSegments, roundCappedSegments } from './geometry'
 import {
     equalMatrix,
     identity,
@@ -22,7 +23,12 @@ import {
 } from './matrix'
 import { DrawGradient, parseColor, type DrawStyle } from './paint'
 import { DrawPath } from './path'
-import { PathGraphicsCache, resolutionScale, type PathGraphicsResource } from './pathGraphics'
+import {
+    curveTolerance,
+    PathGraphicsCache,
+    resolutionScale,
+    type PathGraphicsResource,
+} from './pathGraphics'
 import { PathMeshGeometry } from './pathMesh'
 import { AxisLineSprite } from './pixiAxisLine'
 import { PaintStyles } from './pixiPaint'
@@ -263,6 +269,7 @@ export class WebGLDrawContext {
     private readonly retainedNoteBodies = new Map<Container, RetainedNoteBodies>()
     private readonly waveforms = new WaveformMeshes()
     private readonly stageMeshes = new StageMeshes()
+    private segmentVertices = new Float64Array(0)
     constructor(
         readonly canvas: HTMLCanvasElement | RenderSurface,
         resources?: RenderingResources,
@@ -1211,6 +1218,51 @@ export class WebGLDrawContext {
         if (!this.ensure()) return
         const shape = path ?? this.currentPath()
         if (shape) this.drawShape(shape, true)
+    }
+    /**
+     * Strokes separate segments (x0, y0, x1, y1, …) as `stroke()` strokes a
+     * moveTo/lineTo pair for each, without building and tessellating a path.
+     * An opaque round-capped colour draws their overlapping triangles directly;
+     * other styles stroke the path, which unions them.
+     */
+    strokeSegments(segments: ArrayLike<number>) {
+        if (!this.ensure()) return
+        const s = this.state
+        const color = typeof s.strokeStyle === 'string' ? parseColor(s.strokeStyle) : undefined
+        if (
+            !color ||
+            color[3] * s.globalAlpha < 1 ||
+            s.lineCap !== 'round' ||
+            s.dash.length ||
+            s.globalCompositeOperation !== 'source-over'
+        ) {
+            const path = new DrawPath()
+            for (let i = 0; i + 3 < segments.length; i += 4) {
+                path.moveTo(segments[i] ?? 0, segments[i + 1] ?? 0)
+                path.lineTo(segments[i + 2] ?? 0, segments[i + 3] ?? 0)
+            }
+            this.drawShape(path, true)
+            return
+        }
+        if (!this.mutate()) return
+        // The path cache's tolerance at this transform, so the caps match a stroked path's.
+        const tolerance = curveTolerance / resolutionScale(s.matrix)
+        const arcs = arcSegments(Math.PI, s.lineWidth / 2, tolerance)
+        const size = (segments.length >> 2) * (6 + 6 * arcs) * 6
+        if (this.segmentVertices.length < size) this.segmentVertices = new Float64Array(size)
+        const vertices = this.segmentVertices
+        const [r, g, b] = color
+        let length = 0
+        roundCappedSegments(segments, s.lineWidth, tolerance, (x, y) => {
+            vertices[length++] = x
+            vertices[length++] = y
+            vertices[length++] = r
+            vertices[length++] = g
+            vertices[length++] = b
+            vertices[length++] = 1
+        })
+        if (length)
+            this.parent().addChild(this.stageMeshes.draw(vertices.subarray(0, length), s.matrix))
     }
     /** Fake-connector cross: union the two certified stroke boundaries when possible. */
     strokeFakeMarker(path: DrawPath) {
