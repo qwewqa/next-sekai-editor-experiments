@@ -601,7 +601,7 @@ test('sound effects without a usable #PERFECT are refused', async () => {
     )
 })
 
-test('sound effects longer than 120 seconds in all are refused', async () => {
+test('sound effects longer than 120 seconds in total are refused', async () => {
     await expectRefused(
         'effect',
         valid('effect', {
@@ -621,7 +621,7 @@ test('sound effects longer than 120 seconds in all are refused', async () => {
             },
         }),
         'audioLength',
-        'This file’s sound effects audio is longer than 120 seconds in all.',
+        'This file’s sound effects audio is longer than 120 seconds in total.',
     )
 })
 

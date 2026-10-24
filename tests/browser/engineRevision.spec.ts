@@ -8,7 +8,7 @@ const older =
     'This level was made for an older engine revision. It now uses the current revision, so check that it still looks and plays as expected.'
 // A newer revision is content this build does not read, so Open says so in place of the warning.
 const newer =
-    'This level has parts this version of the editor does not support. They were left out.'
+    'This level has parts that this version of the editor does not support. They were left out.'
 const recoveryKey = 'sonolus-next-sekai-editor.autoSave.levelData'
 const asideKey = 'sonolus-next-sekai-editor.autoSave.unreadable'
 

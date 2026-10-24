@@ -279,7 +279,7 @@
                 "meter": "invalid meter",
                 "missingMeter": "no meter for measure {0}"
             },
-            "unsupportedParts": "This level has parts this version of the editor does not support. They were left out."
+            "unsupportedParts": "This level has parts that this version of the editor does not support. They were left out."
         },
         "paste": {
             "title": "Paste",
@@ -554,7 +554,7 @@
                 "particleCount": "This file’s {0} effect \"{1}\" has more than {2} particles.",
                 "effectGroups": "This file’s {0} effect \"{1}\" has more than {2} particle groups.",
                 "noPerfect": "This file’s {0} audio has no usable #PERFECT clip.",
-                "audioLength": "This file’s {0} audio is longer than {1} seconds in all.",
+                "audioLength": "This file’s {0} audio is longer than {1} seconds in total.",
                 "packageTooLarge": "This item is larger than {0} once stored.",
                 "storeFailed": "This item could not be stored."
             },
@@ -592,7 +592,7 @@
                 "tooManyEffects": "This item’s {0} data has more than {1} effects.",
                 "particleCount": "This item’s {0} effect \"{1}\" has more than {2} particles.",
                 "noPerfect": "This item’s {0} audio has no usable #PERFECT clip.",
-                "audioLength": "This item’s {0} audio is longer than {1} seconds in all.",
+                "audioLength": "This item’s {0} audio is longer than {1} seconds in total.",
                 "tooManyParticles": "This item’s {0} data has more than {1} particles.",
                 "tooManyGroups": "This item’s {0} data has more than {1} particle groups.",
                 "effectGroups": "This item’s {0} effect \"{1}\" has more than {2} particle groups.",
@@ -2063,7 +2063,7 @@
         "exported": "Exported to {0}",
         "notLevelData": "\"{0}\" is not level data.",
         "fileType": "Next SEKAI level data",
-        "unsupportedParts": "\"{0}\" has parts this version of the editor does not support."
+        "unsupportedParts": "\"{0}\" has parts that this version of the editor does not support."
     },
     "peek": {
         "loadingShort": "Loading…",
@@ -2109,7 +2109,7 @@
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "\"{0}\" could not be written.",
         "notPutBack": "\"{0}\" was emptied and its contents could not be restored.",
-        "openedContentGone": "\"{0}\" no longer holds the content you opened.",
+        "openedContentGone": "\"{0}\" no longer holds the version you opened.",
         "replacedContentGone": "\"{0}\" no longer holds its earlier contents.",
         "title": "Save Project File",
         "titleAs": "Save As",
@@ -2131,7 +2131,7 @@
         "someStepsNotKeptLine": "Some earlier Timeline steps were not kept.",
         "someStepsMayNotBeIncluded": "Saved to {0}. Some earlier Timeline steps may not be included.",
         "someStepsMayNotBeIncludedLine": "Some earlier Timeline steps may not be included.",
-        "committedState": "The file holds the last stored version of the session open in another tab.",
+        "committedState": "This session is open in another tab. The file holds its last stored version.",
         "noChanges": "No changes since {0} was downloaded",
         "noChangesSaved": "No changes since {0} was saved",
         "noChangesOpened": "No changes since {0} was opened",
@@ -2282,11 +2282,11 @@
         "openLevel": "Open the Level",
         "newerValues": {
             "title": "\"{0}\" Uses Newer Features",
-            "body": "This level uses values this version of the editor does not support. Opening a separate copy replaces those values with defaults.",
+            "body": "This level uses values that this version of the editor does not support. Opening a separate copy replaces those values with defaults.",
             "openCopy": "Open a Copy"
         },
         "unsavedChanges": "Opened {0}. You have unsaved changes to it from {1}.",
-        "unsavedEarlier": "Unsaved changes to an earlier version of {0} ({1}) are in Recent Sessions.",
+        "unsavedEarlier": "You have unsaved changes to an earlier version of {0} ({1}). They are in Recent Sessions.",
         "olderVersion": "This is an older version of {0}. A newer one from {1} is in Recent Sessions.",
         "restoreIt": "Restore Session",
         "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."

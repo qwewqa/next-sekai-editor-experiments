@@ -2109,7 +2109,7 @@
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "\"{0}\" yazılamadı.",
     "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi.",
-    "openedContentGone": "\"{0}\" artık açtığınız içeriği içermiyor.",
+    "openedContentGone": "\"{0}\" artık açtığınız sürümü içermiyor.",
     "replacedContentGone": "\"{0}\" artık önceki içeriğini içermiyor.",
     "title": "Proje Dosyasını Kaydet",
     "titleAs": "Farklı Kaydet",

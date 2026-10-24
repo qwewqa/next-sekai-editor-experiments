@@ -349,7 +349,7 @@ test('a feedback for a session another tab holds says so to assistive technology
     })
     expect(said.plain).toBe('Saved to restored.nxsp')
     expect(said.committed).toBe(
-        'Saved to restored.nxsp The file holds the last stored version of the session open in another tab.',
+        'Saved to restored.nxsp This session is open in another tab. The file holds its last stored version.',
     )
 })
 
