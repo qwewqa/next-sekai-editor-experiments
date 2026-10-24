@@ -544,7 +544,7 @@ T: Opened My Level.nse
 T: Imported a level
 
 #origin.autoSave en
-T: Recovered from auto save
+T: Opened the old auto save
 
 #origin.recovery en
 T: Recovered changes

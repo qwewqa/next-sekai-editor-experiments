@@ -953,6 +953,7 @@
     "localData": {
       "title": "Données locales",
       "recoveryHeading": "Récupération",
+      "startupNoticesHeading": "Notifications au démarrage",
       "discard": "Abandonner…",
       "discardConfirm": "Abandonner",
       "cannotOpen": "(ne peut pas être ouvert dans cette version)",
@@ -964,8 +965,7 @@
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
         "listFailed": "Le travail récupéré n’a pas pu être lu",
-        "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé.",
-        "atLoad": "Notifications au démarrage"
+        "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé."
       },
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
@@ -2207,7 +2207,6 @@
   "notice": {
     "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
-    "sameFileMaybeElsewhere": "\"{0}\" est peut-être ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
     "bgmDiffers": "Ce fichier est différent de la musique d’origine, \"{0}\".",
@@ -2230,7 +2229,7 @@
     "saved": "{0} sauvegardé",
     "downloaded": "{0} téléchargé",
     "continued": "Session reprise",
-    "migrated": "Récupéré de la sauvegarde automatique",
+    "migrated": "Ancienne sauvegarde automatique ouverte",
     "restoredTo": "Restauré au {0}",
     "changedOutside": "Modifié en dehors de l’éditeur",
     "recoveredChanges": "Modifications récupérées"
@@ -2288,9 +2287,6 @@
     },
     "unsavedChanges": "{0} ouvert. Ce fichier a des modifications non sauvegardées ({1}).",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",
-    "earlierUnchecked": "{0} ouvert. Impossible de vérifier si les sessions récentes contiennent d’autres versions de ce fichier.",
-    "unsavedEarlierMaybe": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont peut-être dans les sessions récentes.",
-    "unsavedChangesMaybe": "{0} ouvert. Ce fichier a peut-être des modifications non sauvegardées ({1}).",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente ({1}) est dans les sessions récentes.",
     "restoreIt": "Restaurer la session",
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."

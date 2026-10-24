@@ -953,6 +953,7 @@
     "localData": {
       "title": "Yerel Veriler",
       "recoveryHeading": "Kurtarma",
+      "startupNoticesHeading": "Başlangıç Bildirimleri",
       "discard": "Sil…",
       "discardConfirm": "Sil",
       "cannotOpen": "(bu sürümde açılamıyor)",
@@ -964,8 +965,7 @@
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "listFailed": "Kurtarılmış çalışma okunamadı",
-        "downloadFailed": "Kurtarılmış çalışma indirilemedi.",
-        "atLoad": "Başlangıç Bildirimleri"
+        "downloadFailed": "Kurtarılmış çalışma indirilemedi."
       },
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
@@ -2207,7 +2207,6 @@
   "notice": {
     "useOpenFile": "Bir dosya açmak için Aç’ı kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
-    "sameFileMaybeElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık olabilir, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
     "bgmDiffers": "Bu, özgün arka plan müziği olan \"{0}\" dosyasından farklı bir dosya.",
@@ -2230,7 +2229,7 @@
     "saved": "{0} kaydedildi",
     "downloaded": "{0} indirildi",
     "continued": "Devam ettirildi",
-    "migrated": "Otomatik kaydetmeden kurtarıldı",
+    "migrated": "Eski otomatik kaydetme verisi açıldı",
     "restoredTo": "{0} anına geri yüklendi",
     "changedOutside": "Editör dışında değiştirildi",
     "recoveredChanges": "Değişiklikler kurtarıldı"
@@ -2288,9 +2287,6 @@
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz var ({1}).",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
-    "earlierUnchecked": "{0} açıldı. Son Oturumlar’da bu dosyanın başka sürümleri olup olmadığı denetlenemedi.",
-    "unsavedEarlierMaybe": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da olabilir.",
-    "unsavedChangesMaybe": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz olabilir ({1}).",
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. Daha yeni bir sürüm ({1}) Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
     "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."

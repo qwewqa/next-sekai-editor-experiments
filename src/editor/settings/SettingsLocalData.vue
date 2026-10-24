@@ -32,9 +32,9 @@ import SettingsSection from './SettingsSection.vue'
 import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
 
 // Settings › Local Data (Part 1 §1.4.14): the storage line, the Storage subsection (what the
-// browser holds, why changes are not being stored, Delete Sessions…) and Recovery: Open History,
-// the rows for what the recovery order set aside, Export Raw Data… and this load's notices. In
-// safe mode it only reads: no Delete Sessions…, no Discard….
+// browser holds, why changes are not being stored, Delete Sessions…), Recovery (Open History, the
+// rows for what the recovery order set aside, Export Raw Data…) and Startup Notices, this load's
+// notices. In safe mode it only reads: no Delete Sessions…, no Discard….
 
 const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
@@ -473,15 +473,15 @@ const exportRaw = async () => {
                 </button>
                 <span class="text-sm text-fg/80">{{ strings.exportRawNote }}</span>
             </div>
+        </div>
 
-            <div v-if="loadNotices.length" class="flex flex-col gap-1" data-at-load>
-                <div class="text-sm font-bold text-fg/80">{{ strings.recovery.atLoad }}</div>
-                <ul class="flex list-disc flex-col gap-1 pl-5">
-                    <li v-for="(notice, i) in loadNotices" :key="i">
-                        {{ notice.message() }}
-                    </li>
-                </ul>
-            </div>
+        <div v-if="loadNotices.length" class="flex flex-col gap-3" data-at-load>
+            <h3 class="text-sm font-bold text-fg/80">{{ strings.startupNoticesHeading }}</h3>
+            <ul class="flex list-disc flex-col gap-1 pl-5">
+                <li v-for="(notice, i) in loadNotices" :key="i">
+                    {{ notice.message() }}
+                </li>
+            </ul>
         </div>
     </SettingsSection>
 </template>

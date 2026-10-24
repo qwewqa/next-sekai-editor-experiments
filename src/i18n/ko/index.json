@@ -953,6 +953,7 @@
     "localData": {
       "title": "로컬 데이터",
       "recoveryHeading": "복구",
+      "startupNoticesHeading": "시작 알림",
       "discard": "버리기…",
       "discardConfirm": "버리기",
       "cannotOpen": "(이 버전에서는 열 수 없음)",
@@ -964,8 +965,7 @@
         "autoSave": "이전 자동 저장 · {0}",
         "unreadable": "읽을 수 없는 복구된 작업, {0} · {1}",
         "listFailed": "복구된 작업을 읽지 못했습니다",
-        "downloadFailed": "복구된 작업을 다운로드하지 못했습니다.",
-        "atLoad": "시작 알림"
+        "downloadFailed": "복구된 작업을 다운로드하지 못했습니다."
       },
       "openHistory": "기록 열기",
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
@@ -2207,7 +2207,6 @@
   "notice": {
     "useOpenFile": "파일을 열려면 열기를 사용하세요.",
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
-    "sameFileMaybeElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있을 수 있어 이것은 별도의 사본입니다.",
     "storageUnavailable": "편집기가 이 브라우저의 저장 공간에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",
     "bgmDiffers": "이 파일은 원래 배경음 \"{0}\"과(와) 다른 파일입니다.",
@@ -2230,7 +2229,7 @@
     "saved": "{0} 저장됨",
     "downloaded": "{0} 다운로드됨",
     "continued": "이어서 열림",
-    "migrated": "자동 저장에서 복구됨",
+    "migrated": "이전 자동 저장 열림",
     "restoredTo": "{0} 시점으로 복원됨",
     "changedOutside": "편집기 밖에서 변경됨",
     "recoveredChanges": "변경 사항 복구됨"
@@ -2288,9 +2287,6 @@
     },
     "unsavedChanges": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있습니다.",
     "unsavedEarlier": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있습니다.",
-    "earlierUnchecked": "{0}을(를) 열었습니다. 최근 세션에 이 파일의 다른 버전이 있는지 확인하지 못했습니다.",
-    "unsavedEarlierMaybe": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있을 수 있습니다.",
-    "unsavedChangesMaybe": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있을 수 있습니다.",
     "olderVersion": "{0}의 이전 버전입니다. {1}의 최신 버전이 최근 세션에 있습니다.",
     "restoreIt": "세션 복원",
     "damagedHistory": "\"{0}\"의 기록이 손상되었습니다. 저장하면 별도의 파일이 만들어집니다."

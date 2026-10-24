@@ -953,6 +953,7 @@
     "localData": {
       "title": "本機資料",
       "recoveryHeading": "恢復",
+      "startupNoticesHeading": "啟動通知",
       "discard": "捨棄…",
       "discardConfirm": "捨棄",
       "cannotOpen": "（此版本無法開啟）",
@@ -964,8 +965,7 @@
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
         "listFailed": "無法讀取已恢復的內容",
-        "downloadFailed": "無法下載已恢復的內容。",
-        "atLoad": "啟動通知"
+        "downloadFailed": "無法下載已恢復的內容。"
       },
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更",
@@ -2207,7 +2207,6 @@
   "notice": {
     "useOpenFile": "要開啟檔案，請使用 \"開啟\"。",
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
-    "sameFileMaybeElsewhere": "\"{0}\" 可能已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
     "bgmDiffers": "這與原本的 BGM \"{0}\" 不是同一個檔案。",
@@ -2230,7 +2229,7 @@
     "saved": "已儲存 {0}",
     "downloaded": "已下載 {0}",
     "continued": "已繼續",
-    "migrated": "已從自動儲存恢復",
+    "migrated": "已開啟舊的自動儲存",
     "restoredTo": "已還原到 {0}",
     "changedOutside": "在編輯器外變更",
     "recoveredChanges": "已復原變更"
@@ -2288,9 +2287,6 @@
     },
     "unsavedChanges": "已開啟 {0}。您在 {1} 對它有未儲存的變更。",
     "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",
-    "earlierUnchecked": "已開啟 {0}。無法檢查「最近工作階段」中是否有它的其他版本。",
-    "unsavedEarlierMaybe": "對 {0} 早期版本的未儲存變更（{1}）可能在「最近工作階段」中。",
-    "unsavedChangesMaybe": "已開啟 {0}。您在 {1} 對它可能有未儲存的變更。",
     "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在「最近工作階段」中。",
     "restoreIt": "還原工作階段",
     "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"

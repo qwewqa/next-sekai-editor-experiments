@@ -147,33 +147,16 @@ const earlierMessage = (notice: EarlierNotice, name: string) => {
     const { open } = i18n.value
     switch (notice.kind) {
         case 'unsavedChanges':
-            return () =>
-                interpolateRaw(
-                    notice.maybe ? open.unsavedChangesMaybe : open.unsavedChanges,
-                    name,
-                    when,
-                )
+            return () => interpolateRaw(open.unsavedChanges, name, when)
         case 'unsavedEarlier':
-            return () =>
-                interpolateRaw(
-                    notice.maybe ? open.unsavedEarlierMaybe : open.unsavedEarlier,
-                    name,
-                    when,
-                )
+            return () => interpolateRaw(open.unsavedEarlier, name, when)
         case 'olderVersion':
             return () => interpolateRaw(open.olderVersion, name, when)
     }
 }
 
-/**
- * The open's own line: "Opened coconut.nxsp", or, when Recent Sessions could not be checked for
- * other versions of it, the line that says so (it is never an error: the open succeeded).
- */
-const openedLine = (name: string, unchecked: boolean) =>
-    interpolate(
-        () => (unchecked ? i18n.value.open.earlierUnchecked : i18n.value.history.openedFile),
-        name,
-    )
+/** The open's own line: "Opened coconut.nxsp". */
+const openedLine = (name: string) => interpolate(() => i18n.value.history.openedFile, name)
 
 /**
  * Shows the open's notice: an earlier session's, or "Opened coconut.nxsp" with Reopen (none when
@@ -183,12 +166,11 @@ const notifyOpened = (
     name: string,
     notice: EarlierNotice | undefined,
     leftSessionId: string | undefined,
-    unchecked: boolean,
     offer = true,
 ) => {
     // The chain with unsaved changes is the session just left: only Reopen shows (§1.4.1).
     if (!notice || (notice.kind === 'unsavedChanges' && notice.chain.sessionId === leftSessionId)) {
-        notifyLeft(openedLine(name, unchecked), offer)
+        notifyLeft(openedLine(name), offer)
         return
     }
     dismissNoticeCard()
@@ -437,7 +419,6 @@ const openRequestedProject = async (
     if (own) {
         cancel()
         let earlier: EarlierNotice | undefined
-        let unchecked = false
         if (revision) {
             const chains = await project.earlierChains(opened.project?.id ?? '', own.chainId)
             if (chains.storedRead === 'value')
@@ -445,14 +426,13 @@ const openRequestedProject = async (
                     { id: revision.id, ancestors: revision.ancestors },
                     chains.storedValue,
                 )
-            else unchecked = true
         }
         if (!request.isCurrent()) return
         // Last: leaving a peek ends the request.
         leavePeek()
         // Opening it proves the user has the download (§1.3.4).
         if (own.file.event === 'downloaded') confirmFile()
-        notifyOpened(name, earlier, undefined, unchecked, false)
+        notifyOpened(name, earlier, undefined, false)
         return
     }
 
@@ -467,7 +447,7 @@ const openRequestedProject = async (
                 openState(live, descriptor, { origin: 'import', source: captureName(name) })
             })
         )
-            notifyLeft(interpolate(() => i18n.value.history.openedFile, name))
+            notifyLeft(openedLine(name))
         return
     }
 
@@ -557,22 +537,14 @@ const openRequestedProject = async (
     // The session this open left, which Reopen offers.
     const left = previousSession.value?.sessionId
     let earlier: EarlierNotice | undefined
-    let unchecked = false
     if (revision) {
+        // A read that fails leaves the open's ordinary notice: the open succeeded.
         const chains = await project.earlierChains(opened.project?.id ?? '', stored.chainId)
-        switch (chains.storedRead) {
-            case 'value':
-                earlier = earlierNotice(
-                    { id: revision.id, ancestors: revision.ancestors },
-                    chains.storedValue,
-                )
-                break
-            case 'failed':
-                // The open succeeded, so it is never failed by this read: its line says the
-                // earlier sessions could not be checked, as the heading of every other row.
-                unchecked = true
-                break
-        }
+        if (chains.storedRead === 'value')
+            earlier = earlierNotice(
+                { id: revision.id, ancestors: revision.ancestors },
+                chains.storedValue,
+            )
     }
     if (!request.isCurrent()) return
     const bgm = opened.media.bgm
@@ -601,8 +573,7 @@ const openRequestedProject = async (
     }
     const showRows = (rows: NoticeLine[]) => {
         const [only] = rows
-        // Alone, a row would read as an open whose earlier sessions were checked and found none.
-        if (rows.length === 1 && only && !unchecked)
+        if (rows.length === 1 && only)
             notify(only.message, {
                 card: true,
                 severity: only.severity ?? 'info',
@@ -612,38 +583,32 @@ const openRequestedProject = async (
             notify(() => rows.map((row) => row.message()).join(String.fromCharCode(10)), {
                 lines: [
                     {
-                        message: openedLine(name, unchecked),
+                        message: openedLine(name),
                         heading: true,
                     },
                     ...rows,
                 ],
             })
     }
-    if (elsewhere)
+    // A binding check that could not tell (`unknown`) opens the copy with the ordinary notice;
+    // the status bar names the copy.
+    if (bound === 'yes')
         showRows([
             {
-                message: interpolate(
-                    () =>
-                        bound === 'unknown'
-                            ? i18n.value.notice.sameFileMaybeElsewhere
-                            : i18n.value.notice.sameFileElsewhere,
-                    file.name,
-                ),
+                message: interpolate(() => i18n.value.notice.sameFileElsewhere, file.name),
                 severity: 'info',
             },
             ...(patchRow ? [patchRow] : []),
         ])
-    else if (line && line.kind !== 'newerPatch') {
-        const message = partialMessage(line)
-        if (unchecked) showRows([{ message: () => message, severity: 'warning' }])
-        else notify(() => message, { card: true, severity: 'warning' })
-    } else if (patchRow && !earlier) {
+    else if (line && line.kind !== 'newerPatch')
+        notify(() => partialMessage(line), { card: true, severity: 'warning' })
+    else if (patchRow && !earlier) {
         dismissNoticeCard()
         showRows([patchRow, ...(bgmMissing() ? [bgmRow] : [])])
     } else if (!earlier && bgmMissing()) {
         dismissNoticeCard()
         showRows([bgmRow])
-    } else notifyOpened(name, earlier, left, unchecked)
+    } else notifyOpened(name, earlier, left)
 }
 
 /** How Replace's keep-first went (§1.4.7): only `kept` lets it write. */

@@ -758,7 +758,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 
 | Id | Kind | `data` | Meaning | Title |
 | --- | --- | --- | --- | --- |
-| `nse.origin` | `init` entry or step; the `continue` entry of a `.nxsp` open | `{origin: new \| import \| autoSave \| recovery, source?: NameText}`, `source` only with `import` | How the chain began: a new chart, an import (an opened file's name in `source`), the migration of an old auto save, a recovery from Local Data. A `.nxsp` open writes it as its `continue`. | "Started a new level", "Opened {source}" / "Imported a level", "Recovered from auto save", "Recovered changes" |
+| `nse.origin` | `init` entry or step; the `continue` entry of a `.nxsp` open | `{origin: new \| import \| autoSave \| recovery, source?: NameText}`, `source` only with `import` | How the chain began: a new chart, an import (an opened file's name in `source`), the migration of an old auto save, a recovery from Local Data. A `.nxsp` open writes it as its `continue`. | "Started a new level", "Opened {source}" / "Imported a level", "Opened the old auto save", "Recovered changes" |
 | `nse.continue` | `continue` | `{fromTime: time}` | A new visit, Reopen, Restore Session or a fork; `fromTime` the parent session's last time. | "Continued from {fromTime}" |
 | `nse.file.save` | `save` | `{file: NameText, delivery: file \| download}` | A Save of the chain to a file (or a download). | "Saved {file}", "Downloaded {file}" |
 | `nse.file.export` | `export` | `{file: NameText, delivery: file \| download}` | Export Level Data. | "Exported {file}" |
@@ -950,7 +950,7 @@ A first Save of a chain of three states (`05a-sessions-first-save.nxsp` of the c
 ```json
 {"version":1,
  "entries":[
-  {"kind":"init","operation":{"id":"nse.origin","data":{"origin":"autoSave"},"version":1,"fallback":{"locale":"en","text":"Recovered from auto save"}},"time":1792746001000,"snapshot":"6caa811a…","noteCount":1},
+  {"kind":"init","operation":{"id":"nse.origin","data":{"origin":"autoSave"},"version":1,"fallback":{"locale":"en","text":"Opened the old auto save"}},"time":1792746001000,"snapshot":"6caa811a…","noteCount":1},
   {"kind":"edit","step":{"kind":"edit","operation":{"id":"nse.note.add","data":{"created":1},"version":1,"fallback":{…}}},"time":1792746002000,"snapshot":"7e372c19…","noteCount":2,"dirty":true},
   {"kind":"edit","step":{…"nse.note.add"…},"time":1792746003000,"snapshot":"2e159c27…","noteCount":3,"dirty":true},
   {"kind":"export","operation":{"id":"nse.file.export","data":{"file":{"text":"Small.nsld.gz"},"delivery":"download"},…},"time":1792746004000,"snapshot":"2e159c27…","noteCount":3,"dirty":true},

@@ -21,7 +21,7 @@ export type MigrationBatch = StateBatch & {
     ids: { chainId: string; docId: string; lineageId: string; sessionId: string }
     /** The slot's file name, as the import rule names it (§1.3.5). */
     sourceName?: string
-    /** The `init` entry's label: "Recovered from auto save". */
+    /** The `init` entry's label: "Opened the old auto save". */
     operation: JsonValue
     appVersion: string
     wall: number
