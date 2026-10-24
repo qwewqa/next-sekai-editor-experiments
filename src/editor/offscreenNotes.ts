@@ -43,19 +43,34 @@ export const offscreenSlotNear = (anchor: number, y: number) =>
 const offSide = (note: OffscreenNotePosition, width: number) =>
     note.right < 0 ? 'left' : note.left > width ? 'right' : undefined
 
-// Where a side badge takes a note, if one does.
-const placeOnSide = (width: number, top: number, bottom: number, inset: number, anchor: number) => {
+// The side badges' band, where its slots are held and where their notes leave.
+const sideBand = (top: number, bottom: number, inset: number) => {
     const first = top + inset
     const last = bottom - inset
-    if (!(width > 0) || last - first < BADGE) return () => undefined
-    // Less than half a badge of ride between holds reads as one double hop: one badge fixed instead.
-    const short = last - first < 3 * SLOT + BADGE / 2
     // Slot centres past these are held at the top and bottom.
     const holdTop = first + SLOT / 2 + SLOT
     const holdBottom = last - SLOT / 2 - SLOT
-    // Notes count until their slot leaves, whole slots past the holds: one goes as the next is held.
-    const exitTop = holdTop - SLOT * Math.ceil((holdTop - top + SLOT / 2) / SLOT)
-    const exitBottom = holdBottom + SLOT * Math.ceil((bottom + SLOT / 2 - holdBottom) / SLOT)
+    return {
+        first,
+        last,
+        // Less than half a badge of ride between holds reads as one double hop: one badge fixed instead.
+        short: last - first < 3 * SLOT + BADGE / 2,
+        holdTop,
+        holdBottom,
+        // Notes count until their slot leaves, whole slots past the holds: one goes as the next is held.
+        exitTop: holdTop - SLOT * Math.ceil((holdTop - top + SLOT / 2) / SLOT),
+        exitBottom: holdBottom + SLOT * Math.ceil((bottom + SLOT / 2 - holdBottom) / SLOT),
+    }
+}
+
+// Where a side badge takes a note, if one does.
+const placeOnSide = (width: number, top: number, bottom: number, inset: number, anchor: number) => {
+    const { first, last, short, holdTop, holdBottom, exitTop, exitBottom } = sideBand(
+        top,
+        bottom,
+        inset,
+    )
+    if (!(width > 0) || last - first < BADGE) return () => undefined
     return (note: OffscreenNotePosition) => {
         const side = offSide(note, width)
         if (!side) return
@@ -134,6 +149,119 @@ export const groupOffscreenNotes = <T>(
         if (placement) addToGroup(groups, note, placement)
     }
     return [...groups.values()]
+}
+
+type OffscreenSlot<T> = {
+    // Its badge between the holds.
+    group: OffscreenNoteGroup<T>
+    // Its targets with their note indices, which order a held badge's targets.
+    ranked: [number, T][]
+}
+
+/** Notes off a side by slot. Scrolling leaves them unchanged; `placeOffscreenSlots` places them. */
+export type OffscreenSlots<T = unknown> = {
+    notes: readonly OffscreenNotePosition<T>[]
+    width: number
+    slots: Map<string, OffscreenSlot<T>>
+}
+
+/** Slots `groupOffscreenNotes`'s notes; a slot whose badge `previous` shows the same keeps it. */
+export const slotOffscreenNotes = <T>(
+    notes: readonly OffscreenNotePosition<T>[],
+    width: number,
+    previous?: OffscreenSlots<T>,
+): OffscreenSlots<T> => {
+    const slots = new Map<string, OffscreenSlot<T>>()
+    notes.forEach((note, rank) => {
+        const side = isFinitePosition(note) ? offSide(note, width) : undefined
+        if (!side) return
+        const slot = Math.floor(note.y / SLOT)
+        const key = `${side}:${slot}`
+        let entry = slots.get(key)
+        if (!entry) {
+            entry = {
+                group: {
+                    side,
+                    slot,
+                    fixed: false,
+                    y: (slot + 0.5) * SLOT,
+                    spacing: SLOT,
+                    count: 0,
+                    highlighted: false,
+                    opacity: note.opacity,
+                    targets: [],
+                },
+                ranked: [],
+            }
+            // Slots keep their first notes' order.
+            slots.set(key, entry)
+        }
+        const { group } = entry
+        group.count++
+        group.highlighted ||= note.highlighted
+        group.opacity = Math.max(group.opacity, note.opacity)
+        if (note.target === undefined) return
+        group.targets.push(note.target)
+        entry.ranked.push([rank, note.target])
+    })
+    // Unchanged badges keep their objects, so they don't re-render.
+    for (const [key, entry] of slots) {
+        const kept = previous?.slots.get(key)?.group
+        if (kept && isSameOffscreenGroups([kept], [entry.group])) entry.group = kept
+    }
+    return { notes, width, slots }
+}
+
+/** `groupOffscreenNotes` for slotted notes, in a scroll's time: the same badges in the same order. */
+export const placeOffscreenSlots = <T>(
+    { notes, width, slots }: OffscreenSlots<T>,
+    top: number,
+    bottom: number,
+    inset = 0,
+    anchor = 0,
+) => {
+    const band = sideBand(top, bottom, inset)
+    if (!(width > 0) || band.last - band.first < BADGE) return []
+    // A short band takes notes by their own ys.
+    if (band.short) return groupOffscreenNotes(notes, width, top, bottom, inset, anchor)
+    const groups: OffscreenNoteGroup<T>[] = []
+    const held = new Map<string, { group: OffscreenNoteGroup<T>; targets: [number, T][] }>()
+    // Badges keep their first notes' order: a held one takes its first slot's place.
+    for (const { group, ranked } of slots.values()) {
+        const center = anchor + group.y
+        if (center < band.exitTop || center > band.exitBottom) continue
+        if (center >= band.holdTop && center <= band.holdBottom) {
+            groups.push(group)
+            continue
+        }
+        const slot = center < band.holdTop ? -Infinity : Infinity
+        const key = `${group.side}:${slot}`
+        let entry = held.get(key)
+        if (!entry) {
+            const y = slot < 0 ? band.first + SLOT / 2 : band.last - SLOT / 2
+            entry = {
+                group: {
+                    ...group,
+                    slot,
+                    fixed: true,
+                    y,
+                    count: 0,
+                    highlighted: false,
+                    targets: [],
+                },
+                targets: [],
+            }
+            held.set(key, entry)
+            groups.push(entry.group)
+        }
+        entry.group.count += group.count
+        entry.group.highlighted ||= group.highlighted
+        entry.group.opacity = Math.max(entry.group.opacity, group.opacity)
+        for (const item of ranked) entry.targets.push(item)
+    }
+    for (const { group, targets } of held.values())
+        group.targets = targets.sort((a, b) => a[0] - b[0]).map(([, target]) => target)
+    return groups
 }
 
 // A top or bottom badge's cell width, and its hit area's height.
@@ -228,19 +356,20 @@ export const isSameOffscreenGroups = <T>(
     a.every((group, index) => {
         const other = b[index]
         return (
-            group.side === other?.side &&
-            group.slot === other.slot &&
-            group.fixed === other.fixed &&
-            group.y === other.y &&
-            group.x === other.x &&
-            group.hitLeft === other.hitLeft &&
-            group.hitRight === other.hitRight &&
-            group.spacing === other.spacing &&
-            group.count === other.count &&
-            group.highlighted === other.highlighted &&
-            group.opacity === other.opacity &&
-            group.targets.length === other.targets.length &&
-            group.targets.every((target, i) => target === other.targets[i])
+            group === other ||
+            (group.side === other?.side &&
+                group.slot === other.slot &&
+                group.fixed === other.fixed &&
+                group.y === other.y &&
+                group.x === other.x &&
+                group.hitLeft === other.hitLeft &&
+                group.hitRight === other.hitRight &&
+                group.spacing === other.spacing &&
+                group.count === other.count &&
+                group.highlighted === other.highlighted &&
+                group.opacity === other.opacity &&
+                group.targets.length === other.targets.length &&
+                group.targets.every((target, i) => target === other.targets[i]))
         )
     })
 

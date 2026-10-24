@@ -7,6 +7,8 @@ import {
     hitOffscreenGroup,
     isSameOffscreenGroups,
     offscreenBadgeHitWidth,
+    placeOffscreenSlots,
+    slotOffscreenNotes,
     type OffscreenNoteGroup,
     type OffscreenNotePosition,
 } from '../../src/editor/offscreenNotes'
@@ -509,6 +511,63 @@ test('a note on a slot boundary stays in its slot wherever the anchor is', () =>
         const [badge] = groupOffscreenNotes([note(-10, -1, -0)], 300, 0, 1000, 0, anchor)
         assert.ok(badge!.slot === 0 && badge!.y === 14)
     }
+})
+
+test('slotted notes get the badges grouping gives them, in its order, at any anchor', () => {
+    let seed = 1
+    const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+    // Both sides and the lanes, a seventh on slot boundaries, mixed selection, dimming and targets.
+    const notes: OffscreenNotePosition<string>[] = Array.from({ length: 200 }, (_, index) => {
+        const left = [-40, -10, 100, 305, 320][index % 5]!
+        return {
+            left,
+            right: left + 8,
+            y: index % 7 ? Math.round(random() * 1600) - 400 : 28 * Math.round(random() * 56 - 14),
+            highlighted: random() < 0.1,
+            opacity: random() < 0.2 ? 0.25 : 1,
+            ...(random() < 0.7 ? { target: String(index) } : {}),
+        }
+    })
+    notes.push({ ...note(NaN, -1), target: 'nan' })
+    const slots = slotOffscreenNotes(notes, 300)
+    // The main pane's band, the elevation editor's, a short band, and ones too small for a badge.
+    for (const [top, bottom, inset] of [
+        [0, 400, 24],
+        [84, 400, 0],
+        [0, 100, 0],
+        [0, 40, 0],
+        [0, 20, 0],
+    ] as const)
+        // Half pixels meet every hold and exit exactly.
+        for (let anchor = -1300; anchor <= 500; anchor += 0.5)
+            assert.deepEqual(
+                placeOffscreenSlots(slots, top, bottom, inset, anchor),
+                groupOffscreenNotes(notes, 300, top, bottom, inset, anchor),
+                `${top} ${bottom} ${anchor}`,
+            )
+    assert.deepEqual(placeOffscreenSlots(slotOffscreenNotes(notes, 0), 0, 400, 24), [])
+})
+
+test('slotting again keeps only the badges whose notes are unchanged', () => {
+    const notes = [
+        { ...note(-10, -1, 100), target: 'a' },
+        { ...note(-10, -1, 200), target: 'b' },
+        { ...note(310, 320, 200), target: 'c' },
+    ]
+    const previous = slotOffscreenNotes(notes, 300)
+    const before = placeOffscreenSlots(previous, 0, 400, 24)
+    const slots = slotOffscreenNotes(
+        [notes[0]!, { ...notes[1]!, highlighted: true }, { ...notes[2]!, target: 'd' }],
+        300,
+        previous,
+    )
+    const after = placeOffscreenSlots(slots, 0, 400, 24)
+    assert.equal(after[0], before[0])
+    // A selection or a peek changes them.
+    assert.notEqual(after[1], before[1])
+    assert.equal(after[1]!.highlighted, true)
+    assert.notEqual(after[2], before[2])
+    assert.deepEqual(after[2]!.targets, ['d'])
 })
 
 // A 600 by 400 pane whose cells are clear of 60px at either side, from lane x 300.
