@@ -2,7 +2,7 @@
 
 How the editor's UI is built: surfaces, shape, size, spacing, type and the History surfaces. Use it when you add or change UI, so new work looks like it belongs. Colour roles and control recipes are in [color-system.md](color-system.md). The questions to ask in review are in [ui-review-checklist.md](ui-review-checklist.md).
 
-- **Principles, not laws.** Each rule has a reason. When a case does not fit, depart from it and say why in the change. The rules that do not bend are about data safety: never lose work, and never show a notice that is not true ([engineering-principles.md](engineering-principles.md)).
+- **Principles, not laws.** Each rule has a reason. When a case does not fit, depart from it and say why in the change. The rules with the least room to bend are about data safety: guard the user’s work, and never show a notice that is not true ([engineering-principles.md](engineering-principles.md), principles 7 and 9).
 - **The code is the record.** Paths are relative to the repository root. Pixel values assume the 16 px root font size set in `src/index.css`. Surfaces that mirror sizes in script follow a changed root size (`src/editor/useRootFontSize.ts`).
 - **Keep it true.** Check a claim against the code before relying on it, and fix the page in the same change that makes it false.
 
@@ -130,7 +130,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 
 **Change capsule** (`ChangeArrows.vue`)
 - A second strip under the first, as wide as the strip less 12 px, so its end caps are concentric with the strip's.
-- Every face is a 24 px circle or pill 4 px in from the capsule's edge. The arrow's face is the chevron's circle, so hover, press and focus are drawn centred on the glyph rather than on an empty slot.
+- Every face is a 24 px circle or pill 4 px in from the capsule's edge. The faces are the Show Edits toggle (an eye), the summary and two arrows with a count each. The arrow's face is the chevron's circle, so hover, press and focus are drawn centred on the glyph rather than on an empty slot.
 - In panes under 320 px, or when the widest state line would not fit, an options button and menu replace the eye and the summary. Disabled arrows dim the chevron and count only, so a focus ring stays strong.
 - While a new step's change is read, for up to 250 ms from the first switch, the strip and capsule keep the last read step's date, line, counts, arrows and summary. One swap then follows, and nothing shows blank, dashed or dimmed. After 250 ms they name the new step and show loading. A press meanwhile acts on the new step once it is read (`changes.ts` `awaitingRead`, `pressWhenRead`).
 - The first step of a peek has nothing to keep. Its date and change strip stay hidden in place until its change is read or the loading state shows at 250 ms (`firstRead`), and a press waits the same way.
@@ -142,7 +142,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 - One grid for every row kind: the row pill spans the list less 6 px per side, and a 36 px leading slot holds one mark per row (the Now dot, a kind glyph, a group's disclosure, a member's rail). The text pill follows, so every title starts at the same x and every time ends at the same x.
 - Each row kind has a fixed height, so the window needs no measuring. The heights scale with the root font size.
 - In a narrow list the count, delta and time move to a caption line under the title. On one line, the title gives way first.
-- The current row is the raised pill with a 1 px inset edge (`ring-1 ring-inset ring-fg/25`) in both themes. In light a hovered pill is only 1.05:1 from it, and in dark the shadow does not show.
+- The current row is the raised pill with a 1 px inset edge (`ring-1 ring-inset ring-fg/25`) in both themes. The edge is there because in light a hovered pill is only 1.05:1 from it, and in dark the shadow does not show.
 - A plain row presses its row pill. A group presses its text pill, and its disclosure presses its own circle.
 - An unavailable row fades its marks and text to 60 %, while its reason and every focus ring stay full strength.
 
@@ -179,4 +179,4 @@ The History surfaces follow the rules above and add a few patterns of their own.
 9. **Reserve space for what may appear.** Content that is hidden but still in flow takes space. Remove an element until it is shown, rather than hiding it, and keep geometry stable while content changes.
 10. **Respect the browser floor.** Check selectors and features against the build target before writing CSS. An unsupported selector invalidates its whole rule.
 11. **A tool, its shortcut and its command do the same thing.** A toolbar tool, its keyboard shortcut and any menu or list that offers the command all run that one command (`runCommand`), so a user who learns one knows the others. When two behaviours are needed, make two commands. A link in a notice or dialog may go somewhere more specific. Open History in a notice, for example, goes to a History tab.
-12. **Keep the existing look.** A change keeps the look of the UI it touches unless it sets out to change it, and says so. The UI of v0.5.22, the quick toast included, set that look. Surfaces added since fit it and differ only where their job differs, as the notice cards do.
+12. **Keep the v0.5.22 look.** UI that existed in v0.5.22, the quick toast included, keeps its look unless a change sets out to change it and says so. Surfaces added since fit that look and differ only where their job differs, as the notice cards do.

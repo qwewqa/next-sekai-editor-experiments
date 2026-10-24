@@ -89,7 +89,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
     - *Reason:* one attribute can mean different things. `aria-pressed` marks a checked Manager row and a toolbar value in use; `aria-expanded` marks folder disclosure. Section 6.3 lists every current use.
     - *Rule:* before styling from an attribute, list its current uses.
 
-15. **A token retune lands with every consumer of that token.** A retune of `selected`, for example, changes the ManagerRow tint in the same change.
+15. **A token retune lands with every consumer of that token.** When `selected` is retuned, for example, the ManagerRow tint that uses it is adjusted in the same change.
 
 16. **Keep the feel.** The palette stays seven hues; no surface colour changes; the light `accent`, `danger` and surfaces are byte-identical to v0.5.22.
 
@@ -326,7 +326,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 - It also does not look like a focused quiet-destructive button, whose red ring sits 2 px inside a pill.
 - The four `aria-invalid` sites are ExportModal, ServerBody, ScaleSelectionModal and SaveDialog.
 
-### 5.8 Immediate destructive buttons
+### 5.8 Destructive buttons outside dialogs
 
 - **Reset Settings, Reset Shortcuts and Remove for a stored preview asset:** a quiet red label (`btn-danger-quiet`) and a confirmation (8.3).
 - **Reset to Default and Use Built-in for All** in Preview Assets: a quiet red label with no confirmation. Each rewrites every type's source in one press.
@@ -461,7 +461,7 @@ A held or doubled Enter must not confirm a destructive delete. Enter on a menu's
 
 None of these can be undone. Remove deletes a stored preview asset whether or not a type uses it, and the user may not be able to load it again.
 
-- Each opens ChoiceModal with its own label as the title and as the destructive button, and `cancelIsDefault: true`. Cancel is therefore primary, focused and rightmost, or on top when stacked on a phone, and a stray Enter does nothing.
+- Each opens ChoiceModal with its own label as the title and as the destructive button, and `cancelIsDefault: true`. Cancel is therefore primary, focused and rightmost, or on top when stacked on a phone, and a stray Enter cancels.
 - ChoiceModal's guard (8.2) applies.
 - ConfirmModal's focus on its action is for deletes that can be undone (5.2).
 - No notice follows a reset.

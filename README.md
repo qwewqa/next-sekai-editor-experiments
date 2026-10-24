@@ -62,9 +62,9 @@ orientations, WebGL editor rendering, preview texture decoding and rendering,
 internal copy and paste when browser clipboard permissions are denied, audio
 scheduling and waveform rendering.
 
-Playwright 1.27.1’s archived Chromium 107.0.5304.18, Firefox 105.0.1 and WebKit 16.0 binaries
-can run the production UI checks at the floor. WebKit 16.0 gets the gate’s page. Use archived
-binaries only for isolated local testing.
+Playwright 1.27.1’s archived Chromium 107.0.5304.18 and Firefox 105.0.1 binaries are close to the
+floor and can run the production UI checks. Its WebKit 16.0 is below the minimum and gets the gate’s
+page. Use archived binaries only for isolated local testing.
 
 [Playwright WebKit](https://playwright.dev/docs/browsers#webkit) is a Safari engine
 check, not a real iPhone or branded Safari test. Its Windows build lacks Web Audio, so

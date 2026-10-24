@@ -24,7 +24,7 @@ One frontend is built twice: `npm run build` for the web and `npm run build:nati
 | The web implementation | `src/platform/web.ts` | Web, through `#platform` |
 | The native implementation | `src/platform/native/` | Native only, through `#platform`'s `native` condition |
 | The mock platform | `src/platform/mock.ts`, injected with `setPlatformForTests` | Tests |
-| Native-only features | `src/library/`, `src/projects/` (Stage 2) | Native only, loaded through one loader |
+| Native-only features | `src/library/`, `src/projects/` (with the native apps) | Native only, loaded through one loader |
 | Asset defaults | `#asset-defaults` | Per build |
 
 `#platform` and `#asset-defaults` are `package.json` `imports` with a `native` condition. Native mode (`vite --mode native`) selects it; the web build and the Node tests resolve the `default` target.
@@ -52,7 +52,7 @@ A string that must read differently by capability is one keyed variant, picked b
 
 ### Native-only features
 
-A feature the web cannot do safely lives in `src/library/` or `src/projects/` and registers its commands from the native loader, so the web bundle never contains it. The web never shows a teaser or a disabled control for it. These folders and the loader (`src/nativeLoader.ts`) arrive with Stage 2; the lint already reserves their paths (`eslint.config.js`).
+A feature the web cannot do safely lives in `src/library/` or `src/projects/` and registers its commands from the native loader, so the web bundle never contains it. The web never shows a teaser or a disabled control for it. These folders and the loader (`src/nativeLoader.ts`) arrive with the native apps. The lint already reserves their paths (`eslint.config.js`).
 
 To add one:
 
