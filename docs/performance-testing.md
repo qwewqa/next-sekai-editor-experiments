@@ -250,7 +250,7 @@ New:
     - desktop, without Elevation: clock p95 5.7 → 2.4 ms, frames drawn 86% → 98%;
     - phone at 4×, with Elevation: clock p95 41 → 20 ms, preview p95 40 → 10 ms;
     - the 15–40 ms major GCs stay at the same rate: they finish marking a 300–400 MB heap, and are not the outline's.
-- **Idle compiles in pauses:** with the app clock stopped, an idle period lasts up to 50 ms, and the vector compile (`vectorRanges.ts`) captures sections in it. At 4× on 21888 zoomed out, one pause of ten `notch` runs held two such tasks, of 33 and 36 ms, under load. An input that lands in one waits for it.
+- **Idle compiles in pauses:** with the app clock stopped, an idle period lasts up to 50 ms, and the vector compile (`vectorRanges.ts`) captures sections in it. At first it chained captures through the whole period: at 4× on 21888 zoomed out, the longest idle task in the pause before a `notch` was 40 ms (median of 24 runs, up to 51 ms), and an input that landed in one waited for it. Since f2-idlecap, a callback chains captures only within about 8 ms: the longest is now 11 ms (median, up to 20 ms, one capture). The sections compiled ahead are the same.
 - **The idle vector compile** (fixed by pr2-gc): after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asked again whenever the idle period was shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread. It now retries 100 ms later, up to ten times, then waits for a frame that draws.
 
 Still present:
