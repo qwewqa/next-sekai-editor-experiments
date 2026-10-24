@@ -33,7 +33,7 @@ Surfaces step up from the chart: chrome, then panels, then bands, then controls.
 - *Dividers:* `border-fg/15` for light rules inside a surface, `border-fg/25` between sections of a panel or dialog.
 - *Dark chrome edges:* inset box-shadows of `white/0.1` (`PanelRail.vue`) and `--dock-edge` on docks (`WorkspaceDock.vue`), not borders.
 
-**Minimap** (`src/editor/minimap/Minimap.vue`). A strip docked right after the chart pane in the editor row, `MINIMAP_REM` (2.5rem, `src/editor/workspace/index.ts`) wide. It is on by default from a 1000 px workspace, and the side docks' default sizes leave its room, so turning it on moves no panel.
+**Minimap** (`src/editor/minimap/Minimap.vue`). A strip docked right after the chart pane in the editor row. The user sets its width by dragging its left edge (`ResizeHandle`, with the keys, Escape and reset of the other dividers): the `minimapWidth` setting, 40 px by default, 24 to 160 px and at most a quarter of the workspace (`minimapWidth` in `src/editor/workspace/index.ts`). It is on by default from a 1000 px workspace, and the side docks' default sizes leave its room at the current width, so turning it on or resizing it moves no panel.
 - *Surface:* `bg-bg` with the dark chrome edge on its left (`shadow-[inset_1px_0_0_rgb(255_255_255/0.1)]`). No ring and no shadow.
 - *Content:* the chart's own artwork and connector colours, the same in both themes (color-system.md section 13).
 - *Box and cursor:* the box is the part of the chart in view, `border border-white/70 bg-white/10`, square, at least 8 px tall, with a `CanvasText` border in forced colours. The cursor is a 1 px `bg-white` line, as the chart's cursor is white.

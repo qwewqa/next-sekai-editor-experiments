@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
 import { row as historyRow } from './historyJourney'
+import { confirmReset } from './resetConfirm'
 
 // The minimap strip's placement, input, command and setting (Part 1 §1.4.22). Its drawing is
 // minimapContent.spec.ts's; the rows here read the content canvas only to tell shown from absent.
@@ -268,6 +269,146 @@ test.describe('placement, command and setting', () => {
         })
         await settle(page)
         expect(await layout()).toEqual(on)
+    })
+})
+
+test.describe('resize', () => {
+    const key = `${prefix}minimapWidth`
+
+    const handleOf = (page: Page) =>
+        page.getByRole('separator', { name: 'Resize Minimap', exact: true })
+
+    const widths = (page: Page) =>
+        page.evaluate(() => ({
+            strip: document.querySelector('[data-minimap]')!.getBoundingClientRect().width,
+            pane: document.querySelector('.chart-pane')!.getBoundingClientRect().width,
+            setting: window.editorTest.settings.minimapWidth,
+        }))
+
+    const handleCentre = async (page: Page) => {
+        const rect = (await handleOf(page).boundingBox())!
+        return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 }
+    }
+
+    test.beforeEach(async ({ page }) => {
+        await open(page, { size: { width: 1280, height: 800 } })
+        await expect(handleOf(page)).toBeVisible()
+    })
+
+    test('dragging the edge sets the width, the chart pane gives up the same room and a reload keeps it', async ({
+        page,
+    }) => {
+        const before = await widths(page)
+        expect(before.strip).toBe(40)
+        const at = await handleCentre(page)
+        await page.mouse.move(at.x, at.y)
+        await page.mouse.down()
+        await page.mouse.move(at.x - 60, at.y, { steps: 5 })
+        await page.mouse.up()
+        await settle(page)
+        const after = await widths(page)
+        expect(after.strip).toBe(100)
+        expect(after.setting).toBe(100)
+        expect(before.pane - after.pane).toBeCloseTo(60, 0)
+        expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe('100')
+
+        // Dragging right narrows it, down to the smallest width.
+        const next = await handleCentre(page)
+        await page.mouse.move(next.x, next.y)
+        await page.mouse.down()
+        await page.mouse.move(next.x + 300, next.y, { steps: 5 })
+        await page.mouse.up()
+        await settle(page)
+        expect((await widths(page)).strip).toBe(24)
+
+        await page.mouse.move(next.x + 76, next.y)
+        await page.mouse.down()
+        await page.mouse.move(next.x - 20, next.y, { steps: 5 })
+        await page.mouse.up()
+        await settle(page)
+        const kept = (await widths(page)).setting
+        expect(kept).toBe(120)
+        await page.reload()
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await expect(page.locator('[data-minimap]')).toHaveCount(1)
+        await expect(page.locator('[data-minimap]')).toHaveCSS('width', `${kept}px`)
+    })
+
+    test('a double click and Enter return the default width', async ({ page }) => {
+        await handleOf(page).focus()
+        await page.keyboard.press('End')
+        expect((await widths(page)).strip).toBe(160)
+        await handleOf(page).dblclick()
+        expect((await widths(page)).strip).toBe(40)
+        expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
+        await handleOf(page).focus()
+        await page.keyboard.press('Home')
+        expect((await widths(page)).strip).toBe(24)
+        await page.keyboard.press('Enter')
+        expect((await widths(page)).strip).toBe(40)
+    })
+
+    test('the arrow keys, Home and End stay within 24 and 160', async ({ page }) => {
+        await handleOf(page).focus()
+        await page.keyboard.press('ArrowLeft')
+        expect((await widths(page)).strip).toBe(56)
+        await page.keyboard.press('Shift+ArrowLeft')
+        expect((await widths(page)).strip).toBe(120)
+        await page.keyboard.press('Shift+ArrowLeft')
+        await page.keyboard.press('Shift+ArrowLeft')
+        expect((await widths(page)).strip).toBe(160)
+        await page.keyboard.press('ArrowRight')
+        expect((await widths(page)).strip).toBe(144)
+        await page.keyboard.press('Home')
+        expect((await widths(page)).strip).toBe(24)
+        await page.keyboard.press('ArrowRight')
+        expect((await widths(page)).strip).toBe(24)
+        await page.keyboard.press('End')
+        expect((await widths(page)).strip).toBe(160)
+        await expect(handleOf(page)).toHaveAttribute('aria-valuemin', '24')
+        await expect(handleOf(page)).toHaveAttribute('aria-valuemax', '160')
+        await expect(handleOf(page)).toHaveAttribute('aria-valuenow', '160')
+    })
+
+    test('Escape in the middle of a drag restores the width', async ({ page }) => {
+        const at = await handleCentre(page)
+        await page.mouse.move(at.x, at.y)
+        await page.mouse.down()
+        await page.mouse.move(at.x - 50, at.y, { steps: 5 })
+        await expect.poll(async () => (await widths(page)).strip).toBe(90)
+        await page.keyboard.press('Escape')
+        await expect.poll(async () => (await widths(page)).strip).toBe(40)
+        await page.mouse.move(at.x - 80, at.y, { steps: 3 })
+        await page.mouse.up()
+        await settle(page)
+        expect((await widths(page)).strip).toBe(40)
+        expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBeNull()
+    })
+
+    test('the strip keeps to a quarter of a narrow workspace', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await page.evaluate(() => {
+            window.editorTest.settings.showMinimap = true
+        })
+        await expect(handleOf(page)).toBeVisible()
+        await handleOf(page).focus()
+        await page.keyboard.press('End')
+        expect((await widths(page)).strip).toBe(97)
+        await expect(handleOf(page)).toHaveAttribute('aria-valuemax', '97')
+    })
+
+    test('Reset Settings returns the default width', async ({ page }) => {
+        await page.evaluate(() => {
+            window.editorTest.settings.minimapWidth = 120
+        })
+        expect((await widths(page)).strip).toBe(120)
+        await page.keyboard.press(',')
+        await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Reset Settings', exact: true })
+            .click()
+        await confirmReset(page, 'Reset Settings')
+        await expect.poll(async () => (await widths(page)).strip).toBe(40)
     })
 })
 

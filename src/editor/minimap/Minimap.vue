@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { times } from '..'
 import { undimmed } from '../history/changes'
 import { view } from '../view'
-import { MINIMAP_REM } from '../workspace'
+import { minimapWidth } from '../workspace'
 import type { MinimapAnnotation } from './annotations'
 import { changeTicks } from './changeTicks'
 import { useMinimapContent } from './content'
@@ -88,7 +88,7 @@ onBeforeUnmount(() => {
     <div
         class="relative flex-none touch-none select-none overflow-hidden bg-bg shadow-[inset_1px_0_0_rgb(255_255_255/0.1)]"
         :class="isGrabbing ? 'cursor-grabbing' : 'cursor-pointer'"
-        :style="{ width: `${MINIMAP_REM}rem` }"
+        :style="{ width: `${minimapWidth}px` }"
         aria-hidden="true"
         data-minimap
         @mousedown.prevent
