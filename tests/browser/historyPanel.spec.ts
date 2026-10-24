@@ -340,8 +340,11 @@ test.describe('the tab', () => {
         })
         await settle(page)
         await expect(page.locator('[data-workspace-dock]')).toHaveCount(0)
+        // The minimap strip, shown by default, is no tab: the chart takes the window beside it.
+        await expect(page.locator('[data-minimap]')).toBeVisible()
         const pane = await page.locator('.chart-pane').boundingBox()
-        expect(pane?.width).toBeGreaterThan(1590)
+        const strip = await page.locator('[data-minimap]').boundingBox()
+        expect((pane?.width ?? 0) + (strip?.width ?? 0)).toBeGreaterThan(1590)
         await shoot(page, 'hidden-desktop')
         await page.keyboard.press(',')
         await expect(page.getByRole('dialog')).toBeVisible()
