@@ -90,7 +90,7 @@ export type ChainCut = {
     entries: Map<string, EntryRow[]>
     /** Rows that didn't read as entries: the chain is not usable by this build. */
     unreadable: number
-    /** The saved session (the head, or Save to File…'s) and its stored stack. */
+    /** The saved session (the head, or Recent Sessions' Save…'s) and its stored stack. */
     sessionId: string | undefined
     stack?: StoredStackCut
 }

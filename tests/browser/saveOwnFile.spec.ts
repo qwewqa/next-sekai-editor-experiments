@@ -474,7 +474,7 @@ test('Export waits for an open’s import before its picker, so a pick of the fi
     expect(sessions!.some((row) => row.value.importPending === true)).toBe(false)
 })
 
-test('Save to File… shows no count while an open’s import runs, and counts once it ends (SF3-3)', async ({
+test('Recent Sessions’ Save… shows no count while an open’s import runs, and counts once it ends (SF3-3)', async ({
     page,
 }) => {
     await start(page)

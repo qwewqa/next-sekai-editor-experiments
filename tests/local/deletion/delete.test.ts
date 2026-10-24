@@ -52,7 +52,7 @@ test('a chain is refused while any holder has one of its sessions, and never mar
     const holders: [string, (id: string) => string, 'exclusive' | 'shared'][] = [
         ['an open session', sessionLock, 'exclusive'],
         ['an unstored continuation’s hold on its parent', sessionLock, 'shared'],
-        ['Save to File…’s hold', sessionLock, 'shared'],
+        ['Recent Sessions’ Save…’s hold', sessionLock, 'shared'],
         ['an import', importLock, 'exclusive'],
     ]
     for (const [what, lock, mode] of holders) {

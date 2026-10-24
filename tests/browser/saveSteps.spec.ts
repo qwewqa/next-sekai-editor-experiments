@@ -95,7 +95,7 @@ test('Save As shows the steps the Timeline counts, the first Save’s entry amon
     expect(again).toBe(await timelineSteps(page))
 })
 
-test('Save to File from Recent Sessions shows the steps its session holds', async ({ page }) => {
+test('Recent Sessions’ Save… shows the steps its session holds', async ({ page }) => {
     await start(page)
     for (let beat = 1; beat <= 4; beat++) await edit(page, beat)
     await pressSave(page)

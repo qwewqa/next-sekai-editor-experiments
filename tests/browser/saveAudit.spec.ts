@@ -255,7 +255,7 @@ test('a file without history opened by name: History is ticked and can be untick
     await expect(history.getByRole('checkbox')).toBeChecked()
 })
 
-test.describe('Save to File…', () => {
+test.describe('Recent Sessions’ Save…', () => {
     const toFile = (page: Page, sessionId: string) =>
         page.evaluate((sessionId) => {
             void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile(sessionId))

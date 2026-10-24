@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 // Acceptance: a save picker is opened only in the
 // pick-session module, a Save's reservation is taken and ended only through SaveAttempt, and
-// `nse-bind` is held exclusive only by the pick session. Every Save, Export and Save to File… run
+// `nse-bind` is held exclusive only by the pick session. Every Save, Export and Recent Sessions' Save… run
 // on the session.
 
 const root = fileURLToPath(new URL('../../../src/', import.meta.url))

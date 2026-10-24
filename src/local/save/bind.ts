@@ -98,7 +98,7 @@ export const keepHandle = async (tx: KvTx, chainId: string, name: string, handle
 export type TakeOver = {
     owner?: HandleOwner
     /**
-     * This chain, bound to the picked file in its empty state; none for Save to File…. Save As…
+     * This chain, bound to the picked file in its empty state; none for Recent Sessions' Save…. Save As…
      * gives its new `docId`, with no revision yet (the identity fields are one unit).
      */
     preBind?: { chainId: string; file: Row; docId?: string }

@@ -47,7 +47,7 @@ const input = (rest: Partial<LabelInput> = {}): LabelInput => ({
 test('a session that is not bound says so, a separate copy says what it is a copy of', () => {
     assert.deepEqual(labelOf(input()), {
         name: 'Coconut (Master)',
-        state: 'not saved to a file',
+        state: 'unsaved',
         changed: false,
     })
     assert.equal(

@@ -79,7 +79,7 @@ import { headInput as headOf } from './pending'
  *   a Separate File, the not-found dialog's Save As…, the chain's own file picked without its bytes
  *   read, the first Save after a takeover, a write-back over a 0-byte file, and an unbound chain's
  *   first Save.
- * - `new`: a new `docId` with no parent: Save As…, and with `sessionId` Save to File… of that
+ * - `new`: a new `docId` with no parent: Save As…, and with `sessionId` Recent Sessions' Save… of that
  *   session, which binds nothing.
  */
 export type SaveTarget =
@@ -158,7 +158,7 @@ export type SaveOptions = {
     save: { time: number; operation: JsonValue }
     /** `device`: this install's; the write records the device of the chain's lineage. */
     context: { now: number; newId: () => string; device: DeviceSource; appVersion: string }
-    /** The saved session: the chain's head unless given (Save to File… gives its own). */
+    /** The saved session: the chain's head unless given (Recent Sessions' Save… gives its own). */
     sessionId?: string
     pending?: PendingInput
     /** The binding in memory, while storage is paused or full. */

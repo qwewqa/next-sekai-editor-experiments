@@ -16,7 +16,7 @@ export type StatusLabel = {
     name: string
     /** The bound file's name, in a muted style. */
     file?: string
-    /** Why it is not bound ("not saved to a file", "separate copy of …"), or what a bound file's check found. */
+    /** Why it is not bound ("unsaved", "separate copy of …"), or what a bound file's check found. */
     state?: string
     /** Whether the bound file has changes (the "•"). */
     changed: boolean
@@ -43,7 +43,7 @@ export type LabelInput = {
 
 // A state fragment of a line joined with " · " is lower case, unless it opens with a
 // name: only the first letter, and never a name's.
-const fragment = (text: string) =>
+export const fragment = (text: string) =>
     text.startsWith('{')
         ? text
         : text.charAt(0).toLocaleLowerCase(languageTag(settings.locale)) + text.slice(1)

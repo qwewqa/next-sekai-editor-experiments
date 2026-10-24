@@ -769,7 +769,7 @@
     },
     "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır.",
     "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki öğenin menüsünü açar.",
-    "recentSessions": "Dosyaya kaydedilmemiş çalışma Geçmiş › Son Oturumlar’da.",
+    "recentSessions": "Kaydedilmemiş çalışma Geçmiş › Son Oturumlar’da.",
     "fileTitle": "Dosyalar",
     "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın.",
     "crswap": "Kaydederken bir çökme olursa proje dosyasının yanında bir .crswap dosyası kalabilir. Silmek güvenlidir."
@@ -977,10 +977,10 @@
       "deleteTitle": "Oturumları Sil",
       "lastEdited": "Son düzenleme {0} günden uzun süre önce",
       "all": "Tümü",
-      "includeNotSaved": "Dosyaya kaydedilmemiş çalışmayı dahil et",
+      "includeNotSaved": "Kaydedilmemiş çalışmayı dahil et",
       "deleteNext": "Sil…",
       "deleteConfirm": "{0} oturum silinsin mi?",
-      "notSaved": "{0} oturum dosyaya kaydedilmedi: {1}.",
+      "notSaved": "{0} oturumda kaydedilmemiş değişiklikler var: {1}.",
       "namesMore": "{0} ve {1} tane daha",
       "newer": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.|Bu oturumlardan bazıları için editörün daha yeni bir sürümü gerekiyor.",
       "deleting": "Siliniyor…",
@@ -1195,7 +1195,7 @@
     "updated": "{0} sürümüne güncellendi",
     "whatsNew": "Yenilikler",
     "upgradeBlocked": "Saklanan çalışmanızı açmak için diğer {0} sekmelerini kapatın.",
-    "olderVersion": "Bu tarayıcıda editörün daha yeni bir sürümü açıldı. Sayfayı yeniden yükleyin veya çalışmanızı korumak için bir dosyaya kaydedin.",
+    "olderVersion": "Bu tarayıcıda editörün daha yeni bir sürümü açıldı. Sayfayı yeniden yükleyin veya çalışmanızı korumak için kaydedin.",
     "tryAgain": "Tekrar Dene",
     "continued": "\"{0}\" devam ettirildi ({1}).",
     "continuedUntitled": "Oturumunuz devam ettirildi ({0}).",
@@ -1236,14 +1236,14 @@
       "readOnly": "Editörün daha yeni bir sürümü açıldı.",
       "upgrading": "Editörün daha yeni bir sürümü başka bir sekmede açık."
     },
-    "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",
+    "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için kaydedin.",
+    "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için kaydedin.",
     "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
-    "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "installedWebkit": "Son Oturumlar, bu uygulamayı kaldırana kadar burada tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "persisted": "Son Oturumlar, verilerini temizlemediğiniz sürece bu tarayıcıda tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "default": "Son Oturumlar, alan azalmadığı sürece bu tarayıcıda tutulur. Çalışmanızı korumak için bir dosyaya kaydedin."
+    "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin.",
+    "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin.",
+    "installedWebkit": "Son Oturumlar, bu uygulamayı kaldırana kadar burada tutulur. Çalışmanızı korumak için kaydedin.",
+    "persisted": "Son Oturumlar, verilerini temizlemediğiniz sürece bu tarayıcıda tutulur. Çalışmanızı korumak için kaydedin.",
+    "default": "Son Oturumlar, alan azalmadığı sürece bu tarayıcıda tutulur. Çalışmanızı korumak için kaydedin."
   },
   "player": {
     "started": "Oynatmaya başlandı",
@@ -1376,7 +1376,7 @@
       "thisTab": "Bu sekme",
       "elsewhere": "Başka sekme",
       "actions": "\"{0}\" için diğer işlemler",
-      "saveToFile": "Dosyaya Kaydet…",
+      "saveToFile": "Kaydet…",
       "delete": "Sil",
       "openReason": "Başka bir sekmede veya pencerede açık."
     },
@@ -1385,7 +1385,7 @@
       "named": "Adım ayrıntıları: {0}",
       "action": "Ayrıntılar",
       "unsupported": "Bu editör bu adımın ayrıntılarını okuyamıyor.",
-      "newer": "Bu adım editörün daha yeni bir sürümüyle kaydedildi.",
+      "newer": "Bu adım editörün daha yeni bir sürümüyle oluşturuldu.",
       "textShortened": "Metin kısaltılarak gösteriliyor",
       "varying": "Değişken",
       "changed": "Değiştirilen",
@@ -2253,7 +2253,7 @@
   },
   "status": {
     "separateCopyShort": "Ayrı kopya",
-    "notInFile": "Dosyaya kaydedilmedi",
+    "notInFile": "Kaydedilmemiş",
     "separateCopy": "{0} için ayrı kopya",
     "opensLevelInfo": "Seviye bilgisini açar",
     "changedSaved": "{0}, {1} dosyasına kaydedildikten sonra değişti",
@@ -2294,10 +2294,7 @@
   "file": {
     "replacedElsewhere": "\"{0}\" başka bir sekmeden veya pencereden değiştirildi.",
     "downloaded": "{0} · {1} indirildi",
-    "opened": "{0} · {1} açıldı",
-    "short": {
-      "notSaved": "kaydedilmedi"
-    }
+    "opened": "{0} · {1} açıldı"
   },
   "state": {
     "fileMissing": "Dosya yok",

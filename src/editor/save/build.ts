@@ -115,7 +115,7 @@ export type BuildRequest = {
     save: { time: number; operation: JsonValue }
     /** The state saved: the live head when the Save started. */
     state: State
-    /** Save to File…: the session written, binding nothing. */
+    /** Recent Sessions' Save…: the session written, binding nothing. */
     sessionId?: string
 }
 
@@ -196,7 +196,7 @@ export const runBuild = async (
         )
     let built = await call(options)
     // The head's stored copy failed: an open session's head is always written, from the live
-    // state's records. Save to File… of a session that isn't open refuses.
+    // state's records. Recent Sessions' Save… of a session that isn't open refuses.
     if ('refused' in built && built.refused === 'unreadableHead' && request.sessionId === undefined)
         built = await call({ ...options, pending: withHeadRecords(options.pending, request.state) })
     if ('refused' in built) {

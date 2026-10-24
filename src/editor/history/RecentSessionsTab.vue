@@ -355,7 +355,7 @@ const undoRow = (row: DeletedRow) => {
     if (row.status !== 'lost') void sessionDelete.undo(row.id)
 }
 
-// --- Menu: Restore Session or Restore as a Copy, and Save to File….
+// --- Menu: Restore Session or Restore as a Copy, and Save….
 const menu = shallowRef<{
     row: ChainRow
     anchor: HTMLElement

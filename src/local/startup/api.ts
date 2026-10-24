@@ -179,7 +179,7 @@ export const sessionContext = () => context
 /**
  * Applies a session's pending journal under its lock (between loads):
  * `held` when another tab holds the session, which owns its journal. Restore Session, Reopen,
- * Save to File… and Delete run it before acting on a session that isn't open.
+ * Recent Sessions' Save… and Delete run it before acting on a session that isn't open.
  */
 export const applyPendingJournal = async (sessionId: string) => {
     if (!context) return

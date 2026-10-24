@@ -20,7 +20,7 @@ skipWhereTheEditorCannotStart()
 
 // Recent Sessions: one row per chain, newest first, with a badge for this tab and
 // for a session open elsewhere. A click peeks the session without BGM; Restore Session continues
-// it, or opens a copy when it cannot; the ⋯ menu offers Save to File….
+// it, or opens a copy when it cannot; the ⋯ menu offers Save….
 
 const messages = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
@@ -140,7 +140,7 @@ test('one row for each chain, newest first, and a click peeks it with a bar that
         messages.history.today,
     )
     await expect(rowFor(page, 'Alpha').locator('[data-sessions-caption]')).toContainText(
-        / · 0 notes · not saved to a file$/,
+        / · 0 notes · unsaved$/,
     )
 
     await rowFor(page, 'Alpha').click()
@@ -618,7 +618,9 @@ test('moving onto a row that cannot be peeked (arrow, click, ⋯) leaves the pre
     expect(await lifeOf(page)).toBe(1000)
 })
 
-test('Save to File… of a closed session opens the save dialog for it', async ({ page }) => {
+test('Recent Sessions’ Save… of a closed session opens the save dialog for it', async ({
+    page,
+}) => {
     errorsFail(page)
     await load(page)
     await closedChain(page, { title: 'Alpha', life: 990 })

@@ -188,7 +188,7 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
     await expect(confirm.locator('p')).toHaveCount(3)
     // Newest first; the fixture’s chain has no work to lose, so it is not named.
     await expect(confirm).toContainText(
-        '4 sessions are not saved to a file: "Fresh", "Week", "Month" and 1 more.',
+        '4 sessions have unsaved changes: "Fresh", "Week", "Month" and 1 more.',
     )
     await expect(confirm).toContainText(
         'Some of these sessions need a newer version of the editor.',
@@ -213,7 +213,7 @@ test('with the box unticked the unsaved work is kept, and what is deleted leaves
     await page.locator('[data-delete-next]').click()
     const confirm = confirmDialog(page)
     await expect(confirm).toContainText('Delete 1 session?')
-    await expect(confirm).not.toContainText('not saved to a file')
+    await expect(confirm).not.toContainText('unsaved changes')
     await expect(confirm).not.toContainText('newer version')
     await confirmWhenReady(
         confirm.getByRole('button', { name: messages.modals.confirm.delete }),

@@ -34,7 +34,7 @@ const texts: ConfirmTexts = {
 }
 const lines = (rows: Row[]) => confirmLines(rows, (chain) => chain.name, texts)
 
-/** Ages 2, 8, 40 and 100 days; the 8 and the 100 are not saved to a file. */
+/** Ages 2, 8, 40 and 100 days; the 8 and the 100 have unsaved changes. */
 const profile = [
     row(2, 'Fresh'),
     row(8, 'Week', { notSaved: true }),
@@ -53,7 +53,7 @@ test('a range holds the chains last edited over that many days ago; All holds ev
 test('each count follows the box', () => {
     const counts = (box: boolean) =>
         Object.fromEntries(rangeCounts(profile, box).map(({ range, count }) => [range, count]))
-    // Unticked: work not saved to a file is never counted, so it is never deleted.
+    // Unticked: unsaved work is never counted, so it is never deleted.
     assert.deepEqual(counts(false), { 1: 2, 7: 1, 30: 1, 90: 0, all: 2 })
     assert.deepEqual(counts(true), { 1: 4, 7: 3, 30: 2, 90: 1, all: 4 })
     // The counts are what is chosen.
@@ -79,11 +79,11 @@ test('the confirm names the not-saved chains it deletes, and no others', () => {
     // Ticked: the 8 and 100 day chains are named, the saved ones are not.
     assert.deepEqual(lines(chosen(profile, 'all', true)), [
         'Delete 4 sessions?',
-        '2 sessions are not saved to a file: "Week", "Old".',
+        '2 sessions have unsaved changes: "Week", "Old".',
     ])
     assert.deepEqual(lines([row(100, 'Old', { notSaved: true })]), [
         'Delete 1 session?',
-        '1 session is not saved to a file: "Old".',
+        '1 session has unsaved changes: "Old".',
     ])
 })
 
@@ -92,11 +92,11 @@ test('more than three not-saved names end with "and N more"', () => {
     assert.equal(NAMES_SHOWN, 3)
     assert.deepEqual(
         lines(many.slice(0, 3)).at(-1),
-        '3 sessions are not saved to a file: "A", "B", "C".',
+        '3 sessions have unsaved changes: "A", "B", "C".',
     )
     assert.deepEqual(lines(many), [
         'Delete 5 sessions?',
-        '5 sessions are not saved to a file: "A", "B", "C" and 2 more.',
+        '5 sessions have unsaved changes: "A", "B", "C" and 2 more.',
     ])
 })
 
@@ -114,7 +114,7 @@ test('the newer line shows only when the chosen set holds a newer chain, singula
     // The not-saved line comes before the newer line.
     assert.deepEqual(lines([newer]), [
         'Delete 1 session?',
-        '1 session is not saved to a file: "Later".',
+        '1 session has unsaved changes: "Later".',
         'This session needs a newer version of the editor.',
     ])
 })

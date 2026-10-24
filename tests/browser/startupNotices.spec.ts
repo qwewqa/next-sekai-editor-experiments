@@ -106,7 +106,7 @@ const run = (page: Page, id: string) =>
 
 const unsaved = (page: Page) => page.getByRole('dialog', { name: 'Unsaved Changes' })
 
-/** New on a chart with changes not saved to a file: it asks first, and New goes on. */
+/** New on a chart with unsaved changes: it asks first, and New goes on. */
 const runNew = async (page: Page) => {
     const going = run(page, 'reset')
     await confirmNew(page)
@@ -636,14 +636,12 @@ test.describe('the status bar label', () => {
     const label = (page: Page) => page.locator('[data-status-text]')
     const button = (page: Page) => page.locator('[data-status-label]')
 
-    test('an unbound session shows "not saved to a file", and the page title mirrors it', async ({
-        page,
-    }) => {
+    test('an unbound session shows "unsaved", and the page title mirrors it', async ({ page }) => {
         await visit(page)
         await expect(label(page)).toHaveText(
-            /^Untitled · [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}\s?[AP]M · not saved to a file$/,
+            /^Untitled · [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}\s?[AP]M · unsaved$/,
         )
-        await expect(page).toHaveTitle(/^Untitled · .* · not saved to a file – Next SEKAI Editor$/)
+        await expect(page).toHaveTitle(/^Untitled · .* · unsaved – Next SEKAI Editor$/)
         await page.evaluate(async () => {
             const { pushState, state } =
                 (await import('/src/history/index.ts')) as typeof import('../../src/history')
@@ -657,8 +655,8 @@ test.describe('the status bar label', () => {
                 },
             )
         })
-        await expect(label(page)).toHaveText('Coconut · not saved to a file')
-        await expect(page).toHaveTitle('Coconut · not saved to a file – Next SEKAI Editor')
+        await expect(label(page)).toHaveText('Coconut · unsaved')
+        await expect(page).toHaveTitle('Coconut · unsaved – Next SEKAI Editor')
     })
 
     test('a bound session shows the file name alone, whatever its Name', async ({
@@ -768,7 +766,7 @@ test.describe('the status bar label', () => {
     test('pressing it opens the level’s dialog, and it describes itself', async ({ page }) => {
         await visit(page)
         await expect(button(page)).toHaveAccessibleDescription('Opens Level Info')
-        await expect(button(page)).toHaveAccessibleName(/ · not saved to a file$/)
+        await expect(button(page)).toHaveAccessibleName(/ · unsaved$/)
         await button(page).click()
         await expect(page.getByRole('dialog')).toBeVisible()
     })
@@ -969,7 +967,7 @@ test.describe('Reopen', () => {
     })
 })
 
-// New (`n`) asks before it replaces a chart with changes not saved to a file (owner 2026-10-23), as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
+// New (`n`) asks before it replaces a chart with unsaved changes (owner 2026-10-23), as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
 test.describe('New with unsaved changes', () => {
     test('n asks first: Cancel keeps the chart, New makes the new level with Reopen', async ({
         page,
@@ -1239,7 +1237,7 @@ test.describe('Settings › Local Data', () => {
         await visit(page)
         await openLocalData(page)
         await expect(page.locator('[data-storage-line]')).toHaveText(
-            'Recent Sessions are kept in this browser unless it runs low on space. Save to a file to keep your work.',
+            'Recent Sessions are kept in this browser unless it runs low on space. Save to keep your work.',
         )
     })
 
