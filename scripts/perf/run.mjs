@@ -125,10 +125,21 @@ const schedule = async (events) => {
 
 // In the page: frames, long animation frames, long tasks and the app's probes over one run.
 const installCollector = () => {
+    // The last visibilitychange and pagehide listeners, after the app's.
+    for (const type of ['visibilitychange', 'pagehide', 'freeze'])
+        (type === 'freeze' ? document : window).addEventListener(type, () =>
+            (window.nseVis ??= []).push({
+                type,
+                phase: 'last',
+                state: document.visibilityState,
+                t: performance.now(),
+            }),
+        )
     window.nsePerfRun = {
-        start() {
+        start(noLoop) {
             const P = window.nsePerf
             const r = (this.r = { frames: [], loaf: [], longtasks: [], on: true })
+            window.nseVis = []
             P.perfSamples.samples = {}
             P.perfSamples.on = true
             r.paints = P.minimapStats.paints
@@ -138,7 +149,7 @@ const installCollector = () => {
                 r.frames.push([t, P.view.time, P.view.cursorTime])
                 requestAnimationFrame(loop)
             }
-            requestAnimationFrame(loop)
+            if (!noLoop) requestAnimationFrame(loop)
             r.loafObserver = new PerformanceObserver((list) => {
                 for (const e of list.getEntries())
                     r.loaf.push({
@@ -170,6 +181,7 @@ const installCollector = () => {
             r.taskObserver.disconnect()
             P.perfSamples.on = false
             return {
+                vis: window.nseVis,
                 frames: r.frames,
                 loaf: r.loaf,
                 longtasks: r.longtasks,
@@ -322,10 +334,24 @@ const traceCategories = [
     'toplevel',
     'loading',
 ]
-const startTrace = (cdp) =>
+// Light traces: task timings without the CPU profiler's overhead (`traceEach`).
+const lightCategories = [
+    'devtools.timeline',
+    'disabled-by-default-devtools.timeline',
+    'disabled-by-default-v8.gc',
+    'v8.execute',
+    'blink.user_timing',
+    'toplevel',
+    'gpu',
+    'viz',
+]
+const startTrace = (cdp, light) =>
     cdp.send('Tracing.start', {
         transferMode: 'ReturnAsStream',
-        traceConfig: { includedCategories: traceCategories, recordMode: 'recordAsMuchAsPossible' },
+        traceConfig: {
+            includedCategories: light ? lightCategories : traceCategories,
+            recordMode: 'recordAsMuchAsPossible',
+        },
     })
 const endTrace = async (cdp) => {
     const complete = new Promise((done) => cdp.once('Tracing.tracingComplete', done))
@@ -530,11 +556,294 @@ const scenarios = {
         events.push({ at: (steps + 1) * tick, fn: mouse(cdp, 'mouseReleased', x0, y) })
         return schedule(events)
     },
-    // Nothing for 5 s: what the editor does while idle.
-    async idle() {
-        await sleep(5000)
+    // Nothing for `seconds` (5): what the editor does while idle.
+    async idle(page, cdp, cell) {
+        const before = procs()
+        await sleep((cell.seconds ?? 5) * 1000)
+        return { before, after: procs() }
+    },
+    // One wheel notch after an 800 ms pause, then 1.2 s still: the activity flip and its return.
+    async notch(page, cdp) {
+        const c = await pane(page)
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y })
+        await sleep(800)
+        await page.evaluate(() => performance.mark('nse-notch'))
+        wheel(cdp, c.x, c.y, -120)()
+        await sleep(1200)
+    },
+    // Flip the selection (prepared), wait for its flush, undo, wait again.
+    async editflip(page, cdp, cell) {
+        await page.evaluate(() => performance.mark('nse-edit'))
+        await page.keyboard.press('u')
+        await sleep(cell.wait ?? 2500)
+        await page.evaluate(() => performance.mark('nse-undo'))
+        await page.keyboard.press('z')
+        await sleep(cell.wait ?? 2500)
+    },
+    // Drag the prepared selection by one of its notes, `dx` px over 1 s; then undo.
+    async drag(page, cdp, cell, profile, prep) {
+        const at = prep?.[0]
+        if (!at) throw new Error('Nothing selected to drag')
+        const dx = cell.dx ?? 60
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at.x, y: at.y })
+        await sleep(300)
+        await page.evaluate(() => performance.mark('nse-drag'))
+        const steps = Math.round(1000 / tick)
+        const events = [{ at: 0, fn: mouse(cdp, 'mousePressed', at.x, at.y) }]
+        for (let i = 1; i <= steps; i++)
+            events.push({
+                at: i * tick,
+                fn: mouse(cdp, 'mouseMoved', at.x + (dx * i) / steps, at.y),
+            })
+        events.push({ at: (steps + 2) * tick, fn: mouse(cdp, 'mouseReleased', at.x + dx, at.y) })
+        const input = await schedule(events)
+        await page.evaluate(() => performance.mark('nse-drop'))
+        await sleep(cell.wait ?? 2500)
+        await page.evaluate(() => performance.mark('nse-undo'))
+        await page.keyboard.press('z')
+        await sleep(cell.wait ?? 2500)
+        return input
+    },
+    // An edit, `after` ms, then another tab in front (the page hidden) and back; then undo.
+    async hide(page, cdp, cell) {
+        await page.evaluate(() => performance.mark('nse-edit'))
+        await page.keyboard.press('u')
+        await sleep(cell.after ?? 2000)
+        // Playwright keeps a background tab visible, so the hide is simulated: the page reports
+        // hidden and gets visibilitychange, which is the path the app's lifecycle handler takes.
+        const hidden = await page.evaluate(() => {
+            const set = (state) => {
+                Object.defineProperty(document, 'visibilityState', {
+                    configurable: true,
+                    get: () => state,
+                })
+                Object.defineProperty(document, 'hidden', {
+                    configurable: true,
+                    get: () => state === 'hidden',
+                })
+            }
+            performance.mark('nse-hide')
+            set('hidden')
+            const start = performance.now()
+            document.dispatchEvent(new Event('visibilitychange', { bubbles: true }))
+            window.nseShow = () => {
+                set('visible')
+                document.dispatchEvent(new Event('visibilitychange', { bubbles: true }))
+            }
+            return performance.now() - start
+        })
+        await sleep(2000)
+        await page.evaluate(() => window.nseShow())
+        await sleep(1500)
+        await page.keyboard.press('z')
+        await sleep(2500)
+        return { hiddenMs: hidden }
+    },
+    // Storage unavailable: an edit, then scrolling back and forth for `seconds` (with a second
+    // edit halfway), across the 10 s journal ticks.
+    async journal(page, cdp, cell) {
+        const c = await pane(page)
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y })
+        await page.keyboard.press('u')
+        const seconds = cell.seconds ?? 22
+        const events = []
+        for (let s = 0; s < seconds * 1000; s += tick) {
+            const dir = Math.floor(s / 2000) % 2 ? 1 : -1
+            events.push({ at: s, fn: wheel(cdp, c.x, c.y, dir * (cell.step ?? 12)) })
+        }
+        events.push({ at: (seconds * 1000) / 2, fn: () => void page.keyboard.press('u') })
+        return schedule(events)
+    },
+    // Memory over a long scroll, a long playback, then New and Open again.
+    async memory(page, cdp, cell, profile, prep, group) {
+        const out = []
+        const notes = () =>
+            page.evaluate(
+                () => [...window.nsePerf.state.value.store.slides.note.values()].flat().length,
+            )
+        const snap = async (label) => {
+            await cdp.send('HeapProfiler.collectGarbage')
+            await sleep(300)
+            await cdp.send('HeapProfiler.collectGarbage')
+            await sleep(700)
+            const heap = await cdp.send('Runtime.getHeapUsage')
+            const dom = await cdp.send('Memory.getDOMCounters').catch(() => ({}))
+            const n = await notes()
+            out.push({
+                label,
+                at: Date.now(),
+                notes: n,
+                heapUsed: heap.usedSize,
+                heapTotal: heap.totalSize,
+                dom,
+                procs: procs(),
+            })
+            log(
+                'memory',
+                label,
+                (heap.usedSize / 2 ** 20).toFixed(1),
+                'MiB',
+                'notes',
+                n,
+                'dom',
+                JSON.stringify(dom),
+            )
+        }
+        const profileTo = async (label) => {
+            const { profile } = await cdp.send('HeapProfiler.getSamplingProfile')
+            writeFileSync(`${runDir}/heap-${label}.json`, JSON.stringify(profile))
+        }
+        const sweep = (pps, layout) =>
+            page.evaluate(
+                async ({ pps, layout }) => {
+                    const P = window.nsePerf
+                    P.settings.pps = pps
+                    P.view.layout = layout
+                    const end = P.chartEnd()
+                    const step = P.view.h / P.settings.pps / 3
+                    for (let t = 0; t <= end; t += step) {
+                        P.view.time = t
+                        await new Promise((d) => requestAnimationFrame(d))
+                    }
+                    for (let t = end; t >= 0; t -= step * 2) {
+                        P.view.time = t
+                        await new Promise((d) => requestAnimationFrame(d))
+                    }
+                    return { end }
+                },
+                { pps, layout },
+            )
+        await cdp.send('HeapProfiler.enable')
+        await cdp.send('HeapProfiler.startSampling', { samplingInterval: 65536 })
+        await snap('opened')
+        for (const [pps, layout, label] of [
+            [1000, 'composed', 'sweep composed pps1000'],
+            [1000, 'composed', 'sweep composed pps1000 again'],
+            [100, 'composed', 'sweep composed pps100'],
+            [1000, 'basic', 'sweep basic pps1000'],
+            [1000, 'composed', 'sweep composed pps1000 third'],
+        ]) {
+            await sweep(pps, layout)
+            await snap(`after ${label}`)
+        }
+        await profileTo('swept')
+        await page.evaluate(() => {
+            const P = window.nsePerf
+            P.view.layout = 'composed'
+            P.settings.pps = 1000
+            P.view.time = P.view.cursorTime = 0
+        })
+        await sleep(500)
+        const playSeconds = cell.seconds ?? 200
+        const speedSteps = { 1: 0, 1.5: 1, 2: 2 }[cell.speed ?? 1] ?? 0
+        await page.evaluate((steps) => {
+            const P = window.nsePerf
+            for (let i = 0; i < steps; i++) P.changePlayerSpeed(1)
+            P.startOrStopPlayer()
+        }, speedSteps)
+        const every = cell.sampleEvery ?? 40
+        for (let s = every; s <= playSeconds; s += every) {
+            await sleep(every * 1000)
+            const heap = await cdp.send('Runtime.getHeapUsage')
+            out.push({
+                label: `playing ${s}s`,
+                at: Date.now(),
+                heapUsed: heap.usedSize,
+                procs: procs(),
+            })
+            log('memory', `playing ${s}s`, (heap.usedSize / 2 ** 20).toFixed(1), 'MiB (no GC)')
+        }
+        await page.evaluate((steps) => {
+            const P = window.nsePerf
+            if (P.isPlaying.value) P.startOrStopPlayer()
+            for (let i = 0; i < steps; i++) P.changePlayerSpeed(-1)
+        }, speedSteps)
+        await snap('after playback')
+        await profileTo('played')
+        // New, then the same chart opened again.
+        await page.mouse.move(5, 5)
+        await page.keyboard.press('n')
+        const dialog = page.getByRole('dialog')
+        await dialog.waitFor({ timeout: 5000 }).catch(() => {})
+        await sleep(1000)
+        log('memory New dialog', JSON.stringify(await dialog.allInnerTexts().catch(() => [])))
+        await dialog
+            .getByRole('button', { name: 'New', exact: true })
+            .click({ timeout: 5000 })
+            .catch((error) => log('memory New click failed', String(error)))
+        await sleep(3000)
+        await page.screenshot({ path: `${runDir}/after-new.png` })
+        await snap('after New')
+        await profileTo('new')
+        const opening = page.waitForEvent('filechooser')
+        await page.keyboard.press('o')
+        await (
+            await opening
+        ).setFiles({
+            name: 'level.json',
+            mimeType: 'application/json',
+            buffer: readFileSync(resolve(root, group.chart)),
+        })
+        await page
+            .locator('.notification, .notification-pill')
+            .filter({ hasText: /^Opened level/ })
+            .last()
+            .waitFor({ timeout: 120_000 })
+        await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'OK' })
+            .click({ timeout: 3000 })
+            .catch(() => {})
+        await sleep(3000)
+        await snap('after Open again')
+        await sweep(1000, 'composed')
+        await snap('after sweep composed pps1000 on the reopened chart')
+        await profileTo('reopened')
+        await cdp.send('HeapProfiler.stopSampling').catch(() => {})
+        return out
     },
 }
+
+// The process tree's CPU, memory and GPU memory (Windows), from proc.ps1.
+const procScript = resolve(root, 'scripts/perf/proc.ps1')
+const procs = () => {
+    try {
+        return JSON.parse(
+            execFileSync(
+                'powershell',
+                [
+                    '-NoProfile',
+                    '-ExecutionPolicy',
+                    'Bypass',
+                    '-File',
+                    procScript,
+                    '-Root',
+                    String(process.pid),
+                ],
+                { encoding: 'utf8' },
+            ) || '[]',
+        )
+    } catch (error) {
+        log('procs failed', String(error))
+        return []
+    }
+}
+
+// What a scenario needs before the run starts.
+const selectNear = (page, count) =>
+    page.evaluate(async (count) => {
+        const P = window.nsePerf
+        const picked = P.selectNear(P.view.time, count)
+        for (let i = 0; i < 10; i++) await new Promise((done) => requestAnimationFrame(done))
+        return picked
+    }, count)
+const prepares = {
+    editflip: (page, cell) => selectNear(page, cell.count ?? 50),
+    drag: (page, cell) => selectNear(page, cell.count ?? 50),
+    hide: (page, cell) => selectNear(page, cell.count ?? 20),
+    journal: (page, cell) => selectNear(page, cell.count ?? 20),
+}
+const customKeys = ['idle', 'resizedrag', 'notch', 'editflip', 'drag', 'hide', 'journal', 'memory']
 
 // ---- runs
 
@@ -636,17 +945,18 @@ const waitStill = (page) =>
         }
     })
 
-const runOnce = async (page, cdp, cell, profile, hz, label) => {
+const runOnce = async (page, cdp, cell, profile, hz, label, light, group) => {
     const scenario = cell.scenario.startsWith('play') ? 'play' : cell.scenario
-    await settle(page, cell.start ?? (scenario === 'play' ? 0 : 40))
-    await page.evaluate(() => window.nsePerfRun.start())
+    if (scenario !== 'memory') await settle(page, cell.start ?? (scenario === 'play' ? 0 : 40))
+    const prep = await prepares[scenario]?.(page, cell)
+    await page.evaluate((noLoop) => window.nsePerfRun.start(noLoop), !!cell.noLoop)
     let sync
     if (label) {
-        await startTrace(cdp)
+        await startTrace(cdp, light)
         sync = await page.evaluate(() => performance.mark('nse-perf-sync').startTime)
     }
-    const input = await scenarios[scenario](page, cdp, cell, profile)
-    if (!['play', 'idle', 'resizedrag'].includes(scenario)) await waitStill(page)
+    const input = await scenarios[scenario](page, cdp, cell, profile, prep, group)
+    if (!['play', ...customKeys].includes(scenario)) await waitStill(page)
     await page.waitForTimeout(150)
     let trace
     if (label) {
@@ -654,10 +964,12 @@ const runOnce = async (page, cdp, cell, profile, hz, label) => {
         writeFileSync(trace, gzipSync(await endTrace(cdp)))
     }
     const raw = await page.evaluate(() => window.nsePerfRun.stop())
-    const key =
-        scenario === 'play' ? 'cursor' : ['idle', 'resizedrag'].includes(scenario) ? 'all' : 'view'
+    const key = scenario === 'play' ? 'cursor' : customKeys.includes(scenario) ? 'all' : 'view'
     const frames = summarizeFrames(raw.frames, key, hz)
     return {
+        raw: cell.keepRaw
+            ? { probes: raw.probes, longtasks: raw.longtasks, loaf: raw.loaf, vis: raw.vis }
+            : { vis: raw.vis, longtasks: raw.longtasks },
         input,
         frames,
         probes: summarizeProbes(raw.probes, profile.throttle > 1 ? 1000 / 120 : 1000 / 240),
@@ -791,6 +1103,26 @@ try {
                     JSON.stringify('0.6.0'),
                 )
             })
+            // Storage test flags, and the first lifecycle listeners, before the app's.
+            if (group.storage)
+                await page.addInitScript(
+                    (v) => localStorage.setItem('nse.test.storage', v),
+                    JSON.stringify(group.storage),
+                )
+            await page.addInitScript(() => {
+                for (const type of ['visibilitychange', 'pagehide', 'freeze'])
+                    (type === 'freeze' ? document : window).addEventListener(
+                        type,
+                        () =>
+                            (window.nseVis ??= []).push({
+                                type,
+                                phase: 'first',
+                                state: document.visibilityState,
+                                t: performance.now(),
+                            }),
+                        true,
+                    )
+            })
             if (group.hz !== 'native') await page.addInitScript(gateFrames, hz)
             page.on('pageerror', (error) => log('pageerror', error.message))
             const info = await openChart(page, group)
@@ -813,15 +1145,28 @@ try {
                             profile,
                             hz,
                             i === 0 && cell.traceCold ? `${id}-cold` : undefined,
+                            false,
+                            group,
                         )
                         cold ??= r
                     }
                     for (let i = 0; i < (cell.reps ?? 5); i++)
-                        runs.push(await runOnce(page, cdp, cell, profile, hz))
+                        runs.push(
+                            await runOnce(
+                                page,
+                                cdp,
+                                cell,
+                                profile,
+                                hz,
+                                cell.traceEach ? `${id}-r${i}` : undefined,
+                                true,
+                                group,
+                            ),
+                        )
                     const traced = cell.trace
-                        ? await runOnce(page, cdp, cell, profile, hz, id)
+                        ? await runOnce(page, cdp, cell, profile, hz, id, false, group)
                         : undefined
-                    const procs = pin([process.pid])
+                    const pinned = pin([process.pid])
                     appendFileSync(
                         `${runDir}/results.jsonl`,
                         JSON.stringify({
@@ -836,8 +1181,8 @@ try {
                             cold,
                             runs,
                             traced,
-                            procs: procs.length,
-                            offPin: offPin(procs),
+                            procs: pinned.length,
+                            offPin: offPin(pinned),
                         }) + '\n',
                     )
                     const med = (fn) => runs.map(fn).sort((a, b) => a - b)[runs.length >> 1]
