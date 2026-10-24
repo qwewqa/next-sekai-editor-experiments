@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { captureEntryDescription } from '../../../src/history/operations'
+import { fromHex16 } from '../../../src/local/hash'
 import { noteCountOf, toRecords } from '../../../src/local/records/records'
 import type { IdentityInput, SaveTarget } from '../../../src/local/save/build'
 import { buildSave, type BuiltSave } from '../../../src/local/save/execute'
@@ -240,13 +241,80 @@ test('a write-back with History unticked keeps its file’s history (minor 6)', 
     assert.equal(after.length, before.length + 2)
 })
 
-test('a write-back with History ticked to a file without history writes none, never a conflict (nit 17)', async () => {
+test('a write-back to a file without history adds the chain’s history, never a conflict (nit 17)', async () => {
     const { fixture, file } = await boundWith(false)
     const [built, written] = await writeBack(fixture, file, true)
-    assert.equal(built.identity.entry, undefined)
+    assert.ok(built.identity.entry)
     const read = await (await import('../../../src/local/nxsp/read')).readNxsp(written)
-    assert.ok(read.kind === 'nxsp')
-    assert.equal(read.history, undefined)
+    assert.ok(read.kind === 'nxsp' && read.open === 'full')
+    assert.ok(read.history)
+    // No cut was stored by the Save without History: the chain's whole chronology is written,
+    // whole from this revision.
+    assert.equal(read.history.entries.length, fixture.sessions.flatMap((s) => s.rows).length)
+    assert.equal(read.project?.revision?.completeFrom, built.revisionId)
+})
+
+test('a write-back to an opened file without history writes history from the open, which both readers accept', async () => {
+    // The file: a chain's Save without History.
+    const writer = await Fixture.create()
+    await writer.start(0)
+    await writer.edit(1, noteAdd(1))
+    await writer.flush()
+    const first = await save(writer, { kind: 'copy' }, { binds: false, extra: { history: false } })
+    const plain = ok(first.built)
+    assert.ok(first.file)
+    assert.equal(plain.identity.entry, undefined)
+
+    // Opened by another chain, as an open binds it: a cut of count 0 before the open's rows, and
+    // the file's identity, its own id as `completeFrom`.
+    const fixture = await Fixture.create(2)
+    const opened = await fixture.start(1)
+    await fixture.flush()
+    await fixture.putChain({
+        docId: plain.identity.docId,
+        revision: plain.identity.revision,
+        file: {
+            name: 'coconut.nxsp',
+            event: 'opened',
+            at: opened.startedAt,
+            hash: fromHex16(fixture.head),
+            entry: {
+                sessionId: opened.id,
+                seq: 0,
+                startedAt: opened.startedAt,
+                count: 0,
+                notKept: 0,
+            },
+            completeFrom: plain.identity.revision.id,
+            disk: await diskOf(first.file),
+        },
+    })
+    await fixture.edit(2, noteAdd(1))
+    await fixture.edit(3, noteAdd(1))
+    await fixture.flush()
+
+    const [built, written] = await writeBack(fixture, first.file, true)
+    const read = await (await import('../../../src/local/nxsp/read')).readNxsp(written)
+    assert.ok(read.kind === 'nxsp' && read.open === 'full', JSON.stringify(read))
+    assert.ok(read.history && read.project)
+    // From the open: its rows, then this write's `save` entry.
+    const kinds = read.history.entries.map((entry) => entry.kind)
+    assert.deepEqual(kinds, ['init', 'edit', 'edit', 'save'])
+    // The open's state is the file's one version, its head.
+    assert.equal(read.history.entries[0]!.snapshot, plain.saveEntry.snapshot)
+    // The file's identity goes on: same document, descending from the file it replaced, and
+    // whole from it (it held no rows, and its one state is the open's).
+    const revision = read.project.revision!
+    assert.equal(read.project.id, plain.identity.docId)
+    assert.equal(revision.parent, plain.identity.revision.id)
+    assert.deepEqual(revision.ancestors, [plain.identity.revision.id])
+    assert.equal(revision.completeFrom, plain.identity.revision.id)
+    assert.equal(built.stepsLine, 'none')
+    assert.equal(built.identity.entry?.count, 4)
+    if (hasUv) {
+        const result = await checkFiles([first.file, written])
+        assert.equal(result.status, 0, result.output)
+    }
 })
 
 test('a pending row for a stored slot has no note count of its own, and the file gets the root’s', async () => {

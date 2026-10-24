@@ -13,7 +13,7 @@ import { levelInfoRecord } from '../records/records'
 
 // The open's decisions (Part 1 §1.5.3–§1.5.5), apart from the editor so Node tests run them:
 // which line a partial open shows, the name a binding takes, whether a file matches its
-// history's head, the live state, and the binding's options.
+// history's head, and the live state.
 
 /** The line a partial open shows (§1.4.19's `open.*`), most serious first. */
 export type PartialLine =
@@ -111,18 +111,6 @@ export const levelState = (
         ...(bgm ? { bgm } : {}),
     })
 }
-
-/**
- * The binding's options after an open (§1.4.7: "include what the file had"): history when it had
- * any, and the BGM unless the head records one the file left out.
- */
-export const bindingOptions = (
-    project: Pick<ProjectV1, 'history' | 'bgm'>,
-    live: State,
-): { history: boolean; bgm: boolean } => ({
-    history: !!project.history,
-    bgm: !(live.bgm.meta && !project.bgm),
-})
 
 /** A chain this browser has on the opened file's document, as the open's notice reads it. */
 export type EarlierChain = {

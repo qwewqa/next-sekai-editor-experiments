@@ -20,9 +20,9 @@ export type HeldMedia = { hash: string; bytes: Uint8Array; type: string; filenam
 
 export type MediaPlan = {
     input: MediaInput
-    /** Written without its bytes: the "without its …" line. */
+    /** Written without its bytes: as metadata only. */
     without: boolean
-    /** Over the reader's 1 GB media cap, though held: the line without "which is not loaded" (D25). */
+    /** Over the reader's 1 GB media cap, though held: the "without its …" line (D25). */
     tooLarge?: boolean
     /** A stored copy failed its check: damage in storage. */
     damaged?: boolean

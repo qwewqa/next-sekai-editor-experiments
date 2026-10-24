@@ -281,7 +281,6 @@ test('a recognised Save whose row the chain lacks is never carried by the next c
             ...(built.identity.completeFrom === undefined
                 ? {}
                 : { completeFrom: built.identity.completeFrom }),
-            options: { history: true, bgm: true },
         },
         marks: built.identity.marks,
         from: {},

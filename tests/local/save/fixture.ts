@@ -646,7 +646,6 @@ export const bindingOf = (
             : {}),
         ...(identity.completeFrom === undefined ? {} : { completeFrom: identity.completeFrom }),
         ...(disk ? { disk } : {}),
-        options: { history: options.history, bgm: options.bgm },
     }
 }
 

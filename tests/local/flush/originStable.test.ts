@@ -138,7 +138,6 @@ test('a flush, a continuation, a fork and a Save’s recording keep every sessio
                 event: 'saved',
                 at: 5,
                 hash: fromHex16(rootOf(state)),
-                options: { history: true, bgm: true },
             },
             marks: [],
             from: {},
@@ -237,7 +236,7 @@ test('an open’s head, its batches, an ended import and an abandoned one: a fil
         ids: ids(n),
         chain: {
             name: 'Coconut (Master)',
-            file: { name: 'coconut.nxsp', event: 'opened', options: { history: true, bgm: true } },
+            file: { name: 'coconut.nxsp', event: 'opened' },
         },
         operations: {
             opened: originOperation('import'),

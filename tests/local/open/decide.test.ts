@@ -5,7 +5,6 @@ import { LevelDataReport } from '../../../src/levelData/report'
 import { executePlan, planNxsp, readNxsp } from '../../../src/local/nxsp'
 import {
     bindingName,
-    bindingOptions,
     changedOf,
     earlierNotice,
     levelState,
@@ -35,7 +34,6 @@ const freshFile = () => executePlan(planNxsp(fresh().input).plan, new Map())
 test('a fresh file matches its head, with thirds of a lane and a default-coloured guide', async () => {
     const { project, level, head } = await readFile(await freshFile())
     assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
-    assert.deepEqual(bindingOptions(project, head), { history: true, bgm: true })
 })
 
 test('an edited title is a change: level.json and project.json win, keeping the head’s BGM when bgm is absent', async () => {
@@ -56,8 +54,6 @@ test('an edited title is a change: level.json and project.json win, keeping the 
     const live = levelState(chart, level.bgmOffset, project, head)
     assert.equal(live.levelInfo.title, 'Edited')
     assert.deepEqual(live.bgm.meta, head.bgm.meta)
-    // The binding leaves the BGM out of later writes, as the file did.
-    assert.deepEqual(bindingOptions(project, live), { history: true, bgm: false })
 })
 
 test('a file without bgm whose head records one still matches: it was saved without it', async () => {
@@ -91,7 +87,6 @@ test('a metadata-only bgm is the head’s BGM, included but not held', async () 
     const { read, project, level, head } = await readFile(file)
     assert.equal(read.media.bgm, undefined)
     assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
-    assert.deepEqual(bindingOptions(project, head), { history: true, bgm: true })
 })
 
 test('the partial open’s line: damage, then history, then newer content, then media', () => {
@@ -170,7 +165,6 @@ test('a file with a newer patch alone opens whole: bound, history read, and one 
     // Whole: the open binds it and keeps its history.
     assert.equal(read.open, 'full')
     assert.equal(matchesHead(level.entities, level.bgmOffset, project, head), true)
-    assert.deepEqual(bindingOptions(project, head), { history: true, bgm: true })
     assert.deepEqual(partialLine(read.report, new LevelDataReport()), { kind: 'newerPatch' })
 })
 

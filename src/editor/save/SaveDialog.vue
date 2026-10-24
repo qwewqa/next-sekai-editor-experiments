@@ -58,7 +58,7 @@ const bgmRow = computed(() => props.input.bgm)
 const historyDisabled = computed(
     () => historyRow.value.kind !== 'available' || historyRow.value.locked,
 )
-const bgmDisabled = computed(() => bgmRow.value.kind !== 'held' || bgmRow.value.locked)
+const bgmDisabled = computed(() => bgmRow.value.kind !== 'held')
 
 // --- The size preview: never blocking; a cached estimate shows at once and is refreshed.
 const estimate = ref<SaveSizeEstimate | undefined>(props.input.estimate.cached)
@@ -248,9 +248,6 @@ const boxClass =
                         <span :id="`${ids}-bgm`" class="flex flex-col text-sm text-fg/80">
                             <span v-if="bgmDetail" class="break-all" data-save-name-line>{{
                                 bgmDetail
-                            }}</span>
-                            <span v-if="bgmRow.kind === 'held' && bgmRow.keptIn" data-save-kept>{{
-                                keptText(bgmRow.keptIn)
                             }}</span>
                         </span>
                     </span>

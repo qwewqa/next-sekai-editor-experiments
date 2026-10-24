@@ -179,7 +179,6 @@ test('a .nxsp opens bound in a new session, with its history imported and Undo w
     expect(chain.file).toMatchObject({
         name: 'coconut.nxsp',
         event: 'opened',
-        options: { history: true, bgm: true },
         entry: { sessionId: session.sessionId, seq: 4, count: 4, notKept: 0 },
     })
     // The handle has its own store (D24); a real OPFS handle never reaches IndexedDB under the
@@ -658,8 +657,8 @@ test('a BGM recorded without its bytes opens bound with the BGM not loaded, and 
     const session = await sessionOf(page)
     expect(session.file?.name).toBe('coconut.nxsp')
     const chain = await chainOf(page, session.sessionId)
-    // Included, but not held: the next Save adds it once chosen (§1.5.4 step 5).
-    expect((chain.file as Row).options).toEqual({ history: true, bgm: true })
+    // Included, but not held: a Save adds its bytes once chosen (§1.5.4 step 5); nothing is kept.
+    expect('options' in (chain.file as Row)).toBe(false)
 })
 
 test('a file whose title was edited outside opens with that title and "Changed outside the editor"', async ({

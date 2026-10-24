@@ -17,14 +17,7 @@ import { hasActivation, reportsActivation } from '../../platform/detect'
 import { nxspDiskState, sameContent } from '../../platform/fingerprint'
 import { savePoint } from '../../platform/testPause'
 import { exportMemory, sameEntry, type OpenedSource } from '../commands/exportLevel/memory'
-import {
-    bindingHandle,
-    environment,
-    quickBinding,
-    type Binding,
-    type Env,
-    type StoredFile,
-} from './binding'
+import { bindingHandle, environment, quickBinding, type Binding, type Env } from './binding'
 import type { RefusedReason } from './dialogs'
 import { heldHandle, savedState, withBind, type SaveMarker } from './env'
 import { pause, PREPARING_MS } from './imports'
@@ -59,10 +52,10 @@ export type ReadResult =
     | { readonly kind: 'failed' }
 
 /** The head's media whose bytes this tab doesn't hold, by hash: storage or the file may. */
-const mediaNotHeld = (state: ReturnType<typeof savedState>, options: StoredFile['options']) => {
+const mediaNotHeld = (state: ReturnType<typeof savedState>) => {
     const { meta, source } = state.bgm
     const refs = [
-        ...(meta && !source && options.bgm ? [meta] : []),
+        ...(meta && !source ? [meta] : []),
         ...(state.levelInfo.cover ? [state.levelInfo.cover] : []),
         ...(state.levelInfo.preview ? [state.levelInfo.preview] : []),
     ]
@@ -85,7 +78,7 @@ const readOwn = async (
         : await env.worker
               .call('saveNeeds', {
                   chainId: env.chainId,
-                  media: mediaNotHeld(savedState(), file.options),
+                  media: mediaNotHeld(savedState()),
               })
               .catch(() => undefined)
     const short = damaged || !needs?.carries || needs.lacking.length > 0

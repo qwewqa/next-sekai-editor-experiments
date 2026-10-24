@@ -25,7 +25,6 @@ const recordFile = {
     event: 'saved',
     at: 100,
     hash,
-    options: { history: true, bgm: true },
 }
 
 /** The journal's binding: a later write-back, at 200, with no handle and its hash as hex. */
@@ -34,7 +33,6 @@ const journalFile = {
     event: 'saved',
     at: 200,
     hash: toHex(new Uint8Array(16).fill(9)),
-    options: { history: true, bgm: true },
 }
 
 /**

@@ -606,7 +606,6 @@ export class Run {
                 event: 'saved',
                 at: build.reservation.wall,
                 hash: fromHex16(rootOf(build.head)),
-                options: { history: true, bgm: true },
                 entry: {
                     sessionId: build.sessionId,
                     seq: build.seq,

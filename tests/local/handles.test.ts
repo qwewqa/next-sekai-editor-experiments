@@ -54,7 +54,6 @@ test('an open stores the binding’s handle in its own store, and an unlink remo
                 name: 'coconut.nxsp',
                 handle: { testHandle: 'coconut.nxsp' },
                 event: 'opened',
-                options: { history: true, bgm: true },
             },
         },
         operations: {
