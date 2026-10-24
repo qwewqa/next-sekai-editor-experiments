@@ -129,7 +129,7 @@ test('copy writes None as NONE and In Step as IN_STEP, and pastes each back', as
 })
 
 test('the journal writes None as NONE and In Step as IN_STEP', async ({ page }) => {
-    // The journal written on hide, read at once: a strict commit clears it soon after.
+    // The journal written on hide, read at once: a commit clears it soon after.
     const levelDataGz = await page.evaluate(async () => {
         const { history, store } = window.editorTest
         const { editSelectedEditableEntities } =

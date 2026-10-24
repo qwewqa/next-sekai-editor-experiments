@@ -74,7 +74,7 @@ const openSession = async (
     const { open, recovery } = captured
     const flusher = open.flusher()
     const leaving = flusher?.session
-    // Its own tab lets it go once its strict commit lands; the release itself comes a little
+    // Its own tab lets it go once its commit lands; the release itself comes a little
     // later, so the session this tab just left is waited for, as a reload waits (§1.6.6).
     await flusher?.outgoing
     if (!request.isCurrent() || context !== captured) return { opened: false, why: 'blank' }
@@ -110,10 +110,8 @@ const openSession = async (
         if (read.kind !== 'open') return { opened: false, why: read.kind }
         // A journal a flush covered since goes, as the apply would have found it (§1.6.4 step 3).
         const lastSeq = typeof read.session.lastSeq === 'number' ? read.session.lastSeq : 0
-        // That flush may have been relaxed: the key goes only after a strict commit.
         if (recovered && recovered.seq <= lastSeq) {
-            if (await open.worker.call('syncStrict').catch(() => false))
-                recovery.journal.remove(recovered.found)
+            recovery.journal.remove(recovered.found)
             recovered = undefined
         }
         const held = result?.kind === 'recovery' ? undefined : lock

@@ -127,7 +127,7 @@ test('a reload whose own journal fails to apply continues its session from the j
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a failed own journal’s key goes once the continuation’s strict commit holds its work', async () => {
+test('a failed own journal’s key goes once the continuation’s commit holds its work', async () => {
     const world = createWorld({ seed: 17 })
     const storage = new MemoryStorage()
     const { tab, session, root } = await journalledOnly(world, storage)
@@ -842,25 +842,20 @@ test('a failed own journal a flush covered since goes, and the reload takes up t
     // A hide's journal, then edits relaxed flushes stored past it.
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('E1')) }, widen(a, 1))
     assert.equal(page.writer.write(), true)
+    const key = `nse.journal.${session.id}`
+    const text = storage.getItem(key)!
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('E2')) }, widen(a, 2))
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('E3')) }, widen(a, 3))
     await page.flusher.flush()
     const stored = toHex((await readOpen(page, session.id)).head)
+    // The page went before its removal of the key reached disk.
+    storage.setItem(key, text)
     page.tab.kill()
-    assert.ok(journalText(storage, session.id))
 
-    // The relaxed flush may not be on disk: a strict commit comes before the key goes.
-    const strictWhileKept: boolean[] = []
-    world.memory.faults.put = (store) => {
-        if (store === 'meta') strictWhileKept.push(journalText(storage, session.id) !== null)
-        return undefined
-    }
     const reload = await failedReload(world, storage, tab)
-    world.memory.faults.put = undefined
     assert.equal(reload.recovery.ownOutcome?.kind, 'failed')
     assert.equal(openSession(reload).id, session.id)
     assert.equal(rootOf(reload.page.live.state), stored)
-    assert.ok(strictWhileKept.includes(true))
     assert.equal(journalText(storage, session.id), null)
     assert.deepEqual(reload.recovery.keptForLocalData, [])
     assert.equal(
@@ -913,27 +908,22 @@ test('starting from a failed own journal keeps the session held until its key go
     const world = createWorld({ seed: 23 })
     const storage = new MemoryStorage()
     const { tab, session } = await journalledOnly(world, storage)
-    // Where commits aren't durable on resolve (D14), no commit retires the key.
+    // Its first write stalls: the continuation's entry holding the work is not stored yet.
+    const stalled = { on: true }
     const reload = await quiet(() =>
         load(world, 'reload', storage, {
             tab,
             worker: { applyJournal: () => Promise.reject(new Error('QuotaExceededError')) },
-            writer: { strictCommits: false },
+            stall: stalled,
         }),
     )
-    // The continuation's first write is in and moved the head; the key is still there.
-    await reload.page.flusher.flush({ strict: true })
-    assert.equal(rows(world, 'chains').get(session.chainId)?.head, openSession(reload).id)
     assert.ok(journalText(storage, session.id))
     const other = world.tab('other')
     assert.equal(await other.run(() => claimSessionLock(other.locks, session.id)), undefined)
-    // Its own journal holds the work: the key goes, and so does the hold.
-    append(
-        reload.page,
-        { kind: 'edit', step: editStep(futureFixtureOperation('More')) },
-        widen(stateOf(goldenChart()), 9),
-    )
-    assert.equal(reload.page.writer.write(), true)
+    // The commit that stores the work retires the key, and with it the hold.
+    stalled.on = false
+    await reload.page.flusher.flush({ strict: true })
+    assert.equal(rows(world, 'chains').get(session.chainId)?.head, openSession(reload).id)
     assert.equal(journalText(storage, session.id), null)
     const lock = await other.run(() => claimSessionLock(other.locks, session.id))
     assert.ok(lock)

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { readNxsp } from '../../../src/local/nxsp/read'
 import { writeUnlink } from '../../../src/local/open/importWrite'
-import { applyRevocation, BIND_STORES, takeOver } from '../../../src/local/save/bind'
+import { BIND_STORES, takeOver } from '../../../src/local/save/bind'
 import { Fixture, save } from './fixture'
 
 // A chain that loses its file keeps the file's stem as its name (Part 1 §1.3.5): the file's stem
@@ -52,20 +52,6 @@ test('a takeover leaves the chain its file’s stem, dots and all', async () => 
     const chain = await chainOf(fixture)
     assert.equal(chain.file, undefined)
     assert.equal(chain.name, 'feat. Miku')
-})
-
-test('a revocation applied at load leaves the chain its file’s stem', async () => {
-    const fixture = await boundChain('coconut.nxsp')
-    const applied = await fixture.store.write(BIND_STORES, (tx) =>
-        applyRevocation(tx, fixture.chainId, {
-            by: 'other',
-            at: 9,
-            name: 'coconut.nxsp',
-            fileAt: FILE_AT,
-        }),
-    )
-    assert.equal(applied, true)
-    assert.equal((await chainOf(fixture)).name, 'coconut')
 })
 
 test('an unlink after damage, Check’s included, leaves the chain its file’s stem', async () => {

@@ -96,18 +96,14 @@ test('a killed tab’s journal is applied to its session, keeping the committed 
 
 test('a journal a flush covered is deleted without an entry: a late flush landed first', async () => {
     const { world, page, session } = await killedAfterEdits(2)
+    const key = `nse.journal.${session.id}`
+    const text = page.storage.getItem(key)!
     await page.flusher.flush()
+    // The page went before its removal of the key reached disk.
+    page.storage.setItem(key, text)
     const before = entriesOf(world, session.id).length
-    // That flush was relaxed: the apply's strict commit writes a row before the key goes.
-    const strictWhileKept: boolean[] = []
-    world.memory.faults.put = (store) => {
-        if (store === 'meta') strictWhileKept.push(page.storage.length === 1)
-        return undefined
-    }
     const { outcomes } = await replayAll(world, page.storage)
-    world.memory.faults.put = undefined
     assert.equal(outcomes[0]?.kind, 'covered')
-    assert.deepEqual(strictWhileKept, [true])
     assert.equal(entriesOf(world, session.id).length, before)
     assert.equal(page.storage.length, 0)
 })

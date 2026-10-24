@@ -15,8 +15,8 @@ const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as J
 
 // The journal while storage is unavailable (§1.6.7): the worker's in-memory store acknowledges
 // flushes, but only the journal survives the tab, so every hide writes it at the newest seq, and
-// it's never cleared until a database commits strictly. From the start, after a worker restart
-// into memory, and after Try Again's move into the database.
+// it's never cleared until a database commits. From the start, after a worker restart into
+// memory, and after Try Again's move into the database.
 
 const settle = async (world: World) => {
     await world.clock.run()
@@ -91,7 +91,7 @@ test('after a worker restart into memory, hides journal the entries only memory 
     assert.equal(journal?.stack.keep, 0)
 })
 
-test('after Try Again’s move the journal stays until a strict commit, and the stack follows lastSeq', async () => {
+test('after Try Again’s move the journal stays until a flush commits, and the stack follows lastSeq', async () => {
     for (const seed of CI_SEEDS.slice(0, 4)) {
         const world = createWorld({ seed })
         const frozen = world.tab('frozen')
@@ -126,7 +126,7 @@ test('after Try Again’s move the journal stays until a strict commit, and the 
         assert.equal(page.flusher.unflushed(session), true)
 
         // The first flush into the database: its stack is the whole window, never one left
-        // behind lastSeq, and a relaxed commit leaves the key.
+        // behind lastSeq, and its commit clears the key.
         state = widen(state, 1)
         append(
             page,
@@ -146,36 +146,39 @@ test('after Try Again’s move the journal stays until a strict commit, and the 
         )
         const stored = results.at(-1)
         assert.ok(stored?.kind === 'stored' && stored.stackWritten && !stored.stackRemoved)
-        assert.equal(page.writer.write(), true)
-        assert.equal(journalIn(page.storage, session.id)?.seq, 3, `seed ${seed}`)
-        // A strict one clears it.
-        await page.flusher.flush({ strict: true })
         assert.equal(journalIn(page.storage, session.id), undefined, `seed ${seed}`)
         assert.equal(page.flusher.unflushed(session), false)
+        assert.equal(page.writer.write(), true)
+        assert.equal(journalIn(page.storage, session.id), undefined, `seed ${seed}`)
     }
 })
 
-test('a strict sync after a worker restart into memory covers nothing the database holds relaxed', async () => {
+test('a worker restarted over memory covers nothing; what the database committed before stays covered', async () => {
     const world = createWorld({ seed: 3 })
     const flags: { noStorage?: boolean } = {}
     const page = await openSplitJournalPage(world, { flags })
     let state = stateOf(goldenChart())
     const session = beginSession(page, state)
     await page.flusher.flush({ strict: true })
-    // An idle relaxed flush: the database holds edit 2, not yet strictly.
+    // An idle relaxed flush: the database holds edit 2, and no journal is due.
     state = widen(state)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, state)
     await page.flusher.flush()
-    assert.ok(session.ackedSeq > session.strictSeq)
-    // The worker comes back over memory; the hide's journal, then its strict flush.
+    assert.equal(page.flusher.unflushed(session), false)
+    // The worker comes back over memory, and the next edit is stored there only.
     flags.noStorage = true
     page.host.worker.kill()
     await settle(world)
     assert.equal(page.host.core.status.mode, 'memory')
+    state = widen(state, 1)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, state)
+    await page.flusher.flush({ strict: true })
+    assert.equal(page.flusher.hasPending, false)
+    assert.equal(session.ackedSeq, 2)
+    assert.equal(page.flusher.unflushed(session), true)
+    // The hide's journal, then its strict flush into memory: the key stays.
     assert.equal(page.writer.write(), true)
     await page.flusher.flush({ strict: true })
-    // The sync committed in memory only: the key stays, and nothing counts as strict.
-    assert.equal(journalIn(page.storage, session.id)?.seq, 2)
-    assert.ok(session.ackedSeq > session.strictSeq)
+    assert.equal(journalIn(page.storage, session.id)?.seq, 3)
     assert.equal(page.flusher.syncFailed, true)
 })

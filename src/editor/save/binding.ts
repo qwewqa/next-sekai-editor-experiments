@@ -77,10 +77,10 @@ export const bindingOf = (record: Row | undefined, session: FlushSession): Bindi
 /** The record as this tab last wrote it: what a press decides by, before the check. */
 export const quickBinding = (env: Env) => bindingOf(env.session.chain, env.session)
 
-/** The record read again (R10), with a revocation localStorage holds for it (R11). */
+/** The record read again (R10). */
 export const readBinding = async (env: Env): Promise<StoredRead<Binding>> =>
     mapRead(await storedRead(env.worker, 'readChainRecord', env.chainId), (record) => {
-        // Taken over since: by the record, or by a key kept while storage couldn't take it (R11).
+        // Taken over since (R5, R6).
         const replaced = revokedOf(record, env.session) as Binding['replaced'] | undefined
         if (replaced) {
             const binding = bindingOf(record, { ...env.session, identity: undefined })

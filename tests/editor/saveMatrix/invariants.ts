@@ -30,6 +30,11 @@ export type Facts = {
     expectNoPicker?: boolean
     /** The dialog was cancelled once the picker had returned a file: the write must still land (I10). */
     written?: boolean
+    /**
+     * A takeover storage could not record (R11): that file is never written, and the chain bound
+     * to it keeps the binding (I9).
+     */
+    notTakenOver?: { chainId: string; name: string }
 }
 
 const offered = async (world: World, bytes: Uint8Array) => {
@@ -119,26 +124,16 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
         add('I10', 'a cancel after the pick stopped the write')
 
     // I9 (E-5): one file, one binding. No file name is bound to two chains, and no file is both
-    // bound and another chain's Export target. Excepted: a revocation storage could not take,
-    // pending in `revoke.<chainId>` (R11), whose binding is already as good as gone. Read from the
-    // store through the door, not from the world's view of it.
-    const revoked = world.revocations()
+    // bound and another chain's Export target. Read from the store through the door, not from the
+    // world's view of it.
+    const stored = await world.storedChains()
     const bound = new Map<string, string[]>()
     const targets = new Map<string, string[]>()
-    for (const record of await world.storedChains()) {
+    for (const record of stored) {
         const chainId = String(record.chainId)
-        const file = record.file as { name?: string; at?: number } | undefined
+        const file = record.file as { name?: string } | undefined
         const target = record.exportTarget as { name?: string } | undefined
-        if (
-            file?.name &&
-            !revoked.some(
-                (r) =>
-                    r.chainId === chainId &&
-                    r.revoke.name === file.name &&
-                    r.revoke.fileAt === file.at,
-            )
-        )
-            bound.set(file.name, [...(bound.get(file.name) ?? []), chainId])
+        if (file?.name) bound.set(file.name, [...(bound.get(file.name) ?? []), chainId])
         if (target?.name) targets.set(target.name, [...(targets.get(target.name) ?? []), chainId])
     }
     for (const [name, chainIds] of bound) {
@@ -149,6 +144,21 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
                     'I9',
                     `${name} is bound to ${chainIds.join(', ')} and is ${target}’s Export target`,
                 )
+    }
+
+    // I9 (R11): a takeover storage could not record writes nothing new to that file (it ends
+    // empty, or holding what it held at its pick, put back), and the chain bound to it keeps its
+    // binding.
+    if (facts.notTakenOver) {
+        const { chainId, name } = facts.notTakenOver
+        const now = await bytesOf(world.mock.files.get(name))
+        const held = world.before.get(name)
+        const before = held ? await bytesOf(held) : undefined
+        if (now?.length && !(before && sameBytes(now, before)))
+            add('I9', `${name} holds new bytes though its takeover was not recorded`)
+        const owner = stored.find((record) => record.chainId === chainId)
+        if ((owner?.file as { name?: string } | undefined)?.name !== name)
+            add('I9', `${chainId} lost its binding of ${name} though the takeover was not recorded`)
     }
 
     // A flow that threw is a bug of its own (the Save's `exclusive` logs it).

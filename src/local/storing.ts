@@ -11,7 +11,7 @@ import { configureHeldBgm, decodeBgmData, withCachedBgm } from '../editor/media/
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
-import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
+import { refreshBinding, watchBindings } from '../editor/save/watch'
 import { withSwitchRequest } from '../editor/switchRequest'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
@@ -51,8 +51,8 @@ import { transfer } from './worker/rpc'
 
 // Storing (Part 1 §1.6.4): every change to the undo stack becomes an entry; the flush stores them
 // about 1 s after the last change, at once and strictly on hide, and right after a media pick.
-// The journal covers what isn't committed strictly; while storage is unavailable it's written on
-// a slow idle timer too.
+// The journal covers what isn't committed to the database; while storage is unavailable it's
+// written on a slow idle timer too.
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -79,7 +79,7 @@ export { onFlusherStart }
 
 /**
  * Safe mode (§1.4.2): the flusher holds the open session in memory only, so Save builds from
- * what this tab holds (§1.4.7); no journal, tab record, Reopen or revocation is written.
+ * what this tab holds (§1.4.7); no journal, tab record or Reopen is written.
  */
 let safeMode = false
 
@@ -113,7 +113,7 @@ export const recordBlankStart = () => {
 }
 
 /**
- * Reopen offers a session this tab left, once its strict commit holds (§1.4.1): an unstored,
+ * Reopen offers a session this tab left, once its commit holds (§1.4.1): an unstored,
  * unedited continuation stands for the session it continues.
  */
 export const offerReopen = (leaving: FlushSession, outgoing: Promise<boolean>) => {
@@ -230,9 +230,9 @@ export const startStoring = (
     const writes: JournalWrite[] = []
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
-        // A strict commit clears the journal it covers (§1.6.4 #7).
-        onCommitted: (session, { seq, strict }) => {
-            journalWriter?.committed(session.id, seq, strict)
+        // A commit clears the journal it covers (§1.6.4 #7).
+        onCommitted: (session, seq) => {
+            journalWriter?.committed(session.id, seq)
         },
         syncStrict: () => worker.call('syncStrict'),
         // A chain made or its head moved: other tabs' Recent Sessions lists refresh.
@@ -315,7 +315,7 @@ export const startStoring = (
     flusher = instance
     storingWorker = worker
     setRetrySource(() => ({ worker, flusher }))
-    // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7 R11).
+    // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7).
     if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal
     // keeps the open session (§1.6.7).
@@ -329,8 +329,6 @@ export const startStoring = (
               flusher: () => flusher,
               state: () => liveState.value,
               pausedForSpace: () => worker.status?.reason === 'full',
-              strictCommits:
-                  typeof IDBTransaction !== 'undefined' && 'durability' in IDBTransaction.prototype,
               appVersion: appVersion().appVersion,
               onWrite: (write) => {
                   if (test) writes.push(write)
@@ -426,12 +424,8 @@ export const startStoring = (
     // A newer database opened by Try Again: nothing this tab holds will be stored.
     worker.onStatus((next) => {
         if (next.mode === 'readOnly') instance.withoutDatabase()
-        // Storing resumed: revocations kept meanwhile go in (§1.4.7 R11).
-        if (next.mode === 'stored' && !next.reason && !safe) void applyRevocations(worker)
     })
-    // At the next start, after the journals and before any cleanup (R11); then other tabs'
-    // takeovers show here as they happen (R6).
-    if (!safe) void afterReplay.then(() => applyRevocations(worker))
+    // Other tabs' takeovers show here as they happen (R6).
     watchBindings(worker, () => flusher)
     // What the Save flows run in, read at each call: a fork or an open changes the session.
     setSaveEnvironment(() => {

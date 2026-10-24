@@ -44,6 +44,24 @@ test('a session is durably stored once flushed, or pending with a verified journ
     assert.equal(notDurableReason(inputs(page)), undefined)
 })
 
+test('a relaxed commit counts as stored, with no journal', async () => {
+    const { page, a } = await start(6)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
+    await page.flusher.flush({ strict: true })
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+        widen(a, 1),
+    )
+    assert.equal(notDurableReason(inputs(page)), 'journal')
+    // The routine flush about 1 s after the edit.
+    await page.flusher.flush()
+    assert.equal(notDurableReason(inputs(page)), undefined)
+    // With localStorage full too: nothing is left for a journal to hold.
+    page.storage.quota = 10
+    assert.equal(notDurableReason(inputs(page)), undefined)
+})
+
 test('with localStorage full the journal can’t be written, so the session isn’t stored', async () => {
     const { page, a } = await start(2)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))

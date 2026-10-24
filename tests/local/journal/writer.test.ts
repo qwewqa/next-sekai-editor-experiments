@@ -46,11 +46,23 @@ const start = async (seed: number) => {
     return { world, page, session, a }
 }
 
-test('nothing is written while every entry is committed strictly', async () => {
+test('nothing is written while every entry is committed', async () => {
     const { page } = await start(1)
     const writes = counting(page.storage)
     assert.equal(page.writer.write(), true)
     assert.equal(writes(), 0)
+})
+
+test('a hide after a committed relaxed flush writes no journal', async () => {
+    const { page, session, a } = await start(13)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
+    // The routine flush about 1 s after the edit, relaxed.
+    await page.flusher.flush()
+    assert.equal(page.flusher.unflushed(session), false)
+    const writes = counting(page.storage)
+    assert.equal(page.writer.write(), true)
+    assert.equal(writes(), 0)
+    assert.equal(journalIn(page.storage, session.id), undefined)
 })
 
 test('a second trigger for the same seq writes nothing; a new entry writes again', async () => {
@@ -79,16 +91,34 @@ test('a second trigger for the same seq writes nothing; a new entry writes again
     })
 })
 
-test('a key is cleared only after a strict commit covering its seq', async () => {
+test('a relaxed commit covering a key’s seq clears it', async () => {
     const { page, session, a } = await start(3)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
-    page.writer.write()
-    // A routine relaxed flush leaves the key for the next strict one.
+    assert.equal(page.writer.write(), true)
+    assert.equal(journalIn(page.storage, session.id)?.seq, 2)
     await page.flusher.flush()
-    assert.ok(journalIn(page.storage, session.id))
-    assert.ok(page.flusher.unflushed(session))
-    // A strict flush with nothing new commits strictly what the relaxed one stored.
-    await page.flusher.flush({ strict: true })
+    assert.equal(journalIn(page.storage, session.id), undefined)
+    assert.equal(page.flusher.unflushed(session), false)
+})
+
+test('a commit short of a key’s seq leaves it', async () => {
+    const { page, session, a } = await start(14)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
+    // A Save holds 3: the edit after it waits, so the next flush commits 2 only.
+    const reservation = page.flusher.reserveSave()!
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+        widen(a, 1),
+    )
+    assert.equal(page.writer.write(), true)
+    assert.equal(journalIn(page.storage, session.id)?.seq, 4)
+    await page.flusher.flush()
+    assert.equal(session.ackedSeq, 2)
+    assert.equal(journalIn(page.storage, session.id)?.seq, 4)
+    assert.equal(page.flusher.unflushed(session), true)
+    // The Save lets 3 go; the commit of 4 clears the key.
+    await page.flusher.endSave(reservation)
     assert.equal(journalIn(page.storage, session.id), undefined)
     assert.equal(page.flusher.unflushed(session), false)
 })
@@ -170,7 +200,7 @@ test('a BGM change is journalled with its metadata, and recovers with it', async
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a replaced session is committed strictly before it goes, and its journal is cleared', async () => {
+test('a replaced session is committed strictly before it goes', async () => {
     const world = createWorld({ seed: 9 })
     const page = await openJournalPage(world, 'a')
     const released: string[] = []
@@ -178,60 +208,35 @@ test('a replaced session is committed strictly before it goes, and its journal i
     const session = beginSession(page, a, 'import', { done: () => released.push('first') })
     await page.flusher.flush({ strict: true })
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
-    // A hide's journal, then a routine relaxed flush: the key stays for a strict commit.
-    page.writer.write()
+    // A hide's journal, then a routine relaxed flush, whose commit clears it.
+    assert.equal(page.writer.write(), true)
     await page.flusher.flush()
-    assert.ok(journalIn(page.storage, session.id))
+    assert.equal(journalIn(page.storage, session.id), undefined)
+    assert.ok(session.ackedSeq > session.strictSeq)
     // New replaces it (§1.3.8): the outgoing session is committed strictly first.
     beginSession(page, stateOf(goldenChart()), 'new')
-    // Its outcome, for Step 4's switch prompt: committed strictly in the database.
+    // Its outcome, for Step 4's switch prompt: committed in the database.
     assert.equal(await page.flusher.outgoing, true)
-    assert.equal(journalIn(page.storage, session.id), undefined)
+    assert.equal(session.strictSeq, session.ackedSeq)
     assert.deepEqual(released, ['first'])
 })
 
-/** A session committed relaxed after its journal, as a hide then a routine flush leave it. */
-const relaxedAfterJournal = async (seed: number) => {
-    const world = createWorld({ seed })
+test('a replaced session whose strict sync fails is let go: its entries are committed', async () => {
+    const world = createWorld({ seed: 20 })
     const page = await openJournalPage(world, 'a')
     const released: string[] = []
     const a = stateOf(goldenChart())
     const session = beginSession(page, a, 'import', { done: () => released.push('first') })
     await page.flusher.flush({ strict: true })
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
-    page.writer.write()
     await page.flusher.flush()
-    return { world, page, session, released, a }
-}
-
-test('a replaced session whose strict commit fails is kept with its lock and key, and retried', async () => {
-    const { page, session, released, a } = await relaxedAfterJournal(20)
     page.sync.fails = 1
-    const next = beginSession(page, widen(a, 3), 'new')
-    assert.equal(await page.flusher.outgoing, false)
-    assert.equal(page.flusher.syncFailed, true)
-    assert.deepEqual(released, [])
-    assert.ok(journalIn(page.storage, session.id))
-    // The next strict flush (a hide) commits it, clears its key and lets it go.
-    append(
-        page,
-        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
-        widen(a, 4),
-    )
-    await page.flusher.flush({ strict: true })
-    assert.equal(journalIn(page.storage, session.id), undefined)
-    assert.deepEqual(released, ['first'])
-    assert.equal(page.flusher.unflushed(next), false)
-})
-
-test('where no database will answer any more, a replaced session is let go', async () => {
-    const { page, released, a } = await relaxedAfterJournal(21)
-    // A newer database opened read-only: no strict commit can land.
-    page.flusher.withoutDatabase()
-    page.sync.fails = Infinity
     beginSession(page, widen(a, 3), 'new')
-    assert.equal(await page.flusher.outgoing, false)
+    assert.equal(await page.flusher.outgoing, true)
+    assert.equal(page.flusher.syncFailed, true)
+    assert.ok(session.ackedSeq > session.strictSeq)
     assert.deepEqual(released, ['first'])
+    assert.equal(journalIn(page.storage, session.id), undefined)
 })
 
 test('a fork’s journal takes over its old session’s key, with the old chain’s fields', async () => {
@@ -264,23 +269,31 @@ test('a fork’s journal takes over its old session’s key, with the old chain�
     )
     assert.equal(page.writer.write(), true)
     assert.equal(journalIn(page.storage, session.id)?.seq, 3)
+    // The journals written from here on, by key.
+    const written = new Map<string, string>()
+    const setItem = page.storage.setItem.bind(page.storage)
+    page.storage.setItem = (key, value) => {
+        written.set(key, value)
+        setItem(key, value)
+    }
     await page.flusher.flush()
     const fork = page.flusher.session
     assert.ok(fork && fork.id !== session.id)
-    // The old key is gone, and the fork's journal carries the old chain's fields from the start.
-    assert.equal(journalIn(page.storage, session.id), undefined)
-    const journal = journalIn(page.storage, fork.id)
-    assert.ok(journal)
+    // The fork's journal, written as it took the entries over, carries the old chain's fields
+    // from the start.
+    const text = written.get(`nse.journal.${fork.id}`)
+    assert.ok(text)
+    const journal = JSON.parse(text) as Journal
     assert.equal(journal.descriptor.chainId, fork.chainId)
     assert.equal(journal.descriptor.name, 'Coconut (Master)')
     assert.deepEqual(journal.descriptor.future, { kept: 1 })
     assert.deepEqual(journal.descriptor.parent, { id: session.id, uptoSeq: 2 })
+    // The old key went with it, and the fork's commit cleared its own.
+    assert.equal(journalIn(page.storage, session.id), undefined)
+    assert.equal(journalIn(page.storage, fork.id), undefined)
     // The next load makes no recovery chain duplicating the fork.
     const { outcomes } = await replayAll(world, page.storage)
-    assert.deepEqual(
-        outcomes.map((outcome) => outcome.kind),
-        ['covered'],
-    )
+    assert.deepEqual(outcomes, [])
 })
 
 test('the budget counts today’s auto save, and leaves it room to grow to the journal’s size', async () => {
@@ -307,9 +320,10 @@ test('the budget counts today’s auto save, and leaves it room to grow to the j
     assert.equal(page.writer.write(), true)
 })
 
-test('where a strict commit may not be on disk yet (D14), no commit clears a key; the next load does', async () => {
+test('each commit covering a key clears it, one per session, and a later load finds none', async () => {
+    // D14, reversed: the same where IndexedDB has no `durability` option (Firefox before 126).
     const world = createWorld({ seed: 12 })
-    const page = await openJournalPage(world, 'a', new MemoryStorage(), { strictCommits: false })
+    const page = await openJournalPage(world, 'a')
     let state = stateOf(goldenChart())
     const session = beginSession(page, state)
     await page.flusher.flush({ strict: true })
@@ -321,13 +335,12 @@ test('where a strict commit may not be on disk yet (D14), no commit clears a key
             state,
         )
         assert.equal(page.writer.write(), true)
-        await page.flusher.flush({ strict: true })
-        // Committed strictly: the key stays, one per session, at its newest seq.
-        assert.equal(page.flusher.unflushed(session), false)
         assert.equal(journalIn(page.storage, session.id)?.seq, i + 2)
-        assert.equal(page.storage.length, 1)
+        await page.flusher.flush({ strict: i % 2 === 0 })
+        assert.equal(page.flusher.unflushed(session), false)
+        assert.equal(page.storage.length, 0)
     }
-    // A second session's newer journal replaces the first's covered key: they don't pile up.
+    // A second session's journal, cleared by its own commit.
     const next = beginSession(page, stateOf(goldenChart()), 'new')
     append(
         page,
@@ -335,17 +348,11 @@ test('where a strict commit may not be on disk yet (D14), no commit clears a key
         widen(state, 5),
     )
     assert.equal(page.writer.write(), true)
-    assert.equal(journalIn(page.storage, session.id), undefined)
-    await page.flusher.flush({ strict: true })
-    assert.equal(page.storage.length, 1)
     assert.ok(journalIn(page.storage, next.id))
-    // The next load finds the last one covered by the stored history and deletes it.
-    const { outcomes } = await replayAll(world, page.storage)
-    assert.deepEqual(
-        outcomes.map((outcome) => outcome.kind),
-        ['covered'],
-    )
+    await page.flusher.flush()
     assert.equal(page.storage.length, 0)
+    const { outcomes } = await replayAll(world, page.storage)
+    assert.deepEqual(outcomes, [])
 })
 
 test('a long stack journalled with keep 0 names its newest dropped steps and counts them all', async () => {

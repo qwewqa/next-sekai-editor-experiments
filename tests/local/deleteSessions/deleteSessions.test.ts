@@ -276,10 +276,9 @@ test('a chain is not saved when it has content in no file, or is bound and chang
     void ds
 })
 
-test('a chain whose file another chain took over counts as not saved, by its record or by a pending revocation', async () => {
-    const pending = new Set<string>()
-    const { world, chains, read } = await setup(2, { revoked: (id) => pending.has(id) })
-    const [takenOver, revoking] = chains as [Chain, Chain]
+test('a chain whose file another chain took over counts as not saved', async () => {
+    const { world, chains, read } = await setup(1)
+    const [takenOver] = chains as [Chain]
     // As `takeOver` leaves the owner: no binding, `replaced`, edited, with content.
     await edit(world, async (tx) => {
         const row = (await tx.get('chains', takenOver.first.chainId)) as Record<string, unknown>
@@ -292,16 +291,7 @@ test('a chain whose file another chain took over counts as not saved, by its rec
             hasContent: true,
         })
     })
-    // A revocation storage could not take yet: the record still holds the binding.
-    await patchChain(world, revoking, {
-        hasContent: true,
-        file: { name: 'b.nxsp', event: 'saved', hash: await rootOf(world, revoking) },
-    })
-    assert.equal(byChain(await read(), revoking)?.notSaved, false)
-    pending.add(revoking.first.chainId)
-    const found = await read()
-    assert.equal(byChain(found, takenOver)?.notSaved, true)
-    assert.equal(byChain(found, revoking)?.notSaved, true)
+    assert.equal(byChain(await read(), takenOver)?.notSaved, true)
 })
 
 test('names are the displayed names, with the head’s start for the date fallback', async () => {
@@ -564,12 +554,9 @@ test('a damaged chain whose head session row is missing goes with that head’s 
     await world.idle()
 })
 
-test('a chain counted as saved whose file is taken over or revoked after the read is skipped', async () => {
-    const pending = new Set<string>()
-    const { world, chains, read, remove, calls } = await setup(3, {
-        revoked: (id) => pending.has(id),
-    })
-    const [takenOver, revoked, rebound] = chains as [Chain, Chain, Chain]
+test('a chain counted as saved whose file is taken over or rebound after the read is skipped', async () => {
+    const { world, chains, read, remove, calls } = await setup(2)
+    const [takenOver, rebound] = chains as [Chain, Chain]
     for (const chain of chains)
         await patchChain(world, chain, {
             hasContent: true,
@@ -584,13 +571,11 @@ test('a chain counted as saved whose file is taken over or revoked after the rea
         delete rest.file
         await tx.put('chains', { ...rest, replaced: { by: 'other', at: NOW, name: 'a.nxsp' } })
     })
-    // A revocation storage could not take: only the localStorage key says so.
-    pending.add(revoked.first.chainId)
     // Saved to another file since: a new binding.
     await patchChain(world, rebound, {
         file: { name: 'b.nxsp', event: 'saved', at: NOW + 1, hash: await rootOf(world, rebound) },
     })
-    assert.deepEqual(await remove(found), { deleted: 0, skipped: 3 })
+    assert.deepEqual(await remove(found), { deleted: 0, skipped: 2 })
     for (const chain of chains) assert.ok(stored(world, chain))
     assert.deepEqual(calls.results, ['changed', 'changed'])
 })

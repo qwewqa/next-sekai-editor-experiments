@@ -614,12 +614,8 @@ export class MemoryKv {
     }
 
     /**
-     * A power loss on Firefox before 126 (and WebKit, if it lacks `durability`), which ignores
-     * durability: undoes the last `count` commits whatever their durability, in commit order. It
-     * is paired with the journal writer as the page runs it there, `strictCommits: false`
-     * (`storing.ts`), so that no commit clears a journal; with the default writer a strict commit
-     * would clear the journal and the loss then undo that commit, which no browser in the gate
-     * does. Kill every tab first.
+     * A power loss on Firefox before 126, which ignores durability: undoes the last `count`
+     * commits whatever their durability, in commit order. Kill every tab first.
      */
     loseCommits(count: number) {
         if (count > this.loggedCommits)

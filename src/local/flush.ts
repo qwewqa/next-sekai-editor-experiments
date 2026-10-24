@@ -152,7 +152,10 @@ export type FlushSession = {
     readonly ready: Promise<unknown>
     /** Its stack as acknowledged, which each flush's entries are replayed over (§1.6.4 #6). */
     readonly stack: SessionStack<PendingEntry>
-    /** The newest entry acknowledged from a database, and the newest committed strictly. */
+    /**
+     * The newest entry committed to a database: the journal covers the rest (§1.6.4). And the
+     * newest committed strictly: a hide's or a switch's strict flush syncs those between.
+     */
     ackedSeq: number
     strictSeq: number
     /** Whether it has an entry of an editing kind (§1.6.11.2's `edited`). */
@@ -315,11 +318,11 @@ export type FlushDeps = {
      * first write): other tabs' Recent Sessions lists change (§1.6.6 hints).
      */
     onChainMoved?: (session: FlushSession) => void
-    /** A flush or a strict sync committed a session's entries up to `seq` in a database. */
-    onCommitted?: (session: FlushSession, commit: { seq: number; strict: boolean }) => void
+    /** A flush committed a session's entries up to `seq` in a database. */
+    onCommitted?: (session: FlushSession, seq: number) => void
     /**
-     * Commits strictly what relaxed flushes stored (§1.6.4: a journal is cleared only once a
-     * strict commit covers its `seq`); without it, a hide's flush with nothing new does nothing.
+     * Commits strictly what relaxed flushes stored, so a hide or a switch leaves it on disk
+     * (§1.6.4); without it, a hide's flush with nothing new does nothing.
      */
     syncStrict?: () => Promise<boolean>
     onError?: (error: unknown) => void
@@ -465,7 +468,7 @@ export class Flusher {
     syncFailed = false
     /**
      * The replaced session's strict commit at the last `begin()` (§1.3.8): resolves whether
-     * everything of it is committed strictly in a database, for Step 4's switch prompt.
+     * everything of it is committed in a database, for Step 4's switch prompt.
      */
     outgoing: Promise<boolean> = Promise.resolve(true)
     private retryMs = 0
@@ -966,13 +969,12 @@ export class Flusher {
     }
 
     /**
-     * Whether some entry isn't committed strictly in a database: the journal's trigger (§1.6.4).
-     * A stored session's entries past its strict commit are relaxed, held in memory only (storage
-     * unavailable, §1.6.7) or still to send. A blank start with no edit has nothing to store, so
-     * nothing to journal.
+     * Whether some entry isn't committed to a database: the journal's trigger (§1.6.4). Such
+     * entries are still to send, in flight, failed, or held in memory only (storage unavailable,
+     * §1.6.7). A blank start with no edit has nothing to store, so nothing to journal.
      */
     unflushed(session: FlushSession) {
-        if (session.strictSeq >= this.newestSeq(session)) return false
+        if (session.ackedSeq >= this.newestSeq(session)) return false
         return session.stored || this.flushable(session)
     }
 
@@ -1145,7 +1147,7 @@ export class Flusher {
         }
     }
 
-    /** Commits strictly what relaxed flushes stored, so their journals can be cleared. */
+    /** Commits strictly what relaxed flushes stored, so it is on disk. */
     private async syncStrict() {
         const behind = this.sessions.filter((session) => session.strictSeq < session.ackedSeq)
         if (!behind.length || !this.deps.syncStrict) return
@@ -1155,7 +1157,7 @@ export class Flusher {
             this.syncFailed = !(await this.deps.syncStrict())
             if (this.syncFailed) return
         } catch (error) {
-            // The journal stays until a later strict commit covers it.
+            // Left to the next strict commit.
             this.syncFailed = true
             this.deps.onError?.(error)
             return
@@ -1163,9 +1165,7 @@ export class Flusher {
         behind.forEach((session, i) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const seq = seqs[i]!
-            if (seq <= session.strictSeq) return
-            session.strictSeq = seq
-            this.deps.onCommitted?.(session, { seq, strict: true })
+            session.strictSeq = Math.max(session.strictSeq, seq)
         })
     }
 
@@ -1180,10 +1180,6 @@ export class Flusher {
             // may still take it (Try Again).
             if (this.noDatabase) session.memoryOnly.length = 0
             if (session.pending.length || session.memoryOnly.length) continue
-            // Committed relaxed only: kept until a strict commit covers it, so its journal clears,
-            // unless no database will answer in this tab any more.
-            if (this.deps.syncStrict && !this.noDatabase && session.ackedSeq > session.strictSeq)
-                continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
             this.releaseParent(session)
             session.done?.()
@@ -1504,7 +1500,7 @@ export class Flusher {
                     const seq = Math.max(session.ackedSeq, result.lastSeq)
                     session.ackedSeq = seq
                     if (isStrict) session.strictSeq = Math.max(session.strictSeq, seq)
-                    this.deps.onCommitted?.(session, { seq, strict: isStrict })
+                    this.deps.onCommitted?.(session, seq)
                 }
                 if (result.chainMoved && !result.memory) this.deps.onChainMoved?.(session)
                 const failed = new Set(result.mediaFailed)

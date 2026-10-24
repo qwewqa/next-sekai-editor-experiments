@@ -2,7 +2,7 @@ import { liveState } from '../../history/stack'
 import { documentDeviceId, type DeviceSource } from '../../local/deviceId'
 import { fromHex16, toHex } from '../../local/hash'
 import { hasWebLocks } from '../../local/locks'
-import type { Revocation, SaveEntryForm } from '../../local/save/bind'
+import type { SaveEntryForm } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
 import { storedRead, type ReadWorker } from '../../local/storedRead'
 import { platform } from '../../platform'
@@ -11,8 +11,8 @@ import type { LockMode } from '../../platform/types'
 import { storageGet, storageKey, storageRemove, storageSet } from '../../storage'
 
 // What the Save core keeps outside storage (Part 1 §1.4.7): this browser's device, the handles
-// this tab picked, `nse-bind`, `revoke.<chainId>` (R11) and the marker of a write whose binding
-// isn't stored yet (our own completed Save).
+// this tab picked, `nse-bind` and the marker of a write whose binding isn't stored yet (our own
+// completed Save).
 
 /** The lock that keeps one writer per file (§1.6.6, owner decision log D5). */
 export const BIND_LOCK = 'nse-bind'
@@ -91,58 +91,6 @@ export const heldHandle = (chainId: string, name: string) => {
     return held?.name === name ? held.handle : undefined
 }
 
-// R11: a revocation storage couldn't take.
-
-const revokeKey = (chainId: string) => `revoke.${chainId}`
-
-export const readRevocation = (chainId: string): Revocation | undefined => {
-    const value = storageGet(revokeKey(chainId), undefined) as Partial<Revocation> | undefined
-    if (
-        typeof value?.by !== 'string' ||
-        typeof value.at !== 'number' ||
-        typeof value.name !== 'string' ||
-        typeof value.fileAt !== 'number'
-    )
-        return
-    return value as Revocation
-}
-
-/** Writes a revocation and reads it back: true only when it's there. */
-export const writeRevocation = (chainId: string, revoke: Revocation) => {
-    try {
-        storageSet(revokeKey(chainId), revoke)
-        return JSON.stringify(readRevocation(chainId)) === JSON.stringify(revoke)
-    } catch {
-        return false
-    }
-}
-
-export const removeRevocation = (chainId: string) => {
-    try {
-        storageRemove(revokeKey(chainId))
-    } catch {
-        // Applied already: a stale key names a binding that's gone, and is skipped.
-    }
-}
-
-/** Every chain with a revocation waiting. */
-export const pendingRevocations = () => {
-    const prefix = storageKey('revoke.')
-    const found: { chainId: string; revoke: Revocation }[] = []
-    try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i)
-            if (!key?.startsWith(prefix)) continue
-            const chainId = key.slice(prefix.length)
-            const revoke = readRevocation(chainId)
-            if (revoke) found.push({ chainId, revoke })
-        }
-    } catch {
-        // No localStorage: nothing was kept there.
-    }
-    return found
-}
-
 // The marker of a write not yet recorded: what our own completed Save commits (§1.4.7).
 
 /** A write whose binding isn't stored yet: its `save` entry and identity unit, hashes as hex. */
@@ -190,18 +138,18 @@ export type KeptCopies = {
 }
 
 /**
- * Removes what a deleted chain left on this side of storage: its Save marker, its revocation and
- * its kept bytes, at a load's idle time. Each goes only when the record read worked and found no
- * chain (definite deletion).
+ * Removes what a deleted chain left on this side of storage: its Save marker and its kept bytes,
+ * at a load's idle time. Each goes only when the record read worked and found no chain (definite
+ * deletion).
  */
 export const reclaimOrphans = async (worker: ReadWorker, kept?: KeptCopies) => {
     const chains = new Set<string>()
     try {
-        for (const prefix of [storageKey('saving.'), storageKey('revoke.')])
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i)
-                if (key?.startsWith(prefix)) chains.add(key.slice(prefix.length))
-            }
+        const prefix = storageKey('saving.')
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key?.startsWith(prefix)) chains.add(key.slice(prefix.length))
+        }
     } catch {
         // No localStorage: only kept bytes to look at.
     }
@@ -211,7 +159,6 @@ export const reclaimOrphans = async (worker: ReadWorker, kept?: KeptCopies) => {
         // A failed read keeps everything: it goes only when the read worked and found no chain.
         if (read.storedRead !== 'value' || read.storedValue !== undefined) continue
         removeMarker(chainId)
-        removeRevocation(chainId)
         if (copies.has(chainId)) await kept?.remove(chainId)
     }
 }

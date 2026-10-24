@@ -199,7 +199,7 @@ export class Run {
     private readonly seenSeqs = new WeakMap<FlushSession, { acked: number; strict: number }>()
     /**
      * J3 and J4: the journal keys a live page wrote, or took over to retire, by key: the text it
-     * left, the `seq` it covers and the session whose strict commit clears it.
+     * left, the `seq` it covers and the session whose commit clears it.
      */
     private readonly journals = new Map<
         string,
@@ -250,10 +250,7 @@ export class Run {
             this.world,
             { name: `${name}#${this.visits}`, flags: this.flags, ...(flush ? { flush } : {}) },
             this.storage,
-            {
-                now: () => 1_792_130_467_000 + ++this.journalWrites,
-                ...(this.fx ? { strictCommits: false } : {}),
-            },
+            { now: () => 1_792_130_467_000 + ++this.journalWrites },
         )
         const visit = Object.assign(page, { name }) as Visit
         // Every write the page's journal makes is noted for J3, whoever asks for it (a hide, a fork).
@@ -462,8 +459,8 @@ export class Run {
             list.push({ seq, root: this.exact.has(live) ? rootOf(live) : undefined })
             this.hid.set(session.id, list)
         }
-        // I-17: a page whose entries are all strictly committed writes no journal (one an earlier
-        // page left stays until a load finds it covered).
+        // I-17: a page whose entries are all committed writes no journal (one an earlier page
+        // left stays until a load finds it covered).
         if (!unflushed && this.storage.getItem(key) !== before)
             this.fail('I-17: a journal written while nothing is unflushed')
     }
@@ -861,7 +858,7 @@ export class Run {
             this.index = index + 1
             this.append('edit', taken)
             // As the startup does (`open.ts`): the journal's key goes once the continuation's
-            // entry holding its work is committed strictly (J3).
+            // entry holding its work is committed (J3).
             if (found) {
                 const seq = visit.flusher.newestSeq(session)
                 visit.writer.retire(found, session.id, seq)
@@ -1312,7 +1309,7 @@ export class Run {
                             `after ${after}: P1: session ${session.id} (${visit.name}) is not the current one and gained the pending ${entry.kind} entry ${entry.seq}`,
                         )
             this.seenPending.set(session, new Set(session.pending))
-            // P4: acknowledged and strict `seq`s never go back.
+            // P4: committed and strict `seq`s never go back.
             const seen = this.seenSeqs.get(session)
             if (seen && (session.ackedSeq < seen.acked || session.strictSeq < seen.strict))
                 this.fail(
@@ -1323,11 +1320,7 @@ export class Run {
         this.checkJournals(after)
     }
 
-    /**
-     * J3: once a strict flush covers a journal's `seq` and the page is idle, that journal key is
-     * gone. Where strict commits are not durable on resolve (Firefox before 126) a covered key
-     * waits for the next verified journal instead, so the rule is the default writer's.
-     */
+    /** J3: once a commit covers a journal's `seq` and the page is idle, that journal key is gone. */
     private checkJournals(after: string) {
         for (const [key, journal] of this.journals) {
             const { visit, session } = journal
@@ -1335,16 +1328,15 @@ export class Run {
                 // The page died (its journal is for the next load), or the key is another's now.
                 this.journals.delete(key)
             else if (
-                !this.fx &&
                 !this.paused &&
                 !this.inMemory(visit) &&
                 sessionsOf(visit.flusher).includes(session) &&
-                session.strictSeq >= journal.seq &&
+                session.ackedSeq >= journal.seq &&
                 !session.pending.length &&
                 !session.memoryOnly.length
             )
                 this.fail(
-                    `after ${after}: J3: the journal of session ${session.id} at seq ${journal.seq} is still stored after a strict flush covered seq ${session.strictSeq} (${visit.name})`,
+                    `after ${after}: J3: the journal of session ${session.id} at seq ${journal.seq} is still stored after a commit covered seq ${session.ackedSeq} (${visit.name})`,
                 )
         }
     }
@@ -1469,13 +1461,13 @@ export class Run {
             if (!visit?.page.alive) continue
             await visit.flusher.flush({ strict: true }).catch(() => undefined)
             await this.settle()
-            // Nothing paused or failing now: every entry is committed strictly (a blank start or an
+            // Nothing paused or failing now: every entry is committed (a blank start or an
             // unstored continuation has nothing to store).
             const flusher = visit.flusher
             for (const session of sessionsOf(flusher))
                 if (flusher.unflushed(session))
                     this.fail(
-                        `I-14: session ${session.id} (${visit.name}) has entries not committed strictly after a strict flush: ${JSON.stringify([session.pending.length, session.memoryOnly.length, session.ackedSeq, session.strictSeq, session.reserved?.seq, session.stored, flusher.session === session])}`,
+                        `I-14: session ${session.id} (${visit.name}) has entries not committed after a strict flush: ${JSON.stringify([session.pending.length, session.memoryOnly.length, session.ackedSeq, session.strictSeq, session.reserved?.seq, session.stored, flusher.session === session])}`,
                     )
         }
         await this.check('finish')
@@ -1609,8 +1601,9 @@ const scriptRun = async (seed: number, fx: boolean, script: string) => {
 }
 
 /**
- * Defines the model tests of one writer. The default writer and Firefox before 126 are two files
- * so that the runner runs them side by side, and each has seeds of its own.
+ * Defines the model tests of one power-loss model. `loseRelaxed` and Firefox before 126's
+ * `loseCommits` are two files so that the runner runs them side by side, and each has seeds of
+ * its own.
  */
 export const defineModelTests = (fx: boolean) => {
     const gate = process.env.NSE_MODEL_GATE === '1'

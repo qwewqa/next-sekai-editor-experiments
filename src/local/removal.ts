@@ -14,7 +14,7 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
 /** A chain's head session id; a damaged chain has none, and removal is then expected against none. */
 const headIdOf = (chain: Row) => (typeof chain.head === 'string' ? chain.head : undefined)
 
-/** The `at` of a chain's file binding: a takeover or a revocation changes it or removes it. */
+/** The `at` of a chain's file binding: a takeover changes it or removes it. */
 export const fileAtOf = (chain: Row) =>
     isRow(chain.file) && typeof chain.file.at === 'number' ? chain.file.at : undefined
 

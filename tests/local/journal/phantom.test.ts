@@ -207,9 +207,9 @@ test('a fork’s superseded journal stays until the fork holds all it moved', as
     // The old session's two entries moved to a fork, numbered 1 and 2 there (a fork that is not
     // the open session, so its own journal does not clear the old key at once).
     page.writer.forked(from, { id: 'F', nextSeq: 3, entrySeq: 2 } as FlushSession)
-    page.writer.committed('F', 1, true)
+    page.writer.committed('F', 1)
     assert.equal(storage.getItem(`nse.journal.${from.id}`) === null, false, 'entry 1 of 2')
-    page.writer.committed('F', 2, true)
+    page.writer.committed('F', 2)
     assert.equal(storage.getItem(`nse.journal.${from.id}`), null)
 })
 

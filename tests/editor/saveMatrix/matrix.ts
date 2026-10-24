@@ -745,7 +745,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'takeover-fails',
-        exit: 'storage paused: the takeover cannot be kept',
+        exit: 'storage paused: the takeover cannot be recorded',
         applies: (path, p) =>
             path.picker &&
             path.writes &&
@@ -764,7 +764,17 @@ export const FAULTS: FaultDef[] = [
                     : path.family === 'export'
                       ? ['other']
                       : ['other', 'unknown', 'fresh']
-            return { effective: () => calls > 0 || !takes.includes(last(p)) }
+            // Another chain's file is refused (R11): Save to File… takes the open chain's own too.
+            const owner =
+                last(p) === 'other'
+                    ? { chainId: 'chain-other', name: FILES.other }
+                    : last(p) === 'own' && path.id === 'save-to-file'
+                      ? { chainId: 'chain-own', name: FILES.own }
+                      : undefined
+            return {
+                effective: () => calls > 0 || !takes.includes(last(p)),
+                ...(owner ? { facts: { notTakenOver: owner } } : {}),
+            }
         },
     },
     {

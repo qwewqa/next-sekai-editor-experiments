@@ -8,7 +8,7 @@ import {
     notify,
     type NoticeAction,
 } from '../editor/notification'
-import { readRevocation, reclaimOrphans } from '../editor/save/env'
+import { reclaimOrphans } from '../editor/save/env'
 import { onHistoryAction } from '../history/actions'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
@@ -412,7 +412,6 @@ export const startStorage = async () => {
                             worker.status?.mode === 'stored' ? worker.status.reason : undefined,
                         retryStoring,
                         reclaim,
-                        revoked: (chainId) => readRevocation(chainId) !== undefined,
                     }),
                 )
                 if (window.nseStorageTest)
