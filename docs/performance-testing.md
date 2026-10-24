@@ -175,6 +175,6 @@ The minimap painted nothing in any scroll or playback frame. Its overlay costs 0
 
 Recurring spikes, with the trace events behind them:
 
-- **Pixi's GC pass:** `GCSystem.run` every 30 s. 30 ms at 1×, 150 ms at 4×.
+- **Pixi's GC pass:** `GCSystem.run` every 30 s. 30 ms at 1×, 150 ms at 4×. It now runs at idle time, 1 s after the last render or once drawing has gone on for a minute past its due time, never inside a frame (`RenderingScheduler`). Its cost grows with what is live: late in a session 10–20 ms at 1× and up to 60 ms at 4×. In a trace it is an idle callback.
 - **V8 major GC under the preview's per-frame allocations:** 13–19 ms at 1×, 108–134 ms at 4×.
 - **First-visit section compiles:** `notes.ts` `prepareSections` and `vectorRanges.ts` `captureVectors`. 20–45 ms at 4×.
