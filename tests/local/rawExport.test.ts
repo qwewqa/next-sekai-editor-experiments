@@ -220,6 +220,80 @@ test('a large Blob is its own entry, never read whole or as base64, and seeds ba
     await other.idle()
 })
 
+const UNREADABLE = 'audio/x-gone'
+
+/** Runs `run` with every Blob of the type `UNREADABLE` failing to read, as one whose file is gone. */
+const withUnreadableBlobs = async <T>(run: () => Promise<T>): Promise<T> => {
+    const { slice, arrayBuffer } = Blob.prototype
+    const log = console.error
+    // A slice keeps its Blob's type, so the CRC's sliced reads fail too.
+    Blob.prototype.slice = function (this: Blob, start?: number, end?: number) {
+        return slice.call(this, start, end, this.type)
+    }
+    Blob.prototype.arrayBuffer = function (this: Blob) {
+        return this.type === UNREADABLE
+            ? Promise.reject(new DOMException('The file could not be read', 'NotReadableError'))
+            : arrayBuffer.call(this)
+    }
+    console.error = () => undefined
+    try {
+        return await run()
+    } finally {
+        Blob.prototype.slice = slice
+        Blob.prototype.arrayBuffer = arrayBuffer
+        console.error = log
+    }
+}
+
+test('a Blob that cannot be read is left out alone, and every other row and Blob is exported', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = stored()
+    const media = (blob: unknown) => ({ blob })
+    dump.stores.find((store) => store.name === 'media')!.records = [
+        { key: hash(3), value: media({ $blob: b64([9, 8, 7]), type: 'audio/mpeg' }) },
+        { key: hash(4), value: media({ $blob: b64([1, 2, 3, 4]), type: UNREADABLE }) },
+        { key: hash(5), value: media({ $blob: b64([6]), type: 'image/png' }) },
+    ]
+    await tab.run(() => seedDump(tab.kv, readDump(dump), { setItem: () => undefined }))
+    const sources: RawSources = { factory: tab.kv, storage: fakeStorage(dump.localStorage) }
+    const built = await withUnreadableBlobs(() =>
+        tab.run(() => buildRawExportResult('0.6.0', sources)),
+    )
+    // The database is not left out: every row is there, the unreadable Blob tagged with its type
+    // and size, and the other Blobs numbered on without it.
+    assert.equal(built.databaseUnreadable, false)
+    const expected = structuredClone(dump)
+    expected.stores.find((store) => store.name === 'media')!.records = [
+        { key: hash(3), value: media({ $blobEntry: 'blobs/0', type: 'audio/mpeg' }) },
+        { key: hash(4), value: media({ $blobUnreadable: true, type: UNREADABLE, size: 4 }) },
+        { key: hash(5), value: media({ $blobEntry: 'blobs/1', type: 'image/png' }) },
+    ]
+    assert.deepEqual(readDump(await readExport(built.zip, ['blobs/0', 'blobs/1'])), expected)
+    const reader = await ZipReader.open(built.zip)
+    const bytes = async (name: string) => [
+        ...(await reader.read(reader.get(name)!, { maxSize: 16 })),
+    ]
+    assert.deepEqual(await bytes('blobs/0'), [9, 8, 7])
+    assert.deepEqual(await bytes('blobs/1'), [6])
+    // It seeds: the unreadable Blob comes back as an empty one of its type, in its row.
+    const other = createWorld()
+    const otherTab = other.tab('b')
+    assert.deepEqual(
+        await otherTab.run(() => seedRawExport(otherTab.kv, built.zip, fakeStorage({}))),
+        { seeded: true },
+    )
+    const reseeded = structuredClone(dump)
+    reseeded.stores.find((store) => store.name === 'media')!.records[1]!.value = media({
+        $blob: '',
+        type: UNREADABLE,
+    })
+    const again = await otherTab.kv.open(DB_NAME, undefined)
+    assert.deepEqual(await dumpOf(otherTab, again), { ...reseeded, localStorage: {} })
+    await world.idle()
+    await other.idle()
+})
+
 test('a missing database is not created, and the export holds localStorage only', async () => {
     const world = createWorld()
     const tab = world.tab('a')
