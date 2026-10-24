@@ -163,7 +163,7 @@ The History redesign is the newest large body of UI; it follows the rules above 
 - A touch or pen drag sideways dismisses it (past 30 % of the width or a quick flick); a mouse does not swipe. A card stays about 6 s and holds while hovered or focused. A quick toast (no action, no `card`) keeps its original look and never carries a glyph.
 
 **Level Info** (`src/editor/commands/levelInfo/LevelInfoModal.vue`, `src/editor/levelInfo/MediaRow.vue`)
-- A `BaseModal` form with one label column: the file line (the status label's text) with Check File and History…, the text fields, then the Cover and Preview rows. The cover is a 96 px tile (`rounded-xl bg-button shadow-md`) beside its summary; each media row's actions are `btn-secondary h-9` pills that wrap under the summary. One `btn-primary` Confirm ends it. While peeking every field is read-only.
+- A `BaseModal` form with one label column: the file line (the status label's text) with Check… (Check File and History…), the text fields, then the Cover and Preview rows. The cover is a 96 px tile (`rounded-xl bg-button shadow-md`) beside its summary; each media row's actions are `btn-secondary h-9` pills that wrap under the summary. One `btn-primary` Confirm ends it. While peeking every field is read-only.
 
 **Not stored** (`src/editor/file/FileChip.vue`, `chipDialogs.ts`, `src/editor/NotStoredBar.vue`)
 - The status bar's file chip: a `ghost` button with a 12 px warning or info glyph and short text, the glyph alone in a compact bar. It shows one state at a time, the others as lines in its dialog; Not stored's dialog gives the cause, a way to get storing going (Try Again, Reload or Local Data, by cause), I Have the File when a download is not confirmed, and Save.

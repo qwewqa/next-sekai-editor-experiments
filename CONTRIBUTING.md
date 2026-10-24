@@ -5,7 +5,7 @@
 Use the Node.js version in `.node-version`.
 
 ```sh
-npm install
+npm ci
 npm run dev
 ```
 
@@ -22,7 +22,7 @@ One frontend is built twice: `npm run build` for the web and `npm run build:nati
 | The web implementation | `src/platform/web.ts` | Web, through `#platform` |
 | The native implementation | `src/platform/native/` | Native only, through `#platform`'s `native` condition |
 | The mock platform | `src/platform/mock.ts`, injected with `setPlatformForTests` | Tests |
-| Native-only features | `src/library/`, `src/projects/` | Native only, loaded through one loader |
+| Native-only features | `src/library/`, `src/projects/` (Stage 2) | Native only, loaded through one loader |
 | Asset defaults | `#asset-defaults` | Per build |
 
 `#platform` and `#asset-defaults` are `package.json` `imports` with a `native` condition. Native mode (`vite --mode native`) selects it; the web build and the Node tests resolve the `default` target.
@@ -50,7 +50,7 @@ A string that must read differently by capability is one keyed variant, picked b
 
 ### Native-only features
 
-A feature the web can't do safely lives in `src/library/` or `src/projects/` and registers its commands from the native loader, so the web bundle never contains it. The web never shows a teaser or a disabled control for it.
+A feature the web can't do safely lives in `src/library/` or `src/projects/` and registers its commands from the native loader, so the web bundle never contains it. The web never shows a teaser or a disabled control for it. These folders and the loader (`src/nativeLoader.ts`) arrive with Stage 2; the lint already reserves their paths (`eslint.config.js`).
 
 To add one:
 
@@ -79,18 +79,27 @@ The art is CC0 and must be original. The generator scripts are MIT. `REUSE.toml`
 
 ## Tests
 
+CI runs these (`.github/workflows/check.yml`):
+
 - `npm run check-type`, `npm run check-lint` and `npm run check-format`.
-- `npm test`: the unit suites, including the pipeline and licensing tests. Shared code that depends on a capability is tested with both capability sets: inject `createMockPlatform({ capabilities: { ... } })` with `setPlatformForTests` once per set, and restore it afterwards.
+- `npm test`: the unit suites, including the pipeline and licensing tests. CI runs them in UTC (`TZ=UTC npm test`). Shared code that depends on a capability is tested with both capability sets: inject `createMockPlatform({ capabilities: { ... } })` with `setPlatformForTests` once per set, and restore it afterwards.
+- `uv run python -I tools/nxsp_check.py tests/local/nxsp/golden-v1/*.nxsp tests/zip/plan-conformance-v1/*/expected.nxsp`: the independent checker over the `.nxsp` fixtures. It needs `uv`.
+- `npm run test:release`: the release scripts and the changelog format.
+- `npm run check:builtin-assets`, and `npm run build:native` then `npm run check:native-bundle`.
+
+Also:
+
 - A native test is needed for anything that touches the native implementation, the filesystem, the OS or the Rust side. Shared tests use the mock platform and need no Rust.
-- `npm run test:release`: the release scripts.
-- `npm run test:browser`: the Playwright specs; run the ones for your area with `npx playwright test <spec> --project=chromium`.
+- `npm run test:browser`: the Playwright specs in Chromium, then the timing specs alone (`npm run test:timing`); run the ones for your area with `npx playwright test <spec> --project=chromium`. Many need the preview assets (README).
+- `npm run test:production`: the production build's specs, after `npm run build:release`.
+- `npm run test:compatibility`: Firefox, WebKit and mobile WebKit (README, "Browser compatibility").
 
 ## Formats
 
-Stored formats change only through the version rules (Part 0, 0.11.7):
+Stored formats change only through the rules in [docs/format-versioning.md](docs/format-versioning.md): readers before writers, the lowest version that holds the content, and its checklist. Until v0.6.0 ships they change in place at v1.
 
 - Readers before writers. A release that can read format N+1 ships at least one release before the first that writes it, and the writer’s release notes say which version is needed. The level model counts: a new archetype, field or choice value raises `levelVersion`.
-- Never write what you do not understand. A file with content a build does not read opens separately; newer data opens read-only or is refused.
+- Never write what you do not understand. A newer `patch`, an `x` value, an `extra` key or a `cache/` entry opens normally. Other content a build does not read opens the file as a separate copy. Newer data in browser storage opens read-only or is not read.
 - Every stored file carries a version, and every new format or field goes into the format table in the same change.
 - Fixtures are committed, one per format version, and every self-test reads them. See the notes in the code next to each format.
 
@@ -98,6 +107,7 @@ Read these before you change a format:
 
 - [docs/format-versioning.md](docs/format-versioning.md): what each version number does, the extension points and the checklist for a format change.
 - [docs/history-format.md](docs/history-format.md): the History data model, the `.nxsp` history parts, every History operation, the safety rules and how to add an operation.
+- [docs/nxsp-format.md](docs/nxsp-format.md): the `.nxsp` project file byte by byte, for a reader or writer built without the editor's code.
 
 ## Engineering principles
 
@@ -111,6 +121,14 @@ Read this before you measure or optimize scrolling or playback:
 
 - [docs/performance-testing.md](docs/performance-testing.md): the perf harness (`npm run perf`), what to judge (per-frame work against 4.17 ms and 8.33 ms), the setup that gives stable numbers, the charts to use and the current baseline.
 
+## Releasing
+
+1. Add each user-visible change as a line under `## Unreleased` in `CHANGELOG.md`, in the commit that makes it. A line is `- `, an optional `(Web)` or `(Apps)`, then plain text with no contractions and ’ for apostrophes. `npm run test:release` checks the format.
+2. Once Check and Deploy Pages have passed for the commit on `main`, run `npm run release:tag -- X.Y.Z` there (`--commit <sha>` tags an earlier commit; `--edit` opens the notes first). It needs `gh`, signed in. It makes the annotated tag `vX.Y.Z` with the `## Unreleased` lines as its message, then the commit "Changelog for X.Y.Z", which moves those lines under `## X.Y.Z (date)` and sets the version in `package.json` and `package-lock.json`. It refuses a patch version (Z above 0) when a format version changed since the last tag.
+3. Run the push it prints, `git push --atomic origin main vX.Y.Z`. Pushing the tag is the release. Deploy Pages then runs Check, builds with `npm run build:release`, runs `npm run test:production` and `npm run check:release`, and deploys when the tag is the highest `v*` tag. A push to `main` deploys nothing. A pushed tag is never moved or deleted.
+4. For a fix while `main` holds unfinished work, make a branch from the last tag, commit the fix there and run the script on it. CI does not check that branch before the tag, so the script prints the local checks to run first. Merge the branch into `main` afterwards.
+5. After the deploy, check the live site: `PRODUCTION_TEST_URL=https://nse.qwewqa.dev npm run test:production`.
+
 ## Forks
 
-A fork builds everything unsigned with no setup beyond the Node version: `npm install`, then `npm run build` or `npm run build:native`.
+A fork builds everything unsigned with no setup beyond the Node version: `npm ci`, then `npm run build` or `npm run build:native`.

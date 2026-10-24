@@ -2,7 +2,7 @@
 
 How the editor's stored and exchanged formats change, and what each version number does. Read this before changing anything a file, a database row, a journal or an operation holds.
 
-The authority is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms); this page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in [nxsp-format.md](nxsp-format.md).
+The code is the record: where this page and the code disagree, the code wins. The design record is the plan (Part 1 §1.6.11.8, with §1.6.11.1–§1.6.11.6 for the forms), kept outside this repository; this page is the working summary with the checklist. The History data model, the `.nxsp` history parts and every operation are described in [history-format.md](history-format.md); this page does not repeat them. The full byte-level description of `.nxsp` is in [nxsp-format.md](nxsp-format.md).
 
 ## 1. The ruling
 
