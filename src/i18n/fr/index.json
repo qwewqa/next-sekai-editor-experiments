@@ -534,7 +534,7 @@
       "import": {
         "damaged": "Ce fichier est endommagé ou n’est pas un paquet Sonolus.",
         "fileUnreadable": "Impossible de lire ce fichier.",
-        "zip64": "Ce fichier utilise ZIP64, que l’éditeur ne peut pas lire.",
+        "zip64": "L’éditeur ne peut pas lire les fichiers ZIP64.",
         "fileTooLarge": "Ce fichier dépasse {0}.",
         "tooManyEntries": "Ce fichier contient plus de {0} entrées.",
         "badName": "Ce fichier contient un nom d’entrée non autorisé.",
@@ -569,8 +569,8 @@
       "noneFound": "Aucun élément trouvé",
       "server": {
         "unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse ou réessayez plus tard.",
-        "auth": "Ce serveur demande de se connecter à un compte, ce que l’éditeur ne prend pas en charge.",
-        "insecure": "Ce serveur utilise http, que l’éditeur ne peut pas charger.",
+        "auth": "L’éditeur ne peut pas utiliser les serveurs qui demandent de se connecter à un compte.",
+        "insecure": "L’éditeur ne peut pas utiliser les serveurs http.",
         "checksum": "La somme de contrôle du serveur pour cet élément ne correspond pas à ce qu’il a envoyé.",
         "notFound": "Ce serveur n’a pas cet élément.",
         "invalid": "Cette adresse n’est pas celle d’un serveur Sonolus.",
@@ -1239,12 +1239,12 @@
     },
     "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",
     "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
-    "inAppBrowser": "Cela semble être le navigateur intégré d’une application, qui peut supprimer le travail stocké. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
     "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
     "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
     "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que cette icône soit retirée de l’écran d’accueil. Sauvegardez dans un fichier pour conserver votre travail.",
     "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez dans un fichier pour conserver votre travail.",
-    "default": "Les sessions récentes sont conservées dans ce navigateur, qui peut les effacer si l’espace vient à manquer. Sauvegardez dans un fichier pour conserver votre travail."
+    "default": "Les sessions récentes sont conservées dans ce navigateur, sauf si l’espace vient à manquer. Sauvegardez dans un fichier pour conserver votre travail."
   },
   "player": {
     "started": "Lecture démarrée",
@@ -2247,6 +2247,7 @@
   },
   "prompt": {
     "title": "Modifications non stockées",
+    "unsaved": "Modifications non sauvegardées",
     "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Elles seront perdues si vous quittez.",
     "save": "Sauvegarder",
     "leaveAnyway": "Quitter quand même"

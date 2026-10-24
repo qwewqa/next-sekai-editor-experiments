@@ -13,7 +13,8 @@ export const reset: Command = {
     leavesPeek: true,
 
     async execute() {
-        if (!(await confirmSwitch())) return
+        // Asks first when the chart has edits no file holds (§1.4.9).
+        if (!(await confirmSwitch({ unsaved: true }))) return
 
         resetState(false)
 

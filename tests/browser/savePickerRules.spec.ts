@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { crafted } from '../local/nxsp/craft'
+import { confirmNew } from './confirmWhenReady'
 import { installTestPlatform, waitForStartup } from './editorFixture'
 import {
     chainById,
@@ -286,6 +287,7 @@ for (const lifecycle of ['reload', 'reload gap', 'switch and reopen']) {
         if (lifecycle === 'switch and reopen') {
             const originalDoc = (await sessionOf(page)).docId
             await page.keyboard.press('n')
+            await confirmNew(page)
             await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
             await page.getByRole('button', { name: /^Reopen / }).click()
             await expect.poll(async () => (await sessionOf(page)).docId).toBe(originalDoc)

@@ -534,7 +534,7 @@
       "import": {
         "damaged": "Bu dosya bozuk veya bir Sonolus paketi değil.",
         "fileUnreadable": "Bu dosya okunamadı.",
-        "zip64": "Bu dosya, editörün okuyamadığı ZIP64 biçimini kullanıyor.",
+        "zip64": "Editör ZIP64 dosyalarını okuyamaz.",
         "fileTooLarge": "Bu dosya {0} sınırından büyük.",
         "tooManyEntries": "Bu dosyada {0} girdiden fazlası var.",
         "badName": "Bu dosyada izin verilmeyen bir girdi adı var.",
@@ -569,8 +569,8 @@
       "noneFound": "Öğe bulunamadı",
       "server": {
         "unreachable": "Bu sunucuya ulaşılamadı. Adresi kontrol edin veya daha sonra tekrar deneyin.",
-        "auth": "Bu sunucu oturum açmayı gerektiriyor; editör bunu desteklemiyor.",
-        "insecure": "Bu sunucu http kullanıyor; editör bunu yükleyemez.",
+        "auth": "Editör, oturum açmayı gerektiren sunucuları kullanamaz.",
+        "insecure": "Editör http sunucularını kullanamaz.",
         "checksum": "Bu öğe için sunucunun sağlama toplamı, gönderdiği içerikle eşleşmiyor.",
         "notFound": "Bu sunucuda böyle bir öğe yok.",
         "invalid": "Bu adres bir Sonolus sunucusu değil.",
@@ -1239,12 +1239,12 @@
     },
     "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor; bu tarayıcı saklanan çalışmayı silebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
+    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
     "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "installedWebkit": "Son oturumlar, bu simge Ana Ekran’dan kaldırılana kadar burada tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
     "persisted": "Son oturumlar, verilerini temizlemediğiniz sürece bu tarayıcıda tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "default": "Son oturumlar bu tarayıcıda tutulur; alan azalırsa tarayıcı bunları silebilir. Çalışmanızı korumak için bir dosyaya kaydedin."
+    "default": "Son oturumlar, alan azalmadığı sürece bu tarayıcıda tutulur. Çalışmanızı korumak için bir dosyaya kaydedin."
   },
   "player": {
     "started": "Oynatmaya başlandı",
@@ -2247,6 +2247,7 @@
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
+    "unsaved": "Kaydedilmemiş Değişiklikler",
     "notStored": "Değişiklikleriniz bu tarayıcıda saklanmıyor. Ayrılırsanız bu değişiklikler kaybolur.",
     "save": "Kaydet",
     "leaveAnyway": "Yine de Ayrıl"

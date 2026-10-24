@@ -864,7 +864,7 @@ test.describe('refusing a file', () => {
         await refused(
             page,
             rawZip(entries, { zip64End: true }),
-            'This file uses ZIP64, which the editor cannot read.',
+            'The editor cannot read ZIP64 files.',
         )
 
         // A ratio bomb: 30 MB of zeros deflated into a texture.

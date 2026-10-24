@@ -5,6 +5,7 @@ import { buildZip } from '../../src/zip'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson, type Item } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
+import { confirmNew } from './confirmWhenReady'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
@@ -1012,6 +1013,7 @@ test('a newer patch gives way to an earlier session’s unsaved-changes notice, 
     await edit(page, 777)
     await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
     await page.keyboard.press('n')
+    await confirmNew(page)
     await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
     await openFile(page, 'coconut.nxsp')
     await expect(

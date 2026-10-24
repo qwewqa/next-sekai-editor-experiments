@@ -513,7 +513,7 @@ test('the failures read as 2.5.3 words them', async () => {
     await second.connect()
     assert.equal(
         say(second.error.value!),
-        'This server needs you to sign in, which the editor does not support.',
+        'The editor cannot use servers that need you to sign in.',
     )
 
     const offline = setup(collection(), { online: () => false })
@@ -529,10 +529,7 @@ test('an http address is refused before anything is fetched, and a bad field say
     const chooser = createServerChooser('skin', deps('skin'))
     chooser.address.value = 'http://server.test/api'
     await chooser.connect()
-    assert.equal(
-        serverErrorText(chooser.error.value!, en),
-        'This server uses http, which the editor cannot load.',
-    )
+    assert.equal(serverErrorText(chooser.error.value!, en), 'The editor cannot use http servers.')
     chooser.address.value = ''
     await chooser.connect()
     assert.equal(serverErrorText(chooser.error.value!, en), 'Enter a server address.')
