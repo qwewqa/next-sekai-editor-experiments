@@ -9,8 +9,15 @@ test(`editor restore releases retained geometry after native reset (WebGL2)`, as
     await page.locator('canvas.editor-chart').waitFor({ state: 'visible' })
     await page.evaluate(installEditorFixture)
     const result = await page.evaluate(async () => {
-        const { show, fixtures, view, settings, history, nextTick } = window.editorTest
+        const { show, fixtures, view, settings, history, nextTick, appImport } = window.editorTest
         const { peekDrawContext } = await window.editorRenderingReady
+        // Count only what frames retain. Idle compilation (vectorAhead.spec.ts) adds sections
+        // at times of its own, before or after the loss.
+        const { VectorRanges } = await appImport<
+            typeof import('../../src/editor/canvas/vectorRanges')
+        >('/src/editor/canvas/vectorRanges.ts')
+        ;(VectorRanges.prototype as unknown as { compileAhead: () => string }).compileAhead = () =>
+            'done'
         const canvas = document.querySelector<HTMLCanvasElement>('canvas.editor-chart')!
         const ctx = peekDrawContext(canvas)!
         await ctx.ready

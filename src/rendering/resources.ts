@@ -14,7 +14,7 @@ import { initializeLyon } from './lyon'
 import { RenderingScheduler } from './scheduler'
 
 // Input and frame scheduling belong to the editor. Neither Pixi's hit testing
-// nor its system ticker is needed; its GC still runs on explicit renders.
+// nor its system ticker is needed; its GC runs at idle time after renders.
 extensions.remove(EventSystem, SchedulerSystem)
 extensions.add(RenderingScheduler)
 
@@ -25,10 +25,11 @@ extensions.add(RenderingScheduler)
 export type ImageSource = HTMLCanvasElement | HTMLImageElement | ImageData
 export type Client = { flush(): void; dispose(): void; resetSurface(): void }
 /**
- * Pixi unloads what was unused for 60 s on this period. Short periods keep each pass small:
- * the default 30 s unloads 30 s of ageing resources in one frame (28 ms at 1x, 150 ms at 4x).
+ * Pixi unloads what was unused for 60 s on this period, at idle time (`RenderingScheduler`).
+ * A pass also walks every tracked resource, so it is not run often; a third of Pixi's 30 s
+ * default keeps the batch it unloads small.
  */
-export const GC_FREQUENCY = 3000
+export const GC_FREQUENCY = 10_000
 const imageBudget = 96 * 1024 * 1024
 export class RenderingResources {
     readonly renderer = new WebGLRenderer()
