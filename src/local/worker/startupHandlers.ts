@@ -16,7 +16,7 @@ import {
     writeChainFields,
     type ChainFieldsResult,
 } from '../startup/stored'
-import type { Progress } from './core'
+import { refuseUnlessStored, StorageRefusedError, type Progress } from './core'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
@@ -37,12 +37,15 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
         },
     })
     return {
-        /** `meta.dbInstanceId` and `meta.deviceId`, for the canary (§1.6.9). */
-        readMetaIds: () =>
-            context.core.read(['meta'], async (tx) => ({
+        /** `meta.dbInstanceId` and `meta.deviceId`, for the canary (§1.6.9); never memory's. */
+        readMetaIds: async () => {
+            // A worker restarted over memory: its ids would read as a cleared database.
+            if (context.core.status.mode === 'memory') throw new StorageRefusedError('failed')
+            return context.core.read(['meta'], async (tx) => ({
                 dbInstanceId: await readMeta(tx, 'dbInstanceId'),
                 deviceId: await readMeta(tx, 'deviceId'),
-            })),
+            }))
+        },
 
         /** Whether `meta.migratedHashes` holds an old auto save's hash (§1.8). */
         migratedBefore: (hash: string) =>
@@ -111,11 +114,12 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
                 ...scope,
             }),
 
-        /** The auto save as a session (§1.8), in one strict transaction. */
+        /** The auto save as a session (§1.8), in one strict transaction, only into the database. */
         migrateAutoSave: async (
             batch: MigrationBatch,
             scope?: CallScope,
         ): Promise<MigrationResult> => {
+            refuseUnlessStored(context.core.status)
             const progress: Progress = scope ?? {}
             const prepared = await prepareFlush(
                 {

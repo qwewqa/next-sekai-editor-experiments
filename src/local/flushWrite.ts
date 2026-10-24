@@ -168,7 +168,8 @@ export type FlushBatch = {
      * entry among them or stored before (`storeMarks`); left in memory when a mark can't be stored.
      */
     identity?: IdentityUnit
-    durability: 'relaxed' | 'strict'
+    /** `'default'` for a routine flush: Firefox runs `'relaxed'` unsynced, which risks corruption. */
+    durability: 'default' | 'strict'
 }
 
 /** What a flush wrote, by row kind, with about 50 bytes of IndexedDB overhead a row (§1.6.8.1). */

@@ -495,3 +495,115 @@ test('a failed worker read in the canary or the migration’s dedupe never stops
     assert.ok(recovery.migrated)
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
 })
+
+test('without `durability` (Firefox before 126) the key stays after the commit, and the next load only deletes it', async () => {
+    const world = createWorld({ seed: 20 })
+    const storage = new MemoryStorage()
+    const text = autoSaveOf(stateOf(goldenChart()))
+    storage.setItem(key(AUTO_SAVE_KEY), text)
+    const first = await loadIn(world, world.tab('a'), storage, { noDurability: true })
+    await runRecovery(first.recovery)
+    // Committed, though not synced: the key's removal could reach disk first.
+    assert.ok(first.recovery.migrated)
+    assert.deepEqual(first.events, [])
+    assert.equal(rows(world, 'sessions').size, 1)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), text)
+    // Its hash is migrated: no second session, no event, and the key goes.
+    const next = await loadIn(world, world.tab('b'), storage, { noDurability: true })
+    next.recovery.worker.migrateAutoSave = () => {
+        throw new Error('A migrated slot is never prepared again')
+    }
+    await runRecovery(next.recovery)
+    assert.deepEqual(next.events, [])
+    assert.equal(next.recovery.migrated, undefined)
+    assert.equal(rows(world, 'sessions').size, 1)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
+})
+
+/** Runs `body` with console.error silenced: the refusals below are logged. */
+const quietly = async <T>(body: () => Promise<T>) => {
+    const errors = console.error
+    console.error = () => undefined
+    try {
+        return await body()
+    } finally {
+        console.error = errors
+    }
+}
+
+test('a worker restarted over memory refuses the migration and the canary: the key stays for a load that stores', async () => {
+    const world = createWorld({ seed: 21 })
+    const storage = new MemoryStorage()
+    // An earlier visit wrote the canary.
+    await runRecovery((await loadIn(world, world.tab('earlier'), storage)).recovery)
+    assert.notEqual(storage.getItem(key('canary')), null)
+    const text = autoSaveOf(stateOf(goldenChart()))
+    storage.setItem(key(AUTO_SAVE_KEY), text)
+    const tab = world.tab('a')
+    // The load saw storage stored; the worker answering it restarted over memory, whose ids
+    // would read as a cleared database.
+    const core = workerCore(world, tab, { flags: { noStorage: true } })
+    const { recovery, events } = await loadIn(
+        world,
+        tab,
+        storage,
+        { status: { mode: 'stored' } },
+        core,
+    )
+    await quietly(() => runRecovery(recovery))
+    assert.deepEqual(
+        events.map((event) => event.kind),
+        ['migrationFailed'],
+    )
+    assert.equal(recovery.migrated, undefined)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), text)
+    const next = await loadIn(world, world.tab('b'), storage)
+    await runRecovery(next.recovery)
+    assert.deepEqual(next.events, [])
+    assert.ok(next.recovery.migrated)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
+})
+
+test('a worker restarted over memory refuses journal replay: each journal stays for a load that stores', async () => {
+    const world = createWorld({ seed: 22 })
+    const storage = new MemoryStorage()
+    // A killed tab's journal, and a damaged one.
+    const killed = await openJournalPage(world, 'killed', storage)
+    const a = stateOf(goldenChart())
+    const session = beginSession(killed, a)
+    await killed.flusher.flush()
+    append(killed, { kind: 'edit', step: editStep(futureFixtureOperation('Edit')) }, widen(a))
+    assert.equal(killed.writer.write(), true)
+    const journal = storage.getItem(key(`journal.${session.id}`)) ?? ''
+    storage.setItem(key('journal.damaged'), journal.slice(0, 500))
+
+    const tab = world.tab('next')
+    const core = workerCore(world, tab, { flags: { noStorage: true } })
+    const { recovery, events } = await loadIn(
+        world,
+        tab,
+        storage,
+        { status: { mode: 'stored' } },
+        core,
+    )
+    await quietly(() => runRecovery(recovery))
+    assert.deepEqual(
+        recovery.outcomes.map((outcome) => outcome.kind),
+        ['failed', 'failed'],
+    )
+    assert.deepEqual(
+        events.map((event) => event.kind),
+        ['journalFailed'],
+    )
+    assert.equal((await recovery.journal.read()).length, 2)
+    assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 1)
+
+    const next = await loadIn(world, world.tab('later'), storage)
+    await runRecovery(next.recovery)
+    assert.deepEqual(next.recovery.outcomes.map((outcome) => outcome.kind).sort(), [
+        'applied',
+        'unreadable',
+    ])
+    assert.equal(rows(world, 'sessions').get(session.id)?.lastSeq, 2)
+    assert.equal((await next.recovery.journal.read()).length, 0)
+})

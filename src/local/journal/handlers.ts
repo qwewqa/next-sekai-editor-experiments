@@ -1,7 +1,12 @@
 import { readMeta, writeMeta } from '../db'
 import { MaintTimeoutError } from '../locks'
 import { directWaiter, type Waiter } from '../scheduler'
-import { StoragePausedError, StorageRefusedError, type Progress } from '../worker/core'
+import {
+    refuseUnlessStored,
+    StoragePausedError,
+    StorageRefusedError,
+    type Progress,
+} from '../worker/core'
 import type { WorkerContext } from '../worker/handlers'
 import type { CallScope } from '../worker/rpc'
 import {
@@ -72,14 +77,16 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
     })
     return {
         /**
-         * Applies a journal, or keeps it as a recovery session, in one strict transaction. An apply
-         * that fails by an error that will recur is kept as a recovery session instead, and one
-         * that can't be either throws `JournalUnappliableError`, so no journal fails every load.
+         * Applies a journal, or keeps it as a recovery session, in one strict transaction, only
+         * into the database. An apply that fails by an error that will recur is kept as a recovery
+         * session instead, and one that can't be either throws `JournalUnappliableError`, so no
+         * journal fails every load.
          */
         applyJournal: async (
             batch: JournalApplyBatch,
             scope?: CallScope,
         ): Promise<JournalApplyResult> => {
+            refuseUnlessStored(context.core.status)
             const progress: Progress = scope ?? {}
             const write = (force?: string) =>
                 context.core.write(
@@ -108,12 +115,14 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
         },
 
         /**
-         * Moves an unreadable journal's bytes into the `recovered` store, strictly. Its id comes
-         * from the bytes, so a second run finds the row. Resolves false when the browser refuses
-         * the Blob (WebKit's private windows): the key stays, and storing isn't paused.
+         * Moves an unreadable journal's bytes into the `recovered` store, strictly, only in the
+         * database. Its id comes from the bytes, so a second run finds the row. Resolves false when
+         * the browser refuses the Blob (WebKit's private windows): the key stays, and storing isn't
+         * paused.
          */
-        keepRecovered: (item: RecoveredBytes, scope?: CallScope) =>
-            context.core.write(
+        keepRecovered: async (item: RecoveredBytes, scope?: CallScope) => {
+            refuseUnlessStored(context.core.status)
+            return context.core.write(
                 ['recovered', 'meta'],
                 async (tx) => {
                     if ((await tx.getKey('recovered', item.id)) !== undefined) return true
@@ -136,10 +145,11 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
                     return put
                 },
                 { durability: 'strict', ...scope },
-            ),
+            )
+        },
 
         /**
-         * Commits strictly, so what relaxed flushes stored before it is on disk too (§1.6.4: a
+         * Commits strictly, so what routine flushes stored before it is on disk too (§1.6.4: a
          * hide's and a switch's flush is strict). Resolves whether it committed to the database:
          * an in-memory store's commit syncs nothing the database holds.
          */

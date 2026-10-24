@@ -47,6 +47,8 @@ export type RecoveryContext = {
     appVersion: string
     /** Safe mode writes nothing in localStorage but settings (§1.4.2). */
     safe: boolean
+    /** IndexedDB has no `durability` (Firefox before 126): no commit is synced (§1.8 step 2). */
+    noDurability?: boolean
     /** The label of a `recovered` entry, and of the migrated session's `init` entry. */
     operations: { recovered: (dropped: number) => JsonValue; migrated: JsonValue }
     /** The session whose lock this tab already holds: its own reload's (§1.4.2). */
@@ -290,10 +292,10 @@ const migrationBatch = (context: RecoveryContext, text: string, hash: string) =>
 
 /**
  * Step 3, the old auto save (§1.8), on every load: a slot this build reads becomes a session,
- * deduplicated by `meta.migratedHashes`, and the key is deleted after the transaction commits,
- * only if its value is unchanged since it was read. A failed transaction leaves the key, with its
- * load notice. Without IndexedDB the key stays, offered in Local Data; an unreadable slot stays
- * too, and says so.
+ * deduplicated by `meta.migratedHashes`, and the key is deleted after the transaction commits
+ * (without `durability`, at the next load), only if its value is unchanged since it was read.
+ * A failed transaction leaves the key, with its load notice. Without IndexedDB the key stays,
+ * offered in Local Data; an unreadable slot stays too, and says so.
  */
 export const migrationStep = async (context: RecoveryContext) => {
     const text = read(context, AUTO_SAVE_KEY)
@@ -329,6 +331,9 @@ export const migrationStep = async (context: RecoveryContext) => {
             }
             if (made.olderRevision)
                 context.events({ kind: 'migratedRevision', sessionId: result.sessionId })
+            // No commit is synced, and the key's removal could reach disk before this one: the
+            // next load, which finds its hash migrated, deletes the key.
+            if (context.noDurability) return
         }
     }
     // Migrated and committed, now or before. An old tab's newer write survives, and the next

@@ -321,7 +321,7 @@ export type FlushDeps = {
     /** A flush committed a session's entries up to `seq` in a database. */
     onCommitted?: (session: FlushSession, seq: number) => void
     /**
-     * Commits strictly what relaxed flushes stored, so a hide or a switch leaves it on disk
+     * Commits strictly what routine flushes stored, so a hide or a switch leaves it on disk
      * (§1.6.4); without it, a hide's flush with nothing new does nothing.
      */
     syncStrict?: () => Promise<boolean>
@@ -511,7 +511,7 @@ export class Flusher {
     /**
      * Starts a session with its first entry (§1.3.6): `init`. A new or blank session is stored
      * from its first own entry; one that brings content in is stored at once. The replaced
-     * session is committed strictly (§1.3.8): its pending entries, or what relaxed flushes stored.
+     * session is committed strictly (§1.3.8): its pending entries, or what routine flushes stored.
      */
     begin(start: SessionStart): FlushSession {
         const session: FlushSession = {
@@ -692,7 +692,7 @@ export class Flusher {
 
     /**
      * Makes a session the current one. The replaced session is committed strictly (§1.3.8): its
-     * pending entries, or what relaxed flushes stored; `outgoing` says whether that held.
+     * pending entries, or what routine flushes stored; `outgoing` says whether that held.
      */
     private switchTo(
         session: FlushSession,
@@ -1147,7 +1147,7 @@ export class Flusher {
         }
     }
 
-    /** Commits strictly what relaxed flushes stored, so it is on disk. */
+    /** Commits strictly what routine flushes stored, so it is on disk. */
     private async syncStrict() {
         const behind = this.sessions.filter((session) => session.strictSeq < session.ackedSeq)
         if (!behind.length || !this.deps.syncStrict) return
@@ -1422,7 +1422,7 @@ export class Flusher {
                 : {}),
             ...(stack ? { stack: stack.wire } : {}),
             ...(identity ? { identity: unitOf(identity) } : {}),
-            durability: isStrict ? 'strict' : 'relaxed',
+            durability: isStrict ? 'strict' : 'default',
         }
         const mainMs = slices.reduce((sum, ms) => sum + ms, 0) + performance.now() - start
         // Read before the buffer is transferred.
