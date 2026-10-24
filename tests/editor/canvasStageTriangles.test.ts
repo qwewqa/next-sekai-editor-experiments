@@ -8,6 +8,12 @@ import { WebGLDrawContext } from '../../src/rendering/context'
 import { StageMeshes, StageTriangles } from '../../src/rendering/stageMesh'
 
 const triangle = () => new Float64Array([0, 0, 2, 0, 0, 3])
+const append = (
+    stream: StageTriangles,
+    [x0, y0, x1, y1, x2, y2]: Float64Array,
+    color: number,
+    alpha: number,
+) => stream.appendTriangle(x0!, y0!, x1!, y1!, x2!, y2!, color, alpha)
 
 function meshesWithoutGpu() {
     const meshes = new StageMeshes()
@@ -22,9 +28,9 @@ function meshesWithoutGpu() {
 test('stage triangle stream preserves paint order and premultiplies opacity once', () => {
     const stream = new StageTriangles()
     const source = triangle()
-    stream.append(source, 0xff8040, 0.16)
-    stream.append(source, 0x4080ff, 0.4)
-    stream.append(source, 0xffffff, 0)
+    append(stream, source, 0xff8040, 0.16)
+    append(stream, source, 0x4080ff, 0.4)
+    append(stream, source, 0xffffff, 0)
     assert.equal(stream.vertices.length, 36)
     assert.deepEqual(source, triangle())
     assert.deepEqual(stream.vertices.slice(0, 6), [
@@ -55,7 +61,8 @@ test('custom stage geometry packs after the double transform and respects interl
     const { meshes } = meshesWithoutGpu()
     const origin = 2 ** 40
     const stream = new StageTriangles()
-    stream.append(
+    append(
+        stream,
         new Float64Array([
             origin + 0.125,
             origin + 0.25,
@@ -96,7 +103,7 @@ test('custom stage geometry packs after the double transform and respects interl
 test('stage mesh recycling frees each buffer once and retains the shared shader', () => {
     const { meshes, shader } = meshesWithoutGpu()
     const stream = new StageTriangles()
-    stream.append(triangle(), 0xffffff, 1)
+    append(stream, triangle(), 0xffffff, 1)
     const first = meshes.draw(stream.vertices, [1, 0, 0, 1, 0, 0])
     const second = meshes.draw(stream.vertices, [1, 0, 0, 1, 10, 20])
     let firstBufferDestroyed = 0
@@ -136,7 +143,7 @@ test('context queues stage meshes through its current clip parent and recycles t
         waveforms: { recycle: () => waveformRecycles++ },
     }) as unknown as WebGLDrawContext
     const stream = new StageTriangles()
-    stream.append(triangle(), 0xffffff, 0.65)
+    append(stream, triangle(), 0xffffff, 0.65)
     try {
         context.drawStageTriangles([])
         assert.equal(mutations, 0)
@@ -175,7 +182,7 @@ test('retained stage meshes survive frame recycling and are freed once by releas
         waveforms: { recycle: () => {} },
     }) as unknown as WebGLDrawContext
     const stream = new StageTriangles()
-    stream.append(triangle(), 0xffffff, 1)
+    append(stream, triangle(), 0xffffff, 1)
     const kept = context.createStageMesh(stream.vertices, [2, 0, 0, 3, 0, -6])
     const freed = context.createStageMesh(stream.vertices, [1, 0, 0, 1, 0, 0])
     let keptDestroyed = 0

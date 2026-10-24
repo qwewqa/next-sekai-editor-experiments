@@ -113,12 +113,20 @@ export class StageTriangles {
         return true
     }
 
-    append(triangles: Float64Array, color: number, alpha: number) {
+    appendTriangle(
+        x0: number,
+        y0: number,
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+        color: number,
+        alpha: number,
+    ) {
         if (!(alpha > 0)) return
         const r = (((color >>> 16) & 255) / 255) * alpha
         const g = (((color >>> 8) & 255) / 255) * alpha
         const b = ((color & 255) / 255) * alpha
-        for (let i = 0; i < triangles.length; i += 2)
-            this.vertices.push(triangles[i] ?? 0, triangles[i + 1] ?? 0, r, g, b, alpha)
+        this.vertices.push(x0, y0, r, g, b, alpha, x1, y1, r, g, b, alpha, x2, y2, r, g, b, alpha)
     }
 }

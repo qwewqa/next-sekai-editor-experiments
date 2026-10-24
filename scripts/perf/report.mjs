@@ -59,6 +59,10 @@ if (mode === 'frames') {
             probe('clockFrame', 'p50', 'p95', 'p99'),
             counts('clockFrame'),
             probe('previewDraw', 'p50', 'p95'),
+            `${fixed(
+                m((r) => (r.probes.stageTile?.n ?? 0) / r.probes.chartDraw?.n),
+                2,
+            )} (${probe('stageTile', 'p50', 'p95', 'max')})`,
             `${['p50', 'p95', 'p99', 'max'].map((key) => fixed(m((r) => r.frames[key]))).join('/')} (${fixed(
                 m((r) => r.frames.frames),
                 0,
@@ -92,6 +96,7 @@ if (mode === 'frames') {
                 'clock p50/p95/p99',
                 'clock > budget/2x/4x',
                 'preview p50/p95',
+                'stage tiles per draw (build p50/p95/max)',
                 'interval p50/p95/p99/max (n)',
                 'intervals > 2x/4x',
                 'interval SD',

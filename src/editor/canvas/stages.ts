@@ -1,15 +1,16 @@
 import type { StageProps, Transition } from '../../preview/engine/stage'
 import { StageTriangles } from '../../rendering/stageMesh'
+import { convexDirection } from '../../rendering/triangleClip'
 import { timeToBeat } from '../../state/integrals/bpms'
 import { clamp, lerp } from '../../utils/math'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
 import { sampleComposed } from './composedSampling'
 import {
-    clipButtStrokeToStage,
+    appendButtStroke,
+    appendStageQuad,
+    appendStageStroke,
     dividerQuadsAreDisjoint,
-    triangulateButtStroke,
-    triangulateStageQuad,
     type StageQuad,
 } from './stageGeometry'
 import type { EditorDrawContext } from './types'
@@ -117,20 +118,22 @@ const drawSlice = (
         }
     }
     const quad: StageQuad = [a.left, yA, b.left, yB, b.right, yB, a.right, yA]
+    const direction = triangles && convexDirection(quad)
     const start = triangles?.vertices.length ?? 0
     let supported = true
-    const append = (points: Float64Array | undefined, color: number, paintAlpha: number) => {
-        if (!points) supported = false
-        else triangles?.append(points, color, paintAlpha)
-    }
     const finish = () => {
         if (output) {
             for (const side of ['left', 'right'] as const) {
                 const style = side === 'left' ? 'leftBorderStyle' : 'rightBorderStyle'
                 const width = (borderWidth(a[style], scale) + borderWidth(b[style], scale)) / 2
                 if (width <= 0) continue
-                append(
-                    triangulateButtStroke(a[side], yA, b[side], yB, width),
+                supported &&= appendButtStroke(
+                    output.triangles,
+                    a[side],
+                    yA,
+                    b[side],
+                    yB,
+                    width,
                     0xb4d6e8,
                     opacity * alpha * 0.65,
                 )
@@ -148,7 +151,8 @@ const drawSlice = (
         finish()
         return
     }
-    if (triangles) append(triangulateStageQuad(quad), 0x83b6d0, opacity * alpha * 0.16)
+    if (triangles)
+        supported &&= appendStageQuad(triangles, quad, direction, 0x83b6d0, opacity * alpha * 0.16)
     else {
         ctx.save()
         ctx.beginPath()
@@ -220,8 +224,15 @@ const drawSlice = (
             const xA = pivotA + index * spacing
             const xB = pivotB + index * spacing
             if (triangles)
-                append(
-                    clipButtStrokeToStage(xA, yA, xB, yB, 1 / scale, quad),
+                supported &&= appendStageStroke(
+                    triangles,
+                    xA,
+                    yA,
+                    xB,
+                    yB,
+                    1 / scale,
+                    quad,
+                    direction,
                     0xb4d6e8,
                     opacity * alpha * lineAlpha,
                 )

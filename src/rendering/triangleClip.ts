@@ -27,6 +27,17 @@ const orientation = (points: Coordinates, offset: number, count: number) => {
     return direction
 }
 
+// Appends a point unless it repeats the last one: the new length, or -1 for a
+// non-finite point or a full output.
+const push = (output: Float64Array, used: number, x: number, y: number, maxVertices: number) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return -1
+    if (used && at(output, used - 2) === x && at(output, used - 1) === y) return used
+    if (used + 2 > maxVertices * 2) return -1
+    output[used] = x
+    output[used + 1] = y
+    return used + 2
+}
+
 /** Reused scratch storage for Sutherland–Hodgman convex clipping. */
 class ConvexClipper {
     private a: Float64Array
@@ -38,7 +49,8 @@ class ConvexClipper {
         this.b = new Float64Array(maxVertices * 2)
     }
 
-    // Returns a vertex count, or -1 to retain the existing GPU clip fallback.
+    // Returns a vertex count, or -1 to retain the existing GPU clip fallback. Each
+    // step holds at most `maxVertices`, which the storage must hold.
     clip(
         subject: Coordinates,
         subjectOffset: number,
@@ -48,6 +60,7 @@ class ConvexClipper {
         boundaryCount: number,
         direction: number,
         budget: Budget,
+        maxVertices: number,
     ) {
         let input = this.a
         let output = this.b
@@ -62,14 +75,6 @@ class ConvexClipper {
             const dx = at(boundary, end) - ax
             const dy = at(boundary, end + 1) - ay
             let used = 0
-            const push = (x: number, y: number) => {
-                if (!Number.isFinite(x) || !Number.isFinite(y)) return false
-                if (used && at(output, used - 2) === x && at(output, used - 1) === y) return true
-                if (used + 2 > output.length) return false
-                output[used++] = x
-                output[used++] = y
-                return true
-            }
             let px = at(input, (count - 1) * 2)
             let py = at(input, (count - 1) * 2 + 1)
             let previous = direction * cross(dx, dy, px - ax, py - ay)
@@ -95,9 +100,13 @@ class ConvexClipper {
                             : fraction <= 0.5
                               ? py + (y - py) * fraction
                               : y + (py - y) * (1 - fraction)
-                    if (!push(ix, iy)) return -1
+                    used = push(output, used, ix, iy, maxVertices)
+                    if (used < 0) return -1
                 }
-                if (distance >= 0 && !push(x, y)) return -1
+                if (distance >= 0) {
+                    used = push(output, used, x, y, maxVertices)
+                    if (used < 0) return -1
+                }
                 px = x
                 py = y
                 previous = distance
@@ -116,19 +125,32 @@ class ConvexClipper {
     }
 }
 
+/** A polygon's winding for `clipConvexInto`: zero is degenerate; undefined rejects non-convex or non-finite input. */
+export const convexDirection = (points: Coordinates) => orientation(points, 0, points.length / 2)
+
+// Reused storage: a clip is synchronous and copies its result out.
+const clipper = new ConvexClipper(10)
+const budget: Budget = { remaining: 0 }
+const scratch = new Float64Array(20)
+
 /**
- * Intersect convex triangles or quadrilaterals, accepting either winding. No epsilon
- * expands the clip. Undefined keeps the caller's existing mask for invalid input.
+ * `clipConvexPolygon` without allocating, for a boundary whose `convexDirection` the caller
+ * keeps: writes the vertices to `out` (20 values) and returns their count, or -1 where
+ * `clipConvexPolygon` gives undefined.
  */
-export const clipConvexPolygon = (subject: Coordinates, boundary: Coordinates) => {
+export const clipConvexInto = (
+    subject: Coordinates,
+    boundary: Coordinates,
+    boundaryDirection: number | undefined,
+    out: Float64Array,
+) => {
     if (subject.length % 2 || boundary.length % 2 || subject.length > 8 || boundary.length > 8)
-        return
-    if (subject.length < 6 || boundary.length < 6) return new Float64Array()
-    const subjectDirection = orientation(subject, 0, subject.length / 2)
-    const boundaryDirection = orientation(boundary, 0, boundary.length / 2)
-    if (subjectDirection === undefined || boundaryDirection === undefined) return
-    if (!subjectDirection || !boundaryDirection) return new Float64Array()
-    const clipper = new ConvexClipper((subject.length + boundary.length) / 2 + 2)
+        return -1
+    if (subject.length < 6 || boundary.length < 6) return 0
+    const subjectDirection = convexDirection(subject)
+    if (subjectDirection === undefined || boundaryDirection === undefined) return -1
+    if (!subjectDirection || !boundaryDirection) return 0
+    budget.remaining = 1024
     const count = clipper.clip(
         subject,
         0,
@@ -137,7 +159,18 @@ export const clipConvexPolygon = (subject: Coordinates, boundary: Coordinates) =
         0,
         boundary.length / 2,
         boundaryDirection,
-        { remaining: 1024 },
+        budget,
+        (subject.length + boundary.length) / 2 + 2,
     )
-    return count < 0 ? undefined : clipper.result.slice(0, count * 2)
+    for (let i = 0; i < count * 2; i++) out[i] = at(clipper.result, i)
+    return count
+}
+
+/**
+ * Intersect convex triangles or quadrilaterals, accepting either winding. No epsilon
+ * expands the clip. Undefined keeps the caller's existing mask for invalid input.
+ */
+export const clipConvexPolygon = (subject: Coordinates, boundary: Coordinates) => {
+    const count = clipConvexInto(subject, boundary, convexDirection(boundary), scratch)
+    return count < 0 ? undefined : scratch.slice(0, count * 2)
 }
