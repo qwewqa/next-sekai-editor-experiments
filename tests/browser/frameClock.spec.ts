@@ -241,13 +241,15 @@ const frames = (page: Page, count: number) =>
         count,
     )
 
-/** Expects the clock to tick no more over 30 frames, once the frames in flight have run. */
-const expectIdle = async (page: Page) => {
-    await frames(page, 2)
-    const before = await ticks(page)
-    await frames(page, 30)
-    expect(await ticks(page)).toBe(before)
-}
+/** Expects the clock to stop: 30 frames with no tick, once work in flight, such as storing, ends. */
+const expectIdle = (page: Page) =>
+    expect
+        .poll(async () => {
+            const before = await ticks(page)
+            await frames(page, 30)
+            return (await ticks(page)) - before
+        })
+        .toBe(0)
 
 const isScrolling = (page: Page) =>
     page.evaluate(() => {
@@ -260,7 +262,6 @@ test('an idle editor runs no clock ticks, and an eased scroll wakes the clock an
 }) => {
     await countTicks(page)
     await expectIdle(page)
-    expect(await ticks(page)).toBe(0)
 
     const target = await page.evaluate(() => {
         const { view, settings } = window.editorTest
@@ -299,6 +300,35 @@ test('playback wakes an idle clock, moves the cursor on its ticks and lets it st
             await appImport<typeof import('../../src/editor/player')>('/src/editor/player.ts')
         startOrStopPlayer()
     })
+    await expectIdle(page)
+})
+
+// History stores a step's records in slices, one per idle period. Without frames, Chrome's idle
+// periods come about 50 ms apart, so a flush of many steps took three times as long at 60 Hz.
+test('a History flush runs the clock until its steps are stored', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('nse.test.storage', '{}'))
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await countTicks(page)
+    await expectIdle(page)
+    const ticked = await page.evaluate(async () => {
+        const { history } = window.editorTest
+        for (let i = 0; i < 30; i++)
+            history.pushState(
+                window.editorTest.historySteps.futureInitialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
+                    `Step ${i + 1}`,
+                ),
+                { ...history.state.value, initialLife: history.state.value.initialLife + 1 },
+            )
+        const before = window.clockTicks
+        await window.nseFlushTest!.flusher.flush({ strict: true })
+        return window.clockTicks - before
+    })
+    // About one step a frame.
+    expect(ticked).toBeGreaterThan(20)
     await expectIdle(page)
 })
 
