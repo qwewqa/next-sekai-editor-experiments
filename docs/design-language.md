@@ -39,7 +39,7 @@ Surfaces step up from the chart: chrome, then panels, then bands, then controls.
 - *Box and cursor:* the box is the part of the chart in view, `border border-white/70 bg-white/10`, square, at least 8 px tall, with a `CanvasText` border in forced colours. The cursor is a 1 px `bg-white` line, as the chart's cursor is white.
 - *Pointer:* `cursor-pointer` on the strip, `cursor-grab` on the box and `cursor-grabbing` while it is held. No hover state and no focus state: the strip is `aria-hidden`, a pointer shortcut whose keyboard equivalents are Jump to Start and End and the Page Up and Down scrolls.
 - *Peek:* the mint ring stays on the chart pane (`PeekBar.vue`); the strip adds none of its own.
-- *Change ticks:* while the chart marks a peeked step's changes, `CHANGE_COLOR` ticks in a 3 px column at the strip's left edge, one per place and merged into runs, at least 2 px tall. They never reach the notes. The content takes an inline `opacity: 0.45` (so the compositor does it) while the chart dims, with no ticks during the read hold.
+- *Change ticks:* while the chart marks a peeked step’s changes, `CHANGE_COLOR` ticks at the strip’s left edge, one per run of nearby places, 5 px wide and at least 3 px tall; they cover the 4 px tick column and 1 px of the lane margin. With at most 24 runs, each run shorter than 8 px also gets a 1 device px hairline across the strip in `CHANGE_COLOR` at 45% opacity, drawn under the ticks, so a lone change reads against the notes; long stretches (a select-all move) and busy columns get ticks only. The content takes an inline `opacity: 0.45` (so the compositor does it) while the chart dims, and the annotation canvas is not dimmed, so the marks stay full strength; there are no ticks during the read hold.
 
 ## 2. Shape
 
