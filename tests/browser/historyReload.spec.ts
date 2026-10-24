@@ -23,6 +23,7 @@ import {
     rowLabels,
     rowTitles,
     timeline,
+    timelineRead,
 } from './historyJourney'
 import { pressSave, readFile, submitSave } from './saveFlows'
 
@@ -435,6 +436,7 @@ test('R5: the Timeline survives a reload exactly, with an edit only the journal 
     await tapWhileHeld(page, { lane: -4, beat: 5 })
     const live = await liveOf(page)
     await openHistory(page)
+    await timelineRead(page)
     const titles = await rowTitles(page)
     const labels = await rowLabels(page)
     const count = await timeline(page).getAttribute('aria-rowcount')
@@ -449,6 +451,7 @@ test('R5: the Timeline survives a reload exactly, with an edit only the journal 
     await reloadAndWait(page)
     expect(await liveOf(page)).toEqual(live)
     await openHistory(page)
+    await timelineRead(page)
     // The journal holds the chart, not the step that made it: the edit comes back as a Recovered
     // entry in its place. Every stored row is as it was, with its time.
     const addedOne = en.tools.note.added.split('|')[0]!.replace('{0}', '1')

@@ -255,8 +255,8 @@ export const rowLabels = (page: Page, surface: Surface = 'dialog') =>
     rowsTopDown<string[]>(page, surface, 'label')
 
 /**
- * Presses H (Shift+H) with nothing focused and waits until the Timeline shows and Now has focus (the list
- * focuses it after its first read).
+ * Presses H (Shift+H) with nothing focused and waits until the Timeline shows and Now has focus. The
+ * list takes focus as it opens, before its first read lands: `timelineRead` waits for that.
  */
 export const openHistory = async (page: Page, opts: { focused?: boolean } = {}) => {
     await page.evaluate(() => {
@@ -270,6 +270,10 @@ export const openHistory = async (page: Page, opts: { focused?: boolean } = {}) 
     await expect(now).toBeVisible()
     if (opts.focused ?? true) await expect(now).toBeFocused()
 }
+
+/** Waits for the Timeline's first read: until it lands, only Now and steps not stored yet show. */
+export const timelineRead = (page: Page, surface: Surface = 'dialog') =>
+    expect(timeline(page, surface).locator('[data-history-loading]')).toHaveCount(0)
 
 // --- Peek
 

@@ -104,6 +104,16 @@ const tree = (page: Page) =>
 
 const panel = (page: Page) => page.locator('#workspace-panel-groups')
 
+/** A viewport short enough for the lists to scroll, once the page lays out at its size. */
+const shortViewport = async (page: Page) => {
+    await page.setViewportSize({ width: 1366, height: 600 })
+    // The page can take the size after the call returns; its resize handlers run a frame later.
+    await expect.poll(() => page.evaluate(() => window.innerHeight)).toBe(600)
+    await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    )
+}
+
 const nameButton = (scope: Locator, name: string) =>
     scope.locator('.manager-name').filter({
         has: scope.page().locator('.manager-label', { hasText: new RegExp(`^${name}$`) }),
@@ -735,7 +745,7 @@ test('in the Manage Groups dialog, leaving the window or another dialog opening 
 })
 
 test('a drag held still near the list edge keeps scrolling', async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 600 })
+    await shortViewport(page)
     await seedGroups(page, [
         ['Default'],
         ...Array.from({ length: 30 }, (_, i): [string] => [`Part ${i + 1}`]),
@@ -756,7 +766,7 @@ test('a drag held still near the list edge keeps scrolling', async ({ page }) =>
 })
 
 test('a drag stops scrolling at the last row', async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 600 })
+    await shortViewport(page)
     await seedGroups(page, [
         ['Default'],
         ...Array.from({ length: 20 }, (_, i): [string] => [`Part ${i + 1}`]),
@@ -785,7 +795,7 @@ test('a drag stops scrolling at the last row', async ({ page }) => {
 })
 
 test('a drag near the list edge scrolls as fast at a low frame rate', async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 600 })
+    await shortViewport(page)
     await seedGroups(page, [
         ['Default'],
         ...Array.from({ length: 30 }, (_, i): [string] => [`Part ${i + 1}`]),
@@ -822,7 +832,7 @@ test('a drag near the list edge scrolls as fast at a low frame rate', async ({ p
 test('a drag at the list edge scrolls 480px a second, adding up small steps, with stalls capped', async ({
     page,
 }) => {
-    await page.setViewportSize({ width: 1366, height: 600 })
+    await shortViewport(page)
     await seedGroups(page, [
         ['Default'],
         ...Array.from({ length: 30 }, (_, i): [string] => [`Part ${i + 1}`]),
@@ -1656,7 +1666,7 @@ test("a folder's menu adds a group into it in one step", async ({ page }) => {
 })
 
 test("a folder's row stays at the top while its members scroll by", async ({ page }) => {
-    await page.setViewportSize({ width: 1366, height: 600 })
+    await shortViewport(page)
     await seedGroups(page, [
         ['Default'],
         ['Intro'],

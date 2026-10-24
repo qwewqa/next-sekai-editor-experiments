@@ -564,17 +564,19 @@ test.describe('the Preparing dialog', () => {
 })
 
 test.describe('the conflict dialog', () => {
+    // Built in UTC and drawn in UTC, so the times read the same in any zone the tests run in.
+    test.use({ timezoneId: 'UTC' })
     const disk = {
         saved: {
             kind: 'saved',
             device: { id: 'a', label: 'iPad' },
-            savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
+            savedAt: Date.UTC(new Date().getUTCFullYear(), 9, 16, 14, 41),
             notes: 1220,
         },
         web: {
             kind: 'saved',
             device: { id: 'a', label: 'Web (Chrome)' },
-            savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
+            savedAt: Date.UTC(new Date().getUTCFullYear(), 9, 16, 14, 41),
             notes: 1,
         },
         other: { kind: 'otherProject', name: 'Melt' },

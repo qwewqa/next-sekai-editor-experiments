@@ -37,22 +37,36 @@ const settle = (page: Page) =>
         await window.editorTest.nextTick()
     })
 
+// Read in a frame, after playback moved the cursor in it: between frames the audio runs ahead of
+// the cursor by however long the next frame is late, which a busy machine stretches.
 const snapshot = (page: Page) =>
-    page.evaluate(() => {
-        const probe = window.audioResilience
-        const context = probe.context!
-        const bgm = probe.starts.filter((source) => source.bgm).at(-1)
-        return {
-            state: context.state,
-            audioTime: context.currentTime,
-            cursor: window.editorTest.view.cursorTime,
-            audioPosition: bgm
-                ? bgm.offset + Math.max(0, context.currentTime - bgm.when) * bgm.rate
-                : 0,
-            playing: probe.isPlaying!(),
-            bgmStarts: probe.starts.filter((source) => source.bgm).length,
-        }
-    })
+    page.evaluate(
+        () =>
+            new Promise<{
+                state: AudioContextState
+                audioTime: number
+                cursor: number
+                audioPosition: number
+                playing: boolean
+                bgmStarts: number
+            }>((resolve) =>
+                requestAnimationFrame(() => {
+                    const probe = window.audioResilience
+                    const context = probe.context!
+                    const bgm = probe.starts.filter((source) => source.bgm).at(-1)
+                    resolve({
+                        state: context.state,
+                        audioTime: context.currentTime,
+                        cursor: window.editorTest.view.cursorTime,
+                        audioPosition: bgm
+                            ? bgm.offset + Math.max(0, context.currentTime - bgm.when) * bgm.rate
+                            : 0,
+                        playing: probe.isPlaying!(),
+                        bgmStarts: probe.starts.filter((source) => source.bgm).length,
+                    })
+                }),
+            ),
+    )
 
 const delayResume = (page: Page) =>
     page.evaluate(async () => {

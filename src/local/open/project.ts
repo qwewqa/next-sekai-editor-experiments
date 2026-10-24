@@ -156,6 +156,8 @@ export type StoredOpen =
           shown: boolean
           state?: State
           import?: Promise<ImportOutcome>
+          /** Called once the open's own notice is up: damage found before it gets its card now. */
+          noticed: () => void
       }
 
 const isEmpty = (value: object) => !Object.keys(value).length
@@ -215,6 +217,9 @@ export const storeAndShow = async (
     let job: Promise<ImportOutcome> | undefined
     let kept: Promise<Blob | undefined> | undefined
     let damaged: { record: Record<string, unknown>; first: boolean } | undefined
+    // The open's notice would replace a damage card raised before it, so that card waits for it.
+    let noticed = false
+    let unsaid = false
     const retainBytes = () => {
         if (open.handle)
             kept ??= keepCopy(deps.worker, chainId, open.file, open.handle).catch(() => undefined)
@@ -222,6 +227,7 @@ export const storeAndShow = async (
     }
     const applyDamage = (record: Record<string, unknown>, first: boolean) => {
         const copy = retainBytes()
+        if (first && !noticed) unsaid = true
         unlinkedSession(
             sessionId,
             open.bind?.name ?? open.file.name,
@@ -231,7 +237,7 @@ export const storeAndShow = async (
             open.handle
                 ? { file: open.file, handle: open.handle, ...(copy ? { copy } : {}) }
                 : undefined,
-            () => ownership.transferred && request.isCurrent(),
+            () => noticed && ownership.transferred && request.isCurrent(),
         )
     }
     try {
@@ -329,6 +335,17 @@ export const storeAndShow = async (
             shown: ownership.transferred,
             ...(state ? { state } : {}),
             ...(job ? { import: job } : {}),
+            noticed: () => {
+                noticed = true
+                if (
+                    unsaid &&
+                    ownership.transferred &&
+                    request.isCurrent() &&
+                    currentSession.value.sessionId === sessionId
+                )
+                    notifyDamaged(open.bind?.name ?? open.file.name)
+                unsaid = false
+            },
         }
     } finally {
         // A lock no session took is kept until the import's batches and the kept copy settle.
@@ -417,6 +434,10 @@ export const storeKept = async (keep: KeepVersion) => {
     }
 }
 
+const damagedMessage = (name: string) => interpolate(() => i18n.value.open.damagedHistory, name)
+const notifyDamaged = (name: string) =>
+    notify(damagedMessage(name), { card: true, severity: 'warning' })
+
 /**
  * Damage found after the open unlinked the chain (§1.6.11.8): when the session is open in this
  * tab it takes the new identity, its journal is written again with it (r12-freeze item 2), its
@@ -470,9 +491,9 @@ const unlinkedSession = (
     }
     if (!first || !canNotify() || (!resumed && currentSession.value.sessionId !== sessionId)) return
     // Its notice: a card after an open, a load notice after a resume (§1.4.3).
-    const message = interpolate(() => i18n.value.open.damagedHistory, name)
-    if (resumed) addLoadNotice(message, undefined, LOAD_ORDER.damagedHistory, 'warning')
-    else notify(message, { card: true, severity: 'warning' })
+    if (resumed)
+        addLoadNotice(damagedMessage(name), undefined, LOAD_ORDER.damagedHistory, 'warning')
+    else notifyDamaged(name)
 }
 
 /**

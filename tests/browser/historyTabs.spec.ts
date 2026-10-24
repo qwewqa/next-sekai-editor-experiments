@@ -17,6 +17,7 @@ import {
     restoreFromStrip,
     rowTitles,
     timeline,
+    timelineRead,
 } from './historyJourney'
 
 // Two tabs and continuation (D2 plan §3.3, F3 and F4): each tab's Timeline lists its own
@@ -166,6 +167,7 @@ test('F3: a duplicated tab forks with a divider, and nothing it does reaches the
     const original = await liveOf(page)
     expect(original.notes).toHaveLength(2)
     await openPanel(page)
+    await timelineRead(page, 'panel')
     await recordNotices(page)
     const aRows = await rowTitles(page, 'panel')
 
@@ -173,6 +175,7 @@ test('F3: a duplicated tab forks with a divider, and nothing it does reaches the
     await edits(b, 'B', 2)
     await flush(b)
     await openHistory(b)
+    await timelineRead(b)
     const listed = await rowsAndDividers(b)
     const at = listed.findIndex((text) => text?.startsWith('| '))
     expect(listed.slice(0, at)).toEqual([expect.stringMatching(/^Now/), 'B 2', 'B 1'])
