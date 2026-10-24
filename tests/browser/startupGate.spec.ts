@@ -143,7 +143,7 @@ test.describe('the support gate', () => {
         await page.goto('/')
         await expect(
             page.getByText(
-                'This editor needs Safari 17 or later (iOS 17 or later on iPhone and iPad).',
+                'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).',
             ),
         ).toBeVisible()
         await expect(page.getByRole('button')).toHaveCount(0)

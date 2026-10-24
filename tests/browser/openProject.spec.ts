@@ -915,7 +915,7 @@ test('an archive of project files says to unzip it, and opens nothing', async ({
     ])
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(
-        'This ZIP holds several project files. Unzip it and open them one by one.',
+        'This ZIP contains several project files. Unzip it and open them one by one.',
     )
     await expect(dialog).not.toContainText('not a project file')
     await dialog.getByRole('button', { name: 'OK' }).click()

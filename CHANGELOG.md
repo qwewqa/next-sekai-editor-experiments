@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Save (P) now saves a project file (.nxsp), not level data.** It holds the chart and Level Info, and can include the history and BGM. Ctrl/Cmd+S also saves. Open (O) opens project files.
+- **Save (P) now saves a project file (.nxsp), not level data.** It contains the chart and Level Info, and can include the history and BGM. Ctrl/Cmd+S also saves. Open (O) opens project files.
 - **For Sonolus, use Export Level Data… (Shift+P).**
 - Later saves and exports write to the same file in Chrome and Edge on a computer, and in Chrome 132 or later on Android. Other browsers download a new file each time.
 - **When you open the editor, it continues where you left off,** as auto save did. The first time after this update, it continues from your old auto save. Work is stored in this browser as sessions; to keep it, save it to a file.
