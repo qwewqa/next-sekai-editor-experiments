@@ -2251,6 +2251,7 @@
     },
     "prompt": {
         "title": "Changes Not Stored",
+        "unsaved": "Unsaved Changes",
         "notStored": "Your changes are not being stored in this browser. Leaving will discard them.",
         "save": "Save",
         "leaveAnyway": "Leave Anyway"

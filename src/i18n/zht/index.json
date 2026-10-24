@@ -2251,6 +2251,7 @@
   },
   "prompt": {
     "title": "變更未存放",
+    "unsaved": "未儲存的變更",
     "notStored": "變更未存放在此瀏覽器中。離開後這些變更將遺失。",
     "save": "儲存",
     "leaveAnyway": "仍然離開"

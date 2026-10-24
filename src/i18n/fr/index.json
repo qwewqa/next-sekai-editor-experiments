@@ -2251,6 +2251,7 @@
   },
   "prompt": {
     "title": "Modifications non stockées",
+    "unsaved": "Modifications non sauvegardées",
     "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Elles seront perdues si vous quittez.",
     "save": "Sauvegarder",
     "leaveAnyway": "Quitter quand même"

@@ -24,3 +24,9 @@ export const confirmKeyWhenReady = (target: Locator | Page, key: string, dialog:
         () => ('keyboard' in target ? target.keyboard.press(key) : target.press(key)),
         dialog,
     )
+
+/** Answers New's "Unsaved Changes" question with New (Part 1 §1.4.9). */
+export const confirmNew = (page: Page) => {
+    const dialog = page.getByRole('dialog', { name: 'Unsaved Changes' })
+    return confirmWhenReady(dialog.getByRole('button', { name: 'New' }), dialog)
+}

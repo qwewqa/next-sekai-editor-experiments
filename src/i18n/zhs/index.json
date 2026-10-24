@@ -2251,6 +2251,7 @@
   },
   "prompt": {
     "title": "更改未存储",
+    "unsaved": "未保存的更改",
     "notStored": "更改未存储在此浏览器中。离开后这些更改将丢失。",
     "save": "保存",
     "leaveAnyway": "仍然离开"

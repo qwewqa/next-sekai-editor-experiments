@@ -10,22 +10,32 @@ import { boundFile, downloadNotConfirmed, fileChanged } from './state'
 // The storage modules load after first paint (§1.6.5), so they are fetched when the page is idle.
 // Until they are in, the slot's own flag stands in.
 let storing: typeof import('../../local/storing') | undefined
+
+/** Loads the storage modules now, for an in-app prompt, which reads them once this resolves. */
+export const loadStoring = () => import('../../local/storing').then((module) => (storing = module))
 const load = () => {
-    void import('../../local/storing').then((module) => (storing = module))
+    void loadStoring()
 }
 if (typeof requestIdleCallback === 'function') requestIdleCallback(load, { timeout: 3000 })
 else setTimeout(load, 1000)
 
 /**
- * Whether the open session has changes not in a file (§1.4.9): bound and changed since its file
- * event, bound by a download that isn't confirmed, or unbound with edits. A chain whose file a
- * save picker took over counts as unbound and edited (its `edited` flag is set then).
+ * Whether the open session has edits no file holds, a download counting as the file: bound and
+ * changed since its file event, or unbound with edits in its chain, an earlier visit's included.
+ * A chain whose file a save picker took over counts as unbound and edited (its `edited` flag is
+ * set then). New asks on it (§1.4.9).
  */
-export const hasChangesNotInFile = () => {
-    if (boundFile.value) return fileChanged.value || downloadNotConfirmed.value
+export const hasEditsNotInFile = () => {
+    if (boundFile.value) return fileChanged.value
     const stored = storing?.flusher?.session
-    return stored ? stored.edited : isDirty.value
+    return stored ? stored.edited || stored.chain?.edited === true : isDirty.value
 }
+
+/**
+ * Whether the open session has changes not in a file (§1.4.9): edits no file holds, or a binding
+ * by a download that isn't confirmed.
+ */
+export const hasChangesNotInFile = () => hasEditsNotInFile() || downloadNotConfirmed.value
 
 /** Whether leaving now loses edits no store holds. */
 const losesEdits = () => {

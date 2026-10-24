@@ -2251,6 +2251,7 @@
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
+    "unsaved": "Kaydedilmemiş Değişiklikler",
     "notStored": "Değişiklikleriniz bu tarayıcıda saklanmıyor. Ayrılırsanız bu değişiklikler kaybolur.",
     "save": "Kaydet",
     "leaveAnyway": "Yine de Ayrıl"

@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { confirmWhenReady } from './confirmWhenReady'
+import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
@@ -104,6 +104,15 @@ const run = (page: Page, id: string) =>
             (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
         await runCommand(commands[id as keyof typeof commands])
     }, id)
+
+const unsaved = (page: Page) => page.getByRole('dialog', { name: 'Unsaved Changes' })
+
+/** New on a chart with changes not saved to a file: it asks first, and New goes on (§1.4.9). */
+const runNew = async (page: Page) => {
+    const going = run(page, 'reset')
+    await confirmNew(page)
+    await going
+}
 
 const addEvent = (page: Page, event: object) =>
     page.evaluate(async (event) => {
@@ -720,7 +729,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         const notice = page.locator('.notification-pill')
         await expect(notice).toContainText('New level')
         await expect(notice.getByRole('button', { name: /^Reopen Session from / })).toBeVisible()
@@ -734,7 +743,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         await run(page, 'undo')
         const notice = page.locator('.notification-pill')
         await expect(notice).toContainText('Nothing to undo')
@@ -748,7 +757,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         await edit(page, 980)
         await run(page, 'undo')
         await run(page, 'undo')
@@ -772,7 +781,7 @@ test.describe('Reopen', () => {
         await edit(page, 990)
         await settled(page)
         const chainId = await page.evaluate(() => window.nseFlushTest!.flusher.session!.chainId)
-        await run(page, 'reset')
+        await runNew(page)
         const notice = page.locator('.notification-pill')
         const reopen = notice.getByRole('button', { name: /^Reopen / })
         await expect(reopen).toBeVisible()
@@ -822,7 +831,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         await expect(
             page.locator('.notification-pill').getByRole('button', { name: /^Reopen / }),
         ).toBeVisible()
@@ -879,11 +888,78 @@ test.describe('Reopen', () => {
         const next = await context.newPage()
         await visit(next)
         expect(await lifeOf(next)).toBe(990)
-        await run(next, 'reset')
+        await runNew(next)
         const notice = next.locator('.notification-pill')
         await notice.getByRole('button', { name: /^Reopen / }).click()
         await expect.poll(() => lifeOf(next)).toBe(990)
     })
+})
+
+// New (`n`) asks before it replaces a chart with changes not saved to a file (Part 1 §1.4.9,
+// owner 2026-10-23), as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
+test.describe('New with unsaved changes', () => {
+    test('n asks first: Cancel keeps the chart, New makes the new level with Reopen', async ({
+        page,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        await page.keyboard.press('n')
+        await expect(unsaved(page)).toBeVisible()
+        // New (danger), then Cancel, the default, on the right: a stray Enter replaces nothing.
+        await expect(unsaved(page).locator('[data-choice-buttons] button')).toHaveText([
+            'New',
+            'Cancel',
+        ])
+        await expect(unsaved(page).getByRole('button', { name: 'Cancel' })).toBeFocused()
+        await confirmWhenReady(unsaved(page).getByRole('button', { name: 'Cancel' }), unsaved(page))
+        expect(await lifeOf(page)).toBe(990)
+        await page.keyboard.press('n')
+        await confirmNew(page)
+        await expect.poll(() => lifeOf(page)).toBe(1000)
+        const notice = page.locator('.notification-pill')
+        await expect(notice).toContainText('New level')
+        await notice.getByRole('button', { name: /^Reopen / }).click()
+        await expect.poll(() => lifeOf(page)).toBe(990)
+    })
+
+    test('n on a fresh level, and right after New, does not ask', async ({ page }) => {
+        await visit(page)
+        await page.keyboard.press('n')
+        await expect(page.locator('.notification')).toHaveText('New level')
+        await page.keyboard.press('n')
+        await expect(page.locator('.notification')).toHaveText('New level')
+        await expect(unsaved(page)).toHaveCount(0)
+    })
+
+    // A download counts as the file here, confirmed or not: the chart stays in Recent Sessions.
+    for (const confirmed of [true, false])
+        test(`n right after a Save does not ask, the download ${confirmed ? 'confirmed' : 'not confirmed'}`, async ({
+            page,
+        }) => {
+            await page.addInitScript(
+                ({ prefix, confirmed }) => {
+                    localStorage.setItem(
+                        'nse.test.platform',
+                        JSON.stringify({ fileSystemAccess: false }),
+                    )
+                    if (confirmed) localStorage.setItem(`${prefix}downloadConfirmed`, 'true')
+                },
+                { prefix, confirmed },
+            )
+            await visit(page)
+            await edit(page, 990)
+            const download = page.waitForEvent('download')
+            const saving = run(page, 'save')
+            const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
+            await save.getByRole('button', { name: 'Save', exact: true }).click()
+            await download
+            await saving
+            await page.keyboard.press('n')
+            await expect.poll(() => lifeOf(page)).toBe(1000)
+            await expect(page.locator('.notification-pill')).toContainText('New level')
+            await expect(unsaved(page)).toHaveCount(0)
+        })
 })
 
 test.describe('the not-stored prompt', () => {
@@ -919,6 +995,8 @@ test.describe('the not-stored prompt', () => {
         )
         await leaving
         await expect.poll(() => lifeOf(page)).toBe(1000)
+        // One prompt only: New's own question does not follow.
+        await expect(unsaved(page)).toHaveCount(0)
         // Nothing was stored, so the notice is plain.
         await expect(page.locator('.notification')).toHaveText('New level')
         await expect(page.locator('.notification-pill')).toHaveCount(0)
