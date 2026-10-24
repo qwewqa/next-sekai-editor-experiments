@@ -706,6 +706,8 @@ export const stepA13 = async (a: A, tab: Tab) => {
     expect(
         ((await tab.stored('chains')).find((row) => row.chainId === chains.A)!.file as Row).hash,
     ).toEqual(before)
+    // The file the marker names: a fixture of its own (a later build must recognise it as our Save).
+    a.products.put('saving-marker-file.nxsp', await readOpfs(tab.page, aFile))
     // An edit the journal alone holds, then the page goes.
     await tapAt(tab, 0, 1404)
     await hide(tab.page)

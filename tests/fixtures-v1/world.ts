@@ -61,6 +61,7 @@ export class Profile {
                     localStorage.getItem('nse.fixtures.flags') ?? '{}',
                 )
                 localStorage.setItem(`${prefix}showPreview`, 'false')
+                localStorage.setItem(`${prefix}showMinimap`, 'false')
             },
             { files, prefix },
         )

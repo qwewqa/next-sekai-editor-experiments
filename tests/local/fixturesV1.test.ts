@@ -35,7 +35,7 @@ test('every fixture matches its folder’s SHA256SUMS, and every file is listed'
     // v0.6.0 code's output), a file edited by hand, and one added without a checksum.
     for (const [dir, expected] of [
         [nxspDir, 8],
-        [webDir, 5],
+        [webDir, 6],
     ] as const) {
         const sums = readFileSync(join(dir, 'SHA256SUMS'), 'utf8')
         assert.ok(sums.endsWith('\n'))
@@ -713,4 +713,32 @@ test('the download dump holds a downloaded, confirmed binding and badChunks', ()
     assert.equal((chain.file as Row).confirmed, true)
     assert.ok(chain.badChunks)
     assert.equal(valuesOf(dump, 'handles').length, 0)
+})
+
+test('saving-marker-file.nxsp is the write the dump’s saving marker names', async () => {
+    // Catches a fixture pair that drifted apart: the browser spec relies on the marker and the file
+    // describing one Save, and on a binding that does not yet hold its revision.
+    const dump = readDump(JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8')))
+    const prefix = 'sonolus-next-sekai-editor.'
+    const markers = Object.keys(dump.localStorage).filter((key) =>
+        key.startsWith(`${prefix}saving.`),
+    )
+    assert.equal(markers.length, 1)
+    const marker = JSON.parse(dump.localStorage[markers[0]!]!) as {
+        entry: { revisionId: string; sessionId: string; seq: number }
+        parent: string | null
+    }
+    const read = await readNxsp(new Blob([readFileSync(join(webDir, 'saving-marker-file.nxsp'))]))
+    assert.equal(read.kind, 'nxsp')
+    if (read.kind !== 'nxsp') return
+    assert.equal(read.open, 'full')
+    const revision = read.projectJson.revision as Row
+    assert.equal(revision.id, marker.entry.revisionId)
+    assert.equal(revision.parent ?? null, marker.parent)
+    const chain = valuesOf(dump, 'chains').find((row) =>
+        markers[0]!.endsWith(row.chainId as string),
+    )
+    assert.ok(chain)
+    // The binding still holds the revision before it.
+    assert.equal(((chain.revision ?? {}) as Row).id, marker.parent)
 })

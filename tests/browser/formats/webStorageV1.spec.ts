@@ -6,6 +6,7 @@ import { ZipReader } from '../../../src/zip'
 import { Editor } from '../../samples/driver'
 import { closePage } from '../editorFixture'
 import { errorsFail, noErrors, openHistory, timeline } from '../historyJourney'
+import { readFile, writeFile } from '../saveFlows'
 import { skipWhereTheEditorCannotStart } from '../webkitSupport'
 import {
     afterDump,
@@ -153,6 +154,60 @@ test('the pending journal applies as a recovered entry, and the saving marker is
     // A continues, under its file's name.
     expect(await page.evaluate(() => window.nseFlushTest!.flusher.session?.chainId)).toBe(chains.A)
     await expect(page.locator('[data-status-label]')).toContainText('fixture-history.nxsp')
+    await context.close()
+})
+
+test('a Save whose file was written but whose binding was not recorded is recognised as our own', async ({
+    browser,
+    browserName,
+}) => {
+    test.skip(browserName !== 'chromium', 'The write-back uses Chromium’s pickers')
+    // Catches a later build that no longer recognises a v1 `saving.*` marker: the next Save would
+    // find its own earlier write changed on disk and offer a conflict, or write over it.
+    const markerFile = new Uint8Array(readFileSync(join(webDir, 'saving-marker-file.nxsp')))
+    const marker = await readNxsp(new Blob([markerFile]))
+    if (marker.kind !== 'nxsp') throw new Error('The marker file does not open')
+    const markerRevision = marker.projectJson.revision as { id: string; n: number }
+    // A's file handle is not in a dump; the override's token stands for it, as in a real profile.
+    const name = 'fixture-history.nxsp'
+    const dump: DumpJson = {
+        ...main,
+        stores: main.stores.map((store) =>
+            store.name === 'handles'
+                ? {
+                      ...store,
+                      records: store.records.map((record) =>
+                          record.value.chainId === chains.A && record.value.role === 'file'
+                              ? {
+                                    ...record,
+                                    value: { ...record.value, handle: { testHandle: name } },
+                                }
+                              : record,
+                      ),
+                  }
+                : store,
+        ),
+    }
+    const { context, clock } = await profile(browser, browserName, { dump, files: 'opfs' })
+    const page = await visit(context, clock)
+    await writeFile(page, name, markerFile)
+    expect((await storageKeys(page)).some((key) => key === `saving.${chains.A}`)).toBe(true)
+    await edit(page)
+    await page.locator('canvas.editor-chart').focus()
+    await page.keyboard.press('p')
+    await expect
+        .poll(async () => (await storageKeys(page)).includes(`saving.${chains.A}`), {
+            timeout: 30_000,
+        })
+        .toBe(false)
+    // No conflict was offered, and the file is the marker's write plus this Save.
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    const after = await readNxsp(new Blob([new Uint8Array((await readFile(page, name))!)]))
+    expect(after.kind).toBe('nxsp')
+    if (after.kind !== 'nxsp') return
+    expect(after.open).toBe('full')
+    expect((after.projectJson.revision as { parent: string }).parent).toBe(markerRevision.id)
+    expect((after.projectJson.revision as { n: number }).n).toBeGreaterThan(markerRevision.n)
     await context.close()
 })
 

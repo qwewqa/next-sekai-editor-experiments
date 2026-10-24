@@ -115,6 +115,7 @@ export const seededContext = async (
                 JSON.stringify({ fileSystemAccess: files === 'opfs' ? 'opfs' : false }),
             )
             localStorage.setItem(`${prefix}showPreview`, 'false')
+            localStorage.setItem(`${prefix}showMinimap`, 'false')
         },
         { files, prefix },
     )

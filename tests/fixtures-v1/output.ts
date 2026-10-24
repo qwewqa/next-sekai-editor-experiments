@@ -130,6 +130,7 @@ export const webNames = [
     'nse-local-data.json',
     'nse-local-data-download.json',
     'raw-export.zip',
+    'saving-marker-file.nxsp',
     'journal-unavailable.json',
     'legacy-raw.json',
 ] as const
@@ -171,12 +172,13 @@ export const writeFixtures = (
     const nxsp = new Map<string, Uint8Array | string>(
         nxspNames.map((name) => [name, products.bytes(name)]),
     )
-    const json = (value: unknown) => `${JSON.stringify(value, null, 1)}
+    const json = (value: unknown) => `${JSON.stringify(value)}
 `
     const web = new Map<string, Uint8Array | string>([
         ['nse-local-data.json', json(dumps.main)],
         ['nse-local-data-download.json', json(dumps.download)],
         ['raw-export.zip', products.bytes('raw-export.zip')],
+        ['saving-marker-file.nxsp', products.bytes('saving-marker-file.nxsp')],
         ['journal-unavailable.json', products.text('journal-unavailable.json')],
         ['legacy-raw.json', products.text('legacy-raw.json')],
     ])
