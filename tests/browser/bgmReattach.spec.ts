@@ -293,7 +293,10 @@ test.describe('with a stored BGM', () => {
         await settled(page)
         expect(await liveBgm(page)).toEqual({ ...picked, offset: 0.025 })
         await expect.poll(() => storedCount(page, 'entries')).toBe(before + 1)
-        await expect(page.getByText('Set BGM Offset to 25 ms')).toBeVisible()
+        // The toast, not the live region, which reads it too once the page's region is back.
+        await expect(
+            page.locator('.notification').filter({ hasText: 'Set BGM Offset to 25 ms' }),
+        ).toBeVisible()
     })
 
     test('Choose Audio… with the same file takes the Undo card away', async ({ page }) => {
