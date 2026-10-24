@@ -14,7 +14,7 @@ import {
 import { isNewerRootVersion, isReadableRootVersion } from '../records/unknownValues'
 import { ModelError } from './model'
 
-// The bodies a write takes (Part 1 §1.6.11.6): this tab's pending records first, then the
+// The bodies a write takes: this tab's pending records first, then the
 // database, then for an append its one pinned source. Every body taken from storage is verified
 // by the cheapest check that catches a stored copy gone bad: roots and nodes re-encoded and
 // hashed, chunks by their key-bound stored CRC (never inflated). A body that's missing or fails is
@@ -88,7 +88,7 @@ const verifyPending = async (pending: PendingRecords | undefined, bodies: Bodies
     for (const [hex, canonical] of Object.entries(pending.chunks)) {
         const hash = fromHex16(hex)
         if (!equalBytes(await hash16(canonical), hash)) continue
-        // The same check every chunk put has (§1.6.11.2): the stored form inflates to the bytes hashed.
+        // The same check every chunk put has: the stored form inflates to the bytes hashed.
         const chunk = await verifyChunk({ hash, stored: deflateChunk(canonical), canonical })
         bodies.chunks.set(hex, { stored: chunk.stored, crc32: chunkCrc32(hash, chunk.stored) })
     }
@@ -119,7 +119,7 @@ const nodeChildren = (json: readonly RecordValue[]) => {
 /**
  * Loads and verifies the bodies of `wanted` roots: from `pending`, then storage, skipping what
  * the append source holds. A root `v` above this build's is a refusal (`needsNewer`), never
- * filtered (§1.6.11.6).
+ * filtered.
  */
 export const loadBodies = async (
     store: SaveStore,
@@ -228,7 +228,7 @@ export const loadBodies = async (
 
 /**
  * Every node and chunk hash `roots` reach in storage, read from the root and node rows alone (no
- * chunk is read or verified): what a state needs, for a check that names known damage (SP-1). A
+ * chunk is read or verified): what a state needs, for a check that names known damage. A
  * root or node that doesn't read reaches nothing further.
  */
 export const reachedHashes = async (store: SaveStore, roots: Iterable<string>) => {

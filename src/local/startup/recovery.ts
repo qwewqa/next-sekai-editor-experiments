@@ -1,4 +1,4 @@
-// The recovery order on start (Part 0 §0.9.8, Part 1 §1.6.11.10): every load runs these steps in
+// The recovery order on start: every load runs these steps in
 // this order before any session opens: the canary against storage as found, then the journals,
 // then the old auto save. A named list with insertion points, so the apps add to it (the origin
 // check in place of the canary, start-time triage after all) instead of editing tested code.

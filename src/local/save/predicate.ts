@@ -15,9 +15,9 @@ import {
     type CarryStatus,
 } from './model'
 
-// Comparing files (Part 0 §0.9.5; Part 1 §1.6.11.6): the relation of two revisions, the content
+// Comparing files: the relation of two revisions, the content
 // predicate "N holds O" from `project.json` and the chain record alone, and the web's Replace
-// guard built on it. No manifest is read (past the 1,024-id cap, the apps' lookup is Part 3's).
+// guard built on it. No manifest is read (past the 1,024-id cap).
 
 /** What the predicate reads of a file, or of a chain as its binding records its base. */
 export type Facts = {
@@ -30,7 +30,7 @@ export type Facts = {
 
 export type Relation = 'same' | 'newer' | 'older' | 'diverged' | 'none'
 
-/** I against H (§0.9.5): same, newer (I descends from H), older, diverged; `none` without revisions. */
+/** I against H: same, newer (I descends from H), older, diverged; `none` without revisions. */
 export const relation = (i: Facts, h: Facts): Relation => {
     if (!i.revision || !h.revision) return 'none'
     if (i.revision.id === h.revision.id && i.cd !== undefined && i.cd === h.cd) return 'same'
@@ -40,7 +40,7 @@ export const relation = (i: Facts, h: Facts): Relation => {
 }
 
 /**
- * "N holds O", rules 1 and 2 (§1.6.11.6): N descends from O or is O, and when O has history, N's
+ * "N holds O", rules 1 and 2: N descends from O or is O, and when O has history, N's
  * `completeFrom` is O's id or one of O's ancestors and N has at least as many entries. Rule 3 (the
  * head's media) is the caller's, where it applies; the Replace guard leaves it out.
  */
@@ -86,7 +86,7 @@ export const fileFacts = (projectJson: unknown, fingerprint: string): Facts => {
     }
 }
 
-/** The chain's base as its binding records it (r12-freeze2 S5). */
+/** The chain's base as its binding records it. */
 export const baseFacts = (cut: ChainCut): Facts => {
     const { revision, file } = cut.chain
     const cd = file?.disk && centralDirectoryOf(file.disk.fingerprint)
@@ -98,7 +98,7 @@ export const baseFacts = (cut: ChainCut): Facts => {
 }
 
 /**
- * What the chain's next write that isn't an append would find (the build's carry test, D25) over
+ * What the chain's next write that isn't an append would find (the build's carry test) over
  * the stored rows, without a plan: `carries`, `missing` (rows of the base's file are gone) or
  * `unproven`. A build that then finds damage in storage may still not carry.
  */
@@ -134,7 +134,7 @@ export type ReplaceDecision = {
 }
 
 /**
- * The Replace guard (§0.9.6; r12-history-critique §2): Replace is disabled when the file on disk
+ * The Replace guard: Replace is disabled when the file on disk
  * holds the chain's base (rules 1 and 2, O the base as the binding records it) and the write
  * wouldn't carry it, so the only durable holder of earlier versions is never overwritten. The
  * reason is definite only for rows gone; a flag or a root whose state the file lacks gives the
@@ -164,7 +164,7 @@ export const readReplaceDecision = async (
 
 /**
  * Damage storage already knows of: every chain's `badChunks` (bodies are shared between chains,
- * so another chain's build may have found it), as hex. `stillBad` says which still are (SP-1).
+ * so another chain's build may have found it), as hex. `stillBad` says which still are.
  */
 export const knownDamage = async (store: SaveStore) => {
     const chains = await store.read(['chains'], (tx) => tx.getAll('chains'))
@@ -177,7 +177,7 @@ export const knownDamage = async (store: SaveStore) => {
 
 /**
  * Whether a kept row up to the cut needs a body of `bad`: a state the base held that a write from
- * storage would leave out while the carry test passes, since it counts flags, not bodies (SP-1).
+ * storage would leave out while the carry test passes, since it counts flags, not bodies.
  */
 export const keptRowsNeed = async (store: SaveStore, cut: ChainCut, bad: ReadonlySet<string>) => {
     const entry = cut.chain.file?.entry
@@ -200,10 +200,10 @@ export const keptRowsNeed = async (store: SaveStore, cut: ChainCut, bad: Readonl
     return [...bad].some((hex) => reached.has(hex))
 }
 
-/** What a write from storage would leave out that the chain's own file may hold (R2). */
+/** What a write from storage would leave out that the chain's own file may hold. */
 export type SaveNeeds = {
     /**
-     * The next write from storage carries the base's `completeFrom` (D25's carry test), and no
+     * The next write from storage carries the base's `completeFrom` (the carry test), and no
      * damage storage knows of is under a kept row the base held.
      */
     carries: boolean
@@ -212,7 +212,7 @@ export type SaveNeeds = {
 }
 
 /**
- * Whether reading the chain's own file before a picker could keep anything (§1.4.7 R2): rows of
+ * Whether reading the chain's own file before a picker could keep anything: rows of
  * its base storage lacks, or head media storage lacks. Read from storage alone, so a dialog knows
  * whether to ask for read access before it reads the file.
  */
@@ -229,7 +229,7 @@ export const readSaveNeeds = async (
                 missing.push(hash)
         return missing
     })
-    // Damage storage already knows of is short too: the carry test and a key can't see it (SP-1).
+    // Damage storage already knows of is short too: the carry test and a key can't see it.
     const known = await knownDamage(store)
     const bad = known.size ? await stillBad(store, [...known]) : new Set<string>()
     for (const hash of media)

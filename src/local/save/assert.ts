@@ -9,7 +9,7 @@ import {
     type WritePlan,
 } from '../nxsp/plan'
 
-// The append assertion (Part 1 §1.6.11.6 step 3, r12-history-critique §3.2): an independent check
+// The append assertion: an independent check
 // that a plan is an append, run before it's executed. The builder's layout makes it hold by
 // construction; this check reads only the plan and the source's metadata, so a builder bug (or a
 // test hook that alters the plan) fails as a plan error, with nothing written.
@@ -100,7 +100,7 @@ export const plannedParts = (plan: WritePlan, source: PinnedSource | undefined):
     return parts
 }
 
-/** Throws a `PlanError` unless `plan` is an append to `source` (§1.6.11.6 step 3). */
+/** Throws a `PlanError` unless `plan` is an append to `source`. */
 export const assertAppend = (plan: WritePlan, source: PinnedSource) => {
     const { pointers, entryOf, segments } = sourceHistory(source)
     const planned = (name: unknown) => {

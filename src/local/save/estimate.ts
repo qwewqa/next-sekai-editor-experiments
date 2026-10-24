@@ -6,7 +6,7 @@ import type { SaveStore } from './bodies'
 import { CUT_STORES, readCut } from './cut'
 import { chainRows, ModelError } from './model'
 
-// The Save dialogs' size preview (Part 1 §1.4.7; owner, 2026-10-16): `estimateSaveSize`, from
+// The Save dialogs' size preview: `estimateSaveSize`, from
 // stored sizes, never inflating or hashing a body. For the rows the write would hold, each
 // distinct root's and node's row `size` and each chunk's stored length; the media rows' sizes;
 // the manifest by a per-entry and per-record estimate, deflated; `level.json` from the head's
@@ -38,7 +38,7 @@ export type SaveSizeEstimate = {
     importing?: true
 }
 
-/** Constants fixed on the generated large chart and the golden chart (§1.4.7). */
+/** Constants fixed on the generated large chart and the golden chart. */
 export const ESTIMATE = {
     /** An entry's JSON framing beyond its captured description, before deflate. */
     entryBytes: 150,

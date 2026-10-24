@@ -62,7 +62,7 @@ import {
 } from './model'
 import { headInput as headOf } from './pending'
 
-// The shared writer's history half (Part 1 §1.6.11.6): from a chain's consistent cut and the
+// The shared writer's history half: from a chain's consistent cut and the
 // write's kind, it decides what the file holds (an append to the chain's own file at the base,
 // or the chain's chronology from storage), verifies every body it takes, marks damage in storage
 // before the plan is final, decides `completeFrom` with the carry test and whether the line shows,
@@ -70,7 +70,7 @@ import { headInput as headOf } from './pending'
 // append it then checks independently that the plan is one.
 
 /**
- * What kind of write this is (§1.6.11.6's table):
+ * What kind of write this is:
  * - `append`: a write-back to the chain's own file at the base, or a save picker's return of it
  *   with its bytes read first; `source` is the pinned source's token.
  * - `replace`: keep-first (the conflict dialog's Replace; the kept copy is the caller's, committed
@@ -121,7 +121,7 @@ export type PendingInput = {
 export type RowKey = { sessionId: string; seq: number }
 
 /**
- * The tab's binding while storage is paused or full (§1.3.2: it lives in memory until storing
+ * The tab's binding while storage is paused or full (it lives in memory until storing
  * resumes): used in place of the stored chain's identity and binding.
  */
 export type IdentityInput = {
@@ -156,7 +156,7 @@ export type SaveOptions = {
     fileName?: string
     /** This write's `save` entry, created before the build: its time and captured operation. */
     save: { time: number; operation: JsonValue }
-    /** `device`: this install's; the write records the device of the chain's lineage (§1.3.3). */
+    /** `device`: this install's; the write records the device of the chain's lineage. */
     context: { now: number; newId: () => string; device: DeviceSource; appVersion: string }
     /** The saved session: the chain's head unless given (Save to File… gives its own). */
     sessionId?: string
@@ -198,7 +198,7 @@ export type SaveRefusal = {
     limit?: PlanLimit
 }
 
-/** The identity unit a write that binds commits after it (§1.3.2, §1.6.11.6). */
+/** The identity unit a write that binds commits after it. */
 export type SaveIdentity = {
     clearExport?: true
     docId: string
@@ -209,7 +209,7 @@ export type SaveIdentity = {
     entry?: { count: number; notKept: number; inexact?: true }
     /**
      * Every row written `kept: false` by a mark (this build's and `options.identity`'s): committed
-     * with the binding, in its transaction, so a binding is never stored without them (D25).
+     * with the binding, in its transaction, so a binding is never stored without them.
      */
     marks: RowKey[]
 }
@@ -221,7 +221,7 @@ export type SavePlan = {
     /** For the post-build check: chunks taken from storage. */
     storageChunks: PlannedChunk[]
     /**
-     * The line a write that doesn't carry its base gets (§1.6.11.6, I-18): "were not kept" for
+     * The line a write that doesn't carry its base gets: "were not kept" for
      * steps known missing, "may not be included" when none is known missing, none otherwise.
      */
     stepsLine: 'none' | 'notKept' | 'mayNotBeIncluded'
@@ -405,7 +405,7 @@ const withPending = (
 }
 
 /**
- * Plans a `.nxsp` write of a chain (§1.6.11.6). `sources` are the pinned sources' metadata
+ * Plans a `.nxsp` write of a chain. `sources` are the pinned sources' metadata
  * (`inspectNxsp`); only `append` reads them, besides the media rule's copies. Damage in storage is
  * marked before the plan is final; a refusal says why nothing can be planned.
  */
@@ -547,7 +547,7 @@ export const planSave = async (
     } else if (!isWhole(bodies, head)) return refuse('unreadableHead')
 
     // Damage in storage: rows whose state isn't whole become `kept: false`, marked before the
-    // plan is final (§1.6.11.6).
+    // plan is final.
     const needsMark = (entry: EntryRow) =>
         history &&
         !flaggedBefore(entry) &&
@@ -587,7 +587,7 @@ export const planSave = async (
     for (const { sessionId, seq } of [...(options.identity?.marks ?? []), ...markRows])
         marks.set(keyOf({ sessionId, seq }), { sessionId, seq })
 
-    // `completeFrom`, the carry test (D25) and the line (§1.6.11.6).
+    // `completeFrom`, the carry test and the line.
     const baseHadHistory = !!chain.revision && bindingHasHistory(chain.file)
     const baseOf = chain.revision ? { revisionId: chain.revision.id } : undefined
     const sessionStored = (sessionId: string) =>
@@ -629,7 +629,7 @@ export const planSave = async (
     if (history) {
         if (!stack || !headSlot) return refuse('unreadableHead')
         // A row that doesn't say its note count takes its state's, from the root this write
-        // verified (PF2-5): a count is never made up as 0. A row whose root no source holds has
+        // verified: a count is never made up as 0. A row whose root no source holds has
         // an unknown count, and the entry is written without one.
         const countOf = (entry: EntryRow) => {
             if (entry.noteCount !== undefined) return entry.noteCount
@@ -710,7 +710,7 @@ export const planSave = async (
                 undoStack = { base, slots, index: cutSlots.index - offset }
             } else {
                 // Sessions removed from the chain's middle: replay of the file gives another
-                // stack than the session's, and replay defines the stack (§1.3.9).
+                // stack than the session's, and replay defines the stack.
                 console.warn('A Save’s undo stack is replay’s of its file', { chainId })
                 undoStack = cutStack({ base: 0, slots: [...file.slots], index: file.index }, held)
             }
@@ -824,7 +824,7 @@ export const planSave = async (
                 : {}),
         }
     }
-    // The line, by what is known (I-18): the plan's roots say which states the write lacks.
+    // The line, by what is known: the plan's roots say which states the write lacks.
     let stepsLine: SavePlan['stepsLine'] = 'none'
     if (history && !appending && baseHadHistory && !carried && baseOf && cutEntry)
         stepsLine =

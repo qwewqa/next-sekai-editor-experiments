@@ -3,10 +3,10 @@ import { equalBytes } from '../hash'
 import type { KvTx } from '../kv/types'
 import { blockOf, blockSlot, type StackBlockRow } from '../timeline'
 
-// Earlier sessions on an opened file's document (Part 1 §1.5.4 step 4), read in the storage worker
+// Earlier sessions on an opened file's document, read in the storage worker
 // in one transaction: each other chain with the same `docId`, its latest session, its base
 // revision, whether it's bound (and with a handle), and whether its head's state differs from its
-// file event's (§1.3.4: for a session that isn't open, the head snapshot's hash against `file.hash`).
+// file event's (for a session that isn't open, the head snapshot's hash against `file.hash`).
 
 type Row = Record<string, unknown>
 

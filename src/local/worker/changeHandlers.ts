@@ -18,7 +18,7 @@ import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 import { readTimeline, type TimelineEntry } from './timelineHandlers'
 
-// The change view's reads (Part 1 §1.4.11, §1.6.5): what an entry changed against the entry
+// The change view's reads: what an entry changed against the entry
 // before it, and Edits Here's scan for the entries that changed a range of beats. Parts are
 // keyed by their hash and pairs by their roots, so the caches never go stale; a failed read is
 // never cached, as it may be a part not stored yet.
@@ -67,7 +67,7 @@ export type FindEditsPage = {
     reached?: number
 }
 
-/** Pairs read per transaction, so a flush waits a few milliseconds at most (§1.6.5). */
+/** Pairs read per transaction, so a flush waits a few milliseconds at most. */
 const SLICE = 50
 const BUDGET_MS = 60
 
@@ -238,7 +238,7 @@ export const changeHandlers = (context: WorkerContext) => ({
     },
 
     /**
-     * Edits Here's scan (§1.4.10.5): the entries whose change touches `[from, to]`, newest first,
+     * Edits Here's scan: the entries whose change touches `[from, to]`, newest first,
      * in slices of one transaction each, until the budget is spent.
      */
     findEdits: async (request: FindEditsRequest, scope?: CallScope): Promise<FindEditsPage> => {

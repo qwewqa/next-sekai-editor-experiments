@@ -2,7 +2,7 @@ import { shallowRef } from 'vue'
 import type { CopyOf, DisplayName } from '../names'
 import type { StorageStatus } from '../worker/core'
 
-// What this load found (Part 1 §1.4.3's table), as data: the UI turns each into its load notice
+// What this load found, as data: the UI turns each into its load notice
 // with its action, most important first. Kept for the page's life, so Settings › Local Data ›
 // Recovery can list "At this load". Light (Vue only).
 
@@ -25,8 +25,8 @@ export type LoadEvent =
     | { kind: 'unsavedInLocalData' }
     /**
      * "The old auto save could not be restored." [Local Data]: its transaction failed, or with
-     * `unreadable`, this build can't read all of it, so it stays in Local Data (§1.8 steps 3–4).
-     * The notice is one string either way (§1.4.3); `unreadable` tells the two apart for the
+     * `unreadable`, this build can't read all of it, so it stays in Local Data.
+     * The notice is one string either way; `unreadable` tells the two apart for the
      * specs and for a later reader of the load events.
      */
     | { kind: 'migrationFailed'; unreadable?: true }
@@ -35,7 +35,7 @@ export type LoadEvent =
      * then) when it's the session that opened; otherwise it's kept as a session of its own.
      */
     | { kind: 'migrated'; name: ShownName; sessionId: string; opened: boolean }
-    /** The migrated auto save was made for an older engine revision (D18): today's warning. */
+    /** The migrated auto save was made for an older engine revision: today's warning. */
     | { kind: 'migratedRevision'; sessionId: string }
     /** "Recovered your last change to "{0}"." */
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }
@@ -45,7 +45,7 @@ export type LoadEvent =
     | { kind: 'storageNearlyFull' }
     /** A journal couldn't be applied or kept at this load (storage full or busy): it stays for the next. */
     | { kind: 'journalFailed' }
-    /** Earlier visits' journals kept while storage is unavailable fill much of their budget (§1.6.4). */
+    /** Earlier visits' journals kept while storage is unavailable fill much of their budget. */
     | { kind: 'journalsFull' }
     /**
      * A session this build can't open: the reload's own (`reload`), or the most recent one a new
@@ -83,8 +83,8 @@ export const onLoadEvent = (listener: (event: LoadEvent) => void) => {
 }
 
 /**
- * The session this tab left last by New, an open or a restore, while it can be reopened
- * (Part 1 §1.4.1). Here, not in `api.ts`, so the commands that show Reopen stay light.
+ * The session this tab left last by New, an open or a restore, while it can be reopened.
+ * Here, not in `api.ts`, so the commands that show Reopen stay light.
  */
 export const previousSession = shallowRef<{ sessionId: string; name: ShownName } | undefined>()
 
