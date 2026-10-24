@@ -8,6 +8,11 @@ It holds only what is specific to agents. Read the project's own docs first:
 - [docs/engineering-principles.md](docs/engineering-principles.md): how to write and review code and tests.
 - [docs/writing.md](docs/writing.md): how to write user-facing text, docs, code comments and commit messages.
 
+## Rules and docs
+
+- When a rule in these docs gets in the way or misses a case, name the rule, the case and a proposed change, and raise it. Do not bend or rewrite a rule silently. Once the change is agreed, update every place that states the rule in the same change.
+- Version only what stays useful to later, unrelated work (CONTRIBUTING, "Docs"). Status reports, fix logs and specs for a single feature stay out of the repository.
+
 ## Writing
 
 - Follow `docs/writing.md` in everything you write, reports included.

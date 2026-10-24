@@ -61,6 +61,12 @@ To add one:
 3. Add a capability only if shared code must know whether the feature exists.
 4. Run `npm run build:native` and `npm run check:native-bundle`.
 
+## Docs
+
+`docs/` and this file hold what stays useful to later, unrelated work: rules with their reasons, format specifications and guides to the code. A status report, a log of fixes or the spec for a single feature helps little later and goes out of date, so the repository does not keep one.
+
+The rules in these docs are principles with reasons. Depart from one when a case needs it, and say why in the change. When a rule gets in the way or misses a case, raise it with the maintainer and discuss the change before you make it. If a change makes a claim in the docs false, fix the page in the same change.
+
 ## UI design
 
 Read these before you change the UI and when you review a UI change:
@@ -69,8 +75,6 @@ Read these before you change the UI and when you review a UI change:
 - [docs/color-system.md](docs/color-system.md): colour roles and the control recipes in `src/controls.css`.
 - [docs/ui-review-checklist.md](docs/ui-review-checklist.md): the questions to ask in review, from past defects.
 - [docs/writing.md](docs/writing.md): the writing rules for user-facing text, these docs, code comments and commit messages.
-
-They are principles with reasons. Depart from one when a case needs it, and say why in the change. If a change makes a claim in them false, fix the page in the same change.
 
 ## Built-in assets
 

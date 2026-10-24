@@ -818,6 +818,6 @@ Before the ship an operation changes in place at version 1; after it, any change
 ## 7. Future work
 
 - **Trimming history.** Nothing marks a row `kept: false` for space: cleanup under pressure removes only cached earlier media. Trimming one chain's old history while keeping it ("Delete Earlier History") is deferred.
-- **Level Info (Step 11).** `nse.levelInfo.set` has a producer, the Level Info dialog, but no inventory case in `historyOperationDetails.cases.json` yet.
+- **Level Info.** `nse.levelInfo.set` has a producer, the Level Info dialog, but no inventory case in `historyOperationDetails.cases.json` yet.
 - **Per-id operation versions.** The envelope has one literal `version: 1`. The first change after the ship needs a per-id version table and the old codec kept for reading.
 - **Native apps.** The apps' reader and writer are not in this repository (Stage 2); the conformance cases and the checker are what they must match.

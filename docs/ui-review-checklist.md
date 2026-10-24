@@ -37,7 +37,7 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Before styling from an attribute, list every current use of it and read what each binding means,** then make the style opt-in. (`aria-pressed` on checked manager rows and on toolbar values.)
 - **A token retune lands with all of its consumers.** (`selected` at 40 % in `ManagerRow`.)
 - **Check a recipe's premise before applying it.** A recipe built for a transparent ghost on a band does not fit a button that is itself the band's fill. A `currentColor` ring does not fit an element that hides its own text.
-- **When you add a global rule, search for code that suppresses or overrides it** (a leftover `outline-none`), and run the package through its own guard.
+- **When you add a global rule, search for code that suppresses or overrides it** (a leftover `outline-none`), and run the change through its own guard.
 - **Validate a guard on today's tree:** it should fail for every inventoried case. Test the end state of a transition too, such as "no legacy lists left".
 
 ## Layout, content and devices
@@ -64,10 +64,10 @@ Questions to ask when you build or review UI. They come from defects that shippe
 - **Borrow a precedent's relations, not its numbers,** and check its premise first. (A press style copied from rows whose leading icon was a separate button; the dock's coordinates onto a row whose title selects instead of toggling.)
 - **Verify claims about past decisions** against the primary record before letting them constrain a design. (A misremembered "accepted 16 px".)
 - **After a revision, grep for the old wording** of every changed claim, in headers and summaries too. When a decision changes, revisit the rules that depended on it.
-- **Run a hand-off command or listed value where the implementer will run it.**
+- **Before you give someone a command or value to use, run it where they will use it.**
 
 ## Migrations
-- **Split by what renders together,** not only by file. A package should take the shared shells and same-role siblings visible in the views it changes. Otherwise log the interim mix as accepted.
+- **Split by what renders together,** not only by file. A change should take the shared shells and same-role siblings visible in the views it changes. Otherwise log the interim mix as accepted.
 - **Promote repeated patterns to shared recipes.** A second local variant of the same control is a signal to add a recipe. (Selectable rows.)
 - **Rebase onto the latest main before matching siblings,** and match the recipes merged siblings chose for the same control type.
 - **Pick the tests to run by consumer search:** grep the specs for the changed strings, selectors and DOM regions, and update all consumers of a shared component together.
