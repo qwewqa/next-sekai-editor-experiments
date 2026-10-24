@@ -2,15 +2,14 @@
 import { computed, nextTick, useId, useTemplateRef, watch } from 'vue'
 import PlayIcon from '../editor/commands/play/PlayIcon.vue'
 import { togglePreviewPlayback } from '../editor/player'
-import { view } from '../editor/view'
 import ChevronIcon from '../editor/workspace/ChevronIcon.vue'
 import { isPlaying } from '../player'
 import { i18n } from '../i18n'
 import { settings } from '../settings'
-import { formatTime } from '../utils/format'
 import { interpolateRaw } from '../utils/interpolate'
 import { formatCount, formatDecimal } from '../utils/size'
 import type { PreviewControlsLayout } from './layout'
+import TransportTime from './TransportTime.vue'
 import { useTransportInput } from './useTransportInput'
 import { settingsButtonSize } from './usePreviewViewport'
 
@@ -30,8 +29,6 @@ const cornerTime = useTemplateRef<HTMLSpanElement>('cornerTime')
 const persistent = computed(() => props.layout.placement !== 'overlay')
 const timeInStrip = computed(() => settings.previewShowTime && props.layout.timeInStrip)
 const timeInCorner = computed(() => settings.previewShowTime && !props.layout.timeInStrip)
-
-const formattedTime = computed(() => formatTime(Math.round(view.cursorTime * 1000) / 1000))
 
 const {
     activeStep,
@@ -167,7 +164,7 @@ const stripStyle = computed(() => ({
             }"
             :aria-label="i18n.preview.transport.time"
         >
-            {{ formattedTime }}
+            <TransportTime />
         </span>
         <div
             :id="panelId"
@@ -202,7 +199,7 @@ const stripStyle = computed(() => ({
                 class="transport-time"
                 :aria-label="i18n.preview.transport.time"
             >
-                {{ formattedTime }}
+                <TransportTime />
             </span>
 
             <span v-if="layout.mode === 'steps'" class="transport-track transport-steps">

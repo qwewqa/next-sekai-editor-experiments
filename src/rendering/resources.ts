@@ -27,6 +27,11 @@ extensions.add(RenderingScheduler)
  */
 export type ImageSource = HTMLCanvasElement | HTMLImageElement | ImageData
 export type Client = { flush(): void; dispose(): void; resetSurface(): void }
+/**
+ * Pixi unloads what was unused for 60 s on this period. Short periods keep each pass small:
+ * the default 30 s unloads 30 s of ageing resources in one frame (28 ms at 1x, 150 ms at 4x).
+ */
+export const GC_FREQUENCY = 3000
 const imageBudget = 96 * 1024 * 1024
 const stageTilePixels = 1024 * 1024
 export class RenderingResources {
@@ -82,6 +87,7 @@ export class RenderingResources {
                 clearBeforeRender: false,
                 preserveDrawingBuffer: true,
                 skipExtensionImports: true,
+                gcFrequency: GC_FREQUENCY,
             })
             .then(() => {
                 this.initializationSettled = true

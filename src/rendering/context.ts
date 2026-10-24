@@ -213,6 +213,13 @@ export class WebGLDrawContext {
     private pathMatrix = identity()
     private readonly transformPrecision = getCanvasTransformPrecision()
     private inheritedStyle?: CSSStyleDeclaration
+    private inheritedDirection?: {
+        connected: boolean
+        dir: string
+        lang: string
+        canvasDir: string
+        value: CanvasDirection
+    }
     private scene = new Container()
     private origin: [number, number] = [0, 0]
     private clearPending = true
@@ -1873,8 +1880,30 @@ export class WebGLDrawContext {
     }
     private textDirection(): CanvasDirection {
         if (this.state.direction !== 'inherit') return this.state.direction
-        this.inheritedStyle ??= getComputedStyle(this.resources.canvas)
-        return this.inheritedStyle.direction === 'rtl' ? 'rtl' : 'ltr'
+        // Reading a computed style forces a style recalculation whenever the page changed since
+        // the last one, such as the preview clock's text. The result changes only with the
+        // page language or direction (or the canvas moving in or out of the page), so keep it
+        // until the attributes that set them change.
+        const canvas = this.resources.canvas
+        const root = document.documentElement
+        const cached = this.inheritedDirection
+        if (
+            cached?.connected === canvas.isConnected &&
+            cached.dir === root.dir &&
+            cached.lang === root.lang &&
+            cached.canvasDir === canvas.dir
+        )
+            return cached.value
+        this.inheritedStyle ??= getComputedStyle(canvas)
+        const value = this.inheritedStyle.direction === 'rtl' ? 'rtl' : 'ltr'
+        this.inheritedDirection = {
+            connected: canvas.isConnected,
+            dir: root.dir,
+            lang: root.lang,
+            canvasDir: canvas.dir,
+            value,
+        }
+        return value
     }
     fillText(text: string, x: number, y: number, maxWidth?: number) {
         if (!this.ensure()) return
