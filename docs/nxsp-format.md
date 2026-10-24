@@ -191,7 +191,7 @@ From the minimal file of §17.1 (a Save with History off):
 | `parent` | `null` (a new document) or a non-empty string: the revision this one descends from. |
 | `n` | Count, display only (parent's `n` + 1). |
 | `savedAt` | RFC 3339 `date-time`: `YYYY-MM-DDThh:mm:ss`, an optional `.fraction`, then `Z` or `±hh:mm`; uppercase `T` and `Z`; a date that exists; seconds 00–59 (no leap second). Anything else, a non-string included, reads as **absent**, never as a reason for a partial open. The writer writes UTC to the second (`2026-10-20T08:00:00Z`). |
-| `device` | `{id, label}`, both strings: the writing install and a label such as `Web (Chrome)`. |
+| `device` | `{id, label}`, both strings. `id` names the writing install **for this document's lineage**: the web writes HMAC-SHA-256 of `lineageId` under the browser's own `deviceId`, as a UUID version 8, so one install's files of two lineages carry different ids and files of one lineage the same. Readers treat it as opaque and compare it only within a lineage. `label` is the install's label, such as `Web (Chrome)`. |
 | `ancestors` | Array of non-empty strings, newest first; read as a set. The writer writes at most 1,024. |
 | `replaces` | Optional string, written only by Replace. |
 | `fileName` | Optional string: the file name this write used. |
