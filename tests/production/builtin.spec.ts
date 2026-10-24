@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { createHash } from 'node:crypto'
 
-// The release serves the Built-in packages and the static server made from them (Part 2, 2.5.7).
+// The release serves the Built-in packages and the static server made from them.
 const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 
 test('a Built-in package is served as it was released', async ({ request }) => {

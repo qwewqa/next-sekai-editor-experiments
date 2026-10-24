@@ -27,7 +27,7 @@ import {
     wav,
 } from './fixtures'
 
-// The size limits of Part 2, 2.5.5 that only large files reach: each is refused by its own check.
+// The size limits that only large files reach: each is refused by its own check.
 
 const en = (
     JSON.parse(readFileSync('src/i18n/en/index.json', 'utf8')) as {

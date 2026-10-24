@@ -10,7 +10,7 @@ import { fresh } from '../local/nxsp/chain'
 import { memorySource } from '../local/nxsp/helpers'
 import { installFakeBrowser } from './fakeBrowser'
 
-// Writing `.nxsp` files on the web and in the mock (Part 0 §0.9.1, §0.9.6): the revision id and
+// Writing `.nxsp` files on the web and in the mock: the revision id and
 // `<cd>` as the precondition, the File pinned at the check as the only source of the old bytes,
 // the check again just before close(), and the mock's faults.
 
@@ -361,7 +361,7 @@ test('a pinned file that changes during or after the build is a conflict on the 
     assert.deepEqual(after.events, [])
 })
 
-test('two empty files are the same content, whatever their times (R9)', async () => {
+test('two empty files are the same content, whatever their times', async () => {
     assert.equal(
         sameContent(await nxspDiskState(new Blob([]), 5), await nxspDiskState(new Blob([]), 99)),
         true,
@@ -372,7 +372,7 @@ test('two empty files are the same content, whatever their times (R9)', async ()
     )
 })
 
-test('a write-back finds its target emptied, at the check or before close(): it writes, with no source (R9)', async () => {
+test('a write-back finds its target emptied, at the check or before close(): it writes, with no source', async () => {
     for (const when of ['check', 'beforeClose'] as const) {
         const events: string[] = []
         const original = await built()
@@ -423,7 +423,7 @@ test('a target found empty and filled before close() is never written over', asy
     assert.deepEqual(events.at(-1), 'abort')
 })
 
-test('the mock writes over an emptied target the same way (R9)', async () => {
+test('the mock writes over an emptied target the same way', async () => {
     const mock = createMockPlatform()
     const handle = mock.createHandle('coconut.nxsp')
     mock.writeFile('coconut.nxsp', await built())

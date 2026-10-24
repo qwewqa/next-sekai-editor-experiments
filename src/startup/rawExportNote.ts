@@ -1,6 +1,6 @@
 import { interpolateRaw } from '../utils/interpolate'
 
-// What Export Raw Data… says when it did not go through whole (Part 1 §1.4.14). Apart from the
+// What Export Raw Data… says when it did not go through whole. Apart from the
 // action so a Node test can read it.
 
 export type RawExportRun =

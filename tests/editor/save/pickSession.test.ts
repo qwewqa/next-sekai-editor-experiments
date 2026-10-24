@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { activation } from '../saveMatrix/env'
 
-// The pick session (spec B rules 3 to 8): the read of the chain's own file awaited, with one retry;
+// The pick session: the read of the chain's own file awaited, with one retry;
 // the activation checked last; the commit point at the picker's return; the hold on `nse-bind`;
 // what the editor holds of a file put back, or offered at once. The fakes are the in-memory
 // platform with a fake lock manager, a storage worker that answers only what a pick asks, and a

@@ -1,5 +1,5 @@
 /**
- * A media item a state names by content (§1.6.11.1's `mediaRef`), whether or
+ * A media item a state names by content, whether or
  * not any store holds its bytes: the first 16 bytes of its SHA-256 as hex.
  */
 export type MediaRef = {
@@ -13,7 +13,7 @@ export type MediaRef = {
 
 export type LevelInfoTag = { readonly title: string; readonly icon?: string }
 
-/** Level info (§1.4.12): chart state, in the snapshot header. Empty strings are unset. */
+/** Level info: chart state, in the snapshot header. Empty strings are unset. */
 export type LevelInfo = {
     readonly title: string
     readonly artists: string

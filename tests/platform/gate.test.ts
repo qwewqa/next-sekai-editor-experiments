@@ -11,7 +11,7 @@ import { detectFromUa } from '../../src/platform/detect'
 import { storageKey } from '../../src/storage'
 import { goldenChart, stateOf } from '../local/records/charts'
 
-// The support gate (Part 1 §1.6.10, §1.6.11.3): public/gate.js is plain ES5 that runs before the
+// The support gate: public/gate.js is plain ES5 that runs before the
 // bundle, so it reads the stored formats on its own. These tests run it in Node, with a fake
 // window, and check that what it offers is what the bundle's own readers and writers say.
 

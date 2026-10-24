@@ -25,7 +25,7 @@ const en = (
 ).commands.previewAssets
 const number = (value: number) => new Intl.NumberFormat('en').format(value)
 
-// The chooser's From a Server view (Part 2, 2.5.3, 2.6, 2.11): listing, paging, search, "Also use
+// The chooser's From a Server view: listing, paging, search, "Also use
 // … from this server", Use.
 
 const merge = (items: [AssetType, ScpOptions?][]) => {

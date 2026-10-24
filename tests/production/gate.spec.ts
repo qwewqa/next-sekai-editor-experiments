@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 
-// The support gate on the release build (Part 1 §1.6.10, Part 4 4.3.1): /gate.js is a staged file
+// The support gate on the release build: /gate.js is a staged file
 // the page loads ahead of the bundle, and it works under the exact policy.
 
 const prefix = 'sonolus-next-sekai-editor.'

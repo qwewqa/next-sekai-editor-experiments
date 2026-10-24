@@ -4,7 +4,7 @@ import { easeValues } from '../../../ease'
 import type { OrderedStore } from '../../../local/records/extract'
 
 /**
- * Time-scale changes in the records' order (§1.6.11.6): by beat, then group, then their
+ * Time-scale changes in the records' order: by beat, then group, then their
  * order in the group, each group's chain linked in that order.
  */
 export const serializeTimeScalesToLevelDataEntities = (

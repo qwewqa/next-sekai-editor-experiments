@@ -6,8 +6,8 @@ import { holdMedia, resetHeldMediaForTests } from '../../src/local/heldMedia'
 import { captureMedia } from '../../src/local/media'
 import { stateAt } from '../local/save/fixture'
 
-// A Save's build carries the cover and preview bytes this tab holds beside the BGM's (Step 11
-// design §3.2), so the file holds them rather than writing the items without their bytes.
+// A Save's build carries the cover and preview bytes this tab holds beside the BGM's,
+// so the file holds them rather than writing the items without their bytes.
 
 const env: BuildEnv = {
     session: {

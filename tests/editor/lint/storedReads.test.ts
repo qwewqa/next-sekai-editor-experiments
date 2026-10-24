@@ -5,7 +5,7 @@ import path from 'node:path'
 import { describe, it, test } from 'node:test'
 import local from '../../../scripts/eslint-plugin-local.mjs'
 
-// `local/stored-reads` (Part 1 §1.6.5): the storage worker's covered reads are called only through
+// `local/stored-reads`: the storage worker's covered reads are called only through
 // the `storedRead` gate. The rule reports a covered method named by a string literal in a `.call(`
 // anywhere else in `src`; an alias, a computed name and an uncovered read are checked by review.
 

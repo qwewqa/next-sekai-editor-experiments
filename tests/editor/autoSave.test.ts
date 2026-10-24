@@ -42,7 +42,7 @@ test('a recovery with a null guide alpha, as older editors saved, restores it as
     assert.deepEqual(parseAutoSave(levelData(null)), { levelData: levelData(1) })
 })
 
-// The old auto save's side of recovery (Part 1 §1.8): what a recovery file is, and which slots the
+// The old auto save's side of recovery: what a recovery file is, and which slots the
 // migration reads.
 
 const gzipBase64 = (value: unknown) => gzipSync(JSON.stringify(value)).toString('base64')

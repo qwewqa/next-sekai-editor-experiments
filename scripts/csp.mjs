@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-// Part 0 §0.9.2: one base policy, with the native and dev additions. The web adds nothing: it
+// One base policy, with the native and dev additions. The web adds nothing: it
 // makes no cross-origin requests.
 const base = {
     'default-src': ["'self'"],

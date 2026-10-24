@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { enqueueSave, exclusive } from '../../../src/editor/save/queue'
 
-// Saves in a tab run one at a time, in press order (spec B invariant 9). The old queue held one
+// Saves in a tab run one at a time, in press order. The old queue held one
 // running Save and one waiting, and dropped every press after those.
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))

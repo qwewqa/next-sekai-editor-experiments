@@ -4,7 +4,7 @@ import { shallowRef } from 'vue'
 import { causeOf, createNotStored, NOT_STORED_DELAY_MS } from '../../src/editor/file/notStored'
 import type { StorageStatus } from '../../src/local/worker/core'
 
-// The Not stored state (Part 1 §1.6.7): the cause from the storage status alone, shown only
+// The Not stored state: the cause from the storage status alone, shown only
 // after it has held for the delay.
 
 const setup = (safe = false) => {

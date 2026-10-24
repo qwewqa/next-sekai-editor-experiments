@@ -1,7 +1,7 @@
 import { WEB_MIGRATION_FLAGS } from './settings/migrationFlags'
 import { storageKey } from './storage'
 
-// Safe mode on the web (`?safe`, Part 1 §1.4.2): a blank editor over a read-only database that
+// Safe mode on the web (`?safe`): a blank editor over a read-only database that
 // writes nothing to localStorage but settings. It is imported ahead of everything that stores
 // (`launch.ts` imports it first), so the guard below is in place before any write.
 
@@ -75,7 +75,7 @@ export const openInSafeMode = () => {
 
 /**
  * Asked before Leave Safe Mode goes on, so an edit isn't lost silently: the in-app not-stored
- * prompt (Part 1 §1.4.9) answers true to leave and false to stay, and answers true at once when
+ * prompt answers true to leave and false to stay, and answers true at once when
  * the tab has no edits.
  */
 export type LeaveGuard = () => boolean | Promise<boolean>

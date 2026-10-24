@@ -9,7 +9,7 @@ import {
     type ServerCategory,
 } from '../../../src/preview/assets/serverUrl'
 
-// What the From a Server field accepts (Part 2, 2.5.3, 2.11).
+// What the From a Server field accepts.
 
 const failsWith = (input: string, code: string, options?: { allowHttp?: boolean }) =>
     assert.throws(

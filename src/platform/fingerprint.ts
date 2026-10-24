@@ -4,7 +4,7 @@ import { zipFingerprint } from '../zip/fingerprint'
 import { ZipReader } from '../zip/reader'
 import type { DiskState } from './types'
 
-// Fingerprints are pinned text (Part 1 §1.6.11.2): "sha256:<64 hex>" for level data,
+// Fingerprints are pinned text: "sha256:<64 hex>" for level data,
 // "zip:<size>:<lastModified>:<cd>" for a `.nxsp`, and "damaged:<size>:<lastModified>" for a
 // `.nxsp` target that isn't a readable ZIP.
 
@@ -29,12 +29,12 @@ export const diskStateOfBytes = async (
 export const levelDataDiskState = async (file: File): Promise<DiskState> =>
     diskStateOfBytes(await file.arrayBuffer(), file.lastModified)
 
-/** A read that failed because the file changed after it was taken: never damage (Part 0 §0.9.1). */
+/** A read that failed because the file changed after it was taken: never damage. */
 export const isNotReadable = (error: unknown) =>
     error instanceof DOMException && error.name === 'NotReadableError'
 
 /**
- * A `.nxsp` file's disk state (§1.6.11.2): its central directory's CRC and `project.json`'s
+ * A `.nxsp` file's disk state: its central directory's CRC and `project.json`'s
  * `revision.id`, read from the tail every time. A file that isn't a readable ZIP (a 0-byte file
  * included) gets the `damaged:` fingerprint, which never equals a binding's. A read that fails
  * because the file changed under it (`NotReadableError`) is thrown, never taken for damage.
@@ -82,11 +82,11 @@ export const centralDirectoryOf = (fingerprint: string) =>
 
 /**
  * Two disk states describe the same file content. A `.nxsp` compares its revision id and `<cd>`
- * only, so the same bytes with a new time are unchanged (Part 0 §0.9.6); anything else compares
+ * only, so the same bytes with a new time are unchanged; anything else compares
  * its whole fingerprint.
  */
 export const sameContent = (a: DiskState, b: DiskState) => {
-    // Two empty files hold the same nothing, whatever their times (R9).
+    // Two empty files hold the same nothing, whatever their times.
     if (a.size === 0 && b.size === 0) return true
     if (a.revisionId !== b.revisionId) return false
     const cdA = centralDirectoryOf(a.fingerprint)

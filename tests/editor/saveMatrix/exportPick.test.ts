@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { PATHS } from './matrix'
 import { createWorld } from './world'
 
-// Export's pick of another chain's file (spec B4-lite, AR-B13): a file filled after the pick is
+// Export's pick of another chain's file: a file filled after the pick is
 // known to be filled before anything is taken from its owner, so its owner keeps its binding.
 
 test('Export’s pick of another chain’s file that was filled meanwhile revokes nothing and writes nothing', async () => {

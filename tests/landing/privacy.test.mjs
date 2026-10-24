@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import test from 'node:test'
 
-// The web's /privacy/ page (Part 5, 5.6, 5.7): its source, before the build fills the placeholders.
+// The web's /privacy/ page: its source, before the build fills the placeholders.
 const html = readFileSync(new URL('../../privacy/index.html', import.meta.url), 'utf8')
 const require = createRequire(import.meta.url)
 const text = html

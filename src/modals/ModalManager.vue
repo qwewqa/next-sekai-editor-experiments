@@ -8,7 +8,7 @@ import QuickNotice from '../editor/QuickNotice.vue'
 
 const regularModals = computed(() => modals.filter((modal) => modal.presentation !== 'tool'))
 
-// A notice raised while a dialog is open shows over the top dialog (Part 1 §1.4.1).
+// A notice raised while a dialog is open shows over the top dialog.
 const overModal = computed(() => regularModals.value.at(-1))
 
 // Large dialogs fit the visual viewport, which an on-screen keyboard shrinks.

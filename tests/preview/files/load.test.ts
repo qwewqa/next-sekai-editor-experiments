@@ -34,7 +34,7 @@ import {
     wav,
 } from './fixtures'
 
-// Fallback at load (Part 2, 2.4.2, 2.5.5): a stored package is checked again under the same
+// Fallback at load: a stored package is checked again under the same
 // limits, and one that fails falls back to Default with a reason, whatever stored it.
 
 const closed: ImageBitmap[] = []

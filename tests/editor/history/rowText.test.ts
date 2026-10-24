@@ -10,7 +10,7 @@ import type { OperationTextContext } from '../../../src/history/operationPresent
 import { captureName } from '../../../src/history/operations'
 import { nativeOperation } from '../../helpers/historySteps'
 
-// I-12: a row's time, title, name and divider are all written from the one Calendar they are
+// A row's time, title, name and divider are all written from the one Calendar they are
 // given. The host runs in Kiritimati and the real clock is stubbed to the year 2000, so a text from
 // either would show.
 process.env.TZ = 'Pacific/Kiritimati'

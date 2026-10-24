@@ -1,7 +1,7 @@
 import { bytesOf, sameBytes, startsWith, type World } from './world'
 
-// The six invariants of work/arch/spec-B.md (I1 to I6), as checks over what
-// a world recorded, plus three the task adds: the marker only for a write that may have landed
+// The invariants (I1 to I10), as checks over what
+// a world recorded: the marker only for a write that may have landed
 // (I7), cancel at any await (I8: nothing written, nothing held), one binding per file (I9), and a
 // cancel after the pick that stops nothing (I10).
 
@@ -31,7 +31,7 @@ export type Facts = {
     /** The dialog was cancelled once the picker had returned a file: the write must still land (I10). */
     written?: boolean
     /**
-     * A takeover storage could not record (R11): that file is never written, and the chain bound
+     * A takeover storage could not record: that file is never written, and the chain bound
      * to it keeps the binding (I9).
      */
     notTakenOver?: { chainId: string; name: string }
@@ -114,7 +114,7 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     }
     if (facts.expectNoPicker && world.openings.length) add('I5', 'a picker opened that must not')
 
-    // I10: once the picker returned a file, no Cancel stops the write (spec B rule 6).
+    // I10: once the picker returned a file, no Cancel stops the write.
     // The pick's own write lands (a put-back is a write too, so a failure shown means it did not).
     if (
         facts.written &&
@@ -123,7 +123,7 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
     )
         add('I10', 'a cancel after the pick stopped the write')
 
-    // I9 (E-5): one file, one binding. No file name is bound to two chains, and no file is both
+    // I9: one file, one binding. No file name is bound to two chains, and no file is both
     // bound and another chain's Export target. Read from the store through the door, not from the
     // world's view of it.
     const stored = await world.storedChains()
@@ -146,7 +146,7 @@ export const check = async (world: World, facts: Facts): Promise<Violation[]> =>
                 )
     }
 
-    // I9 (R11): a takeover storage could not record writes nothing new to that file (it ends
+    // I9: a takeover storage could not record writes nothing new to that file (it ends
     // empty, or holding what it held at its pick, put back), and the chain bound to it keeps its
     // binding.
     if (facts.notTakenOver) {

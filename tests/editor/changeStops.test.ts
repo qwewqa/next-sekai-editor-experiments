@@ -10,7 +10,7 @@ import {
     type Place,
 } from '../../src/editor/history/changeStops'
 
-// Where a peeked entry's changes are (Part 1 §1.4.11): stops that fit on screen at the zoom, the
+// Where a peeked entry's changes are: stops that fit on screen at the zoom, the
 // edge arrows' counts and targets, and Show Change stepping up in chart order and wrapping.
 
 const at = (...times: number[]): Place[] => times.map((time) => ({ time, left: 0, right: 2 }))
@@ -70,7 +70,7 @@ test('old and new footprints count once per object in each direction', () => {
     )
 })
 
-// X-12: the view never goes below the chart's start, so a band shortened by a sheet at view time 0
+// The view never goes below the chart's start, so a band shortened by a sheet at view time 0
 // can never show what lies before its floor. Such a change counts in neither direction.
 test('a change before the band’s floor is unreachable: it counts in neither direction and is no stop', () => {
     const places = at(0.2, 3, 20)

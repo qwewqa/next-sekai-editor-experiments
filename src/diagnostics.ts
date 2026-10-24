@@ -1,6 +1,6 @@
 import { storageGet, storageSet } from './storage'
 
-// The last caught errors and CSP violations (Part 1 §1.4.16): in memory, and in localStorage
+// The last caught errors and CSP violations: in memory, and in localStorage
 // so a reload that follows a crash still has them.
 export const RING_KEY = 'diagnostics'
 export const RING_SIZE = 20
@@ -80,7 +80,7 @@ export const redactPaths = (text: string) =>
         .replace(/(?<![\w.])\/Users\/[^/\s"')]+/g, '~')
         .replace(/(?<![\w.])\/home\/[^/\s"')]+/g, '~')
 
-// Decimal units, as every size the editor shows (Part 1 §1.4.7).
+// Decimal units, as every size the editor shows.
 const formatBytes = (bytes: number) => {
     const units = ['B', 'KB', 'MB', 'GB', 'TB']
     let value = bytes
@@ -101,7 +101,7 @@ const storageText = (estimate: DiagnosticFields['estimate']) => {
     return 'unavailable'
 }
 
-/** What storing says about itself (Part 1 §1.4.16); absent in a tab that never started it. */
+/** What storing says about itself; absent in a tab that never started it. */
 export type StoringFields = {
     /** Absent before the worker answered. */
     mode?: 'stored' | 'readOnly' | 'memory'

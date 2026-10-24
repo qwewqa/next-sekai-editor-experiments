@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createWorld } from './world'
 
-// The wait for a chain's imports (spec A, `waitForChainImports`): a Save waits for every import of
+// The wait for a chain's imports (`waitForChainImports`): a Save waits for every import of
 // its chain that storage lists, not only its own session's, whichever session it is.
 
 const { waitForChainImports } = await import('../../../src/editor/save/imports')

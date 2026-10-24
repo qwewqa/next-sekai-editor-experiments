@@ -39,7 +39,7 @@ const added = (policy, over) => {
     return result
 }
 
-test('the base policy is Part 0 §0.9.2’s', () => {
+test('the base policy is the expected one', () => {
     assert.equal(
         basePolicy(),
         [

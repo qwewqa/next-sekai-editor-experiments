@@ -18,7 +18,7 @@ import { initialStep, nativeOperation } from '../helpers/historySteps'
 const operation = ((old, next) =>
     nativeOperation(bgmInput(old, next), 'Changed BGM file')) as typeof bgmOperation
 
-// Choose Audio…'s decision (Step 7 design §3.6): the file the state names is attached and stored
+// Choose Audio…'s decision: the file the state names is attached and stored
 // again as no step, with the recorded meta kept; any other file is one BGM change.
 
 const meta = (hash: string, filename = `${hash}.mp3`) => ({

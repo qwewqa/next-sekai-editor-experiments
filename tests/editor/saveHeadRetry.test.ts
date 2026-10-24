@@ -11,7 +11,7 @@ import type { BuildSaveRequest } from '../../src/local/worker/saveHandlers'
 import { editStep, futureFixtureOperation } from '../helpers/historySteps'
 import { Fixture, heldRows, stateAt } from '../local/save/fixture'
 
-// The head written from the live state (SP-1, §1.6.11.6): a build refused for a head storage
+// The head written from the live state: a build refused for a head storage
 // can't read is made once more with the live head's records added to this tab's pending part,
 // which keeps every record it had; Save to File… of a session that isn't open never retries.
 

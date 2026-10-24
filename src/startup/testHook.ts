@@ -1,4 +1,4 @@
-// The fixture hook (Part 1 §1.4.2's test hook): with this key seeded, every load starts blank,
+// The fixture hook: with this key seeded, every load starts blank,
 // at once. Light, so the entry module reads it before the storage modules load.
 
 export const START_BLANK_TEST_KEY = 'nse.test.startBlank'

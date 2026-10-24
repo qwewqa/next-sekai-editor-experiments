@@ -4,7 +4,7 @@ import BaseModal from './BaseModal.vue'
 import { useActivationGuard } from './activationGuard'
 import type { ChoiceButton } from './choice'
 
-// The shared choice dialog (Part 1 §1.4.1): Cancel, the other choices, then the safe default.
+// The shared choice dialog: Cancel, the other choices, then the safe default.
 const props = defineProps<{
     title: () => string
     message?: () => string

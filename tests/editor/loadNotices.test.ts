@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-// Every kind of load event has a load notice (Part 1 §1.4.3). Both lists are read from source,
+// Every kind of load event has a load notice. Both lists are read from source,
 // since the notices need the app's bundler: an event added to `local/startup/events.ts` fails here
 // until `loadNoticeOf` has its notice (the compiler checks the same).
 const read = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8')
@@ -29,7 +29,7 @@ test('every load notice has a place in the table’s order', () => {
         assert.ok(order.includes(`    ${name}: `), name)
 })
 
-// A load notice's severity picks its card glyph (colour system §5.6): warning where work is at risk
+// A load notice's severity picks its card glyph: warning where work is at risk
 // or was affected, info where nothing is, and none for a confirmation or a route back.
 const SEVERITY: Record<string, string | undefined> = {
     continued: undefined,
@@ -53,7 +53,7 @@ const SEVERITY: Record<string, string | undefined> = {
     bgmNotLoaded: 'info',
 }
 
-test('every load notice kind has the severity the colour system gives it', () => {
+test('every load notice kind has its severity', () => {
     const notices = read('editor/loadNotices.ts')
     const table = notices.slice(notices.indexOf('export const loadNoticeOf'))
     const starts = [...table.matchAll(/^ {4}(\w+): /gm)]

@@ -972,7 +972,7 @@ test('an empty file name never leaves a dangling space', () => {
     }
 })
 
-// X-14: a Select drag that took an edge is a resize, titled and grouped as one, and never a move.
+// A Select drag that took an edge is a resize, titled and grouped as one, and never a move.
 test('a resize is titled "Resized" in every locale, and groups with resizes and not with moves', () => {
     const resize = (count: number): NativeOperationInput => ({
         id: 'nse.object.move',

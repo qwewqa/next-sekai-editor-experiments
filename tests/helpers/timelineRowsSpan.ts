@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-// A ×N group never crosses a local day or a local hour (DECISIONS-LOG 2026-10-20, X-1): every
+// A ×N group never crosses a local day or a local hour: every
 // row and every expanded member sits under the header of its own day and hour, so Go To's day
 // counts, which count entries by their own day, agree with the headers. Run in one zone per file:
 // the caller sets TZ before importing this.
@@ -103,7 +103,7 @@ export const runSpanTests = async (zone: string) => {
             .map((row) => row.members.length)
 
     test(`${zone}: a run across midnight splits at the day`, () => {
-        // X-1's steps: 11:59:41 PM, then 12:00:26 AM, read at 12:01 AM.
+        // The steps: 11:59:41 PM, then 12:00:26 AM, read at 12:01 AM.
         const entries = [add(at(20, 23, 55)), add(at(20, 23, 59, 41)), add(at(21, 0, 0, 26))]
         const now = at(21, 0, 1)
         for (const expandAll of [false, true]) {
@@ -119,7 +119,7 @@ export const runSpanTests = async (zone: string) => {
     })
 
     test(`${zone}: a run splits at each local hour, and joins across minutes in the current hour`, () => {
-        // X-1's hour case: 12:41 AM and 2:41 AM, then a day later 4:41 AM.
+        // The hour case: 12:41 AM and 2:41 AM, then a day later 4:41 AM.
         const entries = [add(at(21, 0, 41)), add(at(21, 2, 41)), add(at(22, 4, 41))]
         const now = at(22, 4, 42)
         for (const expandAll of [false, true]) {

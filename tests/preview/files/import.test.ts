@@ -41,7 +41,7 @@ const en = (
 const importMessage = (error: AssetImportError) =>
     formatImportMessage(error, en, (value) => new Intl.NumberFormat('en').format(value), sizeEn)
 
-// Rejection at import (Part 2, 2.5.5, 2.11): each way a package can be wrong is refused with a
+// Rejection at import: each way a package can be wrong is refused with a
 // plain message that names the problem.
 
 const decodeAudio = decodeTestAudio

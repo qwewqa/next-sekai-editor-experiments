@@ -4,7 +4,7 @@ import { createWorld, flow, settle } from './world'
 
 const { storageStatus } = await import('../../../src/local/startup/events')
 
-// The Replace guard needs its read (Part 1 §1.4.7, spec D invariant 6): Replace is enabled only
+// The Replace guard needs its read: Replace is enabled only
 // when `replaceDecision` was read, gave a decision, and the decision is not "holds earlier". A
 // failed read or no decision used to leave Replace enabled, and the file on disk could be the only
 // holder of earlier Timeline steps.

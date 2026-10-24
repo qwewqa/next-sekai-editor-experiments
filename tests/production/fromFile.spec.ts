@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
-// From a File in the release build under its exact policy (Part 0 §0.9.2; Part 2, 2.5.2): a
+// From a File in the release build under its exact policy: a
 // package is checked, repacked and stored (the storage worker, a Blob in IndexedDB, an object URL
 // for each picture), and is chosen again after a reload, with no policy violation on the way.
 
@@ -45,7 +45,7 @@ test('a package is picked, stored and chosen again after a reload, under the rel
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.addInitScript(() => {
-        // The fixture hook (Part 1 §1.4.2): a blank start, at once.
+        // The fixture hook: a blank start, at once.
         localStorage.setItem('nse.test.startBlank', 'true')
         const seen: string[] = []
         ;(window as unknown as { csp: string[] }).csp = seen

@@ -1,4 +1,4 @@
-// Maintainer-only: writes the engine name fixture from a built engine's EngineData (Part 2, 2.11).
+// Maintainer-only: writes the engine name fixture from a built engine's EngineData.
 // Usage: node scripts/extract-engine-names.mjs <engine build output> --commit <engine commit> [--out <file>]
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'

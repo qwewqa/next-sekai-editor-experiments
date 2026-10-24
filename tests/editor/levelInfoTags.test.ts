@@ -3,7 +3,7 @@ import test from 'node:test'
 import { parseTags, tagsText } from '../../src/editor/levelInfo/tags'
 import type { LevelInfoTag } from '../../src/state/levelInfo'
 
-// Level Info's Tags field (Part 1 §1.4.12): one comma-separated line, and what an Apply makes of it.
+// Level Info's Tags field: one comma-separated line, and what an Apply makes of it.
 
 const old: readonly LevelInfoTag[] = [
     { title: 'Fan-made', icon: 'star' },

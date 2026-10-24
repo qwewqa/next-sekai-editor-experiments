@@ -135,7 +135,7 @@ const settingsProperties = {
     showStages: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
     // History is closed until opened; Disabled hides its tab, and its dialog stays.
     showHistory: Type.Boolean({ default: false }),
-    // Null: shown where the workspace is wide enough (Part 1 §1.4.22).
+    // Null: shown where the workspace is wide enough.
     showMinimap: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
     minimapWidth: number(MINIMAP_WIDTH.default, MINIMAP_WIDTH.min, MINIMAP_WIDTH.max),
 
@@ -209,7 +209,7 @@ const settingsProperties = {
     previewHighlightSelection: Type.Boolean({ default: true }),
     previewShowHitboxes: Type.Boolean(),
     previewAntialias: Type.Boolean({ default: true }),
-    // The skin, particle, background and sound effects this device previews with (Part 2, 2.5.4).
+    // The skin, particle, background and sound effects this device previews with.
     previewAssets: previewAssetsSchema,
     // Fallback notices already dismissed, as type, choice and reason; the newest 20.
     dismissedAssetNotices: Type.Codec(Type.Array(Type.String(), { default: [] }))
@@ -295,7 +295,7 @@ const settingsProperties = {
 
     deselectSwitchesToSelect: Type.Boolean({ default: true }),
 
-    // The browser's prompt on closing with changes not in a file (Part 1 §1.4.9).
+    // The browser's prompt on closing with changes not in a file.
     confirmCloseUnsavedFile: Type.Boolean({ default: true }),
 
     toolbarQuickSwitch: Type.Boolean({ default: false }),
@@ -621,7 +621,7 @@ const panelStateKeys = [
 
 const loadSetting = (key: string, defaultValue: unknown) => {
     if (key === 'toolbar') {
-        // Each step runs once, in order, under its own flag (Part 1 §1.4.6).
+        // Each step runs once, in order, under its own flag.
         const steps = [
             ['toolbarEditorLayoutMigrated', migrateToolbar],
             ['toolbarExportMigrated', insertExportLevel],
@@ -678,7 +678,7 @@ const migrateSetting = (key: string, value: unknown) => {
 const normalize = <T extends Type.TSchema>(schema: T, value: unknown) =>
     Value.Decode(schema, Value.Repair(schema, value))
 
-// The only keys safe mode writes (Part 1 §1.4.2).
+// The only keys safe mode writes.
 registerSettingKeys(Object.keys(settingsProperties))
 
 export const settings = Object.defineProperties(
@@ -731,7 +731,7 @@ export const settings = Object.defineProperties(
 }
 
 // The former zone width, a percentage of the pane; and the auto save settings, retired with the
-// auto save (Part 1 §1.8): a new visit continues the most recent session instead.
+// auto save: a new visit continues the most recent session instead.
 try {
     storageRemove('touchQuickScrollZone')
     storageRemove('autoSave')
