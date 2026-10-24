@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { times } from '..'
 import { undimmed } from '../history/changes'
@@ -26,15 +26,16 @@ const shadeBelow = useTemplateRef<HTMLElement>('shadeBelow')
  * How the box (the part of the chart in view) is drawn; the owner's choice, one line:
  * - plain: a 1 px white/70 border and a white/10 fill;
  * - contrast: a 2 px white border inside a 1 px dark ring, and a white/16 fill, so it reads over
- *   light and dark notes;
+ *   light and dark notes; it starts right of the change ticks' column;
  * - lens: contrast, and the strip outside the box is shaded black/30, by two strip-tall elements
  *   moved by transform with the box.
  */
 const BOX_STYLE = 'plain' as 'plain' | 'contrast' | 'lens'
 const boxClass = {
-    plain: 'border border-white/70 bg-white/10',
-    contrast: 'border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)]',
-    lens: 'border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)]',
+    plain: 'inset-x-px border border-white/70 bg-white/10',
+    contrast:
+        'left-[6px] right-px border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)]',
+    lens: 'left-[6px] right-px border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6),-6px_0_0_0_rgb(0_0_0/0.3)]',
 }[BOX_STYLE]
 
 const { mapping } = useMinimapContent(canvas)
@@ -110,7 +111,7 @@ watch(
     { flush: 'post' },
 )
 
-// The annotation painters are a static list (Part 1 §1.4.22).
+// The annotation painters are a static list (Part 1 Â§1.4.22).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const painters: MinimapAnnotation<any>[] = [changeTicks]
 
@@ -192,7 +193,7 @@ onBeforeUnmount(() => {
         </template>
         <div
             ref="box"
-            class="absolute inset-x-px top-0 forced-colors:border-[CanvasText]"
+            class="absolute top-0 forced-colors:border-[CanvasText]"
             :class="[boxClass, isGrabbing ? 'cursor-grabbing' : 'cursor-grab']"
             data-minimap-box
             style="visibility: hidden"
