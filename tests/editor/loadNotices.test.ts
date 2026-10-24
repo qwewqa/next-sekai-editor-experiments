@@ -38,7 +38,8 @@ const SEVERITY: Record<string, string | undefined> = {
     unsavedRecovered: 'info',
     unsavedInLocalData: 'warning',
     migrationFailed: 'warning',
-    migrated: undefined, // both forms: "Continued … from auto save" and "Kept … as a separate session"
+    // Both forms: "Continued … from the old auto save" and "Kept … as a separate session".
+    migrated: undefined,
     migratedRevision: 'warning',
     journalRecovered: undefined,
     journalLater: 'warning',

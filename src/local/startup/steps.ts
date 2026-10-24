@@ -300,8 +300,8 @@ const migrationBatch = (context: RecoveryContext, text: string, hash: string) =>
  */
 export const migrationStep = async (context: RecoveryContext) => {
     const said = await migrateSlot(context)
-    // One line for both slots, and none beside "Continued … from auto save.": the set-aside
-    // slot stays listed in Local Data.
+    // One line for both slots, and none beside "Continued … from the old auto save.": the
+    // set-aside slot stays listed in Local Data.
     if (said || context.migrated || read(context, AUTO_SAVE_UNREADABLE_KEY) === undefined) return
     if (context.status.mode === 'stored')
         context.events({ kind: 'migrationFailed', unreadable: true })

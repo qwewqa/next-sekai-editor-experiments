@@ -648,6 +648,47 @@ test('a session’s peek ends with the tab, and offers no Find Edits Here', asyn
     await expect(peekBar(page)).toHaveCount(0)
 })
 
+test('Edits Here stays on through a session’s peek and goes back to All when another session opens', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    await closedChain(page, { title: 'Alpha', life: 990 })
+    await edit(page, { title: 'Beta', life: 970 })
+    await flush(page)
+    await openHistory(page)
+    const dialog = page.locator('[data-history-surface="dialog"]')
+    const banner = dialog.locator('[data-history-filter-banner]')
+    await dialog.locator('[data-history-goto-button]').click()
+    await page.getByRole('radio', { name: messages.history.filterHere }).click()
+    await page.keyboard.press('Escape')
+    await expect(banner).toContainText(`${messages.history.filterHere} · `)
+    const filter = () =>
+        page.evaluate(async () => {
+            const { historyFilter } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/state')
+            >('/src/editor/history/state.ts')
+            return historyFilter.value
+        })
+
+    // Peeking another session leaves this one open: the filter stays.
+    await page.getByRole('tab', { name: messages.history.recentSessions }).click()
+    await expect(page.locator('[data-sessions-loading]')).toHaveCount(0)
+    await rowFor(page, 'Alpha').click()
+    await expect.poll(() => peekedLife(page)).toBe(990)
+    expect(await filter()).toBe('here')
+
+    // Restoring it opens another chart: the range taken from this one names nothing there.
+    await peekBar(page).locator('[data-peek-restore]').click()
+    await expect.poll(() => lifeOf(page)).toBe(990)
+    await expect(page.getByRole('tab', { name: messages.history.timeline })).toHaveAttribute(
+        'aria-selected',
+        'true',
+    )
+    expect(await filter()).toBe('all')
+    await expect(banner).toHaveCount(0)
+})
+
 test('opening the ⋯ menu of a row peeks that row, and the menu names its chain', async ({
     page,
 }) => {

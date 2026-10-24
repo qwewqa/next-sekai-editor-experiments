@@ -319,7 +319,7 @@ A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (
     - warning: work is at risk or was affected, and the user should act or check;
     - info: worth knowing, with nothing at risk;
     - neutral (no `severity`, no glyph): a confirmation or a route back, such as Open History, Reopen, "Download started" and "Continued … from …".
-  - Two start-up lines that could be read either way: "This session was deleted in another tab or window." is a warning (work was affected), and "Kept … as a separate session." is neutral, like "Continued … from auto save" (both forms of `migrated` are confirmations).
+  - Two start-up lines that could be read either way: "This session was deleted in another tab or window." is a warning (work was affected), and "Kept … as a separate session." is neutral, like "Continued … from the old auto save" (both forms of `migrated` are confirmations).
   - The glyph is a second cue. The message carries the meaning, and the live region reads only the text.
   - The card's action is `btn-secondary`, 36 px in normal weight on a single card (32 px on a start-up row).
 - **Status bar:** the root gets `.surface-chrome`.

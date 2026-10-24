@@ -164,7 +164,7 @@ test.describe('load notices in the start-up pill', () => {
         await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
-        await expect(pill(next)).toContainText(/Continued ".+" from auto save\./)
+        await expect(pill(next)).toContainText(/Continued ".+" from the old auto save\./)
         await expect(pill(next)).not.toContainText(/ from [A-Z][a-z]{2} \d/)
     })
 
@@ -238,7 +238,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(lines).toHaveText([
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
-            'Continued "Coconut (Master)" from auto save.',
+            'Continued "Coconut (Master)" from the old auto save.',
             'A recovered change needs a newer version of the editor.',
         ])
     })
@@ -1520,7 +1520,7 @@ test.describe('the in-app browser line', () => {
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             inApp,
-            'Continued "Coconut (Master)" from auto save.',
+            'Continued "Coconut (Master)" from the old auto save.',
         ])
     })
 
