@@ -171,8 +171,32 @@ export const aggregateProfile = (resolve, nodes, samples, lo = -Infinity, hi = I
 
 /** A trace's events, its renderer main thread and that thread's CPU profile. */
 export const loadTrace = (path) => {
-    const raw = JSON.parse(gunzipSync(readFileSync(path)))
-    const events = raw.traceEvents ?? raw
+    // Chromium writes one event per line, so a trace past the string limit (about 512 MB,
+    // seen in native-rate playback) is parsed line by line.
+    const buffer = gunzipSync(readFileSync(path))
+    let events
+    if (buffer.length < 0x1fffffe8) {
+        const raw = JSON.parse(buffer)
+        events = raw.traceEvents ?? raw
+    } else {
+        events = []
+        for (let start = 0; start < buffer.length;) {
+            let end = buffer.indexOf(10, start)
+            if (end < 0) end = buffer.length
+            let line = buffer.toString('utf8', start, end).trim()
+            start = end + 1
+            // The last event shares its line with the trailing metadata.
+            const tail = line.indexOf('}],"metadata"')
+            if (tail >= 0) line = line.slice(0, tail + 1)
+            if (line.endsWith(',')) line = line.slice(0, -1)
+            if (!line.startsWith('{')) continue
+            try {
+                events.push(JSON.parse(line))
+            } catch {
+                // the wrapper's opening line
+            }
+        }
+    }
     const threads = {}
     const counts = {}
     for (const e of events) {

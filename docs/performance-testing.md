@@ -11,6 +11,8 @@ npm run perf:report -- perf-results/smoke work
 npm run perf:report -- perf-results/smoke long perf-results/smoke/traces/<cell>.json.gz 16
 ```
 
+`scripts/perf/plans/round2.json` is the full plan: every scenario below on coconut, the real charts and the stress chart, on the desktop and the phone stand-in. Its charts are read from `perf-results/data/` (see "Charts"), and a full run takes hours.
+
 `npm run perf` runs these steps:
 
 1. It builds with `NSE_PERF=1` and sourcemaps into `perf-results/dist`.
@@ -24,6 +26,14 @@ npm run perf:report -- perf-results/smoke long perf-results/smoke/traces/<cell>.
 
 `perf-results/` is ignored by git.
 
+`npm run perf:report` reads a run: `frames`, `work` and `long` as above, and for the scenarios that mark moments (`traceEach` cells):
+
+- `tasks`: the tasks over a threshold after each mark, with what ran in them;
+- `idle`: counts of tasks, callbacks, timers and frames in an idle trace;
+- `edit`: the cost of each edit, undo, drop and hide, and the work that follows it;
+- `callers` and `inside` (full traces): the chains above, and the `src/` code below, a function matching a pattern;
+- `heap`: a `memory` run's sampled live bytes by module and allocator.
+
 Options:
 
 - `--no-build` reuses the last build.
@@ -34,7 +44,7 @@ Options:
 
 A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 
-- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`).
+- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)`, which selects the plain notes nearest a time and returns their screen points, and `chartEnd()`, the last entity's time.
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
     - `clockFrame`: the app clock's whole frame, which covers the time watchers, Vue's flush and the draws it triggers;
@@ -55,15 +65,28 @@ A plan is JSON (see `scripts/perf/plans/example.json`): `defaults` for every cel
 
 Each cell can set:
 
-- `scenario`: `wheel`, `trackpad`, `pagekeys`, `quicktouch`, `flick`, `minimapdrag`, `play1x`, `play2x`, `resizedrag` (with `handle`, a separator's accessible name, and `dx`), or `idle`;
+- `scenario`:
+    - scrolling and playback: `wheel`, `trackpad`, `pagekeys`, `quicktouch`, `flick`, `minimapdrag`, `play1x`, `play2x`;
+    - `resizedrag`, with `handle` (a separator's accessible name) and `dx`;
+    - `idle`: nothing for `seconds` (5), with the process tree's CPU and memory before and after;
+    - `notch`: one wheel notch after an 800 ms pause, then 1.2 s still. It marks `nse-notch`;
+    - `editflip`: selects `count` (50) notes near the view, flips them with U, waits `wait` ms (2500), undoes, and waits again. It marks `nse-edit` and `nse-undo`;
+    - `drag`: selects `count` notes, drags one of them `dx` px (60) over 1 s, waits `wait`, undoes, and waits again. It marks `nse-drag`, `nse-drop` and `nse-undo`;
+    - `hide`: an edit of `count` (20) notes, then the page is hidden `after` ms (2000) later and shown again 2 s after that, then undone. It marks `nse-edit` and `nse-hide`. The hide is simulated (see the pitfalls), and the record has `hiddenMs`, the time the page's own listeners took;
+    - `journal`: an edit, then scrolling back and forth for `seconds` (22) with a second edit halfway, across the 10 s journal ticks. Pair it with a group's `storage` flag;
+    - `memory`: one long run that records the JS heap and DOM counts after a forced GC at each stage: opened, after sweeps of the whole chart at several zooms and layouts, after `seconds` (200) of playback at `speed` (1, 1.5 or 2) sampled every `sampleEvery` s (40, without GC), after New, after Open again, and after one more sweep. It writes `heap-<stage>.json` sampling profiles to the run folder (read them with `perf:report … heap`) and records the process tree's memory at each stage;
 - `layout`;
 - `minimap`, `preview`, `elevation` (beside the chart) and `selection` (every note and connector);
 - `pps` (100 is fully zoomed out);
 - `start`;
 - `seconds` and `speed` for playback;
 - `reps` and `warmup`;
-- `trace` and `traceCold`;
+- `trace`, `traceCold` and `traceEach` (a light trace of every repeat, see "Tracing");
+- `noLoop`: the collector does not request frames. Use it with `idle`;
+- `keepRaw`: keep the raw probe samples, long tasks and long animation frames in the record;
 - `tag`.
+
+A group can set `storage`, an object written to the `nse.test.storage` test key before the app starts, for example `{ "noStorage": true }` for a browser without storage. A group's own `defaults` override the plan's.
 
 ## What works, and what misleads
 
@@ -108,15 +131,30 @@ Each cell can set:
         - each spike tied to its trace event with `perf:report … long`.
 
         One 400 ms frame a minute barely moves a median and is what a user remembers.
-- Spikes that recur on a timer show up in any scenario long enough to meet them: background writes and garbage collection. When a max jumps in one run of five, look for them before blaming the scenario.
+- Spikes that recur on a timer show up in any scenario long enough to meet them: garbage collection passes and the storage journal. When a max jumps in one run of five, look for them before blaming the scenario (see "Recurring spikes").
+- **Dense cells vary 2 to 3 times between runs**, even pinned. Use medians of at least 5, and do not read a smaller difference as real.
 
 ### Tracing
 
 - The traced run is extra and is used for attribution only. Tracing with the CPU profiler adds about **1.5×** to main-thread time and stalls about 1 s when it starts (before the run's window).
-- Categories: `devtools.timeline`, `disabled-by-default-devtools.timeline` and its `.frame` and `.stack`, `disabled-by-default-v8.cpu_profiler`, `v8.execute`, `v8`, `disabled-by-default-v8.gc`, `blink.user_timing`, `blink`, `gpu`, `viz`, `cc`, `benchmark`, `latencyInfo`, `input`, `toplevel`, `loading`.
+- **Light traces** (`traceEach`) leave out the CPU profiler: they record task timings (`devtools.timeline`, `v8.execute`, GC, user timing, `gpu`, `viz`, `toplevel`), so tasks cost what they cost. Use them for what happens around a mark and for counts, and a full trace for attributing time to functions. `perf:report … tasks`, `idle` and `edit` read them; `callers`, `inside`, `heap` and `long` need a full trace or a heap profile.
+- A trace over 512 MB (native-rate playback) cannot be parsed as one string. `trace.mjs` reads it line by line.
+- Categories of a full trace: `devtools.timeline`, `disabled-by-default-devtools.timeline` and its `.frame` and `.stack`, `disabled-by-default-v8.cpu_profiler`, `v8.execute`, `v8`, `disabled-by-default-v8.gc`, `blink.user_timing`, `blink`, `gpu`, `viz`, `cc`, `benchmark`, `latencyInfo`, `input`, `toplevel`, `loading`.
 - A `nse-perf-sync` user-timing mark ties the page clock to the trace clock, so `perf:report … work` reads exactly the frames the run measured.
 - Profile frames for native calls (a DOM setter, a GL call, `clearTimeout`) are shown with their script caller; their exact attribution is approximate.
+- `(program)` is 30 to 45% of the CPU profile's samples. It is time outside JavaScript, so read the other rows against the rest, not against 100%.
+- CPU time at 4× is meaningless: the throttle changes how long JavaScript takes, not what the compositor, GPU and other processes use. Compare scripting and main-thread time only.
 - Chrome's own `PipelineReporter` states (`STATE_DROPPED`) refer to the compositor's rate, not the gated rAF rate. Do not use them under a gate.
+
+### Scenario pitfalls
+
+- **Playwright keeps a background tab visible.** `hide` therefore sets `document.visibilityState` to hidden and dispatches `visibilitychange`, which is the path the app's lifecycle handler takes. It does not test the browser's own page lifecycle. The harness adds its own first and last listeners, so `vis` in a kept record shows the order.
+- **The idle collector loop requests frames.** `idle` without `noLoop` measures the collector, not the editor.
+- **The app's clock does not stop.** An idle trace shows an animation frame callback in `time.ts` on every vsync (about 240 a second at 240 Hz). That is the baseline for an idle editor, not a result of the scenario.
+- **The gate's pump adds animation frames to counts.** Under `hz: 60` or `120`, animation frame counts include the gate's, so compare counts only within one `hz`.
+- **`previewDraw` on an edit frame includes the preview's rebuild.** It is not the steady cost.
+- **The GC pass grows with the session.** Later in a session (`memory`, or after many cells in one group) it costs more than in a fresh one, because it walks every tracked resource. Compare cells from fresh groups.
+- **The process tree** (`idle`, `memory`) is read with `scripts/perf/proc.ps1` on Windows: CPU seconds, working set, private bytes, and GPU dedicated and shared memory per process.
 
 ### Where the processes run
 
@@ -173,8 +211,33 @@ Each row gives the median over runs, in ms per frame: the chart draw, then the c
 
 The minimap painted nothing in any scroll or playback frame. Its overlay costs 0.004 ms per frame on desktop and 0.014 ms at 4×.
 
-Recurring spikes, with the trace events behind them:
+## Recurring spikes
+
+At the baseline commit `8fabd64e`, with the trace events behind them:
 
 - **Pixi's GC pass:** `GCSystem.run` every 30 s. 30 ms at 1×, 150 ms at 4×.
 - **V8 major GC under the preview's per-frame allocations:** 13–19 ms at 1×, 108–134 ms at 4×.
 - **First-visit section compiles:** `notes.ts` `prepareSections` and `vectorRanges.ts` `captureVectors`. 20–45 ms at 4×.
+
+Since then (round 2, commit `ea41be05`):
+
+Gone:
+
+- the legacy write on a timer;
+- the stage-window redraws in Composed scrolling;
+- V8 major GC under the preview (its per-frame cost fell 5 to 7 times).
+
+Changed:
+
+- **Pixi's GC pass** (`GCSystem.run` → `runOnHash`, in `postrender`) walks every tracked resource, and its period is now 3 s (`GC_FREQUENCY`). It runs every 3 s during motion, and on the first frame after any pause of 3 s or more, because the scheduler runs overdue tasks on the next render. It costs 2–8 ms early in a session and 10–20 ms later at 1×, and 15–30 ms rising to 60 ms at 4×.
+
+New:
+
+- **Grid path-cache churn:** paths built in the current frame are not cached.
+- **The storage-unavailable journal:** a spike on the journal's tick in a browser without storage.
+- **The selection outline during playback**, with a large selection.
+- **The idle vector compile:** after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asks again whenever the idle period is shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread, with no effect on frame time.
+
+Still present:
+
+- **First-visit section compiles:** 20–45 ms at 4×.
