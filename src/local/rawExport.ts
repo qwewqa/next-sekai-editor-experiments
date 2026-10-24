@@ -1,9 +1,16 @@
 import { PRODUCT_NAME } from '../product'
 import { storageKey } from '../storage'
 import { interpolateRaw } from '../utils/interpolate'
-import { buildZip } from '../zip/writer'
+import { assembleZip, prepareEntry, type PreparedEntry } from '../zip/writer'
 import { DB_NAME } from './db'
-import { DUMP_FORMAT, DUMP_VERSION, dumpDatabase, dumpLocalStorage, type Dump } from './dump'
+import {
+    blobEntryName,
+    DUMP_FORMAT,
+    DUMP_VERSION,
+    dumpDatabase,
+    dumpLocalStorage,
+    type Dump,
+} from './dump'
 import { idbFactory } from './kv/idb'
 import type { KvFactory } from './kv/types'
 
@@ -12,7 +19,10 @@ import type { KvFactory } from './kv/types'
 // failed can't stop it: it imports nothing under `local/records`, `local/nxsp` or
 // `local/startup` (a unit test pins that). The way out when a storage bug ships.
 
-/** The ZIP's one entry: the dump format, with Blobs as base64. */
+/**
+ * The ZIP's first entry: the dump format, each Blob a `$blobEntry` naming a STORE entry after it,
+ * `blobs/<n>`, which holds its bytes as stored.
+ */
 export const DUMP_ENTRY = 'dump.json'
 
 const emptyDump = (appVersion: string, localStorage: Record<string, string>): Dump => ({
@@ -91,19 +101,33 @@ export const buildRawExportResult = async (
     const opened = await openExisting(factory)
     let databaseUnreadable = opened.kind === 'unreadable'
     let dump: Dump | undefined
+    let media: PreparedEntry[] = []
     if (opened.kind === 'open') {
         try {
-            dump = await dumpDatabase(opened.db, { appVersion, localStorage: keys })
+            const blobs: Blob[] = []
+            const read = await dumpDatabase(opened.db, {
+                appVersion,
+                localStorage: keys,
+                blobEntries: blobs,
+            })
+            // One Blob at a time, its CRC read in slices: no Blob is ever held whole.
+            for (const [n, blob] of blobs.entries())
+                media.push(
+                    await prepareEntry({ name: blobEntryName(n), method: 'store', data: blob }),
+                )
+            dump = read
         } catch (error) {
             console.error(error)
+            media = []
             databaseUnreadable = true
         } finally {
             opened.db.close()
         }
     }
     const data = new TextEncoder().encode(JSON.stringify(dump ?? emptyDump(appVersion, keys)))
+    const entries = [await prepareEntry({ name: DUMP_ENTRY, method: 'deflate', data }), ...media]
     return {
-        zip: await buildZip([{ name: DUMP_ENTRY, method: 'deflate', data }]),
+        zip: new Blob(assembleZip(entries), { type: 'application/zip' }),
         databaseUnreadable,
     }
 }

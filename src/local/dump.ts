@@ -4,6 +4,8 @@ import type { Key, KeyPath, KvDatabase } from './kv/types'
 // The dump format `nse-local-data-dump` v1 (Part 1 §1.6.11.9): every row of every store read with
 // plain cursors and written undecoded, plus the editor's localStorage keys. It uses no record
 // decoder, so a bug there can't stop it. The reader validates a dump and turns it back into values.
+// A Blob is inline base64 (`$blob`) in a JSON dump, and a `$blobEntry` naming a ZIP entry beside
+// `dump.json` in Export Raw Data…'s ZIP, so the export never holds a Blob's bytes whole.
 
 export const DUMP_FORMAT = 'nse-local-data-dump'
 export const DUMP_VERSION = 1
@@ -35,6 +37,11 @@ export class DumpError extends Error {
 
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
 
+/** The ZIP entry of a dump's nth Blob (from 0, in the order the dumper meets them). */
+export const blobEntryName = (n: number) => `blobs/${n}`
+
+const BLOB_ENTRY = /^blobs\/(?:0|[1-9][0-9]*)$/
+
 /** Standard alphabet, padded. */
 export const toBase64 = (bytes: Uint8Array) => {
     let binary = ''
@@ -59,7 +66,7 @@ const isPlainObject = (value: object): value is Record<string, unknown> => {
 const isFileHandle = (value: unknown): value is FileSystemFileHandle =>
     typeof FileSystemFileHandle !== 'undefined' && value instanceof FileSystemFileHandle
 
-/** The bytes of every Blob a value holds, read ahead so encoding stays synchronous. */
+/** Every Blob a value holds. */
 const collectBlobs = (value: unknown, found: Set<Blob>) => {
     if (typeof value !== 'object' || value === null) return
     if (typeof Blob !== 'undefined' && value instanceof Blob) found.add(value)
@@ -72,8 +79,11 @@ const escapeKey = (key: string) => (key.startsWith('$') ? `$${key}` : key)
 
 const unescapeKey = (key: string) => (key.startsWith('$$') ? key.slice(1) : key)
 
+/** A Blob's tag: `$blob` with its bytes, or `$blobEntry` with its entry's name. */
+export type BlobTag = (blob: Blob) => Record<string, unknown>
+
 /** A value as JSON with tags; throws on a type it has no tag for. */
-export const encodeValue = (value: unknown, blobs: Map<Blob, Uint8Array>): unknown => {
+export const encodeValue = (value: unknown, blobTag: BlobTag): unknown => {
     if (value === undefined) return { $undefined: true }
     if (value === null || typeof value === 'boolean' || typeof value === 'string') return value
     if (typeof value === 'number') {
@@ -87,25 +97,54 @@ export const encodeValue = (value: unknown, blobs: Map<Blob, Uint8Array>): unkno
         return { $u8: toBase64(value) }
     if (typeof File !== 'undefined' && value instanceof File)
         throw new DumpError('No tag for a File')
-    if (typeof Blob !== 'undefined' && value instanceof Blob) {
-        const bytes = blobs.get(value)
-        if (!bytes) throw new DumpError('A Blob was not read')
-        return { $blob: toBase64(bytes), type: value.type }
-    }
+    if (typeof Blob !== 'undefined' && value instanceof Blob) return blobTag(value)
     if (isFileHandle(value)) return { $handle: 'file', name: value.name }
     if (Array.isArray(value)) {
         const out: unknown[] = []
-        for (const item of value) out.push(encodeValue(item, blobs))
+        for (const item of value) out.push(encodeValue(item, blobTag))
         return out
     }
     if (!isPlainObject(value)) throw new DumpError(`No tag for a ${value.constructor.name}`)
     const out: Record<string, unknown> = {}
-    for (const [key, item] of Object.entries(value)) out[escapeKey(key)] = encodeValue(item, blobs)
+    for (const [key, item] of Object.entries(value))
+        out[escapeKey(key)] = encodeValue(item, blobTag)
     return out
 }
 
-/** What `decodeValue` does with a `$handle`: by default the field is left out. */
-export type DecodeOptions = { handle?: (name: string) => unknown }
+/** Each Blob read once, ahead, so encoding stays synchronous, and written as base64. */
+const inlineTags = async (values: unknown[]): Promise<BlobTag> => {
+    const found = new Set<Blob>()
+    for (const value of values) collectBlobs(value, found)
+    const read = new Map<Blob, Uint8Array>()
+    for (const blob of found) read.set(blob, new Uint8Array(await blob.arrayBuffer()))
+    return (blob) => {
+        const bytes = read.get(blob)
+        if (!bytes) throw new DumpError('A Blob was not read')
+        return { $blob: toBase64(bytes), type: blob.type }
+    }
+}
+
+/** Each Blob left unread and added to `out`, its tag naming its entry by its index there. */
+const entryTags = (out: Blob[]): BlobTag => {
+    const names = new Map<Blob, string>()
+    return (blob) => {
+        let name = names.get(blob)
+        if (name === undefined) {
+            name = blobEntryName(out.push(blob) - 1)
+            names.set(blob, name)
+        }
+        return { $blobEntry: name, type: blob.type }
+    }
+}
+
+/**
+ * What `decodeValue` does with a `$handle` (by default the field is left out) and a `$blobEntry`
+ * (`blobEntry` gives the Blob from the ZIP; without it the tag throws).
+ */
+export type DecodeOptions = {
+    handle?: (name: string) => unknown
+    blobEntry?: (name: string, type: string) => unknown
+}
 
 const OMIT = Symbol('omit')
 
@@ -120,6 +159,12 @@ const decodeTag = (tag: Record<string, unknown>, options: DecodeOptions): unknow
     if (keys === '$ab') return fromBase64(text('$ab')).buffer
     if (keys === '$u8') return fromBase64(text('$u8'))
     if (keys === '$blob,type') return new Blob([fromBase64(text('$blob'))], { type: text('type') })
+    if (keys === '$blobEntry,type') {
+        const name = text('$blobEntry')
+        if (!BLOB_ENTRY.test(name)) throw new DumpError(`Not a Blob entry: ${name}`)
+        if (!options.blobEntry) throw new DumpError(`${name} is in a ZIP that was not given`)
+        return options.blobEntry(name, text('type'))
+    }
     if (keys === '$handle,name' && tag.$handle === 'file')
         return options.handle ? options.handle(text('name')) : OMIT
     throw new DumpError(`An unknown tag: ${keys}`)
@@ -174,14 +219,16 @@ export const dumpLocalStorage = (storage: Storage, prefix: string) => {
 
 /**
  * Dumps every store of an open database, read in one transaction with plain cursors. Blobs are
- * read after it commits, since reading one would end the transaction.
+ * read after it commits, since reading one would end the transaction. With `blobEntries` no Blob
+ * is read: each is added there and written as a `$blobEntry`, for the caller to write its entry.
  */
 export const dumpDatabase = async (
     db: KvDatabase,
     {
         appVersion,
         localStorage = {},
-    }: { appVersion: string; localStorage?: Record<string, string> },
+        blobEntries,
+    }: { appVersion: string; localStorage?: Record<string, string>; blobEntries?: Blob[] },
 ): Promise<Dump> => {
     const names = [...db.storeNames].sort()
     const read = names.length
@@ -195,10 +242,9 @@ export const dumpDatabase = async (
               return out
           })
         : []
-    const found = new Set<Blob>()
-    for (const { entries } of read) for (const entry of entries) collectBlobs(entry.value, found)
-    const blobs = new Map<Blob, Uint8Array>()
-    for (const blob of found) blobs.set(blob, new Uint8Array(await blob.arrayBuffer()))
+    const blobTag = blobEntries
+        ? entryTags(blobEntries)
+        : await inlineTags(read.flatMap(({ entries }) => entries.map((entry) => entry.value)))
     return {
         format: DUMP_FORMAT,
         version: DUMP_VERSION,
@@ -217,8 +263,8 @@ export const dumpDatabase = async (
                     multiEntry: false,
                 })),
             records: entries.map((entry) => ({
-                key: encodeValue(entry.primaryKey, blobs),
-                value: encodeValue(entry.value, blobs),
+                key: encodeValue(entry.primaryKey, blobTag),
+                value: encodeValue(entry.value, blobTag),
             })),
         })),
         localStorage,
@@ -288,7 +334,7 @@ export const readDump = (json: unknown): Dump => {
             let value: unknown
             try {
                 key = normalizeKey(decodeValue(fields.key))
-                value = decodeValue(fields.value, { handle: () => null })
+                value = decodeValue(fields.value, { handle: () => null, blobEntry: () => null })
             } catch (error) {
                 fail(at, error instanceof Error ? error.message : String(error))
             }

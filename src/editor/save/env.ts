@@ -115,9 +115,10 @@ export const writeMarker = (marker: SaveMarker) => {
 }
 
 export const readMarker = (chainId: string): SaveMarker | undefined => {
-    const value = storageGet(markerKey(chainId), undefined) as SaveMarker | undefined
-    return typeof value?.entry.revisionId === 'string' && typeof value.unit.docId === 'string'
-        ? value
+    // A marker this build did not write may lack either part.
+    const value = storageGet(markerKey(chainId), undefined) as Partial<SaveMarker> | undefined
+    return typeof value?.entry?.revisionId === 'string' && typeof value.unit?.docId === 'string'
+        ? (value as SaveMarker)
         : undefined
 }
 

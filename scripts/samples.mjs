@@ -1,8 +1,9 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
-// The dev server's `/samples/<name>.json`, for `?seedSample=<name>` (src/local/seed.ts): served
-// from the nse-next `samples/` folder, never from `public/`, so no build ever holds a sample.
+// The dev server's `/samples/<name>.json` and `/samples/<name>.zip`, for `?seedSample=<name>` and
+// `?seedSample=<name>.zip` (src/local/seed.ts): served from the nse-next `samples/` folder, never
+// from `public/`, so no build ever holds a sample.
 
 /** The nearest `samples/` folder above the checkout, or NSE_SAMPLES_DIR. */
 export function samplesDir(root, env = process.env) {
@@ -28,11 +29,14 @@ export function samplesPlugin(root) {
             server.middlewares.use('/samples/', (req, res, next) => {
                 const name = decodeURIComponent((req.url ?? '').split('?')[0].replace(/^\//, ''))
                 const dir = samplesDir(root)
-                if (!dir || !/^[\w.-]+\.json$/.test(name) || !existsSync(join(dir, name))) {
+                if (!dir || !/^[\w.-]+\.(?:json|zip)$/.test(name) || !existsSync(join(dir, name))) {
                     next()
                     return
                 }
-                res.setHeader('Content-Type', 'application/json')
+                res.setHeader(
+                    'Content-Type',
+                    name.endsWith('.zip') ? 'application/zip' : 'application/json',
+                )
                 res.setHeader('Cache-Control', 'no-store')
                 res.end(readFileSync(join(dir, name)))
             })

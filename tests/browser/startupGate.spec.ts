@@ -234,7 +234,7 @@ test.describe('the startup gate', () => {
         localStorage: Record<string, string>
     }
 
-    /** dump.json out of an exported ZIP: one DEFLATE entry, found through the central directory. */
+    /** dump.json out of an exported ZIP: its first entry, DEFLATE, found through the central directory. */
     const dumpOfZip = (bytes: Buffer) => {
         expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK')
         // The end record is the last 22 bytes when the ZIP has no comment.
@@ -386,6 +386,57 @@ test.describe('the startup gate', () => {
         expect(stored.stores.map((store) => [store.name, store.records.length])).toEqual([
             ['chains', 1],
         ])
+    })
+
+    test('a stored Blob goes into its own STORE entry, byte for byte', async ({ page }) => {
+        // Catches an export that reads a stored Blob whole or as base64, or one whose entry an
+        // engine cannot read back after the database closes.
+        await page.goto('/gate.js')
+        const result = await page.evaluate(async () => {
+            // Past one 8 MiB slice of the CRC.
+            const size = 9 * 1024 * 1024 + 5
+            const bytes = new Uint8Array(size)
+            for (let i = 0; i < size; i++) bytes[i] = (i * 31 + (i >> 11)) & 0xff
+            await new Promise<void>((resolve, reject) => {
+                const open = indexedDB.open('nse-local-data', 1)
+                open.onupgradeneeded = () => {
+                    open.result.createObjectStore('media')
+                    open.transaction!.objectStore('media').put(
+                        { blob: new Blob([bytes], { type: 'audio/wav' }) },
+                        new Uint8Array(16).fill(7).buffer,
+                    )
+                }
+                open.onsuccess = () => {
+                    open.result.close()
+                    resolve()
+                }
+                open.onerror = () => reject(open.error)
+            })
+            const rawPath = '/src/local/rawExport.ts'
+            const zipPath = '/src/zip/index.ts'
+            const { buildRawExport } = (await import(
+                rawPath
+            )) as typeof import('../../src/local/rawExport')
+            const { ZipReader } = (await import(zipPath)) as typeof import('../../src/zip')
+            const reader = await ZipReader.open(await buildRawExport('0.0.0'))
+            const text = new TextDecoder().decode(
+                await reader.read(reader.get('dump.json')!, { maxSize: 1 << 20 }),
+            )
+            const dump = JSON.parse(text) as { stores: { records: { value: unknown }[] }[] }
+            // The read checks the entry's CRC.
+            const held = await reader.read(reader.get('blobs/0')!, { maxSize: size })
+            return {
+                entries: reader.entries.map((entry) => [entry.name, entry.method]),
+                media: dump.stores[0]!.records[0]!.value,
+                same: held.length === size && held.every((byte, i) => byte === bytes[i]),
+            }
+        })
+        expect(result.entries).toEqual([
+            ['dump.json', 8],
+            ['blobs/0', 0],
+        ])
+        expect(result.media).toEqual({ blob: { $blobEntry: 'blobs/0', type: 'audio/wav' } })
+        expect(result.same).toBe(true)
     })
 
     test('Escape does not close it', async ({ page }) => {

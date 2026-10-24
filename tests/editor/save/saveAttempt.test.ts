@@ -11,7 +11,8 @@ const { createMockPlatform } = await import('../../../src/platform/mock')
 const { FileError, setPlatformForTests } = await import('../../../src/platform')
 const { nxspDiskState } = await import('../../../src/platform/fingerprint')
 const { setSaveEnvironment } = await import('../../../src/editor/save/binding')
-const { readMarker } = await import('../../../src/editor/save/env')
+const { markedSeq, readMarker, removeMarker } = await import('../../../src/editor/save/env')
+const { storageKey } = await import('../../../src/storage')
 const { Cancelled, withSaveAttempt } = await import('../../../src/editor/save/saveAttempt')
 const { ringEntries, resetRingForTests } = await import('../../../src/diagnostics')
 const { assembleZip, prepareEntry } = await import('../../../src/zip')
@@ -342,4 +343,23 @@ test('a throw after the file read back as ours, outside the entry, is recorded a
     assert.ok(ringEntries().some((each) => each.text.includes('the label broke')))
     assert.deepEqual(t.ends, ['kept'])
     assert.ok(readMarker('c1'), 'the marker stays for the next Save to record the binding')
+})
+
+test('a marker without its entry or unit is no marker, and the others are still read', () => {
+    const valid = { entry: { revisionId: 'r1', sessionId: 's1', seq: 7 }, unit: { docId: 'd1' } }
+    for (const malformed of [
+        {},
+        { unit: { docId: 'd1' } },
+        { entry: { revisionId: 'r1' } },
+        null,
+    ]) {
+        // The malformed one first, as a later build or a hand edit might leave it.
+        localStorage.clear()
+        localStorage.setItem(storageKey('saving.c0'), JSON.stringify(malformed))
+        localStorage.setItem(storageKey('saving.c1'), JSON.stringify({ chainId: 'c1', ...valid }))
+        assert.equal(readMarker('c0'), undefined)
+        assert.equal(markedSeq('s1'), 7, 'the session still goes past the valid marker’s seq')
+        removeMarker('c0')
+        assert.equal(localStorage.getItem(storageKey('saving.c0')), null)
+    }
 })
