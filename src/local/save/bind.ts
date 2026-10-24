@@ -18,16 +18,16 @@ import {
     type IdentityUnit,
 } from './commit'
 
-// The storage side of the Save core's bindings (Part 1 §1.4.7, owner decision log D5): reading a
-// chain's binding again under `nse-bind` (R10), the handles a save picker's pick is compared with
-// (R3), a takeover's revocation and pre-bind in one transaction (R5), and our own completed
-// Save's binding recorded (§1.4.7).
+// The storage side of the Save core's bindings: reading a
+// chain's binding again under `nse-bind`, the handles a save picker's pick is compared with,
+// a takeover's revocation and pre-bind in one transaction, and our own completed
+// Save's binding recorded.
 
 type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
-/** A chain losing its file takes the file's stem as its name, over any it had (§1.3.5). */
+/** A chain losing its file takes the file's stem as its name, over any it had. */
 const keepName = (record: Row, fileName: string) => {
     const name = keptNameOf(record.name, fileName)
     if (name !== undefined) record.name = name
@@ -42,10 +42,10 @@ export const readChainRecord = async (tx: KvTx, chainId: string) => {
     return isRow(chain) ? withoutHandles(chain) : undefined
 }
 
-/** A stored binding or Export target: what a pick is compared with (R3), and R1's names. */
+/** A stored binding or Export target: what a pick is compared with. */
 export type HandleOwner = {
     chainId: string
-    /** `kept`: the file a partial open came from, refused and put back (R7). */
+    /** `kept`: the file a partial open came from, refused and put back. */
     role: 'file' | 'exportTarget' | typeof KEPT_ROLE
     name: string
     /** The binding's `at`, which a takeover checks is unchanged. */
@@ -87,19 +87,19 @@ export const listHandleOwners = async (tx: KvTx): Promise<HandleOwner[]> => {
     return owners
 }
 
-/** Keeps the handle of the file a partial or unlinked open came from (§1.5.4, D26). */
+/** Keeps the handle of the file a partial or unlinked open came from. */
 export const keepHandle = async (tx: KvTx, chainId: string, name: string, handle: unknown) => {
     if (!isRow(await tx.get('chains', chainId))) return false
     await tx.put(HANDLES, { chainId, role: KEPT_ROLE, name, handle })
     return true
 }
 
-/** A takeover (R5): another chain's binding or Export target revoked, this chain pre-bound. */
+/** A takeover: another chain's binding or Export target revoked, this chain pre-bound. */
 export type TakeOver = {
     owner?: HandleOwner
     /**
      * This chain, bound to the picked file in its empty state; none for Save to File…. Save As…
-     * gives its new `docId`, with no revision yet (the identity fields are one unit, §1.3.2).
+     * gives its new `docId`, with no revision yet (the identity fields are one unit).
      */
     preBind?: { chainId: string; file: Row; docId?: string }
     by: string
@@ -172,7 +172,7 @@ export type SaveEntryForm = {
     appVersion?: string
 }
 
-/** Our own completed Save, as `recordOwnSave` takes it (§1.4.7). */
+/** Our own completed Save, as `recordOwnSave` takes it. */
 export type OwnSaveRecord = {
     chainId: string
     /** The recording tab's session: the chain's head, or an unstored continuation of it. */
@@ -191,12 +191,12 @@ export type OwnSaveRecorded =
     'recorded' | 'gone' | 'notHead' | 'unsupported' | 'stale' | 'marks' | 'importing'
 
 /**
- * Records our own completed Save's binding and nothing else (§1.4.7, invariant I-10): the chain
+ * Records our own completed Save's binding and nothing else: the chain
  * record (`docId`, `revision`, `file` with its cut and `disk`, the Export clear), its handle row
  * and the write's marks, in one transaction. No entry is written, so no session changes and no
  * row is created below a `lastSeq`: the Save has no Saved row in the Timeline, its state is the one
  * before it. The cut counts the file's rows, the `save` row among them, also though the chain
- * lacks it: a cut may only under-claim (§1.6.11.6), and the next write that isn't an append then
+ * lacks it: a cut may only under-claim, and the next write that isn't an append then
  * fails the carry test (save/model.ts `carryStatus`) and says "may not be included" once.
  */
 export const recordOwnSave = async (

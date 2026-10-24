@@ -4,7 +4,7 @@ import { isObject } from '../nxsp/json'
 import type { WorkerContext } from './handlers'
 import { transfer } from './rpc'
 
-// The storage worker's media read (Part 1 §1.6.8.4): a stored item's bytes for a state that names
+// The storage worker's media read: a stored item's bytes for a state that names
 // its hash but holds no audio, as after a reload.
 
 export const mediaHandlers = (context: WorkerContext) => ({

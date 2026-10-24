@@ -1,7 +1,7 @@
 import { readMeta } from '../db'
 import type { WorkerContext } from './handlers'
 
-// The storage worker's one method for Copy Diagnostic Info… (Part 1 §1.4.16): the database's
+// The storage worker's one method for Copy Diagnostic Info…: the database's
 // versions and how many sessions and chains it holds. Counts only, never a name or any content.
 
 export const diagnosticHandlers = (context: WorkerContext) => ({

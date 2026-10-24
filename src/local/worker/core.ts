@@ -22,14 +22,14 @@ import {
 } from '../locks'
 import { nextTime } from '../time'
 
-// The storage worker's state (Part 1 §1.6.1, §1.6.5, §1.6.7): which store it writes to, whether
+// The storage worker's state: which store it writes to, whether
 // storing is paused and why, the connection-loss retry, and writes under `nse-maint`. No browser
 // global is touched here, so Node tests run it over the in-memory store and fake locks.
 
 /** stored: IndexedDB; readOnly: a newer database (VersionError); memory: storage unavailable. */
 export type StorageMode = 'stored' | 'readOnly' | 'memory'
 
-/** §1.4.19's `storage.reason.*`: full, upgrading, olderTabs, failed. */
+/** `storage.reason.*`: full, upgrading, olderTabs, failed. */
 export type PauseReason = 'full' | 'upgrading' | 'olderTabs' | 'failed'
 
 export type StorageStatus = {
@@ -37,13 +37,13 @@ export type StorageStatus = {
     /** Stored: why storing is paused. Memory: olderTabs when an upgrade is blocked. */
     reason?: PauseReason
     /**
-     * Media whose read-back failed, as hex, until a later read-back succeeds (§1.6.8.4). Storing
+     * Media whose read-back failed, as hex, until a later read-back succeeds. Storing
      * isn't paused for them: the history goes on being stored. Absent when there are none.
      */
     mediaPending?: string[]
 }
 
-/** The worker's startup test flag (§1.11's test notes): addInitScript can't reach a worker. */
+/** The worker's startup test flag: addInitScript can't reach a worker. */
 export type TestFlags = {
     noStorage?: boolean
     forceQuota?: boolean
@@ -56,7 +56,7 @@ export type TestFlags = {
     ignoreVersionChange?: boolean
     /** Kills the worker at the test point of this name. */
     crashAt?: string
-    /** Safe mode (§1.4.2): the database opens read-only, as for a newer one. */
+    /** Safe mode: the database opens read-only, as for a newer one. */
     readOnly?: boolean
 }
 
@@ -109,7 +109,7 @@ export const refuseUnlessStored = ({ mode }: StorageStatus) => {
         throw new StorageRefusedError(mode === 'readOnly' ? 'readOnly' : 'failed')
 }
 
-/** Little free space by estimate(): Chrome reports a full disk as UnknownError (§1.6.1). */
+/** Little free space by estimate(): Chrome reports a full disk as UnknownError. */
 export const isLowSpace = ({ usage, quota }: { usage?: number; quota?: number }) =>
     usage !== undefined &&
     quota !== undefined &&
@@ -119,7 +119,7 @@ export const isLowSpace = ({ usage, quota }: { usage?: number; quota?: number })
 const isConnectionError = (error: unknown) =>
     ['InvalidStateError', 'UnknownError'].includes(errorName(error) ?? '')
 
-/** A call's progress count (§1.6.5): bumped by each step of work done for it. */
+/** A call's progress count: bumped by each step of work done for it. */
 export type Progress = { tick?: () => void }
 
 export type WriteOptions = {
@@ -452,7 +452,7 @@ export class StorageCore {
         /** Whether the forced-failure test flags apply: not to deleting jobs. */
         forced = true,
     ) {
-        // A reopen can find a newer database (§1.6.1): never write what this build doesn't know.
+        // A reopen can find a newer database: never write what this build doesn't know.
         if (this.current.mode !== 'stored') throw new StorageRefusedError('readOnly')
         if (this.current.reason === 'upgrading') throw new StorageRefusedError('upgrading')
         const db = this.db
@@ -626,7 +626,7 @@ export class StorageCore {
                 async (tx) => {
                     const stored = (await readMeta(tx, 'maxSeenTime')) ?? 0
                     const seen = Math.max(stored, memoryTime ?? 0)
-                    // Moved rows take this database's day of use, not the memory store's (§1.6.8.7).
+                    // Moved rows take this database's day of use, not the memory store's.
                     const day = await countDayOfUse(tx, nextTime(seen, Date.now()))
                     for (const [store, list] of rows) {
                         const inline = tx.describe(store).keyPath !== null

@@ -16,7 +16,7 @@ import { encodeSnapshot } from '../records/snapshot'
 import type { PendingRecords } from './bodies'
 import type { HeadInput, PendingInput, PendingRow } from './build'
 
-// The page's half of a build's first source (Part 1 §1.6.11.6): this tab's records not yet
+// The page's half of a build's first source: this tab's records not yet
 // flushed, and the live head's level data, posted to the worker for the Save. Encoded here with
 // the synchronous hash; the worker checks them as it checks storage's.
 

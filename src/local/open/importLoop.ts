@@ -7,11 +7,11 @@ import { hasWebLocks, importLock } from '../locks'
 import { storedRead } from '../storedRead'
 import type { StorageWorker } from '../worker/client'
 
-// The page's half of an open's background import (Part 1 §1.5.4): it holds `nse-import:<id>`
+// The page's half of an open's background import: it holds `nse-import:<id>`
 // (exclusive) and runs the worker's batches one by one, checking the file's fingerprint before
 // each and after a hash failure. A change or a read error stops the import (the rows not
 // imported become `kept: false`, and the chain stays bound); a hash failure with the fingerprint
-// unchanged is damage, which unlinks the chain (§1.6.11.8) while the import goes on. Saves and
+// unchanged is damage, which unlinks the chain while the import goes on. Saves and
 // Check File and History… wait for it (`whenImported`); the next load resumes one a tab didn't
 // finish, from the bound handle, or ends it.
 
@@ -49,7 +49,7 @@ export type ImportJob = {
     source: ImportSource
     appVersion: string
     newId?: () => string
-    /** The chain unlinked (§1.6.11.8): its new record, after the first damage found. */
+    /** The chain unlinked: its new record, after the first damage found. */
     onUnlink?: (record: Record<string, unknown>, first: boolean) => void
 }
 
@@ -58,7 +58,7 @@ const BATCH_TIMEOUT_MS = 120_000
 
 const running = new Map<string, Promise<ImportOutcome>>()
 
-/** How far an import has come, in batches: what a Save waiting for it shows (§1.4.7). */
+/** How far an import has come, in batches: what a Save waiting for it shows. */
 export type ImportProgress = { done: number; total: number }
 
 const progress = new Map<string, ImportProgress>()
@@ -97,7 +97,7 @@ export const onImportProgress = (
     }
 }
 
-/** A spec slows the import by this many ms a batch, to act while it runs (§1.11's test hooks). */
+/** A spec slows the import by this many ms a batch, to act while it runs. */
 export const IMPORT_DELAY_TEST_KEY = 'nse.test.importDelay'
 
 const testDelay = async () => {
@@ -137,7 +137,7 @@ export const importsRunning = () => running.size > 0
 /** Whether the file is the one read at the open: size and time, and with `full` its `<cd>`. */
 const unchanged = async (source: ImportSource, full: boolean) => {
     const { handle, disk } = source
-    // A picked `File` stands for its own fingerprint (§1.5.4); reading it fails once changed.
+    // A picked `File` stands for its own fingerprint; reading it fails once changed.
     if (!handle || !disk) return true
     try {
         const file = await handle.getFile()
@@ -188,7 +188,7 @@ const runBatches = async (job: ImportJob): Promise<ImportOutcome> => {
                 case 'readError':
                     return await stop()
                 case 'damaged': {
-                    // Only a hash failure with the fingerprint unchanged is damage (r12-freeze2 S8).
+                    // Only a hash failure with the fingerprint unchanged is damage.
                     if (!(await unchanged(source, true))) return await stop()
                     const first = unlinkedAs === undefined
                     unlinkedAs ??= (job.newId ?? (() => crypto.randomUUID()))()
@@ -257,10 +257,10 @@ export type ResumeDeps = Omit<
 }
 
 /**
- * The next load's resume (§1.5.4): for each session whose open's import a tab didn't finish and
+ * The next load's resume: for each session whose open's import a tab didn't finish and
  * whose import lock is free, from the bound handle when it reads without a prompt and still is
  * the file opened; otherwise the rows whose states never arrived become `kept: false`. Runs after
- * startup, so a stored handle is never read during startup or recovery (D16, D24).
+ * startup, so a stored handle is never read during startup or recovery.
  */
 export const resumeImports = async (deps: ResumeDeps) => {
     const { worker, locks } = deps

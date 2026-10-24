@@ -4,7 +4,7 @@ import type { InitOptions } from './handlers'
 import { connect, PING, RpcError, type CallOptions, type Client } from './rpc'
 import type { StorageHandlers } from './storage.worker'
 
-// The page's end of the storage worker (Part 1 §1.6.5). It watches onerror and unanswered calls
+// The page's end of the storage worker. It watches onerror and unanswered calls
 // (10 s, non-bulk, longer for calls that carry more work) and restarts the worker from a Blob URL
 // of its script fetched at startup, so a later deploy can't 404 it. An unanswered call first
 // pings the worker for that call's own progress: one that has moved is slow, not hung, and is
@@ -58,7 +58,7 @@ export class StorageWorker {
         return this.current
     }
 
-    /** How many times this tab restarted the worker, for Copy Diagnostic Info… (§1.4.16). */
+    /** How many times this tab restarted the worker, for Copy Diagnostic Info…. */
     get restartCount() {
         return this.restartSeq
     }

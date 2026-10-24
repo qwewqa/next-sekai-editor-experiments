@@ -22,7 +22,7 @@ import { runFlushHooks } from './flushHooks'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
-// The storage worker's flush methods (Part 1 §1.6.4, §1.6.8.4): the flush itself, media read
+// The storage worker's flush methods: the flush itself, media read
 // back once after it is sent, the day of use at load, and the dev console's snapshot reader.
 
 type MediaRow = { blob: Blob; sha256: Uint8Array } & Record<string, unknown>
@@ -38,7 +38,7 @@ export const setMediaReadBackHookForTests = (hook: typeof readBackHook) => {
 }
 
 /**
- * Reads back each media row just written and re-hashes it (§1.6.8.4). On a mismatch it's written
+ * Reads back each media row just written and re-hashes it. On a mismatch it's written
  * again from memory; a second mismatch removes the row, which reads as not held. A row that can't
  * be read is kept: the error may pass. Either way the item is reported in the status's
  * `mediaPending` until a read-back of it succeeds, and the page stores it again on its own;
@@ -91,7 +91,7 @@ export const readBackMedia = async (
                 if (written) continue
             } else if (outcome === 'wrong') {
                 // Only bytes read and found wrong are removed. No epoch bump: every flush checks
-                // the media it names by key, and the epoch guards only the chunk memo (§1.6.6).
+                // the media it names by key, and the epoch guards only the chunk memo.
                 await core
                     .write(['media'], (tx) => tx.delete('media', key), progress)
                     .catch(() => undefined)
@@ -123,7 +123,7 @@ const decoder = new TextDecoder()
 
 export const flushHandlers = (context: WorkerContext, outside: Waiter = directWaiter) => {
     let armed: string | undefined
-    // Each wait outside IndexedDB (hashing, a Blob read) counts as the call's progress (§1.6.5).
+    // Each wait outside IndexedDB (hashing, a Blob read) counts as the call's progress.
     const waiterOf = (progress: Progress): Waiter => ({
         wait: async (promise) => {
             try {
@@ -147,7 +147,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
                 prepared = await prepareFlush(batch, waiter)
             } catch (error) {
                 // Verify on write failed, or the batch is malformed: a bug. Nothing is put, and
-                // storing pauses as for any failed flush (§1.6.11.2).
+                // storing pauses as for any failed flush.
                 console.error('A flush was refused before writing', error)
                 await pauseWith(core, error)
                 throw error
@@ -165,12 +165,12 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
                 { durability: batch.durability, ...progress },
             )
             if (result.kind !== 'stored') return result
-            // In memory, the page keeps the entries: a restarted worker's store is new (§1.6.5).
+            // In memory, the page keeps the entries: a restarted worker's store is new.
             const memory = core.status.mode === 'memory'
             const noDatabase = memory && core.status.reason !== 'olderTabs'
             const { committed, mediaFailed: refused = [], ...reply } = result
             for (const hex of refused) core.mediaFailed(hex)
-            // Media that reads back wrong never fails the entries: they're committed (§1.6.8.4).
+            // Media that reads back wrong never fails the entries: they're committed.
             const mediaFailed = [
                 ...refused,
                 ...(await readBackMedia(core, result.readBack, prepared.media, waiter, progress)),
@@ -185,7 +185,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
         },
 
         /**
-         * A media item stored on its own, after its flush's read-back failed (§1.6.8.4): put
+         * A media item stored on its own, after its flush's read-back failed: put
          * when it's missing, then read back. Resolves whether it's stored right now.
          */
         storeMedia: async (item: BatchMedia, scope?: CallScope): Promise<boolean> => {
@@ -223,7 +223,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
         },
 
         /**
-         * Foreign data with its closure check (§1.6.4 step 4), committed strictly. A planned seam
+         * Foreign data with its closure check, committed strictly. A planned seam
          * for a later step's import of another device's data: only the specs call it until then.
          */
         importForeign: async (batch: ForeignBatch, scope?: CallScope): Promise<ForeignResult> => {
@@ -248,7 +248,7 @@ export const flushHandlers = (context: WorkerContext, outside: Waiter = directWa
             return result
         },
 
-        /** Counts today as a day of use at load (§1.6.8.7). */
+        /** Counts today as a day of use at load. */
         countDay: () =>
             context.core.write(['meta'], async (tx) =>
                 countDayOfUse(tx, nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, Date.now())),

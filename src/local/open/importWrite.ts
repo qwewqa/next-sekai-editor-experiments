@@ -38,16 +38,16 @@ import { BLOCK_SLOTS, blockOf, blockRow, storedWindow, type ReplaySlot } from '.
 import { lackingRoots, type OpenedFile } from './opened'
 import { BATCH_ROWS, chunksOfRoot, nodesOfRoot, stackOrder, type ImportBatch } from './plan'
 
-// The open's transactions (Part 1 §1.5.4): the first, which stores the new chain and session
+// The open's transactions: the first, which stores the new chain and session
 // with the head's parts, the stack and the media, strictly; the background batches; the unlink
-// when the file turns out damaged (§1.6.11.8); and the end of an import that can't go on, which
+// when the file turns out damaged; and the end of an import that can't go on, which
 // marks the rows whose states never arrived `kept: false`.
 
 type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
-/** The binding's cut (§1.3.2): the last row the file holds, its session's start and its counts. */
+/** The binding's cut: the last row the file holds, its session's start and its counts. */
 export type FileCut = {
     sessionId: string
     seq: number
@@ -73,7 +73,7 @@ export type OpenStoreRequest = {
     operations: { opened: JsonValue; changedOutside: JsonValue }
     wall: number
     appVersion: string
-    /** `replaced`: the version on disk Replace keeps first, an ordinary unbound session (§1.4.7). */
+    /** `replaced`: the version on disk Replace keeps first, an ordinary unbound session. */
     origin?: 'replaced'
 }
 
@@ -88,7 +88,7 @@ export type OpenStoreResult = {
     importPending: boolean
 }
 
-/** A root or node row from its JSON form, which the reader hashed to its key (§1.6.11.5). */
+/** A root or node row from its JSON form, which the reader hashed to its key. */
 const recordRow = (
     json: RecordValue[],
     media: readonly Uint8Array[],
@@ -148,7 +148,7 @@ const prepareRecords = async (history: ReadHistory, keys: Iterable<string>, day:
     return rows
 }
 
-/** The file's entry form as a row of the session (§1.6.11.5's "On import"). */
+/** The file's entry form as a row of the session. */
 const entryRow = (
     history: ReadHistory,
     sessionId: string,
@@ -160,7 +160,7 @@ const entryRow = (
     return {
         sessionId,
         seq,
-        // Imported rows keep their time, and it never feeds `maxSeenTime` (r11g-format M10).
+        // Imported rows keep their time, and it never feeds `maxSeenTime`.
         time: entry.time,
         day,
         ...captureEntryDescription(entry),
@@ -275,7 +275,7 @@ export const prepareOpenHead = async (
     }
     const level = request.level ? await prepareLevel(request.level) : undefined
     // A short history's rows come in the first transaction, so a tab that ends before the first
-    // batch still has every row the file held (§1.5.4's batches are for long histories).
+    // batch still has every row the file held (batches are for long histories).
     const entries =
         history && history.entries.length <= BATCH_ROWS
             ? history.entries.map((entry, i) =>
@@ -323,7 +323,7 @@ export const headCount = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
 
 /**
- * The open's first transaction, strict (§1.5.4 step 3): the chain record with its binding, the
+ * The open's first transaction, strict: the chain record with its binding, the
  * session row with `importPending`, the head's root, nodes and chunks with the closure check,
  * the stack's other roots and nodes, its blocks, the media, and the session's own entries: the
  * "Changed outside the editor" edit when the live state isn't the history's head, then the
@@ -367,7 +367,7 @@ export const writeOpenHead = async (
         levelNotes = root.noteCount
     }
 
-    // The stack: the file's as it is (§1.6.11.5), with the file's level pushed when it differs.
+    // The stack: the file's as it is, with the file's level pushed when it differs.
     const count = history?.entries.length ?? 0
     let base = 0
     let slots: ReplaySlot[] = []
@@ -459,7 +459,7 @@ export const writeOpenHead = async (
         }
         fields.file = { ...file, at: now, hash: head.slice(), entry: cut }
     }
-    // The binding's handle goes in its own store (D24).
+    // The binding's handle goes in its own store.
     const chain: Row = {
         ...(await splitHandles(tx, chainId, fields)),
         chainId,
@@ -467,7 +467,7 @@ export const writeOpenHead = async (
         docId,
         lineageId,
         startedAt: now,
-        // Rows copied from a file never make the chain edited (§1.6.11.2).
+        // Rows copied from a file never make the chain edited.
         hasContent: true,
         updatedAt: now,
         day,
@@ -513,7 +513,7 @@ const isReadError = (error: unknown) =>
 
 /**
  * A batch's work outside the transaction. Chunks already stored aren't read or inflated again
- * (`stored` from a read before it), so reopening your own file costs almost nothing (r11f fit S4).
+ * (`stored` from a read before it), so reopening your own file costs almost nothing.
  */
 export const prepareBatch = async (
     history: ReadHistory,
@@ -638,13 +638,13 @@ export type UnlinkRequest = {
     docId: string
     /** The chunks found bad. */
     hashes: string[]
-    /** Roots whose states need them: their rows become `kept: false` (r12-freeze item 1). */
+    /** Roots whose states need them: their rows become `kept: false`. */
     roots: string[]
     appVersion: string
 }
 
 /**
- * Damage in the chain's own file found after its open (§1.6.11.8): in one transaction the chain
+ * Damage in the chain's own file found after its open: in one transaction the chain
  * gets a new `docId` and loses `revision` and `file`, its `badChunks` gain the hashes, and the
  * session's rows whose states need them become `kept: false`. Returns the record as written, or
  * undefined when the chain is gone.
@@ -669,7 +669,7 @@ export const writeUnlink = async (tx: KvTx, request: UnlinkRequest) => {
     const bad = [...new Set([...old, ...request.hashes])].map(fromHex16)
     const { revision: _revision, file, ...rest } = chain
     await deleteHandleRow(tx, request.chainId, 'file')
-    // Its file's stem stays its name (§1.3.5), so the label and its row keep naming it.
+    // Its file's stem stays its name, so the label and its row keep naming it.
     const name = keptNameOf(rest.name, isRow(file) ? file.name : undefined)
     const record: Row = {
         ...rest,
@@ -684,7 +684,7 @@ export const writeUnlink = async (tx: KvTx, request: UnlinkRequest) => {
 }
 
 /**
- * Ends an import that can't go on (§1.5.4: the tab ended, the file changed or can't be read):
+ * Ends an import that can't go on (the tab ended, the file changed or can't be read):
  * the session's rows whose states storage doesn't hold whole become `kept: false`, and
  * `importPending` goes. False when there was nothing to end.
  */

@@ -29,8 +29,8 @@ import type { Progress } from './core'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
-// The storage worker's open methods (Part 1 §1.5.4): reading a picked `.nxsp`, the open's first
-// transaction, the background import's batches, the unlink on damage (§1.6.11.8), and ending
+// The storage worker's open methods: reading a picked `.nxsp`, the open's first
+// transaction, the background import's batches, the unlink on damage, and ending
 // an import that can't go on. The page drives the batches, holding `nse-import:<sessionId>`.
 
 /** Why a batch couldn't run: the file isn't open in this worker (a restart): read it again. */
@@ -96,7 +96,7 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
         },
 
         /**
-         * Reads the bound file again to resume an import a tab didn't finish (§1.5.4), when its
+         * Reads the bound file again to resume an import a tab didn't finish, when its
          * revision and fingerprint are still the binding's.
          */
         openResume: async (
@@ -163,7 +163,7 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
         },
 
         /**
-         * Damage found by the import in the chain's own file (§1.6.11.8): the chain unlinks, and
+         * Damage found by the import in the chain's own file: the chain unlinks, and
          * the rows whose states need the bad chunks become `kept: false`.
          */
         openUnlink: async (
@@ -212,7 +212,7 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
                 const chain = (await tx.get('chains', chainId)) as
                     Record<string, unknown> | undefined
                 if (!chain) return
-                // Never its handle: the page reads that through `handleOf` (D24).
+                // Never its handle: the page reads that through `handleOf`.
                 const bound = chain.file as ImportTarget['file']
                 const file = bound && { name: bound.name, disk: bound.disk }
                 const revision = chain.revision as { id?: unknown } | undefined
@@ -223,9 +223,9 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
             }),
 
         /**
-         * The chains of a document other than `exclude`, as the open's notice reads them (§1.5.4
-         * step 4): each one's latest session, base revision, binding, whether its head differs
-         * from its file event's state, and when it was last edited.
+         * The chains of a document other than `exclude`, as the open's notice reads them: each
+         * one's latest session, base revision, binding, whether its head differs from its file
+         * event's state, and when it was last edited.
          */
         openEarlierChains: ({ docId, exclude }: { docId: string; exclude: string }) =>
             context.core.read(['chains', 'sessions', 'stackBlocks', HANDLES], (tx) =>
@@ -233,8 +233,8 @@ export const openHandlers = (context: WorkerContext, outside: Waiter = directWai
             ),
 
         /**
-         * Sessions whose open's import hasn't finished, with their chains (§1.6.11.2's
-         * `importPending`); never one of a chain marked for Delete (R8).
+         * Sessions whose open's import hasn't finished, with their chains
+         * (`importPending`); never one of a chain marked for Delete (R8).
          */
         openPendingImports: () =>
             context.core.read(['sessions', 'chains'], async (tx) => {

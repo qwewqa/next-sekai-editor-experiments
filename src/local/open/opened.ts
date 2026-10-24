@@ -9,12 +9,12 @@ import type { SnapshotRecords } from '../records/encode'
 import type { SnapshotParts } from '../worker/flushHandlers'
 import { planImport, type ImportBatch } from './plan'
 
-// Files this worker opened (Part 1 §1.5.4): each `.nxsp` read once here, kept while its open is
+// Files this worker opened: each `.nxsp` read once here, kept while its open is
 // stored and its background import runs, so the batches, and peeks of states not imported yet,
 // read the file the tab opened. A worker restart loses them; the page reads the file again.
 
 /**
- * The file's rows whose root it lacks (§1.6.11.6, D25): the binding's `notKept`, counted by roots
+ * The file's rows whose root it lacks: the binding's `notKept`, counted by roots
  * as a Save counts it, never by the `kept` flag (a flagged row whose state another row keeps is held).
  */
 export const lackingRoots = (history: {
@@ -139,7 +139,7 @@ const decoder = new TextDecoder()
 
 /**
  * A snapshot's parts from a file this worker opened, each verified against its hash: how a
- * peek or an undo reaches a state its import hasn't stored yet (§1.5.4). Undefined when no
+ * peek or an undo reaches a state its import hasn't stored yet. Undefined when no
  * opened file holds it whole.
  */
 export const snapshotFromOpened = async (hex: string): Promise<SnapshotParts | undefined> => {

@@ -16,7 +16,7 @@ import { journalledSession } from './resume'
 import { parseAutoSaveSlot, replaySessionJournal, type RecoveryContext } from './steps'
 import { claimSessionLock, MARKER_WAIT_MS } from './tab'
 
-// What the UI acts on after startup (Part 1 §1.4.1, §1.4.14): Reopen after leaving a session,
+// What the UI acts on after startup: Reopen after leaving a session,
 // Restore as a Copy from a load notice, and Settings › Local Data › Recovery's rows with their
 // Open, Download and Discard…. Page-only: it drives the open session and the storage worker.
 
@@ -29,7 +29,7 @@ export const setSessionContext = (open: OpenDeps, recovery: RecoveryContext) => 
     context = { open, recovery }
 }
 
-/** Notes the session a switch left: Reopen offers it while it's stored (§1.4.1). */
+/** Notes the session a switch left: Reopen offers it while it's stored. */
 export const leftSession = (
     sessionId: string,
     name: DisplayName,
@@ -59,7 +59,7 @@ export type OpenResult =
 
 /**
  * Opens a stored session in this tab, replacing what's open: its pending journal applied first
- * under its lock (§1.6.4, between loads), then a continuation, or a fork when it isn't its
+ * under its lock (between loads), then a continuation, or a fork when it isn't its
  * chain's latest session or is open in another tab. In safe mode it only reads: no journal is
  * replayed, and it opens as a copy that stores nothing.
  */
@@ -75,7 +75,7 @@ const openSession = async (
     const flusher = open.flusher()
     const leaving = flusher?.session
     // Its own tab lets it go once its commit lands; the release itself comes a little
-    // later, so the session this tab just left is waited for, as a reload waits (§1.6.6).
+    // later, so the session this tab just left is waited for, as a reload waits.
     await flusher?.outgoing
     if (!request.isCurrent() || context !== captured) return { opened: false, why: 'blank' }
     const own = leaving?.id === sessionId || previousSession.value?.sessionId === sessionId
@@ -85,7 +85,7 @@ const openSession = async (
         : await claimSessionLock(open.locks, sessionId, own ? MARKER_WAIT_MS : 0)
     let shared: LockLease | undefined
     try {
-        // Its pending journal first (§1.6.4, between loads): a stale session is never opened
+        // Its pending journal first (between loads): a stale session is never opened
         // over it silently.
         const outcome = lock ? await replaySessionJournal(recovery, sessionId) : undefined
         const result = outcome && 'result' in outcome ? outcome.result : undefined
@@ -108,7 +108,7 @@ const openSession = async (
         }
         const read = await open.worker.call('readSession', sessionId)
         if (read.kind !== 'open') return { opened: false, why: read.kind }
-        // A journal a flush covered since goes, as the apply would have found it (§1.6.4 step 3).
+        // A journal a flush covered since goes, as the apply would have found it.
         const lastSeq = typeof read.session.lastSeq === 'number' ? read.session.lastSeq : 0
         if (recovered && recovered.seq <= lastSeq) {
             recovery.journal.remove(recovered.found)
@@ -124,7 +124,7 @@ const openSession = async (
             !read.isHead ||
             (await boundElsewhere(open, read)) !== 'no'
         const copyOf = copyOfOf(read)
-        // The exclusive hold taken for the replay stands for the parent's shared one (§1.3.6).
+        // The exclusive hold taken for the replay stands for the parent's shared one.
         const parentLock = held ?? (shared = await holdShared(open.locks, sessionId))
         const state = await openStored(
             open,
@@ -143,7 +143,7 @@ const openSession = async (
             },
         )
         if (!state) return { opened: false, why: 'blank' }
-        // The session this replaced is offered by Reopen in turn (§1.4.1).
+        // The session this replaced is offered by Reopen in turn.
         return { opened: true, forked: fork || !parentLock }
     } finally {
         // The opened session took the leases it holds; anything else goes.
@@ -152,7 +152,7 @@ const openSession = async (
     }
 }
 
-/** Reopen (§1.4.1): continues the session this tab left last, saying why when it can't. */
+/** Reopen: continues the session this tab left last, saying why when it can't. */
 export const reopenSession = (supplied?: SwitchRequest): Promise<OpenResult> =>
     withSwitchRequest(supplied, async (request): Promise<OpenResult> => {
         const left = previousSession.value
@@ -177,7 +177,7 @@ export const restoreSession = (sessionId: string, supplied?: SwitchRequest): Pro
 export const sessionContext = () => context
 
 /**
- * Applies a session's pending journal under its lock (§1.6.4, between loads; r11-stage1 M3):
+ * Applies a session's pending journal under its lock (between loads):
  * `held` when another tab holds the session, which owns its journal. Restore Session, Reopen,
  * Save to File… and Delete run it before acting on a session that isn't open.
  */
@@ -193,7 +193,7 @@ export const applyPendingJournal = async (sessionId: string) => {
     }
 }
 
-/** A row of Settings › Local Data › Recovery (§1.4.14). */
+/** A row of Settings › Local Data › Recovery. */
 export type RecoveryItem =
     /** A journal of an earlier visit kept while storage is unavailable: Open and Download. */
     | {
@@ -207,7 +207,7 @@ export type RecoveryItem =
       }
     /**
      * The old auto save, unreadable or kept without IndexedDB: Download and Discard…, and Open
-     * when this build reads it (§1.8 step 5).
+     * when this build reads it.
      */
     | { kind: 'autoSave'; key: string; text: string; size: number; readable: boolean }
     /** Unreadable recovered work in the `recovered` store: Download and Discard…. */
@@ -289,7 +289,7 @@ export const recoveryFile = async (
 
 /**
  * Discard… after its confirm: removes the row, only while it still holds what was listed. A
- * journal goes only after it was opened and stored, downloaded or discarded (§1.6.7).
+ * journal goes only after it was opened and stored, downloaded or discarded.
  */
 export const discardRecoveryItem = async (item: RecoveryItem) => {
     if (item.kind === 'recovered') {
@@ -302,7 +302,7 @@ export const discardRecoveryItem = async (item: RecoveryItem) => {
 }
 
 /**
- * Open on a journal kept while storage is unavailable (§1.6.7): its state in a new session in
+ * Open on a journal kept while storage is unavailable: its state in a new session in
  * this tab, whose own journal covers it from now on. The key stays until downloaded or discarded.
  */
 export const openRecoveryJournal = (item: RecoveryItem & { kind: 'journal' }) => {
@@ -320,7 +320,7 @@ export const openRecoveryJournal = (item: RecoveryItem & { kind: 'journal' }) =>
 }
 
 /**
- * Open on the old auto save kept in Local Data (§1.8 step 5): its chart in a new session in this
+ * Open on the old auto save kept in Local Data: its chart in a new session in this
  * tab. The key stays until downloaded or discarded.
  */
 export const openRecoveryAutoSave = (item: RecoveryItem & { kind: 'autoSave' }) => {
