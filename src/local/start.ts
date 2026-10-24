@@ -172,6 +172,8 @@ const recoveryContext = (
     prefix: storageKey(''),
     appVersion: appVersion().appVersion,
     safe,
+    noDurability:
+        typeof IDBTransaction !== 'undefined' && !('durability' in IDBTransaction.prototype),
     operations: {
         recovered: (dropped) =>
             createHistoryOperation({

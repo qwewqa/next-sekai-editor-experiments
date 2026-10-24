@@ -496,6 +496,30 @@ test('a failed worker read in the canary or the migration’s dedupe never stops
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
 })
 
+test('without `durability` (Firefox before 126) the key stays after the commit, and the next load only deletes it', async () => {
+    const world = createWorld({ seed: 20 })
+    const storage = new MemoryStorage()
+    const text = autoSaveOf(stateOf(goldenChart()))
+    storage.setItem(key(AUTO_SAVE_KEY), text)
+    const first = await loadIn(world, world.tab('a'), storage, { noDurability: true })
+    await runRecovery(first.recovery)
+    // Committed, though not synced: the key's removal could reach disk first.
+    assert.ok(first.recovery.migrated)
+    assert.deepEqual(first.events, [])
+    assert.equal(rows(world, 'sessions').size, 1)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), text)
+    // Its hash is migrated: no second session, no event, and the key goes.
+    const next = await loadIn(world, world.tab('b'), storage, { noDurability: true })
+    next.recovery.worker.migrateAutoSave = () => {
+        throw new Error('A migrated slot is never prepared again')
+    }
+    await runRecovery(next.recovery)
+    assert.deepEqual(next.events, [])
+    assert.equal(next.recovery.migrated, undefined)
+    assert.equal(rows(world, 'sessions').size, 1)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
+})
+
 /** Runs `body` with console.error silenced: the refusals below are logged. */
 const quietly = async <T>(body: () => Promise<T>) => {
     const errors = console.error
