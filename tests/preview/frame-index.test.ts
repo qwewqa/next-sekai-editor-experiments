@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
+import { existsSync, readFileSync } from 'node:fs'
+import { delimiter } from 'node:path'
 import test from 'node:test'
-import {
-    getFrameIndex,
-    latestVisibleTarget,
-    queryGroupTimeIndex,
-} from '../../src/preview/engine/frameIndex'
+import { parseLevelDataChart } from '../../src/chart/parse/levelData'
+import { parseLevelData } from '../../src/levelData/parse'
+import { buildPreviewChart } from '../../src/preview/engine/chart'
+import { getFrameIndex, queryGroupTimeIndex } from '../../src/preview/engine/frameIndex'
 import { FlickDirection, type CameraChange } from '../../src/preview/engine/layout'
 import {
     ConnectorKind,
@@ -16,7 +17,11 @@ import {
 import { renderPreviewFrame } from '../../src/preview/engine/render'
 import { findSlideConnector } from '../../src/preview/engine/slide'
 import { createTimeIndex, queryTimeIndex } from '../../src/preview/engine/timeIndex'
-import { createTimescaleGroup, type TimescaleChange } from '../../src/preview/engine/timescale'
+import {
+    createTimescaleGroup,
+    latestTargetWithin,
+    type TimescaleChange,
+} from '../../src/preview/engine/timescale'
 import type { PreviewRenderer } from '../../src/preview/gl'
 import {
     resolveParticle,
@@ -24,6 +29,7 @@ import {
     type ParticleProperty,
 } from '../../src/preview/particle'
 import { resolveSkin } from '../../src/preview/skin'
+import { createState } from '../../src/state'
 
 const note = (targetTime: number, overrides: Partial<PreviewNote> = {}): PreviewNote => ({
     kind: NoteKind.tap,
@@ -382,12 +388,11 @@ test('shared note arrays only reuse indexes when every indexed input is unchange
             ),
         ],
     })
-    assert.deepEqual(changedGroups.minimumTimescales, [0.25])
-    assert.deepEqual(original.minimumTimescales, [1])
+    assert.notEqual(changedGroups, original)
     assert.equal(getFrameIndex(source), original)
 })
 
-test('lookahead includes slow speeds and stage offsets and falls back for nonmonotonic distances', () => {
+test('lookahead includes slow speeds and stays unbounded only when the distance cannot be bounded', () => {
     const change: TimescaleChange = {
         time: 0,
         timescale: 0.25,
@@ -396,21 +401,16 @@ test('lookahead includes slow speeds and stage offsets and falls back for nonmon
         transitionStyle: 0,
         hideNotes: false,
     }
-    const index = getFrameIndex(chart({ groups: [createTimescaleGroup([change], 1)] }))
-    assert.deepEqual(index.minimumTimescales, [0.25])
-    assert.ok(latestVisibleTarget(10, index.minimumTimescales[0]!, 4, 0, -2) >= 58)
-    for (const overrides of [
-        { timescale: 0 },
-        { timescale: -1 },
-        { skipSeconds: -1 },
-        { transitionStyle: 1 as const },
-    ]) {
-        const special = getFrameIndex(
-            chart({ groups: [createTimescaleGroup([{ ...change, ...overrides }], 0)] }),
-        )
-        assert.equal(latestVisibleTarget(10, special.minimumTimescales[0]!, 4, 0, 0), Infinity)
-    }
-    assert.equal(latestVisibleTarget(0, 1, 1e21, 0, 0), Infinity)
+    const latest = (overrides: Partial<TimescaleChange>, distance = 4) =>
+        latestTargetWithin(createTimescaleGroup([{ ...change, ...overrides }], 0), 10, distance)
+    assert.ok(Math.abs(latest({}) - 26) < 1e-3)
+    assert.ok(Math.abs(latest({ timescale: 2 }) - 12) < 1e-3)
+    // A stop that lasts to the end of the chart keeps every later note in reach.
+    assert.equal(latest({ timescale: 0 }), Infinity)
+    // So does a group that runs backwards for the rest of the chart.
+    assert.equal(latest({ timescale: -1 }), Infinity)
+    assert.ok(Math.abs(latest({ transitionStyle: 1, timescale: 0.5 }) - 18) < 1e-3)
+    assert.equal(latest({}, 1e21), Infinity)
 })
 
 test('special and unused groups do not make ordinary candidates scan the future chart', () => {
@@ -449,7 +449,7 @@ test('special and unused groups do not make ordinary candidates scan the future 
         ],
     })
     const index = getFrameIndex(source)
-    assert.deepEqual(index.minimumTimescales, [1, 0, 0])
+    assert.deepEqual(index.usedGroups, [1, 0])
     assert.equal(index.notes.size, 2, 'Unused groups do not need candidate indexes')
     const ordinary = index.notes.get(0)!
     let reads = 0
@@ -673,17 +673,90 @@ test('culled frames match full future traversal with eased speeds, offsets, atta
         dispose() {},
     }
     const index = getFrameIndex(source)
-    const minimumTimescales = index.minimumTimescales
     for (const now of [-2, 0, 0.5, 20, 70, 100, 4]) {
         for (const speed of [1, 7, 11]) {
             draws = []
-            index.minimumTimescales = minimumTimescales
+            index.cull = true
             renderPreviewFrame(renderer, skin, source, now, 1920, 1080, 1920, 1080, speed, true)
             const culled = draws
             draws = []
-            index.minimumTimescales = minimumTimescales.map(() => 0)
+            index.cull = false
             renderPreviewFrame(renderer, skin, source, now, 1920, 1080, 1920, 1080, speed, true)
+            index.cull = true
             assert.deepEqual(culled, draws, `Frame at ${now}, speed ${speed}`)
+        }
+    }
+})
+
+// Real charts mix stops, reversals, skips and scroll transitions in one group.
+// The committed generated chart always runs; local copies of coconut and other
+// dense charts (never committed) run when present or named in
+// PREVIEW_CULL_CHARTS, separated by the platform path delimiter.
+const cullCharts = [
+    'tests/fixtures/generated-large.json',
+    'test_level_data/coconut-next-sekai-24887.json',
+    ...(process.env.PREVIEW_CULL_CHARTS?.split(delimiter) ?? []),
+].filter((path) => path && existsSync(path))
+
+test('culled frames of real charts match full traversal at stops and scroll transitions', () => {
+    const sprite = { u0: 0, v0: 0, u1: 1, v1: 1 }
+    const skin = resolveSkin(() => sprite)
+    let draws: string[] = []
+    const renderer: PreviewRenderer = {
+        maxViewportSize: { width: 1600, height: 900 },
+        setTexture() {},
+        begin() {},
+        draw(sprite, quad, z, alpha) {
+            if (sprite && alpha > 0) draws.push(JSON.stringify([quad, z, alpha]))
+        },
+        flush() {},
+        isContextLost: () => false,
+        dispose() {},
+    }
+    for (const path of cullCharts) {
+        const level = parseLevelData(JSON.parse(readFileSync(path, 'utf8')))
+        const chart = parseLevelDataChart(level.entities)
+        for (const speed of [6, 10.5]) {
+            const source = buildPreviewChart(createState(chart, 0), speed)
+            const index = getFrameIndex(source)
+            const end = Math.max(...source.notes.map((note) => note.targetTime)) + 1
+            const times = Array.from({ length: 100 }, (_, i) => -1 + ((end + 1) * i) / 100)
+            // Notes enter at a stop's end, and every distance changes at a scroll transition.
+            if (speed === 10.5)
+                for (const group of source.groups)
+                    for (const { time } of group.changes) times.push(time - 1e-4, time, time + 1e-4)
+            for (const now of times) {
+                for (const leftLimit of [false, true]) {
+                    const frame = (cull: boolean) => {
+                        draws = []
+                        index.cull = cull
+                        renderPreviewFrame(
+                            renderer,
+                            skin,
+                            source,
+                            now,
+                            1600,
+                            900,
+                            1600,
+                            900,
+                            speed,
+                            false,
+                            undefined,
+                            undefined,
+                            leftLimit,
+                        )
+                        index.cull = true
+                        return draws.join('\n')
+                    }
+                    // Culling only skips entries out of view and moves nothing, so the
+                    // owner's tolerance (sub-pixel, a frame at the edge) is not needed:
+                    // any difference here is a lost or added note.
+                    assert.ok(
+                        frame(true) === frame(false),
+                        `${path} at ${now}, speed ${speed}, left limit ${leftLimit}`,
+                    )
+                }
+            }
         }
     }
 })

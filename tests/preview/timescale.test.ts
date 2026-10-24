@@ -4,6 +4,7 @@ import { easeEvaluator, easeFromValue, timeScaleEaseLevelDataValues } from '../.
 import {
     createTimescaleGroup,
     hideNotesAt,
+    latestTargetWithin,
     noteDistance,
     scaledTimeAt,
     type TimescaleChange,
@@ -368,4 +369,70 @@ test('falling scroll speeds keep the ease value at the exact midpoint', () => {
     )
     close(noteDistance(group, 0.5, 0.75), 0.125)
     close(noteDistance(group, 0.25, 0.375), 0.125)
+})
+
+test('targets after the reach bound are out of view, through stops, reversals, skips and scroll', () => {
+    let seed = 7
+    const random = () => {
+        seed = (seed * 1103515245 + 12345) % 2 ** 31
+        return seed / 2 ** 31
+    }
+    const pick = <T>(values: readonly T[]) => values[Math.floor(random() * values.length)]!
+    for (let trial = 0; trial < 300; trial++) {
+        const changes: TimescaleChange[] = []
+        let time = random() * 4 - 2
+        for (let i = Math.floor(random() * 12); i > 0; i--) {
+            time += pick([0, 0.25, 0.5, 1, 3])
+            changes.push(
+                change(time, pick([0, 0, 0.5, 1, 2, -0.3, -1, 1e-5]), {
+                    ease: Math.floor(random() * 6) as TimescaleEase,
+                    transitionStyle: random() < 0.4 ? 1 : 0,
+                    skipSeconds: pick([0, 0, 0, 0.5, -0.5, 2]),
+                }),
+            )
+        }
+        const group = createTimescaleGroup(changes, 0)
+        const times = [...changes.map((change) => change.time), time + 10]
+        for (const now of [-3, ...times.map((t) => t - 0.1), ...times]) {
+            for (const leftLimit of [false, true]) {
+                const distance = pick([0, 0.5, 2, 5])
+                const latest = latestTargetWithin(group, now, distance, leftLimit)
+                assert.ok(latest >= now)
+                if (latest === Infinity) continue
+                const samples = [...times, ...times.map((t) => t + 0.01), latest + 1e-4]
+                for (let t = latest; t < latest + 40; t += 0.37) samples.push(t)
+                for (const target of samples) {
+                    if (target <= latest) continue
+                    assert.ok(
+                        noteDistance(group, now, target, leftLimit) > distance,
+                        `Trial ${trial}: target ${target} after ${latest} is in reach at ${now}`,
+                    )
+                }
+            }
+        }
+    }
+})
+
+test('the reach bound follows forward motion closely, so later notes are not processed', () => {
+    const group = createTimescaleGroup(
+        [
+            change(0, 1),
+            change(4, 0),
+            change(6, 2, { ease: 2 }),
+            change(9, 0.5, { transitionStyle: 1 }),
+            change(12, -0.5, { transitionStyle: 1 }),
+            change(12.5, 1),
+            ...Array.from({ length: 1000 }, (_, i) => change(20 + i, 1 + (i % 3))),
+        ],
+        0,
+    )
+    for (const now of [-1, 0, 3.5, 4, 5, 6.5, 9, 10, 13, 30, 500]) {
+        for (const distance of [0.5, 2, 6]) {
+            const latest = latestTargetWithin(group, now, distance)
+            assert.ok(latest < Infinity, `Bounded at ${now}`)
+            // The last target in reach lies just before the bound.
+            const before = latest - 1e-3
+            if (before > now) assert.ok(noteDistance(group, now, before) <= distance + 1e-6)
+        }
+    }
 })

@@ -26,8 +26,8 @@ import {
     MAX_HIT_EFFECT_DURATION,
     SLIDE_EFFECT_DESPAWN_DELAY,
     getFrameIndex,
-    latestVisibleTarget,
     queryGroupTimeIndex,
+    visibleDistance,
 } from './frameIndex'
 import { drawHitboxes } from './hitbox'
 import { LAYER_SLOT_EFFECT, LAYER_SLOT_GLOW_EFFECT, getZ } from './layer'
@@ -105,7 +105,7 @@ import {
     type StageProps,
 } from './stage'
 import { queryTimeIndex } from './timeIndex'
-import { hideNotesAt, noteDistance, preemptTime } from './timescale'
+import { hideNotesAt, latestTargetWithin, noteDistance, preemptTime } from './timescale'
 
 const LINEAR_EFFECT_DURATION = 0.5
 const CIRCULAR_EFFECT_DURATION = 0.6
@@ -251,22 +251,20 @@ export const renderPreviewFrame = (
         0,
     )
     const defaultPreempt = preemptTime(noteSpeed, 0)
-    const latestTargets = frameIndex.minimumTimescales.map((minimumTimescale, index) =>
-        latestVisibleTarget(
-            now,
-            minimumTimescale,
-            preempts[index] ?? defaultPreempt,
-            context.layout.progressStart,
-            minimumYOffset,
-        ),
-    )
-    const fallbackLatestTarget = latestVisibleTarget(
-        now,
-        1,
-        defaultPreempt,
-        context.layout.progressStart,
-        minimumYOffset,
-    )
+    const reach = (preempt: number) =>
+        visibleDistance(preempt, context.layout.progressStart, minimumYOffset)
+    // Entries starting after their group's bound are out of view in every group they use.
+    const latestTargets: number[] = []
+    for (const index of frameIndex.usedGroups) {
+        const group = chart.groups[index]
+        if (!group) continue
+        const distance = reach(preempts[index] ?? defaultPreempt)
+        latestTargets[index] = frameIndex.cull
+            ? latestTargetWithin(group, now, distance, leftLimit)
+            : Infinity
+    }
+    // Notes outside every group keep ordinary time.
+    const fallbackLatestTarget = frameIndex.cull ? now + reach(defaultPreempt) + 1e-7 : Infinity
 
     if (chart.isDynamicStages) {
         for (const [i, stage] of chart.stages.entries()) {
