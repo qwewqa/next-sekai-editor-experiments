@@ -1888,8 +1888,7 @@ export class WebGLDrawContext {
         const root = document.documentElement
         const cached = this.inheritedDirection
         if (
-            cached &&
-            cached.connected === canvas.isConnected &&
+            cached?.connected === canvas.isConnected &&
             cached.dir === root.dir &&
             cached.lang === root.lang &&
             cached.canvasDir === canvas.dir
