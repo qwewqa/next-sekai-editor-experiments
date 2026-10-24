@@ -377,6 +377,51 @@ test.describe('the Save dialog', () => {
         await expect.poll(() => result(page)).toEqual({ action: 'export' })
     })
 
+    test('in Japanese the Export link keeps its brackets on its line', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await page.evaluate(async () => {
+            const { settings } =
+                (await import('/src/settings.ts')) as typeof import('../../src/settings')
+            settings.locale = 'ja'
+        })
+        await openSave(page, { exportLine: true })
+        const line = dialog(page).locator('[data-save-export]')
+        await expect(line).toHaveText(
+            'Sonolus 用のレベルデータには「レベルデータを出力…」を使ってください。',
+        )
+        // The widths, from a 320 px phone's up, at which 「 ends a line before the link or 」 starts
+        // one after it.
+        const broken = await line.evaluate((p) => {
+            const button = p.querySelector('button')!
+            const rectOf = (char: string) => {
+                const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
+                while (walker.nextNode()) {
+                    const node = walker.currentNode as Text
+                    const at = node.data.indexOf(char)
+                    if (at < 0 || button.contains(node)) continue
+                    const range = document.createRange()
+                    range.setStart(node, at)
+                    range.setEnd(node, at + 1)
+                    return range.getBoundingClientRect()
+                }
+                throw new Error(`no ${char}`)
+            }
+            const widths: number[] = []
+            for (let width = 240; width <= 420; width += 2) {
+                p.style.width = `${width}px`
+                const link = button.getBoundingClientRect()
+                if (rectOf('「').bottom <= link.top || rectOf('」').top >= link.bottom)
+                    widths.push(width)
+            }
+            return widths
+        })
+        expect(broken).toEqual([])
+    })
+
     test('Cancel and Escape answer nothing', async ({ page, context }) => {
         await seed(context)
         await visit(page)
