@@ -17,8 +17,8 @@ import type { State } from '../../../src/state'
 import { editStep, futureFixtureOperation, initialLife } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
-// The queued moves of the undo stack (plan §1.6.4 #6), the D2 test plan's Q1: how a press that
-// waits for its slot settles, and what the stack tells the caller that must notify (DEF-2).
+// The queued moves of the undo stack: how a press that
+// waits for its slot settles, and what the stack tells the caller that must notify.
 // timeline/history.test.ts holds the lazy-slot basics; this file does not repeat them.
 
 const base = stateOf(goldenChart())
@@ -93,7 +93,7 @@ const quietly = async (body: () => Promise<void>) => {
     }
 }
 
-test('Q1a: three Undo presses and one Redo press over a loading slot settle to a net of two', async () => {
+test('three Undo presses and one Redo press over a loading slot settle to a net of two', async () => {
     const reads = loads()
     restore(10, 9)
     const { seen, stop } = watchActions()
@@ -114,7 +114,7 @@ test('Q1a: three Undo presses and one Redo press over a loading slot settle to a
     assert.equal(slotLoading.value, false)
 })
 
-test('Q1b: a loader rejection clears the pending moves, changes nothing, and a later press retries', async () => {
+test('a loader rejection clears the pending moves, changes nothing, and a later press retries', async () => {
     await quietly(async () => {
         const reads = loads()
         restore(10, 9)
@@ -140,7 +140,7 @@ test('Q1b: a loader rejection clears the pending moves, changes nothing, and a l
     })
 })
 
-test('Q1c: an edit while moves are pending emits only the edit, and the moves never land after it', async () => {
+test('an edit while moves are pending emits only the edit, and the moves never land after it', async () => {
     const reads = loads()
     restore(10, 9)
     undoState()
@@ -159,7 +159,7 @@ test('Q1c: an edit while moves are pending emits only the edit, and the moves ne
     )
 })
 
-test('Q1d: slotLoading turns true after 150 ms and false when the move settles', async () => {
+test('slotLoading turns true after 150 ms and false when the move settles', async () => {
     mock.timers.enable({ apis: ['setTimeout'] })
     try {
         const reads = loads()
@@ -180,7 +180,7 @@ test('Q1d: slotLoading turns true after 150 ms and false when the move settles',
     }
 })
 
-test('Q1d: a move that fails, or is cancelled, also ends the busy state', async () => {
+test('a move that fails, or is cancelled, also ends the busy state', async () => {
     await quietly(async () => {
         mock.timers.enable({ apis: ['setTimeout'] })
         try {
@@ -206,9 +206,9 @@ test('Q1d: a move that fails, or is cancelled, also ends the busy state', async 
     })
 })
 
-// What the notice needs (DEF-2): the move reports when it lands, not when it is asked for.
+// What the notice needs: the move reports when it lands, not when it is asked for.
 
-test('Q1e: a queued move reports its landing, with the net direction and the last step crossed', async () => {
+test('a queued move reports its landing, with the net direction and the last step crossed', async () => {
     const reads = loads()
     restore(10, 9)
     const crossed = undoState()
@@ -229,7 +229,7 @@ test('Q1e: a queued move reports its landing, with the net direction and the las
     assert.equal(stack.pendingMoveOutcome(), undefined, 'nothing is pending after it lands')
 })
 
-test('Q1e: a move onto a loaded slot is synchronous and has no outcome to wait for', async () => {
+test('a move onto a loaded slot is synchronous and has no outcome to wait for', async () => {
     const reads = loads()
     restore(10, 9)
     await reads.finish() // the prefetched neighbour
@@ -239,7 +239,7 @@ test('Q1e: a move onto a loaded slot is synchronous and has no outcome to wait f
     assert.equal(liveState.value.initialLife, 108)
 })
 
-test('Q1e: an edit, or a peek, cancels the outcome', async () => {
+test('an edit, or a peek, cancels the outcome', async () => {
     const reads = loads()
     restore(10, 9)
     undoState()
@@ -260,7 +260,7 @@ test('Q1e: an edit, or a peek, cancels the outcome', async () => {
     assert.equal(liveState.value.initialLife, 109)
 })
 
-test('Q1e: a failed load reports a failure', async () => {
+test('a failed load reports a failure', async () => {
     await quietly(async () => {
         const reads = loads()
         restore(10, 9)
@@ -272,7 +272,7 @@ test('Q1e: a failed load reports a failure', async () => {
     })
 })
 
-test('Q1e: moves that net to nothing report no change', async () => {
+test('moves that net to nothing report no change', async () => {
     const reads = loads()
     restore(10, 5)
     undoState()

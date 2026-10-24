@@ -260,7 +260,7 @@ test('shared and browser-claiming bindings are named under their rows', async ({
 
 test('Save’s row names its fixed Ctrl+S, until a binding takes that chord', async ({ page }) => {
     await expect(shortcutField(page, 'Save')).toContainText('Also Ctrl+S (cannot be changed)')
-    // Save keeps its one binding (§1.4.6): the alias isn't part of the map.
+    // Save keeps its one binding: the alias isn't part of the map.
     expect(await savedShortcut(page, 'save')).toBe('p')
     await shortcutButton(page, 'Brush').click()
     await page.keyboard.press('Control+s')
@@ -870,7 +870,7 @@ test('the auto save rows are gone, and Beat Display sits with the display rows',
 }) => {
     const labels = await page.getByRole('dialog').locator('.form-field-text').allTextContents()
     const at = (label: string) => labels.indexOf(label)
-    // Retired with the auto save (Part 1 §1.8): a new visit continues the most recent session.
+    // Retired with the auto save: a new visit continues the most recent session.
     expect(labels.filter((label) => label.startsWith('Auto Save'))).toEqual([])
     // The minimap row follows the Elevation Editor's.
     expect(at('Show Minimap')).toBe(at('Elevation Editor Connector Arrows') + 1)

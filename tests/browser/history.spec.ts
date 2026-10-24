@@ -5,7 +5,7 @@ import { confirmWhenReady } from './confirmWhenReady'
 import { closePage, installEditorFixture, waitForStartup } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
-// History across loads (Part 1 §1.3.8, §1.8, Step 4's spec migration): today's auto save is
+// History across loads: today's auto save is
 // retired. The old slot migrates into a session, a closed tab's work comes back through its
 // journal and the new visit that continues its session, and a reload keeps the session.
 
@@ -172,7 +172,7 @@ for (const format of ['compressed', 'unversioned'] as const) {
         )
         const next = await newVisit(page)
         await expect.poll(async () => (await openLevel(next)).data).toEqual(upgraded)
-        // No dialog at load: the startup pill says it (§1.4.3).
+        // No dialog at load: the startup pill says it.
         await expect(next.getByRole('dialog')).toHaveCount(0)
         expect(
             await next.evaluate(async () => {
@@ -217,7 +217,7 @@ test('an old auto save this build cannot read stays, never loaded, and the load 
     )
     const next = await newVisit(page)
     await expect(next.getByRole('dialog')).toHaveCount(0)
-    // Never a blank first load without a word (§1.8 step 3's aim): Local Data offers it.
+    // Never a blank first load without a word: Local Data offers it.
     expect(
         await next.evaluate(async () => {
             const { loadEvents } =

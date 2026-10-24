@@ -4,7 +4,7 @@ import { markDeleted, type SweepResult } from '../../../src/local/deletion'
 import { createRunner, persistStorage, startMaintenance } from '../../../src/local/maintenance'
 import type { PressureRun } from '../../../src/local/pressure'
 
-// The maintenance runner (deletion design §3.10): when the deleting jobs run.
+// The maintenance runner: when the deleting jobs run.
 
 const setup = ({ persist }: { persist?: () => unknown } = {}) => {
     const timers: { at: number; fn: () => void }[] = []

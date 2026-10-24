@@ -204,7 +204,7 @@ test.describe('shortcuts', () => {
         await page.mouse.click(400, 300)
         await logDefaults(page)
         for (const key of ['/', "'", 'Backspace', 'l', 'Control+s']) await page.keyboard.press(key)
-        // Unbound keys keep their defaults; Ctrl+S is Save's (§1.4.6) instead of saving the page.
+        // Unbound keys keep their defaults; Ctrl+S is Save's instead of saving the page.
         expect(await keyLog(page)).toEqual([
             '/:true',
             "':true",

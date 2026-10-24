@@ -30,7 +30,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { autoSaveText } from './autoSaveText'
 
-// The recovery order on start (Part 0 §0.9.8; Part 1 §1.6.9, §1.6.4 #7, §1.8) on the test core:
+// The recovery order on start on the test core:
 // the canary, the journals, then the old auto save, with the step list's insertion points.
 
 const PREFIX = 'nse.'
@@ -247,7 +247,7 @@ test('an absent slot makes no session, and one this build can’t read whole sta
     storage.setItem(key(AUTO_SAVE_KEY), '{"version":1,"levelData":"not base64 gzip')
     const unreadable = await loadIn(world, world.tab('b'), storage)
     await runRecovery(unreadable.recovery)
-    // Never blank without a word (§1.8 step 3's aim): Local Data offers it.
+    // Never blank without a word: Local Data offers it.
     assert.deepEqual(unreadable.events, [{ kind: 'migrationFailed', unreadable: true }])
     assert.equal(rows(world, 'sessions').size, 0)
     assert.notEqual(storage.getItem(key(AUTO_SAVE_KEY)), null)
@@ -268,7 +268,7 @@ test('a slot an older build set aside as unreadable stays, and says so once at a
     const storage = new MemoryStorage()
     const aside = '{"version":1,"levelData":"set aside'
     storage.setItem(key(AUTO_SAVE_UNREADABLE_KEY), aside)
-    // Alone (§1.8 step 4): its own line.
+    // Alone: its own line.
     const alone = await loadIn(world, world.tab('a'), storage)
     await runRecovery(alone.recovery)
     assert.deepEqual(alone.events, [{ kind: 'migrationFailed', unreadable: true }])
@@ -464,7 +464,7 @@ test('a slot whose batch can’t be made stays, with its load event, and never s
     assert.notEqual(storage.getItem(key(AUTO_SAVE_KEY)), null)
 })
 
-test('a migrated auto save from an older engine revision says so (D18)', async () => {
+test('a migrated auto save from an older engine revision says so', async () => {
     const world = createWorld({ seed: 15 })
     const storage = new MemoryStorage()
     // The golden chart has elevation, which the revision change can matter to.

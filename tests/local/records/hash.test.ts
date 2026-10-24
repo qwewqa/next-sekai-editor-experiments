@@ -48,7 +48,7 @@ test('hash16 is the first 16 bytes, compact, on both sides of the synchronous li
         const data = new Uint8Array(length).fill(7)
         const hash = await hash16(data)
         assert.equal(hash.length, 16)
-        // Never a view into the 32-byte digest (§1.6.11.9's subarray trap).
+        // Never a view into the 32-byte digest.
         assert.equal(hash.buffer.byteLength, 16)
         assert.equal(toHex(hash), nodeSha256(data).slice(0, 32))
         assert.deepEqual(hash, hash16Sync(data))

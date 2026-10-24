@@ -17,9 +17,9 @@ import {
 } from './historyJourney'
 import { submitSave } from './saveFlows'
 
-// Live entries while the Timeline is scrolled (D2 plan §3.3, F5 and F6): the list stays where the
+// Live entries while the Timeline is scrolled: the list stays where the
 // reader put it while entries arrive, and a burst of more than one page between two refreshes
-// keeps the older pages already loaded (DEF-3).
+// keeps the older pages already loaded.
 
 test.beforeEach(({ page }) => {
     errorsFail(page)
@@ -99,7 +99,7 @@ const topOf = (page: Page, title: string) =>
         return match ? match.getBoundingClientRect().top - list.getBoundingClientRect().top : null
     }, title)
 
-test('F6: a burst of more than one page between refreshes keeps the older pages and the position', async ({
+test('a burst of more than one page between refreshes keeps the older pages and the position', async ({
     page,
 }) => {
     await load(page)
@@ -192,7 +192,7 @@ const scrollToRow = async (page: Page, title: string) => {
     await target.scrollIntoViewIfNeeded()
 }
 
-test('F5: Save and Export while peeking leave the peek and the rows where they are', async ({
+test('Save and Export while peeking leave the peek and the rows where they are', async ({
     page,
 }) => {
     test.slow()
@@ -274,7 +274,7 @@ test('F5: Save and Export while peeking leave the peek and the rows where they a
     expect(Math.abs((await topOf(page, 'Syn 150'))! - again)).toBeLessThanOrEqual(1)
 })
 
-test('L1: rows that were shown stay in every frame while pending entries are stored and a new one arrives', async ({
+test('rows that were shown stay in every frame while pending entries are stored and a new one arrives', async ({
     page,
 }) => {
     await load(page)
@@ -363,7 +363,7 @@ const withSource = <T, A>(
         [use.toString(), arg] as const,
     )
 
-test('L2: a refresh that began earlier and lands later does not take back what a newer one showed', async ({
+test('a refresh that began earlier and lands later does not take back what a newer one showed', async ({
     page,
 }) => {
     await load(page)
@@ -430,7 +430,7 @@ test('L2: a refresh that began earlier and lands later does not take back what a
     await expect(row(page, 'New 1', 'panel')).toBeVisible()
 })
 
-test('L3: Now after a far jump reads the newest page again, and without a jump the loaded pages stay', async ({
+test('Now after a far jump reads the newest page again, and without a jump the loaded pages stay', async ({
     page,
 }) => {
     test.slow()
@@ -470,7 +470,7 @@ test('L3: Now after a far jump reads the newest page again, and without a jump t
     expect(await run()).toEqual({ loaded: 251, more: false })
 })
 
-test('L4: entries carried for one session are gone when a new session begins', async ({ page }) => {
+test('entries carried for one session are gone when a new session begins', async ({ page }) => {
     await load(page)
     await pushSteps(page, 2)
     await flush(page)
@@ -495,7 +495,7 @@ test('L4: entries carried for one session are gone when a new session begins', a
     }
 })
 
-test('L5: a Save and an Export with History open show their rows at the top, without waiting for a read', async ({
+test('a Save and an Export with History open show their rows at the top, without waiting for a read', async ({
     page,
 }) => {
     await load(page, { platform: { fileSystemAccess: 'opfs' } })

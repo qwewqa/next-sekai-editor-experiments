@@ -3,7 +3,7 @@ import test from 'node:test'
 import { buildSave } from '../../../src/local/save/execute'
 import { Fixture, heldRows, saveOptions } from './fixture'
 
-// A chain storage holds nothing of (storing paused or full since the session's start, §1.4.7
+// A chain storage holds nothing of (storing paused or full since the session's start
 // "Storage unavailable or paused"): the Save core's seam `unstored` plans the write from this
 // tab's rows alone, so such a session can still be saved to a file.
 

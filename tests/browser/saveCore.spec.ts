@@ -21,7 +21,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// Save and Save As on the Chromium override (Part 1 §1.4.7, §1.11.6's exit items): the first
+// Save and Save As on the Chromium override: the first
 // Save binds through the project picker, a second writes in place, revisions chain.
 
 test('Save binds, the status shows the file name, and a second Save writes in place', async ({
@@ -263,7 +263,7 @@ test('a reload after close() and before the binding: the next Save records the b
     await waitForStartup(page)
 
     // A second reload past the marker, with nothing edited: the page journalled nothing, so the
-    // load recovers nothing (the journal names only real entries, I-17).
+    // load recovers nothing (the journal names only real entries).
     await page.reload()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await waitForStartup(page)

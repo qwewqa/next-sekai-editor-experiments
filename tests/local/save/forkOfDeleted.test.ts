@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { asFile, Fixture, heldRows, save } from './fixture'
 
-// A fork whose parent chain was deleted (deletion design §5, audit B N6): its stored sessions are
+// A fork whose parent chain was deleted: its stored sessions are
 // all that is left, and Save writes them whole. The file says nothing of what was deleted, and a
 // file saved earlier from the chain says its steps were not kept (the known loss).
 

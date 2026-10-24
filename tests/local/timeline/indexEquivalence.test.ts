@@ -35,7 +35,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { beginIn, continueIn, readOpen, resumeIn } from '../startup/harness'
 import { widen } from './helpers'
 
-// Spec-C invariant 7: the storage worker's index (`readTimelineIndex`) equals the pieces of the entries the
+// The storage worker's index (`readTimelineIndex`) equals the pieces of the entries the
 // Timeline lists, for every session a real writer makes: new, import, continued, forked, migrated,
 // journal, opened from a file (with shuffled times and a changed level), replaced, and an unknown
 // origin. The oracle is the Timeline's own read (`readTimeline`) cut into pieces by a plain

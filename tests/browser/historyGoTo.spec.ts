@@ -2,12 +2,12 @@ import { expect, test, type Page } from '@playwright/test'
 import { installEditorFixture, waitForStartup } from './editorFixture'
 import { holdWorker } from './historyJourney'
 
-// Long histories (Part 1 §1.4.10.5): Go To's jump list, the window it reads, the gap row above it
+// Long histories: Go To's jump list, the window it reads, the gap row above it
 // and End. Three days of edits: made now, then their stored times moved back a day apart.
 
 const prefix = 'sonolus-next-sekai-editor.'
 // Screenshots are written only when NSE_SHOTS is set.
-const shots = 'D:/sonolus/nse-next/work/step5/p4-shots'
+const shots = 'test-results/history-shots'
 
 const DAYS = 3
 const PER_DAY = 150
@@ -197,7 +197,7 @@ test('keys: Up crosses the gap, End reads the oldest entry, Home goes back to No
     await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
 })
 
-// --- Steps not stored yet, and a list that is read again (spec-C C3-lite, V3 and V4)
+// --- Steps not stored yet, and a list that is read again
 
 /** Pushes `count` steps made now, which the flusher has not stored yet. */
 const pushSteps = (page: Page, count: number, tag = 'Fresh') =>
@@ -215,7 +215,7 @@ const pushSteps = (page: Page, count: number, tag = 'Fresh') =>
         { count, tag },
     )
 
-test('V3: a step not stored yet counts in Go To, and its count follows the list as it changes', async ({
+test('a step not stored yet counts in Go To, and its count follows the list as it changes', async ({
     page,
 }) => {
     await openDialog(page)
@@ -242,7 +242,7 @@ test('V3: a step not stored yet counts in Go To, and its count follows the list 
     await expect(items(page)).toHaveCount(DAYS + 2)
 })
 
-test('V3: a day with a step not stored yet can be picked', async ({ page }) => {
+test('a day with a step not stored yet can be picked', async ({ page }) => {
     await openDialog(page)
     await openGoTo(page)
     await pushSteps(page, 1)
@@ -252,7 +252,7 @@ test('V3: a day with a step not stored yet can be picked', async ({ page }) => {
     await expect(selected(page)).toContainText('Fresh 1')
 })
 
-test('V4: Go To keeps its list while it reads again, and shows the skeleton only on a zone change', async ({
+test('Go To keeps its list while it reads again, and shows the skeleton only on a zone change', async ({
     page,
 }) => {
     await openDialog(page)

@@ -1,6 +1,6 @@
 import type { RecordValue } from '../../../src/local/records/canonical'
 
-// Hand-written vectors (§1.6.11.1): each expected text is typed by hand and reviewed against
+// Hand-written vectors: each expected text is typed by hand and reviewed against
 // ECMA-262 `Number::toString` and `QuoteJSONString`. They run in Chromium, Firefox and WebKit
 // too (`tests/browser/recordVectors.spec.ts`), since engines may differ in a float's last digit.
 export const canonicalVectors: [name: string, value: RecordValue, text: string][] = [

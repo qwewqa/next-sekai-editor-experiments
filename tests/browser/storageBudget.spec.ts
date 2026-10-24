@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test'
 import { existsSync } from 'node:fs'
 import { charts, median, open, singleEdits, wholeEdits } from './flushBudget'
 
-// The flush's budgets (Part 1 §1.9.3), on the generated large chart in CI and on coconut locally:
-// IndexedDB growth per ordinary edit (median under 2 KB, §1.6.8.1), with the main thread's figures
+// The flush's budgets, on the generated large chart in CI and on coconut locally:
+// IndexedDB growth per ordinary edit (median under 2 KB), with the main thread's figures
 // recorded (flushTiming.spec.ts asserts them, run alone), and createState and serializeToLevelData
 // on the full pipeline. Figures go to the console and the test's annotations.
 
@@ -41,7 +41,7 @@ for (const chart of charts) {
         console.log(JSON.stringify(figures))
         testInfo.annotations.push({ type: 'flush-budget', description: JSON.stringify(figures) })
 
-        // IndexedDB growth per ordinary edit (§1.9.3).
+        // IndexedDB growth per ordinary edit.
         expect(figures.perEditBytes).toBeLessThan(2048)
     })
 

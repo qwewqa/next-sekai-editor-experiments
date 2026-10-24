@@ -21,7 +21,7 @@ import {
 } from './fixture'
 
 // This tab's unflushed rows (`pending`) and the binding in memory while storing is paused or full
-// (§1.3.2, §1.4.7 "Storage unavailable or paused"): rows the file holds are never written twice,
+// ("Storage unavailable or paused"): rows the file holds are never written twice,
 // and a second rescue Save is an append that keeps its ancestry. A write-back's history follows
 // its file.
 
@@ -231,7 +231,7 @@ const writeBack = async (
     return [ok(built), written]
 }
 
-test('a write-back with History unticked keeps its file’s history (minor 6)', async () => {
+test('a write-back with History unticked keeps its file’s history', async () => {
     const { fixture, file } = await boundWith(true)
     const [built, written] = await writeBack(fixture, file, false)
     assert.ok(built.identity.entry)

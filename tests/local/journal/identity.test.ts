@@ -9,17 +9,17 @@ import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, replayAll } from './harness'
 
-// Replay's identity unit (§1.6.4 step 4): the descriptor's `docId`, `revision` and `file` replace
+// Replay's identity unit: the descriptor's `docId`, `revision` and `file` replace
 // the record's together, only when the session is still the head, the `docId` is the record's,
 // the descriptor's revision descends from the record's, and, when the record has `replaced`,
-// the binding's `at` is above `replaced.at` (D5). `name` and `renames` are taken at the head.
+// the binding's `at` is above `replaced.at`. `name` and `renames` are taken at the head.
 
 type Row = Record<string, unknown>
 
 const hash = new Uint8Array(16).fill(7)
 const handle = { kind: 'file', name: 'coconut.nxsp' }
 
-/** The record's binding: saved at 100, its handle in the `handles` store (D24). */
+/** The record's binding: saved at 100, its handle in the `handles` store. */
 const recordFile = {
     name: 'coconut.nxsp',
     event: 'saved',
@@ -133,7 +133,7 @@ for (const [name, record, change] of [
         },
     ],
     [
-        'a binding a save picker took over since (D5)',
+        'a binding a save picker took over since',
         { ...bound, replaced: { by: 'other-chain', at: 300, name: 'coconut.nxsp' } },
         writeBack,
     ],
@@ -149,7 +149,7 @@ for (const [name, record, change] of [
         assert.equal(chain.name, 'Coconut (Master)')
     })
 
-test('a record with no revision and no file takes a first Save’s binding (D15)', async () => {
+test('a record with no revision and no file takes a first Save’s binding', async () => {
     const { chain, handle: kept } = await replayWith(5, {}, writeBack)
     assert.deepEqual(chain.revision, { id: 'r2', n: 2, ancestors: ['r1'] })
     const file = chain.file as Row

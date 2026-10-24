@@ -4,7 +4,7 @@ import { documentDeviceId } from '../../../src/local/deviceId'
 import { readNxsp } from '../../../src/local/nxsp/read'
 import { checkFiles, DEVICE, Fixture, hasUv, save } from './fixture'
 
-// The device a Save records is per document (§1.3.3): derived from this install's `deviceId` and
+// The device a Save records is per document: derived from this install's `deviceId` and
 // the chain's lineage, in `project.json` and in the file's own `save` entry alike.
 
 /** A chain with one edit, stored, under `lineageId`. */

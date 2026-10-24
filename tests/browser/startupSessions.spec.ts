@@ -5,7 +5,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Startup (Part 1 §1.4.2, §1.11.4's exit): which session a load opens. A same-tab reload keeps
+// Startup: which session a load opens. A same-tab reload keeps
 // its session, decided by the session lock; a Duplicate Tab forks; a new visit continues the most
 // recent session, or starts blank when it's open in another tab; a first visit starts blank. The
 // recovery order runs first: the canary, the journals, the old auto save.
@@ -123,7 +123,7 @@ const loadEvents = (page: Page) =>
 const claimOf = (page: Page) => page.evaluate(() => window.nseStartupTest?.claim)
 
 /**
- * Binds the open session's chain to a file, as a Save would (Step 6 writes the file). Without a
+ * Binds the open session's chain to a file, as a Save would. Without a
  * handle: Playwright's Chromium kills a page that reads an OPFS handle back from IndexedDB.
  */
 const bind = (page: Page, name: string) =>
@@ -211,7 +211,7 @@ test('edit, kill, reload: the reload recovers its own journal in the same sessio
     const record = await tabRecord(page)
     const { sessionId } = await sessionOf(page)
     const next = await withTabRecord(context, record)
-    // A tab the browser discarded says so; it's only a hint, and changes nothing (§1.4.2).
+    // A tab the browser discarded says so; it's only a hint, and changes nothing.
     await next.addInitScript(() => {
         Object.defineProperty(document, 'wasDiscarded', { configurable: true, value: true })
     })
@@ -417,7 +417,7 @@ test('an unedited blank start, the session held elsewhere, continues it with its
     await opened(next)
     expect(await lifeOf(next)).toBe(990)
     expect(await loadEvents(next)).toEqual(['continued'])
-    // The continuation carries the chain's fields, its binding included (§1.4.2).
+    // The continuation carries the chain's fields, its binding included.
     expect((await flushSession(next)).file).toEqual({ name: 'coconut.nxsp', handle: false })
 })
 
@@ -458,7 +458,7 @@ test('the marker clears when the page shows again, so a later Duplicate Tab isn�
         document.dispatchEvent(new Event('visibilitychange'))
     })
     expect(await marker()).toBeNull()
-    // A page restored from the back-forward cache clears it on `pageshow` (§1.4.2).
+    // A page restored from the back-forward cache clears it on `pageshow`.
     await page.evaluate(() => {
         window.dispatchEvent(new Event('pagehide'))
     })
@@ -865,7 +865,7 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     const record = await tabRecord(page)
     const { sessionId } = await sessionOf(page)
 
-    // The other tab still holds it past the wait (D19): a fork.
+    // The other tab still holds it past the wait: a fork.
     const copy = await reopenedTab(context, record)
     await visit(copy)
     expect(await claimOf(copy)).toBe('duplicate')
@@ -967,7 +967,7 @@ test('Start Blank’s edits while the worker hasn’t answered have a journal: a
     expect(await lifeOf(next)).toBe(930)
 })
 
-// Local Data's recovery rows (Part 1 §1.4.14): a Download that cannot read its row says so and
+// Local Data's recovery rows: a Download that cannot read its row says so and
 // leaves the row, and a row gone since it was listed reads the list again.
 
 const seedRecovered = async (page: Page) => {

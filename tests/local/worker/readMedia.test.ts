@@ -11,7 +11,7 @@ import { openPage, rows, testId } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { readMediaBytes } from '../startup/mediaRead'
 
-// `readMedia` (Part 1 §1.6.8.4): the bytes of a stored media item, re-hashed, for a state that names
+// `readMedia`: the bytes of a stored media item, re-hashed, for a state that names
 // audio it does not hold. Missing and damaged rows are "not held"; only a read that could not be
 // made rejects.
 

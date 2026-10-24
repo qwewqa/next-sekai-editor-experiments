@@ -3,7 +3,7 @@ import { installCanvasCounters, installEditorFixture, touchInput } from './edito
 import { row as historyRow } from './historyJourney'
 import { confirmReset } from './resetConfirm'
 
-// The minimap strip's placement, input, command and setting (Part 1 §1.4.22). Its drawing is
+// The minimap strip's placement, input, command and setting. Its drawing is
 // minimapContent.spec.ts's; the rows here read the content canvas only to tell shown from absent.
 
 const prefix = 'sonolus-next-sekai-editor.'
@@ -88,7 +88,7 @@ const statsOf = (page: Page) =>
         return { ...minimapStats }
     })
 
-/** The strip, its range and the mapping between rows and times (design §4.2). */
+/** The strip, its range and the mapping between rows and times. */
 const minimapStrip = (page: Page) => {
     const el = page.locator('[data-minimap]')
     const box = el.locator('[data-minimap-box]')
@@ -627,7 +627,7 @@ test.describe('zero work', () => {
 })
 
 // The overlay follows the cursor and the view, shows an edge mark past the range, and writes a
-// style only when it changed (design §3.4 and Part 1 §1.4.22).
+// style only when it changed.
 test.describe('indicator', () => {
     const cursorOf = (page: Page) => page.locator('[data-minimap-cursor]')
     const edgeOf = (page: Page) => page.locator('[data-minimap-edge]')

@@ -20,7 +20,7 @@ import '../../helpers/lockChecks'
 import { goldenChart, stateOf } from '../records/charts'
 import { openPage, openSplitPage, rows, testId, workerCore, type Page } from './harness'
 
-// Media follows the head (§1.6.8.4): a picked BGM is stored with the entry first naming it, read
+// Media follows the head: a picked BGM is stored with the entry first naming it, read
 // back once, and stored again when it went missing while this tab holds it.
 
 /** A small MP3-looking file: an ID3 tag, then bytes. */

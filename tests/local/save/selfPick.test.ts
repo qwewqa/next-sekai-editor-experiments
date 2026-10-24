@@ -14,8 +14,7 @@ import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, heldRows, inspectNxsp, save, saveOptions, sourceOf, stateAt } from './fixture'
 
-// A save picker returning the chain's own file (Part 1 §1.4.7 R2, R4; owner decision log D5;
-// `work/d5/safety.md` S1, S2): the file is read first only when storage lacks what it holds (the
+// A save picker returning the chain's own file: the file is read first only when storage lacks what it holds (the
 // Replace guard's test), and then appended to, so nothing is lost; with the read declined it is
 // written from storage, and the write says "Some earlier Timeline steps were not kept.".
 
@@ -116,8 +115,8 @@ const damageOnly = async (fixture: Fixture, k: number, others: number[]) => {
 
 test('damage no build has found: the self-pick is written from storage, the step kept: false and the line shown', async () => {
     // The property test's "edit, edit, save, edit, edit, damage, pick" (save-prop): the carry test
-    // reads stored rows only, so it can't see a bad chunk, and the file isn't read (R2). The write
-    // from storage finds the damage, marks the row and says so (§1.6.11.6; D5; H-2, H-3).
+    // reads stored rows only, so it can't see a bad chunk, and the file isn't read. The write
+    // from storage finds the damage, marks the row and says so.
     const fixture = await Fixture.create()
     await fixture.start(1)
     await fixture.edit(2)
@@ -165,7 +164,7 @@ const flip = (fixture: Fixture, hex: string) =>
         await tx.put('chunks', { ...row, bytes }, key)
     })
 
-test('damage storage knows of under a kept row the base held makes the next write short (SP-1)', async () => {
+test('damage storage knows of under a kept row the base held makes the next write short', async () => {
     // Bodies are shared between chains: another chain's build found the bad chunk and recorded it
     // in its `badChunks`, marking only its own rows. This chain's rows of that state stay kept, so
     // the carry test passes; the known damage makes the write short, and the file is read first.
@@ -186,7 +185,7 @@ test('damage storage knows of under a kept row the base held makes the next writ
     assert.equal((await readSaveNeeds(fixture.store, fixture.chainId, [])).carries, true)
 })
 
-test('a stored BGM a build found bad counts as lacking, so the file holding it is read first (SP-1)', async () => {
+test('a stored BGM a build found bad counts as lacking, so the file holding it is read first', async () => {
     const { fixture } = await chainWithFile()
     await fixture.storeMedia([BGM, COVER, PREVIEW])
     const key = hashKey(fromHex16(BGM.ref.hash))
@@ -213,7 +212,7 @@ test('a stored BGM a build found bad counts as lacking, so the file holding it i
     )
 })
 
-/** The SP-1 case above: a chunk only state 3 needs gone bad, found by another chain's build. */
+/** The case above: a chunk only state 3 needs gone bad, found by another chain's build. */
 const knownToAnother = async () => {
     const { fixture, file } = await chainWithFile()
     const hex = await damageOnly(fixture, 3, [0, 1, 2, 4])
@@ -229,7 +228,7 @@ const knownToAnother = async () => {
     return { fixture, file, hex }
 }
 
-test('known damage the own file holds is put right by the append, so the next Save isn’t short (L1)', async () => {
+test('known damage the own file holds is put right by the append, so the next Save isn’t short', async () => {
     const { fixture, file, hex } = await knownToAnother()
     const appended = await save(
         fixture,
@@ -254,7 +253,7 @@ test('known damage the own file holds is put right by the append, so the next Sa
     assert.equal(chain.badChunks.length, 16)
 })
 
-test('a chunk in the file that doesn’t hash to its key is never stored (L1)', async () => {
+test('a chunk in the file that doesn’t hash to its key is never stored', async () => {
     const { fixture, file, hex } = await knownToAnother()
     const source = await inspectNxsp(file, {
         token: 'target',
@@ -274,7 +273,7 @@ test('a chunk in the file that doesn’t hash to its key is never stored (L1)', 
     assert.deepEqual([...(await stillBad(fixture.store, [hex]))], [])
 })
 
-test('a repair that fails leaves the Save as it was and the damage known (L1)', async () => {
+test('a repair that fails leaves the Save as it was and the damage known', async () => {
     const { fixture, file, hex } = await knownToAnother()
     const failing: SaveStore = {
         read: fixture.store.read,
@@ -323,7 +322,7 @@ const rot = (fixture: Fixture, hex: string, change: (row: Record<string, unknown
         await tx.put('nodes', row, key)
     })
 
-test('a known-bad root and kind node the own file holds are put right by the append (SF2-3)', async () => {
+test('a known-bad root and kind node the own file holds are put right by the append', async () => {
     const { rootJsonFromRow } = await import('../../../src/local/records/rows')
     const { fixture, file } = await chainWithFile()
     const root = stateAt(3).hex
@@ -372,7 +371,7 @@ test('a known-bad root and kind node the own file holds are put right by the app
     assert.equal(copy.built.marked, 0)
 })
 
-test('a root is stored again only once everything it reaches is whole in storage (SF2-3)', async () => {
+test('a root is stored again only once everything it reaches is whole in storage', async () => {
     const { fixture, file } = await chainWithFile()
     const root = stateAt(3).hex
     await rot(fixture, root, (row) => {
@@ -397,7 +396,7 @@ test('a root is stored again only once everything it reaches is whole in storage
     assert.deepEqual([...(await stillBad(fixture.store, [root, chunk]))], [])
 })
 
-test('a known-bad stored BGM the own file holds is put right by the append (SF2-3)', async () => {
+test('a known-bad stored BGM the own file holds is put right by the append', async () => {
     const fixture = await Fixture.create()
     await fixture.storeMedia([BGM, COVER, PREVIEW])
     await fixture.start(0)

@@ -37,8 +37,8 @@ import {
     checkedTest as test,
 } from './sessionCheck'
 
-// Scenario tests on the real flusher, journal, worker core and resume (spec A section 7),
-// promoted from the validation probes: what the A0+ checker allows and reports, the hole learning,
+// Scenario tests on the real flusher, journal, worker core and resume,
+// promoted from the validation probes: what the checker allows and reports, the hole learning,
 // the two power losses, and a recognised Save that records its binding and no row.
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
@@ -115,12 +115,12 @@ const bind = (
     })
 
 // ---------------------------------------------------------------------------------------------
-// The checker as A0+ corrects it: allowed states pass, breaches are named.
+// The checker: allowed states pass, breaches are named.
 
 const ids = importIds(0)
 const storeRequest = (id: string) => storeRequestFor(id, ids)
 
-test('an ended import leaves holes I-3 allows: the checker reports none (F3)', async () => {
+test('an ended import leaves holes the checker allows: the checker reports none', async () => {
     const world = createWorld({ seed: 911 })
     const page = await openPage(world, world.tab('a'))
     const context: WorkerContext = { core: page.core, test: true, emit: () => undefined }
@@ -142,7 +142,7 @@ test('an ended import leaves holes I-3 allows: the checker reports none (F3)', a
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a Duplicate Tab fork of a session its own tab goes on writing is not a parent breach (F3)', async () => {
+test('a Duplicate Tab fork of a session its own tab goes on writing is not a parent breach', async () => {
     const world = createWorld({ seed: 912 })
     const a = await openPage(world, world.tab('a'))
     const state = stateOf(goldenChart())
@@ -182,7 +182,7 @@ test('a Duplicate Tab fork of a session its own tab goes on writing is not a par
     await world.idle()
 })
 
-test('an open with an outside change writes two own rows with one time (I-6)', async () => {
+test('an open with an outside change writes two own rows with one time', async () => {
     const world = createWorld({ seed: 913 })
     const page = await openPage(world, world.tab('a'))
     const context: WorkerContext = { core: page.core, test: true, emit: () => undefined }
@@ -210,10 +210,10 @@ test('an open with an outside change writes two own rows with one time (I-6)', a
 })
 
 // ---------------------------------------------------------------------------------------------
-// Holes the flusher made (R2-2, R2-4, R3-7): learned from every reservation, every end and the
+// Holes the flusher made: learned from every reservation, every end and the
 // marker a resume reads, except a `seq` whose end added the entry.
 
-test('a reservation never ended is a learned hole: the resumed session may store past it (R2-2)', async () => {
+test('a reservation never ended is a learned hole: the resumed session may store past it', async () => {
     const world = createWorld({ seed: 3301 })
     const storage = new MemoryStorage()
     const page = await openJournalPage(world, 'a', storage)
@@ -268,7 +268,7 @@ test('a hole is learned from the marker a resume reads, though the page never sa
     assert.deepEqual(checkStored(world.memory, world.sessionOptions), [])
 })
 
-test('a `save` row a defect lost is still reported: a seq whose end added the entry is never excused (R3-7)', async () => {
+test('a `save` row a defect lost is still reported: a seq whose end added the entry is never excused', async () => {
     expectViolations(
         /rows 2 up to lastSeq 3 are neither stored/,
         /was removed while the session stays/,
@@ -305,7 +305,7 @@ test('a `save` row a defect lost is still reported: a seq whose end added the en
     assert.match(found[0]!, /rows 2 up to lastSeq 3 are neither stored/)
 })
 
-test('a journal-only reload’s recovered entry is no hole: if it is lost, the checker says so (M1)', async () => {
+test('a journal-only reload’s recovered entry is no hole: if it is lost, the checker says so', async () => {
     expectViolations(
         /rows 1, 2, 4 up to lastSeq 4 are neither stored/,
         /was removed while the session stays/,
@@ -361,9 +361,9 @@ test('a journal-only reload’s recovered entry is no hole: if it is lost, the c
 })
 
 // ---------------------------------------------------------------------------------------------
-// The two power losses (R2-5, R3-6): `loseRelaxed(k)` models Chromium and Firefox 126 and later,
+// The two power losses: `loseRelaxed(k)` models Chromium and Firefox 126 and later,
 // which honour `strict`; `loseCommits(n)` Firefox before 126, which does not. A commit clears the
-// journal it covers (§1.6.4 #7), so a loss that undoes that commit loses its edits with it: the
+// journal it covers, so a loss that undoes that commit loses its edits with it: the
 // stated residual. The store stays whole, and the session opens at what is left.
 
 const lostEdit = async (seed: number, strict: boolean, lose: (world: World) => number) => {
@@ -444,14 +444,14 @@ const stallable = (page: { flusher: unknown }) => {
     return stalled
 }
 
-/** F2: recognised over a row a power loss undid and a journal recovered. */
+/** Recognised over a row a power loss undid and a journal recovered. */
 const f2 = async (seed: number) => {
     const { world, session, a, reloaded } = await reloadAfter(seed)
     await bind(reloaded, session.chainId, session.id, ownSaveUnit(session.id, 4, a, 4))
     return { world, session }
 }
 
-/** AR-8: a journal folds the pending `save` entry into `recovered@r`; recognised after the reload. */
+/** A journal folds the pending `save` entry into `recovered@r`; recognised after the reload. */
 const ar8 = async (seed: number) => {
     const world = createWorld({ seed })
     const page = await openJournalPage(world, 'a')
@@ -496,7 +496,7 @@ const ar8 = async (seed: number) => {
     return { world, session }
 }
 
-/** AR-8b: a journal folds a pending row the file holds into `recovered@2`; then the Save is recognised. */
+/** A journal folds a pending row the file holds into `recovered@2`; then the Save is recognised. */
 const ar8b = async (seed: number) => {
     const world = createWorld({ seed })
     const page = await openJournalPage(world, 'a')
@@ -528,23 +528,23 @@ const ar8b = async (seed: number) => {
 const hasSaveRow = (world: World, sessionId: string, seq: number) =>
     kinds(world, sessionId).some(([at, kind]) => at === seq && kind === 'save')
 
-// A recognised Save records its binding and adds no row (I-10): the cut counts the `save` row the
+// A recognised Save records its binding and adds no row: the cut counts the `save` row the
 // chain lacks, so it does not carry. Each is a Save whose row a power loss, a journal or a
-// recovery had taken the place of (F2, AR-8, AR-8b).
+// recovery had taken the place of.
 
-test('F2: a Save recognised over a row a power loss undid adds no row and does not carry', async () => {
+test('a Save recognised over a row a power loss undid adds no row and does not carry', async () => {
     const { world, session } = await f2(921)
     assert.equal(hasSaveRow(world, session.id, 4), false)
     assert.equal(carriesNow(world, session.id, session.chainId), false)
 })
 
-test('AR-8: a journal folds the pending save entry into recovered@r, and the cut does not carry over it', async () => {
+test('a journal folds the pending save entry into recovered@r, and the cut does not carry over it', async () => {
     const { world, session } = await ar8(801)
     assert.equal(hasSaveRow(world, session.id, 3), false)
     assert.equal(carriesNow(world, session.id, session.chainId), false)
 })
 
-test('AR-8b: a recovered row that replaced a pending row the file holds is not the Save’s landing', async () => {
+test('a recovered row that replaced a pending row the file holds is not the Save’s landing', async () => {
     const { world, session } = await ar8b(802)
     assert.equal(hasSaveRow(world, session.id, 3), false)
     assert.equal(carriesNow(world, session.id, session.chainId), false)

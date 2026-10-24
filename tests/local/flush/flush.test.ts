@@ -26,7 +26,7 @@ import { goldenChart, recordsText, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 import { openPage, rows, storedRecords, testId, workerCore, type Page } from './harness'
 
-// The flush on the test core (§1.6.4 step 2): sessions and chains from their first applicable
+// The flush on the test core: sessions and chains from their first applicable
 // write, the epoch's closure check, the head check, field-level writes, and crashes at every await.
 
 const edit = (state: State, change: (transaction: Transaction) => void) => {
@@ -380,7 +380,7 @@ test('a session whose chain was continued elsewhere forks into a new session, ca
     assert.notEqual(fork.id, session.id)
     assert.notEqual(fork.chainId, oldChain)
     assert.notEqual(fork.docId, oldDoc)
-    // D10: the stored session stays in its chain, whose continuation keeps its whole history.
+    // The stored session stays in its chain, whose continuation keeps its whole history.
     const sessions = rows(world, 'sessions')
     assert.equal(sessions.get(session.id)?.chainId, oldChain)
     assert.equal(sessions.get(session.id)?.lastSeq, 1)
@@ -609,7 +609,7 @@ test(
 )
 
 test('a routine flush commits with default durability, and a hide’s flush strictly', async () => {
-    // Firefox runs 'relaxed' with synchronous = OFF, which a power loss can corrupt (§1.6.1).
+    // Firefox runs 'relaxed' with synchronous = OFF, which a power loss can corrupt.
     const world = createWorld({ seed: 18 })
     const page = await openPage(world, world.tab('a'))
     const commits: string[] = []

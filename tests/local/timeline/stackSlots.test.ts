@@ -57,7 +57,7 @@ const restore = (count: number, at: number) => {
     )
 }
 
-test('HS-4: an edit past undone steps drops their slots from the restored-slot LRU', async () => {
+test('an edit past undone steps drops their slots from the restored-slot LRU', async () => {
     const reads = loads()
     restore(20, 19)
     for (let i = 0; i < 3; i++) {
@@ -73,7 +73,7 @@ test('HS-4: an edit past undone steps drops their slots from the restored-slot L
     assert.equal(restoredLoadedForTests(), held())
 })
 
-test('HS-4: a read that lands after the stack was replaced is not held', async () => {
+test('a read that lands after the stack was replaced is not held', async () => {
     const reads = loads()
     restore(20, 19)
     undoState()
@@ -88,7 +88,7 @@ test('HS-4: a read that lands after the stack was replaced is not held', async (
     assert.equal(restoredLoadedForTests(), 0)
 })
 
-test('HS-5: a selection-only replacement keeps the slot’s stored root', () => {
+test('a selection-only replacement keeps the slot’s stored root', () => {
     loads()
     restore(5, 4)
     const root = headSnapshot.value
@@ -98,7 +98,7 @@ test('HS-5: a selection-only replacement keeps the slot’s stored root', () => 
     assert.equal(restoredLoadedForTests(), 1)
 })
 
-test('HS-5: a replacement that changes the chart does not keep a root naming another chart', () => {
+test('a replacement that changes the chart does not keep a root naming another chart', () => {
     loads()
     restore(5, 4)
     assert.ok(headSnapshot.value)

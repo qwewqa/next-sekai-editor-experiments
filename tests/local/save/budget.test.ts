@@ -7,7 +7,7 @@ import { createTransaction } from '../../../src/state/transaction'
 import { coconutPath, hasCoconut, sampleState } from '../records/samples'
 import { Fixture, save, sourceOf } from './fixture'
 
-// The long-chain Save budget rows of Part 1 §1.9.3, measured on the writer in Node (checks, not
+// The long-chain Save budget rows, measured on the writer in Node (checks, not
 // gates; `NSE_BUDGETS=1`): a Save that downloads (no base file) and a write-back appending to a
 // bound file, for coconut with 1,800 steps and for a 20-hour chain of about 20,000 steps. The
 // 20-hour chain's steps are small synthetic bodies over coconut, so its chunks are lighter than a

@@ -3,7 +3,7 @@ import type { StorageStatus, TestFlags } from '../../src/local/worker/core'
 import { installCanvasCounters } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// The upgrade handshake in a real browser, with two tabs (Part 1 §1.6.1; Step 3a's exit): the
+// The upgrade handshake in a real browser, with two tabs: the
 // build opens version 1; a simulated newer tab is the build with the test flag `dbVersion: 2`, a
 // frozen tab the flag `ignoreVersionChange`. Each tab's flag is in its own sessionStorage.
 

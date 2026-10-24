@@ -27,7 +27,7 @@ import {
 } from '../../helpers/historySteps'
 import { goldenChart, stateOf } from '../records/charts'
 
-// The undo stack's lazy slots and queue rules (§1.6.4 #6): synchronous when the slot is loaded,
+// The undo stack's lazy slots and queue rules: synchronous when the slot is loaded,
 // queued and coalesced while it loads, cancelled by an edit or a peek; restored slots bounded by
 // an LRU; file events as entries that leave the stack alone.
 

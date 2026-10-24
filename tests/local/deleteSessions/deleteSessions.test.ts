@@ -18,7 +18,7 @@ import '../../helpers/lockChecks'
 import { closedChain, daysPass, MemoryStorage, openDeleter, tamper } from '../deletion/harness'
 import { rows, workerCore } from '../flush/harness'
 
-// Delete Sessions… (deletion design §3.6, Local Data design §3.7): the chains the dialog counts
+// Delete Sessions…: the chains the dialog counts
 // (ranges by calendar days, open and marked chains left out, newer chains included and flagged,
 // the not-saved test) and the removal of exactly the confirmed chains.
 

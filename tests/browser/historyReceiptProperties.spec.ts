@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 // Property tests over seeded random charts and selections that run the real Select move
 // (`moveEntities`) and the real Scale session, rather than a stand-in for them. The receipt's
 // `displaced` is checked against an independent oracle: the objects that were in the chart, were
-// not moved by the action, and are not in the result. So it can never name a moved operand (T4),
+// not moved by the action, and are not in the result. So it can never name a moved operand,
 // and it names exactly what left the chart. (A selected initial BPM pinned by a move toward
 // beat 0 is no operand: another BPM landing on it displaces it.) `retainedInitialBpm` can only be set when the initial BPM
 // was selected and a BPM is back at beat 0.

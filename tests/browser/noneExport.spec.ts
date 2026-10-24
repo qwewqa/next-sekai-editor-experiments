@@ -138,7 +138,7 @@ test('the journal writes None as NONE and In Step as IN_STEP', async ({ page }) 
         const note = [...store.getAllEntities()].find((entity) => entity.type === 'note')!
         history.replaceState({ ...history.state.value, selectedEntities: [note] })
         editSelectedEditableEntities({ size: 3 })
-        // Hiding the page journals the edit at once (Part 1 §1.6.4 #7).
+        // Hiding the page journals the edit at once.
         Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' })
         document.dispatchEvent(new Event('visibilitychange'))
         const text = localStorage.getItem(

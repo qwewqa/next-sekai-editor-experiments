@@ -26,7 +26,7 @@ import { addNote, removeNote, replaceNote } from '../../../src/state/mutations/s
 import { createTransaction, type Transaction } from '../../../src/state/transaction'
 import { edgeChart, goldenChart, note, stateOf } from '../records/charts'
 
-// The change view's diff (Part 1 §1.4.11): the records two snapshots differ in, paired into
+// The change view's diff: the records two snapshots differ in, paired into
 // objects added, removed and changed; by hash in the worker and by identity in the page, with
 // the same answer.
 

@@ -17,7 +17,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// The History dialog, its focus and its scrolling in each engine (plan R16, INV 7). The same
+// The History dialog, its focus and its scrolling in each engine. The same
 // specs run in Chromium with the rest, and in Firefox and WebKit through the compatibility
 // config's `firefox-history` and `webkit-history` projects. They make their entries through the
 // undo stack (future-extension steps are never grouped, so each is a row), and drive everything
@@ -64,7 +64,7 @@ const lifeOf = async (page: Page) => (await chartOf(page)).initialLife
 const liveLifeOf = async (page: Page) => (await liveOf(page)).initialLife
 
 // E1: closing History gives focus back to its opener (the native dialog's return differs by engine).
-test.describe('E1: focus returns to the opener', () => {
+test.describe('focus returns to the opener', () => {
     // The sheet is the usual History; a landscape phone has no room for it, so History is the
     // compact dialog there. Both give focus back to the control that opened them, when that is
     // still on screen, and to the chart otherwise.
@@ -224,7 +224,7 @@ test.describe('E1: focus returns to the opener', () => {
     })
 })
 
-test('E2: the Timeline keeps one roving entry through Home, End and Tab', async ({ page }) => {
+test('the Timeline keeps one roving entry through Home, End and Tab', async ({ page }) => {
     errorsFail(page)
     await load(page)
     await synthesise(page, 6)
@@ -248,7 +248,7 @@ test('E2: the Timeline keeps one roving entry through Home, End and Tab', async 
     await expect(rovingEntries(page)).toHaveCount(1)
 })
 
-test('E3: keys peek, restore and undo with the right chart at each step', async ({ page }) => {
+test('keys peek, restore and undo with the right chart at each step', async ({ page }) => {
     errorsFail(page)
     await load(page)
     const base = (await liveOf(page)).initialLife
@@ -300,7 +300,7 @@ const stableTop = (page: Page, title: string) =>
         })
         .toBeLessThanOrEqual(0.5)
 
-test('E4: a live entry arriving keeps the row under the pointer where it was', async ({ page }) => {
+test('a live entry arriving keeps the row under the pointer where it was', async ({ page }) => {
     test.slow()
     errorsFail(page)
     await load(page)
@@ -339,7 +339,7 @@ test('E4: a live entry arriving keeps the row under the pointer where it was', a
     expect(Math.abs((await topOf(page, title)) - before)).toBeLessThanOrEqual(1)
 })
 
-test('E5: Go To an older day shows its rows, with a gap row that fills without a jump', async ({
+test('Go To an older day shows its rows, with a gap row that fills without a jump', async ({
     browser,
 }) => {
     test.slow()

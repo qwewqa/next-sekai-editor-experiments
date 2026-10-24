@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// Peek (Part 1 §1.4.11) and its gating: an entry's state shown read-only while writers keep the
+// Peek and its gating: an entry's state shown read-only while writers keep the
 // live state, commands and tools refused with the notice, Undo leaving first, drags and scaling
 // sessions cancelled, the read-only panels, the Elevation Editor closed or behind its overlay,
 // Restore, and Copy while peeking then pasting after leaving. History's own panel is 5-panel's;

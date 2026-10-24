@@ -5,7 +5,7 @@ import { MemoryStorage, storageJournalStore } from '../../../src/local/journal/s
 import { JournalWriter } from '../../../src/local/journal/writer'
 import '../../helpers/lockChecks'
 
-// The journal store's keys under a fork (Part 1 §1.6.4 #7, §1.3.1).
+// The journal store's keys under a fork.
 
 test('a key retired to a session that forks goes once the fork holds the entries it took', () => {
     const storage = new MemoryStorage()

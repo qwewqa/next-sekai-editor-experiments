@@ -14,7 +14,7 @@ import '../../helpers/lockChecks'
 import { goldenChart, note, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 
-// The journal's whole state (§1.6.11.3): level data on its own, the header's records and the
+// The journal's whole state: level data on its own, the header's records and the
 // ids, and what replay builds back from them.
 
 const rootOf = (state: State) => encodeSnapshot(toRecords(state)).root.hash

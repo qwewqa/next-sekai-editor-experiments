@@ -48,7 +48,7 @@ const saveTab = (tab: TabStorage) => {
     }
 }
 
-/** The marker a page going away writes (§1.4.2). */
+/** The marker a page going away writes. */
 export const markUnloaded = (tab: TabStorage, sessionId: string) => {
     tab.set(storageKey('unloaded'), sessionId)
 }

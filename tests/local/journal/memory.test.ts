@@ -13,7 +13,7 @@ import { append, beginSession, openSplitJournalPage, replayAll } from './harness
 
 const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as JsonValue))
 
-// The journal while storage is unavailable (§1.6.7): the worker's in-memory store acknowledges
+// The journal while storage is unavailable: the worker's in-memory store acknowledges
 // flushes, but only the journal survives the tab, so every hide writes it at the newest seq, and
 // it's never cleared until a database commits. From the start, after a worker restart into
 // memory, and after Try Again's move into the database.

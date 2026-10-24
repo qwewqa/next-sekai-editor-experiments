@@ -17,7 +17,7 @@ import { sessionRow, widen } from '../timeline/helpers'
 import { beginIn, continueIn, readOpen } from './harness'
 import { load, openSession, recordTab, type TabStorage } from './load'
 
-// Guards each with a test of its own (Step 4 re-review R7): what a load, a rebuild and a replay
+// Guards each with a test of its own: what a load, a rebuild and a replay
 // would get wrong without each one alone.
 
 const tamper = async (world: World, change: (tx: KvTx) => Promise<void>) => {

@@ -14,7 +14,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { storedEntries, storedStack, widen } from '../timeline/helpers'
 import { beginIn, continueIn, handlersOf, readOpen, resumeIn } from './harness'
 
-// Session chains on the test core (Part 1 §1.3.1, §1.11.4's exit): a continuation's first write
+// Session chains on the test core: a continuation's first write
 // moves the chain's head by compare-and-set, the race turning into a fork; forks copy the record
 // by exclusion with new ids, a "(2)" name and no binding; a reload takes its session up again.
 
@@ -54,7 +54,7 @@ test('a continuation stores nothing until its first edit, which moves the chain�
     assert.equal(session.origin, 'continued')
     assert.equal(session.chainId, parent.chainId)
 
-    // Continuing without editing adds nothing (§1.3.6), and the parent counts as open meanwhile.
+    // Continuing without editing adds nothing, and the parent counts as open meanwhile.
     await page.flusher.flush()
     assert.equal(rows(world, 'sessions').has(session.id), false)
     assert.equal(page.flusher.unflushed(session), false)
@@ -184,7 +184,7 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
                 future: { carried: true },
                 name: 'Golden',
                 file: { name: 'golden.nxsp', event: 'saved', at: 1, hash: new Uint8Array(16) },
-                // D17's two fields: Export's target opened, not exported to yet, and the
+                // Two fields: Export's target opened, not exported to yet, and the
                 // partial import's flag.
                 exportTarget: { name: 'LevelData', opened: true },
                 exportName: 'LevelData',
@@ -309,7 +309,7 @@ test('chain fields: an unstored continuation commits its first row with them, an
     const continuation = continueIn(page, await readOpen(page, parent.id))
     assert.equal(await page.flusher.setChainFields({ exportName: 'Mine' }), true)
     const chain = () => rows(world, 'chains').get(parent.chainId)!
-    // Stored with its `continue` entry alone, moving the head (§1.3.1).
+    // Stored with its `continue` entry alone, moving the head.
     assert.equal(chain().head, continuation.id)
     assert.equal(chain().exportName, 'Mine')
     assert.equal(await page.flusher.setChainFields({ exportName: undefined, name: 'Named' }), true)
@@ -359,7 +359,7 @@ test('a worker killed mid-flush in one tab: another tab’s load can’t continu
         operation: originOperation('import'),
         dirty: false,
     })
-    // The page holds its session's lock on the main thread (r12-arch-web H3).
+    // The page holds its session's lock on the main thread.
     const lock = holdSessionLock(page.page.locks, session.id)
     await page.page.run(() => lock.granted)
     await page.flusher.flush()

@@ -15,7 +15,7 @@ import type { BgmMeta } from '../../../src/state/bgm'
 import type { LevelInfo } from '../../../src/state/levelInfo'
 
 // The record tests' golden and edge charts, which also load in the browser specs: they that freeze with v1
-// (§1.6.11.1). Changing the golden or edge chart changes frozen vectors: never after v0.6.0.
+//. Changing the golden or edge chart changes frozen vectors: never after v0.6.0.
 
 export const group = (id: number) => id as GroupId
 export const stage = (id: number) => id as StageId
@@ -108,7 +108,7 @@ export const stateOf = ({ chart, offset, extras }: FixtureChart): State =>
     createState(structuredClone(chart), offset, extras)
 
 /**
- * The golden chart (§1.6.11.1): two groups and a group folder, two stages, a stage folder with
+ * The golden chart: two groups and a group folder, two stages, a stage folder with
  * a nested folder in it, a slide with an
  * attached tick and an anchor, guides with a default and a set colour, elevation, notes and
  * a camera and a mask event at thirds and tenths of a lane, BPMs, a time-scale change, one
@@ -241,7 +241,7 @@ const astral = '\u{1F600}'
 const loneHigh = '\uD83D'
 
 /**
- * The edge chart (§1.6.11.1): number spellings, text escapes, ties, same-beat events, BPMs and
+ * The edge chart: number spellings, text escapes, ties, same-beat events, BPMs and
  * time scales in chain order against byte order, window boundaries, the three splits, an event
  * kind split by window and a depth-1 node.
  */

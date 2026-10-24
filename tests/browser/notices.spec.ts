@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// Notice cards, quick feedback, the live region and Alt+N (Part 1 §1.4.1, §1.4.3).
+// Notice cards, quick feedback, the live region and Alt+N.
 
 const boot = async (page: Page, before?: () => void) => {
     await page.addInitScript(installCanvasCounters)
@@ -617,7 +617,7 @@ test('a dialog opened before the start-up line is put in announces it', async ({
     await expect(dialog.getByRole('status')).toHaveText(/Version 0.6.0/)
 })
 
-// Notice cards: dismissing, timing, the two slots and the dialog layer (Part 1 §1.4.1, §1.4.3).
+// Notice cards: dismissing, timing, the two slots and the dialog layer.
 
 type Notification = typeof import('../../src/editor/notification')
 const notificationPath = '/src/editor/notification.ts'

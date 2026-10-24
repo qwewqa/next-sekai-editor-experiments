@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext } from '@playwright/test'
 
-// IndexedDB commit-on-unload, measured (Part 1 §1.13.5): whether a transaction a dedicated worker
+// IndexedDB commit-on-unload, measured: whether a transaction a dedicated worker
 // has committed survives the page closing at once. It decides how often the journal is needed,
 // not whether it's written. A bare worker on a blank page of the origin, so every engine runs it
 // (Playwright's WebKit on Windows can't start the editor); the figures go to the annotations.

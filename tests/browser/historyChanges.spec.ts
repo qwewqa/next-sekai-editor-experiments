@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
 import { row as historyRow, holdWorker, release } from './historyJourney'
 
-// The change view (Part 1 §1.4.11, §1.4.10.5, Step 5): what a peeked entry changed against the
+// The change view: what a peeked entry changed against the
 // entry before it, marked on the chart with the rest dimmed, counted on the peek bar, brought
 // into view by the edge arrows and Show Change, never by peeking itself; and Edits Here, the
 // Timeline filtered to the entries that changed the beats in view.
@@ -1734,7 +1734,7 @@ test('Edits Here takes the beats of a very large selection', async ({ page }) =>
     expect(span).toEqual({ from: 10, to: 1009 })
 })
 
-test('leaving the peek from the strip gives focus to the chart, by any of its ways (X-2)', async ({
+test('leaving the peek from the strip gives focus to the chart, by any of its ways', async ({
     page,
 }) => {
     await edit(page, 'Moved A', { kind: 'move', beats: [5] })
@@ -1785,7 +1785,7 @@ test('leaving the peek from the strip gives focus to the chart, by any of its wa
     await gone()
 })
 
-test('Try Again and Show All by keys hand focus on as they go (X-2, X-5)', async ({ page }) => {
+test('Try Again and Show All by keys hand focus on as they go', async ({ page }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })
     await stored(page)
     await viewAt(page, 6)
@@ -1804,14 +1804,14 @@ test('Try Again and Show All by keys hand focus on as they go (X-2, X-5)', async
     await expect(failed).toHaveCount(0)
     // To the cursor's row.
     await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
-    // Show All goes with the banner: to the list's roving row, as a Go To pick goes (X-5).
+    // Show All goes with the banner: to the list's roving row, as a Go To pick goes.
     await surface(page).getByRole('button', { name: 'Show All' }).focus()
     await page.keyboard.press('Enter')
     await expect(surface(page).locator('[data-history-filter-banner]')).toHaveCount(0)
     await expect(list(page).locator('[data-history-row][tabindex="0"]')).toBeFocused()
 })
 
-test('an outside press that closes Go To or a row’s menu gives focus back to its opener (X-3)', async ({
+test('an outside press that closes Go To or a row’s menu gives focus back to its opener', async ({
     page,
 }) => {
     await edit(page, 'Moved A', { kind: 'move', beats: [5] })
@@ -1905,10 +1905,10 @@ test('Edits Here’s range names its first and last beats, for a selection and f
     await expect(range).toHaveText(expected)
 })
 
-// X-12: the view never goes below the chart's start, so a sheet over more than half the pane leaves a
+// The view never goes below the chart's start, so a sheet over more than half the pane leaves a
 // first stretch of the chart that no scroll can bring into the band. A change there is reachable
 // by neither arrow: it counts in neither direction, and no button is enabled for it.
-test('a change under the sheet at the chart’s start counts in neither direction and enables no arrow (X-12)', async ({
+test('a change under the sheet at the chart’s start counts in neither direction and enables no arrow', async ({
     page,
 }) => {
     await page.setViewportSize({ width: 390, height: 844 })
@@ -1954,7 +1954,7 @@ test('a change under the sheet at the chart’s start counts in neither directio
     await expect(arrow(page, 'down')).toHaveAttribute('aria-disabled', 'true')
 })
 
-test('Go To’s Edits Here line follows the view while open, so a pick matches the banner (X-7)', async ({
+test('Go To’s Edits Here line follows the view while open, so a pick matches the banner', async ({
     page,
 }) => {
     await edit(page, 'Moved near', { kind: 'move', beats: [5] })

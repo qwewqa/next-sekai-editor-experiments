@@ -10,7 +10,7 @@ import {
 } from '../../../src/local/pressure'
 import type { PauseReason } from '../../../src/local/worker/core'
 
-// When cleanup under pressure runs, on the page (deletion design §3.7): at load above 80% of the
+// When cleanup under pressure runs, on the page: at load above 80% of the
 // quota, down to 70%; and after storing paused for a full browser, rounds with Try Again between.
 
 const GB = 1024 ** 3

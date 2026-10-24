@@ -12,7 +12,7 @@ import { goldenChart, stateOf } from './records/charts'
 import { beginIn, handlersOf, readOpen } from './startup/harness'
 import { widen } from './timeline/helpers'
 
-// A Recent Sessions row of a closed chain whose file another chain took over (§1.3.4): the list
+// A Recent Sessions row of a closed chain whose file another chain took over: the list
 // read and the label a row shows, `labelOf`, the status bar's.
 
 // `labelOf` reads the catalogue and the locale: the English catalogue and a settings object with

@@ -10,7 +10,7 @@ import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage } from './harness'
 
 // A flush that writes a session's last entry without a stack the worker can use removes the
-// stored stack rather than leave one behind `lastSeq` (§1.3.9: replay rebuilds a missing one):
+// stored stack rather than leave one behind `lastSeq` (replay rebuilds a missing one):
 // the page forgets its window, the journal keeps nothing, and the next flush writes it whole.
 
 test('entries the stack model can’t follow remove the stored stack, and the next flush writes it whole', async () => {

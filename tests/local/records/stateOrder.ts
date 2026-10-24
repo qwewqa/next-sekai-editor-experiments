@@ -4,7 +4,7 @@ import { toBpmIntegral } from '../../../src/state/integrals/bpms'
 
 // What a state plays at one beat, read two ways: each track's chain (its connections from the
 // range's first joint), which the serializer writes as `next`, and the grid's buckets sorted by
-// beat, which the editor's preview player and the selection operations read. D4 needs both to
+// beat, which the editor's preview player and the selection operations read. both are needed to
 // agree, and BPMs' grid order to agree with the tempo integrals.
 
 type Joint = { beat: number }
