@@ -107,7 +107,7 @@ Each cell can set:
         - jitter: the interval SD, and the share of neighbouring frames that differ by more than 0.9 of a frame;
         - each spike tied to its trace event with `perf:report … long`.
 
-        One 400 ms frame every 45 s barely moves a median and is what a user remembers.
+        One 400 ms frame a minute barely moves a median and is what a user remembers.
 - Spikes that recur on a timer show up in any scenario long enough to meet them: background writes and garbage collection. When a max jumps in one run of five, look for them before blaming the scenario.
 
 ### Tracing
