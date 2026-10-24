@@ -436,9 +436,10 @@ const rawChangeMarks = computed((): ChangeMarks | undefined => {
     return marksOf(change.state, change.set.objects)
 })
 
+// A step's peek, not a session's: a session's has no change, so it never dims.
 const paint = createChangePaint<Entity, ChangeMarks>(
     rawChangeMarks,
-    isPeeking,
+    computed(() => isPeeking.value && !!peekedInfo.value),
     showEdits,
     comparisonStatus,
     computed(() => peekChange.value?.set.layout !== 'none'),

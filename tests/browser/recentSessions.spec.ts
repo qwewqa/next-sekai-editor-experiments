@@ -10,6 +10,8 @@ import {
     noErrors,
     notice,
     openHistory,
+    peekRow,
+    placeTap,
 } from './historyJourney'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
@@ -103,6 +105,21 @@ const peekedLife = (page: Page) =>
     })
 
 const peekBar = (page: Page) => page.locator('[data-peek-bar]')
+
+/** Whether the shown state, the live one and what playback reads have the BGM's audio. */
+const audioOf = (page: Page) =>
+    page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const [{ peek, liveState }, { playbackBgm }] = await Promise.all([
+            appImport<typeof import('../../src/history/stack')>('/src/history/stack.ts'),
+            appImport<typeof import('../../src/history/bgm')>('/src/history/bgm.ts'),
+        ])
+        return {
+            peeked: peek.value ? !!peek.value.state.bgm.buffer : undefined,
+            live: !!liveState.value.bgm.buffer,
+            playback: !!playbackBgm.value.buffer,
+        }
+    })
 
 test('one row for each chain, newest first, and a click peeks it with a bar that names it', async ({
     page,
@@ -247,21 +264,72 @@ test('a session’s peek has no BGM, and Back to Now returns the audio the open 
     await openSessions(page)
     await rowFor(page, 'Alpha').click()
     await expect.poll(() => peekedLife(page)).toBe(990)
-    const audio = () =>
-        page.evaluate(async () => {
-            const { peek, liveState } =
-                await window.editorTest.appImport<typeof import('../../src/history/stack')>(
-                    '/src/history/stack.ts',
-                )
-            return {
-                peeked: peek.value ? !!peek.value.state.bgm.buffer : undefined,
-                live: !!liveState.value.bgm.buffer,
-            }
-        })
-    expect(await audio()).toEqual({ peeked: false, live: true })
+    expect(await audioOf(page)).toEqual({ peeked: false, live: true, playback: false })
     await peekBar(page).locator('[data-peek-back]').click()
     await expect(peekBar(page)).toHaveCount(0)
-    expect(await audio()).toEqual({ peeked: undefined, live: true })
+    expect(await audioOf(page)).toEqual({ peeked: undefined, live: true, playback: true })
+})
+
+test('a session’s peek entered from a step’s peek dims nothing and plays no BGM', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    await closedChain(page, { title: 'Alpha', life: 990 })
+    await page.evaluate(() => {
+        window.editorTest.settings.showMinimap = true
+        return window.editorTest.addWaveform()
+    })
+    await placeTap(page, { lane: 0, beat: 1 })
+    await flush(page)
+    const dimmed = () =>
+        page.evaluate(async () => {
+            const { undimmed } = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/changes')
+            >('/src/editor/history/changes.ts')
+            const strip = document.querySelector<HTMLCanvasElement>('[data-minimap] canvas')
+            return { chart: !!undimmed.value, strip: strip?.style.opacity }
+        })
+
+    // The step's peek marks its note and dims the rest of the chart and the strip.
+    await openHistory(page)
+    await peekRow(page, 'Added 1 note')
+    await expect.poll(dimmed).toEqual({ chart: true, strip: '0.45' })
+    expect((await audioOf(page)).playback).toBe(true)
+
+    // A session's peek has no change to mark: nothing dims.
+    await page.getByRole('tab', { name: messages.history.recentSessions }).click()
+    await expect(page.locator('[data-sessions-loading]')).toHaveCount(0)
+    await rowFor(page, 'Alpha').click()
+    await expect.poll(() => peekedLife(page)).toBe(990)
+    await expect.poll(dimmed).toEqual({ chart: false, strip: '' })
+    expect((await audioOf(page)).playback).toBe(false)
+})
+
+test('Open History from a notice ends a session’s peek, as the Timeline tab does', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    await closedChain(page, { title: 'Alpha', life: 990 })
+    // Not pristine: Nothing to redo links to the Timeline.
+    await edit(page, { title: 'Beta', life: 970 })
+    await openSessions(page)
+    await rowFor(page, 'Alpha').click()
+    await expect.poll(() => peekedLife(page)).toBe(990)
+    // Escape closes the dialog and keeps the peek; Redo with nothing to redo keeps it too.
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-history-surface="dialog"]')).toHaveCount(0)
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+    await page.keyboard.press('y')
+    const told = notice(page, messages.commands.redo.noState)
+    await expect(told).toBeVisible()
+    expect(await peekedLife(page)).toBe(990)
+
+    await told.getByRole('button', { name: messages.notice.openHistory }).click()
+    await expect(peekBar(page)).toHaveCount(0)
+    expect(await peekedLife(page)).toBeUndefined()
+    expect(await lifeOf(page)).toBe(970)
 })
 
 test('a session open in another tab has the badge, offers Restore as a Copy and opens a separate copy', async ({

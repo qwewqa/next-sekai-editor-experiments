@@ -198,7 +198,11 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
         displayed.value = undefined
         // Drags and sessions end on the live state, before anything is peeked.
         for (const listener of [...startListeners]) listener()
-        peek.value = { source: key, state: shown(liveState.value, options.audio) }
+        peek.value = {
+            source: key,
+            state: shown(liveState.value, options.audio),
+            audio: options.audio,
+        }
     }
 
     const now = Date.now()
@@ -233,7 +237,11 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
             }
             settlePrevious = undefined
             stopTimers()
-            peek.value = { source: key, state: shown(entry.state, options.audio) }
+            peek.value = {
+                source: key,
+                state: shown(entry.state, options.audio),
+                audio: options.audio,
+            }
             displayed.value = key
             resolve()
         }
