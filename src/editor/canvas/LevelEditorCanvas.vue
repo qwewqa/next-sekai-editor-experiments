@@ -250,34 +250,11 @@ const sceneHovered = computed(() =>
 const hoveredSet = computed(() => new Set(sceneHovered.value))
 // Badges count notes as far past the pane as their slots reach.
 const offscreenRange = computed(() => beatRange(OFFSCREEN_REACH + 4))
-const offscreenNotes = computedArray(() => {
-    const { min, max } = offscreenRange.value
-    return culledEntities.value.filter(
-        (entity) => entity.type === 'note' && isEntityInBeatRange(entity, min, max),
-    )
-})
-// Note spans in lanes and seconds, which scrolling leaves unchanged.
-const offscreenCandidates = computed(() => {
-    const bpms = sceneState.value.bpms
-    const layout = composed.value
-    const { entities, selected } = showEntities(offscreenNotes.value, () => offscreenRange.value)
-    return orderEntities(entities, selected, visibility(), chains.value).flatMap(
-        ({ entity, highlighted, opacity }) => {
-            if (entity.type !== 'note') return []
-            const position = layout?.notePosition(entity) ?? entity
-            return [
-                {
-                    entity,
-                    left: position.left,
-                    right: position.left + position.size,
-                    time: beatToTime(bpms, entity.beat),
-                    highlighted,
-                    opacity,
-                },
-            ]
-        },
-    )
-})
+// The culled entities already reach that far (see `keys`), and the grouping leaves out any note
+// past its slots, so the candidates need no range of their own outside a previewed drop.
+const offscreenNotes = computedArray(() =>
+    culledEntities.value.filter((entity) => entity.type === 'note'),
+)
 // Only horizontal scrolling and zoom change which notes are off a side.
 const offscreenAxis = computed<{ l: number; scale: number; width: number }>((previous) => {
     const { l, w } = viewBox.value
@@ -286,13 +263,31 @@ const offscreenAxis = computed<{ l: number; scale: number; width: number }>((pre
         ? previous
         : { l, scale, width: view.w }
 })
+// The notes off a side, with their spans in pane x and their times. Notes in the lanes are left
+// out before ordering, which is per entity: the few that remain keep their painter order.
 const offscreenSideNotes = computed(() => {
     const { l, scale, width } = offscreenAxis.value
-    return offscreenCandidates.value.flatMap((note) => {
-        const left = (note.left - l) * scale
-        const right = (note.right - l) * scale
-        return right < 0 || left > width ? [{ ...note, left, right }] : []
-    })
+    const bpms = sceneState.value.bpms
+    const layout = composed.value
+    const { entities, selected } = showEntities(offscreenNotes.value, () => offscreenRange.value)
+    const spans = new Map<Entity, { left: number; right: number }>()
+    const sideNotes: Entity[] = []
+    for (const entity of entities) {
+        if (entity.type !== 'note') continue
+        const position = layout?.notePosition(entity) ?? entity
+        const left = (position.left - l) * scale
+        const right = (position.left + position.size - l) * scale
+        if (right >= 0 && left <= width) continue
+        spans.set(entity, { left, right })
+        sideNotes.push(entity)
+    }
+    return orderEntities(sideNotes, selected, visibility(), chains.value).flatMap(
+        ({ entity, highlighted, opacity }) => {
+            const span = spans.get(entity)
+            if (entity.type !== 'note' || !span) return []
+            return [{ entity, ...span, time: beatToTime(bpms, entity.beat), highlighted, opacity }]
+        },
+    )
 })
 // The pane y badges were last placed from, unrounded.
 let lastOffscreenAnchor = 0
