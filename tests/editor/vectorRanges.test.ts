@@ -1565,13 +1565,52 @@ test('after an idle period too short for the nearest section, it asks again late
         idle.run()
         assert.equal(cache.stats.ahead, 0)
         render(plan, plan.slice(0, 2))
-        // Time for one capture compiles the nearest section and asks for the next.
+        // Time for one capture compiles the nearest section and asks for the next, from a task.
         runFor(12)
         assert.equal(cache.stats.ahead, 1)
+        assert.equal(idle.queue.length, 0)
+        t.mock.timers.tick(0)
         assert.equal(idle.queue.length, 1)
         runFor(12)
         assert.equal(cache.stats.ahead, 2)
         assert.equal(idle.queue.length, 0)
+    } finally {
+        performance.now = realNow
+    }
+})
+
+test('a long idle period compiles sections for about 8 ms, and the rest follow from a task', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const state = aheadFixture()
+    const plan = vectorSections(state)
+    const idle = manualIdle()
+    const { render, cache } = sectionHarness(state, idle.idle)
+    const realNow = performance.now.bind(performance)
+    let now = 0
+    performance.now = () => now
+    const capture = (cache as unknown as { captureSection: (...args: unknown[]) => unknown })
+        .captureSection
+    // Each capture takes 9 ms, as a dense section can at 4×.
+    ;(cache as unknown as { captureSection: unknown }).captureSection = function (
+        this: unknown,
+        ...args: unknown[]
+    ) {
+        now += 9
+        return capture.apply(this, args)
+    }
+    try {
+        render(plan, plan.slice(0, 2))
+        // 50 ms of idle time, as when no frames come: one section, not a run of them.
+        const end = now + 50
+        for (const callback of idle.queue.splice(0)) callback({ timeRemaining: () => end - now })
+        assert.equal(cache.stats.ahead, 1)
+        // Asked for inside the callback, the next would wait for the next idle period.
+        assert.equal(idle.queue.length, 0)
+        t.mock.timers.tick(0)
+        assert.equal(idle.queue.length, 1)
+        idle.run()
+        assert.equal(cache.stats.ahead, 2)
+        cache.clear()
     } finally {
         performance.now = realNow
     }
