@@ -195,7 +195,7 @@ test('the chain’s own file filled by another write after the pick: the bytes r
     await release(page)
     const offer = page
         .getByRole('dialog')
-        .filter({ hasText: '"coconut.nxsp" no longer holds the content you opened.' })
+        .filter({ hasText: 'The contents of "coconut.nxsp" have changed.' })
     await expect(offer).toBeVisible()
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
     await page.keyboard.press('Escape')
@@ -435,7 +435,7 @@ test('a put-back over a file filled meanwhile learns it from its size, never rea
     await release(page)
     const offer = page
         .getByRole('dialog')
-        .filter({ hasText: '"coconut.nxsp" no longer holds the content you opened.' })
+        .filter({ hasText: 'The contents of "coconut.nxsp" have changed.' })
     await expect(offer).toBeVisible()
     const inspected = await page.evaluate(
         () => (window as unknown as { inspected: [string | null, number][] }).inspected,

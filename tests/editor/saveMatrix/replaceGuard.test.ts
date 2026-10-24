@@ -21,8 +21,8 @@ const reason = async (guard: (w: Awaited<ReturnType<typeof createWorld>>) => voi
     return w.conflictInputs[0]!.replaceDisabled?.()
 }
 
-const MAY = /^It may hold earlier Timeline steps/
-const HOLDS = /^It holds earlier Timeline steps/
+const MAY = /^It may contain earlier Timeline steps/
+const HOLDS = /^It contains earlier Timeline steps/
 
 test('Replace guard: a decision that finds nothing missing leaves Replace enabled (control)', async () => {
     assert.equal(await reason(() => undefined), undefined)

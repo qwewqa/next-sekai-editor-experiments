@@ -298,7 +298,7 @@ const openPartial = async (page: Page, name: string) => {
     await page.keyboard.press('o')
     // The dialog follows the open, in place of its notice.
     await expect(dialog(page)).toContainText(
-        'This level has parts this version of the editor does not support. They were left out.',
+        'This level has parts that this version of the editor does not support. They were left out.',
     )
     await dialog(page).getByRole('button', { name: 'OK' }).click()
     await expect(dialog(page)).toHaveCount(0)
@@ -344,7 +344,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('Enter')
     await expect(dialog(page)).toContainText(
-        '"LevelData" has parts this version of the editor does not support.',
+        '"LevelData" has parts that this version of the editor does not support.',
     )
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     await page.waitForTimeout(350)

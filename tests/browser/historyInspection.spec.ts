@@ -1700,7 +1700,7 @@ test('composed old and new change destinations stay identical while Show Edits i
     })
     await expect(page.locator('[data-peek-change]')).not.toHaveText('')
     await expect(page.locator('[data-property-summary]')).toHaveAccessibleDescription(
-        /settings changed/i,
+        /properties changed/i,
     )
     const markKinds = await page.evaluate(async () => {
         const { changeMarks } = await window.editorTest.appImport<

@@ -17,7 +17,7 @@ export type LoadEvent =
     | { kind: 'continued'; name: ShownName; from?: number }
     /** The canary: "Work from earlier visits is missing. The browser cleared this site’s storage." */
     | { kind: 'storageCleared' }
-    /** "A change to "{0}" could not be applied, so it was kept as a separate session." [Restore Session]. */
+    /** "A recovered change to "{0}" was kept as a separate session." [Restore Session]. */
     | { kind: 'journalKept'; name: ShownName; sessionId: string }
     /** A journal of an earlier visit recovered as a session: "Recovered unsaved work…" [Restore Session]. */
     | { kind: 'unsavedRecovered'; sessionId: string }

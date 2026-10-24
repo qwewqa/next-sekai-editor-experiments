@@ -610,7 +610,7 @@ test.describe('when a server cannot be used', () => {
         await connect(page, `${BASE}/elsewhere`)
         await expect(errorOf(page)).toContainText('This address is not a Sonolus server.')
         await connect(page, `${BASE}/broken`)
-        await expect(errorOf(page)).toContainText('This server answered with an error (503).')
+        await expect(errorOf(page)).toContainText('This server returned an error (503).')
     })
 
     test('an item with a wrong checksum is refused in the server’s words, and nothing is stored', async ({
@@ -1052,7 +1052,7 @@ test.describe('looks', () => {
                 await expect(errorOf(page)).toContainText('need you to sign in')
                 await shot(page, name('error-auth'))
                 await connect(page, `${ORIGIN}/broken`)
-                await expect(errorOf(page)).toContainText('answered with an error (503)')
+                await expect(errorOf(page)).toContainText('returned an error (503)')
                 await shot(page, name('error-status'))
                 await connect(page, 'http://server.test/api')
                 await expect(errorOf(page)).toContainText('http servers')

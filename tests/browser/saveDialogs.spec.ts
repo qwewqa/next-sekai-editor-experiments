@@ -605,7 +605,7 @@ test.describe('the conflict dialog', () => {
         await expect(
             dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
         ).toBeFocused()
-        await expect(dialog(page).getByText('Your changes stay unsaved.')).toBeVisible()
+        await expect(dialog(page).getByText('Your changes stay in Recent Sessions.')).toBeVisible()
         await expect(
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
         ).toBeVisible()
@@ -674,13 +674,13 @@ test.describe('the conflict dialog', () => {
                 name: 'coconut.nxsp',
                 disk: disk.saved,
                 replaceDisabled:
-                    'It holds earlier Timeline steps that are no longer stored in this browser.',
+                    'It contains earlier Timeline steps that are no longer stored in this browser.',
             },
         })
         const replace = dialog(page).getByRole('button', { name: 'Replace' })
         await expect(replace).toBeDisabled()
         await expect(dialog(page)).toContainText(
-            'It holds earlier Timeline steps that are no longer stored in this browser.',
+            'It contains earlier Timeline steps that are no longer stored in this browser.',
         )
         await expect(
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
