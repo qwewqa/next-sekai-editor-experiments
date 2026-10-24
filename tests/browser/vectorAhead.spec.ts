@@ -51,10 +51,12 @@ for (const layout of ['basic', 'composed'] as const) {
                     }),
                     { captures: 0, replays: 0, ahead: 0 },
                 )
+            // An idle pass asked for, or one waiting for the zoom (the PPS change) to pause.
             const pending = () =>
-                [...ranges].some(
-                    (range) => (range as unknown as { aheadPending: boolean }).aheadPending,
-                )
+                [...ranges].some((range) => {
+                    const state = range as unknown as { aheadPending: boolean; settling: boolean }
+                    return state.aheadPending || state.settling
+                })
             const settle = async () => {
                 for (let quiet = 0; quiet < 3;) {
                     const before = stats().ahead

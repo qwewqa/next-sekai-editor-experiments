@@ -15,6 +15,8 @@ const maxSectionGraphics = 50000
 const fullIdleMs = 40
 // Without requestIdleCallback (Safari), a task after the frame with this budget.
 const fallbackIdleMs = 4
+// Sections compiled mid-zoom would be released by its next frame; this long without one ends it.
+const zoomSettleMs = 250
 
 type IdleDeadline = { timeRemaining: () => number }
 /** Runs `run` at the next idle time. */
@@ -139,6 +141,7 @@ export class VectorRanges {
     private ahead?: AheadSource
     private aheadPending = false
     private zoomed = false
+    private settling = false
     private aheadDone: unknown[] = []
     private msPerSection = 0
     private msPerStep = 0
@@ -150,7 +153,6 @@ export class VectorRanges {
     beginFrame(context: EditorDrawContext, invalidation: readonly unknown[]) {
         this.liveEntities = undefined
         this.ahead = undefined
-        // Mid-zoom, sections compiled ahead would be released by the next frame.
         this.zoomed = this.ups !== undefined && this.ups !== context.ups
         this.activeSectionKeys.clear()
         const { ctx } = context
@@ -448,7 +450,11 @@ export class VectorRanges {
 
     private scheduleAhead() {
         const { idle } = this
-        if (!idle || !this.ahead || this.aheadPending || this.zoomed) return
+        if (!idle || !this.ahead || this.aheadPending) return
+        if (this.zoomed) {
+            this.afterZoom()
+            return
+        }
         const key = [this.sectionPlan, this.activeSections, this.ahead.owner]
         if (key.every((value, index) => value === this.aheadDone[index])) return
         this.aheadPending = true
@@ -457,6 +463,23 @@ export class VectorRanges {
             if (this.compileAhead(deadline)) this.scheduleAhead()
             else this.aheadDone = key
         })
+    }
+
+    /** Compiles ahead once no frame has come for `zoomSettleMs`: the zoom paused. */
+    private afterZoom() {
+        if (this.settling) return
+        this.settling = true
+        const wait = (frame: number) =>
+            setTimeout(() => {
+                if (this.frame !== frame) {
+                    wait(this.frame)
+                    return
+                }
+                this.settling = false
+                this.zoomed = false
+                this.scheduleAhead()
+            }, zoomSettleMs)
+        wait(this.frame)
     }
 
     /**

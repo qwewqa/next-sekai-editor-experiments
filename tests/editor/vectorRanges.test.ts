@@ -1565,7 +1565,8 @@ test('idle compilation never evicts an active section', () => {
     assert.equal(renderer.ranges.at(-1)!.released, true, 'the capture that did not fit is released')
 })
 
-test('a zoom frame leaves idle compilation for a steady frame', () => {
+test('a zoom frame leaves idle compilation until the zoom pauses', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
     const state = aheadFixture()
     const plan = vectorSections(state)
     const idle = manualIdle()
@@ -1573,7 +1574,10 @@ test('a zoom frame leaves idle compilation for a steady frame', () => {
     render(plan, plan.slice(0, 2))
     idle.run()
     render(plan, plan.slice(0, 2), { ups: -3 })
-    assert.equal(idle.queue.length, 0)
-    render(plan, plan.slice(0, 2), { ups: -3 })
-    assert.equal(idle.queue.length, 1)
+    t.mock.timers.tick(200)
+    render(plan, plan.slice(0, 2), { ups: -4 })
+    t.mock.timers.tick(200)
+    assert.equal(idle.queue.length, 0, 'frames keep coming: the zoom goes on')
+    t.mock.timers.tick(300)
+    assert.equal(idle.queue.length, 1, 'no frame for a while: the zoom paused')
 })
