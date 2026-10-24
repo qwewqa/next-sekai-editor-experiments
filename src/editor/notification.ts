@@ -104,6 +104,12 @@ export const latestNotice = shallowRef<Notice>(first)
 // Where a notice raised while a blocking dialog was open is drawn: over that dialog.
 export const cardInDialog = ref(false)
 export const quickInDialog = ref(false)
+/**
+ * Set by the main pane while History's side sheet leaves a card too little room there: the card
+ * waits, its time held, until the sheet closes. A card drawn over a dialog is not held.
+ */
+export const cardCrowded = ref(false)
+const crowded = () => cardCrowded.value && !cardInDialog.value
 let quickAt = 0
 /** A quick notice fades in 1 s, to the faint text v0.5.22 leaves behind until the next notice. */
 const QUICK_FADE_MS = 1000
@@ -111,7 +117,7 @@ const QUICK_FADE_MS = 1000
 let timer: ReturnType<typeof setTimeout> | undefined
 let remaining = 0
 let startedAt = 0
-type HoldSource = 'hover' | 'focus' | 'hidden' | 'dialog'
+type HoldSource = 'hover' | 'focus' | 'hidden' | 'dialog' | 'sheet'
 const holds = new Set<HoldSource>()
 // The card raised in this task, which the edit that raised it must not dismiss.
 let raisedNow = -1
@@ -149,6 +155,7 @@ const track = () => {
     remaining = noticeDuration(!!card.startup, (card.message?.() ?? '').length)
     if (hidden()) holds.add('hidden')
     if (covered()) holds.add('dialog')
+    if (crowded()) holds.add('sheet')
     if (holds.size || waitingOnGate(card)) return
     startTimer(remaining)
 }
@@ -384,7 +391,10 @@ export const clearNotification = () => {
     dismissNotification()
 }
 
-/** Pauses the card's timeout while the pointer or focus is on it, the page is hidden or a dialog covers it. */
+/**
+ * Pauses the card's timeout while the pointer or focus is on it, the page is hidden, a dialog covers
+ * it or it waits for History's side sheet to close.
+ */
 export const holdNotice = (source: HoldSource, held: boolean) => {
     const card = noticeCard.value
     if (!card) return
@@ -403,6 +413,14 @@ if (typeof document !== 'undefined')
     document.addEventListener('visibilitychange', () => {
         holdNotice('hidden', hidden())
     })
+
+watch(
+    crowded,
+    (held) => {
+        holdNotice('sheet', held)
+    },
+    { flush: 'sync' },
+)
 
 watch(
     isBlockingModalOpen,
