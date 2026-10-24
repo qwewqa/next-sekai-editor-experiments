@@ -1,24 +1,17 @@
-# Writing user-facing text
+# Writing
 
-This covers the strings in `src/i18n/`, Help, notices, the release notes in `CHANGELOG.md` and the privacy page.
+These rules cover everything we write: the text users see, the maintainer docs (`README.md`, `CONTRIBUTING.md` and `docs/`), code comments, commit messages and the release notes. The first part applies to all of it. The second part adds the rules for user-facing text.
 
-## Rules
+## Everything we write
 
-- Write terse, plain text. Use no contractions, and ’ for apostrophes.
-- Buttons and command names are Title Case. A command that asks for more before it acts ends with an ellipsis.
-- Put session names in double quotes. Put a file name in double quotes only when it is the subject or starts the sentence: "Saved to coconut.nxsp", but ""coconut.nxsp" could not be written."
-- Change all seven locales (`en`, `fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit, and reuse each locale’s existing terms.
-- Say what happened and what to do, in words the user already knows.
-  - Leave out internal terms such as chain, journal, worker, binding and slot.
-  - History lines say "Timeline steps", so they cannot be read as chart content being lost.
-- Leave out what the user can assume: what an action obviously does, and what does not happen.
-- Reuse an existing phrasing ("could not be read", "Save to a file to keep your work.") rather than writing a new one.
-- Choose the word that is idiomatic in the app’s register: plain software English, neither literary nor bureaucratic.
+- Write terse, plain text.
+- Choose the word that is idiomatic in the register. The app uses plain software English, neither literary nor bureaucratic. The docs and comments use plain technical English.
   - A file contains something, and a feature requires something.
-  - When unsure, follow the app’s existing strings, then common software usage.
+  - When unsure, follow the existing text, then common software usage.
+- Leave out what the reader can assume.
 - Give extra information its own sentence, not a ", which …" tail.
 
-## Easy to read
+### Easy to read
 
 These slow a reader down. Avoid them:
 
@@ -33,3 +26,17 @@ These slow a reader down. Avoid them:
   - "simply" and "just";
   - "not X but Y";
   - colons or dashes that join two sentences.
+
+## User-facing text
+
+The strings in `src/i18n/`, Help, notices, the release notes in `CHANGELOG.md` and the privacy page follow these rules as well as the first part.
+
+- Use no contractions, and ’ for apostrophes.
+- Buttons and command names are Title Case. A command that asks for more before it acts ends with an ellipsis.
+- Put session names in double quotes. Put a file name in double quotes only when it is the subject or starts the sentence: "Saved to coconut.nxsp", but ""coconut.nxsp" could not be written."
+- Change all seven locales (`en`, `fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit, and reuse each locale’s existing terms.
+- Say what happened and what to do, in words the user already knows.
+  - Leave out internal terms such as chain, journal, worker, binding and slot. The maintainer docs may name them.
+  - History lines say "Timeline steps", so they cannot be read as chart content being lost.
+- Leave out what an action obviously does, and what does not happen.
+- Reuse an existing phrasing ("could not be read", "Save to a file to keep your work.") rather than writing a new one.

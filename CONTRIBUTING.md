@@ -11,6 +11,8 @@ npm run dev
 
 Frontend work needs nothing else, and no Rust. `npm run build:native` and `npm run check:native-bundle` are Node only too.
 
+Coding agents: see [AGENTS.md](AGENTS.md).
+
 ## Where code goes
 
 One frontend is built twice: `npm run build` for the web and `npm run build:native` for the apps.
@@ -50,7 +52,7 @@ A string that must read differently by capability is one keyed variant, picked b
 
 ### Native-only features
 
-A feature the web can't do safely lives in `src/library/` or `src/projects/` and registers its commands from the native loader, so the web bundle never contains it. The web never shows a teaser or a disabled control for it. These folders and the loader (`src/nativeLoader.ts`) arrive with Stage 2; the lint already reserves their paths (`eslint.config.js`).
+A feature the web cannot do safely lives in `src/library/` or `src/projects/` and registers its commands from the native loader, so the web bundle never contains it. The web never shows a teaser or a disabled control for it. These folders and the loader (`src/nativeLoader.ts`) arrive with Stage 2; the lint already reserves their paths (`eslint.config.js`).
 
 To add one:
 
@@ -59,6 +61,12 @@ To add one:
 3. Add a capability only if shared code must know whether the feature exists.
 4. Run `npm run build:native` and `npm run check:native-bundle`.
 
+## Docs
+
+`docs/` and this file hold what stays useful to later, unrelated work: rules with their reasons, format specifications and guides to the code. A status report, a log of fixes or the spec for a single feature helps little later and goes out of date, so keep it out of the repository.
+
+The rules in these docs are principles with reasons. Depart from one when a case needs it, and say why in the change. To change a rule itself, because it gets in the way or misses a case, raise it with the maintainer and discuss it first. If a change makes a claim in the docs false, fix the page in the same change.
+
 ## UI design
 
 Read these before you change the UI and when you review a UI change:
@@ -66,9 +74,7 @@ Read these before you change the UI and when you review a UI change:
 - [docs/design-language.md](docs/design-language.md): surfaces, shape, sizes, spacing and the History surfaces.
 - [docs/color-system.md](docs/color-system.md): colour roles and the control recipes in `src/controls.css`.
 - [docs/ui-review-checklist.md](docs/ui-review-checklist.md): the questions to ask in review, from past defects.
-- [docs/writing.md](docs/writing.md): the rules for user-facing text in strings, Help, notices, the release notes and the privacy page.
-
-They are principles with reasons. Depart from one when a case needs it, and say why in the change. If a change makes a claim in them false, fix the page in the same change.
+- [docs/writing.md](docs/writing.md): the writing rules for user-facing text, these docs, code comments and commit messages.
 
 ## Built-in assets
 

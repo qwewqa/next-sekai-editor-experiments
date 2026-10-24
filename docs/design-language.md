@@ -10,7 +10,7 @@ How the editor's UI is built: surfaces, shape, size, spacing, type and the shipp
 
 ## 1. Surfaces
 
-Colours are RGB-channel custom properties (`src/themes.css`) exposed to Tailwind through `tailwind.colors.js`, so opacity modifiers work. UI code names a role (`bg-modal`, `text-fg`), never a palette colour. Chart content is the exception ([color-system.md](color-system.md) section 13). Light / dark values of the surface stack:
+Colours are RGB-channel custom properties (`src/themes.css`) exposed to Tailwind through `tailwind.colors.js`, so opacity modifiers work. UI code names a role (`bg-modal`, `text-fg`), never a palette colour. Chart content is the exception ([color-system.md](color-system.md) section 12). Light / dark values of the surface stack:
 
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
@@ -35,7 +35,7 @@ Surfaces step up from the chart: chrome, then panels, then bands, then controls.
 
 **Minimap** (`src/editor/minimap/Minimap.vue`). A strip docked right after the chart pane in the editor row. The user sets its width by dragging its left edge (`ResizeHandle`, with the keys, Escape and reset of the other dividers): the `minimapWidth` setting, 40 px by default, 24 to 160 px and at most a quarter of the workspace (`minimapWidth` in `src/editor/workspace/index.ts`). It is on by default from a 1000 px workspace, and the side docks' default sizes leave its room at the current width, so turning it on or resizing it moves no panel.
 - *Surface:* `bg-bg` with the dark chrome edge on its left (`shadow-[inset_1px_0_0_rgb(255_255_255/0.1)]`). No ring and no shadow.
-- *Content:* the chart's own artwork and connector colours, the same in both themes (color-system.md section 13).
+- *Content:* the chart's own artwork and connector colours, the same in both themes (color-system.md section 12).
 - *Box and cursor:* the box is the part of the chart in view: a 2 px `border-white/85` line inside a 1 px `rgb(0 0 0 / 0.6)` ring (a box-shadow) and a `bg-white/[0.16]` fill, so it reads over light and dark notes. It is square, at least 8 px tall, starts 6 px from the left so it stays right of the change ticks' column (the annotation canvas sits above it), and has a `CanvasText` border in forced colours. The cursor is a 1 px `bg-white` line, as the chart's cursor is white. Past the last note both stay pinned at the strip's top, so an *edge mark* says so: an 11 by 6 px white chevron pointing up (`stroke-width 1.5`, `CanvasText` in forced colours), centred right of the tick column, at the top edge. It shows while the cursor or the top of the view is past the range end, and has no animation. The overlay writes a style only when its value changed, with rows rounded to device pixels.
 - *Pointer:* `cursor-pointer` on the strip, `cursor-grab` on the box and `cursor-grabbing` while it is held. No hover state and no focus state: the strip is `aria-hidden`, a pointer shortcut whose keyboard equivalents are Jump to Start and End and the Page Up and Down scrolls.
 - *Peek:* the mint ring stays on the chart pane (`PeekBar.vue`); the strip adds none of its own.

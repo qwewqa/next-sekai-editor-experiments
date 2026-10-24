@@ -2,8 +2,7 @@
 
 The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css`, `tailwind.colors.js` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 11) enforces the rules.
 
-- **Scope.** UI colour roles. Chart content keeps its own colours (section 13).
-- **Migration.** The system lands in stages; section 12 lists them and what each covers.
+- **Scope.** UI colour roles. Chart content keeps its own colours (section 12).
 - **Related.** [design-language.md](design-language.md) covers surfaces, shape, size and the History surfaces; [ui-review-checklist.md](ui-review-checklist.md) is the review questions.
 
 ---
@@ -20,7 +19,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 1. **Name a role, not a colour.** Components use role tokens (`primary`, `danger-fill`, `press`) through the recipes, never raw palette classes (`amber-300`) or literals in UI chrome.
    - *Reason:* a role can be retuned in one place, and the guard test can check its use.
-   - *Exceptions:* chart content (section 13); shadows that are geometry rather than a role, such as the dock edge.
+   - *Exceptions:* chart content (section 12); shadows that are geometry rather than a role, such as the dock edge.
 
 2. **Mint means on.** The tool in use, a switch that is on, Show Edits, Select while selecting, rows checked for an action and the peek ring are mint. The quick notice is mint too, as the brand's one transient voice.
    - *Reason:* it is the app's brand colour, and in v0.5.22 it was every on-state. Giving it one meaning lets a user read it at a glance.
@@ -39,7 +38,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 5. **Status hues come with their glyphs.** Warning is amber with a triangle, and info is blue with a circle. There is no success hue (success is the quick notice).
    - *Reason:* amber and red are close for deuteranopia (light ΔE 1); the glyph and the words carry the meaning.
-   - *Exception:* the change orange is drawn only on the chart, never in the UI (section 13).
+   - *Exception:* the change orange is drawn only on the chart, never in the UI (section 12).
 
 6. **Roles that must differ, differ in lightness, not hue alone.** Check fill against fill, under colour-vision deficiency too, not only text against fill. Section 4.3 is the check.
    - *Reason:* about 1 man in 12 has a red-green deficiency, and a hue-only difference vanishes for him. That is why a pale lavender dark primary was rejected (deutan ΔE 2.0 from mint), and why the light press face is darker than the mint (deutan ΔE 1.6 at a lighter grey).
@@ -90,7 +89,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
     - *Reason:* one attribute can mean different things. `aria-pressed` marks a checked Manager row and a toolbar value in use; `aria-expanded` marks folder disclosure. Section 6.3 lists every current use.
     - *Rule:* before styling from an attribute, list its current uses.
 
-15. **A token retune lands with every consumer of that token.** The `selected` retune and the ManagerRow tint therefore ship together in C0.
+15. **A token retune lands with every consumer of that token.** The `selected` retune and the ManagerRow tint therefore shipped together.
 
 16. **Keep the feel.** The palette stays seven hues; no surface colour changes; the light `accent`, `danger` and surfaces are byte-identical to v0.5.22.
 
@@ -131,7 +130,7 @@ These are unchanged from v0.5.22:
 | Warning | `warning` *new* | 146 91 12 `#925b0c` (.521 .110 68) | 255 218 124 `#ffda7c` (.900 .121 88) | Warning text and glyphs, always with the triangle |
 | Info | `info` *new* | 22 102 170 `#1666aa` (.501 .130 250) | 190 227 255 `#bee3ff` (.898 .055 241) | Info glyphs and text, always with the circle |
 | Switch off track | `toggle-off` *new* | 143 143 163 `#8f8fa3` | 117 120 151 `#757897` | ToggleSwitch when off |
-| History changes | `change` *new* | 255 155 66 `#ff9b42` | same | Defined but not read yet: the change marks use `CHANGE_COLOR` in `src/editor/canvas/changes.ts` (section 13) |
+| History changes | `change` *new* | 255 155 66 `#ff9b42` | same | Defined but not read: the change marks use `CHANGE_COLOR` in `src/editor/canvas/changes.ts` (section 12) |
 
 **Chrome tier.** The dark chrome over the chart (status bar, panel rail, toolbar row, elevation header, offscreen badges) is mid-tone in light and dark in dark. `.surface-chrome` on those roots sets status values that pass 4.5:1 on both (the offscreen badges use only white and do not carry it):
 
@@ -511,6 +510,7 @@ export const useActivationGuard = () => {
   - a held Enter and a doubled Enter (80 ms) do not confirm;
   - a fresh press after 300 ms does;
   - focus on open is Delete.
+- **Other specs** that confirm a Confirm or Choice dialog press through the guard with `confirmWhenReady` or `confirmKeyWhenReady` (`tests/browser/confirmWhenReady.ts`). A press inside the guard does nothing by design, so the helper presses again until the dialog has closed. It never waits a fixed time. A spec that tests the guard itself holds time with `page.clock`, as `confirmDialog.spec.ts` does.
 
 ### 8.3 Reset Settings and Reset Shortcuts: confirm
 
@@ -622,7 +622,7 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 | Details pill on unavailable rows | `ghost` |
 | Step Details, Property Changes: Show More, View Chart, Try Again | `btn btn-secondary` |
 | Status badge | `bg-fg/8` chip (unchanged) |
-| Change marks | Canvas orange, `CHANGE_COLOR` in `changes.ts`; the `--color-change` token is defined but not read yet (C9) |
+| Change marks | Canvas orange, `CHANGE_COLOR` in `changes.ts`; the `--color-change` token is defined but not read (section 12) |
 
 `historyPanel.spec.ts` (the accent shadow) changes with the History surfaces.
 
@@ -677,7 +677,7 @@ Adding to either list needs a reason in the entry.
 
 ### 11.4 Transition (closed)
 
-- During the migration each colour package kept an allowlist file, `tests/editor/colorRoles/legacy-C<n>.txt` (C8 one per History package, `legacy-C8-H<n>.txt`), of the files it had not migrated yet. Each package deleted its own list as its last commit, and the directory is gone: **no file is exempt now** except those in 11.3.
+- During the migration from v0.5.22, each group of files had an allowlist in `tests/editor/colorRoles/` of the files it had not migrated yet. The test reads lists named `legacy-C<n>.txt` or `legacy-C<n>-H<n>.txt`, where each `<n>` is a number. Each group deleted its list when it was done, and the directory is gone: **no file is exempt now** except those in 11.3.
 - The test still reads such lists if the directory exists and tolerates its absence, so a later migration can add lists again. It fails on a listed file that is already clean, so stale entries cannot linger, and on a violating file that is not listed.
 
 ### 11.5 Fixtures
@@ -686,83 +686,7 @@ A unit test feeds one synthetic line per inventoried form through the detector a
 
 ---
 
-## 12. Migration packages
-
-**Process:**
-
-- **Closed.** The packages landed and their allowlists are deleted (11.4); this section records what each moved, for reading the history. C9 (the change token) was optional and is not built, and `changes.ts` still holds `#ff9b42` (section 13). The foundation, package C0, landed first and alone; packages C1–C7 then landed in any order, with the UI mixed (some dialogs ink, some mint) in between.
-- Every file belongs to exactly one package.
-- Each package runs its targeted specs. The full Playwright suite runs once, after C10.
-- **Naming.** These are *colour packages*, apart from the numbered steps of the main plan.
-
-### C0: foundation, safety, Reset and Remove confirmations, and checked-row consumers
-
-| Group | Files |
-|---|---|
-| Tokens and mechanism | `src/themes.css`, `tailwind.colors.js`, `tailwind.config.js`, `tailwind.landing.config.js`, `tailwind.controls.js`, `src/controls.css` |
-| Global CSS | `src/index.css`: `.popup-item` press `enabled:active:bg-ghost-press enabled:active:text-fg-strong`; `.popup-item.text-danger:enabled:active { bg-danger-fill text-on-danger }`; focus `focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg` becomes `focus-edge`, so the guard's `focus-colour` and `focus-outline-none` rules pass |
-| | `src/editor/LevelEditorContextMenu.vue`: the shortcut hint `[.popup-item:enabled:active_&]:text-on-accent` becomes `[.popup-item:enabled:active_&]:text-inherit` (`fg-strong`, or `on-danger` on the Delete row). It must change with the `.popup-item` press, or a pressed hint falls to 1.9:1 |
-| | `src/selectLists.css`: option press `ghost-press` / `fg-strong` |
-| Safety (8.2) | `src/modals/activationGuard.ts`, `src/modals/ConfirmModal.vue`, `src/modals/ChoiceModal.vue`, `src/modals/choice.ts` (doc comments say "primary", not "accent colour"). ConfirmModal and ChoiceModal also use the recipes |
-| Dialog shell and footers | `src/modals/BaseModal.vue` (the × is `ghost ghost-band`, with its size and shape), `src/modals/InfoModal.vue` (OK) and `src/modals/form/FormModal.vue` (submit): `btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4` |
-| Reset and Remove confirmations (8.3, 8.4) | `src/editor/settings/SettingsModal.vue`, `src/editor/commands/previewAssets/StoredAssets.vue`, `src/i18n/{en,ja,ko,zhs,zht,fr,tr}/index.json` (three new keys: `settings.resetSettingsMessage`, `settings.resetKeybindsMessage`, `commands.previewAssets.removeUnused`) |
-| Retune consumers | `src/editor/workspace/manager/ManagerRow.vue`: the whole file, which keeps its own class names (`manager-row-selected`, `manager-row-drop`), so `managerSelection.spec` and `managerFolders.spec` need no change |
-| Tests | `tests/editor/colorRoles.test.ts` (its allowlists are gone, 11.4); `tests/browser/confirmDialog.spec.ts`; `tests/browser/confirmWhenReady.ts` |
-| | Updated: `settings.spec.ts`, `defaultPanels.spec.ts`, `previewHitboxes.spec.ts`, `shortcuts.spec.ts`, `localizations.spec.ts`, `forcedColors.spec.ts` (Reset buttons, dialogs, Manager) |
-| | Updated: `choiceDialog.spec.ts` expected three distinct backgrounds for Cancel, Replace and Save as a Separate File; with Replace quiet there are two, so it asserts the danger choice's text colour or class instead. `themes.spec.ts` clicks Reset Settings, which now opens a confirmation. `previewAssetsFile.spec.ts` ("One that is not in use goes at once") now confirms |
-| | Run: `managerSelection.spec.ts`, `managerFolders.spec.ts`, `managerModal.spec.ts`, and, because they touch ManagerRow, `managerPanels.spec.ts` (the computed background of a dragged row), `managerDuplicate.spec.ts` and `hitAreas.spec.ts` |
-
-**Specs that confirm a Confirm or Choice dialog** press through its 300 ms guard with `confirmWhenReady` or `confirmKeyWhenReady` (`tests/browser/confirmWhenReady.ts`). A press inside the guard does nothing by design, so the helper presses again until the dialog has closed. It never waits a fixed time. A spec that tests the guard itself holds time with `page.clock`, as `confirmDialog.spec.ts` does.
-
-ManagerRow's changes:
-
-- `.manager-row-selected:not(.manager-row-current)` takes `row-checked`;
-- current-and-checked takes the `accent-strong` ring;
-- `.manager-row-drop` takes `row-drop`;
-- `.manager-icon-button` takes `ghost` (`ghost-band` on the heading);
-- `.manager-mode` adds `btn-toggle`;
-- `.manager-name` presses `ghost-press`;
-- focus goes inside.
-
-Visible after C0:
-
-- menu and select-list presses go neutral;
-- dialogs that use ConfirmModal or ChoiceModal take ink primaries and quiet destructive choices;
-- every dialog shell has the band-press ×, and the Info OK and form submit buttons are ink primaries;
-- Settings shows the quiet Reset buttons and their confirmations, and Remove on every stored preview asset confirms;
-- Manager rows are retuned.
-
-Nothing else changes until used.
-
-### C1–C7: parallel
-
-| # | Package | Files | Specs |
-|---|---|---|---|
-| C1 | Form fields | `src/modals/form/{BaseField, ChoiceField, FileField, KeyField, MultiNumberField, MultiSelectField, MultiToggleField, NumberField, OptionalNumberField, OptionalSelectField, SelectField, TextField, ToggleField, ToggleSwitch}.vue` | `choiceFields.spec`, form specs |
-| C2 | Command dialogs | `src/editor/commands/exportLevel/ExportModal.vue`; `previewAssets/{AlsoOptions, AssetRow, AssetSources, ChooserModeSwitch, ChooserView, PreviewAssetsModal, ServerBody}.vue` (`StoredAssets.vue` is in C0); `scaleSelection/ScaleSelectionModal.vue` | Export, preview-assets and scale specs; `aria-invalid` on three fields |
-| C3 | Settings, utilities, save, startup, rendering, landing | `src/editor/settings/{DiagnosticsModal, SettingsAbout, SettingsIndex, SettingsLocalData, SettingsPreview, SettingsSection}.vue`, `settings/toolbar/SettingsToolbarAddButton.vue`; `src/editor/utilities/{UtilitiesModal, coverEditor/CoverEditorModal, previewEditor/PreviewEditorModal}.vue`; `src/editor/save/{PreparingDialog, SaveDialog}.vue`; `src/startup/{SafeModeBar, StartupGate}.vue`; `src/rendering/RenderingError.vue`; `src/landing/landing.css` | Save, startup, settings-section and landing specs |
-| C4 | Workspace | `src/editor/workspace/{PanelRail, ResizeHandle}.vue`; `manager/{ManagerAddButton, ManagerList, ManagerModal, StagesManager}.vue`; `panels/PropertiesPanel.vue`; `properties/PropertiesBlock.vue` | `panelRail.spec` and `propertiesPanel.spec` assert the pressed fill is mint and now assert the neutral press, with the rail marker kept |
-| C5 | Toolbar, tools, elevation, badge | `src/editor/toolbar/{LevelEditorToolbar, LevelEditorToolbarTool}.vue`; `src/editor/tools/brush/BrushPropertiesFields.vue`, `tools/paste/PasteSidebar.vue`; `src/editor/elevation/ElevationEditor.vue`; `src/editor/OffscreenNoteBadge.vue` (`LevelEditorContextMenu.vue` is in C0) | `toolbarPressed`, `toolbarQuickSwitch`, `editorLayoutControls`, `elevationViewport` |
-| C6 | Status bar and notices | `src/editor/{StatusLabel, StatusScope, NoticeCard, LevelEditor}.vue`; `src/editor/file/FileChip.vue` | Status and notice specs. C6 changes only NoticeCard's role classes |
-| C7 | Preview | `src/preview/{AssetFallbackLine, LevelPreview, PreviewSettings, PreviewTransport}.vue` | Preview specs (held step → `.is-pressed`) |
-
-C5 toolbar notes:
-
-- tools, modes and open panels add `btn-toggle`; value items do not;
-- the flyout's press-drag row uses `.is-pressed`;
-- the elevation square is `btn-toggle`.
-
-### C8–C10
-
-- **C8, History:** `src/editor/history/{ChangeArrows, GoToIcon, GoToList, HistoryDialog, HistoryPanel, PeekBar, TimelineList}.vue`, in three History packages: H1 `ChangeArrows`, `PeekBar`; H2 `GoToIcon`, `GoToList`, `HistoryDialog`, `HistoryPanel`; H3 `TimelineList`. It lands with the History redesign, which applies section 10 directly after C0. Spec: `historyPanel.spec`.
-- **C9, change token (optional):** `src/editor/canvas/changes.ts` reads `--color-change` in place of its `#ff9b42`.
-- **C10, close-out:** done for the guard: the `tests/editor/colorRoles/` directory is deleted (its loader stays, tolerating the absence). Remove leftover `peer-checked:peer-active` patches (none remain in `src`).
-
-**Scope.** About 300 class-string edits in 85 files, mostly mechanical; 7 browser specs with about 15 assertions on classes; three new strings in seven locales.
-
----
-
-## 13. Out of scope: chart content and the change orange
+## 12. Out of scope: chart content and the change orange
 
 Chart content keeps its own colours:
 
@@ -779,10 +703,9 @@ Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They 
 
 ---
 
-## 14. Risks and limits
+## 13. Risks and limits
 
-- **Mixed UI between packages.** Use an integration branch and make no release until C10.
-- **`controls.css` reaches Tailwind through a plugin that reads it with `readFileSync`.** Tailwind rebuilds only for dependencies it can see, so the plugin names the file in a `require('./src/controls.css')` comment (6.1) and edits reach a running dev server. Check a long-lived server before a capture round all the same: probe a recently added recipe in the served `/src/index.css`.
+- **`controls.css` reaches Tailwind through a plugin that reads it with `readFileSync`.** Tailwind rebuilds only for dependencies it can see, so the plugin names the file in a `require('./src/controls.css')` comment (6.1) and edits reach a running dev server. Check a long-lived server before you take screenshots all the same: probe a recently added recipe in the served `/src/index.css`.
 - **Light theme, on against secondary,** differs mainly in hue (ΔE 17, protan 8). Form carries the state, as in v0.5.22.
 - **Dark switch track off against the pill** is 1.92:1; the knob carries the state.
 - **Light warning against danger** is deutan-confusable; the glyphs carry it.
