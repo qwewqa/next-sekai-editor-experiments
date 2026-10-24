@@ -280,7 +280,6 @@ const identicalToEnglish: Record<string, string[]> = {
         'modals.info.ok',
         // French spells "note" the same.
         'peek.notes',
-        // "BGM", as in its other strings.
         // French spells "Version" the same.
         'settings.about.version',
         'settings.editor.waveformVisualization.fft',

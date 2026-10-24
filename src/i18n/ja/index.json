@@ -603,7 +603,7 @@
       "title": "履歴"
     },
     "showChange": {
-      "title": "変更を表示"
+      "title": "変更箇所を表示"
     },
     "editsHere": {
       "title": "ここの変更を探す"
@@ -2232,7 +2232,7 @@
     "migrated": "以前の自動保存を開きました",
     "restoredTo": "{0} の状態に復元",
     "changedOutside": "エディターの外部で変更",
-    "recoveredChanges": "変更を復元しました"
+    "recoveredChanges": "変更を回復しました"
   },
   "session": {
     "untitled": "無題 · {0}",
@@ -2348,7 +2348,7 @@
       "tags": "タグ",
       "rating": "難易度",
       "cover": "ジャケット",
-      "previewAudio": "プレビュー音声",
+      "previewAudio": "プレビュー音源",
       "duration": "長さ",
       "size": "サイズ",
       "type": "種類",

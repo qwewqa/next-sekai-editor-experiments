@@ -609,7 +609,7 @@ F: Actions sans étape propre dans la chronologie : 64
 E: 65 earlier, head 30, omitted 12
 
 #recovery.context.big ja
-T: 変更を復元しました
+T: 変更を回復しました
 F: タイムラインに個別に記録されていない操作：64
 E: 65 earlier, head 30, omitted 12
 
