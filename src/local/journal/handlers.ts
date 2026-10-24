@@ -139,7 +139,7 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
             ),
 
         /**
-         * Commits strictly, so what relaxed flushes stored before it is on disk too (§1.6.4: a
+         * Commits strictly, so what routine flushes stored before it is on disk too (§1.6.4: a
          * hide's and a switch's flush is strict). Resolves whether it committed to the database:
          * an in-memory store's commit syncs nothing the database holds.
          */

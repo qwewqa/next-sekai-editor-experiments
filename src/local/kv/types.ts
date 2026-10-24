@@ -36,7 +36,7 @@ export type KeyPath = string | readonly string[]
 
 export type TxMode = 'readonly' | 'readwrite'
 
-/** A hint: routine flushes are relaxed; hides, switches, restores and imports strict (§1.6.1). */
+/** A hint: routine flushes `'default'`; hides, switches, restores and imports strict (§1.6.1). */
 export type Durability = 'default' | 'strict' | 'relaxed'
 
 export type CursorEntry = { key: Key; primaryKey: Key; value: unknown }

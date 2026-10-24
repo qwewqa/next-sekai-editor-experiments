@@ -608,6 +608,33 @@ test(
     },
 )
 
+test('a routine flush commits with default durability, and a hide’s flush strictly', async () => {
+    // Firefox runs 'relaxed' with synchronous = OFF, which a power loss can corrupt (§1.6.1).
+    const world = createWorld({ seed: 18 })
+    const page = await openPage(world, world.tab('a'))
+    const commits: string[] = []
+    world.memory.observe({
+        committed: (report) => {
+            if (report.stores.includes('entries')) commits.push(report.durability)
+        },
+    })
+    let state = stateOf(goldenChart())
+    begin(page, state)
+    for (let i = 0; i < 2; i++) {
+        state = widen(state, i)
+        page.flusher.append(widenedNoteEntry, state, true)
+    }
+    await page.flusher.flush()
+    state = widen(state, 2)
+    page.flusher.append(widenedNoteEntry, state, true)
+    await page.flusher.flush({ strict: true, oneGo: true })
+    assert.deepEqual(
+        page.batches.map((batch) => batch.durability),
+        ['default', 'strict'],
+    )
+    assert.deepEqual(commits, ['default', 'strict'])
+})
+
 test('entry times are strictly increasing, whatever the clock says', async () => {
     const world = createWorld({ seed: 13 })
     const page = await openPage(world, world.tab('a'), { now: () => 5000 })
