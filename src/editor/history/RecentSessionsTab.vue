@@ -32,7 +32,7 @@ import { writesInPlace } from '../file/state'
 import { platform } from '../../platform'
 import { labelAccessibleName, labelLine, labelOf } from '../fileLabel'
 import { liveRow } from '../liveRow'
-import { readBrowserFacts, storageLineKey } from '../settings/storageLine'
+import { readBrowserFacts, storageLineKey, storageUnavailable } from '../settings/storageLine'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import MoreIcon from '../workspace/manager/icons/MoreIcon.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
@@ -238,10 +238,8 @@ const footer = computed(() => {
     const state = storageStatus.value
     if (!known || !state) return
     return i18n.value.storage[
-        storageLineKey({
-            ...known,
-            unavailable: state.mode === 'memory' || state.mode === 'readOnly',
-        })
+        // The same test as Local Data's line: waiting on older tabs or safe mode is not this.
+        storageLineKey({ ...known, unavailable: storageUnavailable(state, safe) })
     ]
 })
 
