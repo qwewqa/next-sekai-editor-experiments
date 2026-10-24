@@ -7,7 +7,8 @@ import { parseLevelDataChart } from '../../src/chart/parse/levelData'
 import type { MediaForm, NxspRead } from '../../src/local/nxsp'
 import { mediaRefOf, placedCompleteFrom, readNxsp } from '../../src/local/nxsp'
 import { levelState, matchesHead } from '../../src/local/open/decide'
-import { stateFromRecords } from '../../src/local/records/records'
+import { noteCountOf, stateFromRecords } from '../../src/local/records/records'
+import { decodeSnapshot } from '../../src/local/records/snapshot'
 import { crafted, jsonOf, setJson, unzip } from '../local/nxsp/craft'
 import { rawZip, type RawEntry } from './rawZip'
 
@@ -336,4 +337,51 @@ test('the independent checker reads every fixture as a whole file', () => {
         },
     )
     assert.equal(strict.status, 0, `${strict.stdout}${strict.stderr}`)
+})
+
+test('every state a file holds decodes through the reader, and each entry’s noteCount is its state’s', async () => {
+    // Catches a later decoder that misreads an earlier state (a wrong peek, Restore or Undo, or an
+    // earlier BGM read as damage) while the head still decodes. Only the chunk the writer damaged on
+    // purpose may fail, and only for a row that is not kept.
+    const utf8 = new TextDecoder()
+    for (const name of withHistory) {
+        const { history } = await whole(name)
+        const parsed = new Map<string, unknown>()
+        for (const hash of history.index.keys()) {
+            try {
+                parsed.set(hash, JSON.parse(utf8.decode(await history.chunks.read(hash))))
+            } catch {
+                // A damaged chunk: the roots that name it are checked below.
+            }
+        }
+        const counts = new Map<string, number | undefined>()
+        for (const [hash, root] of history.roots) {
+            try {
+                const records = decodeSnapshot(root, {
+                    node: (node) => history.nodes.get(node),
+                    chunk: (chunk) => {
+                        if (!parsed.has(chunk)) throw new Error(`No chunk ${chunk}`)
+                        return parsed.get(chunk)
+                    },
+                })
+                counts.set(hash, noteCountOf(records.kinds))
+            } catch {
+                counts.set(hash, undefined)
+            }
+        }
+        assert.ok(history.index.size - parsed.size <= 1, `${name}: damaged chunks`)
+        for (const entry of history.entries) {
+            const count = counts.get(entry.snapshot)
+            if (count === undefined) {
+                assert.equal(entry.kept, false, `${name}: an unreadable state of a kept row`)
+                continue
+            }
+            if (entry.noteCount !== undefined)
+                assert.equal(entry.noteCount, count, `${name}: seq ${entry.time}`)
+        }
+        assert.ok(
+            [...counts.values()].filter((count) => count === undefined).length <= 2,
+            `${name}: unreadable roots`,
+        )
+    }
 })

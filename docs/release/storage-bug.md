@@ -17,15 +17,15 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 > Version {version} has a bug that can stop the editor from starting or hide your sessions. To keep your work:
 >
 > 1. Do not clear this site’s data in your browser.
-> 2. Open the editor, go to Settings › Local Data › Recovery, choose Export Raw Data… and keep the file it downloads.
-> 3. If the editor does not start normally, add `?safe` to the address and do step 2 there.
-> 4. If the editor shows an error and does not start at all, choose Export Raw Data… on the error screen.
+> 2. Open Settings › Local Data and choose Export Raw Data… under Recovery. Keep the ZIP file it downloads.
+> 3. If the editor shows an error with an Export Raw Data… button, choose it there.
+> 4. If the editor does not start, open https://nse.qwewqa.dev/?safe and do step 2 there.
 > 5. When version {fixed} is out, reload the page and look in History › Recent Sessions.
-> 6. If your work is not there, send us the file. Do not attach it to a public issue. It holds your charts and audio. Put it somewhere private and email a link to nse@qwewqa.dev.
+> 6. If your work is not there, email a private link to the ZIP file to nse@qwewqa.dev. Do not attach the file to a public issue. It holds your charts and audio.
 
 ## 4. What to ask for
 
-- The raw-data ZIP, sent privately as a link by email.
+- The ZIP file from Export Raw Data…, as a private link by email.
 - The version: Settings › About, or Copy Diagnostic Info….
 - The browser and the operating system.
 - What they did and what they saw: the text of the message, or a screenshot.
@@ -38,8 +38,8 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 1. Unzip the ZIP. `dump.json` holds the data. Check its `format` (`nse-local-data-dump`), its `version` and its `appVersion`, the build that wrote it.
 2. Copy `dump.json` into the nse-next `samples/` folder (or the folder `NSE_SAMPLES_DIR` names) as `<case>.json`, for example `reporter-1.json`. Never copy it into the repository. Case names use letters, digits, `.`, `_` and `-`.
 3. Run `npm run dev` in a worktree at the broken release’s tag, to see what the user saw, or at the fix.
-4. Open a fresh browser profile. The seeder refuses a database that holds any chain or session. A dump holds no file handles, so the first Save of a chain asks where to write.
-5. Open `/?seedSample=<case>` on the dev server. The page seeds the profile and reloads with the user’s data. The console says `[seedSample] Seeded <case>; reloading.` A refusal says why, and the editor loads as usual.
+4. Open a fresh browser profile. The seeder refuses a database that holds any chain or session. A dump holds no file handles (the seeder leaves its handle rows out), so the first Save of a chain asks where to write.
+5. Open `/?seedSample=<case>` on the dev server. The page seeds the profile and reloads with the user’s data. The dump’s `journal.*` keys are seeded too and replay on that first load, so the profile is written to. The console says `[seedSample] Seeded <case>; reloading.` A refusal says why, and the editor loads as usual.
 
 ## 6. Getting the work out
 
@@ -47,7 +47,7 @@ For each chain in History › Recent Sessions, open the row’s ⋯ menu and cho
 
 Work the editor could not read is under Settings › Local Data › Recovery: the unreadable recovered work and the journals of earlier visits, each with a Download button.
 
-If the build cannot read a chain, fix the reader on a branch and load the dump again.
+If the build cannot read a chain, fix the reader on a branch and load the dump again into a fresh profile. The seeder refuses the profile that was seeded already.
 
 There is no `tools/recover.py`. It is deferred until a storage bug needs it (Part 4 §4.9.3).
 

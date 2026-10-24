@@ -476,7 +476,43 @@ export const stepA8 = async (a: A, tab: Tab) => {
 
 const copyName = 'fixture-history-copy.nxsp'
 
-/** Step 9: a copy of step 6's file with an unknown manifest key (chain P) takes over fork.nxsp (F's file). */
+/** The `saving.*` keys the editor holds in localStorage, without the editor's prefix. */
+const storedMarkers = (tab: Tab) =>
+    tab.page.evaluate((prefix) => {
+        const found: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key?.startsWith(`${prefix}saving.`)) found.push(key.slice(prefix.length))
+        }
+        return found
+    }, prefix)
+
+/**
+ * Holds the storage flush from the instant a Save writes its `saving.*` marker (a flush held earlier
+ * would stop the Save before the marker: the Save commits first), so the file is written and the
+ * binding never is.
+ */
+const holdFlushAtMarker = (tab: Tab) =>
+    tab.page.evaluate((prefix) => {
+        const set = Storage.prototype.setItem
+        Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
+            set.call(this, key, value)
+            if (key.startsWith(`${prefix}saving.`)) window.nseFlushTest!.stall = true
+        }
+    }, prefix)
+
+/** The `revision.n` of a project file in the profile's OPFS (0 when it is not a project file). */
+const revisionN = async (tab: Tab, name: string) => {
+    const read = await readNxsp(new Blob([new Uint8Array(await readOpfs(tab.page, name))]))
+    return read.kind === 'nxsp' ? Number((read.projectJson.revision as Row).n) : 0
+}
+
+/**
+ * Step 9: a copy of step 6's file with an unknown manifest key (chain P) takes over fork.nxsp (F's
+ * file). Then P's file is written by a Save whose binding is never recorded (the page is killed),
+ * the next load recognises that Save as our own, and the Save after it appends to a file whose base
+ * has no row of its own: P's binding then holds `entry.inexact`. Returns the tab that is open after.
+ */
 export const stepA9 = async (a: A, tab: Tab) => {
     const { chains, products } = a
     const crafted = await craftedCopy(products.bytes('step6.nxsp'))
@@ -509,6 +545,30 @@ export const stepA9 = async (a: A, tab: Tab) => {
     expect(f.file).toBeUndefined()
     expect(f.replaced).toMatchObject({ by: chains.P, name: forkName })
     expect(f.name).toBe('fork')
+
+    // An own Save the binding never recorded: the file is written, the page goes.
+    await tapAt(tab, 0, 1030)
+    await tab.stored_()
+    const was = await revisionN(tab, forkName)
+    await holdFlushAtMarker(tab)
+    await tab.page.keyboard.press('p')
+    await expect.poll(() => revisionN(tab, forkName)).toBeGreaterThan(was)
+    await hide(tab.page)
+    expect(await storedMarkers(tab)).toEqual([`saving.${chains.P}`])
+    await tab.kill()
+
+    // The next load recognises it; the Save after that appends to it.
+    const visit = await a.profile.visit()
+    expect(await openChainId(visit.page)).toBe(chains.P)
+    await visit.command('a')
+    await tapAt(visit, 0, 1034)
+    await visit.stored_()
+    await visit.page.keyboard.press('p')
+    await expect(visit.notice(`Saved to ${forkName}`)).toBeVisible()
+    await visit.stored_()
+    expect(await storedMarkers(visit)).toEqual([])
+    expect(((await visit.chain()).file as Row).entry).toMatchObject({ inexact: true })
+    return visit
 }
 
 /** Step 10: more edits to A and a Save (its file now diverges from step 6's); a preview asset package. */
@@ -685,13 +745,7 @@ export const stepA13 = async (a: A, tab: Tab) => {
     await tab.stored_()
     const written = (await tab.stored('chains')).find((row) => row.chainId === chains.A)!
     const before = (written.file as Row).hash
-    await tab.page.evaluate((prefix) => {
-        const set = Storage.prototype.setItem
-        Storage.prototype.setItem = function (this: Storage, key: string, value: string) {
-            set.call(this, key, value)
-            if (key.startsWith(`${prefix}saving.`)) window.nseFlushTest!.stall = true
-        }
-    }, prefix)
+    await holdFlushAtMarker(tab)
     await tab.page.keyboard.press('p')
     // The file has the Save's revision, and the binding still the one before it.
     await expect

@@ -11,12 +11,14 @@ import {
 import {
     ReleaseError,
     changedFormatVersions,
+    checkFixtures,
     checkNewVersion,
     checkPatchFormats,
     formatConstants,
     isPatchVersion,
     newestTag,
     parseArgs,
+    readFixturesConfirmedAt,
     readFormatVersions,
 } from '../../scripts/release/rules.mjs'
 
@@ -284,4 +286,21 @@ test('the cut works on today’s changelog', () => {
 test('the date is the local calendar date with padding', () => {
     assert.equal(formatDate(new Date(2027, 2, 2)), '2027-03-02')
     assert.equal(formatDate(new Date(2027, 11, 31, 23, 59)), '2027-12-31')
+})
+
+test('the ship tag is refused when a format path changed since the fixtures were confirmed', () => {
+    refuses(
+        () => checkFixtures('0.6.0', 'f2f4d8a8', ['src/local/save/build.ts']),
+        /confirmed at f2f4d8a8.*src\/local\/save\/build\.ts.*FIXTURES_CONFIRMED_AT/s,
+    )
+    assert.doesNotThrow(() => checkFixtures('0.6.0', 'f2f4d8a8', []))
+    // After the ship the fixtures are never regenerated, so no other version is checked.
+    assert.doesNotThrow(() => checkFixtures('0.6.1', 'f2f4d8a8', ['src/local/save/build.ts']))
+})
+
+test('the commit the fixtures are confirmed at is read from the pins file', () => {
+    const pins = readFileSync(new URL('../local/fixturesV1Pins.ts', import.meta.url), 'utf8')
+    assert.match(readFixturesConfirmedAt(pins), /^[0-9a-f]{7,40}$/)
+    refuses(() => readFixturesConfirmedAt('export const other = 1'), /FIXTURES_CONFIRMED_AT/)
+    refuses(() => readFixturesConfirmedAt(null), /FIXTURES_CONFIRMED_AT/)
 })

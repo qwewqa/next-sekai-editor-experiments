@@ -5,15 +5,19 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { inflateStrict } from '../../src/local/chunkVerify'
 import { hashKey } from '../../src/local/db'
+import { documentDeviceId } from '../../src/local/deviceId'
 import { DUMP_FORMAT, DUMP_VERSION, readDump, type Dump } from '../../src/local/dump'
 import { fromHex16 } from '../../src/local/hash'
 import { keyText } from '../../src/local/kv/keys'
 import type { NxspRead } from '../../src/local/nxsp'
 import { readNxsp } from '../../src/local/nxsp'
+import { noteCountOf } from '../../src/local/records/records'
 import { nodeJsonFromRow, rootJsonFromRow } from '../../src/local/records/rows'
+import { decodeSnapshot } from '../../src/local/records/snapshot'
 import { seedDump } from '../../src/local/seed'
 import { createWorld } from '../../src/local/testing/world'
 import { ZipReader } from '../../src/zip'
+import { FIXTURE_BUILDS, SUMS_DIGESTS } from './fixturesV1Pins'
 import { rows } from './flush/harness'
 
 // The v1 fixtures as a set (Part 1 §1.6.11.9): their checksums, that both dumps and the raw
@@ -33,10 +37,13 @@ const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest(
 test('every fixture matches its folder’s SHA256SUMS, and every file is listed', () => {
     // Catches a regeneration by a later build (the files would then prove nothing: they must be the
     // v0.6.0 code's output), a file edited by hand, and one added without a checksum.
-    for (const [dir, expected] of [
-        [nxspDir, 8],
-        [webDir, 6],
+    // The SHA256SUMS files are rewritten by every run of the writer, so each is itself pinned in the
+    // test source (fixturesV1Pins.ts): an emptied folder written again cannot pass.
+    for (const [dir, expected, folder] of [
+        [nxspDir, 8, 'nxsp-v1'],
+        [webDir, 6, 'web-storage-v1'],
     ] as const) {
+        assert.equal(sha256(readFileSync(join(dir, 'SHA256SUMS'))), SUMS_DIGESTS[folder], folder)
         const sums = readFileSync(join(dir, 'SHA256SUMS'), 'utf8')
         assert.ok(sums.endsWith('\n'))
         assert.ok(!sums.includes('\r'))
@@ -247,7 +254,7 @@ const walk = async (
             const chunk = await read(hash)
             if (chunk) observeChunk(kind, chunk, facts)
         }
-    return Object.assign(facts, { skipped: skipped.chunks })
+    return Object.assign(facts, { skipped: skipped.chunks, chunkKinds: chunks, headers })
 }
 
 const utf8 = new TextDecoder()
@@ -280,8 +287,8 @@ const nxspFacts = (name: string) => {
     return nxspCache.get(name)!
 }
 
-/** The facts of every state a dump's `nodes` and `chunks` rows hold. */
-const dumpFacts = async (json: unknown) => {
+/** A dump's `nodes` and `chunks` rows, seeded into a world, as a source. */
+const dumpSource = async (json: unknown) => {
     const dump = readDump(json)
     const world = createWorld()
     const tab = world.tab('a')
@@ -311,8 +318,11 @@ const dumpFacts = async (json: unknown) => {
             return Promise.resolve(JSON.parse(utf8.decode(inflateStrict(chunk.bytes))) as Rec)
         },
     }
-    return walk(source)
+    return source
 }
+
+/** The facts of every state a dump's `nodes` and `chunks` rows hold. */
+const dumpFacts = async (json: unknown) => walk(await dumpSource(json))
 
 const everything = [
     'root',
@@ -482,6 +492,10 @@ test('the eight files together hold every project.json key, entry kind and field
         'revision.n',
         'revision.savedAt',
         'revision.device',
+        'revision.fileName',
+        'summary.noteCount',
+        'summary.durationMs',
+        'summary.revisionId',
         'revision.ancestors',
         'revision.completeFrom',
         'revision.replaces',
@@ -574,6 +588,8 @@ test('the main dump holds every stored row form of v1', async () => {
     for (const field of ['entry', 'completeFrom', 'disk', 'hash', 'at'])
         assert.ok(fieldsOf(files).has(field), `file.${field}`)
     assert.ok(files.some((file) => (file.entry as Row | undefined)?.notKept))
+    // An append whose base has no row of its own makes an inexact cut (build.ts).
+    assert.ok(files.some((file) => (file.entry as Row | undefined)?.inexact === true))
     const targets = chains.flatMap((chain) =>
         chain.exportTarget ? [chain.exportTarget as Row] : [],
     )
@@ -737,4 +753,158 @@ test('saving-marker-file.nxsp is the write the dump’s saving marker names', as
     assert.ok(chain)
     // The binding still holds the revision before it.
     assert.equal(((chain.revision ?? {}) as Row).id, marker.parent)
+})
+
+/** A project file's `project.json`, read from its ZIP alone. */
+const projectOf = async (path: string) => {
+    const zip = await ZipReader.open(new Blob([readFileSync(path)]))
+    const entry = zip.get('project.json')
+    assert.ok(entry, path)
+    return JSON.parse(utf8.decode(await zip.read(entry, { maxSize: 1 << 24 }))) as Row
+}
+
+test('every file and dump was written by a pinned build', async () => {
+    // Catches a fixture written by another build than the one the pins name: regenerated by a later
+    // build, or a file added from a second run.
+    const files = [
+        ...readdirSync(nxspDir)
+            .filter((each) => each.endsWith('.nxsp'))
+            .map((each) => join(nxspDir, each)),
+        join(webDir, 'saving-marker-file.nxsp'),
+    ]
+    for (const path of files)
+        assert.ok(FIXTURE_BUILDS.includes((await projectOf(path)).appVersion as string), path)
+    for (const [name, json] of await dumpFiles())
+        assert.ok(FIXTURE_BUILDS.includes((json as { appVersion: string }).appVersion), name)
+})
+
+test('every handle row of the three dumps is tagged as a Chromium export writes it', async () => {
+    // Catches a fixture that holds the test override's tokens, a state no v1 build produces: a
+    // later seeder would then meet plain objects where a real profile has none (it leaves tagged
+    // rows without a handle out).
+    let seen = 0
+    for (const [name, json] of await dumpFiles()) {
+        const dump = json as { stores: { name: string; records: { value: Row }[] }[] }
+        for (const record of dump.stores.find((store) => store.name === 'handles')?.records ?? []) {
+            assert.deepEqual(
+                Object.keys(record.value.handle as Row).sort(),
+                ['$handle', 'name'],
+                name,
+            )
+            seen++
+        }
+    }
+    assert.ok(seen > 0)
+})
+
+/** `meta.deviceId` and the editor's `deviceId` key: the same value, which a dump carries twice. */
+const deviceIdOf = (dump: Dump) => {
+    const meta = valuesOf(dump, 'meta').find((row) => row.key === 'deviceId')?.value
+    assert.equal(typeof meta, 'string')
+    const stored = JSON.parse(dump.localStorage['sonolus-next-sekai-editor.deviceId']!) as string
+    assert.equal(stored, meta)
+    return meta as string
+}
+
+/** Each `save` entry of a dump, with whether its device is this install's own for the chain's lineage. */
+const saveDevices = (dump: Dump) => {
+    const deviceId = deviceIdOf(dump)
+    const lineages = new Map(
+        valuesOf(dump, 'sessions').map((session) => {
+            const chain = valuesOf(dump, 'chains').find((row) => row.chainId === session.chainId)
+            assert.ok(chain)
+            return [session.id as string, chain.lineageId as string] as const
+        }),
+    )
+    return valuesOf(dump, 'entries')
+        .filter((entry) => entry.kind === 'save')
+        .map((entry) => {
+            const lineage = lineages.get(entry.sessionId as string)
+            assert.ok(lineage)
+            const id = (entry.device as Row).id as string
+            return { id, lineage, own: id === documentDeviceId(deviceId, lineage) }
+        })
+}
+
+test('a file’s device id is per document: own saves match the install’s derivation, foreign ones do not', async () => {
+    // Catches a later change to the derivation (HMAC-SHA-256 of the lineage under the install’s
+    // `deviceId`, as a UUIDv8): every v1 save would then read as another device’s, the user’s own
+    // completed Save would meet a conflict dialog and a download would stop confirming. The browser
+    // specs pin it too, but only the Node tests run on every push.
+    const main = saveDevices(
+        readDump(JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8'))),
+    )
+    assert.ok(main.length > 0)
+    assert.deepEqual(
+        main.filter((save) => !save.own),
+        [],
+    )
+    const download = saveDevices(
+        readDump(JSON.parse(readFileSync(join(webDir, 'nse-local-data-download.json'), 'utf8'))),
+    )
+    assert.ok(download.some((save) => save.own))
+    assert.ok(download.some((save) => !save.own))
+    // Two lineages, two ids: the same install is not linkable across documents by it.
+    const byLineage = new Map(main.map((save) => [save.lineage, save.id]))
+    assert.ok(byLineage.size > 1)
+    assert.equal(new Set(byLineage.values()).size, byLineage.size)
+    // The marker file’s Save is this install’s own for its lineage.
+    const dump = readDump(JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8')))
+    const marker = await readNxsp(new Blob([readFileSync(join(webDir, 'saving-marker-file.nxsp'))]))
+    assert.equal(marker.kind, 'nxsp')
+    if (marker.kind !== 'nxsp') return
+    const revision = marker.projectJson.revision as { device: { id: string } }
+    assert.equal(
+        revision.device.id,
+        documentDeviceId(deviceIdOf(dump), marker.projectJson.lineageId as string),
+    )
+})
+
+test('every state of the main dump decodes through the reader, and each entry’s noteCount is its state’s', async () => {
+    // Catches a later decoder that misreads an earlier stored state while the head still decodes
+    // (a wrong peek, Restore or Undo). Only the chunk the writer damaged on purpose may fail.
+    const json = JSON.parse(readFileSync(join(webDir, 'nse-local-data.json'), 'utf8')) as unknown
+    const source = await dumpSource(json)
+    const parsed = new Map<string, Rec>()
+    const all = await walk(source)
+    for (const hash of [...all.chunkKinds.keys(), ...all.headers]) {
+        try {
+            parsed.set(hash, await source.chunk(hash))
+        } catch {
+            // The damaged chunk.
+        }
+    }
+    const counts = new Map<string, number | undefined>()
+    for (const [key, root] of source.roots) {
+        try {
+            counts.set(
+                key,
+                noteCountOf(
+                    decodeSnapshot(root, {
+                        node: (hash) => source.node(hash),
+                        chunk: (hash) => {
+                            if (!parsed.has(hash)) throw new Error(`No chunk ${hash}`)
+                            return parsed.get(hash)
+                        },
+                    }).kinds,
+                ),
+            )
+        } catch {
+            counts.set(key, undefined)
+        }
+    }
+    assert.ok([...counts.values()].filter((count) => count === undefined).length <= 2)
+    let checked = 0
+    for (const entry of valuesOf(readDump(json), 'entries')) {
+        const snapshot = (entry.snapshot as { $u8?: string } | undefined)?.$u8
+        if (snapshot === undefined) continue
+        const count = counts.get(keyText(hashKey(new Uint8Array(Buffer.from(snapshot, 'base64')))))
+        if (count === undefined) {
+            assert.equal(entry.kept, false, 'an unreadable state of a kept row')
+            continue
+        }
+        if (entry.noteCount !== undefined) assert.equal(entry.noteCount, count)
+        checked++
+    }
+    assert.ok(checked > 500)
 })

@@ -4,6 +4,8 @@ import { join, resolve } from 'node:path'
 import { decodeValue, readDump, type Dump, type DumpStore } from '../../src/local/dump'
 import { compareKeys, normalizeKey } from '../../src/local/kv/keys'
 import type { Key } from '../../src/local/kv/types'
+import { DUMP_ENTRY } from '../../src/local/rawExport'
+import { buildZip, ZipReader } from '../../src/zip'
 import type { Products } from './products'
 
 // The writer's last step: the dumps edited in the few ways the scenario names, the folders' README
@@ -64,40 +66,80 @@ const addNewerData = (dump: Dump, chains: Record<string, string>) => {
     edits[0]!.zzFixtureEntryField = 1
     edits[1]!.x = { zzFixtureX: 1 }
 
-    // Chain P: a session after its head, with one entry of a kind this build does not know.
+    // Chain P: a session after its head, as a newer build writes one: a continued session (no
+    // stack, which a v1 session may lack) whose entries are a `continue` and then one of a kind this
+    // build does not know.
     const chainP = chainRows.find((row) => row.chainId === chains.P)
     if (!chainP) throw new Error('No chain P')
     const head = sessions.records
         .map((record) => record.value as Row)
         .find((row) => row.id === chainP.head)
     if (!head) throw new Error('Chain P has no head session')
-    const headEntries = entries.records
+    const last = entries.records
         .map((record) => record.value as Row)
         .filter((row) => row.sessionId === head.id)
-    const template = headEntries.filter((row) => row.kind === 'continue').at(-1)
-    if (!template) throw new Error('Chain P has no continue entry to copy')
+        .sort((a, b) => (a.seq as number) - (b.seq as number))
+        .at(-1)
+    if (!last) throw new Error('Chain P has no entry in its head session')
     const id = randomUUID()
     const startedAt = (head.updatedAt as number) + 1000
+    const rest = structuredClone(head)
+    delete rest.stack
     const later: Row = {
-        ...structuredClone(head),
+        ...rest,
         id,
+        origin: 'continued',
         startedAt,
         updatedAt: startedAt + 1000,
         parent: { id: head.id, uptoSeq: head.lastSeq },
-        lastSeq: 1,
-        entryCount: 1,
+        lastSeq: 2,
+        entryCount: 2,
     }
     sessions.records.push({ key: id, value: later })
-    const unknown: Row = {
-        ...structuredClone(template),
+    const continued: Row = {
         sessionId: id,
         seq: 1,
+        time: startedAt,
+        day: head.day,
+        kind: 'continue',
+        operation: {
+            id: 'nse.continue',
+            data: { fromTime: head.updatedAt },
+            version: 1,
+            fallback: { locale: 'en', text: 'Continued' },
+        },
+        snapshot: structuredClone(last.snapshot),
+        noteCount: last.noteCount,
+        dirty: false,
+        kept: true,
+    }
+    const unknown: Row = {
+        ...structuredClone(continued),
+        seq: 2,
         kind: 'zzFixtureKind',
         time: startedAt + 500,
     }
-    entries.records.push({ key: [id, 1], value: unknown })
+    entries.records.push({ key: [id, 1], value: continued }, { key: [id, 2], value: unknown })
     chainP.head = id
     chainP.updatedAt = later.updatedAt
+}
+
+/**
+ * The raw export of step 12 with its handle rows tagged as a real export writes them (`dump.ts`:
+ * `{ $handle, name }`, where the override's tokens stand in during the run), rebuilt the way
+ * `rawExport.ts` builds its ZIP.
+ */
+export const retagRawExport = async (zip: Uint8Array) => {
+    const reader = await ZipReader.open(new Blob([new Uint8Array(zip)]))
+    const entry = reader.get(DUMP_ENTRY)
+    if (!entry) throw new Error('The raw export has no dump.json')
+    const dump = readDump(
+        JSON.parse(new TextDecoder().decode(await reader.read(entry, { maxSize: 1 << 30 }))),
+    )
+    tagHandles(dump)
+    const data = new TextEncoder().encode(JSON.stringify(dump))
+    const built = await buildZip([{ name: DUMP_ENTRY, method: 'deflate', data }])
+    return new Uint8Array(await built.arrayBuffer())
 }
 
 export const processAll = (dump: Dump, chains: Record<string, string>) => {

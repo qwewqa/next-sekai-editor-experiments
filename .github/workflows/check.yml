@@ -71,13 +71,44 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 7
 
+    # The v1 fixtures read by the running editor in Chromium, on every push (the pull request run of
+    # test:browser is the only other Chromium run): the write-back of each history file, the saving
+    # marker, and the web storage reads (docs/format-versioning.md section 8).
+    formats:
+        if: ${{ !inputs.skip_browser_checks }}
+        needs: check
+        runs-on: ubuntu-latest
+        # About 2 min of tests with two workers on a fast desktop.
+        timeout-minutes: 25
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: .node-version
+                  cache: npm
+            - run: npm ci
+            - run: npx playwright install --with-deps chromium
+            - run: npx playwright test tests/browser/formats --project=chromium --workers=2
+            - name: Upload browser failure details
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: formats-failures
+                  path: test-results/
+                  if-no-files-found: ignore
+                  retention-days: 7
+
     compatibility-storage:
         if: ${{ !inputs.skip_browser_checks }}
         needs: check
         runs-on: ubuntu-latest
         # About 1 min of tests in Firefox with one worker on a fast desktop; WebKit runs them on Linux.
-        # 190 tests on one worker passed 25 minutes on 2026-10-21 (155 done, none failing).
-        timeout-minutes: 40
+        # 190 tests on one worker passed 25 minutes on 2026-10-21 (155 done, none failing). The v1
+        # fixtures' web storage spec (11 tests in each browser, 120 to 240 s allowed each) was added
+        # after that, so the limit is 55: read the first run's time and set it from that.
+        timeout-minutes: 55
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:

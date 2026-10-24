@@ -20,7 +20,13 @@ import {
 import { runB } from './contextB'
 import { runD } from './contextD'
 import { runE } from './contextE'
-import { emptyOutputFolders, processAll, processDownload, writeFixtures } from './output'
+import {
+    emptyOutputFolders,
+    processAll,
+    processDownload,
+    retagRawExport,
+    writeFixtures,
+} from './output'
 import { Products } from './products'
 import { nxspReadme, webReadme } from './readme'
 
@@ -54,9 +60,9 @@ test('the v1 fixtures', async ({ browser }) => {
     if (stopAfter('A7')) return
     await stepA8(a, visit7)
     if (stopAfter('A8')) return
-    await stepA9(a, visit7)
+    const visit9 = await stepA9(a, visit7)
     if (stopAfter('A9')) return
-    const visit10 = await stepA10(a, visit7)
+    const visit10 = await stepA10(a, visit9)
     if (stopAfter('A10')) return
     const visit11 = await stepA11(a, visit10)
     if (stopAfter('A11')) return
@@ -76,6 +82,7 @@ test('the v1 fixtures', async ({ browser }) => {
         main: processAll(readDump(JSON.parse(JSON.stringify(dumpA))), a.chains),
         download: processDownload(readDump(JSON.parse(JSON.stringify(dumpD)))),
     }
+    products.put('raw-export.zip', await retagRawExport(products.bytes('raw-export.zip')))
     const written = writeFixtures(products, dumps, {
         nxsp: nxspReadme(BUILD),
         web: webReadme(BUILD),

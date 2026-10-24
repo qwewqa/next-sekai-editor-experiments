@@ -6,9 +6,14 @@ import { cutChangelog, formatDate, messageLines, unreleasedLines } from './chang
 import {
     ReleaseError,
     checkNewVersion,
+    checkFixtures,
     checkPatchFormats,
+    fixturePaths,
+    fixturePins,
+    fixtureShip,
     localChecks,
     parseArgs,
+    readFixturesConfirmedAt,
     readFormatVersions,
     usage,
 } from './rules.mjs'
@@ -122,6 +127,18 @@ function main() {
             readFormatVersions(showAt(newest)),
             readFormatVersions(showAt(commit)),
         )
+    if (version === fixtureShip) {
+        // Only the ship tag: the fixtures are the output of the code it names.
+        const at = readFixturesConfirmedAt(showAt(commit)(fixturePins))
+        if (!succeeds('git', ['merge-base', '--is-ancestor', at, commit]))
+            throw new ReleaseError(
+                `The v1 fixtures are confirmed at ${at}, which is not in the history of ${commit}. Merge their branch with a merge commit, not a squash or a rebase.`,
+            )
+        const changed = git('diff', '--name-only', at, commit, '--', ...fixturePaths)
+            .split('\n')
+            .filter(Boolean)
+        checkFixtures(version, at, changed)
+    }
     if (onMain) requirePassedRuns(commit)
 
     // 4. What is in and out.
