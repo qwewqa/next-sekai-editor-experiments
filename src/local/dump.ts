@@ -139,15 +139,17 @@ export type BlobEntries = (blob: Blob, name: string) => Promise<boolean>
 /** Each Blob handed to `take`, its tag naming its entry, or `$blobUnreadable` when not taken. */
 const entryTags = async (values: unknown[], take: BlobEntries): Promise<BlobTag> => {
     const names = new Map<Blob, string>()
+    const unreadable = new Set<Blob>()
     for (const blob of blobsOf(values)) {
         const name = blobEntryName(names.size)
         if (await take(blob, name)) names.set(blob, name)
+        else unreadable.add(blob)
     }
     return (blob) => {
         const name = names.get(blob)
-        return name === undefined
-            ? { $blobUnreadable: true, type: blob.type, size: blob.size }
-            : { $blobEntry: name, type: blob.type }
+        if (name !== undefined) return { $blobEntry: name, type: blob.type }
+        if (!unreadable.has(blob)) throw new DumpError('A Blob was not handed over')
+        return { $blobUnreadable: true, type: blob.type, size: blob.size }
     }
 }
 
