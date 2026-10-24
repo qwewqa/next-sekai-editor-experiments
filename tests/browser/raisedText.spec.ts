@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
     // Observe submission order, including warm retained groups. Recording only the drawing
     // calls inside captureVectors would omit their later replays and count cold captures twice.
     await page.evaluate(async () => {
-        const { WebGLDrawContext, RenderSurface } = await window.editorTest.appImport<
+        const { WebGLDrawContext } = await window.editorTest.appImport<
             typeof import('../../src/rendering/context')
         >('/src/rendering/context.ts')
         const { DrawPath } =
@@ -148,12 +148,8 @@ test.beforeEach(async ({ page }) => {
             colorProbe.fillStyle = String(ctx.strokeStyle)
             ops.push(`line:${colorProbe.fillStyle}:${String(args[1])}`)
         })
-        wrap('drawImage', (_, args, ops) => {
-            // The composed stage surface is a background, not an editor object. Notes use
-            // ordinary atlas surfaces; they must still draw after the cursor.
-            if (args[0] instanceof RenderSurface && args[0].stageCache) return
-            ops.push('image')
-        })
+        // Notes use ordinary atlas surfaces; they must still draw after the cursor.
+        wrap('drawImage', (_, __, ops) => ops.push('image'))
         wrap('drawNameSprite', (_, __, ops) => ops.push('name'))
         wrap('fillText', (_, args, ops) => ops.push(`text:${String(args[0])}`))
         wrap('drawEditorLabel', (_, args, ops) => ops.push(`text:${String(args[0])}`))

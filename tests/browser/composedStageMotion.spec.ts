@@ -1,112 +1,40 @@
 import { expect, test, type Page } from '@playwright/test'
 import { writeFileSync } from 'node:fs'
-import type { RenderSurface } from '../../src/rendering/context'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 declare global {
     interface Window {
         stageTest: {
-            draws: number
-            shifted: number
-            windows: number
-            resizes: number
-            // The chart's last stage copy: shifted from the motion window, or the exact surface.
-            last?: 'shift' | 'exact'
-            drawsAtShift: number
-            shiftedAt: number
-            motionWindow?: RenderSurface
-            releasedAt?: number
+            // Retained stage meshes built and drawn on the chart.
+            built: number
+            drawn: number
         }
         moving: boolean
     }
 }
 
-// Counts stage draws and copies, so tests wait on state rather than on time.
+// Counts the chart's stage tile builds and draws, so tests wait on state rather than on time.
 const installStageCounters = async () => {
-    const { RenderSurface, WebGLDrawContext } = await window.editorTest.appImport<
+    const { WebGLDrawContext } = await window.editorTest.appImport<
         typeof import('../../src/rendering/context')
     >('/src/rendering/context.ts')
-    const counts: Window['stageTest'] = {
-        draws: 0,
-        shifted: 0,
-        windows: 0,
-        resizes: 0,
-        drawsAtShift: 0,
-        shiftedAt: 0,
-    }
+    const counts: Window['stageTest'] = { built: 0, drawn: 0 }
     window.stageTest = counts
-    const chart = () => document.querySelector<HTMLCanvasElement>('canvas.editor-chart')
-    const clear = WebGLDrawContext.prototype.clear
-    WebGLDrawContext.prototype.clear = function () {
-        if (this.canvas instanceof RenderSurface && this.canvas.stageCache) counts.draws++
-        const target = chart()
-        if (
-            target &&
-            this.canvas instanceof RenderSurface &&
-            this.canvas.width * this.canvas.height > target.width * target.height
-        ) {
-            counts.windows++
-            counts.motionWindow = this.canvas
-        }
-        return clear.call(this)
+    const chart = (ctx: InstanceType<typeof WebGLDrawContext>) =>
+        ctx.canvas instanceof HTMLCanvasElement && ctx.canvas.classList.contains('editor-chart')
+    const { createStageMesh, drawStageMesh } = WebGLDrawContext.prototype
+    WebGLDrawContext.prototype.createStageMesh = function (...args) {
+        if (chart(this)) counts.built++
+        return createStageMesh.apply(this, args)
     }
-    for (const name of ['width', 'height'] as const) {
-        const property = Object.getOwnPropertyDescriptor(RenderSurface.prototype, name)!
-        Object.defineProperty(RenderSurface.prototype, name, {
-            ...property,
-            set(this: RenderSurface, value: number) {
-                const target = chart()
-                if (target && value > target[name]) counts.resizes++
-                property.set!.call(this, value)
-            },
-        })
-    }
-    const dispose = RenderSurface.prototype.dispose
-    RenderSurface.prototype.dispose = function () {
-        if (this === counts.motionWindow) counts.releasedAt ??= performance.now()
-        return dispose.call(this)
-    }
-    // Shifted copies take a source rectangle; exact ones copy the same-sized surface whole.
-    const drawImage = WebGLDrawContext.prototype.drawImage
-    WebGLDrawContext.prototype.drawImage = function (...args: unknown[]) {
-        const target = this.canvas
-        const [source] = args
-        if (target instanceof HTMLCanvasElement && target.classList.contains('editor-chart')) {
-            if (args.length === 9 && source === counts.motionWindow) {
-                counts.shifted++
-                counts.last = 'shift'
-                counts.drawsAtShift = counts.draws
-                counts.shiftedAt = performance.now()
-            } else if (
-                args.length === 3 &&
-                source instanceof RenderSurface &&
-                source.width === target.width &&
-                source.height === target.height
-            )
-                counts.last = 'exact'
-        }
-        return Reflect.apply(drawImage, this, args)
+    WebGLDrawContext.prototype.drawStageMesh = function (...args) {
+        if (chart(this)) counts.drawn++
+        return drawStageMesh.apply(this, args)
     }
 }
 
-// Longer than the gap that ends one motion (stageSurface SUSTAINED_MS).
-const SPACED_MS = 200
-
 const counters = (page: Page) =>
-    page.evaluate(() => {
-        const { draws, shifted, windows, resizes, last, drawsAtShift, shiftedAt, releasedAt } =
-            window.stageTest
-        return {
-            ...{ draws, shifted, windows, resizes, last, drawsAtShift, shiftedAt, releasedAt },
-            frames: window.editorFrames.chart,
-        }
-    })
-
-// Waits, however long load makes it, until the chart shows exact stage pixels again.
-const stillStages = (page: Page) =>
-    expect
-        .poll(() => page.evaluate(() => window.stageTest.last !== 'shift'), { timeout: 15_000 })
-        .toBe(true)
+    page.evaluate(() => ({ ...window.stageTest, frames: window.editorFrames.chart }))
 
 // Moves the view by `step` seconds on app clock ticks, as eased scrolls and playback do,
 // for `count` ticks or until `window.moving` is cleared. Ticks count as motion however
@@ -185,10 +113,9 @@ const seed = (page: Page, time: number) =>
 // Unmasked: a mask repaints the page, which can hide stale stage pixels.
 const chartShot = (page: Page) => page.locator('canvas.editor-chart').screenshot()
 
-// The chart once the pointer has left and the stages are drawn exactly again.
+// The chart once the pointer has left and the view has settled.
 const stillShot = async (page: Page, capture = chartShot) => {
     await page.mouse.move(8, 300)
-    await stillStages(page)
     await frames(page, 4)
     return capture(page)
 }
@@ -275,7 +202,7 @@ for (const dpr of [1, 1.25, 1.5]) {
     test.describe(`DPR ${dpr}`, () => {
         test.use({ deviceScaleFactor: dpr })
 
-        test('moving frames reuse shifted stage pixels and the still frame matches a fresh draw', async ({
+        test('scrolling builds only the stage tiles coming into view and settles on a fresh draw', async ({
             page,
         }) => {
             await page.addInitScript(installCanvasCounters)
@@ -285,36 +212,28 @@ for (const dpr of [1, 1.25, 1.5]) {
             await page.evaluate(installStageCounters)
             await seed(page, 5)
             await frames(page, 3)
-
-            // One scroll step redraws exactly, as before, and so does one spaced past a motion's gap.
             const before = await counters(page)
-            await page.evaluate(() => (window.editorTest.view.time += 0.0137))
+            expect(before.built).toBeGreaterThan(0)
+            // A still redraw draws the same tiles and builds none.
+            await page.evaluate(() => window.editorTest.view.cursorTime++)
             await frames(page, 3)
-            const first = await counters(page)
-            const perDraw = first.draws - before.draws
-            expect(perDraw).toBeGreaterThan(0)
-            await page.waitForTimeout(SPACED_MS)
-            await page.evaluate(() => (window.editorTest.view.time += 0.0137))
-            await frames(page, 3)
-            const step = await counters(page)
-            expect(step.draws - first.draws).toBe(perDraw)
-            expect(step.shifted).toBe(before.shifted)
+            const still = await counters(page)
+            expect(still.built).toBe(before.built)
+            expect(still.drawn).toBeGreaterThan(before.drawn)
 
-            // Clock-driven motion, as in eased scrolling, moves on every tick: frames shift one drawn window.
+            // Clock-driven motion, as in eased scrolling: about one tile a frame at most.
             await moveOnTicks(page, -0.075, 24)
-            // The still frame redraws the stages exactly once the view has held still a while.
-            await stillStages(page)
             await frames(page, 4)
             const after = await counters(page)
-            expect(after.last).toBe('exact')
-            expect(after.draws).toBeGreaterThan(after.drawsAtShift)
-            const moved = after.frames - step.frames
-            expect(after.shifted - step.shifted).toBeGreaterThan(moved / 2)
-            // Far fewer exact redraws than frames, including the still frame's.
-            expect(after.draws - step.draws).toBeLessThan((perDraw * moved) / 2)
+            const moved = after.frames - still.frames
+            expect(after.built - still.built).toBeLessThanOrEqual(moved)
+            // Back over the same ground reuses every tile, building at most the next one past it.
+            await moveOnTicks(page, 0.075, 24)
+            await frames(page, 4)
+            expect((await counters(page)).built - after.built).toBeLessThanOrEqual(1)
             await expectFresh(page, await stillShot(page))
 
-            // Stages hidden, shown again and then scrolled out of view leave nothing on the reused stores.
+            // Stages hidden, shown again and then scrolled out of view leave nothing behind.
             await hideStages(page, true)
             await frames(page, 3)
             await hideStages(page, false)
@@ -328,7 +247,6 @@ for (const dpr of [1, 1.25, 1.5]) {
 // The chart canvas's own pixels once the pointer has left and activity has settled.
 const pixels = async (page: Page) => {
     await page.mouse.move(8, 300)
-    await stillStages(page)
     // Hover highlights return once the view is no longer recently active.
     await expect
         .poll(
@@ -432,84 +350,24 @@ const displayedThemeDifference = (page: Page, a: Buffer, b: Buffer) =>
         [a.toString('base64'), b.toString('base64')] as const,
     )
 
-// Applies `change` while clock-driven scrolling keeps shifting stage pixels.
+// Applies `change` while clock-driven scrolling keeps moving the chart.
 const scrollWhile = async (page: Page, change: () => Promise<unknown>) => {
+    const frames = () => page.evaluate(() => window.editorFrames.chart)
     const moving = moveOnTicks(page, -0.05)
     // Awaited below; a failure here stops the scroll first.
     moving.catch(() => {})
     try {
-        await expect
-            .poll(() => page.evaluate(() => window.stageTest.last), { timeout: 15_000 })
-            .toBe('shift')
+        const before = await frames()
+        await expect.poll(frames, { timeout: 15_000 }).toBeGreaterThan(before + 1)
         await change()
         // Moving frames follow the change before the scroll ends.
-        const shifted = await page.evaluate(() => window.stageTest.shifted)
-        await expect
-            .poll(() => page.evaluate(() => window.stageTest.shifted), { timeout: 15_000 })
-            .toBeGreaterThan(shifted)
+        const after = await frames()
+        await expect.poll(frames, { timeout: 15_000 }).toBeGreaterThan(after + 1)
     } finally {
         await page.evaluate(() => (window.moving = false))
         await moving
     }
 }
-
-test.describe('window sizing', () => {
-    test.use({ deviceScaleFactor: 2 })
-
-    test('motion faster than the window holds draws the view exactly; a reversal reuses the window', async ({
-        page,
-    }) => {
-        await page.addInitScript(installCanvasCounters)
-        await page.goto('/')
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        await page.evaluate(installEditorFixture)
-        await page.evaluate(installStageCounters)
-        await seed(page, 5)
-        await frames(page, 4)
-        const move = async (step: number, count: number) => {
-            await moveOnTicks(page, step, count)
-            const { windows, resizes, shifted } = await counters(page)
-            return { windows, resizes, shifted }
-        }
-        // Each frame moves most of a view: no window can hold two frames of it.
-        expect(await move(0.6, 20)).toEqual({ windows: 0, resizes: 0, shifted: 0 })
-        // Slow motion draws one window and shifts it.
-        const slow = await move(0.01, 20)
-        expect(slow.windows).toBe(1)
-        expect(slow.shifted).toBeGreaterThan(0)
-        // Turning back draws it the other way, on the same canvas.
-        const back = await move(-0.05, 30)
-        expect(back.windows).toBeGreaterThan(slow.windows)
-        expect(back.resizes).toBe(slow.resizes)
-    })
-
-    test('the window is released a few seconds after the view comes to rest', async ({ page }) => {
-        await page.addInitScript(installCanvasCounters)
-        await page.goto('/')
-        await expect(page.locator('canvas.editor-chart')).toBeVisible()
-        await page.evaluate(installEditorFixture)
-        await page.evaluate(installStageCounters)
-        await seed(page, 5)
-        await frames(page, 4)
-        const size = () =>
-            page.evaluate(() => {
-                const canvas = window.stageTest.motionWindow
-                return canvas
-                    ? canvas.getContext().isContextLost()
-                        ? 0
-                        : canvas.width * canvas.height
-                    : undefined
-            })
-        await moveOnTicks(page, 0.01, 20)
-        const moved = await counters(page)
-        expect(moved.windows).toBe(1)
-        expect(moved.shifted).toBeGreaterThan(0)
-        await expect.poll(size, { timeout: 15_000 }).toBe(0)
-        // Kept through a pause, for the next motion: released seconds after the last moving frame.
-        const { shiftedAt, releasedAt } = await counters(page)
-        expect(releasedAt! - shiftedAt).toBeGreaterThan(2000)
-    })
-})
 
 test.describe('changes during motion', () => {
     test.use({ deviceScaleFactor: 1.25 })
@@ -602,7 +460,7 @@ test.describe('changes during motion', () => {
         expect(await background()).not.toBe(light)
     })
 
-    test('a pixel ratio change mid-scroll redraws exactly', async ({ page }) => {
+    test('a pixel ratio change mid-scroll settles on a fresh draw', async ({ page }) => {
         // Chromium's CDP override changes DPR without notifying resolution media
         // queries when the viewport size stays fixed. Exercise the original
         // resize plus DPR transition regardless of the suite's initial viewport.
@@ -646,7 +504,7 @@ test.describe('changes during motion', () => {
         expect(await resolution()).toEqual(before)
     })
 
-    test('hiding the app during playback leaves no shifted stage pixels', async ({ page }) => {
+    test('hiding the app during playback settles on a fresh draw', async ({ page }) => {
         const command = (name: 'play' | 'stop') =>
             page.evaluate(async (name) => {
                 const { commands } = await window.editorTest.appImport<
@@ -655,10 +513,11 @@ test.describe('changes during motion', () => {
                 await commands[name].execute()
             }, name)
         await command('play')
-        // Hidden only once playback frames shift stage pixels.
+        // Hidden only once playback frames move the stage tiles.
+        const drawn = await page.evaluate(() => window.stageTest.drawn)
         await expect
-            .poll(() => page.evaluate(() => window.stageTest.shifted), { timeout: 15_000 })
-            .toBeGreaterThan(1)
+            .poll(() => page.evaluate(() => window.stageTest.drawn), { timeout: 15_000 })
+            .toBeGreaterThan(drawn + 1)
         await page.evaluate(() => window.dispatchEvent(new Event('blur')))
         await page.waitForTimeout(300)
         await page.evaluate(() => window.dispatchEvent(new Event('focus')))

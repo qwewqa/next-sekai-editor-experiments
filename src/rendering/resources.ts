@@ -3,12 +3,9 @@ import {
     Container,
     EventSystem,
     extensions,
-    Matrix,
     ImageSource as PixiImageSource,
-    RenderTarget,
     RenderTexture,
     SchedulerSystem,
-    Sprite,
     Texture,
     WebGLRenderer,
     type TextureSource,
@@ -28,7 +25,6 @@ extensions.add(RenderingScheduler)
 export type ImageSource = HTMLCanvasElement | HTMLImageElement | ImageData
 export type Client = { flush(): void; dispose(): void; resetSurface(): void }
 const imageBudget = 96 * 1024 * 1024
-const stageTilePixels = 1024 * 1024
 export class RenderingResources {
     readonly renderer = new WebGLRenderer()
     readonly gl: WebGL2RenderingContext
@@ -44,7 +40,6 @@ export class RenderingResources {
     private readonly images = new Map<ImageSource, { texture: Texture; bytes: number }>()
     private imageBytes = 0
     private readonly readers = new Map<TextureSource, Set<() => void>>()
-    private readonly stageTargets = new WeakSet<RenderTexture>()
 
     constructor(readonly canvas: HTMLCanvasElement) {
         const attrs: WebGLContextAttributes = {
@@ -120,41 +115,8 @@ export class RenderingResources {
             scaleMode: 'linear',
         })
     }
-    /** Stage caches retain resolved pixels; every update replaces the complete image. */
-    stageTarget(width: number, height: number) {
-        const texture = this.target(width, height)
-        // A later read must attach the preserved pixels directly. Creating a
-        // fresh MSAA draw buffer for readback could resolve blank pixels over it.
-        texture.source.antialias = false
-        this.stageTargets.add(texture)
-        return texture
-    }
     render(container: Container, target: RenderTexture | undefined, clear: boolean) {
         if (!this.initialized || this.lost || this.disposed) return false
-        if (target && this.stageTargets.has(target)) {
-            if (!clear) throw new Error('Stage cache updates must replace the complete image')
-            if (target.width * target.height > stageTilePixels) {
-                this.renderStageTiles(container, target)
-                return true
-            }
-            // Pixi derives MSAA from the color source when this explicit target
-            // is first bound. The finished texture itself needs no attachments.
-            target.source.antialias = true
-            let temporary: RenderTarget | undefined
-            try {
-                temporary = new RenderTarget({ colorTextures: [target.source] })
-                this.renderer.render({
-                    container,
-                    target: temporary,
-                    clear: true,
-                    clearColor: [0, 0, 0, 0],
-                })
-            } finally {
-                target.source.antialias = false
-                temporary?.destroy()
-            }
-            return true
-        }
         this.renderer.render({
             container,
             target,
@@ -163,72 +125,8 @@ export class RenderingResources {
         })
         return true
     }
-    private renderStageTiles(container: Container, output: RenderTexture) {
-        const width = output.width
-        const height = Math.min(
-            output.height,
-            this.maxSurfaceSize,
-            Math.max(1, Math.floor(stageTilePixels / width)),
-        )
-        let texture: RenderTexture | undefined
-        let scratch: RenderTarget | undefined
-        let resolved: RenderTarget | undefined
-        let copy: Container | undefined
-        try {
-            texture = RenderTexture.create({
-                width,
-                height,
-                resolution: 1,
-                antialias: true,
-                scaleMode: 'linear',
-            })
-            scratch = new RenderTarget({ colorTextures: [texture.source] })
-            resolved = new RenderTarget({ colorTextures: [output.source] })
-            copy = new Container()
-            const sprite = new Sprite(texture)
-            copy.addChild(sprite)
-            container.updateLocalTransform()
-            const base = container.localTransform.clone()
-            for (let y = 0; y < output.height; y += height) {
-                this.renderer.render({
-                    container,
-                    target: scratch,
-                    clear: true,
-                    clearColor: [0, 0, 0, 0],
-                    transform: new Matrix(base.a, base.b, base.c, base.d, base.tx, base.ty - y),
-                })
-                // Integer tile boundaries preserve the stage cache's 1:1 copy
-                // contract; the persistent destination has no AA attachment.
-                sprite.y = y
-                this.renderer.render({
-                    container: copy,
-                    target: resolved,
-                    clear: y === 0,
-                    clearColor: [0, 0, 0, 0],
-                })
-            }
-        } finally {
-            copy?.destroy({ children: true })
-            resolved?.destroy()
-            scratch?.destroy()
-            texture?.destroy(true)
-        }
-    }
     pixels(target: RenderTexture) {
-        if (!this.stageTargets.has(target)) return this.renderer.extract.pixels({ target })
-        // Read the resolved texture through a temporary non-MSAA attachment;
-        // neither extraction nor a later render may recreate a blank MSAA store.
-        const temporary = new RenderTarget({ colorTextures: [target.source] })
-        try {
-            this.renderer.renderTarget.bind({ target: temporary, clear: false })
-            const width = temporary.pixelWidth
-            const height = temporary.pixelHeight
-            const pixels = new Uint8ClampedArray(width * height * 4)
-            this.gl.readPixels(0, 0, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, pixels)
-            return { pixels, width, height }
-        } finally {
-            temporary.destroy()
-        }
+        return this.renderer.extract.pixels({ target })
     }
     addReader(source: TextureSource, flush: () => void) {
         let set = this.readers.get(source)
