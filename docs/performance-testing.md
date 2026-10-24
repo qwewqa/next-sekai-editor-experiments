@@ -178,7 +178,7 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
     - each level's `resources/levels/<id>/data` (gzip) and `bgm`;
     - or `repository/<hash>`, where the hash is `item.data.hash` in `metadata/levels/<id>.json`.
 
-    Gunzip the data to a `.json` outside the repo and point the plan at it. Useful ones:
+    Gunzip the data to a `.json` outside the repo or in the git-ignored `perf-results/`, and point the plan at it. Useful ones:
 
 | Level id                 | Title         | Notes       | Connectors | Length | Lanes | Stages | Time-scale changes |
 | ------------------------ | ------------- | ----------- | ---------- | ------ | ----- | ------ | ------------------ |
@@ -188,6 +188,12 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 | coconut-next-sekai-21506 | Brain Rot     | 1,257       | 483        | 136 s  | ±120  | 31     | 107                |
 
 Note counts are the editor's where known, else level data's.
+
+`round2.json` reads these from `perf-results/data/`:
+
+- `coconut.json` and `coconut.mp3`: copies of `test_level_data/coconut-next-sekai-24887.json` and its `.bgm.mp3`;
+- `real-<id>.json` for the four levels above (`real-21888.json`, `real-23792.json`, `real-16471.json`, `real-21506.json`), and `brainrot.mp3`, the `bgm` of `coconut-next-sekai-21506`;
+- `stress-x8.json`: `npm run perf:stress -- perf-results/data/coconut.json perf-results/data/stress-x8.json`.
 
 ## Baseline
 

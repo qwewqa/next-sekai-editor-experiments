@@ -1,4 +1,4 @@
-# Sonolus Next SEKAI Editor
+# Next SEKAI Editor
 
 [Editor](https://nse.qwewqa.dev/)
 
@@ -10,8 +10,20 @@ npm run dev
 ```
 
 Local preview requires `public/resource/skin.scp`; `public/resource/particle.scp` is optional.
+The browser specs need them. To download the hash-locked skin and particle
+(`deployment/preview-assets.lock.json`) into `public/resource/`, as CI does:
+
+```sh
+node --input-type=module -e "const { stagePreviewAssets } = await import('./scripts/release-assets.mjs'); await stagePreviewAssets(process.cwd(), 'public')"
+```
 
 `npm run build:release` builds `dist` with preview assets.
+
+## Maintaining
+
+Setup, tests, formats and releasing are in [CONTRIBUTING.md](CONTRIBUTING.md). The specs are
+[History and browser storage](docs/history-format.md), [the project file](docs/nxsp-format.md)
+and [format versioning](docs/format-versioning.md). The release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## Built-in assets and the native build
 
@@ -35,6 +47,10 @@ Build targets cover syntax; browser APIs still need feature detection or fallbac
 Note rendering falls back when `roundRect` is unavailable, and viewport sizing
 falls back to `vh` when dynamic viewport units are unavailable.
 
+At run time the support gate (`public/gate.js`) needs IndexedDB, `navigator.storage.estimate`,
+Web Locks, OffscreenCanvas and `structuredClone`, and shows a plain page in a browser that lacks one.
+With the build targets, that makes the minimum Safari and iOS 17, Chrome and Edge 106, and Firefox 105.
+
 ```sh
 npx playwright install firefox webkit
 npm run test:compatibility
@@ -46,9 +62,10 @@ orientations, WebGL editor rendering, preview texture decoding/rendering, and
 internal copy/paste when browser clipboard permissions are denied.
 The suite also checks audio scheduling and waveform rendering.
 
-The October 2026 audit additionally passed all five production UI checks in
+Before the support gate, the October 2026 audit also passed all five production UI checks in
 archived Chromium 107.0.5304.18, Firefox 105.0.1, and WebKit 16.0 binaries from
-Playwright 1.27.1. Archived binaries are for isolated local testing only.
+Playwright 1.27.1. WebKit 16.0 now gets the gate’s page. Archived binaries are for isolated
+local testing only.
 
 [Playwright WebKit](https://playwright.dev/docs/browsers#webkit) is a Safari engine
 check, not a real iPhone or branded Safari test. Its Windows build lacks Web Audio:

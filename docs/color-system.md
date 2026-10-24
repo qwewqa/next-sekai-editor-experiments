@@ -64,7 +64,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
    - *Direction:* the step goes the way that keeps the label at 4.5:1. That is usually the same direction as hover and toward the label. The exceptions, each forced by contrast:
      - dark filled faces with dark ink (periwinkle, coral) lighten;
      - on the mid-tone light chrome, a press darkens (`chrome-press`), because a lighter step dims its white ink below 4.5:1.
-   - *Classify by behaviour:* anything held under a finger, key or drag is a press, including the held transport step, the flyout row under a press-drag and the resize line being dragged.
+   - *Classify by behaviour:* anything held under a finger, key or drag is a press, including the held transport step, the toolbar face a Quick Switch press holds, the flyout row under a press-drag and the resize line being dragged.
 
 10. **Focus is a 2 px ring drawn 2 px inside the face, in the face's own ink.** Face shows on both sides of the ring, so it reads on any fill over any surface.
     - *Reason:* a ring is visible only if it contrasts with what lies on both sides of it. A ring flush with the edge merges with a surround of its own colour: the white ring of an ink pill on a white-ish modal, or the ink ring of a light tool over the ink-coloured chart.
@@ -104,7 +104,7 @@ Values are RGB channel triples, as in `src/themes.css`. OKLCH is given as L C h.
 
 These are unchanged from v0.5.22:
 
-- the surfaces and inks: `fg`, `fg-strong`, `bg`, `scrim`, `button`, `header`, `header-hover`, `modal`, `popup`, `popup-hover`, `popup-edge`, `preview`, `knob`, `recess`, `band-hover`, `change`;
+- the surfaces and inks: `fg`, `fg-strong`, `bg`, `scrim`, `button`, `header`, `header-hover`, `modal`, `popup`, `popup-hover`, `popup-edge`, `preview`, `knob`, `recess`, `band-hover`;
 - `accent` and `on-accent` (the same in both themes);
 - the light `danger` and `on-danger`, and the dark `danger`.
 
@@ -131,8 +131,9 @@ These are unchanged from v0.5.22:
 | Warning | `warning` *new* | 146 91 12 `#925b0c` (.521 .110 68) | 255 218 124 `#ffda7c` (.900 .121 88) | Warning text and glyphs, always with the triangle |
 | Info | `info` *new* | 22 102 170 `#1666aa` (.501 .130 250) | 190 227 255 `#bee3ff` (.898 .055 241) | Info glyphs and text, always with the circle |
 | Switch off track | `toggle-off` *new* | 143 143 163 `#8f8fa3` | 117 120 151 `#757897` | ToggleSwitch when off |
+| History changes | `change` *new* | 255 155 66 `#ff9b42` | same | Defined but not read yet: the change marks use `CHANGE_COLOR` in `src/editor/canvas/changes.ts` (section 13) |
 
-**Chrome tier.** The dark chrome over the chart (status bar, panel rail, toolbar row, elevation header, offscreen badges) is mid-tone in light and dark in dark. `.surface-chrome` on those roots sets status values that pass 4.5:1 on both:
+**Chrome tier.** The dark chrome over the chart (status bar, panel rail, toolbar row, elevation header, offscreen badges) is mid-tone in light and dark in dark. `.surface-chrome` on those roots sets status values that pass 4.5:1 on both (the offscreen badges use only white and do not carry it):
 
 | Token | Value | On light chrome | On dark chrome |
 |---|---|---|---|
@@ -401,7 +402,7 @@ module.exports = plugin(({ addComponents }) => {
 **Open triggers:**
 
 - `.btn` and `.ghost` with `[aria-haspopup][aria-expanded='true']` (or `.holds-open`) hold their hover look, except while pressed.
-- That covers Brush Add, change options (…), the row More button, the Manager bulk Move and More buttons and Go To (`aria-haspopup="dialog"`). Go To gains an open state it did not have.
+- That covers Brush Add, change options (…), the Manager row and Recent Sessions row More buttons, the Manager bulk Move and More buttons and Go To (`aria-haspopup="dialog"`). Go To gains an open state it did not have.
 - Disclosures that should hold open, such as PreviewSettings, add `.holds-open`.
 
 **Order inside the file matters** and is commented in it: rest, then the on-state, then hover, then open, then press, then the on-state's press. Equal-specificity rules therefore resolve press over hover and on over hover.
@@ -422,10 +423,10 @@ Prefer making the face the element.
 | | ManagerRow `.manager-name` | **Checked row** while selecting | None (not a toggle); the row takes `row-checked` |
 | | ManagerRow `.manager-mode` | Select on | `ghost btn-toggle` |
 | | ElevationEditor `.elevation-square` | Snap grid on | `btn btn-secondary btn-toggle` |
-| `aria-haspopup` + `aria-expanded` | ChangeArrows options, BrushPropertiesFields Add, ManagerList bulk Move and More, ManagerRow More (`menu`); HistoryPanel Go To (`dialog`) | A popup is open | Holds the hover look |
+| `aria-haspopup` + `aria-expanded` | ChangeArrows options, BrushPropertiesFields Add, ManagerList bulk Move and More, ManagerRow More, RecentSessionsTab row More (`menu`); HistoryPanel Go To (`dialog`) | A popup is open | Holds the hover look |
 | `aria-expanded` alone | TimelineList groups, ManagerRow folders, PropertiesPanel sections, PropertiesBlock, PanelRail tabs and toggle, PreviewTransport, toolbar groups | Disclosure | None, unless `.holds-open` (PreviewSettings only) |
 | `aria-invalid` | ExportModal, ServerBody, ScaleSelectionModal, SaveDialog | Invalid field | `field` red edge |
-| `.is-pressed` (class) | PreviewTransport held step (today `is-held`), toolbar flyout row under a press-drag (today `!bg-accent`) | Held | The press look |
+| `.is-pressed` (class) | PreviewTransport held step, the toolbar face a Quick Switch press holds, toolbar flyout row under a press-drag | Held | The press look |
 
 ---
 
@@ -621,7 +622,7 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 | Details pill on unavailable rows | `ghost` |
 | Step Details, Property Changes: Show More, View Chart, Try Again | `btn btn-secondary` |
 | Status badge | `bg-fg/8` chip (unchanged) |
-| Change marks | Canvas orange via `--color-change` (C9) |
+| Change marks | Canvas orange, `CHANGE_COLOR` in `changes.ts`; the `--color-change` token is defined but not read yet (C9) |
 
 `historyPanel.spec.ts` (the accent shadow) changes with the History surfaces.
 
@@ -645,8 +646,8 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 | `press-is-mint` | Mint, or any `bg-`, `text-`, `fill-`, `ring-`, `border-` (and the other colour prefixes) `on-accent`, with or without an opacity, under any press variant (`active:`, `group-active:`, `peer-active:`, `has-[:active]:`, `enabled:active:`, `[.popup-item:enabled:active_&]:`), and any CSS rule whose selector is `:active`, `.is-held`, `.is-pressed` or `-pressed` (ignoring `:not(:active)`) with mint in its body | Press is never on |
 | `mint-outside-recipes` | `bg-` / `text-` / `ring-` / `fill-` / `border-` / `outline-` / `shadow-` with `accent`, `accent-press`, `accent-strong` or `selected`; `theme('colors.accent' / 'on-accent' / 'selected')`; `var(--color-accent / on-accent / selected)` | On-states come from recipes; **bare `bg-accent` included** |
 | `hover-glow-outside-recipes` | `shadow-accent` with any variant | The glow lives in `.btn` |
-| `focus-colour` | `focus:`, `focus-visible:` or `group-focus-visible:` with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`, which carries no colour prefix, so it passes; `.popup-item` in `index.css` moves to it in C0 |
-| `focus-outline-none` | `focus:outline-none` or `focus-visible:outline-none` (in a class string or `@apply`) in a non-exempt file | The recipe ring sits in the components layer, and a leftover `outline-none` of equal specificity in the later utilities layer removes it without any visible error. 29 sites today |
+| `focus-colour` | A focus variant (`focus:`, `focus-visible:`, `focus-within:`, `group-focus-visible:` or `peer-focus-visible:`) with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`, which carries no colour prefix, so it passes; `.popup-item` in `index.css` uses it |
+| `focus-outline-none` | `outline-none` under any of those focus variants, such as `focus:outline-none` or `focus-visible:outline-none` (in a class string or `@apply`), in a non-exempt file | The recipe ring sits in the components layer, and a leftover `outline-none` of equal specificity in the later utilities layer removes it without any visible error |
 | `danger-fill-outside-recipes` | `bg-danger` | `.btn-danger` / `danger-fill` |
 | `raw-palette` | Tailwind palette colours (`amber-300`, `sky-300`, …) | Tokens |
 | `colour-literal` | `bg-[#…]`, `text-[rgb(…)]` | Tokens |
@@ -663,7 +664,7 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 - `NoteShapeIcon.vue`
 - `commands/bpm.ts` and `timeScale.ts`
 
-**Allowed mint outside recipes.** Each entry is a file, a pattern the line must match, and a reason:
+**Allowed mint outside recipes.** Each entry is a file, a pattern the line must match, and a reason. An entry excuses only `mint-outside-recipes` and `hover-glow-outside-recipes`; the line still fails the other rules.
 
 | File | Allowed | Reason |
 |---|---|---|
@@ -681,7 +682,7 @@ Adding to either list needs a reason in the entry.
 
 ### 11.5 Fixtures
 
-A unit test feeds one synthetic snippet per inventoried form through the detector and expects a hit. The forms are a class string, `group-active:`, `peer-active:`, `has-[:active]:`, `!bg-accent`, `@apply bg-accent` in an `:active` rule, `theme('colors.accent')` in a `:focus-visible` rule, `hover:shadow-accent`, `focus-visible:ring-white`, `focus-visible:outline-none`, `focus:outline-none`, `@apply focus-visible:outline-none`, `group-active:bg-on-accent/30`, `active:border-on-accent`, `text-amber-300` and `bg-[#fff]`. A second list of snippets must pass: the recipes (`btn btn-secondary`, `ghost ghost-band btn-toggle`, `row-checked row-current focus-edge`, `focus-out`), `text-danger bg-danger-fill text-on-danger`, `bg-ghost-press text-fg-strong` and a plain `outline-none`. The test requires every snippet of the first list to hit and every snippet of the second to pass, so the check keeps working after the legacy cases are gone.
+A unit test feeds one synthetic line per inventoried form through the detector and expects a hit. Each is a bare line, not a CSS rule: `bg-accent text-on-accent` in a class string, `active:`, `group-active:`, `peer-active:` and `has-[:active]:` with mint, `!bg-accent`, `@apply bg-accent text-on-accent`, `color: theme('colors.accent')`, `hover:shadow-accent`, `focus-visible:ring-white`, `focus-visible:outline-fg`, `focus-visible:outline-none`, `focus:outline-none`, `@apply focus-visible:outline-none`, `group-active:bg-on-accent/30`, `active:border-on-accent`, `active:ring-on-accent`, `text-amber-300` and `bg-[#fff]`. A second list must pass: the recipes (`btn btn-secondary`, `btn btn-primary focus-out`, `ghost ghost-band btn-toggle`, `row-checked row-current focus-edge`, `row-select`), `text-danger bg-danger-fill text-on-danger`, `bg-ghost-press text-fg-strong`, `active:bg-ghost-press`, `focus-visible:outline-offset-2`, `@apply bg-press text-fg-strong`, `text-warning text-info`, a plain `outline-none` and `bg-on-accent`. The test requires every snippet of the first list to hit and every snippet of the second to pass, so the check keeps working after the legacy cases are gone.
 
 ---
 
@@ -766,7 +767,7 @@ C5 toolbar notes:
 Chart content keeps its own colours:
 
 - notes, connectors, guides, grid and stages;
-- the minimap's content and change ticks (its box and cursor are UI: white on `bg`);
+- the minimap's content and change ticks (its box and cursor are UI: white on `bg`, the box with a dark outer ring);
 - the elevation canvas and the preview renderer;
 - NoteShapeIcon;
 - the BPM and time-scale chips;
@@ -782,7 +783,6 @@ Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They 
 
 - **Mixed UI between packages.** Use an integration branch and make no release until C10.
 - **`controls.css` reaches Tailwind through a plugin that reads it with `readFileSync`.** Tailwind rebuilds only for dependencies it can see, so the plugin names the file in a `require('./src/controls.css')` comment (6.1) and edits reach a running dev server. Check a long-lived server before a capture round all the same: probe a recently added recipe in the served `/src/index.css`.
-- **Safari 16.0–16.3** draws outlines as rectangles, so the inside ring is square on rounded pills there. Focus stays visible; this is accepted under the old-iOS rule (practical scope).
 - **Light theme, on against secondary,** differs mainly in hue (ΔE 17, protan 8). Form carries the state, as in v0.5.22.
 - **Dark switch track off against the pill** is 1.92:1; the knob carries the state.
 - **Light warning against danger** is deutan-confusable; the glyphs carry it.
