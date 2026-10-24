@@ -361,6 +361,16 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
                 }),
                 'unknown keys',
             ],
+            // A tag is `{ title }` only.
+            [
+                'tag-icon',
+                craft((items) => {
+                    const p = jsonOf(items, 'project.json')
+                    p.metadata.tags[0].icon = 'star'
+                    setJson(items, 'project.json', p)
+                }),
+                "metadata.tags[0]: unknown keys ['icon']",
+            ],
             [
                 'chunk-hash',
                 craft((items) => {

@@ -566,9 +566,9 @@ The builders are in `src/editor/headerLabelText.ts`, wrapped by `src/editor/head
 
 **`nse.levelInfo.set`** `{changes}`: 1 to 9 changes in the dialog's order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not a lone `initialLife` (that is `nse.header.set`).
 
-- Shapes: `title`, `artists`, `author`, `description` `{before, after: NameText}` (unset is the empty name); `rating` `{before, after: number | null}`; `tags` `{added, removed, changed?: positive, reordered?: true}` (counts by title); `cover`, `preview` `{before, after: NameText | null}`; `initialLife` `{before, after}`. A name pair is unchanged only when the texts are equal and neither is cut.
+- Shapes: `title`, `artists`, `author`, `description` `{before, after: NameText}` (unset is the empty name); `rating` `{before, after: number | null}`; `tags` `{added, removed, reordered?: true}` (counts by title); `cover`, `preview` `{before, after: NameText | null}`; `initialLife` `{before, after}`. A name pair is unchanged only when the texts are equal and neither is cut.
 - *Produced by:* the Level Info dialog (`applyLevelInfo`, `src/editor/levelInfo/apply.ts`). One Apply is at most one step: `levelInfoInput` compares the live state's level info with the fields the user changed, laid over it (the dialog's own BGM steps stay), and returns `undefined` when nothing changed, so no step is pushed. A cover or preview picked in the dialog is held (`holdMedia`) at the pick, before the step names it, so the flush that stores the step carries its bytes.
-- *Step Details:* "Changed level info"; change rows per field (`historyChanges.fields.*`, "Preview Audio" for preview), tags as "Tags Added", "Tags Removed", "Tags Changed" and "Tags: Changed" for a reorder. Never grouped.
+- *Step Details:* "Changed level info"; change rows per field (`historyChanges.fields.*`, "Preview Audio" for preview), tags as "Tags Added", "Tags Removed" and "Tags: Changed" for a reorder. Never grouped.
 
 **`nse.dynamicStages.enable`** `{created: nativeCounts}`.
 

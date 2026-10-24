@@ -116,7 +116,7 @@ const planTables: Record<string, string[]> = {
     stage: ['id', 'name', 'isFromStart', 'isUntilEnd', 'generateSimLines', 'folderId?'],
     folder: ['id', 'name', 'index', 'folderId?'],
     levelInfo: ['title', 'artists', 'author', 'description', 'tags', 'cover', 'preview', 'rating?'],
-    tag: ['title', 'icon?'],
+    tag: ['title'],
     mediaRef: ['hash', 'filename', 'size', 'type'],
     bgm: ['hash', 'filename', 'size', 'type', 'durationMs?'],
     note: [

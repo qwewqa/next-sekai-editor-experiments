@@ -86,19 +86,10 @@ test('nothing changed is no step; Initial Life alone is nse.header.set', () => {
     assert.equal(both?.id, 'nse.levelInfo.set')
 })
 
-test('tags: those added and removed by title, those given another icon, and a change of order', () => {
-    const tags = (...titles: (string | [string, string])[]) =>
-        titles.map((title) =>
-            typeof title === 'string' ? { title } : { title: title[0], icon: title[1] },
-        )
-    const change = (
-        before: (string | [string, string])[],
-        after: (string | [string, string])[],
-    ) => {
-        const input = levelInfoInput(
-            info({ tags: tags(...before) }),
-            info({ tags: tags(...after) }),
-        )
+test('tags: those added and removed by title, and a change of order', () => {
+    const tags = (titles: string[]) => titles.map((title) => ({ title }))
+    const change = (before: string[], after: string[]) => {
+        const input = levelInfoInput(info({ tags: tags(before) }), info({ tags: tags(after) }))
         if (input?.id !== 'nse.levelInfo.set') return input
         assert.equal(operationCodecs['nse.levelInfo.set'].is(input.data), true)
         return input.data.changes
@@ -114,18 +105,11 @@ test('tags: those added and removed by title, those given another icon, and a ch
     assert.deepEqual(change(['a', 'b', 'c'], ['c', 'b', 'a', 'd']), [
         { field: 'tags', added: 1, removed: 0, reordered: true },
     ])
-    // So is an icon given to a tag that stays, or taken from it, or swapped.
-    assert.deepEqual(change(['a'], [['a', 'star']]), [
-        { field: 'tags', added: 0, removed: 0, changed: 1 },
-    ])
-    assert.deepEqual(change([['a', 'star'], 'b'], ['a', ['b', 'moon']]), [
-        { field: 'tags', added: 0, removed: 0, changed: 2 },
-    ])
-    assert.deepEqual(change([['a', 'star'], 'b'], ['b', ['a', 'star'], 'c']), [
+    assert.deepEqual(change(['a', 'b'], ['b', 'a', 'c']), [
         { field: 'tags', added: 1, removed: 0, reordered: true },
     ])
     // Nothing moved or changed is no step.
-    assert.equal(change(['a', ['b', 'x']], ['a', ['b', 'x']]), undefined)
+    assert.equal(change(['a', 'b'], ['a', 'b']), undefined)
     assert.equal(change([], []), undefined)
 })
 
@@ -222,7 +206,7 @@ test('v0.6.0 renders it: the step reads Changed level info, and Details lists ea
 test('every locale renders the description and Details with no placeholder left', () => {
     const input = levelInfoInput(
         info({ title: 'Old', tags: [{ title: 'a' }, { title: 'b' }] }),
-        info({ title: 'New', rating: 5, tags: [{ title: 'b' }, { title: 'a', icon: 'star' }] }),
+        info({ title: 'New', rating: 5, tags: [{ title: 'b' }, { title: 'a' }, { title: 'c' }] }),
         { before: 1, after: 2 },
     )
     assert.ok(input)
@@ -234,7 +218,7 @@ test('every locale renders the description and Details with no placeholder left'
         assert.equal(details.description, text)
         assert.deepEqual(
             details.rows.map((row) => row.key),
-            ['title', 'rating', 'tagsChanged', 'tagsOrder', 'initialLife'],
+            ['title', 'rating', 'tagsAdded', 'tagsOrder', 'initialLife'],
         )
         assert.ok(details.rows.every((row) => row.label.length > 0 && row.key.length > 0))
     }

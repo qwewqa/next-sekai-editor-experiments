@@ -2330,7 +2330,6 @@
     "removed": "削除",
     "tagsAdded": "追加したタグ",
     "tagsRemoved": "削除したタグ",
-    "tagsChanged": "変更したタグ",
     "order": "順序",
     "folder": "フォルダー",
     "groupFolder": "グループフォルダー",
@@ -2348,8 +2347,7 @@
       "previewAudio": "プレビュー音源",
       "duration": "長さ",
       "size": "サイズ",
-      "type": "種類",
-      "icon": "アイコン"
+      "type": "種類"
     },
     "contentsChanged": "内容が変更されました",
     "showMore": "さらに表示",

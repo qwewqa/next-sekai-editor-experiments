@@ -199,7 +199,7 @@ From the minimal file of §17.1 (a Save with History off):
 
 ### 5.4 `metadata` and level info
 
-Keys, all optional: `title`, `artists`, `author`, `description` (strings), `rating` (finite number), `tags` (array of `{title, icon?}`, both strings), `cover`, `preview` (media forms). A wrong form is `invalid-key` at its path; a tag with another key is `unknown-key`.
+Keys, all optional: `title`, `artists`, `author`, `description` (strings), `rating` (finite number), `tags` (array of `{title}`, `title` a string), `cover`, `preview` (media forms). A wrong form is `invalid-key` at its path; a tag with another key is `unknown-key`.
 
 The pinned mapping to a state's level info: an absent string is `""`; absent `tags` is `[]`; absent `rating` is "no rating" (a rating of `0` is written as `0`); `cover` and `preview` become media references (§6.6) from their forms. The writer leaves out empty strings and empty `tags`, and leaves `metadata` out when nothing is left.
 
@@ -313,7 +313,7 @@ All unlisted numbers are finite numbers. `eventEase` is any ease (§6.7): the ea
 
 ### 6.6 Level info and media references
 
-Level info: `title`, `artists`, `author`, `description` (strings; `""` is unset), `tags` (list of `{title, icon?}`), `cover`, `preview` (media references, optional), `rating` (finite number, optional).
+Level info: `title`, `artists`, `author`, `description` (strings; `""` is unset), `tags` (list of `{title}`), `cover`, `preview` (media references, optional), `rating` (finite number, optional).
 
 A **media reference** is `{hash, filename, size, type}`: `hash` the hash16 of the bytes (32 hex), `filename` the picked file's name or `""`, `size` a count, `type` the sniffed MIME type or `""`. A **BGM reference** adds an optional `durationMs` (count, the decoded length rounded). A state names media by reference whether or not any file holds the bytes; a restored state whose media are not in the file shows them as "not loaded".
 
@@ -449,7 +449,7 @@ A chunk's stored form is one raw DEFLATE stream of its bytes. Reading a chunk is
 | stage | `id` id, `name` string, `isFromStart` bool, `isUntilEnd` bool, `generateSimLines` enum, `folderId` id (optional; must be a stage folder) |
 | folder | `id` id, `name` string, `index` uint, `folderId` id (optional; must be a folder of the same list; no loops) |
 | levelInfo | `title`, `artists`, `author`, `description` strings, `tags` array of tag, `cover` mediaRef or `[]`, `preview` mediaRef or `[]`, `rating` number (optional) |
-| tag | `title` string, `icon` string (optional) |
+| tag | `title` string |
 | mediaRef | `hash` hash16, `filename` string, `size` uint, `type` string |
 | bgm | `hash` hash16, `filename` string, `size` uint, `type` string, `durationMs` uint (optional) |
 
@@ -737,7 +737,7 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 | --- | --- | --- | --- |
 | `nse.header.set` | `{field: initialLife \| bgmOffset, before: finite, after: finite}` | Level Info (Initial Life alone), the Offset tool, the BGM dialog when only the offset changed. `bgmOffset` in seconds. | "Set Initial Life to {after}", "Set BGM Offset to {after × 1000} ms" |
 | `nse.bgm.change` | `{file: {before, after: NameText \| null}, offset?: {before, after: finite}}` | The BGM dialog or opening an audio file: a new BGM (file name without extension; `null` for none); `offset` only when it changed. Re-picking the same file is still a change. | "Changed BGM" (with `offset`), else "Changed BGM file" |
-| `nse.levelInfo.set` | `{changes: [...]}` | One Apply of the Level Info dialog. 1 to 9 changes in the order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not `initialLife` alone. Shapes: `{field: title \| artists \| author \| description, before, after: NameText}`; `{field: rating, before, after: finite \| null}`; `{field: tags, added: count, removed: count, changed?: positive, reordered?: true}` (at least one non-zero or `reordered`); `{field: cover \| preview, before, after: NameText \| null}`; `{field: initialLife, before, after: finite}`. A name pair is no change only when the texts are equal and neither is cut. | "Changed level info" |
+| `nse.levelInfo.set` | `{changes: [...]}` | One Apply of the Level Info dialog. 1 to 9 changes in the order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not `initialLife` alone. Shapes: `{field: title \| artists \| author \| description, before, after: NameText}`; `{field: rating, before, after: finite \| null}`; `{field: tags, added: count, removed: count, reordered?: true}` (at least one non-zero or `reordered`); `{field: cover \| preview, before, after: NameText \| null}`; `{field: initialLife, before, after: finite}`. A name pair is no change only when the texts are equal and neither is cut. | "Changed level info" |
 | `nse.dynamicStages.enable` | `{created: NC}` | Enabling dynamic stages: a mask, a pivot and a style event at beat 0 on the default stage (`{stageMaskEvent: 1, stagePivotEvent: 1, stageStyleEvent: 1}`). | "Enabled dynamic stages" |
 
 ### 12.7 Groups, stages and folders

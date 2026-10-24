@@ -8,7 +8,6 @@ import {
     nil,
     object,
     oneOf,
-    positive,
     refine,
     union,
     type ValueOf,
@@ -156,7 +155,7 @@ const ownerDomain = oneOf(['group', 'stage'])
 /**
  * One field of a Level Info Apply: its text fields before and after as captured names
  * (an unset field is the empty name), the rating, how many tags by title were added and removed
- * (v1 edits titles only and keeps icons; the tags themselves are in the snapshots, which Property
+ * and whether the kept tags moved (the tags themselves are in the snapshots, which Property
  * Changes diffs), the cover and preview as files, and the Initial Life the dialog also holds.
  */
 const levelInfoChange = union(
@@ -168,8 +167,8 @@ const levelInfoChange = union(
     object({ field: literal('rating'), before: union(finite, nil), after: union(finite, nil) }),
     object(
         { field: literal('tags'), added: count, removed: count },
-        // Tags kept but given another icon, and kept but moved: each is a change of state.
-        { changed: positive, reordered: literal(true) },
+        // Tags kept but moved are a change of state.
+        { reordered: literal(true) },
     ),
     object({ field: oneOf(['cover', 'preview']), before: fileName, after: fileName }),
     object({ field: literal('initialLife'), before: finite, after: finite }),
@@ -190,8 +189,7 @@ export const levelInfoFields = [
 const fieldAt = (change: LevelInfoChange) => levelInfoFields.indexOf(change.field)
 /** Whether a change changes anything. A cut name may hide a real difference, so it counts. */
 const isChange = (change: LevelInfoChange) => {
-    if (change.field === 'tags')
-        return change.added + change.removed + (change.changed ?? 0) > 0 || !!change.reordered
+    if (change.field === 'tags') return change.added + change.removed > 0 || !!change.reordered
     if (change.field === 'rating' || change.field === 'initialLife')
         return change.before !== change.after
     // Names and files: equal captured names are no change, unless a cut name hides a difference.

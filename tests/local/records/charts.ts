@@ -122,7 +122,7 @@ export const goldenChart = (): FixtureChart => ({
             artists: 'Composer feat. Singer',
             author: 'Charter',
             description: 'Line one\nLine two',
-            tags: [{ title: 'Tag' }, { title: 'Icon tag', icon: 'star' }],
+            tags: [{ title: 'Tag' }, { title: 'Second tag' }],
             cover: {
                 hash: mediaHash('cover'),
                 filename: 'cover.png',
@@ -270,7 +270,7 @@ export const edgeChart = (): FixtureChart => {
                 artists: `${astral}${loneHigh} 日本語`,
                 author: 'quote " backslash \\ slash /',
                 description: 'tab\tline\u2028para\u2029nul\u0000vt\u000bdel\u007f',
-                tags: [{ title: '\u00e9' }, { title: 'e\u0301', icon: '' }],
+                tags: [{ title: '\u00e9' }, { title: 'e\u0301' }],
                 rating: 0,
             },
             bgm: { hash: mediaHash('edge-bgm'), filename: '', size: 0, type: '' },

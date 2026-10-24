@@ -154,7 +154,7 @@ const openProperties = async (page: Page, mode: 'rows' | 'items') => {
                 ),
             }
         } else {
-            before.levelInfo = { ...live.levelInfo, tags: [{ title: 'Absent icon' }] }
+            before.levelInfo = { ...live.levelInfo, tags: [{ title: 'Tag' }] }
             after = {
                 ...before,
                 levelInfo: {

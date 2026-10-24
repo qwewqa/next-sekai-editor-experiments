@@ -182,7 +182,7 @@ const fixture = [
                 { field: 'title', before: captureName(''), after: captureName('Coconut') },
                 { field: 'artists', before: captureName('A'), after: captureName('B') },
                 { field: 'rating', before: null, after: 12 },
-                { field: 'tags', added: 2, removed: 1, changed: 1, reordered: true },
+                { field: 'tags', added: 2, removed: 1, reordered: true },
                 { field: 'cover', before: null, after: captureName('cover.png') },
                 { field: 'initialLife', before: 1000, after: 900 },
             ],

@@ -43,7 +43,7 @@ export type MetadataForm = {
     artists?: string
     author?: string
     rating?: number
-    tags?: { title: string; icon?: string }[]
+    tags?: { title: string }[]
     description?: string
     cover?: MediaForm
     preview?: MediaForm
@@ -313,24 +313,17 @@ const readMetadata = (value: unknown, issues: ProjectIssue[]) => {
                     issues.push({ reason: 'schema', path })
                     break
                 }
-                const tags: { title: string; icon?: string }[] = []
+                const tags: { title: string }[] = []
                 for (const [i, tag] of (item as unknown[]).entries()) {
-                    if (
-                        !isObject(tag) ||
-                        !isString(tag.title) ||
-                        (tag.icon !== undefined && !isString(tag.icon))
-                    ) {
+                    if (!isObject(tag) || !isString(tag.title)) {
                         issues.push({ reason: 'schema', path: `${path}[${i}]` })
                         continue
                     }
                     for (const name of Object.keys(tag)) {
-                        if (name !== 'title' && name !== 'icon')
+                        if (name !== 'title')
                             issues.push({ reason: 'unknown-key', path: `${path}[${i}].${name}` })
                     }
-                    tags.push({
-                        title: tag.title,
-                        ...(isString(tag.icon) ? { icon: tag.icon } : {}),
-                    })
+                    tags.push({ title: tag.title })
                 }
                 metadata.tags = tags
                 break
@@ -470,10 +463,7 @@ export const levelInfoOf = (metadata: MetadataForm | undefined): LevelInfo => {
         artists: m.artists ?? '',
         author: m.author ?? '',
         description: m.description ?? '',
-        tags: (m.tags ?? []).map((tag) => ({
-            title: tag.title,
-            ...(tag.icon === undefined ? {} : { icon: tag.icon }),
-        })),
+        tags: (m.tags ?? []).map((tag) => ({ title: tag.title })),
         ...(m.cover ? { cover: mediaRefOf(m.cover) } : {}),
         ...(m.preview ? { preview: mediaRefOf(m.preview) } : {}),
         ...(m.rating === undefined ? {} : { rating: m.rating }),
@@ -493,14 +483,7 @@ export const metadataOf = (
         ...(info.artists ? { artists: info.artists } : {}),
         ...(info.author ? { author: info.author } : {}),
         ...(info.rating === undefined ? {} : { rating: info.rating }),
-        ...(info.tags.length
-            ? {
-                  tags: info.tags.map((tag) => ({
-                      title: tag.title,
-                      ...(tag.icon === undefined ? {} : { icon: tag.icon }),
-                  })),
-              }
-            : {}),
+        ...(info.tags.length ? { tags: info.tags.map((tag) => ({ title: tag.title })) } : {}),
         ...(info.description ? { description: info.description } : {}),
         ...(media.cover ? { cover: media.cover } : {}),
         ...(media.preview ? { preview: media.preview } : {}),

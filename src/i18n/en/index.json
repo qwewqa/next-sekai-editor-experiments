@@ -2330,7 +2330,6 @@
         "removed": "Removed",
         "tagsAdded": "Tags Added",
         "tagsRemoved": "Tags Removed",
-        "tagsChanged": "Tags Changed",
         "order": "Order",
         "folder": "Folder",
         "groupFolder": "Group Folder",
@@ -2348,8 +2347,7 @@
             "previewAudio": "Preview Audio",
             "duration": "Duration",
             "size": "Size",
-            "type": "Type",
-            "icon": "Icon"
+            "type": "Type"
         },
         "contentsChanged": "Contents changed",
         "showMore": "Show More",
