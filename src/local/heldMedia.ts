@@ -1,7 +1,7 @@
 import type { State } from '../state'
 import type { BatchMedia } from './flushWrite'
 
-// Media bytes this tab holds (Step 11 design §3.2). The BGM's are `Bgm.source` (§1.6.8.4); a
+// Media bytes this tab holds. The BGM's are `Bgm.source`; a
 // picked cover or preview clip is kept here by hash for the tab's life, since both are small.
 // The flush and a Save's build read the held items through `heldItemsOf`.
 

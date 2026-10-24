@@ -10,7 +10,7 @@ import type { ShownName } from './startup/events'
 import { storedRead, type ReadWorker, type StoredRead } from './storedRead'
 import type { PauseReason } from './worker/core'
 
-// Delete Sessions… (deletion design §3.6; Local Data design §3.7). The page reads the chains once
+// Delete Sessions…. The page reads the chains once
 // (`readDeleteChoices`), the dialog counts and names them, and `deleteSessions` then removes
 // exactly the chains it is given, each whole through the removal primitive: a chain opened, given
 // a journal or edited since the read is skipped. It runs GC afterwards, so a full browser finds

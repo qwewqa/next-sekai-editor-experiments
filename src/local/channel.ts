@@ -1,4 +1,4 @@
-// The BroadcastChannel `nse-local-data` (§1.6.6): hints for lists and badges, and the upgrade
+// The BroadcastChannel `nse-local-data`: hints for lists and badges, and the upgrade
 // handshake's `upgradeWanted`. Never delivered to the sender; may be delayed or dropped.
 
 export const CHANNEL_NAME = 'nse-local-data'

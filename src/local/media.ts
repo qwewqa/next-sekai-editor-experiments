@@ -3,7 +3,7 @@ import type { BgmMeta } from '../state/bgm'
 import { sha256, toHex } from './hash'
 import { toWellFormed } from './records/wellFormed'
 
-// Media captured at a pick (Part 1 §1.6.8.4): the original bytes are hashed before decoding, since
+// Media captured at a pick: the original bytes are hashed before decoding, since
 // decodeAudioData detaches the buffer it decodes, and kept as an `ArrayBuffer` copy for the life
 // of the states using them. The flush stores them with the entry first naming them.
 
@@ -11,7 +11,7 @@ const startsWith = (bytes: Uint8Array, signature: readonly number[], at = 0) =>
     signature.every((byte, i) => bytes[at + i] === byte)
 
 /**
- * An audio file's MIME type from its magic numbers (§1.5.2), the picked file's type only when
+ * An audio file's MIME type from its magic numbers, the picked file's type only when
  * sniffing finds nothing, and "" when neither gives one.
  */
 export const sniffAudioType = (bytes: Uint8Array, fallback = '') => {
@@ -52,7 +52,7 @@ export type CapturedMedia = {
 
 /**
  * Captures a picked file's bytes before they're decoded: a copy kept as the source, hashed
- * (the first 16 bytes of its SHA-256, §1.6.11.1), with its size, sniffed type and name. A cover
+ * (the first 16 bytes of its SHA-256), with its size, sniffed type and name. A cover
  * (`image`) is sniffed as an image; a BGM or preview clip as audio.
  */
 export const captureMedia = async (
@@ -74,6 +74,6 @@ export const captureMedia = async (
     }
 }
 
-/** A decoded length as the record keeps it (§1.6.11.1). */
+/** A decoded length as the record keeps it. */
 export const durationMsOf = (seconds: number) =>
     Number.isFinite(seconds) ? Math.round(seconds * 1000) : undefined

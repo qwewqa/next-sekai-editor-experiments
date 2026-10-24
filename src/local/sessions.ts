@@ -1,10 +1,8 @@
 import type { LockService } from '../platform/types'
 import { clientLock, sessionLock } from './locks'
 
-// Sessions on the main thread (Part 1 §1.3.6, §1.6.5, §1.6.6). The page holds the session locks,
-// never the worker, so a worker killed mid-flush takes none with it (r12-arch-web H3). Until
-// Step 4 every load starts a new session and a new chain; a continuation's parent lock and the
-// reload's blocking request come with Step 4's startup.
+// Sessions on the main thread. The page holds the session locks,
+// never the worker, so a worker killed mid-flush takes none with it.
 
 /**
  * A lock with one owner at a time (A7). Whoever creates a lease releases it when it is done with
@@ -107,21 +105,21 @@ export const tryLease = (
 }
 
 /**
- * This tab's session lock, exclusive while it might still write the session (§1.6.6): taken
+ * This tab's session lock, exclusive while it might still write the session: taken
  * when the session starts, released once nothing of it is pending after it is replaced.
  */
 export const holdSessionLock = (locks: LockService, sessionId: string) =>
     holdLock(locks, sessionLock(sessionId))
 
 /**
- * An unstored continuation's hold on its parent (§1.3.6): the parent's lock in shared mode
+ * An unstored continuation's hold on its parent: the parent's lock in shared mode
  * until the continuation's first write, so the parent counts as open meanwhile.
  */
 export const holdParentLock = (locks: LockService, parentId: string) =>
     holdLock(locks, sessionLock(parentId), 'shared')
 
 /**
- * This tab's client id for `query()` (§1.6.5; r12-arch-web L2): pages can't read their own, so
+ * This tab's client id for `query()`: pages can't read their own, so
  * the tab holds a unique `nse-client:<random>` lock and reads the `clientId` it shows under.
  */
 export class TabClient {
@@ -156,5 +154,5 @@ export class TabClient {
     }
 }
 
-/** A session's paste identity (§1.3.6): per page load and per session opened, as today. */
+/** A session's paste identity: per page load and per session opened, as today. */
 export { chartSessionId as pasteId } from '../history/chartSession'

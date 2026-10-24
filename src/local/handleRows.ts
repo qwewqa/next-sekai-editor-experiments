@@ -1,6 +1,6 @@
 import type { KvTx } from './kv/types'
 
-// The `handles` store (Part 1 §1.6.11.2, D24): a chain's stored file handles, one row per chain and
+// The `handles` store: a chain's stored file handles, one row per chain and
 // role, never on the chain record or the journal descriptor, so startup and recovery read none.
 // A row is written in the transaction that writes its field, and holds the field's name then, so a
 // handle never outlives the binding or Export target it was stored for.
@@ -13,7 +13,7 @@ export const HANDLE_ROLES = ['file', 'exportTarget'] as const
 export type HandleRole = (typeof HANDLE_ROLES)[number] | typeof KEPT_ROLE
 
 /**
- * The file a partial or unlinked open came from (§1.5.4, D26), while its session is open: not a
+ * The file a partial or unlinked open came from, while its session is open: not a
  * chain field, so a save picker's pick of it is still refused and put back after a reload.
  */
 export const KEPT_ROLE = 'kept'
@@ -40,7 +40,7 @@ export const readKeptRow = async (tx: KvTx, chainId: string) => {
         : undefined
 }
 
-/** Test: how many times this worker read a stored handle (D24: never at startup or recovery). */
+/** Test: how many times this worker read a stored handle (never at startup or recovery). */
 export const handleReadsForTests = () => reads
 
 /** The handle stored for a chain's field, while the field still names what it was stored for. */
@@ -107,7 +107,7 @@ export const splitHandles = async (tx: KvTx, chainId: string, fields: Row): Prom
     return out
 }
 
-/** A record as stored: never a handle on it (D24). */
+/** A record as stored: never a handle on it. */
 export const withoutHandles = (record: Row): Row => {
     const out: Row = { ...record }
     for (const role of HANDLE_ROLES) {

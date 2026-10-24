@@ -9,8 +9,7 @@ import { DUMP_ENTRY } from './rawExport'
 const hasHandle = (value: unknown) =>
     typeof value === 'object' && value !== null && 'handle' in value
 
-// The dev-only sample seeder: `?seedSample=<name>` loads `/samples/<name>.json`, a dump
-// (Part 1 §1.6.11.9), or `?seedSample=<name>.zip` an Export Raw Data… ZIP, into a database with no
+// The dev-only sample seeder: `?seedSample=<name>` loads `/samples/<name>.json`, a dump, or `?seedSample=<name>.zip` an Export Raw Data… ZIP, into a database with no
 // chains and no sessions, then reloads. Imported only under `import.meta.env.DEV`, so release
 // builds have none of it.
 
@@ -44,7 +43,7 @@ export const seedDump = async (
                 key: store.keyPath === null ? (decodeValue(record.key) as never) : undefined,
                 value: decodeValue(record.value, { blobEntry }),
             }))
-            // A handle can't be dumped: its row, left without one, isn't seeded (D24).
+            // A handle can't be dumped: its row, left without one, isn't seeded.
             .filter(({ value }) => store.name !== HANDLES || hasHandle(value)),
     }))
     const opened = { created: false }

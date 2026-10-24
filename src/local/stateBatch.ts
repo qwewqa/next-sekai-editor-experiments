@@ -4,7 +4,7 @@ import { summaryOf } from './flush'
 import type { BatchSnapshot, ChainSummary } from './flushWrite'
 
 // One state as a batch for the storage worker, every chunk new, as a fresh memo plans it: what
-// journal replay and the auto save migration store (§1.6.4 #7, §1.8). The worker deflates,
+// journal replay and the auto save migration store. The worker deflates,
 // verifies and hashes it as it does a flush's (`prepareFlush`).
 
 export type StateBatch = {
