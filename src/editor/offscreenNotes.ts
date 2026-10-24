@@ -162,7 +162,8 @@ type OffscreenSlot<T> = {
 export type OffscreenSlots<T = unknown> = {
     notes: readonly OffscreenNotePosition<T>[]
     width: number
-    slots: Map<string, OffscreenSlot<T>>
+    // By slot and side: 2 × slot, plus 1 on the right.
+    slots: Map<number, OffscreenSlot<T>>
 }
 
 /** Slots `groupOffscreenNotes`'s notes; a slot whose badge `previous` shows the same keeps it. */
@@ -171,12 +172,12 @@ export const slotOffscreenNotes = <T>(
     width: number,
     previous?: OffscreenSlots<T>,
 ): OffscreenSlots<T> => {
-    const slots = new Map<string, OffscreenSlot<T>>()
+    const slots = new Map<number, OffscreenSlot<T>>()
     notes.forEach((note, rank) => {
         const side = isFinitePosition(note) ? offSide(note, width) : undefined
         if (!side) return
         const slot = Math.floor(note.y / SLOT)
-        const key = `${side}:${slot}`
+        const key = 2 * slot + +(side === 'right')
         let entry = slots.get(key)
         if (!entry) {
             entry = {
