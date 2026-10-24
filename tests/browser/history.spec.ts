@@ -183,15 +183,13 @@ for (const format of ['compressed', 'unversioned'] as const) {
                     .map(([head]) => head!.connectorStyle)
             }),
         ).toEqual(['neutral', 'red', 'green', 'blue', 'yellow', 'purple', 'cyan', 'black'])
-        // The old key went, after its value was copied into the legacy recovery slot.
+        // The old key went.
         expect(
-            await next.evaluate((prefix) => {
-                return {
-                    slot: localStorage.getItem(`${prefix}autoSave.levelData`),
-                    legacy: localStorage.getItem(`${prefix}legacyRecovery`),
-                }
-            }, prefix),
-        ).toEqual({ slot: null, legacy: stored })
+            await next.evaluate(
+                (prefix) => localStorage.getItem(`${prefix}autoSave.levelData`),
+                prefix,
+            ),
+        ).toBeNull()
     })
 }
 
@@ -233,9 +231,6 @@ test('an old auto save this build cannot read stays, never loaded, and the load 
             prefix,
         ),
     ).toBe(future)
-    expect(
-        await next.evaluate((prefix) => localStorage.getItem(`${prefix}legacyRecovery`), prefix),
-    ).toBeNull()
 })
 
 test('the session’s source name survives speculative edits, committed edits, undo and redo', async ({

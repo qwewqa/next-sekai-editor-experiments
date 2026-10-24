@@ -1206,7 +1206,7 @@ test.describe('Settings › Local Data', () => {
                 'The editor cannot store changes in this browser.',
             )
             const rows = later.locator('[data-recovery-row]')
-            await expect(rows).toHaveCount(3)
+            await expect(rows).toHaveCount(2)
             const journal = later.locator('[data-recovery-row="journal"]')
             await expect(journal).toContainText(
                 /Unsaved work from an earlier visit, [A-Z][a-z]{2} \d/,
@@ -1216,9 +1216,6 @@ test.describe('Settings › Local Data', () => {
             await expect(autoSave).toContainText('Old auto save')
             await expect(autoSave).toContainText('(cannot be opened in this version)')
             await expect(autoSave.getByRole('button')).toHaveText(['Download', 'Discard…'])
-            const legacy = later.locator('[data-recovery-row="legacy"]')
-            await expect(legacy).toContainText('Recovery copy from an older version')
-            await expect(legacy.getByRole('button')).toHaveText(['Download'])
             // The load notices of this load are listed too.
             await expect(later.locator('[data-at-load] li')).toContainText([
                 'Unsaved work from an earlier visit is in Local Data.',

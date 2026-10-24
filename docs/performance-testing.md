@@ -75,7 +75,7 @@ Each cell can set:
 - **Run headed with the real GPU.** Headless Chromium can fall back to SwiftShader, which makes every chart number meaningless.
     - Every group records `UNMASKED_RENDERER_WEBGL` in `info.renderer`.
     - Check that it names your GPU (for example `ANGLE (NVIDIA, …, D3D11)`), not SwiftShader.
-- Open the chart through Open and load its BGM through the BGM dialog. This is the user's path: the waveform draws and the session counts as edited, which starts the background writes a user would also have.
+- Open the chart through Open and load its BGM through the BGM dialog. This is the user's path: the waveform draws and the session counts as edited.
 
 ### Display rate and what to judge
 
@@ -175,7 +175,6 @@ The minimap painted nothing in any scroll or playback frame. Its overlay costs 0
 
 Recurring spikes, with the trace events behind them:
 
-- **The legacy recovery write:** `local/storing.ts` → `journalContent`, a serialize and gzip in one idle task every 45 s once the session is edited. 63 ms (coconut) and 589 ms (×8) at 4×.
 - **Pixi's GC pass:** `GCSystem.run` every 30 s. 30 ms at 1×, 150 ms at 4×.
 - **V8 major GC under the preview's per-frame allocations:** 13–19 ms at 1×, 108–134 ms at 4×.
 - **First-visit section compiles:** `notes.ts` `prepareSections` and `vectorRanges.ts` `captureVectors`. 20–45 ms at 4×.

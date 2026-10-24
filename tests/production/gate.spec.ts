@@ -46,7 +46,7 @@ test('a browser without a needed feature gets the plain page and its downloads, 
             document.addEventListener('securitypolicyviolation', (event) =>
                 console.error('csp ' + event.effectiveDirective),
             )
-            localStorage.setItem(prefix + 'legacyRecovery', autoSave)
+            localStorage.setItem(prefix + 'autoSave.levelData', autoSave)
         },
         { prefix, autoSave },
     )

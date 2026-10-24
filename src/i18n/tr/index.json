@@ -961,7 +961,6 @@
       "recovery": {
         "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
-        "legacy": "Eski bir sürümden kurtarma kopyası · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "listFailed": "Kurtarılmış çalışma okunamadı",

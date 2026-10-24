@@ -11,11 +11,7 @@ import {
 } from '../../../src/local/journal/store'
 import { holdSessionLock } from '../../../src/local/sessions'
 import type { LoadEvent } from '../../../src/local/startup/events'
-import {
-    AUTO_SAVE_KEY,
-    LEGACY_RECOVERY_KEY,
-    writeLegacyRecovery,
-} from '../../../src/local/startup/legacy'
+import { AUTO_SAVE_KEY } from '../../../src/local/startup/legacy'
 import { RecoverySteps } from '../../../src/local/startup/recovery'
 import { recoverySteps, runRecovery, type RecoveryContext } from '../../../src/local/startup/steps'
 import { checkStored } from '../../../src/local/testing/invariants'
@@ -146,14 +142,23 @@ test('safe mode writes no canary and runs neither the journals nor the migration
     assert.equal(rows(world, 'sessions').size, 0)
 })
 
-test('the migration: a readable slot becomes a session, copied into the legacy slot before the key goes', async () => {
+test('the migration: a readable slot becomes a session, and the key goes after the transaction commits', async () => {
     const world = createWorld({ seed: 4 })
     const storage = new MemoryStorage()
     const state = stateOf(goldenChart())
     const text = autoSaveOf(state)
     storage.setItem(key(AUTO_SAVE_KEY), text)
     const { recovery, events, startup } = await loadIn(world, world.tab('a'), storage)
+    // The key is there until the migration's transaction has committed.
+    const migrate = recovery.worker.migrateAutoSave
+    let keyAtCommit: string | null | undefined
+    recovery.worker.migrateAutoSave = async (batch) => {
+        const result = await migrate(batch)
+        keyAtCommit = storage.getItem(key(AUTO_SAVE_KEY))
+        return result
+    }
     await runRecovery(recovery)
+    assert.equal(keyAtCommit, text)
 
     assert.ok(recovery.migrated)
     // Its line waits for the open (`openAtStart`), which knows whether it's what opened.
@@ -179,8 +184,7 @@ test('the migration: a readable slot becomes a session, copied into the legacy s
     // Deduplication by the slot's content hash.
     const meta = rows(world, 'meta').get('migratedHashes')
     assert.deepEqual(meta?.value, [toHex(await sha256(new TextEncoder().encode(text)))])
-    // The insurance copy holds the slot's value as it was, and the old key is gone.
-    assert.equal(storage.getItem(key(LEGACY_RECOVERY_KEY)), text)
+    // The old key is gone.
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
     // The migrated session is the one a first load continues.
     const newest = await world.tab('a').run(() => startup.readNewestSession(undefined))
@@ -234,7 +238,7 @@ test('the migration deletes the key only if its value is unchanged since it was 
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), newer)
 })
 
-test('an unreadable or absent slot makes no session, and an unreadable one stays', async () => {
+test('an absent slot makes no session, and one this build can’t read whole stays', async () => {
     const world = createWorld({ seed: 7 })
     const storage = new MemoryStorage()
     const absent = await loadIn(world, world.tab('a'), storage)
@@ -247,7 +251,16 @@ test('an unreadable or absent slot makes no session, and an unreadable one stays
     assert.deepEqual(unreadable.events, [{ kind: 'migrationFailed', unreadable: true }])
     assert.equal(rows(world, 'sessions').size, 0)
     assert.notEqual(storage.getItem(key(AUTO_SAVE_KEY)), null)
-    assert.equal(storage.getItem(key(LEGACY_RECOVERY_KEY)), null)
+    // One that parses but holds an archetype this build doesn't know stays as well.
+    const partial = autoSaveOf(stateOf(goldenChart()), 'coconut', (levelData) => {
+        levelData.entities.push({ archetype: 'FutureNote', data: [] })
+    })
+    storage.setItem(key(AUTO_SAVE_KEY), partial)
+    const part = await loadIn(world, world.tab('c'), storage)
+    await runRecovery(part.recovery)
+    assert.deepEqual(part.events, [{ kind: 'migrationFailed', unreadable: true }])
+    assert.equal(rows(world, 'sessions').size, 0)
+    assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), partial)
 })
 
 test('a failed migration transaction leaves the key, with its load event', async () => {
@@ -381,9 +394,8 @@ test('a slot migrated before is never parsed again: an old tab’s write-back on
     const first = await loadIn(world, world.tab('a'), storage)
     await runRecovery(first.recovery)
     assert.ok(first.recovery.migrated)
-    // Written back, with no legacy copy left: the copy is made again before the key goes.
+    // Written back by an old tab.
     storage.setItem(key(AUTO_SAVE_KEY), text)
-    storage.removeItem(key(LEGACY_RECOVERY_KEY))
     const again = await loadIn(world, world.tab('b'), storage)
     again.recovery.worker.migrateAutoSave = () => {
         throw new Error('A migrated slot is never prepared again')
@@ -391,7 +403,6 @@ test('a slot migrated before is never parsed again: an old tab’s write-back on
     await runRecovery(again.recovery)
     assert.deepEqual(again.events, [])
     assert.equal(again.recovery.migrated, undefined)
-    assert.equal(storage.getItem(key(LEGACY_RECOVERY_KEY)), text)
     assert.equal(storage.getItem(key(AUTO_SAVE_KEY)), null)
 })
 
@@ -468,18 +479,6 @@ test('storage unavailable: a live tab’s journal isn’t offered, and earlier j
         ['unsavedInLocalData', 'journalsFull'],
     )
     lock.release()
-})
-
-test('the legacy slot counts only when it reads back intact', () => {
-    // A storage that hands back something else than was written.
-    class Changing extends MemoryStorage {
-        override getItem(name: string) {
-            return name.endsWith(LEGACY_RECOVERY_KEY) ? 'other' : super.getItem(name)
-        }
-    }
-    const text = '{"bgmOffset":0,"entities":[]}'
-    assert.equal(writeLegacyRecovery(text, new Changing(), PREFIX), false)
-    assert.equal(writeLegacyRecovery(text, new MemoryStorage(), PREFIX), true)
 })
 
 test('a failed worker read in the canary or the migration’s dedupe never stops the load', async () => {

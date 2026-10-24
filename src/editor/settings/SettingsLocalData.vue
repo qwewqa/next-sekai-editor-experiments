@@ -146,8 +146,6 @@ const label = (item: RecoveryItem) => {
             const text = interpolateRaw(recovery.autoSave, size)
             return item.readable ? text : `${text} ${strings.value.cannotOpen}`
         }
-        case 'legacy':
-            return interpolateRaw(recovery.legacy, size)
         case 'recovered':
             return interpolateRaw(recovery.unreadable, formatDate(item.foundAt), size)
     }

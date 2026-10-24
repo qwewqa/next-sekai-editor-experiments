@@ -10,12 +10,7 @@ import type { DisplayName } from '../names'
 import type { LockLease } from '../sessions'
 import { mapRead, readValue, storedRead, type StoredRead } from '../storedRead'
 import { previousSession } from './events'
-import {
-    AUTO_SAVE_KEY,
-    AUTO_SAVE_UNREADABLE_KEY,
-    LEGACY_RECOVERY_KEY,
-    toRecoveryFile,
-} from './legacy'
+import { AUTO_SAVE_KEY, AUTO_SAVE_UNREADABLE_KEY, toRecoveryFile } from './legacy'
 import { boundElsewhere, copyOfOf, holdShared, openStored, type OpenDeps } from './open'
 import { journalledSession } from './resume'
 import { parseAutoSaveSlot, replaySessionJournal, type RecoveryContext } from './steps'
@@ -217,8 +212,6 @@ export type RecoveryItem =
      * when this build reads it (§1.8 step 5).
      */
     | { kind: 'autoSave'; key: string; text: string; size: number; readable: boolean }
-    /** The legacy recovery slot: Download only. */
-    | { kind: 'legacy'; key: string; text: string; size: number }
     /** Unreadable recovered work in the `recovered` store: Download and Discard…. */
     | { kind: 'recovered'; id: string; foundAt: number; size: number }
 
@@ -261,14 +254,6 @@ export const recoveryItems = async (): Promise<{ items: RecoveryItem[]; unreadab
             readable: key === AUTO_SAVE_KEY && parseAutoSaveSlot(text) !== undefined,
         })
     }
-    const legacy = local()?.getItem(storageKey(LEGACY_RECOVERY_KEY))
-    if (legacy)
-        items.push({
-            kind: 'legacy',
-            key: LEGACY_RECOVERY_KEY,
-            text: legacy,
-            size: new Blob([legacy]).size,
-        })
     const worker = context?.open.worker
     if (worker && context?.recovery.status.mode !== 'memory') {
         const listed = await storedRead(worker, 'listRecovered', undefined)

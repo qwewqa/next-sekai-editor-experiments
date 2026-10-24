@@ -16,14 +16,12 @@ import { withSwitchRequest } from '../editor/switchRequest'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
 import { createHistoryOperation } from '../history/createHistoryOperation'
-import { filename } from '../history/live'
 import { captureEntryDescription } from '../history/operations'
 import { setPeekSource } from '../history/peek'
 import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { startupGate } from '../startup/gate'
-import type { State } from '../state'
 import { postSessionUpdated } from './channel'
 import { isDurablyStoredWith } from './durable'
 import {
@@ -36,7 +34,6 @@ import {
 } from './flush'
 import { notifyFlusherStart, onFlusherStart } from './flusherStart'
 import { checkPrivateWindow, handleOf } from './handles'
-import { journalContent } from './journal/content'
 import { JournalWriter, type JournalWrite } from './journal/writer'
 import { displayName, forkNameOf, namePartsOf, sessionCopyOf } from './names'
 import { isImporting, whenImported } from './open/importLoop'
@@ -46,12 +43,6 @@ import { setRetrySource } from './retryStoring'
 import { holdSessionLock, TabClient } from './sessions'
 import { leftSession } from './startup/api'
 import { previousSession } from './startup/events'
-import {
-    legacyFromJournal,
-    removeLegacyRecovery,
-    writeLegacyRecovery,
-    writesLegacySlot,
-} from './startup/legacy'
 import { writeTabRecord } from './startup/tab'
 import { readValue, storedRead } from './storedRead'
 import type { StorageWorker } from './worker/client'
@@ -61,7 +52,7 @@ import { transfer } from './worker/rpc'
 // Storing (Part 1 §1.6.4): every change to the undo stack becomes an entry; the flush stores them
 // about 1 s after the last change, at once and strictly on hide, and right after a media pick.
 // The journal covers what isn't committed strictly; while storage is unavailable it's written on
-// a slow idle timer too. For the first releases the legacy recovery slot is kept as well (§1.8).
+// a slow idle timer too.
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -202,8 +193,6 @@ const importStarted = async (sessionId: string) => {
 
 /** About every 10 s while storage is unavailable and there are changes (§1.6.7). */
 export const IDLE_JOURNAL_MS = 10_000
-/** The legacy slot at idle: at most every 30–60 s (§1.8). */
-export const LEGACY_IDLE_MS = 45_000
 
 const whenIdle = (fn: () => void) => {
     if (typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout: 5000 })
@@ -211,7 +200,7 @@ const whenIdle = (fn: () => void) => {
 }
 
 export type StoringOptions = {
-    /** Safe mode: nothing but settings goes to localStorage, so no journal or legacy slot. */
+    /** Safe mode: nothing but settings goes to localStorage, so no journal. */
     safe?: boolean
 }
 
@@ -333,10 +322,6 @@ export const startStoring = (
     void Promise.resolve(status).then((known) => {
         if (known.mode === 'readOnly') instance.withoutDatabase()
     })
-    const version = appVersion().appVersion
-    const legacy = !safe && writesLegacySlot(version)
-    if (!safe && !legacy) removeLegacyRecovery()
-    let legacyState: State | undefined
     journalWriter = safe
         ? undefined
         : new JournalWriter({
@@ -346,31 +331,11 @@ export const startStoring = (
               pausedForSpace: () => worker.status?.reason === 'full',
               strictCommits:
                   typeof IDBTransaction !== 'undefined' && 'durability' in IDBTransaction.prototype,
-              appVersion: version,
+              appVersion: appVersion().appVersion,
               onWrite: (write) => {
                   if (test) writes.push(write)
               },
-              // The legacy slot from the hide journal's level data (§1.8).
-              onJournal: (journal, state) => {
-                  if (!legacy) return
-                  writeLegacyRecovery(JSON.stringify(legacyFromJournal(journal, filename.value)))
-                  legacyState = state
-              },
           })
-
-    // Otherwise the legacy slot at idle, at most every 30–60 s, when the live state changed.
-    if (legacy)
-        setInterval(() => {
-            const state = liveState.value
-            if (state === legacyState || !instance.session?.edited) return
-            whenIdle(() => {
-                if (liveState.value !== state) return
-                legacyState = state
-                writeLegacyRecovery(
-                    JSON.stringify(legacyFromJournal(journalContent(state), filename.value)),
-                )
-            })
-        }, LEGACY_IDLE_MS)
 
     // While storage is unavailable the journal is also written about every 10 s (§1.6.7).
     void Promise.resolve(status).then((known) => {

@@ -21,7 +21,7 @@ import { displayName, namePartsOf } from '../names'
 import { stateBatch } from '../stateBatch'
 import type { StorageStatus } from '../worker/core'
 import type { LoadEvent, ShownName } from './events'
-import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY, writeLegacyRecovery, writesLegacySlot } from './legacy'
+import { AUTO_SAVE_KEY } from './legacy'
 import type { MigrationBatch, MigrationResult } from './migrationWrite'
 import { RecoverySteps } from './recovery'
 
@@ -290,10 +290,10 @@ const migrationBatch = (context: RecoveryContext, text: string, hash: string) =>
 
 /**
  * Step 3, the old auto save (§1.8), on every load: a slot this build reads becomes a session,
- * deduplicated by `meta.migratedHashes`; its value is copied into the legacy recovery slot
- * first, and the key is deleted after the transaction commits, only if its value is unchanged
- * since it was read. A failed transaction leaves the key, with its load notice. Without
- * IndexedDB the key stays, offered in Local Data; an unreadable slot stays too, and says so.
+ * deduplicated by `meta.migratedHashes`, and the key is deleted after the transaction commits,
+ * only if its value is unchanged since it was read. A failed transaction leaves the key, with its
+ * load notice. Without IndexedDB the key stays, offered in Local Data; an unreadable slot stays
+ * too, and says so.
  */
 export const migrationStep = async (context: RecoveryContext) => {
     const text = read(context, AUTO_SAVE_KEY)
@@ -303,17 +303,16 @@ export const migrationStep = async (context: RecoveryContext) => {
         return
     }
     const hash = toHex(await sha256(new TextEncoder().encode(text)))
-    let result: MigrationResult
     // A slot migrated before (an old tab's write-back, a key a kill left) isn't parsed again.
     // A failed read only costs the parse: the transaction's own check still finds a duplicate.
     const before = await context.worker.migratedBefore(hash).catch(() => false)
-    if (before) result = { kind: 'duplicate' }
-    else {
+    if (!before) {
         const made = migrationBatch(context, text, hash)
         if (!made) {
             context.events({ kind: 'migrationFailed', unreadable: true })
             return
         }
+        let result: MigrationResult
         try {
             result = await context.worker.migrateAutoSave(made.batch)
         } catch (error) {
@@ -332,14 +331,9 @@ export const migrationStep = async (context: RecoveryContext) => {
                 context.events({ kind: 'migratedRevision', sessionId: result.sessionId })
         }
     }
-    // The insurance copy first, from the first load (round 10), unless one is there already.
-    const legacy = !writesLegacySlot(context.appVersion)
-        ? true
-        : result.kind === 'duplicate' && read(context, LEGACY_RECOVERY_KEY) !== undefined
-          ? true
-          : writeLegacyRecovery(text, context.storage() ?? undefined, context.prefix)
-    // An old tab's newer write survives, and the next load migrates it.
-    if (legacy && read(context, AUTO_SAVE_KEY) === text)
+    // Migrated and committed, now or before. An old tab's newer write survives, and the next
+    // load migrates it.
+    if (read(context, AUTO_SAVE_KEY) === text)
         try {
             context.storage()?.removeItem(context.prefix + AUTO_SAVE_KEY)
         } catch {
