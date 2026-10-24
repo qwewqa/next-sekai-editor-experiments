@@ -627,6 +627,23 @@ export const renderPreviewFrame = (
 
         if (connector.activeTail && hasReached(connector.activeTail.targetTime)) continue
 
+        // drawConnector draws nothing when both ends are before the approach or past the
+        // cutoff. Decide that from the progress alone, before building the endpoints: most
+        // candidates are out of view.
+        const passedHead = hasReached(head.targetTime) && !connector.throughJudgeLine
+        const headFrac = passedHead ? safeUnlerpClamped(head.targetTime, tail.targetTime, now) : 0
+        const headProgress = passedHead
+            ? 1 - lerp(visualYOffset(head), visualYOffset(tail), headFrac)
+            : visualProgress(head)
+        const tailProgress = visualProgress(tail)
+        const { progressStart, progressCutoff } = context.layout
+        if (
+            !connector.fullScreen &&
+            ((headProgress < progressStart && tailProgress < progressStart) ||
+                (headProgress > progressCutoff && tailProgress > progressCutoff))
+        )
+            continue
+
         let visualState
         if (connector.kind === ConnectorKind.damage) {
             visualState = ConnectorVisualState.waiting
@@ -641,7 +658,7 @@ export const renderPreviewFrame = (
         const tailEndpoint: ConnectorEndpoint = {
             lane: visualLane(tail),
             size: tail.size,
-            visualProgress: visualProgress(tail),
+            visualProgress: tailProgress,
             targetTime: tail.targetTime,
             easeFrac: tailEaseFrac(tail),
             transform: visualStageTransform(tail),
@@ -651,16 +668,14 @@ export const renderPreviewFrame = (
 
         let headEndpoint: ConnectorEndpoint
         let headNoteAlpha: number
-        if (hasReached(head.targetTime) && !connector.throughJudgeLine) {
-            const headFrac = safeUnlerpClamped(head.targetTime, tail.targetTime, now)
-            const headVisualProgress = 1 - lerp(visualYOffset(head), visualYOffset(tail), headFrac)
+        if (passedHead) {
             headNoteAlpha = lerp(visualNoteAlpha(head), tailNoteAlpha, headFrac)
             // At the head's own time, steps would otherwise apply their held value twice.
             if (isNoneEase(connector.ease) || headFrac <= 0) {
                 headEndpoint = {
                     lane: visualLane(head),
                     size: head.size,
-                    visualProgress: headVisualProgress,
+                    visualProgress: headProgress,
                     targetTime: now,
                     easeFrac: headEaseFrac(head),
                     transform: visualStageTransform(head),
@@ -678,7 +693,7 @@ export const renderPreviewFrame = (
                 headEndpoint = {
                     lane: lerp(visualLane(head), visualLane(tail), headInterpFrac),
                     size: lerp(head.size, tail.size, headInterpFrac),
-                    visualProgress: headVisualProgress,
+                    visualProgress: headProgress,
                     targetTime: now,
                     easeFrac: currentEaseFrac,
                     transform: blendStageTransform(
@@ -698,7 +713,7 @@ export const renderPreviewFrame = (
             headEndpoint = {
                 lane: visualLane(head),
                 size: head.size,
-                visualProgress: visualProgress(head),
+                visualProgress: headProgress,
                 targetTime: head.targetTime,
                 easeFrac: headEaseFrac(head),
                 transform: visualStageTransform(head),
@@ -779,6 +794,10 @@ export const renderPreviewFrame = (
             if (line) selection.line(line.a, line.b, note.source)
             return
         }
+        // drawNote draws nothing outside the approach; decide that before the note's geometry.
+        const progress = visualProgress(note)
+        if (progress < context.layout.progressStart || progress > context.layout.progressCutoff)
+            return
         drawNote(
             context,
             paint,
@@ -787,7 +806,7 @@ export const renderPreviewFrame = (
             note.isCritical,
             visualLane(note),
             note.size,
-            visualProgress(note),
+            progress,
             note.direction,
             note.targetTime,
             visualStageAffine(note),
@@ -1133,6 +1152,18 @@ export const renderPreviewFrame = (
         if (hasReached(Math.min(left.targetTime, right.targetTime))) continue
         if (groupHidesNotes(left) || groupHidesNotes(right)) continue
 
+        // drawSimLine draws nothing for these progress values; decide that before the geometry.
+        const leftProgress = visualProgress(left)
+        const rightProgress = visualProgress(right)
+        const { progressStart, progressCutoff } = context.layout
+        if (
+            (leftProgress < progressStart && rightProgress < progressStart) ||
+            (leftProgress > progressCutoff && rightProgress > progressCutoff) ||
+            (leftProgress < 1 && 1 < rightProgress) ||
+            (leftProgress > 1 && 1 > rightProgress)
+        )
+            continue
+
         const leftMask = visualMaskAt(left, now)
         const rightMask = visualMaskAt(right, now)
         const leftExtents = maskedNoteExtents(visualLane(left), left.size, leftMask)
@@ -1144,10 +1175,10 @@ export const renderPreviewFrame = (
             draw,
             skin,
             leftExtents.lane,
-            visualProgress(left),
+            leftProgress,
             left.targetTime,
             rightExtents.lane,
-            visualProgress(right),
+            rightProgress,
             right.targetTime,
             visualStageTransform(left),
             visualStageTransform(right),
