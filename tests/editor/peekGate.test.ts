@@ -3,15 +3,15 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import test from 'node:test'
 import { callSites } from './peekCallSites'
 
-// The enumerated test (Part 1 §1.11.5): every command, read from the registry's source, is on
-// exactly one of §1.4.11's lists and carries the flag the list gives it; every command entry
+// The enumerated test: every command, read from the registry's source, is on
+// exactly one of the peek lists and carries the flag the list gives it; every command entry
 // point goes through runCommand; and every direct pushState site is gated (runCommand.test.ts
 // lists them; Restore's gate is exercised in peek.test.ts, and other gates are inspected here).
 
 const root = new URL('../../', import.meta.url)
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8')
 
-/** Allowed while peeking: `readOnly` (§1.4.11's Allowed list, as built so far). */
+/** Allowed while peeking: `readOnly` (the Allowed list, as built so far). */
 const allowed = [
     'copy',
     'play',
@@ -94,7 +94,7 @@ const allowed = [
     'stageAll',
     // The History panel's own command (5-panel).
     'history',
-    // The change view's (Step 5).
+    // The change view's.
     'showChange',
     'editsHere',
 ]
@@ -238,7 +238,7 @@ const sources = readdirSync(new URL('src/', root), { recursive: true, encoding: 
     .map((path) => `src/${path.replaceAll('\\', '/')}`)
     .filter((path) => /\.(ts|vue)$/.test(path))
 
-/** Every module that runs commands; each goes through runCommand (§1.4.11's entry points). */
+/** Every module that runs commands; each goes through runCommand. */
 const entryPoints = [
     'src/editor/LevelEditor.vue',
     'src/editor/LevelEditorContextMenu.vue',

@@ -3,8 +3,8 @@ import type { UseDay } from './days'
 import { equalBytes, hash16 } from './hash'
 import { chunkCrc32, type ChunkRow } from './records/rows'
 
-// Chunks are stored as raw DEFLATE of their canonical bytes (§1.6.11.1). Every `chunks` put
-// takes a `VerifiedChunk`, which only `verifyChunk` makes (§1.6.11.2): the stored form,
+// Chunks are stored as raw DEFLATE of their canonical bytes. Every `chunks` put
+// takes a `VerifiedChunk`, which only `verifyChunk` makes: the stored form,
 // inflated with the strict end check, equals the canonical bytes that were hashed (bytes this
 // build deflated) or hashes to the chunk's hash (bytes from outside).
 
@@ -20,11 +20,11 @@ export class ChunkVerifyError extends Error {
 
 const Z_FINISH = 4
 
-/** The reader cap on a chunk's inflated size (§1.6.11.4): bytes from outside never inflate past it. */
+/** The reader cap on a chunk's inflated size: bytes from outside never inflate past it. */
 export const CHUNK_CAP = 16 * 1024 * 1024
 
 /**
- * Inflates one raw DEFLATE stream that must end exactly at the input's last byte (§1.6.11.1's
+ * Inflates one raw DEFLATE stream that must end exactly at the input's last byte (the
  * strict end check): trailing bytes, a truncated stream, or a last block that isn't final throw.
  */
 export const inflateStrict = (stored: Uint8Array, maxSize = Infinity): Uint8Array => {
@@ -90,7 +90,7 @@ export type ChunkToVerify =
     | { hash: Uint8Array; stored: Uint8Array; canonical?: undefined; maxSize?: number }
 
 /**
- * The one check before a `chunks` put (§1.6.11.2). Runs before the transaction, since hashing
+ * The one check before a `chunks` put. Runs before the transaction, since hashing
  * outside bytes awaits `crypto.subtle`. Throws `DeflateError` or `ChunkVerifyError` on a mismatch.
  */
 export const verifyChunk = async (chunk: ChunkToVerify): Promise<VerifiedChunk> => {
@@ -121,7 +121,7 @@ export const isVerifiedChunk = (chunk: unknown): chunk is VerifiedChunk =>
     typeof chunk === 'object' && chunk !== null && made.has(chunk)
 
 /**
- * The row `putChunk` stores for a verified chunk (§1.6.11.2): a compact copy of the stored
+ * The row `putChunk` stores for a verified chunk: a compact copy of the stored
  * bytes, never a view into a larger buffer, and the CRC over the key and exactly those bytes.
  * Synchronous, so it runs inside the transaction.
  */

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { existsSync } from 'node:fs'
 import { charts, median, open, singleEdits, wholeEdits } from './flushBudget'
 
-// The main thread's share of a flush (Part 1 §1.9.3, desktop): a single-note edit under 2 ms, a
+// The main thread's share of a flush (desktop): a single-note edit under 2 ms, a
 // whole-chart edit under 16 ms in slices of 8 ms at most. In the timing project, run alone, since
 // other workers' load shows up in a slice. Medians, so one garbage collection doesn't decide it.
 

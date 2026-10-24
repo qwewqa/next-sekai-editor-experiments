@@ -43,9 +43,9 @@ import {
 import { NXSP_CAPS, type NxspCaps } from './read'
 import { MANIFEST_VERSION, minorOf, NXSP_FORMAT, NXSP_VERSION, patchOf } from './version'
 
-// The shared builder (§1.6.11.7), its format half: from what a write holds, already decided by
-// the history model (§1.6.11.6), it lays out `project.json`, `level.json`, the segments, the
-// manifest, `chunks.bin` and the media by §1.6.11.4–§1.6.11.5's rules, as a plan. It reads no
+// The shared builder, its format half: from what a write holds, already decided by
+// the history model, it lays out `project.json`, `level.json`, the segments, the
+// manifest, `chunks.bin` and the media by the format's rules, as a plan. It reads no
 // clock, random source or device itself, and never a source's bytes.
 
 /** What the builder takes instead of reading a clock, a random source or the device. */
@@ -124,7 +124,7 @@ export type BuildInput = {
     history?: HistoryInput
 }
 
-/** A chunk the plan takes as bytes, kept beside the plan for the post-build check (§1.5.6). */
+/** A chunk the plan takes as bytes, kept beside the plan for the post-build check. */
 export type PlannedChunk = { hash: string; offset: number; length: number; crc32: number }
 
 export type BuildResult = {
@@ -135,10 +135,10 @@ export type BuildResult = {
     storageChunks: PlannedChunk[]
 }
 
-/** The most entries a v0.6.0 segment holds (§1.6.11.5). */
+/** The most entries a v0.6.0 segment holds. */
 export const SEGMENT_ENTRIES = 500
 
-/** The most ancestors a v0.6.0 writer writes (Part 0 §0.9.3). */
+/** The most ancestors a v0.6.0 writer writes. */
 export const ANCESTOR_LIMIT = 1024
 
 /** `savedAt`: ISO 8601 UTC to the second. */
@@ -148,7 +148,7 @@ const fail = (message: string, limit?: PlanLimit): never => {
     throw new PlanError(message, limit)
 }
 
-/** The reader caps the builder keeps under (§1.6.11.4), and the segment count's. */
+/** The reader caps the builder keeps under, and the segment count's. */
 export type BuildCaps = NxspCaps & { segments: number }
 
 const encoder = new TextEncoder()
@@ -320,7 +320,7 @@ type Part = {
 
 const emptyPart = (): Part => ({ entries: [], roots: {}, nodes: {}, chunks: [] })
 
-/** Lays out the history's parts (§1.6.11.5): which entries, roots, nodes and chunks each holds. */
+/** Lays out the history's parts: which entries, roots, nodes and chunks each holds. */
 const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) => {
     const placedRoots = new Set<string>()
     const placedNodes = new Set<string>()
@@ -504,7 +504,7 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
 }
 
 /**
- * Builds the plan of a `.nxsp` (§1.6.11.4–§1.6.11.7). Throws `PlanError` on anything a v1
+ * Builds the plan of a `.nxsp`. Throws `PlanError` on anything a v1
  * writer must not write: a reference without a source, a ZIP64 threshold, a value the minor
  * table lacks.
  */
@@ -625,7 +625,7 @@ export const planNxsp = (
         }
     }
 
-    // `completeFrom`, placed and clamped (§1.6.11.6), with history only.
+    // `completeFrom`, placed and clamped, with history only.
     let completeFrom: string | undefined
     if (history) {
         const value = input.revision.completeFrom ?? revisionId
@@ -674,7 +674,7 @@ export const planNxsp = (
             zipEntries: names,
         })
     } catch (error) {
-        // Content this build can't fully read is never written (§1.6.11.6).
+        // Content this build can't fully read is never written.
         throw new PlanError(error instanceof Error ? error.message : String(error))
     }
 
@@ -775,7 +775,7 @@ export const storedSize = (entry: PlannedEntry, sources: readonly PinnedSource[]
         return total + (part.inflate ? from.uncompressedSize : from.compressedSize)
     }, 0)
 
-/** The cap an entry's uncompressed size stays within, by its name (§1.6.11.4). */
+/** The cap an entry's uncompressed size stays within, by its name. */
 const capOf = (name: string, caps: BuildCaps): [number, PlanLimit] | undefined => {
     if (name === 'project.json') return [caps.project, 'project']
     if (name === 'level.json') return [caps.level, 'level']
@@ -788,7 +788,7 @@ const capOf = (name: string, caps: BuildCaps): [number, PlanLimit] | undefined =
 
 /**
  * Refuses, from planned sizes, a file a v1 reader would call damaged: past a reader cap (an
- * entry's size, the segment count) or needing ZIP64 (§1.6.11.4); and names that break v1.
+ * entry's size, the segment count) or needing ZIP64; and names that break v1.
  */
 const checkLimits = (
     entries: readonly PlannedEntry[],

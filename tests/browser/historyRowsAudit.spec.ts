@@ -26,9 +26,9 @@ import {
 } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// History's rows (audit package C): a save from another device names it, and a row waiting to
-// be stored already carries its note delta. A file records the device of its document's lineage
-// (§1.3.3), so this browser's saves stay its own across Save As… and a reopened copy, and two
+// History's rows: a save from another device names it, and a row waiting to
+// be stored already carries its note delta. A file records the device of its document's lineage,
+// so this browser's saves stay its own across Save As… and a reopened copy, and two
 // documents it saved can't be linked to it.
 
 skipWhereTheEditorCannotStart()

@@ -20,9 +20,9 @@ import {
     type StackWindow,
 } from '../timeline'
 
-// Reading a stored session to open it (Part 1 §1.4.2, §1.6.4 #6): its row, its chain record and
+// Reading a stored session to open it: its row, its chain record and
 // its stored stack, read in one transaction in the storage worker. "Restoring or continuing reads
-// one row and its blocks"; a session without a stored stack has it rebuilt by replay (§1.3.9).
+// one row and its blocks"; a session without a stored stack has it rebuilt by replay.
 
 type Row = Record<string, unknown>
 
@@ -41,7 +41,7 @@ export type SessionRead =
           kind: 'open'
           session: Row
           chain: Row
-          /** Whether it's its chain's latest session (§1.3.1). */
+          /** Whether it's its chain's latest session. */
           isHead: boolean
           stack: StackRead
           /** The head slot's root: the state on screen. */
@@ -52,7 +52,7 @@ export type SessionRead =
     | { kind: 'missing' }
     /** Its chain is marked for Delete. */
     | { kind: 'deleted' }
-    /** It, or its chain, needs a newer version: never continued (§1.6.11.8). */
+    /** It, or its chain, needs a newer version: never continued. */
     | { kind: 'later'; why: string }
     /** Its rows can't be read as a session: never continued. */
     | { kind: 'damaged'; why: string }
@@ -67,7 +67,7 @@ const entriesOf = async (tx: KvTx, sessionId: string, upto = Infinity) =>
 type Rebuilt = { stack: ReplayedStack; floor: number }
 
 /**
- * A session's stack by replay of its entries over its parent's at `uptoSeq` (§1.3.9). A parent
+ * A session's stack by replay of its entries over its parent's at `uptoSeq`. A parent
  * whose stored stack is its stack at `uptoSeq` is taken as stored, so a long chain isn't
  * replayed from its root. Every parent link is followed, however long the chain; a session met
  * twice (a cycle in damaged rows) throws.
@@ -170,7 +170,7 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
     const chain = await tx.get('chains', session.chainId)
     if (!isRow(chain)) return { kind: 'damaged', why: 'no chain record' }
     if (chain.deleting !== undefined) return { kind: 'deleted' }
-    // One session this build can't read makes the chain "Needs a newer version" (§1.6.11.8).
+    // One session this build can't read makes the chain "Needs a newer version".
     // A newer generation is "Needs a newer version"; an older or malformed one is not newer, and
     // is not read either.
     const sessions = await tx.index('sessions', 'chainId').getAll(session.chainId)
@@ -180,7 +180,7 @@ export const readSessionForOpen = async (tx: KvTx, sessionId: string): Promise<S
         return { kind: 'damaged', why: 'its chain has a session of an unsupported generation' }
     if (!Number.isSafeInteger(session.updatedAt) || (session.updatedAt as number) < 0)
         return { kind: 'damaged', why: 'invalid last entry time' }
-    // Every entry, whoever wrote it: an unknown kind is never continued (§1.6.11.8).
+    // Every entry, whoever wrote it: an unknown kind is never continued.
     const entries = await entriesOf(tx, sessionId)
     const entriesRead = sessionReadability({ row: session, entryKinds: entries.map((e) => e.kind) })
     if (entriesRead === 'newer') return { kind: 'later', why: 'its session needs a newer version' }
@@ -229,7 +229,7 @@ export type NewestRead = {
 }
 
 /**
- * The most recent session (§1.4.2): the head of the chain record with the newest `updatedAt`,
+ * The most recent session: the head of the chain record with the newest `updatedAt`,
  * skipping chains being deleted and chains this build can't read or open.
  */
 export const readNewestSession = async (tx: KvTx): Promise<NewestRead> => {
@@ -245,14 +245,14 @@ export const readNewestSession = async (tx: KvTx): Promise<NewestRead> => {
     return skipped ? { skipped } : {}
 }
 
-/** What a chain-field write did (§1.3.1). */
+/** What a chain-field write did. */
 export type ChainFieldsResult =
     | { kind: 'stored'; chain: Row }
     | { kind: 'notHead'; lastSeq: number; lastTime: number }
     | { kind: 'missing' }
 
 /**
- * Writes chain fields field by field, only from the chain's head session (§1.3.1): `null`
+ * Writes chain fields field by field, only from the chain's head session: `null`
  * removes a field, and every other field of the record stays as it is.
  */
 export const writeChainFields = async (
@@ -283,7 +283,7 @@ export const writeChainFields = async (
         }
     }
     const record: Row = { ...chain, appVersion }
-    // A binding's or Export target's handle goes in its own store (D24).
+    // A binding's or Export target's handle goes in its own store.
     for (const [key, value] of Object.entries(await splitHandles(tx, chainId, fields)))
         if (value === null || value === undefined) Reflect.deleteProperty(record, key)
         else record[key] = value
@@ -291,7 +291,7 @@ export const writeChainFields = async (
     return { kind: 'stored', chain: record }
 }
 
-/** Every held session's chain and binding, for the bound-elsewhere check (§1.3.2). */
+/** Every held session's chain and binding, for the bound-elsewhere check. */
 export const readBindings = async (tx: KvTx, sessionIds: readonly string[]) => {
     const found: { sessionId: string; chainId: string; file: Row }[] = []
     for (const sessionId of sessionIds) {

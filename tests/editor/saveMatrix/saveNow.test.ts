@@ -63,7 +63,7 @@ test('Open the Other Version: a handle read that fails says so, and is not the f
     assert.match(String(errors[0]?.args[0]), /^The editor could not access this browser’s storage/)
 })
 
-// Save to File… (spec D invariant 12): a session read that fails is a storage failure, not a
+// Save to File…: a session read that fails is a storage failure, not a
 // session that is gone. It said "Use Export Level Data…" for both.
 
 const saveToFileSays = async (readSession: () => Promise<unknown>) => {

@@ -1,8 +1,8 @@
-// The order of the load notices (Part 1 §1.4.3's table, most important first).
+// The order of the load notices (most important first).
 export const LOAD_ORDER = {
     continued: 10,
     storageCleared: 20,
-    // Likely an app’s built-in browser (§1.6.10): after a loss that happened, before every other line.
+    // Likely an app’s built-in browser: after a loss that happened, before every other line.
     inAppBrowser: 25,
     // The handshake's: other tabs hold an upgrade, or the database is newer than this build.
     handshake: 30,
@@ -17,7 +17,7 @@ export const LOAD_ORDER = {
     journalLater: 110,
     journalFailed: 115,
     storageNearlyFull: 120,
-    // A resumed import found damage in the continued session's file (§1.6.11.8).
+    // A resumed import found damage in the continued session's file.
     damagedHistory: 145,
     bgmNotLoaded: 150,
     openElsewhere: 160,

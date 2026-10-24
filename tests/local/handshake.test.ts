@@ -15,7 +15,7 @@ import {
     type TestFlags,
 } from '../../src/local/worker/core'
 
-// The upgrade handshake and the worker's storage states (§1.6.1, §1.6.7), with tabs on the test
+// The upgrade handshake and the worker's storage states, with tabs on the test
 // core. Timers are real but short: about 3 s in the build is 40 ms here.
 
 let ids = 0

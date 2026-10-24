@@ -9,7 +9,7 @@ import {
     type Zone,
 } from '../../calendar/calendar'
 
-// The History clock (Part 1 §1.4.10.5): the one time and time zone every History surface draws
+// The History clock: the one time and time zone every History surface draws
 // from, sampled once. A `Calendar` changes only when the local hour (so the day) changes or the
 // zone does, so a rebuild happens at those moments and no other. The clock looks at the boundary
 // it armed, every minute while anything is subscribed (a sleeping laptop wakes late, and a zone
@@ -112,7 +112,7 @@ const subscribeHistoryCalendar = (): (() => void) => {
 
 /**
  * The History calendar, kept current for the effect scope that asks (a component's setup).
- * The same value for every surface: one clock per History view (I-1).
+ * The same value for every surface: one clock per History view.
  */
 export const useHistoryCalendar = (): Readonly<ShallowRef<Calendar>> => {
     const release = subscribeHistoryCalendar()

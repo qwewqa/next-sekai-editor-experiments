@@ -3,7 +3,7 @@ import { i18n } from '../../../i18n'
 import { findEditsHere } from '../../history/editsHere'
 import EditsHereIcon from './EditsHereIcon.vue'
 
-/** Filters the Timeline to the entries that changed the beats in view or selected (§1.4.10.5). */
+/** Filters the Timeline to the entries that changed the beats in view or selected. */
 export const editsHere: Command = {
     title: () => i18n.value.commands.editsHere.title,
     icon: {

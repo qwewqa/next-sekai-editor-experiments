@@ -18,7 +18,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Recent Sessions (Part 1 §1.4.10.6): one row per chain, newest first, with a badge for this tab and
+// Recent Sessions: one row per chain, newest first, with a badge for this tab and
 // for a session open elsewhere. A click peeks the session without BGM; Restore Session continues
 // it, or opens a copy when it cannot; the ⋯ menu offers Save to File….
 

@@ -4,9 +4,9 @@ import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
 import SeverityIcon from './SeverityIcon.vue'
 
-// The bar over the chart on iOS and iPadOS while changes are not stored and no file holds them
-// (Part 1 §1.6.7): they have no leave prompt, so this is the strong sign there. It takes no focus;
-// the chip stays the way to the dialog.
+// The bar over the chart on iOS and iPadOS while changes are not stored and no file holds them:
+// they have no leave prompt, so this is the strong sign there. It takes no focus; the chip stays
+// the way to the dialog.
 </script>
 
 <template>

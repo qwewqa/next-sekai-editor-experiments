@@ -9,7 +9,7 @@ import {
 } from '../../platform/detect'
 import type { PlatformOs } from '../../platform/types'
 
-// The storage line at the top of Settings › Local Data (Part 1 §1.4.13): one static line, the
+// The storage line at the top of Settings › Local Data: one static line, the
 // first condition that holds. It never overclaims, and says what can still remove stored work.
 
 export type StorageLineKey =
@@ -23,15 +23,15 @@ export type StorageLineKey =
     | 'default'
 
 export type StorageFacts = {
-    /** Storage unavailable, insecure origins included (§1.6.5). */
+    /** Storage unavailable, insecure origins included. */
     unavailable: boolean
     privateSuspected: boolean
-    /** Likely an app’s built-in browser (§1.6.10). */
+    /** Likely an app’s built-in browser. */
     inAppBrowser: boolean
     persisted: boolean
     os: PlatformOs
     engine: Engine
-    /** A Home Screen web app (§1.7.5). */
+    /** A Home Screen web app. */
     standalone: boolean
 }
 
@@ -53,7 +53,7 @@ export const storageLineKey = (facts: StorageFacts): StorageLineKey => {
     return facts.persisted ? 'persisted' : 'default'
 }
 
-/** What the browser says about its storage (§1.6.9), with the test override first. */
+/** What the browser says about its storage, with the test override first. */
 export const readBrowserFacts = async () => {
     const override = platformOverride()
     let persisted = override.persisted

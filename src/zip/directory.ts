@@ -10,7 +10,7 @@ const ZIP64_LOCATOR_SIGNATURE = 0x07064b50
 
 export const LOCAL_HEADER_SIZE = 30
 export const CENTRAL_HEADER_SIZE = 46
-/** The most entries a reader accepts (§1.6.11.4): more is damage. */
+/** The most entries a reader accepts: more is damage. */
 export const ENTRY_CAP = 0xffff
 export const ZIP64_END_SIZE = 56
 /** How much of a file's end holds the end record, a comment and the ZIP64 locator. */
@@ -302,7 +302,7 @@ export const findAmbiguities = (entries: readonly ZipEntry[]): Ambiguity => {
     return { duplicates: [...duplicates], overlapping: [...overlapping] }
 }
 
-/** Entries that readers skip (§1.6.11.4): directories, `__MACOSX/`, `cache/` and OS clutter. */
+/** Entries that readers skip: directories, `__MACOSX/`, `cache/` and OS clutter. */
 export const isIgnoredEntry = (entry: Pick<ZipEntry, 'key' | 'isDirectory'>) => {
     if (entry.isDirectory) return true
     const { key } = entry

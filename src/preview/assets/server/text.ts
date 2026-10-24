@@ -3,7 +3,7 @@ import type { AssetImportError, ImportErrorCode } from '../files/errors'
 import { formatImportMessage, type ImportStrings } from '../files/importMessage'
 import type { ServerChooserError } from './chooser'
 
-// The words of a server's failures (Part 2, 2.5.3). Kept free of the i18n module so tests can pass
+// The words of a server's failures. Kept free of the i18n module so tests can pass
 // the English strings in.
 
 export type ServerStrings = ImportStrings & {

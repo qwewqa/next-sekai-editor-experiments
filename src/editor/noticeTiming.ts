@@ -1,4 +1,4 @@
-/** How long a card stays (Part 1 §1.4.1, §1.4.3). */
+/** How long a card stays. */
 export const NOTICE_MS = 6000
 export const STARTUP_NOTICE_MS = 8000
 /** A long message gets this plus a little per character, up to the cap. */

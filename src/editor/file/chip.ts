@@ -1,4 +1,4 @@
-// The one chip slot's states and their order (Part 1 §1.3.4, §1.4.19): the same list on every
+// The one chip slot's states and their order: the same list on every
 // platform; the web raises the first, second, fourth and sixth.
 
 export type ChipKind =
@@ -23,7 +23,7 @@ export const chipStates = (raised: Iterable<ChipKind>) => {
     return CHIP_ORDER.filter((kind) => set.has(kind))
 }
 
-/** A row's badge: its state, or "Open in another tab or window" (§1.4.19). */
+/** A row's badge: its state, or "Open in another tab or window". */
 export type Badge = ChipKind | 'openElsewhere'
 
 /** A row shows at most two badges: its state first, then "Open in another tab or window". */

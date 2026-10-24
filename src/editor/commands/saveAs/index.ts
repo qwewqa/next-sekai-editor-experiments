@@ -2,7 +2,7 @@ import type { Command } from '..'
 import { i18n } from '../../../i18n'
 import SaveAsIcon from './SaveAsIcon.vue'
 
-// Save As… (no default key; Part 1 §1.4.7): the Save dialog, then a new file with a new `docId`.
+// Save As… (no default key): the Save dialog, then a new file with a new `docId`.
 
 export const saveAs: Command = {
     readOnly: true,

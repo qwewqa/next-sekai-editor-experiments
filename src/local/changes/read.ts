@@ -2,7 +2,7 @@ import type { RecordValue } from '../records/canonical'
 import { kindNames, type KindName } from '../records/schema'
 import type { DiffInput, KindCandidates } from './diff'
 
-// The worker's narrowing (Part 1 §1.6.5): two snapshots compared by hash, so equal roots, kind
+// The worker's narrowing: two snapshots compared by hash, so equal roots, kind
 // nodes, leaves and chunks are skipped and only the chunks one side has are read and decoded.
 
 type Rec = readonly RecordValue[]

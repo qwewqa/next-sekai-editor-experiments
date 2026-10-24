@@ -7,7 +7,7 @@ import { originOperation } from '../helpers/historySteps'
 import { openPage, rows, testId, type Page } from './flush/harness'
 import { goldenChart, stateOf } from './records/charts'
 
-// Try Again for storing (Part 1 §1.6.7) over the real storage core: asking the worker again does
+// Try Again for storing over the real storage core: asking the worker again does
 // not write anything, so a pause only ends when the pending entries are sent.
 
 const workerOf = (page: Page): RetryWorker => ({

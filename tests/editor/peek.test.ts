@@ -44,8 +44,8 @@ import {
 import type { State } from '../../src/state'
 import { editStep, initialLife, initialStep, nativeOperation } from '../helpers/historySteps'
 
-// Peek's core (Part 1 §1.4.11) in Node: the override, debounced requests, failures, leaving,
-// Restore (§1.4.10.5), the state cache and runCommand's gate with the refusal hook.
+// Peek's core in Node: the override, debounced requests, failures, leaving,
+// Restore, the state cache and runCommand's gate with the refusal hook.
 
 type Fake = State & { name: string }
 

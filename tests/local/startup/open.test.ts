@@ -26,9 +26,9 @@ import { autoSaveText } from './autoSaveText'
 import { readOpen } from './harness'
 import { load, markUnloaded, openSession, recordTab, type TabStorage } from './load'
 
-// Which session a load opens (Part 1 §1.4.2), on the test core: the claim, the recovery order and
+// Which session a load opens, on the test core: the claim, the recovery order and
 // `openAtStart` run as `start.ts` runs them. A reload never appends to a session over its own
-// journal that wasn't applied (§1.6.4 step 2), and an unstored continuation's journal is applied
+// journal that wasn't applied, and an unstored continuation's journal is applied
 // as its first write.
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
@@ -163,7 +163,7 @@ test('a reload whose own journal applied takes its session up again', async () =
     assert.equal(reload.recovery.ownOutcome?.kind, 'applied')
     assert.equal(openSession(reload).id, session.id)
     assert.equal(rootOf(reload.page.live.state), root)
-    // Its own reload says nothing (§1.4.3); the golden chart's BGM isn't held here.
+    // Its own reload says nothing; the golden chart's BGM isn't held here.
     assert.deepEqual(reload.events, [{ kind: 'bgmNotLoaded' }])
     assert.deepEqual(checkStored(world.memory), [])
 })
@@ -355,7 +355,7 @@ test('a page without Web Locks: the claim is a reload only with the marker, and 
         assert.equal(recovery.keptForLocalData.length, 1)
 
         // With the marker it continues from it, under a session id of its own: a copied tab
-        // looks the same, and two tabs never share one key (§1.6.7). The old key stays, offered
+        // looks the same, and two tabs never share one key. The old key stays, offered
         // in Local Data: the tab it came from may still be writing it.
         markUnloaded(tab, session.id)
         const reload = await load(world, 'reload', storage, {
@@ -543,7 +543,7 @@ const boundElsewhereSetup = async (seed: number) => {
     await other.tab.run(() => lock.granted)
     beginSession(other, widen(a, 2), 'import', { id: 'other-session' })
     await other.flusher.flush({ strict: true })
-    // The newest chain is the bound one again; both have a stored handle (D24).
+    // The newest chain is the bound one again; both have a stored handle.
     await tamper(world, async (tx) => {
         for (const chainId of [bound.chainId, other.flusher.session!.chainId]) {
             const chain = (await tx.get('chains', chainId)) as Record<string, unknown>
@@ -691,7 +691,7 @@ test('Duplicate Tab of an unstored continuation forks what it continued', async 
     assert.notEqual(fork.id, continuation.id)
 })
 
-// X-13: a chain with no name of its own is named by its date fallback where a copy says what it is a
+// A chain with no name of its own is named by its date fallback where a copy says what it is a
 // copy of, so the source carries when it started and no empty name.
 test('a separate copy of an untitled session names its source by when it started', async () => {
     const world = createWorld({ seed: 16 })

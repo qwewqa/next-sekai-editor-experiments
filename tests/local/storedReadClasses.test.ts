@@ -5,7 +5,7 @@ import local from '../../scripts/eslint-plugin-local.mjs'
 import { COVERED_READS } from '../../src/local/storedRead'
 import type { StorageHandlers } from '../../src/local/worker/storage.worker'
 
-// Every storage method is classified (Part 1 §1.6.5): a covered read goes through the `storedRead`
+// Every storage method is classified: a covered read goes through the `storedRead`
 // gate; the others are other reads (handled where they are read), writes, lifecycle calls or test
 // hooks. A method added to the worker fails to compile here until it is placed, and the runtime
 // check below reads the worker's own handler modules, so the compiler is not the only guard.

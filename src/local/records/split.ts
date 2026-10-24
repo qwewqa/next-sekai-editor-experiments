@@ -1,7 +1,7 @@
 import type { KeyedRecord } from './records'
 import type { KindName } from './schema'
 
-// The split, pinned in v1 (§1.6.11.1): a 16-beat window holding more than 24 records splits at
+// The split, pinned in v1: a 16-beat window holding more than 24 records splits at
 // 4-beat boundaries, a 4-beat part holding more than 24 at 1-beat boundaries, and only a 1-beat
 // part holding more than 24 into runs of 24. A kind other than `slides` with at most 64
 // records in all is one chunk. The kind node groups the chunks 16 at a time; both are pinned.

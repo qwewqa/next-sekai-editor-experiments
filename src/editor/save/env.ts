@@ -10,11 +10,11 @@ import { detection } from '../../platform/detect'
 import type { LockMode } from '../../platform/types'
 import { storageGet, storageKey, storageRemove, storageSet } from '../../storage'
 
-// What the Save core keeps outside storage (Part 1 §1.4.7): this browser's device, the handles
+// What the Save core keeps outside storage: this browser's device, the handles
 // this tab picked, `nse-bind` and the marker of a write whose binding isn't stored yet (our own
 // completed Save).
 
-/** The lock that keeps one writer per file (§1.6.6, owner decision log D5). */
+/** The lock that keeps one writer per file. */
 export const BIND_LOCK = 'nse-bind'
 
 /**
@@ -29,7 +29,7 @@ export const withBind = <T>(mode: LockMode, fn: () => Promise<T>): Promise<T> =>
 let memoryDeviceId: string | undefined
 
 /**
- * This browser's `deviceId` (§1.3.3), kept in localStorage; in memory where it can't be. Files
+ * This browser's `deviceId`, kept in localStorage; in memory where it can't be. Files
  * never hold it: they record the device id derived from it per lineage (`ownDeviceId`).
  */
 export const deviceId = () => {
@@ -44,7 +44,7 @@ export const deviceId = () => {
     return memoryDeviceId
 }
 
-/** "Web (Chrome)", "Web (Edge)", "Web (Firefox)", "Web (Safari)" (§1.3.3). */
+/** "Web (Chrome)", "Web (Edge)", "Web (Firefox)", "Web (Safari)". */
 export const deviceLabel = () => {
     const { engine } = detection()
     const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent
@@ -60,12 +60,12 @@ export const deviceLabel = () => {
     }
 }
 
-/** What a Save is given: the file records the device of its lineage, derived from it (§1.3.3). */
+/** What a Save is given: the file records the device of its lineage, derived from it. */
 export const deviceSource = (): DeviceSource => ({ deviceId: deviceId(), label: deviceLabel() })
 
 let ownDevice: { deviceId: string; lineageId: string; id: string } | undefined
 
-/** This browser's device id in files of `lineageId` (§1.3.3): a save there with it is its own. */
+/** This browser's device id in files of `lineageId`: a save there with it is its own. */
 export const ownDeviceId = (lineageId: string) => {
     const id = deviceId()
     if (ownDevice?.deviceId !== id || ownDevice.lineageId !== lineageId)
@@ -74,7 +74,7 @@ export const ownDeviceId = (lineageId: string) => {
 }
 
 // The handles this tab picked or read, by chain: the main thread's own copy for permission
-// requests and writes (§1.3.2).
+// requests and writes.
 const handles = new Map<string, { name: string; handle: FileSystemFileHandle }>()
 
 export const rememberHandle = (chainId: string, handle: FileSystemFileHandle) => {
@@ -91,7 +91,7 @@ export const heldHandle = (chainId: string, name: string) => {
     return held?.name === name ? held.handle : undefined
 }
 
-// The marker of a write not yet recorded: what our own completed Save commits (§1.4.7).
+// The marker of a write not yet recorded: what our own completed Save commits.
 
 /** A write whose binding isn't stored yet: its `save` entry and identity unit, hashes as hex. */
 export type SaveMarker = {
@@ -193,5 +193,5 @@ export const markerFile = (file: Record<string, unknown>) => {
     return { ...rest, hash: hash instanceof Uint8Array ? toHex(hash) : String(hash) }
 }
 
-/** The live state, never a peek (Save acts on the live session, §1.4.7). */
+/** The live state, never a peek (Save acts on the live session). */
 export const savedState = () => liveState.value

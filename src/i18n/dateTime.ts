@@ -6,7 +6,7 @@ import {
 } from '../calendar/calendar'
 import { languageTag } from './plural'
 
-// The one Intl helper for times and dates shown to the user (Part 1 §1.4.3, §1.3.4): the
+// The one Intl helper for times and dates shown to the user: the
 // app locale's own format. A date from another year carries its year.
 //
 // Every export takes an optional last `zone`: a zone's own local time, from the History clock.
@@ -73,7 +73,7 @@ export const formatDateInSentence = (locale: string, at: number, now = Date.now(
 export const formatClock = (locale: string, at: number, zone?: Zone) =>
     formatter(locale, 'clock', { hour: 'numeric', minute: '2-digit' }, zone).format(clampTime(at))
 
-/** "2:40:31 PM": a History entry's time in the peek bar and Restore's notice (§1.4.10.3). */
+/** "2:40:31 PM": a History entry's time in the peek bar and Restore's notice. */
 export const formatClockSeconds = (locale: string, at: number, zone?: Zone) =>
     formatter(
         locale,

@@ -7,9 +7,9 @@ import { createTransaction } from '../../../src/state/transaction'
 import { sampleState } from '../records/samples'
 import { Fixture, save } from './fixture'
 
-// The size preview on the generated large chart (Part 1 §1.11.6, "The size preview"): the total
+// The size preview on the generated large chart: the total
 // within 25% of the written file, with History and without. `npm test` runs 30 steps;
-// NSE_LONG_SAVE=1 runs the plan's 1,800.
+// NSE_LONG_SAVE=1 runs 1,800.
 
 const widen = (state: State, n: number) => {
     const notes = [...state.store.slides.note.values()].flat()

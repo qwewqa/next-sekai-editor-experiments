@@ -29,7 +29,7 @@ import {
     Store,
 } from './helpers'
 
-// The builder golden's fixed chain (§1.6.11.9), shared with the plan conformance set.
+// The builder golden's fixed chain, shared with the plan conformance set.
 
 export const root = join(import.meta.dirname, 'golden-v1')
 export const writing = process.env.NSE_WRITE_GOLDEN === '1'

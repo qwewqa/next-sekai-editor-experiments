@@ -25,7 +25,7 @@ import { stillBad, type SaveStore } from './bodies'
 import { fromSource, isStoredMediaWhole } from './media'
 import { knownDamage } from './predicate'
 
-// Known damage put right from the chain's own file (SP-1, L1, SF2-3): a stored body a build found
+// Known damage put right from the chain's own file: a stored body a build found
 // bad (some chain's `badChunks`) that still fails, when the append source holds it, is stored
 // again from the source's bytes once they check against its key: a chunk must inflate and hash to
 // it (`verifyChunk`, then `putChunk`), a root or kind node's JSON form must pass its schema and

@@ -5,7 +5,7 @@ import { collection, patched, type Type } from './previewAssetsPackages'
 import { BASE, filesOf, ORIGIN, serve } from './previewAssetsServers'
 import { resource } from './previewResourceFixture'
 
-// The Preview Assets dialog with From a Server (Part 2, 2.5.3, 2.6; the A4 tests of 2.11), which
+// The Preview Assets dialog with From a Server, which
 // only the apps have: the page gets their capability from a test platform whose fetch asks fake
 // servers in Node (previewAssetsServers.ts). The web, with no servers, is tested too. With
 // A4_SHOTS_DIR set, each state is also saved there as a screenshot.

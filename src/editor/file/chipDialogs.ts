@@ -12,7 +12,7 @@ import { pausedReasonLine } from './notStoredReason'
 import { boundFile, chip, confirmFile } from './state'
 import { tryStoringAgain } from './tryAgain'
 
-// The chip's text and the dialog a tap opens (Part 1 §1.3.4): the first state's dialog, with the
+// The chip's text and the dialog a tap opens: the first state's dialog, with the
 // lower-priority states as extra lines.
 
 /** The chip's string. */
@@ -82,7 +82,7 @@ const notStoredChoices = (cause: NotStoredCause | undefined): Choice<NotStoredCh
     }
 }
 
-/** The Not stored dialog (Part 1 §1.6.7): why, what to do about it, and Save as the way out. */
+/** The Not stored dialog: why, what to do about it, and Save as the way out. */
 const openNotStored = async (rest: readonly ChipKind[]) => {
     const cause = notStored.value
     // The chip lists the download line only while nothing has changed since (`chipKinds`).
@@ -93,7 +93,7 @@ const openNotStored = async (rest: readonly ChipKind[]) => {
         message: () => lines(chipSentence('notStored'), rest, reasonLine(notStored.value ?? cause)),
         choices: [
             ...notStoredChoices(cause),
-            // The download line is there, so the way to settle it is too (§1.3.4). With nothing
+            // The download line is there, so the way to settle it is too. With nothing
             // changed since, the work is in that file: Save would only offer it again, so the
             // confirm is the default and Save is left out, as in the leave prompt.
             ...(settling

@@ -1,6 +1,6 @@
 import type { LevelInfoTag } from '../../state/levelInfo'
 
-// Level Info's Tags field (Part 1 §1.4.12): the titles in one comma-separated line.
+// Level Info's Tags field: the titles in one comma-separated line.
 
 /** The line the field shows for tags. */
 export const tagsText = (tags: readonly LevelInfoTag[]) => tags.map((tag) => tag.title).join(', ')

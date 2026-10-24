@@ -1,6 +1,6 @@
 import { recordError } from '../../diagnostics'
 
-// One Save at a time in a tab (Part 1 §1.6.6): Saves run in press order. A press while one runs
+// One Save at a time in a tab: Saves run in press order. A press while one runs
 // waits its turn and is never dropped; a press that has not started yet joins an earlier one of the
 // same command, so a command pressed ten times meanwhile runs once more, not ten times.
 

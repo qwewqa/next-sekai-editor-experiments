@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { importLevelData, openEditor } from './memoryBaseline'
 
 // The minimap's content pipeline, driven on detached canvases with the app's real state and
-// history (design §13.2). The strip itself is not mounted here.
+// history. The strip itself is not mounted here.
 
 // Coconut is local-only (never committed); CI runs the committed generated chart instead.
 const coconutPath = 'test_level_data/coconut-next-sekai-24887.json'

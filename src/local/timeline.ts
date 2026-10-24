@@ -9,7 +9,7 @@ import {
 import { equalBytes, toHex } from './hash'
 import type { SessionOrigin } from './records/unknownValues'
 
-// The timeline and the stored undo stack (Part 1 §1.3.7–§1.3.9, §1.6.4 #6). Replay of a session's
+// The timeline and the stored undo stack. Replay of a session's
 // entries defines its stack; the stack is stored as snapshot refs in blocks of 256 slots, keyed
 // by absolute slot numbers, with a window of at most 5,000 slots that always includes the index.
 // The page replays its pending entries over the stack last acknowledged, so a flush writes the
@@ -24,7 +24,7 @@ export const STACK_CAP = 5000
 export type StackWindow = { readonly base: number; readonly length: number; readonly index: number }
 
 /**
- * The stored window of a stack of `length` slots (§1.6.4 #6): normally the newest `cap`; when
+ * The stored window of a stack of `length` slots: normally the newest `cap`; when
  * the index sits below them, the redo end is cut first, so the window is the `cap` slots ending
  * at the index, or starting at slot 0 when the index is under `cap`. Slots below `floor` (a
  * restored stack's own base) aren't known, so the window never starts below it.
@@ -55,16 +55,16 @@ export const blockSpan = (window: StackWindow, block: number) => ({
     end: Math.min((block + 1) * BLOCK_SLOTS, window.base + window.length),
 })
 
-/** Kinds a session's first entry can have (§1.3.6): `recovered` for a session a journal made. */
+/** Kinds a session's first entry can have: `recovered` for a session a journal made. */
 export const FIRST_KINDS: readonly string[] = ['init', 'continue', 'recovered']
 
-/** Entries that make a chain edited (§1.6.11.2's `edited`). */
+/** Entries that make a chain edited. */
 export const EDITING_KINDS: readonly string[] = ['edit', 'undo', 'redo', 'restore', 'recovered']
 
 export const isEditingKind = (kind: string) => EDITING_KINDS.includes(kind)
 
 /**
- * A chain record's flags at its creation (§1.6.11.2): `hasContent` for every origin but a blank
+ * A chain record's flags at its creation: `hasContent` for every origin but a blank
  * start and a continuation, `edited` for work that's in no file (a migrated auto save, a journal).
  */
 export const chainFlagsAtCreation = (origin: SessionOrigin) => ({
@@ -74,7 +74,7 @@ export const chainFlagsAtCreation = (origin: SessionOrigin) => ({
 
 export type ReplaySlot = { readonly snapshot: Uint8Array; readonly step: UndoableStep }
 
-/** A `recovered` entry's `stack` (§1.6.11.2): slots `0 … keep − 1` kept, then `push`, at `index`. */
+/** A `recovered` entry's `stack`: slots `0 … keep − 1` kept, then `push`, at `index`. */
 export type RecoveredStack = {
     readonly keep: number
     readonly push: readonly ReplaySlot[]
@@ -96,7 +96,7 @@ export class ReplayError extends Error {
 }
 
 /**
- * Replays a session's entries (§1.3.9), after an inherited stack when it continues one. The test
+ * Replays a session's entries, after an inherited stack when it continues one. The test
  * oracle for the stored stack, and how a stack is rebuilt where none was stored. Strict: an
  * undo or redo that doesn't land on its snapshot, or a first entry of the wrong kind, throws.
  */
@@ -185,7 +185,7 @@ export const replay = (
     return { slots, index }
 }
 
-/** A `stackBlocks` row (§1.6.11.2). */
+/** A `stackBlocks` row. */
 export type StackBlockRow = {
     sessionId: string
     block: number
@@ -225,7 +225,7 @@ export const storedSlots = (
     return slots
 }
 
-/** A block's row from its slots, hashes packed (§1.6.11.2). */
+/** A block's row from its slots, hashes packed. */
 export const blockRow = (
     sessionId: string,
     block: number,
@@ -371,7 +371,7 @@ type Saved<E> = {
 }
 
 /**
- * A session's stack as the page knows it (§1.6.4 #6): the stack last acknowledged, every slot a
+ * A session's stack as the page knows it: the stack last acknowledged, every slot a
  * stored hash, with the stored window and the span of each stored block. A flush replays its
  * entries over it and rewrites only the blocks whose slots or span changed, normally the last.
  */
@@ -527,9 +527,9 @@ export type SessionRows = {
 }
 
 /**
- * How each stored stack differs from replay of its session's entries (§1.3.9), as messages: a
+ * How each stored stack differs from replay of its session's entries, as messages: a
  * continuation's replay starts from its parent's stack at `uptoSeq`. A session without a stored
- * stack is still replayed, so a `save` row that does not land (I-8) is reported whether or not a
+ * stack is still replayed, so a `save` row that does not land is reported whether or not a
  * stack was stored; one whose import has not ended has rows to come and is skipped.
  */
 export const stackViolations = (sessions: ReadonlyMap<string, SessionRows>): string[] => {

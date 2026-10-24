@@ -2,8 +2,8 @@ import type { Flusher } from './flush'
 import type { JournalWriter } from './journal/writer'
 import type { StorageStatus } from './worker/core'
 
-// "Not durably stored" (Part 1 §1.6.7): the one predicate every session switch and the leave
-// prompt use. Safety never depends on an unverified write (Part 0 §0.10.5, invariant 15): an
+// "Not durably stored": the one predicate every session switch and the leave
+// prompt use. Safety never depends on an unverified write (invariant 15): an
 // ordinary pending flush counts as stored only because the journal of its entries verified.
 
 export type DurabilityInputs = {
@@ -27,7 +27,7 @@ export const notDurableReason = ({ status, flusher, journal, media = [] }: Durab
     if (!flusher || !session) return 'unavailable'
     // An edit made before the first flush finished.
     if (!session.stored) return 'notWritten'
-    // A picked file is always stored (§1.6.8.4), and the journal doesn't carry media (§1.6.4):
+    // A picked file is always stored, and the journal doesn't carry media:
     // the head's media the store refused or didn't read back is in this tab's memory only.
     if (media.some((hash) => status.mediaPending?.includes(hash))) return 'mediaPending'
     if (!flusher.unflushed(session)) return

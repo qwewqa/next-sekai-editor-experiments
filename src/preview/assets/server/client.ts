@@ -4,9 +4,9 @@ import { displayText, isItemName, isSrl, type Srl } from '../files/package'
 import { isLocalHost } from '../serverUrl'
 import type { AssetType } from '../types'
 
-// The Sonolus server client (Part 2, 2.5.3; Part 1 §1.5.8), for the apps: plain GETs with no
+// The Sonolus server client, for the apps: plain GETs with no
 // credentials and no custom headers. A request fails after 30 s without response headers, 30 s
-// without a body byte, or 10 minutes in all (DECISIONS D12), and at most 4 are open at once; the
+// without a body byte, or 10 minutes in all, and at most 4 are open at once; the
 // user's own requests go before background ones (thumbnails, the other types' lookups).
 
 export type ServerErrorCode =
@@ -297,7 +297,7 @@ export const createServerClient = (options: ServerClientOptions) => {
         return
     }
 
-    /** A thumbnail's address; one on this device or its network is not fetched (D11). */
+    /** A thumbnail's address; one on this device or its network is not fetched. */
     const thumbnailUrl = (address: string, url: string | null | undefined) => {
         const resolved = resolveUrl(address, url)
         if (!resolved || (!allowLocal && isLocalHost(new URL(resolved).hostname))) return

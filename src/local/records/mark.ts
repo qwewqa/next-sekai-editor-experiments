@@ -1,7 +1,7 @@
 import { toHex } from '../hash'
 import { unpackHashes } from './rows'
 
-/** A `nodes` row this build can't mark through: GC aborts, as for an unknown `v` (§1.6.11.2). */
+/** A `nodes` row this build can't mark through: GC aborts, as for an unknown `v`. */
 export class UnknownNodeError extends Error {
     override name = 'UnknownNodeError'
 }
@@ -10,7 +10,7 @@ export class UnknownNodeError extends Error {
 export type MarkRow = { t?: unknown; refs?: unknown }
 
 /**
- * GC's marking (§1.6.8.6): everything reachable from `roots` through `nodes` rows' `refs`,
+ * GC's marking: everything reachable from `roots` through `nodes` rows' `refs`,
  * transitively. A hash with no `nodes` row is a chunk or a media item, a leaf. Returns the
  * reached hashes as hex, the roots included. Throws `UnknownNodeError` on a row it can't read.
  */

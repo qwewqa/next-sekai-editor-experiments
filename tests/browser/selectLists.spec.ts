@@ -235,7 +235,7 @@ test.describe('on a fine pointer', () => {
         await page.mouse.click(point.x, point.y)
         expect(await isOpen(select)).toBe(false)
         expect(await noteStyles(page)).toEqual(['purple'])
-        // Focus goes back to the select from its closed list (X-3).
+        // Focus goes back to the select from its closed list.
         await expect(select).toBeFocused()
         // The next press is the user's own.
         await page.mouse.click(point.x, point.y)

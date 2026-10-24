@@ -1,7 +1,7 @@
 import type { CleanupResult } from './cleanup'
 import type { PauseReason, StorageStatus } from './worker/core'
 
-// When cleanup under pressure runs (deletion design §3.7, DEL-D1 final), on the page: at load
+// When cleanup under pressure runs, on the page: at load
 // idle after GC when usage is high, and when storing pauses for a full browser. It removes only
 // cached earlier media (`removeCachedMedia`); when that is not enough, storing stays paused with
 // the usual signs and the user frees space by hand. One tab cleans at a time: the removal runs

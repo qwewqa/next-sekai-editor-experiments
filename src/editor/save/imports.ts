@@ -4,7 +4,7 @@ import { appVersion } from '../../platform'
 import type { BuildEnv } from './build'
 import type { Preparing, SaveUi } from './dialogs'
 
-// The wait for a chain's open imports (Part 1 §1.4.7, spec A): a Save, Save As… and Export wait
+// The wait for a chain's open imports: a Save, Save As… and Export wait
 // for them in "Preparing…" before they read the chain, and our own completed Save is recorded only
 // after them.
 
@@ -17,7 +17,7 @@ export type PreparingSlot = {
     name: string
     /** How its dialog opens: the Save UI's, given by the flow (this module loads in Node). */
     ui: { preparing: SaveUi['preparing'] }
-    /** Export's picker waiting for an open's import (SF3-1). */
+    /** Export's picker waiting for an open's import. */
     kind?: 'export'
     timer?: ReturnType<typeof setTimeout>
     cancel: AbortController
@@ -35,10 +35,10 @@ export const openPreparing = (slot: PreparingSlot) => {
     return dialog
 }
 
-/** A build longer than this shows "Preparing…" (§1.4.7, §1.5.6). */
+/** A build longer than this shows "Preparing…". */
 export const PREPARING_MS = 1000
 
-/** How long a Save waits for a reload's import resume to start (§1.5.4), as a slot load does. */
+/** How long a Save waits for a reload's import resume to start, as a slot load does. */
 export const RESUME_WAIT_MS = 4000
 const RESUME_POLL_MS = 250
 
@@ -107,7 +107,7 @@ export const waitForChainImports = async (
             continue
         }
         const dialog = openPreparing(slot)
-        // The import's progress, from the batches it has run (§1.4.7).
+        // The import's progress, from the batches it has run.
         const stop = onImportProgress(here.sessionId, (progress) => {
             dialog.importing(progress)
         })

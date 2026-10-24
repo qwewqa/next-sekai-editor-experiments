@@ -11,7 +11,7 @@ import {
     startupGate,
 } from './gate'
 
-// The startup gate (Part 1 §1.4.2): a modal dialog, so the page behind it is inert, over the
+// The startup gate: a modal dialog, so the page behind it is inert, over the
 // editor from the first frame. Nothing shows for the first 150 ms; then a spinner with the
 // session's name. After 10 s it offers Start Blank and Open in Safe Mode, and a startup that
 // throws shows the error's own text with Open in Safe Mode and Export Raw Data….

@@ -48,7 +48,7 @@ export const serializeSlidesToLevelDataEntities = (
         return newAllowSimLines
     }
 
-    // Slides in the records' order (§1.6.11.6), so names and sim lines follow it too.
+    // Slides in the records' order, so names and sim lines follow it too.
     for (const { slideId } of ordered.slides) {
         const infos = store.slides.info.get(slideId)
         if (!infos) throw new Error('Unexpected missing slide')

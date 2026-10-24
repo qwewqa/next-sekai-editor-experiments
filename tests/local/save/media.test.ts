@@ -7,7 +7,7 @@ import { editStep, futureFixtureOperation, noteAdd } from '../../helpers/history
 import { BGM, BGM_2, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, heldRows, save, SECOND, stateAt } from './fixture'
 
-// The media rule (Part 1 §1.6.11.6; round 11 G3, owner A5), this tab's pending records as the
+// The media rule, this tab's pending records as the
 // build's first source, and a download that inflates no chunk taken from storage.
 
 const ok = <T extends object>(value: T) => {

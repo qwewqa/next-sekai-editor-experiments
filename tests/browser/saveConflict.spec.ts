@@ -23,7 +23,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The conflict dialog's choices (Part 1 §1.4.7, Part 0 §0.9.6): Replace keeps the version on disk
+// The conflict dialog's choices: Replace keeps the version on disk
 // as an ordinary session first, then writes with `replaces`; Save as a Separate File keeps the
 // `docId` in a new file; nothing is ever written over a changed file unseen.
 

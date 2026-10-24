@@ -44,12 +44,12 @@ import type { StorageStatus, TestFlags } from './worker/core'
 import { transfer } from './worker/rpc'
 import storageWorkerUrl from './worker/storage.worker?worker&url'
 
-// Starts the storage worker after first paint (Part 1 §1.6.5), runs the recovery order (Part 0
-// §0.9.8: the canary, the journals, the old auto save) and opens the session this load continues
-// (§1.4.2), while the startup gate refuses input. It also says at load what the handshake found
-// (§1.4.3): stored work behind other tabs, or a database newer than this build.
+// Starts the storage worker after first paint, runs the recovery order (the canary,
+// the journals, the old auto save) and opens the session this load continues, while the startup
+// gate refuses input. It also says at load what the handshake found: stored work behind other
+// tabs, or a database newer than this build.
 
-/** The worker's test flag, seeded like the other test keys (§1.11's test notes). */
+/** The worker's test flag, seeded like the other test keys. */
 export const STORAGE_TEST_KEY = 'nse.test.storage'
 /** The fixture hook's no-storage key. */
 const NO_STORAGE_TEST_KEY = 'nse.test.noStorage'
@@ -207,7 +207,7 @@ declare global {
 }
 
 /**
- * The startup sequence (§1.4.2): resolves once the session this load continues is open, and
+ * The startup sequence: resolves once the session this load continues is open, and
  * rejects when a journal, a row or the migration triggered a bug; the startup gate follows it.
  */
 /** The day the "almost full" notice last showed (a stamp, so a reload does not repeat it). */
@@ -253,7 +253,7 @@ export const startStorage = async () => {
     if (storageWorker) return
     const { flags, test } = readFlags()
     if (!canStore()) flags.noStorage = true
-    // Safe mode opens the database read-only and writes nothing but settings (§1.4.2).
+    // Safe mode opens the database read-only and writes nothing but settings.
     const safe = isSafeMode()
     if (safe) flags.readOnly = true
     const deviceId = storageGet('deviceId', undefined)
@@ -285,7 +285,7 @@ export const startStorage = async () => {
         if (document.visibilityState === 'visible') resume()
     })
 
-    // Reload or Duplicate Tab, by the session lock, before the recovery order (§1.4.2).
+    // Reload or Duplicate Tab, by the session lock, before the recovery order.
     const claiming = claimTab(platform.locks).catch((): Claim => ({ kind: 'none' }))
     const starting = (holdStartMs ? wait(holdStartMs) : Promise.resolve())
         .then(() => worker.start())
@@ -304,7 +304,7 @@ export const startStorage = async () => {
         )
     let claim = { kind: 'none' } as Claim
     let recovery: RecoveryContext | undefined
-    // The recovery order, once the worker answered; every flush waits for it (Part 0 §0.9.8).
+    // The recovery order, once the worker answered; every flush waits for it.
     const recovered = (async () => {
         const { status, answered } = await starting
         claim = await claiming
@@ -370,7 +370,7 @@ export const startStorage = async () => {
             open = await openAtStart(deps, claim)
             // Reopen, Restore as a Copy and Local Data's rows act through these from now on.
             setSessionContext(deps, recovery)
-            // An open's import a tab didn't finish: resumed or ended once startup is done (§1.5.4).
+            // An open's import a tab didn't finish: resumed or ended once startup is done.
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
                 const context = recovery

@@ -21,7 +21,7 @@ import {
     secondInput,
 } from '../local/nxsp/goldenChain'
 
-// The plan conformance set (§1.6.11.7), frozen with v1: the same plan gives the same bytes on every
+// The plan conformance set, frozen with v1: the same plan gives the same bytes on every
 // platform. Each case in `plan-conformance-v1/<case>/` holds `plan.json` (bytes parts as
 // `{ "$u8": "<base64>" }`, copy parts naming a source file in the case), the sources, `pinned.json`
 // (each source's inspect result and its fingerprint, a literal), and `expected.nxsp` or

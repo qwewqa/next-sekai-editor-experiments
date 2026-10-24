@@ -8,8 +8,7 @@ import { crc32 } from '../../../src/zip/crc32'
 import { futureFixtureOperation } from '../../helpers/historySteps'
 import { Fixture, save, sourceOf, stateAt } from './fixture'
 
-// The append assertion (§1.6.11.6 step 3; §1.11.6's Exit: "fails a plan whose prefix a test hook
-// altered"): every alteration of the copied prefix is a plan error, with nothing written.
+// The append assertion: every alteration of the copied prefix is a plan error, with nothing written.
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
 

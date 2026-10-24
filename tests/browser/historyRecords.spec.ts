@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// What History records for an edit (Step Details package P1): collateral removals and additions,
+// What History records for an edit: collateral removals and additions,
 // the one id for one result, the default events Dynamic Stages adds, and where a level came from.
 
 test.beforeEach(async ({ page }) => {

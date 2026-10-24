@@ -4,7 +4,7 @@ import type { DayKey } from '../../src/calendar/calendar'
 import { NO_USE_DAY, type UseDay } from '../../src/local/days'
 import { useDay } from '../helpers/useDay'
 
-// I-11: a day of use is not a calendar day. These are checked by `npm run check-type`: an unused
+// A day of use is not a calendar day. These are checked by `npm run check-type`: an unused
 // `@ts-expect-error` is an error, so the brands have to keep the two apart.
 
 const takesUseDay = (day: UseDay) => day

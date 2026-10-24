@@ -1,7 +1,7 @@
 import type { Flusher } from './flush'
 import type { StorageStatus } from './worker/core'
 
-// Try Again for storing (Part 1 §1.6.7): the one retry behind the Not stored chip's dialog,
+// Try Again for storing: the one retry behind the Not stored chip's dialog,
 // Settings › Local Data and the cleanup after a full browser. The worker alone is not enough:
 // asking it again reopens a dropped connection or a blocked upgrade, but nothing is written
 // until the flusher sends its pending entries, which is what clears a pause.

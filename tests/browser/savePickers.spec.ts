@@ -23,7 +23,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The save picker's rules (Part 1 §1.4.7 R1–R12; owner decision log D5; `work/d5/safety.md` §8)
+// The save picker's rules
 // on the Chromium override, whose picker empties an existing file as Chromium's does. Two pages
 // of one context share OPFS, IndexedDB, Web Locks and BroadcastChannel.
 
@@ -185,7 +185,7 @@ test('the chain’s own file changed on disk: a pick puts its bytes back and ope
     await edit(page, 2)
     await saveAs(page)
     await queuePicks(page, ['coconut.nxsp'])
-    // The read before the picker (R2) has time to finish.
+    // The read before the picker has time to finish.
     await page.waitForTimeout(500)
     await submitSave(page, undefined, 'Save As')
     await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
@@ -439,7 +439,7 @@ test('B mid-write: A’s pick waits for B to finish, then takes the file over', 
     // A's picker emptied the file, and B's write hasn't closed.
     await expect.poll(() => readFile(b, 'coconut.nxsp')).toEqual([])
     await release(b)
-    // B's check of the emptied file goes on without a conflict (R9): its Save lands first.
+    // B's check of the emptied file goes on without a conflict: its Save lands first.
     await expect
         .poll(async () => ((await chainById(a, bChain.chainId))?.revision as Row | undefined)?.n)
         .toBe(2)

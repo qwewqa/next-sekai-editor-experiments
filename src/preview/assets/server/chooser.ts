@@ -26,7 +26,7 @@ import {
 } from './client'
 import { createServerSource } from './source'
 
-// The chooser's From a Server view (Part 2, 2.5.3, 2.6), in the apps, without its markup: connect,
+// The chooser's From a Server view, in the apps, without its markup: connect,
 // list one type's items with paging and quick search, offer the other types' items of the same
 // name, and on Use download, check, repack and store what was selected and ticked. One per type
 // lives with the dialog, beside the From a File chooser, so a tab keeps its state while another

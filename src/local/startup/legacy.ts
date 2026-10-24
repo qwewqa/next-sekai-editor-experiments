@@ -1,4 +1,4 @@
-// The old auto save's keys (Part 1 §1.8, §1.6.11.3), which the migration moves into a session,
+// The old auto save's keys, which the migration moves into a session,
 // and recovery data as a file to keep.
 
 /** Today's auto save slot, which the migration moves into a session. */
@@ -12,7 +12,7 @@ const isGzip = (bytes: Uint8Array) => bytes[0] === 0x1f && bytes[1] === 0x8b
 
 const nameOf = (value: unknown) => (typeof value === 'string' && value ? value : undefined)
 
-/** A name any file system takes, as the support gate makes it (§1.6.10). */
+/** A name any file system takes, as the support gate makes it. */
 const safeName = (name: string) =>
     // eslint-disable-next-line no-control-regex
     name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
@@ -21,9 +21,9 @@ const withExtension = (name: string, extension: string) =>
     name.slice(-extension.length).toLowerCase() === extension ? name : name + extension
 
 /**
- * Recovery data as a file to keep (§1.8, §1.6.11.2's `recovered`): a journal's level data as
+ * Recovery data as a file to keep (`recovered`): a journal's level data as
  * `.nsld`, the old auto save's v1 form as `.nsld`, raw level data as `.json` unchanged, and
- * anything else as the text it is. The names follow the support gate's (§1.6.11.3): the
+ * anything else as the text it is. The names follow the support gate's: the
  * journal's `descriptor.name`, else `descriptor.sourceName`, else "Untitled"; the slot's
  * `filename`, else "Recovery".
  */

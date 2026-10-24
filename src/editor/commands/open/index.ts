@@ -58,7 +58,7 @@ export const open: Command = {
         return withSwitchRequest(undefined, async (request) => {
             if (!(await confirmSwitch()) || !request.isCurrent()) return
 
-            // Unfiltered, keeping the handle where the picker exists (§1.5.3).
+            // Unfiltered, keeping the handle where the picker exists.
             const { file, handle } = await pickFileForOpen('nse-open')
             if (!file || !request.isCurrent()) return
 
@@ -72,7 +72,7 @@ export const open: Command = {
                 return
             }
             if (detected === 'zip') {
-                // An archive or a Sonolus package is named, not opened (§1.5.2): nothing is
+                // An archive or a Sonolus package is named, not opened: nothing is
                 // replaced. A ZIP that cannot be classified goes on to the project reader, which
                 // says why it cannot open.
                 const kind = await detectZip(file).catch(() => 'project' as const)
@@ -100,7 +100,7 @@ export const open: Command = {
                     if (choice) await showPreviewAssets(undefined, { file })
                     return
                 }
-                // A project file, read in the storage worker (§1.5.4).
+                // A project file, read in the storage worker.
                 const { openProject } = await import('./project')
                 try {
                     if (!request.isCurrent()) return
@@ -119,7 +119,7 @@ export const open: Command = {
 
             let sourceBuffer: ArrayBuffer | undefined
             let warning: RevisionWarning | 'unsupportedParts' | undefined
-            // Values this build doesn't know: the level opens only after its confirm (§1.5.4).
+            // Values this build doesn't know: the level opens only after its confirm.
             let newerValues:
                 (() => Promise<RevisionWarning | 'unsupportedParts' | undefined>) | undefined
             await showModal(LoadingModal, {
@@ -250,7 +250,7 @@ export const open: Command = {
 
 /**
  * Opens parsed level data: a new session, with its handle and Export's target when it was read
- * whole (§1.4.8). Content this build did not read makes it partial: no file is written over (D2).
+ * whole. Content this build did not read makes it partial: no file is written over.
  */
 const applyLevelData = async (
     file: File,
@@ -289,7 +289,7 @@ const opened = async (
     request: SwitchRequest,
 ) => {
     if (!request.isCurrent()) return
-    // The source's bytes, so a save picker that empties it can be undone (D5).
+    // The source's bytes, so a save picker that empties it can be undone.
     if (handle)
         exportMemory.opened = {
             handle,
@@ -297,13 +297,13 @@ const opened = async (
             partial,
             // Complete level data may be written over; anything else is kept.
             bytes: type === 'levelData' && !partial ? undefined : buffer,
-            // The project picker never writes over any of them (§1.4.7 R7).
+            // The project picker never writes over any of them.
             ...(buffer.byteLength <= KEPT_BYTES_LIMIT ? { kept: buffer } : {}),
         }
 
-    // The target and the partial flag are the new chain's (§1.4.8).
+    // The target and the partial flag are the new chain's.
     await rememberExport()
-    // With Reopen while the session left can be reopened (Part 1 §1.4.1).
+    // With Reopen while the session left can be reopened.
     if (request.isCurrent()) notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
 }
 

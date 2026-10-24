@@ -1,6 +1,6 @@
 import type { LockMode, LockService, LockSnapshot } from '../platform/types'
 
-// The maintenance lock (Part 1 §1.6.5, §1.6.6). Writers hold `nse-maint` shared only around their
+// The maintenance lock. Writers hold `nse-maint` shared only around their
 // transaction, after deflate, verify and hash, and wait at most 3 s for it. Every transaction that
 // deletes rows or bodies runs inside it exclusive (`StorageCore.exclusive`, R1), always requested
 // with ifAvailable, so a deleter never queues in front of a writer.

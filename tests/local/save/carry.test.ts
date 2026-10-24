@@ -19,9 +19,9 @@ import {
     stateAt,
 } from './fixture'
 
-// The carry test (§1.6.11.6 as D25 settles it): flagged rows count only when no kept row up to
+// The carry test: flagged rows count only when no kept row up to
 // the cut has their state; a binding is stored with its write's marks; and flagged rows' states
-// are written when storage still holds them whole (H-2).
+// are written when storage still holds them whole.
 
 const ok = <T extends object>(value: T) => {
     assert.ok(!('refused' in value), JSON.stringify(value))
@@ -50,7 +50,7 @@ const flag = async (fixture: Fixture, pick: (row: FixtureRow) => boolean) => {
 
 const download = (fixture: Fixture) => save(fixture, { kind: 'copy' }, { event: 'downloaded' })
 
-test('a flagged row whose state a kept row shares shows the line at most once (M7)', async () => {
+test('a flagged row whose state a kept row shares shows the line at most once', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -128,7 +128,7 @@ const pausedOnce = (store: SaveStore): SaveStore => {
     }
 }
 
-test('a binding is stored with its write’s marks, so a later reduction never carries (minor 7)', async () => {
+test('a binding is stored with its write’s marks, so a later reduction never carries', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -165,11 +165,11 @@ test('a binding is stored with its write’s marks, so a later reduction never c
     const d2 = ok((await download(fixture)).built)
     assert.notEqual(d2.identity.completeFrom, d1.identity.completeFrom)
     // Flags and a thinned root can't be told from the flagged row d1's file already lacked: the
-    // counts agree, so it is not known missing (I-18).
+    // counts agree, so it is not known missing.
     assert.equal(d2.stepsLine, 'mayNotBeIncluded')
 })
 
-test('flagged rows’ states are written when storage still holds them whole (H-2, minor 8)', async () => {
+test('flagged rows’ states are written when storage still holds them whole', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -217,7 +217,7 @@ const onlyChunk = async (fixture: Fixture, k: number) => {
     return found
 }
 
-test('a Save without History reads only the head: a bad state elsewhere on the stack marks nothing (SF-7)', async () => {
+test('a Save without History reads only the head: a bad state elsewhere on the stack marks nothing', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(1)
@@ -315,8 +315,7 @@ test('a recognised Save whose row the chain lacks is never carried by the next c
     assert.equal(builtN.stepsLine, 'mayNotBeIncluded')
 })
 
-// A write that appends onto a base whose own row the chain lacks leaves an inexact cut (spec A,
-// I-18): no later write carries from it, and its line says steps may not be included. A base whose
+// A write that appends onto a base whose own row the chain lacks leaves an inexact cut (no later write carries from it, and its line says steps may not be included. A base whose
 // session is gone stays exact: its count already shows the loss.
 for (const lost of ['absent', 'replaced', 'sessionGone'] as const)
     test(`an append over a base whose own row is ${lost} ${lost === 'sessionGone' ? 'stays exact' : 'leaves an inexact cut'}`, async () => {

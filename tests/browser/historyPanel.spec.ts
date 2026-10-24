@@ -8,12 +8,12 @@ import {
 import { row as historyRow } from './historyJourney'
 import { flushed, notice, pressSave, queuePicks, submitSave } from './saveFlows'
 
-// The History tab and dialog, the Timeline and the peek bar (Part 1 §1.4.10, §1.4.11, Step 5).
+// The History tab and dialog, the Timeline and the peek bar.
 // Entries are made through the undo stack's own `pushState`, as history.spec.ts does.
 
 const prefix = 'sonolus-next-sekai-editor.'
 // Screenshots are written only when NSE_SHOTS is set.
-const shots = 'D:/sonolus/nse-next/work/step5/redesign-shots'
+const shots = 'test-results/history-shots'
 const shoot = async (page: Page, name: string) => {
     if (process.env.NSE_SHOTS) await page.screenshot({ path: `${shots}/${name}.png` })
 }
@@ -705,7 +705,7 @@ test.describe('the narrowest right sheet', () => {
         isMobile: true,
     })
 
-    test('Timeline is whole in every language, and Recent Sessions takes the shortfall (X-6)', async ({
+    test('Timeline is whole in every language, and Recent Sessions takes the shortfall', async ({
         page,
     }) => {
         await page.keyboard.press('Shift+H')

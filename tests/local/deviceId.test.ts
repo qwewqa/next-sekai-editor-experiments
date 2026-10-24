@@ -3,7 +3,7 @@ import test from 'node:test'
 import { documentDeviceId, hmacSha256 } from '../../src/local/deviceId'
 import { toHex } from '../../src/local/hash'
 
-// A document's device id (§1.3.3): HMAC-SHA-256 of its lineage under the install's deviceId.
+// A document's device id: HMAC-SHA-256 of its lineage under the install's deviceId.
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 

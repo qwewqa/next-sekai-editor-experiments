@@ -21,15 +21,15 @@ import { i18n } from '../../i18n'
 import { notify } from '../notification'
 import { historyTab, historyViewGeneration } from './state'
 
-// What the History list asks the peek to show (Part 1 §1.4.10.5, §1.4.11): the entry's key, and
+// What the History list asks the peek to show: the entry's key, and
 // what the peek bar says of it. Light, so the canvas's bar loads without the panel.
 
 /** An entry on the chain: its key, and its snapshot's root once stored. */
 export type ChainKey = { key: EntryKey; snapshot?: string }
 
 /**
- * An entry as the peek bar names it, with its root once stored and the entry it is compared with
- * (§1.4.11): the one before it on the chain, or before the oldest of its ×N run.
+ * An entry as the peek bar names it, with its root once stored and the entry it is compared with:
+ * the one before it on the chain, or before the oldest of its ×N run.
  */
 export type PeekedInfo = {
     key: EntryKey
@@ -45,7 +45,7 @@ export type PeekedInfo = {
 }
 
 /**
- * A session as the peek bar names it (Recent Sessions' peek, §1.4.10.6): the head's last entry,
+ * A session as the peek bar names it (Recent Sessions' peek): the head's last entry,
  * shown without BGM. It has no change view, so it is kept apart from the steps' `PeekedInfo`.
  */
 export type PeekedSession = {
@@ -77,7 +77,7 @@ export const peekedLabel = (info: PeekedInfo, context: OperationTextContext) => 
         : title
 }
 
-/** Entries whose state could not be read, by key: shown as damaged (§1.4.10.5). */
+/** Entries whose state could not be read, by key: shown as damaged. */
 export const damagedEntries = shallowRef<ReadonlySet<string>>(new Set())
 
 /** Entries whose state a newer version wrote, by key: shown as needing a newer version, never damaged. */

@@ -2,7 +2,7 @@ import type { Directive } from 'vue'
 import { focusAfterRemoval, focusLost, returnFocus } from '../utils/focusFallback'
 
 /**
- * Keeps focus from falling to the page when the control that holds it goes (Part 1 §1.4.10.2).
+ * Keeps focus from falling to the page when the control that holds it goes.
  * On an element, or a container of controls, it acts when the focused control inside is removed
  * (an unmount) or turned off (`disabled`, which Chrome answers by dropping focus to the body).
  *

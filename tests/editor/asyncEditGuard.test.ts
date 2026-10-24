@@ -129,7 +129,7 @@ test('origin abort and disposal invalidate permanently while independent prompts
 })
 
 // The held-BGM attach changes the live state with no step while a dialog or a confirm is open;
-// what the user typed or picked must still apply (final review R2 #1).
+// what the user typed or picked must still apply.
 const bgmMeta = { hash: 'h', filename: 'a.mp3', size: 4, type: 'audio/mpeg' }
 const unattached = { bgm: { offset: 0, meta: bgmMeta }, selectedEntities: [] } as unknown as State
 const withAudio = (state: State, offset = state.bgm.offset) =>

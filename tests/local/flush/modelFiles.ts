@@ -7,7 +7,7 @@ import { BGM_2, chartWith, COVER_2, headInput as headInputOf, Store } from '../n
 import { stateOf } from '../records/charts'
 
 // Files the session tests open: a file of `count` rows (so an import has batches to end short of),
-// and one whose first row is `kept: false` while its root stays in the file (H-2).
+// and one whose first row is `kept: false` while its root stays in the file.
 
 export const importIds = (n: number) => ({
     chainId: `chain-open-${n}`,

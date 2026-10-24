@@ -1,6 +1,6 @@
 import type { KvTx } from './kv/types'
 
-// The `userAssets` store (Part 1 §1.5.8, §1.6.11.2): one record per stored preview asset package,
+// The `userAssets` store: one record per stored preview asset package,
 // keyed by its sha256. Never swept by GC or retention; only the Preview Assets dialog removes one.
 
 export type UserAssetType = 'skin' | 'particle' | 'background' | 'effect'

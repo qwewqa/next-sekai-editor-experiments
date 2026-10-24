@@ -1,7 +1,7 @@
 import type { ReadHistory } from '../nxsp'
 import { distinctRootChunks } from '../nxsp/manifest'
 
-// The open's background import (Part 1 §1.5.4, r12-arch-web M9), in batches, each its own
+// The open's background import, in batches, each its own
 // transaction: the history's entry rows, the other roots and nodes, then the other chunks (the
 // undo stack's states first, nearest the head first), then the batch that clears `importPending`.
 
@@ -86,7 +86,7 @@ export const planImport = (
         seen.add(hash)
         chunks.push(hash)
     }
-    // A chunk no root reaches isn't imported (§1.6.11.5).
+    // A chunk no root reaches isn't imported.
     for (const hash of distinctRootChunks(history, [
         ...stackOrder(history),
         ...history.roots.keys(),

@@ -641,7 +641,7 @@ for (const direction of ['horizontal', 'pinned'] as const)
         expect(head.data).not.toHaveProperty('displaced')
     })
 
-// X-14: a Select drag on a note's edge changes its width and nothing else, so it is a resize.
+// A Select drag on a note's edge changes its width and nothing else, so it is a resize.
 for (const mode of ['edge', 'body', 'edge and beat'] as const)
     test(`Select records a drag of a note's ${mode} as ${mode === 'body' ? 'a move' : 'a resize'}`, async ({
         page,

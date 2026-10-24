@@ -3,9 +3,9 @@ import type { KvTx } from '../kv/types'
 import { isReadableSessionVersion } from '../records/unknownValues'
 import type { RowKey, SaveIdentity } from './build'
 
-// The identity unit a write that binds commits (§1.3.2, §1.6.11.6): the chain's `docId`, its
+// The identity unit a write that binds commits: the chain's `docId`, its
 // `revision` and the binding, with the marks the write made, in one transaction, so a binding is
-// never stored without them (D25: the carry test counts on every row its file lacks being stored
+// never stored without them (the carry test counts on every row its file lacks being stored
 // `kept: false`).
 
 /** The stores `commitIdentity` writes and reads. */
@@ -44,7 +44,7 @@ export type IdentityUnit = {
     clearExport?: true
     docId: string
     revision: SaveIdentity['revision']
-    /** The binding as stored (§1.6.11.2), its `entry` complete. */
+    /** The binding as stored, its `entry` complete. */
     file: Record<string, unknown>
     marks: readonly RowKey[]
     /**

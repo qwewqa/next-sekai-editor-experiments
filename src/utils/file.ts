@@ -3,7 +3,7 @@ import { platform } from '../platform'
 
 export const pickFile = async () => (await platform.pickFiles({}))[0]?.file
 
-// Only these end a name (§1.5.2): "v1.2 final.nxsp" is "v1.2 final", and ".json.gz" goes whole.
+// Only these end a name: "v1.2 final.nxsp" is "v1.2 final", and ".json.gz" goes whole.
 const knownExtensions = [
     '.nxsp',
     '.nsld',

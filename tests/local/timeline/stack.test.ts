@@ -9,7 +9,7 @@ import { openPage, testId, type Page } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { replayed, storedStack, widen } from './helpers'
 
-// The stored stack through the flush (Step 3b's exit): it equals replay of the stored entries,
+// The stored stack through the flush: it equals replay of the stored entries,
 // within a window of at most 5,000 slots that always includes the index, and a flush rewrites
 // only the blocks it touches.
 
@@ -29,7 +29,7 @@ const states = () => {
     return [a, widen(a)] as const
 }
 
-/** The stored stack equals replay, and its window is the one §1.6.4 #6 gives. */
+/** The stored stack equals replay, and its window is the stored one. */
 const assertStack = (world: World, sessionId: string) => {
     const stored = storedStack(world, sessionId)
     const expected = replayed(world, sessionId)

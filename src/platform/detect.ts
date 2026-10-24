@@ -2,7 +2,7 @@ import { HOST_GLOBALS, looksLikeInAppBrowser } from './inAppBrowser'
 import { testKeysOpen } from './testKeys'
 import type { PlatformOs } from './types'
 
-// Detection is for wording and hand-over paths only: nothing stored depends on it (Part 1 §1.6.10).
+// Detection is for wording and hand-over paths only: nothing stored depends on it.
 
 export type Engine = 'webkit' | 'chromium' | 'firefox' | 'other'
 
@@ -18,7 +18,7 @@ export type PlatformOverride = {
     standalone?: boolean
     persisted?: boolean
     privateSuspected?: boolean
-    /** An app’s built-in browser, which changes wording only (§1.6.10). */
+    /** An app’s built-in browser, which changes wording only. */
     inAppBrowser?: boolean
     /** False turns the pickers off; 'opfs' makes them return OPFS handles, for Playwright. */
     fileSystemAccess?: boolean | 'opfs'
@@ -119,7 +119,7 @@ export const createStandaloneLatch = (env: StandaloneEnv) => {
     return { get: () => value, reread }
 }
 
-/** A quota below this, with storage not persisted, suggests a private window (§1.6.9). */
+/** A quota below this, with storage not persisted, suggests a private window. */
 export const PRIVATE_QUOTA_LIMIT = 1024 ** 3
 
 export const suspectPrivate = ({ persisted, quota }: { persisted: boolean; quota: number }) =>
@@ -181,13 +181,13 @@ const standaloneLatch = () => {
     return latch
 }
 
-/** A Home Screen web app the user added (§1.7.5). */
+/** A Home Screen web app the user added. */
 export const isStandalone = () => platformOverride().standalone ?? standaloneLatch().get()
 
 let inApp: boolean | undefined
 
 /**
- * Whether this looks like an app’s built-in browser (§1.6.10, best effort): latched at startup
+ * Whether this looks like an app’s built-in browser (best effort): latched at startup
  * with the rest, the override first. Detection never flags a Home Screen web app.
  */
 export const isLikelyInAppBrowser = () => {

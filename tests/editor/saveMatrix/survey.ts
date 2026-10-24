@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs'
 import { cells, runCell, type CellResult } from './matrix'
 
 // Runs every cell and writes the results as JSON (`OUT`, default survey.json): the matrix as a
-// table, to compare before and after a change (work/arch/spec-B.md). `ONLY` keeps the cells whose id contains it.
+// table, to compare before and after a change. `ONLY` keeps the cells whose id contains it.
 //   npx tsx tests/editor/saveMatrix/survey.ts
 
 const only = process.env.ONLY

@@ -28,7 +28,7 @@ import {
     type SplitPage,
 } from './harness'
 
-// The page and its storage worker as separate actors (§1.6.5): a worker killed alone, a restart
+// The page and its storage worker as separate actors: a worker killed alone, a restart
 // in memory mode, Try Again's move racing a flush, and a reopen that finds a newer database. The
 // timers run on the world's clock, so each seed replays them in order.
 
@@ -281,9 +281,9 @@ test('a memo learned on another store is checked again, whatever the epoch', asy
         ['stored', 'missing', 'stored'],
     )
     // The other store never held entry 1, which the page believed stored: its session starts at
-    // lastSeq 2 with the one row (a fault the test injects; evidence for architecture review A0).
+    // lastSeq 2 with the one row (a fault the test injects).
     const found = checkStored(second)
-    // Replay names it too (A0+ replays every session): the rows begin at an edit.
+    // Replay names it too (replay covers every session): the rows begin at an edit.
     assert.equal(found.length, 2)
     assert.match(found[0]!, /a session cannot begin with it/)
     assert.match(found[1]!, /rows 1 up to lastSeq 2 are neither stored/)

@@ -21,7 +21,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// Check File and History… (Part 1 §1.4.21; step 11 design §3.3, §5): the page side. A bound file
+// Check File and History…: the page side. A bound file
 // is read in full and the history stored in this browser checked; damage in the file unlinks the
 // session and leaves the file as it was; Cancel and a changed file write nothing; a download
 // binding checks the stored history only.

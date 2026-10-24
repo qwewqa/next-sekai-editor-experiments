@@ -39,7 +39,7 @@ const en = (
 const importMessage = (error: AssetImportError) =>
     formatImportMessage(error, en, (value) => new Intl.NumberFormat('en').format(value), sizeEn)
 
-// The chooser's From a File view (Part 2, 2.6, 2.11): listing, "Also use … from this file", Use.
+// The chooser's From a File view: listing, "Also use … from this file", Use.
 
 const setup = () => {
     const store = createMemoryStore()

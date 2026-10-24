@@ -11,7 +11,7 @@ import { interpolate } from '../utils/interpolate'
 import { formatCount } from '../utils/size'
 import { noticeDuration, RESUME_MIN_MS } from './noticeTiming'
 
-/** A card's one button (Part 1 §1.4.1). */
+/** A card's one button. */
 export type NoticeAction = { label: () => string; run: () => void }
 
 /**
@@ -21,7 +21,7 @@ export type NoticeAction = { label: () => string; run: () => void }
  */
 export type NoticeSeverity = 'info' | 'warning' | 'error'
 
-/** One line of the start-up card, with at most one action (Part 1 §1.4.3). */
+/** One line of the start-up card, with at most one action. */
 export type NoticeLine = {
     message: () => string
     action?: NoticeAction
@@ -49,12 +49,12 @@ export type Notice = {
 let id = 0
 
 /**
- * How many load notices the start-up card shows before "and N more in Local Data" (Part 1 §1.4.3).
+ * How many load notices the start-up card shows before "and N more in Local Data".
  * One more would be a row as tall as the line it hides, so that many show whole.
  */
 export const PILL_NOTICES = 3
 
-// "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with What’s New (Part 1 §1.4.3).
+// "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with What’s New.
 const titleLines = (): NoticeLine[] => {
     const name = PRODUCT_NAME
     if (launch.updated)
@@ -79,7 +79,7 @@ const titleLines = (): NoticeLine[] => {
     ]
 }
 
-/** A card has an action or is flagged one; other notices are quick feedback (Part 1 §1.4.1). */
+/** A card has an action or is flagged one; other notices are quick feedback. */
 const isCard = (notice: Notice) => notice.action !== undefined || notice.card === true
 
 const noticeOf = (lines: NoticeLine[]): Notice => ({
@@ -154,7 +154,7 @@ const track = () => {
 }
 track()
 
-/** A load notice (Part 1 §1.4.3): `order` is its place in the table, most important first. */
+/** A load notice: `order` is its place in the table, most important first. */
 export type LoadNotice = {
     order: number
     message: () => string
@@ -215,9 +215,9 @@ onHistoryAction(({ kind }) => {
 })
 
 /**
- * Whether the start-up notice is still the one shown, so a load notice may join it (Part 1
- * §1.4.3): its card, or the quick toast of a clean load while the page is under 12 s old and
- * nothing was edited, undone, redone or restored. Never the faint text left after it.
+ * Whether the start-up notice is still the one shown, so a load notice may join it: its card, or
+ * the quick toast of a clean load while the page is under 12 s old and nothing was edited, undone,
+ * redone or restored. Never the faint text left after it.
  */
 export const startupNoticeCurrent = () =>
     noticeCard.value?.startup === true ||
@@ -252,7 +252,7 @@ watch(
 )
 
 /**
- * Adds a load notice (Part 1 §1.4.3). Before the gate lifts, it waits for it with the rest. After,
+ * Adds a load notice. Before the gate lifts, it waits for it with the rest. After,
  * it is a line on the start-up notice while that is current, and the card then stays about 8 s.
  * Otherwise (an edit, another notice, 12 s) the line is only kept, since nothing appears at an
  * arbitrary time.
@@ -369,7 +369,7 @@ export const dropCardAction = (action: NoticeAction) => {
 }
 
 /**
- * The card at the user's next edit, unless that edit raised it (Part 1 §1.4.1): its Undo or
+ * The card at the user's next edit, unless that edit raised it: its Undo or
  * Reopen never outlives the state it was offered for.
  */
 export const dismissCardForEdit = () => {

@@ -16,9 +16,7 @@ import { unzip, zipItems } from '../nxsp/craft'
 import { BGM } from '../nxsp/helpers'
 import { checkFiles, Fixture, hasUv, heldRows, save, sourceOf, stateAt } from './fixture'
 
-// The settled history model's exit items (Part 1 §1.11.6: "The history model", "completeFrom
-// and the line", "Bodies from storage are verified", "What each write changes", "A long chain",
-// "A re-zipped source") over chains in a test profile.
+// The settled history model's exit items over chains in a test profile.
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
 
@@ -504,7 +502,7 @@ test('a file past a reader cap is refused with the cap named, nothing built', as
     assert.equal(built.limit, 'project')
 })
 
-// The carry test's status (spec A, I-11 and I-18): `missing` is a known loss, `unproven` is not.
+// The carry test's status: `missing` is a known loss, `unproven` is not.
 
 describe('carryStatus', () => {
     const base = { revisionId: 'r' }

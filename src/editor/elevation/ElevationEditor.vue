@@ -2070,7 +2070,7 @@ onUnmounted(() => {
             />
             <RenderingError v-if="graphicsError" :message="graphicsError" @reload="retryRenderer" />
         </div>
-        <!-- Side by side while peeking, the peeked state shows behind it, read-only (§1.4.11). Presses
+        <!-- Side by side while peeking, the peeked state shows behind it, read-only. Presses
         are taken, so nothing is edited; the wheel still scrolls and zooms the pane. -->
         <div
             v-if="isPeeking"
@@ -2300,7 +2300,7 @@ onUnmounted(() => {
     z-index: 1;
 }
 
-/* Spinners are hidden (D8); arrow keys and the wheel still step. */
+/* Spinners are hidden; arrow keys and the wheel still step. */
 .elevation-field[type='number'] {
     -moz-appearance: textfield;
     appearance: textfield;

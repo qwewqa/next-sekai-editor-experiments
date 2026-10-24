@@ -6,7 +6,7 @@ import type { Calendar } from './calendarClock'
 import type { Header } from './rows'
 import type { DeletedEntry } from './sessionDelete'
 
-// Recent Sessions' list (Part 1 §1.4.10.6): the rows built from the chains' read, and the read's
+// Recent Sessions' list: the rows built from the chains' read, and the read's
 // refresh rules. Pure and light (Vue refs only), so Node tests run it without the page; the tab
 // (`RecentSessionsTab.vue`) draws it and `sessionActions.ts` acts on it.
 

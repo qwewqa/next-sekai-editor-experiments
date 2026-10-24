@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// Settings › About (Part 1 §1.4.16, Part 5 5.7.5). The dev server serves no LICENSE.txt, so
+// Settings › About. The dev server serves no LICENSE.txt, so
 // the links are checked by href and never fetched.
 
 const REPOSITORY = 'qwewqa/next-sekai-editor-experiments'

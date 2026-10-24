@@ -17,7 +17,7 @@ import { beginIn, handlersOf } from './startup/harness'
 import { load, openSession } from './startup/load'
 import { widen } from './timeline/helpers'
 
-// The `handles` store (D24): a chain's file handles by role, never on the chain record or the
+// The `handles` store: a chain's file handles by role, never on the chain record or the
 // journal descriptor, written in the transaction that writes their field, removed with it, and
 // read only when a Save, an Export or a resumed import asks: never by startup or recovery.
 

@@ -1,4 +1,4 @@
-// `.nxsp` v1 (§1.6.11.4–§1.6.11.9): the reader, the builder's format half, the executor and inspect.
+// `.nxsp` v1: the reader, the builder's format half, the executor and inspect.
 export {
     ANCESTOR_LIMIT,
     SEGMENT_ENTRIES,

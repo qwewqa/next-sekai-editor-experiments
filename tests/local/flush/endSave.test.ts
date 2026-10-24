@@ -8,7 +8,7 @@ import { openPage, testId, type Page } from './harness'
 import { createCheckedWorld as createWorld, checkedTest as test } from './sessionCheck'
 
 // A Save's reservation is identified by its object, and `Flusher.endSave` reports what it did
-// (spec A, I-12): each `EndSaveResult`, a second end that does nothing, and an end on a session
+//: each `EndSaveResult`, a second end that does nothing, and an end on a session
 // that is no longer current.
 
 const begin = (page: Page, state = stateOf(goldenChart())) =>
@@ -134,7 +134,7 @@ test('a second end of the same reservation returns ended and leaves nextSeq', as
     assert.equal(session.identity, undefined)
 })
 
-test('a stale reservation never ends a later one that reused its seq (ADV-5)', async () => {
+test('a stale reservation never ends a later one that reused its seq', async () => {
     const { page, session } = await start(37)
     const first = page.flusher.reserveSave()!
     assert.equal(await page.flusher.endSave(first), 'letGo')

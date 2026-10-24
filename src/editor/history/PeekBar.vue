@@ -170,7 +170,7 @@ const text = computed(() => {
 })
 
 // Leaving the peek takes the strip away, by Back to Now, Restore, Escape, Undo or anything else:
-// focus in it, or in its options menu, goes to the chart (§1.4.10.2, X-2).
+// focus in it, or in its options menu, goes to the chart.
 watch(
     isPeeking,
     (peeking) => {

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
 import { instrumentRendering } from './fixtures'
 
-// The release build under its exact policy (Part 0 §0.9.2).
+// The release build under its exact policy.
 
 type Violation = { directive: string; blocked: string }
 type Watch = { violations: Violation[]; hooked: Violation[]; wasm: string[] }

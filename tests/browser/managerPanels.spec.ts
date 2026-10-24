@@ -1812,7 +1812,7 @@ test('the pressed Select Multiple shows keyboard focus as an inner ring on its f
     expect(ring).toEqual({ style: 'solid', width: '2px', offset: '-4px', color: icon })
 })
 
-test('an outside press that closes an action menu gives focus back to its button (X-3)', async ({
+test('an outside press that closes an action menu gives focus back to its button', async ({
     page,
 }) => {
     await seedGroups(page, ['Default', 'Other group'])

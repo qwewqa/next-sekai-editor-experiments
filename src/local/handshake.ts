@@ -5,7 +5,7 @@ import type { KvDatabase, KvFactory, KvUpgrade } from './kv/types'
 import { errorName } from './kv/types'
 import { realTimers, type Timers } from './locks'
 
-// The upgrade handshake (Part 1 §1.6.1; r12-arch-web H2), shipped in v1 since only v1 tabs can
+// The upgrade handshake, shipped in v1 since only v1 tabs can
 // answer a later version's request. A tab opens without a version and reads db.version: equal
 // goes on, higher is read-only, lower asks other tabs to step aside with `upgradeWanted` before
 // requesting the version. An upgrade blocked by a tab that can't answer (frozen, hung, in the

@@ -3,7 +3,7 @@ import test from 'node:test'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
 import { checkStack, Fixture, save, sourceOf, stateAt } from './fixture'
 
-// The written undo stack (§1.6.11.5, §1.3.9): numbered by replay of the file's own chronology,
+// The written undo stack: numbered by replay of the file's own chronology,
 // renumbered when sessions before it were removed, and the head alone when replay can't follow.
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))

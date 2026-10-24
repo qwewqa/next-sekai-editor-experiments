@@ -35,18 +35,18 @@ import {
     stateAt,
 } from './fixture'
 
-// The property-based Save test (Part 1 §1.11.6; r12-arch-core M6), as fast-check commands that
+// The property-based Save test, as fast-check commands that
 // shrink to the shortest failing script: edits, Saves of every kind (write-backs, downloads,
 // Replace, Save As…, Save to File…), cleanup (thinning, and flags that leave a shared state's
-// bodies: the M7 case), session deletion, damage, a touched file, and storing paused and resumed
+// bodies: the cleanup case), session deletion, damage, a touched file, and storing paused and resumed
 // (the binding in memory, `pending`). After each write:
 // - no over-claim: the file holds every row with its state of each file its `completeFrom` names;
 // - a write-back is an append of the file it replaced;
-// - the line shows exactly when the write doesn't carry its base, and only for a loss or D25's
-//   stated remainder (a flagged row whose state the base held through the stack, the head or its
+// - the line shows exactly when the write doesn't carry its base, and only for a loss or the stated
+//   remainder (a flagged row whose state the base held through the stack, the head or its
 //   own root): never a repeated line after nothing was lost;
 // - the undo stack is replay's;
-// - a self-pick loses no row of the picked file (SP-1: damage storage knows of reads it first, and
+// - a self-pick loses no row of the picked file (damage storage knows of reads it first, and
 //   so does damage the build before the picker finds, with a grant held), except, with no grant,
 //   a row whose state needs a chunk gone bad that storage didn't know of: that row is written
 //   `kept: false` and the line shows.
@@ -62,7 +62,7 @@ type Written = {
     id: string
     ancestors: string[]
     completeFrom: string
-    /** Rows with their states (§1.6.11.6's oracle), `kind|time|snapshot` → count. */
+    /** Rows with their states, `kind|time|snapshot` → count. */
     rows: Map<string, number>
     /** Every row, held or not. */
     all: Map<string, number>
@@ -173,8 +173,7 @@ class Scenario {
         }
         let run = await build()
         if ('refused' in run.built && run.built.refused === 'unreadableHead' && !extra.pending) {
-            // The page posts the live head's records when its stored copy fails (§1.6.11.6;
-            // `runBuild`).
+            // The page posts the live head's records when its stored copy fails (`runBuild`).
             const records: PendingRecords = { roots: {}, nodes: {}, chunks: {} }
             addRecords(records, fixture.stateOf(head))
             run = await build({ pending: { entries: [], records } })
@@ -242,7 +241,7 @@ class Scenario {
         return known
     }
 
-    /** The build a save picker's flow makes before the picker (D5): a copy, marks and all. */
+    /** The build a save picker's flow makes before the picker: a copy, marks and all. */
     private async probe() {
         const { fixture } = this
         await fixture.flush()
@@ -270,7 +269,7 @@ class Scenario {
         return [encoded.header, ...encoded.chunks].map((chunk) => toHex(chunk.hash))
     }
 
-    /** The oracle (§1.6.11.6, D25). */
+    /** The oracle. */
     private check(target: SaveTarget, n: Written, line: boolean) {
         const script = this.log.join('\n')
         // A write-back is an append: the file it replaced is its first rows, as values.
@@ -299,7 +298,7 @@ class Scenario {
         // Not new: the line is exactly "not carried".
         if (target.kind !== 'new') assert.equal(line, n.completeFrom !== b.completeFrom, script)
         if (!line) return
-        // A line shows only for a loss, or for D25's stated remainder.
+        // A line shows only for a loss, or for the stated remainder.
         const lostRow = lacks(n.all, b.all) || lacks(n.rows, b.rows)
         const keptStates = new Set(
             n.list.filter((row) => row.kept && b.all.has(row.key)).map((row) => row.snapshot),
@@ -368,7 +367,7 @@ class Scenario {
                 return
             }
             case 'flag': {
-                // Cleanup's flag alone: the row is stored `kept: false`, its bodies stay (M7).
+                // Cleanup's flag alone: the row is stored `kept: false`, its bodies stay.
                 if (this.pause) return
                 await fixture.flush()
                 const session = fixture.sessions[op.s % fixture.sessions.length]
@@ -389,7 +388,7 @@ class Scenario {
                 return
             case 'known': {
                 // Bodies are shared between chains: another chain's build found this storage's
-                // bad chunks, and marked only its own rows (SP-1).
+                // bad chunks, and marked only its own rows.
                 const bad = await this.badChunks()
                 if (!bad.size) return
                 await fixture.store.write(['chains'], (tx) =>
@@ -430,7 +429,7 @@ class Scenario {
                 return
             }
             case 'pick': {
-                // A save picker returns the chain's own file (§1.4.7 R2, R4; D5; SP-1). The
+                // A save picker returns the chain's own file. The
                 // dialog reads it first when storage may lack what it holds (`saveNeeds`: the
                 // carry test, and damage storage knows of), asking for access if it must. The
                 // build before the picker may still find damage; with a grant held the file is
@@ -454,7 +453,7 @@ class Scenario {
                 // No version is lost: the new file holds every row of the picked one, with its
                 // state. Only unread, with no grant to read it after the build found damage, is a
                 // row lost: one whose state needs a chunk gone bad that storage didn't know of. It
-                // is written `kept: false`, and the write says so (H-2, H-3).
+                // is written `kept: false`, and the write says so.
                 const n = this.files.at(-1)
                 assert.ok(n)
                 const script = this.log.join('\n')
@@ -509,7 +508,7 @@ class Scenario {
 
 type Model = { ops: number }
 
-/** The stored rows hold the session invariants after every op (architecture review A0). */
+/** The stored rows hold the session invariants after every op. */
 const checkRows = (scenario: Scenario, op: Op) =>
     assert.deepEqual(
         sessionChecks(scenario.fixture.world.memory, {
@@ -627,9 +626,9 @@ for (const { name, granted, known } of cases)
     test(`a self-pick after damage ${name}`, async () => {
         // The counterexample "edit, edit, save, edit, edit, damage, pick" (save-prop): the damaged
         // chunk is the one only `init`'s state needs, so the carry test (stored rows only) can't
-        // see it and the dialog doesn't read the file (R2). The build before the picker finds it
-        // (SP-1): with a grant held the file is read then and appended to, keeping `init`;
-        // without one, the write from storage marks `init` and says so (R4; D5; H-2).
+        // see it and the dialog doesn't read the file. The build before the picker finds it
+        //: with a grant held the file is read then and appended to, keeping `init`;
+        // without one, the write from storage marks `init` and says so.
         const fixture = await Fixture.create()
         await fixture.storeMedia([BGM, COVER, PREVIEW])
         await fixture.start(1)

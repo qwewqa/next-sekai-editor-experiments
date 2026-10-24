@@ -10,7 +10,7 @@ import { sameFileContent } from './content'
 import { confirmDownloads, downloadConfirmed } from './flags'
 import { notStored } from './notStored'
 
-// The passive file state of the open session (Part 1 §1.3.4): what the status label, the chip,
+// The passive file state of the open session: what the status label, the chip,
 // `document.title` and the close prompt read. The save flows (`src/editor/save`) set it.
 
 /** What a check found on disk: `changed`, `newer` (it descends from the binding) or `missing`. */
@@ -27,7 +27,7 @@ const finding = shallowRef<DiskFinding>()
 /**
  * Binds the open session to a file at a file event (Save, an open): the label reads it, and
  * `state` is what the file holds, for "changed since". Leaves the check's finding behind: a Save
- * or an open ends it (§1.3.4).
+ * or an open ends it.
  */
 export const bindFile = (file: SessionFile, state?: State) => {
     const current = session.value
@@ -36,7 +36,7 @@ export const bindFile = (file: SessionFile, state?: State) => {
     finding.value = undefined
 }
 
-/** Binds nothing: the session lost its file, whose stem stays its name (§1.3.5). */
+/** Binds nothing: the session lost its file, whose stem stays its name. */
 export const unbindFile = () => {
     const { file, ...rest } = session.value
     const name = keptNameOf(rest.name, file?.name)
@@ -105,7 +105,7 @@ export const fileChanged = computed(() => {
 })
 
 /**
- * The open session's binding is a download that isn't confirmed (§1.3.4): where the platform
+ * The open session's binding is a download that isn't confirmed: where the platform
  * never confirms one (`unconfirmedDownloads`: iPhone and iPad) it is every download until
  * I Have the File; elsewhere until one is confirmed in this browser.
  */
@@ -169,7 +169,7 @@ export const diskFinding = found
 
 /**
  * I Have the File: the open session's download is confirmed, and so is this browser's way of
- * downloading (§1.3.4).
+ * downloading.
  */
 export const confirmFile = () => {
     markConfirmed()

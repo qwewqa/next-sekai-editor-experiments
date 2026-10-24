@@ -11,7 +11,7 @@ import {
 } from '../../src/editor/settings/deleteChoices'
 import en from '../../src/i18n/en/index.json'
 
-// Delete Sessions…' pure view (Local Data design §3.7, §5): the counts the dialog shows are what
+// Delete Sessions…' pure view: the counts the dialog shows are what
 // the confirm names and what is deleted, so they come from one `chosen`.
 
 type Row = { ageDays: number; notSaved: boolean; readable: 'yes' | 'newer'; name: string }

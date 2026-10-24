@@ -13,7 +13,7 @@ import { isKnownEntryKind, originRuleOf } from '../records/unknownValues'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
-// The storage worker's read for the History panel's Timeline (Part 1 §1.4.10.5, §1.3.7): a
+// The storage worker's read for the History panel's Timeline: a
 // session's entries newest first, a page at a time, continuing into the session it continued
 // at the entry it continued from. Old entries load as the panel scrolls; after a jump, newer ones
 // load along the path the index gave. The index lists the chain's pieces, runs of a session's
@@ -32,13 +32,13 @@ export type TimelineEntry = EntryDescription & {
     kept: boolean
     /**
      * A `kept: false` entry whose snapshot reaches a part found bad (the chain's `badChunks`): it
-     * reads damaged, not not kept (§1.4.10.5). Absent otherwise.
+     * reads damaged, not not kept. Absent otherwise.
      */
     damaged?: true
     /**
      * A row this build cannot decode, kept in the run so the chain is not shortened: `newer` when a
      * newer build wrote it (a kind or a key this build does not know), `damaged` when it is
-     * malformed. It carries a placeholder description and is unavailable (§1.6.11.8).
+     * malformed. It carries a placeholder description and is unavailable.
      */
     unreadable?: 'newer' | 'damaged'
     /** A `continue` entry: the time of the parent's entry it continues, for its divider. */
@@ -314,7 +314,7 @@ const reaches = async (
 
 /**
  * Marks the `kept: false` entries that read damaged: their roots reach a hash in the chain's
- * `badChunks`, which the open's unlink and a Save's marks write (§1.4.10.5, §1.6.11.2).
+ * `badChunks`, which the open's unlink and a Save's marks write.
  */
 const markDamagedRows = async (tx: KvTx, sessionId: string, entries: readonly TimelineEntry[]) => {
     const dropped = entries.filter((entry) => !entry.kept && entry.snapshot)
@@ -343,7 +343,7 @@ export const readTimeline = async (tx: KvTx, request: TimelineRequest) => {
     return page
 }
 
-// --- The index Go To lists (Part 1 §1.4.10.5, §1.6.8.7).
+// --- The index Go To lists.
 
 /**
  * How the Timeline draws a stored row, for the kinds that decide a piece. A row whose raw kind is a
@@ -404,7 +404,7 @@ const piecesInRange = async (
 
 /**
  * One session's pieces, newest first, by binary search: two keyed reads and a search on `seq` by
- * day per piece, robust to gaps. Exact only for a session that holds just its own rows (P0 to P3),
+ * day per piece, robust to gaps. Exact only for a session that holds just its own rows,
  * where `time` never decreases along `seq` and a `continue` row is only the lowest.
  */
 const searchPieces = async (
@@ -418,7 +418,7 @@ const searchPieces = async (
     const dayOf = (row: { value: unknown }) => dayKey(timeOf(row.value), zone)
     const pieces: TimelinePiece[] = []
     let oldest = await first(-Infinity, upto, 'next')
-    // The divider is the lowest row only (P2), and is no step.
+    // The divider is the lowest row only, and is no step.
     if (oldest && isRow(oldest.value) && drawnKind(oldest.value) === 'continue')
         oldest = await first(seqOf(oldest.primaryKey) + 1, upto, 'next')
     let top = await first(-Infinity, upto, 'prev')
@@ -541,8 +541,8 @@ const readPieces = async (
 }
 
 /**
- * The chain's pieces, newest first, the path they lie on, and the newest entry they cover (Go To,
- * §1.4.10.5). A session that holds only its own rows (ORIGIN_RULE `own`, no import pending) is
+ * The chain's pieces, newest first, the path they lie on, and the newest entry they cover (Go
+ * To). A session that holds only its own rows (ORIGIN_RULE `own`, no import pending) is
  * searched when no kinds filter is given; every other session is read in full through the memo.
  */
 export const readTimelineIndex = async (
@@ -580,7 +580,7 @@ export const timelineHandlers = (context: WorkerContext) => {
     // Per worker, so the memo never answers for another database.
     const memo = createIndexMemo()
     return {
-        /** A page of the Timeline (§1.4.10.5): older than `before`, or newer than `after`. */
+        /** A page of the Timeline: older than `before`, or newer than `after`. */
         readTimeline: (request: TimelineRequest, scope?: CallScope) =>
             context.core.read(
                 ['sessions', 'entries', 'chains', 'nodes'],

@@ -18,8 +18,8 @@ import {
 } from '../../src/local/nxsp/version'
 import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 
-// The pinned constants (§1.6.11.8). Changing one means editing this test and the plan's
-// table, and following Part 4, 4.9.4. The archetype, field and choice-value pin is
+// The pinned constants. Changing one means editing this test and the format
+// docs. The archetype, field and choice-value pin is
 // `tests/editor/levelDataReport.test.ts`'s, which ties the declared table to `LEVEL_VERSION`.
 
 test('the format constants have their v0.6.0 values', () => {
@@ -38,7 +38,7 @@ test('the format constants have their v0.6.0 values', () => {
 })
 
 test('each RECORDS_V stands for the engine revision its writer used', () => {
-    // v1 → revision 2. A new LATEST_REVISION raises RECORDS_V (§1.6.11.8).
+    // v1 → revision 2. A new LATEST_REVISION raises RECORDS_V.
     const revisionOf: Record<number, number> = { 1: 2 }
     assert.equal(revisionOf[RECORDS_V], LATEST_REVISION)
 })

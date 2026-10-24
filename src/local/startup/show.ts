@@ -6,10 +6,10 @@ import { stackGeneration } from '../../history/stack'
 import type { State } from '../../state'
 import type { Shown } from './open'
 
-// The editor side of opening a session (Part 1 §1.4.2): what `open.ts` decides, shown. Apart, so
+// The editor side of opening a session: what `open.ts` decides, shown. Apart, so
 // the decisions run in the Node tests without the editor's modules.
 
-/** The view as the session last left it (§1.6.11.2's `view`). */
+/** The view as the session last left it. */
 const restoreView = (stored: unknown, state: State) => {
     if (typeof stored !== 'object' || stored === null) return
     const { scroll, zoom, group, stage } = stored as Record<string, unknown>

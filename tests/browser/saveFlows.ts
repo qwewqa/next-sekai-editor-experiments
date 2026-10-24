@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { installTestPlatform, waitForStartup } from './editorFixture'
 
-// Helpers for the Save core's specs (Part 1 §1.4.7): a stored page under the platform override,
+// Helpers for the Save core's specs: a stored page under the platform override,
 // edits through the history, OPFS files the override's pickers return, and storage rows.
 
 type Row = Record<string, unknown>

@@ -30,9 +30,9 @@ import { beginIn } from '../startup/harness'
 import { storedEntries, widen } from '../timeline/helpers'
 import { openPage, type Page } from './harness'
 
-// The verified snapshot read (Part 1 §1.4.11, §1.6.2) on the test core: a part whose bytes
+// The verified snapshot read on the test core: a part whose bytes
 // changed, a part gone or a malformed row reads `damaged`, for peek and for the undo stack's
-// restored slots, which become the live head (§1.6.4 #6).
+// restored slots, which become the live head.
 
 const encoded = (state: State) => encodeSnapshot(toRecords(state))
 
@@ -239,6 +239,6 @@ test('storing loads restored undo slots through the verified read', () => {
         source,
         /const load = slotLoader\(\(hex\) => worker\.call\('readSnapshotVerified', hex\)\)/,
     )
-    // Retried once after the resumed import, through the same verified read (§1.5.4).
+    // Retried once after the resumed import, through the same verified read.
     assert.match(source, /setSlotLoader\(async \(snapshot\) => \{/)
 })

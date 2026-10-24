@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
 import { testTitlePrefix } from '../../scripts/site.mjs'
 
-// The landing pages in the release build (Part 5, 5.7.4). Only /privacy/ exists before Stage 2.
+// The landing pages in the release build. Only /privacy/ exists before Stage 2.
 
 const hosted = Boolean(process.env.PRODUCTION_TEST_URL)
 

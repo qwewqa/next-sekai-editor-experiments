@@ -1,6 +1,6 @@
 import { testKeysOpen } from './testKeys'
 
-// A spec's pause at a named point of a write (Part 1 §1.11.6's save-picker faults): the point
+// A spec's pause at a named point of a write: the point
 // waits while `nse.test.savePause` names it, until the spec calls `nseSaveTest.release()`. Every
 // point reached is logged. Nothing pauses unless a spec set the key.
 

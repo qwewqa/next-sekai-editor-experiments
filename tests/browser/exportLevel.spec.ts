@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import type { PlatformOverride } from '../../src/platform/detect'
 import { installCanvasCounters, installEditorFixture, installTestPlatform } from './editorFixture'
 
-// Export Level Data… (Part 1 §1.4.8, Step 1c). Chromium's pickers run on OPFS handles through the
-// platform override (§1.11); download browsers are simulated with fileSystemAccess: false.
+// Export Level Data…: Chromium's pickers run on OPFS handles through the
+// platform override; download browsers are simulated with fileSystemAccess: false.
 
 const errors = new WeakMap<Page, string[]>()
 
@@ -323,7 +323,7 @@ test('level data with an unknown archetype gets no Export target', async ({ page
 
     await openExport(page)
     await expect(dialog(page).locator('[data-export-target]')).toHaveCount(0)
-    // An unlinked copy: never the original's own name (§1.4.7).
+    // An unlinked copy: never the original's own name.
     const field = dialog(page).getByRole('textbox', { name: 'File Name' })
     await expect(field).toHaveValue('LevelData (2)')
     await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
@@ -352,7 +352,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await expect(dialog(page)).toHaveCount(0)
 
     // p saves a project file: its picker refuses the opened level data too, and puts it back
-    // (§1.4.7 R7), with the Export hint.
+    // with the Export hint.
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('p')
     await saveProjectFile(page)
@@ -399,7 +399,7 @@ const writes = (page: Page) =>
 
 test('Escape after a pick is accepted lets the write finish, then closes', async ({ page }) => {
     await start(page, opfs)
-    // An earlier export, which the picker empties when it is picked (D5).
+    // An earlier export, which the picker empties when it is picked.
     await writeFile(page, 'Coconut.nsld', { bgmOffset: 5 })
     await openExport(page)
     await dialog(page).getByRole('textbox', { name: 'File Name' }).fill('Coconut')
@@ -607,7 +607,7 @@ test('an opened gzipped LevelData: p saves a project file, and Shift+P exports t
             },
         )
     })
-    // p never writes level data (§1.4.7): its picker suggests a project file.
+    // p never writes level data: its picker suggests a project file.
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('p')
     await saveProjectFile(page)

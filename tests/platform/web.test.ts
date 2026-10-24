@@ -274,7 +274,7 @@ test('the save picker alone passes its id, types and folder, and a dismissal is 
     const pickers: unknown[] = []
     browser.window.showSaveFilePicker = (options) => {
         pickers.push(options)
-        // A save picker empties the file it returns (D5).
+        // A save picker empties the file it returns.
         handle.setContent(new Blob([]))
         return Promise.resolve(handle)
     }

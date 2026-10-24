@@ -1,4 +1,4 @@
-# The process tree under -Root: CPU seconds, memory and GPU memory per process (nse-perf round 2).
+# The process tree under -Root: CPU seconds, memory and GPU memory per process.
 param([string]$Root)
 $all = Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId,Name,CommandLine
 $queue = New-Object System.Collections.Queue

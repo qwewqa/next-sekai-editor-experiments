@@ -15,7 +15,7 @@ import {
 import { repairFromSource } from './repair'
 import { BuiltFileError, checkBuilt } from './verify'
 
-// The web's half after the plan (Part 1 §1.6.11.7, §1.5.6), in the storage worker: the pinned
+// The web's half after the plan, in the storage worker: the pinned
 // files posted with the request are inspected, the plan executed through them, and the result
 // checked before anything is handed over. A copy that fails with its source changed is a
 // conflict; with it unchanged, damage in that source.
@@ -33,7 +33,7 @@ export type SaveSourceFile = {
 export type ExecuteRefusal =
     /** A source changed after the check: the conflict dialog. */
     | { refused: 'conflict' }
-    /** The post-build check failed: nothing is handed over (§1.5.6). */
+    /** The post-build check failed: nothing is handed over. */
     | { refused: 'check'; message: string }
 
 export type BuiltSave = Omit<SavePlan, 'plan'> & { blob: Blob }
@@ -62,7 +62,7 @@ export const fingerprintNow = async (file: Blob) => {
 }
 
 /**
- * Inspects the append source, the only pinned file a write reads (§1.6.11.6): one that isn't a
+ * Inspects the append source, the only pinned file a write reads: one that isn't a
  * readable `.nxsp` with its fingerprint unchanged is damage in the chain's own file. Other pinned
  * files (a `copy` or `replace` target) aren't read, so they're never taken for damage.
  */
@@ -139,8 +139,8 @@ export const executeSave = async (
 }
 
 /**
- * `buildSave` (the Save package's entry): inspects the pinned files, plans the write of the chain
- * (§1.6.11.6), executes and checks it. Resolves the built file with what the write holds, or a
+ * `buildSave` (the Save package's entry): inspects the pinned files, plans the write of the chain,
+ * executes and checks it. Resolves the built file with what the write holds, or a
  * refusal that says why nothing was built.
  */
 export const buildSave = async (
@@ -150,7 +150,7 @@ export const buildSave = async (
     options: SaveOptions,
     files: readonly SaveSourceFile[] = [],
 ): Promise<BuiltSave | SaveRefusal | ExecuteRefusal> => {
-    // A write-back over a 0-byte file writes the chain from storage, keeping its identity (R9).
+    // A write-back over a 0-byte file writes the chain from storage, keeping its identity.
     const emptied =
         target.kind === 'append' &&
         files.some((each) => each.token === target.source && each.file.size === 0)

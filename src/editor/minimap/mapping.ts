@@ -1,4 +1,4 @@
-// The minimap's one coordinate mapping (design §4.2): pure, in CSS px from the canvas's top left.
+// The minimap's one coordinate mapping: pure, in CSS px from the canvas's top left.
 // The painter, the overlay, input and the annotations all read it.
 
 /** CSS px; device px are CSS px times `scale`. */

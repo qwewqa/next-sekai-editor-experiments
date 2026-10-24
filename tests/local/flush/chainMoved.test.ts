@@ -10,7 +10,7 @@ import { widen } from '../timeline/helpers'
 import { openPage } from './harness'
 
 // Other tabs' Recent Sessions lists change when a chain record is made or its head moves, and only
-// then (§1.6.6's hints): not on every flush.
+// then: not on every flush.
 
 const edit = (label: string) => ({
     kind: 'edit' as const,

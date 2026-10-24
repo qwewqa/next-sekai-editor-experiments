@@ -25,8 +25,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The save picker's rules where the Step 6 reviews found gaps (Part 1 §1.4.7 R2–R11; owner
-// decision log D5, D26; `work/step6/review/dataloss.md`): what a taken-over tab shows and asks,
+// The save picker's rules where reviews found gaps: what a taken-over tab shows and asks,
 // the pre-bind, the version on disk kept through Save as a Separate File, the kept bytes of a
 // partial open after a reload, Export's picker, and failures that must leave the next Save able.
 
@@ -40,7 +39,7 @@ const savedTo = async (page: Page, name: string) => {
     await expect.poll(async () => (await chainOf(page)).file).toMatchObject({ name })
 }
 
-/** A dialog ignores presses in its first moments (§1.4.1). */
+/** A dialog ignores presses in its first moments. */
 const afterGuard = (page: Page) => page.waitForTimeout(400)
 
 const freshBytes = async () =>
@@ -104,7 +103,7 @@ test('an unedited tab whose file is taken over shows it, and prompts on close', 
 
     await b.bringToFront()
     await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
-    // Its old content is now only in storage (R6).
+    // Its old content is now only in storage.
     expect(await prompts(b)).toBe(true)
 })
 
@@ -125,14 +124,14 @@ test('with storing paused, a takeover is refused: nothing is written, and the ow
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    // R11: the ordinary failed-save dialog, naming the file; the work stays in A.
+    // The ordinary failed-save dialog, naming the file; the work stays in A.
     const dialog = a.getByRole('dialog')
     await expect(dialog).toContainText('"coconut.nxsp" could not be written.')
     await expect(dialog).not.toContainText('safe mode')
     expect(await readFile(a, 'coconut.nxsp')).toEqual([])
     expect((await sessionOf(a)).file).toBeUndefined()
 
-    // B keeps its binding and its label, and its next Save fills the emptied file (R9).
+    // B keeps its binding and its label, and its next Save fills the emptied file.
     await b.bringToFront()
     expect((await chainOf(b)).file).toMatchObject({ name: 'coconut.nxsp' })
     expect((await sessionOf(b)).file?.name).toBe('coconut.nxsp')
@@ -167,7 +166,7 @@ test('a write-back that finds itself revoked opens the Save dialog with the reas
     await submitSave(a)
     await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
 
-    // B's Save finds the revocation under nse-bind (R10), and says why it asks.
+    // B's Save finds the revocation under nse-bind, and says why it asks.
     expect((await sessionOf(b)).file?.name).toBe('coconut.nxsp')
     await edit(b, 3)
     await pressSave(b)
@@ -422,7 +421,7 @@ test('Export’s picker: the chain’s own file changed on disk is put back, and
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('Shift+P')
     await expect(page.getByRole('dialog').filter({ hasText: 'Export Level Data' })).toBeVisible()
-    // The read before the picker (R2) has time to finish.
+    // The read before the picker has time to finish.
     await page.waitForTimeout(500)
     await page.keyboard.press('Enter')
     await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
@@ -478,7 +477,7 @@ test('in safe mode Save writes from this tab, refusing only to take over another
         .poll(async () => ((await projectOf(safe, 'melt.nxsp')).revision as Row).parent)
         .toBe((first.revision as Row).id)
 
-    // Another session's file can't be taken over while nothing is stored: refused (R11).
+    // Another session's file can't be taken over while nothing is stored: refused.
     await safe.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
@@ -489,7 +488,7 @@ test('in safe mode Save writes from this tab, refusing only to take over another
     await expect(safe.getByRole('dialog')).toContainText(
         'Not saved. Files cannot be replaced in safe mode.',
     )
-    // The owner keeps its binding, and its next Save fills the emptied file (R9).
+    // The owner keeps its binding, and its next Save fills the emptied file.
     await b.bringToFront()
     await edit(b, 4)
     await pressSave(b)

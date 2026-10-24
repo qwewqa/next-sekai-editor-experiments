@@ -1,4 +1,4 @@
-// The lock a write to Export's remembered target runs under (§1.6.6). A picked file is written under
+// The lock a write to Export's remembered target runs under. A picked file is written under
 // the pick session's hold instead (`src/editor/save/pickSession.ts`).
 
 type TargetLock = <T>(run: () => Promise<T>) => Promise<T>

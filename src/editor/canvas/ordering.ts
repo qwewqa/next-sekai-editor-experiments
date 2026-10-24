@@ -80,7 +80,7 @@ export type EntityVisibility = {
     scope: ScopeLookup
     visibilities: Record<EntityType, boolean>
     showOtherObjects: boolean
-    /** While a History entry's change is shown, what it changed; the rest dims (§1.4.11). */
+    /** While a History entry's change is shown, what it changed; the rest dims. */
     undimmed?: ReadonlySet<Entity>
 }
 

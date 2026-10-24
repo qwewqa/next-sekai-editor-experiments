@@ -40,19 +40,19 @@ import type { FlushCommitted } from './worker/flushHooks'
 
 export { forkRecord } from './chainFields'
 
-// The storage worker's half of a flush (Part 1 §1.6.2's order of work, §1.6.4 step 2): deflate,
+// The storage worker's half of a flush: deflate,
 // verify and hash first, then one transaction holding `nse-maint` shared: the epoch and the
 // closure check, the head check against the chain record, the puts, the entries, and field-level
 // updates of the session row and the chain record. Every read comes before the first write, so
 // a flush that finds something missing or its session no longer the head writes nothing.
 
-/** How a session began (§1.6.11.2): Step 3 writes new and import. */
+/** How a session began. */
 export type SessionOrigin =
     'new' | 'import' | 'nxsp' | 'continued' | 'migrated' | 'journal' | 'replaced'
 
 export type EntryKind = HistoryEntryKind
 
-/** Entries that make a chain edited (§1.6.11.2's `edited`). */
+/** Entries that make a chain edited. */
 export const EDITING_KINDS = TIMELINE_EDITING_KINDS as readonly EntryKind[]
 
 export type SessionView = { scroll: number; zoom: number; group?: number; stage?: number }
@@ -82,7 +82,7 @@ export type BatchMedia = {
 
 export type BatchEntry = EntryDescription & {
     seq: number
-    /** Wall-clock time of the action; stored strictly increasing (§1.6.8.7). */
+    /** Wall-clock time of the action; stored strictly increasing. */
     wall: number
     /** Index into the batch's snapshots, or a stored root: an undo or redo onto a slot not loaded. */
     snapshot: number | Uint8Array
@@ -92,13 +92,13 @@ export type BatchEntry = EntryDescription & {
         push: { snapshot: number | Uint8Array; step: UndoableStep }[]
         index: number
     }
-    /** A `save` entry's revision, device and writer's app version (§1.6.11.2). */
+    /** A `save` entry's revision, device and writer's app version. */
     revisionId?: string
     device?: { id: string; label: string }
     appVersion?: string
 }
 
-/** A stack block a batch rewrites (§1.6.4 #6): each slot a snapshot of the batch or a stored root. */
+/** A stack block a batch rewrites: each slot a snapshot of the batch or a stored root. */
 export type BatchBlock = {
     block: number
     first: number
@@ -128,16 +128,16 @@ export type FlushBatch = {
         chainId: string
         origin: SessionOrigin
         startedAt: number
-        /** The stored session this one continues, written with its first flush (D10). */
+        /** The stored session this one continues, written with its first flush. */
         parent?: { id: string; uptoSeq: number }
     }
     chain: {
         docId: string
         lineageId: string
         sourceName?: string
-        /** A fork's old chain: its record is copied by exclusion (§1.6.11.2). */
+        /** A fork's old chain: its record is copied by exclusion. */
         forkOf?: string
-        /** A fork's name, "<name> (2)" (§1.3.1), set on the record it makes. */
+        /** A fork's name, "<name> (2)", set on the record it makes. */
         name?: string
         /**
          * Chain fields this session set before its first write (a rename, Export's target):
@@ -150,11 +150,11 @@ export type FlushBatch = {
     text: Uint8Array
     ends: number[]
     snapshots: BatchSnapshot[]
-    /** Stored hashes this batch reuses, each with where it was last known stored (§1.6.6). */
+    /** Stored hashes this batch reuses, each with where it was last known stored. */
     reused: { hash: Uint8Array; known?: KnownAt }[]
     entries: BatchEntry[]
     media: BatchMedia[]
-    /** Media this tab holds but didn't send (§1.6.8.4's "held"), as hex. */
+    /** Media this tab holds but didn't send, as hex. */
     held: string[]
     /** Carried media an earlier flush sent without a reply: read back even when found stored. */
     unconfirmed?: string[]
@@ -164,7 +164,7 @@ export type FlushBatch = {
     /** The stack after the last entry; absent when the page couldn't follow its entries. */
     stack?: BatchStack
     /**
-     * A Save's identity unit (§1.3.2), committed with its marks after the entries, the `save`
+     * A Save's identity unit, committed with its marks after the entries, the `save`
      * entry among them or stored before (`storeMarks`); left in memory when a mark can't be stored.
      */
     identity?: IdentityUnit
@@ -172,12 +172,12 @@ export type FlushBatch = {
     durability: 'default' | 'strict'
 }
 
-/** What a flush wrote, by row kind, with about 50 bytes of IndexedDB overhead a row (§1.6.8.1). */
+/** What a flush wrote, by row kind, with about 50 bytes of IndexedDB overhead a row. */
 export type WriteStats = {
     rows: number
     /** Bytes written, overwrites of the session row and chain record included. */
     bytes: number
-    /** Bytes of rows added: the database's growth (§1.9.3). */
+    /** Bytes of rows added: the database's growth. */
     growth: number
     growthByStore: Record<string, number>
     chunks: number
@@ -205,7 +205,7 @@ export type FlushResult =
           lastSeq: number
           /**
            * Entries at or below the session's `lastSeq` that the writer order should have made
-           * impossible (§2.5, the `lastSeq` rule): `missing` ones had no row and were stored now;
+           * impossible (the `lastSeq` rule): `missing` ones had no row and were stored now;
            * `covered` ones had no row but a `recovered` entry above them, and were skipped.
            */
           orderBreach?: { missing: number[]; covered: number[] }
@@ -218,10 +218,10 @@ export type FlushResult =
           stackWritten: boolean
           /**
            * The batch wrote the session's last entry without a stack it could use: the stored
-           * stack was removed rather than left behind `lastSeq` (§1.3.9: replay rebuilds it).
+           * stack was removed rather than left behind `lastSeq` (replay rebuilds it).
            */
           stackRemoved?: boolean
-          /** The chain record as written, for the journal's descriptor (§1.6.11.3). */
+          /** The chain record as written, for the journal's descriptor. */
           chain: Record<string, unknown>
           /** The chain record was made, or its `head` moved here: Recent Sessions lists change. */
           chainMoved?: true
@@ -231,7 +231,7 @@ export type FlushResult =
           staleIdentity?: true
           /**
            * Media refused by the put or that didn't read back right: the entries are stored, the
-           * media is not (§1.6.8.4).
+           * media is not.
            */
           mediaFailed?: string[]
           stats: WriteStats
@@ -295,7 +295,7 @@ export const FLUSH_STORES = [
 
 /**
  * Deflates, verifies and hashes a batch's new chunks, then builds its kind nodes and roots
- * (§1.6.2's order of work): everything that awaits anything but IndexedDB.
+ *: everything that awaits anything but IndexedDB.
  */
 export const prepareFlush = async (
     batch: FlushBatch,
@@ -371,7 +371,7 @@ export const prepareFlush = async (
     return { chunks, nodes: [...nodes.values()], roots, media }
 }
 
-/** A media row (§1.6.11.2): a new Blob of the bytes, never a `File`. */
+/** A media row: a new Blob of the bytes, never a `File`. */
 export const mediaRow = (item: BatchMedia & { sha256: Uint8Array }, day: UseDay) => ({
     blob: new Blob([item.bytes], item.type ? { type: item.type } : {}),
     sha256: item.sha256,
@@ -400,7 +400,7 @@ export const rowBytes = (value: unknown): number => {
     return 0
 }
 
-/** IndexedDB's own overhead per row, as §1.6.8.1 estimates it. */
+/** IndexedDB's own overhead per row. */
 export const ROW_OVERHEAD = 50
 
 type Row = Record<string, unknown>
@@ -431,16 +431,16 @@ export const writeFlush = async (
     if (session && !isReadableSessionVersion(session.v))
         throw new FlushBatchError('Unsupported session generation')
     const chainId = batch.session.chainId
-    // A stored session never changes chain (D10): a fork is a new session.
+    // A stored session never changes chain: a fork is a new session.
     if (session !== undefined && session.chainId !== chainId)
         throw new FlushBatchError('The session belongs to another chain')
     const chainRow = await tx.get('chains', chainId)
     const chain = isRow(chainRow) ? chainRow : undefined
     // A continuation's first write moves the head from its parent, only if it's still the parent
-    // (§1.3.1's compare-and-set); another tab's continuation that moved it first makes this a fork.
+    // (compare-and-set); another tab's continuation that moved it first makes this a fork.
     const continuing =
         !session && batch.session.parent !== undefined && chain?.head === batch.session.parent.id
-    // The head check (r12-arch-web L4): another tab continued the chain meanwhile. A chain marked
+    // The head check: another tab continued the chain meanwhile. A chain marked
     // for Delete takes nothing new either (as in journal apply), so the work forks out of it.
     if (chain && (chain.deleting !== undefined || (chain.head !== batch.session.id && !continuing)))
         return {
@@ -456,7 +456,7 @@ export const writeFlush = async (
     if (parentRow !== undefined && (!isRow(parentRow) || !isReadableSessionVersion(parentRow.v)))
         throw new FlushBatchError('Unsupported parent session generation')
 
-    // The closure check (§1.6.6): only hashes not known stored in this database at this epoch.
+    // The closure check: only hashes not known stored in this database at this epoch.
     const missingChunks: string[] = []
     for (const { hash, known: at } of batch.reused)
         if (
@@ -479,20 +479,20 @@ export const writeFlush = async (
             mediaToPut.push(carried)
             readBack.push(hex)
         }
-        // Held but not sent: the head's media went missing, so it's stored again (§1.6.4).
+        // Held but not sent: the head's media went missing, so it's stored again.
         else if (batch.held.includes(hex)) missingMedia.push(hex)
     }
     if (missingChunks.length || missingMedia.length)
         return { kind: 'missing', known, chunks: missingChunks, media: missingMedia }
 
-    // The stack after the batch's last entry (§1.6.4 #6), only when the batch writes the session's
-    // last entry: a re-send of stored entries (a lost reply, or a journal replayed since, §1.6.6)
+    // The stack after the batch's last entry, only when the batch writes the session's
+    // last entry: a re-send of stored entries (a lost reply, or a journal replayed since)
     // leaves the stored stack alone.
     const lastSeq = typeof session?.lastSeq === 'number' ? session.lastSeq : 0
     // Entries at or below `lastSeq` are stored, so a re-send skips them. One with no row is the
-    // backstop's: no designed path reaches it (one writer, only above `lastSeq`, §2.5), but no
+    // backstop's: no designed path reaches it (one writer, only above `lastSeq`), but no
     // entry is acknowledged without being stored, so it is stored now. One a `recovered` entry
-    // (§1.6.6) covers is skipped. Both are reported as `orderBreach`.
+    // covers is skipped. Both are reported as `orderBreach`.
     const missing = new Set<number>()
     const covered: number[] = []
     if (session)
@@ -519,11 +519,11 @@ export const writeFlush = async (
     }
     const last = batch.entries.at(-1)?.seq ?? 0
     // The stored stack is the one after `lastSeq`: an entry stored below it leaves that stack
-    // behind the entries, so it goes (replay rebuilds it, §1.3.9) unless the batch reaches it.
+    // behind the entries, so it goes (replay rebuilds it) unless the batch reaches it.
     const ownsStack = last > lastSeq || (missing.size > 0 && last === lastSeq)
     const behind = missing.size > 0 && last < lastSeq
     let stack = ownsStack ? batch.stack : undefined
-    // A late flush reaching past a replayed journal (§1.6.6): its stack is the dead page's, which
+    // A late flush reaching past a replayed journal: its stack is the dead page's, which
     // never saw the recovered entry, so none is kept rather than one that isn't replay's.
     const first = batch.entries[0]?.seq ?? 0
     if (stack && session && first <= lastSeq) {
@@ -556,7 +556,7 @@ export const writeFlush = async (
         const hex = toHex(entry.snapshot)
         if (storedRoots.has(hex)) continue
         const row = (await tx.get('nodes', hashKey(entry.snapshot))) as NodesRow | undefined
-        // Open sessions' stacks are kept data (§1.6.8), so their roots are never removed.
+        // Open sessions' stacks are kept data, so their roots are never removed.
         if (row?.t !== 'root') throw new FlushBatchError(`No stored root ${hex}`)
         storedRoots.set(hex, { hash: entry.snapshot.slice(), noteCount: row.noteCount })
     }
@@ -636,7 +636,7 @@ export const writeFlush = async (
         stats.nodes++
         count('nodes', row, root.hash)
     }
-    // A Blob the browser refuses (WebKit's private windows) never fails the entries (§1.6.8.4).
+    // A Blob the browser refuses (WebKit's private windows) never fails the entries.
     const refused: string[] = []
     for (const item of mediaToPut) {
         const row = mediaRow(item, day)
@@ -649,7 +649,7 @@ export const writeFlush = async (
 
     // Entries a kill after commit already stored, or a `recovered` entry covers, are skipped:
     // re-sends are idempotent.
-    // A continuation starts after its parent's last entry (§1.6.11.2).
+    // A continuation starts after its parent's last entry.
     const parentUpdated =
         isRow(parentRow) && typeof parentRow.updatedAt === 'number' ? parentRow.updatedAt : 0
     const startedAt =
@@ -778,21 +778,21 @@ export const writeFlush = async (
                   : { sourceName: batch.chain.sourceName }),
               ...(hasContentAtStart ? { hasContent: true } : {}),
               ...(batch.chain.name === undefined ? {} : { name: batch.chain.name }),
-              // Its first start, its own for a fork: an untitled name stays put (§1.3.5).
+              // Its first start, its own for a fork: an untitled name stays put.
               startedAt,
               ...chainFields,
           }
     // Fields the session set before its first write: written field by field, `null` removing; a
-    // handle goes in its own store (D24).
+    // handle goes in its own store.
     for (const [key, value] of Object.entries(
         await splitHandles(tx, chainId, batch.chain.set ?? {}),
     ))
         if (value === null) Reflect.deleteProperty(chainValue, key)
         else chainValue[key] = value
-    // A Save's identity unit, after its entry and with its marks (§1.3.2): the binding replaces a
+    // A Save's identity unit, after its entry and with its marks: the binding replaces a
     // taken-over one's `replaced`.
     let identity: boolean | undefined
-    // A unit whose binding was taken over since its Save is dropped, never stored (R5).
+    // A unit whose binding was taken over since its Save is dropped, never stored.
     const stale = !!batch.identity && !!chain && !unitApplies(chain, batch.identity)
     if (batch.identity && !stale) {
         identity = identitySupported && (await storeMarks(tx, batch.identity.marks, readVersion))
@@ -822,7 +822,7 @@ export const writeFlush = async (
         roots: prepared.roots.map((root) => root.hash),
         lastSeq: newLastSeq,
         // The backstop stored what it found (and skipped what a `recovered` entry covers); the
-        // page reports it, since no designed path leads here (§2.5).
+        // page reports it, since no designed path leads here.
         ...(missing.size || covered.length
             ? { orderBreach: { missing: [...missing], covered } }
             : {}),

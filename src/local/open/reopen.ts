@@ -1,7 +1,7 @@
 import { sameContent } from '../../platform/fingerprint'
 import type { DiskState } from '../../platform/types'
 
-// Open of the file the open session's chain last wrote (Part 1 §1.5.4): when the file is that
+// Open of the file the open session's chain last wrote: when the file is that
 // write, unchanged on both sides, Open makes no new chain and keeps the session. Each fact is read
 // by the page; a read that fails gives the fact that does not match, so the open goes on as any
 // other open does.

@@ -4,11 +4,11 @@ import { SampleClock } from '../samples/driver'
 import { installEditorFixture, installTestPlatform, useTool, waitForStartup } from './editorFixture'
 
 /*
- * Shared helper for the D2 History journey specs (work/history-redesign/testplan/plan.md §3.0).
- * It holds no tests. P1 to P4 import it read-only; anything a package needs beyond it stays local
- * to that package's spec.
+ * Shared helper for the History journey specs.
+ * It holds no tests. The journey specs import it read-only; anything a spec needs beyond it stays local
+ * to that spec.
  *
- * Conventions every spec built on it follows (plan §3):
+ * Conventions every spec built on it follows:
  * - No fixed waits. Wait on conditions (web-first `expect`, `expect.poll`, a flush, two frames or
  *   a released gate). Assert that nothing happened only after a later positive event ordered
  *   behind it: run a sentinel action, wait for it, then check the absence.

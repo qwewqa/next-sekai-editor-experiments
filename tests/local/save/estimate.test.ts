@@ -5,7 +5,7 @@ import { ZipReader } from '../../../src/zip/reader'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, save } from './fixture'
 
-// `estimateSaveSize` (Part 1 §1.4.7): from stored sizes, cached per chain, close to the file.
+// `estimateSaveSize`: from stored sizes, cached per chain, close to the file.
 
 /** The written file's history entries and the rest, by their stored sizes. */
 const measured = async (file: Blob) => {
@@ -80,7 +80,7 @@ test('the cache is for the BGM the page names: another BGM is a new estimate', a
     )
 })
 
-test('an estimate counted while an open’s import runs is not kept: the next one counts again (SF-6)', async () => {
+test('an estimate counted while an open’s import runs is not kept: the next one counts again', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     for (let k = 1; k <= 5; k++) await fixture.edit(k)

@@ -32,7 +32,7 @@ import {
     type Kind,
 } from './sameBeatKinds'
 
-// D4 through the editor's own edit functions: the same-beat order the user sees is what the
+// Through the editor's own edit functions, the same-beat order the user sees is what the
 // records keep, and every round trip keeps it.
 
 const permutations = [
@@ -316,7 +316,7 @@ test('the auto save, the journal’s level data and the clipboard keep same-beat
         'auto save',
     )
 
-    // The journal's levelDataGz (§1.6.11.3): gzip level 1, base64, decoded into level data.
+    // The journal's levelDataGz: gzip level 1, base64, decoded into level data.
     const bytes = gzip(JSON.stringify(levelData), { level: 1 })
     const base64 = Buffer.from(bytes).toString('base64')
     const decoded = JSON.parse(

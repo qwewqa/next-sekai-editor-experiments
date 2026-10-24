@@ -2,7 +2,7 @@ import type { tableAt } from './levelDataTable'
 
 // The declared table at each levelVersion, frozen. A change to the table that is not a new
 // version fails the pin test: raise `LEVEL_VERSION`, tag the addition with it, add the new
-// version's snapshot here, and follow readers-before-writers (Part 4, 4.9.4).
+// version's snapshot here, and follow readers-before-writers.
 export const pinned: Record<number, ReturnType<typeof tableAt>> = {
     1: {
         known: [

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import '../../editor/saveMatrix/env'
 
-// The two reads of an open that go through the `storedRead` gate (Part 1 §1.5.4): the earlier
+// The two reads of an open that go through the `storedRead` gate: the earlier
 // chains, whose failure is a value the open passes over, never a rejection; and the binding
 // check, which answers 'yes', 'no' or 'unknown'.
 

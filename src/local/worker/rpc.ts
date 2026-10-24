@@ -1,4 +1,4 @@
-// The storage worker's small typed RPC (Part 1 §1.6.5). Payloads are structured clones; buffers
+// The storage worker's small typed RPC. Payloads are structured clones; buffers
 // marked with transfer() move rather than copy. The worker can also emit events to the page.
 
 /** Both ends of a dedicated worker. */
@@ -7,7 +7,7 @@ export type Endpoint = {
     onmessage: ((event: MessageEvent) => void) | null
 }
 
-/** A call as its handler sees it: work done for it counts as its progress (§1.6.5). */
+/** A call as its handler sees it: work done for it counts as its progress. */
 export type CallScope = { readonly id: number; readonly tick: () => void }
 
 type Handler = (arg: never, scope: CallScope) => unknown

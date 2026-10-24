@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { buildCharts } from './builtinChart'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// The preview with the Built-in skin, particle and background for reference charts (Part 2, 2.11):
+// The preview with the Built-in skin, particle and background for reference charts:
 // every note type, the flick directions, slides and guides, and the eight styles, at a desktop and
 // a phone size in both themes, with the far end of the lane in the first shot. With A2_SHOTS_DIR set
 // the shots are saved there; either way each must show something other than the empty stage.

@@ -1,7 +1,7 @@
 import { sha256Sync, toHex } from './hash'
 import type { DeviceForm } from './nxsp/project'
 
-// The device a file records is per document (Part 1 §1.3.3): HMAC-SHA-256 of the document's
+// The device a file records is per document: HMAC-SHA-256 of the document's
 // `lineageId` under this install's own `deviceId`, which never leaves the install. Files of one
 // lineage, which the lineage already links, share it, so this install's own saves read as its own
 // across Save As… and reopening; files of two lineages can't be linked to one install by it.

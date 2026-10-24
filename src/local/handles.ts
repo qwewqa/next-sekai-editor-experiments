@@ -4,14 +4,14 @@ import { testKeysOpen } from '../platform/testKeys'
 import type { HandleRole } from './handleRows'
 import { mapRead, storedRead, type ReadWorker, type StoredRead } from './storedRead'
 
-// File handles stored for a chain (Part 1 §1.3.2, D16, D24): in the `handles` store, never on the
+// File handles stored for a chain: in the `handles` store, never on the
 // chain record or the journal descriptor, and read only through `handleOf` when a Save, an Export
 // or an open's resumed import needs one, never during startup, journal replay or recovery. Two
 // cases store no real handle:
 // - Under the specs' OPFS picker override: reading a real OPFS handle back from IndexedDB closes
 //   Playwright's in-memory Chromium, so the row keeps a token, the file's name in the OPFS root,
 //   which any tab finds again; a spec may register fakes under `window.nseTestHandles`.
-// - A suspected private window, whose in-memory profile the D16 probe couldn't clear: a missing
+// - A suspected private window, whose in-memory profile the probe couldn't clear: a missing
 //   handle only means a picker.
 
 /** What a record holds in place of a handle under the specs' override. */
@@ -162,7 +162,7 @@ export const readableWithoutPrompt = async (handle: FileSystemFileHandle) => {
 }
 
 /**
- * Asks for read access to a handle (§1.4.7 R2): on a press or a dialog opening it made, so the
+ * Asks for read access to a handle: on a press or a dialog opening it made, so the
  * browser can prompt. True when granted.
  */
 export const requestRead = async (handle: FileSystemFileHandle) => {

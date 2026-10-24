@@ -1,7 +1,7 @@
 import { compareKeys, keyAtPath, normalizeKey } from './kv/keys'
 import type { Key, KeyPath, KvDatabase } from './kv/types'
 
-// The dump format `nse-local-data-dump` v1 (Part 1 §1.6.11.9): every row of every store read with
+// The dump format `nse-local-data-dump` v1: every row of every store read with
 // plain cursors and written undecoded, plus the editor's localStorage keys. It uses no record
 // decoder, so a bug there can't stop it. The reader validates a dump and turns it back into values.
 // A Blob is inline base64 (`$blob`) in a JSON dump, and a `$blobEntry` naming a ZIP entry beside

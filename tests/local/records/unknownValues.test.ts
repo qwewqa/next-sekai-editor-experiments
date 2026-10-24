@@ -39,7 +39,7 @@ test('an unknown entry kind or a newer root makes a session, and its chain, unre
     assert.equal(isKnownEntryKind('recovered'), true)
 })
 
-test('unknown enum values follow §1.6.11.2’s table', () => {
+test('unknown enum values follow the field table', () => {
     assert.equal(readOrigin('continued'), 'continued')
     assert.equal(readOrigin('fallback'), undefined)
     assert.deepEqual(readFileEvent('saved', undefined), { event: 'saved', confirmed: false })

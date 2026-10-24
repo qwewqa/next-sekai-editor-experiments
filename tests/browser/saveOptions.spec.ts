@@ -18,9 +18,9 @@ import {
     writeFile,
 } from './saveFlows'
 
-// What a Save writes is chosen per Save (Part 1 §1.4.7; owner, 2026-10-23): every Save starts
+// What a Save writes is chosen per Save: every Save starts
 // from History and BGM included, a Save dialog's ticks apply to that one write, and nothing is
-// remembered on the binding. A file that already holds history keeps it (H-5).
+// remembered on the binding. A file that already holds history keeps it.
 
 type Row = Record<string, unknown>
 
@@ -31,7 +31,7 @@ const saveAs = (page: Page) =>
         void runCommand(commands.saveAs)
     })
 
-/** A dialog ignores presses in its first moments (§1.4.1). */
+/** A dialog ignores presses in its first moments. */
 const settle = (page: Page) => page.waitForTimeout(400)
 
 /** A BGM the session holds, pushed as an edit. */
@@ -185,7 +185,7 @@ test('Save As… with History ticked onto the chain’s own file without history
     await edit(page, 2)
     const written = await saveAsOwn(page)
     expect(written.history).toBeDefined()
-    // The chain's own file keeps its identity (R4).
+    // The chain's own file keeps its identity.
     expect(written.id).toBe(plain.id)
 })
 

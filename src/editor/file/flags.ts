@@ -1,7 +1,7 @@
 import { shallowRef } from 'vue'
 import { storageGet, storageSet } from '../../storage'
 
-// Three browser-wide flags (Part 1 §1.5.6, round 8 G6): plain keys the Settings UI doesn't show and
+// Three browser-wide flags: plain keys the Settings UI doesn't show and
 // Reset Settings leaves alone.
 
 const readFlag = (key: string) => storageGet(key, false) === true
@@ -25,7 +25,7 @@ const confirmed = flag('downloadConfirmed')
 const firstSave = flag('firstSaveDone')
 const exported = flag('exportUsed')
 
-/** A download was confirmed once in this browser (§1.3.4). */
+/** A download was confirmed once in this browser. */
 export const downloadConfirmed = confirmed.value
 export const confirmDownloads = confirmed.set
 
@@ -33,6 +33,6 @@ export const confirmDownloads = confirmed.set
 export const firstSaveDone = firstSave.value
 export const markFirstSaveDone = firstSave.set
 
-/** Export Level Data… has run once (the Save dialog's Export line, §1.4.7). */
+/** Export Level Data… has run once (the Save dialog's Export line). */
 export const exportUsed = exported.value
 export const markExportUsed = exported.set

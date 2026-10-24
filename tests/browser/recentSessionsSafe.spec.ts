@@ -8,7 +8,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// `?safe` (Part 1 §1.4.2, §1.4.10.6): Recent Sessions lists what is stored and reads it, and the
+// `?safe`: Recent Sessions lists what is stored and reads it, and the
 // only way into a session is a copy that stores nothing. Save to File… still writes the file.
 
 const messages = JSON.parse(

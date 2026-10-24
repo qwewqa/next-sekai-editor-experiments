@@ -40,7 +40,7 @@ const page = `<!doctype html>
     <body><script type="module" src="/assets/index-12345678.js"></script></body>
 </html>
 `
-// The editor's page loads the support gate, a classic script, ahead of the bundle (Part 1 §1.6.10).
+// The editor's page loads the support gate, a classic script, ahead of the bundle.
 const indexPage = page.replace('<title>', '<script src="/gate.js"></script><title>')
 const withPolicy = (html) => injectPolicy(html, webPolicy)
 

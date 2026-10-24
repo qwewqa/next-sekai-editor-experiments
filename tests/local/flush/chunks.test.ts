@@ -28,7 +28,7 @@ import '../../helpers/lockChecks'
 import { camera, edgeChart, goldenChart, mask, note, stateOf, style } from '../records/charts'
 import { samplePaths, sampleState } from '../records/samples'
 
-// The identity memo and the extraction (§1.6.2): the plan's chunks are exactly the snapshot
+// The identity memo and the extraction: the plan's chunks are exactly the snapshot
 // encoding's, and an edit sends only its changed windows.
 
 const encoder = new TextEncoder()
@@ -275,7 +275,7 @@ test('a whole-chart extraction runs in slices of about 8 ms', async () => {
     })
 })
 
-test('outside release builds, a snapshot naming a group or stage its header lacks is refused (D9)', () => {
+test('outside release builds, a snapshot naming a group or stage its header lacks is refused', () => {
     const state = stateOf(goldenChart())
     const [note] = [...state.store.slides.note.values()].flat()
     assert.ok(note)

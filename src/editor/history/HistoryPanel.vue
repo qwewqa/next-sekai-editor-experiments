@@ -31,9 +31,9 @@ import {
 import TimelineList from './TimelineList.vue'
 import type { GoToView, HistoryPresentation } from './presentation'
 
-// The History panel (Part 1 §1.4.10), in a dock or in the dialog: one band with the two tabs,
+// The History panel, in a dock or in the dialog: one band with the two tabs,
 // Timeline and Recent Sessions, and Go To; then the list. There is no action bar in it: the peek's
-// controls are on the canvas (§1.4.11), so the body is all list.
+// controls are on the canvas, so the body is all list.
 
 const props = withDefaults(
     defineProps<{ surface?: 'panel' | 'dialog'; presentation?: HistoryPresentation }>(),
@@ -173,7 +173,7 @@ const mode = computed<'label' | 'icon' | 'small'>(() => {
     if (f.full + 36 * f.k <= room) return 'icon'
     return 'small'
 })
-// Timeline never truncates (§6): it does not shrink, and Recent Sessions takes the shortfall to its
+// Timeline never truncates: it does not shrink, and Recent Sessions takes the shortfall to its
 // 48 px floor. In the dialog's small band (a narrow sheet, about 300 px) that needs the band's
 // chrome tighter; the tab list clips rather than overlap Go To where nothing was measured.
 const tight = computed(() => mode.value === 'small' && props.surface === 'dialog')
@@ -244,7 +244,7 @@ const onEscape = (event: KeyboardEvent) => {
     emit('close')
 }
 
-// Show All goes with the banner: focus on it goes to the list, as a Go To pick's does (X-5).
+// Show All goes with the banner: focus on it goes to the list, as a Go To pick's does.
 const showAll = (event: MouseEvent) => {
     historyFilter.value = 'all'
     blurAfterPointer(event)
@@ -294,7 +294,7 @@ const goToButtonTitle = computed(() =>
         <!-- The band: 48 px, one line, the 6 px panel gutter. Pill-and-marker tabs at its start, as
              the Properties band's; Go To, a flat band control, at its end. The dialog's small band
              (a narrow sheet) closes its gaps to 2 px and its tab pills to 6 px a side, so
-             Timeline stays whole beside Recent Sessions at its 48 px floor (X-6). -->
+             Timeline stays whole beside Recent Sessions at its 48 px floor. -->
         <div
             ref="band"
             class="flex h-12 shrink-0 items-center bg-header px-1.5"

@@ -319,7 +319,7 @@ for (const portrait of [false, true]) {
                 pixels,
             }
         }, portrait)
-        // Every download is handed over as application/octet-stream (Part 1 §1.5.6); the bytes are the PNG.
+        // Every download is handed over as application/octet-stream; the bytes are the PNG.
         expect(result).toEqual({
             width: 4,
             height: 4,

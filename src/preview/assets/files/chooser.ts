@@ -10,7 +10,7 @@ import { openSourcePackage, type ListedItem, type SourcePackage } from './packag
 import type { UserAssetMeta, UserAssetRecord, UserAssetStore } from './store'
 import { StoreFailed, storeRecords } from './storeRecords'
 
-// The chooser's From a File view (Part 2, 2.5.2, 2.6) without its markup: pick a package, list the
+// The chooser's From a File view without its markup: pick a package, list the
 // items of one type, offer the other types' items of the same name, and on Use check, repack and
 // store what was selected and ticked. One chooser per type lives with the dialog, so it keeps its
 // state across tabs, and closing the dialog disposes it, which cancels what is running.

@@ -1,4 +1,4 @@
-// Hashes are SHA-256 truncated to 16 bytes (§1.6.2). Records under about 1 KB use the
+// Hashes are SHA-256 truncated to 16 bytes. Records under about 1 KB use the
 // synchronous SHA-256 below: faster for small inputs, and it can't be awaited into a
 // transaction by mistake. Larger inputs use `crypto.subtle`.
 
@@ -111,7 +111,7 @@ export const sha256 = async (data: Uint8Array): Promise<Uint8Array> =>
 
 const hexDigits = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, '0'))
 
-/** Lowercase hex of bytes: a hash's form outside IndexedDB (§1.6.11). */
+/** Lowercase hex of bytes: a hash's form outside IndexedDB. */
 export const toHex = (bytes: Uint8Array) => {
     let text = ''
     for (const byte of bytes) text += hexDigits[byte] ?? ''

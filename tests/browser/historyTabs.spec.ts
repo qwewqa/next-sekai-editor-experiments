@@ -20,7 +20,7 @@ import {
     timelineRead,
 } from './historyJourney'
 
-// Two tabs and continuation (D2 plan §3.3, F3 and F4): each tab's Timeline lists its own
+// Two tabs and continuation: each tab's Timeline lists its own
 // session's rows, a fork or a continuation divides from what it came from, and one tab's History
 // never reaches the other.
 
@@ -155,7 +155,7 @@ const recordNotices = (page: Page) =>
 const seenNotices = (page: Page) =>
     page.evaluate(() => (window as unknown as { seenNotices: string[] }).seenNotices)
 
-test('F3: a duplicated tab forks with a divider, and nothing it does reaches the first tab', async ({
+test('a duplicated tab forks with a divider, and nothing it does reaches the first tab', async ({
     page,
     context,
 }) => {
@@ -241,7 +241,7 @@ const chainKinds = (page: Page) =>
         return chain
     })
 
-test('F4: a new visit continues with a divider, its earlier rows peek and restore, and Go To counts both visits', async ({
+test('a new visit continues with a divider, its earlier rows peek and restore, and Go To counts both visits', async ({
     page,
     context,
 }) => {

@@ -636,7 +636,7 @@ test('recovered events retain immutable context independently of a pushed step',
     assert.throws(() => pushedStep(event), /does not push/)
 })
 
-// `x`, the one ignorable carrier of a structural object (§1.6.11.8)
+// `x`, the one ignorable carrier of a structural object
 
 const sameJson = (actual: unknown, expected: JsonValue) =>
     assert(equalJson(actual as JsonValue, expected))

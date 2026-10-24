@@ -11,7 +11,7 @@ import '../../helpers/lockChecks'
 import { workerCore } from './harness'
 
 // Session locks on the main thread, this tab's client id, parent locks for unstored
-// continuations (§1.6.5, §1.6.6), and the days-of-use counter (§1.6.8.7).
+// continuations, and the days-of-use counter.
 
 test('a session lock is held until released; another tab can’t take it meanwhile', async () => {
     const world = createWorld({ seed: 1 })

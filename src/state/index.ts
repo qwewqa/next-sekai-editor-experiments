@@ -24,7 +24,7 @@ export type State = {
     selectedEntities: Entity[]
 }
 
-/** What a state holds beside its chart: level info and the BGM's metadata (§1.6.2's header). */
+/** What a state holds beside its chart: level info and the BGM's metadata. */
 export type StateExtras = { levelInfo?: LevelInfo; bgm?: BgmMeta }
 
 export const createState = (chart: Chart, offset: number, extras: StateExtras = {}): State => {

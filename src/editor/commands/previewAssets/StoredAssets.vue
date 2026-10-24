@@ -19,7 +19,7 @@ import { formatSize } from '../exportLevel/format'
 import AssetGlyph from './AssetGlyph.vue'
 import { storedThumbnail } from './storedThumbnails'
 
-// The Stored tab (Part 2, 2.6): every stored file and server item, with its size, whether a type
+// The Stored tab: every stored file and server item, with its size, whether a type
 // uses it, and Remove, which always asks first.
 const strings = computed(() => i18n.value.commands.previewAssets)
 const uid = useId()

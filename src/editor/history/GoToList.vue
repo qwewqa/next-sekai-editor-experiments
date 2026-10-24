@@ -12,7 +12,7 @@ import { goToPieces, goToStamp, here, loadGoTo, type Target } from './source'
 import { hereRange, historyFilter, historyViewGeneration } from './state'
 import { session } from '../../history/session'
 
-// Go To's jump list (Part 1 §1.4.10.5): Now, then the days, newest first, with the sessions in
+// Go To's jump list: Now, then the days, newest first, with the sessions in
 // each; a day of one session is one row. While filtering it lists and counts saves and exports.
 // The piece at the top of the Timeline has a check; the list opens scrolled to it.
 
@@ -33,7 +33,7 @@ type Item =
           pieces: TimelinePiece[]
       }
 
-// Go To's day names and times are the Timeline's: one History clock and zone (I-1). It looks at the
+// Go To's day names and times are the Timeline's: one History clock and zone. It looks at the
 // clock when it opens, so a list opened after a sleep or a move is current at once.
 const calendar = useHistoryCalendar()
 checkHistoryCalendar()

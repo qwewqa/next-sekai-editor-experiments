@@ -16,9 +16,9 @@ import { goldenChart, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 import { closedChain, daysPass, MemoryStorage, openDeleter, tamper } from './harness'
 
-// GC (deletion design §3.5): mark from entries, recovered pushes and stack blocks through `refs`,
-// sweep the rest past the grace period, one epoch bump per deleting transaction (R2), stop for a
-// waiting writer (R6), and remove nothing while a newer build's data is in use (R7).
+// GC: mark from entries, recovered pushes and stack blocks through `refs`,
+// sweep the rest past the grace period, one epoch bump per deleting transaction, stop for a
+// waiting writer, and remove nothing while a newer build's data is in use.
 
 let made = 0
 const hash = () => {

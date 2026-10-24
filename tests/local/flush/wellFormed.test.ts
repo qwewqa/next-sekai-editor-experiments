@@ -11,7 +11,7 @@ import { canonical } from '../../../src/local/records/canonical'
 import { getFilename } from '../../../src/utils/file'
 import '../../helpers/lockChecks'
 
-// Text enters well formed (§1.6.11's conventions): a lone surrogate becomes U+FFFD at every entry
+// Text enters well formed: a lone surrogate becomes U+FFFD at every entry
 // point, so no state, record, row or file holds one.
 
 const lone = 'A\uD800B'

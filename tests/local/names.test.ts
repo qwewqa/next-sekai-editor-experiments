@@ -9,7 +9,7 @@ import {
     prefillOf,
 } from '../../src/local/names'
 
-// The displayed name (Part 1 §1.3.5): the bound file's stem outranks the chain's Name, which is
+// The displayed name: the bound file's stem outranks the chain's Name, which is
 // now only a copy's automatic "<name> (2)".
 
 test('a copy later saved as a file is named by the file, not by its automatic name', () => {

@@ -19,7 +19,7 @@ import {
 } from '../../src/history/operations'
 import { emptyLevelInfo, type LevelInfo, type MediaRef } from '../../src/state/levelInfo'
 
-// `nse.levelInfo.set` (§1.4.12): one Apply of the Level Info dialog is one step, with a change per
+// `nse.levelInfo.set`: one Apply of the Level Info dialog is one step, with a change per
 // field that changed. No tool produces it yet; the receipt builder, the codec and the presentation
 // are pinned now so that v0.6.0 renders it from the first file a later build writes.
 

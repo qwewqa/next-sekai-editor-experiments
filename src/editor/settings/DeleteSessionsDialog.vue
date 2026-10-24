@@ -7,7 +7,7 @@ import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { DEFAULT_RANGE, chosen, rangeCounts, type DeleteRange } from './deleteChoices'
 
-// Delete Sessions…, the choice (Local Data design §3.7): how old, and whether work not saved to a
+// Delete Sessions…, the choice: how old, and whether work not saved to a
 // file goes too. Each count follows the box, so it is what the confirm will name and delete. It
 // opens on over 90 days with the box unticked, every time. Delete… only goes on to the confirm.
 const props = defineProps<{ chains: DeleteChain[] }>()

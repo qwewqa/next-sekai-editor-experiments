@@ -72,7 +72,7 @@ resetStates({
 })
 
 /**
- * Starts over with a chart, or the default one, in a session (§1.3.5): the
+ * Starts over with a chart, or the default one, in a session: the
  * descriptor's missing ids are fresh.
  */
 export const resetState = (
@@ -106,7 +106,7 @@ export const resetState = (
 }
 
 /**
- * Opens a stored session's stack (§1.3.8: a reload, a new visit, Reopen): its slots lazy, the
+ * Opens a stored session's stack (a reload, a new visit, Reopen): its slots lazy, the
  * head given loaded, in the session the descriptor names. Nothing is emitted: the storage side
  * starts the session itself.
  */
@@ -128,7 +128,7 @@ export const openStoredState = (
 }
 
 /**
- * Starts a new session with a whole state brought in (a journal opened from Local Data, §1.6.7):
+ * Starts a new session with a whole state brought in (a journal opened from Local Data):
  * stored at once, as an import is.
  */
 export const openState = (

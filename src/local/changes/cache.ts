@@ -1,4 +1,4 @@
-// A small LRU for the change view's worker caches (Part 1 §1.6.5): everything is keyed by
+// A small LRU for the change view's worker caches: everything is keyed by
 // content (a hash, or a pair of roots), so nothing goes stale; old entries just leave.
 
 export class Lru<K, V> {

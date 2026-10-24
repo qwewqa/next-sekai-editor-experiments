@@ -1,4 +1,4 @@
-// Writes the files generated from `src/local/records/schema.ts` (§1.6.11.1). Run with tsx.
+// Writes the files generated from `src/local/records/schema.ts`. Run with tsx.
 import { writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'

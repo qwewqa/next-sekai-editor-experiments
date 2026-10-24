@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Formats v1's vectors in a browser engine (§1.6.11.1): the hand-written canonical vectors,
+// Formats v1's vectors in a browser engine: the hand-written canonical vectors,
 // the golden and edge snapshots, the round trip, and the synchronous SHA-256 against
 // crypto.subtle. Chromium here; Firefox and WebKit in the compatibility config, since engines
 // may differ in a float's last digit.

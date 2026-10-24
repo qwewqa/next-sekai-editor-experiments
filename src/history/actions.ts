@@ -1,7 +1,7 @@
 import type { State } from '../state'
 import type { JsonValue, UndoableStep } from './operations'
 
-// What the undo stack did, for the flush's entries (Part 1 §1.3.8, §1.6.4 step 1). A
+// What the undo stack did, for the flush's entries. A
 // dependency-free registry, as resetHooks is, so the storage modules can listen without the
 // history module importing them: the entry hooks.
 
@@ -23,7 +23,7 @@ export type HistoryAction =
     | ({ kind: 'undo' | 'redo'; step: UndoableStep; isDirty: boolean } & (
           { state: State; snapshot?: undefined } | { state?: undefined; snapshot: Uint8Array }
       ))
-    /** A file event: the stack is unchanged (Part 1 §1.3.8). */
+    /** A file event: the stack is unchanged. */
     | { kind: 'save' | 'export'; state: State; operation: JsonValue; isDirty: boolean }
 
 const listeners = new Set<(action: HistoryAction) => void>()
@@ -45,7 +45,7 @@ let stack: EarlyStack | undefined
 /**
  * Early actions past this many beyond the stack's own are cut down to the actions that give the
  * stack as it is: its pushes, then its undos. Their replay is still the stack, so storing can
- * follow the actions after them; only states a redo branch dropped go (§1.6.4 #6).
+ * follow the actions after them; only states a redo branch dropped go.
  */
 export const EARLY_LIMIT = 256
 

@@ -1,4 +1,4 @@
-// The minimap's content layer in a component's setup (design §3.2): the identity watchers that
+// The minimap's content layer in a component's setup: the identity watchers that
 // feed the pipeline, the canvas's size and the device pixel ratio. Everything stops with the scope.
 
 import { shallowRef, watch, type Ref } from 'vue'

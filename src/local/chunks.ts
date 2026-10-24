@@ -29,12 +29,12 @@ import {
 import { headerMedia } from './records/snapshot'
 import { splitKind } from './records/split'
 
-// The main thread's half of a flush (Part 1 §1.6.2, §1.6.4): records for the changed windows only,
+// The main thread's half of a flush: records for the changed windows only,
 // through the identity memo. Records are encoded once per entity (per-slide note arrays, event
 // and time-scale entities, BPMs) and chunks are matched by their members' identity, so
 // serializing costs in proportion to the edit. A chunk sent but not hashed yet is held as a
 // pending promise and never sent twice. The memo is only a hint: the worker's closure check
-// decides what is stored (§1.6.6).
+// decides what is stored.
 
 type Rec = readonly RecordValue[]
 
@@ -73,7 +73,7 @@ export class ChunkBatch {
 export type ChunkMemo = {
     readonly members: readonly object[]
     hash?: Uint8Array
-    /** The database and epoch at which it was last known stored (§1.6.6). */
+    /** The database and epoch at which it was last known stored. */
     known?: KnownAt
     pending?: {
         readonly batch: ChunkBatch
@@ -117,8 +117,8 @@ type KindCache = {
 }
 
 /**
- * The identity memo and the extraction. One per tab: a worker restart resets it (§1.6.5), and
- * a closure check that finds windows missing forgets only those (§1.6.6). States are immutable
+ * The identity memo and the extraction. One per tab: a worker restart resets it, and
+ * a closure check that finds windows missing forgets only those. States are immutable
  * and share what an edit didn't touch, so an unchanged kind's maps are the same objects, and an
  * unchanged entity is the same object: neither is encoded again.
  */
@@ -129,7 +129,7 @@ export class Extractor {
     encoded = 0
     /**
      * Outside release builds, every snapshot is checked before it's sent for the group, stage
-     * and folder ids its records name (D9), so a bug fails here rather than storing a snapshot
+     * and folder ids its records name, so a bug fails here rather than storing a snapshot
      * this build can't read: new records as they're encoded, all of them when the ids change.
      */
     private readonly checking: boolean
@@ -280,7 +280,7 @@ export class Extractor {
         }
     }
 
-    /** A kind's items in the v1 order (§1.6.11.1), as `orderStore` gives them. */
+    /** A kind's items in the v1 order, as `orderStore` gives them. */
     private *kindItems(kind: KindName, store: Store, ids?: HeaderIds): Generator<void, Item[]> {
         const source = kindSource(kind, store)
         const cached = this.kinds.get(kind)
@@ -460,7 +460,7 @@ const kindSource = (kind: KindName, store: Store): KindSource => {
     }
 }
 
-/** Runs a job in one go: on hide and before a switch (§1.6.4). */
+/** Runs a job in one go: on hide and before a switch. */
 export const runToEnd = <T>(job: Generator<void, T>): T => {
     for (;;) {
         const step = job.next()
@@ -468,7 +468,7 @@ export const runToEnd = <T>(job: Generator<void, T>): T => {
     }
 }
 
-/** The about-8 ms slices a whole-chart extraction runs in (§1.6.4). */
+/** The about-8 ms slices a whole-chart extraction runs in. */
 export const SLICE_MS = 8
 
 type IdleDeadline = { timeRemaining: () => number }
@@ -482,7 +482,7 @@ type IdleScope = {
 /**
  * Runs a job in slices of about 8 ms: `requestIdleCallback` deadlines where there are any,
  * `setTimeout` slices otherwise (Safari has none). Each slice's length goes to `onSlice`.
- * `hurry` is handed a function that runs the rest at once, as a hide needs (§1.6.4).
+ * `hurry` is handed a function that runs the rest at once, as a hide needs.
  */
 export const runSliced = <T>(
     job: Generator<void, T>,

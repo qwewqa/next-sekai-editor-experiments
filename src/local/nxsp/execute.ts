@@ -6,11 +6,11 @@ import { ZipReader } from '../../zip/reader'
 import { assembleZip, type PreparedEntry } from '../../zip/writer'
 import { ENTRY_LIMIT, ZIP32_LIMIT, type PlannedEntry, type WritePlan } from './plan'
 
-// The executor (§1.6.11.7): it follows a plan exactly. Every copy reads through the pinned source
+// The executor: it follows a plan exactly. Every copy reads through the pinned source
 // its token names, by central-directory index and `dataOffset`, and is checked by the entry's CRC;
 // the CRC and sizes of what it writes are computed, never trusted; a plan that breaks the contract
 // is a plan error, a copy that fails is damage in its source, or a conflict when the source changed.
-// Every check that depends on a source's bytes reads its fingerprint first (§1.6.11.7): a source
+// Every check that depends on a source's bytes reads its fingerprint first: a source
 // whose bytes changed after `inspect` is a conflict, whatever check it failed.
 
 /** A source the executor reads: the pinned file, its fingerprint then, and how to read it again. */

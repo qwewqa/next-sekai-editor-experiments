@@ -9,7 +9,7 @@ import {
 import { decodeOperation, operationGroup, type EntryDescription } from '../../history/operations'
 import type { Calendar } from './calendarClock'
 
-// The Timeline's rows from a chain's entries (Part 1 §1.4.10.5): flags, ×N groups, dividers and
+// The Timeline's rows from a chain's entries: flags, ×N groups, dividers and
 // minute, hour or day headers by age. Pure, so Node tests run it without the page.
 
 /** One entry as the Timeline reads it, from storage or still waiting to be stored. */
@@ -20,15 +20,15 @@ export type Entry = EntryDescription & {
     time: number
     /** Absent while the entry is only in memory. */
     noteCount?: number
-    /** False for a snapshot not kept (§1.6.8). */
+    /** False for a snapshot not kept. */
     kept: boolean
-    /** A `kept: false` entry whose snapshot reaches a part found bad: it reads damaged (§1.4.10.5). */
+    /** A `kept: false` entry whose snapshot reaches a part found bad: it reads damaged. */
     damaged?: boolean
     /** Stored but not decodable: a newer build's (`newer`) or malformed (`damaged`); unavailable. */
     unreadable?: 'newer' | 'damaged'
     /** A `continue` entry's time of the entry it continues, for its divider. */
     from?: number
-    /** A save's device, as stored (§1.3.3): named on its row when it is not this browser's. */
+    /** A save's device, as stored: named on its row when it is not this browser's. */
     device?: { id: string; label: string }
     pending?: boolean
     /** Its snapshot's root, as hex, once stored. */
@@ -94,7 +94,7 @@ export type Header = {
     day: DayKey
 }
 
-/** The days before today that still get hour headers (Part 1 §1.4.10.5). */
+/** The days before today that still get hour headers. */
 const HOUR_DAYS = 6
 
 /** The finest header an entry's age earns, and the key of the span it labels. */
@@ -209,7 +209,7 @@ export const buildRows = (
             if (!next || groupKey(next, flagsOf(next)) !== key) break
             if (next.sessionId !== entry.sessionId) break
             if (pinned?.includes(entryId(next)) !== pinned?.includes(entryId(entry))) break
-            // X-1: a ×N row never crosses a local day or hour (`spanKey`), so it sits under the header
+            // A ×N row never crosses a local day or hour (`spanKey`), so it sits under the header
             // of its own day and hour, and Go To's days, which count each entry by its own day, agree
             // with the headers. It does not depend on the clock, so a row's members never change as
             // it ages. Minute headers in the current hour may be crossed.

@@ -3,7 +3,7 @@ import { fieldsOf, resolveZone, sameDay, sameYear } from '../../calendar/calenda
 import { calendarAt, type Calendar } from './calendarClock'
 import { historyFormat } from './historyFormat'
 
-// The peek strip's fit (Part 1 §1.4.11): one width per language and width class, from the widest
+// The peek strip's fit: one width per language and width class, from the widest
 // text the strip can show, measured once, never from the live date. Stepping between entries or
 // across midnight never resizes the stack, so the change arrows below never move.
 

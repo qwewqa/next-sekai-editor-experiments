@@ -6,7 +6,7 @@ import { CI_SEEDS, createWorld } from '../../src/local/testing/world'
 import { clampTime, DAY_MS, nextTime, stampNow } from '../../src/local/time'
 import { onFlushCommitted, runFlushHooks } from '../../src/local/worker/flushHooks'
 
-// Strictly increasing now (§1.6.8.7), and the post-flush hook point (§1.6.11.10).
+// Strictly increasing now, and the post-flush hook point.
 
 test('now never repeats across two tabs, with the clock held back', async () => {
     for (const seed of CI_SEEDS) {

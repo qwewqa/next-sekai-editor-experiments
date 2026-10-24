@@ -1,7 +1,7 @@
 import type { State } from '../state'
 
 // Published states are never changed in place: the flush's identity memo finds an unchanged kind
-// by its maps' identity and an unchanged entity by its own (Part 1 §1.6.2), so a change in place
+// by its maps' identity and an unchanged entity by its own, so a change in place
 // would store a stale record under a valid hash. In development and tests every state the undo
 // stack publishes has its store frozen, maps and sets included, so such a change throws where
 // it's made. Release builds skip it.

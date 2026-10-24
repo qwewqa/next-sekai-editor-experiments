@@ -8,7 +8,7 @@ export const PARTICLE_LAYER = 100
 export const LANE_PARTICLE_LAYER = 3
 
 /**
- * The most groups and particle draws one effect makes (Part 2, 2.5.5's 512), whatever its data
+ * The most groups and particle draws one effect makes, whatever its data
  * says, so a stored package that passed an older check cannot stall the frame.
  */
 export const PARTICLE_DRAW_BUDGET = 512

@@ -178,7 +178,7 @@ test('Reopen forks when a different tab now binds the same physical file', async
     context,
 }) => {
     await start(page)
-    // Both visits start blank before a bound source exists; no startup continuation masks R1.
+    // Both visits start blank before a bound source exists; no startup continuation hides it.
     const other = await context.newPage()
     await start(other)
     const first = await opened(page)

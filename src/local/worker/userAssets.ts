@@ -10,7 +10,7 @@ import {
 } from '../userAssets'
 import type { WorkerContext } from './handlers'
 
-// The storage worker's methods for stored preview assets (Part 1 §1.5.8). Blobs cross the
+// The storage worker's methods for stored preview assets. Blobs cross the
 // channel as references, and no handler reads one, so no transaction waits on a Blob.
 
 export const userAssetHandlers = (context: WorkerContext) => ({

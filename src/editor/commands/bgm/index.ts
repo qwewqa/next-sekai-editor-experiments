@@ -27,7 +27,7 @@ export const bgm: Command = {
 }
 
 export const changeBgm = async (file?: File) => {
-    // An edit: refused while peeking (§1.4.11).
+    // An edit: refused while peeking.
     if (isPeeking.value) {
         refuseWhilePeeking()
         return
@@ -46,7 +46,7 @@ export const changeBgm = async (file?: File) => {
             return
         }
         // The file the state names, picked while it has no audio: attached as Choose Audio…
-        // attaches it, with no step (§1.6.8.4); only an offset changed with it is one.
+        // attaches it, with no step; only an offset changed with it is one.
         const named = currentBgm.value
         const { meta, buffer, source } = newBgm
         if (meta && buffer && source && !named.buffer && named.meta?.hash === meta.hash) {

@@ -1,6 +1,6 @@
 import { ZipError, ZipReader, isIgnoredEntry } from '../zip'
 
-// Open classifies by content, never by extension (§1.5.2). Only the first 64 bytes are read to tell
+// Open classifies by content, never by extension. Only the first 64 bytes are read to tell
 // audio and ZIP from the rest, so a large file is never read whole just to identify it.
 
 export const HEAD_SIZE = 64
@@ -92,7 +92,7 @@ export const detectZip = async (file: Blob): Promise<ZipKind> => {
 
 /**
  * What a picked file is from its first 64 bytes: the ZIP signature, then audio
- * magic numbers, then an audio MIME type as a last fallback (§1.5.2). A ZIP is
+ * magic numbers, then an audio MIME type as a last fallback. A ZIP is
  * not opened here, so this stays quick whatever the file holds.
  */
 export const detectHead = async (file: Blob): Promise<Detection['kind']> => {

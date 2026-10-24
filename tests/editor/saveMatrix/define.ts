@@ -21,28 +21,24 @@ export const defineMatrix = (pathIds: string[]) => {
     })
     for (const known of KNOWN) {
         if (!known.paths.some((path) => pathIds.includes(path))) continue
-        test(
-            `${known.id}: ${known.title}`,
-            { todo: 'an accepted residual (work/arch/spec-B.md, section 5)' },
-            () => {
-                const found = results
-                    .filter(
-                        (cell) =>
-                            known.paths.includes(cell.path) &&
-                            cell.fault === known.fault &&
-                            (known.plans?.includes(cell.plan) ?? true),
-                    )
-                    .flatMap((cell) =>
-                        cell.violations
-                            .filter(
-                                (v) =>
-                                    v.invariant === known.invariant &&
-                                    (known.detail?.test(v.detail) ?? true),
-                            )
-                            .map((v) => `${cell.id}: ${v.detail}`),
-                    )
-                assert.deepEqual(found, [])
-            },
-        )
+        test(`${known.id}: ${known.title}`, { todo: 'an accepted residual' }, () => {
+            const found = results
+                .filter(
+                    (cell) =>
+                        known.paths.includes(cell.path) &&
+                        cell.fault === known.fault &&
+                        (known.plans?.includes(cell.plan) ?? true),
+                )
+                .flatMap((cell) =>
+                    cell.violations
+                        .filter(
+                            (v) =>
+                                v.invariant === known.invariant &&
+                                (known.detail?.test(v.detail) ?? true),
+                        )
+                        .map((v) => `${cell.id}: ${v.detail}`),
+                )
+            assert.deepEqual(found, [])
+        })
     }
 }

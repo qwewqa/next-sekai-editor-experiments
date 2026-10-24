@@ -28,7 +28,7 @@ import { kindNames } from './schema'
 
 export * from './encode'
 
-// Records from a state or chart and back (§1.6.11.1), with explicit decoders per record.
+// Records from a state or chart and back, with explicit decoders per record.
 
 type Rec = readonly RecordValue[]
 
@@ -117,7 +117,7 @@ const foldersRecord = (folders: Folders | undefined): Rec =>
         ...optional(folder.folderId),
     ])
 
-/** What a header holds beside the chart (§1.6.2). */
+/** What a header holds beside the chart. */
 export type HeaderExtras = { bgmOffset: number; levelInfo: LevelInfo; bgm?: BgmMeta }
 
 /** The chart fields a header holds. */
@@ -152,7 +152,7 @@ export const orderedKindRecords = (ordered: OrderedStore): KindRecords[] =>
         .map((kind) => ({ kind, records: keyed<unknown>(ordered[kind]) }))
         .filter(({ records }) => records.length)
 
-/** A state's records (§1.6.2): what a snapshot stores. */
+/** A state's records: what a snapshot stores. */
 export const toRecords = (state: State): SnapshotRecords => ({
     header: headerRecord(state, {
         bgmOffset: state.bgm.offset,
@@ -327,7 +327,7 @@ export const bgmObject = (r: Rec): BgmMeta => ({
     ...(r[4] === undefined ? {} : { durationMs: asNumber(r[4]) }),
 })
 
-/** A chart and the rest of a state from records in the v1 order (§1.6.11.1). */
+/** A chart and the rest of a state from records in the v1 order. */
 export const fromRecords = ({ header, kinds }: SnapshotRecords): RecordsContent => {
     const [initialLife, isDynamicStages, bgmOffset, groups, stages, groupFolders, stageFolders] =
         header

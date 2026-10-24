@@ -25,7 +25,7 @@ export const requestDynamicStages = async (
 ): Promise<DynamicStagesOutcome> => {
     if (!isCurrent()) return 'stale'
     if (isDynamicStages.value) return 'enabled'
-    // Enabling them is an edit, refused while peeking (§1.4.11).
+    // Enabling them is an edit, refused while peeking.
     if (isPeeking.value) {
         refuseWhilePeeking()
         return 'stale'

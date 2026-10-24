@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { existsSync } from 'node:fs'
 import { charts, flushed, median, open, singleEdits, wholeEdits } from './flushBudget'
 
-// The peek rebuild cost (Part 1 §1.9.2 #5–#6, Step 5): on the generated large chart and on coconut
+// The peek rebuild cost: on the generated large chart and on coconut
 // when present. A cold peek reads, verifies and builds a dropped state from storage; a warm one
 // shows a state the undo stack holds. Each is timed to the peek's state and to the end of the
 // next frame, against an idle frame. Recorded, not asserted (a check, not a gate).

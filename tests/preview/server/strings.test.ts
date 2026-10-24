@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import test from 'node:test'
 
-// The strings of From a Server (Part 2, 2.6, 2.11).
+// The strings of From a Server.
 
 const locales = readdirSync('src/i18n', { withFileTypes: true })
     .filter((entry) => entry.isDirectory())

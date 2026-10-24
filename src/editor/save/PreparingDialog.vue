@@ -6,7 +6,7 @@ import { interpolate } from '../../utils/interpolate'
 import { formatSize } from '../../utils/size'
 import type { PreparingModel } from './dialogs'
 
-// "Preparing coconut.nxsp… 12 MB" (Part 1 §1.4.7, §1.5.6): one small surface for a build that is
+// "Preparing coconut.nxsp… 12 MB": one small surface for a build that is
 // slow, or a Save waiting for an open's import. Cancel stops the Save; when the build has
 // outlasted the press, its button becomes [Download] or [Save], focused, and that press is the
 // gesture.

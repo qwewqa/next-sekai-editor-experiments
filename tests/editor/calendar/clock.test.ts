@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, beforeEach, mock, test } from 'node:test'
 import { effectScope, type EffectScope } from 'vue'
 
-// I-10: the History clock publishes a new calendar only when the local hour (so the day) or the
+// The History clock publishes a new calendar only when the local hour (so the day) or the
 // zone changes, and it looks at the clock at the next boundary, every 60 s while subscribed, when
 // History or Go To opens, and when the tab is shown or focused. New York has a fall-back (2026-11-01)
 // where the 1 AM hour comes twice.

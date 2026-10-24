@@ -20,7 +20,7 @@ import { checkNode, checkRoot, headerMedia, rootVersion } from './records/snapsh
 import { RECORDS_V } from './records/version'
 import { directWaiter, type Waiter } from './scheduler'
 
-// Foreign data (Part 1 §1.6.4 step 4): an opened `.nxsp`, the version Replace keeps, a journal
+// Foreign data: an opened `.nxsp`, the version Replace keeps, a journal
 // recovery. Before anything is stored, a closure check walks every root it brings in through
 // `refs`: every node and chunk reached must be in the batch or already stored. If something is
 // missing the transaction writes nothing (a worker transaction can't wait for the main thread),
@@ -32,7 +32,7 @@ export type ForeignNode = {
     hash: Uint8Array
     bytes: Uint8Array
     /**
-     * A root's media as the caller expects them, as hex (§1.6.11.2): checked against its header,
+     * A root's media as the caller expects them, as hex: checked against its header,
      * which is what `refs` records.
      */
     media?: string[]
@@ -56,7 +56,7 @@ export class ForeignDataError extends Error {
     override name = 'ForeignDataError'
 }
 
-/** A root above this build's `RECORDS_V`: "Needs a newer version" (§1.6.11.8), never damage. */
+/** A root above this build's `RECORDS_V`: "Needs a newer version", never damage. */
 export class NewerRecordsError extends Error {
     override name = 'NewerRecordsError'
 }
@@ -94,7 +94,7 @@ const checkExpected = (root: PreparedRoot, media: readonly Uint8Array[]) => {
         throw new Error(`Root ${toHex(root.hash)}’s media differ from its header’s`)
 }
 
-/** Hashes and checks everything from outside before the transaction (§1.6.2's order of work). */
+/** Hashes and checks everything from outside before the transaction. */
 export const prepareForeign = async (
     batch: ForeignBatch,
     waiter: Waiter = directWaiter,
@@ -171,7 +171,7 @@ export const prepareForeign = async (
  * The closure check and the puts, in one strict transaction. Reads first: every node and chunk
  * reached from the roots, in the batch or in storage, and the header of each new root, for its
  * media. A stored header whose CRC fails counts as missing, so the page sends it. A root's media
- * may be absent (a BGM the item doesn't carry and storage doesn't hold is normal, §1.6.11.4).
+ * may be absent (a BGM the item doesn't carry and storage doesn't hold is normal).
  * Only rows reached from the roots are put.
  */
 export const writeForeign = async (

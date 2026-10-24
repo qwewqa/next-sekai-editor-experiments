@@ -9,7 +9,7 @@ export const manageStages: Command = {
         is: ManageStagesIcon,
     },
 
-    // Opens while peeking; the lists refuse every edit themselves (§1.4.11).
+    // Opens while peeking; the lists refuse every edit themselves.
     readOnly: true,
 
     execute() {

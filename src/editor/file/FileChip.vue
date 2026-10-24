@@ -7,7 +7,7 @@ import { chip } from './state'
 
 defineProps<{ compact: boolean }>()
 
-// The one state chip after the status label (Part 1 §1.3.4): the highest-priority state, its
+// The one state chip after the status label: the highest-priority state, its
 // own button with an icon drawn by severity. Compact bars show the icon, with the full sentence
 // as its accessible name.
 const severity = computed(() => (chip.value ? chipSeverity(chip.value.kind) : undefined))

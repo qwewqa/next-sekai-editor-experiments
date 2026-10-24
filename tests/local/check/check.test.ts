@@ -23,7 +23,7 @@ import {
     savedChain,
 } from './harness'
 
-// Check File and History…'s worker side (Part 1 §1.4.21; Step 11 design §5, Node tests 1–6): the
+// Check File and History…'s worker side: the
 // file read in full with no stored shortcut, stored damage repaired from the file before anything
 // is marked, only the rows that need a bad body marked, a bad media row removed only when it still
 // fails under `nse-maint` exclusive, and read-only storage left untouched.

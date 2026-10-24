@@ -35,7 +35,7 @@ const storingFacts = async (): Promise<StoringFields | undefined> => {
     return facts
 }
 
-/** The text Copy Diagnostic Info… shows and copies (Part 1 §1.4.16); nothing is sent anywhere. */
+/** The text Copy Diagnostic Info… shows and copies; nothing is sent anywhere. */
 export const collectDiagnosticText = async () => {
     const info = platform.diagnostics()
     let estimate: StorageEstimate | undefined

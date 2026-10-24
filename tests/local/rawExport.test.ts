@@ -18,7 +18,7 @@ import { createWorld, type Tab } from '../../src/local/testing/world'
 import { storageKey } from '../../src/storage'
 import { ZipReader } from '../../src/zip'
 
-// Export Raw Data… (Part 1 §1.4.14, Step 8 design §3.9).
+// Export Raw Data….
 
 const b64 = (bytes: number[]) => toBase64(new Uint8Array(bytes))
 

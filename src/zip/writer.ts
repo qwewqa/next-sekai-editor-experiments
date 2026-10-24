@@ -7,7 +7,7 @@ export type DosTime = { dosTime: number; dosDate: number }
 /** 1980-01-01 00:00:00, the earliest DOS time. */
 export const DOS_EPOCH: DosTime = { dosTime: 0, dosDate: (1 << 5) | 1 }
 
-/** The DOS time and date of an instant in UTC, clamped to 1980-01-01 00:00:00 … 2107-12-31 23:59:58 (§1.6.11.7). */
+/** The DOS time and date of an instant in UTC, clamped to 1980-01-01 00:00:00 … 2107-12-31 23:59:58. */
 export const dosFromDate = (date: Date): DosTime => {
     const min = Date.UTC(1980, 0, 1)
     const max = Date.UTC(2107, 11, 31, 23, 59, 58)
@@ -80,7 +80,7 @@ const MAX_ENTRIES = 0xfffe
 
 /**
  * Lays out a ZIP as Blob parts, so data is never copied. Every header field is
- * pinned (§1.6.11.4): versions 2.0, flags `0x0800`, sizes and CRCs in the
+ * pinned: versions 2.0, flags `0x0800`, sizes and CRCs in the
  * local headers, no extra fields or comments. It never writes ZIP64, and
  * refuses (`limit`) 65,535 entries or a size or offset of 4 GB or more.
  */

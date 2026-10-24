@@ -17,7 +17,7 @@ import '../../helpers/lockChecks'
 import { fresh } from '../nxsp/chain'
 import { crafted, jsonOf, setJson } from '../nxsp/craft'
 
-// The open's decisions (Part 1 §1.5.3–§1.5.5, §1.6.11.6): the partial open's line, the binding's
+// The open's decisions: the partial open's line, the binding's
 // name, "a file matches its head" with absence never a change, the live state from level.json
 // and project.json, the binding's options, and the notice about earlier sessions.
 
@@ -41,7 +41,7 @@ test('an edited title is a change: level.json and project.json win, keeping the 
         (items) => {
             const project = jsonOf(items, 'project.json')
             project.metadata.title = 'Edited'
-            // Left out, as an unticked BGM is: absence is never a change (r11h S4, S5).
+            // Left out, as an unticked BGM is: absence is never a change.
             delete project.bgm
             setJson(items, 'project.json', project)
             return items.filter((item) => !item.name.startsWith('bgm/'))

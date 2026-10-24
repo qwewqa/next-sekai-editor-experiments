@@ -6,7 +6,7 @@ const bytesOf = async (source: Blob, start: number, end: number) =>
     new Uint8Array(await source.slice(start, end).arrayBuffer())
 
 /**
- * A ZIP's `<cd>` (§1.6.11.2): the CRC-32, as 8 lowercase hex characters, of the central directory's
+ * A ZIP's `<cd>`: the CRC-32, as 8 lowercase hex characters, of the central directory's
  * bytes, from the offset and size the end record gives (the ZIP64 end record's when the locator is
  * there), with no end record included.
  */
@@ -27,6 +27,6 @@ export const centralDirectoryCrc = async (source: Blob) => {
     return crc.toString(16).padStart(8, '0')
 }
 
-/** A ZIP's fingerprint (§1.6.11.2): `zip:<size>:<lastModified>:<cd>`. */
+/** A ZIP's fingerprint: `zip:<size>:<lastModified>:<cd>`. */
 export const zipFingerprint = async (source: Blob, lastModified: number) =>
     `zip:${source.size}:${Math.trunc(lastModified)}:${await centralDirectoryCrc(source)}`
