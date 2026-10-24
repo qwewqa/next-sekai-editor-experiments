@@ -71,7 +71,6 @@ const CLASSES = {
     migrateAutoSave: 'write',
     keepHandle: 'write',
     takeOver: 'write',
-    applyRevocation: 'write',
     unlinkChain: 'write',
     recordOwnSave: 'write',
     openDrop: 'write',

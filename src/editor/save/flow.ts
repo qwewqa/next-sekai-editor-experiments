@@ -79,7 +79,6 @@ import {
     removeMarker,
     savedState,
     withBind,
-    writeRevocation,
     type SaveMarker,
 } from './env'
 import { pause, RESUME_WAIT_MS } from './imports'
@@ -400,7 +399,7 @@ const NO_HASH = new Uint8Array(16)
 
 type Revoked = { ok: boolean; revoked: boolean; preBound: boolean }
 
-/** Takes a file over from another chain (R5), or keeps the revocation in localStorage (R11). */
+/** Takes a file over from another chain (R5); a takeover storage can't record is refused (R11). */
 export const revoke = async (
     env: Env,
     owner: HandleOwner | undefined,
@@ -416,21 +415,13 @@ export const revoke = async (
         })
         return { ok: true, ...done }
     } catch {
-        // Storage paused or full: the revocation goes to localStorage first (R11).
-        if (!owner) return { ok: true, revoked: false, preBound: false }
-        if (isSafeMode() || owner.at === undefined)
-            return { ok: false, revoked: false, preBound: false }
-        const kept = writeRevocation(owner.chainId, {
-            by: env.chainId,
-            at,
-            name: owner.name,
-            fileAt: owner.at,
-        })
-        return { ok: kept, revoked: kept, preBound: false }
+        // Storage paused, full or in safe mode: another chain's binding can't be revoked, so its
+        // file is refused (R11); a file no chain is bound to goes on.
+        return { ok: !owner, revoked: false, preBound: false }
     }
 }
 
-/** A takeover that could not be kept: nothing is written (R11). */
+/** A takeover storage could not record: nothing is written (R11). */
 export const notTakenOver = (name: string): Outcome =>
     isSafeMode()
         ? { kind: 'refused', name, reason: 'safeMode' }

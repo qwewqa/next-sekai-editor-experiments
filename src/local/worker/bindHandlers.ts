@@ -1,7 +1,6 @@
 import { HANDLES } from '../handleRows'
 import { writeUnlink } from '../open/importWrite'
 import {
-    applyRevocation,
     BIND_STORES,
     keepHandle,
     listHandleOwners,
@@ -10,12 +9,11 @@ import {
     recordOwnSave,
     takeOver,
     type OwnSaveRecord,
-    type Revocation,
     type TakeOver,
 } from '../save/bind'
 import type { WorkerContext } from './handlers'
 
-// The storage worker's methods for the Save core's bindings (Part 1 §1.4.7 R3–R11): each a short
+// The storage worker's methods for the Save core's bindings (Part 1 §1.4.7 R3–R10): each a short
 // transaction, committed strictly, so a takeover or a recorded Save is on disk before the write
 // that relies on it.
 
@@ -38,12 +36,6 @@ export const bindHandlers = (context: WorkerContext) => ({
     /** A save picker's revocation and pre-bind, in one transaction (R5). */
     takeOver: (request: TakeOver) =>
         context.core.write(BIND_STORES, (tx) => takeOver(tx, request), { durability: 'strict' }),
-
-    /** A revocation kept in localStorage while storage couldn't take it (R11). */
-    applyRevocation: ({ chainId, revoke }: { chainId: string; revoke: Revocation }) =>
-        context.core.write(BIND_STORES, (tx) => applyRevocation(tx, chainId, revoke), {
-            durability: 'strict',
-        }),
 
     /**
      * An append that met damage in the chain's own file (§1.6.11.8): the chain unlinks (a new

@@ -108,7 +108,7 @@ test('an unedited tab whose file is taken over shows it, and prompts on close', 
     expect(await prompts(b)).toBe(true)
 })
 
-test('with storing paused, a revocation kept in localStorage reaches the ownerâ€™s open tab', async ({
+test('with storing paused, a takeover is refused: nothing is written, and the owner keeps its file', async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -125,12 +125,23 @@ test('with storing paused, a revocation kept in localStorage reaches the ownerâ€
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    // R11: the ordinary failed-save dialog, naming the file; the work stays in A.
+    const dialog = a.getByRole('dialog')
+    await expect(dialog).toContainText('"coconut.nxsp" could not be written.')
+    await expect(dialog).not.toContainText('safe mode')
+    expect(await readFile(a, 'coconut.nxsp')).toEqual([])
+    expect((await sessionOf(a)).file).toBeUndefined()
 
-    // R11: B's record still names the file, but B's label goes and B prompts, before any reload.
+    // B keeps its binding and its label, and its next Save fills the emptied file (R9).
     await b.bringToFront()
-    await expect.poll(async () => (await sessionOf(b)).file).toBeUndefined()
-    expect(await prompts(b)).toBe(true)
+    expect((await chainOf(b)).file).toMatchObject({ name: 'coconut.nxsp' })
+    expect((await sessionOf(b)).file?.name).toBe('coconut.nxsp')
+    await edit(b, 4)
+    await pressSave(b)
+    await expect
+        .poll(async () => (await readFile(b, 'coconut.nxsp'))?.length ?? 0, { timeout: 10_000 })
+        .toBeGreaterThan(0)
+    expect((await projectOf(b, 'coconut.nxsp')).id).toBe((await chainOf(b)).docId)
 })
 
 test('a write-back that finds itself revoked opens the Save dialog with the reason', async ({
@@ -323,32 +334,6 @@ for (const lifecycle of ['reload', 'reload gap', 'switch and reopen']) {
     })
 }
 
-test('a takeover that localStorage refuses outside safe mode says the file was not written', async ({
-    context,
-}) => {
-    const b = await context.newPage()
-    await start(b)
-    await savedTo(b, 'coconut.nxsp')
-    const a = await context.newPage()
-    await a.addInitScript(() => {
-        sessionStorage.setItem('nse.test.storage', JSON.stringify({ forceQuota: true }))
-        const setItem = Storage.prototype.setItem
-        Storage.prototype.setItem = function (key, value) {
-            if (key.includes('.revoke.')) throw new DOMException('Full', 'QuotaExceededError')
-            setItem.call(this, key, value)
-        }
-    })
-    await start(a)
-    await edit(a, 5)
-    await queuePicks(a, ['coconut.nxsp'])
-    await pressSave(a)
-    await submitSave(a)
-    const dialog = a.getByRole('dialog')
-    await expect(dialog).toContainText('"coconut.nxsp" could not be written.')
-    await expect(dialog).not.toContainText('safe mode')
-    expect((await chainOf(b)).file).toMatchObject({ name: 'coconut.nxsp' })
-})
-
 test('a Save that throws while reserved leaves the next Save able to run', async ({ page }) => {
     await start(page)
     await edit(page, 1)
@@ -493,7 +478,7 @@ test('in safe mode Save writes from this tab, refusing only to take over another
         .poll(async () => ((await projectOf(safe, 'melt.nxsp')).revision as Row).parent)
         .toBe((first.revision as Row).id)
 
-    // Another session's file needs a stored revocation: refused (R11).
+    // Another session's file can't be taken over while nothing is stored: refused (R11).
     await safe.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
@@ -552,18 +537,13 @@ test('ordinary Save As clears Export destination and name in the file and after 
     expect(await readFile(page, 'LevelData')).toEqual(original)
 })
 
-test('Export refuses takeover when its revocation cannot be kept', async ({ context }) => {
+test('Export refuses a takeover while storing is paused', async ({ context }) => {
     const owner = await context.newPage()
     await start(owner)
     await savedTo(owner, 'coconut.nxsp')
     const exporter = await context.newPage()
     await exporter.addInitScript(() => {
         sessionStorage.setItem('nse.test.storage', JSON.stringify({ forceQuota: true }))
-        const setItem = Storage.prototype.setItem
-        Storage.prototype.setItem = function (key, value) {
-            if (key.includes('.revoke.')) throw new DOMException('Full', 'QuotaExceededError')
-            setItem.call(this, key, value)
-        }
     })
     await start(exporter)
     await edit(exporter, 5)

@@ -28,7 +28,7 @@ export type RunnerDeps = {
     worker: ReadWorker
     /** Delete's sweep (`sweepDeleted`). */
     sweep: () => Promise<SweepResult>
-    /** Removes markers, revocations and kept bytes of deleted chains. */
+    /** Removes markers and kept bytes of deleted chains. */
     reclaim: () => Promise<void>
     /** Asks the browser to keep this origin's data: fire and forget, never awaited. */
     persist?: () => unknown

@@ -991,8 +991,6 @@ const createWorld = async (setup: Setup = {}) => {
             )
             return { finish, copy }
         },
-        /** The revocations storage could not take, kept in localStorage (R11). */
-        revocations: () => env.pendingRevocations(),
         /** The own binding's name as the record holds it, or undefined. */
         boundName: () => (chains.get(ownSession.chainId)?.file as Row | undefined)?.name,
         setup0: s,

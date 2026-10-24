@@ -118,7 +118,7 @@ test('the baseline cells reach their picker and write, and a Save cancelled in i
     void bytesOf
 })
 
-test('I9 sees a file bound to two chains, or bound and another chain’s Export target, unless a revocation is pending', async () => {
+test('I9 sees a file bound to two chains, or bound and another chain’s Export target', async () => {
     const world = await createWorld()
     // The detector reads the store; these rows stand in for what a bug would have stored.
     const rows = new Map<string, Record<string, unknown>>()
@@ -133,18 +133,34 @@ test('I9 sees a file bound to two chains, or bound and another chain’s Export 
         file: { ...(other.file as object), name: 'own.nxsp' },
     })
     assert.deepEqual(await invariants(world), ['I9'])
-    // R11: storage could not take the revocation of that binding, so it is kept for later.
-    const { writeRevocation } = await import('../../../src/editor/save/env')
-    const file = rows.get('chain-other')!.file as { name: string; at: number }
-    writeRevocation('chain-other', { by: 'chain-own', at: 5, name: file.name, fileAt: file.at })
-    assert.deepEqual(await invariants(world), [])
     put('chain-other', other)
-    localStorage.clear()
     put('chain-own', {
         ...own,
         file: { ...(own.file as object), name: 'target.nsld' },
     })
     assert.deepEqual(await invariants(world), ['I9'])
+})
+
+test('I9 sees a takeover that was not recorded write new bytes or cost the owner its binding', async () => {
+    const world = await createWorld()
+    const rows = new Map<string, Record<string, unknown>>()
+    for (const row of await world.storedChains()) rows.set(String(row.chainId), row)
+    world.storedChains = async () => [...rows.values()]
+    const refused = { notTakenOver: { chainId: 'chain-other', name: FILES.other } }
+    const held = world.mock.files.get(FILES.other)!
+    world.before.set(FILES.other, held)
+    // Emptied by the picker (I1 notes it), or put back as it was: nothing new.
+    world.mock.writeFile(FILES.other, new Blob([]))
+    assert.deepEqual(await invariants(world, refused), ['info:emptied'])
+    world.mock.writeFile(FILES.other, held)
+    assert.deepEqual(await invariants(world, refused), [])
+    world.mock.writeFile(FILES.other, new Blob(['the picking chain’s file']))
+    assert.deepEqual(await invariants(world, refused), ['I9'])
+    world.mock.writeFile(FILES.other, held)
+    const unbound = { ...rows.get('chain-other')! }
+    delete unbound.file
+    rows.set('chain-other', unbound)
+    assert.deepEqual(await invariants(world, refused), ['I9'])
 })
 
 test('the door hands out a new handle object on every read, and stores nothing for a faulted call', async () => {

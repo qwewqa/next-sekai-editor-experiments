@@ -318,7 +318,7 @@ test('Export’s picker: the chain’s own project file is refused and written a
     expect((after.revision as Row).parent).toBe((before.revision as Row).id)
 })
 
-test('with storing paused, a takeover keeps its revocation in localStorage; the next start applies it', async ({
+test('with storing paused, a takeover writes nothing, and the owner’s binding stands across its reload', async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -335,32 +335,14 @@ test('with storing paused, a takeover keeps its revocation in localStorage; the 
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    const kept = await a.evaluate(
-        (chainId) => localStorage.getItem(`sonolus-next-sekai-editor.revoke.${chainId}`),
-        bChain.chainId as string,
-    )
-    expect(JSON.parse(kept!)).toMatchObject({
-        name: 'coconut.nxsp',
-        fileAt: (bChain.file as Row).at,
-    })
+    await expect(a.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
 
-    // The next start applies it, after the journals and before anything else.
     await b.reload()
     await waitForStartup(b)
-    await expect
-        .poll(async () => {
-            const { chains } = await rows(b, ['chains'])
-            return chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)
-                ?.replaced
-        })
-        .toMatchObject({ name: 'coconut.nxsp' })
-    expect(
-        await b.evaluate(
-            (chainId) => localStorage.getItem(`sonolus-next-sekai-editor.revoke.${chainId}`),
-            bChain.chainId as string,
-        ),
-    ).toBeNull()
+    const { chains } = await rows(b, ['chains'])
+    const after = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!
+    expect(after.file).toMatchObject({ name: 'coconut.nxsp', at: (bChain.file as Row).at })
+    expect(after.replaced).toBeUndefined()
 })
 
 test('Save to File… writes a session that isn’t open as a new file, binding nothing', async ({

@@ -11,8 +11,6 @@ export type SavedFacts = {
     hasContent: boolean
     /** `newer` or `damaged`: this build can't read the chain, so what the file holds is unknown. */
     readable?: 'yes' | 'newer' | 'damaged'
-    /** A revocation of the binding is pending (`revoke.<chainId>`): another chain took the file over. */
-    revoked?: boolean
 }
 
 /**
@@ -24,8 +22,7 @@ export type SavedFacts = {
  */
 export const notSavedToFile = (facts: SavedFacts, downloadConfirmedHere: boolean) => {
     if (facts.readable === 'newer' || facts.readable === 'damaged') return true
-    // A revoked binding is no longer this chain's: it counts as unbound.
-    const file = facts.revoked ? undefined : facts.file
+    const file = facts.file
     if (!file) return facts.hasContent
     if (facts.changed) return true
     const downloaded = file.event !== 'saved' && file.event !== 'opened'

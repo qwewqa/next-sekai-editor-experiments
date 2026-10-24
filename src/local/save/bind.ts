@@ -20,8 +20,8 @@ import {
 
 // The storage side of the Save core's bindings (Part 1 §1.4.7, owner decision log D5): reading a
 // chain's binding again under `nse-bind` (R10), the handles a save picker's pick is compared with
-// (R3), a takeover's revocation and pre-bind in one transaction (R5), a revocation storage
-// couldn't take applied later (R11), and our own completed Save's binding recorded (§1.4.7).
+// (R3), a takeover's revocation and pre-bind in one transaction (R5), and our own completed
+// Save's binding recorded (§1.4.7).
 
 type Row = Record<string, unknown>
 
@@ -48,7 +48,7 @@ export type HandleOwner = {
     /** `kept`: the file a partial open came from, refused and put back (R7). */
     role: 'file' | 'exportTarget' | typeof KEPT_ROLE
     name: string
-    /** The binding's `at`, which a revocation checks is unchanged. */
+    /** The binding's `at`, which a takeover checks is unchanged. */
     at?: number
     /** Whether a handle is stored for it. */
     handle: boolean
@@ -156,24 +156,6 @@ export const takeOver = async (tx: KvTx, request: TakeOver) => {
         }
     }
     return { revoked, preBound }
-}
-
-/** A revocation storage couldn't take (R11): `revoke.<chainId>` in localStorage. */
-export type Revocation = { by: string; at: number; name: string; fileAt: number }
-
-/** Applies a revocation while the chain's binding is still the one it names; true when applied. */
-export const applyRevocation = async (tx: KvTx, chainId: string, revoke: Revocation) => {
-    const chain = await tx.get('chains', chainId)
-    if (!isRow(chain) || !isRow(chain.file) || chain.file.at !== revoke.fileAt) return false
-    const record: Row = { ...chain }
-    delete record.file
-    keepName(record, revoke.name)
-    record.replaced = { by: revoke.by, at: revoke.at, name: revoke.name }
-    record.edited = true
-    record.hasContent = true
-    await deleteHandleRow(tx, chainId, 'file')
-    await tx.put('chains', record)
-    return true
 }
 
 /** A Save's `save` entry as a marker keeps it (hashes as hex). */

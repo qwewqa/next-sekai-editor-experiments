@@ -11,7 +11,7 @@ import { configureHeldBgm, decodeBgmData, withCachedBgm } from '../editor/media/
 import { getVerticalScale } from '../editor/navigation'
 import { setSaveEnvironment } from '../editor/save/binding'
 import { markedSeq, removeMarker, withBind } from '../editor/save/env'
-import { applyRevocations, refreshBinding, watchBindings } from '../editor/save/watch'
+import { refreshBinding, watchBindings } from '../editor/save/watch'
 import { withSwitchRequest } from '../editor/switchRequest'
 import { view } from '../editor/view'
 import { onHistoryAction } from '../history/actions'
@@ -79,7 +79,7 @@ export { onFlusherStart }
 
 /**
  * Safe mode (§1.4.2): the flusher holds the open session in memory only, so Save builds from
- * what this tab holds (§1.4.7); no journal, tab record, Reopen or revocation is written.
+ * what this tab holds (§1.4.7); no journal, tab record or Reopen is written.
  */
 let safeMode = false
 
@@ -315,7 +315,7 @@ export const startStoring = (
     flusher = instance
     storingWorker = worker
     setRetrySource(() => ({ worker, flusher }))
-    // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7 R11).
+    // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7).
     if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal
     // keeps the open session (§1.6.7).
@@ -424,12 +424,8 @@ export const startStoring = (
     // A newer database opened by Try Again: nothing this tab holds will be stored.
     worker.onStatus((next) => {
         if (next.mode === 'readOnly') instance.withoutDatabase()
-        // Storing resumed: revocations kept meanwhile go in (§1.4.7 R11).
-        if (next.mode === 'stored' && !next.reason && !safe) void applyRevocations(worker)
     })
-    // At the next start, after the journals and before any cleanup (R11); then other tabs'
-    // takeovers show here as they happen (R6).
-    if (!safe) void afterReplay.then(() => applyRevocations(worker))
+    // Other tabs' takeovers show here as they happen (R6).
     watchBindings(worker, () => flusher)
     // What the Save flows run in, read at each call: a fork or an open changes the session.
     setSaveEnvironment(() => {
