@@ -112,6 +112,16 @@ export type TimescaleGroup = {
 
 const identityTransfer = (): Transfer => ({ ratio: 1, forward: 0, backward: 0 })
 
+// A group keeps its transfer tree for its lifetime, while frames build transfers with the helpers
+// below all the time. The tree copies its transfers through this literal of its own: if it kept
+// the helpers' objects, V8 would allocate every transfer from those sites in the old generation
+// (pretenuring), and playback would run frequent major GCs.
+const storedTransfer = ({ ratio, forward, backward }: Transfer): Transfer => ({
+    ratio,
+    forward,
+    backward,
+})
+
 // D(left, hit) = forward + ratio * D(right, hit). Keep the reverse distance
 // separately so a reverse query does not divide by the combined ratio.
 const composeTransfers = (a: Transfer, b: Transfer): Transfer => ({
@@ -275,7 +285,9 @@ export const createTimescaleGroup = (
         scaledAtChanges,
         forceNoteSpeed,
         hasScroll: changes.some((change) => change.transitionStyle === 1),
-        transfers: Array.from({ length: transferOffset * 2 }, identityTransfer),
+        transfers: Array.from({ length: transferOffset * 2 }, () =>
+            storedTransfer({ ratio: 1, forward: 0, backward: 0 }),
+        ),
         transferOffset,
         suffixMin: new Float64Array(changes.length),
         suffixMax: new Float64Array(changes.length),
@@ -285,20 +297,18 @@ export const createTimescaleGroup = (
         const change = changes[index]!
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const next = changes[index + 1]!
-        group.transfers[transferOffset + index] = partialTransfer(
-            group,
-            index,
-            change.time,
-            next.time,
-            true,
+        group.transfers[transferOffset + index] = storedTransfer(
+            partialTransfer(group, index, change.time, next.time, true),
         )
     }
     for (let index = transferOffset - 1; index > 0; index--) {
-        group.transfers[index] = composeTransfers(
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            group.transfers[index * 2]!,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            group.transfers[index * 2 + 1]!,
+        group.transfers[index] = storedTransfer(
+            composeTransfers(
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                group.transfers[index * 2]!,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                group.transfers[index * 2 + 1]!,
+            ),
         )
     }
 
