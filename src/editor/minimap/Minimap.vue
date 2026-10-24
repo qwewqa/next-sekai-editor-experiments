@@ -18,27 +18,59 @@ const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const annotationCanvas = useTemplateRef<HTMLCanvasElement>('annotations')
 const box = useTemplateRef<HTMLElement>('box')
 const cursor = useTemplateRef<HTMLElement>('cursor')
+const edge = useTemplateRef<SVGElement>('edge')
 
 const { mapping } = useMinimapContent(canvas)
 const { isGrabbing, onPointerDown, onPointerMove, onPointerUp, onPointerEnd, onWheel } =
     useMinimapInput(mapping)
 
-// The box and the cursor move by style, outside the template: one watcher, no canvas work.
+// The box, the cursor and the edge mark move by style, outside the template: one watcher, no
+// canvas work. A style is written only when its value changed, with the rows rounded to device
+// pixels, so playback writes about once per pixel moved rather than once per frame.
 let boxHeight = -1
+let shown = false
+let lastBoxTop = Number.NaN
+let lastCursorY = Number.NaN
+let edgeShown = false
 watch(
-    [() => times.value, () => view.cursorTime, mapping, box, cursor],
-    ([, cursorTime, current, boxElement, cursorElement]) => {
-        if (!boxElement || !cursorElement) return
-        boxElement.style.visibility = cursorElement.style.visibility = current ? '' : 'hidden'
+    [() => times.value, () => view.cursorTime, mapping, box, cursor, edge],
+    ([, cursorTime, current, boxElement, cursorElement, edgeElement]) => {
+        if (!boxElement || !cursorElement || !edgeElement) return
+        const show = current !== undefined
+        if (show !== shown) {
+            shown = show
+            boxElement.style.visibility = cursorElement.style.visibility = show ? '' : 'hidden'
+            // The transforms are written again when the strip comes back.
+            lastBoxTop = lastCursorY = Number.NaN
+            if (!show) {
+                edgeShown = false
+                edgeElement.style.visibility = 'hidden'
+            }
+        }
         if (!current) return
+        const { scale } = current.geometry
         const geometry = boxGeometry(current)
-        boxElement.style.transform = `translateY(${geometry.top}px)`
+        const boxTop = Math.round(geometry.top * scale) / scale
+        if (boxTop !== lastBoxTop) {
+            lastBoxTop = boxTop
+            boxElement.style.transform = `translateY(${boxTop}px)`
+        }
         // A layout of one element, so only when the zoom, pane or mapping changes it.
         if (geometry.height !== boxHeight) {
             boxHeight = geometry.height
             boxElement.style.height = `${geometry.height}px`
         }
-        cursorElement.style.transform = `translateY(${current.timeToY(cursorTime)}px)`
+        const cursorY = Math.round(current.timeToY(cursorTime) * scale) / scale
+        if (cursorY !== lastCursorY) {
+            lastCursorY = cursorY
+            cursorElement.style.transform = `translateY(${cursorY}px)`
+        }
+        // The line and the box stay at the top past the last note; the mark says so.
+        const past = cursorTime > current.end || times.value.max > current.end
+        if (past !== edgeShown) {
+            edgeShown = past
+            edgeElement.style.visibility = past ? '' : 'hidden'
+        }
     },
     { flush: 'post' },
 )
@@ -123,5 +155,19 @@ onBeforeUnmount(() => {
             data-minimap-cursor
             style="visibility: hidden"
         />
+        <svg
+            ref="edge"
+            class="pointer-events-none absolute left-[calc(50%+2px)] top-0 -translate-x-1/2 text-white forced-colors:text-[CanvasText]"
+            width="11"
+            height="6"
+            viewBox="0 0 11 6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            data-minimap-edge
+            style="visibility: hidden"
+        >
+            <path d="M1 5 5.5 1 10 5" />
+        </svg>
     </div>
 </template>
