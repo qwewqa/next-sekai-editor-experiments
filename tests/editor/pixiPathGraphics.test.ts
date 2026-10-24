@@ -746,6 +746,50 @@ test('frame-only geometry lasts until its frame is presented or its last scene p
     }
 })
 
+test('a chart switch releases unpinned geometry and keeps pinned and queued geometry', () => {
+    const cache = new PathGraphicsCache()
+    const paths = Array.from({ length: 6 }, (_, i) => {
+        const path = new DrawPath()
+        path.rect(i * 20, 0, 10, 10)
+        return path
+    })
+    const get = (i: number) => cache.get(paths[i]!, { color: 0 }, false, 'nonzero', 'black')
+    try {
+        cache.beginFrame()
+        const unused = get(0)
+        const pinned = get(1)
+        const kept = get(2)
+        const releasePinned = cache.pin([pinned])
+        const releaseKept = cache.pin([kept])
+        assert.ok(releasePinned && releaseKept)
+        cache.endFrame()
+        cache.beginFrame()
+        const queued = get(3)
+        cache.releaseUnused()
+        assert.equal(unused.destroyed, true)
+        assert.equal(pinned.destroyed, false)
+        assert.equal(queued.destroyed, false, 'this frame can still draw it')
+        // The new chart draws one old pinned resource again; it is no longer stale.
+        assert.equal(get(2), kept)
+        releasePinned()
+        releaseKept()
+        assert.equal(pinned.destroyed, false, 'its scene can still be in the submitted frame')
+        cache.endFrame()
+        cache.beginFrame()
+        assert.equal(pinned.destroyed, true)
+        assert.equal(queued.destroyed, true, 'it was not drawn again after the switch')
+        assert.equal(kept.destroyed, false)
+        const fresh = get(4)
+        cache.endFrame()
+        cache.beginFrame()
+        assert.equal(fresh.destroyed, false, 'geometry built after the switch is cached as usual')
+        assert.equal(get(4), fresh)
+        assert.equal(cache.pinnedBytes, 0)
+    } finally {
+        cache.destroy()
+    }
+})
+
 test('destroyed scene pins release idempotently without corrupting later cache accounting', () => {
     const cache = new PathGraphicsCache()
     const path = new DrawPath('M0 0 H10 V10 H0Z')
