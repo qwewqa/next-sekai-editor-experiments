@@ -1,6 +1,6 @@
 import type { RetainedVectors, WebGLDrawContext } from '../../rendering/context'
 import type { Entity } from '../../state/entities'
-import { beatToTime } from '../../state/integrals/bpms'
+import { beatToTime, timeToBeat } from '../../state/integrals/bpms'
 import { createNameLayer, type NameLayer } from './names'
 import { drawKeyOf, type DrawStep } from './ordering'
 import type { DrawSection } from './sections'
@@ -11,6 +11,60 @@ const maxRanges = 192
 const maxGraphics = 20000
 const maxSectionRanges = 1024
 const maxSectionGraphics = 50000
+// An idle period this long fits any one section; shorter ones take what their estimate fits.
+const fullIdleMs = 40
+// Without requestIdleCallback (Safari), a task after the frame with this budget.
+const fallbackIdleMs = 4
+// Sections compiled mid-zoom would be released by its next frame; this long without one ends it.
+const zoomSettleMs = 250
+
+type IdleDeadline = { timeRemaining: () => number }
+/** Runs `run` at the next idle time. */
+export type IdleScheduler = (run: (deadline: IdleDeadline) => void) => void
+
+const browserIdle = (): IdleScheduler | undefined => {
+    if (typeof requestIdleCallback === 'function')
+        return (run) => {
+            requestIdleCallback(run)
+        }
+    // Node (unit tests) has neither; they pass a scheduler of their own.
+    if (typeof document === 'undefined') return
+    return (run) => {
+        setTimeout(() => {
+            const start = performance.now()
+            run({ timeRemaining: () => fallbackIdleMs - (performance.now() - start) })
+        }, 0)
+    }
+}
+
+/** What a capture reads from the draw context, besides its transform. */
+const drawState = (ctx: WebGLDrawContext) => [
+    ctx.fillStyle,
+    ctx.strokeStyle,
+    ctx.globalAlpha,
+    ctx.globalCompositeOperation,
+    ctx.lineWidth,
+    ctx.lineCap,
+    ctx.lineJoin,
+    ctx.miterLimit,
+    ctx.lineDashOffset,
+    ctx.getLineDash().join(),
+    ctx.font,
+    ctx.fontKerning,
+    ctx.textAlign,
+    ctx.textBaseline,
+    ctx.direction,
+    ctx.imageSmoothingEnabled,
+]
+
+/** The frame's inputs for compiling sections near the view at idle time. */
+type AheadSource = {
+    context: EditorDrawContext
+    draw: (context: EditorDrawContext, step: DrawStep) => void
+    owner: object
+    matrix: DOMMatrix
+    state: unknown[]
+}
 type Entry = {
     range: RetainedVectors
     steps: DrawStep[]
@@ -83,10 +137,23 @@ export class VectorRanges {
     private graphics = 0
     private transient: RetainedVectors[] = []
     private liveEntities?: ReadonlySet<Entity>
-    readonly stats = { captures: 0, replays: 0, declined: 0, ranges: 0, graphics: 0 }
+    private activeSections: readonly DrawSection[] = []
+    private ahead?: AheadSource
+    private aheadPending = false
+    private zoomed = false
+    private settling = false
+    private aheadDone: unknown[] = []
+    private msPerSection = 0
+    private msPerStep = 0
+    readonly stats = { captures: 0, replays: 0, declined: 0, ahead: 0, ranges: 0, graphics: 0 }
+
+    /** `idle` compiles sections near the view at idle time; none in Node by default. */
+    constructor(private readonly idle: IdleScheduler | undefined = browserIdle()) {}
 
     beginFrame(context: EditorDrawContext, invalidation: readonly unknown[]) {
         this.liveEntities = undefined
+        this.ahead = undefined
+        this.zoomed = this.ups !== undefined && this.ups !== context.ups
         this.activeSectionKeys.clear()
         const { ctx } = context
         const matrix = ctx.getTransform()
@@ -137,6 +204,7 @@ export class VectorRanges {
     /** The complete immutable plan, not just this viewport's sections. */
     prepareSections(sections: readonly DrawSection[], active: readonly DrawSection[]) {
         this.activeSectionKeys = new Set(active.map((section) => section.key))
+        this.activeSections = active
         if (sections === this.sectionPlan) return
         const current = new Map(sections.map((section) => [section.key, section]))
         for (const [key, entry] of this.sections)
@@ -152,6 +220,16 @@ export class VectorRanges {
         visibleOwners?: ReadonlySet<Entity>,
     ) {
         const { ctx } = context
+        // The state every section of this frame is captured in, for those compiled at idle.
+        if (!this.ahead && this.idle) {
+            this.ahead = {
+                context,
+                draw,
+                owner: ctx.resourceOwner,
+                matrix: ctx.getTransform(),
+                state: drawState(ctx),
+            }
+        }
         let entry = this.sections.get(section.key)
         if (entry && (entry.section !== section || entry.range.released)) {
             this.removeSection(section.key, entry)
@@ -186,32 +264,11 @@ export class VectorRanges {
             // Evict only older, detached sections. Never flush a group already
             // queued in this frame merely to admit another cache entry.
             this.makeSectionRoom(0)
-            const pointCapture = this.capturePoints(context, section, draw)
-            const strokeCapture = pointCapture
-                ? undefined
-                : this.captureStrokes(context, section, draw)
-            const { captured, names } =
-                pointCapture ??
-                strokeCapture ??
-                this.capture(
-                    context,
-                    section.steps,
-                    0,
-                    section.steps.length,
-                    Math.floor(section.minBeat / bucketBeats) * bucketBeats,
-                    draw,
-                )
+            const start = performance.now()
+            const { captured, names, points, strokes } = this.captureSection(context, section, draw)
+            this.learn(section, performance.now() - start)
             if (captured?.reusable && this.makeSectionRoom(captured.graphics)) {
-                entry = {
-                    section,
-                    range: captured,
-                    names,
-                    frame: this.frame,
-                    points: pointCapture?.points,
-                    strokes: strokeCapture?.strokes,
-                }
-                this.sections.set(section.key, entry)
-                this.sectionGraphics += captured.graphics
+                entry = this.keepSection(section, captured, names, points, strokes)
                 this.stats.captures++
             } else {
                 this.stats.declined++
@@ -388,6 +445,157 @@ export class VectorRanges {
             if (entry.frame !== this.frame) this.remove(key, entry)
         this.stats.ranges = this.entries.size + this.sections.size
         this.stats.graphics = this.graphics + this.sectionGraphics
+        this.scheduleAhead()
+    }
+
+    private scheduleAhead() {
+        const { idle } = this
+        if (!idle || !this.ahead || this.aheadPending) return
+        if (this.zoomed) {
+            this.afterZoom()
+            return
+        }
+        const key = [this.sectionPlan, this.activeSections, this.ahead.owner]
+        if (key.every((value, index) => value === this.aheadDone[index])) return
+        this.aheadPending = true
+        idle((deadline) => {
+            this.aheadPending = false
+            if (this.compileAhead(deadline)) this.scheduleAhead()
+            else this.aheadDone = key
+        })
+    }
+
+    /** Compiles ahead once no frame has come for `zoomSettleMs`: the zoom paused. */
+    private afterZoom() {
+        if (this.settling) return
+        this.settling = true
+        const wait = (frame: number) =>
+            setTimeout(() => {
+                if (this.frame !== frame) {
+                    wait(this.frame)
+                    return
+                }
+                this.settling = false
+                this.zoomed = false
+                this.scheduleAhead()
+            }, zoomSettleMs)
+        wait(this.frame)
+    }
+
+    /**
+     * Compiles the sections nearest the view, within a view span of it, as the frame would have:
+     * same context, transform and drawing state. True while some remain.
+     */
+    private compileAhead(deadline: IdleDeadline) {
+        const source = this.ahead
+        const ctx = this.context
+        if (
+            !source ||
+            !ctx ||
+            source.context.ctx !== ctx ||
+            source.owner !== ctx.resourceOwner ||
+            ctx.isContextLost()
+        )
+            return false
+        const candidates = this.aheadSections(source)
+        if (!candidates.length) return false
+        // Eviction takes only sections outside the view and its reach.
+        const active = this.activeSectionKeys
+        this.activeSectionKeys = new Set([...active, ...candidates.map(({ key }) => key)])
+        ctx.save()
+        try {
+            const { a, b, c, d, e, f } = source.matrix
+            ctx.setTransform(a, b, c, d, e, f)
+            const state = drawState(ctx)
+            if (state.some((value, index) => value !== source.state[index])) return false
+            for (const section of candidates) {
+                const estimate = Math.max(this.msPerSection, this.msPerStep * section.steps.length)
+                if (deadline.timeRemaining() < Math.min(estimate, fullIdleMs)) return true
+                const stale = this.sections.get(section.key)
+                if (stale) this.removeSection(section.key, stale)
+                const start = performance.now()
+                const { captured, names, points, strokes } = this.captureSection(
+                    source.context,
+                    section,
+                    source.draw,
+                )
+                this.learn(section, performance.now() - start)
+                if (!captured?.reusable || !this.makeSectionRoom(captured.graphics)) {
+                    if (captured) ctx.releaseVectors(captured)
+                    return false
+                }
+                this.keepSection(section, captured, names, points, strokes)
+                this.stats.ahead++
+            }
+            return false
+        } finally {
+            ctx.restore()
+            this.activeSectionKeys = active
+        }
+    }
+
+    /** Uncompiled vector sections within one view span of the view, nearest first. */
+    private aheadSections({ context }: AheadSource) {
+        const plan = this.sectionPlan
+        const { bounds, ups, state } = context
+        const times = [bounds.t / ups, bounds.b / ups]
+        const from = timeToBeat(state.bpms, Math.max(0, Math.min(...times)))
+        const to = timeToBeat(state.bpms, Math.max(0, ...times))
+        if (!plan || !(from <= to)) return []
+        const reach = Math.max(to - from, 1)
+        const distance = ({ minBeat, maxBeat }: DrawSection) =>
+            Math.max(0, from - maxBeat, minBeat - to)
+        return plan
+            .filter(
+                (section) =>
+                    !section.live &&
+                    section.steps.length &&
+                    section.steps[0]?.entity.type !== 'note' &&
+                    !this.activeSectionKeys.has(section.key) &&
+                    this.sections.get(section.key)?.section !== section &&
+                    distance(section) <= reach,
+            )
+            .sort((a, b) => distance(a) - distance(b))
+    }
+
+    private learn(section: DrawSection, ms: number) {
+        // Recent captures weigh most; the estimate only paces idle work.
+        this.msPerSection = this.msPerSection * 0.8 + ms * 0.2
+        this.msPerStep = this.msPerStep * 0.8 + (ms / Math.max(1, section.steps.length)) * 0.2
+    }
+
+    private captureSection(
+        context: EditorDrawContext,
+        section: DrawSection,
+        draw: (context: EditorDrawContext, step: DrawStep) => void,
+    ) {
+        const pointCapture = this.capturePoints(context, section, draw)
+        const strokeCapture = pointCapture ? undefined : this.captureStrokes(context, section, draw)
+        const { captured, names } =
+            pointCapture ??
+            strokeCapture ??
+            this.capture(
+                context,
+                section.steps,
+                0,
+                section.steps.length,
+                Math.floor(section.minBeat / bucketBeats) * bucketBeats,
+                draw,
+            )
+        return { captured, names, points: pointCapture?.points, strokes: strokeCapture?.strokes }
+    }
+
+    private keepSection(
+        section: DrawSection,
+        range: RetainedVectors,
+        names: NameLayer,
+        points?: PointSection,
+        strokes?: SectionEntry['strokes'],
+    ) {
+        const entry: SectionEntry = { section, range, names, frame: this.frame, points, strokes }
+        this.sections.set(section.key, entry)
+        this.sectionGraphics += range.graphics
+        return entry
     }
 
     clear() {
@@ -397,6 +605,8 @@ export class VectorRanges {
         for (const [key, entry] of this.sections) this.removeSection(key, entry)
         this.sectionPlan = undefined
         this.activeSectionKeys.clear()
+        this.activeSections = []
+        this.ahead = undefined
         this.context = undefined
         this.key = []
         this.ups = undefined

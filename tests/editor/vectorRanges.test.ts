@@ -8,7 +8,7 @@ import { createNameLayer } from '../../src/editor/canvas/names'
 import { orderEntities, toDrawSteps, type DrawStep } from '../../src/editor/canvas/ordering'
 import type { DrawSection } from '../../src/editor/canvas/sections'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
-import { VectorRanges } from '../../src/editor/canvas/vectorRanges'
+import { VectorRanges, type IdleScheduler } from '../../src/editor/canvas/vectorRanges'
 import { createComposedLayout } from '../../src/editor/composed'
 import { createScopeLookup } from '../../src/editor/scopeRules'
 import type { RetainedVectors, WebGLDrawContext } from '../../src/rendering/context'
@@ -162,10 +162,33 @@ class RecordingRenderer {
     pointCaptures = 0
     readonly pointUpdates: { range: RecordedRange; ys: number[]; originY: number }[] = []
     matrix = { a: 40, b: 0, c: 0, d: 40, e: 100, f: 900 }
+    fillStyle = '#000000'
     private recording?: Command[]
+    private saved: { matrix: RecordingRenderer['matrix']; fillStyle: string }[] = []
 
     getTransform() {
         return this.matrix
+    }
+
+    setTransform(a: number, b: number, c: number, d: number, e: number, f: number) {
+        this.matrix = { a, b, c, d, e, f }
+    }
+
+    save() {
+        this.saved.push({ matrix: this.matrix, fillStyle: this.fillStyle })
+    }
+
+    restore() {
+        const state = this.saved.pop()
+        if (state) ({ matrix: this.matrix, fillStyle: this.fillStyle } = state)
+    }
+
+    getLineDash() {
+        return []
+    }
+
+    isContextLost() {
+        return false
     }
 
     record(value: Command) {
@@ -816,9 +839,9 @@ const sectionOf = (
     maxBeat: Math.max(...steps.map(({ entity }) => entity.beat)),
 })
 
-const sectionHarness = (state: State) => {
+const sectionHarness = (state: State, idle?: IdleScheduler) => {
     const renderer = new RecordingRenderer()
-    const cache = new VectorRanges()
+    const cache = new VectorRanges(idle)
     const base: EditorDrawContext = {
         ctx: renderer as unknown as WebGLDrawContext,
         state,
@@ -1409,4 +1432,152 @@ test('point capture declines oversized or nonfinite anchors before allocating po
     assert.equal(pointCalls, 0)
     assert.equal(cache.stats.ranges, 0)
     cache.clear()
+})
+
+/** Idle callbacks a test runs when it chooses, with the time it gives them. */
+const manualIdle = () => {
+    const queue: Parameters<IdleScheduler>[0][] = []
+    const idle: IdleScheduler = (run) => {
+        queue.push(run)
+    }
+    const run = (ms = 50) => {
+        const pending = queue.splice(0)
+        for (const callback of pending) callback({ timeRemaining: () => ms })
+        return pending.length
+    }
+    return { idle, run, queue }
+}
+
+// The view spans beats 0 to 100 (times 0 to 50 s at 120 BPM), so idle time compiles up to beat 200.
+const aheadFixture = () =>
+    fixture([
+        [note(120, -2), note(124, 2)],
+        [note(180, -2), note(184, 2)],
+        [note(400, -2), note(404, 2)],
+    ])
+
+test('idle time compiles the sections nearest the view, and they replay unchanged', () => {
+    const state = aheadFixture()
+    const plan = vectorSections(state)
+    const [first, second, near, farther, far] = plan as [
+        DrawSection,
+        DrawSection,
+        DrawSection,
+        DrawSection,
+        DrawSection,
+    ]
+    const idle = manualIdle()
+    const { render, renderer, cache } = sectionHarness(state, idle.idle)
+    assert.equal(render(plan, [first, second]).captures, 2)
+    assert.equal(idle.queue.length, 1)
+    renderer.callbacks = []
+    idle.run()
+    assert.equal(cache.stats.ahead, 2)
+    // Nearest first; the section past one view span is left for its first visit.
+    assert.deepEqual(
+        renderer.callbacks,
+        [...near.steps, ...farther.steps].map(({ entity }) => entity),
+    )
+    assert.equal(idle.run(), 0, 'nothing is left to compile near this view')
+    const visit = render(plan, [near, farther])
+    assert.equal(visit.captures, 0)
+    assert.equal(visit.replays, 2)
+    assert.deepEqual(visit.callbacks, [])
+    assert.equal(render(plan, [far]).captures, 1)
+    cache.clear()
+    assert.ok(renderer.ranges.every(({ released }) => released))
+})
+
+test('idle compilation uses the frame’s transform, and none when the drawing state changed', () => {
+    const state = aheadFixture()
+    const plan = vectorSections(state)
+    const idle = manualIdle()
+    const { render, renderer, cache } = sectionHarness(state, idle.idle)
+    render(plan, plan.slice(0, 2))
+    const frame = renderer.matrix
+    renderer.setTransform(1, 0, 0, 1, 0, 0)
+    renderer.fillStyle = '#ffffff'
+    idle.run()
+    assert.equal(cache.stats.ahead, 0)
+    assert.equal(renderer.fillStyle, '#ffffff', 'the state is restored')
+    renderer.fillStyle = '#000000'
+    renderer.matrix = frame
+    render(plan, plan.slice(0, 2))
+    renderer.setTransform(1, 0, 0, 1, 0, 0)
+    let captured: unknown
+    const capture = renderer.captureVectors.bind(renderer)
+    renderer.captureVectors = (draw, origin) => {
+        captured = renderer.matrix
+        return capture(draw, origin)
+    }
+    idle.run()
+    assert.equal(cache.stats.ahead, 2)
+    assert.deepEqual(captured, frame)
+    assert.deepEqual(renderer.matrix, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })
+})
+
+test('idle compilation waits for time its estimate fits, and a cleared cache drops it', () => {
+    const state = aheadFixture()
+    const plan = vectorSections(state)
+    const idle = manualIdle()
+    const { render, cache } = sectionHarness(state, idle.idle)
+    const realNow = performance.now.bind(performance)
+    let now = 0
+    performance.now = () => now
+    const capture = (cache as unknown as { captureSection: (...args: unknown[]) => unknown })
+        .captureSection
+    ;(cache as unknown as { captureSection: unknown }).captureSection = function (
+        this: unknown,
+        ...args: unknown[]
+    ) {
+        now += 10
+        return capture.apply(this, args)
+    }
+    try {
+        render(plan, plan.slice(0, 2))
+        // Each capture took 10 ms; 1 ms of idle time fits none of them.
+        idle.run(1)
+        assert.equal(cache.stats.ahead, 0)
+        assert.equal(idle.queue.length, 1, 'it waits for the next idle time')
+        cache.clear()
+        idle.run()
+        assert.equal(cache.stats.ahead, 0)
+    } finally {
+        performance.now = realNow
+    }
+})
+
+test('idle compilation never evicts an active section', () => {
+    const state = fixture(
+        Array.from({ length: 1023 }, (_, i) => [note(64 + i * 4, -2), note(66 + i * 4, 2)]),
+    )
+    const plan = vectorSections(state)
+    const idle = manualIdle()
+    const { render, renderer, cache } = sectionHarness(state, idle.idle)
+    // The first section is in reach of the view, and every other one is active.
+    const visible = plan.slice(1)
+    render(plan, visible)
+    assert.equal(cache.stats.ranges, 1024)
+    const kept = renderer.ranges.slice()
+    idle.run()
+    assert.equal(cache.stats.ahead, 0)
+    assert.ok(kept.every(({ released }) => !released))
+    assert.equal(renderer.ranges.at(-1)!.released, true, 'the capture that did not fit is released')
+})
+
+test('a zoom frame leaves idle compilation until the zoom pauses', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] })
+    const state = aheadFixture()
+    const plan = vectorSections(state)
+    const idle = manualIdle()
+    const { render } = sectionHarness(state, idle.idle)
+    render(plan, plan.slice(0, 2))
+    idle.run()
+    render(plan, plan.slice(0, 2), { ups: -3 })
+    t.mock.timers.tick(200)
+    render(plan, plan.slice(0, 2), { ups: -4 })
+    t.mock.timers.tick(200)
+    assert.equal(idle.queue.length, 0, 'frames keep coming: the zoom goes on')
+    t.mock.timers.tick(300)
+    assert.equal(idle.queue.length, 1, 'no frame for a while: the zoom paused')
 })
