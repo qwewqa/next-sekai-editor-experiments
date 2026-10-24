@@ -137,7 +137,8 @@ export type ReplaceDecision = {
  * The Replace guard (§0.9.6; r12-history-critique §2): Replace is disabled when the file on disk
  * holds the chain's base (rules 1 and 2, O the base as the binding records it) and the write
  * wouldn't carry it, so the only durable holder of earlier versions is never overwritten. The
- * reason is definite only for rows gone; a flag or a thinned root gives the uncertain one.
+ * reason is definite only for rows gone; a flag or a root whose state the file lacks gives the
+ * uncertain one.
  */
 export const replaceDecision = (cut: ChainCut, disk: Facts): ReplaceDecision => {
     const base = baseFacts(cut)
