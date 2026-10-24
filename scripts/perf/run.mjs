@@ -370,6 +370,21 @@ const endTrace = async (cdp) => {
     return Buffer.concat(chunks)
 }
 
+// The path caches' counters over a run and their resident bytes at its end (`nsePerf.pathCaches`).
+const pathCaches = (page) => page.evaluate(() => window.nsePerf.pathCaches?.() ?? {})
+const cacheDelta = (before, after) =>
+    Object.fromEntries(
+        Object.entries(after).map(([name, end]) => [
+            name,
+            Object.fromEntries(
+                Object.entries(end).map(([key, value]) => [
+                    key,
+                    ['bytes', 'pinned'].includes(key) ? value : value - (before[name]?.[key] ?? 0),
+                ]),
+            ),
+        ]),
+    )
+
 // ---- scenarios
 
 const pane = (page) =>
@@ -669,6 +684,7 @@ const scenarios = {
             const heap = await cdp.send('Runtime.getHeapUsage')
             const dom = await cdp.send('Memory.getDOMCounters').catch(() => ({}))
             const n = await notes()
+            const caches = await pathCaches(page)
             out.push({
                 label,
                 at: Date.now(),
@@ -676,6 +692,7 @@ const scenarios = {
                 heapUsed: heap.usedSize,
                 heapTotal: heap.totalSize,
                 dom,
+                pathCaches: caches,
                 procs: procs(),
             })
             log(
@@ -687,6 +704,9 @@ const scenarios = {
                 n,
                 'dom',
                 JSON.stringify(dom),
+                'path cache',
+                ((caches.chart?.bytes ?? 0) / 2 ** 20).toFixed(1),
+                'MiB',
             )
         }
         const profileTo = async (label) => {
@@ -949,6 +969,7 @@ const runOnce = async (page, cdp, cell, profile, hz, label, light, group) => {
     const scenario = cell.scenario.startsWith('play') ? 'play' : cell.scenario
     if (scenario !== 'memory') await settle(page, cell.start ?? (scenario === 'play' ? 0 : 40))
     const prep = await prepares[scenario]?.(page, cell)
+    const caches = await pathCaches(page)
     await page.evaluate((noLoop) => window.nsePerfRun.start(noLoop), !!cell.noLoop)
     let sync
     if (label) {
@@ -964,6 +985,7 @@ const runOnce = async (page, cdp, cell, profile, hz, label, light, group) => {
         writeFileSync(trace, gzipSync(await endTrace(cdp)))
     }
     const raw = await page.evaluate(() => window.nsePerfRun.stop())
+    const pathCache = cacheDelta(caches, await pathCaches(page))
     const key = scenario === 'play' ? 'cursor' : customKeys.includes(scenario) ? 'all' : 'view'
     const frames = summarizeFrames(raw.frames, key, hz)
     return {
@@ -979,6 +1001,7 @@ const runOnce = async (page, cdp, cell, profile, hz, label, light, group) => {
             maxMs: Math.max(0, ...raw.longtasks.map((e) => e.duration)),
         },
         minimapPaints: raw.paints + raw.annotationPaints,
+        pathCache,
         visibility: raw.visibility,
         trace,
         sync,

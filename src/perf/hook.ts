@@ -10,6 +10,8 @@ import { view } from '../editor/view'
 import { replaceState, state } from '../history'
 import { getAllEntities } from '../history/store'
 import { isPlaying } from '../player'
+import { peekDrawContext } from '../rendering/context'
+import type { PathGraphicsCache } from '../rendering/pathGraphics'
 import { settings } from '../settings'
 import { beatToTime } from '../state/integrals/bpms'
 import { perfSamples } from './probe'
@@ -57,6 +59,19 @@ const nsePerf = {
         let end = 0
         for (const e of getAllEntities()) end = Math.max(end, beatToTime(bpms, e.beat))
         return end
+    },
+    /** The chart and overlay canvases' path caches: their counters and resident bytes. */
+    pathCaches() {
+        const out: Record<string, PathGraphicsCache['stats'] & { bytes: number; pinned: number }> =
+            {}
+        for (const name of ['chart', 'overlay']) {
+            const canvas = document.querySelector<HTMLCanvasElement>(`canvas.editor-${name}`)
+            const context = canvas && peekDrawContext(canvas)
+            if (!context) continue
+            const { paths } = context as unknown as { paths: PathGraphicsCache }
+            out[name] = { ...paths.stats, bytes: paths.retainedBytes, pinned: paths.pinnedBytes }
+        }
+        return out
     },
     /** Selects every note and connector, or nothing. */
     selectNotes(on: boolean) {

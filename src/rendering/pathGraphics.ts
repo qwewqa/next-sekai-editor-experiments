@@ -846,6 +846,9 @@ export class PathGraphicsCache {
         native: 0,
         fallback: 0,
         evictions: 0,
+        // Evictions to fit the budget, and their bytes.
+        trimmed: 0,
+        trimmedBytes: 0,
         maskHits: 0,
         maskBuilt: 0,
         maskDeclined: 0,
@@ -1273,6 +1276,8 @@ export class PathGraphicsCache {
             if (!entry) break
             this.entries.delete(entry)
             this.bytes -= entry.bytes
+            this.stats.trimmed++
+            this.stats.trimmedBytes += entry.bytes
             this.release(entry)
         }
     }
