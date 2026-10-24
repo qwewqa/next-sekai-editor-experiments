@@ -550,8 +550,8 @@ export function arcSegments(sweep: number, radius: number, tolerance: number) {
 /**
  * The triangles of separate round-capped segments (x0, y0, x1, y1, …), passed
  * to `vertex` three points at a time. They are the bodies and caps that
- * tessellateStroke unions for the same moveTo/lineTo pairs, left overlapping,
- * so only an opaque paint draws them as that union.
+ * tessellateStroke unions for the same moveTo/lineTo pairs, to rounding, left
+ * overlapping, so only an opaque paint draws them as that union.
  */
 export function roundCappedSegments(
     segments: ArrayLike<number>,
@@ -562,14 +562,20 @@ export function roundCappedSegments(
     const half = width / 2
     if (!(half > 0)) return
     const count = arcSegments(Math.PI, half, tolerance)
-    const cap = (x: number, y: number, dx: number, dy: number) => {
-        const start = Math.atan2(dy, dx) - Math.PI / 2
-        let px = x + half * Math.cos(start)
-        let py = y + half * Math.sin(start)
+    // One half circle, turned to each cap, instead of two trig calls for every point.
+    const arcX: number[] = []
+    const arcY: number[] = []
+    for (let i = 0; i <= count; i++) {
+        arcX.push(half * Math.cos((Math.PI * i) / count))
+        arcY.push(half * Math.sin((Math.PI * i) / count))
+    }
+    // Counterclockwise about (x, y), from the unit direction (nx, ny).
+    const cap = (x: number, y: number, nx: number, ny: number) => {
+        let px = x + nx * half
+        let py = y + ny * half
         for (let i = 1; i <= count; i++) {
-            const a = start + (Math.PI * i) / count
-            const qx = x + half * Math.cos(a)
-            const qy = y + half * Math.sin(a)
+            const qx = x + nx * indexed(arcX, i) - ny * indexed(arcY, i)
+            const qy = y + ny * indexed(arcX, i) + nx * indexed(arcY, i)
             vertex(x, y)
             vertex(px, py)
             vertex(qx, qy)
@@ -594,8 +600,9 @@ export function roundCappedSegments(
         vertex(ax - dy * half, ay + dx * half)
         vertex(bx + dy * half, by - dx * half)
         vertex(ax + dy * half, ay - dx * half)
-        cap(ax, ay, -dx, -dy)
-        cap(bx, by, dx, dy)
+        // Each cap starts a quarter turn back from its direction, as tessellateStroke's arc does.
+        cap(ax, ay, -dy, dx)
+        cap(bx, by, dy, -dx)
     }
 }
 
