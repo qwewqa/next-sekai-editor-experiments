@@ -5,7 +5,7 @@ import { buildZip } from '../../src/zip'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson, type Item } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
-import { confirmNew } from './confirmWhenReady'
+import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
@@ -271,16 +271,13 @@ test('a level with a value this build does not know asks first; Cancel opens not
     const dialog = page.getByRole('dialog').filter({ hasText: 'Uses Newer Features' })
     await expect(dialog).toContainText('"coconut.nxsp" Uses Newer Features')
     await expect(dialog.getByRole('button', { name: 'Open a Copy' })).toBeFocused()
-    // Past the dialog's 300 ms activation guard.
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     await expect(dialog).toHaveCount(0)
     expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
 
     await openFile(page, 'coconut.nxsp')
     await expect(dialog).toHaveCount(1)
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Open a Copy' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open a Copy' }), dialog)
     await expect(
         notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' }),
     ).toBeVisible()
@@ -769,8 +766,7 @@ test('a newer major version asks first, then opens only the level, unbound', asy
         .filter({ hasText: 'Only the level can be opened from this file.' })
     await expect(dialog).toContainText('Made by a newer version of Next SEKAI Editor.')
     await expect(dialog.getByRole('button', { name: 'Open the Level' })).toBeFocused()
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Open the Level' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
     await expect.poll(async () => (await sessionOf(page)).sessionId).not.toBe(before.sessionId)
     const session = await sessionOf(page)
     expect(session.file).toBeUndefined()
@@ -798,8 +794,7 @@ test('a newer major version whose level is refused is an error card', async ({ p
     const dialog = page
         .getByRole('dialog')
         .filter({ hasText: 'Only the level can be opened from this file.' })
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Open the Level' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
     const card = notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' })
     await expect(card).toBeVisible()
     await expect(card.locator('svg[data-severity]')).toHaveAttribute('data-severity', 'error')
