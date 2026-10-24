@@ -130,7 +130,7 @@ These are unchanged from v0.5.22:
 | Warning | `warning` *new* | 146 91 12 `#925b0c` (.521 .110 68) | 255 218 124 `#ffda7c` (.900 .121 88) | Warning text and glyphs, always with the triangle |
 | Info | `info` *new* | 22 102 170 `#1666aa` (.501 .130 250) | 190 227 255 `#bee3ff` (.898 .055 241) | Info glyphs and text, always with the circle |
 | Switch off track | `toggle-off` *new* | 143 143 163 `#8f8fa3` | 117 120 151 `#757897` | ToggleSwitch when off |
-| History changes | `change` *new* | 255 155 66 `#ff9b42` | same | Defined but not read yet: the change marks use `CHANGE_COLOR` in `src/editor/canvas/changes.ts` (section 12) |
+| History changes | `change` *new* | 255 155 66 `#ff9b42` | same | Defined but not read: the change marks use `CHANGE_COLOR` in `src/editor/canvas/changes.ts` (section 12) |
 
 **Chrome tier.** The dark chrome over the chart (status bar, panel rail, toolbar row, elevation header, offscreen badges) is mid-tone in light and dark in dark. `.surface-chrome` on those roots sets status values that pass 4.5:1 on both (the offscreen badges use only white and do not carry it):
 
@@ -677,7 +677,7 @@ Adding to either list needs a reason in the entry.
 
 ### 11.4 Transition (closed)
 
-- During the migration from v0.5.22, each group of files had an allowlist in `tests/editor/colorRoles/` of the files it had not migrated yet. The test reads lists named `legacy-C<n>.txt` and `legacy-C<n>-H<n>.txt`. Each group deleted its list when it was done, and the directory is gone: **no file is exempt now** except those in 11.3.
+- During the migration from v0.5.22, each group of files had an allowlist in `tests/editor/colorRoles/` of the files it had not migrated yet. The test reads lists named `legacy-C<n>.txt` or `legacy-C<n>-H<n>.txt`, where each `<n>` is a number. Each group deleted its list when it was done, and the directory is gone: **no file is exempt now** except those in 11.3.
 - The test still reads such lists if the directory exists and tolerates its absence, so a later migration can add lists again. It fails on a listed file that is already clean, so stale entries cannot linger, and on a violating file that is not listed.
 
 ### 11.5 Fixtures

@@ -63,9 +63,9 @@ To add one:
 
 ## Docs
 
-`docs/` and this file hold what stays useful to later, unrelated work: rules with their reasons, format specifications and guides to the code. A status report, a log of fixes or the spec for a single feature helps little later and goes out of date, so the repository does not keep one.
+`docs/` and this file hold what stays useful to later, unrelated work: rules with their reasons, format specifications and guides to the code. A status report, a log of fixes or the spec for a single feature helps little later and goes out of date, so keep it out of the repository.
 
-The rules in these docs are principles with reasons. Depart from one when a case needs it, and say why in the change. When a rule gets in the way or misses a case, raise it with the maintainer and discuss the change before you make it. If a change makes a claim in the docs false, fix the page in the same change.
+The rules in these docs are principles with reasons. Depart from one when a case needs it, and say why in the change. To change a rule itself, because it gets in the way or misses a case, raise it with the maintainer and discuss it first. If a change makes a claim in the docs false, fix the page in the same change.
 
 ## UI design
 

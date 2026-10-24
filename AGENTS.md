@@ -11,7 +11,7 @@ It holds only what is specific to agents. Read the project's own docs first:
 ## Rules and docs
 
 - When a rule in these docs gets in the way or misses a case, name the rule, the case and a proposed change, and raise it. Do not bend or rewrite a rule silently. Once the change is agreed, update every place that states the rule in the same change.
-- Version only what stays useful to later, unrelated work (CONTRIBUTING, "Docs"). Status reports, fix logs and specs for a single feature stay out of the repository.
+- Commit only what stays useful to later, unrelated work (CONTRIBUTING, "Docs"). Status reports, fix logs and specs for a single feature stay out of the repository.
 
 ## Writing
 
@@ -31,13 +31,13 @@ It holds only what is specific to agents. Read the project's own docs first:
 - Commit messages are one line, with no trailers.
 - Never push or tag without the maintainer’s go-ahead.
 - Never use `git stash` when worktrees share the repository. They share one stash.
-- If a worktree’s `node_modules` is a link to another checkout’s, remove the link before you remove the worktree. `rm -rf`, `Remove-Item -Recurse` and `git worktree remove --force` follow the link and delete the other checkout’s packages. Do not run `npm install` or `npm ci` in such a worktree.
+- If a worktree’s `node_modules` is a link to another checkout’s, remove the link before you remove the worktree (on Windows, `rmdir` on the link removes it without following it). `rm -rf`, `Remove-Item -Recurse` and `git worktree remove --force` follow the link and delete the other checkout’s packages. Do not run `npm install` or `npm ci` in such a worktree.
 
 ## Tests
 
 - Run `TZ=UTC npm test`. CI runs in UTC, and some tests depend on the time zone.
 - Run the browser specs for the area you touched, by path: `npx playwright test tests/browser/<name>.spec.ts --project=chromium`. Playwright reads a bare word as a pattern over the whole path, so it can match a folder name and run every spec.
-- Run the full browser suite once per batch of changes. It is slow, and its load makes parallel runs flaky.
+- Run the full browser suite once per batch of changes. It is slow, and running it beside other runs makes tests flaky.
 - Give each concurrent run its own `PLAYWRIGHT_PORT`.
 
 ## Reviews

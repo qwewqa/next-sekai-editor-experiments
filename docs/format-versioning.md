@@ -78,7 +78,7 @@ Work down the list in order. The first row that fits decides the number.
    | A new operation | a new id | fallback text |
 
 2. **Readers before writers.** Ship the reader that understands the new thing first. The writer's new output is gated on that reader being out.
-3. **Update, in the same commit** (or the same package):
+3. **Update, in the same commit** (or the same change):
    - the constant and its table (`MINOR_TABLE` and `PATCH_TABLE` in `src/local/nxsp/version.ts`: a new ZIP entry kind or `parts` key goes in both, `0` in the `minor` table and the `patch` it ships in in the other);
    - `tests/local/formatVersions.test.ts`;
    - the reader (`read.ts`, `project.ts`, `manifest.ts`) and the writer (`build.ts`);
@@ -88,7 +88,7 @@ Work down the list in order. The first row that fits decides the number.
    - the independent checker `tools/nxsp_check.py` (strict mode and `--read`), and `tools/fields-v1.json` through `npm run format:gen` for any record change;
    - the goldens, **in this order**: `NSE_WRITE_GOLDEN=1 npx tsx --test tests/local/nxsp/golden.test.ts` (the builder golden, `tests/local/nxsp/golden-v1/`), then `NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts` (the conformance cases are built from it), then `uv run python -I tools/nxsp_check.py` over `golden-v1/write-*.nxsp` and every `plan-conformance-v1/*/expected.nxsp`; for a record change `npm run format:gen` and the records goldens (`tests/local/records/golden-v1/`, `schema-v1/`). The long-history sample (`npm run samples:long-history`) is kept outside the repository, in the nearest `samples/` folder above the checkout or in `NSE_SAMPLES_DIR` (`scripts/samples.mjs`). Regenerate it and run `tests/samples/sampleFormat.test.ts`. After the ship a golden is never edited: a new generation adds a new golden;
    - `tests/local/nxsp/agreement.test.ts` (a plan-derived expectation for the new case, beside the readers' agreement);
-   - the plan (Part 1 §1.6.11.4–§1.6.11.8, then rebuild `plan/plan.md` with the README's cat command), the byte-level description `docs/nxsp-format.md`, this page, and `CHANGELOG.md` under Unreleased when users see it;
+   - the design record (Part 1 §1.6.11.4–§1.6.11.8), the byte-level description `docs/nxsp-format.md`, this page, and `CHANGELOG.md` under Unreleased when users see it;
    - the user-facing line, if the open should say something, in all seven locales.
 4. **Run** the reader agreement test (both readers must open every probe alike), the checker over the regenerated goldens, `npm test`, and the open, save and history browser specs.
 5. **Say it in the commit:** which number moved and why, and that readers ship first.
