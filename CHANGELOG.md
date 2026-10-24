@@ -9,7 +9,7 @@
 - **History (Shift+H)** has two tabs. Timeline lists each change; you can view the chart at any step and Restore it. Recent Sessions lists earlier sessions; select one to view or restore it, or use its menu to Save to File… or Delete. Delete can be undone.
 - When browser storage runs low, the editor deletes audio and images used only by earlier Timeline steps. When it is full, new changes are not stored until you free space, for example with **Settings › Local Data › Delete Sessions…**
 - Closing the tab asks first when changes are not saved to a project file, even after an export. To turn this off, use **Settings › Local Data › Ask Before Closing with Unsaved Changes**. Settings › Local Data replaces the Auto Save settings.
-- **Reset is now New (N).** The previous level stays in Recent Sessions; Reopen in the notice goes back to it.
+- **Reset is now New (N).** It asks first when the chart has unsaved changes. The previous level stays in Recent Sessions; Reopen in the notice goes back to it.
 - **Level Properties is now Level Info**, with title, artists, author, rating, tags, description, cover and preview audio. These are saved in the project file.
 - The BGM dialog has **Download BGM**. When the BGM is not loaded, **Choose Audio…** in the notice attaches the audio file.
 - **Check…** in Level Info (Check File and History…) checks the project file and the history stored in this browser. It repairs what it can from the file and lists what is still damaged.
