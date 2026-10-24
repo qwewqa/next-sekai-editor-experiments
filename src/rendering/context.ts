@@ -48,6 +48,8 @@ type Clip = {
     matrix: Matrix
     rule: CanvasFillRule
     pixels?: PixelBounds
+    /** Built from the current path, which no later frame draws again. */
+    frameOnly: boolean
 }
 type State = {
     clips: Clip[]
@@ -884,6 +886,7 @@ export class WebGLDrawContext {
                     'mask',
                     undefined,
                     factor,
+                    clip.frameOnly,
                 )
                 if (this.paths.isEmpty(context)) group.visible = false
                 else {
@@ -903,7 +906,12 @@ export class WebGLDrawContext {
         this.activeParent = parent
         return parent
     }
-    private drawShape(shape: DrawPath, stroke: boolean, rule: CanvasFillRule = 'nonzero') {
+    private drawShape(
+        shape: DrawPath,
+        stroke: boolean,
+        rule: CanvasFillRule = 'nonzero',
+        frameOnly = false,
+    ) {
         if (!this.mutate()) return
         const s = this.state
         const paint = stroke
@@ -918,6 +926,7 @@ export class WebGLDrawContext {
             paint.key,
             { dash: s.dash, dashOffset: s.lineDashOffset },
             factor,
+            frameOnly,
         )
         if (this.paths.isEmpty(context)) return
         const graphic = this.pathNode(
@@ -1172,8 +1181,9 @@ export class WebGLDrawContext {
 
     fill(path?: DrawPath | CanvasFillRule, rule: CanvasFillRule = 'nonzero') {
         if (!this.ensure()) return
-        const shape = path instanceof DrawPath ? path : this.currentPath()
-        if (shape) this.drawShape(shape, false, typeof path === 'string' ? path : rule)
+        const current = !(path instanceof DrawPath)
+        const shape = current ? this.currentPath() : path
+        if (shape) this.drawShape(shape, false, typeof path === 'string' ? path : rule, current)
     }
     /** Connector body and gradient use one nearby, reference-time coordinate space. */
     fillConnectorBody(path: DrawPath, yScale: number, originY: number) {
@@ -1217,7 +1227,7 @@ export class WebGLDrawContext {
     stroke(path?: DrawPath) {
         if (!this.ensure()) return
         const shape = path ?? this.currentPath()
-        if (shape) this.drawShape(shape, true)
+        if (shape) this.drawShape(shape, true, 'nonzero', !path)
     }
     /**
      * Strokes separate segments (x0, y0, x1, y1, …) as `stroke()` strokes a
@@ -1444,7 +1454,8 @@ export class WebGLDrawContext {
         this.restore()
     }
     clip(path?: DrawPath | CanvasFillRule, rule: CanvasFillRule = 'nonzero') {
-        const shape = path instanceof DrawPath ? path : this.currentPath()
+        const current = !(path instanceof DrawPath)
+        const shape = current ? this.currentPath() : path
         if (!shape) return
         const matrix = this.state.matrix
         const command = shape.commands.length === 1 ? shape.commands[0] : undefined
@@ -1472,6 +1483,7 @@ export class WebGLDrawContext {
                 matrix: [...matrix],
                 rule: typeof path === 'string' ? path : rule,
                 pixels,
+                frameOnly: current,
             },
         ]
     }

@@ -726,6 +726,7 @@ type Entry = {
     pins: number
     accessed: number
     evictableIndex: number
+    frameOnly: boolean
 }
 
 /**
@@ -835,6 +836,9 @@ export class PathGraphicsCache {
     private readonly evictable: Entry[] = []
     private readonly touched: Entry[] = []
     private readonly overflow = new Set<Entry>()
+    // Geometry of paths no later frame draws again. It is released at the
+    // first frame boundary that finds it unpinned, and never enters the LRU.
+    private readonly frameOnly: Entry[] = []
     private contexts = new WeakMap<PathGraphicsResource, Entry>()
     private empty = new WeakSet<PathGraphicsResource>()
     private bytes = 0
@@ -846,6 +850,9 @@ export class PathGraphicsCache {
         native: 0,
         fallback: 0,
         evictions: 0,
+        // Evictions to fit the budget, and their bytes.
+        trimmed: 0,
+        trimmedBytes: 0,
         maskHits: 0,
         maskBuilt: 0,
         maskDeclined: 0,
@@ -899,7 +906,8 @@ export class PathGraphicsCache {
                 if (!entry.pins) continue // The entire cache may have been destroyed.
                 if (!--entry.pins) {
                     this.protectedBytes -= entry.bytes
-                    if (entry.frame !== this.frame && this.entries.has(entry))
+                    if (entry.frameOnly) this.frameOnly.push(entry)
+                    else if (entry.frame !== this.frame && this.entries.has(entry))
                         this.addEvictable(entry)
                 }
             }
@@ -913,6 +921,13 @@ export class PathGraphicsCache {
             this.release(entry)
         }
         this.overflow.clear()
+        for (const entry of this.frameOnly) {
+            // An entry can be listed twice; the first release removes it.
+            if (entry.pins || !this.entries.delete(entry)) continue
+            this.bytes -= entry.bytes
+            this.release(entry)
+        }
+        this.frameOnly.length = 0
         this.frame++
         // Visit only resources used by the preceding frame. The large retained
         // scene working set does not need reordering or scanning on each draw.
@@ -920,6 +935,7 @@ export class PathGraphicsCache {
         this.touched.length = 0
     }
 
+    /** `frameOnly`: no later frame draws this path, as with a context's current path. */
     get(
         path: DrawPath,
         style: FillInput | StrokeStyle,
@@ -928,6 +944,7 @@ export class PathGraphicsCache {
         styleKey: string,
         extras: Extras = { dash: [], dashOffset: 0 },
         resolution = 1,
+        frameOnly = false,
     ): PathGraphicsResource {
         const owner = this.ownerFor(path, resolution)
         const commands = path.commands
@@ -979,7 +996,7 @@ export class PathGraphicsCache {
                     if (certified) {
                         this.stats.native++
                         retainPaint(native, paint)
-                        return this.store(native, owner, key)
+                        return this.store(native, owner, key, frameOnly)
                     }
                 }
             }
@@ -1065,7 +1082,7 @@ export class PathGraphicsCache {
             }
         }
         retainPaint(context, paint)
-        return this.store(context, owner, key)
+        return this.store(context, owner, key, frameOnly)
     }
 
     /** Two sampled fake-marker lines share one painted union, including their crossing. */
@@ -1226,14 +1243,20 @@ export class PathGraphicsCache {
             this.removeEvictable(cached)
             // Overflow is released before advancing the frame, so every hit
             // from an earlier frame is resident. Enqueue it just once.
-            this.touched.push(cached)
+            if (cached.frameOnly) this.frameOnly.push(cached)
+            else this.touched.push(cached)
         }
         cached.accessed = ++this.access
         this.stats.hits++
         return cached.context
     }
 
-    private store(context: PathGraphicsResource, owner: CachedPath, key: string) {
+    private store(
+        context: PathGraphicsResource,
+        owner: CachedPath,
+        key: string,
+        frameOnly = false,
+    ) {
         const bytes =
             context instanceof PathMeshGeometry
                 ? estimateMeshBytes(context, owner.path, owner.length, key)
@@ -1247,13 +1270,15 @@ export class PathGraphicsCache {
             pins: 0,
             accessed: ++this.access,
             evictableIndex: -1,
+            frameOnly,
         }
         this.contexts.set(context, entry)
         owner.styles.set(key, entry)
         this.trim(bytes)
         if (this.bytes + bytes <= this.maxBytes) {
             this.entries.add(entry)
-            this.touched.push(entry)
+            if (frameOnly) this.frameOnly.push(entry)
+            else this.touched.push(entry)
             this.bytes += bytes
         } else {
             // Pin queued geometry for this frame without allowing a visible
@@ -1273,6 +1298,8 @@ export class PathGraphicsCache {
             if (!entry) break
             this.entries.delete(entry)
             this.bytes -= entry.bytes
+            this.stats.trimmed++
+            this.stats.trimmedBytes += entry.bytes
             this.release(entry)
         }
     }
@@ -1354,6 +1381,7 @@ export class PathGraphicsCache {
         this.evictable.length = 0
         this.touched.length = 0
         this.overflow.clear()
+        this.frameOnly.length = 0
         this.paths = new WeakMap()
         this.contexts = new WeakMap()
         this.empty = new WeakSet()
