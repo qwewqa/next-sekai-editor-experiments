@@ -8,7 +8,7 @@ import {
 } from '../editor/player'
 import { view } from '../editor/view'
 import { isPlaying } from '../player'
-import { time } from '../time'
+import { keepClockWhile, time } from '../time'
 
 // A drag across the image seeks a second per image width, past a slop that keeps taps taps.
 const dragSlop = 8
@@ -192,13 +192,19 @@ export const useTransportInput = (visible: Ref<boolean>, imageWidth: () => numbe
             if (hold !== current || !isAppActive.value) return
             beginPreviewScrub('locked')
             current.scrub = { cursor: view.cursorTime, time: performance.now() / 1000 }
-            stopScrubClock = watch(time, ({ now }) => {
+            const stopScrub = watch(time, ({ now }) => {
                 if (hold !== current || !current.scrub) return
                 scrubPreviewTo(
                     current.scrub.cursor +
                         (Math.max(0, now - current.scrub.time) * current.milliseconds) / 10,
                 )
             })
+            // Until the hold ends.
+            const releaseClock = keepClockWhile(() => true)
+            stopScrubClock = () => {
+                stopScrub()
+                releaseClock()
+            }
         }, 250)
         return true
     }

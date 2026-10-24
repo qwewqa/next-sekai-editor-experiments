@@ -49,7 +49,7 @@ A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 - `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)`, which selects the plain notes nearest a time and returns their screen points, `chartEnd()`, the last entity's time, and `pathCaches()`, the chart and overlay canvases' path-cache counters and resident bytes.
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
-    - `clockFrame`: the app clock's whole frame, which covers the time watchers, Vue's flush and the draws it triggers;
+    - `clockFrame`: the app clock's whole frame, which covers the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
     - `previewDraw`, `elevationDraw` and `minimapOverlay`;
     - `stageTile`: each Composed stage tile build. `perf:report … frames` gives the builds per chart draw.
 
@@ -152,8 +152,8 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 ### Scenario pitfalls
 
 - **Playwright keeps a background tab visible.** `hide` therefore sets `document.visibilityState` to hidden and dispatches `visibilitychange`, which is the path the app's lifecycle handler takes. It does not test the browser's own page lifecycle. The harness adds its own first and last listeners, so `vis` in a kept record shows the order.
-- **The idle collector loop requests frames.** `idle` without `noLoop` measures the collector, not the editor.
-- **The app's clock does not stop.** An idle trace shows an animation frame callback in `time.ts` on every vsync (about 240 a second at 240 Hz). That is the baseline for an idle editor, not a result of the scenario.
+- **The idle collector loop requests frames.** `idle` without `noLoop` measures the collector, not the editor. The loop also keeps frames coming while the app clock is stopped, so a wake from idle, such as `notch`'s wheel, needs `noLoop` and `traceEach` to be measured as a user meets it.
+- **The app's clock stops when nothing moves** (`docs/rendering.md`). An idle editor requests no animation frames: over 60 s on the desktop profile its browser processes use 1–2.6% of a core. Until 2026-10-24 the clock ticked on every vsync, as v0.5.22 did (about 240 a second at 240 Hz, 7–11% of a core), so idle traces and process-tree CPU from before then include it.
 - **The gate's pump adds animation frames to counts.** Under `hz: 60` or `120`, animation frame counts include the gate's, so compare counts only within one `hz`.
 - **`previewDraw` on an edit frame includes the preview's rebuild.** It is not the steady cost.
 - **The GC pass grows with the session.** Later in a session (`memory`, or after many cells in one group) it costs more than in a fresh one, because it walks every tracked resource. Compare cells from fresh groups.
@@ -250,6 +250,7 @@ New:
     - desktop, without Elevation: clock p95 5.7 → 2.4 ms, frames drawn 86% → 98%;
     - phone at 4×, with Elevation: clock p95 41 → 20 ms, preview p95 40 → 10 ms;
     - the 15–40 ms major GCs stay at the same rate: they finish marking a 300–400 MB heap, and are not the outline's.
+- **Idle compiles in pauses:** with the app clock stopped, an idle period lasts up to 50 ms, and the vector compile (`vectorRanges.ts`) captures sections in it. At 4× on 21888 zoomed out, one pause of ten `notch` runs held two such tasks, of 33 and 36 ms, under load. An input that lands in one waits for it.
 - **The idle vector compile** (fixed by pr2-gc): after an edit at 4× on a dense chart, `compileAhead` (`vectorRanges.ts`) asked again whenever the idle period was shorter than the section's estimate, about 240 callbacks a second and 8–12% of the main thread. It now retries 100 ms later, up to ten times, then waits for a frame that draws.
 
 Still present:

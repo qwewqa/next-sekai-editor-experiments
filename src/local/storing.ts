@@ -22,7 +22,9 @@ import { session as currentSession } from '../history/session'
 import { liveState, setSlotLoader } from '../history/stack'
 import { appVersion, platform } from '../platform'
 import { startupGate } from '../startup/gate'
+import { keepClockWhile } from '../time'
 import { postSessionUpdated } from './channel'
+import { runSliced } from './chunks'
 import { isDurablyStoredWith } from './durable'
 import {
     Flusher,
@@ -230,6 +232,12 @@ export const startStoring = (
     const writes: JournalWrite[] = []
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
+        // An extraction runs a slice per idle period. The clock's frames bring one a frame, as
+        // before it could stop; with no frames, Chrome's idle periods come about 50 ms apart.
+        runJob: (job, options) => {
+            const release = keepClockWhile(() => true)
+            return runSliced(job, options).finally(release)
+        },
         // A commit clears the journal it covers (§1.6.4 #7).
         onCommitted: (session, seq) => {
             journalWriter?.committed(session.id, seq)
