@@ -460,8 +460,10 @@ export class VectorRanges {
         this.aheadPending = true
         idle((deadline) => {
             this.aheadPending = false
-            if (this.compileAhead(deadline)) this.scheduleAhead()
-            else this.aheadDone = key
+            const left = this.compileAhead(deadline)
+            if (left === 'more') this.scheduleAhead()
+            else if (left === 'done') this.aheadDone = key
+            // On 'frame', the next frame that draws sections asks again.
         })
     }
 
@@ -484,9 +486,10 @@ export class VectorRanges {
 
     /**
      * Compiles the sections nearest the view, within a view span of it, as the frame would have:
-     * same context, transform and drawing state. True while some remain.
+     * same context, transform and drawing state. Says what is left: more for the next idle
+     * period, a frame to wait for, or nothing.
      */
-    private compileAhead(deadline: IdleDeadline) {
+    private compileAhead(deadline: IdleDeadline): 'more' | 'frame' | 'done' {
         const source = this.ahead
         const ctx = this.context
         if (
@@ -496,9 +499,9 @@ export class VectorRanges {
             source.owner !== ctx.resourceOwner ||
             ctx.isContextLost()
         )
-            return false
+            return 'done'
         const candidates = this.aheadSections(source)
-        if (!candidates.length) return false
+        if (!candidates.length) return 'done'
         // Eviction takes only sections outside the view and its reach.
         const active = this.activeSectionKeys
         this.activeSectionKeys = new Set([...active, ...candidates.map(({ key }) => key)])
@@ -507,10 +510,15 @@ export class VectorRanges {
             const { a, b, c, d, e, f } = source.matrix
             ctx.setTransform(a, b, c, d, e, f)
             const state = drawState(ctx)
-            if (state.some((value, index) => value !== source.state[index])) return false
+            if (state.some((value, index) => value !== source.state[index])) return 'done'
+            let compiled = 0
             for (const section of candidates) {
                 const estimate = Math.max(this.msPerSection, this.msPerStep * section.steps.length)
-                if (deadline.timeRemaining() < Math.min(estimate, fullIdleMs)) return true
+                // While the app clock runs, each idle period ends before its next frame, so
+                // the next is no longer: after one too short for the nearest section, wait
+                // for a frame that draws.
+                if (deadline.timeRemaining() < Math.min(estimate, fullIdleMs))
+                    return compiled ? 'more' : 'frame'
                 const stale = this.sections.get(section.key)
                 if (stale) this.removeSection(section.key, stale)
                 const start = performance.now()
@@ -522,12 +530,13 @@ export class VectorRanges {
                 this.learn(section, performance.now() - start)
                 if (!captured?.reusable || !this.makeSectionRoom(captured.graphics)) {
                     if (captured) ctx.releaseVectors(captured)
-                    return false
+                    return 'done'
                 }
                 this.keepSection(section, captured, names, points, strokes)
                 this.stats.ahead++
+                compiled++
             }
-            return false
+            return 'done'
         } finally {
             ctx.restore()
             this.activeSectionKeys = active

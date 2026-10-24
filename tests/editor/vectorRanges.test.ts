@@ -1516,7 +1516,7 @@ test('idle compilation uses the frame’s transform, and none when the drawing s
     assert.deepEqual(renderer.matrix, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 })
 })
 
-test('idle compilation waits for time its estimate fits, and a cleared cache drops it', () => {
+test('an idle period too short for the nearest section waits for a frame, and a cleared cache drops it', () => {
     const state = aheadFixture()
     const plan = vectorSections(state)
     const idle = manualIdle()
@@ -1533,15 +1533,32 @@ test('idle compilation waits for time its estimate fits, and a cleared cache dro
         now += 10
         return capture.apply(this, args)
     }
+    // Idle time that runs out as captures take it.
+    const runFor = (ms: number) => {
+        for (const callback of idle.queue.splice(0)) {
+            const end = now + ms
+            callback({ timeRemaining: () => end - now })
+        }
+    }
     try {
         render(plan, plan.slice(0, 2))
         // Each capture took 10 ms; 1 ms of idle time fits none of them.
         idle.run(1)
         assert.equal(cache.stats.ahead, 0)
-        assert.equal(idle.queue.length, 1, 'it waits for the next idle time')
+        assert.equal(idle.queue.length, 0, 'it does not ask again before a frame')
+        render(plan, plan.slice(0, 2))
+        assert.equal(idle.queue.length, 1, 'a frame that draws asks again')
         cache.clear()
         idle.run()
         assert.equal(cache.stats.ahead, 0)
+        render(plan, plan.slice(0, 2))
+        // Time for one capture compiles the nearest section and asks for the next.
+        runFor(12)
+        assert.equal(cache.stats.ahead, 1)
+        assert.equal(idle.queue.length, 1)
+        runFor(12)
+        assert.equal(cache.stats.ahead, 2)
+        assert.equal(idle.queue.length, 0)
     } finally {
         performance.now = realNow
     }
