@@ -5,7 +5,11 @@ export type SheetGeometryInput = {
     rem?: number
 }
 
-/** The History sheet's existing frame, before subtracting its own chrome. */
+/**
+ * The History sheet's existing frame, before subtracting its own chrome. A short pane at least
+ * 31rem wide takes the right sheet, which leaves a notice card about 10rem beside it; a narrower
+ * one, such as a phone's under its dock, takes the bottom sheet.
+ */
 export const getSheetGeometry = ({
     width,
     height,
@@ -13,7 +17,7 @@ export const getSheetGeometry = ({
     rem = 16,
 }: SheetGeometryInput) => {
     const inset = rem / 2
-    if (height < 500 && width > height) {
+    if (height < 500 && width > height && width >= 31 * rem) {
         // 8 px under the peek stack, the stack's own rhythm.
         const top = Math.max(60, peekClearance + 8)
         return {

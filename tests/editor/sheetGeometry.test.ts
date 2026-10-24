@@ -15,6 +15,28 @@ test('the History candidate uses the same right-sheet top and bottom insets', ()
     })
 })
 
+test('a short pane takes the right sheet only from 31rem wide', () => {
+    // Under a phone's top dock (360 × 640, 375 × 667) and beside a 667 × 375 phone's side dock.
+    for (const [width, height] of [
+        [360, 312],
+        [375, 339],
+        [371, 343],
+        [495, 343],
+    ] as const)
+        assert.equal(getSheetGeometry({ width, height, peekClearance: 112 }).side, 'bottom')
+    // Beside an 844 × 390 phone's side dock, and a 1280 × 480 window.
+    for (const [width, height] of [
+        [496, 343],
+        [548, 358],
+        [600, 448],
+    ] as const)
+        assert.equal(getSheetGeometry({ width, height, peekClearance: 112 }).side, 'right')
+    assert.equal(
+        getSheetGeometry({ width: 548, height: 358, peekClearance: 112, rem: 20 }).side,
+        'bottom',
+    )
+})
+
 test('a History sheet needs 116 pixels after its actual chrome', () => {
     const input = { width: 667, height: 288, peekClearance: prospectivePeekClearance(667)! }
     assert.equal(historySheetFits(input, 65), false)

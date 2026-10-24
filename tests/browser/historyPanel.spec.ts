@@ -695,10 +695,11 @@ test.describe('links', () => {
     })
 })
 
-test.describe('the 242 px right sheet', () => {
-    // A phone in portrait at 379 px: the History sheet on the right, its band in the small mode.
+test.describe('the narrowest right sheet', () => {
+    // A short pane just over 31rem (504 px): the History sheet on the right, 312 px, its band in
+    // the small mode in English and the icon mode where the tabs are shorter.
     test.use({
-        viewport: { width: 390, height: 379 },
+        viewport: { width: 504, height: 379 },
         deviceScaleFactor: 3,
         hasTouch: true,
         isMobile: true,
@@ -752,12 +753,12 @@ test.describe('the 242 px right sheet', () => {
                 }
             })
             test.info().annotations.push({ type: locale, description: JSON.stringify(measured) })
-            expect(measured.band).toBeGreaterThan(240)
-            expect(measured.band).toBeLessThan(244)
-            expect(measured.mode).toBe('small')
+            expect(measured.band).toBeGreaterThan(310)
+            expect(measured.band).toBeLessThan(315)
+            if (locale === 'en') expect(measured.mode).toBe('small')
             expect(measured.apart).toBe(true)
             expect(measured.clipped).toBe(false)
-            if (locale === 'tr') await shoot(page, 'x6-tr-242')
+            if (locale === 'tr') await shoot(page, 'x6-tr-312')
             if (!measured.timeline.whole) cut.push(`${locale}: ${measured.timeline.text}`)
             // Recent Sessions keeps its 48 px floor.
             expect(measured.sessions.width).toBeGreaterThanOrEqual(48)

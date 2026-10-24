@@ -2,18 +2,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { startupGate } from '../startup/gate'
 import NoticeCard from './NoticeCard.vue'
-import {
-    cardCrowded,
-    cardInDialog,
-    holdNotice,
-    noticeCard,
-    notification,
-    quickInDialog,
-} from './notification'
+import { cardInDialog, holdNotice, noticeCard, notification, quickInDialog } from './notification'
 import QuickNotice from './QuickNotice.vue'
 import { hasToolModal, sheetBox, type ToolModalPane } from './toolModals'
-import { useRootFontSize } from './useRootFontSize'
-import { view } from './view'
 
 // Shown within one editor pane, below its header (`inset`, in pixels), so it
 // never covers the elevation header or straddles the split between panes.
@@ -87,31 +78,9 @@ const quick = computed(() =>
         ? notification.value
         : undefined,
 )
-
-// Beside a side sheet that leaves it under 10rem (a phone with the dock open), a card would break
-// its words: it waits, its time held, until the sheet closes. Its room is the pane less this host's
-// padding on either side.
-const rem = useRootFontSize()
-const crowded = computed(
-    () =>
-        sheet.value?.side === 'right' &&
-        view.w - gap - (sheet.value.size + 2 * gap) < 10 * rem.value,
-)
-if (props.pane === 'main') {
-    watch(
-        crowded,
-        (value) => {
-            cardCrowded.value = value
-        },
-        { immediate: true },
-    )
-    onBeforeUnmount(() => {
-        cardCrowded.value = false
-    })
-}
 const card = computed(() => {
     const notice = noticeCard.value
-    if (!notice || cardInDialog.value || crowded.value) return undefined
+    if (!notice || cardInDialog.value) return undefined
     return !notice.startup || startupGate.phase === 'done' ? notice : undefined
 })
 </script>
