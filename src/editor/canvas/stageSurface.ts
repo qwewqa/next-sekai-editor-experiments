@@ -1,3 +1,4 @@
+import { timed } from '../../perf/probe'
 import type { WebGLDrawContext } from '../../rendering/context'
 import type { Matrix } from '../../rendering/matrix'
 import { StageTriangles, type StageMesh } from '../../rendering/stageMesh'
@@ -128,7 +129,7 @@ export const createStageSurface = () => {
             const last = Math.floor((bounds.b * sy + reach) / size)
             const edge = (k: number) =>
                 timeToBeat(context.state.bpms, Math.max(0, (k * size) / sy / ups))
-            const build = (k: number): Tile => {
+            const build = timed('stageTile', (k: number): Tile => {
                 const matrix: Matrix = [sx, 0, 0, sy, 0, -k * size]
                 const segments: Segment[] = []
                 let count = 0
@@ -159,7 +160,7 @@ export const createStageSurface = () => {
                 floats += count
                 tiles.set(k, tile)
                 return tile
-            }
+            })
 
             // Draw in chart time order, as one draw of the whole view would.
             let built = 0

@@ -48,7 +48,8 @@ A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
     - `clockFrame`: the app clock's whole frame, which covers the time watchers, Vue's flush and the draws it triggers;
-    - `previewDraw`, `elevationDraw` and `minimapOverlay`.
+    - `previewDraw`, `elevationDraw` and `minimapOverlay`;
+    - `stageTile`: each Composed stage tile build. `perf:report … frames` gives the builds per chart draw.
 
 Other builds define the flag false: `timed` returns its callback, and the hook is never imported or bundled. Probes collect only while a run has switched them on.
 
