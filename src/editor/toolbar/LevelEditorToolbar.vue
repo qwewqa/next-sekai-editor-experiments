@@ -241,14 +241,18 @@ const quickSlop = 6
 let quick:
     | { id: number; index: number; face: HTMLElement; x: number; y: number; timer?: number }
     | undefined
-// The flyout row a quick switch press is over, and the face it slid to.
+// The flyout row a quick switch press is over, and the face a held press targets, shown pressed.
 const quickOver = ref<number>()
 const quickFace = ref<number>()
+// Only the group of a held press or an open flyout takes input. Inert also drops the press look
+// the browser keeps on a face a press slid away from.
+const owner = computed(() => quickFace.value ?? activeIndex.value)
 
 const openQuick = () => {
     if (!quick) return
     clearTimeout(quick.timer)
     quick.timer = undefined
+    quickFace.value = quick.index
     if ((toolbar.value[quick.index]?.length ?? 0) > 1) activeIndex.value = quick.index
 }
 
@@ -279,7 +283,7 @@ const quickSwitchAt = (event: PointerEvent) => {
     return Math.abs(cell.top - target.top) < target.height / 2 ? index : undefined
 }
 
-// Capture moves along, as the previous face turns inert under the new flyout.
+// Capture moves along, as the previous face turns inert.
 const switchQuick = (event: PointerEvent, index: number) => {
     const face = groups.value[index]?.querySelector<HTMLElement>(':scope > button')
     if (!quick || !face) return
@@ -593,7 +597,7 @@ onBeforeUnmount(() => {
                 :ref="(element) => element && (groups[i] = element as HTMLElement)"
                 class="pointer-events-auto"
                 :class="{ 'z-20': activeIndex === i }"
-                :inert="activeIndex !== -1 && activeIndex !== i"
+                :inert="owner !== -1 && owner !== i"
             >
                 <!-- A square pseudo-element, centred in place, takes input in the corners; the face stays unpositioned.
                      The chrome tier is on the shown tool, not the row, so the flyout's faces keep the surface values. -->

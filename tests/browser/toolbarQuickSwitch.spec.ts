@@ -144,9 +144,7 @@ test.describe('mouse', () => {
         expect(await isOpen(page)).toBe(0)
     })
 
-    test('a release on the face slid to runs it, and the toolbar keeps no focus', async ({
-        page,
-    }) => {
+    test('a release on the face slid to runs it', async ({ page }) => {
         await rowToolbar(page)
         const from = await centre(page, face(page, 0))
         await page.mouse.move(from.x, from.y)
@@ -156,21 +154,25 @@ test.describe('mouse', () => {
         await page.mouse.up()
         expect(await toolName(page)).toBe('note')
         expect(await isOpen(page)).toBe(0)
-        expect(await toolbarHasFocus(page)).toBe(false)
     })
 
-    test('a slide to a single tool targets it without a flyout', async ({ page }) => {
+    // Note's face, which no other flyout turns inert, still holds focus at the release.
+    test('a slide to a single tool targets it without a flyout, and the toolbar keeps no focus', async ({
+        page,
+    }) => {
         await rowToolbar(page)
-        const from = await centre(page, face(page, 0))
+        const from = await centre(page, face(page, 1))
         await page.mouse.move(from.x, from.y)
         await page.mouse.down()
-        // Across Note's group.
         const to = await centre(page, face(page, 2))
         await page.mouse.move(to.x, to.y, { steps: 15 })
         await expect(face(page, 2)).toHaveClass(pressed)
+        // Only the face under the pointer looks pressed.
+        expect(await face(page, 1).evaluate((element) => element.matches(':active'))).toBe(false)
         expect(await isOpen(page)).toBe(0)
         await page.mouse.up()
         expect(await toolName(page)).toBe('bpm')
+        expect(await toolbarHasFocus(page)).toBe(false)
     })
 
     test('a slide over faces, edges, the flyout and below the row opens each flyout once', async ({
