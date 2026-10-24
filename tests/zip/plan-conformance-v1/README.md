@@ -1,6 +1,6 @@
 # The plan conformance set, v1
 
-Frozen with Formats v1: the same plan gives the same bytes on every platform. The web executor (`tests/zip/planConformance.test.ts`) and Rust (`cargo test`) each run every case. Never edit these files once v0.6.0 ships.
+Frozen with Formats v1: the same plan gives the same bytes on every platform. The web executor (`tests/zip/planConformance.test.ts`) runs every case, and any other writer of the format must reproduce them. Never edit these files once v0.6.0 ships.
 
 Each `<case>/` holds:
 
