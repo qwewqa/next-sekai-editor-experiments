@@ -6,7 +6,7 @@ import { headOf } from './open/earlier'
 import { sessionReadability } from './records/unknownValues'
 import { storedRead, type ReadWorker, type StoredRead } from './storedRead'
 
-// Recent Sessions' list (Part 1 §1.4.10.6): one row per chain, newest first, read in the storage
+// Recent Sessions' list: one row per chain, newest first, read in the storage
 // worker in one transaction. A chain without a readable head is listed as `damaged`, never hidden;
 // a chain marked for Delete is not listed. The page reads it through `storedRead`, so a failed
 // read is a failure, never an empty list.
@@ -27,13 +27,13 @@ export type RecentChain = {
     updatedAt: number
     /**
      * The head session: what Restore Session opens. `startedAt` dates an untitled name: the chain's
-     * first start, so a later visit does not rename it (§1.3.5).
+     * first start, so a later visit does not rename it.
      */
     head: { sessionId: string; lastSeq: number; startedAt: number }
-    /** What the displayed name is chosen from (§1.3.5), with the summary's BGM name. */
+    /** What the displayed name is chosen from, with the summary's BGM name. */
     nameParts: NameParts
     file?: RecentFile
-    /** The head's state differs from the file event's (§1.3.4); false without a file. */
+    /** The head's state differs from the file event's; false without a file. */
     changed: boolean
     /** The head's note count; absent when unknown, never 0. */
     noteCount?: number
@@ -54,7 +54,7 @@ const fileOf = (value: unknown): RecentFile | undefined => {
     }
 }
 
-/** One session of the chain this build can't read makes the chain unreadable (§1.6.11.8). */
+/** One session of the chain this build can't read makes the chain unreadable. */
 const readabilityOf = async (tx: KvTx, chainId: string, head: Row | undefined) => {
     const sessions = await tx.index('sessions', 'chainId').getAll(chainId)
     let readable: RecentReadable = head ? 'yes' : 'damaged'

@@ -1,8 +1,8 @@
 import { NO_USE_DAY, type UseDay } from './days'
 import type { KvTx, KvUpgrade } from './kv/types'
 
-// The database `nse-local-data` (Part 1 §1.6.11.2; `DB_VERSION` 1, whose store set is `STORES_V1`)
-// and the versioning rules (§1.6.1): upgrades
+// The database `nse-local-data` (`DB_VERSION` 1, whose store set is `STORES_V1`)
+// and the versioning rules: upgrades
 // only add stores, indexes and fields; nothing here or in any version deletes a store or the
 // database, and there is no reset path. The upgrade interface has no delete at all.
 
@@ -17,7 +17,7 @@ type StoreSpec = {
 /** Every store with its key and indexes (none unique or multi-entry). */
 export const STORES_V1 = {
     chains: { keyPath: 'chainId', indexes: { updatedAt: 'updatedAt', docId: 'docId' } },
-    // A chain's file handles by role, off its record (D24).
+    // A chain's file handles by role, off its record.
     handles: { keyPath: ['chainId', 'role'], indexes: {} },
     sessions: { keyPath: 'id', indexes: { updatedAt: 'updatedAt', chainId: 'chainId' } },
     entries: { keyPath: ['sessionId', 'seq'], indexes: {} },
@@ -52,7 +52,7 @@ export type MetaValues = {
 
 export type MetaKey = keyof MetaValues
 
-/** §1.6.11.8's formatVersion that this build writes. */
+/** The formatVersion that this build writes. */
 export const FORMAT_VERSION = 1
 
 export type CreateContext = {
@@ -124,7 +124,7 @@ export const writeMeta = async <K extends MetaKey>(tx: KvTx, key: K, value: Meta
     await tx.put('meta', { ...(isMetaRow(row) ? row : {}), key, value })
 }
 
-/** `meta.epoch`, read inside every flush's transaction (§1.6.6). */
+/** `meta.epoch`, read inside every flush's transaction. */
 export const readEpoch = async (tx: KvTx) => (await readMeta(tx, 'epoch')) ?? 0
 
 /**

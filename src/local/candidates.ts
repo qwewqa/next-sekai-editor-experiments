@@ -5,7 +5,7 @@ import { readRecent, type RecentFile, type RecentReadable } from './recent'
 import { fileAtOf, ids, sessionsOf } from './removal'
 import { nextTime } from './time'
 
-// What Delete Sessions… reads of the stored chains (deletion design §3.6; Local Data design §3.7),
+// What Delete Sessions… reads of the stored chains,
 // in one transaction: every chain not marked for Delete, with the facts the page needs for the
 // ranges and for `notSavedToFile`. The page decides what is in range, the zone being its own.
 

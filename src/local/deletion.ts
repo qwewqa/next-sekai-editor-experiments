@@ -8,7 +8,7 @@ import { storedRead, type ReadWorker } from './storedRead'
 import type { CallOptions } from './worker/rpc'
 import type { StorageHandlers } from './worker/storage.worker'
 
-// Delete, Undo and the sweep on the page (deletion design §3.3, §3.4). The page takes the locks and
+// Delete, Undo and the sweep on the page. The page takes the locks and
 // checks the journals (the worker can reach neither); the worker runs the transactions. A remover
 // locks every session and import of a chain, or leaves the chain alone (R3), and never touches a
 // session with a pending journal (R5).
@@ -97,7 +97,7 @@ export const createDeletion = (deps: DeletionDeps) => {
         return sessions.filter((id) => found.has(id))
     }
 
-    /** The removal primitive (§3.3): locks, journal check, one worker transaction. */
+    /** The removal primitive: locks, journal check, one worker transaction. */
     const removeLocked = async (request: RemoveRequest): Promise<RemoveLockedResult> => {
         const leases = await lockChain(locks, request.locked)
         if (!leases) return { kind: 'open' }
@@ -114,7 +114,7 @@ export const createDeletion = (deps: DeletionDeps) => {
         return result
     }
 
-    /** Delete (§3.4): applies the chain's journals, then marks it; the sweep removes it later. */
+    /** Delete: applies the chain's journals, then marks it; the sweep removes it later. */
     const markDeleted = async (chainId: string): Promise<MarkDeletedResult> => {
         if (inFlight.has(chainId)) return { kind: 'gone' }
         inFlight.add(chainId)

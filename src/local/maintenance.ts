@@ -8,7 +8,7 @@ import { retryStoring } from './retryStoring'
 import type { ReadWorker } from './storedRead'
 import type { StorageStatus } from './worker/core'
 
-// The maintenance runner (deletion design §3.10): when the deleting jobs run. One run at a time,
+// The maintenance runner: when the deleting jobs run. One run at a time,
 // in order: reclaim what deleted chains left outside storage, sweep chains marked for Delete long
 // enough ago, GC, cleanup under pressure (at load when usage is high, and after storing paused for
 // a full browser), and at load `persist()`. A trigger during a run queues one more run.
@@ -181,8 +181,8 @@ export const createRunner = (deps: RunnerDeps) => {
 }
 
 /**
- * `persist()` wherever the browser has it, Firefox included, whose prompt is acceptable (DEL-D5
- * changed). Best effort: a refusal, a rejection or `false` changes nothing.
+ * `persist()` wherever the browser has it, Firefox included, whose prompt is acceptable.
+ * Best effort: a refusal, a rejection or `false` changes nothing.
  */
 export const persistStorage = (storage: Partial<StorageManager> | undefined) =>
     typeof storage?.persist === 'function' ? storage.persist() : undefined

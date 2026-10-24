@@ -1,7 +1,7 @@
 import { readMeta, writeMeta } from './db'
 import type { KvTx } from './kv/types'
 
-// Strictly increasing time (Part 1 §1.6.8.7): now = max(Date.now(), meta.maxSeenTime + 1), and
+// Strictly increasing time: now = max(Date.now(), meta.maxSeenTime + 1), and
 // every write moves maxSeenTime, so two writes never share a time across tabs or a clock held back.
 
 export const DAY_MS = 24 * 60 * 60 * 1000

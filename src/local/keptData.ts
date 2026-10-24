@@ -1,11 +1,11 @@
-// What the web reads of a chain's data kept elsewhere (deletion design §3.6, Part 1 §1.6.11.10):
+// What the web reads of a chain's data kept elsewhere:
 // whether its work is in a file.
 
 /** What a stored chain says of its file: the facts `notSavedToFile` reads. */
 export type SavedFacts = {
     /** The chain's binding as stored; an unknown `event` reads as a download (`fileEvent`). */
     file?: { event?: string; confirmed?: boolean }
-    /** The head's state differs from the file event's (§1.3.4); false without a file. */
+    /** The head's state differs from the file event's; false without a file. */
     changed: boolean
     /** The chain holds work: edited, or opened from a file. */
     hasContent: boolean
@@ -17,7 +17,7 @@ export type SavedFacts = {
  * Whether a stored chain has work no file holds: bound and changed since its file event, bound by
  * a download that isn't confirmed, or unbound with content. The stored-chain twin of
  * `hasChangesNotInFile` (`editor/file/closePrompt.ts`). A chain this build can't read counts as
- * not saved. `downloadConfirmedHere` is this browser's answer for downloads (§1.3.4): confirmed
+ * not saved. `downloadConfirmedHere` is this browser's answer for downloads: confirmed
  * here, and a platform that can confirm one.
  */
 export const notSavedToFile = (facts: SavedFacts, downloadConfirmedHere: boolean) => {

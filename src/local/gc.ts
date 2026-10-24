@@ -11,7 +11,7 @@ import {
 import { stampNow } from './time'
 import type { ExclusiveHold, StorageCore } from './worker/core'
 
-// GC (Part 1 §1.6.8.6; deletion design §3.5): mark from every row that names a body, sweep the
+// GC: mark from every row that names a body, sweep the
 // bodies nothing reaches. One `nse-maint` exclusive hold from the mark to the last sweep (R6): no
 // writer adds a reference meanwhile, and the pass stops as soon as one waits, keeping what it swept.
 // It reads only the fields that name bodies, and removes nothing while a newer build's data is

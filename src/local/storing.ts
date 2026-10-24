@@ -51,7 +51,7 @@ import type { StorageWorker } from './worker/client'
 import type { StorageStatus } from './worker/core'
 import { transfer } from './worker/rpc'
 
-// Storing (Part 1 §1.6.4): every change to the undo stack becomes an entry; the flush stores them
+// Storing: every change to the undo stack becomes an entry; the flush stores them
 // about 1 s after the last change, at once and strictly on hide, and right after a media pick.
 // The journal covers what isn't committed to the database; while storage is unavailable it's
 // written on a slow idle timer too.
@@ -59,7 +59,7 @@ import { transfer } from './worker/rpc'
 declare global {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
     interface Window {
-        /** The dev console's tools (§1.6.11.1's debug viewer): dev builds and test flags only. */
+        /** The dev console's tools: dev builds and test flags only. */
         nse?: { inspectSnapshot: (hash: string) => Promise<unknown> }
         /** The flusher for specs, when a storage test flag is seeded. */
         nseFlushTest?: {
@@ -80,15 +80,15 @@ export let flusher: Flusher | undefined
 export { onFlusherStart }
 
 /**
- * Safe mode (§1.4.2): the flusher holds the open session in memory only, so Save builds from
- * what this tab holds (§1.4.7); no journal, tab record or Reopen is written.
+ * Safe mode: the flusher holds the open session in memory only, so Save builds from
+ * what this tab holds; no journal, tab record or Reopen is written.
  */
 let safeMode = false
 
-/** This tab's journal writer (§1.6.4 #7), once storing started; none in safe mode. */
+/** This tab's journal writer, once storing started; none in safe mode. */
 export let journalWriter: JournalWriter | undefined
 
-/** This tab's client id for `query()` (§1.6.5), once storing started. */
+/** This tab's client id for `query()`, once storing started. */
 export let tabClient: TabClient | undefined
 
 /** The page's own blank start, until a session replaces it. */
@@ -96,7 +96,7 @@ let initialSession: FlushSession | undefined
 
 /**
  * Whether the tab still shows its own blank start, never edited: only then does startup open a
- * stored session over it, so nothing made meanwhile is lost to it (§1.4.2).
+ * stored session over it, so nothing made meanwhile is lost to it.
  */
 export const untouched = () => {
     const session = flusher?.session
@@ -104,7 +104,7 @@ export const untouched = () => {
 }
 
 /**
- * Names the page's own blank start in the tab record, once startup opened nothing over it (§1.4.2):
+ * Names the page's own blank start in the tab record, once startup opened nothing over it:
  * until then the record keeps the session this tab had, so a reload meanwhile claims it again.
  */
 export const recordBlankStart = () => {
@@ -115,7 +115,7 @@ export const recordBlankStart = () => {
 }
 
 /**
- * Reopen offers a session this tab left, once its commit holds (§1.4.1): an unstored,
+ * Reopen offers a session this tab left, once its commit holds: an unstored,
  * unedited continuation stands for the session it continues.
  */
 export const offerReopen = (leaving: FlushSession, outgoing: Promise<boolean>) => {
@@ -141,7 +141,7 @@ export const offerReopen = (leaving: FlushSession, outgoing: Promise<boolean>) =
 let storingWorker: StorageWorker | undefined
 
 /**
- * Whether leaving the open session can lose it (§1.6.7's predicate). The journal is written
+ * Whether leaving the open session can lose it. The journal is written
  * first when it's due, as the leave and switch triggers do; its verification decides.
  */
 export const isDurablyStored = () => {
@@ -157,7 +157,7 @@ export const isDurablyStored = () => {
 let watching = false
 
 /**
- * Flushes at once and strictly on hide and freeze (§1.6.4). Watched from startup, before the
+ * Flushes at once and strictly on hide and freeze. Watched from startup, before the
  * worker answers, so the page's listeners are all in place early and never added later.
  */
 export const watchLifecycle = () => {
@@ -169,7 +169,7 @@ export const watchLifecycle = () => {
         journalWriter?.write()
         void flusher?.flush({ strict: true, oneGo: true })
     })
-    // beforeunload too (§1.6.4 #7); it never keeps the page itself.
+    // beforeunload too; it never keeps the page itself.
     platform.onCloseRequested(() => {
         journalWriter?.write()
         return true
@@ -181,7 +181,7 @@ const whileStalled = async () => {
     while (window.nseFlushTest?.stall) await new Promise((resolve) => setTimeout(resolve, 50))
 }
 
-/** How long a slot load waits for the next load's import resume to start (§1.5.4). */
+/** How long a slot load waits for the next load's import resume to start. */
 const RESUME_WAIT_MS = 4000
 
 /** Whether the session's import runs here, or starts within `RESUME_WAIT_MS` (the resume). */
@@ -193,7 +193,7 @@ const importStarted = async (sessionId: string) => {
     return isImporting(sessionId)
 }
 
-/** About every 10 s while storage is unavailable and there are changes (§1.6.7). */
+/** About every 10 s while storage is unavailable and there are changes. */
 export const IDLE_JOURNAL_MS = 10_000
 
 const whenIdle = (fn: () => void) => {
@@ -208,7 +208,8 @@ export type StoringOptions = {
 
 /**
  * Starts storing: entries from now on, and the journal on hide. `replayed` is the recovery order
- * (Part 0 §0.9.8), which every flush waits for: journals are replayed before any session opens.
+ * (the canary, the journals, the old auto save), which every flush waits for: journals are
+ * replayed before any session opens.
  */
 export const startStoring = (
     worker: StorageWorker,
@@ -222,7 +223,7 @@ export const startStoring = (
     const reports: FlushReport[] = []
     const errors: unknown[] = []
     const locks = platform.locks
-    // This tab's client id for query() (§1.6.5).
+    // This tab's client id for query().
     const client = new TabClient(locks)
     tabClient = client
     void client.lock.granted.catch(() => undefined)
@@ -238,7 +239,7 @@ export const startStoring = (
             const release = keepClockWhile(() => true)
             return runSliced(job, options).finally(release)
         },
-        // A commit clears the journal it covers (§1.6.4 #7).
+        // A commit clears the journal it covers.
         onCommitted: (session, seq) => {
             journalWriter?.committed(session.id, seq)
         },
@@ -247,15 +248,15 @@ export const startStoring = (
         onChainMoved: () => {
             postSessionUpdated()
         },
-        // A Save's binding stored: its marker goes (§1.4.7, our own completed Save).
+        // A Save's binding stored: its marker goes (our own completed Save).
         onIdentity: (session, identity) => {
             removeMarker(session.chainId, identity.revision.id)
         },
-        // Taken over while the binding waited in memory (R5, R6): the label follows the record.
+        // Taken over while the binding waited in memory: the label follows the record.
         onStaleIdentity: () => {
             void refreshBinding(worker, flusher)
         },
-        // A Save that may have written its file before a reload keeps its `seq` (§1.6.11.6).
+        // A Save that may have written its file before a reload keeps its `seq`.
         reservedSeq: markedSeq,
         transport: (batch, list, current) =>
             // A spec holds flushes to leave edits only the journal has, as a kill does.
@@ -278,7 +279,7 @@ export const startStoring = (
         onFork: (fork, from) => {
             journalWriter?.forked(from, fork)
             if (currentSession.value.sessionId !== from.id) return
-            // A separate copy of the file, or of the session, without the binding (§1.3.1).
+            // A separate copy of the file, or of the session, without the binding.
             const file = from.chain?.file as { name?: unknown } | undefined
             const copyOf =
                 typeof file?.name === 'string'
@@ -314,19 +315,19 @@ export const startStoring = (
             if (test) errors.push(error)
             // A newer database's refusals are expected.
             if (worker.status?.mode === 'readOnly') return
-            // The ring keeps the failure for Copy Diagnostic Info… (§1.4.16).
+            // The ring keeps the failure for Copy Diagnostic Info….
             recordError(error)
-            // A dev build's checks (D9, a published state changed in place) fail loudly.
+            // A dev build's checks (a published state changed in place) fail loudly.
             if (import.meta.env.DEV) console.error('A flush failed', error)
         },
     })
     flusher = instance
     storingWorker = worker
     setRetrySource(() => ({ worker, flusher }))
-    // Safe mode stores nothing: the session stays in this tab, for Save (§1.4.7).
+    // Safe mode stores nothing: the session stays in this tab, for Save.
     if (safe) instance.withoutDatabase()
     // A newer database stores nothing from this build: as with storage unavailable, the journal
-    // keeps the open session (§1.6.7).
+    // keeps the open session.
     void Promise.resolve(status).then((known) => {
         if (known.mode === 'readOnly') instance.withoutDatabase()
     })
@@ -343,7 +344,7 @@ export const startStoring = (
               },
           })
 
-    // While storage is unavailable the journal is also written about every 10 s (§1.6.7).
+    // While storage is unavailable the journal is also written about every 10 s.
     void Promise.resolve(status).then((known) => {
         if (known.mode === 'stored' || !journalWriter) return
         setInterval(() => {
@@ -351,7 +352,7 @@ export const startStoring = (
         }, IDLE_JOURNAL_MS)
     })
 
-    // Export's target and name are the open chain's fields (§1.4.8).
+    // Export's target and name are the open chain's fields.
     setExportPersister((fields) => instance.setChainFieldsNow(fields))
     setExportTargetReader(async () => {
         const session = instance.session
@@ -359,7 +360,7 @@ export const startStoring = (
         const record = await storedRead(worker, 'readChainRecord', session.chainId)
         return instance.session !== session ? readValue({}) : record
     })
-    // Its handle is the chain's too, read when Export needs it (D24).
+    // Its handle is the chain's too, read when Export needs it.
     checkPrivateWindow()
     setExportHandleReader(async () => {
         const session = instance.session
@@ -373,7 +374,7 @@ export const startStoring = (
         (action) => {
             if (action.kind === 'reset') {
                 const descriptor = currentSession.value
-                // A New reloads as blank (§1.4.2); the page's own blank start is recorded once
+                // A New reloads as blank; the page's own blank start is recorded once
                 // startup opened nothing over it (`recordBlankStart`).
                 if (!safe && (!firstReset || action.origin !== 'new'))
                     writeTabRecord({
@@ -409,13 +410,13 @@ export const startStoring = (
                 return
             }
             // Work on the blank start (after Start Blank) names it in the tab record at once, so
-            // a reload or crash while startup still runs brings that work back (§1.4.2).
+            // a reload or crash while startup still runs brings that work back.
             if (instance.session === initialSession && !blankNamed) {
                 blankNamed = true
                 recordBlankStart()
             }
             // The bound file's handle read once the session is edited, so a Save's permission
-            // request isn't behind a storage read (D24: never at startup).
+            // request isn't behind a storage read (never at startup).
             if (startupGate.phase === 'done' && prefetched !== instance.session) {
                 prefetched = instance.session
                 void import('../editor/save/flow').then((flow) => flow.prefetchHandle())
@@ -433,7 +434,7 @@ export const startStoring = (
     worker.onStatus((next) => {
         if (next.mode === 'readOnly') instance.withoutDatabase()
     })
-    // Other tabs' takeovers show here as they happen (R6).
+    // Other tabs' takeovers show here as they happen.
     watchBindings(worker, () => flusher)
     // What the Save flows run in, read at each call: a fork or an open changes the session.
     setSaveEnvironment(() => {
@@ -472,7 +473,7 @@ export const startStoring = (
 
     // A restored undo slot is built from its stored records, verified, when Undo or Redo reaches it.
     // Right after a reload, a slot the resumed import hasn't brought yet loads once it has: the
-    // load waits for the resume to start, then for the import, and tries again (§1.5.4).
+    // load waits for the resume to start, then for the import, and tries again.
     const load = slotLoader((hex) => worker.call('readSnapshotVerified', hex))
     // A BGM this tab holds is attached to the slot it names, so Undo and Redo land with audio.
     setSlotLoader(async (snapshot) => {
@@ -497,7 +498,7 @@ export const startStoring = (
         }
     })
 
-    // A state that names audio it does not hold gets it from the media store (§1.6.8.4).
+    // A state that names audio it does not hold gets it from the media store.
     configureHeldBgm({
         read: (hash, size) =>
             worker.call('readMedia', hash, { timeoutMs: mediaTimeoutMs(size ?? 0) }),
@@ -506,7 +507,7 @@ export const startStoring = (
             worker.call('storeMedia', item, { timeoutMs: mediaTimeoutMs(item.bytes.byteLength) }),
     })
 
-    // History's entries are peeked from memory or their stored snapshots (§1.4.11).
+    // History's entries are peeked from memory or their stored snapshots.
     setPeekSource(createPeekSource(worker, () => flusher))
 
     // The debug viewer reads, and so only dev builds and a page with a storage test flag have it.
