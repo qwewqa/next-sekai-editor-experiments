@@ -10,6 +10,7 @@ import { centralDirectoryOf } from '../../platform/fingerprint'
 import type { BgmMeta } from '../../state/bgm'
 import type { LevelInfo, MediaRef } from '../../state/levelInfo'
 import { inflateStrict } from '../chunkVerify'
+import { documentDevice, type DeviceSource } from '../deviceId'
 import { equalBytes, fromHex16, toHex } from '../hash'
 import {
     ANCESTOR_LIMIT,
@@ -152,7 +153,8 @@ export type SaveOptions = {
     fileName?: string
     /** This write's `save` entry, created before the build: its time and captured operation. */
     save: { time: number; operation: JsonValue }
-    context: { now: number; newId: () => string; device: DeviceForm; appVersion: string }
+    /** `device`: this install's; the write records the device of the chain's lineage (§1.3.3). */
+    context: { now: number; newId: () => string; device: DeviceSource; appVersion: string }
     /** The saved session: the chain's head unless given (Save to File… gives its own). */
     sessionId?: string
     pending?: PendingInput
@@ -226,7 +228,7 @@ export type SavePlan = {
     tooLarge: MediaKind[]
     identity: SaveIdentity
     /** The `save` entry the file ends with; it always knows its count, the head's. */
-    saveEntry: EntryForm & { noteCount: number }
+    saveEntry: EntryForm & { noteCount: number; device: DeviceForm }
     /** Hashes found missing or bad in storage, marked damaged. */
     damaged: string[]
     /** Rows marked `kept: false` in storage by this build. */
@@ -608,14 +610,15 @@ export const planSave = async (
             : [chain.revision.id, ...chain.revision.ancestors].slice(0, ANCESTOR_LIMIT)
     const n = fresh ? 1 : (chain.revision?.n ?? 0) + 1
 
-    const saveEntry: EntryForm & { noteCount: number } = {
+    const device = documentDevice(options.context.device, chain.lineageId)
+    const saveEntry: EntryForm & { noteCount: number; device: DeviceForm } = {
         kind: 'save',
         time: options.save.time,
         operation: captureOperation(options.save.operation),
         snapshot: head,
         noteCount: headInput.summary.noteCount,
         revisionId,
-        device: options.context.device,
+        device,
         appVersion: options.context.appVersion,
     }
 
@@ -752,7 +755,7 @@ export const planSave = async (
                     return options.context.newId()
                 }
             })(),
-            device: options.context.device,
+            device,
             appVersion: options.context.appVersion,
         },
         id: docId,

@@ -59,7 +59,8 @@ import { stateOf } from '../records/charts'
 // Chains written straight into a test profile, as flushes and opens store them, and the Saves
 // over them: what the history model's tests and the property test share.
 
-export const DEVICE = { id: 'c3f00000-0000-4000-8000-000000000000', label: 'Web (Chrome)' }
+/** This install's `deviceId` and label; each file records the device its lineage derives. */
+export const DEVICE = { deviceId: 'c3f00000-0000-4000-8000-000000000000', label: 'Web (Chrome)' }
 
 const states = new Map<number, { state: State; hex: string }>()
 
@@ -378,7 +379,7 @@ export class Fixture {
             dirty: false,
             kept: true,
             revisionId: built.revisionId,
-            device: DEVICE,
+            device: built.saveEntry.device,
             ...(built.saveEntry.appVersion === undefined
                 ? {}
                 : { appVersion: built.saveEntry.appVersion }),

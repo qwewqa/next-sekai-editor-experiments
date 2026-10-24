@@ -67,12 +67,13 @@ import {
 } from './dialogs'
 import { otherProject, readDiskFacts, type DiskFacts } from './disk'
 import {
-    deviceForm,
-    deviceId,
+    deviceLabel,
+    deviceSource,
     forgetHandle,
     heldHandle,
     markerFile,
     markerUnit,
+    ownDeviceId,
     readMarker,
     rememberHandle,
     removeMarker,
@@ -267,7 +268,7 @@ const markerOf = (
         snapshot: built.saveEntry.snapshot,
         noteCount: built.saveEntry.noteCount,
         revisionId: built.revisionId,
-        device: deviceForm(),
+        device: built.saveEntry.device,
         ...(built.saveEntry.appVersion === undefined
             ? {}
             : { appVersion: built.saveEntry.appVersion }),
@@ -301,7 +302,7 @@ const bindWrite = async (
             operation: operationOfEntry(built.saveEntry),
             state,
             revisionId: built.revisionId,
-            device: deviceForm(),
+            device: built.saveEntry.device,
             ...(built.saveEntry.appVersion === undefined
                 ? {}
                 : { appVersion: built.saveEntry.appVersion }),
@@ -852,11 +853,13 @@ const ownCompletedSave = async (
     const project = isRow(facts?.projectJson) ? facts.projectJson : undefined
     const revision = isRow(project?.revision) ? project.revision : undefined
     const device = isRow(revision?.device) ? revision.device : undefined
+    const lineageId = project?.lineageId
     const last = facts?.last
     // The file holds this write: its revision, this browser, and its `save` entry last.
     if (
         revision?.id !== marker.entry.revisionId ||
-        device?.id !== deviceId() ||
+        typeof lineageId !== 'string' ||
+        device?.id !== ownDeviceId(lineageId) ||
         (revision.parent ?? null) !== marker.parent ||
         (marker.parent !== null && marker.parent !== binding.revision?.id) ||
         last?.kind !== 'save' ||
@@ -1293,7 +1296,7 @@ const separateFile = async (
     read?: Promise<ReadResult>,
 ) => {
     const stem = stemOf(handle.name)
-    const engine = deviceForm().label.replace(/^Web \((.*)\)$/, '$1')
+    const engine = deviceLabel().replace(/^Web \((.*)\)$/, '$1')
     const name = await suggestion(env, `${stem} (${engine}, ${nameTime(Date.now())})`)
     const options = binding.file?.options ?? { history: true, bgm: true }
     await afterOutcome(
@@ -2001,7 +2004,7 @@ const sessionFileBody = async (
                         },
                         context: {
                             now: Date.now(),
-                            device: deviceForm(),
+                            device: deviceSource(),
                             appVersion: appVersion().appVersion,
                         },
                         sessionId: request.sessionId,

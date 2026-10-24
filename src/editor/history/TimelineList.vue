@@ -23,7 +23,8 @@ import { settings } from '../../settings'
 import { focusLost } from '../../utils/focusFallback'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
-import { deviceId } from '../save/env'
+import { flusher } from '../../local/storing'
+import { ownDeviceId } from '../save/env'
 import { commands, type CommandName } from '../commands'
 import { runCommand } from '../commands/runCommand'
 import { isApplePlatform, matchBindings } from '../controls/bindings'
@@ -1281,10 +1282,14 @@ watch(
 // --- Text
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
-// A save from another device names it, so this browser's own is known once.
-const thisDevice = deviceId()
+// A save from another device names it: this browser's own carries its id for the chain's lineage,
+// which every session the Timeline lists shares (§1.3.3).
+const thisDevice = () => {
+    const open = flusher?.session
+    return open?.id === session.value.sessionId ? ownDeviceId(open.lineageId) : undefined
+}
 const presentationOf = (row: EntryRow) =>
-    presentRow(row, operationContext.value, recipeOf(row), thisDevice)
+    presentRow(row, operationContext.value, recipeOf(row), thisDevice())
 
 const labelOf = (row: EntryRow) => presentationOf(row).full
 

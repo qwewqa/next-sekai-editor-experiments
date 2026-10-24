@@ -1,4 +1,5 @@
 import { liveState } from '../../history/stack'
+import { documentDeviceId, type DeviceSource } from '../../local/deviceId'
 import { fromHex16, toHex } from '../../local/hash'
 import { hasWebLocks } from '../../local/locks'
 import type { Revocation, SaveEntryForm } from '../../local/save/bind'
@@ -27,7 +28,10 @@ export const withBind = <T>(mode: LockMode, fn: () => Promise<T>): Promise<T> =>
 
 let memoryDeviceId: string | undefined
 
-/** This browser's `deviceId` (§1.3.3), kept in localStorage; in memory where it can't be. */
+/**
+ * This browser's `deviceId` (§1.3.3), kept in localStorage; in memory where it can't be. Files
+ * never hold it: they record the device id derived from it per lineage (`ownDeviceId`).
+ */
 export const deviceId = () => {
     const stored = storageGet('deviceId', undefined)
     if (typeof stored === 'string' && stored) return stored
@@ -56,7 +60,18 @@ export const deviceLabel = () => {
     }
 }
 
-export const deviceForm = () => ({ id: deviceId(), label: deviceLabel() })
+/** What a Save is given: the file records the device of its lineage, derived from it (§1.3.3). */
+export const deviceSource = (): DeviceSource => ({ deviceId: deviceId(), label: deviceLabel() })
+
+let ownDevice: { deviceId: string; lineageId: string; id: string } | undefined
+
+/** This browser's device id in files of `lineageId` (§1.3.3): a save there with it is its own. */
+export const ownDeviceId = (lineageId: string) => {
+    const id = deviceId()
+    if (ownDevice?.deviceId !== id || ownDevice.lineageId !== lineageId)
+        ownDevice = { deviceId: id, lineageId, id: documentDeviceId(id, lineageId) }
+    return ownDevice.id
+}
 
 // The handles this tab picked or read, by chain: the main thread's own copy for permission
 // requests and writes (§1.3.2).
