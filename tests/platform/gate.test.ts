@@ -325,11 +325,10 @@ const stored = (items: Record<string, string>) => {
     return storage
 }
 
-test('the gate lists the auto save, the unreadable one, the legacy slot and each journal', () => {
+test('the gate lists the auto save, the unreadable one and each journal', () => {
     const storage = stored({
         'autoSave.levelData': v1,
         'autoSave.unreadable': 'damaged',
-        legacyRecovery: raw,
         'journal.s1': JSON.stringify(ordinary),
         'journal.s2': JSON.stringify(unavailable),
         'journal.s3': 'not json',
@@ -345,27 +344,14 @@ test('the gate lists the auto save, the unreadable one, the legacy slot and each
         [
             'Download Your Last Auto Save',
             'Download Unreadable Auto Save',
-            'Download Your Last Auto Save',
             `Download Unsaved Work from ${when}`,
             `Download Unsaved Work from ${when}`,
         ],
     )
     assert.deepEqual(
         files.map((file) => file.name),
-        [
-            'coconut.nsld',
-            'Recovery.txt',
-            'Recovery.json',
-            'Coconut (Master).nsld',
-            'coconut.nsld.nsld',
-        ],
+        ['coconut.nsld', 'Recovery.txt', 'Coconut (Master).nsld', 'coconut.nsld.nsld'],
     )
-})
-
-test('the legacy slot is not offered twice beside the auto save it copies', () => {
-    const files = gate.recoveryFiles(stored({ 'autoSave.levelData': v1, legacyRecovery: v1 }))
-    assert.equal(files.length, 1)
-    assert.equal(gate.recoveryFiles(stored({ legacyRecovery: v1Unnamed })).length, 1)
     assert.equal(gate.recoveryFiles(stored({})).length, 0)
 })
 
@@ -574,7 +560,7 @@ test('unavailable storage still shows the message', () => {
 
 test('a button downloads its file, the same bytes as the stored work', async () => {
     const storage = stored({
-        legacyRecovery: v1,
+        'autoSave.levelData': v1,
         'journal.s1': JSON.stringify(ordinary),
         'autoSave.unreadable': 'damaged text',
     })
@@ -584,8 +570,8 @@ test('a button downloads its file, the same bytes as the stored work', async () 
     assert.deepEqual(
         buttons.map((button) => button.textContent),
         [
-            'Download Unreadable Auto Save',
             'Download Your Last Auto Save',
+            'Download Unreadable Auto Save',
             `Download Unsaved Work from ${day(ordinary.writtenAt)}`,
         ],
     )
@@ -601,10 +587,10 @@ test('a button downloads its file, the same bytes as the stored work', async () 
     }
     assert.deepEqual(
         downloads.map((download) => download.name),
-        ['Recovery.txt', 'coconut.nsld', 'Coconut (Master).nsld'],
+        ['coconut.nsld', 'Recovery.txt', 'Coconut (Master).nsld'],
     )
-    assert.equal(downloads[0]?.bytes.toString(), 'damaged text')
-    assert.deepEqual(downloads[1]?.bytes, Buffer.from(JSON.parse(v1).levelData as string, 'base64'))
+    assert.deepEqual(downloads[0]?.bytes, Buffer.from(JSON.parse(v1).levelData as string, 'base64'))
+    assert.equal(downloads[1]?.bytes.toString(), 'damaged text')
     assert.deepEqual(downloads[2]?.bytes, Buffer.from(ordinary.levelDataGz, 'base64'))
     // The links are removed again, and the object URLs freed later.
     assert.equal(win.document.body.children.filter((child) => child.tag === 'a').length, 0)

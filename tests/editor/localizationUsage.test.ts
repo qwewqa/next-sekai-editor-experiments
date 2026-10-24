@@ -316,6 +316,7 @@ const removed = [
     'workspace.folders.deleted',
     'workspace.folders.duplicated',
     'history.details.nameShortened',
+    'settings.localData.recovery.legacy',
 ]
 
 test('every English message is read by some source file', () => {

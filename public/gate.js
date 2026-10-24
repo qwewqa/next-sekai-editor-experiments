@@ -76,9 +76,9 @@
         return name.slice(-extension.length).toLowerCase() === extension ? name : name + extension
     }
 
-    // An old auto save's stored text as a file: the same choices as src/history/autoSave/
-    // unreadable.ts's toRecoveryFile. The v1 form's level data is the gzipped `.nsld`; raw level
-    // data goes out unchanged as `.json`; anything else as the stored text.
+    // An old auto save's stored text as a file: the same choices as src/local/startup/legacy.ts's
+    // toRecoveryFile. The v1 form's level data is the gzipped `.nsld`; raw level data goes out
+    // unchanged as `.json`; anything else as the stored text.
     function toRecoveryFile(text) {
         try {
             var data = JSON.parse(text)
@@ -149,22 +149,18 @@
     }
 
     // Everything stored that the gate offers, in order: the auto save, an unreadable one set aside,
-    // the legacy slot the migration copied (not twice when it is the same text), then each pending
-    // journal, newest first. `storage` is localStorage.
+    // then each pending journal, newest first. `storage` is localStorage.
     function recoveryFiles(storage) {
         var files = []
-        var texts = []
         var journals = []
         var autoSave = [
             ['autoSave.levelData', 'Download Your Last Auto Save'],
             ['autoSave.unreadable', 'Download Unreadable Auto Save'],
-            ['legacyRecovery', 'Download Your Last Auto Save'],
         ]
         var i
         for (i = 0; i < autoSave.length; i++) {
             var text = storage.getItem(PREFIX + autoSave[i][0])
-            if (text === null || texts.indexOf(text) !== -1) continue
-            texts.push(text)
+            if (text === null) continue
             var file = toRecoveryFile(text)
             file.label = autoSave[i][1]
             files.push(file)

@@ -104,7 +104,7 @@ const addNote = (page: Page) =>
     })
 
 test.describe('the support gate', () => {
-    const legacy = JSON.stringify({ version: 1, filename: 'coconut', levelData: 'H4sIAAAAAAAA' })
+    const autoSave = JSON.stringify({ version: 1, filename: 'coconut', levelData: 'H4sIAAAAAAAA' })
 
     test('a browser without a needed feature gets the plain page, and the bundle never starts', async ({
         page,
@@ -113,11 +113,11 @@ test.describe('the support gate', () => {
         const errors: string[] = []
         page.on('pageerror', (error) => errors.push(error.message))
         await page.addInitScript(
-            ({ prefix, legacy }) => {
+            ({ prefix, autoSave }) => {
                 Object.defineProperty(Navigator.prototype, 'locks', { get: () => undefined })
-                localStorage.setItem(`${prefix}legacyRecovery`, legacy)
+                localStorage.setItem(`${prefix}autoSave.levelData`, autoSave)
             },
-            { prefix, legacy },
+            { prefix, autoSave },
         )
         await page.goto('/')
         await expect(page.locator('html')).toHaveAttribute('data-gate', 'unsupported')
@@ -399,7 +399,7 @@ test.describe('the startup gate', () => {
 
 test.describe('safe mode', () => {
     const seeded = {
-        legacyRecovery: JSON.stringify({ version: 1, levelData: 'H4sI' }),
+        'autoSave.levelData': JSON.stringify({ version: 1, levelData: 'H4sI' }),
         canary: JSON.stringify('db-1'),
         deviceId: JSON.stringify('device-1'),
         'journal.seeded': 'not a journal',

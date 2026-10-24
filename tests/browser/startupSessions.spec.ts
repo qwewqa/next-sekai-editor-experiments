@@ -509,7 +509,7 @@ test.describe('the canary', () => {
     })
 })
 
-test('the migration: its session is the one a first load continues, and the legacy slot holds the slot without an edit', async ({
+test('the migration: its session is the one a first load continues, and the old key goes', async ({
     page,
 }) => {
     const levelData = { bgmOffset: 0, entities: [{ archetype: 'Initialization', data: [] }] }
@@ -539,13 +539,10 @@ test('the migration: its session is the one a first load continues, and the lega
     expect(origin).toBe('migrated')
     expect(
         await page.evaluate(
-            (prefix) => ({
-                slot: localStorage.getItem(`${prefix}autoSave.levelData`),
-                legacy: localStorage.getItem(`${prefix}legacyRecovery`),
-            }),
+            (prefix) => localStorage.getItem(`${prefix}autoSave.levelData`),
             prefix,
         ),
-    ).toEqual({ slot: null, legacy: stored })
+    ).toBeNull()
 })
 
 test.describe('storage unavailable', () => {
@@ -614,8 +611,7 @@ test.describe('storage unavailable', () => {
                 (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
             return (await recoveryItems()).items.map((item) => item.kind)
         })
-        // The legacy slot, written from the journal, is offered for Download too.
-        expect(items).toEqual(['journal', 'legacy'])
+        expect(items).toEqual(['journal'])
     })
 })
 
@@ -808,13 +804,11 @@ test('safe mode’s real startup opens blank and read-only, and writes no journa
     await opened(page)
     expect(await lifeOf(page)).toBe(1000)
     expect(await page.evaluate(() => window.nseFlushTest === undefined)).toBe(true)
-    // What the normal page left as it went (its journal, the legacy slot) stays as it is.
+    // What the normal page left as it went (its journal, the canary) stays as it is.
     const kept = () =>
         page.evaluate(() =>
             Object.fromEntries(
-                Object.entries(localStorage).filter(([key]) =>
-                    /\.(journal\.|legacyRecovery|canary)/.test(key),
-                ),
+                Object.entries(localStorage).filter(([key]) => /\.(journal\.|canary)/.test(key)),
             ),
         )
     const before = await kept()

@@ -961,7 +961,6 @@
             "recovery": {
                 "journal": "Unsaved work from an earlier visit, {0} · {1}",
                 "journalUndated": "Unsaved work from an earlier visit · {0}",
-                "legacy": "Recovery copy from an older version · {0}",
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
                 "listFailed": "Recovered work could not be read",

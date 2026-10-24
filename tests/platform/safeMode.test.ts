@@ -28,7 +28,6 @@ test('safe mode writes only settings and keys outside the editor’s own', () =>
     for (const key of ['theme', 'locale', 'toolbarExportMigrated'])
         assert.equal(safeModeMayWrite(storageKey(key)), true, key)
     for (const key of [
-        'legacyRecovery',
         'canary',
         'deviceId',
         'lastAppVersion',
