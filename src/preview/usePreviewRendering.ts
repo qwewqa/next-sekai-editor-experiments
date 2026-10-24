@@ -61,6 +61,27 @@ export const usePreviewRendering = (
         return () => (chart ??= getPreviewChart(getPreviewState(current, edit), speed))
     })
 
+    // Playback redraws every frame; the selected objects and stages only change with the state.
+    const selection = computed(() => {
+        if (!settings.previewHighlightSelection) return
+        const selected = getPreviewState(state.value).selectedEntities
+        const objects = new Set<object>(selected)
+        const stageIds = new Set(
+            selected.flatMap((entity) => {
+                if (entity.type === 'note' || entity.type === 'connector') return []
+                if ('stageId' in entity) return [entity.stageId]
+                if ('min' in entity && 'stageId' in entity.min) return [entity.min.stageId]
+                return []
+            }),
+        )
+        const stages = new Set(
+            [...state.value.stages.keys()].flatMap((id, index) =>
+                stageIds.has(id) ? [index] : [],
+            ),
+        )
+        return objects.size || stages.size ? { objects, stages } : undefined
+    })
+
     const renderer = shallowRef<PreviewRenderer>()
 
     let contextLost = false
@@ -221,23 +242,7 @@ export const usePreviewRendering = (
                       fit: loadedBackground.value.fit,
                   }
                 : undefined
-            const selected = settings.previewHighlightSelection
-                ? getPreviewState(state.value).selectedEntities
-                : []
-            const objects = new Set(selected)
-            const stageIds = new Set(
-                selected.flatMap((entity) => {
-                    if (entity.type === 'note' || entity.type === 'connector') return []
-                    if ('stageId' in entity) return [entity.stageId]
-                    if ('min' in entity && 'stageId' in entity.min) return [entity.min.stageId]
-                    return []
-                }),
-            )
-            const stages = new Set(
-                [...state.value.stages.keys()].flatMap((id, index) =>
-                    stageIds.has(id) ? [index] : [],
-                ),
-            )
+            const selected = selection.value
             const overlay = selectionCanvas?.value
             void overlayVersion.value
             const leftLimit = !isPlaying.value
@@ -273,8 +278,8 @@ export const usePreviewRendering = (
                     currentSkin.skin,
                     getChart(),
                     ...args,
-                    objects.size || stages.size
-                        ? { objects, stages, outline: outline.add, line: outline.addLine }
+                    selected
+                        ? { ...selected, outline: outline.add, line: outline.addLine }
                         : undefined,
                     leftLimit,
                     showHitboxes,
