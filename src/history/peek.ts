@@ -147,8 +147,11 @@ const loadEntry = async (key: EntryKey) => {
 /** An entry's state as peek loads it, through the same LRU and loads in flight: the change view's. */
 export const loadEntryState = async (key: EntryKey) => (await loadEntry(key)).state
 
-/** The longest a peek waits for `ready`: the peek bar's `slowRead`. */
-export const PEEK_READY_MAX_MS = 250
+/**
+ * The longest a peek waits for `ready`. A change read that takes longer, which only a large change
+ * does, shows the step without its marks until the read lands, rather than holding the chart.
+ */
+export const PEEK_READY_MAX_MS = 100
 
 /**
  * A session's peek (`audio: 'none'`) plays without BGM: the live audio is another session's.
