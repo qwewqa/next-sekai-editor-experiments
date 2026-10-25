@@ -151,7 +151,7 @@ export const moveIntoNewFolder = async (
     await panel.getByRole('button', { name: `More Actions for ${entry}`, exact: true }).click()
     await menu.getByRole('menuitem', { name: 'Move to Folder…' }).click()
     await made(tab, `new folder ${folder}`, () =>
-        menu.getByRole('menuitem', { name: 'New Folder…' }).click(),
+        menu.getByRole('menuitem', { name: 'New Folder' }).click(),
     )
     const input = panel.getByRole('textbox')
     await expect(input).toBeFocused()
