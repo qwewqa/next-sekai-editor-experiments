@@ -38,7 +38,7 @@ const writeFile = (page: Page, name: string, change: LevelChange = {}) =>
                 const { buildLevelData } = await window.editorTest.appImport<
                     typeof import('../../src/editor/commands/exportLevel/build')
                 >('/src/editor/commands/exportLevel/build.ts')
-                const stream = buildLevelData()
+                const stream = (await buildLevelData())
                     .stream()
                     .pipeThrough(new DecompressionStream('gzip'))
                 const json = JSON.parse(await new Response(stream).text()) as {
@@ -549,13 +549,73 @@ test('Export shows one name: the field and the picker agree, for the source and 
     expect(JSON.stringify(call?.types)).toContain('.nsld')
 })
 
+test('both gzip paths carry the same level data, and a browser without streams uses level 9', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    const result = await page.evaluate(async () => {
+        const { buildLevelData, buildLevelDataVariants } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/exportLevel/build')
+        >('/src/editor/commands/exportLevel/build.ts')
+        const { gunzipBlob } = await window.editorTest.appImport<
+            typeof import('../../src/utils/gzipStream')
+        >('/src/utils/gzipStream.ts')
+        const text = async (blob: Blob) => {
+            const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'))
+            return new Response(stream).text()
+        }
+        const bytes = async (blob: Blob) => Array.from(new Uint8Array(await blob.arrayBuffer()))
+        const variants = await buildLevelDataVariants()
+        const texts = await Promise.all(variants.map(text))
+        const built = await buildLevelData()
+        const type = built.type
+        const same =
+            JSON.stringify(await bytes(built)) === JSON.stringify(await bytes(variants[0]!))
+
+        // Without streams: the script's level 9 bytes, and its own reader.
+        const streams = { c: window.CompressionStream, d: window.DecompressionStream }
+        Object.assign(window, { CompressionStream: undefined, DecompressionStream: undefined })
+        try {
+            const without = await buildLevelData()
+            const only = await buildLevelDataVariants()
+            const read = new TextDecoder().decode(await gunzipBlob(without))
+            return {
+                count: variants.length,
+                equal: texts.every((value) => value === texts[0]),
+                type,
+                nativeIsFirst: same,
+                level9:
+                    JSON.stringify(await bytes(without)) ===
+                    JSON.stringify(await bytes(variants[1]!)),
+                onlyOne: only.length,
+                read: read === texts[0],
+                nonEmpty: texts[0]!.includes('"entities"'),
+            }
+        } finally {
+            Object.assign(window, { CompressionStream: streams.c, DecompressionStream: streams.d })
+        }
+    })
+    expect(result).toEqual({
+        count: 2,
+        equal: true,
+        type: 'application/octet-stream',
+        nativeIsFirst: true,
+        level9: true,
+        onlyOne: 1,
+        read: true,
+        nonEmpty: true,
+    })
+})
+
 test('plain-JSON level data gets no Export target', async ({ page }) => {
     await start(page, opfs)
     const json = await page.evaluate(async () => {
         const { buildLevelData } = await window.editorTest.appImport<
             typeof import('../../src/editor/commands/exportLevel/build')
         >('/src/editor/commands/exportLevel/build.ts')
-        const stream = buildLevelData().stream().pipeThrough(new DecompressionStream('gzip'))
+        const stream = (await buildLevelData())
+            .stream()
+            .pipeThrough(new DecompressionStream('gzip'))
         return Array.from(new Uint8Array(await new Response(stream).arrayBuffer()))
     })
     await writeFile(page, 'LevelData.json', { raw: json })
@@ -627,7 +687,7 @@ test('on a download browser, an imported LevelData keeps its own name', async ({
         const { buildLevelData } = await window.editorTest.appImport<
             typeof import('../../src/editor/commands/exportLevel/build')
         >('/src/editor/commands/exportLevel/build.ts')
-        return Array.from(new Uint8Array(await buildLevelData().arrayBuffer()))
+        return Array.from(new Uint8Array(await (await buildLevelData()).arrayBuffer()))
     })
     const chooser = page.waitForEvent('filechooser')
     await page.keyboard.press('o')

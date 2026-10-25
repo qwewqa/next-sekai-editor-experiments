@@ -76,7 +76,7 @@ export const pickLevelData = async (ctx: ExportContext): Promise<PickedLevelData
             let blob: Blob
             try {
                 blob = await session.preparing(async () => {
-                    const made = ctx.build()
+                    const made = await ctx.build()
                     await verifyBuilt('nsld', made)
                     return made
                 })

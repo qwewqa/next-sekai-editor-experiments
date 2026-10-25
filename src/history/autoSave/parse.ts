@@ -1,6 +1,6 @@
 import type { LevelData } from '@sonolus/core'
 import { ungzip } from 'pako'
-import Value from 'typebox/value'
+import { assert } from '../../chart/parse/levelData/check'
 import { parseLevelData, restoreNullSegmentAlphas } from '../../levelData/parse'
 import { autoSaveSchema } from './schema'
 
@@ -13,7 +13,7 @@ type ParsedAutoSave = {
 export const parseAutoSave = (data: unknown): ParsedAutoSave => {
     // The unversioned format is the level data itself.
     restoreNullSegmentAlphas(data)
-    Value.Assert(autoSaveSchema, data)
+    assert(autoSaveSchema, data)
 
     if (!('version' in data))
         return {
