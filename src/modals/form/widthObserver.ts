@@ -6,7 +6,9 @@ export const observeWidth = (element: Element, callback: () => void) => {
     observer ??= new ResizeObserver((entries) => {
         for (const entry of entries) {
             const target = callbacks.get(entry.target)
-            if (!target || entry.contentRect.width === target.width) continue
+            // `getComputedStyle` rounds to six significant digits, so a recorded width can differ from
+            // the observer's by a hair. NaN (not fitted) never compares close, so it refits.
+            if (!target || Math.abs(entry.contentRect.width - target.width) < 0.01) continue
             target.width = entry.contentRect.width
             target.callback()
         }
