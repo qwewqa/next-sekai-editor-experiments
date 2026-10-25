@@ -1,5 +1,6 @@
 import { shallowRef } from 'vue'
 import type { Command } from '..'
+import { busy, record } from '../../../analytics/tally'
 import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import InfoModal from '../../../modals/InfoModal.vue'
@@ -40,6 +41,9 @@ export const checkProject: Command = {
         }
         const abort = new AbortController()
         const message = shallowRef(firstMessage(plan))
+        // From here, once the read access has been asked for, the check is the editor’s own work.
+        const began = performance.now()
+        busy(true)
         const outcome = startCheck(plan, abort.signal, (next) => {
             message.value = next
         })
@@ -61,6 +65,16 @@ export const checkProject: Command = {
             },
         })
         const result = await outcome
+        busy(false)
+        if (result.kind !== 'cancelled')
+            record(
+                'check',
+                {
+                    outcome:
+                        result.kind === 'failed' ? 'failed' : result.problems ? 'problems' : 'ok',
+                },
+                began,
+            )
         if (result.kind === 'cancelled') return
         const lines = result.kind === 'failed' ? [result.message] : result.lines
         await showModal(InfoModal, {

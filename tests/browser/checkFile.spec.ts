@@ -82,7 +82,7 @@ const runCheck = (page: Page) =>
     page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.checkProject)
+        void runCommand(commands.checkProject, 'button')
     })
 
 type Hold = { held: number; release: () => void }
@@ -334,7 +334,7 @@ test('a Save pressed during a check waits for it', async ({ page }) => {
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.save)
+        void runCommand(commands.save, 'button')
     })
     // The check is held in the worker, so the Save is behind it: no dialog beside the run.
     expect(await hold.held()).toBe(1)

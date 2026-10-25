@@ -241,7 +241,7 @@ const afterRowGone = () =>
 
 // --- Delete Sessions…: the command, as the History band and a bound key run it; the total is read again after.
 const deleteSessions = async () => {
-    await runCommand(commands.deleteSessions)
+    await runCommand(commands.deleteSessions, 'button')
     await readTotal()
 }
 

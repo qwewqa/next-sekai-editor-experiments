@@ -93,6 +93,7 @@ How the code enforces them:
 | `notices` | at hide | `info`, `warning`, `error` |
 | `perf` | at hide | `peek.<time>`, `loafSupported`, `frames.<state>.<length>`, `playSeconds`, `slowInputs`, `interactions`, `visibleTime`, `cores` |
 | `errors` | at hide | `error`, `csp` |
+| `unsupported` | the support page, on its first input | `engine` |
 
 Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime`.
 

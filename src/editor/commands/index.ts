@@ -40,6 +40,7 @@ import { makeVertical } from './makeVertical'
 import { manageGroups } from './manageGroups'
 import { manageStages } from './manageStages'
 import { minimap } from './minimap'
+import { nameBuiltInCommands } from './names'
 import { createNote, note } from './note'
 import { decreaseNoteSize } from './noteSizes/decrease'
 import { increaseNoteSize } from './noteSizes/increase'
@@ -244,6 +245,8 @@ const builtInCommands = {
 }
 
 export type CommandName = keyof typeof builtInCommands
+
+nameBuiltInCommands(builtInCommands)
 
 // Reactive, so commands registered after startup appear wherever commands are listed.
 const registry = shallowReactive<Record<string, Command>>(builtInCommands)

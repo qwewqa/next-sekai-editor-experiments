@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, test } from 'node:test'
 import { gzip, ungzip } from 'pako'
+import * as tally from '../../src/analytics/tally'
 // Export's picker path loads the Save core, which needs the stand-ins for the browser's modules.
 import {
     exportByPicker,
@@ -566,4 +567,53 @@ test('Export to a remembered target that now holds a project is refused and leav
         false,
     )
     assert.equal(mock.files.get('LevelData')!.size, project.size)
+})
+
+test('an export that is written, and one that fails, are recorded for the usage statistics', async () => {
+    tally.enable()
+    try {
+        const target = await openedTarget()
+        const { ui } = scriptedUi([])
+        assert.equal(await exportToTarget(context(ui), target), 'done')
+        mock.saveFile = () =>
+            Promise.reject(new FileError('no-space', 'Disk full', undefined, undefined, 'x.nsld'))
+        const failing = scriptedUi([undefined])
+        await exportToTarget(context(failing.ui), target)
+        mock = createMockPlatform({ capabilities: { writeBack: false } })
+        setPlatformForTests(mock)
+        assert.equal(await exportByPicker(context(scriptedUi([]).ui, 3)), 'done')
+        const events = tally
+            .collect()
+            .recorded.map(
+                ({ name, data }) => ({ name, ...data }) as { name: string; took?: number },
+            )
+        assert.deepEqual(
+            events.map(({ took: _took, ...rest }) => rest),
+            [
+                {
+                    name: 'export',
+                    format: 'levelData',
+                    target: 'picker',
+                    size: level(1).size,
+                    outcome: 'done',
+                },
+                {
+                    name: 'export',
+                    format: 'levelData',
+                    target: 'picker',
+                    outcome: 'failed',
+                    reason: 'no-space',
+                },
+                {
+                    name: 'export',
+                    format: 'levelData',
+                    target: 'download',
+                    size: level(3).size,
+                    outcome: 'done',
+                },
+            ],
+        )
+    } finally {
+        tally.disable()
+    }
 })

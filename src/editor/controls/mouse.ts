@@ -253,31 +253,31 @@ const wheel = (event: WheelEvent) => {
         if (event.shiftKey) {
             if (event.deltaY) {
                 if (event.deltaY > 0) {
-                    void runCommand(zoomXOut)
+                    void runCommand(zoomXOut, 'wheel')
                 } else {
-                    void runCommand(zoomXIn)
+                    void runCommand(zoomXIn, 'wheel')
                 }
             }
             if (event.deltaX) {
                 if (event.deltaX > 0) {
-                    void runCommand(zoomYOut)
+                    void runCommand(zoomYOut, 'wheel')
                 } else {
-                    void runCommand(zoomYIn)
+                    void runCommand(zoomYIn, 'wheel')
                 }
             }
         } else {
             if (event.deltaY) {
                 if (event.deltaY > 0) {
-                    void runCommand(zoomYOut)
+                    void runCommand(zoomYOut, 'wheel')
                 } else {
-                    void runCommand(zoomYIn)
+                    void runCommand(zoomYIn, 'wheel')
                 }
             }
             if (event.deltaX) {
                 if (event.deltaX > 0) {
-                    void runCommand(zoomXOut)
+                    void runCommand(zoomXOut, 'wheel')
                 } else {
-                    void runCommand(zoomXIn)
+                    void runCommand(zoomXIn, 'wheel')
                 }
             }
         }

@@ -101,7 +101,7 @@ const run = (page: Page, id: string) =>
             (await import('/src/editor/commands/index.ts')) as typeof import('../../src/editor/commands')
         const { runCommand } =
             (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
-        await runCommand(commands[id as keyof typeof commands])
+        await runCommand(commands[id as keyof typeof commands], 'button')
     }, id)
 
 const unsaved = (page: Page) => page.getByRole('dialog', { name: 'Unsaved Changes' })

@@ -36,7 +36,7 @@ const shortReason = computed(() =>
         : fragment(i18n.value.status.notInFile),
 )
 const onClick = (event: MouseEvent) => {
-    void runCommand(levelInfo)
+    void runCommand(levelInfo, 'button')
     // Pointer clicks return keyboard shortcuts to the editor.
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }

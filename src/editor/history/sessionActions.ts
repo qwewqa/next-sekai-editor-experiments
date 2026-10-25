@@ -1,3 +1,4 @@
+import { bump } from '../../analytics/tally'
 import { entryKey } from '../../history/peek'
 import { i18n } from '../../i18n'
 import { displayName } from '../../local/names'
@@ -36,12 +37,16 @@ export const restoreRow = async (row: ChainRow, mode: 'restore' | 'copy') => {
     // The row's peek (the menu peeks its row) ends first: the session shown next is another.
     backToNow()
     const { opened } = await restoreStored(row.chain.head.sessionId, mode, shownNameOf(row.chain))
-    if (opened) historyTab.value = 'timeline'
+    if (opened) {
+        bump(mode === 'restore' ? 'features.restoreSession' : 'features.restoreCopy')
+        historyTab.value = 'timeline'
+    }
     return opened
 }
 
 /** Save… (the row menu): the session's head with its history, as a new file. */
 export const saveRowToFile = async (row: ChainRow) => {
+    bump('features.saveRowToFile')
     const { saveToFile } = await import('../save/flow')
     await saveToFile(row.chain.head.sessionId)
 }

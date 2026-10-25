@@ -49,7 +49,7 @@ const runSaveAs = (page: Page) =>
     page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
 
 test('a bad stored head chunk never refuses a Save: the head is written from the live state', async ({

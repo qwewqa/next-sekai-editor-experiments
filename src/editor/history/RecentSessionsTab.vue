@@ -9,6 +9,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
+import { bump } from '../../analytics/tally'
 import { peekedKey } from '../../history/peek'
 import { session } from '../../history/session'
 import { liveState } from '../../history/stack'
@@ -18,7 +19,7 @@ import { storageWorker } from '../../local/start'
 import { listRecent, type RecentChain } from '../../local/recent'
 import type { StoredRead } from '../../local/storedRead'
 import { flusher } from '../../local/storing'
-import { storageStatus } from '../../local/startup/events'
+import { recentSessionCount, storageStatus } from '../../local/startup/events'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { focusLost } from '../../utils/focusFallback'
@@ -82,7 +83,9 @@ useScrollMemory(() => `${props.surface}:history-sessions`, scroller)
 const readList = async (): Promise<StoredRead<RecentChain[]>> => {
     const worker = storageWorker
     if (!worker) return { storedRead: 'failed', storedError: undefined }
-    return listRecent(worker)
+    const read = await listRecent(worker)
+    if (read.storedRead === 'value') recentSessionCount.value = read.storedValue.length
+    return read
 }
 /** The sessions other tabs or windows hold; none where Web Locks cannot tell. */
 const heldElsewhere = async (): Promise<ReadonlySet<string>> => {
@@ -591,7 +594,7 @@ const onKeydown = (event: KeyboardEvent) => {
     const name = matched.names.find((candidate) => passed.includes(candidate))
     if (name && !event.repeat) {
         handled()
-        void runCommand(commands[name])
+        void runCommand(commands[name], 'key')
     }
 }
 
@@ -607,6 +610,7 @@ let channel: BroadcastChannel | undefined
 // A Delete, an Undo or a chain found gone changes the list: it reads at once, the user's own act.
 let stopDeleteChanges: (() => void) | undefined
 onMounted(() => {
+    bump('features.recentTab')
     sessionDelete.listShown(true)
     stopDeleteChanges = onDeleteChanged(() => void list.refresh({ now: true }))
     void list.refresh({ now: true })

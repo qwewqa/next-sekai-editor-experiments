@@ -84,7 +84,7 @@ export const confirmSwitch = async ({ unsaved = false } = {}) => {
         ],
     })
     // This session's Save; the switch is left for the user to repeat.
-    if (choice === 'save') await runCommand(save)
+    if (choice === 'save') await runCommand(save, 'button')
     return choice === 'leave'
 }
 

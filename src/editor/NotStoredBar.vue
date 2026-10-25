@@ -16,7 +16,7 @@ import SeverityIcon from './SeverityIcon.vue'
         <button
             type="button"
             class="btn btn-secondary h-9 shrink-0 rounded-full px-4"
-            @click="void runCommand(save)"
+            @click="void runCommand(save, 'button')"
         >
             {{ i18n.prompt.save }}
         </button>

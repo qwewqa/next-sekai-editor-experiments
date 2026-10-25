@@ -149,7 +149,7 @@ const onKeydown = (event: KeyboardEvent) => {
         names.includes('deselect')
     ) {
         event.preventDefault()
-        void runCommand(commands.deselect)
+        void runCommand(commands.deselect, 'key')
         return
     }
     // A field showing its committed value passes undo and redo to the editor.
@@ -181,7 +181,7 @@ const onKeydown = (event: KeyboardEvent) => {
     for (const name of names) {
         if (event.repeat && !repeatsWhenHeld.has(name)) continue
         if (pressing && movesViewUnderPress.has(name)) continue
-        void runCommand(commands[name])
+        void runCommand(commands[name], event.repeat ? 'repeat' : 'key')
     }
     if (!names.length) return
     // A command chord has no native use outside text entry, so selects and toggles drop it.

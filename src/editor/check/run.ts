@@ -48,7 +48,8 @@ export type CheckOutcome =
     | { kind: 'cancelled' }
     /** Replaces the report: a failure line. */
     | { kind: 'failed'; message: () => string }
-    | { kind: 'report'; lines: (() => string)[] }
+    /** `problems`: it repaired or found damage (for the usage statistics). */
+    | { kind: 'report'; lines: (() => string)[]; problems: boolean }
 
 const cancelled: CheckOutcome = { kind: 'cancelled' }
 
@@ -390,6 +391,7 @@ const perform = async (
     return {
         kind: 'report',
         lines: reportLines(found, checkText),
+        problems: repaired > 0 || damaged > 0 || fileDamaged,
     }
 }
 

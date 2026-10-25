@@ -507,7 +507,7 @@ test.describe('the label and the title', () => {
                             (await import('/src/editor/commands/levelInfo/index.ts')) as typeof import('../../src/editor/commands/levelInfo')
                         const { runCommand } =
                             (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
-                        void runCommand(levelInfo)
+                        void runCommand(levelInfo, 'button')
                     })
                 const dialog = page.getByRole('dialog', { name: 'Level Info' })
                 const summary = page.locator('[data-status-summary]')
@@ -1103,7 +1103,7 @@ test.describe('Help', () => {
                 (await import('/src/editor/commands/index.ts')) as typeof import('../../src/editor/commands')
             const { runCommand } =
                 (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
-            await runCommand(commands.help)
+            await runCommand(commands.help, 'button')
         })
         return page.getByRole('dialog', { name: 'Help' })
     }

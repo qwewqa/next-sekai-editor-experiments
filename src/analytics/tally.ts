@@ -1,5 +1,6 @@
 import type { CommandName } from '../editor/commands'
-import type { EventData, Source } from './catalogue'
+import type { RawData, Source } from './catalogue'
+import { bucket } from './scales'
 
 // The usage statistics' counters: the only analytics code on the edit and command paths. Every
 // call returns at once while analytics is off, and otherwise bumps a Map entry, so a hook costs
@@ -47,13 +48,79 @@ export const bumpCommand = (name: CommandName, source: Source) => {
     bump(key)
 }
 
-/** A per-action event, such as a Save's outcome, kept until the client sends it. */
-export const record = <E extends 'open' | 'save' | 'export' | 'check' | 'bgm' | 'chart'>(
+/** The events a flow records as they happen: `open`, `save`, `export`, `check`, `bgm` and `preview`. */
+type Recordable = 'open' | 'save' | 'export' | 'check' | 'bgm' | 'preview'
+
+/**
+ * A per-action event, such as a Save's outcome, kept until the client sends it. Sizes and times
+ * are plain numbers here; the client makes them ranges. `since` is the `performance.now()` the
+ * action began (after its last picker or dialog closed), which gives `took`.
+ */
+export const record = <E extends Recordable>(
     name: E,
-    data: EventData<E>,
+    data: RawData<E> & { took?: number },
+    since?: number,
 ) => {
     if (!enabled || recorded.length >= RECORD_LIMIT) return
-    recorded.push({ name, data, at: Date.now() })
+    const took = since === undefined ? {} : { took: performance.now() - since }
+    recorded.push({ name, data: { ...data, ...took }, at: Date.now() })
+}
+
+/** A Timeline step shown: from the cache when `ms` is undefined, else after that many milliseconds. */
+export const peekShown = (ms: number | undefined) => {
+    if (!enabled) return
+    bump('features.peek')
+    bump(ms === undefined ? 'perf.peek.cached' : `perf.peek.${bucket('time', ms)}`)
+}
+
+let busyCount = 0
+/** An Open, Save, Restore, Check or BGM load is running, which the long frames are sorted by. */
+export const busy = (on: boolean) => {
+    busyCount = Math.max(0, busyCount + (on ? 1 : -1))
+}
+export const isBusy = () => busyCount > 0
+
+export type Startup = { outcome: 'done' | 'slow' | 'error'; at: number; hidden: boolean }
+let started: Startup | undefined
+/**
+ * Startup ended: when, how, and whether the page was ever hidden before then (a hidden page is
+ * throttled, which inflates the time). A few reads, once a visit.
+ */
+export const markStartup = (outcome: Startup['outcome']) => {
+    if (!enabled || started) return
+    const at = performance.now()
+    const hidden =
+        document.visibilityState !== 'visible' ||
+        performance.getEntriesByType('visibility-state').some((entry) => entry.name === 'hidden')
+    started = { outcome, at, hidden }
+}
+export const startup = () => started
+
+/** Facts the start events report: the tab reloaded its own session; the editor’s graphics failed. */
+const noted = new Set<'reload' | 'graphicsUnavailable'>()
+export const note = (what: 'reload' | 'graphicsUnavailable') => {
+    if (enabled) noted.add(what)
+}
+export const wasNoted = (what: 'reload' | 'graphicsUnavailable') => noted.has(what)
+
+export type ChartTrigger = 'open' | 'restore' | 'save'
+const charts = new Set<ChartTrigger>()
+let onChart: (() => void) | undefined
+/** The chart became current or was saved; the client counts its objects when it is idle. */
+export const chartChanged = (trigger: ChartTrigger) => {
+    if (!enabled) return
+    charts.add(trigger)
+    onChart?.()
+}
+export const hasCharts = () => charts.size > 0
+/** The triggers since the last call. */
+export const takeCharts = () => {
+    const taken = [...charts]
+    charts.clear()
+    return taken
+}
+export const watchCharts = (listener: (() => void) | undefined) => {
+    onChart = listener
 }
 
 /** The counters and events since the last call, which then start again from nothing. */
@@ -102,6 +169,8 @@ export const disable = () => {
     enabled = false
     collect()
     wheelSeen.clear()
+    noted.clear()
+    charts.clear()
     if (typeof window !== 'undefined')
         for (const type of ARM_EVENTS) window.removeEventListener(type, arm, listenOptions)
 }

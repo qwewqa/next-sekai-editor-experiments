@@ -19,6 +19,7 @@ const source = readFileSync('public/gate.js', 'utf8')
 
 type GateFile = { name: string; type: string; data: string | Uint8Array; label?: string }
 type Gate = {
+    browserFamily: (win: object) => string
     PREFIX: string
     missingFeatures: (win: object) => string[]
     isWebKit: (win: object) => boolean
@@ -255,8 +256,14 @@ const fakeWindow = (
         secure?: boolean
         /** The page is still being parsed: its body isn't there until DOMContentLoaded. */
         loading?: boolean
+        /** The build's analytics tag, `ORIGIN WEBSITE HOST`; none when absent. */
+        tag?: string
+        host?: string
+        nav?: Record<string, unknown>
     } = {},
 ) => {
+    const inputs = new Map<string, (event: unknown) => void>()
+    const beacons: { url: string; body: string }[] = []
     const clicks: { href: string; download: string }[] = []
     const blobs = new Map<string, Blob>()
     const revoked: string[] = []
@@ -295,13 +302,30 @@ const fakeWindow = (
         readyState: options.loading ? 'loading' : 'complete',
         body: element('body'),
         createElement: element,
+        visibilityState: 'visible',
         addEventListener: (type: string, listener: () => void) => {
             if (type === 'DOMContentLoaded') parsed.push(listener)
         },
+        querySelector: (selector: string) =>
+            selector === 'meta[name="nse-analytics"]' && options.tag !== undefined
+                ? { getAttribute: () => options.tag }
+                : null,
     }
     const win = {
         ...modern(),
-        navigator: { ...modern().navigator, userAgent: options.userAgent ?? '' },
+        navigator: {
+            ...modern().navigator,
+            userAgent: options.userAgent ?? '',
+            sendBeacon: (url: string, body: string) => beacons.push({ url, body }) > 0,
+            ...options.nav,
+        },
+        location: { hostname: options.host ?? 'nse.qwewqa.dev' },
+        addEventListener: (type: string, listener: (event: unknown) => void) => {
+            inputs.set(type, listener)
+        },
+        removeEventListener: (type: string) => {
+            inputs.delete(type)
+        },
         ...(options.secure === undefined ? {} : { isSecureContext: options.secure }),
         document,
         get localStorage() {
@@ -324,6 +348,8 @@ const fakeWindow = (
         blobs,
         revoked,
         timers,
+        inputs,
+        beacons,
         documentElement,
         nseUnsupported: undefined as boolean | undefined,
         /** The parser reaches the end of the page. */
@@ -434,4 +460,86 @@ test('a button downloads its file, the same bytes as the stored work', async () 
     assert.equal(win.revoked.length, 0)
     for (const timer of win.timers) timer.run()
     assert.equal(win.revoked.length, 2)
+})
+
+// Usage statistics: one `unsupported` event on the first input to the support page.
+
+const TAG = 'https://stats.example nse.qwewqa.dev-site nse.qwewqa.dev'
+const chromeOld = 'Mozilla/5.0 (Windows NT 10.0) Chrome/60.0 Safari/537.36'
+
+/** The unsupported page, and the first trusted key press on it. */
+const pressOn = (options: Parameters<typeof fakeWindow>[0] = {}) => {
+    const win = noLocks({ userAgent: chromeOld, tag: TAG, ...options })
+    gate.run(win)
+    win.inputs.get('keydown')?.({ isTrusted: true })
+    return win
+}
+
+test('the support page sends one unsupported event, with the browser family, on the first input', () => {
+    const win = noLocks({ userAgent: chromeOld, tag: TAG })
+    gate.run(win)
+    assert.equal(win.beacons.length, 0, 'nothing before an input')
+    win.inputs.get('keydown')?.({ isTrusted: false })
+    assert.equal(win.beacons.length, 0, 'an untrusted input')
+    win.inputs.get('keydown')?.({ isTrusted: true })
+    assert.equal(win.beacons.length, 1)
+    assert.equal(win.inputs.size, 0, 'the listeners go')
+    const [beacon] = win.beacons
+    assert.equal(beacon?.url, 'https://stats.example/api/batch')
+    const [item] = JSON.parse(beacon?.body ?? '[]') as {
+        type: string
+        payload: Record<string, unknown>
+    }[]
+    assert.equal(item?.type, 'event')
+    assert.deepEqual(
+        { ...item?.payload, timestamp: typeof item?.payload.timestamp },
+        {
+            website: 'nse.qwewqa.dev-site',
+            hostname: 'nse.qwewqa.dev',
+            url: '/',
+            title: '',
+            name: 'unsupported',
+            data: { engine: 'chromium' },
+            timestamp: 'number',
+        },
+    )
+})
+
+test('the support page sends nothing without a tag, or with a signal, an off switch or save data', () => {
+    assert.equal(pressOn({ tag: undefined }).beacons.length, 0, 'a build with no target')
+    assert.equal(pressOn({ nav: { globalPrivacyControl: true } }).beacons.length, 0, 'GPC')
+    assert.equal(pressOn({ nav: { doNotTrack: '1' } }).beacons.length, 0, 'DNT')
+    const off = new MemoryStorage()
+    off.setItem(prefix + 'usageStatistics', 'false')
+    assert.equal(pressOn({ storage: off }).beacons.length, 0, 'switched off')
+    assert.equal(
+        pressOn({ nav: { connection: { saveData: true } } }).beacons.length,
+        0,
+        'save data',
+    )
+    assert.equal(pressOn({ nav: { webdriver: true } }).beacons.length, 0, 'an automated browser')
+    assert.equal(pressOn({ host: 'copy.example.com' }).beacons.length, 0, 'a copy elsewhere')
+})
+
+test('a choice to send wins over a signal, and a mock on this machine reaches an automated browser', () => {
+    const on = new MemoryStorage()
+    on.setItem(prefix + 'usageStatistics', 'true')
+    assert.equal(pressOn({ storage: on, nav: { globalPrivacyControl: true } }).beacons.length, 1)
+    const local = pressOn({
+        tag: 'http://127.0.0.1:5361 nse.qwewqa.dev-site nse.qwewqa.dev',
+        host: '127.0.0.1',
+        nav: { webdriver: true },
+    })
+    assert.equal(local.beacons.length, 1)
+})
+
+test('the browser family follows the engine, as the editor reports it', () => {
+    const family = (userAgent: string) => gate.browserFamily({ navigator: { userAgent } })
+    assert.equal(family(chromeOld), 'chromium')
+    assert.equal(family('Mozilla/5.0 (X11; Linux) Gecko/20100101 Firefox/90.0'), 'firefox')
+    assert.equal(
+        family('Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605 Safari/604'),
+        'webkit',
+    )
+    assert.equal(family('Lynx/2.8'), 'other')
 })

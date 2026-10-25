@@ -22,7 +22,7 @@ provide(stackLongValuesKey, true)
 const tool = computed({
     get: () => toolName.value,
     set: (tool) => {
-        void runCommand(commands[tool])
+        void runCommand(commands[tool], 'panel')
     },
 })
 
@@ -61,10 +61,10 @@ const division = computed({
             case 8:
             case 12:
             case 16:
-                void runCommand(commands[`division${division}`])
+                void runCommand(commands[`division${division}`], 'panel')
                 break
             default:
-                void runCommand(commands.divisionCustom)
+                void runCommand(commands.divisionCustom, 'panel')
                 break
         }
     },
@@ -80,7 +80,7 @@ const snapping = computed({
     get: () => view.snapping,
     set: (snapping) => {
         if (snapping === view.snapping) return
-        void runCommand(commands.snapping)
+        void runCommand(commands.snapping, 'panel')
     },
 })
 
@@ -88,7 +88,7 @@ const layout = computed({
     get: () => view.layout,
     set: (layout) => {
         if (layout === view.layout) return
-        void runCommand(commands.editorLayout)
+        void runCommand(commands.editorLayout, 'panel')
     },
 })
 </script>

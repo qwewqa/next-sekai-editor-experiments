@@ -216,7 +216,7 @@ watch([stages, isDynamicStages, () => brushProperties.value.stageId], () => {
 
 // A scope label runs its manage command, as the toolbar tool and its hotkey do.
 const onStatusChip = (event: MouseEvent, item: 'group' | 'stage') => {
-    void runCommand(commands[item === 'group' ? 'manageGroups' : 'manageStages'])
+    void runCommand(commands[item === 'group' ? 'manageGroups' : 'manageStages'], 'panel')
     // Pointer clicks return keyboard shortcuts to the editor.
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }

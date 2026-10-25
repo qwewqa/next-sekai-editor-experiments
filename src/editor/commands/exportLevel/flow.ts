@@ -1,3 +1,4 @@
+import { record } from '../../../analytics/tally'
 import { isZipHead } from '../../../files/detect'
 import {
     diskStateOfBytes,
@@ -84,6 +85,24 @@ export type ExportOutcome = 'done' | 'cancelled' | 'back'
 
 /** Above this, a file is not taken for level data without being read whole. */
 const LEVEL_DATA_LIMIT = 64 * 1024 * 1024
+
+// The usage statistics' `export` event, for a write that went through or failed. A write begins
+// after the last picker has closed (`writeStarted`, 0 when none has). One export runs at a time.
+let writeStarted = 0
+const reportExport = (target: 'picker' | 'download', size?: number, error?: FileError) => {
+    record(
+        'export',
+        {
+            format: 'levelData',
+            target,
+            ...(size !== undefined && { size }),
+            outcome: error ? 'failed' : 'done',
+            ...(error && { reason: error.code }),
+        },
+        writeStarted || undefined,
+    )
+    writeStarted = 0
+}
 
 // Only the user's cancel: a browser's own AbortError is a failure.
 const cancelled = (ctx: ExportContext) => !!ctx.signal?.aborted
@@ -227,6 +246,7 @@ export const exportToTarget = async (
     expected: DiskState = target.disk,
 ): Promise<ExportOutcome> => {
     const body = built(ctx)
+    writeStarted = performance.now()
     const revoked = new Error('Export destination was revoked')
     let error: FileError
     try {
@@ -252,6 +272,7 @@ export const exportToTarget = async (
             signal: ctx.signal,
         })
         if (result.status === 'saved') {
+            reportExport('picker', body.size())
             ctx.ui.markExported?.(result.name, 'file')
             ctx.ui.exported(result.name)
             return 'done'
@@ -262,6 +283,7 @@ export const exportToTarget = async (
         if (cancelled(ctx)) return 'cancelled'
         if (caught === revoked) return exportByPicker(ctx)
         error = fileError(caught)
+        reportExport('picker', undefined, error)
     }
 
     ctx.leave()
@@ -287,6 +309,7 @@ export const exportToTarget = async (
 
 /** A failure no dialog has shown yet: the failed dialog, which offers Choose Another…. */
 const failed = (ctx: ExportContext, error: FileError, fallback: string) => {
+    reportExport(platform.pickSaveFile ? 'picker' : 'download', undefined, error)
     ctx.leave()
     const name = error.fileName ?? fallback
     return choose(ctx, () => ctx.ui.failed(name, error)).then(ended)
@@ -298,10 +321,13 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
     if (platform.pickSaveFile) {
         // A failure after a Cancel, before a file was picked, is the Cancel's: no dialog follows.
         const pick = { committed: false }
+        const sized = built(ctx)
         const counted: ExportContext = {
             ...ctx,
+            build: sized.build,
             committed: () => {
                 pick.committed = true
+                writeStarted = performance.now()
                 ctx.committed?.()
             },
         }
@@ -313,6 +339,7 @@ export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome>
             return failed(ctx, fileError(caught), ctx.suggestedName)
         }
         if (picked.kind === 'failed' && cancelled(ctx) && !pick.committed) return 'cancelled'
+        if (picked.kind === 'written') reportExport('picker', sized.size())
         return afterPick(ctx, picked)
     }
     return exportByDownload(ctx)
@@ -355,6 +382,7 @@ const afterPick = async (ctx: ExportContext, picked: PickedLevelData): Promise<E
 /** A browser without a save picker: the level data is downloaded. */
 const exportByDownload = async (ctx: ExportContext): Promise<ExportOutcome> => {
     const body = built(ctx)
+    writeStarted = performance.now()
     let result: SaveResult
     try {
         result = await platform.saveFile({
@@ -377,6 +405,7 @@ const exportByDownload = async (ctx: ExportContext): Promise<ExportOutcome> => {
                 exportMemory.exportName = ctx.exportName
                 await rememberExport()
             }
+            reportExport('download', body.size())
             ctx.ui.markExported?.(result.name, 'download')
             ctx.ui.downloadStarted(result.name, body.size())
             return 'done'

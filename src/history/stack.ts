@@ -533,3 +533,6 @@ export const loadedSlotsForTests = () => states.map((slot) => !!slot.state)
 
 /** How many restored slots the LRU holds, for tests of the lazy stack. */
 export const restoredLoadedForTests = () => loadedRestored.length
+
+/** How many steps the undo stack holds, for the usage statistics’ chart size. */
+export const stackLength = () => states.length

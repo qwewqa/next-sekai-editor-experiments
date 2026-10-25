@@ -1,4 +1,5 @@
 import { shallowReactive } from 'vue'
+import { markStartup } from '../analytics/tally'
 import { testKeysOpen } from '../platform/testKeys'
 import { errorMessage } from '../utils/error'
 
@@ -146,6 +147,7 @@ export const setOpeningName = (name: string | undefined) => {
 export const finishStartup = () => {
     if (startupGate.phase === 'done') return
     clearTimeout(slowTimer)
+    markStartup(startupGate.slow ? 'slow' : 'done')
     startupGate.phase = 'done'
     if (listening)
         for (const type of [...POINTER_EVENTS, ...KEY_EVENTS])
@@ -158,6 +160,7 @@ export const failStartup = (error: unknown) => {
     // Once the editor is open, a late failure doesn't take it away again.
     if (startupGate.phase === 'done') return
     clearTimeout(slowTimer)
+    markStartup('error')
     startupGate.error = errorMessage(error)
     startupGate.phase = 'error'
 }

@@ -16,7 +16,7 @@ export const twoTap = (): Recognizer<2> => ({
         )
             return false
 
-        void runCommand(deselect)
+        void runCommand(deselect, 'gesture')
         return true
     },
 })

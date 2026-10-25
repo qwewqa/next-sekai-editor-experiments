@@ -1447,7 +1447,7 @@ const onKeydown = (event: KeyboardEvent) => {
     // A drag's Escape only cancels it, before this runs.
     // Side by side, it runs Deselect, so a second press switches to Select as on the chart.
     if (!isElevationSideBySide.value) closeElevationEditor()
-    else void runCommand(deselect)
+    else void runCommand(deselect, 'panel')
 }
 // Its scroll and zoom move where a drag in it lands.
 watch([() => elevationViewport.center, () => elevationViewport.scale], notifyPaneMoved)

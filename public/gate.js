@@ -186,11 +186,87 @@
                 show(win, message(win), files)
             })
         else show(win, message(win), files)
+        reportOnInput(win)
         return true
+    }
+
+    // Usage statistics (docs/analytics.md): one `unsupported` event, with the browser family and
+    // nothing else, on the first input to this page. The build puts where to send it in a
+    // <meta name="nse-analytics" content="ORIGIN WEBSITE HOST"> and omits it when it has none.
+    function browserFamily(win) {
+        var ua = (win.navigator || {}).userAgent || ''
+        if (isWebKit(win)) return 'webkit'
+        if (/Firefox|FxiOS/.test(ua)) return 'firefox'
+        return /Chrome|Chromium|CriOS|Edg|OPR/.test(ua) ? 'chromium' : 'other'
+    }
+
+    var LOOPBACK = /^(localhost|127\.0\.0\.1|\[::1\])$/
+
+    // The target, when this page may send: the same rules as src/analytics/config.ts. The signals
+    // (Do Not Track, Global Privacy Control) or an off switch in Settings stop it, unless the
+    // switch was turned on; so does an automated browser (unless the target is on this machine),
+    // a request to save data, and a copy of the files on another host.
+    function reportTarget(win) {
+        var meta = win.document.querySelector('meta[name="nse-analytics"]')
+        var parts = meta ? String(meta.getAttribute('content')).split(' ') : []
+        if (parts.length !== 3) return undefined
+        var nav = win.navigator || {}
+        var host = win.location.hostname
+        var local = LOOPBACK.test(host)
+        var stored = null
+        try {
+            stored = win.localStorage.getItem(PREFIX + 'usageStatistics')
+        } catch (error) {
+            // Unreadable: as unset.
+        }
+        var signal = nav.globalPrivacyControl === true || nav.doNotTrack === '1' || win.doNotTrack === '1'
+        if (stored === 'false' || (stored !== 'true' && signal)) return undefined
+        if (nav.webdriver && !(local && parts[0].indexOf('http://') === 0)) return undefined
+        if (nav.connection && nav.connection.saveData) return undefined
+        if (host !== parts[2] && !local) return undefined
+        return { origin: parts[0], website: parts[1] }
+    }
+
+    function reportUnsupported(win) {
+        var nav = win.navigator || {}
+        var target = reportTarget(win)
+        if (!target || typeof nav.sendBeacon !== 'function') return
+        var event = {
+            type: 'event',
+            payload: {
+                website: target.website,
+                hostname: win.location.hostname,
+                url: '/',
+                title: '',
+                name: 'unsupported',
+                data: { engine: browserFamily(win) },
+                timestamp: Math.floor(Date.now() / 1000),
+            },
+        }
+        try {
+            nav.sendBeacon(target.origin + '/api/batch', JSON.stringify([event]))
+        } catch (error) {
+            // Nothing here reaches the user.
+        }
+    }
+
+    // The first trusted input while the page is visible, as the editor's engaged visit.
+    function reportOnInput(win) {
+        var types = ['pointerdown', 'mousedown', 'keydown', 'touchstart', 'wheel']
+        function arm(event) {
+            if (event.isTrusted === false || win.document.visibilityState === 'hidden') return
+            for (var i = 0; i < types.length; i++) win.removeEventListener(types[i], arm, true)
+            reportUnsupported(win)
+        }
+        for (var i = 0; i < types.length; i++) win.addEventListener(types[i], arm, true)
     }
 
     var api = {
         PREFIX: PREFIX,
+        browserFamily: browserFamily,
+        reportTarget: reportTarget,
+        reportUnsupported: reportUnsupported,
+        reportOnInput: reportOnInput,
         missingFeatures: missingFeatures,
         isWebKit: isWebKit,
         message: message,

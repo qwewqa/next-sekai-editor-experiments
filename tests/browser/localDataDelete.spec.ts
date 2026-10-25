@@ -480,8 +480,8 @@ test('a bound key and the command list open it too, and a second run while one i
         const { runCommand } = await window.editorTest.appImport<
             typeof import('../../src/editor/commands/runCommand')
         >('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.deleteSessions)
-        void runCommand(commands.deleteSessions)
+        void runCommand(commands.deleteSessions, 'button')
+        void runCommand(commands.deleteSessions, 'button')
     })
     await expect(page.locator('[data-delete-sessions]')).toHaveCount(1)
     await page.locator('[data-delete-sessions] button', { hasText: 'Cancel' }).click()

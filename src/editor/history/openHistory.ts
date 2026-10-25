@@ -1,4 +1,5 @@
 import { computed, nextTick, shallowRef } from 'vue'
+import { bump } from '../../analytics/tally'
 import { recordError } from '../../diagnostics'
 import { onResetState } from '../../history/resetHooks'
 import { isPeeking } from '../../history/stack'
@@ -58,6 +59,7 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
     if (reopenAt !== undefined) closeElevationEditor()
     const at = generation
     opening = true
+    bump('features.historyDialog')
     let result: HistoryCloseResult | undefined
     let presentation: ReturnType<typeof createHistoryPresentation> | undefined
     try {
@@ -146,6 +148,7 @@ export const showHistoryLink = (tab: HistoryTab = 'timeline') => {
     }
     checkHistoryCalendar()
     listFocus.value = { surface: 'panel', at: performance.now() }
+    bump('features.historyPanel')
     showPanel('history')
 }
 
