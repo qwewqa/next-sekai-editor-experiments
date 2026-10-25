@@ -1,0 +1,425 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+    Next SEKAI Editor, per-account baseline (shared by every service): GitHub OIDC, the alert topic,
+    the account budget, the services zone, and a deploy role and an execution role per service.
+    Deployed by the owner, once per account and again when a service is added.
+
+Parameters:
+    Environment:
+        Type: String
+        AllowedValues: [prod, dev]
+    AlertEmail:
+        Type: String
+        Description: Receives the alert topic and the budget emails. Passed on the command line, never committed.
+    Repository:
+        Type: String
+        Default: qwewqa/next-sekai-editor-experiments
+        Description: The GitHub repository whose workflows may assume the deploy roles.
+
+Mappings:
+    Environments:
+        prod:
+            ZoneName: nse-services.qwewqa.dev
+            BudgetUsd: '30'
+        dev:
+            ZoneName: nse-services-dev.qwewqa.dev
+            BudgetUsd: '1'
+
+Conditions:
+    IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+    # One OIDC provider per account is allowed. GitHub documents no thumbprint requirement.
+    GitHubProvider:
+        Type: AWS::IAM::OIDCProvider
+        Properties:
+            Url: https://token.actions.githubusercontent.com
+            ClientIdList: [sts.amazonaws.com]
+            Tags:
+                - { Key: 'nse:service', Value: shared }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    AlertTopic:
+        Type: AWS::SNS::Topic
+        Properties:
+            TopicName: !Sub nse-${Environment}-alerts
+            Tags:
+                - { Key: 'nse:service', Value: shared }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    AlertSubscription:
+        Type: AWS::SNS::Subscription
+        Properties:
+            TopicArn: !Ref AlertTopic
+            Protocol: email
+            Endpoint: !Ref AlertEmail
+
+    # The backstop for every service. Notifications and monitoring are free.
+    Budget:
+        Type: AWS::Budgets::Budget
+        Properties:
+            Budget:
+                BudgetName: !Sub nse-${Environment}-monthly
+                BudgetType: COST
+                TimeUnit: MONTHLY
+                BudgetLimit:
+                    Amount: !FindInMap [Environments, !Ref Environment, BudgetUsd]
+                    Unit: USD
+            NotificationsWithSubscribers:
+                - Notification:
+                      NotificationType: ACTUAL
+                      ComparisonOperator: GREATER_THAN
+                      Threshold: 80
+                      ThresholdType: PERCENTAGE
+                  Subscribers:
+                      - { SubscriptionType: EMAIL, Address: !Ref AlertEmail }
+                - Notification:
+                      NotificationType: FORECASTED
+                      ComparisonOperator: GREATER_THAN
+                      Threshold: 100
+                      ThresholdType: PERCENTAGE
+                  Subscribers:
+                      - { SubscriptionType: EMAIL, Address: !Ref AlertEmail }
+
+    # Every service writes its records under its own label (`stats.` for stats). The owner adds this zone's
+    # name servers to qwewqa.dev once. Retained, so the delegation never breaks.
+    ServicesZone:
+        Type: AWS::Route53::HostedZone
+        DeletionPolicy: Retain
+        UpdateReplacePolicy: Retain
+        Properties:
+            Name: !FindInMap [Environments, !Ref Environment, ZoneName]
+            HostedZoneTags:
+                - { Key: 'nse:service', Value: shared }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    # ---- stats -----------------------------------------------------------------------------------
+    # Assumed by stats-deploy.yml and stats-dev-down.yml. Only the Environment stats-<env> may assume it.
+    StatsDeployRole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: nse-stats-deploy
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: Allow
+                      Principal: { Federated: !GetAtt GitHubProvider.Arn }
+                      Action: sts:AssumeRoleWithWebIdentity
+                      Condition:
+                          StringEquals:
+                              'token.actions.githubusercontent.com:aud': sts.amazonaws.com
+                              'token.actions.githubusercontent.com:sub': !Sub repo:${Repository}:environment:stats-${Environment}
+            Policies:
+                - PolicyName: deploy
+                  PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                          - Sid: StatsStacks
+                            Effect: Allow
+                            Action:
+                                - cloudformation:DescribeStacks
+                                - cloudformation:DescribeStackEvents
+                                - cloudformation:DescribeChangeSet
+                                - cloudformation:ExecuteChangeSet
+                                - cloudformation:DeleteChangeSet
+                                - cloudformation:GetTemplate
+                                - cloudformation:UpdateTerminationProtection
+                            Resource:
+                                - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats/*
+                                - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats-*/*
+                          # A change set runs only with the execution role below.
+                          - Sid: StatsChangeSets
+                            Effect: Allow
+                            Action: cloudformation:CreateChangeSet
+                            Resource:
+                                - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats/*
+                                - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats-*/*
+                            Condition:
+                                ArnEquals:
+                                    'cloudformation:RoleArn': !GetAtt StatsCfnRole.Arn
+                          # deploy.sh reads the zone and the topic from this stack's outputs.
+                          - Sid: BaselineOutputs
+                            Effect: Allow
+                            Action: cloudformation:DescribeStacks
+                            Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*
+                          - Sid: PassTheExecutionRole
+                            Effect: Allow
+                            Action: iam:PassRole
+                            Resource: !GetAtt StatsCfnRole.Arn
+                            Condition:
+                                StringEquals:
+                                    'iam:PassedToService': cloudformation.amazonaws.com
+                          # Read-only lookups for the default subnet, the instance, and the leftover check.
+                          - Sid: Lookups
+                            Effect: Allow
+                            Action:
+                                - ec2:DescribeVpcs
+                                - ec2:DescribeSubnets
+                                - ec2:DescribeInstances
+                                - ec2:DescribeVolumes
+                                - ec2:DescribeAddresses
+                                - cloudformation:ListStacks
+                                - s3:ListAllMyBuckets
+                                - ssm:DescribeInstanceInformation
+                                - ssm:GetCommandInvocation
+                                - ssm:ListCommandInvocations
+                            Resource: '*'
+                          - Sid: RunCommandOnStatsInstances
+                            Effect: Allow
+                            Action: ssm:SendCommand
+                            Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                            Condition:
+                                StringEquals:
+                                    'ssm:resourceTag/nse:service': stats
+                          - Sid: RunCommandDocument
+                            Effect: Allow
+                            Action: ssm:SendCommand
+                            Resource: !Sub arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript
+                          # Stats' dev teardown (dev-down.sh). Prod has no destroy path.
+                          - !If
+                            - IsProd
+                            - Sid: ProdCannotDeleteStacks
+                              Effect: Deny
+                              Action: cloudformation:DeleteStack
+                              Resource: '*'
+                            - Sid: DevDeleteStack
+                              Effect: Allow
+                              Action: cloudformation:DeleteStack
+                              Resource:
+                                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats/*
+                                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats-*/*
+                              Condition:
+                                  ArnEquals:
+                                      'cloudformation:RoleArn': !GetAtt StatsCfnRole.Arn
+                          - !If
+                            - IsProd
+                            - !Ref AWS::NoValue
+                            - Sid: DevDeleteRetainedStatsResources
+                              Effect: Allow
+                              Action:
+                                  - ec2:DeleteVolume
+                                  - ec2:ReleaseAddress
+                              Resource:
+                                  - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
+                                  - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:elastic-ip/*
+                              Condition:
+                                  StringEquals:
+                                      'aws:ResourceTag/nse:service': stats
+                          - !If
+                            - IsProd
+                            - !Ref AWS::NoValue
+                            - Sid: DevEmptyStatsBuckets
+                              Effect: Allow
+                              Action:
+                                  - s3:ListBucket
+                                  - s3:DeleteObject
+                                  - s3:DeleteBucket
+                              Resource:
+                                  - arn:aws:s3:::nse-stats-*
+                                  - arn:aws:s3:::nse-stats-*/*
+            Tags:
+                - { Key: 'nse:service', Value: shared }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    # The role CloudFormation uses to create what the stats template describes. Tag conditions keep it to
+    # resources tagged nse:service=stats; names keep the IAM, S3, alarm and DNS actions to stats' own.
+    StatsCfnRole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: nse-stats-cfn
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Effect: Allow
+                      Principal: { Service: cloudformation.amazonaws.com }
+                      Action: sts:AssumeRole
+                      Condition:
+                          StringEquals: { 'aws:SourceAccount': !Ref AWS::AccountId }
+                          ArnLike:
+                              'aws:SourceArn': !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats*/*
+            Policies:
+                - PolicyName: stats
+                  PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                          - Sid: Describe
+                            Effect: Allow
+                            Action: ['ec2:Describe*', 'cloudwatch:DescribeAlarms']
+                            Resource: '*'
+                          - Sid: CreateTaggedEc2
+                            Effect: Allow
+                            Action:
+                                - ec2:RunInstances
+                                - ec2:CreateVolume
+                                - ec2:CreateSecurityGroup
+                                - ec2:AllocateAddress
+                            Resource:
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:elastic-ip/*
+                            Condition:
+                                StringEquals: { 'aws:RequestTag/nse:service': stats }
+                          # Resources a launch or a security group refers to, none of which carry a tag of ours.
+                          - Sid: UseUntaggedEc2
+                            Effect: Allow
+                            Action: [ec2:RunInstances, ec2:CreateSecurityGroup]
+                            Resource:
+                                - !Sub arn:aws:ec2:${AWS::Region}::image/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:vpc/*
+                          - Sid: UseStatsSecurityGroup
+                            Effect: Allow
+                            Action: ec2:RunInstances
+                            Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+                            Condition:
+                                StringEquals: { 'aws:ResourceTag/nse:service': stats }
+                          - Sid: TagOnCreate
+                            Effect: Allow
+                            Action: ec2:CreateTags
+                            Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*/*
+                            Condition:
+                                StringEquals:
+                                    'aws:RequestTag/nse:service': stats
+                                    'ec2:CreateAction':
+                                        [
+                                            RunInstances,
+                                            CreateVolume,
+                                            CreateSecurityGroup,
+                                            AllocateAddress,
+                                        ]
+                          - Sid: ChangeStatsEc2
+                            Effect: Allow
+                            Action:
+                                - ec2:CreateTags
+                                - ec2:DeleteTags
+                                - ec2:AttachVolume
+                                - ec2:DetachVolume
+                                - ec2:AssociateAddress
+                                - ec2:DisassociateAddress
+                                - ec2:TerminateInstances
+                                - ec2:RebootInstances
+                                - ec2:ModifyInstanceAttribute
+                                - ec2:ModifyInstanceMetadataOptions
+                                - ec2:ModifyVolume
+                                - ec2:DeleteVolume
+                                - ec2:DeleteSecurityGroup
+                                - ec2:AuthorizeSecurityGroupIngress
+                                - ec2:AuthorizeSecurityGroupEgress
+                                - ec2:RevokeSecurityGroupIngress
+                                - ec2:RevokeSecurityGroupEgress
+                                - ec2:ModifySecurityGroupRules
+                            Resource:
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group-rule/*
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:elastic-ip/*
+                            Condition:
+                                StringEquals: { 'aws:ResourceTag/nse:service': stats }
+                          # An address is associated with an instance's network interface, which has no tag of ours.
+                          - Sid: AssociateWithNetworkInterfaces
+                            Effect: Allow
+                            Action: [ec2:AssociateAddress, ec2:DisassociateAddress]
+                            Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
+                          - Sid: StatsRoles
+                            Effect: Allow
+                            Action:
+                                - iam:CreateRole
+                                - iam:DeleteRole
+                                - iam:GetRole
+                                - iam:UpdateAssumeRolePolicy
+                                - iam:PutRolePolicy
+                                - iam:DeleteRolePolicy
+                                - iam:GetRolePolicy
+                                - iam:DetachRolePolicy
+                                - iam:TagRole
+                                - iam:UntagRole
+                                - iam:ListRolePolicies
+                                - iam:ListAttachedRolePolicies
+                                - iam:CreateInstanceProfile
+                                - iam:DeleteInstanceProfile
+                                - iam:GetInstanceProfile
+                                - iam:AddRoleToInstanceProfile
+                                - iam:RemoveRoleFromInstanceProfile
+                                - iam:TagInstanceProfile
+                                - iam:UntagInstanceProfile
+                            Resource:
+                                - !Sub arn:aws:iam::${AWS::AccountId}:role/nse-stats-*
+                                - !Sub arn:aws:iam::${AWS::AccountId}:instance-profile/nse-stats-*
+                          - Sid: AttachOnlyTheSessionManagerPolicy
+                            Effect: Allow
+                            Action: iam:AttachRolePolicy
+                            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/nse-stats-*
+                            Condition:
+                                ArnEquals:
+                                    'iam:PolicyARN': arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+                          - Sid: PassTheInstanceRole
+                            Effect: Allow
+                            Action: iam:PassRole
+                            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/nse-stats-*
+                            Condition:
+                                StringEquals: { 'iam:PassedToService': ec2.amazonaws.com }
+                          # The bucket itself, not its objects: the dumps are written by the instance.
+                          - Sid: StatsBuckets
+                            Effect: Allow
+                            Action: s3:*
+                            Resource: arn:aws:s3:::nse-stats-*
+                          - Sid: StatsAlarms
+                            Effect: Allow
+                            Action:
+                                - cloudwatch:PutMetricAlarm
+                                - cloudwatch:DeleteAlarms
+                                - cloudwatch:TagResource
+                                - cloudwatch:UntagResource
+                                - cloudwatch:ListTagsForResource
+                            Resource: !Sub arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:nse-stats-*
+                          # Route 53 has no tag conditions. The record names are the scope: only stats.<zone>, type A.
+                          - Sid: StatsRecords
+                            Effect: Allow
+                            Action: route53:ChangeResourceRecordSets
+                            Resource: !Sub arn:aws:route53:::hostedzone/${ServicesZone}
+                            Condition:
+                                ForAllValues:StringLike:
+                                    'route53:ChangeResourceRecordSetsNormalizedRecordNames':
+                                        - !Sub
+                                          - stats.${Zone}
+                                          - Zone:
+                                                !FindInMap [
+                                                    Environments,
+                                                    !Ref Environment,
+                                                    ZoneName,
+                                                ]
+                                        - !Sub
+                                          - stats.${Zone}.
+                                          - Zone:
+                                                !FindInMap [
+                                                    Environments,
+                                                    !Ref Environment,
+                                                    ZoneName,
+                                                ]
+                                ForAllValues:StringEquals:
+                                    'route53:ChangeResourceRecordSetsRecordTypes': [A]
+                          - Sid: StatsRecordReads
+                            Effect: Allow
+                            Action: [route53:GetHostedZone, route53:ListResourceRecordSets]
+                            Resource: !Sub arn:aws:route53:::hostedzone/${ServicesZone}
+                          - Sid: WaitForRecordChanges
+                            Effect: Allow
+                            Action: route53:GetChange
+                            Resource: arn:aws:route53:::change/*
+            Tags:
+                - { Key: 'nse:service', Value: shared }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+Outputs:
+    ServicesZoneId:
+        Value: !Ref ServicesZone
+    ServicesZoneName:
+        Value: !FindInMap [Environments, !Ref Environment, ZoneName]
+    ServicesZoneNameServers:
+        Description: Add these as one NS record named for the zone in the qwewqa.dev zone, once.
+        Value: !Join [' ', !GetAtt ServicesZone.NameServers]
+    AlertTopicArn:
+        Value: !Ref AlertTopic

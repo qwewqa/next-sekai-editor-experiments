@@ -1,0 +1,8 @@
+[Unit]
+Description=Stats housekeeping: clean, weekly dump, checks
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/nse-stats/nightly.sh
+TimeoutStartSec=30min

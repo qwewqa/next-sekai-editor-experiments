@@ -18,6 +18,8 @@
 !deployment/*.md
 !.github/
 !.github/workflows/*.yml
+!infra/**/*.md
+!infra/**/*.yaml
 
 # Preserve the vendored tessellator's upstream source and license header.
 src/rendering/vendor/libtess.js

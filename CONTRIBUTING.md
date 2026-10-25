@@ -26,6 +26,7 @@ One frontend is built twice: `npm run build` for the web and `npm run build:nati
 | The mock platform | `src/platform/mock.ts`, injected with `setPlatformForTests` | Tests |
 | Native-only features | `src/library/`, `src/projects/` (with the native apps) | Native only, loaded through one loader |
 | Asset defaults | `#asset-defaults` | Per build |
+| The AWS services around the editor: their templates, scripts and runbooks | `infra/` | Neither |
 
 `#platform` and `#asset-defaults` are `package.json` `imports` with a `native` condition. Native mode (`vite --mode native`) selects it; the web build and the Node tests resolve the `default` target.
 
@@ -98,6 +99,8 @@ CI runs these (`.github/workflows/check.yml`):
 - `npm run test:release`: the release scripts and the changelog format.
 - `npm run check:builtin-assets`, and `npm run build:native` then `npm run check:native-bundle`.
 
+A change under `infra/` also runs `.github/workflows/infra-check.yml`: `cfn-lint`, `infra/check_templates.py`, `shellcheck`, and a contract test of the real Umami and PostgreSQL images. Run the first three locally as `infra/README.md` shows.
+
 Also:
 
 - A native test is needed for anything that touches the native implementation, the filesystem, the OS or the Rust side. Shared tests use the mock platform and need no Rust.
@@ -139,6 +142,8 @@ Read this before you measure or optimize scrolling or playback:
 3. Run the push it prints, `git push --atomic origin main vX.Y.Z`. Pushing the tag is the release. Deploy Pages then runs Check, builds with `npm run build:release`, runs `npm run test:production` and `npm run check:release`, and deploys when the tag is the highest `v*` tag. A push to `main` deploys nothing. A pushed tag is never moved or deleted.
 4. For a fix while `main` holds unfinished work, make a branch from the last tag, commit the fix there and run the script on it. CI does not check that branch before the tag, so the script prints the local checks to run first. Merge the branch into `main` afterwards.
 5. After the deploy, check the live site: `PRODUCTION_TEST_URL=https://nse.qwewqa.dev npm run test:production`.
+
+The AWS services in `infra/` are not part of a release. They deploy by hand, through the workflows in `infra/stats/README.md`, and never with a tag.
 
 ## Forks
 

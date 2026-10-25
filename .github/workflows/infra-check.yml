@@ -1,0 +1,39 @@
+name: Infra check
+
+# The infrastructure under infra/ has its own checks. This workflow touches no AWS account, and it runs
+# only when infra/ or an infra workflow changes (or by hand), never on a tag.
+on:
+    push:
+        branches: ['main', 'ci/**']
+        paths: ['infra/**', '.github/workflows/infra-check.yml', '.github/workflows/stats-*.yml']
+    pull_request:
+        branches: ['main']
+        paths: ['infra/**', '.github/workflows/infra-check.yml', '.github/workflows/stats-*.yml']
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    templates:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+            - run: uv run --with cfn-lint cfn-lint infra/account/account.yaml infra/stats/stats.yaml
+            # Our rules: tags, ports, allowlisted resource types and their cost notes, role scopes, no delete outside dev-down.
+            - run: uv run infra/check_templates.py
+            - run: shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.sh
+
+    # Umami and PostgreSQL as the server runs them. A new Umami digest in images.env is tried here before any deploy.
+    stats-compose:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - run: bash infra/stats/scripts/contract-test.sh

@@ -1,0 +1,36 @@
+name: Stats dev down
+
+# Deletes stats' dev stack and everything it retained, then checks that nothing billable of stats is left.
+# By hand, or every six hours as a reaper that acts only on a dev stack over 12 hours old. Dev only: the
+# prod role does not trust the Environment stats-dev, and no workflow deletes prod.
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '17 */6 * * *'
+
+permissions:
+    contents: read
+
+concurrency:
+    group: stats-dev
+    cancel-in-progress: false
+
+jobs:
+    down:
+        runs-on: ubuntu-latest
+        timeout-minutes: 40
+        environment: stats-dev
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+              with:
+                  role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/nse-stats-deploy
+                  aws-region: us-west-2
+            - run: bash infra/stats/scripts/dev-down.sh ${{ github.event_name == 'schedule' && '--reaper' || '' }}
+              env:
+                  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}

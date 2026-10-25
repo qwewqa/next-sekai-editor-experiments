@@ -1,0 +1,300 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+    Next SEKAI Editor, the stats service: one EC2 instance running Caddy, Umami and PostgreSQL,
+    a retained data volume, an Elastic IP, a bucket for the weekly dumps and a DNS record.
+    Deployed by stats-deploy.yml under the role nse-stats-cfn.
+
+Parameters:
+    Environment:
+        Type: String
+        AllowedValues: [prod, dev]
+    SourceCommit:
+        Type: String
+        Description: The commit whose infra/stats/host files the instance runs. Changing it replaces nothing.
+    MonitorWebsite:
+        Type: String
+        Default: ''
+        Description: The Umami website id the nightly check sends to. Empty skips that one check.
+    Repository:
+        Type: String
+        Default: qwewqa/next-sekai-editor-experiments
+    ImageId:
+        Type: AWS::EC2::Image::Id
+        Default: ami-0ac0ed4cc59d81934
+        Description: Ubuntu 24.04 LTS arm64 in us-west-2. Pinned, so a new image never replaces the instance on its own.
+    VpcId:
+        Type: AWS::EC2::VPC::Id
+    SubnetId:
+        Type: AWS::EC2::Subnet::Id
+    AvailabilityZone:
+        Type: AWS::EC2::AvailabilityZone::Name
+        Description: The subnet's zone, for the data volume.
+    ZoneId:
+        Type: AWS::Route53::HostedZone::Id
+        Description: The services zone, from the baseline stack's outputs.
+    ZoneName:
+        Type: String
+    AlertTopicArn:
+        Type: String
+        Description: The baseline's alert topic.
+
+Mappings:
+    Sizes:
+        prod:
+            InstanceType: t4g.small
+            DataGiB: 30
+        dev:
+            InstanceType: t4g.micro
+            DataGiB: 10
+
+Conditions:
+    IsProd: !Equals [!Ref Environment, prod]
+    HasMonitorWebsite: !Not [!Equals [!Ref MonitorWebsite, '']]
+
+Resources:
+    SecurityGroup:
+        Type: AWS::EC2::SecurityGroup
+        Properties:
+            GroupName: nse-stats
+            GroupDescription: HTTPS only
+            VpcId: !Ref VpcId
+            SecurityGroupIngress:
+                - {
+                      IpProtocol: tcp,
+                      FromPort: 443,
+                      ToPort: 443,
+                      CidrIp: 0.0.0.0/0,
+                      Description: HTTPS,
+                  }
+            Tags:
+                - { Key: 'nse:service', Value: stats }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    InstanceRole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: nse-stats-instance
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - {
+                          Effect: Allow,
+                          Principal: { Service: ec2.amazonaws.com },
+                          Action: 'sts:AssumeRole',
+                      }
+            ManagedPolicyArns:
+                - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+            Policies:
+                - PolicyName: stats
+                  PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                          # The instance can add and list dumps. It cannot read or delete them.
+                          - Effect: Allow
+                            Action: s3:PutObject
+                            Resource: !Sub ${DumpBucket.Arn}/dumps/*
+                          - Effect: Allow
+                            Action: s3:ListBucket
+                            Resource: !GetAtt DumpBucket.Arn
+                          - Effect: Allow
+                            Action: sns:Publish
+                            Resource: !Ref AlertTopicArn
+            Tags:
+                - { Key: 'nse:service', Value: stats }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    InstanceProfile:
+        Type: AWS::IAM::InstanceProfile
+        Properties:
+            InstanceProfileName: nse-stats-instance
+            Roles: [!Ref InstanceRole]
+
+    DataVolume:
+        Type: AWS::EC2::Volume
+        DeletionPolicy: Retain
+        UpdateReplacePolicy: Retain
+        Properties:
+            AvailabilityZone: !Ref AvailabilityZone
+            Size: !FindInMap [Sizes, !Ref Environment, DataGiB]
+            VolumeType: gp3
+            Encrypted: true
+            Tags:
+                - { Key: 'nse:service', Value: stats }
+                - { Key: 'nse:env', Value: !Ref Environment }
+                - { Key: Name, Value: nse-stats-data }
+
+    Instance:
+        Type: AWS::EC2::Instance
+        Properties:
+            ImageId: !Ref ImageId
+            InstanceType: !FindInMap [Sizes, !Ref Environment, InstanceType]
+            SubnetId: !Ref SubnetId
+            SecurityGroupIds: [!Ref SecurityGroup]
+            IamInstanceProfile: !Ref InstanceProfile
+            DisableApiTermination: !If [IsProd, true, false]
+            # Standard credits: a sustained load slows the instance, and never bills surplus CPU credits.
+            CreditSpecification: { CPUCredits: standard }
+            MetadataOptions:
+                HttpTokens: required
+                HttpEndpoint: enabled
+                # One hop: containers cannot reach the instance role.
+                HttpPutResponseHopLimit: 1
+                InstanceMetadataTags: enabled
+            BlockDeviceMappings:
+                - DeviceName: /dev/sda1
+                  Ebs:
+                      { VolumeSize: 8, VolumeType: gp3, Encrypted: true, DeleteOnTermination: true }
+            Volumes:
+                - { Device: /dev/sdf, VolumeId: !Ref DataVolume }
+            Tags:
+                - { Key: 'nse:service', Value: stats }
+                - { Key: 'nse:env', Value: !Ref Environment }
+                - { Key: Name, Value: nse-stats }
+                # Read by update.sh and nightly.sh through the instance metadata. A change here needs no restart.
+                - { Key: 'nse:commit', Value: !Ref SourceCommit }
+                - { Key: 'nse:hostname', Value: !Sub 'stats.${ZoneName}' }
+                - { Key: 'nse:bucket', Value: !Ref DumpBucket }
+                - { Key: 'nse:topic', Value: !Ref AlertTopicArn }
+                - !If
+                  - HasMonitorWebsite
+                  - { Key: 'nse:monitor-website', Value: !Ref MonitorWebsite }
+                  - !Ref AWS::NoValue
+            # First boot only, and unchanged by a deploy: mount the data volume, install Docker, then run
+            # update.sh as of the commit in the nse:commit tag.
+            UserData:
+                Fn::Base64: !Sub |
+                    #!/bin/bash
+                    set -eu
+                    exec > /var/log/nse-stats-init.log 2>&1
+                    VOL=${DataVolume}
+                    DEV=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$(echo $VOL | tr -d -)
+                    for i in $(seq 1 60); do [ -e "$DEV" ] && break; sleep 5; done
+                    [ -e "$DEV" ]
+                    blkid "$DEV" > /dev/null || mkfs.ext4 -L nse-data "$DEV"
+                    mkdir -p /data
+                    grep -q ' /data ' /etc/fstab || echo 'LABEL=nse-data /data ext4 defaults,nofail 0 2' >> /etc/fstab
+                    mount -a
+                    apt-get update -y
+                    DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose-v2 unattended-upgrades
+                    snap install aws-cli --classic
+                    cat > /etc/apt/apt.conf.d/52nse-reboot <<'CONF'
+                    Unattended-Upgrade::Automatic-Reboot "true";
+                    Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+                    CONF
+                    cat > /usr/local/bin/nse-stats-update <<'SCRIPT'
+                    #!/bin/bash
+                    set -eu
+                    T=$(curl -fsS --retry 5 --retry-all-errors -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)
+                    C=$(curl -fsS --retry 5 --retry-all-errors -H "X-aws-ec2-metadata-token: $T" http://169.254.169.254/latest/meta-data/tags/instance/nse:commit)
+                    curl -fsSL --retry 5 "https://raw.githubusercontent.com/${Repository}/$C/infra/stats/host/update.sh" | NSE_REPO=${Repository} bash
+                    SCRIPT
+                    chmod +x /usr/local/bin/nse-stats-update
+                    /usr/local/bin/nse-stats-update
+
+    ElasticIp:
+        Type: AWS::EC2::EIP
+        DeletionPolicy: Retain
+        UpdateReplacePolicy: Retain
+        Properties:
+            Domain: vpc
+            Tags:
+                - { Key: 'nse:service', Value: stats }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    ElasticIpAssociation:
+        Type: AWS::EC2::EIPAssociation
+        Properties:
+            AllocationId: !GetAtt ElasticIp.AllocationId
+            InstanceId: !Ref Instance
+
+    Record:
+        Type: AWS::Route53::RecordSet
+        Properties:
+            HostedZoneId: !Ref ZoneId
+            Name: !Sub 'stats.${ZoneName}.'
+            Type: A
+            TTL: '300'
+            ResourceRecords: [!Ref ElasticIp]
+
+    # Weekly pg_dump files (12.5). Versioned in prod, so a deleted dump can be restored for seven days.
+    DumpBucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: Retain
+        UpdateReplacePolicy: Retain
+        Properties:
+            BucketName: !Sub nse-stats-${AWS::AccountId}-dumps
+            BucketEncryption:
+                ServerSideEncryptionConfiguration:
+                    - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+            PublicAccessBlockConfiguration:
+                BlockPublicAcls: true
+                BlockPublicPolicy: true
+                IgnorePublicAcls: true
+                RestrictPublicBuckets: true
+            VersioningConfiguration: !If
+                - IsProd
+                - { Status: Enabled }
+                - !Ref AWS::NoValue
+            LifecycleConfiguration:
+                Rules:
+                    - Id: expire-dumps
+                      Status: Enabled
+                      Prefix: dumps/
+                      ExpirationInDays: 28
+                      NoncurrentVersionExpiration: { NoncurrentDays: 7 }
+                      AbortIncompleteMultipartUpload: { DaysAfterInitiation: 2 }
+                    - Id: clear-delete-markers
+                      Status: Enabled
+                      ExpiredObjectDeleteMarker: true
+            Tags:
+                - { Key: 'nse:service', Value: stats }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+    DumpBucketPolicy:
+        Type: AWS::S3::BucketPolicy
+        Properties:
+            Bucket: !Ref DumpBucket
+            PolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                    - Sid: TlsOnly
+                      Effect: Deny
+                      Principal: '*'
+                      Action: 's3:*'
+                      Resource: [!GetAtt DumpBucket.Arn, !Sub '${DumpBucket.Arn}/*']
+                      Condition: { Bool: { 'aws:SecureTransport': 'false' } }
+
+    # A hung OS (instance status check) reboots the instance and emails the owner. A failed system
+    # check is handled by EC2's own automatic recovery.
+    StatusAlarm:
+        Type: AWS::CloudWatch::Alarm
+        Condition: IsProd
+        Properties:
+            AlarmName: nse-stats-instance-status
+            Namespace: AWS/EC2
+            MetricName: StatusCheckFailed_Instance
+            Dimensions: [{ Name: InstanceId, Value: !Ref Instance }]
+            Statistic: Maximum
+            Period: 60
+            EvaluationPeriods: 5
+            Threshold: 1
+            ComparisonOperator: GreaterThanOrEqualToThreshold
+            TreatMissingData: notBreaching
+            AlarmActions:
+                - !Sub arn:aws:automate:${AWS::Region}:ec2:reboot
+                - !Ref AlertTopicArn
+            Tags:
+                - { Key: 'nse:service', Value: stats }
+                - { Key: 'nse:env', Value: !Ref Environment }
+
+Outputs:
+    Hostname:
+        Value: !Sub 'stats.${ZoneName}'
+    InstanceId:
+        Value: !Ref Instance
+    DataVolumeId:
+        Value: !Ref DataVolume
+    BucketName:
+        Value: !Ref DumpBucket
+    AllocationId:
+        Value: !GetAtt ElasticIp.AllocationId
