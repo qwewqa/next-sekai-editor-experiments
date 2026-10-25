@@ -123,7 +123,7 @@ export const buildRawExportResult = async (
     }
     const data = new TextEncoder().encode(JSON.stringify(dump ?? emptyDump(appVersion, keys)))
     // STORE, its CRC read from a Blob in slices: deflating or checking tens of megabytes in one
-    // task would stop the page.
+    // task would block the page.
     const entries = [
         await prepareEntry({ name: DUMP_ENTRY, method: 'store', data: new Blob([data]) }),
         ...media,

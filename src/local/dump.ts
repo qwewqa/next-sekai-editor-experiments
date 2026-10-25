@@ -240,8 +240,19 @@ export const dumpLocalStorage = (storage: Storage, prefix: string) => {
     return out
 }
 
-/** The longest the dump encodes in one task. */
+/** The longest one task spends encoding the dump. */
 const ENCODE_SLICE_MS = 16
+
+/** A new task, through a message: timers are slowed to once a second or less in a hidden tab. */
+const nextTask = () =>
+    new Promise<void>((resolve) => {
+        const channel = new MessageChannel()
+        channel.port1.onmessage = () => {
+            channel.port1.close()
+            resolve()
+        }
+        channel.port2.postMessage(null)
+    })
 
 /**
  * Dumps every store of an open database, read in one transaction with plain cursors. Blobs are
@@ -282,7 +293,7 @@ export const dumpDatabase = async (
                 value: encodeValue(entry.value, blobTag),
             })
             if (performance.now() - since > ENCODE_SLICE_MS) {
-                await new Promise((resolve) => setTimeout(resolve, 0))
+                await nextTask()
                 since = performance.now()
             }
         }

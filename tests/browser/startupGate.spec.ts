@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { inflateRawSync } from 'node:zlib'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
@@ -238,7 +237,7 @@ test.describe('the startup gate', () => {
         localStorage: Record<string, string>
     }
 
-    /** dump.json out of an exported ZIP: its first entry, DEFLATE, found through the central directory. */
+    /** dump.json out of an exported ZIP: its first entry, STORE, found through the central directory. */
     const dumpOfZip = (bytes: Buffer) => {
         expect(bytes.subarray(0, 4).toString('latin1')).toBe('PK')
         // The end record is the last 22 bytes when the ZIP has no comment.
@@ -252,7 +251,8 @@ test.describe('the startup gate', () => {
         const extraLength = bytes.readUInt16LE(local + 28)
         expect(bytes.subarray(local + 30, local + 30 + nameLength).toString()).toBe('dump.json')
         const start = local + 30 + nameLength + extraLength
-        return JSON.parse(inflateRawSync(bytes.subarray(start, start + size)).toString()) as RawDump
+        expect(bytes.readUInt16LE(local + 8)).toBe(0)
+        return JSON.parse(bytes.subarray(start, start + size).toString()) as RawDump
     }
 
     test('Export Raw Data… waits while its export runs, so a second press starts no second one', async ({
@@ -436,7 +436,7 @@ test.describe('the startup gate', () => {
             }
         })
         expect(result.entries).toEqual([
-            ['dump.json', 8],
+            ['dump.json', 0],
             ['blobs/0', 0],
         ])
         expect(result.media).toEqual({ blob: { $blobEntry: 'blobs/0', type: 'audio/wav' } })
