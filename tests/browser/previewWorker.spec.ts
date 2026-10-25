@@ -199,13 +199,18 @@ test('the setting moves the preview between hosts at once, and it keeps drawing'
                 return host === 'main' ? hostTest.mainFrames : previewTest.frames
             }, host)
         const before = await drawn()
-        // The first change through the panel's own switch.
-        if (!on && host === 'main' && before === 0)
-            await page
-                .locator('.preview-controls')
-                .getByRole('switch', { name: 'Parallel Rendering', exact: true })
-                .uncheck()
-        else await page.evaluate((on) => (window.editorTest.settings.previewInWorker = on), on)
+        // The first change through Settings › Preview.
+        if (!on && host === 'main' && before === 0) {
+            await page.keyboard.press(',')
+            const row = page
+                .getByRole('dialog')
+                .locator('label')
+                .filter({ has: page.getByText('Parallel Rendering', { exact: true }) })
+            await row.getByRole('switch').click()
+            await expect(row.getByRole('switch')).toHaveValue('Disabled')
+            await page.keyboard.press('Escape')
+            await expect(page.getByRole('dialog')).toHaveCount(0)
+        } else await page.evaluate((on) => (window.editorTest.settings.previewInWorker = on), on)
         await expect.poll(() => hostOf(page)).toBe(host)
         await expect.poll(drawn).toBeGreaterThan(before)
         await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)

@@ -19,7 +19,6 @@ import { previewAspectRatios, previewNoteSpeed, previewRenderScale } from './opt
 import { panelPositionOptions, previewTransportOptions } from './settingsOptions'
 import SelectValue from '../modals/form/SelectValue.vue'
 import { handOffPreviewSettings, type ControlsMetrics } from './usePreviewViewport'
-import { workerHostSupported } from './worker/host'
 
 const props = defineProps<{
     /** Hides the toggle where it would sit on the playback bar. */
@@ -511,34 +510,6 @@ const onPlacementChange = () => {
                             }}
                         </span>
                         <ToggleSwitch :value="settings.previewAntialias" />
-                    </span>
-                </label>
-
-                <label v-if="workerHostSupported" class="preview-setting cursor-pointer">
-                    <span class="preview-setting-label">{{
-                        i18n.settings.preview.parallelRendering
-                    }}</span>
-                    <span class="preview-setting-control group relative">
-                        <input
-                            v-model="settings.previewInWorker"
-                            class="peer absolute inset-0 size-full cursor-pointer opacity-0"
-                            type="checkbox"
-                            role="switch"
-                            :aria-label="i18n.settings.preview.parallelRendering"
-                            :title="
-                                settings.previewInWorker
-                                    ? i18n.modals.form.toggle.enabled
-                                    : i18n.modals.form.toggle.disabled
-                            "
-                        />
-                        <span class="preview-field preview-toggle field">
-                            {{
-                                settings.previewInWorker
-                                    ? i18n.modals.form.toggle.enabled
-                                    : i18n.modals.form.toggle.disabled
-                            }}
-                        </span>
-                        <ToggleSwitch :value="settings.previewInWorker" />
                     </span>
                 </label>
 

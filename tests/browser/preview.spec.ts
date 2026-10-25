@@ -2180,7 +2180,8 @@ test('preview options share persisted settings with the main options menu', asyn
     await expect(preview.getByRole('combobox', { name: 'Position', exact: true })).toHaveValue(
         'auto',
     )
-    // Both entry points list the shared options in the same order; Settings adds the Assets row.
+    // Both entry points list the shared options in the same order; Settings adds the Assets row,
+    // and Parallel Rendering, a setting for a device whose preview looks wrong.
     const order = [
         'Note Speed',
         'Highlight Selection',
@@ -2225,7 +2226,13 @@ test('preview options share persisted settings with the main options menu', asyn
             .evaluateAll((labels) =>
                 labels.map((label) => label.firstElementChild?.textContent?.trim()),
             ),
-    ).toEqual(['Assets', ...order, 'Preview Settings Panel'])
+    ).toEqual([
+        'Assets',
+        ...order.slice(0, -1),
+        'Parallel Rendering',
+        'Playback Controls',
+        'Preview Settings Panel',
+    ])
     const transport = dialog.getByRole('combobox', { name: 'Playback Controls', exact: true })
     await expect(transport).toHaveValue('overlay')
     await transport.selectOption('below')
