@@ -17,7 +17,7 @@ import { splitUnit } from '../../utils/unitLabel'
 import { measureWord, useStackLongValues, useStackLongWords, valueOverflows } from './fieldLayout'
 import { cancelFit, queueFit } from './fitBatch'
 import { holdsTyping } from './resync'
-import { observeWidth, unobserveWidth } from './widthObserver'
+import { fittedAtWidth, observeWidth, unobserveWidth } from './widthObserver'
 import { formatNumber } from '../../utils/formatNumber'
 import { useFieldReadOnly } from './fieldReadOnly'
 import { mixedValues, useFieldUsage, type MixedValue } from './fieldUsage'
@@ -132,6 +132,13 @@ const fitLabel = (nextFrame = false) => {
             },
             () => {
                 roomy = overTwoLines(text)
+                // The layout is current here, so this costs nothing; the observer's first entry
+                // at this width needs no second fit. A hidden field has no width (NaN).
+                if (fieldRoot.value)
+                    fittedAtWidth(
+                        fieldRoot.value,
+                        parseFloat(getComputedStyle(fieldRoot.value).width),
+                    )
             },
             () => {
                 if (roomy) element.classList.add('form-field-label-roomy')

@@ -242,7 +242,7 @@ const exportRaw = async () => {
     const outcome: { run?: RawExportRun } = {}
     await showModal(LoadingModal, {
         title: () => strings.value.exportRawTitle,
-        async *task(signal) {
+        async *task(signal: AbortSignal) {
             yield () => i18n.value.modals.loading.loading
             const action = await import('../../startup/rawExportAction')
             const run = (outcome.run = await action.runRawExportAction(signal))

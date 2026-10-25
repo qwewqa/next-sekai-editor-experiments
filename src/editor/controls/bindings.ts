@@ -266,11 +266,17 @@ export const formatBinding = (binding: string | undefined, apple: boolean) => {
         .join('+')
 }
 
+let appleDevice: boolean | undefined
+
 /** Macs, iPads and iPhones, where Cmd plays Ctrl's part. */
 export const isApplePlatform = () => {
     if (typeof navigator === 'undefined') return false
-    const data = (navigator as { userAgentData?: { platform?: string } }).userAgentData
-    return /mac|iphone|ipad|ipod/i.test(data?.platform ?? navigator.platform)
+    // Read once: each shortcut shown asks, and Settings shows over a hundred.
+    appleDevice ??= /mac|iphone|ipad|ipod/i.test(
+        (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+            navigator.platform,
+    )
+    return appleDevice
 }
 
 /** A shown shortcut that is one punctuation mark, which needs more size and weight to read. */

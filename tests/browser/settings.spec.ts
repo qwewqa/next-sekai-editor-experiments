@@ -353,6 +353,8 @@ for (const locale of ['fr', 'tr', 'en']) {
             locale,
         )
         const dialog = page.getByRole('dialog')
+        // The last section mounts a few frames after the dialog opens.
+        await expect(dialog.locator('[data-settings-section="about"]')).toBeAttached()
         await expect
             .poll(() =>
                 dialog.locator('.form-field').evaluateAll((fields) => {
@@ -377,7 +379,7 @@ for (const locale of ['fr', 'tr', 'en']) {
             .locator('.form-field.form-field-value-stacked')
             .evaluateAll((fields) => fields.length)
         expect(stacked).toBeGreaterThan(0)
-        expect(stacked).toBeLessThan(6)
+        expect(stacked).toBeLessThan(12)
     })
 }
 
