@@ -90,9 +90,7 @@ const installSeedApp = async () => {
             return flipped(() => flip.execute())
         },
         flipAll() {
-            select(
-                [...getAllEntities()].filter((e) => e.type === 'note' || e.type === 'connector'),
-            )
+            select([...getAllEntities()].filter((e) => e.type === 'note' || e.type === 'connector'))
             return flipped(() => flip.execute())
         },
         life() {
@@ -194,7 +192,12 @@ const runVisit = async (
             const run = int(2, 8)
             for (let i = 0; i < run && made < plan.steps; i++) {
                 walk = (walk + between(0.5, 4)) % walkEnd
-                if (await page.evaluate(([b, n]) => window.perfSeed.flipNear(b, n), [walk, int(1, 3)]))
+                if (
+                    await page.evaluate(
+                        ([b, n]) => window.perfSeed.flipNear(b, n),
+                        [walk, int(1, 3)],
+                    )
+                )
                     await gap()
             }
         } else if (pick < 0.92) {
@@ -264,7 +267,7 @@ const SEEDS: Record<string, () => Plan[]> = {
     'history-1800': () => visits([1, 0], 900, 8),
     'history-20h': () => visits([12, 11, 10, 8, 7, 5, 4, 2, 1, 0], 2000, 6),
     'chain-small': () => visits([0], 12, 8),
-    'debug': () => visits([1, 0], 150, 8),
+    debug: () => visits([1, 0], 150, 8),
 }
 
 for (const [name, plans] of Object.entries(SEEDS))

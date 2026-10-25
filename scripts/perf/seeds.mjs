@@ -55,7 +55,9 @@ for (let k = 0; k < count; k++)
                 ...later(session, shift, ['startedAt', 'updatedAt']),
                 id: id(session.id),
                 chainId,
-                ...(session.parent ? { parent: { ...session.parent, id: id(session.parent.id) } } : {}),
+                ...(session.parent
+                    ? { parent: { ...session.parent, id: id(session.parent.id) } }
+                    : {}),
             })
             for (const entry of entriesOf.get(session.id) ?? [])
                 out.entries.push({ ...later(entry, shift, ['time']), sessionId: id(session.id) })
@@ -76,4 +78,6 @@ const keys = {
 for (const [name, values] of Object.entries(out))
     store(name).records = values.map((value) => ({ key: keys[name](value), value }))
 writeFileSync(output, `${JSON.stringify(dump)}\n`)
-console.log(`${output}: ${out.chains.length} chains, ${out.sessions.length} sessions, ${out.entries.length} entries`)
+console.log(
+    `${output}: ${out.chains.length} chains, ${out.sessions.length} sessions, ${out.entries.length} entries`,
+)

@@ -47,9 +47,22 @@ export const installActionProbe = () => {
                 finished: false,
             })
             a.observers = [
-                ['event', (e) => a.events.push([e.name, e.startTime, e.duration, e.processingStart, e.processingEnd])],
+                [
+                    'event',
+                    (e) =>
+                        a.events.push([
+                            e.name,
+                            e.startTime,
+                            e.duration,
+                            e.processingStart,
+                            e.processingEnd,
+                        ]),
+                ],
                 ['longtask', (e) => a.tasks.push([e.startTime, e.duration])],
-                ['long-animation-frame', (e) => a.loaf.push([e.startTime, e.duration, e.blockingDuration])],
+                [
+                    'long-animation-frame',
+                    (e) => a.loaf.push([e.startTime, e.duration, e.blockingDuration]),
+                ],
             ].map(([type, push]) => {
                 const observer = new PerformanceObserver((list) => list.getEntries().forEach(push))
                 observer.observe(type === 'event' ? { type, durationThreshold: 16 } : { type })
@@ -108,11 +121,15 @@ export const installActionProbe = () => {
                 if (t >= input && t <= end) intervals.push(t - prev)
                 else if (t > end) after.push(t - prev)
             }
-            const keyEvents = a.events.filter(([name, start]) => name === 'keydown' && start >= input - 1)
+            const keyEvents = a.events.filter(
+                ([name, start]) => name === 'keydown' && start >= input - 1,
+            )
             const sorted = (list) => [...list].sort((x, y) => x - y)
             const pct = (list, p) => {
                 const s = sorted(list)
-                return s.length ? s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))] : undefined
+                return s.length
+                    ? s[Math.min(s.length - 1, Math.floor((p / 100) * s.length))]
+                    : undefined
             }
             const rel = (t) => (t === undefined ? undefined : t - lastInput)
             return {
@@ -121,12 +138,21 @@ export const installActionProbe = () => {
                 busy: rel(a.at.busy),
                 marks: Object.fromEntries(Object.entries(a.at.marks).map(([k, t]) => [k, rel(t)])),
                 inputs: a.inputs.length,
-                eventMax: Math.max(0, ...a.events.filter(([, start]) => start >= input - 1).map((e) => e[2])),
+                eventMax: Math.max(
+                    0,
+                    ...a.events.filter(([, start]) => start >= input - 1).map((e) => e[2]),
+                ),
                 keyEvents: keyEvents.length
                     ? {
                           n: keyEvents.length,
-                          p50: pct(keyEvents.map((e) => e[2]), 50),
-                          p95: pct(keyEvents.map((e) => e[2]), 95),
+                          p50: pct(
+                              keyEvents.map((e) => e[2]),
+                              50,
+                          ),
+                          p95: pct(
+                              keyEvents.map((e) => e[2]),
+                              95,
+                          ),
                           max: Math.max(...keyEvents.map((e) => e[2])),
                       }
                     : undefined,
@@ -157,13 +183,19 @@ const waitFor = (page, fn, arg, timeout = 60_000) =>
 
 const noPeek = async (page) => {
     if (await page.evaluate(() => !!window.nsePerf.peek().key)) {
-        await page.locator('[data-peek-back]').click({ timeout: 5000 }).catch(() => {})
+        await page
+            .locator('[data-peek-back]')
+            .click({ timeout: 5000 })
+            .catch(() => {})
         await waitFor(page, () => !window.nsePerf.peek().key)
     }
 }
 const openHistory = async (page, tab = 'Timeline') => {
     if (!(await visible(page, `${dialog} [role=tablist]`))) {
-        await page.locator('canvas.editor-chart').focus().catch(() => {})
+        await page
+            .locator('canvas.editor-chart')
+            .focus()
+            .catch(() => {})
         await page.keyboard.press('Shift+H')
         await page.locator(`${dialog} [role=tablist]`).waitFor({ timeout: 30_000 })
     }
@@ -248,15 +280,33 @@ const findRow = async (page, pattern) => {
             )
             if (!row) return
             const r = row.getBoundingClientRect()
-            return { x: r.x + Math.min(r.width / 2, 120), y: r.y + r.height / 2, label: row.getAttribute('aria-label') }
+            return {
+                x: r.x + Math.min(r.width / 2, 120),
+                y: r.y + r.height / 2,
+                label: row.getAttribute('aria-label'),
+            }
         },
         { d: dialog, source: pattern },
     )
 }
 const click = async (cdp, { x, y }) => {
     await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1 })
-    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1 })
+    await cdp.send('Input.dispatchMouseEvent', {
+        type: 'mousePressed',
+        x,
+        y,
+        button: 'left',
+        buttons: 1,
+        clickCount: 1,
+    })
+    await cdp.send('Input.dispatchMouseEvent', {
+        type: 'mouseReleased',
+        x,
+        y,
+        button: 'left',
+        buttons: 0,
+        clickCount: 1,
+    })
 }
 const centre = async (locator) => {
     const b = await locator.boundingBox({ timeout: 10_000 })
@@ -313,7 +363,12 @@ export const actions = {
         prep: async (page) => {
             await openHistory(page)
         },
-        spec: () => ({ before: peekBefore, done: peekShown, busy: 'P.peek().loading', marks: { change: changeKnown } }),
+        spec: () => ({
+            before: peekBefore,
+            done: peekShown,
+            busy: 'P.peek().loading',
+            marks: { change: changeKnown },
+        }),
         input: async (page, cdp, cell, state) => {
             const n = (cell.row ?? 2) + state.rep * (cell.stride ?? 0)
             const at = await rowAt(page, `${dialog} [data-history-row]`, n)
@@ -330,11 +385,19 @@ export const actions = {
                 await openHistory(page)
                 const at = await rowAt(page, `${dialog} [data-history-row]`, cell.row ?? 1)
                 await page.mouse.click(at.x, at.y)
-                await waitFor(page, () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading)
+                await waitFor(
+                    page,
+                    () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading,
+                )
             }
             await sleep(400)
         },
-        spec: () => ({ before: peekBefore, done: peekShown, busy: 'P.peek().loading', marks: { change: changeKnown } }),
+        spec: () => ({
+            before: peekBefore,
+            done: peekShown,
+            busy: 'P.peek().loading',
+            marks: { change: changeKnown },
+        }),
         input: (page, cdp) => press(cdp, 'ArrowDown'),
     },
     /** ↓ held for `seconds` (3) at 30 Hz: each repeat a peek; done when the last one shows. */
@@ -344,7 +407,10 @@ export const actions = {
             await noPeek(page)
             const at = await rowAt(page, `${dialog} [data-history-row]`, cell.row ?? 1)
             await page.mouse.click(at.x, at.y)
-            await waitFor(page, () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading)
+            await waitFor(
+                page,
+                () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading,
+            )
             await sleep(500)
         },
         spec: () => ({
@@ -380,7 +446,11 @@ export const actions = {
         spec: () => ({ release: true, done: 'true', tail: 500 }),
         input: async (page, cdp, cell) => {
             const at = await centre(
-                page.locator(cell.list === 'sessions' ? '[data-sessions-list]' : `${dialog} [data-history-list]`),
+                page.locator(
+                    cell.list === 'sessions'
+                        ? '[data-sessions-list]'
+                        : `${dialog} [data-history-list]`,
+                ),
             )
             await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...at })
             const start = performance.now()
@@ -389,7 +459,12 @@ export const actions = {
                     const wait = start + t - performance.now()
                     if (wait > 0) await sleep(wait)
                     void cdp
-                        .send('Input.dispatchMouseEvent', { type: 'mouseWheel', ...at, deltaX: 0, deltaY: 120 })
+                        .send('Input.dispatchMouseEvent', {
+                            type: 'mouseWheel',
+                            ...at,
+                            deltaX: 0,
+                            deltaY: 120,
+                        })
                         .catch(() => {})
                 }
         },
@@ -404,11 +479,19 @@ export const actions = {
             state.label = at.label
             // A neighbour first, so the whole-chart row is the next peek.
             await page.mouse.click(at.x, at.y + 30)
-            await waitFor(page, () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading)
+            await waitFor(
+                page,
+                () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading,
+            )
             await sleep(400)
             state.at = at
         },
-        spec: () => ({ before: peekBefore, done: peekShown, busy: 'P.peek().loading', marks: { change: changeKnown } }),
+        spec: () => ({
+            before: peekBefore,
+            done: peekShown,
+            busy: 'P.peek().loading',
+            marks: { change: changeKnown },
+        }),
         input: (page, cdp, cell, state) => click(cdp, state.at),
     },
     /** While a whole-chart edit is peeked: an edge arrow (Changes Below or Above). */
@@ -459,14 +542,25 @@ export const actions = {
         },
         spec: () => ({
             done: `!!document.querySelector('[data-history-filter-banner]') && (document.querySelectorAll('${dialog} [data-history-row]').length > 1 || !!document.querySelector('[data-history-empty]'))`,
-            marks: { complete: `!!document.querySelector('[data-history-filter-banner]') && !document.querySelector('[data-history-scan]')` },
+            marks: {
+                complete: `!!document.querySelector('[data-history-filter-banner]') && !document.querySelector('[data-history-scan]')`,
+            },
             tail: 100,
             timeout: 120_000,
         }),
-        input: async (page, cdp) => click(cdp, await centre(page.locator('[data-goto-filter="here"]'))),
+        input: async (page, cdp) =>
+            click(cdp, await centre(page.locator('[data-goto-filter="here"]'))),
         reset: async (page) => {
-            await waitFor(page, () => !document.querySelector('[data-history-scan]'), undefined, 120_000).catch(() => {})
-            await page.getByRole('button', { name: 'Show All' }).click().catch(() => {})
+            await waitFor(
+                page,
+                () => !document.querySelector('[data-history-scan]'),
+                undefined,
+                120_000,
+            ).catch(() => {})
+            await page
+                .getByRole('button', { name: 'Show All' })
+                .click()
+                .catch(() => {})
             await sleep(300)
         },
     },
@@ -475,13 +569,21 @@ export const actions = {
         prep: async (page) => {
             await actions.editsHere.prep(page)
             await page.locator('[data-goto-filter="here"]').click()
-            await waitFor(page, () => !!document.querySelector('[data-history-filter-banner]') && !document.querySelector('[data-history-scan]'), undefined, 120_000)
+            await waitFor(
+                page,
+                () =>
+                    !!document.querySelector('[data-history-filter-banner]') &&
+                    !document.querySelector('[data-history-scan]'),
+                undefined,
+                120_000,
+            )
             await sleep(300)
         },
         spec: () => ({
             done: `!document.querySelector('[data-history-filter-banner]') && document.querySelectorAll('${dialog} [data-history-row]').length > 1`,
         }),
-        input: async (page, cdp) => click(cdp, await centre(page.getByRole('button', { name: 'Show All' }))),
+        input: async (page, cdp) =>
+            click(cdp, await centre(page.getByRole('button', { name: 'Show All' }))),
     },
     /** Expand the first ×N group drawn. */
     expandGroup: {
@@ -501,9 +603,18 @@ export const actions = {
             done: `document.querySelectorAll('[data-history-disclosure][aria-expanded="true"]').length > A`,
         }),
         input: async (page, cdp) =>
-            click(cdp, await centre(page.locator('[data-history-disclosure][aria-expanded="false"]').first())),
+            click(
+                cdp,
+                await centre(
+                    page.locator('[data-history-disclosure][aria-expanded="false"]').first(),
+                ),
+            ),
         reset: async (page) => {
-            await page.locator('[data-history-disclosure][aria-expanded="true"]').first().click().catch(() => {})
+            await page
+                .locator('[data-history-disclosure][aria-expanded="true"]')
+                .first()
+                .click()
+                .catch(() => {})
             await sleep(300)
         },
     },
@@ -517,7 +628,8 @@ export const actions = {
             done: `document.querySelectorAll('[data-goto-list] [role=option]').length > 1 && !document.querySelector('[data-goto-loading]')`,
             busy: `!!document.querySelector('[data-goto-loading]')`,
         }),
-        input: async (page, cdp) => click(cdp, await centre(page.locator('[data-history-goto-button]'))),
+        input: async (page, cdp) =>
+            click(cdp, await centre(page.locator('[data-history-goto-button]'))),
         reset: async (page) => {
             await page.keyboard.press('Escape')
             await sleep(300)
@@ -528,10 +640,20 @@ export const actions = {
         prep: async (page) => {
             await actions.goToOpen.prep(page)
             await page.locator('[data-history-goto-button]').click()
-            await waitFor(page, () => document.querySelectorAll('[data-goto-list] [role=option]').length > 1 && !document.querySelector('[data-goto-loading]'))
+            await waitFor(
+                page,
+                () =>
+                    document.querySelectorAll('[data-goto-list] [role=option]').length > 1 &&
+                    !document.querySelector('[data-goto-loading]'),
+            )
             await sleep(300)
         },
-        spec: () => ({ before: peekBefore, done: peekShown, busy: 'P.peek().loading', marks: { change: changeKnown } }),
+        spec: () => ({
+            before: peekBefore,
+            done: peekShown,
+            busy: 'P.peek().loading',
+            marks: { change: changeKnown },
+        }),
         input: async (page, cdp, cell) => {
             const options = page.locator('[data-goto-list] [data-goto-item="day"]')
             const target = cell.pick === 'first' ? options.first() : options.last()
@@ -545,9 +667,16 @@ export const actions = {
         prep: async (page, cell, state) => {
             await openHistory(page)
             await noPeek(page)
-            const at = await rowAt(page, `${dialog} [data-history-row]`, (cell.row ?? 6) + state.rep * (cell.stride ?? 3))
+            const at = await rowAt(
+                page,
+                `${dialog} [data-history-row]`,
+                (cell.row ?? 6) + state.rep * (cell.stride ?? 3),
+            )
             await page.mouse.click(at.x, at.y)
-            await waitFor(page, () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading)
+            await waitFor(
+                page,
+                () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading,
+            )
             await sleep(500)
         },
         spec: () => ({ before: 'P.live().state', done: '!P.peek().key && P.live().state !== A' }),
@@ -557,10 +686,17 @@ export const actions = {
     undo: {
         prep: async (page, cell) => {
             await closeHistory(page)
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
             await sleep(cell.pause ?? 500)
         },
-        spec: () => ({ before: 'P.live().state', done: 'P.live().state !== A && !P.live().loading', busy: 'P.live().loading' }),
+        spec: () => ({
+            before: 'P.live().state',
+            done: 'P.live().state !== A && !P.live().loading',
+            busy: 'P.live().loading',
+        }),
         input: (page, cdp, cell) => page.keyboard.press(cell.key ?? 'z'),
     },
     /** A flip of `count` notes near the view with the Timeline open: the edit and the work after it. */
@@ -568,8 +704,14 @@ export const actions = {
         prep: async (page, cell) => {
             await openHistory(page)
             await noPeek(page)
-            await page.evaluate((count) => window.nsePerf.selectNear(window.nsePerf.view.time, count), cell.count ?? 20)
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page.evaluate(
+                (count) => window.nsePerf.selectNear(window.nsePerf.view.time, count),
+                cell.count ?? 20,
+            )
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
             await sleep(500)
         },
         spec: () => ({ before: 'P.live().state', done: 'P.live().state !== A', tail: 2500 }),
@@ -591,7 +733,11 @@ export const actions = {
             done: `document.querySelectorAll('[data-sessions-row]').length > 0 && !document.querySelector('[data-sessions-loading]')`,
             busy: `!!document.querySelector('[data-sessions-loading]')`,
         }),
-        input: async (page, cdp) => click(cdp, await centre(page.getByRole('tab', { name: 'Recent Sessions', exact: true }))),
+        input: async (page, cdp) =>
+            click(
+                cdp,
+                await centre(page.getByRole('tab', { name: 'Recent Sessions', exact: true })),
+            ),
         reset: async (page) => {
             await page.getByRole('tab', { name: 'Timeline', exact: true }).click()
             await sleep(300)
@@ -607,22 +753,44 @@ export const actions = {
         },
         spec: () => ({ before: peekBefore, done: peekShown, busy: 'P.peek().loading' }),
         input: async (page, cdp, cell, state) =>
-            click(cdp, await rowAt(page, '[data-sessions-row]', (cell.row ?? 3) + state.rep * (cell.stride ?? 7))),
+            click(
+                cdp,
+                await rowAt(
+                    page,
+                    '[data-sessions-row]',
+                    (cell.row ?? 3) + state.rep * (cell.stride ?? 7),
+                ),
+            ),
     },
     /** Restore Session from a peeked row (Enter). */
     restoreSession: {
         prep: async (page, cell, state) => {
             await openHistory(page, 'Recent Sessions')
-            const at = await rowAt(page, '[data-sessions-row]', (cell.row ?? 3) + state.rep * (cell.stride ?? 5))
+            const at = await rowAt(
+                page,
+                '[data-sessions-row]',
+                (cell.row ?? 3) + state.rep * (cell.stride ?? 5),
+            )
             await page.mouse.click(at.x, at.y)
-            await waitFor(page, () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading)
+            await waitFor(
+                page,
+                () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading,
+            )
             await sleep(500)
         },
-        spec: () => ({ before: 'P.live().state', done: '!P.peek().key && P.live().state !== A', timeout: 60_000 }),
+        spec: () => ({
+            before: 'P.live().state',
+            done: '!P.peek().key && P.live().state !== A',
+            timeout: 60_000,
+        }),
         input: async (page, cdp) => press(cdp, 'Enter'),
         reset: async (page) => {
             // A switch prompt, when one asks.
-            await page.getByRole('dialog').getByRole('button', { name: /^(Switch|Continue|Restore)/ }).click({ timeout: 1000 }).catch(() => {})
+            await page
+                .getByRole('dialog')
+                .getByRole('button', { name: /^(Switch|Continue|Restore)/ })
+                .click({ timeout: 1000 })
+                .catch(() => {})
             await sleep(1500)
         },
     },
@@ -633,7 +801,10 @@ export const actions = {
             await noPeek(page)
             const at = await rowAt(page, '[data-sessions-row]', (cell.row ?? 4) + state.rep)
             await page.mouse.click(at.x, at.y)
-            await waitFor(page, () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading)
+            await waitFor(
+                page,
+                () => !!window.nsePerf.peek().shown && !window.nsePerf.peek().loading,
+            )
             await sleep(500)
         },
         spec: () => ({
@@ -657,7 +828,8 @@ export const actions = {
             before: `document.querySelectorAll('[data-sessions-deleted]').length`,
             done: `document.querySelectorAll('[data-sessions-deleted]').length < A`,
         }),
-        input: async (page, cdp) => click(cdp, await centre(page.locator('[data-sessions-undo]').first())),
+        input: async (page, cdp) =>
+            click(cdp, await centre(page.locator('[data-sessions-undo]').first())),
     },
 
     // Settings › Local Data
@@ -665,7 +837,10 @@ export const actions = {
         prep: async (page) => {
             await closeHistory(page)
             await closeDialogs(page)
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
         },
         spec: () => ({
             done: `!!document.querySelector('[data-delete-sessions-open]') && /Stored in this browser/.test(document.body.textContent)`,
@@ -681,8 +856,11 @@ export const actions = {
             await page.locator('[data-delete-sessions-open]').scrollIntoViewIfNeeded()
             await sleep(500)
         },
-        spec: () => ({ done: `!!document.querySelector('[data-delete-sessions] [data-delete-count]')` }),
-        input: async (page, cdp) => click(cdp, await centre(page.locator('[data-delete-sessions-open]'))),
+        spec: () => ({
+            done: `!!document.querySelector('[data-delete-sessions] [data-delete-count]')`,
+        }),
+        input: async (page, cdp) =>
+            click(cdp, await centre(page.locator('[data-delete-sessions-open]'))),
         reset: closeDialogs,
     },
     /** Delete Sessions… › All › Delete: every chain. Destructive: one repeat in its own group. */
@@ -702,13 +880,23 @@ export const actions = {
             timeout: 600_000,
         }),
         input: async (page, cdp) =>
-            click(cdp, await centre(page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).last())),
+            click(
+                cdp,
+                await centre(
+                    page
+                        .getByRole('dialog')
+                        .getByRole('button', { name: 'Delete', exact: true })
+                        .last(),
+                ),
+            ),
         reset: closeDialogs,
     },
     exportRaw: {
         prep: async (page, cell, state) => {
             await actions.deleteCounts.prep(page)
-            state.download = page.waitForEvent('download', { timeout: 600_000 }).catch(() => undefined)
+            state.download = page
+                .waitForEvent('download', { timeout: 600_000 })
+                .catch(() => undefined)
         },
         spec: () => ({
             done: `window.__busySeen && !document.querySelector('.loading-modal, [data-loading-modal]') && !/Loading…/.test(document.querySelector('[role=dialog]:last-of-type')?.textContent ?? '')`,
@@ -716,14 +904,19 @@ export const actions = {
             timeout: 600_000,
         }),
         input: async (page, cdp) =>
-            click(cdp, await centre(page.getByRole('button', { name: 'Export Raw Data…', exact: true }))),
+            click(
+                cdp,
+                await centre(page.getByRole('button', { name: 'Export Raw Data…', exact: true })),
+            ),
         reset: async (page, cell, state) => {
             const download = await state.download
-            state.bytes = download ? (await download.createReadStream().then(async (s) => {
-                let n = 0
-                for await (const chunk of s) n += chunk.length
-                return n
-            })) : undefined
+            state.bytes = download
+                ? await download.createReadStream().then(async (s) => {
+                      let n = 0
+                      for await (const chunk of s) n += chunk.length
+                      return n
+                  })
+                : undefined
             await page.evaluate(() => (window.__busySeen = false))
             await closeDialogs(page)
         },
@@ -736,11 +929,16 @@ export const actions = {
             await closeHistory(page)
             await closeDialogs(page)
             await page.evaluate(() => window.nsePerf.selectNear(window.nsePerf.view.time, 3))
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
             await page.keyboard.press('u')
             await page.evaluate(() => window.nsePerf.selectNotes(false))
             await sleep(1500)
-            state.download = page.waitForEvent('download', { timeout: 600_000 }).catch(() => undefined)
+            state.download = page
+                .waitForEvent('download', { timeout: 600_000 })
+                .catch(() => undefined)
             if (state.rep === 0 && !state.bound) {
                 // The first Save names the file.
                 await page.keyboard.press('p')
@@ -775,7 +973,10 @@ export const actions = {
         prep: async (page, cell, state) => {
             await closeHistory(page)
             await closeDialogs(page)
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
             state.chooser = page.waitForEvent('filechooser')
             await sleep(300)
         },
@@ -795,7 +996,11 @@ export const actions = {
             await chooser.setFiles(cell.file)
         },
         reset: async (page) => {
-            await page.getByRole('dialog').getByRole('button', { name: 'OK' }).click({ timeout: 2000 }).catch(() => {})
+            await page
+                .getByRole('dialog')
+                .getByRole('button', { name: 'OK' })
+                .click({ timeout: 2000 })
+                .catch(() => {})
             await sleep(2000)
         },
     },
@@ -804,27 +1009,48 @@ export const actions = {
         prep: async (page) => {
             await closeHistory(page)
             await closeDialogs(page)
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
             await page.keyboard.press('n')
-            await page.getByRole('dialog').getByRole('button', { name: 'New', exact: true }).waitFor({ timeout: 10_000 })
+            await page
+                .getByRole('dialog')
+                .getByRole('button', { name: 'New', exact: true })
+                .waitFor({ timeout: 10_000 })
             await sleep(300)
         },
-        spec: () => ({ before: 'P.live().state', done: `P.live().state !== A && !document.querySelector('[role=dialog]')`, tail: 500 }),
+        spec: () => ({
+            before: 'P.live().state',
+            done: `P.live().state !== A && !document.querySelector('[role=dialog]')`,
+            tail: 500,
+        }),
         input: async (page, cdp) =>
-            click(cdp, await centre(page.getByRole('dialog').getByRole('button', { name: 'New', exact: true }))),
+            click(
+                cdp,
+                await centre(
+                    page.getByRole('dialog').getByRole('button', { name: 'New', exact: true }),
+                ),
+            ),
     },
     exportLevel: {
         prep: async (page, cell, state) => {
             await closeHistory(page)
             await closeDialogs(page)
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
             await page.keyboard.press('Shift+P')
             await page.getByRole('dialog').getByRole('textbox', { name: 'File Name' }).waitFor()
-            state.download = page.waitForEvent('download', { timeout: 120_000 }).catch(() => undefined)
+            state.download = page
+                .waitForEvent('download', { timeout: 120_000 })
+                .catch(() => undefined)
             await sleep(300)
         },
         spec: () => ({ done: `!document.querySelector('[role=dialog]')`, timeout: 120_000 }),
-        input: async (page) => page.getByRole('dialog').getByRole('textbox', { name: 'File Name' }).press('Enter'),
+        input: async (page) =>
+            page.getByRole('dialog').getByRole('textbox', { name: 'File Name' }).press('Enter'),
         reset: async (page, cell, state) => {
             await state.download
             await closeDialogs(page)
@@ -835,10 +1061,15 @@ export const actions = {
         prep: async (page) => {
             await closeHistory(page)
             await closeDialogs(page)
-            await page.locator('canvas.editor-chart').focus().catch(() => {})
+            await page
+                .locator('canvas.editor-chart')
+                .focus()
+                .catch(() => {})
             await sleep(300)
         },
-        spec: (cell) => ({ done: `[...document.querySelectorAll('[role=dialog]')].some((d) => d.textContent.includes(${JSON.stringify(cell.title)}))` }),
+        spec: (cell) => ({
+            done: `[...document.querySelectorAll('[role=dialog]')].some((d) => d.textContent.includes(${JSON.stringify(cell.title)}))`,
+        }),
         input: async (page, cdp, cell) =>
             cell.open.startsWith('click:')
                 ? click(cdp, await centre(page.locator(cell.open.slice(6)).first()))
