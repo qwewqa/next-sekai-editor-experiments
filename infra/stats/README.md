@@ -26,7 +26,7 @@ The host files reach the instance by commit. The stack’s `SourceCommit` parame
 
 Run Actions › Stats deploy, choosing `dev` or `prod`. Prod waits for the maintainer’s approval and refuses any branch but `main`. The workflow assumes `nse-stats-deploy` by OIDC, runs `scripts/deploy.sh`, and ends with a smoke check: `/api/heartbeat` over HTTPS, then the database’s migrations. The same script runs by hand with a profile: `AWS_PROFILE=nse-dev SOURCE_COMMIT=<pushed sha> bash infra/stats/scripts/deploy.sh dev`.
 
-If the first deploy of a stack fails, CloudFormation leaves it in `ROLLBACK_COMPLETE`. The deploy roles cannot delete a stack in prod, so delete it with the admin profile (`aws cloudformation delete-stack --profile nse-prod --stack-name nse-stats`), fix the cause, and deploy again. The retained volume, Elastic IP and bucket of the failed attempt are still there, and the bucket’s fixed name would stop the next deploy. They hold no data yet, so delete them too (`bash infra/stats/scripts/leftover.sh` with the profile lists them). Never do this to a stack that has run.
+If the first deploy of a stack fails, CloudFormation leaves it in `ROLLBACK_COMPLETE`, and it deletes the empty volume, Elastic IP and bucket it had made (they are `RetainExceptOnCreate`). The deploy roles cannot delete a stack in prod, so delete it with the admin profile (`aws cloudformation delete-stack --profile nse-prod --stack-name nse-stats`), fix the cause, and deploy again. Never delete a stack that has run, because its data volume, address and bucket are then left behind.
 
 Try the whole cycle in dev first (see Dev below). Deploying prod, in order:
 
@@ -80,6 +80,8 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
     The bucket name is in the stack’s `BucketName` output. CI tests that a dump restores into a fresh PostgreSQL with the same row counts.
 
 - **Replace the instance** (a new image id, or a broken boot). The data volume is the only thing that must survive. Take a dump; then `aws ec2 modify-instance-attribute --instance-id <id> --no-disable-api-termination`, stop the instance, and detach the volume (`aws ec2 detach-volume`, wait for `available`). Change `ImageId` in `stats.yaml` in a pull request and deploy prod. The new instance attaches the volume and finds its filesystem, certificates, secrets and data. CloudFormation then deletes the old instance. The Elastic IP and the DNS record do not change.
+  An edit to the template’s `UserData` does not run again on an existing instance, because cloud-init runs it once per instance. A change to it therefore needs this procedure too.
+- **Resize the instance.** Change the sizes in the `Sizes` mapping, `COST_PINS` and the cost table in one pull request, and deploy. CloudFormation stops and starts the instance, which takes about a minute.
 - **Replace a secret.** `APP_SECRET`: edit `/data/secrets.env`, then `dc up -d umami`. Dashboard logins end, and the day’s visitor hashes change. The database password: `dc exec db psql -U umami -c "ALTER USER umami PASSWORD '<new>'"`, edit `secrets.env`, then `dc up -d umami`.
 - **Delete data.** One website: Settings › Websites › Edit › Reset Data. By date, in `dc exec db psql -U umami umami`, followed by `VACUUM`. The tables have no foreign keys, so delete in this order:
 
@@ -113,6 +115,17 @@ Dev exists only while an analytics test runs, in `nse-dev`, and is deleted compl
 Once the repository variable `STATS_DEV_REAPER` is `on`, Stats dev down also runs every six hours as a reaper. It acts only on a stack over 12 hours old, and it covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` is the backstop.
 
 Each dev deploy needs a new certificate. Let’s Encrypt allows five per identical set of names a week, and Caddy falls back to ZeroSSL after that.
+
+## What the first dev deploy proves
+
+Some permissions cannot be checked without CloudFormation running them. If the first dev deploy fails, look here first:
+
+- `RunInstances` and the tag conditions on the execution role. The root volume is allowed untagged, and `CreateVolume` is tag-scoped.
+- The trust policy of `nse-stats-cfn` requires `aws:SourceArn` for a stack. AWS documents that key for other role types, so if the error is “Role … is invalid or cannot be assumed”, keep `aws:SourceAccount` and drop `aws:SourceArn`.
+- `iam:PassRole` for the instance profile, which is allowed to EC2 only (`PassedToService`). If the instance profile create is refused, check that condition.
+- The Route 53 record-name condition, in both trailing-dot forms.
+- First boot: the data volume’s device name, the Docker packages, `snap install aws-cli`, and tags with `:` in their keys through the metadata service.
+- The alarm’s reboot action exists only in prod, so the first prod deploy is its first run. Its service-linked role is allowed in the baseline.
 
 ## App-side work with no AWS
 
@@ -148,10 +161,11 @@ Prices are `us-west-2`, on demand, from the AWS price list files published 2026-
 | Dump bucket              | `AWS::S3::Bucket`            | under $0.15                | under $0.01             | S3 Standard $0.023 per GB-month. About five dumps of up to 1 GB, and none are read          |
 | Alarm                    | `AWS::CloudWatch::Alarm`     | $0.10                      | none                    | $0.10 per standard alarm; the first 10 alarms a month are free in the price list. Prod only |
 | DNS record               | `AWS::Route53::RecordSet`    | under $0.01                | under $0.01             | $0.40 per million queries                                                                   |
-| **Stats total**          |                              | **$19.15 plus the bucket** | **$0.0154 an hour**     |                                                                                             |
+| **Stats total**          |                              | **$19.06 plus the bucket** | **$0.0154 an hour**     |                                                                                             |
 | Services zone (baseline) | `AWS::Route53::HostedZone`   | $0.50                      | $0.50 a month           | Shared by every service; the whole idle cost of dev                                         |
 | **With the zone**        |                              | **about $19.70**           | **$0.50 down**          |                                                                                             |
 
 Not billed at this size: data transfer (the first 100 GB a month out is free), Session Manager, the alert topic’s emails, the budget, EC2’s default recovery, the IAM roles and the default KMS key for encrypted volumes. A four-hour dev test costs about $0.06 plus its share of the zone. A dev stack left up costs about $11 a month, which the reaper and the $1 budget are there to stop.
+**What this service adds each month:** prod +$19.70 (stats $19.20 with the bucket, zone $0.50); dev +$0.50 while down and +$0.0154 an hour while up. Nothing was deployed before. Prices read 2026-10-25 from the AWS price list files above and the pages https://aws.amazon.com/ebs/pricing/, https://aws.amazon.com/vpc/pricing/, https://aws.amazon.com/cloudwatch/pricing/ and https://aws.amazon.com/route53/pricing/. The SNS email allowance and the AWS managed KMS key were not re-read.
 
 **A change to any of these figures** updates this table and `COST_PINS` in `check_templates.py`, with the new price and where it was read. It is reviewed as `../README.md` describes.
