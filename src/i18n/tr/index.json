@@ -1959,8 +1959,8 @@
     },
     "closePanel": "{0} panelini kapat",
     "folders": {
-      "new": "Yeni Klasör",
-      "moveTo": "Klasöre Taşı…",
+      "new": "Yeni klasör",
+      "moveTo": "Klasöre taşı…",
       "none": "Klasör yok",
       "expand": "{0} öğesini genişlet",
       "collapse": "{0} öğesini daralt",

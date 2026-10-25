@@ -1179,7 +1179,7 @@ const replaceUnavailable = (facts: DiskFacts, disk: DiskState | undefined) => {
 }
 
 const conflictFlow = async (env: Env, binding: Binding, handle: FileSystemFileHandle) => {
-    // The version on disk read first, in case Save as a Separate File's picker returns it.
+    // The version on disk read first, in case Save as a Separate File…'s picker returns it.
     const read = platform.pickSaveFile ? readOwnFile(env, binding) : undefined
     const { input, pinned, newer } = await conflictInput(env, binding, handle)
     setDiskFinding(newer ? 'newer' : 'changed')
@@ -1274,7 +1274,7 @@ const replace = async (
     await afterOutcome(env, outcome)
 }
 
-/** Save as a Separate File: keeps the `docId`, in the original's folder. */
+/** Save as a Separate File…: keeps the `docId`, in the original's folder. */
 const separateFile = async (
     env: Env,
     binding: Binding,

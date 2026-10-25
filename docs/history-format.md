@@ -592,7 +592,7 @@ An owner is `OwnerReference {kind: group | stage | groupFolder | stageFolder, id
 
 | Id | Produced by | `data` |
 | --- | --- | --- |
-| `nse.owner.create` | Add Group, Add Stage, an add in a folder, New Folder, "New Folder…" with held entries | `{target, destination: folder \| null, gathered}`: `gathered` is 0 unless the target is a folder; `destination` is null unless a group or stage was added in a folder of its domain |
+| `nse.owner.create` | Add Group, Add Stage, an add in a folder, New Folder (also from Move to Folder…, with the held entries) | `{target, destination: folder \| null, gathered}`: `gathered` is 0 unless the target is a folder; `destination` is null unless a group or stage was added in a folder of its domain |
 | `nse.owner.rename` | Inline rename; the Name field of the Properties modals | `{target, before, after}` (`target.name` is the old name) |
 | `nse.owner.set` | Group Properties (Force Note Speed); Stage Properties (From Start, Until End, Generate Sim Lines) | `{target, changes}`: 1 to 3 changes ascending by field name, a group only `forceNoteSpeed`, a stage the rest; each `{field, before, after}` (`forceNoteSpeed` number or `null`, booleans, `generateSimLines` `global` or `isolated`). Producers write one change per step. |
 | `nse.owner.move` | Move Up and Down, drag, "Move to Folder…" and "No Folder" on one entry; moving a folder | `{target, destination, category: reorder \| intoFolder \| outOfFolder, fromIndex?, toIndex?}`; producers always write both indexes (tree-order positions; for a folder, among top-level items) |
