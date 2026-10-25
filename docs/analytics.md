@@ -98,7 +98,7 @@ How the code enforces them:
 | `visit` | client start | `version`, `site`, `os`, `engine`, `standalone`, `touch`, `viewport`, `dpr`, `browserLanguage`, `returning`, `updated` |
 | `settings` | client start | `theme`, `themeShown`, `locale`, `previewInWorker`, `previewRenderScale`, `previewAntialias`, `previewShowHitboxes`, `previewNoteSpeed`, `previewAssets.<type>`, `showPreview`, `previewPosition`, `showMinimap`, `showHistory`, `historyPosition`, `dimUnchangedObjects`, `waveform`, `beatDisplay`, `toolbarQuickSwitch`, `toolbarCustomized`, `mouseSecondaryTool`, `playFollow`, `touchQuickScrollShow`, `touchLongPressContextMenu`, `confirmCloseUnsavedFile` |
 | `startup` | client start | `start`, `outcome`, `ready`, `found.<kind>` |
-| `storage` | status known, and on change | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
+| `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
 | `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `dynamicStages`, `bgm`, `historySteps` |
 | `preview` | client start, when the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
 | `open` | each Open | `format`, `via`, `size`, `outcome`, `reason`, `took` |
@@ -113,6 +113,8 @@ How the code enforces them:
 | `perf` | at hide | `peek.<time>`, `loafSupported`, `frames.<state>.<length>`, `playSeconds`, `slowInputs`, `interactions`, `visibleTime`, `cores` |
 | `errors` | at hide | `error`, `csp` |
 | `unsupported` | the support page, on its first input | `engine` |
+
+A visit may send `storage` twice, and the later one is the fuller. The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
 
 `unsupported` is sent by `public/gate.js`, not by the client, when the support gate stops the editor. The build puts the target in a tag on the editor's page, `<meta name="nse-analytics" content="ORIGIN WEBSITE HOST">`, and only in a build with a target; `check:release` compares it with the manifest. The page sends one beacon on its first trusted input while visible, under the same rules as the client (a signal, an off switch, an automated browser, a request to save data, another host).
 

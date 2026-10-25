@@ -264,15 +264,19 @@ export const startClient = (target: AnalyticsTarget) => {
         settingsSnapshot(matchMedia('(pointer: coarse)').matches, !hasDefaultValue('toolbar')),
     )
     add('startup', startupEvent())
-    // Once the storage status is known, and again when it changes to paused or to memory.
+    // Once the storage status is known, again when it changes to paused or to memory, and once
+    // more when the Recent Sessions count becomes known after the first event went without it.
     let storageSent = ''
+    let sessionsSent = false
     const sendStorage = () =>
         storageEvent().then(
             (data) => {
                 if (!data) return
                 const kind = `${data.mode ?? ''}/${data.reason ?? ''}`
-                if (kind === storageSent) return
+                const sessions = data.sessions !== undefined
+                if (kind === storageSent && !(sessions && !sessionsSent)) return
                 storageSent = kind
+                sessionsSent ||= sessions
                 add('storage', data)
             },
             () => undefined,
@@ -280,6 +284,9 @@ export const startClient = (target: AnalyticsTarget) => {
     void sendStorage()
     const stopStorage = watch(status.storageStatus, (now) => {
         if (now && (!storageSent || now.mode !== 'stored' || now.reason)) void sendStorage()
+    })
+    const stopSessions = watch(status.recentSessionCount, (count) => {
+        if (count !== undefined && !sessionsSent) void sendStorage()
     })
     if (settings.showPreview && settings.previewPosition !== 'disabled')
         add('preview', {
@@ -322,6 +329,7 @@ export const startClient = (target: AnalyticsTarget) => {
             clearTimeout(timer)
             field.stop()
             stopStorage()
+            stopSessions()
             stopPanel()
             tally.watchCharts(undefined)
             document.removeEventListener('visibilitychange', onVisibility)

@@ -593,6 +593,28 @@ test('opening History and its Recent Sessions tab are counted as features', asyn
     await expect(dialog).toBeVisible()
     await page.getByRole('tab', { name: /Sessions/ }).click()
     await expect(dialog.getByText('Recent Sessions').first()).toBeVisible()
+    // Wait for the list's count, then for the browser's storage answers, which the client asked
+    // for first: its second `storage` event is queued by then.
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { recentSessionCount } =
+                    (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
+                return recentSessionCount.value !== undefined
+            }),
+        )
+        .toBe(true)
+    await page.evaluate(async () => {
+        await navigator.storage.estimate()
+        await navigator.storage.persisted()
+    })
     await firstSend(page, batches)
     expect(dataOf(batches[0] ?? [], 'features')).toEqual({ historyDialog: 1, recentTab: 1 })
+    // The sessions count is known once Recent Sessions has read its list: `storage` goes again with it.
+    const storage = (batches[0] ?? [])
+        .filter((item) => item.payload.name === 'storage')
+        .map((item) => item.payload.data)
+    expect(storage).toHaveLength(2)
+    expect(storage[0]).not.toHaveProperty('sessions')
+    expect(storage[1]).toHaveProperty('sessions')
 })
