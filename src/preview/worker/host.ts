@@ -72,7 +72,16 @@ export const previewHost = reactive({
     kind: initialHost,
     /** The worker's canvases still show its last frame, until the main host draws one. */
     retiring: false,
+    /** Counts the workers started, so each gets canvases of its own. */
+    generation: 0,
 })
+
+/** Draws in a new worker; the canvases a stopped one leaves are not reused. */
+const startWorkerHost = () => {
+    previewHost.retiring = false
+    previewHost.generation++
+    previewHost.kind = 'worker'
+}
 
 type PreviewTestCounters = {
     uploads: number
@@ -111,8 +120,6 @@ const startWorker = () => {
     let postedAt = 0
     let pending: (() => void) | undefined
     const sender = createMirrorSender()
-    // A chart switch sends a first copy, and the worker starts a new builder.
-    onResetState(sender.reset)
     let sentSelection: PreviewSelection | undefined | null = null
     // The objects whose atlases the worker holds, by slot: skin, then particle.
     const lent: (LoadedSkin | LoadedParticle | undefined)[] = []
@@ -123,7 +130,7 @@ const startWorker = () => {
 
     const wait = (why: string) => {
         clearTimeout(timer)
-        timer = setTimeout(() => void handOver(why, false), timeoutMs)
+        timer = setTimeout(() => void stop(why, false), timeoutMs)
     }
     const settle = () => {
         clearTimeout(timer)
@@ -171,10 +178,9 @@ const startWorker = () => {
         // The setting went back on while this worker stopped: a new one starts.
         if (wantsWorker())
             void nextTick(() => {
-                if (wantsWorker()) previewHost.kind = 'worker'
+                if (wantsWorker() && !client) startWorkerHost()
             })
     }
-    const handOver = (why: string, responsive: boolean) => stop(why, responsive)
 
     worker.addEventListener('message', (event: MessageEvent<FromPreviewWorker>) => {
         const message = event.data
@@ -189,10 +195,10 @@ const startWorker = () => {
                     maxViewportSize.value = message.maxViewportSize
                 return
             case 'failed':
-                void handOver(`its WebGL2 context could not be created: ${message.message}`, true)
+                void stop(`its WebGL2 context could not be created: ${message.message}`, true)
                 return
             case 'error':
-                void handOver(`it failed: ${message.message}`, true)
+                void stop(`it failed: ${message.message}`, true)
                 return
             case 'drawn': {
                 if (stopped) return
@@ -226,14 +232,14 @@ const startWorker = () => {
     })
     worker.addEventListener('error', (event) => {
         event.preventDefault()
-        void handOver(`it failed: ${event.message || 'no message'}`, true)
+        void stop(`it failed: ${event.message || 'no message'}`, true)
     })
 
     const transfer = (canvas: HTMLCanvasElement) => {
         try {
             return canvas.transferControlToOffscreen()
         } catch (error) {
-            void handOver(`its canvas could not be transferred: ${String(error)}`, true)
+            void stop(`its canvas could not be transferred: ${String(error)}`, true)
         }
     }
 
@@ -241,6 +247,11 @@ const startWorker = () => {
         maxViewportSize,
         /** Ends the worker, which hands the atlases back; the main host draws next. */
         stop: () => stop(undefined, true),
+        /** A chart switch: the next frame sends a first copy, and a frame waiting for the old chart is dropped. */
+        reset: () => {
+            sender.reset()
+            pending = undefined
+        },
         /** Gives the preview's canvas to the worker; the returned function takes it away. */
         attachCanvas: (canvas: HTMLCanvasElement, antialias: boolean) => {
             if (stopped) return () => undefined
@@ -343,12 +354,15 @@ let client: ReturnType<typeof startWorker> | undefined
 /** The page's preview worker, started on first use. */
 export const previewWorker = () => (client ??= startWorker())
 
+// A chart switch: the worker starts a new builder from a first copy.
+onResetState(() => client?.reset())
+
 // The setting moves the preview between hosts at once: the panel's canvases are mounted again,
 // as for a handover.
 watch(wantsWorker, (worker) => {
     // A worker that is stopping starts again when it has stopped.
     if (worker) {
-        if (!client) previewHost.kind = 'worker'
+        if (!client) startWorkerHost()
     } else if (client) void client.stop()
     else previewHost.kind = 'main'
 })

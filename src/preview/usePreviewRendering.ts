@@ -380,8 +380,14 @@ export const usePreviewRendering = (
                               selected,
                           ),
                       )
-                      // The worker's last frame shows until the main host's first.
-                      previewHost.retiring = false
+                      // The worker's last frame shows until the main host draws with the skin,
+                      // which may still be decoding again after a handover.
+                      if (
+                          currentSkin.texture.width &&
+                          uploadedRenderer === currentRenderer &&
+                          uploadedSkin === currentSkin
+                      )
+                          previewHost.retiring = false
                   }
             if (rafId) return
             rafId = requestFrame(

@@ -104,12 +104,12 @@ const isErrorDetailOpen = ref(false)
                 <template v-if="previewHost.kind === 'worker' || previewHost.retiring">
                     <canvas
                         ref="workerCanvas"
-                        :key="`worker:${loadVersion}:${settings.previewAntialias}`"
+                        :key="`worker:${previewHost.generation}:${loadVersion}:${settings.previewAntialias}`"
                         class="absolute inset-0 h-full w-full"
                     />
                     <canvas
                         ref="workerSelection"
-                        :key="`worker-selection:${loadVersion}`"
+                        :key="`worker-selection:${previewHost.generation}:${loadVersion}`"
                         class="preview-selection pointer-events-none absolute inset-0 h-full w-full"
                         aria-hidden="true"
                     />

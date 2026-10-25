@@ -119,6 +119,23 @@ const open = async (page: Page, host: Host, flags: Record<string, unknown> = {})
 
 const hostOf = (page: Page) => page.evaluate(() => window.nsePreviewTest?.host)
 
+/** Draws new frames, each once the last is drawn, until the worker fails and hands over. */
+const drawUntilHandover = async (page: Page) => {
+    for (let i = 1; i < 6 && (await hostOf(page)) === 'worker'; i++) {
+        const frames = await page.evaluate(() => window.previewTest.frames)
+        await page.evaluate((i) => (window.editorTest.view.cursorTime = 3 + i / 20), i)
+        await expect
+            .poll(
+                async () =>
+                    (await hostOf(page)) === 'main' ||
+                    (await page.evaluate(() => window.previewTest.frames)) > frames,
+                { timeout: 10_000 },
+            )
+            .toBe(true)
+    }
+    await expect.poll(() => hostOf(page), { timeout: 10_000 }).toBe('main')
+}
+
 const diagnostics = (page: Page) =>
     page.evaluate(async () => {
         const { ringEntries } =
@@ -233,6 +250,52 @@ test('the setting moves the preview between hosts at once, and it keeps drawing'
     await expect(page.locator('.preview')).not.toContainText('could not be started')
 })
 
+test('the setting off and on again while the worker stops starts one that draws', async ({
+    page,
+}) => {
+    await open(page, { setting: true })
+    await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(2)
+    // On again before the first worker has handed its atlases back.
+    await page.evaluate(async () => {
+        const { settings, nextTick } = window.editorTest
+        settings.previewInWorker = false
+        await nextTick()
+        settings.previewInWorker = true
+    })
+    // The first worker stops and hands its atlases back; a second one gets new canvases.
+    await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(4)
+    expect(await hostOf(page)).toBe('worker')
+    const frames = await page.evaluate(() => window.previewTest.frames)
+    await page.evaluate(() => (window.editorTest.view.cursorTime += 0.1))
+    await expect.poll(() => page.evaluate(() => window.previewTest.frames)).toBeGreaterThan(frames)
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
+    await expect(page.locator('.preview-viewport canvas')).toHaveCount(2)
+})
+
+test('after a hang, the worker’s last frame shows until the skin is decoded again', async ({
+    page,
+}) => {
+    await open(page, 'worker', { hangOnFrame: 2, timeoutMs: 1500 })
+    // The skin's second download is slow, so the main host draws before it has a skin.
+    let requests = 0
+    let release = () => {}
+    const released = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/resource/skin.scp*', async (route) => {
+        if (++requests > 0) await released
+        await route.fulfill({ body: resource('skins') })
+    })
+    await drawUntilHandover(page)
+    await expect.poll(() => page.evaluate(() => window.hostTest.mainFrames)).toBeGreaterThan(0)
+    await page.evaluate(() => (window.editorTest.view.cursorTime = 3.5))
+    await settle(page)
+    // Both hosts' canvases: the worker's last frame under the main host's empty one.
+    await expect(page.locator('.preview-viewport canvas')).toHaveCount(4)
+    release()
+    await expect.poll(() => page.evaluate(() => window.hostTest.decodes)).toBe(4)
+    await expect(page.locator('.preview-viewport canvas')).toHaveCount(2)
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
+})
+
 test('with the setting on, a failing worker still hands over for the page’s life', async ({
     page,
 }) => {
@@ -272,20 +335,7 @@ for (const [label, flags, decodedAgain] of [
         page,
     }) => {
         await open(page, 'worker', flags)
-        // Draw new frames, each once the last is drawn, until the failure.
-        for (let i = 1; i < 6 && (await hostOf(page)) === 'worker'; i++) {
-            const frames = await page.evaluate(() => window.previewTest.frames)
-            await page.evaluate((i) => (window.editorTest.view.cursorTime = 3 + i / 20), i)
-            await expect
-                .poll(
-                    async () =>
-                        (await hostOf(page)) === 'main' ||
-                        (await page.evaluate(() => window.previewTest.frames)) > frames,
-                    { timeout: 10_000 },
-                )
-                .toBe(true)
-        }
-        await expect.poll(() => hostOf(page), { timeout: 10_000 }).toBe('main')
+        await drawUntilHandover(page)
         await expect.poll(() => page.evaluate(() => window.hostTest.mainFrames)).toBeGreaterThan(0)
         await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
         // The worker's canvases go once the main host has drawn.
