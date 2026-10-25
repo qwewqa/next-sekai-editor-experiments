@@ -919,6 +919,7 @@
       "title": "Barre d’outils",
       "quickSwitch": "Changement rapide",
       "add": "Ajouter un outil",
+      "remove": "Retirer \"{0}\" de la barre d’outils",
       "modal": {
         "title": "Sélectionner l’outil"
       }
@@ -976,6 +977,7 @@
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
       "exportRaw": "Exporter les données brutes…",
+      "exportRawTitle": "Exporter les données brutes",
       "exportRawName": "{0} données brutes {1}.zip",
       "storageHeading": "Stockage",
       "stored": "Stocké dans ce navigateur : {0} sur environ {1}",

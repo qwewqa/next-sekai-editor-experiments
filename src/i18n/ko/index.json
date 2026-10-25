@@ -919,6 +919,7 @@
       "title": "도구 모음",
       "quickSwitch": "빠른 전환",
       "add": "도구 추가",
+      "remove": "\"{0}\"을(를) 도구 모음에서 제거",
       "modal": {
         "title": "도구 선택"
       }
@@ -976,6 +977,7 @@
       "openHistory": "기록 열기",
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
       "exportRaw": "원시 데이터 내보내기…",
+      "exportRawTitle": "원시 데이터 내보내기",
       "exportRawName": "{0} 원시 데이터 {1}.zip",
       "storageHeading": "저장 공간",
       "stored": "이 브라우저에 보관됨: {0} / 약 {1}",

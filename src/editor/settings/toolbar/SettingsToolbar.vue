@@ -4,7 +4,8 @@ import { i18n } from '../../../i18n'
 import { showModal } from '../../../modals'
 import ToggleField from '../../../modals/form/ToggleField.vue'
 import { settings } from '../../../settings'
-import { isCommandName } from '../../commands'
+import { interpolateRaw } from '../../../utils/interpolate'
+import { commands, isCommandName, type CommandName } from '../../commands'
 import LevelEditorToolbarTool from '../../toolbar/LevelEditorToolbarTool.vue'
 import SettingsSection from '../SettingsSection.vue'
 import SettingsSelectToolModal from './SettingsSelectToolModal.vue'
@@ -22,6 +23,10 @@ const onRemoveFromGroup = (i: number, j: number) => {
         index === i ? names.filter((_, index) => index !== j) : names,
     )
 }
+
+// A press removes the tool, so its name and hover title say that.
+const removeLabel = (name: CommandName) =>
+    interpolateRaw(i18n.value.settings.toolbar.remove, commands[name].title())
 
 // The tool that was removed leaves focus on its group's Add button.
 const groupAddButton = (group: number) =>
@@ -53,6 +58,8 @@ const onAddGroup = async () => {
                         v-focus-rescue="() => groupAddButton(i)"
                         class="justify-center before:absolute before:h-8 before:w-9 last:before:mt-0.5 last:before:h-[2.125rem]"
                         :name
+                        :title="removeLabel(name)"
+                        :aria-label="removeLabel(name)"
                         @click="onRemoveFromGroup(i, j)"
                     />
                 </template>

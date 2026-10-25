@@ -6,6 +6,7 @@ import './editor/file/closePrompt'
 import LevelEditor from './editor/LevelEditor.vue'
 import './editor/loadNotices'
 import NoticeHost from './editor/NoticeHost.vue'
+import { readStorageWhenIdle } from './editor/settings/storageLine'
 import {
     autoShape,
     drawerSide,
@@ -38,6 +39,8 @@ const root = useTemplateRef<HTMLDivElement>('root')
 
 keepPanelsAcrossShape()
 keepDefaultsAcrossDisplay()
+// Local Data shows the browser's storage at once from this read.
+readStorageWhenIdle()
 
 // Text entry inside a dock may open an on-screen keyboard. Hold the shape used
 // for Auto placement until editing ends so the field stays where it is.

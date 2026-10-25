@@ -8,6 +8,8 @@ export type RawExportRun =
     | { kind: 'done'; name: string; size: number; started: boolean; databaseUnreadable: boolean }
     /** The hand-over failed. */
     | { kind: 'failed'; name: string; error: unknown }
+    /** The user closed the Loading dialog before the hand-over. */
+    | { kind: 'cancelled' }
 
 export type RawExportTexts = {
     /** `save.downloadFailed`: ""{0}" could not be downloaded." */
@@ -18,6 +20,7 @@ export type RawExportTexts = {
 
 /** The line for a run that did not go through whole: the download failed, or the stored work was left out. */
 export const rawExportNote = (run: RawExportRun, texts: RawExportTexts) => {
+    if (run.kind === 'cancelled') return undefined
     if (run.kind === 'failed') return interpolateRaw(texts.downloadFailed, run.name)
     return run.databaseUnreadable ? texts.unreadable : undefined
 }

@@ -919,6 +919,7 @@
       "title": "工具栏",
       "quickSwitch": "快速切换",
       "add": "添加工具",
+      "remove": "从工具栏移除“{0}”",
       "modal": {
         "title": "添加工具"
       }
@@ -976,6 +977,7 @@
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改",
       "exportRaw": "导出原始数据…",
+      "exportRawTitle": "导出原始数据",
       "exportRawName": "{0} 原始数据 {1}.zip",
       "storageHeading": "存储",
       "stored": "此浏览器中已存储：{0}，总容量约 {1}",

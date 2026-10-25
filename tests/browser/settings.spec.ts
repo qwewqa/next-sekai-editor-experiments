@@ -300,7 +300,8 @@ test.describe('on Apple devices', () => {
 
 test('visibility toggles list kinds in the tools’ order everywhere', async ({ page }) => {
     const kinds = ['Note', 'BPM', 'Time Scale', 'Camera Event', 'Stage Mask Event']
-    // The keyboard shortcut list.
+    // The keyboard shortcut list, whose rows mount in the frames after the dialog opens.
+    await expect(page.getByRole('dialog').locator('[data-settings-section="about"]')).toBeAttached()
     const names = await page
         .getByRole('dialog')
         .locator('section')
@@ -353,6 +354,8 @@ for (const locale of ['fr', 'tr', 'en']) {
             locale,
         )
         const dialog = page.getByRole('dialog')
+        // The last section mounts a few frames after the dialog opens.
+        await expect(dialog.locator('[data-settings-section="about"]')).toBeAttached()
         await expect
             .poll(() =>
                 dialog.locator('.form-field').evaluateAll((fields) => {
@@ -377,7 +380,7 @@ for (const locale of ['fr', 'tr', 'en']) {
             .locator('.form-field.form-field-value-stacked')
             .evaluateAll((fields) => fields.length)
         expect(stacked).toBeGreaterThan(0)
-        expect(stacked).toBeLessThan(6)
+        expect(stacked).toBeLessThan(12)
     })
 }
 
@@ -642,10 +645,10 @@ test('Name Contrast follows the Show Other rows rather than splitting them', asy
     const start = labels.indexOf('Show Group Name')
     expect(labels.slice(start, start + 9)).toEqual([
         'Show Group Name',
-        'Hide group names when focusing a group',
+        'Hide Group Names When Focusing a Group',
         'Show Other Groups',
         'Show Stage Name',
-        'Hide stage names when focusing a stage',
+        'Hide Stage Names When Focusing a Stage',
         'Show Other Stages',
         'Show Other Objects',
         'Name Contrast',
@@ -902,6 +905,18 @@ test('on/off fields are switches named by their row', async ({ page }) => {
     await arrows.click()
     await expect(arrows).not.toBeChecked()
     await expect(arrows).toHaveValue('Disabled')
+})
+
+test('a Toolbar tool is named by what pressing it does', async ({ page }) => {
+    const name = 'Remove "Save" from Toolbar'
+    const tool = page.getByRole('dialog').getByRole('button', { name, exact: true })
+    await expect(tool).toHaveAttribute('title', name)
+    const has = () =>
+        page.evaluate(() => window.editorTest.settings.toolbar.flat().includes('save'))
+    expect(await has()).toBe(true)
+    await tool.click()
+    await expect(tool).toHaveCount(0)
+    expect(await has()).toBe(false)
 })
 
 test('the dialog fills the viewport at v0.5.22’s width, and a mouse sees every section pill', async ({

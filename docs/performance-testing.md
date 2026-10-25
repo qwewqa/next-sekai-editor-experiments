@@ -131,9 +131,12 @@ Actions, by `action`:
 
 - History's Timeline: `historyOpen` (Shift+H), `listWheel` (3 s of wheel over the Timeline, or Recent Sessions with `list: "sessions"`), `peekRow` (a click on row `row`, then `stride` rows further down at each repeat), `arrowStep` (one ↓), `arrowHold` (↓ held `seconds` at 30 Hz), `peekWhole` (a row whose name matches `pattern`, by default a flip of the whole chart), `changeArrow` (an edge arrow while that row is peeked), `showEdits`, `editsHere` (through Go To) and `showAll`, `expandGroup`, `goToOpen`, `goToPick` (the oldest day in Go To), `restore` (the peeked row), `undo` (`key`, z by default), and `editOpen` (a flip with the Timeline open, and the work in the 2.5 s after it);
 - Recent Sessions: `sessionsOpen`, `sessionPeek`, `restoreSession`, `sessionDelete` and `sessionUndo`;
+- Settings: `openSettings` (until the Language field and Local Data's heading show), `openSettingsAll` (until About, the last section, is mounted) and `closeSettings`;
 - Local Data: `localData` (Settings), `deleteCounts` (Delete Sessions… up to its counts), `deleteAll` (deletes every session, so it runs once in a group of its own) and `exportRaw`;
 - files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check…);
 - `dialog` (`open`: a key, or `click:<selector>`, until a dialog with `title` shows), `setting` (a setting flipped, and the frames that redraw it), and `goToIndex` (reads Go To's index for an opened file's session of `rows` rows through the storage worker, without the UI).
+
+Settings opens with Editor and Local Data and mounts the other sections in tasks after the first frame. A comment in `SettingsModal.vue` names the stages. Judge a change to Settings by `openSettings` and its `tailTask`, which shows a staging task in the 600 ms after the first screen only when it takes 50 ms or more, so 0 means every stage stayed under that. `openSettingsAll` shows how long the rest takes.
 
 `npm run perf:report -- <run> ui` tabulates them. Response is how long the user waits. Compare it with one frame for actions that should feel immediate, and with 100 ms (desktop) or 200 ms (the phone stand-in) for the others. A long task during the response also delays every other input.
 

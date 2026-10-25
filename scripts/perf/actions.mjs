@@ -910,6 +910,42 @@ export const actions = {
         input: (page) => page.keyboard.press(','),
         reset: closeDialogs,
     },
+    // Settings opens with its first screen and mounts the other sections in the frames after.
+    // `openSettings` is the first screen (the Language field and Local Data's heading), with any
+    // staging task of 50 ms or more in `tailTask`; `openSettingsAll` runs until About, the last
+    // section, is mounted.
+    openSettings: {
+        prep: async (page) => {
+            await actions.localData.prep(page)
+        },
+        spec: () => ({
+            done: `!!document.querySelector('dialog[open] [data-settings-section="editor"] select') && !!document.querySelector('dialog[open] [data-settings-section="localData"] h2')`,
+            tail: 600,
+        }),
+        input: (page) => page.keyboard.press(','),
+        reset: closeDialogs,
+    },
+    openSettingsAll: {
+        prep: async (page) => {
+            await actions.localData.prep(page)
+        },
+        spec: () => ({
+            done: `!!document.querySelector('dialog[open] [data-settings-section="about"]')`,
+        }),
+        input: (page) => page.keyboard.press(','),
+        reset: closeDialogs,
+    },
+    closeSettings: {
+        prep: async (page) => {
+            await actions.localData.prep(page)
+            await page.keyboard.press(',')
+            await page.locator('dialog[open] [data-settings-section="about"]').waitFor()
+            await sleep(500)
+        },
+        spec: () => ({ done: `!document.querySelector('dialog[open]')` }),
+        input: (page) => page.keyboard.press('Escape'),
+        reset: closeDialogs,
+    },
     deleteCounts: {
         prep: async (page) => {
             await actions.localData.prep(page)
