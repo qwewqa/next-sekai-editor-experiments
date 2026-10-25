@@ -1,5 +1,6 @@
 import { watch } from 'vue'
 import { isPlaying } from '../player'
+import { capCount } from './catalogue'
 import { bucket } from './scales'
 import * as tally from './tally'
 
@@ -90,8 +91,10 @@ export const startField = () => {
                 cores: bucket('cores', navigator.hardwareConcurrency),
                 visibleTime: bucket('duration', visible - sentVisible),
                 playSeconds: bucket('duration', played - sentPlay),
-                interactions:
+                // A count is capped at 9999, or a long visit would lose its whole `perf` event.
+                interactions: capCount(
                     interactions === undefined ? commands : interactions - sentInteractions,
+                ),
             }
             sentVisible = visible
             sentPlay = played

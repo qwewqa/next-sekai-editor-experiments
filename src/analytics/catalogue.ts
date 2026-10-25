@@ -12,6 +12,9 @@ export { bucket, scales, type Bucket, type Scale } from './scales'
 /** A use count: whole, and capped at 9999 a visit. */
 export const COUNT_CAP = 9999
 
+/** A measured count as a use count: whole, not below 0, and capped. */
+export const capCount = (value: number) => Math.min(COUNT_CAP, Math.max(0, Math.round(value)))
+
 type Prop =
     | 'boolean'
     | 'count'
