@@ -180,6 +180,28 @@ test('Open the Other Version opens the file on disk; this session keeps its chan
     expect(left.edited).toBe(true)
 })
 
+test('Open the Other Version asks first when storing is paused, and Cancel keeps the chart', async ({
+    page,
+}) => {
+    await start(page, { storage: { forceQuota: true } })
+    await edit(page, 1)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    const sessionId = () => page.evaluate(() => window.nseFlushTest?.flusher.session?.id)
+    const own = await sessionId()
+    const dialog = await conflict(page)
+    await expect(dialog).toContainText('Changes are not being stored in this browser.')
+    await dialog.getByRole('button', { name: 'Open the Other Version' }).click()
+    const prompt = page.getByRole('dialog')
+    await expect(prompt.getByRole('button', { name: 'Leave Anyway' })).toBeVisible()
+    // Past the dialog's activation guard.
+    await page.waitForTimeout(350)
+    await prompt.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(await sessionId()).toBe(own)
+})
+
 test('Open the Other Version says when the file cannot be read', async ({ page }) => {
     await start(page)
     await savedOnce(page)
