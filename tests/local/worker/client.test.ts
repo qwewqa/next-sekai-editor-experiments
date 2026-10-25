@@ -18,6 +18,8 @@ class FakeWorker {
     onmessage: ((event: MessageEvent) => void) | null = null
     terminated = false
     readonly state: Behaviour = { frozen: false }
+    /** The calls the page sent, pings included. */
+    readonly sent: { id: number; method: string; arg: unknown }[] = []
     private readonly inside: Endpoint
 
     constructor() {
@@ -34,6 +36,7 @@ class FakeWorker {
     }
 
     postMessage(message: unknown) {
+        this.sent.push(message as FakeWorker['sent'][number])
         setTimeout(() => {
             // A frozen worker (a long synchronous step) takes no message at all.
             if (!this.terminated && !this.state.frozen)
@@ -109,10 +112,16 @@ test('a call that makes no progress restarts the worker', async () => {
 test('a hung call is restarted within about its timeout while another call keeps moving', async () => {
     const { call } = await start()
     const busy = call('slow', 1000).catch((error: unknown) => error)
-    const began = Date.now()
     await assert.rejects(call('stuck'), { name: 'TimeoutError' })
-    // The first ping already finds no progress: the timeout (60 ms) and a ping, not two timeouts.
-    assert.ok(Date.now() - began < 115, `${Date.now() - began} ms`)
+    // The first ping already finds no progress: the timeout and one ping, not two timeouts.
+    // Counted rather than timed, so a loaded machine cannot fail it.
+    const sent = FakeWorker.created[0]?.sent ?? []
+    const stuck = sent.find((message) => message.method === 'stuck')?.id
+    assert.equal(
+        sent.filter((message) => message.method === 'ping' && message.arg === stuck).length,
+        1,
+    )
+    // And before the busy call's 1000 ms are through: its progress kept nothing else alive.
     assert.equal(((await busy) as Error).name, 'WorkerRestartedError')
     await sleep(20)
     assert.equal(FakeWorker.created.length, 2)
