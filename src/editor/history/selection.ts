@@ -18,6 +18,7 @@ import {
     type PeekFailure,
 } from '../../history/peek'
 import { i18n } from '../../i18n'
+import type { State } from '../../state'
 import { notify } from '../notification'
 import { historyTab, historyViewGeneration } from './state'
 
@@ -110,12 +111,24 @@ const markFailed = (error: unknown, key: string) => {
     else if (error.reason === 'removed') removedEntries.value = withKey(removedEntries.value, key)
 }
 
+type ReadyHook = (info: PeekedInfo, state: State) => Promise<unknown> | undefined
+let readyHook: ReadyHook | undefined
+
+/**
+ * Registers what a step's peek waits for before it shows (the change view reads the step's
+ * change then, so the state and its change land together). A hook, as the change view imports
+ * this file.
+ */
+export const setPeekReady = (hook: ReadyHook | undefined) => {
+    readyHook = hook
+}
+
 /** Peeks an entry; the peek itself waits a moment when requests come close together. */
 export const requestPeek = (info: PeekedInfo) => {
     const generation = peekSourceGeneration.value
     peekedSession.value = undefined
     peekedInfo.value = info
-    peekEntry(info.key).catch((error: unknown) => {
+    peekEntry(info.key, { ready: (state) => readyHook?.(info, state) }).catch((error: unknown) => {
         if (generation !== peekSourceGeneration.value) return
         // Peek has ended it. A state that fails its check reads damaged from then on, and one
         // removed since the row was read reads removed; one not stored yet can be tried again.

@@ -9,7 +9,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { peekedKey } from '../../history/peek'
+import { peekedKey, runPendingPeek } from '../../history/peek'
 import { session } from '../../history/session'
 import { liveState } from '../../history/stack'
 import { displayName, type DisplayName } from '../../local/names'
@@ -503,6 +503,11 @@ const isApple = isApplePlatform()
 // The keys the editor would run with focus elsewhere: docks pass it only unclaimed chords.
 const passed: CommandName[] = ['history', 'play', 'copy']
 
+/** A released arrow key ends the repeats the peek's debounce waits for. */
+const onKeyup = (event: KeyboardEvent) => {
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(event.key)) runPendingPeek()
+}
+
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
     if (
@@ -683,6 +688,7 @@ const notePointer = (event: PointerEvent) => {
             class="sessions-list overlay-scroller h-full overflow-y-auto overscroll-contain px-1.5 pb-2 outline-none"
             @scroll.passive="onScroll"
             @keydown="onKeydown"
+            @keyup="onKeyup"
             @focus.self="focusRow(cursorId, false)"
             @focusin="onFocusin"
             @focusout="onFocusout"

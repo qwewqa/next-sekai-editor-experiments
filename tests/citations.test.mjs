@@ -28,7 +28,7 @@ const RULES = [
     },
     {
         name: 'a review finding id',
-        pattern: /\b(?:ADV|SF|UI|AR|HS|PF|SP|DEF|INV|RM|TH)\d*-\d+[a-z]?\b/,
+        pattern: /\b(?:ADV|SF|UI|AR|HS|PF|SP|DEF|INV|RM|TH)\d*-\d+[a-z]?\b|\bWS-\d+\b/,
     },
     {
         name: 'an invariant id',
