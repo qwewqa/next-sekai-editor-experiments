@@ -88,7 +88,7 @@ const blobsOf = (values: unknown[]) => {
 
 const escapeKey = (key: string) => (key.startsWith('$') ? `$${key}` : key)
 
-const unescapeKey = (key: string) => (key.startsWith('$') ? key.slice(1) : key)
+const unescapeKey = (key: string) => (key.startsWith('$$') ? key.slice(1) : key)
 
 /** Sets an own key, `__proto__` included (plain assignment would set the prototype instead). */
 const setOwn = (target: Record<string, unknown>, key: string, value: unknown) => {

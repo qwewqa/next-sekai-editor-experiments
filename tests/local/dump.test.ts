@@ -337,6 +337,8 @@ test('a __proto__ key survives encoding, a JSON round trip and decoding', () => 
     assert.equal(JSON.stringify(tagged), text)
     const decoded = decodeValue(JSON.parse(JSON.stringify(tagged)))
     assert.equal(JSON.stringify(decoded), text)
+    // A key that starts with a dollar sign is escaped on the way out and restored on the way in.
+    assert.deepEqual(decodeValue(encodeValue({ $a: 1 }, noBlob)), { $a: 1 })
 })
 
 test('the reader checks tags, base64, key order and in-line keys', () => {
