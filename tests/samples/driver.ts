@@ -32,6 +32,9 @@ export class SampleClock {
                 'static now(){return R.now()+off()}};self.Date=D}\n'
             await route.fulfill({ response, body: shim + (await response.text()) })
         })
+        // The fake clock hides the page's own Performance, so the buffer is raised before it installs:
+        // the app has more than 250 modules, and the driver finds each one's URL in the resource timing.
+        await this.context.addInitScript(() => performance.setResourceTimingBufferSize(5000))
         await this.context.clock.install({ time: this.start })
     }
 
@@ -76,11 +79,21 @@ export const waitForStartup = (page: Page) =>
         .poll(
             () =>
                 page.evaluate(async () => {
+                    const names = await new Promise<string[]>((resolve) => {
+                        // Through an observer: the fake clock replaces `performance.getEntriesByType`.
+                        try {
+                            const observer = new PerformanceObserver((list) => {
+                                observer.disconnect()
+                                resolve(list.getEntries().map((entry) => entry.name))
+                            })
+                            observer.observe({ type: 'resource', buffered: true })
+                            setTimeout(() => resolve([]), 2000)
+                        } catch {
+                            resolve([])
+                        }
+                    })
                     const url =
-                        performance
-                            .getEntriesByType('resource')
-                            .map((entry) => entry.name)
-                            .find((name) => new URL(name).pathname === '/src/startup/gate.ts') ??
+                        names.find((name) => new URL(name).pathname === '/src/startup/gate.ts') ??
                         '/src/startup/gate.ts'
                     const { startupGate } = (await import(
                         url
@@ -107,11 +120,20 @@ declare global {
 
 /** Installs `window.sampleApp`: positions and counts read from the app's own modules. */
 const installSampleApp = async () => {
-    const urls = new Map(
-        performance
-            .getEntriesByType('resource')
-            .map((entry) => [new URL(entry.name).pathname, entry.name]),
-    )
+    const names = await new Promise<string[]>((resolve) => {
+        // Through an observer: the fake clock replaces `performance.getEntriesByType`.
+        try {
+            const observer = new PerformanceObserver((list) => {
+                observer.disconnect()
+                resolve(list.getEntries().map((entry) => entry.name))
+            })
+            observer.observe({ type: 'resource', buffered: true })
+            setTimeout(() => resolve([]), 2000)
+        } catch {
+            resolve([])
+        }
+    })
+    const urls = new Map(names.map((name) => [new URL(name).pathname, name]))
     const appImport = <T>(pathname: string): Promise<T> => import(urls.get(pathname) ?? pathname)
     const { view } = await appImport<typeof import('../../src/editor/view')>('/src/editor/view.ts')
     const { settings } = await appImport<typeof import('../../src/settings')>('/src/settings.ts')

@@ -17,6 +17,7 @@ import { decodeSnapshot } from '../../src/local/records/snapshot'
 import { seedDump, seedRawExport } from '../../src/local/seed'
 import { createWorld } from '../../src/local/testing/world'
 import { ZipReader } from '../../src/zip'
+import { nxspFolder, webFolder } from '../fixtures-v1/folders'
 import { FIXTURE_BUILDS, SUMS_DIGESTS } from './fixturesV1Pins'
 import { rows } from './flush/harness'
 
@@ -26,8 +27,8 @@ import { rows } from './flush/harness'
 // later build's regeneration of them cannot go unnoticed.
 
 const here = import.meta.dirname
-const nxspDir = join(here, '..', 'native', 'fixtures', 'nxsp-v1')
-const webDir = join(here, '..', 'fixtures', 'web-storage-v1')
+const nxspDir = nxspFolder
+const webDir = webFolder
 const fields = JSON.parse(
     readFileSync(join(here, '..', '..', 'tools', 'fields-v1.json'), 'utf8'),
 ) as Record<string, { name: string; type: string; optional?: boolean }[] | Record<string, unknown>>
@@ -179,9 +180,7 @@ const observeHeader = (header: Rec, facts: Set<string>) => {
         facts.add(media.length === 0 ? `levelInfo.${name}.empty` : `levelInfo.${name}.mediaRef`)
         if (media.length) facts.add('mediaRef')
     }
-    for (const tag of info[position('levelInfo', 'tags')] as Rec[]) {
-        facts.add('tag')
-    }
+    if ((info[position('levelInfo', 'tags')] as Rec[]).length) facts.add('tag')
     if (header.length > position('header', 'bgm')) {
         const bgm = at('bgm') as Rec
         facts.add('bgm')
@@ -701,8 +700,7 @@ test('the main dump holds every stored row form of v1', async () => {
             keys.some((key) => key.startsWith(prefix)),
             prefix,
         )
-    for (const key of ['canary', 'deviceId', 'lastAppVersion'])
-        assert.ok(keys.includes(key), key)
+    for (const key of ['canary', 'deviceId', 'lastAppVersion']) assert.ok(keys.includes(key), key)
 
     // The newer-build data the script added: kept on a row, an entry of an unknown kind on a chain's later session.
     assert.ok(chains.some((chain) => chain.zzFixtureChainField === 'carried'))

@@ -9,6 +9,7 @@ import { mediaRefOf, placedCompleteFrom, readNxsp } from '../../src/local/nxsp'
 import { levelState, matchesHead } from '../../src/local/open/decide'
 import { noteCountOf, stateFromRecords } from '../../src/local/records/records'
 import { decodeSnapshot } from '../../src/local/records/snapshot'
+import { nxspFolder } from '../fixtures-v1/folders'
 import { crafted, jsonOf, setJson, unzip } from '../local/nxsp/craft'
 import { rawZip, type RawEntry } from './rawZip'
 
@@ -17,7 +18,7 @@ import { rawZip, type RawEntry } from './rawZip'
 // that misreads a v1 file. The files are the v0.6.0 editor's own output; what is crafted here is
 // made from `full.nxsp` at test time.
 
-const root = join(import.meta.dirname, '..', 'native', 'fixtures', 'nxsp-v1')
+const root = nxspFolder
 const names = readdirSync(root).filter((name) => name.endsWith('.nxsp'))
 const bytesOf = (name: string) => new Uint8Array(readFileSync(join(root, name)))
 const blobOf = (name: string) => new Blob([bytesOf(name)])

@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readdirSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { readNxsp } from '../../../src/local/nxsp'
 import { ZipReader } from '../../../src/zip'
+import { nxspFolder } from '../../fixtures-v1/folders'
 import { Editor } from '../../samples/driver'
 import { queuePicks, readFile, writeFile } from '../saveFlows'
 import { skipWhereTheEditorCannotStart } from '../webkitSupport'
@@ -19,7 +20,7 @@ skipWhereTheEditorCannotStart()
 
 test.skip(({ browserName }) => browserName !== 'chromium', 'The write-back uses Chromium’s pickers')
 
-const root = resolve(import.meta.dirname, '../../native/fixtures/nxsp-v1')
+const root = nxspFolder
 const withHistory = readdirSync(root).filter(
     (name) => name.endsWith('.nxsp') && name !== 'no-history.nxsp',
 )

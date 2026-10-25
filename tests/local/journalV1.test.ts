@@ -10,6 +10,7 @@ import { MemoryStorage } from '../../src/local/journal/store'
 import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 import { seedDump } from '../../src/local/seed'
 import { createWorld } from '../../src/local/testing/world'
+import { webFolder } from '../fixtures-v1/folders'
 import { rows } from './flush/harness'
 import { replayAll } from './journal/harness'
 
@@ -18,7 +19,7 @@ import { replayAll } from './journal/harness'
 // are copies made here, relative to the running build's constants, so the test stays right after
 // a version rises. Each test names the bug it catches.
 
-const root = join(import.meta.dirname, '..', 'fixtures', 'web-storage-v1')
+const root = webFolder
 const prefix = 'sonolus-next-sekai-editor.'
 const wholeDump: unknown = JSON.parse(readFileSync(join(root, 'nse-local-data.json'), 'utf8'))
 const dump = wholeDump as { localStorage: Record<string, string> }

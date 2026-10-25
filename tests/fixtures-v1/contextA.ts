@@ -106,7 +106,10 @@ export const stepA1 = async (browser: Browser, products: Products): Promise<{ a:
     const tab = await profile.visit()
     // The first load migrated the old auto save, and the key is gone.
     expect(
-        await tab.page.evaluate((prefix) => localStorage.getItem(`${prefix}autoSave.levelData`), prefix),
+        await tab.page.evaluate(
+            (prefix) => localStorage.getItem(`${prefix}autoSave.levelData`),
+            prefix,
+        ),
     ).toBeNull()
     const sessions = await tab.stored('sessions')
     expect(sessions.map((row) => row.origin)).toEqual(['migrated'])

@@ -43,7 +43,7 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 
 ## 6. Getting the work out
 
-For each chain in History › Recent Sessions, open the row’s ⋯ menu and choose Save…. That writes the chain’s latest state to a file without opening it. To look at a chain first, choose Restore Session, then Save.
+For each chain in History › Recent Sessions, open the row’s ⋯ menu and choose Save… there. That writes the chain’s latest state to a file without opening it. To look at a chain first, choose Restore Session, then Save.
 
 Work the editor could not read is under Settings › Local Data › Recovery: the unreadable recovered work and the journals of earlier visits, each with a Download button.
 

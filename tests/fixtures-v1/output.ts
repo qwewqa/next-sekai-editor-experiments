@@ -4,12 +4,14 @@ import { join, resolve } from 'node:path'
 import { decodeValue, readDump, type Dump, type DumpStore } from '../../src/local/dump'
 import { compareKeys, normalizeKey } from '../../src/local/kv/keys'
 import type { Key } from '../../src/local/kv/types'
-import { DUMP_ENTRY } from '../../src/local/rawExport'
 import { buildZip, ZipReader, type ZipInput } from '../../src/zip'
 import type { Products } from './products'
 
 // The writer's last step: the dumps edited in the few ways the scenario names, the folders' README
 // and SHA256SUMS, and the files written into empty folders.
+
+// The raw export's first entry (`DUMP_ENTRY` in `src/local/rawExport.ts`, which Playwright's loader cannot import: it reads JSON).
+const DUMP_ENTRY = 'dump.json'
 
 const root = resolve(import.meta.dirname, '../..')
 

@@ -27,7 +27,8 @@ export default defineConfig({
     webServer: {
         command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
         url: `http://127.0.0.1:${port}`,
-        reuseExistingServer: true,
+        // A server left on the port would serve another checkout's code into the fixtures.
+        reuseExistingServer: false,
         timeout: 60_000,
     },
 })

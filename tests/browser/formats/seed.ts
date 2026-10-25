@@ -1,6 +1,6 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { deflateChunk } from '../../../src/local/chunkVerify'
 import { decodeValue, toBase64 } from '../../../src/local/dump'
 import { hash16Sync, toHex } from '../../../src/local/hash'
@@ -8,6 +8,7 @@ import { compareKeys, normalizeKey } from '../../../src/local/kv/keys'
 import type { Key } from '../../../src/local/kv/types'
 import { canonicalBytes } from '../../../src/local/records/canonical'
 import { chunkCrc32 } from '../../../src/local/records/rows'
+import { webFolder } from '../../fixtures-v1/folders'
 import { SampleClock } from '../../samples/driver'
 import { waitForStartup } from '../editorFixture'
 
@@ -15,7 +16,7 @@ import { waitForStartup } from '../editorFixture'
 // the seeder alone and writes the database and localStorage before the editor first loads in the
 // context, as a maintainer loads a user's dump (docs/release/storage-bug.md).
 
-export const webDir = resolve(import.meta.dirname, '../../fixtures/web-storage-v1')
+export const webDir = webFolder
 
 export const prefix = 'sonolus-next-sekai-editor.'
 
@@ -130,20 +131,27 @@ export const seededContext = async (
     }
     const page = await context.newPage()
     await page.goto('/privacy/')
-    const result = await page.evaluate(async ({ dump, zip }) => {
-        const { seedDump } =
-            (await import('/src/local/seed.ts')) as typeof import('../../../src/local/seed')
-        const { readDump } =
-            (await import('/src/local/dump.ts')) as typeof import('../../../src/local/dump')
-        const { idbFactory } =
-            (await import('/src/local/kv/idb.ts')) as typeof import('../../../src/local/kv/idb')
-        if (zip) {
-            const { seedRawExport } =
+    const result = await page.evaluate(
+        async ({ dump, zip }) => {
+            const { seedDump } =
                 (await import('/src/local/seed.ts')) as typeof import('../../../src/local/seed')
-            return seedRawExport(idbFactory(indexedDB), new Blob([new Uint8Array(zip)]), localStorage)
-        }
-        return seedDump(idbFactory(indexedDB), readDump(dump), localStorage)
-    }, { dump, zip: zip && [...zip] })
+            const { readDump } =
+                (await import('/src/local/dump.ts')) as typeof import('../../../src/local/dump')
+            const { idbFactory } =
+                (await import('/src/local/kv/idb.ts')) as typeof import('../../../src/local/kv/idb')
+            if (zip) {
+                const { seedRawExport } =
+                    (await import('/src/local/seed.ts')) as typeof import('../../../src/local/seed')
+                return seedRawExport(
+                    idbFactory(indexedDB),
+                    new Blob([new Uint8Array(zip)]),
+                    localStorage,
+                )
+            }
+            return seedDump(idbFactory(indexedDB), readDump(dump), localStorage)
+        },
+        { dump, zip: zip && [...zip] },
+    )
     expect(result).toEqual({ seeded: true })
     await page.close()
     return { context, clock }
