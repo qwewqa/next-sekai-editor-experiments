@@ -219,6 +219,7 @@ R: Camera Zoom [cameraZoom]: ~Varies > 1.25
 #property.stageStyle.color en
 T: Edited 1 stage style event
 R: Judgment Line Color [judgmentLineColor]: ~Varies > Cyan
+R: Lane Color [laneColor]: Default > Red
 R: Border Style (Left) [leftBorderStyle]: Default > Medium
 
 #property.bpm.value en

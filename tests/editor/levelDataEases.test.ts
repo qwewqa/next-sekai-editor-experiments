@@ -88,6 +88,7 @@ const chart = (ease: TimeScaleEase): Chart => ({
             stageId,
             beat: 1,
             editorLane: 0,
+            laneColor: 'default',
             judgmentLineColor: 'neutral',
             judgmentLineStyle: 'default',
             leftBorderStyle: 'default',

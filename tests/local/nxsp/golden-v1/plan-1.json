@@ -101,8 +101,8 @@
     {
       "name": "level.json",
       "method": 8,
-      "crc32": 325745116,
-      "uncompressedSize": 11457,
+      "crc32": 1791969369,
+      "uncompressedSize": 11488,
       "parts": [
         {
           "kind": "bytes",
@@ -456,6 +456,10 @@
                   {
                     "name": "editorLane",
                     "value": 0
+                  },
+                  {
+                    "name": "laneColor",
+                    "value": 2
                   },
                   {
                     "name": "judgeLineColor",
@@ -1519,7 +1523,7 @@
     {
       "name": "history/manifest.json",
       "method": 8,
-      "crc32": 2168104888,
+      "crc32": 3553582427,
       "uncompressedSize": 4850,
       "parts": [
         {
@@ -1541,7 +1545,7 @@
                   }
                 },
                 "time": 1792126795000,
-                "snapshot": "999562af272c130cbe25b7c543276a01",
+                "snapshot": "f9359c19d893410ddfd56aeb00451e7d",
                 "noteCount": 9
               },
               {
@@ -1559,7 +1563,7 @@
                   }
                 },
                 "time": 1792126796000,
-                "snapshot": "bb7bab6e564b8db94bcd0c317104139b",
+                "snapshot": "9057de20cd7a7d49340302d0314d7bc4",
                 "noteCount": 12,
                 "kept": false
               },
@@ -1578,7 +1582,7 @@
                   }
                 },
                 "time": 1792126797000,
-                "snapshot": "482a1283f29361be2e822e39136d3cec",
+                "snapshot": "45da35fa5a4557efb88fd85eeec8caaf",
                 "noteCount": 10,
                 "dirty": true
               },
@@ -1597,7 +1601,7 @@
                   }
                 },
                 "time": 1792126798000,
-                "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
+                "snapshot": "b5fe316542275d1fab1375ca40242523",
                 "noteCount": 10
               },
               {
@@ -1617,7 +1621,7 @@
                   }
                 },
                 "time": 1792126799000,
-                "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
+                "snapshot": "b5fe316542275d1fab1375ca40242523",
                 "noteCount": 10,
                 "revisionId": "r001-0000-4000-8000-000000000000",
                 "device": {
@@ -1628,7 +1632,7 @@
               }
             ],
             "roots": {
-              "999562af272c130cbe25b7c543276a01": [
+              "f9359c19d893410ddfd56aeb00451e7d": [
                 1,
                 "de34b56c8236920918fa1ac0efe6cec6",
                 [
@@ -1658,7 +1662,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -1667,7 +1671,7 @@
                 ],
                 9
               ],
-              "482a1283f29361be2e822e39136d3cec": [
+              "45da35fa5a4557efb88fd85eeec8caaf": [
                 1,
                 "de34b56c8236920918fa1ac0efe6cec6",
                 [
@@ -1697,7 +1701,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -1706,7 +1710,7 @@
                 ],
                 10
               ],
-              "b5ba26df2283cb1cd7ac48c385a4e4e8": [
+              "b5fe316542275d1fab1375ca40242523": [
                 1,
                 "9fff73c5f19f09738772d05baf18b54e",
                 [
@@ -1736,7 +1740,7 @@
                   ],
                   [
                     "stageStyleEvents",
-                    "ec7e12fc53132cfbc1e4b9ff64b74cd8"
+                    "c7683ecf6d79e6d7d344a62fb3ed6263"
                   ],
                   [
                     "stageTransformEvents",
@@ -1789,11 +1793,11 @@
                   "fc69f5483924d4aff06683335ded65d1"
                 ]
               ],
-              "ec7e12fc53132cfbc1e4b9ff64b74cd8": [
+              "c7683ecf6d79e6d7d344a62fb3ed6263": [
                 "stageStyleEvents",
                 0,
                 [
-                  "40b783550034e9d28d76681825a58fed"
+                  "1811fe6d40cc8c5e712e166c5293cb5f"
                 ]
               ],
               "4a422a26c54fa83bc5f1e4c92ad29f25": [
@@ -1849,23 +1853,23 @@
                 35
               ],
               [
-                "40b783550034e9d28d76681825a58fed",
+                "1811fe6d40cc8c5e712e166c5293cb5f",
                 704,
-                53
+                59
               ],
               [
                 "785cf7fc1d8caf4021845009ea643c09",
-                757,
+                763,
                 43
               ],
               [
                 "985cec3836fc092b8502871a62e8a0b7",
-                800,
+                806,
                 75
               ],
               [
                 "9fff73c5f19f09738772d05baf18b54e",
-                875,
+                881,
                 314
               ]
             ],
@@ -1873,7 +1877,7 @@
               "base": 0,
               "slots": [
                 {
-                  "snapshot": "999562af272c130cbe25b7c543276a01",
+                  "snapshot": "f9359c19d893410ddfd56aeb00451e7d",
                   "step": {
                     "kind": "init",
                     "operation": {
@@ -1890,7 +1894,7 @@
                   }
                 },
                 {
-                  "snapshot": "482a1283f29361be2e822e39136d3cec",
+                  "snapshot": "45da35fa5a4557efb88fd85eeec8caaf",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -1905,7 +1909,7 @@
                   }
                 },
                 {
-                  "snapshot": "b5ba26df2283cb1cd7ac48c385a4e4e8",
+                  "snapshot": "b5fe316542275d1fab1375ca40242523",
                   "step": {
                     "kind": "edit",
                     "operation": {
@@ -1929,12 +1933,12 @@
     {
       "name": "history/chunks.bin",
       "method": 0,
-      "crc32": 375097878,
-      "uncompressedSize": 1189,
+      "crc32": 2094639827,
+      "uncompressedSize": 1195,
       "parts": [
         {
           "kind": "bytes",
-          "base64": "bZFNTsMwEIWvEs16lPoncdJ1URESrMouZOHE42ApsaPEbU+BxJ5bcCc4B3IKOzaj+Wbee7Y0DWeMYVzOhCznosSm4Qh3ZPV5jIAMeYuNQDjqNQLyxO1N86Sdh5tzKzCModMj3PQnZwjQ6nH9W7s1jDqSARR/EccwGloA2TZIrqgHyuzvOD0tER68TyRuPrhPWw8IhzDNYaUls6Rjnp2cH5IODq96iVv36DxlwdOL37p4DYBNA896SL+EE/XBmywmTNyrveplVypeiKrkvBNWWlX3nZB9VzMOCH240JLPfgDkJYKb9EC7hMlPuqjE3lrNipIJ0xEpZg03tVGKG2kBYV7o4uiaT7ME5BWCPhsXdtNMKYKLFFMaZuqKKeqqQu5LpWTNSAmlRFUoVitA+P74zL7e3/6NwXTRtv0BzZTBDsIgDED/pedmGczpxxAOuHVKQphB8PsN4i7b3KbGIAdCgDYvrwUhBEOGJZZFjdBSp4LxMLvqlLkSlkU1GsifR2B7S8O9cRyoxusbAYLRlpQb9tPMEHx/mcRKfNBFvmU270ImtKJ+Badsc+5dTm981ds6W5hm/4pMohAcGVab2Q6Rb5OqU9Dt+6Yize5PaKKdWLlRUx1NoBmYjR30mZaIsc+NkbqFJx+O2sXaIE//wA/ek5R3i4420DE0MtAxidWJttAxNDXQMY6NBQCLjjbUMdEx0DHUM9Ux0FHKycxLTSxS0lEqycxNDU5OzElV0klLzClOjY0FAIuONtDRNdMxNNIx1DHQMdBRSklNSyzNKVGC8HIy81ITi5RidaKNdAz0jNGAjpmeGQowx29KLACLjjbUMdDRNdMxNNJJS8wpTtVRysnMS00sUorViTbUMdIx0DPXMdAz1ikpKkWSiwUAi4421DHUMdAx0lHKT0lR0jHQM9Ux1FHKLy0JLE1MUYqNBQCLjjbUMdQx0FFKrkzMU9JRSklNSyzNKVHSUcrJTM8oQRZJS8wpTtUxhEKlnMy81MQipdhYAIuONtIx1jE01THU0TXUMdAzMtVRSk7NK0ktUtJRyszzLy0JzsxLVYqNBQCLjo421DHUMTPRMdBRSklNSyzNKVHCykpLzClO1THQMYKylPLy81JhwujKlBKTSzLLUpV0lHIy81ITi2DiENJQR6kkvwBDb2xsLABVkUFvgzAMhf8K8mmTrC4JEODcqdOk9dTdWA+GOAwJEgSh/ftToD3sEvnZ731OlFoKITDMK6M4SJVjXUuEd7a0DgFQoLxirRBOtARAGfV195ypd7AntwO6wTc0wO6/9IYBLQ3Lc9wvfqDABlA9ESc/GJ4BxdaIqUAdJ/bRjqtThE/nolJ7Dj7i1AHC0Y+TX3hOLFM4JJfeddEHx1+aw1Z99Y4T7/jHbVW4e8C6hm/q4i3hwq13JglRRt3qSrdpk2uZqSKXslE2tbpsG5W2TSkkILT+xvNhch2gzBH6kTp+izLmmbJCVdaSyHKhTMOshTXSlEZraVILCNPMt57vh3FKAWWBQKvp/ds4cURIFTGlFqlRRVMZ28omI0EF5ZXSlbGlFrnYnt56t4bk5UxL4Pn1wVP/eBi/9nr9Aw=="
+          "base64": "bZFNTsMwEIWvEs16lPoncdJ1URESrMouZOHE42ApsaPEbU+BxJ5bcCc4B3IKOzaj+Wbee7Y0DWeMYVzOhCznosSm4Qh3ZPV5jIAMeYuNQDjqNQLyxO1N86Sdh5tzKzCModMj3PQnZwjQ6nH9W7s1jDqSARR/EccwGloA2TZIrqgHyuzvOD0tER68TyRuPrhPWw8IhzDNYaUls6Rjnp2cH5IODq96iVv36DxlwdOL37p4DYBNA896SL+EE/XBmywmTNyrveplVypeiKrkvBNWWlX3nZB9VzMOCH240JLPfgDkJYKb9EC7hMlPuqjE3lrNipIJ0xEpZg03tVGKG2kBYV7o4uiaT7ME5BWCPhsXdtNMKYKLFFMaZuqKKeqqQu5LpWTNSAmlRFUoVitA+P74zL7e3/6NwXTRtv0BzZTBDsIgDED/pedmGczpxxAOuHVKQphB8PsN4i7b3KbGIAdCgDYvrwUhBEOGJZZFjdBSp4LxMLvqlLkSlkU1GsifR2B7S8O9cRyoxusbAYLRlpQb9tPMEHx/mcRKfNBFvmU270ImtKJ+Badsc+5dTm981ds6W5hm/4pMohAcGVab2Q6Rb5OqU9Dt+6Yize5PaKKdWLlRUx1NoBmYjR30mZaIsc+NkbqFJx+O2sXaIE//wA/ek5R3i4420DE0MtAxidWJttAxNDXQMY6NBQCLjjbUMdEx0DHUM9Ux0FHKycxLTSxS0lEqycxNDU5OzElV0klLzClOjY0FAIuONtDRNdMxNNIx1DHQMdBRSklNSyzNKVGC8HIy81ITi5RidaKNdAz0jNGAjpmeGQowx29KLACLjjbUMdDRNdMxNNJJS8wpTtVRysnMS00sUorViTbUMdIx0DPXMdAz1ikpKkWSiwUAi4421DHUMdAx0lHKT0lR0jHQM9Ux1FHKLy0JLE1MUYqNBQCLjjbUMdQx0FEqSk1R0lFKrkzMU9JRSklNSyzNKVHSUcrJTM8oQRZJS8wpTtUxhEKlnMy81MQipdhYAIuONtIx1jE01THU0TXUMdAzMtVRSk7NK0ktUtJRyszzLy0JzsxLVYqNBQCLjo421DHUMTPRMdBRSklNSyzNKVHCykpLzClO1THQMYKylPLy81JhwujKlBKTSzLLUpV0lHIy81ITi2DiENJQR6kkvwBDb2xsLABVkUFvgzAMhf8K8mmTrC4JEODcqdOk9dTdWA+GOAwJEgSh/ftToD3sEvnZ731OlFoKITDMK6M4SJVjXUuEd7a0DgFQoLxirRBOtARAGfV195ypd7AntwO6wTc0wO6/9IYBLQ3Lc9wvfqDABlA9ESc/GJ4BxdaIqUAdJ/bRjqtThE/nolJ7Dj7i1AHC0Y+TX3hOLFM4JJfeddEHx1+aw1Z99Y4T7/jHbVW4e8C6hm/q4i3hwq13JglRRt3qSrdpk2uZqSKXslE2tbpsG5W2TSkkILT+xvNhch2gzBH6kTp+izLmmbJCVdaSyHKhTMOshTXSlEZraVILCNPMt57vh3FKAWWBQKvp/ds4cURIFTGlFqlRRVMZ28omI0EF5ZXSlbGlFrnYnt56t4bk5UxL4Pn1wVP/eBi/9nr9Aw=="
         }
       ]
     },

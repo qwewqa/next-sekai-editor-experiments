@@ -182,6 +182,7 @@ const planTables: Record<string, string[]> = {
         'stageId',
         'beat',
         'editorLane',
+        'laneColor',
         'judgmentLineColor',
         'judgmentLineStyle',
         'leftBorderStyle',

@@ -269,6 +269,7 @@ export const extractChart = (state: State, ordered = orderStore(state.store)): C
         stageId: e.stageId,
         beat: e.beat,
         editorLane: e.editorLane,
+        laneColor: e.laneColor,
         judgmentLineColor: e.judgmentLineColor,
         judgmentLineStyle: e.judgmentLineStyle,
         leftBorderStyle: e.leftBorderStyle,

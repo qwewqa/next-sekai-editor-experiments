@@ -364,6 +364,7 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
             stageId,
             beat: beat + 1.5,
             editorLane: -8 + i,
+            laneColor: 'default',
             judgmentLineColor: 'cyan',
             judgmentLineStyle: 'singleLine',
             leftBorderStyle: 'light',

@@ -1,4 +1,5 @@
 import type { EventEase } from '..'
+import type { NoteStyle } from '../../noteStyle'
 import type { StageId } from '../../stages'
 
 export type JudgmentLineColor =
@@ -23,6 +24,7 @@ export type StageStyleEventObject = {
     stageId: StageId
     beat: number
     editorLane: number
+    laneColor: NoteStyle
     judgmentLineColor: JudgmentLineColor
     judgmentLineStyle: JudgmentLineStyle
     leftBorderStyle: BorderStyle

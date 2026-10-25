@@ -565,6 +565,7 @@ const style = (
     stageId,
     beat,
     editorLane: 0,
+    laneColor: 'default',
     judgmentLineColor: 'neutral',
     judgmentLineStyle: 'default',
     leftBorderStyle: 'default',

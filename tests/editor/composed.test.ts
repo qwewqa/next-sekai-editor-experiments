@@ -103,6 +103,7 @@ const style = (
     stageId: stageA,
     beat,
     editorLane: 0,
+    laneColor: 'default',
     judgmentLineColor: 'purple',
     judgmentLineStyle: 'default',
     leftBorderStyle: 'medium',

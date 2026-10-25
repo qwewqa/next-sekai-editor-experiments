@@ -203,7 +203,7 @@ test('counts and IDs use safe integers while scalar parameters retain finite bin
 })
 
 test('properties accept effective values only for applicable native subjects', () => {
-    assert.equal(Object.keys(fieldCodecs).length, 61)
+    assert.equal(Object.keys(fieldCodecs).length, 62)
     assert(fieldApplies('groupId', 'note'))
     assert(fieldApplies('groupId', 'timeScale'))
     assert(!fieldApplies('groupId', 'cameraEvent'))

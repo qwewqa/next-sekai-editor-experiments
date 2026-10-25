@@ -67,6 +67,7 @@ export const requestDynamicStages = async (
                 stageId: defaultStageId.value,
                 beat: 0,
                 editorLane: 0,
+                laneColor: 'default',
                 judgmentLineColor: 'purple',
                 judgmentLineStyle: 'default',
                 leftBorderStyle: 'default',
