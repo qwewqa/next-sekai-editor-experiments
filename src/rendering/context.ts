@@ -11,7 +11,6 @@ import {
     type TextureSource,
 } from 'pixi.js'
 import { EventStrokeGeometry, EventStrokeMesh, type PreparedEventStroke } from './eventStrokeMesh'
-import { arcSegments, roundCappedSegments } from './geometry'
 import {
     equalMatrix,
     identity,
@@ -35,6 +34,7 @@ import { PaintStyles } from './pixiPaint'
 import { PixelRectClip, type PixelBounds } from './pixiRectClip'
 import { RenderingResources, type ImageSource } from './resources'
 import { StageMesh, StageMeshes } from './stageMesh'
+import { arcSegments, roundCappedSegments } from './strokeSegments'
 import {
     getCanvasTransformPrecision,
     getTextRaster,
