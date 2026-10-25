@@ -91,7 +91,7 @@ Resources:
                       Statement:
                           # The instance can add and list dumps. It cannot read or delete them.
                           - Effect: Allow
-                            Action: s3:PutObject
+                            Action: [s3:PutObject, s3:AbortMultipartUpload]
                             Resource: !Sub ${DumpBucket.Arn}/dumps/*
                           - Effect: Allow
                             Action: s3:ListBucket

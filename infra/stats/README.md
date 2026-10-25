@@ -26,7 +26,9 @@ The host files reach the instance by commit. The stack’s `SourceCommit` parame
 
 Run Actions › Stats deploy, choosing `dev` or `prod`. Prod waits for the maintainer’s approval and refuses any branch but `main`. The workflow assumes `nse-stats-deploy` by OIDC, runs `scripts/deploy.sh`, and ends with a smoke check: `/api/heartbeat` over HTTPS, then the database’s migrations. The same script runs by hand with a profile: `AWS_PROFILE=nse-dev SOURCE_COMMIT=<pushed sha> bash infra/stats/scripts/deploy.sh dev`.
 
-Deploying prod, in order:
+If the first deploy of a stack fails, CloudFormation leaves it in `ROLLBACK_COMPLETE`. The deploy roles cannot delete a stack in prod, so delete it with the admin profile (`aws cloudformation delete-stack --profile nse-prod --stack-name nse-stats`), fix the cause, and deploy again. The retained volume, Elastic IP and bucket of the failed attempt are still there, and the bucket’s fixed name would stop the next deploy. They hold no data yet, so delete them too (`bash infra/stats/scripts/leftover.sh` with the profile lists them). Never do this to a stack that has run.
+
+Try the whole cycle in dev first (see Dev below). Deploying prod, in order:
 
 1. Deploy it. The first boot takes 5 to 10 minutes.
 2. **First sign-in,** through the tunnel (below). Sign in as `admin` / `umami`, create a new admin with a generated password kept in a password manager, and delete `admin`.
