@@ -136,7 +136,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 - The first step of a peek has nothing to keep. Its date and change strip stay hidden in place until its change is read or the loading state shows at 250 ms (`firstRead`), and a press waits the same way.
 - The fit measures the widest line the producer can return (`changes.ts` `fixedLines` and `countedLines`), in the longest locale.
 
-**History panel band** (`HistoryPanel.vue`) measures its fit in script, and measures again when the locale, the root font size or the fonts change.
+**History panel band** (`HistoryPanel.vue`) measures its fit in script, and measures again when the locale, the root font size or the fonts change. Its end slot is one grid cell: Go To on the Timeline, and on Recent Sessions Delete Sessions… as an icon-only trash can (`ghost ghost-band size-9`), shown only where Settings › Local Data offers it. The cell keeps Go To's width on both tabs in every mode, so the tabs never move. The glyph is Font Awesome's `trash-can`, which at 16 px looks close to Delete Selection's `trash`.
 
 **Timeline** (`TimelineList.vue`, `rowPresentation.ts`)
 - One grid for every row kind: the row pill spans the list less 6 px per side, and a 36 px leading slot holds one mark per row (the Now dot, a kind glyph, a group's disclosure, a member's rail). The text pill follows, so every title starts at the same x and every time ends at the same x.
@@ -151,6 +151,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 - At first the list draws a screenful of rows and 50 more. It draws more as it scrolls near the end of what is drawn, and always every row up to the cursor, the selected row, the row of an open menu and the inline Undo rows, with 50 more after them. The keys reach every row, each row has an `aria-rowindex`, and the storage line shows once every row is drawn.
 - A ⋯ button at the end opens the row's menu. A row without one keeps the slot, so text edges agree. A damaged or newer row fades its title to 60 % and keeps its caption strong.
 - A Delete turns the row in place into "Deleted "X"" with an `Undo` pill, and into the text alone once it can no longer be undone. This row is the only surface for a Delete. A polite live region says each outcome to a screen reader, and an error card appears only for a Delete that did not happen.
+- Delete Sessions… is the band's end control on this tab (above). When its run ends, the list reads at once.
 
 **Notice cards** (`src/editor/NoticeCard.vue`, `SeverityIcon.vue`, `notification.ts`)
 - The peek strip's surface. Over a blocking dialog a card takes the menus' surface instead (`bg-popup`, the popup outline and ring), so it stands apart from the dialog.
