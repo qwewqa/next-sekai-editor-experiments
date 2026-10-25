@@ -518,10 +518,10 @@ test('groups move into and out of folders through the menu', async ({ page }) =>
     await menu.getByRole('menuitemradio', { name: 'No Folder' }).click()
     expect(await tree(page)).toBe('Default [Verse: Bass] Lead Outro')
 
-    // New Folder… creates a folder holding the group and names it.
+    // New Folder creates a folder holding the group and names it.
     await entryRow(page, 'Outro').getByRole('button', { name: 'More Actions for Outro' }).click()
     await menu.getByRole('menuitem', { name: 'Move to Folder…' }).click()
-    await menu.getByRole('menuitem', { name: 'New Folder…' }).click()
+    await menu.getByRole('menuitem', { name: 'New Folder', exact: true }).click()
     const input = panel(page).getByRole('textbox')
     await expect(input).toBeFocused()
     await input.fill('Ending')

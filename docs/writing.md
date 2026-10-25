@@ -33,7 +33,7 @@ The strings in `src/i18n/`, Help, notices, the release notes in `CHANGELOG.md` a
 
 - Use no contractions, and ’ for apostrophes.
 - Buttons, command names, setting names and their choices are Title Case.
-- A label ends with an ellipsis when its action waits for the user’s answer before it happens: a value or a name (Save As…, Make from BGM…), a file (Choose…) or a confirmation (Delete Selected…). A label that opens a window or a panel takes none, because the window is the result: Settings, Level Info, History. The ellipsis tells the user that the press asks first. On every window it would lose that meaning. A dialog title drops it.
+- A label ends with an ellipsis when its action waits for the user’s answer before it happens: a value or a name (Scale Beats…, Save As…), a file (Choose…) or a confirmation (Delete Selected…). A confirmation that appears only in some cases, such as New’s when the chart has unsaved changes, does not count. A label that opens a window or a panel (Settings, Level Info, History) takes none, because the window is the result. The ellipsis tells the user that a question comes first. It would lose that meaning if every window had one. A dialog title drops it.
 - Put session names in double quotes. Put a file name in double quotes only when it is the subject or starts the sentence: "Saved to coconut.nxsp", but ""coconut.nxsp" could not be written."
 - Change all seven locales (`en`, `fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit, and reuse each locale’s existing terms.
 - "Saved" means saved as a project file, and "unsaved" means not saved as one. Work kept only in this browser, such as Recent Sessions and the Timeline, is "stored" or "kept", never "saved". An export does not save.

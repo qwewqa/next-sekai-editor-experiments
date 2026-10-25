@@ -87,11 +87,11 @@ test('the startup gate lifts when startup resolves and says so when it fails', a
         console.error = log
     }
     assert.deepEqual([startupGate.phase, startupGate.error], ['error', 'A row could not be read'])
-    // Export Raw Data… registers when it is built.
+    // Export Raw Data registers when it is built.
     const rawExport = () => startupGate.rawExport
     assert.equal(rawExport(), undefined)
-    setRawExport({ label: () => 'Export Raw Data…', run: () => Promise.resolve(undefined) })
-    assert.equal(rawExport()?.label(), 'Export Raw Data…')
+    setRawExport({ label: () => 'Export Raw Data', run: () => Promise.resolve(undefined) })
+    assert.equal(rawExport()?.label(), 'Export Raw Data')
     finishStartup()
     assert.equal(startupGate.phase, 'done')
     // Done stays done: a late failure doesn’t close the editor again.
@@ -135,10 +135,10 @@ test('tracked startup resolves to done, rejects to the error, and Start Blank ru
     }
 })
 
-test('the error state’s Export Raw Data… shows the line its run returns, and clears it on the next press', async () => {
+test('the error state’s Export Raw Data shows the line its run returns, and clears it on the next press', async () => {
     const log = console.error
     const notes = ['The stored work could not be read.', undefined]
-    setRawExport({ label: () => 'Export Raw Data…', run: () => Promise.resolve(notes.shift()) })
+    setRawExport({ label: () => 'Export Raw Data', run: () => Promise.resolve(notes.shift()) })
     await runRawExport()
     assert.equal(startupGate.rawExportNote, 'The stored work could not be read.')
     // A press that goes through whole shows no line, not the old one.

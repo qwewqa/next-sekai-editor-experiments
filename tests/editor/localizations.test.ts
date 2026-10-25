@@ -139,13 +139,26 @@ test('division commands are named as their dialog is, as lane division commands 
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)) {
         const messages = read(locale)
-        // Not French "Passer à la division personnalisée" beside "Division personnalisée". The command's ellipsis aside.
+        // Not French "Passer à la division personnalisée" beside "Division personnalisée". The command adds an ellipsis.
         for (const axis of ['divisions', 'laneDivisions'])
             assert.equal(
                 messages[`commands.${axis}.custom.title`]?.replace(/…$/, ''),
                 messages[`commands.${axis}.custom.modal.title`],
                 `${locale} ${axis}`,
             )
+        // Each label that asks first ends with an ellipsis and has a dialog title without one.
+        for (const [label, title] of [
+            ['commands.open.title', 'commands.open.dialogTitle'],
+            ['commands.scaleBeat.title', 'commands.scaleBeat.dialogTitle'],
+            ['commands.scaleWidth.title', 'commands.scaleWidth.dialogTitle'],
+            ['commands.scaleElevation.title', 'commands.scaleElevation.dialogTitle'],
+            ['commands.laneLimits.custom', 'commands.laneLimits.customTitle'],
+            ['settings.resetSettings', 'settings.resetSettingsTitle'],
+            ['settings.resetKeybinds', 'settings.resetKeybindsTitle'],
+        ] as const) {
+            assert.ok(messages[label]!.endsWith('…'), `${locale} ${label}`)
+            assert.equal(messages[label]!.replace(/…$/, ''), messages[title], `${locale} ${label}`)
+        }
         // A noun with the fraction, not "Passer à la division en 1/4".
         const title = messages['commands.divisions.title']!
         assert.ok(title.replace('1/{0}', '').trim().split(/\s+/).length <= 2, locale)

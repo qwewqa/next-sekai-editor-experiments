@@ -28,7 +28,7 @@ test('shortcut capture preserves the old binding until replaced or cleared', asy
     await save.click()
     await expect(save).toHaveText('Press a key or click again to clear')
     expect(await page.evaluate(() => window.editorTest.settings.keyboardShortcuts.save)).toBe('p')
-    await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).focus()
+    await dialog.getByRole('button', { name: 'Reset Settings…', exact: true }).focus()
     await expect(save).toHaveText('P')
     await save.click()
     await save.press('l')
@@ -49,7 +49,7 @@ test('shortcut capture preserves the old binding until replaced or cleared', asy
     await save.click()
     await save.press('Tab')
     await expect(save).toHaveText('Unassigned')
-    await dialog.getByRole('button', { name: 'Reset Shortcuts', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Reset Shortcuts…', exact: true }).click()
     await confirmReset(page, 'Reset Shortcuts')
     await expect(save).toHaveText('P')
 })
@@ -62,7 +62,7 @@ test('settings and keybind resets are independent and remove saved overrides', a
         settings.keyboardShortcuts = { ...settings.keyboardShortcuts, save: 'l' }
     })
     const dialog = page.getByRole('dialog')
-    await dialog.getByRole('button', { name: 'Reset Shortcuts', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Reset Shortcuts…', exact: true }).click()
     await confirmReset(page, 'Reset Shortcuts')
     await expect(page.getByRole('dialog')).toHaveCount(1)
     expect(await page.evaluate(() => window.editorTest.settings.previewNoteSpeed)).toBe(9.25)
@@ -80,7 +80,7 @@ test('settings and keybind resets are independent and remove saved overrides', a
             save: 'l',
         }
     })
-    await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Reset Settings…', exact: true }).click()
     await confirmReset(page, 'Reset Settings')
     await expect(page.getByRole('dialog')).toHaveCount(1)
     expect(await page.evaluate(() => window.editorTest.settings.keyboardShortcuts.save)).toBe('l')
@@ -976,7 +976,7 @@ for (const reset of [
                 return key === 'save' ? settings.keyboardShortcuts.save : settings.previewNoteSpeed
             }, key)
         const dialog = page.getByRole('dialog')
-        const opener = dialog.getByRole('button', { name: reset.name, exact: true })
+        const opener = dialog.getByRole('button', { name: reset.name + '…', exact: true })
         const before = await read(reset.changed)
         await opener.click()
         await expect(page.getByRole('dialog')).toHaveCount(2)
@@ -1053,6 +1053,6 @@ test('in safe mode Local Data only reads: no Delete Sessions…, no Discard…, 
     await expect(autoSave.getByRole('button')).toHaveText(['Download'])
     await expect(section.locator('[data-recovery-discard]')).toHaveCount(0)
     // Reading is still offered.
-    await expect(section.getByRole('button', { name: 'Export Raw Data…' })).toBeVisible()
+    await expect(section.getByRole('button', { name: 'Export Raw Data' })).toBeVisible()
     await expect(section.getByRole('button', { name: 'Open History' })).toBeVisible()
 })

@@ -775,7 +775,7 @@ test.describe('saved shortcuts', () => {
         await page.keyboard.press(',')
         await page
             .getByRole('dialog')
-            .getByRole('button', { name: 'Reset Shortcuts', exact: true })
+            .getByRole('button', { name: 'Reset Shortcuts…', exact: true })
             .click()
         await confirmReset(page, 'Reset Shortcuts')
         expect(

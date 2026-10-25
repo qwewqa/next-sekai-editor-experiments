@@ -5,7 +5,7 @@ import type { SaveRequest, SaveResult } from '../../src/platform/types'
 import { rawExportNote } from '../../src/startup/rawExportNote'
 import { runRawExport } from '../../src/startup/rawExportRun'
 
-// Export Raw Data… behind a Loading dialog: closing the dialog (its signal) stops the hand-over.
+// Export Raw Data behind a Loading dialog: closing the dialog (its signal) stops the hand-over.
 
 const built: typeof exportRawData = async (_version, name, save) => {
     await save(name, new Blob(['zip']))
