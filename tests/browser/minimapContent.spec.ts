@@ -251,6 +251,57 @@ test('incremental redraws equal a full redraw after a move, an Undo, a slide edi
     }
 })
 
+test('an incremental redraw of separate bands does not carry a fake note’s opacity into the next band', async ({
+    page,
+}) => {
+    await installHarness(page)
+    const result = await page.evaluate(async () => {
+        const h = window.minimapHarness
+        const { fixtures, show } = window.editorTest
+        const { minimapStats } = h.pipelineModule
+        const single = fixtures.interaction.slides[0]![0]!
+        // Two bands far apart, each an ordinary note followed by a fake one: the first band painted
+        // ends at 0.5 opacity, and the second must not start there.
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [{ ...single, beat: 20, left: -3 }],
+                    [{ ...single, beat: 21, left: 2, isFake: true }],
+                    [{ ...single, beat: 100, left: -3 }],
+                    [{ ...single, beat: 101, left: 2, isFake: true }],
+                ],
+            },
+            5,
+        )
+        const { canvas, pipeline } = await h.create()
+        const before = { ...minimapStats }
+        h.edit((transaction) => {
+            for (const note of [...h.history.state.value.store.slides.note.values()].flat()) {
+                if (note.isFake) continue
+                h.slideNotes.replaceNote(transaction, note, { ...note, left: note.left + 4 })
+            }
+        })
+        pipeline.setSources(h.sources())
+        await h.idle(pipeline)
+        const after = { ...minimapStats }
+        const full = await h.create()
+        const compared = {
+            ...h.compare(canvas, full.canvas),
+            bands: after.bandPasses - before.bandPasses,
+            fullJobs: after.fullJobs - before.fullJobs,
+        }
+        full.pipeline.dispose()
+        pipeline.dispose()
+        return compared
+    })
+    expect(result.size).toBe(true)
+    expect(result.drawn).toBeGreaterThan(100)
+    expect(result.differing, result.first.join('; ')).toBe(0)
+    expect(result.bands).toBe(1)
+    expect(result.fullJobs).toBe(0)
+})
+
 for (const layout of ['basic', 'composed'] as const)
     test(`incremental redraws equal a full redraw on an imported chart in ${layout}`, async ({
         page,
