@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
+import { analyticsOf } from './analytics'
 import { instrumentRendering, previewInWorker, previewPixels } from './fixtures'
 
 // The release build under its exact policy.
@@ -78,18 +79,25 @@ test('the page carries the web policy first, hashing its one inline script', asy
     }))
     expect(first).toBe('Content-Security-Policy')
     expect(scripts).toHaveLength(1)
-    expect(meta).toBe(webPolicy(inlineScripts(`<script>${scripts[0]}</script>`)))
+    const analytics = await analyticsOf(page)
+    expect(meta).toBe(webPolicy(inlineScripts(`<script>${scripts[0]}</script>`), analytics?.origin))
     expect(meta).not.toContain("'unsafe-eval'")
-    // The web makes no cross-origin requests: no https: source for requests or pictures.
+    // The web's one cross-origin request target is the usage statistics' origin, when the build
+    // has one: no other https: source for requests or pictures.
     const directives = Object.fromEntries(
         (meta ?? '').split(';').map((part) => {
             const [name = '', ...sources] = part.trim().split(/\s+/)
             return [name, sources]
         }),
     )
-    expect(directives['connect-src']).toEqual(["'self'", 'blob:', 'data:'])
+    expect(directives['connect-src']).toEqual([
+        "'self'",
+        'blob:',
+        'data:',
+        ...(analytics ? [analytics.origin] : []),
+    ])
     expect(directives['img-src']).toEqual(["'self'", 'blob:', 'data:'])
-    expect(meta).not.toContain('https:')
+    expect(meta?.match(/https:[^\s;]*/g) ?? []).toEqual(analytics ? [analytics.origin] : [])
 })
 
 for (const inWorker of [false, true])

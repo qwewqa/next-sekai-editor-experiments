@@ -25,6 +25,7 @@ One frontend is built twice: `npm run build` for the web and `npm run build:nati
 | The native implementation | `src/platform/native/` | Native only, through `#platform`'s `native` condition |
 | The mock platform | `src/platform/mock.ts`, injected with `setPlatformForTests` | Tests |
 | Native-only features | `src/library/`, `src/projects/` (with the native apps) | Native only, loaded through one loader |
+| Usage statistics ([docs/analytics.md](docs/analytics.md)) | `src/analytics/` | Web, when the build has a target |
 | Asset defaults | `#asset-defaults` | Per build |
 
 `#platform` and `#asset-defaults` are `package.json` `imports` with a `native` condition. Native mode (`vite --mode native`) selects it; the web build and the Node tests resolve the `default` target.

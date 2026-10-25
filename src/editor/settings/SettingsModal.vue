@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { analyticsTarget } from '../../analytics/start'
 import { vScrollEdges } from '../../directives/scrollEdges'
 import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
@@ -69,10 +70,19 @@ const confirmReset = async (title: () => string, message: () => string, reset: (
     })
     if (confirmed) reset()
 }
+// Reset Settings keeps Send Usage Statistics, and says so where the build shows it.
+const resetSettingsHint = computed(() =>
+    analyticsTarget
+        ? i18n.value.settings.resetSettingsHintStatistics
+        : i18n.value.settings.resetSettingsHint,
+)
 const askResetSettings = () =>
     confirmReset(
         () => i18n.value.settings.resetSettings,
-        () => i18n.value.settings.resetSettingsMessage,
+        () =>
+            analyticsTarget
+                ? i18n.value.settings.resetSettingsMessageStatistics
+                : i18n.value.settings.resetSettingsMessage,
         resetSettings,
     )
 const askResetKeybinds = () =>
@@ -108,7 +118,7 @@ onBeforeUnmount(() => {
                 <button
                     type="button"
                     class="btn btn-danger-quiet h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                    :title="i18n.settings.resetSettingsHint"
+                    :title="resetSettingsHint"
                     @click="askResetSettings"
                 >
                     {{ i18n.settings.resetSettings }}

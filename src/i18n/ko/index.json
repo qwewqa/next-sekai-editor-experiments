@@ -807,6 +807,8 @@
     "resetSettingsHint": "키보드 단축키는 유지하고 설정을 기본값으로 복원합니다.",
     "resetKeybinds": "단축키 초기화",
     "resetSettingsMessage": "키보드 단축키는 유지하고 설정을 기본값으로 복원할까요?",
+    "resetSettingsHintStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원합니다.",
+    "resetSettingsMessageStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원할까요?",
     "resetKeybindsMessage": "키보드 단축키를 기본값으로 복원할까요?",
     "editor": {
       "title": "편집기",
@@ -944,6 +946,9 @@
       "license": "라이선스",
       "notices": "타사 고지 사항",
       "privacy": "개인정보 보호",
+      "usageStatistics": "사용 통계 보내기",
+      "usageStatisticsNote": "사용하는 도구, 주요 설정, 파일 유형과 크기, 작업에 걸리는 시간입니다. 개인정보 보호를 참조하세요.",
+      "usageStatisticsSignal": "이 브라우저가 Do Not Track 또는 Global Privacy Control을 보내므로 기본적으로 비활성화되어 있습니다.",
       "diagnostics": "진단 정보 복사…",
       "diagnosticsTitle": "진단 정보",
       "diagnosticsNote": "진단 정보에 파일 이름이나 폴더 이름이 포함될 수 있습니다. 공유하기 전에 확인하세요.",

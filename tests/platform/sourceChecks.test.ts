@@ -57,8 +57,10 @@ test('only src/platform/index.ts imports #platform', () => {
 test('downloads, pickers and close handling go through the platform', () => {
     assert.deepEqual(matching(/\.download\s*=/), ['src/platform/handover.ts'])
     assert.deepEqual(matching(/showSaveFilePicker|showOpenFilePicker/), ['src/platform/web.ts'])
-    // The hand-over's pagehide only releases download URLs.
+    // The hand-over's pagehide only releases download URLs; the usage statistics' pagehide sends
+    // the last batch.
     assert.deepEqual(matching(/['"]beforeunload['"]|['"]pagehide['"]/), [
+        'src/analytics/client.ts',
         'src/platform/handover.ts',
         'src/platform/web.ts',
     ])

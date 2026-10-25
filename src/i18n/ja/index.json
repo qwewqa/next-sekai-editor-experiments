@@ -807,6 +807,8 @@
     "resetSettingsHint": "キーボードショートカットを保持して、設定を初期値に戻します。",
     "resetKeybinds": "ショートカットをリセット",
     "resetSettingsMessage": "キーボードショートカットを保持して、設定を初期値に戻しますか？",
+    "resetSettingsHintStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻します。",
+    "resetSettingsMessageStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻しますか？",
     "resetKeybindsMessage": "キーボードショートカットを初期値に戻しますか？",
     "editor": {
       "title": "エディター",
@@ -944,6 +946,9 @@
       "license": "ライセンス",
       "notices": "サードパーティライセンス",
       "privacy": "プライバシー",
+      "usageStatistics": "使用状況の統計を送信",
+      "usageStatisticsNote": "使用するツール、主な設定、ファイルの種類とサイズ、操作にかかる時間。「プライバシー」を参照してください。",
+      "usageStatisticsSignal": "このブラウザーが Do Not Track または Global Privacy Control を送信するため、初期状態で無効です。",
       "diagnostics": "診断情報をコピー…",
       "diagnosticsTitle": "診断情報",
       "diagnosticsNote": "診断情報にはファイル名やフォルダー名が含まれる場合があります。共有する前に内容を確認してください。",

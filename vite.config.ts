@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
 import { defaultClientConditions, defineConfig } from 'vite'
+import { analyticsFromEnv } from './scripts/analytics.mjs'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
 import { nativeIndexHtml } from './scripts/native.mjs'
 import { probePlugin, samplesPlugin } from './scripts/samples.mjs'
@@ -24,6 +25,14 @@ const pages = (mode: string) => ({
         ? { privacy: resolve(root, 'privacy/index.html') }
         : {}),
 })
+
+// Usage statistics: off unless both variables are set. The apps' build fails with them
+// (docs/analytics.md).
+const analyticsFor = (mode: string) =>
+    analyticsFromEnv(process.env, {
+        native: mode === 'native',
+        perf: process.env.NSE_PERF === '1',
+    })
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -104,9 +113,12 @@ export default defineConfig(({ mode }) => ({
             transformIndexHtml: {
                 order: 'post',
                 handler: (html, { server }) =>
-                    injectPolicy(
-                        html,
-                        server ? devPolicy : mode === 'native' ? nativePolicy : webPolicy,
+                    injectPolicy(html, (scripts) =>
+                        server
+                            ? devPolicy(scripts, analyticsFor(mode)?.origin)
+                            : mode === 'native'
+                              ? nativePolicy(scripts)
+                              : webPolicy(scripts, analyticsFor(mode)?.origin),
                     ),
             },
         },
@@ -119,5 +131,6 @@ export default defineConfig(({ mode }) => ({
         __HAS_PRIVACY_PAGE__: JSON.stringify('privacy' in pages(mode)),
         __NATIVE__: JSON.stringify(mode === 'native'),
         __APP_VERSION__: JSON.stringify(appVersion({ cwd: root }).appVersion),
+        __NSE_ANALYTICS__: JSON.stringify(analyticsFor(mode)),
     },
 }))

@@ -807,6 +807,8 @@
         "resetSettingsHint": "Restore default settings, keeping keyboard shortcuts.",
         "resetKeybinds": "Reset Shortcuts",
         "resetSettingsMessage": "Restore default settings, keeping keyboard shortcuts?",
+        "resetSettingsHintStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting.",
+        "resetSettingsMessageStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting?",
         "resetKeybindsMessage": "Restore default keyboard shortcuts?",
         "editor": {
             "title": "Editor",
@@ -944,6 +946,9 @@
             "license": "License",
             "notices": "Third-Party Notices",
             "privacy": "Privacy",
+            "usageStatistics": "Send Usage Statistics",
+            "usageStatisticsNote": "Which tools you use, your main settings, file types and sizes, and how long actions take. See Privacy.",
+            "usageStatisticsSignal": "Disabled by default because this browser sends Do Not Track or Global Privacy Control.",
             "diagnostics": "Copy Diagnostic Info…",
             "diagnosticsTitle": "Diagnostic Info",
             "diagnosticsNote": "Diagnostic info may include file and folder names. Check it before sharing.",

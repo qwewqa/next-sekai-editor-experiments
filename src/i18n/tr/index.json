@@ -807,6 +807,8 @@
     "resetSettingsHint": "Klavye kısayollarını koruyarak varsayılan ayarları geri yükler.",
     "resetKeybinds": "Kısayolları Sıfırla",
     "resetSettingsMessage": "Klavye kısayolları korunarak varsayılan ayarlar geri yüklensin mi?",
+    "resetSettingsHintStatistics": "Klavye kısayollarını ve Kullanım İstatistiklerini Gönder ayarını koruyarak varsayılan ayarları geri yükler.",
+    "resetSettingsMessageStatistics": "Klavye kısayolları ve Kullanım İstatistiklerini Gönder ayarı korunarak varsayılan ayarlar geri yüklensin mi?",
     "resetKeybindsMessage": "Varsayılan klavye kısayolları geri yüklensin mi?",
     "editor": {
       "title": "Editör",
@@ -944,6 +946,9 @@
       "license": "Lisans",
       "notices": "Üçüncü Taraf Lisansları",
       "privacy": "Gizlilik",
+      "usageStatistics": "Kullanım İstatistiklerini Gönder",
+      "usageStatisticsNote": "Kullandığınız araçlar, temel ayarlarınız, dosya türleri ve boyutları ile işlemlerin ne kadar sürdüğü. Gizlilik’e bakın.",
+      "usageStatisticsSignal": "Bu tarayıcı Do Not Track veya Global Privacy Control gönderdiği için varsayılan olarak devre dışı.",
       "diagnostics": "Tanılama Bilgilerini Kopyala…",
       "diagnosticsTitle": "Tanılama Bilgileri",
       "diagnosticsNote": "Tanılama bilgileri dosya ve klasör adlarını içerebilir. Paylaşmadan önce kontrol edin.",

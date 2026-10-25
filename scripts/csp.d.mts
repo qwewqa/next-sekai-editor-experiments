@@ -7,9 +7,9 @@ export const devAdditions: Additions
 export function scriptHashes(scripts: readonly string[]): string[]
 
 export function basePolicy(scripts?: readonly string[]): string
-export function webPolicy(scripts?: readonly string[]): string
+export function webPolicy(scripts?: readonly string[], analyticsOrigin?: string): string
 export function nativePolicy(scripts?: readonly string[]): string
-export function devPolicy(scripts?: readonly string[]): string
+export function devPolicy(scripts?: readonly string[], analyticsOrigin?: string): string
 
 export function inlineScripts(html: string): string[]
 export function pageMetaPolicy(html: string): string | undefined

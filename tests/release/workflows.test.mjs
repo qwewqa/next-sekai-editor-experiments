@@ -55,3 +55,22 @@ test('a tag requires successful checks before building and still deploys only th
     assert.match(job('deploy'), /if: needs.build.outputs.deploy == 'true'/)
     assert.match(job('deploy'), /needs: build/)
 })
+
+test('only a version tag builds with the usage statistics target', () => {
+    const vars = { ANALYTICS_ORIGIN: 'https://stats', ANALYTICS_WEBSITE_PRODUCTION: 'id' }
+    const value = (name, ref) => {
+        const expression = job('build')?.match(new RegExp(`^ {12}${name}: (.+)$`, 'm'))?.[1]
+        assert.ok(expression, name)
+        return runInNewContext(expression.replace(/^\$\{\{\s*|\s*\}\}$/g, ''), {
+            github: { ref },
+            vars,
+            startsWith: (value, prefix) => value.startsWith(prefix),
+        })
+    }
+    for (const ref of ['refs/heads/main', 'refs/pull/123/merge']) {
+        assert.equal(value('NSE_ANALYTICS_ORIGIN', ref), '')
+        assert.equal(value('NSE_ANALYTICS_WEBSITE', ref), '')
+    }
+    assert.equal(value('NSE_ANALYTICS_ORIGIN', 'refs/tags/v0.6.0'), 'https://stats')
+    assert.equal(value('NSE_ANALYTICS_WEBSITE', 'refs/tags/v0.6.0'), 'id')
+})

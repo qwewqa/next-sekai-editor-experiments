@@ -807,6 +807,8 @@
     "resetSettingsHint": "还原默认设置，保留键盘快捷键。",
     "resetKeybinds": "重置快捷键",
     "resetSettingsMessage": "要还原默认设置并保留键盘快捷键吗？",
+    "resetSettingsHintStatistics": "还原默认设置，保留键盘快捷键和“发送使用统计”。",
+    "resetSettingsMessageStatistics": "要还原默认设置并保留键盘快捷键和“发送使用统计”吗？",
     "resetKeybindsMessage": "要还原默认键盘快捷键吗？",
     "editor": {
       "title": "编辑器",
@@ -944,6 +946,9 @@
       "license": "许可证",
       "notices": "第三方声明",
       "privacy": "隐私",
+      "usageStatistics": "发送使用统计",
+      "usageStatisticsNote": "使用的工具、主要设置、文件类型和大小，以及操作所需的时间。参见“隐私”。",
+      "usageStatisticsSignal": "默认禁用，因为此浏览器发送了 Do Not Track 或 Global Privacy Control。",
       "diagnostics": "复制诊断信息…",
       "diagnosticsTitle": "诊断信息",
       "diagnosticsNote": "诊断信息可能包含文件名和文件夹名。分享前请先检查。",
