@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { analyticsFromEnv } from './analytics.mjs'
 import './check-lyon.mjs'
 import { stagePreviewAssets } from './release-assets.mjs'
 import { checkRelease, stageReleasePublic, writeReleaseManifest } from './release-utils.mjs'
@@ -25,6 +26,7 @@ const metadata = {
     atTag,
     site: siteFromEnv(),
     sourceDirty: Boolean(git('status', '--porcelain', '--untracked-files=normal')),
+    analytics: analyticsFromEnv(process.env),
 }
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'sekai-release-'))
 // Only remove the directory just allocated by mkdtemp, never a caller path.

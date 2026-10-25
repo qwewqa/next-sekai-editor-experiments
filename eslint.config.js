@@ -5,6 +5,23 @@ import globals from 'globals'
 import tsEslint from 'typescript-eslint'
 import local from './scripts/eslint-plugin-local.mjs'
 
+// Shared code reaches native code only through #platform. A later no-restricted-imports entry
+// replaces this one for the files it covers, so each repeats these bans.
+const nativeImportBans = [
+    {
+        regex: '^@tauri-apps/',
+        message: 'Only the native implementation may import @tauri-apps.',
+    },
+    {
+        regex: '(^|/)platform/native(/|$)',
+        message: 'Reach the native platform only through #platform.',
+    },
+    {
+        regex: '(^|/)(library|projects)(/|$)',
+        message: 'The native-only folders load only through the native loader.',
+    },
+]
+
 export default tsEslint.config(
     {
         ignores: [
@@ -92,20 +109,7 @@ export default tsEslint.config(
             'no-restricted-imports': [
                 'error',
                 {
-                    patterns: [
-                        {
-                            regex: '^@tauri-apps/',
-                            message: 'Only the native implementation may import @tauri-apps.',
-                        },
-                        {
-                            regex: '(^|/)platform/native(/|$)',
-                            message: 'Reach the native platform only through #platform.',
-                        },
-                        {
-                            regex: '(^|/)(library|projects)(/|$)',
-                            message: 'The native-only folders load only through the native loader.',
-                        },
-                    ],
+                    patterns: nativeImportBans,
                 },
             ],
             'no-restricted-syntax': [
@@ -174,6 +178,54 @@ export default tsEslint.config(
                     selector:
                         "VariableDeclarator[init.property.name='platform'] > ObjectPattern > Property[key.name=/^(kind|os)$/]",
                     message: 'Ask platform.capabilities; kind and os are for src/platform.',
+                },
+            ],
+        },
+    },
+
+    // Usage statistics (docs/analytics.md): no code that runs per frame or draws reaches them.
+    {
+        files: ['src/frame.ts', 'src/rendering/**/*.ts', 'src/preview/engine/**/*.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        ...nativeImportBans,
+                        {
+                            regex: '(^|/)analytics(/|$)',
+                            message: 'Nothing per frame or in the draw paths counts usage.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    // They reach no notice, dialog or storage code, never read chart content or names, and read
+    // the local-data modules only through status.ts.
+    {
+        files: ['src/analytics/**/*.ts'],
+        ignores: ['src/analytics/status.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        ...nativeImportBans,
+                        {
+                            regex: '(^|/)(modals|notification|storage)(/|\\.|$)',
+                            message: 'Usage statistics show nothing and store nothing.',
+                        },
+                        {
+                            regex: '(^|/)local/',
+                            allowTypeImports: true,
+                            message: 'Read the local-data modules through status.ts.',
+                        },
+                        {
+                            regex: '(^|/)(state/levelInfo|history/filename|editor/shownName|documentTitle)(\\.ts)?$',
+                            message: 'Usage statistics never read chart content or names.',
+                        },
+                    ],
                 },
             ],
         },

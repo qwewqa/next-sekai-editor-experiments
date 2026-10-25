@@ -376,11 +376,13 @@ function gateComesFirst(html) {
     return Boolean(gate && module && gate.index < module.index)
 }
 
-// The pages' policy is the web policy hashing exactly their inline scripts, first in <head>.
+// The pages' policy is the web policy hashing exactly their inline scripts, first in <head>, with
+// the build's analytics origin as its only cross-origin source.
 async function checkPages(directory, files, manifest) {
     for (const file of files.filter((file) => pageEntries.test(file))) {
         const html = (await regularFile(join(directory, file))).toString('utf8')
-        if (pageMetaPolicy(html) !== webPolicy(inlineScripts(html)) || !metaIsFirst(html))
+        const policy = webPolicy(inlineScripts(html), manifest.analytics?.origin)
+        if (pageMetaPolicy(html) !== policy || !metaIsFirst(html))
             throw new Error(`Content Security Policy differs from the web policy: ${file}`)
     }
     const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
@@ -393,6 +395,31 @@ async function checkPages(directory, files, manifest) {
 // The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.
 // A production-site build names no test key but these (src/platform/testKeys.ts); the test site may.
 const liveTestKeys = ['nse.test.version', 'nse.test.storage', 'nse.test.startBlank']
+
+// The usage statistics' client is one chunk, which only a build with a target has, and the bundle
+// names that target.
+async function checkAnalytics(directory, files, analytics) {
+    const scripts = []
+    for (const file of files.filter((file) => file.endsWith('.js')))
+        scripts.push({ file, text: (await regularFile(join(directory, file))).toString('utf8') })
+    const clients = scripts.filter(({ text }) => text.includes('/api/batch'))
+    if (!analytics) {
+        if (clients.length)
+            throw new Error(`Release without analytics contains its client: ${clients[0].file}`)
+        return
+    }
+    if (clients.length !== 1) throw new Error('Release requires exactly one analytics client')
+    for (const value of [analytics.origin, analytics.website])
+        if (!scripts.some(({ text }) => text.includes(value)))
+            throw new Error(`Release does not name its analytics target: ${value}`)
+}
+
+const validAnalytics = (analytics) =>
+    analytics === null ||
+    (typeof analytics === 'object' &&
+        Object.keys(analytics).sort().join() === 'origin,website' &&
+        /^https:\/\/[a-z0-9.-]+(?::\d+)?$/.test(analytics.origin) &&
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(analytics.website))
 
 async function checkBundles(directory, files, site) {
     for (const file of files.filter((file) => /\.(?:js|html|css)$/.test(file))) {
@@ -419,11 +446,13 @@ export async function checkRelease(directory, expected = {}) {
         typeof manifest.atTag !== 'boolean' ||
         !validAppVersion(manifest) ||
         !['production', 'test'].includes(manifest.site) ||
-        typeof manifest.sourceDirty !== 'boolean'
+        typeof manifest.sourceDirty !== 'boolean' ||
+        !validAnalytics(manifest.analytics)
     )
         throw new Error('Invalid release metadata')
     for (const [key, value] of Object.entries(expected)) {
-        if (manifest[key] !== value) throw new Error(`Release metadata mismatch: ${key}`)
+        if (JSON.stringify(manifest[key]) !== JSON.stringify(value))
+            throw new Error(`Release metadata mismatch: ${key}`)
     }
     const files = await listFiles(directory)
     validateFileNames(files, assets)
@@ -431,6 +460,7 @@ export async function checkRelease(directory, expected = {}) {
     await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
     await checkBundles(directory, files, manifest.site)
+    await checkAnalytics(directory, files, manifest.analytics)
     const recorded = Object.keys(manifest.files).sort()
     if (
         JSON.stringify(recorded) !==

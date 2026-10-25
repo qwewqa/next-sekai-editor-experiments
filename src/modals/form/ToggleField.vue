@@ -6,6 +6,8 @@ import ToggleSwitch from './ToggleSwitch.vue'
 
 defineProps<{
     label: string
+    /** Short remarks under the field. */
+    notes?: string[]
 }>()
 
 const modelValue = defineModel<boolean>({ required: true })
@@ -18,7 +20,7 @@ const shown = computed(() =>
 </script>
 
 <template>
-    <BaseField :label>
+    <BaseField :label :notes>
         <!-- A switch named by its row; the shown state stays its text. -->
         <template #default="{ textId }">
             <div class="form-field-toggle">

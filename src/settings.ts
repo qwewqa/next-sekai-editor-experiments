@@ -235,6 +235,9 @@ const settingsProperties = {
     // The browser's prompt on closing with changes not in a file.
     confirmCloseUnsavedFile: Type.Boolean({ default: true }),
 
+    // Send Usage Statistics (src/analytics/): null until the user chooses, then the choice.
+    usageStatistics: Type.Union([Type.Boolean(), Type.Null()], { default: null }),
+
     toolbarQuickSwitch: Type.Boolean({ default: false }),
 
     toolbar: Type.Codec(
@@ -686,7 +689,8 @@ export const resetSettings = () => {
     resetting = true
     try {
         for (const [key, schema] of Object.entries(settingsProperties)) {
-            if (key === 'keyboardShortcuts') continue
+            // The shortcuts have their own reset; an opt-out from the statistics must not come undone.
+            if (key === 'keyboardShortcuts' || key === 'usageStatistics') continue
             Reflect.set(settings, key, Value.Create(schema))
         }
     } finally {

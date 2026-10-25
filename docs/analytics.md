@@ -1,0 +1,118 @@
+# Usage statistics
+
+The web editor sends usage statistics to a self-hosted Umami server: counts of the tools, settings and files people use, and how long actions take. This page is for maintainers. The privacy page (`privacy/index.html`) tells users what is sent, and `infra/stats/README.md` covers the server.
+
+The code is in `src/analytics/`:
+
+- `tally.ts`: the counters and the input that arms a visit. It is in the main bundle, and it is the only analytics code that the edit and command paths call.
+- `catalogue.ts`: every event and the values each property may take, with the functions that turn numbers into ranges.
+- `config.ts`: the rule that decides whether a page sends.
+- `start.ts`: starts and stops the client, and follows the switch in this tab and in other tabs.
+- `client.ts` and `sender.ts`: loaded after startup, only when statistics are on. They build the events and send them.
+
+## No effect on the user
+
+Usage statistics must never make the editor worse to use. These rules hold for every change here:
+
+- **No UI** but the switch in Settings › About and its line. No notice, prompt or console output in any state.
+- **Nothing per frame.** No code in a frame callback, the clock or the draw paths. The lint forbids importing `src/analytics/` from `src/frame.ts`, `src/rendering/` and `src/preview/engine/`.
+- **O(1) on the edit, flush, Save and startup paths.** A hook is one `bump` or `bumpCommand`: a `Map` increment behind one boolean, with no await or I/O.
+- **Nothing on the startup path.** The client loads once the startup gate is done and the page is idle.
+- **Few, small requests.** At most one in flight and one a minute while the page is open, each at most 32 KB, and 30 a visit.
+- **No retries.** Nothing is sent while offline, and nothing more that visit after one failed request. A page that asks to save data sends nothing.
+- **Bounded memory:** at most 1,000 counters (900 of them `usage`), 50 queued events and 32 KB.
+- **Silent failure.** A blocked, offline, failing or hanging endpoint, or a client chunk gone after a deploy, shows nothing and holds nothing up.
+- **No storage.** No IndexedDB, Cache Storage or quota. The only stored value is the switch's setting. The lint keeps `src/analytics/` away from the notice, dialog and storage modules. Only `status.ts` may read the local-data modules, and only to read.
+- **Opt-out at once.** Turning the switch off drops the queue and the counters, and nothing more is sent, even when the page closes. Other open tabs stop too. Reset Settings keeps the choice.
+- **The data paths are never touched.** The client reads what the flows already know. It never calls a storage, Save or History function.
+
+A change that adds work to a hot path is measured with the perf tools, with statistics on and off (`docs/performance-testing.md`).
+
+## Engaged visits only
+
+A visit sends nothing, not even the pageview, until its first trusted `pointerdown`, `keydown`, `touchstart` or `wheel` while the page is visible. One passive listener waits for it and is removed once the visit is armed. Events measured before then wait in memory with the time they were captured. A visit that never arms sends nothing. So Umami's pageviews count visits where someone used the editor.
+
+The startup gate swallows input until the session is open, so input during startup does not arm a visit.
+
+## When it sends
+
+- The first send is at the first hide, or a minute after the visit is armed if the page is still visible.
+- Later sends are at each hide, at most one a minute, and at `pagehide` whatever the minute rule says.
+- While the page is open it sends with `fetch` and `keepalive`. At `pagehide` it uses `sendBeacon`. Both send `text/plain`, so there is no preflight.
+- It never listens for `unload` or `beforeunload`, which would cost the page its back-forward cache.
+- Each event carries `timestamp`, the Unix seconds when it was captured. Umami would otherwise date it when the request arrives.
+
+## Who sends
+
+`config.ts` decides. A page sends only when all of these hold:
+
+- the build has a target (below);
+- the switch is on: the user's choice, or, before they choose, on unless the browser sends Do Not Track or Global Privacy Control;
+- safe mode is off, and the browser does not ask to save data;
+- the browser is not automated (`navigator.webdriver`), unless a dev build's test key or a loopback origin points it at a mock;
+- the page is on its site's host (`nse.qwewqa.dev` or `test.nse.qwewqa.dev`) or on this machine, so a copy of the files hosted elsewhere sends nothing.
+
+The switch appears only in a build with a target. Reset Settings skips it, and its hint says so in those builds.
+
+## Privacy rules
+
+1. No chart content, file names, level info, titles, free text, paths, URLs with a query or hash, and no ids that link visits.
+2. Only fixed values, booleans, ranges and use counts capped at 9999, plus the screen size in Umami's usual form.
+3. The client creates, stores and sends no identifier. Umami's daily session hash is the only grouping.
+4. Nothing is sent before the setting and the browser's signals are read, and nothing at all when the result is off.
+
+How the code keeps them:
+
+- `record` takes only the types the catalogue gives. A range is a branded type that only `bucket` makes.
+- The client checks every event against the catalogue before it queues it, and drops one that fails.
+- The lint forbids `src/analytics/` from importing the level info, file names and the document title.
+- A browser spec saves a chart whose title, artist and file name contain a canary, and fails if any request contains it, or any key outside the catalogue.
+
+## The catalogue
+
+`catalogue.ts` is the source; a unit test keeps this table in step with it. A property written `found.<kind>` stands for one property per value. "At hide" means the event goes with each send and carries the counts since the last one.
+
+| Event | When | Properties |
+| --- | --- | --- |
+| (pageview) | client start | `url` (always `/`), `title` (empty), `hostname`, `language`, `screen`, `referrer` (another site's origin only) |
+| `visit` | client start | `version`, `site`, `os`, `engine`, `standalone`, `touch`, `viewport`, `dpr`, `browserLanguage`, `returning`, `updated` |
+| `settings` | client start | `theme`, `themeShown`, `locale`, `previewInWorker`, `previewRenderScale`, `previewAntialias`, `previewShowHitboxes`, `previewNoteSpeed`, `previewAssets.<type>`, `showPreview`, `previewPosition`, `showMinimap`, `showHistory`, `historyPosition`, `dimUnchangedObjects`, `waveform`, `beatDisplay`, `toolbarQuickSwitch`, `toolbarCustomized`, `mouseSecondaryTool`, `playFollow`, `touchQuickScrollShow`, `touchLongPressContextMenu`, `confirmCloseUnsavedFile` |
+| `startup` | client start | `start`, `outcome`, `ready`, `found.<kind>` |
+| `storage` | status known, and on change | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
+| `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `dynamicStages`, `bgm`, `historySteps` |
+| `preview` | first preview draw, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
+| `open` | each Open | `format`, `via`, `size`, `outcome`, `reason`, `took` |
+| `save` | each Save, Save As… and Save to File | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
+| `export` | each Export | `format`, `target`, `size`, `took`, `outcome`, `reason` |
+| `check` | each Check File and History… | `outcome`, `took` |
+| `bgm` | each BGM chosen | `format`, `size`, `length`, `took`, `outcome` |
+| `usage` | at hide | `<command>.<source>` |
+| `edits` | at hide | `<operation>`, `undo`, `redo` |
+| `features` | at hide | `historyPanel`, `historyDialog`, `recentTab`, `peek`, `peekRefused`, `restore`, `restoreSession`, `restoreCopy`, `saveRowToFile`, `deleteSessions`, `minimapDrag`, `minimapJump`, `quickSwitch` |
+| `notices` | at hide | `info`, `warning`, `error` |
+| `perf` | at hide | `peek.<time>`, `loafSupported`, `frames.<state>.<length>`, `playSeconds`, `slowInputs`, `interactions`, `visibleTime`, `cores` |
+| `errors` | at hide | `error`, `csp` |
+
+Umami's own visit counts, durations and bounce rates are wrong for this client: without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime`.
+
+## Adding an event or a property
+
+1. Add it to `catalogue.ts`, with a closed set of values or a range, and to the table above.
+2. Hook it with one `bump`, `bumpCommand` or `record` at the place that already knows the value. Never compute something on a hot path for it.
+3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value.
+4. If it is a new kind of data, add a line to the privacy page and change its date.
+5. Add a CHANGELOG line.
+
+## Build variables
+
+| Variable | Meaning |
+| --- | --- |
+| `NSE_ANALYTICS_ORIGIN` | The server's origin, such as `https://stats.nse-services.qwewqa.dev` |
+| `NSE_ANALYTICS_WEBSITE` | Umami's website id, a UUID |
+
+With neither set, the build has no target and no client chunk, and the switch is hidden. Half a pair, a malformed value, any target in the apps' build, and a perf build's target that is not on this machine all fail the build. The origin goes into the page's `connect-src`, its only cross-origin source.
+
+- **Releases:** `deploy-pages.yml` sets them on a version tag only, from the repository variables `ANALYTICS_ORIGIN` and `ANALYTICS_WEBSITE_PRODUCTION`. The test site's workflow sets its own website id. `check:release` compares the manifest's `analytics` field with the variables, checks that the bundle names that origin and id, and checks that a build without them has no client.
+- **Dev builds** send nothing unless both variables are set on purpose, for example to a local Umami.
+- **Browser specs** run on a dev server with no variables. A spec points the statistics at a Playwright route with the test key `nse.test.analytics`, a JSON `{ "origin", "website" }` that only dev builds read. No spec request leaves the machine.
+- **Production specs** run on a release build. `navigator.webdriver` keeps them silent.

@@ -13,6 +13,7 @@ import './themes.css'
 
 import { createApp } from 'vue'
 import App from './App.vue'
+import { startAnalytics } from './analytics/start'
 import { installSelectLists } from './modals/form/selectLists'
 import { trackStartup } from './startup/gate'
 import { registerGateRawExport } from './startup/rawExportAction'
@@ -61,3 +62,7 @@ if (startsBlank) {
 // Export Raw Data… on the gate's error state: it reads the stored data on the page,
 // without the code that failed. The module loads when it is used.
 registerGateRawExport()
+
+// Usage statistics, when the build has a target and they are on: the client loads once startup
+// is done and the page is idle (docs/analytics.md).
+startAnalytics()
