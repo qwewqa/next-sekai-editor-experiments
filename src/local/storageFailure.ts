@@ -1,5 +1,5 @@
-// Storage's failures by name: the worker's own checks, and the page's, which gets only an error's
-// name across the worker boundary.
+// Storage's failures by name. The worker checks its own errors. The page gets only an error's name,
+// and its cause's name, across the worker boundary.
 
 /**
  * IndexedDB's errors for storage being unavailable, full or busy, which a later load may not
@@ -15,7 +15,7 @@ export const TRANSIENT_STORAGE_ERRORS: ReadonlySet<string> = new Set([
     'NotReadableError',
 ])
 
-/** Errors of the storage worker's own for storing paused, refused or busy, or the worker stopped. */
+/** The storage worker's own errors: storing paused, refused or busy, or the worker stopped. */
 const STORING_ERRORS: ReadonlySet<string> = new Set([
     'StoragePausedError',
     'StorageRefusedError',
@@ -23,6 +23,17 @@ const STORING_ERRORS: ReadonlySet<string> = new Set([
     'WorkerFailedError',
 ])
 
-/** Whether an error the page got from the worker is storage's, by its name. */
-export const isStorageFailureName = (name: string) =>
-    TRANSIENT_STORAGE_ERRORS.has(name) || STORING_ERRORS.has(name)
+/**
+ * Whether an error the page got from the worker is storage's. A paused write is judged by the
+ * error that paused it. `NotReadableError` is not counted here: from a stored row it means a
+ * value that cannot be read, which comes back at every read.
+ */
+export const isStorageFailureName = (error: unknown) => {
+    if (!(error instanceof Error)) return false
+    const { causeName } = error as { causeName?: string }
+    const name = error.name === 'StoragePausedError' && causeName ? causeName : error.name
+    return (
+        name !== 'NotReadableError' &&
+        (TRANSIENT_STORAGE_ERRORS.has(name) || STORING_ERRORS.has(name))
+    )
+}

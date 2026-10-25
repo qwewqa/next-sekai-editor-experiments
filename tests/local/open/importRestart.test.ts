@@ -17,7 +17,7 @@ import { createWorld } from '../../../src/local/testing/world'
 import type { WorkerContext } from '../../../src/local/worker/handlers'
 import { readHandle } from '../../../src/local/worker/handlers'
 import { openHandlers } from '../../../src/local/worker/openHandlers'
-import { RpcError } from '../../../src/local/worker/rpc'
+import { connect, RpcError, serve, type Endpoint } from '../../../src/local/worker/rpc'
 import type { LockService } from '../../../src/platform/types'
 import '../../editor/saveMatrix/env'
 import { nativeOperation, originOperation } from '../../helpers/historySteps'
@@ -421,11 +421,13 @@ test('a worker’s own TimeoutError reads the file again and leaves no earlier c
 })
 
 /** The next load's resume of an import bound to a handle, whose run throws `error`. */
+let handleResumes = 0
 const resumeFromHandle = async (error: Error) => {
+    const sessionId = `handle-${++handleResumes}`
     const calls: string[] = []
     const file = new File(['x'], 'a.nxsp', { lastModified: 0 })
     const answers: Record<string, () => unknown> = {
-        openPendingImports: () => [{ sessionId: `handle-${error.name}`, chainId: 'c' }],
+        openPendingImports: () => [{ sessionId, chainId: 'c' }],
         openImportTarget: () => ({
             file: { name: 'a.nxsp', disk: { fingerprint: 'x', size: 1, lastModified: 0 } },
         }),
@@ -458,8 +460,62 @@ test('a resumed run from a handle that fails the same way each time ends the imp
 })
 
 test('a resumed run from a handle that meets a storage failure leaves the import pending', async () => {
-    const calls = await resumeFromHandle(new RpcError('StoragePausedError', 'Storing paused: full'))
-    assert.ok(!calls.includes('openAbandon'), calls.join())
+    for (const error of [
+        new RpcError('StoragePausedError', 'Storing paused: full', 'QuotaExceededError'),
+        new RpcError('StoragePausedError', 'Storing paused: failed', 'MaintTimeoutError'),
+        new RpcError('UnknownError', 'Internal error (test)'),
+        new RpcError('WorkerFailedError', 'The storage worker stopped'),
+    ]) {
+        const calls = await resumeFromHandle(error)
+        assert.ok(!calls.includes('openAbandon'), `${error.name}: ${calls.join()}`)
+    }
+})
+
+test('a resumed run from a handle whose write fails the same way each time ends the import', async () => {
+    for (const error of [
+        new RpcError('StoragePausedError', 'Storing paused: failed', 'DataError'),
+        new RpcError('NotReadableError', 'A stored value could not be read (test)'),
+    ]) {
+        const calls = await resumeFromHandle(error)
+        assert.ok(calls.includes('openAbandon'), `${error.name}: ${calls.join()}`)
+    }
+})
+
+test('an error from the worker keeps the name of the error that caused it', async () => {
+    let toPage: Endpoint['onmessage'] = null
+    let toWorker: Endpoint['onmessage'] = null
+    const page: Endpoint = {
+        postMessage: (data) => setTimeout(() => toWorker?.({ data } as MessageEvent), 0),
+        set onmessage(listener) {
+            toPage = listener
+        },
+        get onmessage() {
+            return toPage
+        },
+    }
+    const inside: Endpoint = {
+        postMessage: (data) => setTimeout(() => toPage?.({ data } as MessageEvent), 0),
+        set onmessage(listener) {
+            toWorker = listener
+        },
+        get onmessage() {
+            return toWorker
+        },
+    }
+    serve(inside, {
+        fails: () => {
+            const error = new Error('Storing paused: failed')
+            error.name = 'StoragePausedError'
+            error.cause = new DOMException('Bad key (test)', 'DataError')
+            throw error
+        },
+    })
+    const client = connect<{ fails: () => never }>(page)
+    await assert.rejects(client.call('fails'), (error: RpcError) => {
+        assert.equal(error.name, 'StoragePausedError')
+        assert.equal(error.causeName, 'DataError')
+        return true
+    })
 })
 
 test('once storing works again after a pause, this tab’s failed import runs again from its file', async () => {
@@ -493,4 +549,65 @@ test('once storing works again after a pause, this tab’s failed import runs ag
         await new Promise((resolve) => setImmediate(resolve))
     assertWhole(s, hashes)
     assert.ok(!s.calls.includes('openAbandon'))
+})
+
+/**
+ * Waits until the status listener's resume has run its course: it lists the pending imports
+ * within a few thousand turns, and then no import of `s` runs.
+ */
+const settled = async (s: Setup) => {
+    for (let i = 0; i < 100_000 && (i < 3000 || isImporting(s.ids.sessionId)); i++)
+        await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(isImporting(s.ids.sessionId), false)
+}
+
+const watchStoring = (s: Setup) => {
+    resumeWhenStoring(
+        {
+            get status() {
+                return s.page.core.status
+            },
+            onStatus: (listener) => s.page.core.onStatus(listener),
+        },
+        { worker: s.worker, locks, appVersion: '0.6.0' },
+    )
+}
+
+const writeMeta = (s: Setup, key: string) =>
+    s.page.tab.run(() => s.page.core.write(['meta'], (tx) => tx.put('meta', { key, value: 1 })))
+
+test('storing working again runs a failed import once, not after every write, while the browser stays full', async () => {
+    const s = await setup(15)
+    const { file } = await freshFile()
+    const { job } = await opened(s, file)
+    watchStoring(s)
+    s.world.memory.faults.put = (store) =>
+        store === 'chunks' ? new DOMException('Full (test)', 'QuotaExceededError') : undefined
+    assert.deepEqual(await startImport(job), { kind: 'failed' })
+    for (let edit = 0; edit < 3; edit++) {
+        await writeMeta(s, `test.${edit}`)
+        await settled(s)
+    }
+    assert.equal(s.calls.filter((call) => call === 'openResume').length, 1)
+    assert.equal(sessionRow(s)?.importPending, true)
+    assert.ok(!s.calls.includes('openAbandon'))
+})
+
+test('storing working again leaves alone an import this tab did not start', async () => {
+    const s = await setup(16)
+    const { file } = await freshFile()
+    // Another tab's import, pending, with no handle: a resume would end it.
+    await opened(s, file)
+    watchStoring(s)
+    let fail = true
+    s.world.memory.faults.put = (store) =>
+        store === 'meta' && fail ? new DOMException('Full (test)', 'QuotaExceededError') : undefined
+    await assert.rejects(writeMeta(s, 'test.paused'))
+    assert.equal(s.page.core.status.reason, 'full')
+    fail = false
+    await writeMeta(s, 'test.stored')
+    assert.equal(s.page.core.status.reason, undefined)
+    await settled(s)
+    assert.ok(!s.calls.includes('openAbandon'))
+    assert.equal(sessionRow(s)?.importPending, true)
 })
