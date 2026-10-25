@@ -111,7 +111,7 @@ test('production imports, scales through the touch menu, applies with Enter and 
         .getByTitle('Open Context Menu', { exact: true })
         .filter({ hasText: 'Open Context Menu' })
         .tap()
-    await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).tap()
+    await page.getByRole('menuitem', { name: 'Scale Width…', exact: true }).tap()
     const factor = page.getByRole('spinbutton', { name: 'Scale Factor' })
     await factor.fill('2')
     await factor.press('Enter')
@@ -242,7 +242,7 @@ test('lane limit commands clamp note placement in the production editor', async 
 }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByTitle('No Lane Limit', { exact: true }).tap()
-    await page.getByTitle('Custom Lane Limit', { exact: true }).tap()
+    await page.getByTitle('Custom Lane Limit…', { exact: true }).tap()
     await page.getByRole('spinbutton', { name: 'Maximum Lane (±)' }).fill('2')
     await page.getByRole('button', { name: 'Confirm', exact: true }).tap()
     await page.keyboard.press('a')

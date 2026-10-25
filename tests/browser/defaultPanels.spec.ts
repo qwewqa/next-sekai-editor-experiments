@@ -319,7 +319,7 @@ test('Reset Settings brings back the default', async ({ page }) => {
     await expectShown(page, 'left', { Preview: true, Groups: false, Stages: false })
     await page.keyboard.press(',')
     const dialog = page.getByRole('dialog')
-    await dialog.getByRole('button', { name: 'Reset Settings' }).click()
+    await dialog.getByRole('button', { name: 'Reset Settings…' }).click()
     await confirmReset(page, 'Reset Settings')
     await page.keyboard.press('Escape')
     await expectShown(page, 'left', { Preview: true, Groups: true, Stages: true })

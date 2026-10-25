@@ -7,7 +7,7 @@ import { ModelError, type ModelRefusal } from '../save/model'
 import { repairFromSource } from '../save/repair'
 import { STORED_BATCH_ROOTS, storedMediaState, type StoredCheck } from './stored'
 
-// Check File and History…'s finish, in order: repair from the file what it holds
+// Check File and History's finish, in order: repair from the file what it holds
 // (each item verified against its key), check the damaged states again, mark the rows whose roots
 // still reach a bad hash, then remove each media row that still fails its re-hash, one at a time
 // under `nse-maint` exclusive. Check never removes a root, node or chunk. Read-only storage

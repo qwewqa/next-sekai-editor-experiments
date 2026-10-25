@@ -108,7 +108,7 @@ test('Settings offers the theme after the language', async ({ page }) => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
 
     // Reset Settings returns to System, on this light device.
-    await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Reset Settings…', exact: true }).click()
     await confirmReset(page, 'Reset Settings')
     await expect(select).toHaveValue('system')
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')

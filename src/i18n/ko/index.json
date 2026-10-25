@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "레인 제한 없음",
       "six": "±6레인으로 제한",
-      "custom": "사용자 지정 레인 제한",
+      "custom": "사용자 지정 레인 제한…",
+      "customTitle": "사용자 지정 레인 제한",
       "maximum": "최대 레인 (±)",
       "limited": "레인 제한: ±{0}",
       "unlimited": "레인 제한 없음"
@@ -69,7 +70,7 @@
       "title": "레인 분할 1/{0}",
       "switched": "레인 분할을 1/{0}로 변경함",
       "custom": {
-        "title": "사용자 지정 레인 분할",
+        "title": "사용자 지정 레인 분할…",
         "modal": {
           "title": "사용자 지정 레인 분할",
           "division": "분할"
@@ -85,7 +86,7 @@
       "title": "분할 1/{0}",
       "switched": "1/{0}분할로 변경됨",
       "custom": {
-        "title": "맞춤 분할",
+        "title": "맞춤 분할…",
         "modal": {
           "title": "맞춤 분할",
           "division": "분할"
@@ -106,17 +107,20 @@
       "flipped": "객체 {0}개 상하 뒤집음"
     },
     "scaleBeat": {
-      "title": "박자 확대/축소",
+      "title": "박자 확대/축소…",
+      "dialogTitle": "박자 확대/축소",
       "noSelected": "서로 다른 박자에 있는 객체를 두 개 이상 선택하세요",
       "scaled": "객체 {0}개의 박자를 확대/축소함"
     },
     "scaleWidth": {
-      "title": "너비 조절",
+      "title": "너비 조절…",
+      "dialogTitle": "너비 조절",
       "noSelected": "가로 폭이 있는 객체를 선택하세요",
       "scaled": "객체 {0}개의 너비를 확대/축소함"
     },
     "scaleElevation": {
-      "title": "높이 확대/축소",
+      "title": "높이 확대/축소…",
+      "dialogTitle": "높이 확대/축소",
       "noSelected": "높이가 다른 노트 또는 스테이지 변형을 두 개 이상 선택하세요",
       "scaled": "객체 {0}개의 높이를 확대/축소함"
     },
@@ -242,7 +246,8 @@
       "switched": "오프셋 도구로 전환됨"
     },
     "open": {
-      "title": "열기",
+      "title": "열기…",
+      "dialogTitle": "열기",
       "loading": "파일 불러오는 중…",
       "importing": "레벨 가져오는 중…",
       "opened": "레벨 열림",
@@ -457,7 +462,7 @@
       "title": "레벨 데이터 내보내기…"
     },
     "previewAssets": {
-      "title": "미리보기 에셋…",
+      "title": "미리보기 에셋",
       "modal": {
         "title": "미리보기 에셋"
       },
@@ -508,11 +513,12 @@
       "use": "사용",
       "alsoFile": "이 파일의 {0} \"{1}\"도 사용",
       "remove": "제거",
+      "removeStored": "제거…",
       "inUse": "사용 중",
       "removeInUse": "\"{0}\"을(를) 제거할까요? 대신 기본 항목을 사용합니다.",
       "removeUnused": "\"{0}\"을(를) 제거할까요?",
       "removeFailed": "이 항목을 제거하지 못했습니다.",
-      "chooseAgain": "다시 선택",
+      "chooseAgain": "다시 선택…",
       "noneInFile": "이 파일에 {0}이(가) 없습니다.",
       "rights": "불러온 항목은 이 브라우저에만 보관됩니다.",
       "progress": {
@@ -803,9 +809,11 @@
   },
   "settings": {
     "title": "설정",
-    "resetSettings": "설정 초기화",
+    "resetSettings": "설정 초기화…",
+    "resetSettingsTitle": "설정 초기화",
     "resetSettingsHint": "키보드 단축키는 유지하고 설정을 기본값으로 복원합니다.",
-    "resetKeybinds": "단축키 초기화",
+    "resetKeybinds": "단축키 초기화…",
+    "resetKeybindsTitle": "단축키 초기화",
     "resetSettingsMessage": "키보드 단축키는 유지하고 설정을 기본값으로 복원할까요?",
     "resetSettingsHintStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원합니다.",
     "resetSettingsMessageStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원할까요?",
@@ -918,7 +926,7 @@
     "toolbar": {
       "title": "도구 모음",
       "quickSwitch": "빠른 전환",
-      "add": "도구 추가",
+      "add": "도구 추가…",
       "remove": "\"{0}\"을(를) 도구 모음에서 제거",
       "modal": {
         "title": "도구 선택"
@@ -976,8 +984,8 @@
       },
       "openHistory": "기록 열기",
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
-      "exportRaw": "원시 데이터 내보내기…",
-      "exportRawTitle": "원시 데이터 내보내기",
+      "exportRaw": "원시 데이터 내보내기",
+      "open": "열기",
       "exportRawName": "{0} 원시 데이터 {1}.zip",
       "storageHeading": "저장 공간",
       "stored": "이 브라우저에 보관됨: {0} / 약 {1}",
@@ -1952,7 +1960,6 @@
     "closePanel": "{0} 닫기",
     "folders": {
       "new": "새 폴더",
-      "newWith": "새 폴더…",
       "moveTo": "폴더로 이동…",
       "none": "폴더 없음",
       "expand": "{0} 펼치기",
@@ -2162,7 +2169,7 @@
     "sizePending": "크기 추정 중…"
   },
   "check": {
-    "command": "파일 및 기록 검사…",
+    "command": "파일 및 기록 검사",
     "title": "파일 및 기록 검사",
     "checkingFile": "{0} 검사 중…",
     "checkingStored": "보관된 기록 검사 중…",
@@ -2178,9 +2185,9 @@
   },
   "levelInfo": {
     "file": "파일",
-    "check": "검사…",
+    "check": "검사",
     "tagsPlaceholder": "쉼표로 구분",
-    "editCover": "커버 편집기에서 편집…",
+    "editCover": "커버 편집기에서 편집",
     "makePreview": "배경음으로 만들기…",
     "notLoaded": "불러오지 않음",
     "discard": "레벨 정보의 변경 내용을 버릴까요?"
@@ -2197,7 +2204,7 @@
     "otherProject": "다른 프로젝트 파일 \"{0}\"입니다.",
     "otherProjectUnnamed": "다른 프로젝트 파일입니다.",
     "notDescendant": "이 버전은 사용자의 버전에서 만들어지지 않았습니다({0}).",
-    "separate": "별도 파일로 저장",
+    "separate": "별도 파일로 저장…",
     "openOther": "다른 버전 열기",
     "openOtherNote": "변경 사항은 최근 세션에 남습니다.",
     "replaceNote": "디스크의 버전은 최근 세션에 보관됩니다.",
@@ -2215,7 +2222,7 @@
     "tooLong": "이름이 너무 깁니다"
   },
   "notice": {
-    "useOpenFile": "파일을 열려면 열기를 사용하세요.",
+    "useOpenFile": "파일을 열려면 열기…를 사용하세요.",
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
     "storageUnavailable": "편집기가 이 브라우저의 저장 공간에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",
@@ -2274,7 +2281,7 @@
     "notProject": "이 ZIP은 프로젝트 파일이 아닙니다.",
     "severalProjects": "이 ZIP에는 프로젝트 파일이 여러 개 들어 있습니다. 압축을 풀고 하나씩 열어 주세요.",
     "scp": "이 파일은 Sonolus 패키지입니다. 스킨이나 다른 에셋을 사용하려면 미리보기 에셋에서 선택하세요.",
-    "openPreviewAssets": "미리보기 에셋…",
+    "openPreviewAssets": "미리보기 에셋",
     "damagedUnopened": "이 파일은 손상되어 열 수 없었습니다.",
     "damaged": "이 파일은 손상되었습니다. 기록 없이 열었습니다.",
     "historyUnreadable": "이 파일의 기록을 읽을 수 없었습니다. 저장하면 별도의 파일이 만들어집니다.",

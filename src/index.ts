@@ -59,7 +59,7 @@ if (startsBlank) {
     })
 } else trackStartup(starting)
 
-// Export Raw Data… on the gate's error state: it reads the stored data on the page,
+// Export Raw Data on the gate's error state: it reads the stored data on the page,
 // without the code that failed. The module loads when it is used.
 registerGateRawExport()
 

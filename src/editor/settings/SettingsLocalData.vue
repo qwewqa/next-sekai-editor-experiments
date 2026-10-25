@@ -37,7 +37,7 @@ import {
 
 // Settings › Local Data: the storage line, the Storage subsection (what the
 // browser holds, why changes are not being stored, Delete Sessions…), Recovery (Open History, the
-// rows for what the recovery order set aside, Export Raw Data…) and Startup Notices, this load's
+// rows for what the recovery order set aside, Export Raw Data) and Startup Notices, this load's
 // notices. In safe mode it only reads: no Delete Sessions…, no Discard….
 
 const strings = computed(() => i18n.value.settings.localData)
@@ -238,11 +238,11 @@ const deleteSessions = async () => {
     await readBrowserStorage()
 }
 
-// --- Export Raw Data…: everything stored, as stored, for reporting a problem.
+// --- Export Raw Data: everything stored, as stored, for reporting a problem.
 const exportRaw = async () => {
     const outcome: { run?: RawExportRun } = {}
     await showModal(LoadingModal, {
-        title: () => strings.value.exportRawTitle,
+        title: () => strings.value.exportRaw,
         async *task(signal: AbortSignal) {
             yield () => i18n.value.modals.loading.loading
             const action = await import('../../startup/rawExportAction')
@@ -354,7 +354,7 @@ const exportRaw = async () => {
                         data-recovery-open
                         @click="open(item)"
                     >
-                        {{ i18n.commands.open.title }}
+                        {{ i18n.settings.localData.open }}
                     </button>
                     <button
                         type="button"

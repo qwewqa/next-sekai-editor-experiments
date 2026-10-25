@@ -83,7 +83,7 @@ export const open: Command = {
                 if (kind === 'archive') {
                     dropOpen()
                     await showModal(InfoModal, {
-                        title: () => i18n.value.commands.open.title,
+                        title: () => i18n.value.commands.open.dialogTitle,
                         message: () => i18n.value.open.severalProjects,
                     })
                     return
@@ -91,7 +91,7 @@ export const open: Command = {
                 if (kind === 'package') {
                     dropOpen()
                     const choice = await showChoice({
-                        title: () => i18n.value.commands.open.title,
+                        title: () => i18n.value.commands.open.dialogTitle,
                         message: () => i18n.value.open.scp,
                         choices: [
                             {
@@ -130,7 +130,7 @@ export const open: Command = {
             let newerValues:
                 (() => Promise<RevisionWarning | 'unsupportedParts' | undefined>) | undefined
             await showModal(LoadingModal, {
-                title: () => i18n.value.commands.open.title,
+                title: () => i18n.value.commands.open.dialogTitle,
                 async *task(signal: AbortSignal) {
                     const stopAbort = request.observeAbort(signal)
                     try {
@@ -253,7 +253,7 @@ export const open: Command = {
 
             const message = warning
             void showModal(InfoModal, {
-                title: () => i18n.value.commands.open.title,
+                title: () => i18n.value.commands.open.dialogTitle,
                 message: () =>
                     message === 'unsupportedParts'
                         ? i18n.value.commands.open.unsupportedParts

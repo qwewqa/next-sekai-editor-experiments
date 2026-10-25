@@ -82,7 +82,7 @@ test('the toolbar shows the tool in use as pressed', async ({ page }) => {
     await expect(select).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(() => fillOf(select)).toBe('accent')
     // Plain actions are not toggles; modes not in use are.
-    for (const title of ['Undo', 'Open', 'Help'])
+    for (const title of ['Undo', 'Open…', 'Help'])
         await expect(shown(page).and(page.getByTitle(title, { exact: true }))).not.toHaveAttribute(
             'aria-pressed',
         )
@@ -130,7 +130,9 @@ test('note presets are pressed only for the preset in use', async ({ page }) => 
 test('toolbar settings show tools without a pressed state', async ({ page }) => {
     await run(page, 'settings')
     const dialog = page.locator('dialog[open]')
-    await expect(dialog.getByTitle('Select', { exact: true }).first()).toBeVisible()
+    await expect(
+        dialog.getByTitle('Remove "Select" from Toolbar', { exact: true }).first(),
+    ).toBeVisible()
     await expect(dialog.locator('[aria-pressed]')).toHaveCount(0)
 })
 
@@ -456,10 +458,10 @@ test('division and lane groups show the value in use on their face', async ({ pa
     await page.keyboard.press('`')
     await page.getByRole('spinbutton', { name: 'Division', exact: true }).fill('7')
     await page.getByRole('button', { name: 'Confirm', exact: true }).click()
-    await expectFace(0, 'Custom Division', '1/7')
+    await expectFace(0, 'Custom Division…', '1/7')
     await face(0).hover()
     const custom = toolbar(page).locator(':scope > div > div > div button').first()
-    await expect(custom).toHaveAttribute('title', 'Custom Division')
+    await expect(custom).toHaveAttribute('title', 'Custom Division…')
     await expect(custom).toHaveAttribute('aria-pressed', 'true')
     await expect(custom).toContainText('1/7')
     await page.keyboard.press('Escape')
@@ -468,7 +470,7 @@ test('division and lane groups show the value in use on their face', async ({ pa
     await page.keyboard.press('4')
     await expectFace(0, '1/4 Division', '1/4')
     await face(0).hover()
-    await toolbar(page).getByTitle('Custom Division', { exact: true }).click()
+    await toolbar(page).getByTitle('Custom Division…', { exact: true }).click()
     await expect(page.getByRole('spinbutton', { name: 'Division', exact: true })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('spinbutton', { name: 'Division', exact: true })).toHaveCount(0)
@@ -478,24 +480,24 @@ test('division and lane groups show the value in use on their face', async ({ pa
     await run(page, 'laneDivision2')
     await expectFace(1, '1/2 Lane Division')
     await page.evaluate(() => (window.editorTest.view.laneDivision = 5))
-    await expectFace(1, 'Custom Lane Division', '1/5')
+    await expectFace(1, 'Custom Lane Division…', '1/5')
     // Two digits fit, as 1/16 does.
     await page.evaluate(() => (window.editorTest.view.laneDivision = 24))
-    await expectFace(1, 'Custom Lane Division', '1/24')
+    await expectFace(1, 'Custom Lane Division…', '1/24')
     await run(page, 'laneLimitSix')
     await expectFace(2, 'Limit to ±6 Lanes')
     await page.evaluate(() => (window.editorTest.settings.maxLane = 12))
-    await expectFace(2, 'Custom Lane Limit', '12')
+    await expectFace(2, 'Custom Lane Limit…', '12')
     // Values too long for the face show the placeholder.
     await page.evaluate(() => (window.editorTest.settings.maxLane = 2.5))
-    await expectFace(2, 'Custom Lane Limit', 'n')
+    await expectFace(2, 'Custom Lane Limit…', 'n')
     await page.evaluate(() => (window.editorTest.view.laneDivision = 128))
-    await expectFace(1, 'Custom Lane Division', '1/n')
+    await expectFace(1, 'Custom Lane Division…', '1/n')
     // Unpressed, the custom buttons show their placeholder.
     await run(page, 'laneLimitNone')
     await face(2).hover()
     await expect(
-        toolbar(page).getByTitle('Custom Lane Limit', { exact: true }).locator('text'),
+        toolbar(page).getByTitle('Custom Lane Limit…', { exact: true }).locator('text'),
     ).toHaveText('n')
     await page.keyboard.press('Escape')
 
@@ -536,11 +538,11 @@ test('a value without a preset in its group shows on that group’s Custom face'
     }
     // 1/3 has a command, but not in this group.
     await page.keyboard.press('3')
-    await expectFace(0, 'Custom Division', '1/3')
+    await expectFace(0, 'Custom Division…', '1/3')
     await run(page, 'laneDivision2')
-    await expectFace(1, 'Custom Lane Division', '1/2')
+    await expectFace(1, 'Custom Lane Division…', '1/2')
     await run(page, 'laneLimitSix')
-    await expectFace(2, 'Custom Lane Limit', '6')
+    await expectFace(2, 'Custom Lane Limit…', '6')
 
     // A preset in the group still takes the face.
     await page.keyboard.press('8')
@@ -586,10 +588,10 @@ test('values in use keep the resting look, and their flyout checks the one in us
     // A custom value checks Custom.
     await page.evaluate(() => (window.editorTest.view.division = 7))
     await shown(page)
-        .and(page.getByTitle('Custom Division', { exact: true }))
+        .and(page.getByTitle('Custom Division…', { exact: true }))
         .hover()
     await expect(rows.first()).toBeVisible()
-    expect(await checked()).toEqual(['Custom Division'])
+    expect(await checked()).toEqual(['Custom Division…'])
     await page.keyboard.press('Escape')
 
     // Tool flyouts have no check column.
@@ -626,7 +628,7 @@ const pick = async (page: Page, face: string, title: string) => {
 
 test('the default toolbar’s faces follow the tool and values in use', async ({ page }) => {
     const initial = [
-        'Open',
+        'Open…',
         'Play',
         'Undo',
         'Select*',
@@ -751,23 +753,23 @@ test('the default toolbar’s faces follow the tool and values in use', async ({
     await page.keyboard.press('`')
     await page.getByRole('spinbutton', { name: 'Division', exact: true }).fill('7')
     await page.getByRole('button', { name: 'Confirm', exact: true }).click()
-    await expectFaces({ 13: 'Custom Division*' })
+    await expectFaces({ 13: 'Custom Division…*' })
     await page.keyboard.press('0')
     await expectFaces({ 13: '1/16 Division*' })
     await page.evaluate(() => (window.editorTest.view.division = 5))
-    await expectFaces({ 13: 'Custom Division*' })
+    await expectFaces({ 13: 'Custom Division…*' })
     await page.evaluate(() => (window.editorTest.view.laneDivision = 5))
-    await expectFaces({ 14: 'Custom Lane Division*' })
-    await pick(page, 'Custom Lane Division', '1/16 Lane Division')
+    await expectFaces({ 14: 'Custom Lane Division…*' })
+    await pick(page, 'Custom Lane Division…', '1/16 Lane Division')
     await expectFaces({ 14: '1/16 Lane Division*' })
     await run(page, 'laneLimitSix')
     await expectFaces({ 15: 'Limit to ±6 Lanes*' })
     await page.evaluate(() => (window.editorTest.settings.maxLane = 12))
-    await expectFaces({ 15: 'Custom Lane Limit*' })
-    await pick(page, 'Custom Lane Limit', 'No Lane Limit')
+    await expectFaces({ 15: 'Custom Lane Limit…*' })
+    await pick(page, 'Custom Lane Limit…', 'No Lane Limit')
     await expectFaces({ 15: 'No Lane Limit*' })
     await page.evaluate(() => (window.editorTest.settings.maxLane = 12))
-    await expectFaces({ 15: 'Custom Lane Limit*' })
+    await expectFaces({ 15: 'Custom Lane Limit…*' })
     await page.keyboard.press('a')
     await expectFaces({ 3: 'Select', 5: 'Note*' })
 
@@ -775,7 +777,7 @@ test('the default toolbar’s faces follow the tool and values in use', async ({
     await page.reload()
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     expected = [...initial]
-    await expectFaces({ 15: 'Custom Lane Limit*' })
+    await expectFaces({ 15: 'Custom Lane Limit…*' })
     await page.keyboard.press('a')
     await expectFaces({ 3: 'Select', 5: 'Note*' })
     await page.keyboard.press('3')
@@ -1027,7 +1029,7 @@ test('a member moved out of its group while its dialog is open leaves the face',
     await expect
         .poll(async () => (await faces(page)).slice(0, 2))
         .toEqual(['1/4 Division*', 'Select*'])
-    await pickAt(page, 0, 'Custom Division')
+    await pickAt(page, 0, 'Custom Division…')
     const field = page.getByRole('spinbutton', { name: 'Division', exact: true })
     await expect(field).toBeVisible()
     await page.evaluate(() => {
@@ -1091,7 +1093,7 @@ test('a group with two value families keeps its face as values change', async ({
     await expectFace('1/4 Division')
     // Custom is checked while no division preset in the group is in use.
     expect(await flyoutRows(page, 0)).toEqual([
-        'Custom Division*✓',
+        'Custom Division…*✓',
         '1/8 Division',
         '1/4 Division',
         'Limit to ±6 Lanes*✓',
@@ -1100,7 +1102,7 @@ test('a group with two value families keeps its face as values change', async ({
     await page.keyboard.press('4')
     await expectFace('1/4 Division*')
     expect(await flyoutRows(page, 0)).toEqual([
-        'Custom Division',
+        'Custom Division…',
         '1/8 Division',
         '1/4 Division*✓',
         'Limit to ±6 Lanes*✓',
@@ -1120,13 +1122,13 @@ test('a value picked while its group’s tool is in use leaves the tool on the f
     await pickAt(page, 0, '1/4 Division')
     await expectFace('Select*')
     // Custom applies once its dialog closes.
-    await pickAt(page, 0, 'Custom Division')
+    await pickAt(page, 0, 'Custom Division…')
     await page.getByRole('spinbutton', { name: 'Division', exact: true }).fill('7')
     await page.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect(page.getByRole('spinbutton', { name: 'Division', exact: true })).toHaveCount(0)
     await expectFace('Select*')
     expect(await flyoutRows(page, 0)).toEqual([
-        'Custom Division*✓',
+        'Custom Division…*✓',
         'Note',
         'Select*',
         '1/4 Division',

@@ -60,7 +60,7 @@ import { endOpen } from './report'
 // doesn't know), then a new session stored at once and shown, bound to the file unless the open
 // is partial or the file is open in another tab, with the open's notice and its background import.
 
-const title = () => i18n.value.commands.open.title
+const title = () => i18n.value.commands.open.dialogTitle
 
 /** Refused before anything opens, with the message the loading dialog shows. */
 class OpenRefused extends Error {}

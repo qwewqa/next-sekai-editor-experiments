@@ -10,7 +10,7 @@ const hasHandle = (value: unknown) =>
     typeof value === 'object' && value !== null && 'handle' in value
 
 // The sample seeder of dev and perf builds: `?seedSample=<name>` loads `/samples/<name>.json`, a
-// dump, or `?seedSample=<name>.zip` an Export Raw Data… ZIP, into a database with no chains and no
+// dump, or `?seedSample=<name>.zip` an Export Raw Data ZIP, into a database with no chains and no
 // sessions, then reloads. Imported only under `import.meta.env.DEV` or `__NSE_PERF__`, so release
 // builds have none of it.
 
@@ -96,7 +96,7 @@ export const seedDump = async (
     return { seeded: true }
 }
 
-/** Seeds an Export Raw Data… ZIP: its `dump.json`, each `$blobEntry` read from its own entry. */
+/** Seeds an Export Raw Data ZIP: its `dump.json`, each `$blobEntry` read from its own entry. */
 export const seedRawExport = async (
     factory: KvFactory,
     zip: Blob,

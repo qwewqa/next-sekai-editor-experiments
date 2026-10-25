@@ -5,7 +5,7 @@ import type { Key, KeyPath, KvDatabase } from './kv/types'
 // plain cursors and written undecoded, plus the editor's localStorage keys. It uses no record
 // decoder, so a bug there can't stop it. The reader validates a dump and turns it back into values.
 // A Blob is inline base64 (`$blob`) in a JSON dump, and a `$blobEntry` naming a ZIP entry beside
-// `dump.json` in Export Raw Data…'s ZIP, so the export never holds a Blob's bytes whole; there, one
+// `dump.json` in Export Raw Data's ZIP, so the export never holds a Blob's bytes whole; there, one
 // that could not be read is a `$blobUnreadable` with its type and size; a `File` is written as a
 // Blob. Values that JSON has no form for are tagged too, so no single value can make the dump fail.
 // A number that is not finite is `$num` with its text, and a `Date` is `$date` with its time value.
@@ -396,7 +396,7 @@ export const dumpDatabase = async (
     const values = read.flatMap(({ entries }) => entries.map((entry) => entry.value))
     const blobTag = blobEntries ? await entryTags(values, blobEntries) : await inlineTags(values)
     // Encoded in slices of about a frame, with a task between them: a long history is tens of
-    // megabytes of base64, and Export Raw Data… runs on the page.
+    // megabytes of base64, and Export Raw Data runs on the page.
     let since = performance.now()
     const encoded: DumpRecord[][] = []
     for (const { entries } of read) {

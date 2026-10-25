@@ -28,7 +28,7 @@ const input = useTemplateRef<HTMLInputElement>('input')
 // Typing differs from the factor set at open or by a drag; Ctrl+Z passes to the editor otherwise.
 const committed = ref(`${factor.value}`)
 trackTypedText(input, () => committed.value)
-const title = computed(() => getScaleLabels(session.value?.axis ?? 'beat').title)
+const title = computed(() => getScaleLabels(session.value?.axis ?? 'beat').dialogTitle)
 watch(
     () => session.value?.requestedFactor,
     (value) => {

@@ -235,7 +235,7 @@ test('the stored choices default to Default and repair what cannot be read', () 
     assert.deepEqual(repaired.effect, { source: 'default' })
 })
 
-test('Preview Assets… joins an unchanged playback group first, and only that', () => {
+test('Preview Assets joins an unchanged playback group first, and only that', () => {
     const former = [
         'offset',
         'bgm',

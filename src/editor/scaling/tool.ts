@@ -155,7 +155,7 @@ const selectedEntitiesAtPoint = (x: number, y: number, minimumWidth: number) => 
 }
 
 export const scalingTool: Tool = {
-    title: () => getScaleLabels(scalingSession.value?.axis ?? 'beat').title,
+    title: () => getScaleLabels(scalingSession.value?.axis ?? 'beat').dialogTitle,
     secondaryTool: false,
     hover(x, y) {
         view.entities = {

@@ -21,7 +21,7 @@ test('lane controls have their own default toolbar group and custom division lea
     await page.evaluate(() => {
         window.editorTest.settings.toolbar = [['laneDivisionCustom'], ['laneSnapping']]
     })
-    await page.getByRole('button', { name: 'Custom Lane Division', exact: true }).click()
+    await page.getByRole('button', { name: 'Custom Lane Division…', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('Custom Lane Division')
     const input = dialog.getByRole('spinbutton', { name: 'Division', exact: true })
@@ -370,7 +370,7 @@ test('lane controls and the compact beat field fit a phone in the elevation edit
         expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width)
         await page.screenshot({ path: testInfo.outputPath(`lane-controls-${viewport.width}.png`) })
         await lane.hover()
-        const custom = pane.getByRole('button', { name: 'Custom Lane Division', exact: true })
+        const custom = pane.getByRole('button', { name: 'Custom Lane Division…', exact: true })
         await expect(custom).toBeVisible()
         const menu = await custom.boundingBox()
         expect(menu!.x).toBeGreaterThanOrEqual(0)

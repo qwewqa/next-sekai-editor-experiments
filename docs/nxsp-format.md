@@ -786,7 +786,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 | Eraser, Delete | edit | `nse.object.delete` |
 | Cut | edit | `nse.object.cut` (Copy records nothing) |
 | Flip, Flip Vertical | edit | `nse.object.flip` |
-| Scale Beat, Scale Width, Scale Elevation | edit | `nse.object.scale` |
+| Scale Beats…, Scale Width…, Scale Elevations… | edit | `nse.object.scale` |
 | Combine into Slide, Split Slide, Make Vertical | edit | `nse.note.combine`, `nse.note.split`, `nse.note.vertical` |
 | Properties panel, property dialogs, note and slide presets, Move to Group, Move to Stage | edit | `nse.property.set` |
 | Level Info (Initial Life alone), Offset tool | edit | `nse.header.set` |

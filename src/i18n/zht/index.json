@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "不限制軌道",
       "six": "限制為 ±6 軌道",
-      "custom": "自訂軌道限制",
+      "custom": "自訂軌道限制…",
+      "customTitle": "自訂軌道限制",
       "maximum": "最大軌道（±）",
       "limited": "軌道限制：±{0}",
       "unlimited": "不限制軌道"
@@ -69,7 +70,7 @@
       "title": "1/{0} 軌道細分",
       "switched": "已切換到 1/{0} 軌道細分",
       "custom": {
-        "title": "自訂軌道細分",
+        "title": "自訂軌道細分…",
         "modal": {
           "title": "自訂軌道細分",
           "division": "細分"
@@ -85,7 +86,7 @@
       "title": "1/{0} 拍分割",
       "switched": "已切換到 1/{0} 拍分割",
       "custom": {
-        "title": "自訂分割",
+        "title": "自訂分割…",
         "modal": {
           "title": "自訂分割",
           "division": "分割數"
@@ -106,17 +107,20 @@
       "flipped": "已垂直翻轉 {0} 個物件"
     },
     "scaleBeat": {
-      "title": "縮放節拍間距",
+      "title": "縮放節拍間距…",
+      "dialogTitle": "縮放節拍間距",
       "noSelected": "請選取至少兩個位於不同節拍的物件進行縮放",
       "scaled": "已縮放 {0} 個物件的節拍間距"
     },
     "scaleWidth": {
-      "title": "縮放寬度",
+      "title": "縮放寬度…",
+      "dialogTitle": "縮放寬度",
       "noSelected": "請選取具有橫向跨度的物件進行縮放",
       "scaled": "已縮放 {0} 個物件的寬度"
     },
     "scaleElevation": {
-      "title": "縮放高度間距",
+      "title": "縮放高度間距…",
+      "dialogTitle": "縮放高度間距",
       "noSelected": "請選取至少兩個高度不同的音符或舞台變換進行縮放",
       "scaled": "已縮放 {0} 個物件的高度間距"
     },
@@ -242,7 +246,8 @@
       "switched": "已切換到偏移工具"
     },
     "open": {
-      "title": "開啟",
+      "title": "開啟…",
+      "dialogTitle": "開啟",
       "loading": "正在載入檔案…",
       "importing": "正在匯入關卡…",
       "opened": "已開啟關卡",
@@ -457,7 +462,7 @@
       "title": "匯出關卡資料…"
     },
     "previewAssets": {
-      "title": "預覽資源…",
+      "title": "預覽資源",
       "modal": {
         "title": "預覽資源"
       },
@@ -508,11 +513,12 @@
       "use": "使用",
       "alsoFile": "同時使用此檔案中的{0} \"{1}\"",
       "remove": "移除",
+      "removeStored": "移除…",
       "inUse": "使用中",
       "removeInUse": "移除 \"{0}\"？將改用預設項。",
       "removeUnused": "移除 \"{0}\"？",
       "removeFailed": "無法移除此項目。",
-      "chooseAgain": "重新選擇",
+      "chooseAgain": "重新選擇…",
       "noneInFile": "此檔案中沒有{0}。",
       "rights": "您載入的項目僅存放在此瀏覽器中。",
       "progress": {
@@ -803,9 +809,11 @@
   },
   "settings": {
     "title": "設定",
-    "resetSettings": "重置設定",
+    "resetSettings": "重置設定…",
+    "resetSettingsTitle": "重置設定",
     "resetSettingsHint": "還原預設設定，保留鍵盤快捷鍵。",
-    "resetKeybinds": "重置快捷鍵",
+    "resetKeybinds": "重置快捷鍵…",
+    "resetKeybindsTitle": "重置快捷鍵",
     "resetSettingsMessage": "要還原預設設定並保留鍵盤快捷鍵嗎？",
     "resetSettingsHintStatistics": "還原預設設定，保留鍵盤快捷鍵和「傳送使用統計」。",
     "resetSettingsMessageStatistics": "要還原預設設定並保留鍵盤快捷鍵和「傳送使用統計」嗎？",
@@ -918,7 +926,7 @@
     "toolbar": {
       "title": "工具列",
       "quickSwitch": "快速切換",
-      "add": "新增工具",
+      "add": "新增工具…",
       "remove": "從工具列移除「{0}」",
       "modal": {
         "title": "新增工具"
@@ -976,8 +984,8 @@
       },
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更",
-      "exportRaw": "匯出原始資料…",
-      "exportRawTitle": "匯出原始資料",
+      "exportRaw": "匯出原始資料",
+      "open": "開啟",
       "exportRawName": "{0} 原始資料 {1}.zip",
       "storageHeading": "儲存空間",
       "stored": "此瀏覽器中已存放：{0}，總容量約 {1}",
@@ -1952,7 +1960,6 @@
     "closePanel": "關閉{0}",
     "folders": {
       "new": "新增資料夾",
-      "newWith": "新增資料夾…",
       "moveTo": "移至資料夾…",
       "none": "無資料夾",
       "expand": "展開 {0}",
@@ -2162,7 +2169,7 @@
     "sizePending": "正在估算大小…"
   },
   "check": {
-    "command": "檢查檔案和歷史記錄…",
+    "command": "檢查檔案和歷史記錄",
     "title": "檢查檔案和歷史記錄",
     "checkingFile": "正在檢查 {0}…",
     "checkingStored": "正在檢查已存放的歷史記錄…",
@@ -2178,9 +2185,9 @@
   },
   "levelInfo": {
     "file": "檔案",
-    "check": "檢查…",
+    "check": "檢查",
     "tagsPlaceholder": "以逗號分隔",
-    "editCover": "在封面編輯器中編輯…",
+    "editCover": "在封面編輯器中編輯",
     "makePreview": "從 BGM 產生…",
     "notLoaded": "未載入",
     "discard": "要捨棄對關卡資訊的變更嗎？"
@@ -2197,7 +2204,7 @@
     "otherProject": "另一個專案檔案 \"{0}\"。",
     "otherProjectUnnamed": "另一個專案檔案。",
     "notDescendant": "此版本並非基於您的版本 ({0})。",
-    "separate": "另存為獨立檔案",
+    "separate": "另存為獨立檔案…",
     "openOther": "開啟另一個版本",
     "openOtherNote": "您的變更會保留在「最近工作階段」中。",
     "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
@@ -2215,7 +2222,7 @@
     "tooLong": "名稱過長"
   },
   "notice": {
-    "useOpenFile": "要開啟檔案，請使用「開啟」。",
+    "useOpenFile": "要開啟檔案，請使用「開啟…」。",
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
@@ -2274,7 +2281,7 @@
     "notProject": "此 ZIP 不是專案檔案。",
     "severalProjects": "此 ZIP 包含多個專案檔案。請解壓縮後逐一開啟。",
     "scp": "這是 Sonolus 套件。若要使用其中的外觀或其他資源，請在預覽資源中選擇。",
-    "openPreviewAssets": "預覽資源…",
+    "openPreviewAssets": "預覽資源",
     "damagedUnopened": "此檔案已損毀，無法開啟。",
     "damaged": "此檔案已損毀。已在不含歷史記錄的情況下開啟。",
     "historyUnreadable": "無法讀取此檔案的歷史記錄。儲存時會建立獨立的檔案。",
