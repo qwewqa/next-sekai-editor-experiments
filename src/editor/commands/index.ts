@@ -8,6 +8,7 @@ import { openContextMenu } from './contextMenu'
 import { copy } from './copy'
 import { cut } from './cut'
 import { deleteSelection } from './deleteSelection'
+import { deleteSessions } from './deleteSessions'
 import { deselect } from './deselect'
 import { division } from './divisions'
 import { divisionCustom, laneDivisionCustom } from './divisions/custom'
@@ -149,6 +150,7 @@ const builtInCommands = {
     history,
     showChange,
     editsHere,
+    deleteSessions,
     increaseNoteSize,
     decreaseNoteSize,
 

@@ -13,8 +13,10 @@ import { FileError, platform } from '../../platform'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
+import { commands } from '../commands'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
+import { runCommand } from '../commands/runCommand'
 import { notStored } from '../file/notStored'
 import { pausedReasonLine } from '../file/notStoredReason'
 import { tryStoringAgain } from '../file/tryAgain'
@@ -24,7 +26,7 @@ import SeverityIcon from '../SeverityIcon.vue'
 import type { RawExportRun } from '../../startup/rawExportNote'
 import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
-import { canDeleteSessions, deleteSessionsRunning, runDeleteSessions } from './deleteSessionsFlow'
+import { canDeleteSessions, deleteSessionsRunning } from './deleteSessionsFlow'
 import SettingsSection from './SettingsSection.vue'
 import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
 
@@ -237,9 +239,9 @@ const afterRowGone = () =>
     document.querySelector<HTMLElement>('[data-recovery-row] button') ??
     document.querySelector<HTMLElement>('[data-open-history]')
 
-// --- Delete Sessions…: the shared flow; the total is read again after a run.
+// --- Delete Sessions…: the command, as the History band and a bound key run it; the total is read again after.
 const deleteSessions = async () => {
-    await runDeleteSessions()
+    await runCommand(commands.deleteSessions)
     await readTotal()
 }
 

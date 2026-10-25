@@ -458,3 +458,32 @@ test.describe('almost full', () => {
         await expect(line(page)).toHaveCount(0)
     })
 })
+
+// Delete Sessions… is a command: a bound key, the command list and the History band run one flow.
+test('a bound key and the command list open it too, and a second run while one is open opens nothing more', async ({
+    page,
+}) => {
+    await seed(page)
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.keyboardShortcuts = { ...settings.keyboardShortcuts, deleteSessions: 'F8' }
+    })
+    await page.keyboard.press('F8')
+    await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+    await page.locator('[data-delete-sessions] button', { hasText: 'Cancel' }).click()
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
+    // Two runs in one tick: the second finds the first reading, before any dialog stands.
+    await page.evaluate(async () => {
+        const { commands } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands')
+        >('/src/editor/commands/index.ts')
+        const { runCommand } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/runCommand')
+        >('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.deleteSessions)
+        void runCommand(commands.deleteSessions)
+    })
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(1)
+    await page.locator('[data-delete-sessions] button', { hasText: 'Cancel' }).click()
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
+})
