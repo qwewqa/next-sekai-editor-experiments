@@ -4,7 +4,9 @@ import { isKnown, KNOWN } from './known'
 import { cells, runCell, type CellResult } from './matrix'
 
 // A matrix file: runs the cells of some paths, fails on any violation the known list does not
-// name, and states each known violation as a `todo` test that stays.
+// name, and states each known violation as a `todo` test that stays. The todo lists the cells
+// that show it and passes, so a passing run lists no failing tests; it fails, still only as a
+// todo, once no cell shows it, so the entry can go.
 
 export const defineMatrix = (pathIds: string[]) => {
     const results: CellResult[] = []
@@ -21,7 +23,7 @@ export const defineMatrix = (pathIds: string[]) => {
     })
     for (const known of KNOWN) {
         if (!known.paths.some((path) => pathIds.includes(path))) continue
-        test(`${known.id}: ${known.title}`, { todo: 'an accepted residual' }, () => {
+        test(`${known.id}: ${known.title}`, { todo: 'an accepted residual' }, (t) => {
             const found = results
                 .filter(
                     (cell) =>
@@ -38,7 +40,8 @@ export const defineMatrix = (pathIds: string[]) => {
                         )
                         .map((v) => `${cell.id}: ${v.detail}`),
                 )
-            assert.deepEqual(found, [])
+            for (const line of found) t.diagnostic(line)
+            assert.ok(found.length > 0, `no cell here shows ${known.id} any more`)
         })
     }
 }
