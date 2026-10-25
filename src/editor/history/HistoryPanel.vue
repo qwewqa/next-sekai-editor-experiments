@@ -36,8 +36,8 @@ import TimelineList from './TimelineList.vue'
 import type { GoToView, HistoryPresentation } from './presentation'
 
 // The History panel, in a dock or in the dialog: one band with the two tabs,
-// Timeline and Recent Sessions, and the end slot: Go To or Delete Sessions…; then the list. There is no action bar in it: the peek's
-// controls are on the canvas, so the body is all list.
+// Timeline and Recent Sessions, and at the end Go To or Delete Sessions…; then the list. There is no action bar in it,
+// because the peek's controls are on the canvas, so the body is all list.
 
 const props = withDefaults(
     defineProps<{ surface?: 'panel' | 'dialog'; presentation?: HistoryPresentation }>(),
@@ -289,7 +289,7 @@ const blurAfterPointer = (event: MouseEvent) => {
 const onDeleteSessions = async (event: MouseEvent) => {
     blurAfterPointer(event)
     await runCommand(commands.deleteSessions)
-    // In the dialog forms focus stays in History: it goes back to the button when it fell to the page.
+    // In the dialog, focus stays in History. If the run left focus on the page body, it returns to the button.
     if (props.surface === 'dialog') returnFocus(deleteSessionsButton.value)
 }
 

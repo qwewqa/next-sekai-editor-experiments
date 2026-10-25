@@ -17,7 +17,7 @@ import { confirmLines } from './deleteChoices'
 import DeleteSessionsDialog from './DeleteSessionsDialog.vue'
 
 // Delete Sessions…, one flow for every way in: Settings › Local Data, the History band on Recent
-// Sessions and the command. The removal, the reclaim and GC are `local/deleteSessions`.
+// Sessions and the command. The removal, the reclaim and GC are in `local/deleteSessions`.
 
 /** Delete Sessions… acts on the stored database: not in safe mode, not while another tab upgrades it. */
 export const canDeleteSessions = computed(() => {
@@ -25,10 +25,10 @@ export const canDeleteSessions = computed(() => {
     return !isSafeMode() && status?.mode === 'stored' && status.reason !== 'upgrading'
 })
 
-/** A run from any way in: its read, its dialogs and its removals. */
+/** True while a run is in progress, from its read to its last removal. */
 export const deleteSessionsRunning = shallowRef(false)
 
-/** Why it cannot run, in an existing line; none while storage starts. */
+/** The existing string that says why it cannot run. `undefined` while storage is starting. */
 const unavailableLine = (): string | undefined => {
     const { safe, storage } = i18n.value
     if (isSafeMode()) return safe.bar
@@ -79,7 +79,7 @@ export const runDeleteSessions = async (): Promise<void> => {
             cancelIsDefault: true,
         })
         if (!confirmed) return
-        // A peek of a chain about to go ends first, as a row's Delete ends it before the mark.
+        // A peek of a chain that is about to be deleted ends first, as a row's Delete ends it before the mark.
         const peeked = peekedSession.value?.chainId
         if (peeked !== undefined && targets.some((chain) => chain.chainId === peeked)) backToNow()
         const abort = new AbortController()
@@ -121,7 +121,7 @@ export const runDeleteSessions = async (): Promise<void> => {
             })
         else if (done) notify(done, { card: true })
         else if (failed) notify(failed, { card: true, severity: 'error' })
-        // The user's own act, so Recent Sessions reads at once, whatever holds its rows.
+        // The user's own act, so Recent Sessions is read again at once, even while the pointer or focus holds its rows still.
         if (result.deleted > 0) deleteChanged()
     } finally {
         deleteSessionsRunning.value = false
