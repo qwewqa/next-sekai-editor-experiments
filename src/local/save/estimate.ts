@@ -104,8 +104,9 @@ const readMany = async (store: SaveStore, name: string, keys: readonly string[])
 
 /**
  * The estimate of a Save of a chain's session (its head unless given). `bgm` is the head's BGM hash
- * when the page knows it; otherwise the media rows' `kind` hint tells it. `tick` moves the call's
- * progress through a long chain's rows. Undefined without the chain.
+ * when the page knows it; otherwise the media rows' `kind` hint tells it. `tick` reports progress
+ * during the pass over a long chain's rows, so the watchdog does not restart the worker. Undefined
+ * without the chain.
  */
 export const estimateSaveSize = async (
     store: SaveStore,
