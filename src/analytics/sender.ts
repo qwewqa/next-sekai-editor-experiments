@@ -56,8 +56,8 @@ export const createSender = (env: SenderEnv) => {
     const add = (item: Item) => {
         if (stopped) return
         const text = JSON.stringify(item)
-        // The queue goes as one body, its items in brackets with a comma after each but the last:
-        // within the byte limit, so far below keepalive's 64 KB.
+        // The queue goes as one body: a JSON array of the items. BYTE_LIMIT counts each item and
+        // its comma, so a body stays far below keepalive's 64 KB.
         if (queue.length >= QUEUE_LIMIT || bytes + text.length + 1 >= BYTE_LIMIT) return
         queue.push({ item, text })
         bytes += text.length + 1
@@ -70,7 +70,8 @@ export const createSender = (env: SenderEnv) => {
         bytes = 0
     }
 
-    // Umami's batch route answers how many items it processed: fewer is a failure too.
+    // Umami's batch route returns the number of items it processed. Fewer than were sent is a
+    // failure too.
     const check = async (response: Response, size: number) => {
         if (!response.ok) return false
         const result = (await response.json()) as { processed?: unknown }

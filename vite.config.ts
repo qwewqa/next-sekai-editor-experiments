@@ -26,7 +26,8 @@ const pages = (mode: string) => ({
         : {}),
 })
 
-// Usage statistics: off unless both variables are set; the apps refuse them (docs/analytics.md).
+// Usage statistics: off unless both variables are set. The apps' build fails with them
+// (docs/analytics.md).
 const analyticsFor = (mode: string) =>
     analyticsFromEnv(process.env, {
         native: mode === 'native',

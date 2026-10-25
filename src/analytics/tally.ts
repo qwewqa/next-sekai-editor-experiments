@@ -3,9 +3,9 @@ import type { EventData, Source } from './catalogue'
 
 // The usage statistics' counters: the only analytics code on the edit and command paths. Every
 // call returns at once while analytics is off, and otherwise bumps a Map entry, so a hook costs
-// O(1) with no await or I/O. The client (client.ts), loaded later, sends what they hold.
+// O(1) with no await or I/O. The client (client.ts), loaded later, sends their counts.
 
-/** Most distinct counters at once, of which `usage` may hold USAGE_LIMIT. */
+/** Most distinct counters at once, of which up to USAGE_LIMIT may be `usage` counters. */
 export const KEY_LIMIT = 1000
 export const USAGE_LIMIT = 900
 /** Most per-action events held until the client takes them. */

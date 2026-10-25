@@ -689,7 +689,7 @@ export const resetSettings = () => {
     resetting = true
     try {
         for (const [key, schema] of Object.entries(settingsProperties)) {
-            // The shortcuts have their own reset; an opt-out from the statistics must not come undone.
+            // The shortcuts have their own reset; a reset must not undo an opt-out from the statistics.
             if (key === 'keyboardShortcuts' || key === 'usageStatistics') continue
             Reflect.set(settings, key, Value.Create(schema))
         }

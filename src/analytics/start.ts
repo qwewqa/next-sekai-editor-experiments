@@ -81,7 +81,7 @@ const idle = () =>
     })
 
 let client: { stop: () => void } | undefined
-// Each start or stop; a client that finishes loading after a later stop does not start.
+// Counts starts and stops. A client that finishes loading after a later stop does not start.
 let generation = 0
 
 const load = async (target: AnalyticsTarget) => {

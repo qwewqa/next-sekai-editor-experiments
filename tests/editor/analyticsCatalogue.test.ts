@@ -25,7 +25,7 @@ test('each range starts at its limit and ends just below the next', () => {
         ['small', 1, '1'],
         ['small', 5, '2-5'],
         ['small', 100, '21-100'],
-        ['small', 101, '100+'],
+        ['small', 101, '101+'],
         ['duration', 0, '0'],
         ['duration', 1, '<1m'],
         ['duration', 60_000, '1m-5m'],

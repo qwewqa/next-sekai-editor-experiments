@@ -35,7 +35,7 @@ export const scales = {
         '10k-20k',
         '20k+',
     ],
-    small: ['0', '1', '2-5', '6-20', '21-100', '100+'],
+    small: ['0', '1', '2-5', '6-20', '21-100', '101+'],
     /** An audio file's length. */
     audio: ['<1m', '1m-2m', '2m-3m', '3m-5m', '5m-10m', '10m+'],
     /** Time spent in a visit, such as playing. */

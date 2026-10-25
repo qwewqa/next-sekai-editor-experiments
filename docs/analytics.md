@@ -1,6 +1,6 @@
 # Usage statistics
 
-The web editor sends usage statistics to a self-hosted Umami server: counts of the tools, settings and files people use, and how long actions take. This page is for maintainers. The privacy page (`privacy/index.html`) tells users what is sent, and `infra/stats/README.md` covers the server.
+The web editor sends usage statistics to a self-hosted Umami server: which tools people use, the main settings, file types and sizes, and how long actions take. This page is for maintainers. The privacy page (`privacy/index.html`) tells users what is sent, and `infra/stats/README.md` covers the server.
 
 The code is in `src/analytics/`:
 
@@ -14,15 +14,15 @@ The code is in `src/analytics/`:
 
 Usage statistics must never make the editor worse to use. These rules hold for every change here:
 
-- **No UI** but the switch in Settings › About and its line. No notice, prompt or console output in any state.
+- **No UI** but the switch in Settings › About and the note under it. No notice, prompt or console output in any state.
 - **Nothing per frame.** No code in a frame callback, the clock or the draw paths. The lint forbids importing `src/analytics/` from `src/frame.ts`, `src/rendering/` and `src/preview/engine/`.
 - **O(1) on the edit, flush, Save and startup paths.** A hook is one `bump` or `bumpCommand`: a `Map` increment behind one boolean, with no await or I/O.
-- **Nothing on the startup path.** The client loads once the startup gate is done and the page is idle.
+- **The client loads after startup.** It loads once the startup gate is done and the page is idle.
 - **Few, small requests.** At most one in flight and one a minute while the page is open, each at most 32 KB, and 30 a visit.
 - **No retries.** Nothing is sent while offline, and nothing more that visit after one failed request. A page that asks to save data sends nothing.
 - **Bounded memory:** at most 1,000 counters (900 of them `usage`), 50 queued events and 32 KB.
 - **Silent failure.** A blocked, offline, failing or hanging endpoint, or a client chunk gone after a deploy, shows nothing and holds nothing up.
-- **No storage.** No IndexedDB, Cache Storage or quota. The only stored value is the switch's setting. The lint keeps `src/analytics/` away from the notice, dialog and storage modules. Only `status.ts` may read the local-data modules, and only to read.
+- **No storage.** No IndexedDB, Cache Storage or quota. The only stored value is the switch's setting. The lint keeps `src/analytics/` away from the notice, dialog and storage modules. Only `status.ts` may import the local-data modules, and only to read.
 - **Opt-out at once.** Turning the switch off drops the queue and the counters, and nothing more is sent, even when the page closes. Other open tabs stop too. Reset Settings keeps the choice.
 - **The data paths are never touched.** The client reads what the flows already know. It never calls a storage, Save or History function.
 
@@ -30,9 +30,9 @@ A change that adds work to a hot path is measured with the perf tools, with stat
 
 ## Engaged visits only
 
-A visit sends nothing, not even the pageview, until its first trusted `pointerdown`, `keydown`, `touchstart` or `wheel` while the page is visible. One passive listener waits for it and is removed once the visit is armed. Events measured before then wait in memory with the time they were captured. A visit that never arms sends nothing. So Umami's pageviews count visits where someone used the editor.
+Nothing is sent from a visit, not even the pageview, until its first trusted `pointerdown`, `keydown`, `touchstart` or `wheel` while the page is visible. One passive listener waits for it and is removed once the visit is armed. Events measured before then wait in memory with the time they were captured. A visit that never arms sends nothing. So Umami's pageviews count visits where someone used the editor.
 
-The startup gate swallows input until the session is open, so input during startup does not arm a visit.
+The startup gate blocks input until the session is open, so input during startup does not arm a visit.
 
 ## When it sends
 
@@ -61,11 +61,12 @@ The switch appears only in a build with a target. Reset Settings skips it, and i
 3. The client creates, stores and sends no identifier. Umami's daily session hash is the only grouping.
 4. Nothing is sent before the setting and the browser's signals are read, and nothing at all when the result is off.
 
-How the code keeps them:
+How the code enforces them:
 
 - `record` takes only the types the catalogue gives. A range is a branded type that only `bucket` makes.
 - The client checks every event against the catalogue before it queues it, and drops one that fails.
 - The lint forbids `src/analytics/` from importing the level info, file names and the document title.
+- A unit test (`tests/editor/analyticsPrivacy.test.ts`) maps every property to a category, and each category to the words of its line on the privacy page. A property the page does not cover fails it.
 - A browser spec saves a chart whose title, artist and file name contain a canary, and fails if any request contains it, or any key outside the catalogue.
 
 ## The catalogue
@@ -93,14 +94,14 @@ How the code keeps them:
 | `perf` | at hide | `peek.<time>`, `loafSupported`, `frames.<state>.<length>`, `playSeconds`, `slowInputs`, `interactions`, `visibleTime`, `cores` |
 | `errors` | at hide | `error`, `csp` |
 
-Umami's own visit counts, durations and bounce rates are wrong for this client: without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime`.
+Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime`.
 
 ## Adding an event or a property
 
 1. Add it to `catalogue.ts`, with a closed set of values or a range, and to the table above.
 2. Hook it with one `bump`, `bumpCommand` or `record` at the place that already knows the value. Never compute something on a hot path for it.
 3. Extend the unit tests, and the browser spec if it adds a request or a new kind of value.
-4. If it is a new kind of data, add a line to the privacy page and change its date.
+4. Map it to a category in `tests/editor/analyticsPrivacy.test.ts`. If it is a new kind of data, add a line to the privacy page, give it a category, and change the page's date.
 5. Add a CHANGELOG line.
 
 ## Build variables

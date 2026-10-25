@@ -88,10 +88,10 @@
                         </h2>
                         <p>
                             The web editor has no accounts, cookies or crash reports. It sends usage
-                            statistics to our own server: counts of the tools, settings and files
-                            you use, and how long actions take, never your charts or file names.
-                            Turn it off in Settings › About › Send Usage Statistics. The site itself
-                            is static files on GitHub Pages.
+                            statistics to our own server, such as which tools you use and how long
+                            actions take. It never sends your charts or file names. Turn them off in
+                            Settings › About › Send Usage Statistics. The site itself is static
+                            files on GitHub Pages.
                         </p>
                     </section>
 
@@ -141,57 +141,71 @@
                         </p>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
-                                how often each tool and command is used, and whether from a key, the
-                                toolbar or a menu;
+                                how often each tool, command and kind of edit is used, and how it
+                                was started, such as from a key, the toolbar or a menu;
                             </li>
                             <li>
-                                a few important settings, such as the theme, the language and
-                                whether the minimap is shown;
+                                the main settings, such as the theme, the language and whether the
+                                minimap is shown;
                             </li>
                             <li>
                                 the kind and approximate size of files you open, save and export,
-                                and whether that worked;
+                                the approximate length of music files, and whether that worked;
                             </li>
                             <li>
-                                the approximate size of the chart, such as “1,000 to 2,000 notes”,
-                                and approximately how many Timeline steps and sessions in Recent
-                                Sessions this browser keeps;
+                                the approximate size of the chart and of its Timeline, such as
+                                “1,000 to 2,000 notes”, and approximately how many sessions Recent
+                                Sessions lists;
                             </li>
                             <li>
                                 how a visit started, for example whether earlier work was recovered,
                                 and how many notices and errors appeared, without their messages;
                             </li>
                             <li>
-                                how long startup, opening and saving take, how often the editor is
-                                slow to respond, and approximately how long playback and the visit
-                                lasted;
+                                how long startup, opening, saving and checking files take, and how
+                                long showing a Timeline step takes;
                             </li>
                             <li>
-                                the editor’s version, your operating system and browser, your screen
-                                size, an approximate window size, the number of processor cores as a
-                                range, whether the preview could use graphics, and whether the
+                                whether a check found problems, how often the editor is slow to
+                                respond, and approximately how long playback and the visit lasted;
+                            </li>
+                            <li>
+                                the editor’s version, whether it was updated since your last visit,
+                                and whether this browser has used it before;
+                            </li>
+                            <li>
+                                your operating system, browser and its language, your screen size
+                                and pixel density, an approximate window size, whether the screen is
+                                a touch screen, the number of processor cores as a range, whether
+                                the preview could use graphics and draw in parallel, and whether the
                                 editor is installed;
                             </li>
                             <li>
-                                whether this browser’s storage is available and how full it is,
-                                approximately.
+                                whether this browser’s storage is available, and approximately how
+                                full it is;
+                            </li>
+                            <li>
+                                the site you came from, if you followed a link from another site,
+                                without the rest of its address.
                             </li>
                         </ul>
                         <p>
                             It never sends your charts or their content, file names, level titles or
-                            other text you type, or any identifier stored in your browser. Numbers
-                            such as sizes and counts are sent as ranges.
+                            other text you type, or any identifier stored in your browser. Sizes,
+                            times and the size of the chart are sent as ranges. How often something
+                            is used, and the screen size, are sent as they are.
                         </p>
                         <p>
                             The server receives your IP address and browser’s user agent with each
                             request. It uses them to count visits and to find your country, and does
-                            not store them. To count visits it keeps a code made from them that
+                            not store them. It also finds your region and city, and deletes them
+                            within a day. To count visits it keeps a code made from them that
                             changes every day. It sets no cookies and stores nothing in your
                             browser.
                         </p>
                         <p>
-                            We keep the statistics until we decide on a time limit, which the
-                            release notes and this page would announce. Only the maintainer can see
+                            We keep the statistics with no time limit for now. The release notes and
+                            this page will announce any limit we set. Only the maintainer can see
                             them.
                         </p>
                         <p>
@@ -199,7 +213,7 @@
                             clicking or pressing a key.
                         </p>
                         <p>
-                            <strong class="text-fg-strong">Turning it off.</strong> Turn off
+                            <strong class="text-fg-strong">Turning them off.</strong> Turn off
                             Settings › About › Send Usage Statistics. Nothing more is sent from that
                             moment. If your browser sends Do Not Track or Global Privacy Control,
                             the editor sends nothing unless you turn the setting on.
@@ -226,9 +240,12 @@
                                 the usage statistics described above with no time limit for now.
                                 They contain no name, account or identifier, so there is no way to
                                 find or delete one person’s statistics. To stop any more being sent,
-                                turn off Settings › About › Send Usage Statistics. GitHub’s request
-                                logs are kept under GitHub’s policy. Questions go to
+                                turn off Settings › About › Send Usage Statistics. Questions go to
                                 <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
+                            </li>
+                            <li>
+                                <strong class="text-fg-strong">GitHub’s logs.</strong> GitHub keeps
+                                its request logs under its own policy.
                             </li>
                             <li>
                                 <strong class="text-fg-strong">Files you send us.</strong> If you
