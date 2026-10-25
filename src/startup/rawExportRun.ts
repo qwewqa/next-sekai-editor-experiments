@@ -6,8 +6,9 @@ import type { RawExportRun } from './rawExportNote'
 // The run of Export Raw Data…, apart from the action so a Node test can read it.
 
 /**
- * Builds the export and hands it over. `signal` is a Loading dialog's cancel: the build cannot stop
- * midway, so a cancel is honoured at the next safe point, and nothing is handed over once it has fired.
+ * Builds the export and hands it over. `signal` is the Loading dialog's cancel. The build cannot
+ * stop midway, so a cancel takes effect before the hand-over, and nothing is handed over once it
+ * has fired.
  */
 export const runRawExport = async (
     run: {
@@ -39,7 +40,8 @@ export const runRawExport = async (
         )
         return { kind: 'done', name, size, started, databaseUnreadable }
     } catch (error) {
-        // Only the user's cancel: a browser's own AbortError is a failure.
+        // Cancelled only when the user's signal fired. An AbortError from the browser alone is a
+        // failure.
         if (signal?.aborted && isAbort(error)) return { kind: 'cancelled' }
         console.error(error)
         return { kind: 'failed', name, error }

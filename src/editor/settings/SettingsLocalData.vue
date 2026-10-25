@@ -44,8 +44,9 @@ const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
 const safe = isSafeMode()
 
-// --- The storage line and the total. Both show at once from the last read, kept since startup, and
-// update in place when this visit's read lands; before any read has ended, they appear with it.
+// --- The storage line and the total. Both show at once from the read kept since startup, and
+// update in place when the read started on mount ends. If no read has ended yet, they appear when
+// one does.
 onMounted(() => {
     void readBrowserStorage()
 })

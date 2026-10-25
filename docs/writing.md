@@ -32,7 +32,7 @@ These slow a reader down. Avoid them:
 The strings in `src/i18n/`, Help, notices, the release notes in `CHANGELOG.md` and the privacy page follow these rules as well as the first part.
 
 - Use no contractions, and ’ for apostrophes.
-- Buttons, command names and setting names are Title Case. A command that asks for more before it acts ends with an ellipsis.
+- Buttons, command names, setting names and their choices are Title Case. A command that asks for more before it acts ends with an ellipsis.
 - Put session names in double quotes. Put a file name in double quotes only when it is the subject or starts the sentence: "Saved to coconut.nxsp", but ""coconut.nxsp" could not be written."
 - Change all seven locales (`en`, `fr`, `ja`, `ko`, `tr`, `zhs`, `zht`) in the same commit, and reuse each locale’s existing terms.
 - "Saved" means saved as a project file, and "unsaved" means not saved as one. Work kept only in this browser, such as Recent Sessions and the Timeline, is "stored" or "kept", never "saved". An export does not save.

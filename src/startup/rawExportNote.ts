@@ -8,7 +8,7 @@ export type RawExportRun =
     | { kind: 'done'; name: string; size: number; started: boolean; databaseUnreadable: boolean }
     /** The hand-over failed. */
     | { kind: 'failed'; name: string; error: unknown }
-    /** The user closed the Loading dialog before the hand-over; nothing was handed over. */
+    /** The user closed the Loading dialog before the hand-over. */
     | { kind: 'cancelled' }
 
 export type RawExportTexts = {

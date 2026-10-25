@@ -30,14 +30,14 @@ provide(closeSettingsKey, () => {
 })
 
 // --- Staged mount.
-// Settings is one long scroll (about 2,700 nodes, 88 % of them below the first screen on every
-// device), and mounting it all before the first frame is most of what opening costs a phone. So
-// the dialog opens with Editor and Local Data, and the rest mounts in short tasks after the first
-// frame, in order: stage 1 Panels and Preview, 2 Toolbar, 3 Play, Touch and Mouse, then Keyboard
-// Shortcuts with SHORTCUT_BATCH rows per stage, and About last. The deferred sections are direct
-// children of the scroller (gap and scroll-edge fades depend on it). A jump to one that is not
-// mounted yet mounts the stages up to it, then scrolls once the labels of the new fields are
-// fitted, since a fit that stacks a value below its label moves everything under it.
+// Settings is one long scroll, most of it below the first screen, and mounting it all before the
+// first frame took most of the opening time on a phone. So the dialog opens with Editor and Local
+// Data, and the rest mounts in short tasks after the first frame, in order: stage 1 Panels and
+// Preview, 2 Toolbar, 3 Play, Touch and Mouse, then Keyboard Shortcuts with SHORTCUT_BATCH rows
+// per stage, and About last. The deferred sections are direct children of the scroller, because
+// the gap and the scroll-edge fades require that. A jump to a section not mounted yet mounts the
+// stages up to it. It scrolls once the new fields have fitted their labels, since a value that
+// stacks below its label moves everything under it.
 const SHORTCUT_BATCH = 20
 const FIRST_SHORTCUT_STAGE = 4
 const LAST_STAGE = FIRST_SHORTCUT_STAGE + Math.ceil(Object.keys(commands).length / SHORTCUT_BATCH)
@@ -84,7 +84,8 @@ const land = (id: SettingsSectionId, focus: boolean) => {
             ?.focus({ preventScroll: true })
 }
 let jumpFrame = 0
-// Fields mounted by a jump, or the dialog's own, are still to fit their labels.
+// True while fields that a jump mounted, or the dialog's first fields, have not yet fitted their
+// labels.
 let fitting = false
 const jumpTo = (id: SettingsSectionId, focus = true, afterFit = false) => {
     const mounting = stage.value < stageOf[id]

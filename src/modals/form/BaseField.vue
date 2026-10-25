@@ -132,8 +132,9 @@ const fitLabel = (nextFrame = false) => {
             },
             () => {
                 roomy = overTwoLines(text)
-                // The layout is current here, so this costs nothing; the observer's first entry
-                // at this width needs no second fit. A hidden field has no width (NaN).
+                // The layout is current here, so reading the width forces no layout, and the
+                // observer's first entry at this width does not fit the label again. A hidden
+                // field has no width (NaN).
                 if (fieldRoot.value)
                     fittedAtWidth(
                         fieldRoot.value,

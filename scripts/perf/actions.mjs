@@ -911,8 +911,9 @@ export const actions = {
         reset: closeDialogs,
     },
     // Settings opens with its first screen and mounts the other sections in the frames after.
-    // `openSettings` is the first screen (Language's control and Local Data's heading), with the
-    // staging tasks in `tailTask`; `openSettingsAll` runs until About, the last section, is mounted.
+    // `openSettings` is the first screen (the Language field and Local Data's heading), with any
+    // staging task of 50 ms or more in `tailTask`; `openSettingsAll` runs until About, the last
+    // section, is mounted.
     openSettings: {
         prep: async (page) => {
             await actions.localData.prep(page)

@@ -100,7 +100,7 @@ const readStorage = async (): Promise<BrowserStorage> => {
             engine,
             standalone: isStandalone(),
         },
-        // Without both figures no number shows: a guess would be worse than none.
+        // Without both figures, no number shows.
         total:
             usage !== undefined && quota !== undefined && Number.isFinite(usage) && quota > 0
                 ? { usage, quota }
@@ -109,14 +109,14 @@ const readStorage = async (): Promise<BrowserStorage> => {
 }
 
 /**
- * The last read, kept for the page: Local Data shows it at once and updates in place when a new
- * read lands. Absent until the first read ends.
+ * The last read. Local Data shows it at once and updates in place when a newer read ends. Absent
+ * until the first read ends.
  */
 export const browserStorage = shallowRef<BrowserStorage>()
 
 let reading: Promise<BrowserStorage> | undefined
 
-/** Reads the browser's storage now (a read already under way is shared), and keeps the result. */
+/** Reads the storage figures now (a read already under way is shared), and keeps the result. */
 export const readBrowserStorage = () =>
     (reading ??= readStorage()
         .then((read) => (browserStorage.value = read))
@@ -127,7 +127,10 @@ export const readBrowserStorage = () =>
 /** What the browser says about its storage. */
 export const readBrowserFacts = async () => (await readBrowserStorage()).facts
 
-/** The first read, once the page is idle after startup, as the close prompt loads its modules. */
+/**
+ * Starts the first read once the page is idle after startup, with the same timing as the close
+ * prompt's modules (`closePrompt.ts`).
+ */
 export const readStorageWhenIdle = () => {
     const run = () => {
         if (!browserStorage.value && !reading) void readBrowserStorage()

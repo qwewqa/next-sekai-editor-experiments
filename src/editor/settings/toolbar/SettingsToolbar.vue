@@ -24,7 +24,7 @@ const onRemoveFromGroup = (i: number, j: number) => {
     )
 }
 
-// A press removes the tool, so that is its name and hover title.
+// A press removes the tool, so its name and hover title say that.
 const removeLabel = (name: CommandName) =>
     interpolateRaw(i18n.value.settings.toolbar.remove, commands[name].title())
 
