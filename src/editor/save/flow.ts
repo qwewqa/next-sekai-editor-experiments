@@ -44,7 +44,6 @@ import { fileErrorText } from '../commands/exportLevel/ui'
 import { bindFile } from '../file'
 import { exportUsed, firstSaveDone, markFirstSaveDone } from '../file/flags'
 import { setDiskFinding } from '../file/state'
-import { confirmSwitch } from '../switch'
 import { withSwitchRequest, type SwitchRequest } from '../switchRequest'
 import {
     bindingHandle,
@@ -2107,7 +2106,9 @@ const openOther = (
     supplied?: SwitchRequest,
 ) =>
     withSwitchRequest(supplied, async (request) => {
-        // Work held only in memory is lost by the switch, as in every other switch.
+        // Work held only in memory is lost by the switch, as in every other switch. The module
+        // loads here: it pulls in the dialogs and the chip, which Save's core does not need.
+        const { confirmSwitch } = await import('../switch')
         if (!(await confirmSwitch()) || !request.isCurrent()) return
         try {
             const opened = await handle?.getFile().catch(() => undefined)
