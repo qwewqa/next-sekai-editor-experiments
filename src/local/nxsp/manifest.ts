@@ -520,6 +520,18 @@ const hasUnknownKindName = (json: unknown) =>
     Array.isArray(json[2]) &&
     (json[2] as unknown[]).some((pair) => isUnknownKind(pair))
 
+/**
+ * Chunks in the order of their places in `chunks.bin`. Reads in this order take the file in
+ * forward windows; the same chunks in tree order can read a window for each.
+ */
+export const inFileOrder = (
+    index: ReadonlyMap<string, { offset: number }>,
+    hashes: Iterable<string>,
+) => {
+    const at = (hash: string) => index.get(hash)?.offset ?? Number.MAX_SAFE_INTEGER
+    return [...hashes].sort((a, b) => at(a) - at(b))
+}
+
 /** Distinct chunks in first-use order, visiting each stored node only once. */
 export function* distinctRootChunks(
     history: Pick<HistoryForm, 'roots' | 'nodes'>,
