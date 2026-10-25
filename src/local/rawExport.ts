@@ -3,7 +3,14 @@ import { storageKey } from '../storage'
 import { interpolateRaw } from '../utils/interpolate'
 import { assembleZip, prepareEntry, type PreparedEntry } from '../zip/writer'
 import { DB_NAME } from './db'
-import { DUMP_FORMAT, DUMP_VERSION, dumpDatabase, dumpLocalStorage, type Dump } from './dump'
+import {
+    DUMP_FORMAT,
+    DUMP_VERSION,
+    dumpDatabase,
+    dumpJsonBytes,
+    dumpLocalStorage,
+    type Dump,
+} from './dump'
 import { idbFactory } from './kv/idb'
 import type { KvFactory } from './kv/types'
 
@@ -121,13 +128,10 @@ export const buildRawExportResult = async (
             opened.db.close()
         }
     }
-    const data = new TextEncoder().encode(JSON.stringify(dump ?? emptyDump(appVersion, keys)))
-    // STORE, its CRC read from a Blob in slices: deflating or checking tens of megabytes in one
-    // task would block the page.
-    const entries = [
-        await prepareEntry({ name: DUMP_ENTRY, method: 'store', data: new Blob([data]) }),
-        ...media,
-    ]
+    // Written in slices, then STORE with its CRC read from a Blob in slices: writing, deflating
+    // or checking tens of megabytes in one task would block the page.
+    const data = new Blob(await dumpJsonBytes(dump ?? emptyDump(appVersion, keys)))
+    const entries = [await prepareEntry({ name: DUMP_ENTRY, method: 'store', data }), ...media]
     return {
         zip: new Blob(assembleZip(entries), { type: 'application/zip' }),
         databaseUnreadable,

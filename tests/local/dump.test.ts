@@ -5,6 +5,7 @@ import {
     decodeValue,
     dumpDatabase,
     DumpError,
+    dumpJsonBytes,
     dumpLocalStorage,
     encodeValue,
     readDump,
@@ -288,4 +289,35 @@ test('localStorage: only the editor’s keys, in order', () => {
         ['sonolus-next-sekai-editor.a', '1'],
         ['sonolus-next-sekai-editor.b', '2'],
     ])
+})
+
+test('the dump written in slices parses to the dump, however many records and slices', async (t) => {
+    const parse = async (dump: Dump) =>
+        JSON.parse(await new Blob(await dumpJsonBytes(dump)).text()) as unknown
+    const sample = sampleDump()
+    assert.deepEqual(await parse(sample), JSON.parse(JSON.stringify(sample)))
+    const empty: Dump = { ...sample, stores: [], localStorage: {} }
+    assert.deepEqual(await parse(empty), JSON.parse(JSON.stringify(empty)))
+    // Many records, with a clock that moves a slice's length at every read: a slice per record.
+    const many: Dump = {
+        ...sample,
+        stores: [
+            { ...sample.stores[0]!, records: [] },
+            {
+                ...sample.stores[0]!,
+                name: 'zz',
+                records: Array.from({ length: 300 }, (_, i) => ({
+                    key: `k${i}`,
+                    value: {
+                        text: 'é😀"\
+'.repeat(i % 5),
+                        n: i,
+                    },
+                })),
+            },
+        ],
+    }
+    let now = 0
+    t.mock.method(performance, 'now', () => (now += 20))
+    assert.deepEqual(await parse(many), JSON.parse(JSON.stringify(many)))
 })
