@@ -1,3 +1,4 @@
+import { cappedSpan, STACK_CAP } from '../history/cap'
 import {
     captureEntryDescription,
     captureStep,
@@ -11,35 +12,25 @@ import type { SessionOrigin } from './records/unknownValues'
 
 // The timeline and the stored undo stack. Replay of a session's
 // entries defines its stack; the stack is stored as snapshot refs in blocks of 256 slots, keyed
-// by absolute slot numbers, with a window of at most 5,000 slots that always includes the index.
+// by absolute slot numbers, with a window of at most `STACK_CAP` slots that always includes the
+// index.
 // The page replays its pending entries over the stack last acknowledged, so a flush writes the
 // stack after its last entry, rewriting only the blocks whose slots changed.
 
 /** Slots in one `stackBlocks` row. */
 export const BLOCK_SLOTS = 256
-/** The stored window's most slots [WS-31]. The live tab's stack has no limit. */
-export const STACK_CAP = 5000
 
 /** A session row's `stack`: the stored slots `base … base + length − 1` and the index. */
 export type StackWindow = { readonly base: number; readonly length: number; readonly index: number }
 
 /**
- * The stored window of a stack of `length` slots: normally the newest `cap`; when
- * the index sits below them, the redo end is cut first, so the window is the `cap` slots ending
- * at the index, or starting at slot 0 when the index is under `cap`. Slots below `floor` (a
- * restored stack's own base) aren't known, so the window never starts below it.
+ * The stored window of a stack of `length` slots: the slots `cappedSpan` keeps, as the live
+ * stack keeps them.
  */
-export const storedWindow = (
-    length: number,
-    index: number,
-    floor = 0,
-    cap = STACK_CAP,
-): StackWindow => {
-    if (!(index >= floor && index < length)) throw new RangeError('The index is outside the stack')
-    let base = Math.max(floor, length - cap)
-    if (index < base) base = Math.max(floor, index < cap ? 0 : index - cap + 1)
-    return { base, length: Math.min(cap, length - base), index }
-}
+export const storedWindow = (length: number, index: number, floor = 0): StackWindow => ({
+    ...cappedSpan(length, index, floor),
+    index,
+})
 
 export const blockOf = (slot: number) => Math.floor(slot / BLOCK_SLOTS)
 

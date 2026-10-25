@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { STACK_CAP } from '../../../src/history/cap'
 import { createRecoveryContext, type EntryDescription } from '../../../src/history/operations'
 import {
     BLOCK_SLOTS,
@@ -8,7 +9,6 @@ import {
     replay,
     ReplayError,
     SessionStack,
-    STACK_CAP,
     stackMismatches,
     storedSlots,
     storedWindow,
@@ -52,22 +52,23 @@ const entry = (
         ...extra,
     }) as ReplayEntry
 
-test('the stored window is the newest 5,000 slots, or the 5,000 that keep the index', () => {
+test('the stored window is the newest 1,000 slots, or the 1,000 that keep the index', () => {
+    assert.equal(STACK_CAP, 1000)
     assert.deepEqual(storedWindow(10, 9), { base: 0, length: 10, index: 9 })
-    assert.deepEqual(storedWindow(5000, 0), { base: 0, length: 5000, index: 0 })
-    assert.deepEqual(storedWindow(20_000, 19_999), { base: 15_000, length: 5000, index: 19_999 })
-    // An 8,000-slot stack with the index at 1,000 stores slots 0–4,999.
-    assert.deepEqual(storedWindow(8000, 1000), { base: 0, length: 5000, index: 1000 })
-    // Below the newest 5,000 and past 5,000: the window ends at the index.
-    assert.deepEqual(storedWindow(20_000, 6000), { base: 1001, length: 5000, index: 6000 })
+    assert.deepEqual(storedWindow(1000, 0), { base: 0, length: 1000, index: 0 })
+    assert.deepEqual(storedWindow(20_000, 19_999), { base: 19_000, length: 1000, index: 19_999 })
+    // An 8,000-slot stack with the index at 500 stores slots 0–999.
+    assert.deepEqual(storedWindow(8000, 500), { base: 0, length: 1000, index: 500 })
+    // Below the newest 1,000 and past 1,000: the window ends at the index.
+    assert.deepEqual(storedWindow(20_000, 6000), { base: 5001, length: 1000, index: 6000 })
     // A restored stack's own base is a floor.
-    assert.deepEqual(storedWindow(9000, 3500, 3000), { base: 3000, length: 5000, index: 3500 })
+    assert.deepEqual(storedWindow(9000, 3500, 3000), { base: 3000, length: 1000, index: 3500 })
     for (const [length, index] of [
         [1, 0],
-        [5001, 0],
+        [1001, 0],
         [12_345, 7000],
         [12_345, 12_344],
-        [7000, 4999],
+        [7000, 999],
     ] as const) {
         const window = storedWindow(length, index)
         assert.ok(window.length <= STACK_CAP)
@@ -253,19 +254,19 @@ test('a flush rewrites only the blocks whose slots changed, normally the last', 
     m.run([{ kind: 'init', n: 0 }])
     const pushes = (from: number, count: number) =>
         Array.from({ length: count }, (_, i) => ({ kind: 'edit', n: from + i }))
-    m.run(pushes(1, 999))
-    assert.deepEqual(m.writes(), [0, 1, 2, 3])
+    m.run(pushes(1, 599))
+    assert.deepEqual(m.writes(), [0, 1, 2])
     // One more edit: only its block.
-    m.run(pushes(1000, 1))
-    assert.deepEqual(m.writes(), [3])
+    m.run(pushes(600, 1))
+    assert.deepEqual(m.writes(), [2])
     // An undo moves the index only: nothing.
     m.run([{ kind: 'undo', n: 0 }])
     assert.deepEqual(m.writes(), [])
     // An edit after undoing: the dropped redo slot is cut from the block's tail.
     m.run([{ kind: 'edit', n: 5000 }])
-    assert.deepEqual(m.writes(), [3])
+    assert.deepEqual(m.writes(), [2])
     // Past the cap: the window's base moves, and its first block isn't rewritten for it.
-    m.run(pushes(6000, 5000))
+    m.run(pushes(6000, 2000))
     const window = m.stack.window!
     assert.equal(window.length, STACK_CAP)
     m.run(pushes(20_000, 1))
@@ -283,14 +284,14 @@ const blockOf = (slot: number) => Math.floor(slot / 256)
 test('after a long undo the window keeps the index, and the blocks it moves into are written', () => {
     const m = model()
     m.run([{ kind: 'init', n: 0 }])
-    m.run(Array.from({ length: 7999 }, (_, i) => ({ kind: 'edit', n: i + 1 })))
-    assert.deepEqual(m.stack.window, { base: 3000, length: 5000, index: 7999 })
-    m.run(Array.from({ length: 6999 }, () => ({ kind: 'undo', n: 0 })))
-    assert.deepEqual(m.stack.window, { base: 0, length: 5000, index: 1000 })
+    m.run(Array.from({ length: 1999 }, (_, i) => ({ kind: 'edit', n: i + 1 })))
+    assert.deepEqual(m.stack.window, { base: 1000, length: 1000, index: 1999 })
+    m.run(Array.from({ length: 1500 }, () => ({ kind: 'undo', n: 0 })))
+    assert.deepEqual(m.stack.window, { base: 0, length: 1000, index: 499 })
     assert.deepEqual(
         [...m.rows.keys()].sort((a, b) => a - b),
-        Array.from({ length: 20 }, (_, i) => i),
+        Array.from({ length: 4 }, (_, i) => i),
     )
     assert.equal(m.rows.get(0)?.slots[0], '0')
-    assert.equal(m.rows.get(19)?.slots.at(-1), '4999')
+    assert.equal(m.rows.get(3)?.slots.at(-1), '999')
 })

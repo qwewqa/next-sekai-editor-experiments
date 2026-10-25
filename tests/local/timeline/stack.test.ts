@@ -10,7 +10,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { replayed, storedStack, widen } from './helpers'
 
 // The stored stack through the flush: it equals replay of the stored entries,
-// within a window of at most 5,000 slots that always includes the index, and a flush rewrites
+// within a window of at most 1,000 slots that always includes the index, and a flush rewrites
 // only the blocks it touches.
 
 const begin = (page: Page, state: State) =>
@@ -86,12 +86,12 @@ test('the stored stack equals replay through edits, undos, redos and dropped red
     }
 })
 
-test('an 8,000-slot stack with the index at 1,000 stores slots 0–4,999', async () => {
+test('after a long undo and a push, the window is the newest 1,000 slots of the replayed stack', async () => {
     const world = createWorld({ seed: 4 })
     const page = await openPage(world, world.tab('a'))
     const [a, b] = states()
     const session = begin(page, a)
-    for (let i = 1; i < 8000; i++)
+    for (let i = 1; i < 2000; i++)
         page.flusher.append(
             { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
             i % 2 ? b : a,
@@ -99,14 +99,25 @@ test('an 8,000-slot stack with the index at 1,000 stores slots 0–4,999', async
         )
     await page.flusher.flush()
     assert.deepEqual(storedStack(world, session.id).window, {
-        base: 3000,
-        length: 5000,
-        index: 7999,
+        base: 1000,
+        length: 1000,
+        index: 1999,
     })
-    for (let i = 7998; i >= 1000; i--) cross(page, 'undo', i % 2 ? b : a)
+    // As far back as the tab's stack reaches: 999 undos, to slot 1,000.
+    for (let i = 1998; i >= 1000; i--) cross(page, 'undo', i % 2 ? b : a)
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
-    assert.deepEqual(storedStack(world, session.id).window, { base: 0, length: 5000, index: 1000 })
+    assert.deepEqual(storedStack(world, session.id).window, {
+        base: 1000,
+        length: 1000,
+        index: 1000,
+    })
+    assertStack(world, session.id)
+    // A push there: the tab's stack holds 2 slots; the window is the newest 1,000 replayed slots.
+    page.flusher.append({ kind: 'edit', step: editStep(futureFixtureOperation('After')) }, b, true)
+    await page.flusher.flush()
+    assert.deepEqual(page.errors, [])
+    assert.deepEqual(storedStack(world, session.id).window, { base: 2, length: 1000, index: 1001 })
     assertStack(world, session.id)
 })
 
