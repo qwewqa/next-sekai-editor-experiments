@@ -566,6 +566,8 @@ test('the state shows after the bound when ready does not settle, and a failing 
         [key(1)]: { state: fake('one'), time: 1 },
         [key(2)]: { state: fake('two'), time: 2 },
     })
+    // Clears the debounce window of the previous test's request.
+    await wait(110)
     const started = Date.now()
     await peekEntry(key(1), { ready: () => new Promise(() => undefined) })
     const waited = Date.now() - started
