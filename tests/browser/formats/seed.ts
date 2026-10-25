@@ -95,7 +95,7 @@ export type SeedOptions = {
     files?: 'opfs' | 'download'
     /** Stores whose rows are left out of the seed. */
     without?: string[]
-    /** An Export Raw Data… ZIP to seed through `seedRawExport`, in place of the dump's JSON. */
+    /** An Export Raw Data ZIP to seed through `seedRawExport`, in place of the dump's JSON. */
     zip?: Uint8Array
 }
 

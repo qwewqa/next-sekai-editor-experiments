@@ -676,7 +676,7 @@ export const stepA11 = async (a: A, tab: Tab) => {
     return visit
 }
 
-/** Step 12: Settings › Local Data › Recovery › Export Raw Data…: `raw-export.zip`. */
+/** Step 12: Settings › Local Data › Recovery › Export Raw Data: `raw-export.zip`. */
 export const stepA12 = async (a: A, tab: Tab) => {
     const { name, path } = await exportRawData(tab)
     expect(name).toMatch(/^Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip$/)

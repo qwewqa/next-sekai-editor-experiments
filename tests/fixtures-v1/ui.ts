@@ -328,7 +328,7 @@ export const addPreviewPackage = async (tab: Tab, name: string, bytes: Uint8Arra
     await expect(dialog).toHaveCount(0)
 }
 
-/** Settings › Local Data › Recovery › Export Raw Data…: the ZIP the browser downloads. */
+/** Settings › Local Data › Recovery › Export Raw Data: the ZIP the browser downloads. */
 export const exportRawData = async (tab: Tab) => {
     const { page } = tab
     await tab.command(',')

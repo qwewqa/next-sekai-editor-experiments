@@ -1,6 +1,6 @@
 # When a release breaks storage
 
-The steps for the maintainer when a release stops users from reaching their stored work, and the reply to post. Export Raw Data… is in every build from v0.6.0 on, and it reads the database without the editor's record decoder, so it works when Recent Sessions and Save… do not.
+The steps for the maintainer when a release stops users from reaching their stored work, and the reply to post. Export Raw Data is in every build from v0.6.0 on, and it reads the database without the editor's record decoder, so it works when Recent Sessions and Save… do not.
 
 ## 1. When to use it
 
@@ -17,15 +17,15 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 > Version {version} has a bug that can stop the editor from starting or hide your sessions. To keep your work:
 >
 > 1. Do not clear this site’s data in your browser.
-> 2. Open Settings › Local Data and choose Export Raw Data… under Recovery. Keep the ZIP file it downloads.
-> 3. If the editor shows an error with an Export Raw Data… button, choose it there.
+> 2. Open Settings › Local Data and choose Export Raw Data under Recovery. Keep the ZIP file it downloads.
+> 3. If the editor shows an error with an Export Raw Data button, choose it there.
 > 4. If the editor does not start, open https://nse.qwewqa.dev/?safe and do step 2 there.
 > 5. When version {fixed} is out, reload the page and look in History › Recent Sessions.
 > 6. If your work is not there, email a private link to the ZIP file to nse@qwewqa.dev. Do not attach the file to a public issue. It holds your charts and audio.
 
 ## 4. What to ask for
 
-- The ZIP file from Export Raw Data…, as a private link by email.
+- The ZIP file from Export Raw Data, as a private link by email.
 - The version: Settings › About, or Copy Diagnostic Info….
 - The browser and the operating system.
 - What they did and what they saw: the text of the message, or a screenshot.
