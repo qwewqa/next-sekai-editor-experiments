@@ -4,19 +4,19 @@ Usage statistics for the web editor: a self-hosted [Umami](https://umami.is) on 
 
 ## What runs
 
-| Part         | Detail                                                                                                                                                                                                    |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Instance     | Ubuntu 24.04 LTS arm64. Prod `t4g.small`, dev `t4g.micro` with 1 GB of swap. Default VPC, one public subnet, Elastic IP, IMDSv2 only                                                                      |
-| Network      | Port 443 in, nothing else. No SSH: access is Session Manager. Certificates come from the TLS-ALPN-01 challenge on 443, so port 80 stays closed                                                            |
-| Containers   | Caddy, Umami and PostgreSQL in Compose, each pinned by digest in `host/images.env`. PostgreSQL has no published port                                                                                      |
-| Public paths | `POST /api/send`, `POST /api/batch`, `GET /api/heartbeat`. Everything else is a 404, and Caddy keeps no access log                                                                                        |
-| Dashboard    | Umami’s login is never routed publicly. It listens on the instance’s `127.0.0.1:3000`, and you reach it through a Session Manager tunnel                                                                  |
-| Data         | One encrypted gp3 volume at `/data`: PostgreSQL, Caddy’s certificates and `secrets.env`. The volume is retained when the stack is replaced or deleted                                                     |
-| Secrets      | `update.sh` generates Umami’s `APP_SECRET` and the database password on first boot, into `/data/secrets.env` (root only). They are not in the repository, GitHub or AWS                                   |
-| Backups      | A weekly `pg_dump` (Sundays, 03:00 UTC) to an S3 bucket, kept 28 days. The bucket is versioned in prod only. The instance can add and list dumps, not read or delete them                                 |
-| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears the region and city Umami adds, dumps on Sundays, and checks the last dump, the disk (80%) and a test event. A failed check emails the alert topic |
-| Patches      | Unattended security upgrades, rebooting at 04:00 UTC when needed                                                                                                                                          |
-| Recovery     | EC2’s own recovery for a failed system check. In prod, one alarm reboots the instance after 5 minutes of failed instance checks and emails                                                                |
+| Part         | Detail                                                                                                                                                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Instance     | Ubuntu 24.04 LTS arm64. Prod `t4g.small`, dev `t4g.micro` with 1 GB of swap. Default VPC, one public subnet, Elastic IP, IMDSv2 only                                                                                      |
+| Network      | Port 443 in, nothing else. No SSH: access is Session Manager. Certificates come from the TLS-ALPN-01 challenge on 443, so port 80 stays closed                                                                            |
+| Containers   | Caddy, Umami and PostgreSQL in Compose, each pinned by digest in `host/images.env`. PostgreSQL has no published port                                                                                                      |
+| Public paths | `POST /api/send`, `POST /api/batch`, `GET /api/heartbeat`. Everything else is a 404, and Caddy keeps no access log                                                                                                        |
+| Dashboard    | Umami’s login is never routed publicly. Umami listens on the instance’s `127.0.0.1:3000`, and you reach it through a Session Manager tunnel                                                                               |
+| Data         | One encrypted gp3 volume at `/data`: PostgreSQL, Caddy’s certificates and `secrets.env`. The volume is retained when the stack is replaced or deleted                                                                     |
+| Secrets      | `update.sh` generates Umami’s `APP_SECRET` and the database password on first boot, into `/data/secrets.env` (readable by root only). Neither the repository, GitHub nor AWS holds them                                   |
+| Backups      | A weekly `pg_dump` (Sundays, 03:00 UTC) to an S3 bucket, kept 28 days. The bucket is versioned in prod only. The instance can add and list dumps, not read or delete them                                                 |
+| Nightly job  | `host/nightly.sh` runs at 03:00 UTC in prod. It clears the region and city Umami adds, dumps on Sundays, and checks the last dump, the disk (80%) and a test event. A failed check sends an email through the alert topic |
+| Patches      | Unattended security upgrades, rebooting at 04:00 UTC when needed                                                                                                                                                          |
+| Recovery     | EC2’s own recovery for a failed system check. In prod, one alarm reboots the instance after 5 minutes of failed instance checks and emails                                                                                |
 
 The host files reach the instance by commit. The stack’s `SourceCommit` parameter becomes the tag `nse:commit`, and `update.sh` downloads `host/*` at that commit from `raw.githubusercontent.com` (the repository is public). A deploy that changes only host files does not restart the instance. The user data runs once, at the instance’s first boot.
 
@@ -24,7 +24,7 @@ The host files reach the instance by commit. The stack’s `SourceCommit` parame
 
 **Set-up, once,** as in `../README.md`, steps 1 to 6: the accounts and profiles, the Environments with `AWS_ACCOUNT_ID`, the baseline in the account, and the `nse-services` zone delegated in `qwewqa.dev`. Without the delegation Caddy cannot get a certificate, and the deploy’s smoke check fails after about 5 minutes.
 
-Run Actions › Stats deploy, choosing `dev` or `prod`. Prod waits for the maintainer’s approval and refuses any branch but `main`. The workflow assumes `nse-stats-deploy` by OIDC, runs `scripts/deploy.sh`, and ends with a smoke check: `/api/heartbeat` over HTTPS, then the database’s migrations. The same script runs by hand with a profile: `AWS_PROFILE=nse-dev SOURCE_COMMIT=<pushed sha> bash infra/stats/scripts/deploy.sh dev`. For prod add `MONITOR_WEBSITE=<monitor website id>`, or the deploy clears it.
+Run Actions › Stats deploy, choosing `dev` or `prod`. Prod waits for the maintainer’s approval and refuses any branch but `main`. The workflow assumes `nse-stats-deploy` by OIDC, runs `scripts/deploy.sh`, and ends with a smoke check: `/api/heartbeat` over HTTPS, then the database’s migrations. The same script runs by hand with a profile: `AWS_PROFILE=nse-dev SOURCE_COMMIT=<pushed sha> bash infra/stats/scripts/deploy.sh dev`. For prod: `AWS_PROFILE=nse-prod SOURCE_COMMIT=<pushed sha> MONITOR_WEBSITE=<monitor website id> bash infra/stats/scripts/deploy.sh prod`. Without `MONITOR_WEBSITE` the deploy clears it.
 
 If the first deploy of the stack fails, CloudFormation rolls it back to `ROLLBACK_COMPLETE` and deletes the empty volume, Elastic IP and bucket that it made (they are `RetainExceptOnCreate`). Delete the failed stack, fix the cause, and deploy again. In dev, run Stats dev down. In prod the deploy role cannot delete stacks, so use the admin profile: `aws cloudformation delete-stack --profile nse-prod --stack-name nse-stats`. Do this only for a stack that never ran. After a successful deploy, deleting the stack leaves its data volume, Elastic IP and bucket behind, because they are retained.
 
@@ -37,7 +37,7 @@ Try the whole cycle in dev first (see Dev below). Deploying prod, in order:
     - in `qwewqa/nse-test-site`, the repository variables `ANALYTICS_ORIGIN` (the same origin) and `ANALYTICS_WEBSITE_TEST` (the id of `test.nse.qwewqa.dev`);
     - in the editor repository, the Environment variable `STATS_MONITOR_WEBSITE` on `stats-prod` (the id of `monitor`).
 4. Run Stats deploy for `prod` again, so the nightly job’s test event has its website.
-5. Production sends statistics only after the release that publishes the privacy page.
+5. The first release tag built after the editor variables are set sends statistics. Set them only for the release that publishes the privacy page.
 
 ## The dashboard
 
@@ -49,7 +49,7 @@ It needs the Session Manager plugin (`../README.md`, Set-up step 3) and a profil
 
 ## Upgrades
 
-An Umami, PostgreSQL or Caddy release is a pull request that changes a digest in `host/images.env`. Find a digest with `docker buildx imagetools inspect <image:tag>`; it must be the index digest. Read Umami’s release notes for migrations and `ANALYZE` steps first. Migrations have no down step.
+To upgrade Umami, PostgreSQL or Caddy, open a pull request that changes a digest in `host/images.env`. Find a digest with `docker buildx imagetools inspect <image:tag>`; it must be the index digest. Read Umami’s release notes for migrations and `ANALYZE` steps first. Migrations have no down step.
 
 1. The pull request runs `infra-check.yml`. Its contract test starts the new images and checks the request the editor sends, the clean-up, a restore and the saved queries.
 2. Deploy dev from `main`, send some events, then deploy dev from the branch. Look at the dashboard and run the saved queries. Run Stats dev down.
@@ -61,7 +61,7 @@ After a major Umami upgrade, refresh the query planner’s statistics. The night
 
 ## Operations
 
-Commands that run from your machine take `--profile nse-prod`. The others run on the instance: `aws ssm start-session --profile nse-prod --target <instance id>`, then `sudo -i`. The instance id and the bucket name are outputs of the `nse-stats` stack (`aws cloudformation describe-stacks --profile nse-prod --stack-name nse-stats --query 'Stacks[0].Outputs'`). On the instance, the Compose command is:
+Some commands run from your machine and take `--profile nse-prod`. The others run on the instance. To get a shell on it, run `aws ssm start-session --profile nse-prod --target <instance id>` from your machine, then `sudo -i`. The instance id and the bucket name are outputs of the `nse-stats` stack (`aws cloudformation describe-stacks --profile nse-prod --stack-name nse-stats --query 'Stacks[0].Outputs'`). On the instance, the Compose command is:
 
 ```sh
 cd /opt/nse-stats
@@ -83,18 +83,18 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
 
     CI tests that a dump restores into a fresh PostgreSQL with the same row counts.
 
-- **Replace the instance** (a new image id, or a broken boot). The data volume is the only part that must survive, and the site stops recording from the stop to the end of the deploy. Do the steps in this order.
+- **Replace the instance** (a new image id, or a broken boot). The data volume is the only part that must survive. Umami records nothing from the moment the instance stops until the deploy ends. Do the steps in this order.
     1. Take a dump.
     2. Merge the pull request that changes `ImageId` in `stats.yaml`. Do not deploy yet.
     3. Allow termination: `aws ec2 modify-instance-attribute --profile nse-prod --instance-id <id> --no-disable-api-termination`.
     4. Stop the instance (`aws ec2 stop-instances --profile nse-prod --instance-ids <id>`) and detach the data volume (`aws ec2 detach-volume --profile nse-prod --volume-id <DataVolumeId output>`). Wait until the volume is `available`.
     5. Run Stats deploy for `prod`. The new instance attaches the volume and finds its filesystem, certificates, secrets and data. CloudFormation then deletes the old instance. The Elastic IP and the DNS record do not change.
 
-    A change to the template’s `UserData` takes effect only on a new instance, because cloud-init runs it once per instance. Make that change together with an `ImageId` change, using this procedure. On its own it stops and starts the instance and changes nothing on it.
+    A change to the template’s `UserData` takes effect only on a new instance, because cloud-init runs it once per instance. Make that change together with an `ImageId` change, using this procedure. On its own, a `UserData` change stops and starts the instance and changes nothing on the instance.
 
 - **Resize the instance.** In one pull request, change the sizes in the `Sizes` mapping, `COST_PINS` and the cost table, and deploy. A new instance type stops and starts the instance, which takes a few minutes. A larger data volume grows online. Then run `resize2fs /dev/disk/by-label/nse-data` on the instance to grow the filesystem. A volume cannot shrink, and it can be modified again only six hours after the last change.
 - **Replace a secret.** `APP_SECRET`: edit `/data/secrets.env`, then `dc up -d umami`. Dashboard logins end, and the day’s visitor hashes change. The database password: `dc exec db psql -U umami -c "ALTER USER umami PASSWORD '<new>'"`, edit `secrets.env`, then `dc up -d umami`.
-- **Delete data.** One website: Settings › Websites › Edit › Reset Data. By date, run these statements in `dc exec db psql -U umami umami`, in this order because the tables have no foreign keys, and then run `VACUUM`:
+- **Delete data.** One website: Settings › Websites › Edit › Reset Data. By date, run these statements in `dc exec db psql -U umami umami`, in this order, and then run `VACUUM`. The order matters because the last two statements delete only the sessions that no remaining `website_event` row uses, so the events must go first:
 
     ```sql
     DELETE FROM event_data WHERE created_at < now() - interval '1 year';
@@ -141,15 +141,15 @@ A dev deploy after a Stats dev down needs a new certificate. Let’s Encrypt all
 
 ## If a deploy fails on a permission
 
-CloudFormation cannot check some permissions before it runs. If a deploy fails, find the symptom here. Fix the policy in `account/account.yaml`, redeploy the baseline (`../README.md`, Set-up step 5), and deploy again.
+CloudFormation cannot check some permissions before it runs. The causes below are likely, and none is confirmed. If a deploy fails, find the symptom here. Fix the policy in `account/account.yaml`, redeploy the baseline (`../README.md`, Set-up step 5), and deploy again.
 
 - **`RunInstances`, `CreateVolume` or `CreateTags` is not authorized.** Look at the execution role’s statements `CreateTaggedEc2`, `UseUntaggedEc2` and `TagOnCreate`. Add the resource named in the error to the matching statement. A resource that carries no `nse:service` tag belongs in `UseUntaggedEc2`.
 - **“Role … is invalid or cannot be assumed.”** Remove the `aws:SourceArn` condition from the trust policy of `nse-stats-cfn`, and keep `aws:SourceAccount`. AWS documents `aws:SourceArn` for other role types, not for the service role of a stack.
-- **The instance profile is refused with an `iam:PassRole` error.** Check the condition on `PassTheInstanceRole` (`iam:PassedToService` is `ec2.amazonaws.com`). Remove it if CloudFormation passes the role in another service’s name.
-- **The Route 53 record is refused.** The condition in `StatsRecords` lists the record name with and without the trailing dot. Add the form the error reports.
-- **The deploy’s update command fails, or the instance never registers.** Read `/var/log/nse-stats-init.log` through Session Manager. It shows the data volume’s device name, the Docker packages and `snap install aws-cli`.
-- **`update.sh` reports an empty commit or hostname.** The metadata service returned no tag. Check that `InstanceMetadataTags` is enabled and that the tag exists (`aws ec2 describe-tags`).
-- **Prod only: the alarm is refused.** The baseline lets `nse-stats-cfn` create the service-linked role `AWSServiceRoleForCloudWatchEvents`, which the reboot action needs. If the error names another role, add it to `AlarmRebootActionRole`.
+- **The instance profile is refused with an `iam:PassRole` error.** Look at the condition on `PassTheInstanceRole` (`iam:PassedToService` is `ec2.amazonaws.com`). Add the service named in the error to that condition. Do not remove the condition.
+- **The Route 53 record is refused.** `StatsRecords` already lists the record name with and without the trailing dot. Compare the name in the error with that list.
+- **The deploy’s update command fails, or the instance never registers.** Read `/var/log/nse-stats-init.log` through Session Manager. Look for an error from the data volume’s device lookup, from `apt-get` (the Docker packages), or from `snap install aws-cli`.
+- **A step of `update.sh` fails with a 404 on a host file, or Compose fails on `STATS_HOSTNAME`.** The 404 means the tag `nse:commit` is empty, and the Compose failure means `nse:hostname` is empty. The metadata service returned no tag. Check that `InstanceMetadataTags` is enabled and that the tag exists (`aws ec2 describe-tags`).
+- **Prod only: the alarm is refused.** The baseline lets `nse-stats-cfn` create the service-linked role `AWSServiceRoleForCloudWatchEvents`, which the reboot action needs. If the error names another role, add it to `AlarmRebootActionRole`. The reboot alarm exists only in prod, so the first prod deploy is its first run.
 
 ## App-side work with no AWS
 
@@ -161,8 +161,8 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
 
 ## Reading the numbers
 
-- A pageview is an engaged visit: one where the user clicked, pressed a key, touched or scrolled. Loads that never interacted are not counted at all, so the totals undercount loads by design.
-- Count visits from pageviews and durations from `visibleTime`. Ignore Umami’s visit duration and bounce rate, which are wrong for this client.
+- A pageview is an engaged visit: one where the user clicked, pressed a key, touched or scrolled. Loads that never interacted are not counted at all. The totals therefore undercount page loads, by design.
+- Count visits from pageviews, and time spent from `visibleTime`. Umami’s visit duration and bounce rate are wrong for this client, so ignore them.
 - Umami’s unique visitors are visitors per day, because the salt rotates daily.
 - The saved queries in `queries/` answer the usual questions. Each takes the website’s id:
 
@@ -174,7 +174,7 @@ Sign in at `http://localhost:3000` as `admin` / `umami`, create a website, and s
 
 ## Cost
 
-The monthly cost of each environment, at 730 hours a month, in `us-west-2` on demand. Every price was read on 2026-10-25 from the AWS price list file for the service (the publication date is in the Basis column). `check_templates.py` requires every billable resource type in this table and pins the sizes.
+The monthly cost of each environment, at 730 hours a month, in `us-west-2` on demand. Every price was read on 2026-10-25, from the price list file where one is named and otherwise from the page named in the Basis column. `check_templates.py` requires every billable resource type in this table and pins the sizes.
 
 | Resource                 | Type                         | Prod, a month              | Dev, while up           | Basis                                                                                                                                                                                                                                  |
 | ------------------------ | ---------------------------- | -------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -189,7 +189,7 @@ The monthly cost of each environment, at 730 hours a month, in `us-west-2` on de
 | Services zone (baseline) | `AWS::Route53::HostedZone`   | $0.50                      | $0.50 a month           | $0.50 per hosted zone (Route 53 price list, published 2026-09-11). Shared by every service, and the whole cost of dev while stats is down                                                                                              |
 | **With the zone**        |                              | **about $19.70**           | **$0.50 a month down**  |                                                                                                                                                                                                                                        |
 
-This service adds about $19.70 a month in prod (stats $19.20 with the bucket, zone $0.50), and about $0.50 a month in dev while it is down plus $0.0154 an hour while it is up. A four-hour dev test costs about $0.06. A dev stack left up for a month costs about $11, which the reaper and the $1 budget are there to stop.
+A four-hour dev test costs about $0.06. A dev stack left up for a month costs about $11, which the reaper and the $1 budget are there to stop.
 
 Not billed at this size: data transfer (the first 100 GB a month out is free), Session Manager, the alert topic’s emails, the budget, EC2’s default recovery, the IAM roles and the default KMS key for encrypted volumes.
 

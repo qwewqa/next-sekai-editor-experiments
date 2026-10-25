@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deletes stats' dev stack and everything it retained, then runs the leftover check.
+# Deletes the stats dev stack and everything it retained, then runs the leftover check.
 # Only stats: the baseline, the services zone and any other service in the account stay.
 #   --reaper   a scheduled run: exit unless the stack exists and is over 12 hours old
 # AWS_ACCOUNT_ID must be the dev account's id. Run by stats-dev-down.yml, or by hand.

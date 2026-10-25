@@ -224,7 +224,7 @@ Resources:
                 - { Key: 'nse:env', Value: !Ref Environment }
 
     # The role CloudFormation uses to create what the stats template describes. Tag conditions keep it to
-    # resources tagged nse:service=stats; names keep the IAM, S3, alarm and DNS actions to stats' own.
+    # resources tagged nse:service=stats; names keep the IAM, S3, alarm and DNS actions to the stats resources.
     StatsCfnRole:
         Type: AWS::IAM::Role
         Properties:

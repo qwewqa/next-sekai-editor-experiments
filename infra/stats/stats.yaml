@@ -159,7 +159,7 @@ Resources:
                   - { Key: 'nse:monitor-website', Value: !Ref MonitorWebsite }
                   - !Ref AWS::NoValue
             # Runs once, at the instance's first boot: mounts the data volume, installs Docker, then runs update.sh
-            # from the commit in the nse:commit tag. Editing it has no effect on an existing instance.
+            # from the commit in the nse:commit tag. Editing it restarts an existing instance and changes nothing on it.
             UserData:
                 Fn::Base64: !Sub |
                     #!/bin/bash

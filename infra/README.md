@@ -6,7 +6,7 @@ This folder is in neither the web build nor the native build, and has no `packag
 
 ## What the accounts are for
 
-`nse-prod` and `nse-dev` are member accounts of the maintainer’s AWS Organization. They hold only the Next SEKAI Editor’s services. Another project gets its own accounts and never a stack here. Everything is in `us-west-2`.
+`nse-prod` and `nse-dev` are member accounts of the maintainer’s AWS Organization. They hold only the Next SEKAI Editor’s services. Another project gets its own accounts, and none of its stacks go here. Everything is in `us-west-2`.
 
 | Where                  | What                                                                                                                                                                                                |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,7 +53,7 @@ Only steps 1 and 6 touch the management account. It is never touched again, howe
 6. **Delegate the services zones,** in the management account’s `qwewqa.dev` zone, from each stack’s `ServicesZoneNameServers` output: one `NS` record named `nse-services` (prod) and one named `nse-services-dev` (dev), each with the four name servers. This is the last change in the management account. Then activate the cost allocation tags `nse:service` and `nse:env` in its Billing console (Cost allocation tags). They can take a day to appear after the first tagged resource exists.
 7. **Optional: the dev reaper.** Once the baseline and the `stats-dev` Environment exist, set the repository variable `STATS_DEV_REAPER` to `on` (Settings › Secrets and variables › Actions › Variables). Stats dev down then also runs every six hours and deletes a stats dev stack that is over 12 hours old. Without the variable it runs only by hand.
 
-Then `stats/README.md` deploys the first service.
+Then follow `stats/README.md` to deploy the first service.
 
 ## Adding a service
 

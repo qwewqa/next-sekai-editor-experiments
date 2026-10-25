@@ -34,6 +34,15 @@ dump() {
     rm -f "$file"
 }
 
+# The listing printed None when the bucket has no dump, and error when it could not be read.
+no_dump_message() {
+    if [ "$1" = None ]; then
+        echo "There is no dump in S3."
+    else
+        echo "The dumps in S3 could not be listed."
+    fi
+}
+
 check() {
     local problems="" newest age pct body
     if [ "$NSE_ENV" = prod ]; then
@@ -41,7 +50,7 @@ check() {
             --query 'sort_by(Contents,&LastModified)[-1].LastModified' --output text 2> /dev/null || echo error)
         if [ "$newest" = None ] || [ "$newest" = error ]; then
             # A new server has no dump until its first Sunday.
-            find /data/secrets.env -mtime -8 | grep -q . || problems="$problems\n$([ "$newest" = None ] && echo "There is no dump in S3." || echo "The dumps in S3 could not be listed.")"
+            find /data/secrets.env -mtime -8 | grep -q . || problems="$problems\n$(no_dump_message "$newest")"
         else
             age=$((($(date -u +%s) - $(date -u -d "$newest" +%s)) / 86400))
             [ "$age" -le 8 ] || problems="$problems\nThe newest dump is $age days old."
