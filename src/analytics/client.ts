@@ -1,3 +1,4 @@
+import { watch } from 'vue'
 import { SITE } from '../buildInfo'
 import { builtInCommandNames } from '../editor/commands/names'
 import { onHistoryAction, type HistoryAction } from '../history/actions'
@@ -262,12 +263,23 @@ export const startClient = (target: AnalyticsTarget) => {
         settingsSnapshot(matchMedia('(pointer: coarse)').matches, !hasDefaultValue('toolbar')),
     )
     add('startup', startupEvent())
-    void storageEvent().then(
-        (data) => {
-            add('storage', data)
-        },
-        () => undefined,
-    )
+    // Once the storage status is known, and again when it changes to paused or to memory.
+    let storageSent = ''
+    const sendStorage = () =>
+        storageEvent().then(
+            (data) => {
+                if (!data) return
+                const kind = `${data.mode ?? ''}/${data.reason ?? ''}`
+                if (kind === storageSent) return
+                storageSent = kind
+                add('storage', data)
+            },
+            () => undefined,
+        )
+    void sendStorage()
+    const stopStorage = watch(status.storageStatus, (now) => {
+        if (now && (!storageSent || now.mode !== 'stored' || now.reason)) void sendStorage()
+    })
     if (settings.showPreview && settings.previewPosition !== 'disabled')
         add('preview', {
             host: previewHost.kind,
@@ -301,6 +313,7 @@ export const startClient = (target: AnalyticsTarget) => {
             stopArming?.()
             clearTimeout(timer)
             field.stop()
+            stopStorage()
             tally.watchCharts(undefined)
             document.removeEventListener('visibilitychange', onVisibility)
             window.removeEventListener('pagehide', onPageHide)

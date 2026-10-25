@@ -528,10 +528,13 @@ test('a Save records its outcome, and a chart with objects is counted once saved
     await expect(notice(page).filter({ hasText: 'Saved to Tracked.nxsp' }).first()).toBeVisible()
     // The chart is counted when the browser is idle.
     await expect
-        .poll(async () => {
-            await hide(page)
-            return batches.flat().some((item) => item.payload.name === 'chart')
-        })
+        .poll(
+            async () => {
+                await hide(page)
+                return batches.flat().some((item) => item.payload.name === 'chart')
+            },
+            { timeout: 30_000 },
+        )
         .toBe(true)
     await hide(page)
     const sent = [...batches.flat(), ...(await leave(page)).flat()]

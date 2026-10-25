@@ -29,7 +29,7 @@ const server = createServer((request, response) => {
     request.on('data', (chunk) => chunks.push(chunk))
     request.on('end', () => {
         const body = Buffer.concat(chunks).toString('utf8')
-        let items = []
+        let items
         try {
             items = JSON.parse(body)
         } catch {
