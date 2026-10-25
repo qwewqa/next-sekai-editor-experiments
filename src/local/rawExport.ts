@@ -20,9 +20,9 @@ import type { KvFactory } from './kv/types'
 // `local/startup` (a unit test pins that). The way out when a storage bug ships.
 
 /**
- * The ZIP's first entry, stored uncompressed: the dump format, each Blob a `$blobEntry` naming a
- * STORE entry after it, `blobs/<n>`, which holds its bytes as stored, or a `$blobUnreadable` when
- * it could not be read.
+ * The ZIP's first entry, DEFLATE (STORE in a browser without `CompressionStream`): the dump
+ * format, each Blob a `$blobEntry` naming a STORE entry after it, `blobs/<n>`, which holds its
+ * bytes as stored, or a `$blobUnreadable` when it could not be read.
  */
 export const DUMP_ENTRY = 'dump.json'
 
@@ -81,6 +81,20 @@ const openExisting = async (factory: KvFactory | undefined) => {
     }
 }
 
+/**
+ * Raw DEFLATE through `CompressionStream`, a chunk at a time. Undefined where the browser has no
+ * `deflate-raw` stream (Firefox before 113): `dump.json` is then stored uncompressed.
+ */
+const deflateStream = async (blob: Blob): Promise<Blob | undefined> => {
+    if (typeof CompressionStream === 'undefined') return
+    try {
+        const stream = blob.stream().pipeThrough(new CompressionStream('deflate-raw'))
+        return await new Response(stream).blob()
+    } catch {
+        return
+    }
+}
+
 /** The ZIP, and whether the stored database was left out because it could not be read. */
 export type RawBuild = { zip: Blob; databaseUnreadable: boolean }
 
@@ -128,10 +142,17 @@ export const buildRawExportResult = async (
             opened.db.close()
         }
     }
-    // Written in slices, then STORE with its CRC read from a Blob in slices: writing, deflating
-    // or checking tens of megabytes in one task would block the page.
+    // Written in slices, its CRC read from a Blob in slices, and deflated as a stream: writing,
+    // deflating or checking tens of megabytes in one task would block the page.
     const data = new Blob(await dumpJsonBytes(dump ?? emptyDump(appVersion, keys)))
-    const entries = [await prepareEntry({ name: DUMP_ENTRY, method: 'store', data }), ...media]
+    const stored = await prepareEntry({ name: DUMP_ENTRY, method: 'store', data })
+    const deflated = await deflateStream(data)
+    const entries = [
+        deflated
+            ? { ...stored, method: 8 as const, compressedSize: deflated.size, data: deflated }
+            : stored,
+        ...media,
+    ]
     return {
         zip: new Blob(assembleZip(entries), { type: 'application/zip' }),
         databaseUnreadable,

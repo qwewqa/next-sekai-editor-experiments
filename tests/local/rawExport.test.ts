@@ -121,12 +121,12 @@ const withBlobEntry = (dump: Dump): Dump => {
     return copy
 }
 
-/** The dump.json inside the exported ZIP, its first entry, then `blobs`, all STORE entries. */
-const readExport = async (zip: Blob, blobs: string[] = []) => {
+/** The dump.json inside the exported ZIP, its first entry, then `blobs` as STORE entries. */
+const readExport = async (zip: Blob, blobs: string[] = [], method = 8) => {
     const reader = await ZipReader.open(zip)
     assert.deepEqual(
         reader.entries.map((entry) => [entry.name, entry.method]),
-        [[DUMP_ENTRY, 0], ...blobs.map((name) => [name, 0])],
+        [[DUMP_ENTRY, method], ...blobs.map((name) => [name, 0])],
     )
     const entry = reader.get(DUMP_ENTRY)!
     return JSON.parse(
@@ -417,4 +417,33 @@ test('exporting says whether the database was left out, and still throws when th
         exportRawData('0.6.0', 'a.zip', () => Promise.reject(new Error('blocked')), refusing),
         /blocked/,
     )
+})
+
+test('without a deflate-raw stream (Firefox before 113) dump.json is stored, and seeds back the same', async (t) => {
+    const original = globalThis.CompressionStream
+    // @ts-expect-error: removed, as in a browser without it.
+    delete globalThis.CompressionStream
+    t.after(() => {
+        globalThis.CompressionStream = original
+    })
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = stored()
+    assert.deepEqual(
+        await tab.run(() => seedDump(tab.kv, readDump(dump), { setItem: () => undefined })),
+        { seeded: true },
+    )
+    const zip = await tab.run(() =>
+        buildRawExport('0.6.0', { factory: tab.kv, storage: fakeStorage(dump.localStorage) }),
+    )
+    assert.deepEqual(readDump(await readExport(zip, ['blobs/0'], 0)), withBlobEntry(dump))
+    const other = createWorld()
+    const otherTab = other.tab('b')
+    assert.deepEqual(await otherTab.run(() => seedRawExport(otherTab.kv, zip, fakeStorage({}))), {
+        seeded: true,
+    })
+    const again = await otherTab.kv.open(DB_NAME, undefined)
+    assert.deepEqual(await dumpOf(otherTab, again), { ...dump, localStorage: {} })
+    await world.idle()
+    await other.idle()
 })
