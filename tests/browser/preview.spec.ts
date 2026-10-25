@@ -29,6 +29,8 @@ const settle = (page: Page) =>
         await new Promise<void>((resolve) =>
             requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
         )
+        // The worker host's frames are drawn, and counted, when the worker answers.
+        await window.nsePreviewTest?.settled()
     })
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -143,6 +145,8 @@ test.afterEach(async ({ page }) => {
 })
 
 test('unavailable WebGL reports a graphics error and reload can recover', async ({ page }) => {
+    // It patches the main thread's WebGL, which a worker's canvas never reaches.
+    test.skip(test.info().project.name === 'chromium-worker')
     await page.evaluate(async () => {
         window.editorTest.settings.showPreview = false
         await window.editorTest.nextTick()
@@ -184,6 +188,8 @@ test('unavailable WebGL reports a graphics error and reload can recover', async 
 })
 
 test('preview falls back when antialiasing prevents graphics initialization', async ({ page }) => {
+    // It patches the main thread's WebGL, which a worker's canvas never reaches.
+    test.skip(test.info().project.name === 'chromium-worker')
     await page.evaluate(async () => {
         window.editorTest.settings.showPreview = false
         await window.editorTest.nextTick()
@@ -213,6 +219,8 @@ test('preview falls back when antialiasing prevents graphics initialization', as
 })
 
 test('texture upload failures stay recoverable without uncaught errors', async ({ page }) => {
+    // It patches the main thread's WebGL, which a worker's canvas never reaches.
+    test.skip(test.info().project.name === 'chromium-worker')
     await page.evaluate(async () => {
         window.editorTest.settings.showPreview = false
         await window.editorTest.nextTick()
@@ -1339,13 +1347,20 @@ for (const side of ['left', 'right'] as const) {
 test('preview restores lost contexts and reuses decoded atlases for every new context', async ({
     page,
 }) => {
+    // The worker host's context is lost in the worker, where only the host can reach it.
+    const worker = test.info().project.name === 'chromium-worker'
     const preview = page.locator('.preview')
     const initialFrames = await page.evaluate(() => window.previewTest.frames)
     expect(initialFrames).toBeGreaterThan(0)
     await page.waitForTimeout(150)
     expect(await page.evaluate(() => window.previewTest.frames)).toBe(initialFrames)
 
-    const prevented = await page.evaluate(async () => {
+    const prevented = await page.evaluate(async (worker) => {
+        if (worker) {
+            await window.nsePreviewTest!.setContextLost(true)
+            window.previewTest.restore = () => void window.nsePreviewTest!.setContextLost(false)
+            return true
+        }
         const canvas = document.querySelector<HTMLCanvasElement>('.preview canvas')!
         const gl = canvas.getContext('webgl2')!
         const lost = new Promise<boolean>((resolve) => {
@@ -1359,7 +1374,7 @@ test('preview restores lost contexts and reuses decoded atlases for every new co
         window.previewTest.restore = () => extension.restoreContext()
         extension.loseContext()
         return await lost
-    })
+    }, worker)
     expect(prevented, 'context-loss handler permits WebGL restoration').toBe(true)
     await page.evaluate(() => (window.editorTest.view.cursorTime += 0.25))
     await settle(page)

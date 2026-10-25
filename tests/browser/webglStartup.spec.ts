@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { resource } from './previewResourceFixture'
+import { outlinePixels, resource } from './previewResourceFixture'
 
 declare global {
     interface Window {
@@ -231,16 +231,7 @@ test('preview selection initializes lazily and retries through the existing prev
         window.rendererInitProbe.mode = 'normal'
     })
     await preview.getByRole('button', { name: 'Reload', exact: true }).click()
-    await expect
-        .poll(() =>
-            page.evaluate(() => {
-                const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')!
-                const gl = canvas.getContext('webgl2')!
-                const data = new Uint8Array(canvas.width * canvas.height * 4)
-                gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, data)
-                return data.some((alpha, index) => index % 4 === 3 && alpha > 0)
-            }),
-        )
-        .toBe(true)
+    // Read through the renderer: a context the page asked for first would be the renderer's too.
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
     await expect(preview).not.toContainText('Preview graphics could not be started.')
 })

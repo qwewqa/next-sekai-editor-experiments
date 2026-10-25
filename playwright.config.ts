@@ -10,6 +10,10 @@ const timingSpecs = [
     'touchTiming.spec.ts',
     'historyTimingCalendar.spec.ts',
 ]
+// The preview's drawing specs again, with the preview drawn in its worker
+// (previewWorker.spec.ts sets each host itself).
+const previewHostSpecs = ['preview.spec.ts', 'previewSelection.spec.ts']
+const baseURL = `http://127.0.0.1:${port}`
 
 export default defineConfig({
     testDir: './tests/browser',
@@ -23,7 +27,7 @@ export default defineConfig({
     outputDir: 'test-results',
     use: {
         browserName: 'chromium',
-        baseURL: `http://127.0.0.1:${port}`,
+        baseURL,
         viewport: { width: 1600, height: 1000 },
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
@@ -36,6 +40,21 @@ export default defineConfig({
     },
     projects: [
         { name: 'chromium', testIgnore: timingSpecs },
+        {
+            name: 'chromium-worker',
+            testMatch: previewHostSpecs,
+            use: {
+                storageState: {
+                    cookies: [],
+                    origins: [
+                        {
+                            origin: baseURL,
+                            localStorage: [{ name: 'nse.test.previewHost', value: 'worker' }],
+                        },
+                    ],
+                },
+            },
+        },
         // Measures real frame timing, so it runs alone after the parallel batch.
         // In npx playwright test any chromium failure skips it; npm run test:browser
         // runs it after chromium regardless, and npm run test:timing runs it alone.
