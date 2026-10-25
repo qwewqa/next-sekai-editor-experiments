@@ -71,7 +71,9 @@ missing_mount() {
     echo "/data is not mounted" >&2
     token=$(curl -fsS -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)
     topic=$(curl -fsS -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/tags/instance/nse:topic)
-    AWS_DEFAULT_REGION=$(cut -d: -f4 <<< "$topic") aws sns publish --topic-arn "$topic"         --subject "nse stats: /data is not mounted" --message "The data volume is not mounted, so the database is not on it." > /dev/null
+    AWS_DEFAULT_REGION=$(cut -d: -f4 <<< "$topic") aws sns publish --topic-arn "$topic" \
+        --subject "nse stats: /data is not mounted" \
+        --message "The data volume is not mounted, so the database is not on it." > /dev/null
 }
 
 main() {

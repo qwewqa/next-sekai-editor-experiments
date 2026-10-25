@@ -217,6 +217,8 @@ def check_role_policy(rid, role, errors):
             deny_delete_in_prod |= prod is True and "cloudformation:DeleteStack" in actions
         elif deploy and DESTRUCTIVE & set(actions) and prod is not False:
             errors.append(f"{rid}/{stmt.get('Sid', '?')}: {sorted(DESTRUCTIVE & set(actions))} may be allowed in dev only.")
+    if rid == "StatsCfnRole" and not any(s.get("Sid") == "NotTheBaselineRoles" and s["Effect"] == "Deny" for s, _ in statements(role)):
+        errors.append(f"{rid}: the execution role must deny iam:* on the baseline roles (NotTheBaselineRoles).")
     if deploy and not deny_delete_in_prod:
         errors.append(f"{rid}: the prod deploy role needs an explicit deny of cloudformation:DeleteStack.")
 
@@ -227,7 +229,7 @@ def check_pins(name, template, errors):
         for part in key:
             try:
                 node = node[part]
-            except (KeyError, IndexError):
+            except (KeyError, IndexError, TypeError):
                 node = None
                 break
         if node != want:

@@ -62,9 +62,7 @@ printf '[Journal]\nSystemMaxUse=200M\nMaxRetentionSec=2week\n' > /etc/systemd/jo
 systemctl restart systemd-journald
 # Docker, and so the containers, never start before /data is mounted.
 mkdir -p /etc/systemd/system/docker.service.d
-printf '[Unit]
-RequiresMountsFor=/data
-' > /etc/systemd/system/docker.service.d/nse-data.conf
+printf '[Unit]\nRequiresMountsFor=/data\n' >/etc/systemd/system/docker.service.d/nse-data.conf
 systemctl daemon-reload
 systemctl enable --now docker
 if [ "$ENVIRONMENT" = prod ]; then
