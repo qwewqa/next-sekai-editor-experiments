@@ -2220,7 +2220,7 @@
     "tooLong": "名称过长"
   },
   "notice": {
-    "useOpenFile": "要打开文件，请使用“打开”。",
+    "useOpenFile": "要打开文件，请使用“打开…”。",
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",

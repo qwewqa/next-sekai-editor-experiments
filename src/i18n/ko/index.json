@@ -2220,7 +2220,7 @@
     "tooLong": "이름이 너무 깁니다"
   },
   "notice": {
-    "useOpenFile": "파일을 열려면 열기를 사용하세요.",
+    "useOpenFile": "파일을 열려면 열기…를 사용하세요.",
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
     "storageUnavailable": "편집기가 이 브라우저의 저장 공간에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",

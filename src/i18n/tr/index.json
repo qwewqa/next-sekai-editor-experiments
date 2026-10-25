@@ -2220,7 +2220,7 @@
     "tooLong": "Ad çok uzun"
   },
   "notice": {
-    "useOpenFile": "Bir dosya açmak için Aç’ı kullanın.",
+    "useOpenFile": "Bir dosya açmak için Aç…’ı kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",

@@ -2220,7 +2220,7 @@
     "tooLong": "名稱過長"
   },
   "notice": {
-    "useOpenFile": "要開啟檔案，請使用「開啟」。",
+    "useOpenFile": "要開啟檔案，請使用「開啟…」。",
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
