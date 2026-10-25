@@ -589,7 +589,7 @@ test('a late flush reaching past a replayed journal leaves no stack that isn’t
     assert.equal(outcomes[0]?.kind, 'applied')
     // Its flush lands late: entries up to the journal's are stored already, the last is new.
     await page.flusher.flush()
-    // The backstop skipped the entries the recovered entry covers and reported them (A3).
+    // The backstop skipped the entries the recovered entry covers and reported them.
     const [breach, ...rest] = page.errors as FlushOrderError[]
     assert.ok(breach instanceof FlushOrderError && rest.length === 0)
     assert.deepEqual(breach.breach.missing, [])

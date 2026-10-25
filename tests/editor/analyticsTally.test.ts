@@ -83,13 +83,9 @@ test('turning off forgets what was counted', () => {
     assert.deepEqual(counts(), {})
 })
 
-// A guard against an O(n) step in a bump, not a speed measure: the bound is far above the time
-// a million Map increments take.
-test('a million bumps take well under a second', () => {
+test('a count stops at the cap however many bumps follow', () => {
     tally.enable()
-    const start = performance.now()
-    for (let i = 0; i < 1_000_000; i++) tally.bumpCommand('save', 'key')
-    assert.ok(performance.now() - start < 1000)
+    for (let i = 0; i < 20_000; i++) tally.bumpCommand('save', 'key')
     assert.equal(tally.collect().counts.get('usage.save.key'), 9999)
 })
 

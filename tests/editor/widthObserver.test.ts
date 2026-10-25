@@ -43,6 +43,16 @@ test('a field fitted at the width the entry reports is not fitted again, a later
     assert.equal(field.fits(), 1)
 })
 
+test('a width recorded to six significant digits is not fitted again; a 1/64 px change is', () => {
+    const field = watched()
+    // The computed style gives 312.297 for the layout width 312.296875.
+    fittedAtWidth(field.element as Element, 312.297)
+    resize(field.element, 312.296875)
+    assert.equal(field.fits(), 0)
+    resize(field.element, 312.296875 + 1 / 64)
+    assert.equal(field.fits(), 1)
+})
+
 test('a field fitted while hidden fits when it first has a width', () => {
     const field = watched()
     fittedAtWidth(field.element as Element, NaN)
@@ -51,5 +61,12 @@ test('a field fitted while hidden fits when it first has a width', () => {
 })
 
 test('a width recorded for an element that is not observed is ignored', () => {
-    fittedAtWidth({} as Element, 400)
+    const field = watched()
+    const gone = {}
+    assert.doesNotThrow(() => fittedAtWidth(gone as Element, 400))
+    // The record did not start watching it: its entry fits nothing, and the observed field is unaffected.
+    resize(gone, 400)
+    assert.equal(field.fits(), 0)
+    resize(field.element, 400)
+    assert.equal(field.fits(), 1)
 })

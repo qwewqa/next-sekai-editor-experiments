@@ -379,7 +379,7 @@ export const resumeImports = async (deps: ResumeDeps) => {
             const target = read.storedValue
             const disk = target?.file?.disk
             const stored = disk ? await handleOf(worker, chainId, 'file') : undefined
-            // A handle that can't be read ends the import as a missing one does, as today (the
+            // A handle that can't be read ends the import as a missing one does (the
             // rows stay in the file, and a write-back append keeps them).
             const handle = stored?.storedRead === 'value' ? stored.storedValue : undefined
             let file: File | undefined

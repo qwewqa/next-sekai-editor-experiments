@@ -483,7 +483,7 @@ test('a non-English value is not identical to English, except where it is allowe
 })
 
 // Web strings never say draft, document or project, except "project file".
-// App-only keys, their prefixes and the "App" suffix are exempt; Stage 1 has none.
+// App-only keys, their prefixes and the "App" suffix are exempt. There are none before the native apps.
 const APP_ONLY_KEYS: string[] = []
 const APP_ONLY_PREFIXES: string[] = []
 

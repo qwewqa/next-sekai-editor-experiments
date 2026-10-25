@@ -1,7 +1,7 @@
 import type { Violation } from './invariants'
 import type { CellResult } from './matrix'
 
-// The violations the matrix finds on today's tree: the residuals the owner or lead ruled acceptable
+// The violations the matrix still finds, each accepted as a residual.
 // Each is a `todo` test in the matrix files that stays, so
 // it is visible. A violation not named here fails the matrix, so a regression or a new finding
 // cannot pass unnoticed.

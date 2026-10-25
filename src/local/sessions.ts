@@ -5,7 +5,7 @@ import { clientLock, sessionLock } from './locks'
 // never the worker, so a worker killed mid-flush takes none with it.
 
 /**
- * A lock with one owner at a time (A7). Whoever creates a lease releases it when it is done with
+ * A lock with one owner at a time. Whoever creates a lease releases it when it is done with
  * it, in a `finally`; a receiver lets the flusher take it or leaves it alone. Only the flusher
  * calls `take()`, as the first statements of the start that registers a session, so a lock passes
  * to the next holder only where that holder takes it. The raw release exists in this module only.
@@ -154,5 +154,5 @@ export class TabClient {
     }
 }
 
-/** A session's paste identity: per page load and per session opened, as today. */
+/** A session's paste identity: per page load and per session opened. */
 export { chartSessionId as pasteId } from '../history/chartSession'

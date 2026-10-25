@@ -8,8 +8,8 @@ import { resource } from './previewResourceFixture'
 // The Preview Assets dialog with From a Server, which
 // only the apps have: the page gets their capability from a test platform whose fetch asks fake
 // servers in Node (previewAssetsServers.ts). The web, with no servers, is tested too. With
-// A4_SHOTS_DIR set, each state is also saved there as a screenshot.
-const shotsDir = process.env.A4_SHOTS_DIR
+// SHOTS_DIR set, each state is also saved there as a screenshot.
+const shotsDir = process.env.SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
 
 const KEY = 'sonolus-next-sekai-editor.'

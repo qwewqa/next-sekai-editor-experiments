@@ -7,8 +7,8 @@ import { storedEntries } from '../timeline/helpers'
 import { openPage, testId, type Page } from './harness'
 import { createCheckedWorld as createWorld, checkedTest as test } from './sessionCheck'
 
-// A Save's reservation is identified by its object, and `Flusher.endSave` reports what it did
-//: each `EndSaveResult`, a second end that does nothing, and an end on a session
+// A Save's reservation is identified by its object, and `Flusher.endSave` reports what it did:
+// each `EndSaveResult`, a second end that does nothing, and an end on a session
 // that is no longer current.
 
 const begin = (page: Page, state = stateOf(goldenChart())) =>

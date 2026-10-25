@@ -117,7 +117,7 @@ export const loadNoticeOf: Handlers = {
     migratedRevision: () => ({
         order: LOAD_ORDER.migratedRevision,
         severity: 'warning',
-        // Today's warning on an older engine revision.
+        // Open's warning for an older engine revision.
         message: () => i18n.value.commands.open.revision.older,
     }),
     journalRecovered: (event) => ({

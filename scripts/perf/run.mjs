@@ -680,7 +680,7 @@ const scenarios = {
             }
         })
     },
-    // The note speed changed every frame for 2 s, as a slider drag does.
+    // The note speed changed every frame for 240 frames, as a slider drag does.
     async notespeed(page) {
         return page.evaluate(async () => {
             const P = window.nsePerf

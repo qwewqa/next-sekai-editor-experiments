@@ -325,8 +325,7 @@ const turningFrames = (color, start) => [
     }),
 ]
 
-// Traces at the note, in the tick quad (eight lanes across): kept lighter than the base's, as
-// the owner asked (scale).
+// Traces at the note, in the tick quad (eight lanes across): kept lighter than the base's.
 const traceScale = 0.3
 
 // Held slides loop over 1 s. A particle that runs past the end continues from the start; with

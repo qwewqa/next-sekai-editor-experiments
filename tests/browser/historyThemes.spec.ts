@@ -662,7 +662,7 @@ for (const scheme of schemes) {
     })
 }
 
-// --- Forced colours: basic function only (the owner's rule for niche accessibility)
+// --- Forced colours: basic function only (ui-review-checklist.md, "Niche modes")
 
 test('with forced colours the current and the focused rows keep an edge, and Restore works', async ({
     page,

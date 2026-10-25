@@ -36,7 +36,7 @@ for (const chart of charts) {
                 // The hide's write: the whole state, as a trigger makes it.
                 window.nseFlushTest!.journal.writer!.write()
             }, i)
-        // Today's auto save write of the same state, for comparison.
+        // The old auto save's write of the same state, for comparison.
         const autoSave = await page.evaluate(async () => {
             const { history, appImport } = window.editorTest
             const { serializeToLevelData } = await appImport<
@@ -103,7 +103,7 @@ for (const chart of charts) {
         testInfo.annotations.push({ type: 'journal-timing', description: JSON.stringify(figures) })
         // The budget is coconut's; the generated chart, a little larger, is recorded against it.
         if (chart.optional) expect(figures.writeMs).toBeLessThan(40)
-        // No slower than today's auto save write on hide, with a little room for noise.
+        // No slower than the old auto save's write on hide, with a little room for noise.
         expect(figures.writeMs).toBeLessThan(figures.autoSaveMs * 1.25)
         expect(figures.replayMs).toBeLessThan(300)
     })

@@ -49,10 +49,10 @@ export function checkNewVersion(version, tags) {
 export const isPatchVersion = (version) => Number(version.split('.')[2]) > 0
 
 /**
- * The format versions the build writes, in the source (4.2.5 step 2; docs/format-versioning.md).
+ * The format versions the build writes, in the source (docs/format-versioning.md).
  * `RECORDS_V` is also the root `v`. The `.nxsp` major and the manifest version are written to
  * files too. The IndexedDB `DB_VERSION`/`FORMAT_VERSION` are left out: a fix may raise them to
- * stop old tabs. There is no app-data `formatVersion` in the source yet.
+ * stop old tabs.
  */
 export const formatConstants = [
     { name: 'LEVEL_VERSION', file: 'src/levelData/levelVersion.ts' },
@@ -102,7 +102,7 @@ export function checkPatchFormats(version, newest, before, after) {
     )
 }
 
-/** The local checks of 4.2.3's step 2, for a branch that CI does not check before the tag. */
+/** The local checks for a branch that CI does not check before the tag (CONTRIBUTING, Releasing). */
 export const localChecks = [
     'npm run check-type',
     'npm run check-lint',
