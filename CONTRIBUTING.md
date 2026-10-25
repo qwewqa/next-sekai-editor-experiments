@@ -143,7 +143,7 @@ Read this before you measure or optimize scrolling or playback:
 4. For a fix while `main` holds unfinished work, make a branch from the last tag, commit the fix there and run the script on it. CI does not check that branch before the tag, so the script prints the local checks to run first. Merge the branch into `main` afterwards.
 5. After the deploy, check the live site: `PRODUCTION_TEST_URL=https://nse.qwewqa.dev npm run test:production`.
 
-The AWS services in `infra/` are not part of a release. They deploy by hand, through the workflows in `infra/stats/README.md`, and never with a tag.
+The AWS services in `infra/` are not part of a release. They deploy by hand, by the steps in `infra/README.md` and `infra/stats/README.md`, and never with a tag.
 
 ## Forks
 

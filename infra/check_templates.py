@@ -146,7 +146,7 @@ def check_types_and_tags(name, service, template, readme, errors):
     for rid, res in template["Resources"].items():
         kind = res["Type"]
         if kind not in table:
-            errors.append(f"{name}: {rid} is {kind}, which is not reviewed. Add it to SERVICES with a cost note.")
+            errors.append(f"{name}: {rid} is {kind}, a resource type that has not been reviewed. Add it to SERVICES with a cost note.")
             continue
         tag_property, cost, _ = table[kind]
         if cost and kind not in readme:
