@@ -1,8 +1,8 @@
 import Type from 'typebox'
 import Value from 'typebox/value'
 import { shallowRef, watch } from 'vue'
-import { noteStyles, noteStyleSchema } from './chart/noteStyle'
-import { easeEdits, type EaseEdit } from './ease'
+import { noteStyles } from './chart/noteStyle'
+import type { EaseEdit } from './ease'
 import type { CommandName } from './editor/commands'
 import { normalizeBinding } from './editor/controls/bindings'
 import { migrateToolbar } from './editor/toolbar/migrate'
@@ -21,6 +21,10 @@ import {
     previewTransportPositions,
 } from './preview/options'
 import { registerSettingKeys } from './safe'
+import {
+    defaultNoteSlidePropertiesSchema,
+    type DefaultNoteSlideProperties,
+} from './settings/defaultProperties'
 import { insertExportLevel } from './settings/toolbarExport'
 import { insertMinimap } from './settings/toolbarMinimap'
 import { insertPreviewAssets } from './settings/toolbarPreviewAssets'
@@ -30,6 +34,8 @@ import { storageGet, storageRemove, storageSet } from './storage'
 import { themes, type Theme } from './themes'
 import { clamp } from './utils/math'
 
+export type { DefaultNoteSlideProperties }
+
 /** The minimap strip's width in CSS pixels: the default and the range the user can set. */
 export const MINIMAP_WIDTH = { default: 40, min: 24, max: 160 }
 
@@ -37,77 +43,6 @@ const number = (def: number, min: number, max: number) =>
     Type.Codec(Type.Number({ default: def }))
         .Decode((value) => clamp(value, min, max))
         .Encode((value) => value)
-
-const defaultNoteSlidePropertiesSchema = Type.Intersect([
-    Type.Partial(
-        Type.Object({
-            elevation: Type.Number(),
-            noteStyle: noteStyleSchema,
-            connectorStyle: noteStyleSchema,
-            noteType: Type.Union([
-                Type.Literal('default'),
-                Type.Literal('trace'),
-                Type.Literal('anchor'),
-                Type.Literal('damage'),
-                Type.Literal('forceTick'),
-                Type.Literal('forceNonTick'),
-            ]),
-            isAttached: Type.Boolean(),
-            isCritical: Type.Boolean(),
-            flickDirection: Type.Union([
-                Type.Literal('none'),
-                Type.Literal('up'),
-                Type.Literal('upLeft'),
-                Type.Literal('upRight'),
-                Type.Literal('down'),
-                Type.Literal('downLeft'),
-                Type.Literal('downRight'),
-            ]),
-            isFake: Type.Boolean(),
-            sfx: Type.Union([
-                Type.Literal('default'),
-                Type.Literal('none'),
-                Type.Literal('normalTap'),
-                Type.Literal('criticalTap'),
-                Type.Literal('normalFlick'),
-                Type.Literal('criticalFlick'),
-                Type.Literal('normalTrace'),
-                Type.Literal('criticalTrace'),
-                Type.Literal('normalTick'),
-                Type.Literal('criticalTick'),
-                Type.Literal('damage'),
-            ]),
-            isConnectorSeparator: Type.Boolean(),
-            connectorType: Type.Union([
-                Type.Literal('active'),
-                Type.Literal('guide'),
-                Type.Literal('damage'),
-            ]),
-            connectorEase: Type.Unsafe<EaseEdit>(
-                Type.Union(easeEdits.map((value) => Type.Literal(value))),
-            ),
-            connectorIsFake: Type.Boolean(),
-            connectorActiveIsCritical: Type.Boolean(),
-            connectorGuideAlpha: Type.Number(),
-            connectorLayer: Type.Union([
-                Type.Literal('top'),
-                Type.Literal('bottom'),
-                Type.Literal('under'),
-                Type.Literal('over'),
-            ]),
-            connectorIsPassThrough: Type.Boolean(),
-            connectorPresentation: Type.Union([
-                Type.Literal('default'),
-                Type.Literal('fullscreen'),
-            ]),
-        }),
-    ),
-    Type.Object({
-        copyProperties: Type.Boolean({ default: true }),
-    }),
-])
-
-export type DefaultNoteSlideProperties = Type.Static<typeof defaultNoteSlidePropertiesSchema>
 
 const panelPosition = Type.Union([
     Type.Literal('auto'),
