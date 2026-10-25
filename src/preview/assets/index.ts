@@ -1,7 +1,7 @@
 import defaults, { firstPaintBackgroundUrl } from '#asset-defaults'
 import { settings } from '../../settings'
 import { builtinProviders } from './builtin'
-import { assetTypes } from './choice'
+import { assetTypes, choiceKey } from './choice'
 import { lazyStoredProviders } from './files/lazy'
 import { createAssetLoader } from './loader'
 import { isAssetSafeMode } from './safeMode'
@@ -43,3 +43,16 @@ export const assetSession = createAssetSession({
 
 /** Whether the choices are being ignored (the dialog says so in place of a reason). */
 export const isAssetSafeModeActive = safeMode
+
+/**
+ * Stores the choices an import made. Importing a package again gives it the same key, which the
+ * session's watcher cannot see, so a type whose choice key did not change loads again here.
+ */
+export const applyAssetChoices = (choices: Partial<Record<AssetType, AssetChoice>>) => {
+    const before = settings.previewAssets
+    settings.previewAssets = { ...before, ...choices }
+    for (const type of assetTypes) {
+        const choice = choices[type]
+        if (choice && choiceKey(choice) === choiceKey(before[type])) assetSession.reload(type)
+    }
+}

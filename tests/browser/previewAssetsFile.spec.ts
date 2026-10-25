@@ -553,6 +553,48 @@ test.describe('a stored item that is gone', () => {
         await expect(fallbackLine(page, 'skin')).toHaveCount(0)
     })
 
+    test('Choose Again with the same package, which has the same key, uses it again', async ({
+        page,
+    }) => {
+        await start(page)
+        await open(page, 'skin')
+        const bytes = await variants('skin', [
+            { name: 'neon', title: 'Neon Skin', author: 'Someone' },
+        ])
+        await importFile(page, 'skin', 'neon.scp', bytes)
+        const first = (await choices(page)).skin
+        expect(first?.source).toBe('file')
+        await expect.poll(async () => (await slot(page, 'skin')).title).toBe('Neon Skin')
+
+        // Its bytes go while the choice stays, and the skin loads again, as after a reload.
+        await page.evaluate(async (key) => {
+            const [{ workerStore }, { assetSession }] = await Promise.all([
+                window.editorTest.appImport<typeof import('../../src/preview/assets/files/store')>(
+                    '/src/preview/assets/files/store.ts',
+                ),
+                window.editorTest.appImport<typeof import('../../src/preview/assets')>(
+                    '/src/preview/assets/index.ts',
+                ),
+            ])
+            await workerStore.remove(key!)
+            assetSession.reload('skin')
+        }, first?.key)
+        await expect(dialog(page).locator('[data-asset-note]')).toContainText(
+            'Using Default. The skin file is no longer stored in this browser.',
+        )
+
+        await dialog(page).locator('[data-asset-choose-again]').click()
+        await pick(page, 'neon.scp', bytes)
+        await chooser(page).locator('[data-chooser-use]').click()
+        await expect(chooser(page)).toHaveCount(0)
+        // The package is stored under the choice's key, so the choice itself did not change.
+        expect((await choices(page)).skin).toEqual(first)
+        await expect(dialog(page).locator('[data-asset-note]')).toHaveCount(0)
+        await expect(fallbackLine(page, 'skin')).toHaveCount(0)
+        await expect.poll(async () => (await slot(page, 'skin')).title).toBe('Neon Skin')
+        expect((await slot(page, 'skin')).status).toMatchObject({ active: 'chosen' })
+    })
+
     test('a stored package that cannot be read says so, in the panel and in the dialog', async ({
         page,
     }) => {
