@@ -14,6 +14,13 @@ const timingSpecs = [
 // (previewWorker.spec.ts sets each host itself).
 const previewHostSpecs = ['preview.spec.ts', 'previewSelection.spec.ts']
 const baseURL = `http://127.0.0.1:${port}`
+// Which host draws the preview, whatever the setting says.
+const previewHost = (value: 'main' | 'worker') => ({
+    storageState: {
+        cookies: [],
+        origins: [{ origin: baseURL, localStorage: [{ name: 'nse.test.previewHost', value }] }],
+    },
+})
 
 export default defineConfig({
     testDir: './tests/browser',
@@ -39,28 +46,17 @@ export default defineConfig({
         },
     },
     projects: [
-        { name: 'chromium', testIgnore: timingSpecs },
-        {
-            name: 'chromium-worker',
-            testMatch: previewHostSpecs,
-            use: {
-                storageState: {
-                    cookies: [],
-                    origins: [
-                        {
-                            origin: baseURL,
-                            localStorage: [{ name: 'nse.test.previewHost', value: 'worker' }],
-                        },
-                    ],
-                },
-            },
-        },
+        // The specs were written for the main host, which these projects keep; the preview's
+        // specs run again in the worker host, the default where the browser can run it.
+        { name: 'chromium', testIgnore: timingSpecs, use: previewHost('main') },
+        { name: 'chromium-worker', testMatch: previewHostSpecs, use: previewHost('worker') },
         // Measures real frame timing, so it runs alone after the parallel batch.
         // In npx playwright test any chromium failure skips it; npm run test:browser
         // runs it after chromium regardless, and npm run test:timing runs it alone.
         {
             name: 'timing',
             testMatch: timingSpecs,
+            use: previewHost('main'),
             dependencies: ['chromium'],
             workers: 1,
             // Its own folder, so running it after chromium keeps chromium's failure output.

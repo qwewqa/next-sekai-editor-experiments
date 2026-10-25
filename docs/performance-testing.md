@@ -41,7 +41,7 @@ Options:
 - `--no-build` reuses the last build.
 - `--url` measures a server you started yourself, such as the dev server. The dev server needs `NSE_PERF=1` too.
 - `--affinity` and `--priority` pin the run (see "Where the processes run").
-- `--preview-host main` or `worker` sets the host that draws the preview (`docs/rendering.md`), whatever the setting says; a group's `previewHost` sets it for one group. Without either, the host follows Settings › Preview › Parallel Rendering. Each record's `info.previewHost` names the host that drew.
+- `--preview-host main` or `worker` sets the host that draws the preview (`docs/rendering.md`), whatever the setting says; a group's `previewHost` sets it for one group. Without either, the host follows Settings › Preview › Parallel Rendering, which is on by default. Each record's `info.previewHost` names the host that drew.
 
 ## The probes
 

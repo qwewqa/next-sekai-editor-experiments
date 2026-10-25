@@ -182,6 +182,14 @@ test('a skin switch moves the new atlas to the worker, which keeps drawing', asy
     expect(await hostOf(page)).toBe('worker')
 })
 
+test('by default the preview draws in its worker', async ({ page }) => {
+    await open(page, {})
+    expect(await hostOf(page)).toBe('worker')
+    expect(await page.evaluate(() => window.editorTest.settings.previewInWorker)).toBe(true)
+    await expect.poll(() => page.evaluate(() => window.previewTest.frames)).toBeGreaterThan(0)
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
+})
+
 test('the setting moves the preview between hosts at once, and it keeps drawing', async ({
     page,
 }) => {
