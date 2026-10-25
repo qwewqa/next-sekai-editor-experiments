@@ -459,7 +459,16 @@ export const decodeOperation = (raw: JsonValue): DecodedOperation => {
     return { status: 'unsupported', raw, ...(fallback ? { fallback } : {}) }
 }
 
-export const captureOperation = (value: unknown) => captureJson(value)
+/** The operations this function returned: frozen, so one captured again is returned as it is. */
+const capturedOperations = new WeakSet()
+
+export const captureOperation = (value: unknown): JsonValue => {
+    if (typeof value === 'object' && value !== null && capturedOperations.has(value))
+        return value as JsonValue
+    const captured = captureJson(value)
+    if (typeof captured === 'object' && captured !== null) capturedOperations.add(captured)
+    return captured
+}
 
 export const createOperation = (
     input: NativeOperationInput,

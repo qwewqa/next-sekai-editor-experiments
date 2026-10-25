@@ -240,6 +240,57 @@ export const dumpLocalStorage = (storage: Storage, prefix: string) => {
     return out
 }
 
+/** The longest one task spends encoding the dump. */
+const ENCODE_SLICE_MS = 16
+
+/** A new task, through a message: timers are slowed to once a second or less in a hidden tab. */
+const nextTask = () =>
+    new Promise<void>((resolve) => {
+        const channel = new MessageChannel()
+        channel.port1.onmessage = () => {
+            channel.port1.close()
+            resolve()
+        }
+        channel.port2.postMessage(null)
+    })
+
+/**
+ * A dump's JSON as UTF-8 bytes, written a record at a time with a task between slices, so a dump
+ * of tens of megabytes never takes one long task. It parses to the same value as
+ * `JSON.stringify(dump)`; its keys come in another order.
+ */
+export const dumpJsonBytes = async (dump: Dump): Promise<Uint8Array<ArrayBuffer>[]> => {
+    const encoder = new TextEncoder()
+    const parts: Uint8Array<ArrayBuffer>[] = []
+    let text = ''
+    let since = performance.now()
+    const add = async (piece: string) => {
+        text += piece
+        if (performance.now() - since <= ENCODE_SLICE_MS) return
+        parts.push(encoder.encode(text))
+        text = ''
+        await nextTask()
+        since = performance.now()
+    }
+    // Each object's other keys, open for its last key: `{"a":1,` or `{`.
+    const opening = (value: Record<string, unknown>) => {
+        const json = JSON.stringify(value)
+        return json === '{}' ? '{' : `${json.slice(0, -1)},`
+    }
+    const { stores, ...rest } = dump
+    await add(`${opening(rest)}"stores":[`)
+    for (const [i, store] of stores.entries()) {
+        const { records, ...meta } = store
+        await add(`${i ? ',' : ''}${opening(meta)}"records":[`)
+        for (const [j, record] of records.entries())
+            await add(`${j ? ',' : ''}${JSON.stringify(record)}`)
+        await add(']}')
+    }
+    text += ']}'
+    parts.push(encoder.encode(text))
+    return parts
+}
+
 /**
  * Dumps every store of an open database, read in one transaction with plain cursors. Blobs are
  * read after it commits, since reading one would end the transaction. With `blobEntries` no Blob
@@ -267,12 +318,30 @@ export const dumpDatabase = async (
         : []
     const values = read.flatMap(({ entries }) => entries.map((entry) => entry.value))
     const blobTag = blobEntries ? await entryTags(values, blobEntries) : await inlineTags(values)
+    // Encoded in slices of about a frame, with a task between them: a long history is tens of
+    // megabytes of base64, and Export Raw Data… runs on the page.
+    let since = performance.now()
+    const encoded: DumpRecord[][] = []
+    for (const { entries } of read) {
+        const records: DumpRecord[] = []
+        for (const entry of entries) {
+            records.push({
+                key: encodeValue(entry.primaryKey, blobTag),
+                value: encodeValue(entry.value, blobTag),
+            })
+            if (performance.now() - since > ENCODE_SLICE_MS) {
+                await nextTask()
+                since = performance.now()
+            }
+        }
+        encoded.push(records)
+    }
     return {
         format: DUMP_FORMAT,
         version: DUMP_VERSION,
         appVersion,
         database: { name: db.name, version: db.version },
-        stores: read.map(({ name, info, entries }) => ({
+        stores: read.map(({ name, info }, i) => ({
             name,
             keyPath: info.keyPath,
             autoIncrement: false,
@@ -284,10 +353,7 @@ export const dumpDatabase = async (
                     unique: false,
                     multiEntry: false,
                 })),
-            records: entries.map((entry) => ({
-                key: encodeValue(entry.primaryKey, blobTag),
-                value: encodeValue(entry.value, blobTag),
-            })),
+            records: encoded[i] ?? [],
         })),
         localStorage,
     }

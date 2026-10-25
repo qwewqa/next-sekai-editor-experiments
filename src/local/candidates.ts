@@ -1,8 +1,8 @@
 import { readMeta } from './db'
 import type { KvTx } from './kv/types'
 import type { NameParts } from './names'
-import { readRecent, type RecentFile, type RecentReadable } from './recent'
-import { fileAtOf, ids, sessionsOf } from './removal'
+import { readRecentChains, type RecentFile, type RecentReadable } from './recent'
+import { fileAtOf, ids } from './removal'
 import { nextTime } from './time'
 
 // What Delete Sessions… reads of the stored chains,
@@ -38,17 +38,15 @@ export type DeleteCandidates = { now: number; chains: DeleteCandidate[] }
 export const readDeleteCandidates = async (tx: KvTx, wall: number): Promise<DeleteCandidates> => {
     const now = nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, wall)
     const chains: DeleteCandidate[] = []
-    for (const recent of await readRecent(tx)) {
-        const record = (await tx.get('chains', recent.chainId)) as
-            Record<string, unknown> | undefined
+    for (const { recent, record, sessions } of await readRecentChains(tx)) {
         const { file } = recent
-        const fileAt = record ? fileAtOf(record) : undefined
+        const fileAt = fileAtOf(record)
         chains.push({
             chainId: recent.chainId,
             ...(recent.head.sessionId ? { head: recent.head.sessionId } : {}),
             updatedAt: recent.updatedAt,
             ...(fileAt === undefined ? {} : { fileAt }),
-            sessions: ids(await sessionsOf(tx, recent.chainId)),
+            sessions: ids([...sessions].sort((a, b) => Number(a.startedAt) - Number(b.startedAt))),
             startedAt: recent.head.startedAt,
             nameParts: recent.nameParts,
             readable: recent.readable,
@@ -61,7 +59,7 @@ export const readDeleteCandidates = async (tx: KvTx, wall: number): Promise<Dele
                   }
                 : {}),
             changed: recent.changed,
-            hasContent: record?.hasContent === true,
+            hasContent: record.hasContent === true,
         })
     }
     return { now, chains }

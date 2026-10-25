@@ -8,6 +8,7 @@ import { estimateSaveSize } from '../save/estimate'
 import { buildSave, setBuiltHookForTests, type SaveSourceFile } from '../save/execute'
 import { readReplaceDecision, readSaveNeeds } from '../save/predicate'
 import type { WorkerContext } from './handlers'
+import type { CallScope } from './rpc'
 
 // The storage worker's methods for the shared writer: a
 // Save's build, the Save dialogs' size estimate, and the conflict dialog's Replace guard. The
@@ -46,10 +47,16 @@ const breakAppend = (plan: WritePlan): WritePlan => ({
 })
 
 export const saveHandlers = (context: WorkerContext) => {
-    const store: SaveStore = {
-        read: (stores, fn) => context.core.read(stores, fn),
-        write: (stores, fn, options) => context.core.write(stores, fn, options),
+    /** The store, with each transaction ticking the call's progress when a scope is given. */
+    const storeOf = (scope?: CallScope): SaveStore => {
+        const progress = scope ? { tick: scope.tick } : {}
+        return {
+            read: (stores, fn) => context.core.read(stores, fn, progress),
+            write: (stores, fn, options) =>
+                context.core.write(stores, fn, { ...options, ...progress }),
+        }
     }
+    const store = storeOf()
     return {
         buildSave: ({ chainId, target, options, sources = [] }: BuildSaveRequest) =>
             buildSave(
@@ -62,16 +69,23 @@ export const saveHandlers = (context: WorkerContext) => {
                 },
                 sources,
             ),
-        estimateSaveSize: ({
-            chainId,
-            sessionId,
-            bgm,
-        }: {
-            chainId: string
-            sessionId?: string
-            bgm?: string
-        }) =>
-            estimateSaveSize(store, chainId, {
+        /**
+         * Each read moves the call's progress: an estimate made while an open's import writes the
+         * chain waits for its transactions, and must not be taken for a hung worker.
+         */
+        estimateSaveSize: (
+            {
+                chainId,
+                sessionId,
+                bgm,
+            }: {
+                chainId: string
+                sessionId?: string
+                bgm?: string
+            },
+            scope?: CallScope,
+        ) =>
+            estimateSaveSize(storeOf(scope), chainId, {
                 ...(sessionId === undefined ? {} : { sessionId }),
                 ...(bgm === undefined ? {} : { bgm }),
             }),

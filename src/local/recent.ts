@@ -55,8 +55,7 @@ const fileOf = (value: unknown): RecentFile | undefined => {
 }
 
 /** One session of the chain this build can't read makes the chain unreadable. */
-const readabilityOf = async (tx: KvTx, chainId: string, head: Row | undefined) => {
-    const sessions = await tx.index('sessions', 'chainId').getAll(chainId)
+const readabilityOf = (sessions: readonly Row[], head: Row | undefined) => {
     let readable: RecentReadable = head ? 'yes' : 'damaged'
     for (const row of [head, ...sessions]) {
         if (!isRow(row)) {
@@ -70,26 +69,51 @@ const readabilityOf = async (tx: KvTx, chainId: string, head: Row | undefined) =
     return readable
 }
 
-/** Every listed chain, newest first. */
-export const readRecent = async (tx: KvTx): Promise<RecentChain[]> => {
-    const out: RecentChain[] = []
-    const chains = await tx.entries('chains', { index: 'updatedAt', direction: 'prev' })
-    for (const { value } of chains) {
-        if (!isRow(value) || value.deleting !== undefined || typeof value.chainId !== 'string')
-            continue
+/** A listed chain with its stored record and its sessions, in key order. */
+export type RecentRead = { recent: RecentChain; record: Row; sessions: Row[] }
+
+/**
+ * Every listed chain, newest first, with its record and sessions. The chains are one cursor and
+ * the sessions one read; only the heads' stack blocks are read per chain, all at once.
+ */
+export const readRecentChains = async (tx: KvTx): Promise<RecentRead[]> => {
+    const records = (await tx.entries('chains', { index: 'updatedAt', direction: 'prev' }))
+        .map(({ value }) => value)
+        .filter(
+            (value): value is Row =>
+                isRow(value) && value.deleting === undefined && typeof value.chainId === 'string',
+        )
+    const byId = new Map<unknown, Row>()
+    const byChain = new Map<string, Row[]>()
+    for (const row of await tx.getAll('sessions')) {
+        if (!isRow(row)) continue
+        byId.set(row.id, row)
+        if (typeof row.chainId !== 'string') continue
+        const list = byChain.get(row.chainId)
+        if (list) list.push(row)
+        else byChain.set(row.chainId, [row])
+    }
+    const heads = records.map((record) =>
+        typeof record.head === 'string' && record.head ? byId.get(record.head) : undefined,
+    )
+    const roots = await Promise.all(
+        heads.map((head) => (head ? headOf(tx, head) : Promise.resolve(undefined))),
+    )
+    return records.map((value, i) => {
+        const chainId = value.chainId as string
+        const head = heads[i]
+        const sessions = byChain.get(chainId) ?? []
         const sessionId = typeof value.head === 'string' ? value.head : ''
-        const session = sessionId ? await tx.get('sessions', sessionId) : undefined
-        const head = isRow(session) ? session : undefined
         const updatedAt = count(value.updatedAt) ?? 0
         const file = fileOf(value.file)
-        const root = head ? await headOf(tx, head) : undefined
+        const root = roots[i]
         const hash = isRow(value.file) ? value.file.hash : undefined
         const changed =
             !!file && (!(hash instanceof Uint8Array) || !root || !equalBytes(root, hash))
         const summary = isRow(value.summary) ? value.summary : undefined
         const noteCount = count(summary?.noteCount)
-        out.push({
-            chainId: value.chainId,
+        const recent: RecentChain = {
+            chainId,
             updatedAt,
             head: {
                 sessionId,
@@ -100,11 +124,15 @@ export const readRecent = async (tx: KvTx): Promise<RecentChain[]> => {
             ...(file ? { file } : {}),
             changed,
             ...(noteCount === undefined ? {} : { noteCount }),
-            readable: await readabilityOf(tx, value.chainId, head),
-        })
-    }
-    return out
+            readable: readabilityOf(sessions, head),
+        }
+        return { recent, record: value, sessions }
+    })
 }
+
+/** Every listed chain, newest first. */
+export const readRecent = async (tx: KvTx): Promise<RecentChain[]> =>
+    (await readRecentChains(tx)).map(({ recent }) => recent)
 
 /** The list, or its failure. The caller shows a failed read as such, never as "No changes yet". */
 export const listRecent = (worker: ReadWorker): Promise<StoredRead<RecentChain[]>> =>

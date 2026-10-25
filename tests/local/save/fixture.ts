@@ -115,6 +115,8 @@ export class Fixture {
     readonly world: World
     readonly tab: Tab
     readonly store: SaveStore
+    /** The storage core, for the worker's handlers. */
+    core!: ReturnType<typeof workerCore>
     readonly chainId = nextId('chain-')
     readonly docId = nextId('doc-')
     sessions: FixtureSession[] = []
@@ -139,6 +141,7 @@ export class Fixture {
             write: (stores, fn, options) => tab.run(() => core.write(stores, fn, options)),
         }
         const fixture = new Fixture(world, tab, store)
+        fixture.core = core
         await fixture.putChain({ docId: fixture.docId, lineageId: 'lineage' })
         return fixture
     }

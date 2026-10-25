@@ -125,7 +125,7 @@ The `act` scenario measures one user action at a time (`scripts/perf/actions.mjs
 - `eventMax`: the longest Event Timing entry for the inputs (16 ms and over), and `keyEvents`, the count, percentiles and maximum of a held key's entries;
 - `longestTask` and `longestLoaf`: the longest task and long animation frame between the input and the result (50 ms and over), and `tailTask`, the longest task in the time the action keeps watching after the result;
 - `frameP50`, `frameP95` and `frameMax`: frame intervals between the input and the result;
-- the action's own figures: `bytes` of a download, `imported` (when the background import after Open finished), and the times of Go To's index reads.
+- the action's own figures: `bytes` of a download, `imported` (when the background import after Open finished), and the times of Go To's index reads. Compare `bytes` between builds too: a Save during an import that writes less than the file it opened has left Timeline steps out.
 
 Actions, by `action`:
 
