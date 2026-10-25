@@ -55,23 +55,6 @@ watch(
         />
 
         <SelectField
-            v-model="settings.elevationEditorSideBySide"
-            :label="i18n.settings.editor.elevationSideBySide"
-            :options="[
-                [i18n.elevation.auto, 'auto'],
-                [i18n.elevation.allow, 'allow'],
-                [i18n.elevation.disallow, 'disallow'],
-            ]"
-        />
-
-        <ToggleField
-            v-model="settings.elevationConnectorArrows"
-            :label="i18n.settings.editor.elevationConnectorArrows"
-        />
-
-        <ToggleField v-model="showMinimap" :label="i18n.settings.editor.minimap" />
-
-        <SelectField
             v-model="settings.beatDisplay"
             :label="i18n.settings.editor.beatDisplay.title"
             :options="[
@@ -101,15 +84,12 @@ watch(
             ]"
         />
 
-        <NumberField
-            v-model="settings.maxScrollX"
-            :label="i18n.settings.editor.maxScrollX"
-            :min="0"
+        <ToggleField v-model="showMinimap" :label="i18n.settings.editor.minimap" />
+
+        <ToggleField
+            v-model="settings.dimUnchangedObjects"
+            :label="i18n.settings.editor.dimUnchangedObjects"
         />
-
-        <ToggleField v-model="settings.dragToPanY" :label="i18n.settings.editor.dragToPanY" />
-
-        <ToggleField v-model="settings.dragToPanX" :label="i18n.settings.editor.dragToPanX" />
 
         <ToggleField v-model="settings.showGroupName" :label="i18n.settings.editor.showGroupName" />
 
@@ -142,14 +122,34 @@ watch(
 
         <ToggleField v-model="settings.nameContrast" :label="i18n.settings.editor.nameContrast" />
 
+        <NumberField
+            v-model="settings.maxScrollX"
+            :label="i18n.settings.editor.maxScrollX"
+            :min="0"
+        />
+
+        <ToggleField v-model="settings.dragToPanY" :label="i18n.settings.editor.dragToPanY" />
+
+        <ToggleField v-model="settings.dragToPanX" :label="i18n.settings.editor.dragToPanX" />
+
         <ToggleField
             v-model="settings.deselectSwitchesToSelect"
             :label="i18n.settings.editor.deselectSwitchesToSelect"
         />
 
+        <SelectField
+            v-model="settings.elevationEditorSideBySide"
+            :label="i18n.settings.editor.elevationSideBySide"
+            :options="[
+                [i18n.elevation.auto, 'auto'],
+                [i18n.elevation.allow, 'allow'],
+                [i18n.elevation.disallow, 'disallow'],
+            ]"
+        />
+
         <ToggleField
-            v-model="settings.dimUnchangedObjects"
-            :label="i18n.settings.editor.dimUnchangedObjects"
+            v-model="settings.elevationConnectorArrows"
+            :label="i18n.settings.editor.elevationConnectorArrows"
         />
     </SettingsSection>
 </template>
