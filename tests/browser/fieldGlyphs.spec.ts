@@ -276,7 +276,8 @@ test('keyboard shortcuts show each command icon before its name', async ({ page 
         .locator('dialog[open] section')
         .filter({ has: page.getByRole('heading', { name: 'Keyboard Shortcuts', exact: true }) })
     const rows = section.locator('.form-field')
-    await expect(rows.first()).toBeVisible()
+    // Settings mounts its shortcut rows in batches after it opens; About comes after the last.
+    await expect(page.locator('[data-settings-section="about"]')).toBeAttached()
     const count = await rows.count()
     expect(count).toBeGreaterThan(50)
     await expect(section.locator('.form-field-icon[aria-hidden="true"] > *')).toHaveCount(count)
