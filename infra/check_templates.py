@@ -232,7 +232,7 @@ def check_pins(name, template, errors):
                 break
         if node != want:
             errors.append(
-                f"{'/'.join(key)} is {node!r}, pinned at {want!r}. It sets the monthly cost: "
+                f"{'/'.join(map(str, key))} is {node!r}, pinned at {want!r}. It sets the monthly cost: "
                 "update the cost table in the runbook and COST_PINS here."
             )
 
