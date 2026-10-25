@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { executePlan, planNxsp } from '../../src/local/nxsp'
+import { readFile } from 'node:fs/promises'
+import { executePlan, planNxsp, readNxsp } from '../../src/local/nxsp'
 import { fresh } from '../local/nxsp/chain'
 import { damagedFile } from '../local/open/files'
 import { closePage, waitForStartup } from './editorFixture'
@@ -14,6 +15,7 @@ import {
     saveDialog,
     sessionOf,
     start,
+    submitSave,
     writeFile,
 } from './saveFlows'
 
@@ -253,4 +255,61 @@ test('a progress listener that throws does not fail the import', async ({ page }
     expect(
         await page.evaluate(() => (window as unknown as { heard: number }).heard),
     ).toBeGreaterThan(0)
+})
+
+test('a worker restart during the import of a file picked without a handle: a Save keeps every row', async ({
+    page,
+}) => {
+    await start(page, { fileSystemAccess: false })
+    await slowImport(page, 600)
+    // Once armed, the next batch's call is cut off by a restart as soon as it is posted.
+    await page.evaluate(async () => {
+        const { storageWorker } = await import('/src/local/start.ts')
+        const worker = storageWorker!
+        const call = worker.call.bind(worker)
+        const inner = worker as unknown as {
+            restart: (generation: number, why: string) => void
+            generation: number
+        }
+        const seen = window as unknown as { armed?: boolean; cutOff?: string }
+        worker.call = (async (method: string, ...rest: unknown[]) => {
+            const reply = (call as (...args: unknown[]) => Promise<unknown>)(method, ...rest)
+            if (method !== 'openBatch' || !seen.armed) return reply
+            seen.armed = false
+            // The call is posted after the client's wait for a ready worker, a few microtasks on.
+            for (let i = 0; i < 10; i++) await Promise.resolve()
+            inner.restart(inner.generation, 'a test restarted it')
+            return reply.catch((error: Error) => {
+                seen.cutOff = error.name
+                throw error
+            })
+        }) as typeof worker.call
+    })
+    const choosing = page.waitForEvent('filechooser')
+    await page.keyboard.press('o')
+    await (
+        await choosing
+    ).setFiles({
+        name: 'coconut.nxsp',
+        mimeType: 'application/octet-stream',
+        buffer: Buffer.from(await freshBytes()),
+    })
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+    // Armed once the open is shown, so the restart cuts off only the import's call.
+    await page.evaluate(() => {
+        ;(window as unknown as { armed?: boolean }).armed = true
+    })
+    await edit(page, 9)
+    const downloading = page.waitForEvent('download')
+    await pressSave(page)
+    await submitSave(page)
+    const download = await downloading
+    expect(await page.evaluate(() => (window as unknown as { cutOff?: string }).cutOff)).toBe(
+        'WorkerRestartedError',
+    )
+    const read = await readNxsp(new Blob([await readFile(await download.path())]))
+    if (read.kind !== 'nxsp' || !read.history) throw new Error('The saved file has no history')
+    // The file's four rows, the open's own, the edit and the save.
+    expect(read.history.entries).toHaveLength(7)
+    expect(read.history.entries.filter((entry) => entry.kept === false)).toEqual([])
 })
