@@ -150,8 +150,8 @@ test('a stack rebuilt over a stored parent that a later entry cuts below its win
     const a = stateOf(goldenChart())
     const b = widen(a)
     const parent = beginIn(page, a)
-    // Over 5,000 slots: the parent's stored window starts above slot 0.
-    for (let i = 1; i < 6_000; i++)
+    // Over 1,000 slots: the parent's stored window starts above slot 0.
+    for (let i = 1; i < 1_200; i++)
         page.flusher.append(
             { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
             i % 2 ? b : a,

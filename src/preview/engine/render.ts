@@ -99,6 +99,7 @@ import {
     drawStageWithProps,
     drawStaticStage,
     getStageProps,
+    getStageYOffset,
     resolveJudgeLineStyle,
     stagePropsHasTransform,
     stagePropsTransform,
@@ -234,20 +235,28 @@ export const renderPreviewFrame = (
     const hideNotes = chart.groups.map((group) => hideNotesAt(group, now, leftLimit))
     const preempts = chart.groups.map((group) => preemptTime(noteSpeed, group.forceNoteSpeed))
 
-    const stageProps: StageProps[] = chart.stages.map((stage) =>
-        getStageProps(stage, now, frameLimit),
-    )
-    const stageTransforms: StageTransform[] = stageProps.map((props) =>
-        stagePropsHasTransform(props)
+    // Each stage's values at `now`, computed for the stages this frame uses.
+    const stagePropsNow: StageProps[] = []
+    const stageTransformsNow: StageTransform[] = []
+    const stageAffinesNow: StageScreenTransform[] = []
+    const stagePropsAt = (index: number): StageProps | undefined => {
+        const stage = chart.stages[index]
+        return stage && (stagePropsNow[index] ??= getStageProps(stage, now, frameLimit))
+    }
+    const stageTransformAt = (index: number): StageTransform => {
+        const props = stagePropsAt(index)
+        if (!props) return identityStageTransform
+        return (stageTransformsNow[index] ??= stagePropsHasTransform(props)
             ? stagePropsTransform(context, props)
-            : identityStageTransform,
-    )
-    const stageAffines: StageScreenTransform[] = stageTransforms.map((transform) =>
-        stageTransformToAffineOrIdentity(transform),
-    )
+            : identityStageTransform)
+    }
+    const stageAffineAt = (index: number): StageScreenTransform =>
+        chart.stages[index]
+            ? (stageAffinesNow[index] ??= stageTransformToAffineOrIdentity(stageTransformAt(index)))
+            : identityStageScreenTransform
     const frameIndex = getFrameIndex(chart)
-    const minimumYOffset = stageProps.reduce(
-        (minimum, props) => Math.min(minimum, props.yOffset),
+    const minimumYOffset = chart.stages.reduce(
+        (minimum, stage) => Math.min(minimum, getStageYOffset(stage, now, frameLimit)),
         0,
     )
     const defaultPreempt = preemptTime(noteSpeed, 0)
@@ -275,7 +284,7 @@ export const renderPreviewFrame = (
                 continue
 
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            drawStageWithProps(context, selectedDraw(undefined, i), skin, stageProps[i]!)
+            drawStageWithProps(context, selectedDraw(undefined, i), skin, stagePropsAt(i)!)
         }
     } else {
         drawStaticStage(context, draw, skin)
@@ -290,7 +299,9 @@ export const renderPreviewFrame = (
     }
 
     const basicVisualLane = (note: PreviewNote) =>
-        note.stageIndex >= 0 ? (stageProps[note.stageIndex]?.pivotLane ?? 0) + note.lane : note.lane
+        note.stageIndex >= 0
+            ? (stagePropsAt(note.stageIndex)?.pivotLane ?? 0) + note.lane
+            : note.lane
 
     const visualLane = (note: PreviewNote): number => {
         if (note.isAttached && note.attachHead && note.attachTail) {
@@ -304,7 +315,7 @@ export const renderPreviewFrame = (
     }
 
     const basicYOffset = (note: PreviewNote) =>
-        note.stageIndex >= 0 ? (stageProps[note.stageIndex]?.yOffset ?? 0) : 0
+        note.stageIndex >= 0 ? (stagePropsAt(note.stageIndex)?.yOffset ?? 0) : 0
 
     const visualYOffset = (note: PreviewNote): number => {
         if (note.isAttached && note.attachHead && note.attachTail) {
@@ -318,7 +329,7 @@ export const renderPreviewFrame = (
     }
 
     const basicVisualNoteAlpha = (note: PreviewNote) =>
-        note.stageIndex >= 0 ? (stageProps[note.stageIndex]?.noteAlpha ?? 1) : 1
+        note.stageIndex >= 0 ? (stagePropsAt(note.stageIndex)?.noteAlpha ?? 1) : 1
 
     const visualNoteAlpha = (note: PreviewNote): number => {
         if (note.isAttached && note.attachHead && note.attachTail) {
@@ -345,8 +356,8 @@ export const renderPreviewFrame = (
 
     const basicStageTransform = (note: PreviewNote): StageTransform => {
         const elevation = note.elevation ?? 0
-        if (elevation === 0) return stageTransforms[note.stageIndex] ?? identityStageTransform
-        const props = stageProps[note.stageIndex]
+        if (elevation === 0) return stageTransformAt(note.stageIndex)
+        const props = stagePropsAt(note.stageIndex)
         return props
             ? stagePropsTransform(context, props, elevation)
             : standaloneTransform(context, elevation)
@@ -359,11 +370,11 @@ export const renderPreviewFrame = (
                     context.layout,
                     currentLayoutTransform(context.layout),
                     noteElevationTransform(
-                        stageProps[note.attachHead.stageIndex],
+                        stagePropsAt(note.attachHead.stageIndex),
                         note.attachHead.elevation,
                     ),
                     noteElevationTransform(
-                        stageProps[note.attachTail.stageIndex],
+                        stagePropsAt(note.attachTail.stageIndex),
                         note.attachTail.elevation,
                     ),
                     attachEasedFrac(note),
@@ -385,9 +396,7 @@ export const renderPreviewFrame = (
         }
         if ((note.elevation ?? 0) !== 0)
             return stageTransformToAffineOrIdentity(basicStageTransform(note))
-        return note.stageIndex >= 0
-            ? (stageAffines[note.stageIndex] ?? identityStageScreenTransform)
-            : identityStageScreenTransform
+        return stageAffineAt(note.stageIndex)
     }
 
     // Notes, ribbons and simultaneous lines repeatedly ask for the same endpoint
@@ -449,7 +458,7 @@ export const renderPreviewFrame = (
     ): StageProps | undefined => {
         const stage = stageIndex >= 0 ? chart.stages[stageIndex] : undefined
         if (!stage) return undefined
-        if (t === now && !held) return stageProps[stageIndex]
+        if (t === now && !held) return stagePropsAt(stageIndex)
 
         const caches = held ? heldStageProps : historicalStageProps
         const cache = (caches[stageIndex] ??= new Map<number, StageProps>())
@@ -627,6 +636,23 @@ export const renderPreviewFrame = (
 
         if (connector.activeTail && hasReached(connector.activeTail.targetTime)) continue
 
+        // drawConnector draws nothing when both ends are before the approach or past the
+        // cutoff. Decide that from the progress alone, before building the endpoints. Most
+        // candidates are out of view.
+        const passedHead = hasReached(head.targetTime) && !connector.throughJudgeLine
+        const headFrac = passedHead ? safeUnlerpClamped(head.targetTime, tail.targetTime, now) : 0
+        const headProgress = passedHead
+            ? 1 - lerp(visualYOffset(head), visualYOffset(tail), headFrac)
+            : visualProgress(head)
+        const tailProgress = visualProgress(tail)
+        const { progressStart, progressCutoff } = context.layout
+        if (
+            !connector.fullScreen &&
+            ((headProgress < progressStart && tailProgress < progressStart) ||
+                (headProgress > progressCutoff && tailProgress > progressCutoff))
+        )
+            continue
+
         let visualState
         if (connector.kind === ConnectorKind.damage) {
             visualState = ConnectorVisualState.waiting
@@ -641,7 +667,7 @@ export const renderPreviewFrame = (
         const tailEndpoint: ConnectorEndpoint = {
             lane: visualLane(tail),
             size: tail.size,
-            visualProgress: visualProgress(tail),
+            visualProgress: tailProgress,
             targetTime: tail.targetTime,
             easeFrac: tailEaseFrac(tail),
             transform: visualStageTransform(tail),
@@ -651,16 +677,14 @@ export const renderPreviewFrame = (
 
         let headEndpoint: ConnectorEndpoint
         let headNoteAlpha: number
-        if (hasReached(head.targetTime) && !connector.throughJudgeLine) {
-            const headFrac = safeUnlerpClamped(head.targetTime, tail.targetTime, now)
-            const headVisualProgress = 1 - lerp(visualYOffset(head), visualYOffset(tail), headFrac)
+        if (passedHead) {
             headNoteAlpha = lerp(visualNoteAlpha(head), tailNoteAlpha, headFrac)
             // At the head's own time, steps would otherwise apply their held value twice.
             if (isNoneEase(connector.ease) || headFrac <= 0) {
                 headEndpoint = {
                     lane: visualLane(head),
                     size: head.size,
-                    visualProgress: headVisualProgress,
+                    visualProgress: headProgress,
                     targetTime: now,
                     easeFrac: headEaseFrac(head),
                     transform: visualStageTransform(head),
@@ -678,7 +702,7 @@ export const renderPreviewFrame = (
                 headEndpoint = {
                     lane: lerp(visualLane(head), visualLane(tail), headInterpFrac),
                     size: lerp(head.size, tail.size, headInterpFrac),
-                    visualProgress: headVisualProgress,
+                    visualProgress: headProgress,
                     targetTime: now,
                     easeFrac: currentEaseFrac,
                     transform: blendStageTransform(
@@ -698,7 +722,7 @@ export const renderPreviewFrame = (
             headEndpoint = {
                 lane: visualLane(head),
                 size: head.size,
-                visualProgress: visualProgress(head),
+                visualProgress: headProgress,
                 targetTime: head.targetTime,
                 easeFrac: headEaseFrac(head),
                 transform: visualStageTransform(head),
@@ -720,15 +744,14 @@ export const renderPreviewFrame = (
                 headEndpoint.easeFrac = 0
                 tailEndpoint.easeFrac = 1
             }
-            const propsAt = (stageIndex: number) => stageProps[stageIndex]
-            const first = effectiveNoteElevation(head, propsAt)
-            const last = effectiveNoteElevation(tail, propsAt)
+            const first = effectiveNoteElevation(head, stagePropsAt)
+            const last = effectiveNoteElevation(tail, stagePropsAt)
             const camera = currentLayoutTransform(context.layout)
             elevationTransform = (geometryFrac, linearFrac) => {
                 const elevation = lerp(first, last, linearFrac)
                 return blendStageTransform(
-                    noteTransformAtElevation(context.layout, camera, head, propsAt, elevation),
-                    noteTransformAtElevation(context.layout, camera, tail, propsAt, elevation),
+                    noteTransformAtElevation(context.layout, camera, head, stagePropsAt, elevation),
+                    noteTransformAtElevation(context.layout, camera, tail, stagePropsAt, elevation),
                     geometryFrac,
                 )
             }
@@ -779,6 +802,10 @@ export const renderPreviewFrame = (
             if (line) selection.line(line.a, line.b, note.source)
             return
         }
+        // drawNote draws nothing outside the approach; decide that before the note's geometry.
+        const progress = visualProgress(note)
+        if (progress < context.layout.progressStart || progress > context.layout.progressCutoff)
+            return
         drawNote(
             context,
             paint,
@@ -787,7 +814,7 @@ export const renderPreviewFrame = (
             note.isCritical,
             visualLane(note),
             note.size,
-            visualProgress(note),
+            progress,
             note.direction,
             note.targetTime,
             visualStageAffine(note),
@@ -1133,6 +1160,18 @@ export const renderPreviewFrame = (
         if (hasReached(Math.min(left.targetTime, right.targetTime))) continue
         if (groupHidesNotes(left) || groupHidesNotes(right)) continue
 
+        // drawSimLine draws nothing for these progress values; decide that before the geometry.
+        const leftProgress = visualProgress(left)
+        const rightProgress = visualProgress(right)
+        const { progressStart, progressCutoff } = context.layout
+        if (
+            (leftProgress < progressStart && rightProgress < progressStart) ||
+            (leftProgress > progressCutoff && rightProgress > progressCutoff) ||
+            (leftProgress < 1 && 1 < rightProgress) ||
+            (leftProgress > 1 && 1 > rightProgress)
+        )
+            continue
+
         const leftMask = visualMaskAt(left, now)
         const rightMask = visualMaskAt(right, now)
         const leftExtents = maskedNoteExtents(visualLane(left), left.size, leftMask)
@@ -1144,10 +1183,10 @@ export const renderPreviewFrame = (
             draw,
             skin,
             leftExtents.lane,
-            visualProgress(left),
+            leftProgress,
             left.targetTime,
             rightExtents.lane,
-            visualProgress(right),
+            rightProgress,
             right.targetTime,
             visualStageTransform(left),
             visualStageTransform(right),

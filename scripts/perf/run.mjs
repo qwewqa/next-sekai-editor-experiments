@@ -572,6 +572,152 @@ const scenarios = {
         events.push({ at: (steps + 1) * tick, fn: mouse(cdp, 'mouseReleased', x0, y) })
         return schedule(events)
     },
+    // One-shot edits on the prepared selection: flip, undo, redo, delete, undo, copy and paste
+    // (hovering the paste ghost, then placing it), undo, then the Select tool again (F). Each
+    // is marked, with `wait` ms (1500) after it.
+    async edits(page, cdp, cell) {
+        const c = await pane(page)
+        const wait = cell.wait ?? 1500
+        await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: c.x, y: c.y })
+        const step = async (mark, key) => {
+            await page.evaluate((m) => performance.mark(m), mark)
+            await page.keyboard.press(key)
+            await sleep(wait)
+        }
+        await step('nse-flip', 'u')
+        await step('nse-undo', 'z')
+        await step('nse-redo', 'y')
+        await step('nse-delete', 'Delete')
+        await step('nse-undo2', 'z')
+        await page.keyboard.press('c')
+        await sleep(300)
+        await page.keyboard.press('v')
+        await sleep(300)
+        await page.evaluate(() => performance.mark('nse-pastehover'))
+        const steps = Math.round(1000 / tick)
+        const events = []
+        for (let i = 1; i <= steps; i++)
+            events.push({
+                at: i * tick,
+                fn: send(cdp, 'Input.dispatchMouseEvent', {
+                    type: 'mouseMoved',
+                    x: c.x + (60 * i) / steps,
+                    y: c.y - (40 * i) / steps,
+                }),
+            })
+        await schedule(events)
+        await sleep(200)
+        await page.evaluate(() => performance.mark('nse-paste'))
+        mouse(cdp, 'mousePressed', c.x + 60, c.y - 40)()
+        await sleep(30)
+        mouse(cdp, 'mouseReleased', c.x + 60, c.y - 40)()
+        await sleep(wait)
+        await step('nse-undo3', 'z')
+        await page.keyboard.press('f')
+        await sleep(300)
+    },
+    // A horizontal drag across the preview image, which scrubs a second per image width, back
+    // and forth for 3 s.
+    async scrub(page, cdp, cell, profile) {
+        const b = await page.locator('.preview-viewport canvas').first().boundingBox()
+        if (!b) throw new Error('No preview')
+        const x0 = b.x + b.width * 0.5
+        const y = b.y + b.height * 0.5
+        const [down, move, up] = profile.hasTouch
+            ? [
+                  (x) => touch(cdp, 'touchStart', x, y),
+                  (x) => touch(cdp, 'touchMove', x, y),
+                  (x) => touch(cdp, 'touchEnd', x, y),
+              ]
+            : [
+                  (x) => mouse(cdp, 'mousePressed', x, y),
+                  (x) => mouse(cdp, 'mouseMoved', x, y),
+                  (x) => mouse(cdp, 'mouseReleased', x, y),
+              ]
+        if (!profile.hasTouch)
+            await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x0, y })
+        const steps = Math.round(3000 / tick)
+        const events = [{ at: 0, fn: down(x0) }]
+        for (let i = 1; i <= steps; i++) {
+            const phase = (i / steps) * 3
+            const swing = Math.sin(phase * Math.PI * 2) * b.width * 0.4
+            events.push({ at: i * tick, fn: move(x0 + swing) })
+        }
+        events.push({ at: (steps + 1) * tick, fn: up(x0) })
+        return schedule(events)
+    },
+    // Taps on a step button (cell.button) every 120 ms for 3 s: one seek a tap.
+    async seek(page, cdp, cell, profile) {
+        const button = page.getByRole('button', { name: cell.button, exact: true }).first()
+        const b = await button.boundingBox()
+        if (!b) throw new Error('No step button')
+        const x = b.x + b.width / 2
+        const y = b.y + b.height / 2
+        const events = []
+        for (let t = 0; t < 3000; t += 120) {
+            if (profile.hasTouch) {
+                events.push({ at: t, fn: touch(cdp, 'touchStart', x, y) })
+                events.push({ at: t + 40, fn: touch(cdp, 'touchEnd', x, y) })
+            } else {
+                events.push({ at: t, fn: mouse(cdp, 'mousePressed', x, y) })
+                events.push({ at: t + 40, fn: mouse(cdp, 'mouseReleased', x, y) })
+            }
+        }
+        return schedule(events)
+    },
+    // The cursor set to a new time every 120 ms for 3 s, as clicks on the chart or minimap do.
+    async cursorjumps(page) {
+        return page.evaluate(async () => {
+            const P = window.nsePerf
+            const end = P.chartEnd()
+            let seed = 7
+            for (let i = 0; i < 25; i++) {
+                seed = (seed * 16807) % 2147483647
+                P.view.cursorTime = (seed / 2147483647) * end
+                await new Promise((d) => setTimeout(d, 120))
+            }
+        })
+    },
+    // The note speed changed every frame for 2 s, as a slider drag does.
+    async notespeed(page) {
+        return page.evaluate(async () => {
+            const P = window.nsePerf
+            const start = P.settings.previewNoteSpeed
+            for (let i = 0; i < 240; i++) {
+                await new Promise((d) => requestAnimationFrame(d))
+                P.settings.previewNoteSpeed =
+                    Math.round((6 + 4 * Math.abs(Math.sin(i / 40))) * 100) / 100
+            }
+            P.settings.previewNoteSpeed = start
+            for (let i = 0; i < 10; i++) await new Promise((d) => requestAnimationFrame(d))
+        })
+    },
+    // The chart opened again over itself: the first frames after an open.
+    async reopen(page, cdp, cell, profile, prep, group) {
+        await page.evaluate(() => performance.mark('nse-open'))
+        const opening = page.waitForEvent('filechooser')
+        await page.mouse.move(5, 5)
+        await page.keyboard.press('o')
+        await (
+            await opening
+        ).setFiles({
+            name: 'level.json',
+            mimeType: 'application/json',
+            buffer: readFileSync(resolve(root, group.chart)),
+        })
+        await page
+            .locator('.notification, .notification-pill')
+            .filter({ hasText: /^Opened level/ })
+            .last()
+            .waitFor({ timeout: 120_000 })
+        await page.evaluate(() => performance.mark('nse-opened'))
+        await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'OK' })
+            .click({ timeout: 1500 })
+            .catch(() => {})
+        await sleep(cell.wait ?? 3000)
+    },
     // Nothing for `seconds` (5): what the editor does while idle.
     async idle(page, cdp, cell) {
         const before = procs()
@@ -877,6 +1023,7 @@ const selectNear = (page, count) =>
         return picked
     }, count)
 const prepares = {
+    edits: (page, cell) => selectNear(page, cell.count ?? 50),
     editflip: (page, cell) => selectNear(page, cell.count ?? 50),
     drag: (page, cell) => selectNear(page, cell.count ?? 50),
     hide: (page, cell) => selectNear(page, cell.count ?? 20),
@@ -891,6 +1038,12 @@ const customKeys = [
     'hide',
     'journal',
     'memory',
+    'edits',
+    'scrub',
+    'seek',
+    'notespeed',
+    'reopen',
+    'cursorjumps',
     'act',
     'startup',
 ]
@@ -903,7 +1056,8 @@ const bootProbe = () => {
         const t = performance.now()
         boot.paint ??= performance.getEntriesByName('first-contentful-paint')[0]?.startTime
         if (boot.gate === undefined && document.querySelector('dialog[open]')) boot.gate = t
-        if (boot.chart === undefined && document.querySelector('canvas.editor-chart')) boot.chart = t
+        if (boot.chart === undefined && document.querySelector('canvas.editor-chart'))
+            boot.chart = t
         if (window.nsePerf?.startup() === 'done') {
             boot.done = t
             return
@@ -991,22 +1145,40 @@ const openLevel = async (page, group) => {
     }
 }
 
-const configure = (page, cell) =>
-    page.evaluate(async (cell) => {
-        const P = window.nsePerf
-        if (P.isPlaying.value) P.startOrStopPlayer()
-        P.settings.showMinimap = cell.minimap ?? true
-        P.settings.showPreview = cell.preview ?? true
-        P.settings.pps = cell.pps ?? 1000
-        P.view.layout = cell.layout ?? 'basic'
-        // Beside the chart when open, whatever the width.
-        P.settings.elevationEditorSideBySide = cell.elevation ? 'allow' : 'auto'
-        if (cell.elevation && !P.isElevationEditorOpen.value) P.openElevationEditor()
-        if (!cell.elevation && P.isElevationEditorOpen.value) P.closeElevationEditor()
-        const selected = P.selectNotes(!!cell.selection)
-        for (let i = 0; i < 20; i++) await new Promise((done) => requestAnimationFrame(done))
-        return { selected, w: P.view.w, h: P.view.h, pps: P.settings.pps }
-    }, cell)
+const configure = (page, cell, group) =>
+    page.evaluate(
+        async (cell) => {
+            const P = window.nsePerf
+            if (P.isPlaying.value) P.startOrStopPlayer()
+            // The group's and the cell's app settings; they stay set for later cells.
+            for (const [key, value] of Object.entries(cell.settings ?? {})) P.settings[key] = value
+            P.settings.showMinimap = cell.minimap ?? true
+            P.settings.showPreview = cell.preview ?? true
+            P.settings.pps = cell.pps ?? 1000
+            P.view.layout = cell.layout ?? 'basic'
+            // Beside the chart when open, whatever the width.
+            P.settings.elevationEditorSideBySide = cell.elevation ? 'allow' : 'auto'
+            if (cell.elevation && !P.isElevationEditorOpen.value) P.openElevationEditor()
+            if (!cell.elevation && P.isElevationEditorOpen.value) P.closeElevationEditor()
+            const selected = P.selectNotes(!!cell.selection)
+            for (let i = 0; i < 40; i++) await new Promise((done) => requestAnimationFrame(done))
+            const canvas = document.querySelector('.preview-viewport canvas')
+            const rect = canvas?.getBoundingClientRect()
+            return {
+                selected,
+                w: P.view.w,
+                h: P.view.h,
+                pps: P.settings.pps,
+                preview: canvas && {
+                    width: canvas.width,
+                    height: canvas.height,
+                    cssWidth: rect.width,
+                    cssHeight: rect.height,
+                },
+            }
+        },
+        { ...cell, settings: { ...group.settings, ...cell.settings } },
+    )
 
 const settle = (page, start) =>
     page.evaluate(async (start) => {
@@ -1028,18 +1200,37 @@ const waitStill = (page) =>
         }
     })
 
+let allocCount
 const runOnce = async (page, cdp, cell, profile, hz, label, light, group) => {
     const scenario = cell.scenario.startsWith('play') ? 'play' : cell.scenario
     if (scenario !== 'memory') await settle(page, cell.start ?? (scenario === 'play' ? 0 : 40))
     const prep = await prepares[scenario]?.(page, cell)
     const caches = await pathCaches(page)
+    const startedAt = new Date().toISOString()
     await page.evaluate((noLoop) => window.nsePerfRun.start(noLoop), !!cell.noLoop)
     let sync
     if (label) {
         await startTrace(cdp, light)
         sync = await page.evaluate(() => performance.mark('nse-perf-sync').startTime)
     }
+    if (cell.allocProfile && label === undefined) {
+        await cdp.send('HeapProfiler.enable')
+        await cdp.send('HeapProfiler.startSampling', {
+            samplingInterval: cell.allocInterval ?? 32768,
+            includeObjectsCollectedByMajorGC: true,
+            includeObjectsCollectedByMinorGC: true,
+        })
+    }
     const input = await scenarios[scenario](page, cdp, cell, profile, prep, group)
+    if (cell.allocProfile && label === undefined) {
+        const { profile: heap } = await cdp.send('HeapProfiler.getSamplingProfile')
+        await cdp.send('HeapProfiler.stopSampling')
+        allocCount = (allocCount ?? 0) + 1
+        writeFileSync(
+            `${runDir}/alloc-${cellId(group, cell)}-${allocCount}.json`,
+            JSON.stringify(heap),
+        )
+    }
     if (!['play', ...customKeys].includes(scenario)) await waitStill(page)
     await page.waitForTimeout(150)
     let trace
@@ -1064,6 +1255,8 @@ const runOnce = async (page, cdp, cell, profile, hz, label, light, group) => {
             maxMs: Math.max(0, ...raw.longtasks.map((e) => e.duration)),
         },
         minimapPaints: raw.paints + raw.annotationPaints,
+        startedAt,
+        endedAt: new Date().toISOString(),
         pathCache,
         visibility: raw.visibility,
         trace,
@@ -1089,6 +1282,36 @@ const cellId = (group, cell) =>
 // ---- main
 
 const children = []
+const contexts = new Set()
+/** Closes every browser the run started, then the servers. */
+const shutDown = async (code) => {
+    for (const context of contexts) await context.close().catch(() => {})
+    stopChildren()
+    if (code !== undefined) process.exit(code)
+}
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGBREAK']) process.on(signal, () => void shutDown(130))
+// A run that outlives `--timeout` minutes (240) is stuck: its browsers close and it exits.
+setTimeout(
+    () => {
+        log('run timed out')
+        void shutDown(1)
+    },
+    Number(args.timeout ?? 240) * 60_000,
+).unref()
+class CellTimeout extends Error {}
+/** A cell longer than `cellTimeout` s (900) is stuck: its group's browser closes. */
+const withinCell = (cell, run) => {
+    let timer
+    return Promise.race([
+        run(),
+        new Promise((_, reject) => {
+            timer = setTimeout(
+                () => reject(new CellTimeout(`Timed out after ${cell.cellTimeout ?? 900} s`)),
+                (cell.cellTimeout ?? 900) * 1000,
+            )
+        }),
+    ]).finally(() => clearTimeout(timer))
+}
 let baseUrl = args.url
 if (!baseUrl) {
     if (!args.noBuild) {
@@ -1173,19 +1396,32 @@ try {
             hasTouch: !!profile.hasTouch,
             isMobile: !!profile.isMobile,
             locale: 'en-US',
+            acceptDownloads: true,
+            downloadsPath: `${runDir}/downloads`,
             args: [
                 '--autoplay-policy=no-user-gesture-required',
+                // Moving the cursor plays a moment of BGM, and the tab's audio indicator then
+                // animates the browser window for about a second.
+                '--mute-audio',
+                ...(group.browserArgs ?? []),
                 `--window-size=${profile.viewport.width + 40},${profile.viewport.height + 160}`,
             ],
         })
+        contexts.add(context)
         try {
             const page = context.pages()[0] ?? (await context.newPage())
+            // No run may open a native dialog: one blocks the run, on the screen of whoever watches.
+            // The pickers are off (Open takes the file input, Save downloads, or the app's test
+            // pickers under a group's `platform`), JS dialogs are dismissed, and downloads land
+            // in the run's folder.
+            page.on('dialog', (dialog) => void dialog.dismiss().catch(() => {}))
             await page.addInitScript(() => {
-                // The file input path: the native picker cannot be driven.
-                Object.defineProperty(window, 'showOpenFilePicker', {
-                    configurable: true,
-                    value: undefined,
-                })
+                for (const picker of [
+                    'showOpenFilePicker',
+                    'showSaveFilePicker',
+                    'showDirectoryPicker',
+                ])
+                    Object.defineProperty(window, picker, { configurable: true, value: undefined })
                 localStorage.setItem(
                     'nse.test.version',
                     JSON.stringify({ appVersion: '0.6.0', atTag: true }),
@@ -1238,94 +1474,100 @@ try {
                 const cell = { ...plan.defaults, ...group.defaults, ...base }
                 const id = cellId(group, cell)
                 try {
-                    const config = await configure(page, cell)
-                    await page.screenshot({ path: `${runDir}/${id}.png` })
-                    const runs = []
-                    let cold
-                    for (let i = 0; i < (cell.warmup ?? 1); i++) {
-                        const r = await runOnce(
-                            page,
-                            cdp,
-                            cell,
-                            profile,
-                            hz,
-                            i === 0 && cell.traceCold ? `${id}-cold` : undefined,
-                            false,
-                            group,
-                        )
-                        cold ??= r
-                    }
-                    for (let i = 0; i < (cell.reps ?? 5); i++)
-                        runs.push(
-                            await runOnce(
+                    await withinCell(cell, async () => {
+                        const config = await configure(page, cell, group)
+                        await page.screenshot({ path: `${runDir}/${id}.png` })
+                        const runs = []
+                        let cold
+                        for (let i = 0; i < (cell.warmup ?? 1); i++) {
+                            const r = await runOnce(
                                 page,
                                 cdp,
                                 cell,
                                 profile,
                                 hz,
-                                cell.traceEach ? `${id}-r${i}` : undefined,
-                                true,
+                                i === 0 && cell.traceCold ? `${id}-cold` : undefined,
+                                false,
                                 group,
-                            ),
+                            )
+                            cold ??= r
+                        }
+                        for (let i = 0; i < (cell.reps ?? 5); i++)
+                            runs.push(
+                                await runOnce(
+                                    page,
+                                    cdp,
+                                    cell,
+                                    profile,
+                                    hz,
+                                    cell.traceEach ? `${id}-r${i}` : undefined,
+                                    true,
+                                    group,
+                                ),
+                            )
+                        const traced = cell.trace
+                            ? await runOnce(page, cdp, cell, profile, hz, id, false, group)
+                            : undefined
+                        const pinned = pin([process.pid])
+                        appendFileSync(
+                            `${runDir}/results.jsonl`,
+                            JSON.stringify({
+                                id,
+                                group: group.id,
+                                profile: group.profile,
+                                hz,
+                                chart: group.chart,
+                                cell,
+                                config,
+                                info,
+                                cold,
+                                runs,
+                                traced,
+                                procs: pinned.length,
+                                offPin: offPin(pinned),
+                            }) + '\n',
                         )
-                    const traced = cell.trace
-                        ? await runOnce(page, cdp, cell, profile, hz, id, false, group)
-                        : undefined
-                    const pinned = pin([process.pid])
-                    appendFileSync(
-                        `${runDir}/results.jsonl`,
-                        JSON.stringify({
-                            id,
-                            group: group.id,
-                            profile: group.profile,
-                            hz,
-                            chart: group.chart,
-                            cell,
-                            config,
-                            info,
-                            cold,
-                            runs,
-                            traced,
-                            procs: pinned.length,
-                            offPin: offPin(pinned),
-                        }) + '\n',
-                    )
-                    const med = (fn) => runs.map(fn).sort((a, b) => a - b)[runs.length >> 1]
-                    if (cell.scenario === 'act')
-                        log('cell', id, {
-                            response: [
-                                med((r) => r.input.response ?? Infinity),
-                                Math.max(...runs.map((r) => r.input.response ?? Infinity)),
-                            ],
-                            longestTask: Math.max(...runs.map((r) => r.input.longestTask)),
-                            marks: runs.map((r) => r.input.marks),
-                            cold: cold?.input?.response,
-                        })
-                    else log('cell', id, {
-                        chart: [
-                            med((r) => r.probes.chartDraw?.p50),
-                            med((r) => r.probes.chartDraw?.p95),
-                        ],
-                        clock: [
-                            med((r) => r.probes.clockFrame?.p50),
-                            med((r) => r.probes.clockFrame?.p95),
-                        ],
-                        interval: [
-                            med((r) => r.frames.p50),
-                            med((r) => r.frames.p95),
-                            med((r) => r.frames.max),
-                        ],
+                        const med = (fn) => runs.map(fn).sort((a, b) => a - b)[runs.length >> 1]
+                        if (cell.scenario === 'act')
+                            log('cell', id, {
+                                response: [
+                                    med((r) => r.input.response ?? Infinity),
+                                    Math.max(...runs.map((r) => r.input.response ?? Infinity)),
+                                ],
+                                longestTask: Math.max(...runs.map((r) => r.input.longestTask)),
+                                marks: runs.map((r) => r.input.marks),
+                                cold: cold?.input?.response,
+                            })
+                        else
+                            log('cell', id, {
+                                chart: [
+                                    med((r) => r.probes.chartDraw?.p50),
+                                    med((r) => r.probes.chartDraw?.p95),
+                                ],
+                                clock: [
+                                    med((r) => r.probes.clockFrame?.p50),
+                                    med((r) => r.probes.clockFrame?.p95),
+                                ],
+                                interval: [
+                                    med((r) => r.frames.p50),
+                                    med((r) => r.frames.p95),
+                                    med((r) => r.frames.max),
+                                ],
+                            })
                     })
                 } catch (error) {
                     log('cell failed', id, String(error.stack ?? error))
+                    // The page may be stuck: the group's browser closes, and the next group runs.
+                    if (error instanceof CellTimeout) break
                     await page.keyboard.press('Escape').catch(() => {})
                 }
             }
         } finally {
-            await context.close()
+            contexts.delete(context)
+            await context.close().catch(() => {})
         }
     }
 } finally {
-    stopChildren()
+    await shutDown()
 }
 log('done')

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { STACK_CAP } from '../../../src/history/cap'
 import { nxspDiskState } from '../../../src/platform/fingerprint'
-import { checkStack, Fixture, save, sourceOf, stateAt } from './fixture'
+import { checkStack, Fixture, heldRows, save, sourceOf, stateAt } from './fixture'
 
 // The written undo stack: numbered by replay of the file's own chronology,
-// renumbered when sessions before it were removed, and the head alone when replay can't follow.
+// renumbered when sessions before it were removed, the head alone when replay can't follow, and
+// at most `STACK_CAP` slots.
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
 
@@ -88,5 +90,25 @@ test('a chain whose middle session was deleted writes replay’s stack, not the 
     const { built, file } = await save(fixture, { kind: 'copy' }, { event: 'downloaded' })
     ok(built)
     assert.ok(file)
+    assert.equal(await checkStack(file), 'replay')
+})
+
+test('a Save from the tab’s unflushed stack writes its newest 1,000 slots', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    await fixture.flush()
+    for (let k = 1; k <= STACK_CAP + 10; k++) await fixture.edit(1 + (k % 2))
+    // Storing paused: the pending stack has every slot since the session's start.
+    const { built, file } = await save(
+        fixture,
+        { kind: 'copy' },
+        { event: 'downloaded', binds: false, extra: { pending: fixture.pending(1) } },
+    )
+    ok(built)
+    assert.ok(file)
+    const { undoStack } = (await heldRows(file)).history
+    assert.equal(undoStack.slots.length, STACK_CAP)
+    assert.equal(undoStack.base, 11)
+    assert.equal(undoStack.index, STACK_CAP + 10)
     assert.equal(await checkStack(file), 'replay')
 })

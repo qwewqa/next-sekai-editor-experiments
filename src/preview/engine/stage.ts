@@ -333,6 +333,17 @@ export const getStageOffset = (
     return pivotLane + xLaneTranslate
 }
 
+/** getStageProps' yOffset alone. */
+export const getStageYOffset = (
+    stage: PreviewStage,
+    t: number,
+    { rightLimit = false }: LimitOptions = {},
+) => {
+    const [pivotA, pivotB, pivotProgress] = queryEvents(stage.pivots, t, rightLimit)
+    if (pivotA) return pivotB ? lerp(pivotA.yOffset, pivotB.yOffset, pivotProgress) : pivotA.yOffset
+    return pivotB ? pivotB.yOffset : 0
+}
+
 export const stagePropsHasTransform = (props: StageProps) =>
     props.rotate !== 0 ||
     props.xLaneTranslate !== 0 ||

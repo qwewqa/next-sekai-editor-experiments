@@ -20,6 +20,7 @@
         "perf:report": "node scripts/perf/report.mjs",
         "perf:stress": "node scripts/perf/stress.mjs",
         "perf:seeds": "playwright test --config playwright.samples.config.ts perfSeeds",
+        "perf:preview": "tsx scripts/perf/preview.mjs",
         "format:gen": "tsx scripts/format-gen.mjs",
         "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs tests/citations.test.mjs",
         "test:browser": "node scripts/test-browser.mjs",
