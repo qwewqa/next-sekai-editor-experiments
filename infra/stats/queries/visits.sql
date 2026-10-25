@@ -1,4 +1,4 @@
--- Engaged visits per day (a pageview is sent only after the first real interaction), and the share by country.
+-- Engaged visits per day (a pageview is sent only after the first real interaction), by country.
 SELECT e.created_at::date AS day, coalesce(s.country, '??') AS country, count(*) AS visits
 FROM website_event e
 JOIN session s ON s.session_id = e.session_id

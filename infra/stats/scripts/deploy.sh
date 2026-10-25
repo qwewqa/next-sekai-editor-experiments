@@ -1,8 +1,9 @@
 #!/bin/bash
 # Deploys the stats stack for dev or prod, runs update.sh on the instance, and checks the result.
-# stats-deploy.yml runs it; so can the owner, with credentials for the target account.
+# stats-deploy.yml runs it; so can the maintainer, with credentials for the target account.
 #   SOURCE_COMMIT      the pushed commit whose infra/stats/host files the instance runs (default: HEAD)
-#   MONITOR_WEBSITE    the Umami "monitor" website id; empty skips that nightly check
+#   MONITOR_WEBSITE    the Umami "monitor" website id. Empty clears it and skips the nightly test event
+#                      (stats-deploy.yml sets it from the Environment variable STATS_MONITOR_WEBSITE)
 set -euo pipefail
 
 ENVIRONMENT=${1:?usage: deploy.sh dev|prod}
@@ -16,7 +17,7 @@ STACK=nse-stats
 
 output() { aws cloudformation describe-stacks --stack-name "$1" --query "Stacks[0].Outputs[?OutputKey=='$2'].OutputValue" --output text; }
 
-# The default VPC's first subnet by zone name. It must not change between deploys, or the instance is replaced.
+# The first default subnet, ordered by zone name. A different subnet would replace the instance, so the order must stay the same.
 read -r SUBNET VPC ZONE < <(aws ec2 describe-subnets --filters Name=default-for-az,Values=true \
     --query 'sort_by(Subnets,&AvailabilityZone)[0].[SubnetId,VpcId,AvailabilityZone]' --output text)
 [ -n "${SUBNET:-}" ] && [ "$SUBNET" != None ] || { echo "No default subnet. Run: aws ec2 create-default-vpc" >&2; exit 1; }
@@ -66,8 +67,8 @@ done
 [ "$ping" = Online ] || { echo "The instance never registered with Session Manager" >&2; exit 1; }
 
 # On a new instance the user data may still be installing, so wait for cloud-init first (its exit status is
-# ignored: 2 means warnings). The update then waits on the first boot's own run through a lock. An Umami
-# version change dumps first.
+# ignored: 2 means warnings). The update then waits through a lock for the first boot's own run. It takes
+# a dump first when images.env changed.
 run_on_instance 'cloud-init status --wait > /dev/null; /usr/local/bin/nse-stats-update'
 
 echo "Smoke check: https://$HOST/api/heartbeat"

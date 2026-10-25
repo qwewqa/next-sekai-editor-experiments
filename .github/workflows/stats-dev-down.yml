@@ -1,7 +1,7 @@
 name: Stats dev down
 
-# Deletes stats' dev stack and everything it retained, then checks that nothing billable of stats is left.
-# By hand, or every six hours as a reaper that acts only on a dev stack over 12 hours old. Dev only: the
+# Deletes the stats dev stack and the resources it retained, then checks that no billable stats resource is
+# left. Runs by hand, or every six hours to delete a dev stack that is over 12 hours old. Dev only: the
 # prod role does not trust the Environment stats-dev, and no workflow deletes prod.
 on:
     workflow_dispatch:

@@ -1,4 +1,4 @@
--- The most common value of each setting in the visit snapshot.
+-- Every value of each setting in the visit snapshot, with its number of visits, most common first.
 SELECT d.data_key AS setting,
        coalesce(d.string_value, d.number_value::text) AS value,
        count(*) AS visits

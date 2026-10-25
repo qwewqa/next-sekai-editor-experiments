@@ -10,7 +10,7 @@ Parameters:
         AllowedValues: [prod, dev]
     SourceCommit:
         Type: String
-        Description: The commit whose infra/stats/host files the instance runs. Changing it replaces nothing.
+        Description: The commit whose infra/stats/host files the instance runs. Changing it only updates a tag; the instance is not replaced.
     MonitorWebsite:
         Type: String
         Default: ''
@@ -149,7 +149,7 @@ Resources:
                 - { Key: 'nse:service', Value: stats }
                 - { Key: 'nse:env', Value: !Ref Environment }
                 - { Key: Name, Value: nse-stats }
-                # Read by update.sh and nightly.sh through the instance metadata. A change here needs no restart.
+                # update.sh and nightly.sh read these tags from the instance metadata. Changing one does not restart the instance.
                 - { Key: 'nse:commit', Value: !Ref SourceCommit }
                 - { Key: 'nse:hostname', Value: !Sub 'stats.${ZoneName}' }
                 - { Key: 'nse:bucket', Value: !Ref DumpBucket }
@@ -158,8 +158,8 @@ Resources:
                   - HasMonitorWebsite
                   - { Key: 'nse:monitor-website', Value: !Ref MonitorWebsite }
                   - !Ref AWS::NoValue
-            # First boot only, and unchanged by a deploy: mount the data volume, install Docker, then run
-            # update.sh as of the commit in the nse:commit tag.
+            # Runs once, at the instance's first boot: mounts the data volume, installs Docker, then runs update.sh
+            # from the commit in the nse:commit tag. Editing it has no effect on an existing instance.
             UserData:
                 Fn::Base64: !Sub |
                     #!/bin/bash
@@ -218,7 +218,7 @@ Resources:
             TTL: '300'
             ResourceRecords: [!Ref ElasticIp]
 
-    # Weekly pg_dump files (12.5). Versioned in prod, so a deleted dump can be restored for seven days.
+    # The weekly pg_dump files. The bucket is versioned in prod, so a deleted dump can be restored for seven days.
     DumpBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: RetainExceptOnCreate
@@ -266,8 +266,8 @@ Resources:
                       Resource: [!GetAtt DumpBucket.Arn, !Sub '${DumpBucket.Arn}/*']
                       Condition: { Bool: { 'aws:SecureTransport': 'false' } }
 
-    # A hung OS (instance status check) reboots the instance and emails the owner. A failed system
-    # check is handled by EC2's own automatic recovery.
+    # If the instance status check fails (a hung OS) for 5 minutes, this alarm reboots the instance and emails the
+    # maintainer. EC2's own automatic recovery handles a failed system status check.
     StatusAlarm:
         Type: AWS::CloudWatch::Alarm
         Condition: IsProd

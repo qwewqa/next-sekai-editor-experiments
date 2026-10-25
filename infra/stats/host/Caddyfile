@@ -19,7 +19,7 @@
 	}
 
 	handle @collect {
-		# A batch is at most 32 KB.
+		# The sender keeps a batch under 32 KB; this cap is four times that.
 		request_body {
 			max_size 128KB
 		}

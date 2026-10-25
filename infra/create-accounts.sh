@@ -1,6 +1,6 @@
 #!/bin/bash
-# The owner's one-time step, run in the Organization's management account: creates the project's two
-# member accounts, nse-prod and nse-dev. Each needs an email address no other AWS account uses
+# The maintainer's one-time step, run in the Organization's management account. It creates the project's
+# two member accounts, nse-prod and nse-dev. Each needs an email address no other AWS account uses
 # (a plus-address on one mailbox works). The addresses are passed here and never committed.
 #   infra/create-accounts.sh <prod email> <dev email>
 set -euo pipefail

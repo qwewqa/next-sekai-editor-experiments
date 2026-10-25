@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
     Next SEKAI Editor, per-account baseline (shared by every service): GitHub OIDC, the alert topic,
     the account budget, the services zone, and a deploy role and an execution role per service.
-    Deployed by the owner, once per account and again when a service is added.
+    The maintainer deploys it once per account, and again when a service is added.
 
 Parameters:
     Environment:
@@ -29,7 +29,7 @@ Conditions:
     IsProd: !Equals [!Ref Environment, prod]
 
 Resources:
-    # One OIDC provider per account is allowed. GitHub documents no thumbprint requirement.
+    # An account can have one OIDC provider. GitHub documents no thumbprint requirement.
     GitHubProvider:
         Type: AWS::IAM::OIDCProvider
         Properties:
@@ -81,8 +81,8 @@ Resources:
                   Subscribers:
                       - { SubscriptionType: EMAIL, Address: !Ref AlertEmail }
 
-    # Every service writes its records under its own label (`stats.` for stats). The owner adds this zone's
-    # name servers to qwewqa.dev once. Retained, so the delegation never breaks.
+    # Each service writes its records under its own label (`stats.` for stats). The maintainer adds this zone's
+    # name servers to qwewqa.dev once. The zone is retained, so the delegation stays valid.
     ServicesZone:
         Type: AWS::Route53::HostedZone
         DeletionPolicy: Retain
@@ -262,8 +262,8 @@ Resources:
                                 - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:elastic-ip/*
                             Condition:
                                 StringEquals: { 'aws:RequestTag/nse:service': stats }
-                          # Resources a launch or a security group refers to, none of which carry a tag of ours. That
-                          # includes the root volume: CloudFormation tags only the instance (CreateVolume stays scoped).
+                          # Resources that a launch or a security group uses and that have no tag of ours. They include the
+                          # root volume, because CloudFormation tags the instance but not the volume (CreateVolume stays tag-scoped).
                           - Sid: UseUntaggedEc2
                             Effect: Allow
                             Action: [ec2:RunInstances, ec2:CreateSecurityGroup]

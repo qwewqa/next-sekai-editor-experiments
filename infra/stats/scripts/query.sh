@@ -9,7 +9,7 @@ ENVIRONMENT=${1:?usage: query.sh dev|prod file.sql website-id}
 FILE=${2:?usage: query.sh dev|prod file.sql website-id}
 WEBSITE=${3:?usage: query.sh dev|prod file.sql website-id}
 case "$ENVIRONMENT" in dev | prod) ;; *) echo "environment must be dev or prod" >&2; exit 2 ;; esac
-[[ "$WEBSITE" =~ ^[0-9a-f-]{36}$ ]] || { echo "the website id is a UUID" >&2; exit 2; }
+[[ "$WEBSITE" =~ ^[0-9a-f-]{36}$ ]] || { echo "The website id must be a UUID." >&2; exit 2; }
 export AWS_PROFILE=nse-$ENVIRONMENT AWS_DEFAULT_REGION=us-west-2
 
 INSTANCE=$(aws ec2 describe-instances --filters Name=tag:nse:service,Values=stats Name=instance-state-name,Values=running \

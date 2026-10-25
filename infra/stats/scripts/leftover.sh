@@ -1,7 +1,7 @@
 #!/bin/bash
-# Fails if anything billable of the stats service is left in the current account (us-west-2).
-# Each check below carries a "billable:" marker. infra/check_templates.py requires one for every
-# retained or long-running resource type in stats' allowlist, so the two lists cannot drift.
+# Fails if a billable resource of the stats service is left in the current account (us-west-2).
+# Each check below has a "billable:" marker. infra/check_templates.py requires a marker for every retained
+# or long-running resource type in the stats list of reviewed types, so the two lists cannot drift.
 set -euo pipefail
 export AWS_DEFAULT_REGION=us-west-2
 
@@ -33,5 +33,5 @@ names=$(aws s3api list-buckets --query "Buckets[?starts_with(Name, 'nse-stats-')
 names=$(aws cloudformation list-stacks --query "StackSummaries[?starts_with(StackName, 'nse-stats') && StackStatus != 'DELETE_COMPLETE'].StackName" --output text)
 [ -z "$names" ] || leftover stack "$names"
 
-[ "$found" = 0 ] && echo "Nothing of stats is left."
+[ "$found" = 0 ] && echo "No stats resources are left."
 exit "$found"

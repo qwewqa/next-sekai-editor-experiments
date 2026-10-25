@@ -1,8 +1,8 @@
 name: Stats deploy
 
-# Deploys the stats service to dev or prod from this repository, by hand only. Prod waits for the owner's
+# Deploys the stats service to dev or prod from this repository, by hand only. Prod waits for the maintainer's
 # approval on the Environment stats-prod and deploys from main only. No stored secrets: the job assumes
-# the account's nse-stats-deploy role by OIDC, and only the Environment stats-<env> may assume it.
+# the account's nse-stats-deploy role by OIDC, and only the Environment stats-<env> can assume it.
 on:
     workflow_dispatch:
         inputs:

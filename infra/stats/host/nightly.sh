@@ -23,7 +23,7 @@ clean() {
 
 dump_stream() { dc exec -T db pg_dump -Fc -U umami umami; }
 
-# Writes the dump to a file and lists it first, so a failed pg_dump never leaves a partial object in S3.
+# Writes the dump to a file and lists its contents before the upload, so a failed pg_dump cannot leave a partial dump in S3.
 dump() {
     local file
     file="/data/dumps/umami-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
@@ -41,7 +41,7 @@ check() {
             --query 'sort_by(Contents,&LastModified)[-1].LastModified' --output text 2> /dev/null || echo error)
         if [ "$newest" = None ] || [ "$newest" = error ]; then
             # A new server has no dump until its first Sunday.
-            find /data/secrets.env -mtime -8 | grep -q . || problems="$problems\nNo dump in S3 ($newest)."
+            find /data/secrets.env -mtime -8 | grep -q . || problems="$problems\n$([ "$newest" = None ] && echo "There is no dump in S3." || echo "The dumps in S3 could not be listed.")"
         else
             age=$((($(date -u +%s) - $(date -u -d "$newest" +%s)) / 86400))
             [ "$age" -le 8 ] || problems="$problems\nThe newest dump is $age days old."
@@ -60,20 +60,21 @@ check() {
     fi
     if [ -n "$problems" ]; then
         printf '%b\n' "$problems" >&2
-        aws sns publish --topic-arn "$NSE_TOPIC" --subject "nse stats $NSE_ENV: check failed" --message "$(printf '%b' "$problems")" > /dev/null
+        aws sns publish --topic-arn "$NSE_TOPIC" --subject "nse stats $NSE_ENV: check failed" --message "$(printf '%b\nRunbook: infra/stats/README.md, Operations.' "$problems")" > /dev/null
         return 1
     fi
 }
 
 # Without /data the settings file is missing too, so the alert topic comes from the instance tags.
 missing_mount() {
-    local token topic
+    local token topic env
     echo "/data is not mounted" >&2
     token=$(curl -fsS -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token)
     topic=$(curl -fsS -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/tags/instance/nse:topic)
+    env=$(curl -fsS -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/tags/instance/nse:env)
     AWS_DEFAULT_REGION=$(cut -d: -f4 <<< "$topic") aws sns publish --topic-arn "$topic" \
-        --subject "nse stats: /data is not mounted" \
-        --message "The data volume is not mounted, so the database is not on it." > /dev/null
+        --subject "nse stats $env: /data is not mounted" \
+        --message "The data volume is not mounted, so Docker and stats are not running. Runbook: infra/stats/README.md, Operations." > /dev/null
 }
 
 main() {
