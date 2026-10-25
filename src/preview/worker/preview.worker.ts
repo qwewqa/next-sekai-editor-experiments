@@ -2,6 +2,7 @@
 // preview and its selection outline, and the atlases. It draws into canvases transferred from
 // the panel, and each frame reaches the screen when its message's task ends. The main thread
 // keeps the clock and decides what each frame shows; the worker draws when a frame is posted.
+import { testKeysOpen } from '../../platform/testKeys'
 import { drawPreviewFrame, type PreviewFrameInput, type PreviewSelection } from '../drawFrame'
 import { createPreviewChartBuilder } from '../engine/chart'
 import { createPreviewRenderer, type PreviewRenderer } from '../gl'
@@ -64,7 +65,8 @@ const upload = () => {
 
 const createRenderer = () => {
     if (!canvas || renderer || lost) return
-    if (flags.noWebgl) throw new Error('WebGL2 is unavailable or disabled in this browser')
+    if (testKeysOpen && flags.noWebgl)
+        throw new Error('WebGL2 is unavailable or disabled in this browser')
     // The renderer needs only a canvas's size and context, which an OffscreenCanvas has.
     renderer = createPreviewRenderer(canvas as unknown as HTMLCanvasElement, antialias)
     uploaded.length = 0
@@ -83,7 +85,7 @@ const onLost = (event: Event) => {
     lost = true
     renderer?.dispose()
     renderer = undefined
-    if (counters) post({ type: 'context', lost: true })
+    if (testKeysOpen && counters) post({ type: 'context', lost: true })
 }
 const onRestored = () => {
     lost = false
@@ -94,7 +96,7 @@ const onRestored = () => {
         post({ type: 'error', message: messageOf(error) })
     }
     report()
-    if (counters) post({ type: 'context', lost: false })
+    if (testKeysOpen && counters) post({ type: 'context', lost: false })
 }
 
 const releaseCanvas = () => {
@@ -163,7 +165,7 @@ const installCounters = () => {
 }
 
 const report = () => {
-    if (!counters) return
+    if (!testKeysOpen || !counters) return
     const { uploads, frames, vertices, aspect } = counters
     if (!uploads && !frames && aspect === undefined) return
     post({ type: 'counters', counters: { uploads, frames, vertices, aspect } })
@@ -176,6 +178,8 @@ const report = () => {
 const handle = (message: ToPreviewWorker) => {
     switch (message.type) {
         case 'start':
+            // Test builds only: a release worker has no counters and no test flags.
+            if (!testKeysOpen) return
             flags = message.flags
             if (message.test) installCounters()
             if (flags.throwOnStart)
@@ -218,9 +222,9 @@ const handle = (message: ToPreviewWorker) => {
         }
         case 'frame': {
             frameCount++
-            if (flags.throwOnFrame === frameCount)
+            if (testKeysOpen && flags.throwOnFrame === frameCount)
                 throw new Error('The preview worker failed to draw (test)')
-            if (flags.hangOnFrame === frameCount) for (;;);
+            if (testKeysOpen && flags.hangOnFrame === frameCount) for (;;);
             const start = performance.now()
             if (message.mirror) {
                 // A chart switch releases the previous chart's compiled slides.
@@ -248,13 +252,16 @@ const handle = (message: ToPreviewWorker) => {
             return
         }
         case 'outlinePixels':
+            if (!testKeysOpen) return
             post({ type: 'outlinePixels', lit: outline?.litPixels() ?? 0 })
             return
         case 'loseContext':
+            if (!testKeysOpen) return
             lose = canvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')
             lose?.loseContext()
             return
         case 'restoreContext':
+            if (!testKeysOpen) return
             lose?.restoreContext()
             return
     }
