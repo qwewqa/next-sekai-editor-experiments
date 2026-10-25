@@ -147,8 +147,33 @@ const loadEntry = async (key: EntryKey) => {
 /** An entry's state as peek loads it, through the same LRU and loads in flight: the change view's. */
 export const loadEntryState = async (key: EntryKey) => (await loadEntry(key)).state
 
-/** A session's peek (`audio: 'none'`) plays without BGM: the live audio is another session's. */
-export type PeekOptions = { audio?: 'live' | 'none' }
+/** The longest a peek waits for `ready`: the peek bar's `slowRead`. */
+export const PEEK_READY_MAX_MS = 250
+
+/**
+ * A session's peek (`audio: 'none'`) plays without BGM: the live audio is another session's.
+ * `ready` is called with the loaded state before it shows; the state shows once its promise
+ * settles or after `PEEK_READY_MAX_MS`, so the step's change can land with it.
+ */
+export type PeekOptions = {
+    audio?: 'live' | 'none'
+    ready?: (state: State) => Promise<unknown> | undefined
+}
+
+/** Waits for `ready`, at most `PEEK_READY_MAX_MS`; its failure only ends the wait. */
+const waitReady = async (ready: Promise<unknown>) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+        await Promise.race([
+            ready.catch(() => undefined),
+            new Promise<void>((done) => {
+                timer = setTimeout(done, PEEK_READY_MAX_MS)
+            }),
+        ])
+    } finally {
+        clearTimeout(timer)
+    }
+}
 
 /**
  * What a peek shows: no selection at first, since the peeked state holds its own, and the live
@@ -234,6 +259,14 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
             if (at !== generation.value || !peek.value) {
                 resolve()
                 return
+            }
+            const pending = options.ready?.(entry.state)
+            if (pending) {
+                await waitReady(pending)
+                if (at !== generation.value || !peek.value) {
+                    resolve()
+                    return
+                }
             }
             settlePrevious = undefined
             stopTimers()

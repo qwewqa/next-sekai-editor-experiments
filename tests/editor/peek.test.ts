@@ -15,6 +15,7 @@ import {
     onPeekStart,
     parseEntryKey,
     PEEK_LRU,
+    PEEK_READY_MAX_MS,
     peekedKey,
     peekEntry,
     PeekError,
@@ -538,6 +539,79 @@ test('requests close together wait for the last, and earlier ones resolve', asyn
     assert.equal(peekedKey.value, key(3))
     // The first ran at once; the second was replaced before its debounce ended.
     assert.deepEqual(loads, [key(1), key(3)])
+})
+
+test('the state shows once ready resolves, not before', async () => {
+    source({ [key(1)]: { state: fake('one'), time: 1 } })
+    const gate = deferred<void>()
+    const seen: string[] = []
+    const peeking = peekEntry(key(1), {
+        ready: (loaded) => {
+            seen.push(nameOf(loaded))
+            return gate.promise
+        },
+    })
+    await wait(20)
+    assert.equal(nameOf(state.value), 'live')
+    assert.equal(displayedPeekKey.value, undefined)
+    gate.resolve()
+    await peeking
+    assert.equal(nameOf(state.value), 'one')
+    assert.equal(displayedPeekKey.value, key(1))
+    assert.deepEqual(seen, ['one'])
+})
+
+test('the state shows after the bound when ready does not settle, and a failing ready only ends the wait', async () => {
+    source({
+        [key(1)]: { state: fake('one'), time: 1 },
+        [key(2)]: { state: fake('two'), time: 2 },
+    })
+    const started = Date.now()
+    await peekEntry(key(1), { ready: () => new Promise(() => undefined) })
+    const waited = Date.now() - started
+    assert.equal(nameOf(state.value), 'one')
+    assert.ok(waited >= PEEK_READY_MAX_MS - 20)
+    assert.ok(waited < PEEK_READY_MAX_MS + 200)
+    await peekEntry(key(2), { ready: () => Promise.reject(new Error('read failed')) })
+    assert.equal(nameOf(state.value), 'two')
+})
+
+test('a newer request, a leave or a Restore during the wait drops the waiting state', async () => {
+    source({
+        [key(1)]: { state: fake('one'), time: 1 },
+        [key(2)]: { state: fake('two'), time: 2 },
+    })
+    const gate = deferred<void>()
+    const first = peekEntry(key(1), { ready: () => gate.promise })
+    await wait(20)
+    const second = peekEntry(key(2))
+    await Promise.all([first, second])
+    assert.equal(nameOf(state.value), 'two')
+    gate.resolve()
+    await wait(10)
+    assert.equal(nameOf(state.value), 'two')
+
+    await wait(110)
+    const later = deferred<void>()
+    const waiting = peekEntry(key(1), { ready: () => later.promise })
+    await wait(20)
+    leavePeek()
+    await waiting
+    later.resolve()
+    await wait(10)
+    assert.equal(isPeeking.value, false)
+    assert.equal(displayedPeekKey.value, undefined)
+
+    await wait(110)
+    const restoring = deferred<void>()
+    const held = peekEntry(key(1), { ready: () => restoring.promise })
+    await wait(20)
+    await restoreEntry(key(2))
+    await held
+    restoring.resolve()
+    await wait(10)
+    assert.equal(isPeeking.value, false)
+    assert.equal(nameOf(liveState.value), 'two')
 })
 
 test('an entry that cannot be read rejects and leaves the peek', async () => {

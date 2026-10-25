@@ -580,15 +580,17 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     await expect(peekLine(page)).toHaveText('1 change')
     await viewAt(page, 6)
     const beat = await centreBeat(page)
-    // Record whether the dim ever lifts in a frame between steps.
+    // Record whether the dim lifts, or the marks are missing, in any frame between steps.
     await page.evaluate(async () => {
-        const { undimmed } = await window.editorTest.appImport<
+        const { undimmed, changeMarks } = await window.editorTest.appImport<
             typeof import('../../src/editor/history/changes')
         >('/src/editor/history/changes.ts')
-        const record = window as unknown as { dimLifted: boolean }
+        const record = window as unknown as { dimLifted: boolean; marksMissing: boolean }
         record.dimLifted = false
+        record.marksMissing = false
         const check = () => {
             if (!undimmed.value) record.dimLifted = true
+            if (!changeMarks.value) record.marksMissing = true
             requestAnimationFrame(check)
         }
         requestAnimationFrame(check)
@@ -604,6 +606,9 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     expect(await page.evaluate(() => (window as unknown as { dimLifted: boolean }).dimLifted)).toBe(
         false,
     )
+    expect(
+        await page.evaluate(() => (window as unknown as { marksMissing: boolean }).marksMissing),
+    ).toBe(false)
 })
 
 test('switching entries keeps the whole peek bar filled, never blank or dashed between', async ({
