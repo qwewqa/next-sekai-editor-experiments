@@ -174,7 +174,11 @@ test('a Restore that fails for a reason other than the entry records it and says
     })
     // Not the entry's fault: it is not marked damaged, and the chart is untouched.
     expect(result).toEqual({ damaged: [], peeking: false, life: 1000 })
-    await expect(page.getByText('Could not restore', { exact: true }).first()).toBeVisible()
+    // A failure of what the user asked for is a card with the error glyph, not a quick toast that
+    // fades before it is read.
+    const card = page.locator('[data-notice-card]')
+    await expect(card).toContainText('Could not restore')
+    await expect(card.locator('[data-severity="error"]')).toBeVisible()
     expect(await diagnosed(page)).toBe(true)
 })
 

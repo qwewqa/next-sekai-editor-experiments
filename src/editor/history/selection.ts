@@ -99,7 +99,7 @@ const reportFailure = (error: unknown, message: () => string, quiet: PeekFailure
         if (error.reason === 'damaged' || error.reason === 'newer') return
         if (quiet.includes(error.reason)) return
     } else recordError(error)
-    notify(message)
+    notify(message, { card: true, severity: 'error' })
 }
 
 /** Marks the row of an entry that a peek or Restore found unreadable. */
