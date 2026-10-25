@@ -380,7 +380,8 @@ const press = async (cdp, name) => {
 // Predicates (page expressions).
 const peekShown = `(() => { const p = P.peek(); return !!p.key && p.shown === p.key && p.shown !== A && !p.loading })()`
 const peekBefore = `P.peek().shown`
-const changeKnown = `(() => { const p = P.peek(); return p.changeKey === p.key && p.change !== 'loading' })()`
+// The asked-for entry's change view is known (A: the entry shown before the input).
+const changeKnown = `(() => { const p = P.peek(); return !!p.key && p.key !== A && p.changeKey === p.key && p.change !== 'loading' })()`
 const notice = (pattern) =>
     `[...document.querySelectorAll('.notification, .notification-pill')].some((n) => ${pattern}.test(n.textContent) && !A.includes(n))`
 // The app's modals are <dialog> elements; some menus and popovers use the role.
