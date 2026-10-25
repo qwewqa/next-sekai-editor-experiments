@@ -5,6 +5,7 @@ import { lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
 import { readZip } from '../builtin-assets/zip.mjs'
+import { gateTag } from './analytics.mjs'
 import { inlineScripts, metaIsFirst, pageMetaPolicy, webPolicy } from './csp.mjs'
 import { isTestSitePage } from './site.mjs'
 
@@ -398,16 +399,23 @@ const liveTestKeys = ['nse.test.version', 'nse.test.storage', 'nse.test.startBla
 
 // The usage statistics' client is one chunk, which only a build with a target has, and the bundle
 // names that target.
-async function checkAnalytics(directory, files, analytics) {
+async function checkAnalytics(directory, files, analytics, site) {
     const scripts = []
-    for (const file of files.filter((file) => file.endsWith('.js')))
+    // The gate (gate.js) names the path too, in every build; it has no client in it.
+    for (const file of files.filter((file) => file.endsWith('.js') && file !== 'gate.js'))
         scripts.push({ file, text: (await regularFile(join(directory, file))).toString('utf8') })
     const clients = scripts.filter(({ text }) => text.includes('/api/batch'))
+    // The support gate reads where to send its one event from a tag on the editor's page.
+    const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
+    const tags = index.match(/<meta name="nse-analytics"[^>]*>/g) ?? []
     if (!analytics) {
         if (clients.length)
             throw new Error(`Release without analytics contains its client: ${clients[0].file}`)
+        if (tags.length) throw new Error('Release without analytics tags its page for the gate')
         return
     }
+    if (tags.length !== 1 || tags[0] !== gateTag(analytics, site))
+        throw new Error('Release page does not tag the gate with its analytics target')
     if (clients.length !== 1) throw new Error('Release requires exactly one analytics client')
     for (const value of [analytics.origin, analytics.website])
         if (!scripts.some(({ text }) => text.includes(value)))
@@ -460,7 +468,7 @@ export async function checkRelease(directory, expected = {}) {
     await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
     await checkBundles(directory, files, manifest.site)
-    await checkAnalytics(directory, files, manifest.analytics)
+    await checkAnalytics(directory, files, manifest.analytics, manifest.site)
     const recorded = Object.keys(manifest.files).sort()
     if (
         JSON.stringify(recorded) !==
