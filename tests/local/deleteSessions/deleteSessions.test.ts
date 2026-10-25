@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { resolveZone } from '../../../src/calendar/calendar'
-import { writeMeta } from '../../../src/local/db'
+import { readDeleteCandidates } from '../../../src/local/candidates'
+import { readMeta, writeMeta } from '../../../src/local/db'
 import {
     BUSY_LIMIT_MS,
     BUSY_RETRY_MS,
@@ -9,11 +10,15 @@ import {
     type DeleteChain,
     type DeleteSessionsDeps,
 } from '../../../src/local/deleteSessions'
+import { equalBytes } from '../../../src/local/hash'
+import type { KvTx } from '../../../src/local/kv/types'
 import { importLock, MAINT_LOCK, sessionLock } from '../../../src/local/locks'
 import { headOf } from '../../../src/local/open/earlier'
+import { sessionReadability } from '../../../src/local/records/unknownValues'
 import { SESSION_V } from '../../../src/local/records/version'
 import { checkStored } from '../../../src/local/testing/invariants'
 import { createWorld, type World } from '../../../src/local/testing/world'
+import { nextTime } from '../../../src/local/time'
 import '../../helpers/lockChecks'
 import { closedChain, daysPass, MemoryStorage, openDeleter, tamper } from '../deletion/harness'
 import { rows, workerCore } from '../flush/harness'
@@ -578,4 +583,100 @@ test('a chain counted as saved whose file is taken over or rebound after the rea
     assert.deepEqual(await remove(found), { deleted: 0, skipped: 2 })
     for (const chain of chains) assert.ok(stored(world, chain))
     assert.deepEqual(calls.results, ['changed', 'changed'])
+})
+
+/** The candidates as they were read before the one-cursor read: one read per chain and session. */
+const candidatesPerChain = async (tx: KvTx, wall: number) => {
+    type Row = Record<string, unknown>
+    const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
+    const now = nextTime((await readMeta(tx, 'maxSeenTime')) ?? 0, wall)
+    const chains: unknown[] = []
+    for (const { value } of await tx.entries('chains', { index: 'updatedAt', direction: 'prev' })) {
+        if (!isRow(value) || value.deleting !== undefined || typeof value.chainId !== 'string')
+            continue
+        const sessionId = typeof value.head === 'string' ? value.head : ''
+        const session = sessionId ? await tx.get('sessions', sessionId) : undefined
+        const head = isRow(session) ? session : undefined
+        const root = head ? await headOf(tx, head) : undefined
+        const file = isRow(value.file) && typeof value.file.name === 'string' && value.file.name
+        const hash = isRow(value.file) ? value.file.hash : undefined
+        let readable = head ? 'yes' : 'damaged'
+        for (const row of [
+            head,
+            ...(await tx.index('sessions', 'chainId').getAll(value.chainId)),
+        ]) {
+            if (!isRow(row)) readable = 'damaged'
+            else if (sessionReadability({ row }) === 'newer') {
+                readable = 'newer'
+                break
+            } else if (sessionReadability({ row }) === 'unsupported') readable = 'damaged'
+        }
+        const record = (await tx.get('chains', value.chainId)) as Row
+        const sessions = (await tx.index('sessions', 'chainId').getAll(value.chainId))
+            .filter(isRow)
+            .sort((a, b) => Number(a.startedAt) - Number(b.startedAt))
+        chains.push({
+            chainId: value.chainId,
+            head: sessionId || undefined,
+            fileAt: isRow(record.file) ? record.file.at : undefined,
+            sessions: sessions.map((row) => String(row.id)),
+            changed: !!file && (!(hash instanceof Uint8Array) || !root || !equalBytes(root, hash)),
+            readable,
+            hasContent: record.hasContent === true,
+        })
+    }
+    return { now, chains }
+}
+
+test('the candidates read in one cursor are the ones read chain by chain, damage and all', async () => {
+    const { world, chains, deleter } = await setup(9)
+    const [marked, headless, missingHead, newer, unsupported, bound, changed, extra] =
+        chains as Chain[] as [Chain, Chain, Chain, Chain, Chain, Chain, Chain, Chain]
+    await patchChain(world, marked, { deleting: { at: NOW } })
+    await edit(world, async (tx) => {
+        const row = (await tx.get('chains', headless.first.chainId)) as Record<string, unknown>
+        const rest = { ...row }
+        delete rest.head
+        await tx.put('chains', rest)
+        await tx.delete('sessions', missingHead.second.id)
+        const head = (await tx.get('sessions', newer.second.id)) as Record<string, unknown>
+        await tx.put('sessions', { ...head, v: SESSION_V + 1 })
+        const old = (await tx.get('sessions', unsupported.first.id)) as Record<string, unknown>
+        await tx.put('sessions', { ...old, v: 0 })
+        // A session moved to another chain, started earlier than that chain's own.
+        const moved = (await tx.get('sessions', extra.first.id)) as Record<string, unknown>
+        await tx.put('sessions', { ...moved, chainId: bound.first.chainId, startedAt: 1 })
+    })
+    await patchChain(world, bound, {
+        hasContent: true,
+        file: { name: 'a.nxsp', event: 'saved', at: NOW - DAY, hash: await rootOf(world, bound) },
+    })
+    await patchChain(world, changed, {
+        file: { name: 'b.nxsp', event: 'saved', hash: new Uint8Array(16).fill(7) },
+    })
+    const read = <T>(fn: (tx: KvTx) => Promise<T>) =>
+        deleter.tab.run(() => deleter.core.read(['chains', 'sessions', 'stackBlocks', 'meta'], fn))
+    const { now, chains: found } = await read((tx) => readDeleteCandidates(tx, NOW))
+    const expected = await read((tx) => candidatesPerChain(tx, NOW))
+    assert.equal(now, expected.now)
+    assert.deepEqual(
+        found.map((chain) => ({
+            chainId: chain.chainId,
+            head: chain.head,
+            fileAt: chain.fileAt,
+            sessions: chain.sessions,
+            changed: chain.changed,
+            readable: chain.readable,
+            hasContent: chain.hasContent,
+        })),
+        expected.chains,
+    )
+    // Every kind of chain is there: the marked one left out, the rest in.
+    assert.equal(found.length, 8)
+    assert.deepEqual(
+        [headless, missingHead, newer, unsupported, changed].map(
+            (chain) => found.find((each) => each.chainId === chain.first.chainId)?.readable,
+        ),
+        ['damaged', 'damaged', 'newer', 'damaged', 'yes'],
+    )
 })
