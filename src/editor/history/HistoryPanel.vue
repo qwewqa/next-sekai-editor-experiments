@@ -11,7 +11,11 @@ import {
     watch,
 } from 'vue'
 import { i18n } from '../../i18n'
-import { focusLost } from '../../utils/focusFallback'
+import { focusLost, returnFocus } from '../../utils/focusFallback'
+import { commands } from '../commands'
+import DeleteSessionsIcon from '../commands/deleteSessions/DeleteSessionsIcon.vue'
+import { runCommand } from '../commands/runCommand'
+import { canDeleteSessions } from '../settings/deleteSessionsFlow'
 import { useRootFontSize } from '../useRootFontSize'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
 import CloseIcon from '../workspace/CloseIcon.vue'
@@ -32,8 +36,8 @@ import TimelineList from './TimelineList.vue'
 import type { GoToView, HistoryPresentation } from './presentation'
 
 // The History panel, in a dock or in the dialog: one band with the two tabs,
-// Timeline and Recent Sessions, and Go To; then the list. There is no action bar in it: the peek's
-// controls are on the canvas, so the body is all list.
+// Timeline and Recent Sessions, and at the end Go To or Delete Sessions…; then the list. There is no action bar in it,
+// because the peek's controls are on the canvas, so the body is all list.
 
 const props = withDefaults(
     defineProps<{ surface?: 'panel' | 'dialog'; presentation?: HistoryPresentation }>(),
@@ -54,6 +58,7 @@ const band = useTemplateRef<HTMLElement>('band')
 const filterBanner = useTemplateRef<HTMLElement>('filterBanner')
 const tablist = useTemplateRef<HTMLElement>('tablist')
 const goToButton = useTemplateRef<HTMLButtonElement>('goToButton')
+const deleteSessionsButton = useTemplateRef<HTMLButtonElement>('deleteSessionsButton')
 // What the Timeline offers Go To.
 type TimelineHandle = {
     focus: () => void
@@ -280,6 +285,14 @@ const blurAfterPointer = (event: MouseEvent) => {
     if (event.detail > 0) (event.currentTarget as HTMLElement).blur()
 }
 
+// Delete Sessions… is a command, so this button, a key bound to it and the toolbar run the same thing.
+const onDeleteSessions = async (event: MouseEvent) => {
+    blurAfterPointer(event)
+    await runCommand(commands.deleteSessions)
+    // In the dialog, focus stays in History. If the run left focus on the page body, it returns to the button.
+    if (props.surface === 'dialog') returnFocus(deleteSessionsButton.value)
+}
+
 const goToButtonTitle = computed(() =>
     filtered.value ? `${i18n.value.history.goTo} · ${filterText.value}` : i18n.value.history.goTo,
 )
@@ -292,7 +305,7 @@ const goToButtonTitle = computed(() =>
         @keydown.esc="onEscape"
     >
         <!-- The band: 48 px, one line, the 6 px panel gutter. Pill-and-marker tabs at its start, as
-             the Properties band's; Go To, a flat band control, at its end. The dialog's small band
+             the Properties band's; Go To or Delete Sessions…, flat band controls, at its end. The dialog's small band
              (a narrow sheet) closes its gaps to 2 px and its tab pills to 6 px a side, so
              Timeline stays whole beside Recent Sessions at its 48 px floor. -->
         <div
@@ -339,32 +352,49 @@ const goToButtonTitle = computed(() =>
                     >
                 </button>
             </div>
-            <!-- Recent Sessions keeps Go To's place, so the tabs never move. -->
-            <button
-                ref="goToButton"
-                type="button"
-                aria-haspopup="dialog"
-                :aria-expanded="goToOpen"
-                :aria-hidden="onTimeline ? undefined : true"
-                :tabindex="onTimeline ? 0 : -1"
-                class="ghost ghost-band ml-auto flex h-9 shrink-0 items-center gap-1.5 rounded-full text-sm"
-                :class="[
-                    mode === 'label' ? 'px-3' : 'w-9 justify-center',
-                    { invisible: !onTimeline },
-                ]"
-                :title="goToButtonTitle"
-                :aria-label="i18n.history.goTo"
-                data-history-goto-button
-                data-history-focus="goto"
-                @click="(toggleGoTo(), blurAfterPointer($event))"
-                @keydown="onGoToKeydown"
-            >
-                <GoToIcon />
-                <template v-if="mode === 'label'">
-                    <span class="max-w-28 truncate">{{ i18n.history.goTo }}</span>
-                    <ChevronIcon direction="down" />
-                </template>
-            </button>
+            <!-- The end slot: Go To on the Timeline, Delete Sessions… on Recent Sessions. Both share
+                 one grid cell, so the slot is Go To's width on either tab and the tabs never move. -->
+            <div class="ml-auto grid shrink-0 items-center justify-items-end" data-history-end-slot>
+                <button
+                    ref="goToButton"
+                    type="button"
+                    aria-haspopup="dialog"
+                    :aria-expanded="goToOpen"
+                    :aria-hidden="onTimeline ? undefined : true"
+                    :tabindex="onTimeline ? 0 : -1"
+                    class="ghost ghost-band col-start-1 row-start-1 flex h-9 items-center gap-1.5 rounded-full text-sm"
+                    :class="[
+                        mode === 'label' ? 'px-3' : 'w-9 justify-center',
+                        { invisible: !onTimeline },
+                    ]"
+                    :title="goToButtonTitle"
+                    :aria-label="i18n.history.goTo"
+                    data-history-goto-button
+                    data-history-focus="goto"
+                    @click="(toggleGoTo(), blurAfterPointer($event))"
+                    @keydown="onGoToKeydown"
+                >
+                    <GoToIcon />
+                    <template v-if="mode === 'label'">
+                        <span class="max-w-28 truncate">{{ i18n.history.goTo }}</span>
+                        <ChevronIcon direction="down" />
+                    </template>
+                </button>
+                <button
+                    v-if="!onTimeline && canDeleteSessions"
+                    ref="deleteSessionsButton"
+                    type="button"
+                    aria-haspopup="dialog"
+                    class="ghost ghost-band col-start-1 row-start-1 flex size-9 items-center justify-center rounded-full"
+                    :title="i18n.settings.localData.deleteSessions"
+                    :aria-label="i18n.settings.localData.deleteSessions"
+                    data-history-delete-sessions
+                    data-history-focus="delete-sessions"
+                    @click="onDeleteSessions"
+                >
+                    <DeleteSessionsIcon class="size-4 fill-current" aria-hidden="true" />
+                </button>
+            </div>
             <button
                 v-if="surface === 'dialog'"
                 type="button"

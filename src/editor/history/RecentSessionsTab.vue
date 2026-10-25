@@ -57,7 +57,8 @@ import {
     type DeletedRow,
     type NavRow,
 } from './sessions'
-import { onDeleteChanged, sessionDelete } from './sessionDeleteLive'
+import { sessionDelete } from './sessionDeleteLive'
+import { onDeleteChanged } from './sessionsChanged'
 import { listFocus } from './state'
 
 // Recent Sessions: one row per chain, newest first, under the Timeline's day

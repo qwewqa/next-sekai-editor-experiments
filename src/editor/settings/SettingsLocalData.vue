@@ -4,7 +4,6 @@ import { vFocusRescue } from '../../directives/focusRescue'
 import { i18n } from '../../i18n'
 import { formatDate } from '../../i18n/when'
 import { showModal } from '../../modals'
-import type { DeleteChain } from '../../local/deleteSessions'
 import { storageStatus } from '../../local/startup/events'
 import type { RecoveryItem } from '../../local/startup/api'
 import { showChoice } from '../../modals/choice'
@@ -14,8 +13,10 @@ import { FileError, platform } from '../../platform'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
+import { commands } from '../commands'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
+import { runCommand } from '../commands/runCommand'
 import { notStored } from '../file/notStored'
 import { pausedReasonLine } from '../file/notStoredReason'
 import { tryStoringAgain } from '../file/tryAgain'
@@ -23,11 +24,9 @@ import { showHistoryLink } from '../history/openHistory'
 import { loadNotices, notify } from '../notification'
 import SeverityIcon from '../SeverityIcon.vue'
 import type { RawExportRun } from '../../startup/rawExportNote'
-import { shownName } from '../shownName'
 import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
-import { confirmLines } from './deleteChoices'
-import DeleteSessionsDialog from './DeleteSessionsDialog.vue'
+import { canDeleteSessions, deleteSessionsRunning } from './deleteSessionsFlow'
 import SettingsSection from './SettingsSection.vue'
 import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
 
@@ -101,17 +100,12 @@ const retryOrReload = async (action: 'retry' | 'reload') => {
     }
 }
 
-// Delete Sessions… acts on the stored database: not while an upgrade holds it, not in safe mode.
-const canDelete = computed(() => {
-    const status = storageStatus.value
-    return !safe && status?.mode === 'stored' && status.reason !== 'upgrading'
-})
 const hasStorage = computed(
     () =>
         storageLine.value !== undefined ||
         storedText.value !== undefined ||
         notStoredLine.value !== undefined ||
-        canDelete.value,
+        canDeleteSessions.value,
 )
 
 // --- Recovery rows. The storage-side modules load when a row is acted on.
@@ -245,86 +239,10 @@ const afterRowGone = () =>
     document.querySelector<HTMLElement>('[data-recovery-row] button') ??
     document.querySelector<HTMLElement>('[data-open-history]')
 
-// --- Delete Sessions…: the choice, the confirm, then the removal with its progress.
-const deleting = ref(false)
+// --- Delete Sessions…: the command, as the History band and a bound key run it; the total is read again after.
 const deleteSessions = async () => {
-    if (deleting.value) return
-    deleting.value = true
-    try {
-        const sessions = await import('../../local/deleteSessions')
-        // Read first, so the dialog never shows counts it does not know.
-        const read = await sessions.readDeleteChoices()
-        if (read.storedRead === 'failed') {
-            notify(() => i18n.value.history.sessions.loadFailed, { card: true, severity: 'error' })
-            return
-        }
-        const targets: DeleteChain[] | undefined = await showModal(DeleteSessionsDialog, {
-            chains: read.storedValue,
-        })
-        if (!targets?.length) return
-        // Cancel is the default: a stray Enter deletes nothing.
-        const confirmed = await showChoice({
-            title: () => strings.value.deleteTitle,
-            lines: () => {
-                const { history, modals } = i18n.value
-                return confirmLines(targets, (chain) => shownName(chain.name), {
-                    confirm: strings.value.deleteConfirm,
-                    notSaved: strings.value.notSaved,
-                    namesMore: strings.value.namesMore,
-                    newer: strings.value.newer,
-                    listJoin: modals.form.listJoin,
-                    quoted: history.quoted,
-                })
-            },
-            choices: [{ value: true, label: () => i18n.value.modals.confirm.delete, danger: true }],
-            cancelIsDefault: true,
-        })
-        if (!confirmed) return
-        const abort = new AbortController()
-        const outcome = sessions
-            .deleteSessions(targets, undefined, abort.signal)
-            .catch((error: unknown) => {
-                console.error(error)
-                return { kind: 'failed' as const, deleted: 0 }
-            })
-        // Closing the dialog stops the run between chains; each chain's removal is whole.
-        await showModal(LoadingModal, {
-            title: () => strings.value.deleteTitle,
-            async *task(signal: AbortSignal) {
-                const cancel = () => {
-                    abort.abort()
-                }
-                signal.addEventListener('abort', cancel, { once: true })
-                yield () => strings.value.deleting
-                try {
-                    await outcome
-                } finally {
-                    signal.removeEventListener('abort', cancel)
-                }
-            },
-        })
-        const result = await outcome
-        // A card, not a quick toast that fades over the open dialog. What was asked for and did not
-        // go is never silent; closing the dialog asked to stop.
-        const notDeleted = abort.signal.aborted ? 0 : targets.length - result.deleted
-        const done =
-            result.deleted > 0
-                ? interpolate(() => i18n.value.session.deletedMany, String(result.deleted))
-                : undefined
-        const failed =
-            notDeleted > 0
-                ? interpolate(() => strings.value.notDeleted, String(notDeleted))
-                : undefined
-        if (done && failed)
-            notify(() => done() + '\n' + failed(), {
-                lines: [{ message: done }, { message: failed, severity: 'error' }],
-            })
-        else if (done) notify(done, { card: true })
-        else if (failed) notify(failed, { card: true, severity: 'error' })
-        await readTotal()
-    } finally {
-        deleting.value = false
-    }
+    await runCommand(commands.deleteSessions)
+    await readTotal()
 }
 
 // --- Export Raw Data…: everything stored, as stored, for reporting a problem.
@@ -403,11 +321,11 @@ const exportRaw = async () => {
                 </button>
             </div>
 
-            <div v-if="canDelete">
+            <div v-if="canDeleteSessions">
                 <button
                     type="button"
                     :class="buttonClass"
-                    :disabled="deleting"
+                    :disabled="deleteSessionsRunning"
                     data-delete-sessions-open
                     @click="deleteSessions"
                 >

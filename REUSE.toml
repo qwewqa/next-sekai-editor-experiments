@@ -65,6 +65,7 @@ path = [
     "src/editor/commands/copy/CopyIcon.vue",
     "src/editor/commands/cut/CutIcon.vue",
     "src/editor/commands/deleteSelection/DeleteIcon.vue",
+    "src/editor/commands/deleteSessions/DeleteSessionsIcon.vue",
     "src/editor/commands/deselect/DeselectIcon.vue",
     "src/editor/commands/editsHere/EditsHereIcon.vue",
     "src/editor/commands/eraser/EraserIcon.vue",

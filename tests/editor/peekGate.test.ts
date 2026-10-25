@@ -97,6 +97,8 @@ const allowed = [
     // The change view's.
     'showChange',
     'editsHere',
+    // Removes stored sessions, never the chart; ends a peek of a chain it deletes.
+    'deleteSessions',
 ]
 
 /** Run while peeking and end the peek themselves once they proceed: `leavesPeek`. */
@@ -253,9 +255,11 @@ const entryPoints = [
     'src/editor/controls/mouse.ts',
     'src/editor/elevation/ElevationEditor.vue',
     'src/editor/file/chipDialogs.ts',
+    'src/editor/history/HistoryPanel.vue',
     'src/editor/history/RecentSessionsTab.vue',
     'src/editor/history/TimelineList.vue',
     'src/editor/save/flow.ts',
+    'src/editor/settings/SettingsLocalData.vue',
     'src/editor/switch.ts',
     'src/editor/toolbar/LevelEditorToolbar.vue',
     'src/editor/workspace/properties/ViewProperties.vue',
