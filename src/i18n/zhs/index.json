@@ -2131,6 +2131,7 @@
     "notProject": "“{0}”不是项目文件。",
     "notKept": "未保存。无法完整读取“{0}”。",
     "notKeptSafe": "未保存。安全模式下无法替换文件。",
+    "notKeptFull": "未保存。浏览器存储空间已满。请在“设置 › 本地数据”中删除会话，然后重新保存。",
     "saved": "已保存到 {0}",
     "savedWithoutBgmLarge": "已保存到 {0}，未包含背景音乐",
     "savedWithoutCoverLarge": "已保存到 {0}，未包含封面",
