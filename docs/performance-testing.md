@@ -11,7 +11,13 @@ npm run perf:report -- perf-results/smoke work
 npm run perf:report -- perf-results/smoke long perf-results/smoke/traces/<cell>.json.gz 16
 ```
 
-`scripts/perf/plans/full.json` is the full plan: every scenario below on coconut, the real charts and the stress chart, on the desktop and the phone stand-in. Its charts are read from `perf-results/data/` (see "Charts"), and a full run takes hours.
+The full matrix is three plans in `scripts/perf/plans/`, run one after another:
+
+- `full.json`: the chart scenarios (scrolling, resizing, idle, memory, journal, edits, hide, notch) on coconut, the real charts and the stress chart, on the desktop and the phone stand-in;
+- `preview.json`: the preview scenarios (playback, edits, drag, scrub, seek, cursor jumps, note speed, reopen) on the same kinds of charts;
+- `ui.json`: the History, Save and Settings actions on the seeds (see "Seeds"), plus startup.
+
+`play2x` and `heaps` are in no plan; run them with a plan of your own. The charts are read from `perf-results/data/` (see "Charts"), and a full run takes hours.
 
 `npm run perf` runs these steps:
 
@@ -178,6 +184,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 
 - The `phone` profile is 390×844 at DPR 3, with touch, `isMobile` and a **4× CDP CPU throttle**.
 - The throttle slows the CPU only. GPU costs at DPR 3 are not scaled, so a real phone can be slower on fill rate than these runs show.
+- The throttle slows the page's main thread only. The storage worker and the preview's worker run at full speed, and CDP cannot throttle them, so a phone figure that includes worker time is a lower bound.
 - Use touch scenarios on it (`quicktouch`, `flick`, `minimapdrag`): wheel and keys are not phone input.
 
 ### Runs, cold and warm, and the two axes
