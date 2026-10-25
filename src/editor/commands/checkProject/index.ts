@@ -40,13 +40,17 @@ export const checkProject: Command = {
         }
         const abort = new AbortController()
         const message = shallowRef(firstMessage(plan))
-        const outcome = startCheck(plan, abort.signal, (next) => {
+        const percent = shallowRef<number>()
+        const outcome = startCheck(plan, abort.signal, (next, done) => {
             message.value = next
+            percent.value = done
         })
-        // The progress dialog opens at once: a check waiting behind a Save shows as 0%. Closing it
-        // cancels the run until its finish starts.
+        // The progress dialog opens at once. Its bar slides while the check waits behind a Save and
+        // during the finish, and shows the fraction between a phase's first and last batch. Closing
+        // it cancels the run until its finish starts.
         await showModal(LoadingModal, {
             title: () => i18n.value.check.title,
+            progress: () => percent.value,
             async *task(signal: AbortSignal) {
                 const cancel = () => {
                     abort.abort()

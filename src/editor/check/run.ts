@@ -17,6 +17,7 @@ import { readDiskFacts } from '../save/disk'
 import { waitForChainImports, type PreparingSlot } from '../save/imports'
 import { enqueueSave } from '../save/queue'
 import { unlinkSession } from '../save/unlink'
+import { phaseFraction } from './progress'
 import { refusalLine, reportLines, type CheckText, type Findings } from './report'
 
 // Check File and History… on the page: which file, then the
@@ -153,20 +154,19 @@ const holdMaint = (signal: AbortSignal) =>
             })
     })
 
-const percent = (done: number, total: number) =>
-    total > 0 ? Math.min(100, Math.floor((done / total) * 100)) : 100
+/**
+ * The dialog's line, and how far its bar is (0 to 100). A bar without a fraction slides: it waits
+ * behind a Save, before a phase's first batch and during the finish.
+ */
+type Say = (message: () => string, percent?: number) => void
 
-type Say = (message: () => string) => void
+const fileMessage = (name: string) => interpolate(() => i18n.value.check.checkingFile, name)
 
-const fileMessage = (name: string, done: number, total: number) =>
-    interpolate(() => i18n.value.check.checkingFile, name, String(percent(done, total)))
-
-const storedMessage = (done: number, total: number) =>
-    interpolate(() => i18n.value.check.checkingStored, String(percent(done, total)))
+const storedMessage = () => i18n.value.check.checkingStored
 
 /** The dialog's first message, before the run has started. */
 export const firstMessage = (plan: Plan): (() => string) =>
-    plan.file ? fileMessage(plan.name, 0, 1) : storedMessage(0, 1)
+    plan.file ? fileMessage(plan.name) : storedMessage
 
 /** A "Preparing…" that shows nothing: the progress dialog is the run's. */
 const silentPreparing = (signal: AbortSignal): ReturnType<PreparingSlot['ui']['preparing']> => ({
@@ -255,7 +255,7 @@ const perform = async (
     let reason = plan.reason
     if (plan.file && !importUnlinked) {
         const bound = plan.file
-        say(fileMessage(name, 0, 1))
+        say(fileMessage(name))
         let opened
         try {
             opened = await env.worker.call('checkFileOpen', bound.found, FILE_CALL)
@@ -279,7 +279,7 @@ const perform = async (
                 let unreadable = false
                 for (let n = 0; n < opened.batches; n++) {
                     checkpoint()
-                    say(fileMessage(name, done, opened.bytes))
+                    say(fileMessage(name), phaseFraction(n, done, opened.bytes))
                     let batch
                     try {
                         batch = await env.worker.call('checkFileBatch', { id: opened.id, n })
@@ -296,6 +296,7 @@ const perform = async (
                     done += batch.bytes
                     if (batch.bad.length) fileDamaged = true
                 }
+                say(fileMessage(name))
                 held.ids.delete(opened.id)
                 void env.worker.call('checkDrop', opened.id).catch(() => undefined)
                 if (unreadable) reason = readFailedLine(name)
@@ -318,7 +319,7 @@ const perform = async (
         let done = 0
         for (let n = 0; n < stored.batches; n++) {
             checkpoint()
-            say(storedMessage(done, stored.roots))
+            say(storedMessage, phaseFraction(n, done, stored.roots))
             const batch = await storedRead(env.worker, 'checkStoredBatch', { id: stored.id, n })
             if (batch.storedRead === 'failed') throw new End(storageFailed())
             if (batch.storedValue.kind === 'refused')
@@ -326,7 +327,7 @@ const perform = async (
             if (batch.storedValue.kind !== 'done') throw new End(storageFailed())
             done += batch.storedValue.roots
         }
-        say(storedMessage(stored.roots, stored.roots))
+        say(storedMessage)
     }
     checkpoint()
 
