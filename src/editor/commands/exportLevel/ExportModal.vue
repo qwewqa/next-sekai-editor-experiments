@@ -97,10 +97,10 @@ watch(preparing, async (file) => {
     await nextTick()
     downloadButton.value?.focus()
 })
-const preparingText = computed(() =>
+const readyText = computed(() =>
     preparing.value
         ? interpolate(
-              () => i18n.value.save.preparing,
+              () => i18n.value.save.ready,
               preparing.value.name,
               formatSize(preparing.value.size),
           )()
@@ -198,7 +198,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
             @modalcancel="cancel"
         >
             <p v-if="preparing" :id="`${ids}-preparing`" data-export-preparing>
-                {{ preparingText }}
+                {{ readyText }}
             </p>
             <template v-else>
                 <div
@@ -206,7 +206,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                     class="flex flex-wrap items-center gap-x-3 gap-y-2"
                     data-export-target
                 >
-                    <span class="shrink-0 opacity-75">{{ i18n.export.to }}</span>
+                    <span class="shrink-0 text-fg/80">{{ i18n.export.to }}</span>
                     <span class="min-w-40 flex-1 break-words font-medium" data-export-target-name>{{
                         targetLabel
                     }}</span>
@@ -256,7 +256,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                         {{ problemText }}
                     </p>
                 </div>
-                <p v-if="peeking" class="text-sm opacity-75">{{ i18n.peek.exportsCurrent }}</p>
+                <p v-if="peeking" class="text-sm text-fg/80">{{ i18n.peek.exportsCurrent }}</p>
             </template>
 
             <div class="flex justify-end gap-2">

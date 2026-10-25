@@ -2101,6 +2101,7 @@
     "notFound": "\"{0}\" est introuvable.",
     "downloadStarted": "Téléchargement lancé : {0} · {1}",
     "preparing": "Préparation de {0}… {1}",
+    "ready": "Prêt : {0} · {1}",
     "download": "Télécharger",
     "buildFailed": "\"{0}\" n’a pas pu être préparé.",
     "readFailed": "\"{0}\" n’a pas pu être lu.",
@@ -2155,8 +2156,8 @@
   "check": {
     "command": "Vérifier le fichier et l’historique…",
     "title": "Vérifier le fichier et l’historique",
-    "checkingFile": "Vérification de {0}… {1} %",
-    "checkingStored": "Vérification de l’historique stocké… {0} %",
+    "checkingFile": "Vérification de {0}…",
+    "checkingStored": "Vérification de l’historique stocké…",
     "changed": "\"{0}\" a changé pendant la vérification. Réessayez.",
     "stillOpening": "\"{0}\" est encore en cours d’ouverture. Réessayez.",
     "noDamage": "Aucun dommage trouvé.",
