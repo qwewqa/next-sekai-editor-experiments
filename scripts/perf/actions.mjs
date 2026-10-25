@@ -111,7 +111,13 @@ export const installActionProbe = () => {
                             a.at.marks[name] = t
                     if (a.released && a.at.done === undefined && check(a.done)) a.at.done = t
                 }
-                const tail = a.at.done !== undefined && t - a.at.done >= (spec.tail ?? 200)
+                // `until`: a mark to wait for after done, for at most `untilMs`.
+                const tail =
+                    a.at.done !== undefined &&
+                    t - a.at.done >= (spec.tail ?? 200) &&
+                    (!spec.until ||
+                        a.at.marks[spec.until] !== undefined ||
+                        t - a.at.done >= (spec.untilMs ?? 30_000))
                 if (tail || performance.now() - a.start > limit) {
                     a.finished = true
                     for (const o of a.observers) o.disconnect()
@@ -588,10 +594,14 @@ export const actions = {
         },
         spec: () => ({
             done: `!!document.querySelector('[data-history-filter-banner]') && (document.querySelectorAll('${dialog} [data-history-row]').length > 1 || !!document.querySelector('[data-history-empty]'))`,
+            // "Checking older steps…" while the scan runs: its end, once it has shown. The tail
+            // keeps the probe until then.
             marks: {
-                complete: `!!document.querySelector('[data-history-filter-banner]') && !document.querySelector('[data-history-scan]')`,
+                scanning: `(window.__scanSeen ||= !!document.querySelector('[data-history-scan]'))`,
+                complete: `window.__scanSeen && !document.querySelector('[data-history-scan]')`,
             },
             tail: 100,
+            until: 'complete',
             timeout: 120_000,
         }),
         input: async (page, cdp) =>
@@ -604,6 +614,7 @@ export const actions = {
                 120_000,
             ).catch(() => {})
             await closeGoTo(page)
+            await page.evaluate(() => (window.__scanSeen = false))
             await page
                 .getByRole('button', { name: 'Show All' })
                 .click()
