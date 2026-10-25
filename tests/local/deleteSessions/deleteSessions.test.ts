@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { resolveZone } from '../../../src/calendar/calendar'
 import { readDeleteCandidates } from '../../../src/local/candidates'
+import { chainStartOf } from '../../../src/local/chainFields'
 import { readMeta, writeMeta } from '../../../src/local/db'
 import {
     BUSY_LIMIT_MS,
@@ -13,7 +14,9 @@ import {
 import { equalBytes } from '../../../src/local/hash'
 import type { KvTx } from '../../../src/local/kv/types'
 import { importLock, MAINT_LOCK, sessionLock } from '../../../src/local/locks'
+import { namePartsOf } from '../../../src/local/names'
 import { headOf } from '../../../src/local/open/earlier'
+import { readRecent } from '../../../src/local/recent'
 import { sessionReadability } from '../../../src/local/records/unknownValues'
 import { SESSION_V } from '../../../src/local/records/version'
 import { checkStored } from '../../../src/local/testing/invariants'
@@ -628,7 +631,66 @@ const candidatesPerChain = async (tx: KvTx, wall: number) => {
     return { now, chains }
 }
 
-test('the candidates read in one cursor are the ones read chain by chain, damage and all', async () => {
+/** Recent Sessions' list as it was read before the one-cursor read: one read per chain and session. */
+const recentPerChain = async (tx: KvTx) => {
+    type Row = Record<string, unknown>
+    const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
+    const count = (value: unknown) =>
+        typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+    const out: unknown[] = []
+    for (const { value } of await tx.entries('chains', { index: 'updatedAt', direction: 'prev' })) {
+        if (!isRow(value) || value.deleting !== undefined || typeof value.chainId !== 'string')
+            continue
+        const sessionId = typeof value.head === 'string' ? value.head : ''
+        const session = sessionId ? await tx.get('sessions', sessionId) : undefined
+        const head = isRow(session) ? session : undefined
+        const updatedAt = count(value.updatedAt) ?? 0
+        const fileRow = isRow(value.file) ? value.file : undefined
+        const file =
+            fileRow && typeof fileRow.name === 'string' && fileRow.name
+                ? {
+                      name: fileRow.name,
+                      ...(typeof fileRow.event === 'string' ? { event: fileRow.event } : {}),
+                      ...(typeof fileRow.at === 'number' && Number.isFinite(fileRow.at)
+                          ? { at: fileRow.at }
+                          : {}),
+                      ...(fileRow.confirmed === true ? { confirmed: true } : {}),
+                  }
+                : undefined
+        const root = head ? await headOf(tx, head) : undefined
+        const hash = fileRow?.hash
+        const summary = isRow(value.summary) ? value.summary : undefined
+        const noteCount = count(summary?.noteCount)
+        let readable = head ? 'yes' : 'damaged'
+        for (const row of [
+            head,
+            ...(await tx.index('sessions', 'chainId').getAll(value.chainId)),
+        ]) {
+            if (!isRow(row)) readable = 'damaged'
+            else if (sessionReadability({ row }) === 'newer') {
+                readable = 'newer'
+                break
+            } else if (sessionReadability({ row }) === 'unsupported') readable = 'damaged'
+        }
+        out.push({
+            chainId: value.chainId,
+            updatedAt,
+            head: {
+                sessionId,
+                lastSeq: count(head?.lastSeq) ?? 0,
+                startedAt: count(chainStartOf(value, head?.startedAt)) ?? updatedAt,
+            },
+            nameParts: namePartsOf(value),
+            ...(file ? { file } : {}),
+            changed: !!file && (!(hash instanceof Uint8Array) || !root || !equalBytes(root, hash)),
+            ...(noteCount === undefined ? {} : { noteCount }),
+            readable,
+        })
+    }
+    return out
+}
+
+test('the candidates and Recent Sessions’ list read in one cursor are the ones read chain by chain, damage and all', async () => {
     const { world, chains, deleter } = await setup(9)
     const [marked, headless, missingHead, newer, unsupported, bound, changed, extra] =
         chains as Chain[] as [Chain, Chain, Chain, Chain, Chain, Chain, Chain, Chain]
@@ -653,11 +715,15 @@ test('the candidates read in one cursor are the ones read chain by chain, damage
     })
     await patchChain(world, changed, {
         file: { name: 'b.nxsp', event: 'saved', hash: new Uint8Array(16).fill(7) },
+        summary: { noteCount: 12 },
+        name: 'Stage 3',
     })
     const read = <T>(fn: (tx: KvTx) => Promise<T>) =>
         deleter.tab.run(() => deleter.core.read(['chains', 'sessions', 'stackBlocks', 'meta'], fn))
     const { now, chains: found } = await read((tx) => readDeleteCandidates(tx, NOW))
     const expected = await read((tx) => candidatesPerChain(tx, NOW))
+    // Recent Sessions' list, every field, is the one read chain by chain.
+    assert.deepEqual(await read(readRecent), await read(recentPerChain))
     assert.equal(now, expected.now)
     assert.deepEqual(
         found.map((chain) => ({
