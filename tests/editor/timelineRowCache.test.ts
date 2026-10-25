@@ -133,7 +133,8 @@ test('kept recipes are always the ones the rows would get fresh', () => {
     for (let seed = 1; seed <= 25; seed++) {
         const next = random(seed)
         const all = chain(next, 300)
-        const cache = createRecipeCache()
+        // Half the seeds with a small limit, so the cache also drops rows it holds.
+        const cache = createRecipeCache(seed % 2 ? 40 : undefined)
         const place = (entry: Entry) => all.findIndex((each) => entryId(each) === entryId(entry))
         // The Timeline's run as it changes: older pages arrive, new entries come in on top, a peek
         // pins a run, a group opens, the filter changes, and an entry read again comes back as a
@@ -172,4 +173,14 @@ test('kept recipes are always the ones the rows would get fresh', () => {
                 assert.deepEqual(recipes.get(row.id), recipeOfRow(row), `seed ${seed}, ${row.id}`)
         }
     }
+})
+
+test('turning a filter off again reuses the recipes kept from before it', () => {
+    const entries = chain(random(3), 200)
+    const cache = createRecipeCache()
+    const all = cache(buildRows(entries, options()))
+    cache(buildRows(entries, options(false, { filter: 'saves' })))
+    const again = cache(buildRows(entries, options()))
+    assert.ok(all.size > 50)
+    for (const [id, recipe] of all) assert.equal(again.get(id), recipe, id)
 })
