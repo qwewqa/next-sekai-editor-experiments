@@ -300,7 +300,8 @@ test.describe('on Apple devices', () => {
 
 test('visibility toggles list kinds in the tools’ order everywhere', async ({ page }) => {
     const kinds = ['Note', 'BPM', 'Time Scale', 'Camera Event', 'Stage Mask Event']
-    // The keyboard shortcut list.
+    // The keyboard shortcut list, whose rows mount in the frames after the dialog opens.
+    await expect(page.getByRole('dialog').locator('[data-settings-section="about"]')).toBeAttached()
     const names = await page
         .getByRole('dialog')
         .locator('section')
