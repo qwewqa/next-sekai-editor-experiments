@@ -105,7 +105,7 @@ A change under `infra/` also runs `.github/workflows/infra-check.yml`: `cfn-lint
 Also:
 
 - A native test is needed for anything that touches the native implementation, the filesystem, the OS or the Rust side. Shared tests use the mock platform and need no Rust.
-- `npm run test:browser`: the Playwright specs in Chromium, then the timing specs alone (`npm run test:timing`); run the ones for your area with `npx playwright test <spec> --project=chromium`. Many need the preview assets (README).
+- `npm run test:browser`: the Playwright specs in Chromium, then the timing specs alone (`npm run test:timing`); run the ones for your area with `npx playwright test <spec> --project=chromium`, and for a preview change also `--project=chromium-worker`, which runs the preview specs with the preview drawn in its worker. Many need the preview assets (README).
 - `npm run test:production`: the production build's specs, after `npm run build:release`.
 - `npm run test:compatibility`: Firefox, WebKit and mobile WebKit (README, "Browser compatibility").
 
