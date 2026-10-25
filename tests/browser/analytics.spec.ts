@@ -1,4 +1,11 @@
-import { expect, test, type BrowserContext, type Page, type Route } from '@playwright/test'
+import {
+    expect,
+    test,
+    type BrowserContext,
+    type Page,
+    type Request,
+    type Route,
+} from '@playwright/test'
 import { isValidEvent } from '../../src/analytics/catalogue'
 import type { Item } from '../../src/analytics/sender'
 import { confirmWhenReady } from './confirmWhenReady'
@@ -325,12 +332,13 @@ for (const answer of ['abort', 'error', 'hang'] as const)
         await boot(page)
         await interact(page)
         // The first request ends, except at the hanging endpoint, before the edit pagehide would send.
+        const batch = { predicate: (request: Request) => request.url().startsWith(ORIGIN) }
         const ended =
             answer === 'hang'
                 ? undefined
-                : page.waitForEvent(answer === 'abort' ? 'requestfailed' : 'requestfinished', {
-                      predicate: (request) => request.url().startsWith(ORIGIN),
-                  })
+                : answer === 'abort'
+                  ? page.waitForEvent('requestfailed', batch)
+                  : page.waitForEvent('requestfinished', batch)
         await firstSend(page, batches)
         await ended
         await edit(page, 1)
