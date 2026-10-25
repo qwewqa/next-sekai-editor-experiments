@@ -23,6 +23,8 @@ Every resource carries the tags `nse:service` (`stats`, or `shared` for the base
 
 The management account is touched in steps 1, 5 and 6, and never again, however many services are added.
 
+**Before anything else,** push the branch that adds or changes `infra/` to a `ci/<name>` branch and get Infra check green, including the Compose job, before the change reaches `main`. The contract test cannot run without Docker, so CI is its first run.
+
 1. **Create the accounts**, in the management account: `bash infra/create-accounts.sh <prod email> <dev email>`, or Organizations › AWS accounts › Add an AWS account in the console. Each needs an email address that no other AWS account uses (a plus-address on one mailbox works). Put both in an OU `nse` if the Organization uses OUs.
 2. **Profiles.** Without IAM Identity Center, add to `~/.aws/config` (the ids stay in this local file):
 
@@ -36,7 +38,7 @@ The management account is touched in steps 1, 5 and 6, and never again, however 
     and the same for `nse-dev`. With Identity Center, assign `AdministratorAccess` on both accounts and name the profiles the same. Every command below names its profile. The accounts’ root users are not used.
 
 3. **Session Manager plugin,** once, for the dashboard tunnel. On Windows run the installer from `https://s3.amazonaws.com/session-manager-downloads/plugin/latest/windows/SessionManagerPluginSetup.exe`, then open a new terminal and check `session-manager-plugin`. Other systems: AWS’s page “Install the Session Manager plugin for the AWS CLI”.
-4. **GitHub.** Create the Environments `stats-dev` (any branch) and `stats-prod` (the maintainer as required reviewer, deployment branch `main` only; both are free in a public repository). Each gets the variable `AWS_ACCOUNT_ID` set to its account’s id, and `stats-prod` later gets `STATS_MONITOR_WEBSITE` (`stats/README.md`).
+4. **GitHub.** Create the Environments `stats-dev` (any branch) and `stats-prod` (the maintainer as required reviewer, deployment branch `main` only; both are free in a public repository). Each gets the variable `AWS_ACCOUNT_ID` set to its account’s id, and `stats-prod` later gets `STATS_MONITOR_WEBSITE` (`stats/README.md`). Set the repository variable `STATS_DEV_REAPER` to `on` to enable Stats dev down’s six-hourly reaper; until then it runs only by hand.
 5. **Deploy the baseline** in each account, and confirm the email that SNS sends:
 
     ```sh
@@ -86,7 +88,7 @@ Each environment’s zone is the whole idle cost of `nse-dev`, $0.50 a month, an
 No AWS access is needed:
 
 ```sh
-uv run --with cfn-lint cfn-lint infra/account/account.yaml infra/stats/stats.yaml
+uv run --with cfn-lint==1.58.0 cfn-lint infra/account/account.yaml infra/stats/stats.yaml
 uv run infra/check_templates.py
 shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.sh
 bash infra/stats/scripts/contract-test.sh   # needs Docker

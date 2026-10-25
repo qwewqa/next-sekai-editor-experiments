@@ -17,6 +17,9 @@ concurrency:
 
 jobs:
     down:
+        # A scheduled run waits for the repository variable STATS_DEV_REAPER=on, set once the baseline and the
+        # stats-dev Environment exist. Before then it would fail and email every six hours.
+        if: github.event_name == 'workflow_dispatch' || vars.STATS_DEV_REAPER == 'on'
         runs-on: ubuntu-latest
         timeout-minutes: 40
         environment: stats-dev

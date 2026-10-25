@@ -110,7 +110,7 @@ Dev exists only while an analytics test runs, in `nse-dev`, and is deleted compl
 4. Run Stats dev down. It deletes the stack, the retained data volume and Elastic IP, and the bucket, then runs `scripts/leftover.sh`. “Nothing of stats is left.” means it worked.
 5. If the check names a leftover, delete it by hand with the CLI (`aws ec2 delete-volume`, `aws ec2 release-address`, `aws s3 rb --force`) and run `bash infra/stats/scripts/leftover.sh` with the dev profile.
 
-Stats dev down also runs every six hours as a reaper. It acts only on a stack over 12 hours old, and it covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` is the backstop.
+Once the repository variable `STATS_DEV_REAPER` is `on`, Stats dev down also runs every six hours as a reaper. It acts only on a stack over 12 hours old, and it covers only stats. GitHub disables a scheduled workflow after 60 days without repository activity, so re-enable it after a long pause. The $1 budget on `nse-dev` is the backstop.
 
 Each dev deploy needs a new certificate. Let’s Encrypt allows five per identical set of names a week, and Caddy falls back to ZeroSSL after that.
 
