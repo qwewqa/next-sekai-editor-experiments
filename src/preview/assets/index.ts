@@ -45,8 +45,8 @@ export const assetSession = createAssetSession({
 export const isAssetSafeModeActive = safeMode
 
 /**
- * Stores the choices an import made. Importing a package again gives it the same key, which the
- * session's watcher cannot see, so a type whose choice key did not change loads again here.
+ * Stores the choices an import made. Importing a package again keeps its key. The session's
+ * watcher reacts only to a changed key, so a type whose key is unchanged loads again here.
  */
 export const applyAssetChoices = (choices: Partial<Record<AssetType, AssetChoice>>) => {
     const before = settings.previewAssets

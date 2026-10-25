@@ -553,9 +553,7 @@ test.describe('a stored item that is gone', () => {
         await expect(fallbackLine(page, 'skin')).toHaveCount(0)
     })
 
-    test('Choose Again with the same package, which has the same key, uses it again', async ({
-        page,
-    }) => {
+    test('Choose Again with a package that is already chosen loads it again', async ({ page }) => {
         await start(page)
         await open(page, 'skin')
         const bytes = await variants('skin', [

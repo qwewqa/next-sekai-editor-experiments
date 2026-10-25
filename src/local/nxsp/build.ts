@@ -70,7 +70,7 @@ export type MediaInput =
 
 /**
  * A chunk taken from storage or this tab: its stored form, the row's CRC for the post-build
- * check, and its canonical (inflated) length, which the reader caps.
+ * check, and its canonical (inflated) length. The reader caps that length.
  */
 export type InputChunk = { stored: Uint8Array; crc32: number; size: number }
 

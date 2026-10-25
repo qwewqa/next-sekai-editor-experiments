@@ -260,8 +260,8 @@ test('an incremental redraw of separate bands does not carry a fake note’s opa
         const { fixtures, show } = window.editorTest
         const { minimapStats } = h.pipelineModule
         const single = fixtures.interaction.slides[0]![0]!
-        // Two bands far apart, each an ordinary note followed by a fake one: the first band painted
-        // ends at 0.5 opacity, and the second must not start there.
+        // Two bands far apart, each an ordinary note followed by a fake one. The first band painted
+        // ends at 0.5 opacity. The second must not start there.
         show(
             {
                 ...fixtures.interaction,

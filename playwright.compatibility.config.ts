@@ -31,7 +31,8 @@ export default defineConfig({
         'assetSelectGap.spec.ts',
     ],
     outputDir: 'test-results-compatibility',
-    // Firefox under xvfb sometimes fails to create its first WebGL2 context. A test that passes on its retry is reported as flaky.
+    // Firefox under xvfb sometimes fails to create its first WebGL2 context. A test that passes
+    // on its retry is reported as flaky.
     retries: process.env.CI ? 1 : 0,
     use: {
         ...config.use,
