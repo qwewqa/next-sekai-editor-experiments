@@ -25,7 +25,7 @@
 - The editor is now named "Next SEKAI Editor" (formerly "Sonolus Next SEKAI Editor").
 - **Safari 17 or later is required** (iOS 17 or later on iPhone and iPad).
 - If the editor does not start, add `?safe` to its address to open it in safe mode.
-- Stage style events have a **Lane Color**. A color change fades with the event’s ease. Judgment line color changes fade evenly. A skin without lane colors shows its usual lane.
+- Stage style events have a **Lane Color**. A lane color change follows the event’s easing. The judgment line keeps its opacity during color changes.
 
 ## 0.5.22 (2026-10-17)
 

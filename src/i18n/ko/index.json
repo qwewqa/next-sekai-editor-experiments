@@ -1596,7 +1596,7 @@
         "label": "가이드 불투명도"
       },
       "colors": {
-        "neutral": "하양",
+        "neutral": "회색",
         "red": "빨강",
         "green": "초록",
         "blue": "파랑",
@@ -1712,7 +1712,7 @@
       },
       "judgmentLineColor": {
         "label": "판정선 색상",
-        "neutral": "하양",
+        "neutral": "회색",
         "red": "빨강",
         "green": "초록",
         "blue": "파랑",
