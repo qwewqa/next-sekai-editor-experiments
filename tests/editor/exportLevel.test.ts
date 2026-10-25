@@ -579,6 +579,10 @@ test('an export that is written, and one that fails, are recorded for the usage 
             Promise.reject(new FileError('no-space', 'Disk full', undefined, undefined, 'x.nsld'))
         const failing = scriptedUi([undefined])
         await exportToTarget(context(failing.ui), target)
+        mock = createMockPlatform()
+        setPlatformForTests(mock)
+        mock.saveTargets.push({ kind: 'handle', handle: mock.createHandle('Coconut.nsld') })
+        assert.equal(await exportByPicker(context(scriptedUi([]).ui, 2)), 'done')
         mock = createMockPlatform({ capabilities: { writeBack: false } })
         setPlatformForTests(mock)
         assert.equal(await exportByPicker(context(scriptedUi([]).ui, 3)), 'done')
@@ -603,6 +607,13 @@ test('an export that is written, and one that fails, are recorded for the usage 
                     target: 'picker',
                     outcome: 'failed',
                     reason: 'no-space',
+                },
+                {
+                    name: 'export',
+                    format: 'levelData',
+                    target: 'picker',
+                    size: level(2).size,
+                    outcome: 'done',
                 },
                 {
                     name: 'export',
