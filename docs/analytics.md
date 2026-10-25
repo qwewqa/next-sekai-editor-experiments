@@ -45,7 +45,7 @@ A hook is one call into `tally.ts`, or a read by the client. Nothing else on a h
 | `notify`, `recordDiagnostic` | `notices.<severity>`, `errors.<kind>` |
 | `finishStartup`, `failStartup` | `markStartup`: the time, the outcome, and whether the page was ever hidden |
 | `local/start.ts` | `note('reload')` when the tab's claim is its own reload |
-| Open, Save, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed; `busy` while they run, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
+| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. All but Export also call `busy` while they run, as Restore does, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
 | `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, Quick Switch | `features.<name>` and `peekShown` |
 | `history/index.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
 | The preview worker host | `record('preview', …)` when the worker fails and the main thread takes over |
@@ -100,9 +100,9 @@ How the code enforces them:
 | `startup` | client start | `start`, `outcome`, `ready`, `found.<kind>` |
 | `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
 | `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `dynamicStages`, `bgm`, `historySteps` |
-| `preview` | client start (when the preview is shown), and a handover | `host`, `reason`, `workerFrames`, `graphics` |
+| `preview` | client start if the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
 | `open` | each Open… | `format`, `via`, `size`, `outcome`, `reason`, `took` |
-| `save` | each Save, Save As…, Download Again and Recent Sessions’ Save… | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
+| `save` | each Save, Save As…, Download Again and Recent Sessions' Save… | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
 | `export` | each Export | `format`, `target`, `size`, `took`, `outcome`, `reason` |
 | `check` | each Check File and History | `outcome`, `took` |
 | `bgm` | each BGM chosen | `format`, `size`, `length`, `took`, `outcome` |
@@ -116,7 +116,7 @@ How the code enforces them:
 
 `chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline.
 
-`peek.<time>` runs from the start of the load, after the debounce, to the step shown with its change (at most 100 ms of it). A state from the cache counts as `cached`.
+`peek.<time>` is the time from the start of the load, after the debounce, until the step shows with its change. Up to 100 ms of it is the wait for the change. A step whose state comes from the cache is counted as `cached` and not timed.
 
 The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
 
