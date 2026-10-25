@@ -51,7 +51,7 @@ const usageStatisticsNote = computed(() =>
 )
 
 const buttonClass =
-    'btn btn-secondary inline-flex h-9 max-w-full items-center gap-1 rounded-full px-4'
+    'btn btn-secondary inline-flex h-9 min-w-24 max-w-full items-center gap-1 rounded-full px-4'
 
 const open = (href: string) => {
     platform.openExternal(new URL(href, location.href).href)

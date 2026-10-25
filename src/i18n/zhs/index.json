@@ -976,6 +976,7 @@
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改",
       "exportRaw": "导出原始数据…",
+      "exportRawTitle": "导出原始数据",
       "exportRawName": "{0} 原始数据 {1}.zip",
       "storageHeading": "存储",
       "stored": "此浏览器中已存储：{0}，总容量约 {1}",

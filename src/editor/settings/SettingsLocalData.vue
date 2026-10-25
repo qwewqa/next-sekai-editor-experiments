@@ -226,7 +226,8 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
 const showsClosePrompt =
     platform.capabilities.browserStorage && !platform.capabilities.unconfirmedDownloads
 
-const buttonClass = 'btn btn-secondary inline-flex h-9 max-w-full items-center rounded-full px-4'
+// The raised-button geometry (design-language §4).
+const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
 
 // For people with customised toolbars: closes Settings first, so History is not behind it.
 const openHistory = () => {
@@ -249,11 +250,11 @@ const deleteSessions = async () => {
 const exportRaw = async () => {
     const outcome: { run?: RawExportRun } = {}
     await showModal(LoadingModal, {
-        title: () => strings.value.exportRaw,
-        async *task() {
+        title: () => strings.value.exportRawTitle,
+        async *task(signal) {
             yield () => i18n.value.modals.loading.loading
             const action = await import('../../startup/rawExportAction')
-            const run = (outcome.run = await action.runRawExportAction())
+            const run = (outcome.run = await action.runRawExportAction(signal))
             // The modal says what failed, and stays for the user to close.
             if (run.kind === 'failed')
                 throw new Error(

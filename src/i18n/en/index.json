@@ -976,6 +976,7 @@
             "openHistory": "Open History",
             "confirmClose": "Ask Before Closing with Unsaved Changes",
             "exportRaw": "Export Raw Data…",
+            "exportRawTitle": "Export Raw Data",
             "exportRawName": "{0} raw data {1}.zip",
             "storageHeading": "Storage",
             "stored": "Stored in this browser: {0} of about {1}",

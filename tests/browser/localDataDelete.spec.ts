@@ -403,7 +403,7 @@ test('Export Raw Data… downloads the stored data and says so', async ({ page }
     )
     await expect(notice(page, /^Download started: Next SEKAI Editor raw data/)).toBeVisible()
     // The progress dialog is gone.
-    await expect(page.getByRole('dialog', { name: local.exportRaw })).toHaveCount(0)
+    await expect(page.getByRole('dialog', { name: local.exportRawTitle })).toHaveCount(0)
 })
 
 test.describe('almost full', () => {

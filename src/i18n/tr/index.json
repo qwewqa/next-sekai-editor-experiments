@@ -976,6 +976,7 @@
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
       "exportRaw": "Ham Verileri Dışa Aktar…",
+      "exportRawTitle": "Ham Verileri Dışa Aktar",
       "exportRawName": "{0} ham veriler {1}.zip",
       "storageHeading": "Depolama Alanı",
       "stored": "Bu tarayıcıda saklanan: {0} / yaklaşık {1}",
