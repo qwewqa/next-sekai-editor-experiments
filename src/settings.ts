@@ -209,6 +209,8 @@ const settingsProperties = {
     previewHighlightSelection: Type.Boolean({ default: true }),
     previewShowHitboxes: Type.Boolean(),
     previewAntialias: Type.Boolean({ default: true }),
+    // Draw the preview in its worker where the browser can (docs/rendering.md).
+    previewInWorker: Type.Boolean({ default: true }),
     // The skin, particle, background and sound effects this device previews with.
     previewAssets: previewAssetsSchema,
     // Fallback notices already dismissed, as type, choice and reason; the newest 20.

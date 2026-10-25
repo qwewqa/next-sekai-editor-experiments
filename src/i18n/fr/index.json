@@ -898,6 +898,7 @@
       "highlightSelection": "Mettre la sélection en évidence",
       "showHitboxes": "Afficher les hitboxes",
       "antialias": "Anticrénelage",
+      "parallelRendering": "Rendu en parallèle",
       "transport": {
         "title": "Commandes de lecture",
         "auto": "Auto",

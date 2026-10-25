@@ -39,7 +39,6 @@ import {
     createLayout,
     createViewport,
     currentLayoutTransform,
-    defaultCameraInfo,
     getCameraInfo,
     identityStageScreenTransform,
     identityStageTransform,
@@ -54,6 +53,7 @@ import {
     stageTransformToAffineOrIdentity,
     transformBillboard,
     transformedVecAt,
+    type CameraChange,
     type FlickDirectionValue,
     type StageScreenTransform,
     type StageTransform,
@@ -207,9 +207,8 @@ export const renderPreviewFrame = (
     // Frames are drawn at the right limit (dynamic_stage, refresh_layout); a paused
     // frame shows the instant before, the left limit. Note-time values are held.
     const frameLimit = { rightLimit: !leftLimit }
-    const camera = chart.isDynamicStages
-        ? getCameraInfo(viewport, chart.cameras, now, frameLimit)
-        : defaultCameraInfo()
+    const cameras = chart.isDynamicStages ? chart.cameras : noCameras
+    const camera = getCameraInfo(viewport, cameras, now, frameLimit)
     const context: PreviewFrameContext = {
         now,
         leftLimit,
@@ -1448,11 +1447,24 @@ export const renderPreviewFrame = (
     if (showHitboxes) drawHitboxes(draw, skin, chart, viewport, now, leftLimit)
 
     renderer.flush()
-    return layoutBackground(
-        viewport,
-        chart.isDynamicStages ? chart.cameras : [],
-        camera,
-        background?.aspectRatio,
-        background?.fit,
-    )
+    return layoutBackground(viewport, cameras, camera, background?.aspectRatio, background?.fit)
+}
+
+const noCameras: CameraChange[] = []
+
+/**
+ * The quad the background image fills at `now`, as `renderPreviewFrame` returns it, from the
+ * chart's cameras alone (none without dynamic stages).
+ */
+export const previewBackgroundQuad = (
+    cameras: CameraChange[],
+    now: number,
+    displayWidth: number,
+    displayHeight: number,
+    leftLimit: boolean,
+    background?: { aspectRatio: number; fit: BackgroundFit },
+) => {
+    const viewport = createViewport(displayWidth, displayHeight)
+    const camera = getCameraInfo(viewport, cameras, now, { rightLimit: !leftLimit })
+    return layoutBackground(viewport, cameras, camera, background?.aspectRatio, background?.fit)
 }

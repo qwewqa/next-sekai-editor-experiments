@@ -38,6 +38,12 @@ export default defineConfig({
     projects: [
         { name: 'firefox', use: { browserName: 'firefox' } },
         { name: 'webkit', use: { browserName: 'webkit' } },
+        // The preview drawn in its worker: its handovers, and its pixels against the main thread's.
+        {
+            name: 'firefox-preview-worker',
+            testMatch: ['previewWorker.spec.ts'],
+            use: { browserName: 'firefox' },
+        },
         // The storage core: the handshake, commit on unload, the worker's
         // restart and the flush, in each engine. They boot the editor in two tabs, slower here
         // than in Chromium.

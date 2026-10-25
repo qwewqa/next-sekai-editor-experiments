@@ -24,7 +24,7 @@ void main() { outColor=vColor; }
 export class StageMesh extends Mesh<Geometry, Shader> {}
 
 /**
- * Flat-colored stage slices and stroked segments keep painter order in one
+ * Flat-colored stage slices keep painter order in one
  * triangle stream, without stencil barriers.
  */
 export class StageMeshes {

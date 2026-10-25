@@ -1,21 +1,23 @@
 import { expect, test } from '@playwright/test'
 
-// The preview's selection outline strokes new edges every playback frame with
-// strokeSegments. It must draw what a stroked path of the same segments draws.
+// The preview's selection outline has a renderer of its own, which both preview hosts use. It
+// must draw what the editor's stroked path of the same segments draws.
 test.beforeEach(async ({ page }) => {
-    await page.route('**/__stroke-segments-test', (route) =>
+    await page.route('**/__preview-outline-test', (route) =>
         route.fulfill({ contentType: 'text/html', body: '<!doctype html>' }),
     )
-    await page.goto('/__stroke-segments-test')
+    await page.goto('/__preview-outline-test')
 })
 
-test('stroked segments match the stroked path at each device scale', async ({ page }) => {
+test('the outline renderer draws what a stroked path draws at each device scale', async ({
+    page,
+}) => {
     const results = await page.evaluate(async () => {
         const { disposeDrawContext, getDrawContext } = await import('/src/rendering/context.ts')
+        const { createOutlineRenderer } = await import('/src/preview/outlineRenderer.ts')
         // The editor's paths are tessellated by Lyon once it loads, which is at once.
         const { initializeLyon } = await import('/src/rendering/lyon.ts')
         await initializeLyon()
-        type Context = ReturnType<typeof getDrawContext>
         // Outline shapes in CSS pixels, as the preview draws them: a slanted note,
         // a curved connector cut into slices, a lone line, a hairpin and an empty edge.
         const segments: number[] = []
@@ -42,11 +44,37 @@ test('stroked segments match the stroked path at each device scale', async ({ pa
         edge(220, 80, 290, 150)
         edge(290, 150, 224, 86)
         edge(250, 200, 250, 200)
-        const draw = (ctx: Context, direct: boolean, color: string, width: number) => {
-            ctx.strokeStyle = color
-            ctx.lineWidth = width
-            if (direct) ctx.strokeSegments(segments)
-            else {
+        // Both drawing buffers, premultiplied, as WebGL holds them.
+        const read = (canvas: HTMLCanvasElement) => {
+            const gl = canvas.getContext('webgl2')!
+            const data = new Uint8Array(canvas.width * canvas.height * 4)
+            gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, data)
+            return data
+        }
+        const results = []
+        for (const [label, sx, sy] of [
+            ['1x', 1, 1],
+            ['1.25x', 1.25, 1.25],
+            ['2x', 2, 2],
+            ['3x', 3, 3],
+            ['stretched while resizing', 2.5, 1.75],
+        ] as const) {
+            const width = Math.round(320 * sx)
+            const height = Math.round(240 * sy)
+            const path = document.createElement('canvas')
+            path.width = width
+            path.height = height
+            const ctx = getDrawContext(path)
+            await ctx.ready
+            ctx.setTransform(sx, 0, 0, sy, 0, 0)
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            for (const [color, lineWidth] of [
+                ['#06151d', 5],
+                ['#67e8f9', 2],
+            ] as const) {
+                ctx.strokeStyle = color
+                ctx.lineWidth = lineWidth
                 ctx.beginPath()
                 for (let i = 0; i < segments.length; i += 4) {
                     ctx.moveTo(segments[i]!, segments[i + 1]!)
@@ -54,38 +82,17 @@ test('stroked segments match the stroked path at each device scale', async ({ pa
                 }
                 ctx.stroke()
             }
-        }
-        const results = []
-        for (const [label, sx, sy, translucent] of [
-            ['1x', 1, 1, false],
-            ['1.25x', 1.25, 1.25, false],
-            ['2x', 2, 2, false],
-            ['3x', 3, 3, false],
-            ['stretched while resizing', 2.5, 1.75, false],
-            ['translucent', 2, 2, true],
-        ] as const) {
-            const pixels: Uint8ClampedArray[] = []
-            for (const direct of [false, true]) {
-                const canvas = document.createElement('canvas')
-                canvas.width = Math.round(320 * sx)
-                canvas.height = Math.round(240 * sy)
-                const ctx = getDrawContext(canvas)
-                await ctx.ready
-                ctx.setTransform(sx, 0, 0, sy, 0, 0)
-                ctx.lineCap = 'round'
-                ctx.lineJoin = 'round'
-                if (translucent) draw(ctx, direct, 'rgba(103, 232, 249, 0.5)', 5)
-                else {
-                    draw(ctx, direct, '#06151d', 5)
-                    draw(ctx, direct, '#67e8f9', 2)
-                }
-                pixels.push(ctx.getImageData(0, 0, canvas.width, canvas.height).data)
-                disposeDrawContext(canvas)
-            }
-            const [expected, actual] = pixels as [Uint8ClampedArray, Uint8ClampedArray]
-            const width = Math.round(320 * sx)
-            const height = pixels[0]!.length / 4 / width
-            const at = (data: Uint8ClampedArray, x: number, y: number, c: number) =>
+            ctx.flush()
+            const expected = read(path)
+            disposeDrawContext(path)
+            const outline = document.createElement('canvas')
+            const renderer = createOutlineRenderer(outline, (error) => {
+                throw error
+            })
+            renderer.draw(segments, width, height, sx, sy)
+            const actual = read(outline)
+            renderer.dispose()
+            const at = (data: Uint8Array, x: number, y: number, c: number) =>
                 data[(y * width + x) * 4 + c]!
             let coverage = 0
             let expectedCoverage = 0

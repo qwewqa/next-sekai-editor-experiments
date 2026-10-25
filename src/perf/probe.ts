@@ -39,3 +39,8 @@ export const timedSince = (name: string, done: () => void): (() => void) => {
         record(name, start)
     }
 }
+
+/** A duration measured elsewhere, such as in a worker, under `name` while a run collects. */
+export const recordSample = (name: string, ms: number) => {
+    if (PERF && perfSamples.on) (perfSamples.samples[name] ??= []).push(ms)
+}

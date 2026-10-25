@@ -99,6 +99,10 @@ export const createAssetSession = (options: {
             const { state, stale } = slots[type].value
             if (state === 'failed' || stale) void start(type)
         },
+        /** Loads a shown type again, as when its decoded atlas went to a worker that stopped. */
+        reload: (type: AssetType) => {
+            if (slots[type].value.state !== 'idle') void start(type)
+        },
         /** Aborts every load and closes what is shown. */
         dispose: () => {
             for (const type of types) {

@@ -12,6 +12,7 @@ import type { NoteEntity } from '../../state/entities/slides/note'
 import { allowsSimLine, getNoteRole, type NoteRole } from '../../state/entities/slides/semantics'
 import { findIntegral } from '../../state/integrals'
 import { beatToTime } from '../../state/integrals/bpms'
+import type { StoreGrid } from '../../state/store/grid'
 import type { StoreSlides } from '../../state/store/slides'
 import { previewAttachmentFrac } from './elevation'
 import { FlickDirection, type CameraChange, type FlickDirectionValue } from './layout'
@@ -116,6 +117,54 @@ const createDependencyCache = <T>() => {
     }
 }
 
+/** What the builder reads of a state. The preview's worker builds from a copy of only this. */
+export type PreviewChartSource = Pick<State, 'bpms' | 'groups' | 'stages' | 'isDynamicStages'> & {
+    store: {
+        grid: Pick<
+            StoreGrid,
+            | 'timeScale'
+            | 'stageMaskEventJoint'
+            | 'stagePivotEventJoint'
+            | 'stageStyleEventJoint'
+            | 'stageTransformEventJoint'
+            | 'cameraEventJoint'
+        >
+        slides: Pick<StoreSlides, 'info' | 'connector'>
+    }
+}
+
+type CameraSource = Pick<PreviewChartSource, 'bpms' | 'isDynamicStages' | 'store'>
+
+/**
+ * The camera changes of a state, kept while its tempo, stage mode and camera events are the
+ * same. The builder uses one; the main thread uses another for the background's quad when the
+ * worker draws the preview.
+ */
+export const createCameraCompiler = () => {
+    const cached = createDependencyCache<CameraChange[]>()
+    return (state: CameraSource) =>
+        cached(
+            [state.bpms, state.isDynamicStages, state.store.grid.cameraEventJoint],
+            (): CameraChange[] =>
+                state.isDynamicStages
+                    ? getStoreEntities(state.store.grid.cameraEventJoint)
+                          .sort((a, b) => a.beat - b.beat)
+                          .map((joint) => ({
+                              time: beatToTime(state.bpms, joint.beat),
+                              lane: joint.cameraLeft + joint.cameraSize / 2,
+                              size: joint.cameraSize / 2,
+                              zoom: Math.max(joint.cameraZoom, 0.01),
+                              zoomTargetLane: joint.cameraZoomTargetLane,
+                              zoomTargetY: joint.cameraZoomTargetY,
+                              zoomVerticalAlign: joint.cameraZoomVerticalAlign === 'center' ? 1 : 0,
+                              rotate: (joint.cameraRotation * Math.PI) / 180,
+                              stageTilt: Math.min(Math.max(joint.cameraStageTilt, 0), 1),
+                              ease: easeType(joint.eventEase),
+                          }))
+                    : [],
+        )
+}
+
 // Merges `added` into `base` without the `removed` items, giving the order of a
 // stable sort by time of every slide's items in info-map order: time, then the
 // slide's rank, then its place in the slide. `added` must be in that map order,
@@ -172,7 +221,7 @@ export const createPreviewChartBuilder = () => {
         stages: PreviewStage[]
         hasStageTransforms: boolean
     }>()
-    const cachedCameras = createDependencyCache<CameraChange[]>()
+    const compileCameras = createCameraCompiler()
     const cachedSlides = createDependencyCache<WeakMap<SlideInfo, CompiledSlide>>()
     const cachedNoteData = createDependencyCache<NoteData>()
     // The last build's inputs and sorted arrays, replaced only when a build returns.
@@ -185,7 +234,7 @@ export const createPreviewChartBuilder = () => {
           }
         | undefined
     const cachedChart = createDependencyCache<PreviewChart>()
-    const build = (state: State, noteSpeed: number): PreviewChart => {
+    const build = (state: PreviewChartSource, noteSpeed: number): PreviewChart => {
         const bpms = state.bpms
         const toTime = (beat: number) => beatToTime(bpms, beat)
         const secondsPerBeat = (beat: number) => findIntegral(bpms, 'x', Math.max(0, beat)).s
@@ -334,26 +383,7 @@ export const createPreviewChartBuilder = () => {
             },
         )
 
-        const cameras = cachedCameras(
-            [state.bpms, isDynamicStages, state.store.grid.cameraEventJoint],
-            (): CameraChange[] =>
-                isDynamicStages
-                    ? getStoreEntities(state.store.grid.cameraEventJoint)
-                          .sort((a, b) => a.beat - b.beat)
-                          .map((joint) => ({
-                              time: toTime(joint.beat),
-                              lane: joint.cameraLeft + joint.cameraSize / 2,
-                              size: joint.cameraSize / 2,
-                              zoom: Math.max(joint.cameraZoom, 0.01),
-                              zoomTargetLane: joint.cameraZoomTargetLane,
-                              zoomTargetY: joint.cameraZoomTargetY,
-                              zoomVerticalAlign: joint.cameraZoomVerticalAlign === 'center' ? 1 : 0,
-                              rotate: (joint.cameraRotation * Math.PI) / 180,
-                              stageTilt: Math.min(Math.max(joint.cameraStageTilt, 0), 1),
-                              ease: easeType(joint.eventEase),
-                          }))
-                    : [],
-        )
+        const cameras = compileCameras(state)
 
         const slideCache = cachedSlides(
             [state.bpms, groupIndexes, groups, stageIndexes],
@@ -684,7 +714,7 @@ export const createPreviewChartBuilder = () => {
             hasStageTransforms,
         }
     }
-    return (state: State, noteSpeed: number) =>
+    return (state: PreviewChartSource, noteSpeed: number) =>
         cachedChart(
             [state.store, state.bpms, state.groups, state.stages, state.isDynamicStages, noteSpeed],
             () => build(state, noteSpeed),

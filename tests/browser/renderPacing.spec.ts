@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { resource } from './previewResourceFixture'
+import { outlinePixels, resource } from './previewResourceFixture'
 
 declare global {
     interface Window {
@@ -114,6 +114,18 @@ test('playback moves the cursor by the time each frame took', async ({ page }) =
 test('dragging a dock edge scales the preview buffers and reallocates them once on release', async ({
     page,
 }) => {
+    // The outline sizes its canvas when it draws, so a note is selected.
+    await page.evaluate(() => {
+        const { fixtures, show, history, view } = window.editorTest
+        const base = fixtures.interaction.slides[0]![0]!
+        show({ ...fixtures.interaction, slides: [[{ ...base, beat: 6 }]] }, 3)
+        view.cursorTime = 3
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
+        })
+    })
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
     const canvas = page.locator('.preview-viewport canvas').first()
     const overlay = page.locator('.preview-selection')
     const measure = (c: typeof canvas) =>
