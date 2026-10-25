@@ -59,8 +59,9 @@ const compile = (schema: unknown): Check => {
         parts.push(typeCheck)
     }
 
-    if (literal !== undefined) {
-        if (typeof literal === 'object' || typeof literal === 'function') return slow
+    if ('const' in schema) {
+        // Other constants are compared by content.
+        if (!['string', 'number', 'boolean', 'bigint'].includes(typeof literal)) return slow
         parts.push((value) => value === literal)
     }
 
