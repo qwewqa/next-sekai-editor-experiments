@@ -274,10 +274,12 @@ export const stillBad = async (store: SaveStore, hashes: readonly string[]) => {
     const nodes = await readRows(store, 'nodes', hashes)
     const bad = new Set<string>()
     for (const hex of hashes) {
-        const chunk = chunks.get(hex) as { bytes?: unknown; crc32?: unknown } | undefined
+        const chunk = chunks.get(hex) as
+            { bytes?: unknown; crc32?: unknown; size?: unknown } | undefined
         if (
             chunk?.bytes instanceof Uint8Array &&
             typeof chunk.crc32 === 'number' &&
+            typeof chunk.size === 'number' &&
             isChunkRowIntact(fromHex16(hex), { bytes: chunk.bytes, crc32: chunk.crc32 })
         )
             continue
