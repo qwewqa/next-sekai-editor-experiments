@@ -202,6 +202,28 @@ test('Open the Other Version asks first when storing is paused, and Cancel keeps
     expect(await sessionId()).toBe(own)
 })
 
+test('Open the Other Version, then Save in its prompt, gives the conflict dialog again and later Saves work', async ({
+    page,
+}) => {
+    await start(page, { storage: { forceQuota: true } })
+    await edit(page, 1)
+    await pressSave(page)
+    await submitSave(page, 'coconut')
+    await expect(notice(page).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
+    const dialog = await conflict(page)
+    await dialog.getByRole('button', { name: 'Open the Other Version' }).click()
+    const prompt = page.getByRole('dialog')
+    await expect(prompt.getByRole('button', { name: 'Leave Anyway' })).toBeVisible()
+    // Past the dialog's activation guard.
+    await page.waitForTimeout(350)
+    await prompt.getByRole('button', { name: 'Save', exact: true }).click()
+    // The prompt's Save runs after the Save that raised the first dialog has finished.
+    await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
+    await page.waitForTimeout(350)
+    await page.getByRole('button', { name: 'Save as a Separate File' }).click()
+    await expect(notice(page).filter({ hasText: /Saved to coconut \(Chrome, / })).toBeVisible()
+})
+
 test('Open the Other Version says when the file cannot be read', async ({ page }) => {
     await start(page)
     await savedOnce(page)
