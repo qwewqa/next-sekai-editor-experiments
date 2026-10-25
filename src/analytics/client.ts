@@ -295,9 +295,12 @@ export const startClient = (target: AnalyticsTarget) => {
         })
 
     // A chart opened, restored or saved is counted when the browser is idle and not playing.
+    // While it plays nothing is scheduled; the count waits for playback to stop.
     const countCharts = () => {
+        if (isPlaying.value) return
         idle((deadline) => {
-            if (isPlaying.value || (!deadline.didTimeout && deadline.timeRemaining() < 12)) {
+            if (isPlaying.value) return
+            if (!deadline.didTimeout && deadline.timeRemaining() < 12) {
                 countCharts()
                 return
             }
@@ -309,6 +312,9 @@ export const startClient = (target: AnalyticsTarget) => {
     }
     tally.watchCharts(countCharts)
     if (tally.hasCharts()) countCharts()
+    const stopPlayback = watch(isPlaying, (playing) => {
+        if (!playing && tally.hasCharts()) countCharts()
+    })
 
     // The History panel shown, however it was opened: a link, its tab, a setting.
     const stopPanel = watch(
@@ -330,6 +336,7 @@ export const startClient = (target: AnalyticsTarget) => {
             field.stop()
             stopStorage()
             stopSessions()
+            stopPlayback()
             stopPanel()
             tally.watchCharts(undefined)
             document.removeEventListener('visibilitychange', onVisibility)

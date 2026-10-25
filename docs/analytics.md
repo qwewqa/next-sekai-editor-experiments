@@ -47,7 +47,7 @@ A hook is one call into `tally.ts`, or a read by the client. Nothing else on a h
 | `local/start.ts` | `note('reload')` when the tab's claim is its own reload |
 | Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed; `busy` while they run, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
 | `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, Quick Switch | `features.<name>` and `peekShown` |
-| `history/index.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart when the browser is idle and not playing |
+| `history/index.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
 | The preview worker host | `record('preview', …)` when the worker fails and the main thread takes over |
 | The editor canvas | `note('graphicsUnavailable')` when its renderer fails |
 
