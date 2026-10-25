@@ -919,6 +919,7 @@
       "title": "工具栏",
       "quickSwitch": "快速切换",
       "add": "添加工具",
+      "remove": "从工具栏移除“{0}”",
       "modal": {
         "title": "添加工具"
       }

@@ -919,6 +919,7 @@
             "title": "Toolbar",
             "quickSwitch": "Quick Switch",
             "add": "Add Tool",
+            "remove": "Remove \"{0}\" from Toolbar",
             "modal": {
                 "title": "Select Tool"
             }

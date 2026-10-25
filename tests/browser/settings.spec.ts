@@ -904,6 +904,18 @@ test('on/off fields are switches named by their row', async ({ page }) => {
     await expect(arrows).toHaveValue('Disabled')
 })
 
+test('a Toolbar tool is named by what pressing it does', async ({ page }) => {
+    const name = 'Remove "Save" from Toolbar'
+    const tool = page.getByRole('dialog').getByRole('button', { name, exact: true })
+    await expect(tool).toHaveAttribute('title', name)
+    const has = () =>
+        page.evaluate(() => window.editorTest.settings.toolbar.flat().includes('save'))
+    expect(await has()).toBe(true)
+    await tool.click()
+    await expect(tool).toHaveCount(0)
+    expect(await has()).toBe(false)
+})
+
 test('the dialog fills the viewport at v0.5.22’s width, and a mouse sees every section pill', async ({
     page,
 }) => {

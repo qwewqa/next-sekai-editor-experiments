@@ -919,6 +919,7 @@
       "title": "Barre d’outils",
       "quickSwitch": "Changement rapide",
       "add": "Ajouter un outil",
+      "remove": "Retirer \"{0}\" de la barre d’outils",
       "modal": {
         "title": "Sélectionner l’outil"
       }

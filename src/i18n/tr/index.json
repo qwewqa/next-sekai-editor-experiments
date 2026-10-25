@@ -919,6 +919,7 @@
       "title": "Araç Çubuğu",
       "quickSwitch": "Hızlı Geçiş",
       "add": "Araç Ekle",
+      "remove": "\"{0}\" Aracını Araç Çubuğundan Kaldır",
       "modal": {
         "title": "Araç Seç"
       }
