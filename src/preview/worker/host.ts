@@ -102,7 +102,7 @@ const addCounters = (counters: PreviewWorkerCounters) => {
     if (counters.aspect !== undefined) target.aspect = counters.aspect
 }
 
-// A worker's context is released only after the page has drawn two frames without its canvas. In
+// A worker's context is released only two animation frames after its canvas left the page. In
 // Firefox, releasing it sooner, or terminating the worker, could stop the page from painting until
 // the next input, or hang the worker.
 const afterTwoFrames = (run: () => void) => {

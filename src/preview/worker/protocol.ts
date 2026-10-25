@@ -36,7 +36,7 @@ export type ToPreviewWorker =
      */
     | { type: 'canvas'; canvas?: OffscreenCanvas; antialias: boolean }
     | { type: 'overlay'; canvas?: OffscreenCanvas }
-    /** The page has drawn two frames without the canvases replaced so far. Release their contexts. */
+    /** The canvases replaced so far left the page two animation frames ago. Release their contexts. */
     | { type: 'release' }
     | {
           type: 'atlas'
