@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { resource } from './previewResourceFixture'
+import { outlinePixels, resource } from './previewResourceFixture'
 
 declare global {
     interface Window {
@@ -1957,22 +1957,12 @@ test('selection highlighting updates without rebuilding elevation notes or their
         }
     })
     expect(identity).toEqual({ notes: true, layout: true })
-    const outlinePixels = () =>
-        page.evaluate(() => {
-            const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')
-            const data = canvas
-                ? window.editorRendering
-                      .getDrawContext(canvas)
-                      .getImageData(0, 0, canvas.width, canvas.height).data
-                : undefined
-            return data?.filter((value, index) => index % 4 === 3 && value > 0).length ?? 0
-        })
-    await expect.poll(outlinePixels).toBeGreaterThan(0)
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
     await page.evaluate(() => {
         const { history } = window.editorTest
         history.replaceState({ ...history.state.value, selectedEntities: [] })
     })
-    await expect.poll(outlinePixels).toBe(0)
+    await expect.poll(() => outlinePixels(page)).toBe(0)
     const filtered = await page.evaluate(async () => {
         const { elevationNotes, elevationLayout } = window.elevationTest.scene
         const previousNotes = elevationNotes.value

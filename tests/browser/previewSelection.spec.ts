@@ -1,18 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { resource } from './previewResourceFixture'
-
-const outlinePixels = (page: Page) =>
-    page.evaluate(() => {
-        const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')
-        if (!canvas) return 0
-        // Empty selection intentionally needs no GPU surface. Reading it must
-        // not allocate one merely to find that no outline was drawn.
-        const data = window.editorRendering
-            .peekDrawContext(canvas)
-            ?.getImageData(0, 0, canvas.width, canvas.height).data
-        return data ? data.filter((value, index) => index % 4 === 3 && value > 0).length : 0
-    })
+import { outlinePixels, resource } from './previewResourceFixture'
 
 test.beforeEach(async ({ page }) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
@@ -121,19 +109,7 @@ test('connectors, moving slide heads, and stage events highlight their visible o
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
 })
 
-test('the outline follows playback frames without building path geometry', async ({ page }) => {
-    // Stroking the outline as a path tessellated and cached a new path every frame:
-    // 7–11 ms a frame with every note selected.
-    const pathBuilds = () =>
-        page.evaluate(() => {
-            const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')
-            const ctx = canvas && window.editorRendering.peekDrawContext(canvas)
-            if (!ctx) throw new Error('Missing outline context')
-            const { stats } = (
-                ctx as unknown as { paths: { stats: { native: number; fallback: number } } }
-            ).paths
-            return stats.native + stats.fallback
-        })
+test('the outline follows playback frames', async ({ page }) => {
     await page.evaluate(() => {
         const { fixtures, show, view, history } = window.editorTest
         const base = fixtures.interaction.slides[0]?.[0]
@@ -158,7 +134,6 @@ test('the outline follows playback frames without building path geometry', async
         })
     })
     await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
-    const builds = await pathBuilds()
     for (const time of [3.05, 3.1, 3.15, 3.2]) {
         await page.evaluate(async (time) => {
             window.editorTest.view.cursorTime = time
@@ -166,7 +141,6 @@ test('the outline follows playback frames without building path geometry', async
         }, time)
         expect(await outlinePixels(page)).toBeGreaterThan(0)
     }
-    expect(await pathBuilds()).toBe(builds)
 })
 
 test('selected invisible anchors show a preview line that respects the highlight toggle', async ({

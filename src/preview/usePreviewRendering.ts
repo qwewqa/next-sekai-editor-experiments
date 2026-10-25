@@ -1,24 +1,22 @@
 import { computed, onBeforeUnmount, shallowRef, watch, watchEffect, type Ref } from 'vue'
 import { isAppActive } from '../activity'
-import { clearSurface } from '../editor/canvas/surface'
 import { view } from '../editor/view'
 import { dockSizeDrafts, panelWeightsDraft } from '../editor/workspace'
 import { cancelFrame, requestFrame } from '../frame'
 import { state } from '../history'
 import { timed } from '../perf/probe'
 import { isPlaying } from '../player'
-import { disposeDrawContext } from '../rendering/context'
-import { useEditorRenderer } from '../rendering/useEditorRenderer'
 import { settings } from '../settings'
 import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
+import { drawPreviewFrame, type PreviewFrameInput } from './drawFrame'
 import { getPreviewState, previewEdit } from './edit'
 import { getPreviewChart } from './engine/chart'
 import type { PreviewChart } from './engine/model'
-import { renderPreviewFrame } from './engine/render'
 import { createPreviewRenderer, type PreviewRenderer } from './gl'
+import { createOutlineRenderer, type OutlineRenderer } from './outlineRenderer'
 import type { LoadedParticle } from './particle'
-import { createSelectionOutline } from './selectionOutline'
+import { exposePreviewTest } from './previewTest'
 import type { LoadedSkin } from './skin'
 import type { usePreviewResources } from './usePreviewResources'
 
@@ -161,11 +159,30 @@ export const usePreviewRendering = (
         },
     )
 
+    // The outline draws into its own canvas, and creates its context only once something is
+    // selected. It redraws its last frame itself after a context loss.
+    const outline = shallowRef<OutlineRenderer>()
+    if (selectionCanvas) {
+        watch(selectionCanvas, (overlay, _previous, onCleanup) => {
+            if (!overlay) return
+            const outlineRenderer = createOutlineRenderer(overlay, (error) => {
+                console.error('Failed to create the selection outline renderer:', error)
+                setGraphicsError(error)
+            })
+            outline.value = outlineRenderer
+            onCleanup(() => {
+                outlineRenderer.dispose()
+                if (outline.value === outlineRenderer) outline.value = undefined
+            })
+        })
+    }
+
     let rafId = 0
     let renderFrame: (() => void) | undefined
     let renderedBackground: HTMLDivElement | undefined
     let renderedBackgroundTransform = ''
     let scheduledSize: { width: number; height: number } | undefined
+    let overlaySize: { width: number; height: number } | undefined
     // While a dock or tile is being dragged, keep the drawing buffers and let CSS
     // scale them: reallocating them on every pointer move was the costliest part
     // of a drag. The image keeps its aspect ratio, and releasing the handle
@@ -174,28 +191,6 @@ export const usePreviewRendering = (
     const isResizing = computed(
         () => panelWeightsDraft.value !== undefined || Object.keys(dockSizeDrafts.value).length > 0,
     )
-    let sizedOverlay: HTMLCanvasElement | undefined
-    let renderedOverlay: HTMLCanvasElement | undefined
-    let drawnOverlay: HTMLCanvasElement | undefined
-    const overlayVersion = shallowRef(0)
-    const selectionRenderer = useEditorRenderer(setGraphicsError)
-    if (selectionCanvas) {
-        watch(selectionCanvas, (overlay, _previous, onCleanup) => {
-            if (!overlay) return
-            const restoreOverlay = () => {
-                drawnOverlay = overlay
-                overlayVersion.value++
-            }
-            overlay.addEventListener('renderingready', restoreOverlay)
-            onCleanup(() => {
-                selectionRenderer.forget(overlay)
-                overlay.removeEventListener('renderingready', restoreOverlay)
-                if (drawnOverlay === overlay) drawnOverlay = undefined
-                if (renderedOverlay === overlay) renderedOverlay = undefined
-                disposeDrawContext(overlay)
-            })
-        })
-    }
 
     const getRenderSize = (requestedScale: number) => {
         if (!renderer.value) return
@@ -233,105 +228,53 @@ export const usePreviewRendering = (
             const resizing = isResizing.value
             const renderSize = resizing ? (scheduledSize ?? fullSize) : fullSize
             scheduledSize = renderSize
+            // The outline's backing store is kept the same way.
+            const fullOverlaySize = {
+                width: Math.round(canvasWidth.value * pixelRatio.value),
+                height: Math.round(canvasHeight.value * pixelRatio.value),
+            }
+            const currentOverlaySize = resizing ? (overlaySize ?? fullOverlaySize) : fullOverlaySize
+            overlaySize = currentOverlaySize
 
             const getChart = chartRequest.value
             const backgroundElement = background.value
-            const backgroundLayout = loadedBackground.value
-                ? {
-                      aspectRatio: loadedBackground.value.aspectRatio,
-                      fit: loadedBackground.value.fit,
-                  }
-                : undefined
+            const input: PreviewFrameInput = {
+                time: view.cursorTime,
+                leftLimit: !isPlaying.value,
+                width: renderSize.width,
+                height: renderSize.height,
+                displayWidth: canvasWidth.value,
+                displayHeight: canvasHeight.value,
+                overlayWidth: currentOverlaySize.width,
+                overlayHeight: currentOverlaySize.height,
+                noteSpeed: settings.previewNoteSpeed,
+                showEffects: settings.previewShowEffects,
+                // Only redraws: the overlay never changes the compiled chart.
+                showHitboxes: settings.previewShowHitboxes,
+                background: loadedBackground.value
+                    ? {
+                          aspectRatio: loadedBackground.value.aspectRatio,
+                          fit: loadedBackground.value.fit,
+                      }
+                    : undefined,
+            }
             const selected = selection.value
-            const overlay = selectionCanvas?.value
-            void overlayVersion.value
-            const leftLimit = !isPlaying.value
-            // Only redraws: the overlay never changes the compiled chart.
-            const showHitboxes = settings.previewShowHitboxes
-            const args = [
-                view.cursorTime,
-                renderSize.width,
-                renderSize.height,
-                canvasWidth.value,
-                canvasHeight.value,
-                settings.previewNoteSpeed,
-                settings.previewShowEffects,
-                particle.value?.particle,
-            ] as const
+            const currentOutline = outline.value
+            const currentParticle = particle.value?.particle
             renderFrame = () => {
-                if (overlay) {
-                    const ratio = pixelRatio.value
-                    if (!resizing || overlay !== sizedOverlay) {
-                        sizedOverlay = overlay
-                        const width = Math.round(canvasWidth.value * ratio)
-                        const height = Math.round(canvasHeight.value * ratio)
-                        if (overlay.width !== width || overlay.height !== height) {
-                            if (overlay.width !== width) overlay.width = width
-                            if (overlay.height !== height) overlay.height = height
-                            if (renderedOverlay === overlay) drawnOverlay = overlay
-                        }
-                    }
-                }
-                const outline = createSelectionOutline()
-                const quad = renderPreviewFrame(
+                const quad = drawPreviewFrame(
                     currentRenderer,
+                    currentOutline,
                     currentSkin.skin,
+                    currentParticle,
                     getChart(),
-                    ...args,
-                    selected
-                        ? { ...selected, outline: outline.add, line: outline.addLine }
-                        : undefined,
-                    leftLimit,
-                    showHitboxes,
-                    backgroundLayout,
+                    input,
+                    selected,
                 )
-                const edges = outline.edges()
-                // Once empty, the overlay stays transparent. Avoid creating or
-                // switching a second GL context on every unselected playback frame.
-                if (overlay && (edges.length || drawnOverlay === overlay)) {
-                    const ctx = selectionRenderer.getContext(overlay)
-                    renderedOverlay = overlay
-                    if (ctx && !ctx.isContextLost()) {
-                        // Map CSS pixels onto the actual backing store, which keeps
-                        // its size during a resize drag.
-                        ctx.setTransform(
-                            overlay.width / canvasWidth.value,
-                            0,
-                            0,
-                            overlay.height / canvasHeight.value,
-                            0,
-                            0,
-                        )
-                        clearSurface(ctx, overlay.width, overlay.height)
-                        if (edges.length) {
-                            const scale = args[4] / 2
-                            const segments: number[] = []
-                            for (const { a, b } of edges)
-                                segments.push(
-                                    args[3] / 2 + a.x * scale,
-                                    args[4] / 2 - a.y * scale,
-                                    args[3] / 2 + b.x * scale,
-                                    args[4] / 2 - b.y * scale,
-                                )
-                            // The edges change every playback frame: stroking them as a
-                            // path would tessellate a new path twice a frame.
-                            ctx.lineCap = 'round'
-                            ctx.strokeStyle = '#06151d'
-                            ctx.lineWidth = 5
-                            ctx.strokeSegments(segments)
-                            ctx.strokeStyle = '#67e8f9'
-                            ctx.lineWidth = 2
-                            ctx.strokeSegments(segments)
-                        }
-                        ctx.flush()
-                        drawnOverlay = edges.length ? overlay : undefined
-                    }
-                }
                 if (!backgroundElement) return
                 // Map the complete image into the engine's screen-space quad in
                 // this same frame. CSS pixels have a downward-pointing y axis.
-                const displayWidth = args[3]
-                const displayHeight = args[4]
+                const { displayWidth, displayHeight } = input
                 const scale = displayHeight / 2
                 const transform = `matrix(${[
                     ((quad.tr.x - quad.tl.x) * scale) / displayWidth,
@@ -362,8 +305,14 @@ export const usePreviewRendering = (
         { flush: 'post' },
     )
 
+    const hideTest = exposePreviewTest({
+        host: 'main',
+        outlinePixels: () => Promise.resolve(outline.value?.litPixels() ?? 0),
+    })
+
     onBeforeUnmount(() => {
         cancelFrame(rafId)
         renderer.value?.dispose()
+        hideTest()
     })
 }

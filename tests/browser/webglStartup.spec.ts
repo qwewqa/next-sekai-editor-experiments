@@ -210,16 +210,15 @@ test('preview selection initializes lazily and retries through the existing prev
         )
         window.editorTest.view.cursorTime = 3
         settings.showPreview = true
-        window.rendererInitProbe = { mode: 'async', selector: '.preview-selection' }
+        window.rendererInitProbe = { mode: 'sync', selector: '.preview-selection' }
     })
     await expect(page.locator('.preview-selection')).toBeVisible()
-    expect(
-        await page.evaluate(async () => {
-            const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')!
-            const { peekDrawContext } = await window.editorRenderingReady
-            return !!peekDrawContext(canvas)
-        }),
-    ).toBe(false)
+    const preview = page.locator('.preview')
+    // Nothing selected: the outline asks for no context, so the probe cannot fail it yet.
+    await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    )
+    await expect(preview).not.toContainText('Preview graphics could not be started.')
     await page.evaluate(() => {
         const { history } = window.editorTest
         history.replaceState({
@@ -227,12 +226,21 @@ test('preview selection initializes lazily and retries through the existing prev
             selectedEntities: [...history.state.value.store.slides.note.values()].flat(),
         })
     })
-    const preview = page.locator('.preview')
-    await expect(preview).toContainText('Injected renderer initialization failure')
+    await expect(preview).toContainText('Preview graphics could not be started.')
     await page.evaluate(() => {
         window.rendererInitProbe.mode = 'normal'
     })
     await preview.getByRole('button', { name: 'Reload', exact: true }).click()
-    await expectDrawn(page, '.preview-selection')
-    await expect(preview).not.toContainText('Injected renderer initialization failure')
+    await expect
+        .poll(() =>
+            page.evaluate(() => {
+                const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')!
+                const gl = canvas.getContext('webgl2')!
+                const data = new Uint8Array(canvas.width * canvas.height * 4)
+                gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, data)
+                return data.some((alpha, index) => index % 4 === 3 && alpha > 0)
+            }),
+        )
+        .toBe(true)
+    await expect(preview).not.toContainText('Preview graphics could not be started.')
 })
