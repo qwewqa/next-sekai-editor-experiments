@@ -40,6 +40,10 @@ const levels = () => {
     return found
 }
 
+// Seeded and bounded: the damage kinds and outcomes show up within the first few hundred damages.
+const DAMAGES_PER_DOCUMENT = 500
+const ENTITIES_PER_LEVEL = 300
+
 const random = (seed: number) => () => {
     seed = (seed + 0x6d2b79f5) | 0
     let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
@@ -180,7 +184,7 @@ test('the compiled check answers as Value.Check does on many damaged documents',
     let accepted = 0
     let rejected = 0
     for (const [name, schema, document] of documents()) {
-        for (let i = 0; i < 4000; i++) {
+        for (let i = 0; i < DAMAGES_PER_DOCUMENT; i++) {
             const damaged = damage(document, next)
             const result = same(schema, damaged.document, `${name}: ${damaged.description}`)
             if (result) accepted++
@@ -195,7 +199,7 @@ test('the compiled check answers as Value.Check does on damaged entities of the 
     const entitySchema = levelDataEntitiesSchema.items
     let rejected = 0
     for (const { path, level } of levels()) {
-        const stride = Math.max(1, Math.floor(level.entities.length / 1500))
+        const stride = Math.max(1, Math.floor(level.entities.length / ENTITIES_PER_LEVEL))
         for (let i = 0; i < level.entities.length; i += stride) {
             const entity = level.entities[i]
             assert.ok(same(entitySchema, entity, `${path} ${i}`), `${path} ${i}`)

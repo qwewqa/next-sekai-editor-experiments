@@ -51,5 +51,12 @@ test('a field fitted while hidden fits when it first has a width', () => {
 })
 
 test('a width recorded for an element that is not observed is ignored', () => {
-    fittedAtWidth({} as Element, 400)
+    const field = watched()
+    const gone = {}
+    assert.doesNotThrow(() => fittedAtWidth(gone as Element, 400))
+    // The record did not start watching it: its entry fits nothing, and the observed field is unaffected.
+    resize(gone, 400)
+    assert.equal(field.fits(), 0)
+    resize(field.element, 400)
+    assert.equal(field.fits(), 1)
 })
