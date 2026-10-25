@@ -32,7 +32,7 @@ export const buildLevelData = async () => new Blob([await gzipText(levelDataText
 
 /**
  * The same level data once for each way it has been compressed: on the browser's stream, and at
- * level 9, which every export wrote before streams and Firefox before 113 still writes. A file
+ * level 9, which earlier exports wrote and Firefox before 113 still writes. A file
  * written by either is rebuilt byte for byte by the matching one.
  */
 export const buildLevelDataVariants = async () => {
