@@ -584,6 +584,26 @@ test('selection replacement and choosing a different tool cancel stale scaling',
     expect((await summary(page)).dirty).toBe(false)
 })
 
+test('a Level Info change made while scaling is open cancels the scaling and keeps the change', async ({
+    page,
+}) => {
+    await open(page)
+    await factor(page).fill('2')
+    await page.locator('[data-status-label]').click()
+    const info = page.getByRole('dialog', { name: 'Level Info', exact: true })
+    await expect(info).toBeVisible()
+    const title = info.getByRole('textbox', { name: 'Title', exact: true })
+    await title.fill('Changed')
+    await title.press('Tab')
+    await info.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect(info).toHaveCount(0)
+    await expect(panel(page)).toHaveCount(0)
+    expect(
+        await page.evaluate(() => window.editorTest.history.state.value.levelInfo.title),
+    ).toBe('Changed')
+    expect((await summary(page)).stored.map((note) => note.beat)).toEqual([3, 5, 8])
+})
+
 test('an unrelated preview takes ownership without being erased by scaling cancellation', async ({
     page,
 }) => {
