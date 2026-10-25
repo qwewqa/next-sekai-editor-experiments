@@ -406,7 +406,7 @@ test.describe('resize', () => {
         await page.keyboard.press(',')
         await page
             .getByRole('dialog')
-            .getByRole('button', { name: 'Reset Settings', exact: true })
+            .getByRole('button', { name: 'Reset Settings…', exact: true })
             .click()
         await confirmReset(page, 'Reset Settings')
         await expect.poll(async () => (await widths(page)).strip).toBe(40)

@@ -139,13 +139,26 @@ test('division commands are named as their dialog is, as lane division commands 
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)) {
         const messages = read(locale)
-        // Not French "Passer à la division personnalisée" beside "Division personnalisée".
+        // Not French "Passer à la division personnalisée" beside "Division personnalisée". The command adds an ellipsis.
         for (const axis of ['divisions', 'laneDivisions'])
             assert.equal(
-                messages[`commands.${axis}.custom.title`],
+                messages[`commands.${axis}.custom.title`]?.replace(/…$/, ''),
                 messages[`commands.${axis}.custom.modal.title`],
                 `${locale} ${axis}`,
             )
+        // Each label that asks first ends with an ellipsis and has a dialog title without one.
+        for (const [label, title] of [
+            ['commands.open.title', 'commands.open.dialogTitle'],
+            ['commands.scaleBeat.title', 'commands.scaleBeat.dialogTitle'],
+            ['commands.scaleWidth.title', 'commands.scaleWidth.dialogTitle'],
+            ['commands.scaleElevation.title', 'commands.scaleElevation.dialogTitle'],
+            ['commands.laneLimits.custom', 'commands.laneLimits.customTitle'],
+            ['settings.resetSettings', 'settings.resetSettingsTitle'],
+            ['settings.resetKeybinds', 'settings.resetKeybindsTitle'],
+        ] as const) {
+            assert.ok(messages[label]!.endsWith('…'), `${locale} ${label}`)
+            assert.equal(messages[label]!.replace(/…$/, ''), messages[title], `${locale} ${label}`)
+        }
         // A noun with the fraction, not "Passer à la division en 1/4".
         const title = messages['commands.divisions.title']!
         assert.ok(title.replace('1/{0}', '').trim().split(/\s+/).length <= 2, locale)
@@ -483,7 +496,7 @@ test('a non-English value is not identical to English, except where it is allowe
 })
 
 // Web strings never say draft, document or project, except "project file".
-// App-only keys, their prefixes and the "App" suffix are exempt; Stage 1 has none.
+// App-only keys, their prefixes and the "App" suffix are exempt. There are none before the native apps.
 const APP_ONLY_KEYS: string[] = []
 const APP_ONLY_PREFIXES: string[] = []
 

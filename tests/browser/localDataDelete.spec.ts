@@ -306,7 +306,7 @@ test('a chain edited since the dialog read it is skipped, and a run that deletes
     await expect(notice(page, '1 session could not be deleted.')).toBeVisible()
 })
 
-// --- The Storage subsection, Recovery's Export Raw Data…, and the almost-full notice.
+// --- The Storage subsection, Recovery's Export Raw Data, and the almost-full notice.
 
 /** The browser's estimate, as a fixed answer (or none). */
 const estimateOf = (page: Page, answer: { usage?: number; quota?: number } | undefined) =>
@@ -430,7 +430,7 @@ test('a full browser: Local Data says why, Try Again says it is still full, Dele
     await expect(line).toBeVisible()
 })
 
-test('Export Raw Data… downloads the stored data and says so', async ({ page }) => {
+test('Export Raw Data downloads the stored data and says so', async ({ page }) => {
     errorsFail(page)
     await load(page)
     await openLocalData(page)
@@ -442,7 +442,7 @@ test('Export Raw Data… downloads the stored data and says so', async ({ page }
     )
     await expect(notice(page, /^Download started: Next SEKAI Editor raw data/)).toBeVisible()
     // The progress dialog is gone.
-    await expect(page.getByRole('dialog', { name: local.exportRawTitle })).toHaveCount(0)
+    await expect(page.getByRole('dialog', { name: local.exportRaw })).toHaveCount(0)
 })
 
 test.describe('almost full', () => {
@@ -519,8 +519,8 @@ test('a bound key and the command list open it too, and a second run while one i
         const { runCommand } = await window.editorTest.appImport<
             typeof import('../../src/editor/commands/runCommand')
         >('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.deleteSessions)
-        void runCommand(commands.deleteSessions)
+        void runCommand(commands.deleteSessions, 'button')
+        void runCommand(commands.deleteSessions, 'button')
     })
     await expect(page.locator('[data-delete-sessions]')).toHaveCount(1)
     await page.locator('[data-delete-sessions] button', { hasText: 'Cancel' }).click()

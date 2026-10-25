@@ -52,17 +52,20 @@ const sends = () =>
                 ?.saveData === true,
     })
 
-const startupDone = () =>
+// Startup ended, whether it opened the session or stopped at an error: a startup that failed is
+// the signal that matters most, so the client loads after it too, and once the user has used the
+// page (the gate swallows other input), it sends the failure.
+const startupEnded = () =>
     new Promise<void>((resolve) => {
         const stop = watch(
             () => startupGate.phase,
             (phase) => {
-                if (phase !== 'done') return
+                if (phase === 'opening') return
                 stop()
                 resolve()
             },
         )
-        if (startupGate.phase === 'done') {
+        if (startupGate.phase !== 'opening') {
             stop()
             resolve()
         }
@@ -86,7 +89,7 @@ let generation = 0
 
 const load = async (target: AnalyticsTarget) => {
     const at = ++generation
-    await startupDone()
+    await startupEnded()
     await idle()
     if (at !== generation) return
     try {

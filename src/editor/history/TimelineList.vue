@@ -9,7 +9,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { peekedKey, peekSourceGeneration } from '../../history/peek'
+import { peekedKey, peekSourceGeneration, runPendingPeek } from '../../history/peek'
 import { session } from '../../history/session'
 import { headStep } from '../../history/stack'
 import { captureOperationRecipe, describeStep, stepLang } from '../../history/operationPresentation'
@@ -1061,6 +1061,11 @@ const isApple = isApplePlatform()
 // The keys the editor would run with focus elsewhere: docks pass it only unclaimed chords.
 const passed: CommandName[] = ['history', 'play', 'copy', 'showChange']
 
+/** A released arrow key ends the repeats the peek's debounce waits for. */
+const onKeyup = (event: KeyboardEvent) => {
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(event.key)) runPendingPeek()
+}
+
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
     // The list itself holds focus for a moment as it opens, until the cursor's row takes it. A key
@@ -1227,7 +1232,7 @@ const onKeydown = (event: KeyboardEvent) => {
     if (name && !event.repeat) {
         handled()
         if (name === 'showChange' && row?.type === 'entry' && !row.selectable) return
-        void runCommand(commands[name])
+        void runCommand(commands[name], 'key')
     }
 }
 
@@ -1402,6 +1407,7 @@ defineExpose({
             :aria-rowcount="canLoadMore || gap !== undefined ? -1 : positions.size"
             @scroll.passive="onScroll"
             @keydown="onKeydown"
+            @keyup="onKeyup"
             @focus.self="focusRow(cursorId, 'row', false)"
             @focusout="onFocusout"
         >

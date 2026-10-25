@@ -2,7 +2,7 @@
 
 The Next SEKAI Editor’s AWS services. The editor itself is static and needs none of this. These are the services around it, starting with `stats/` (usage statistics, a self-hosted Umami).
 
-This folder is in neither the web build nor the native build, and has no `package.json`. Its checks run in `.github/workflows/infra-check.yml`, only when something under `infra/` changes. Deploys are by hand and never part of a release.
+This folder is in neither the web build nor the native build, and has no `package.json`. Its checks run in `.github/workflows/infra-check.yml`, only when `infra/` or an infra workflow changes, or by hand. Deploys are by hand and never part of a release.
 
 ## What the accounts are for
 
@@ -12,12 +12,12 @@ This folder is in neither the web build nor the native build, and has no `packag
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `account/account.yaml` | The baseline, deployed once per account and again when a service is added: GitHub OIDC, the alert topic, the account budget, the services zone, and a deploy role and an execution role per service |
 | `stats/`               | The first service, with its own template, host files, scripts, saved queries and runbook (`stats/README.md`)                                                                                        |
-| `check_templates.py`   | The rules we check on every template, in addition to `cfn-lint`                                                                                                                                     |
+| `check_templates.py`   | The rules we check on every template, the host files, the workflows and `leftover.sh`, in addition to `cfn-lint`                                                                                    |
 | `create-accounts.sh`   | The one-time account creation                                                                                                                                                                       |
 
 The account ids, email addresses and secrets are not in the repository. The ids are GitHub Environment variables, the email is passed on the command line, and a service generates its secrets on its own server.
 
-Every resource carries the tags `nse:service` (`stats`, or `shared` for the baseline) and `nse:env` (`prod` or `dev`).
+Every resource that takes tags carries `nse:service` (`stats`, or `shared` for the baseline) and `nse:env` (`prod` or `dev`).
 
 ## Set-up, once
 
@@ -96,7 +96,7 @@ No AWS access is needed for these:
 uv run --with cfn-lint==1.58.0 cfn-lint infra/account/account.yaml infra/stats/stats.yaml
 uv run infra/check_templates.py
 shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.sh
-bash infra/stats/scripts/contract-test.sh   # needs Docker
+bash infra/stats/scripts/contract-test.sh   # needs Docker, curl, jq and Linux
 ```
 
-`infra-check.yml` runs the same on a change under `infra/`. Its `stats-compose` job runs the contract test against the real images.
+`infra-check.yml` runs the same when `infra/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.

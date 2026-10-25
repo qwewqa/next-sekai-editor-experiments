@@ -115,7 +115,7 @@ const openNotStored = async (rest: readonly ChipKind[]) => {
     })
     switch (choice) {
         case 'save':
-            await runCommand(save)
+            await runCommand(save, 'button')
             return
         case 'confirm':
             confirmFile()

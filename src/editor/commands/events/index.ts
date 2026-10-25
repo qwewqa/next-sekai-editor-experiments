@@ -28,6 +28,6 @@ export const event: Command = {
             stageTransformEvent: 'cameraEvent',
         }
 
-        void runCommand(commands[(prev = next[toolName.value] ?? prev)])
+        void runCommand(commands[(prev = next[toolName.value] ?? prev)], 'nested')
     },
 }

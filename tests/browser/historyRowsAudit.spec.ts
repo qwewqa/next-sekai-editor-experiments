@@ -122,7 +122,7 @@ test('this browser’s saves stay its own after Save As… and reopening; two do
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await submitSave(page, 'second', 'Save As')
     await expect(notice(page, 'Saved to second.nxsp')).toBeVisible()

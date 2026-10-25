@@ -118,7 +118,7 @@ const open = async (page: Page, axis: 'beat' | 'elevation' = 'beat') => {
     await page.mouse.click(point.x, point.y, { button: 'right' })
     await page
         .getByRole('menuitem', {
-            name: axis === 'beat' ? 'Scale Beats' : 'Scale Elevations',
+            name: axis === 'beat' ? 'Scale Beats…' : 'Scale Elevations…',
             exact: true,
         })
         .click()

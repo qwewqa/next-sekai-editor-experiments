@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
 import { defaultClientConditions, defineConfig } from 'vite'
-import { analyticsFromEnv } from './scripts/analytics.mjs'
+import { analyticsFromEnv, gateTag } from './scripts/analytics.mjs'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
 import { nativeIndexHtml } from './scripts/native.mjs'
 import { probePlugin, samplesPlugin } from './scripts/samples.mjs'
@@ -98,6 +98,21 @@ export default defineConfig(({ mode }) => ({
             name: 'native-html',
             apply: () => mode === 'native',
             transformIndexHtml: nativeIndexHtml,
+        },
+        {
+            // Where the support gate sends its one `unsupported` event; the editor's page only.
+            name: 'analytics-gate',
+            apply: () => mode !== 'native' && analyticsFor(mode) !== null,
+            transformIndexHtml: (html, { path }) => {
+                const target = analyticsFor(mode)
+                return target && path === '/index.html'
+                    ? html.replace(
+                          '</head>',
+                          `    ${gateTag(target, siteFromEnv())}
+    </head>`,
+                      )
+                    : html
+            },
         },
         {
             // NSE_SITE=test: the test site is not indexed and its title says so.

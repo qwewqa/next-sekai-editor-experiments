@@ -3,7 +3,7 @@ import type { JournalWriter } from './journal/writer'
 import type { StorageStatus } from './worker/core'
 
 // "Not durably stored": the one predicate every session switch and the leave
-// prompt use. Safety never depends on an unverified write (invariant 15): an
+// prompt use. Safety never depends on an unverified write: an
 // ordinary pending flush counts as stored only because the journal of its entries verified.
 
 export type DurabilityInputs = {

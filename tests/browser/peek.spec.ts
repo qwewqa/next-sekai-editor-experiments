@@ -747,7 +747,7 @@ test('Level Info opens read-only while peeking', async ({ page }) => {
                 '/src/editor/commands/runCommand.ts',
             ),
         ])
-        void runCommand(commands.properties)
+        void runCommand(commands.properties, 'button')
     })
     const dialog = page.getByRole('dialog')
     await expect(
@@ -757,7 +757,7 @@ test('Level Info opens read-only while peeking', async ({ page }) => {
     // Nothing to confirm: the footer reads as the other read-only dialogs do.
     await expect(dialog.locator('input[type="submit"]')).toHaveValue('OK')
     // Checking the file stays available.
-    await expect(dialog.getByRole('button', { name: 'Check…', exact: true })).toBeEnabled()
+    await expect(dialog.getByRole('button', { name: 'Check', exact: true })).toBeEnabled()
     await page.keyboard.press('Escape')
     await leave(page)
 })

@@ -1,4 +1,5 @@
 import { nextTick, reactive, shallowRef, watch } from 'vue'
+import { record } from '../../analytics/tally'
 import { recordDiagnostic } from '../../diagnostics'
 import { onResetState } from '../../history/resetHooks'
 import { PERF, recordSample } from '../../perf/probe'
@@ -86,6 +87,7 @@ const startWorkerHost = () => {
 type PreviewTestCounters = {
     uploads: number
     frames: number
+    releases?: number
     vertices: number[]
     aspect: number
 }
@@ -95,8 +97,16 @@ const addCounters = (counters: PreviewWorkerCounters) => {
     if (!target) return
     target.uploads += counters.uploads
     target.frames += counters.frames
+    if (counters.releases) target.releases = (target.releases ?? 0) + counters.releases
     if (counters.vertices) target.vertices = counters.vertices
     if (counters.aspect !== undefined) target.aspect = counters.aspect
+}
+
+// A worker's context is released only two animation frames after its canvas left the page. In
+// Firefox, releasing it sooner, or terminating the worker, could stop the page from painting until
+// the next input, or hang the worker.
+const afterTwoFrames = (run: () => void) => {
+    requestAnimationFrame(() => requestAnimationFrame(run))
 }
 
 const startWorker = () => {
@@ -127,24 +137,41 @@ const startWorker = () => {
     let onOutlinePixels: ((lit: number) => void) | undefined
     let onContext: ((lost: boolean) => void) | undefined
     let onSettled: (() => void)[] = []
+    // The worker drew a frame, which the usage statistics report with a handover.
+    let drew = false
 
     const wait = (why: string) => {
         clearTimeout(timer)
-        timer = setTimeout(() => void stop(why, false), timeoutMs)
+        timer = setTimeout(() => void stop(why, false, 'timeout'), timeoutMs)
     }
     const settle = () => {
         clearTimeout(timer)
         timer = undefined
     }
+    // Counts canvas replacements. Only the latest one posts `release`, so each replacement starts
+    // the two frames again.
+    let replaced = 0
+    const releaseLater = () => {
+        const current = ++replaced
+        afterTwoFrames(() => {
+            if (current === replaced && !stopped) post({ type: 'release' })
+        })
+    }
 
     /** Ends the worker; a reason means it failed, which the diagnostics record. */
-    const stop = async (why: string | undefined, responsive: boolean) => {
+    const stop = async (
+        why: string | undefined,
+        responsive: boolean,
+        reason?: 'webgl2' | 'error' | 'timeout' | 'transfer',
+    ) => {
         if (stopped) return
         stopped = true
         settle()
         pending = undefined
         if (why) {
             failed = true
+            if (reason)
+                record('preview', { host: 'main', reason, workerFrames: drew ? 'some' : 'none' })
             recordDiagnostic(
                 'error',
                 `The preview worker stopped, and the preview draws on the main thread: ${why}`,
@@ -170,11 +197,31 @@ const startWorker = () => {
                 returned = true
             }
         }
-        worker.terminate()
+        // A worker that does not respond is terminated at once. One that does keeps its canvases
+        // until the page no longer shows them.
+        if (!responsive) worker.terminate()
         if (!returned && lent.some(Boolean)) decodeAtlasesAgain()
         client = undefined
         previewHost.retiring = attached > 0
         previewHost.kind = 'main'
+        if (responsive) {
+            const end = () => {
+                afterTwoFrames(() => {
+                    worker.terminate()
+                })
+            }
+            if (!previewHost.retiring) end()
+            else {
+                const stopWatching = watch(
+                    () => previewHost.retiring,
+                    (retiring) => {
+                        if (retiring) return
+                        stopWatching()
+                        end()
+                    },
+                )
+            }
+        }
         // The setting went back on while this worker stopped: a new one starts.
         if (wantsWorker())
             void nextTick(() => {
@@ -196,15 +243,20 @@ const startWorker = () => {
                     maxViewportSize.value = message.maxViewportSize
                 return
             case 'failed':
-                void stop(`its WebGL2 context could not be created: ${message.message}`, true)
+                void stop(
+                    `its WebGL2 context could not be created: ${message.message}`,
+                    true,
+                    'webgl2',
+                )
                 return
             case 'error':
-                void stop(`it failed: ${message.message}`, true)
+                void stop(`it failed: ${message.message}`, true, 'error')
                 return
             case 'drawn': {
                 if (stopped) return
                 settle()
                 inFlight = false
+                drew = true
                 recordSample('previewWorkerDraw', message.ms)
                 recordSample('previewWorkerAnswer', performance.now() - postedAt)
                 const next = pending
@@ -233,14 +285,14 @@ const startWorker = () => {
     })
     worker.addEventListener('error', (event) => {
         event.preventDefault()
-        void stop(`it failed: ${event.message || 'no message'}`, true)
+        void stop(`it failed: ${event.message || 'no message'}`, true, 'error')
     })
 
     const transfer = (canvas: HTMLCanvasElement) => {
         try {
             return canvas.transferControlToOffscreen()
         } catch (error) {
-            void stop(`its canvas could not be transferred: ${String(error)}`, true)
+            void stop(`its canvas could not be transferred: ${String(error)}`, true, 'transfer')
         }
     }
 
@@ -263,7 +315,9 @@ const startWorker = () => {
             wait('it did not start')
             return () => {
                 attached--
-                if (!stopped) post({ type: 'canvas', antialias })
+                if (stopped) return
+                post({ type: 'canvas', antialias })
+                releaseLater()
             }
         },
         attachOverlay: (canvas: HTMLCanvasElement) => {
@@ -272,7 +326,9 @@ const startWorker = () => {
             if (!offscreen) return () => undefined
             post({ type: 'overlay', canvas: offscreen }, [offscreen])
             return () => {
-                if (!stopped) post({ type: 'overlay' })
+                if (stopped) return
+                post({ type: 'overlay' })
+                releaseLater()
             }
         },
         /** Moves an atlas to the worker, which keeps it and closes the one it replaces. */

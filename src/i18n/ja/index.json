@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "レーン制限なし",
       "six": "±6レーンに制限",
-      "custom": "カスタムレーン制限",
+      "custom": "カスタムレーン制限…",
+      "customTitle": "カスタムレーン制限",
       "maximum": "最大レーン (±)",
       "limited": "レーン制限：±{0}",
       "unlimited": "レーン制限なし"
@@ -69,7 +70,7 @@
       "title": "レーン分割 1/{0}",
       "switched": "レーン分割を1/{0}に変更しました",
       "custom": {
-        "title": "カスタムレーン分割",
+        "title": "カスタムレーン分割…",
         "modal": {
           "title": "カスタムレーン分割",
           "division": "分割数"
@@ -85,7 +86,7 @@
       "title": "分割 1/{0}",
       "switched": "拍を1/{0}ずつ分割しました",
       "custom": {
-        "title": "カスタム分割",
+        "title": "カスタム分割…",
         "modal": {
           "title": "カスタム分割",
           "division": "分割数"
@@ -106,17 +107,20 @@
       "flipped": "{0}個のオブジェクトを上下反転しました"
     },
     "scaleBeat": {
-      "title": "拍を拡大・縮小",
+      "title": "拍を拡大・縮小…",
+      "dialogTitle": "拍を拡大・縮小",
       "noSelected": "異なる拍にあるオブジェクトを2つ以上選択してください",
       "scaled": "{0}個のオブジェクトの拍を拡大・縮小しました"
     },
     "scaleWidth": {
-      "title": "幅を拡大・縮小",
+      "title": "幅を拡大・縮小…",
+      "dialogTitle": "幅を拡大・縮小",
       "noSelected": "横方向に幅のあるオブジェクトを選択してください",
       "scaled": "{0} 個のオブジェクトの幅を拡大・縮小しました"
     },
     "scaleElevation": {
-      "title": "高さを拡大・縮小",
+      "title": "高さを拡大・縮小…",
+      "dialogTitle": "高さを拡大・縮小",
       "noSelected": "高さが異なるノーツまたはステージ変形イベントを2つ以上選択してください",
       "scaled": "{0}個のオブジェクトの高さを拡大・縮小しました"
     },
@@ -242,7 +246,8 @@
       "switched": "オフセットツールに切り替えました"
     },
     "open": {
-      "title": "ファイルを開く",
+      "title": "ファイルを開く…",
+      "dialogTitle": "ファイルを開く",
       "loading": "ファイルを読み込み中…",
       "importing": "譜面をインポート中…",
       "opened": "譜面を開きました",
@@ -457,7 +462,7 @@
       "title": "レベルデータを出力…"
     },
     "previewAssets": {
-      "title": "プレビューアセット…",
+      "title": "プレビューアセット",
       "modal": {
         "title": "プレビューアセット"
       },
@@ -508,11 +513,12 @@
       "use": "使用",
       "alsoFile": "このファイルの{0}「{1}」も使用",
       "remove": "削除",
+      "removeStored": "削除…",
       "inUse": "使用中",
       "removeInUse": "「{0}」を削除しますか？代わりにデフォルトを使用します。",
       "removeUnused": "「{0}」を削除しますか？",
       "removeFailed": "この項目を削除できませんでした。",
-      "chooseAgain": "もう一度選択",
+      "chooseAgain": "もう一度選択…",
       "noneInFile": "このファイルに{0}はありません。",
       "rights": "読み込んだ項目はこのブラウザーにのみ保管されます。",
       "progress": {
@@ -803,9 +809,11 @@
   },
   "settings": {
     "title": "設定",
-    "resetSettings": "設定をリセット",
+    "resetSettings": "設定をリセット…",
+    "resetSettingsTitle": "設定をリセット",
     "resetSettingsHint": "キーボードショートカットを保持して、設定を初期値に戻します。",
-    "resetKeybinds": "ショートカットをリセット",
+    "resetKeybinds": "ショートカットをリセット…",
+    "resetKeybindsTitle": "ショートカットをリセット",
     "resetSettingsMessage": "キーボードショートカットを保持して、設定を初期値に戻しますか？",
     "resetSettingsHintStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻します。",
     "resetSettingsMessageStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻しますか？",
@@ -918,7 +926,7 @@
     "toolbar": {
       "title": "ツールバー",
       "quickSwitch": "クイックスイッチ",
-      "add": "ツールを追加",
+      "add": "ツールを追加…",
       "remove": "「{0}」をツールバーから削除",
       "modal": {
         "title": "ツールを選択"
@@ -976,8 +984,8 @@
       },
       "openHistory": "履歴を開く",
       "confirmClose": "未保存の変更があるときは閉じる前に確認する",
-      "exportRaw": "生データを出力…",
-      "exportRawTitle": "生データを出力",
+      "exportRaw": "生データを出力",
+      "open": "開く",
       "exportRawName": "{0} 生データ {1}.zip",
       "storageHeading": "ストレージ",
       "stored": "このブラウザーに保管: {0} / 約 {1}",
@@ -989,7 +997,7 @@
       "deleteNext": "削除…",
       "deleteConfirm": "{0} 件のセッションを削除しますか？",
       "notSaved": "未保存の変更があるセッションが {0} 件あります：{1}。",
-      "namesMore": "{0} ほか {1} 件",
+      "namesMore": "{1} ほか {0} 件",
       "newer": "より新しいバージョンのエディターが必要なセッションが含まれています。",
       "deleting": "削除中…",
       "exportRawNote": "問題を報告するときに使います。",
@@ -1952,7 +1960,6 @@
     "closePanel": "{0}を閉じる",
     "folders": {
       "new": "新規フォルダー",
-      "newWith": "新規フォルダー…",
       "moveTo": "フォルダーへ移動…",
       "none": "フォルダーなし",
       "expand": "{0}を展開",
@@ -2162,7 +2169,7 @@
     "sizePending": "サイズを見積もり中…"
   },
   "check": {
-    "command": "ファイルと履歴をチェック…",
+    "command": "ファイルと履歴をチェック",
     "title": "ファイルと履歴のチェック",
     "checkingFile": "{0} をチェック中…",
     "checkingStored": "保管されている履歴をチェック中…",
@@ -2178,9 +2185,9 @@
   },
   "levelInfo": {
     "file": "ファイル",
-    "check": "チェック…",
+    "check": "チェック",
     "tagsPlaceholder": "カンマ区切り",
-    "editCover": "ジャケットエディターで編集…",
+    "editCover": "ジャケットエディターで編集",
     "makePreview": "BGM から作成…",
     "notLoaded": "未読み込み",
     "discard": "譜面情報の変更を破棄しますか？"
@@ -2197,7 +2204,7 @@
     "otherProject": "別のプロジェクトファイル「{0}」です。",
     "otherProjectUnnamed": "別のプロジェクトファイルです。",
     "notDescendant": "このバージョンは、お使いのバージョンから作られたものではありません ({0})。",
-    "separate": "別のファイルとして保存",
+    "separate": "別のファイルとして保存…",
     "openOther": "もう一方のバージョンを開く",
     "openOtherNote": "変更は最近のセッションに残ります。",
     "replaceNote": "ディスク上のバージョンは最近のセッションに保管されます。",
@@ -2215,7 +2222,7 @@
     "tooLong": "名前が長すぎます"
   },
   "notice": {
-    "useOpenFile": "ファイルを開くには「ファイルを開く」を使用してください。",
+    "useOpenFile": "ファイルを開くには「ファイルを開く…」を使ってください。",
     "sameFileElsewhere": "「{0}」は別のタブまたはウィンドウで開かれているため、これは別のコピーです。",
     "storageUnavailable": "このブラウザーのストレージにアクセスできませんでした。もう一度お試しください。",
     "chooseAudio": "音声を選択…",
@@ -2274,7 +2281,7 @@
     "notProject": "この ZIP はプロジェクトファイルではありません。",
     "severalProjects": "この ZIP には複数のプロジェクトファイルが含まれています。解凍して、1つずつ開いてください。",
     "scp": "これはSonolusパッケージです。スキンなどのアセットを使うには、プレビューアセットで選択してください。",
-    "openPreviewAssets": "プレビューアセット…",
+    "openPreviewAssets": "プレビューアセット",
     "damagedUnopened": "このファイルは破損しているため、開けませんでした。",
     "damaged": "このファイルは破損しています。履歴なしで開きました。",
     "historyUnreadable": "このファイルの履歴を読み込めませんでした。保存すると別のファイルになります。",

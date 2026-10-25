@@ -8,6 +8,8 @@ declare global {
         previewTest: {
             uploads: number
             frames: number
+            /** Worker renderers that released their context. */
+            releases?: number
             bitmaps: number
             closes: number
             vertices: number[]

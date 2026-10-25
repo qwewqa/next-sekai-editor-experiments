@@ -1,3 +1,4 @@
+import { bump } from './analytics/tally'
 import { storageGet, storageSet } from './storage'
 
 // The last caught errors and CSP violations: in memory, and in localStorage
@@ -30,6 +31,7 @@ export const recordDiagnostic = (kind: RingEntry['kind'], text: string, at = Dat
     const last = ringEntries().at(-1)
     // A failure that repeats (a flush retrying) is one entry, so it does not push the rest out.
     if (last?.kind === kind && last.text === clipped) return
+    bump(`errors.${kind}`)
     ring = [...ringEntries(), { at, kind, text: clipped }].slice(-RING_SIZE)
     try {
         storageSet(RING_KEY, ring)

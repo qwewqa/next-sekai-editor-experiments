@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "Sans limite de voie",
       "six": "Limiter à ±6 voies",
-      "custom": "Limite de voie personnalisée",
+      "custom": "Limite de voie personnalisée…",
+      "customTitle": "Limite de voie personnalisée",
       "maximum": "Voie maximale (±)",
       "limited": "Limite de voie : ±{0}",
       "unlimited": "Sans limite de voie"
@@ -69,7 +70,7 @@
       "title": "Division de voie 1/{0}",
       "switched": "Division de voie réglée sur 1/{0}",
       "custom": {
-        "title": "Division de voie personnalisée",
+        "title": "Division de voie personnalisée…",
         "modal": {
           "title": "Division de voie personnalisée",
           "division": "Division"
@@ -85,7 +86,7 @@
       "title": "Division 1/{0}",
       "switched": "Division en 1/{0} sélectionnée",
       "custom": {
-        "title": "Division personnalisée",
+        "title": "Division personnalisée…",
         "modal": {
           "title": "Division personnalisée",
           "division": "Division"
@@ -106,17 +107,20 @@
       "flipped": "{0} objet retourné verticalement|{0} objets retournés verticalement"
     },
     "scaleBeat": {
-      "title": "Mettre les temps à l’échelle",
+      "title": "Mettre les temps à l’échelle…",
+      "dialogTitle": "Mettre les temps à l’échelle",
       "noSelected": "Sélectionnez au moins deux objets à des temps différents",
       "scaled": "Temps de {0} objet mis à l’échelle|Temps de {0} objets mis à l’échelle"
     },
     "scaleWidth": {
-      "title": "Redimensionner la largeur",
+      "title": "Redimensionner la largeur…",
+      "dialogTitle": "Redimensionner la largeur",
       "noSelected": "Sélectionnez des objets avec une étendue horizontale à redimensionner",
       "scaled": "Largeur de {0} objet redimensionnée|Largeur de {0} objets redimensionnée"
     },
     "scaleElevation": {
-      "title": "Mettre les élévations à l’échelle",
+      "title": "Mettre les élévations à l’échelle…",
+      "dialogTitle": "Mettre les élévations à l’échelle",
       "noSelected": "Sélectionnez au moins deux notes ou transformations de scène à des élévations différentes",
       "scaled": "Élévation de {0} objet mise à l’échelle|Élévations de {0} objets mises à l’échelle"
     },
@@ -242,7 +246,8 @@
       "switched": "Outil Décalage activé"
     },
     "open": {
-      "title": "Ouvrir",
+      "title": "Ouvrir…",
+      "dialogTitle": "Ouvrir",
       "loading": "Chargement du fichier…",
       "importing": "Importation du niveau…",
       "opened": "Niveau ouvert",
@@ -457,7 +462,7 @@
       "title": "Exporter les données de niveau…"
     },
     "previewAssets": {
-      "title": "Ressources d’aperçu…",
+      "title": "Ressources d’aperçu",
       "modal": {
         "title": "Ressources d’aperçu"
       },
@@ -508,11 +513,12 @@
       "use": "Utiliser",
       "alsoFile": "Utiliser aussi \"{1}\" ({0}) de ce fichier",
       "remove": "Supprimer",
+      "removeStored": "Supprimer…",
       "inUse": "Utilisé",
       "removeInUse": "Supprimer \"{0}\" ? L’élément par défaut est utilisé à la place.",
       "removeUnused": "Supprimer \"{0}\" ?",
       "removeFailed": "Cet élément n’a pas pu être supprimé.",
-      "chooseAgain": "Choisir à nouveau",
+      "chooseAgain": "Choisir à nouveau…",
       "noneInFile": "Ce fichier ne contient aucun élément ({0}).",
       "rights": "Les éléments que vous chargez sont stockés uniquement dans ce navigateur.",
       "progress": {
@@ -803,9 +809,11 @@
   },
   "settings": {
     "title": "Paramètres",
-    "resetSettings": "Réinitialiser les paramètres",
+    "resetSettings": "Réinitialiser les paramètres…",
+    "resetSettingsTitle": "Réinitialiser les paramètres",
     "resetSettingsHint": "Restaurer les paramètres par défaut en conservant les raccourcis clavier.",
-    "resetKeybinds": "Réinitialiser les raccourcis",
+    "resetKeybinds": "Réinitialiser les raccourcis…",
+    "resetKeybindsTitle": "Réinitialiser les raccourcis",
     "resetSettingsMessage": "Restaurer les paramètres par défaut en conservant les raccourcis clavier ?",
     "resetSettingsHintStatistics": "Restaurer les paramètres par défaut en conservant les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation.",
     "resetSettingsMessageStatistics": "Restaurer les paramètres par défaut en conservant les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation ?",
@@ -918,7 +926,7 @@
     "toolbar": {
       "title": "Barre d’outils",
       "quickSwitch": "Changement rapide",
-      "add": "Ajouter un outil",
+      "add": "Ajouter un outil…",
       "remove": "Retirer \"{0}\" de la barre d’outils",
       "modal": {
         "title": "Sélectionner l’outil"
@@ -976,8 +984,8 @@
       },
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
-      "exportRaw": "Exporter les données brutes…",
-      "exportRawTitle": "Exporter les données brutes",
+      "exportRaw": "Exporter les données brutes",
+      "open": "Ouvrir",
       "exportRawName": "{0} données brutes {1}.zip",
       "storageHeading": "Stockage",
       "stored": "Stocké dans ce navigateur : {0} sur environ {1}",
@@ -989,7 +997,7 @@
       "deleteNext": "Supprimer…",
       "deleteConfirm": "Supprimer {0} session ?|Supprimer {0} sessions ?",
       "notSaved": "{0} session a des modifications non sauvegardées : {1}.|{0} sessions ont des modifications non sauvegardées : {1}.",
-      "namesMore": "{0} et {1} autres",
+      "namesMore": "{1} et {0} autre|{1} et {0} autres",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
       "exportRawNote": "Pour signaler un problème.",
@@ -1952,7 +1960,6 @@
     "closePanel": "Fermer {0}",
     "folders": {
       "new": "Nouveau dossier",
-      "newWith": "Nouveau dossier…",
       "moveTo": "Déplacer vers un dossier…",
       "none": "Aucun dossier",
       "expand": "Développer {0}",
@@ -2162,7 +2169,7 @@
     "sizePending": "Estimation de la taille…"
   },
   "check": {
-    "command": "Vérifier le fichier et l’historique…",
+    "command": "Vérifier le fichier et l’historique",
     "title": "Vérifier le fichier et l’historique",
     "checkingFile": "Vérification de {0}…",
     "checkingStored": "Vérification de l’historique stocké…",
@@ -2178,9 +2185,9 @@
   },
   "levelInfo": {
     "file": "Fichier",
-    "check": "Vérifier…",
+    "check": "Vérifier",
     "tagsPlaceholder": "Séparés par des virgules",
-    "editCover": "Éditeur de la couverture…",
+    "editCover": "Éditeur de la couverture",
     "makePreview": "Créer à partir de la musique…",
     "notLoaded": "non chargé",
     "discard": "Abandonner les modifications des informations du niveau ?"
@@ -2197,7 +2204,7 @@
     "otherProject": "Un autre fichier de projet, \"{0}\".",
     "otherProjectUnnamed": "Un autre fichier de projet.",
     "notDescendant": "Cette version n’a pas été créée à partir de la vôtre ({0}).",
-    "separate": "Sauvegarder dans un fichier séparé",
+    "separate": "Sauvegarder dans un fichier séparé…",
     "openOther": "Ouvrir l’autre version",
     "openOtherNote": "Vos modifications restent dans les sessions récentes.",
     "replaceNote": "La version sur le disque sera conservée dans les sessions récentes.",
@@ -2215,7 +2222,7 @@
     "tooLong": "Le nom est trop long"
   },
   "notice": {
-    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
+    "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir…",
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
@@ -2274,7 +2281,7 @@
     "notProject": "Ce ZIP n’est pas un fichier de projet.",
     "severalProjects": "Ce ZIP contient plusieurs fichiers de projet. Décompressez-le et ouvrez-les un par un.",
     "scp": "Ceci est un paquet Sonolus. Pour utiliser son skin ou ses autres ressources, choisissez-le dans Ressources d’aperçu.",
-    "openPreviewAssets": "Ressources d’aperçu…",
+    "openPreviewAssets": "Ressources d’aperçu",
     "damagedUnopened": "Ce fichier est endommagé et n’a pas pu être ouvert.",
     "damaged": "Ce fichier est endommagé. Il a été ouvert sans son historique.",
     "historyUnreadable": "L’historique de ce fichier n’a pas pu être lu. La sauvegarde crée un fichier séparé.",

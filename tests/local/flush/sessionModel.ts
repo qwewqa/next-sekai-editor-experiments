@@ -1404,7 +1404,7 @@ export class Run {
     }
 
     /**
-     * Spec E's flusher model: every entry the page made is stored once, at its own seq and kind,
+     * The flusher model: every entry the page made is stored once, at its own seq and kind,
      * once a strict flush has nothing left to send; and no entry row the page never made is there.
      */
     private checkMade(after: string) {

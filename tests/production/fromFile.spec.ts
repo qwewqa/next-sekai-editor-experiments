@@ -15,7 +15,7 @@ const openAssets = async (page: Page) => {
         .locator('.form-field')
         .filter({ hasText: 'Assets' })
         .first()
-        .getByRole('button', { name: 'Preview Assets…' })
+        .getByRole('button', { name: 'Preview Assets' })
         .click()
     await expect(page.locator('dialog[open]')).toHaveAccessibleName('Preview Assets')
 }

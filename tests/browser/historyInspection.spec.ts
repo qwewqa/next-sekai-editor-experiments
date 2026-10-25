@@ -1198,7 +1198,7 @@ test('property rows and tag lists disclose exactly 100 items at a time', async (
     await expect(dialog(page).getByText('Historical group 150', { exact: true })).toHaveCount(0)
     await dialog(page).locator('[data-property-more]').click()
     await expect(dialog(page).locator('[data-property-row]')).toHaveCount(150)
-    // The count is shown only while more remain (F27).
+    // The count is shown only while more remain.
     await expect(dialog(page).locator('[data-property-count]')).toHaveCount(0)
     await page.keyboard.press('Escape')
     await page.locator('[data-peek-back]').click()
@@ -1333,7 +1333,7 @@ test('a chart reset closes inspection and cannot leave focus in a removed contro
     await page.screenshot({ path: testInfo.outputPath('reset-closed-inspection.png') })
 })
 
-test('cached header-only comparison waits for its actual displayed entry', async ({ page }) => {
+test('a header-only step’s comparison opens for its own entry once it shows', async ({ page }) => {
     await page.clock.install()
     await page.clock.pauseAt(new Date(Date.now() + 60_000))
     await page.evaluate(async () => {
@@ -1463,16 +1463,16 @@ test('cached header-only comparison waits for its actual displayed entry', async
         .toEqual({
             requested: 'readiness:2',
             displayed: 'readiness:1',
-            computed: 'readiness:2',
-            status: 'known',
-            header: true,
-            sameStore: true,
+            computed: undefined,
+            status: 'loading',
+            header: undefined,
+            sameStore: false,
             life: 1100,
             shown: undefined,
             inspectable: false,
             inspection: undefined,
         })
-    // The bar still shows the displayed step's summary for this quick moment, but nothing can open for B.
+    // B reads its change as it shows (after the debounce), so nothing can open for B yet; the bar still shows the displayed step's summary for this quick moment.
     await page.clock.runFor(100)
     await expect(page.locator('[data-property-summary]')).toBeVisible()
     await page.clock.resume()

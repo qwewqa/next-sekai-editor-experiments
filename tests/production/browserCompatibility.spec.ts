@@ -3,7 +3,15 @@ import { readFile } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { resource } from '../browser/previewResourceFixture'
 import { skipWhereTheEditorCannotStart } from '../browser/webkitSupport'
-import { chart, instrumentRendering, previewInWorker, previewPixels, seedVersion } from './fixtures'
+import {
+    chart,
+    diagnostics,
+    instrumentRendering,
+    previewInWorker,
+    previewPixels,
+    seedVersion,
+    workerWebgl2,
+} from './fixtures'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
@@ -103,7 +111,7 @@ test('production imports, scales through the touch menu, applies with Enter and 
         .getByTitle('Open Context Menu', { exact: true })
         .filter({ hasText: 'Open Context Menu' })
         .tap()
-    await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).tap()
+    await page.getByRole('menuitem', { name: 'Scale Width…', exact: true }).tap()
     const factor = page.getByRole('spinbutton', { name: 'Scale Factor' })
     await factor.fill('2')
     await factor.press('Enter')
@@ -234,7 +242,7 @@ test('lane limit commands clamp note placement in the production editor', async 
 }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByTitle('No Lane Limit', { exact: true }).tap()
-    await page.getByTitle('Custom Lane Limit', { exact: true }).tap()
+    await page.getByTitle('Custom Lane Limit…', { exact: true }).tap()
     await page.getByRole('spinbutton', { name: 'Maximum Lane (±)' }).fill('2')
     await page.getByRole('button', { name: 'Confirm', exact: true }).tap()
     await page.keyboard.press('a')
@@ -284,6 +292,8 @@ test('preview decodes textures and renders after opening and resizing', async ({
 })
 
 test('by default the preview draws in its worker where the browser can', async ({ page }) => {
+    // WebKit allows WebGL in workers only on Apple's platforms; elsewhere the worker hands over.
+    const drawsInWorker = await workerWebgl2(page)
     await page.setViewportSize({ width: 1600, height: 1000 })
     await page.getByRole('tab', { name: 'Preview', exact: true }).click()
     await expect(page.locator('.preview-viewport > canvas').first()).toBeVisible()
@@ -292,9 +302,19 @@ test('by default the preview draws in its worker where the browser can', async (
             typeof OffscreenCanvas === 'function' &&
             'transferControlToOffscreen' in HTMLCanvasElement.prototype,
     )
-    expect(await previewInWorker(page)).toBe(supported)
+    if (!supported) expect(await previewInWorker(page)).toBe(false)
+    else if (drawsInWorker) expect(await previewInWorker(page)).toBe(true)
     await expect.poll(() => previewPixels(page)).toBeGreaterThan(100)
-    if (supported) expect(await page.evaluate(() => window.productionSmoke.uploads)).toBe(0)
+    if (!supported) return
+    if (drawsInWorker)
+        expect(
+            await page.evaluate(() => window.productionSmoke.uploads),
+            await diagnostics(page),
+        ).toBe(0)
+    else
+        await expect
+            .poll(() => diagnostics(page))
+            .toContain('its WebGL2 context could not be created')
 })
 
 test('internal copy and paste survive denied browser clipboard permissions', async ({

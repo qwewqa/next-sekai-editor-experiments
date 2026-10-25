@@ -42,14 +42,14 @@ test('while peeking, runCommand runs only read-only commands', () => {
     const edit = fakeCommand(false)
     const view = fakeCommand(true)
 
-    runCommand(edit.command)
-    runCommand(view.command)
+    runCommand(edit.command, 'button')
+    runCommand(view.command, 'button')
     assert.equal(edit.runs.length, 1)
     assert.equal(view.runs.length, 1)
 
     peek.value = { source: 'test', state: {} as State }
-    runCommand(edit.command)
-    runCommand(view.command)
+    runCommand(edit.command, 'button')
+    runCommand(view.command, 'button')
     assert.equal(edit.runs.length, 1)
     assert.equal(view.runs.length, 2)
     peek.value = undefined

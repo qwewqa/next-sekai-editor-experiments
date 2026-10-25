@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { bucket, catalogue, isValidEvent, MAX_KEYS, scales } from '../../src/analytics/catalogue'
+import {
+    bucket,
+    capCount,
+    catalogue,
+    isValidEvent,
+    MAX_KEYS,
+    scales,
+} from '../../src/analytics/catalogue'
 import { operationCodecs } from '../../src/history/operations/registry'
 
 test('each range starts at its limit and ends just below the next', () => {
@@ -132,4 +139,11 @@ test('docs/analytics.md lists the catalogue', () => {
                 `docs/analytics.md lists ${name} ${String(pattern)}, which the catalogue lacks`,
             )
     }
+})
+
+test('a measured count is capped so a long visit keeps its perf event', () => {
+    assert.equal(capCount(10_000), 9999)
+    assert.equal(capCount(-3), 0)
+    assert.ok(isValidEvent('perf', { interactions: capCount(25_000), cores: '9+' }))
+    assert.ok(!isValidEvent('perf', { interactions: 10_000 }))
 })

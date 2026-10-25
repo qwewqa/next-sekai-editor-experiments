@@ -15,7 +15,7 @@ fi
 INSTANCE=$(aws ec2 describe-instances --profile "$PROFILE" \
     --filters Name=tag:nse:service,Values=stats Name=instance-state-name,Values=running \
     --query 'Reservations[0].Instances[0].InstanceId' --output text)
-[ -n "$INSTANCE" ] && [ "$INSTANCE" != None ] || { echo "No running stats instance in $PROFILE" >&2; exit 1; }
+if [ -z "$INSTANCE" ] || [ "$INSTANCE" = None ]; then echo "No running stats instance in $PROFILE" >&2; exit 1; fi
 
 echo "Dashboard: http://localhost:3000 (Ctrl+C closes the tunnel)"
 aws ssm start-session --profile "$PROFILE" --target "$INSTANCE" \

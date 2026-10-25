@@ -36,7 +36,7 @@ const openAndAct = (page: Page, act: 'pill:about' | 'pill:keyboardShortcuts' | '
                     dialog.querySelector<HTMLElement>('button[aria-label="Close"]')?.click()
                 else if (act === 'reset')
                     [...dialog.querySelectorAll<HTMLElement>('button')]
-                        .find((button) => button.textContent.trim() === 'Reset Settings')
+                        .find((button) => button.textContent.trim() === 'Reset Settings…')
                         ?.click()
                 else
                     dialog

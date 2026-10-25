@@ -618,7 +618,7 @@ const migrateSetting = (key: string, value: unknown) => {
 const normalize = <T extends Type.TSchema>(schema: T, value: unknown) =>
     Value.Decode(schema, Value.Repair(schema, value))
 
-// The only keys safe mode writes.
+// The settings keys safe mode may write.
 registerSettingKeys(Object.keys(settingsProperties))
 
 export const settings = Object.defineProperties(
@@ -682,7 +682,7 @@ try {
 
 let resetting = false
 
-/** Whether Reset Settings is running, changing its keys one at a time. */
+/** Whether Reset Settings… is running, changing its keys one at a time. */
 export const isResettingSettings = () => resetting
 
 export const resetSettings = () => {
@@ -704,3 +704,7 @@ export const resetKeybinds = () => {
         Value.Create(settingsProperties.keyboardShortcuts),
     )
 }
+
+/** Whether a setting still has its default, for the usage statistics’ `toolbarCustomized`. */
+export const hasDefaultValue = (key: keyof typeof settingsProperties) =>
+    Value.Equal(settings[key], Value.Create(settingsProperties[key]))

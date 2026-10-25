@@ -1,3 +1,4 @@
+import { note } from '../analytics/tally'
 import { dayKey, hostZone } from '../calendar/calendar'
 import { downloadConfirmed } from '../editor/file/flags'
 import { LOAD_ORDER } from '../editor/loadOrder'
@@ -309,6 +310,7 @@ export const startStorage = async () => {
     const recovered = (async () => {
         const { status, answered } = await starting
         claim = await claiming
+        if (claim.kind === 'reload') note('reload')
         if (!safe) watchMarker(() => currentSession.value.sessionId)
         const context = recoveryContext(worker, status, safe, claim)
         recovery = context

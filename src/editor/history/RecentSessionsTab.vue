@@ -9,7 +9,8 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
-import { peekedKey } from '../../history/peek'
+import { bump } from '../../analytics/tally'
+import { peekedKey, runPendingPeek } from '../../history/peek'
 import { session } from '../../history/session'
 import { liveState } from '../../history/stack'
 import { displayName, type DisplayName } from '../../local/names'
@@ -18,7 +19,7 @@ import { storageWorker } from '../../local/start'
 import { listRecent, type RecentChain } from '../../local/recent'
 import type { StoredRead } from '../../local/storedRead'
 import { flusher } from '../../local/storing'
-import { storageStatus } from '../../local/startup/events'
+import { recentSessionCount, storageStatus } from '../../local/startup/events'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { focusLost } from '../../utils/focusFallback'
@@ -82,7 +83,9 @@ useScrollMemory(() => `${props.surface}:history-sessions`, scroller)
 const readList = async (): Promise<StoredRead<RecentChain[]>> => {
     const worker = storageWorker
     if (!worker) return { storedRead: 'failed', storedError: undefined }
-    return listRecent(worker)
+    const read = await listRecent(worker)
+    if (read.storedRead === 'value') recentSessionCount.value = read.storedValue.length
+    return read
 }
 /** The sessions other tabs or windows hold; none where Web Locks cannot tell. */
 const heldElsewhere = async (): Promise<ReadonlySet<string>> => {
@@ -503,6 +506,11 @@ const isApple = isApplePlatform()
 // The keys the editor would run with focus elsewhere: docks pass it only unclaimed chords.
 const passed: CommandName[] = ['history', 'play', 'copy']
 
+/** A released arrow key ends the repeats the peek's debounce waits for. */
+const onKeyup = (event: KeyboardEvent) => {
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(event.key)) runPendingPeek()
+}
+
 const onKeydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return
     if (
@@ -591,7 +599,7 @@ const onKeydown = (event: KeyboardEvent) => {
     const name = matched.names.find((candidate) => passed.includes(candidate))
     if (name && !event.repeat) {
         handled()
-        void runCommand(commands[name])
+        void runCommand(commands[name], 'key')
     }
 }
 
@@ -607,6 +615,7 @@ let channel: BroadcastChannel | undefined
 // A Delete, an Undo or a chain found gone changes the list: it reads at once, the user's own act.
 let stopDeleteChanges: (() => void) | undefined
 onMounted(() => {
+    bump('features.recentTab')
     sessionDelete.listShown(true)
     stopDeleteChanges = onDeleteChanged(() => void list.refresh({ now: true }))
     void list.refresh({ now: true })
@@ -683,6 +692,7 @@ const notePointer = (event: PointerEvent) => {
             class="sessions-list overlay-scroller h-full overflow-y-auto overscroll-contain px-1.5 pb-2 outline-none"
             @scroll.passive="onScroll"
             @keydown="onKeydown"
+            @keyup="onKeyup"
             @focus.self="focusRow(cursorId, false)"
             @focusin="onFocusin"
             @focusout="onFocusout"

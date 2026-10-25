@@ -186,7 +186,7 @@ const execute = (name: ActionName, byKeyboard = true, byTouch = false) => {
         notify(interpolate(() => i18n.value.tools.select.selected, formatCount(targets.length)))
     } else if (name === 'paste') {
         if (point) void pasteAtContextPosition(point.x, point.y, { ctrl: false, shift: false })
-    } else void runCommand(commands[name])
+    } else void runCommand(commands[name], 'menu')
 }
 
 watch(contextMenu, async (point) => {

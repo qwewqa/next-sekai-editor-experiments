@@ -237,7 +237,7 @@ test.describe('the startup gate', () => {
         // No Start Blank on a failure.
         await expect(gate(page).getByRole('button')).toHaveText([
             'Open in Safe Mode',
-            'Export Raw Data…',
+            'Export Raw Data',
         ])
         expect(errors.some((text) => text.includes('A row could not be read'))).toBe(true)
     })
@@ -265,12 +265,12 @@ test.describe('the startup gate', () => {
         return JSON.parse(inflateRawSync(bytes.subarray(start, start + size)).toString()) as RawDump
     }
 
-    test('Export Raw Data… waits while its export runs, so a second press starts no second one', async ({
+    test('Export Raw Data waits while its export runs, so a second press starts no second one', async ({
         page,
     }) => {
         await startupFlags(page, { fail: 'A row could not be read' })
         await boot(page)
-        const button = gate(page).getByRole('button', { name: 'Export Raw Data…' })
+        const button = gate(page).getByRole('button', { name: 'Export Raw Data' })
         await page.evaluate(async () => {
             const { startupGate } = await import('/src/startup/gate.ts')
             const held = startupGate.rawExport!
@@ -296,7 +296,7 @@ test.describe('the startup gate', () => {
         )
     })
 
-    test('Export Raw Data… on the error state downloads the stored data as one ZIP', async ({
+    test('Export Raw Data on the error state downloads the stored data as one ZIP', async ({
         page,
     }) => {
         await startupFlags(page, { fail: 'A row could not be read' })
@@ -306,7 +306,7 @@ test.describe('the startup gate', () => {
         )
         await boot(page)
         const download = page.waitForEvent('download')
-        await gate(page).getByRole('button', { name: 'Export Raw Data…' }).click()
+        await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
         const file = await download
         expect(file.suggestedFilename()).toMatch(
             /^Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip$/,
@@ -327,7 +327,7 @@ test.describe('the startup gate', () => {
             const { platform } = await import('/src/platform/index.ts')
             platform.saveFile = () => Promise.reject(new Error('blocked'))
         })
-        await gate(page).getByRole('button', { name: 'Export Raw Data…' }).click()
+        await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
         await expect(gate(page).locator('[data-raw-export-note]')).toHaveText(
             /^"Next SEKAI Editor raw data \d{4}-\d{2}-\d{2}\.zip" could not be downloaded\.$/,
         )
@@ -356,7 +356,7 @@ test.describe('the startup gate', () => {
             }
         })
         const download = page.waitForEvent('download')
-        await gate(page).getByRole('button', { name: 'Export Raw Data…' }).click()
+        await gate(page).getByRole('button', { name: 'Export Raw Data' }).click()
         const dump = dumpOfZip(readFileSync(await (await download).path()))
         expect(dump.stores).toEqual([])
         expect(dump.localStorage[`${prefix}rawExportTest`]).toBe('"db-test"')

@@ -501,7 +501,7 @@ test('the selection moves to a folder, out of folders and into a new folder in o
     await undo(page)
 
     await bar.getByRole('button', { name: 'Move to Folder…' }).click()
-    await menu.getByRole('menuitem', { name: 'New Folder…' }).click()
+    await menu.getByRole('menuitem', { name: 'New Folder', exact: true }).click()
     // The new folder sits where the first entry was and starts its naming.
     await expect(list.locator('.manager-rename')).toBeFocused()
     await page.keyboard.type('Picked')
@@ -948,7 +948,7 @@ test('stages select, move into a new folder and delete in one step each', async 
     await nameButton(list, 'Third').click({ modifiers: ['ControlOrMeta'] })
     const bar = list.locator('.manager-selection-bar')
     await bar.getByRole('button', { name: 'Move to Folder…' }).click()
-    await page.getByRole('menuitem', { name: 'New Folder…' }).click()
+    await page.getByRole('menuitem', { name: 'New Folder', exact: true }).click()
     await expect(list.locator('.manager-rename')).toBeFocused()
     await page.keyboard.type('Picked')
     await page.keyboard.press('Enter')

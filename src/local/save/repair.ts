@@ -338,7 +338,7 @@ const repairMedia = async (
 
 /**
  * Puts back known-bad stored bodies the source holds; resolves the hashes stored again. `bad`
- * names them (Check File and History…'s findings); without it, every chain's `badChunks`.
+ * names them (Check File and History's findings); without it, every chain's `badChunks`.
  */
 export const repairFromSource = async (
     store: SaveStore,

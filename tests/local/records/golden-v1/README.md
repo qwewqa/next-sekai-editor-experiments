@@ -6,7 +6,7 @@ Frozen with Formats v1. Every later build encodes the golden chart and the edge 
 - `records/<hash>.canonical`: each record's canonical bytes, exactly; they are its JSON form. The file's name is its hash.
 - `edge/`: the edge chart, the same way. Its `headerVariants` are header chunks of the same chart with other level info and BGM forms (rating unset, empty level info, a BGM with a duration).
 
-Besides the field lists, the golden chart has a stage in a stage folder and a nested folder (a stage's and a folder's `folderId`), and the edge chart has two BPMs at one beat and two time scales at one beat on one group, each stored in the reverse of byte order, and 73 camera events, so an event kind over 64 records splits by window.
+The golden chart has a stage in a stage folder and a nested folder (a stage's and a folder's `folderId`), and the edge chart has two BPMs at one beat and two time scales at one beat on one group, each stored in the reverse of byte order, and 73 camera events, so an event kind over 64 records splits by window.
 
 **Text a reader must accept:** the edge header holds a lone surrogate, written `"\ud83d"` as `QuoteJSONString` writes it. A non-JS reader that parses records must accept lone-surrogate escapes. serde_json refuses them into a `String`, which is fine while Rust only inflates and hashes records; Python's `json` accepts them.
 

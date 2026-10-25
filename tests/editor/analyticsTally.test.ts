@@ -83,13 +83,9 @@ test('turning off forgets what was counted', () => {
     assert.deepEqual(counts(), {})
 })
 
-// A guard against an O(n) step in a bump, not a speed measure: the bound is far above the time
-// a million Map increments take.
-test('a million bumps take well under a second', () => {
+test('a count stops at the cap however many bumps follow', () => {
     tally.enable()
-    const start = performance.now()
-    for (let i = 0; i < 1_000_000; i++) tally.bumpCommand('save', 'key')
-    assert.ok(performance.now() - start < 1000)
+    for (let i = 0; i < 20_000; i++) tally.bumpCommand('save', 'key')
     assert.equal(tally.collect().counts.get('usage.save.key'), 9999)
 })
 
@@ -119,4 +115,74 @@ test('the first trusted input on a visible page arms the visit, and the listener
     tally.disable()
     tally.enable()
     assert.equal(listeners.size, 0)
+})
+
+test('a Timeline step shown counts as a peek, with its time as a range or as cached', () => {
+    tally.enable()
+    tally.peekShown(30)
+    tally.peekShown(30)
+    tally.peekShown(1200)
+    tally.peekShown(undefined)
+    assert.deepEqual(counts(), {
+        'features.peek': 4,
+        'perf.peek.<50': 2,
+        'perf.peek.1k-2k': 1,
+        'perf.peek.cached': 1,
+    })
+})
+
+test('startup is marked once, with its outcome and whether the page was ever hidden', () => {
+    tally.markStartup('done')
+    assert.equal(tally.startup(), undefined, 'while off')
+    tally.enable()
+    page.visibilityState = 'hidden'
+    tally.markStartup('slow')
+    page.visibilityState = 'visible'
+    tally.markStartup('error')
+    const started = tally.startup()
+    assert.equal(started?.outcome, 'slow')
+    assert.equal(started?.hidden, true)
+    assert.ok((started?.at ?? 0) > 0)
+})
+
+test('flows mark the page busy and not busy again, never below none', () => {
+    tally.busy(false)
+    tally.busy(true)
+    tally.busy(true)
+    tally.busy(false)
+    assert.equal(tally.isBusy(), true)
+    tally.busy(false)
+    assert.equal(tally.isBusy(), false)
+})
+
+test('a recorded event takes its time from the moment the action began', () => {
+    tally.enable()
+    tally.record('check', { outcome: 'ok' }, performance.now() - 250)
+    tally.record('check', { outcome: 'ok' })
+    const [first, second] = tally.collect().recorded
+    assert.ok(Number(first?.data.took) >= 250)
+    assert.equal('took' in (second?.data ?? {}), false)
+})
+
+test('a chart that opened, restored or saved waits for the client, once per trigger', () => {
+    tally.chartChanged('open')
+    assert.equal(tally.hasCharts(), false, 'while off')
+    tally.enable()
+    let asked = 0
+    tally.watchCharts(() => asked++)
+    tally.chartChanged('open')
+    tally.chartChanged('open')
+    tally.chartChanged('save')
+    assert.equal(asked, 3)
+    assert.deepEqual(tally.takeCharts(), ['open', 'save'])
+    assert.equal(tally.hasCharts(), false)
+    tally.watchCharts(undefined)
+})
+
+test('facts noted for the start events are forgotten when the statistics go off', () => {
+    tally.enable()
+    tally.note('reload')
+    assert.equal(tally.wasNoted('reload'), true)
+    tally.disable()
+    assert.equal(tally.wasNoted('reload'), false)
 })

@@ -140,11 +140,11 @@ export type SessionOptions = {
  * - every `seq` up to `lastSeq` is stored, covered by a `recovered` row above it, the binding's
  *   own Save row (a kept gap the file may hold), a hole the test says it let go (`hole`: a
  *   released reservation under later rows), or, only while `importPending`, a row to come;
- * - `time` never decreases in `seq` within a session, and `maxSeenTime` reaches every row's (P1;
- *   a session of origin `nxsp` or `replaced` holds a file's rows with its times, in any order, so
+ * - `time` never decreases in `seq` within a session, and `maxSeenTime` reaches every row's time (a
+ *   session of origin `nxsp` or `replaced` holds a file's rows with its times, in any order, so
  *   only the rows above the file's are checked: the binary search of Go To's index runs only over
  *   sessions that `ORIGIN_RULE` calls `own`, a subset of the sessions checked here);
- * - a `continue` row is only at the lowest stored `seq` of a session of an `own` origin (P2);
+ * - a `continue` row is only at the lowest stored `seq` of a session of an `own` origin;
  * - a session a continuation branched from holds no row past its `uptoSeq`;
  * - `entryCount` is the number of stored rows;
  * - an entry's key is its own `sessionId` and `seq`.
@@ -212,7 +212,7 @@ export const sessionViolations = (
                 `session ${sessionId}: rows ${seqList(holes)} up to lastSeq ${String(lastSeq)} are neither stored, covered by a recovered row, nor the binding’s own Save`,
             )
         // A session opened from a file holds the file’s rows with their own times, which this
-        // editor did not stamp: only a session’s own rows are checked here (P1), the rows above
+        // editor did not stamp: only a session’s own rows are checked here, the rows above
         // the file’s when the world recorded where they end, else none of an nxsp or replaced one.
         const timed = entries.filter((entry) => !filed(Number(entry.seq)))
         for (let at = 1; at < timed.length; at++) {

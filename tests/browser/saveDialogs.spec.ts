@@ -595,7 +595,7 @@ test.describe('the conflict dialog', () => {
         unknown: { kind: 'unknown' },
     } satisfies Record<string, DiskVersion>
 
-    test('offers the four choices, with Save as a Separate File focused', async ({
+    test('offers the four choices, with Save as a Separate File… focused', async ({
         page,
         context,
     }) => {
@@ -609,13 +609,13 @@ test.describe('the conflict dialog', () => {
         await expect(dialog(page)).toContainText('Saved on iPad, Oct 16, 2:41 PM · 1,220 notes.')
         await expect(dialog(page).locator('[data-choice-buttons] button')).toHaveText([
             // Stacked, the safe default on top and Cancel last.
-            'Save as a Separate File',
+            'Save as a Separate File…',
             'Open the Other Version',
             'Replace',
             'Cancel',
         ])
         await expect(
-            dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
+            dialog(page).getByRole('button', { name: 'Save as a Separate File…' }),
         ).toBeFocused()
         await expect(dialog(page).getByText('Your changes stay in Recent Sessions.')).toBeVisible()
         await expect(
@@ -698,7 +698,7 @@ test.describe('the conflict dialog', () => {
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
         ).toHaveCount(0)
         await expect(
-            dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
+            dialog(page).getByRole('button', { name: 'Save as a Separate File…' }),
         ).toBeFocused()
     })
 })

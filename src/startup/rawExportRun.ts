@@ -3,7 +3,7 @@ import { isAbort } from '../platform/handover'
 import type { Platform } from '../platform/types'
 import type { RawExportRun } from './rawExportNote'
 
-// The run of Export Raw Data…, apart from the action so a Node test can read it.
+// The run of Export Raw Data, apart from the action so a Node test can read it.
 
 /**
  * Builds the export and hands it over. `signal` is the Loading dialog's cancel. The build cannot

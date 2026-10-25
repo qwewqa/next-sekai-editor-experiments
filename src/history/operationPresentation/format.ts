@@ -636,7 +636,7 @@ export const describeEntry = (
             init: t.peek.initialState,
             continue: t.entry.continued,
             save: t.commands.save.title,
-            export: t.commands.exportLevel.title,
+            export: t.export.title,
             recovered: t.entry.recoveredChanges,
         }[entry.kind],
         context,

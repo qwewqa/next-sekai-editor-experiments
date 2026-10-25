@@ -25,8 +25,8 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The save picker's rules where reviews found gaps: what a taken-over tab shows and asks,
-// the pre-bind, the version on disk kept through Save as a Separate File, the kept bytes of a
+// The save picker's rules: what a taken-over tab shows and asks,
+// the pre-bind, the version on disk kept through Save as a Separate File…, the kept bytes of a
 // partial open after a reload, Export's picker, and failures that must leave the next Save able.
 
 type Row = Record<string, unknown>
@@ -210,7 +210,7 @@ test('a pre-bind shows at once, ends a revocation, and carries Save As…’s ne
     await b.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await pauseAt(b, 'revoked')
     await submitSave(b, 'melt', 'Save As')
@@ -228,7 +228,7 @@ test('a pre-bind shows at once, ends a revocation, and carries Save As…’s ne
     expect((await projectOf(b, 'melt.nxsp')).id).toBe(saveAs.docId)
 })
 
-test('Save as a Separate File picking the chain’s own changed file puts that version back', async ({
+test('Save as a Separate File… picking the chain’s own changed file puts that version back', async ({
     page,
 }) => {
     await start(page)
@@ -241,7 +241,7 @@ test('Save as a Separate File picking the chain’s own changed file puts that v
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
     await afterGuard(page)
     await queuePicks(page, ['coconut.nxsp'])
-    await dialog.getByRole('button', { name: 'Save as a Separate File' }).click()
+    await dialog.getByRole('button', { name: 'Save as a Separate File…' }).click()
     // The version on disk is back, and the dialog asks again.
     await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
@@ -258,7 +258,7 @@ test('a version on disk that cannot be put back is offered as a download', async
     await failWrites(page, 'recovery')
     await afterGuard(page)
     await queuePicks(page, ['coconut.nxsp'])
-    await dialog.getByRole('button', { name: 'Save as a Separate File' }).click()
+    await dialog.getByRole('button', { name: 'Save as a Separate File…' }).click()
     const offer = page.getByRole('dialog').filter({ hasText: 'could not be restored' })
     await expect(offer).toContainText('"coconut.nxsp" was emptied')
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
@@ -481,7 +481,7 @@ test('in safe mode Save writes from this tab, refusing only to take over another
     await safe.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await queuePicks(safe, ['coconut.nxsp'])
     await submitSave(safe, undefined, 'Save As')
@@ -514,7 +514,7 @@ test('ordinary Save As clears Export destination and name in the file and after 
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await queuePicks(page, ['copy.nxsp'])
     await submitSave(page, 'copy', 'Save As')
@@ -579,7 +579,7 @@ test('recognizing a completed Save As clears the prior Export suggestion after r
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await queuePicks(page, ['copy.nxsp'])
     await submitSave(page, 'copy', 'Save As')
@@ -613,7 +613,7 @@ for (const choice of ['same file', 'cancelled']) {
         await page.evaluate(async () => {
             const { commands } = await import('/src/editor/commands/index.ts')
             const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-            void runCommand(commands.saveAs)
+            void runCommand(commands.saveAs, 'button')
         })
         await queuePicks(page, [choice === 'same file' ? 'coconut.nxsp' : null])
         await submitSave(page, undefined, 'Save As')

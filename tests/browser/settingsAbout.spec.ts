@@ -27,6 +27,8 @@ test('About is the last section, with the name, the version and the links in ord
 }) => {
     await boot(page)
     const sections = page.getByRole('dialog').locator('section')
+    // The later sections mount in short tasks after the first frame.
+    await expect(page.locator('[data-settings-section="about"]')).toBeAttached()
     await expect(sections.last().getByRole('heading')).toHaveText('About')
     await expect(about(page).locator('[data-about-name]')).toHaveText('Next SEKAI Editor')
     await expect(about(page).locator('[data-about-version]')).toHaveText('Version 0.6.0')
@@ -47,7 +49,7 @@ test('About is the last section, with the name, the version and the links in ord
         await expect(link).toHaveAttribute('target', '_blank')
         await expect(link).toHaveAttribute('rel', /noopener/)
     }
-    // No app row before Stage 2, and nothing else links to the apps.
+    // No app row until the native apps ship, and nothing else links to the apps.
     await expect(about(page)).not.toContainText('Apps for')
     await expect(about(page)).not.toContainText('Get the App')
     await expect(about(page)).not.toContainText('This is the test site')

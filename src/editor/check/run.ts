@@ -20,7 +20,7 @@ import { unlinkSession } from '../save/unlink'
 import { phaseFraction } from './progress'
 import { refusalLine, reportLines, type CheckText, type Findings } from './report'
 
-// Check File and History… on the page: which file, then the
+// Check File and History on the page: which file, then the
 // run inside the Save queue: the wait for the chain's imports, `nse-maint` shared from there to
 // the finish, the file read in full, the stored history, and the finish with the worker's repair,
 // marks and media removal. The unlink of a damaged file follows. Cancel works until the finish
@@ -49,7 +49,8 @@ export type CheckOutcome =
     | { kind: 'cancelled' }
     /** Replaces the report: a failure line. */
     | { kind: 'failed'; message: () => string }
-    | { kind: 'report'; lines: (() => string)[] }
+    /** `problems`: it repaired or found damage (for the usage statistics). */
+    | { kind: 'report'; lines: (() => string)[]; problems: boolean }
 
 const cancelled: CheckOutcome = { kind: 'cancelled' }
 
@@ -391,6 +392,7 @@ const perform = async (
     return {
         kind: 'report',
         lines: reportLines(found, checkText),
+        problems: repaired > 0 || damaged > 0 || fileDamaged,
     }
 }
 

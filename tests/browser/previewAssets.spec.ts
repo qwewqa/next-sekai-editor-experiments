@@ -4,8 +4,8 @@ import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
 
 // The Preview Assets dialog with Default and Built-in. With
-// A2_SHOTS_DIR set, each state is also saved there as a screenshot.
-const shotsDir = process.env.A2_SHOTS_DIR
+// SHOTS_DIR set, each state is also saved there as a screenshot.
+const shotsDir = process.env.SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
 
 const KEY = 'sonolus-next-sekai-editor.'
@@ -146,7 +146,7 @@ test.describe('ways in', () => {
             .hover()
         const flyout = bar.locator(':scope > div > div > div button')
         await expect(flyout.first()).toBeVisible()
-        const item = flyout.and(page.getByTitle('Preview Assets…', { exact: true }))
+        const item = flyout.and(page.getByTitle('Preview Assets', { exact: true }))
         await expect(item).toHaveCount(1)
         await item.click()
         await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
@@ -163,7 +163,7 @@ test.describe('ways in', () => {
         await expect(row).toContainText(
             'Skin, particle, background and sound effects for the preview and playback.',
         )
-        await row.getByRole('button', { name: 'Preview Assets…' }).click()
+        await row.getByRole('button', { name: 'Preview Assets' }).click()
         await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
         await expect(dialog(page)).toHaveCount(1)
         // The first type that fell back, as with the command.
@@ -175,20 +175,20 @@ test.describe('ways in', () => {
         await page.locator('[data-panel-tab="preview"]').click({ button: 'right' })
         const menu = page.getByRole('menu')
         await expect(menu).toBeVisible()
-        await menu.getByRole('menuitem', { name: 'Preview Assets…' }).click()
+        await menu.getByRole('menuitem', { name: 'Preview Assets' }).click()
         await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
         // Other panels' menus do not have it.
         await page.keyboard.press('Escape')
         await page.locator('[data-panel-tab="properties"]').click({ button: 'right' })
         await expect(page.getByRole('menu')).toBeVisible()
-        await expect(page.getByRole('menuitem', { name: 'Preview Assets…' })).toHaveCount(0)
+        await expect(page.getByRole('menuitem', { name: 'Preview Assets' })).toHaveCount(0)
     })
 
     test('the panel’s fallback line opens it on that type’s tab', async ({ page }) => {
         await start(page, { fail: ['default-particle'] })
         const line = fallbackLine(page, 'particle')
         await expect(line).toContainText('Particle: using Built-in. Default could not be loaded.')
-        await line.getByRole('button', { name: 'Preview Assets…' }).click()
+        await line.getByRole('button', { name: 'Preview Assets' }).click()
         await expect(dialog(page)).toHaveAccessibleName('Preview Assets')
         await expect(selectedTab(page)).toContainText('Particle')
         // With no tab given, a fallback elsewhere also picks the tab.
@@ -932,7 +932,7 @@ test.describe('the Settings row and the Preview tab menu', () => {
             await page.locator('[data-panel-tab="preview"]').click({ button: 'right' })
             const menu = page.getByRole('menu')
             await expect(menu).toBeVisible()
-            // Close Preview stays in its own group, after Preview Assets….
+            // Close Preview stays in its own group, after Preview Assets.
             const items = await menu
                 .locator('[role="menuitem"], [role="separator"], hr')
                 .evaluateAll((elements) =>

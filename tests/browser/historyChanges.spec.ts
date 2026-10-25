@@ -262,7 +262,7 @@ const runCommand = (page: Page, name: string) =>
                 '/src/editor/commands/runCommand.ts',
             ),
         ])
-        await runCommand(commands[name as keyof typeof commands])
+        await runCommand(commands[name as keyof typeof commands], 'button')
     }, name)
 
 test('peeking marks what the entry changed and dims the rest, without scrolling', async ({
@@ -580,15 +580,17 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     await expect(peekLine(page)).toHaveText('1 change')
     await viewAt(page, 6)
     const beat = await centreBeat(page)
-    // Record whether the dim ever lifts in a frame between steps.
+    // Record whether the dim lifts, or the marks are missing, in any frame between steps.
     await page.evaluate(async () => {
-        const { undimmed } = await window.editorTest.appImport<
+        const { undimmed, changeMarks } = await window.editorTest.appImport<
             typeof import('../../src/editor/history/changes')
         >('/src/editor/history/changes.ts')
-        const record = window as unknown as { dimLifted: boolean }
+        const record = window as unknown as { dimLifted: boolean; marksMissing: boolean }
         record.dimLifted = false
+        record.marksMissing = false
         const check = () => {
             if (!undimmed.value) record.dimLifted = true
+            if (!changeMarks.value) record.marksMissing = true
             requestAnimationFrame(check)
         }
         requestAnimationFrame(check)
@@ -604,6 +606,52 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     expect(await page.evaluate(() => (window as unknown as { dimLifted: boolean }).dimLifted)).toBe(
         false,
     )
+    expect(
+        await page.evaluate(() => (window as unknown as { marksMissing: boolean }).marksMissing),
+    ).toBe(false)
+})
+
+test('a header-only step shown without its change draws none of the step before it', async ({
+    page,
+}) => {
+    // Both steps stay in memory, so the header-only state shares its store with the one before.
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await edit(page, 'Header A', { kind: 'life' })
+    await openTab(page)
+    await row(page, 'Moved A').click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    const marked = () =>
+        page.evaluate(async () => {
+            const module = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/changes')
+            >('/src/editor/history/changes.ts')
+            return {
+                marks: !!module.changeMarks.value,
+                ticks: !!module.minimapChangePlaces.value,
+            }
+        })
+    expect(await marked()).toEqual({ marks: true, ticks: true })
+    // A change read that never lands: the next step shows at the cap without its change.
+    await page.evaluate(async () => {
+        const { setPeekReady } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
+        setPeekReady(() => new Promise(() => undefined))
+    })
+    await list(page).press('ArrowUp')
+    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Header A')
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { displayedPeekKey, peekedKey } =
+                    await window.editorTest.appImport<typeof import('../../src/history/peek')>(
+                        '/src/history/peek.ts',
+                    )
+                return displayedPeekKey.value === peekedKey.value
+            }),
+        )
+        .toBe(true)
+    expect(await marked()).toEqual({ marks: false, ticks: false })
 })
 
 test('switching entries keeps the whole peek bar filled, never blank or dashed between', async ({

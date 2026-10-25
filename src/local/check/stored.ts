@@ -8,7 +8,7 @@ import { loadBodies, type Bodies, type SaveStore } from '../save/bodies'
 import { CUT_STORES, readCut, type EntryRow } from '../save/cut'
 import { checkReadable, ModelError, type ModelRefusal } from '../save/model'
 
-// Check File and History…'s stored phase: the roots of every kept row of the
+// Check File and History's stored phase: the roots of every kept row of the
 // chain, in all its sessions, verified as a Save's build verifies its bodies (`loadBodies`), and
 // the media each whole state's header names re-hashed. A missing media row is "not loaded", not
 // damage. Nothing is written here.

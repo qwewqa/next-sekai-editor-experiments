@@ -1,3 +1,4 @@
+import { chartChanged } from '../analytics/tally'
 import type { Chart } from '../chart'
 import { addToGroups, type Groups } from '../chart/groups'
 import { addDefaultStageToStages, type Stages } from '../chart/stages'
@@ -125,6 +126,7 @@ export const openStoredState = (
     cleanupWaveform()
     switchToolTo('select')
     notifyResetState()
+    chartChanged('restore')
 }
 
 /**
@@ -185,4 +187,5 @@ const openPreparedState = (
     cleanupWaveform()
     switchToolTo('select')
     notifyResetState()
+    chartChanged('open')
 }

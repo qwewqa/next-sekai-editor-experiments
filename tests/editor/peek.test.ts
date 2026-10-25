@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
 import { setImmediate as settleTasks } from 'node:timers/promises'
+import * as tally from '../../src/analytics/tally'
 import type { Command } from '../../src/editor/commands'
 import { runCommand } from '../../src/editor/commands/runCommand'
 import { onHistoryAction, type HistoryAction } from '../../src/history/actions'
@@ -14,7 +15,9 @@ import {
     onPeekRefused,
     onPeekStart,
     parseEntryKey,
+    PEEK_DEBOUNCE_MS,
     PEEK_LRU,
+    PEEK_READY_MAX_MS,
     peekedKey,
     peekEntry,
     PeekError,
@@ -22,6 +25,7 @@ import {
     peekSourceGeneration,
     resetPeekForTests,
     restoreEntry,
+    runPendingPeek,
     setPeekEffects,
     setPeekSource,
     type EntryKey,
@@ -540,6 +544,105 @@ test('requests close together wait for the last, and earlier ones resolve', asyn
     assert.deepEqual(loads, [key(1), key(3)])
 })
 
+test('the state shows once ready resolves, not before', async () => {
+    source({ [key(1)]: { state: fake('one'), time: 1 } })
+    const gate = deferred<void>()
+    const seen: string[] = []
+    const peeking = peekEntry(key(1), {
+        ready: (loaded) => {
+            seen.push(nameOf(loaded))
+            return gate.promise
+        },
+    })
+    await wait(20)
+    assert.equal(nameOf(state.value), 'live')
+    assert.equal(displayedPeekKey.value, undefined)
+    gate.resolve()
+    await peeking
+    assert.equal(nameOf(state.value), 'one')
+    assert.equal(displayedPeekKey.value, key(1))
+    assert.deepEqual(seen, ['one'])
+})
+
+test('the state shows after the bound when ready does not settle, and a failing ready only ends the wait', async () => {
+    source({
+        [key(1)]: { state: fake('one'), time: 1 },
+        [key(2)]: { state: fake('two'), time: 2 },
+    })
+    // Clears the debounce window of the previous test's request.
+    await wait(110)
+    const started = Date.now()
+    await peekEntry(key(1), { ready: () => new Promise(() => undefined) })
+    const waited = Date.now() - started
+    assert.equal(nameOf(state.value), 'one')
+    assert.ok(waited >= PEEK_READY_MAX_MS - 20)
+    assert.ok(waited < PEEK_READY_MAX_MS + 200)
+    await peekEntry(key(2), { ready: () => Promise.reject(new Error('read failed')) })
+    assert.equal(nameOf(state.value), 'two')
+})
+
+test('a newer request, a leave or a Restore during the wait drops the waiting state', async () => {
+    source({
+        [key(1)]: { state: fake('one'), time: 1 },
+        [key(2)]: { state: fake('two'), time: 2 },
+    })
+    const gate = deferred<void>()
+    const first = peekEntry(key(1), { ready: () => gate.promise })
+    await wait(20)
+    const second = peekEntry(key(2))
+    await Promise.all([first, second])
+    assert.equal(nameOf(state.value), 'two')
+    gate.resolve()
+    await wait(10)
+    assert.equal(nameOf(state.value), 'two')
+
+    await wait(110)
+    const later = deferred<void>()
+    const waiting = peekEntry(key(1), { ready: () => later.promise })
+    await wait(20)
+    leavePeek()
+    await waiting
+    later.resolve()
+    await wait(10)
+    assert.equal(isPeeking.value, false)
+    assert.equal(displayedPeekKey.value, undefined)
+
+    await wait(110)
+    const restoring = deferred<void>()
+    const held = peekEntry(key(1), { ready: () => restoring.promise })
+    await wait(20)
+    await restoreEntry(key(2))
+    await held
+    restoring.resolve()
+    await wait(10)
+    assert.equal(isPeeking.value, false)
+    assert.equal(nameOf(liveState.value), 'two')
+})
+
+test('a request waiting out the debounce runs at once on runPendingPeek, and only the latest runs', async () => {
+    const loads = source({
+        [key(1)]: { state: fake('one'), time: 1 },
+        [key(2)]: { state: fake('two'), time: 2 },
+        [key(3)]: { state: fake('three'), time: 3 },
+    })
+    runPendingPeek()
+    const first = peekEntry(key(1))
+    const second = peekEntry(key(2))
+    const third = peekEntry(key(3))
+    await first
+    const flushed = Date.now()
+    runPendingPeek()
+    await Promise.all([second, third])
+    // Well inside the debounce: the third was shown without waiting for it.
+    assert.ok(Date.now() - flushed < PEEK_DEBOUNCE_MS / 2)
+    assert.equal(nameOf(state.value), 'three')
+    assert.deepEqual(loads, [key(1), key(3)])
+    // Nothing waits now.
+    runPendingPeek()
+    await wait(PEEK_DEBOUNCE_MS + 20)
+    assert.deepEqual(loads, [key(1), key(3)])
+})
+
 test('an entry that cannot be read rejects and leaves the peek', async () => {
     source({}, [key(1)])
     await assert.rejects(peekEntry(key(1)), (error: unknown) => {
@@ -808,17 +911,17 @@ test('runCommand refuses edits while peeking and says why; Open, New, Undo and R
     const view = command({ readOnly: true })
     const leave = command({ leavesPeek: true })
     await peekEntry(key(1))
-    void runCommand(edit.value)
-    void runCommand(view.value)
+    void runCommand(edit.value, 'button')
+    void runCommand(view.value, 'button')
     assert.deepEqual(edit.runs, [])
     assert.deepEqual(view.runs, [true])
     assert.deepEqual(refusals, ['Test'])
     // It runs with the peek in place: a cancelled picker or nothing to undo keeps the peek.
-    void runCommand(leave.value)
+    void runCommand(leave.value, 'button')
     assert.deepEqual(leave.runs, [true])
     assert.equal(isPeeking.value, true)
     leavePeek()
-    void runCommand(edit.value)
+    void runCommand(edit.value, 'button')
     assert.deepEqual(edit.runs, [false])
     stop()
 })
@@ -896,3 +999,44 @@ for (const replacement of ['same', 'different', 'absent'] as const)
             assert.equal(loads, 2, 'an old load cannot repopulate a replaced source cache')
         }
     })
+
+test('a displayed peek counts once with its load time, a cached one as cached, a replaced one not', async () => {
+    tally.enable()
+    try {
+        source({
+            [key(1)]: { state: fake('one'), time: 1 },
+            [key(2)]: { state: fake('two'), time: 2 },
+            [key(3)]: { state: fake('three'), time: 3 },
+        })
+        // Two requests close together: the first is replaced before it displays.
+        const first = peekEntry(key(1))
+        const second = peekEntry(key(2))
+        await Promise.all([first, second])
+        // A later request for an entry held in the cache.
+        await wait(PEEK_DEBOUNCE_MS + 10)
+        await peekEntry(key(2))
+        const counted = Object.fromEntries(tally.collect().counts)
+        assert.equal(counted['features.peek'], 2)
+        assert.equal(counted['perf.peek.cached'], 1)
+        assert.equal(counted['perf.peek.<50'], 1)
+    } finally {
+        tally.disable()
+    }
+})
+
+test('a Restore that pushes a step counts, and one that changes nothing does not', async () => {
+    tally.enable()
+    try {
+        source({
+            [key(1)]: { state: fake('old'), time: 1 },
+            [key(2)]: { state: fake('live'), time: 2 },
+        })
+        await peekEntry(key(2))
+        await restoreEntry(key(2))
+        assert.equal(Object.fromEntries(tally.collect().counts)['features.restore'], undefined)
+        await restoreEntry(key(1))
+        assert.equal(Object.fromEntries(tally.collect().counts)['features.restore'], 1)
+    } finally {
+        tally.disable()
+    }
+})

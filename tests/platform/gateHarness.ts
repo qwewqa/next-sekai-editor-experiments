@@ -10,6 +10,7 @@ const source = readFileSync('public/gate.js', 'utf8')
 export type GateFile = { name: string; type: string; data: string | Uint8Array; label?: string }
 
 export type Gate = {
+    browserFamily: (win: object) => string
     PREFIX: string
     missingFeatures: (win: object) => string[]
     isWebKit: (win: object) => boolean

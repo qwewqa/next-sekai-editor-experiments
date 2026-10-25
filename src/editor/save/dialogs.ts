@@ -113,7 +113,7 @@ export type DiskVersion =
 export type ConflictInput = {
     name: string
     disk: DiskVersion
-    /** Replace disabled, with its reason line under it; Save as a Separate File stays focused. */
+    /** Replace disabled, with its reason line under it; Save as a Separate File… stays focused. */
     replaceDisabled?: () => string
 }
 
@@ -304,7 +304,7 @@ export const defaultSaveUi: SaveUi = {
                 [interpolate(() => i18n.value.conflict.body, input.name)(), describe(input.disk)]
                     .filter(Boolean)
                     .join('\n'),
-            // Cancel, Replace (danger), Open the Other Version, then Save as a Separate File,
+            // Cancel, Replace (danger), Open the Other Version, then Save as a Separate File…,
             // focused. A Replace that cannot be offered stays, with its reason under it.
             choices: [
                 {

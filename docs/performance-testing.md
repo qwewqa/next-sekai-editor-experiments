@@ -11,7 +11,13 @@ npm run perf:report -- perf-results/smoke work
 npm run perf:report -- perf-results/smoke long perf-results/smoke/traces/<cell>.json.gz 16
 ```
 
-`scripts/perf/plans/full.json` is the full plan: every scenario below on coconut, the real charts and the stress chart, on the desktop and the phone stand-in. Its charts are read from `perf-results/data/` (see "Charts"), and a full run takes hours.
+The full matrix is three plans in `scripts/perf/plans/`, run one after another:
+
+- `full.json`: the chart scenarios (scrolling and playback, `resizedrag`, `idle`, `memory`, `journal`, `editflip`, `drag`, `hide`, `notch`) on coconut, the real charts and the stress chart, on the desktop and the phone stand-in;
+- `preview.json`: the preview scenarios (playback, edits, drag, scrub, seek, cursor jumps, note speed, reopen) on the same kinds of charts;
+- `ui.json`: the History, Recent Sessions, Save, Open, Export and Settings actions, on the seeds (see "Seeds") and the real charts, plus startup.
+
+`play2x` and `heaps` are in no plan; run them with a plan of your own. The charts are read from `perf-results/data/` (see "Charts"), and a full run takes hours.
 
 `npm run perf` runs these steps:
 
@@ -94,7 +100,7 @@ Each cell can set:
     - `hide`: an edit of `count` (20) notes, then the page is hidden `after` ms (2000) later and shown again 2 s after that, then undone. It marks `nse-edit` and `nse-hide`. The hide is simulated (see the pitfalls), and the record has `hiddenMs`, the time the page's own listeners took;
     - `journal`: an edit, then scrolling back and forth for `seconds` (22) with a second edit halfway, across the 10 s journal ticks. Pair it with a group's `storage` flag;
     - `edits`: selects `count` (50) notes near the view, then flips, undoes, redoes, deletes, undoes, copies, pastes (hovering the pasted notes for 1 s before placing them) and undoes, `wait` ms (1500) apart. Each step is marked (`nse-flip`, `nse-paste` and so on);
-    - preview interactions: `scrub`, a 3 s drag back and forth across the preview; `seek`, a tap on the step button named `button` (for example `Forward 100 ms`) every 120 ms for 3 s; `cursorjumps`, the cursor moved to a new time every 120 ms for 3 s; `notespeed`, the note speed changed every frame for 2 s, as a slider drag does; `reopen`, the chart opened again over itself, marked `nse-open` and `nse-opened`;
+    - preview interactions: `scrub`, a 3 s drag back and forth across the preview; `seek`, a tap on the step button named `button` (for example `Forward 100 ms`) every 120 ms for 3 s; `cursorjumps`, the cursor moved to a new time every 120 ms for 3 s; `notespeed`, the note speed changed every frame for 240 frames, as a slider drag does; `reopen`, the chart opened again over itself, marked `nse-open` and `nse-opened`;
     - `act`: a user action, `action` (see "Actions");
     - `startup`: a reload that records, from the start of the page, the times of the first paint, the startup gate, the chart and the end of startup (`paint`, `gate`, `chart`, `done`). Its group needs `boot`;
     - `heaps`: the main thread's heap and each worker's heap after a forced GC, when the chart has opened and again after `seconds` (60) of playback. Each worker's heap is read through its own CDP session;
@@ -133,7 +139,7 @@ Actions, by `action`:
 - Recent Sessions: `sessionsOpen`, `sessionPeek`, `restoreSession`, `sessionDelete` and `sessionUndo`;
 - Settings: `openSettings` (until the Language field and Local Data's heading show), `openSettingsAll` (until About, the last section, is mounted) and `closeSettings`;
 - Local Data: `localData` (Settings), `deleteCounts` (Delete Sessions… up to its counts), `deleteAll` (deletes every session, so it runs once in a group of its own) and `exportRaw`;
-- files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check…);
+- files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check);
 - `dialog` (`open`: a key, or `click:<selector>`, until a dialog with `title` shows), `setting` (a setting flipped, and the frames that redraw it), and `goToIndex` (reads Go To's index for an opened file's session of `rows` rows through the storage worker, without the UI).
 
 Settings opens with Editor and Local Data and mounts the other sections in tasks after the first frame. A comment in `SettingsModal.vue` names the stages. Judge a change to Settings by `openSettings` and its `tailTask`, which shows a staging task in the 600 ms after the first screen only when it takes 50 ms or more, so 0 means every stage stayed under that. `openSettingsAll` shows how long the rest takes.
@@ -178,6 +184,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 
 - The `phone` profile is 390×844 at DPR 3, with touch, `isMobile` and a **4× CDP CPU throttle**.
 - The throttle slows the CPU only. GPU costs at DPR 3 are not scaled, so a real phone can be slower on fill rate than these runs show.
+- Workers are not throttled. The harness throttles the page's own session only, and a worker target returns an error for `Emulation.setCPUThrottlingRate` (measured), so the storage worker and the preview's worker run at full speed, and a phone figure that includes worker time is a lower bound.
 - Use touch scenarios on it (`quicktouch`, `flick`, `minimapdrag`): wheel and keys are not phone input.
 
 ### Runs, cold and warm, and the two axes
@@ -235,7 +242,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 - Example: a Ryzen 9 9950X3D has two CCDs. CCD0 (logical processors 0–15) carries the 3D V-cache and CCD1 (16–31) the higher clocks, so runs use `--affinity 0xFFFF0000`.
 - Run analysis and everything else on the other CCD, and run one measurement at a time with nothing else busy.
 - On a shared machine, check before each run that no other perf run is active (processes with `nse-perf` in their command line) and that both CCDs are quiet, and sample each CCD's load during the run. Run again any run that met other work: other tests at 100% on both CCDs doubled a playback run's clock p95. Bursts last minutes, so compare each run's `startedAt` and `endedAt` with the load log. Two runs waiting for a quiet machine can both see it in the same second, so check again a few seconds after the check passes.
-- Name the run's folders and command lines so a priority watcher can exempt them. Ours exempts anything with `nse-perf` in its command line.
+- Name the run's folders and command lines so a priority watcher can exempt them.
 
 ### Charts
 
@@ -274,3 +281,20 @@ These recur, and a spike in a run is often one of them. Check them before blamin
 - **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report … frames`.
 - **Path-cache churn.** A path built anew every frame and kept in the path cache fills its 128 MiB budget with geometry nothing draws again, and the grown maps and garbage then stall chart frames. A context's current path lasts one frame for this reason (`docs/rendering.md`). A record whose `pathCache` shows steady `trimmed` counts during playback has a new case of it.
 - **The journal with storage unavailable** serializes and gzips the whole chart every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. Its idle callback's 5 s timeout can land it in the middle of a scroll. Measure it with `journal` and a group's `storage` flag.
+
+## Usage statistics on and off
+
+Usage statistics must cost nothing measurable (`docs/analytics.md`). To check a change, run the same plan against two builds in ABBA order: A has no analytics target, and B sends to a loopback mock.
+
+1. Build both with `NSE_PERF=1`. A perf build accepts only a loopback origin, and the `webdriver` rule does not apply to one:
+
+    ```sh
+    NSE_PERF=1 node node_modules/vite/bin/vite.js build --sourcemap --outDir perf-results/A/dist --emptyOutDir
+    NSE_PERF=1 NSE_ANALYTICS_ORIGIN=http://127.0.0.1:5535 NSE_ANALYTICS_WEBSITE=<any UUID> \
+        node node_modules/vite/bin/vite.js build --sourcemap --outDir perf-results/B/dist --emptyOutDir
+    ```
+
+2. Start the mock for B's runs: `node scripts/perf/analytics-mock.mjs --port 5535 --log <file>`. It responds to `POST /api/batch` as Umami does and counts what it gets (`GET /count`). Check the count after a run: B's runs must have sent something, or they measured nothing.
+3. Run each plan with `--no-build --out perf-results/A` and `--out perf-results/B`: one warm-up run of either build, discarded, then A B B A, with the pinning and the quiet-machine checks above. When load disturbs a batch, run the whole batch again rather than dropping single runs.
+
+The harness's input is trusted, so a run arms the visit, and the first batch goes at the first hide or a minute after. Cells that hide the page (`hide`) or last over a minute therefore include a send. The warm-up run is discarded because the first run of a batch is fast whichever build it is. Compare p50, p95, p99, the maximum and the counts over budget per cell, and read a difference only if it is outside the spread between the two runs of the same build.

@@ -58,7 +58,7 @@ import {
 } from './changeStops'
 import { historyOperationContext } from './historyOperationContext'
 import { createChangePaint, createPropertyInspection, createShowEdits } from './inspection'
-import { peekedInfo, peekedLabel, type ChainKey, type PeekedInfo } from './selection'
+import { peekedInfo, peekedLabel, setPeekReady, type ChainKey, type PeekedInfo } from './selection'
 
 // The change view: what the peeked entry changed against the entry before it on
 // the Timeline, from the worker by roots, or diffed here from states in memory for entries not
@@ -127,27 +127,53 @@ const compute = async (info: PeekedInfo): Promise<ChangeView | undefined> => {
     )
 }
 
+/**
+ * The last change that landed: the chart's marks and the minimap's ticks draw from it while its
+ * state is the one displayed, until the next lands, so a step's switch never shows the chart
+ * without them. Released when the peek ends. The bar and the inspection keep to `peekChange`.
+ */
+const lastChange = shallowRef<ChangeView>()
+
 watch(
     peekedInfo,
     (info) => {
-        const at = ++generation
+        generation++
         peekChange.value = undefined
         comparisonStatus.value = 'loading'
-        if (!info) return
-        compute(info).then(
-            (result) => {
-                if (at !== generation) return
-                peekChange.value = result
-                comparisonStatus.value = result ? 'known' : info.initial ? 'initial' : 'unavailable'
-            },
-            () => {
-                // Unknown: the label alone, nothing drawn.
-                if (at === generation) comparisonStatus.value = 'unavailable'
-            },
-        )
+        if (!info) lastChange.value = undefined
     },
     { immediate: true, flush: 'sync' },
 )
+
+/**
+ * Reads the requested step's change; a peek waits for it before it shows the step's state, so
+ * the two land in one task. It also settles when the step is no longer the one requested.
+ */
+const readChange = (info: PeekedInfo): Promise<void> | undefined => {
+    if (peekedInfo.value !== info) return
+    const at = generation
+    return compute(info).then(
+        (result) => {
+            if (at !== generation) return
+            peekChange.value = result
+            lastChange.value = result
+            comparisonStatus.value = result ? 'known' : info.initial ? 'initial' : 'unavailable'
+        },
+        () => {
+            // Unknown: the label alone, nothing drawn.
+            if (at === generation) comparisonStatus.value = 'unavailable'
+        },
+    )
+}
+setPeekReady((info) => readChange(info))
+
+/** The change while the displayed state is the one it was diffed for: what the chart draws. */
+const drawnChange = computed(() => {
+    const change = lastChange.value
+    if (!change || !isPeeking.value || displayedPeekKey.value !== change.key) return
+    if (peek.value?.state.store !== change.state.store) return
+    return change
+})
 
 /** The change while the peeked state is the one it was diffed for. */
 export const shownChange = computed(() => {
@@ -288,8 +314,8 @@ watch(
 )
 
 /** Whether the change has objects to draw and bring into view. */
-export const hasPlaces = computed(() => {
-    const layout = shownChange.value?.set.layout
+const hasPlaces = computed(() => {
+    const layout = drawnChange.value?.set.layout
     return layout === 'small' || layout === 'large' || layout === 'most'
 })
 
@@ -431,7 +457,7 @@ const marksOf = (shown: State, objects: readonly ChangedObject[]): ChangeMarks =
 
 /** What the chart draws for the change; none for a change told in words or unknown. */
 const rawChangeMarks = computed((): ChangeMarks | undefined => {
-    const change = shownChange.value
+    const change = drawnChange.value
     if (!change || !hasPlaces.value) return
     return marksOf(change.state, change.set.objects)
 })
@@ -473,7 +499,7 @@ export const bandTimes = () => {
 
 /** Each changed object's time and lanes, on the peeked tempo, in chart order. */
 const places = computed((): Place[] => {
-    const change = shownChange.value
+    const change = drawnChange.value
     if (!change || !hasPlaces.value) return []
     const bpms = change.state.bpms
     const marks = rawChangeMarks.value

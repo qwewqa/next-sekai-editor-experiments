@@ -1443,7 +1443,7 @@ const folderChoiceItems = (id: T): ManagerMenuItem[] => {
         })),
         {
             key: 'folder:new',
-            label: i18n.value.workspace.folders.newWith,
+            label: i18n.value.workspace.folders.new,
             icon: FolderPlusIcon,
             separated: true,
         },
@@ -1557,7 +1557,7 @@ const bulkFolderItems = (): ManagerMenuItem[] => {
         })),
         {
             key: 'folder:new',
-            label: i18n.value.workspace.folders.newWith,
+            label: i18n.value.workspace.folders.new,
             icon: FolderPlusIcon,
             separated: true,
         },

@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "不限制轨道",
       "six": "限制为 ±6 轨道",
-      "custom": "自定义轨道限制",
+      "custom": "自定义轨道限制…",
+      "customTitle": "自定义轨道限制",
       "maximum": "最大轨道（±）",
       "limited": "轨道限制：±{0}",
       "unlimited": "不限制轨道"
@@ -69,7 +70,7 @@
       "title": "1/{0} 轨道细分",
       "switched": "已切换到 1/{0} 轨道细分",
       "custom": {
-        "title": "自定义轨道细分",
+        "title": "自定义轨道细分…",
         "modal": {
           "title": "自定义轨道细分",
           "division": "细分"
@@ -85,7 +86,7 @@
       "title": "1/{0} 分割",
       "switched": "已切换到 1/{0} 分割",
       "custom": {
-        "title": "自定义分割",
+        "title": "自定义分割…",
         "modal": {
           "title": "自定义分割",
           "division": "分割"
@@ -106,17 +107,20 @@
       "flipped": "已垂直翻转 {0} 个对象"
     },
     "scaleBeat": {
-      "title": "缩放节拍间距",
+      "title": "缩放节拍间距…",
+      "dialogTitle": "缩放节拍间距",
       "noSelected": "请选择至少两个位于不同节拍的对象进行缩放",
       "scaled": "已缩放 {0} 个对象的节拍间距"
     },
     "scaleWidth": {
-      "title": "缩放宽度",
+      "title": "缩放宽度…",
+      "dialogTitle": "缩放宽度",
       "noSelected": "请选择具有横向跨度的对象进行缩放",
       "scaled": "已缩放 {0} 个对象的宽度"
     },
     "scaleElevation": {
-      "title": "缩放高度间距",
+      "title": "缩放高度间距…",
+      "dialogTitle": "缩放高度间距",
       "noSelected": "请选择至少两个高度不同的音符或舞台变换进行缩放",
       "scaled": "已缩放 {0} 个对象的高度间距"
     },
@@ -242,7 +246,8 @@
       "switched": "已切换到偏移工具"
     },
     "open": {
-      "title": "打开",
+      "title": "打开…",
+      "dialogTitle": "打开",
       "loading": "正在加载文件…",
       "importing": "正在导入关卡…",
       "opened": "已打开关卡",
@@ -457,7 +462,7 @@
       "title": "导出关卡数据…"
     },
     "previewAssets": {
-      "title": "预览资源…",
+      "title": "预览资源",
       "modal": {
         "title": "预览资源"
       },
@@ -508,11 +513,12 @@
       "use": "使用",
       "alsoFile": "同时使用此文件中的{0}“{1}”",
       "remove": "移除",
+      "removeStored": "移除…",
       "inUse": "使用中",
       "removeInUse": "移除“{0}”？将改用默认项。",
       "removeUnused": "移除“{0}”？",
       "removeFailed": "无法移除此项目。",
-      "chooseAgain": "重新选择",
+      "chooseAgain": "重新选择…",
       "noneInFile": "此文件中没有{0}。",
       "rights": "您加载的项目仅存储在此浏览器中。",
       "progress": {
@@ -803,9 +809,11 @@
   },
   "settings": {
     "title": "设置",
-    "resetSettings": "重置设置",
+    "resetSettings": "重置设置…",
+    "resetSettingsTitle": "重置设置",
     "resetSettingsHint": "还原默认设置，保留键盘快捷键。",
-    "resetKeybinds": "重置快捷键",
+    "resetKeybinds": "重置快捷键…",
+    "resetKeybindsTitle": "重置快捷键",
     "resetSettingsMessage": "要还原默认设置并保留键盘快捷键吗？",
     "resetSettingsHintStatistics": "还原默认设置，保留键盘快捷键和“发送使用统计”。",
     "resetSettingsMessageStatistics": "要还原默认设置并保留键盘快捷键和“发送使用统计”吗？",
@@ -918,7 +926,7 @@
     "toolbar": {
       "title": "工具栏",
       "quickSwitch": "快速切换",
-      "add": "添加工具",
+      "add": "添加工具…",
       "remove": "从工具栏移除“{0}”",
       "modal": {
         "title": "添加工具"
@@ -976,8 +984,8 @@
       },
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改",
-      "exportRaw": "导出原始数据…",
-      "exportRawTitle": "导出原始数据",
+      "exportRaw": "导出原始数据",
+      "open": "打开",
       "exportRawName": "{0} 原始数据 {1}.zip",
       "storageHeading": "存储",
       "stored": "此浏览器中已存储：{0}，总容量约 {1}",
@@ -989,7 +997,7 @@
       "deleteNext": "删除…",
       "deleteConfirm": "要删除 {0} 个会话吗？",
       "notSaved": "有 {0} 个会话包含未保存的更改：{1}。",
-      "namesMore": "{0} 及其他 {1} 个",
+      "namesMore": "{1} 及其他 {0} 个",
       "newer": "其中有会话需要更新版本的编辑器。",
       "deleting": "正在删除…",
       "exportRawNote": "用于报告问题。",
@@ -1952,7 +1960,6 @@
     "closePanel": "关闭{0}",
     "folders": {
       "new": "新建文件夹",
-      "newWith": "新建文件夹…",
       "moveTo": "移至文件夹…",
       "none": "无文件夹",
       "expand": "展开 {0}",
@@ -2162,7 +2169,7 @@
     "sizePending": "正在估算大小…"
   },
   "check": {
-    "command": "检查文件和历史记录…",
+    "command": "检查文件和历史记录",
     "title": "检查文件和历史记录",
     "checkingFile": "正在检查 {0}…",
     "checkingStored": "正在检查已存储的历史记录…",
@@ -2178,9 +2185,9 @@
   },
   "levelInfo": {
     "file": "文件",
-    "check": "检查…",
+    "check": "检查",
     "tagsPlaceholder": "用逗号分隔",
-    "editCover": "在封面编辑器中编辑…",
+    "editCover": "在封面编辑器中编辑",
     "makePreview": "从背景音乐生成…",
     "notLoaded": "未加载",
     "discard": "要放弃对关卡信息的更改吗？"
@@ -2197,7 +2204,7 @@
     "otherProject": "另一个项目文件“{0}”。",
     "otherProjectUnnamed": "另一个项目文件。",
     "notDescendant": "此版本并非基于您的版本 ({0})。",
-    "separate": "另存为单独文件",
+    "separate": "另存为单独文件…",
     "openOther": "打开另一个版本",
     "openOtherNote": "您的更改会保留在“最近会话”中。",
     "replaceNote": "磁盘上的版本将保留在“最近会话”中。",
@@ -2215,7 +2222,7 @@
     "tooLong": "名称过长"
   },
   "notice": {
-    "useOpenFile": "要打开文件，请使用“打开”。",
+    "useOpenFile": "要打开文件，请使用“打开…”。",
     "sameFileElsewhere": "“{0}”已在另一个标签页或窗口中打开，因此这是单独的副本。",
     "storageUnavailable": "编辑器无法访问此浏览器的存储。请重试。",
     "chooseAudio": "选择音频…",
@@ -2274,7 +2281,7 @@
     "notProject": "此 ZIP 不是项目文件。",
     "severalProjects": "此 ZIP 包含多个项目文件。请解压后逐个打开。",
     "scp": "这是 Sonolus 包。要使用其中的皮肤或其他资源，请在预览资源中选择。",
-    "openPreviewAssets": "预览资源…",
+    "openPreviewAssets": "预览资源",
     "damagedUnopened": "此文件已损坏，无法打开。",
     "damaged": "此文件已损坏。已在不含历史记录的情况下打开。",
     "historyUnreadable": "无法读取此文件的历史记录。保存时会创建单独的文件。",

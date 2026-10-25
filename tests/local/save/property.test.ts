@@ -624,10 +624,10 @@ const cases = [
 
 for (const { name, granted, known } of cases)
     test(`a self-pick after damage ${name}`, async () => {
-        // The counterexample "edit, edit, save, edit, edit, damage, pick" (save-prop): the damaged
+        // The sequence "edit, edit, save, edit, edit, damage, pick": the damaged
         // chunk is the one only `init`'s state needs, so the carry test (stored rows only) can't
-        // see it and the dialog doesn't read the file. The build before the picker finds it
-        //: with a grant held the file is read then and appended to, keeping `init`;
+        // see it and the dialog doesn't read the file. The build before the picker finds it:
+        // with a grant held the file is read then and appended to, keeping `init`;
         // without one, the write from storage marks `init` and says so.
         const fixture = await Fixture.create()
         await fixture.storeMedia([BGM, COVER, PREVIEW])

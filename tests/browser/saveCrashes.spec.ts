@@ -93,7 +93,7 @@ test('a self-pick killed after the pick: the next Save fills the file, keeping t
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await pauseAt(page, 'picked')
     await queuePicks(page, ['coconut.nxsp'])
@@ -201,7 +201,7 @@ test('a kill after the picker’s close(): the next Save As… says once that ea
         await next.evaluate(async () => {
             const { commands } = await import('/src/editor/commands/index.ts')
             const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-            void runCommand(commands.saveAs)
+            void runCommand(commands.saveAs, 'button')
         })
         await submitSave(next, name, 'Save As')
     }

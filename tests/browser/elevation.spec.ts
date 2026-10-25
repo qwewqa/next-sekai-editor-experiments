@@ -2028,8 +2028,8 @@ test('context elevation scaling preserves the lowest note and keeps the pane ope
     const hit = await point(page)
     await page.mouse.click(hit.x, hit.y, { button: 'right' })
     const menu = page.getByRole('menu')
-    await expect(menu.getByRole('menuitem', { name: 'Scale Beats', exact: true })).toHaveCount(0)
-    await menu.getByRole('menuitem', { name: 'Scale Elevations', exact: true }).click()
+    await expect(menu.getByRole('menuitem', { name: 'Scale Beats…', exact: true })).toHaveCount(0)
+    await menu.getByRole('menuitem', { name: 'Scale Elevations…', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('spinbutton', { name: 'Scale Factor', exact: true }).fill('0.5')
     await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
@@ -2091,7 +2091,7 @@ for (const width of [1600, 375, 320]) {
             )
             await park()
         }
-        for (const name of ['Open', 'Play', '1/4']) {
+        for (const name of ['Open…', 'Play', '1/4']) {
             const button = editor.getByRole('button', { name, exact: true }).first()
             await expect(button).toBeVisible()
             const hit = await button.evaluate((element) => {

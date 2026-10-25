@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
+import { gateTag } from '../../scripts/analytics.mjs'
 import { injectPolicy, webPolicy } from '../../scripts/csp.mjs'
 import {
     builtinFiles,
@@ -185,9 +186,11 @@ test('a build with a usage statistics target names it, in its policy and its one
     const withTarget = { ...metadata, analytics }
     const policy = (html) => injectPolicy(html, (scripts) => webPolicy(scripts, analytics.origin))
     const client = `fetch("${analytics.origin}/api/batch")`
+    const tagged = (tag = gateTag(analytics, 'production')) =>
+        indexPage.replace('</head>', `${tag}</head>`)
     const build = async ({ index = client, origin = analytics.origin, pages = true } = {}) => {
         if (pages) {
-            await write(directory, 'index.html', policy(indexPage))
+            await write(directory, 'index.html', policy(tagged()))
             await write(directory, 'privacy/index.html', policy(page))
         }
         await write(directory, 'assets/index-12345678.js', `site("${analytics.website}")`)
@@ -203,6 +206,15 @@ test('a build with a usage statistics target names it, in its policy and its one
     await assert.rejects(checkRelease(directory, { analytics: null }), /metadata mismatch/)
     await build({ origin: 'https://elsewhere.example' })
     await assert.rejects(checkRelease(directory), /does not name its analytics target/)
+    await build()
+    await write(directory, 'index.html', policy(indexPage))
+    await assert.rejects(checkRelease(directory), /does not tag the gate/)
+    await write(
+        directory,
+        'index.html',
+        policy(tagged(gateTag({ ...analytics, website: 'x' }, 'production'))),
+    )
+    await assert.rejects(checkRelease(directory), /does not tag the gate/)
     await build({ pages: false })
     await write(directory, 'index.html', withPolicy(indexPage))
     await writeReleaseManifest(directory, withTarget, assets)
@@ -219,8 +231,25 @@ test('a build with a usage statistics target names it, in its policy and its one
     await assert.rejects(checkRelease(directory), /Invalid release metadata/)
 })
 
-test('a build without a target has no usage statistics client', async (t) => {
+test('a build without a target has no usage statistics client or gate tag', async (t) => {
     const { directory, assets } = await releaseFixture(t)
+    await write(
+        directory,
+        'index.html',
+        withPolicy(
+            indexPage.replace(
+                '</head>',
+                `${gateTag({ origin: 'https://x', website: 'w' }, 'production')}</head>`,
+            ),
+        ),
+    )
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(checkRelease(directory), /without analytics tags its page/)
+    await write(directory, 'index.html', withPolicy(indexPage))
+    // The gate names the path in every build, and is not a client.
+    await write(directory, 'gate.js', 'sendBeacon(origin + "/api/batch")')
+    await writeReleaseManifest(directory, metadata, assets)
+    await checkRelease(directory)
     await write(directory, 'assets/client-12345678.js', 'fetch("https://x/api/batch")')
     await writeReleaseManifest(directory, metadata, assets)
     await assert.rejects(

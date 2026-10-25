@@ -35,7 +35,7 @@ export type LoadEvent =
      * then) when it's the session that opened; otherwise it's kept as a session of its own.
      */
     | { kind: 'migrated'; name: ShownName; sessionId: string; opened: boolean }
-    /** The migrated auto save was made for an older engine revision: today's warning. */
+    /** The migrated auto save was made for an older engine revision: it opens with a warning. */
     | { kind: 'migratedRevision'; sessionId: string }
     /** "Recovered your last change to "{0}"." */
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }
@@ -93,3 +93,6 @@ export const previousSession = shallowRef<{ sessionId: string; name: ShownName }
  * so Settings › Local Data can follow it without loading the storage modules.
  */
 export const storageStatus = shallowRef<StorageStatus | undefined>()
+
+/** How many sessions Recent Sessions listed at its last read; undefined until it reads. */
+export const recentSessionCount = shallowRef<number>()

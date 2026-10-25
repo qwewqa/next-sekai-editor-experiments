@@ -132,7 +132,7 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                     data-stored-remove
                     @click="remove(row)"
                 >
-                    {{ strings.remove }}
+                    {{ strings.removeStored }}
                 </button>
             </span>
             <p

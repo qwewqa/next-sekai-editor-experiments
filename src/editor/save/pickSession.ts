@@ -101,8 +101,7 @@ const readOwn = async (
 
 /**
  * Reads the chain's own file before a save picker that may return it: whole, and only when it
- * isn't at the base, when storage lacks rows of its base (the carry test, and damage storage knows
- * of) or head media it may hold. Read access is asked for only when storage lacks something;
+ * isn't at the base, when storage lacks rows of its base (or knows of damage in them) or head media it may hold. Read access is asked for only when storage lacks something;
  * otherwise only a grant already held reads. `damaged`: a build just found damage in storage, so
  * the file is read whatever storage says, but only with a grant already held. `prompt: false`: a
  * read just before a picker opens, on the same press, also only with a grant already held (a prompt
@@ -205,7 +204,7 @@ const identify = async (
                     ...(bytes ? { bytes: Promise.resolve(new Blob([bytes])) } : {}),
                 }
         }
-        // Its bytes are awaited: a quick Save never finds them still being read (m8).
+        // Its bytes are awaited: a quick Save never finds them still being read.
         else if (opened.partial) return { kind: 'refused', reason: 'notKept', bytes: kept(opened) }
     }
     if (!env) return { kind: 'unknown' }
@@ -213,14 +212,13 @@ const identify = async (
     const held = own && heldHandle(env.chainId, own.name)
     if (held && (await same(handle, held))) return { kind: 'own' }
     const list = await storedRead(env.worker, 'listHandleOwners', undefined)
-    // A failed list leaves the pick to the other facts, else `unknown`, as today: no other
+    // A failed list leaves the pick to the other facts, else `unknown`: no other
     // chain is known, and the pick is treated as an unplaced one.
     const owners: HandleOwner[] = list.storedRead === 'value' ? list.storedValue : []
     for (const owner of owners) {
         if (!owner.handle) continue
         const read = await handleOf(env.worker, owner.chainId, owner.role)
-        // A failed read of one owner's handle leaves the pick to the other facts, else `unknown`,
-        // as today.
+        // A failed read of one owner's handle leaves the pick to the other facts, else `unknown`.
         const stored = read.storedRead === 'value' ? read.storedValue : undefined
         if (!stored || !(await same(handle, stored))) continue
         if (owner.role === 'exportTarget') return { kind: 'target', owner }
@@ -244,7 +242,7 @@ const targetBytes = async (env: Env, owner: HandleOwner) => {
     if (owner.chainId !== env.chainId) return
     try {
         const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
-        // A failed read keeps today's outcome: no bytes are offered back for the picked file.
+        // A failed read offers no bytes back for the picked file.
         if (read.storedRead === 'failed') return
         const record = read.storedValue
         const target = isRow(record?.exportTarget) ? record.exportTarget : undefined
@@ -692,7 +690,7 @@ export const withPickSession = <T>(
                 attempt.closePreparing()
                 const target = await open({ suggestedName, picker })
                 if (target?.kind !== 'handle') return { kind: 'dismissed' }
-                // The commit point (rule 6): no Cancel has any effect from here.
+                // The commit point: no Cancel has any effect from here.
                 attempt.commit()
                 spec.committed?.()
                 await savePoint('picked')

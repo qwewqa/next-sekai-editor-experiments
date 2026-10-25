@@ -140,7 +140,7 @@ test('the preview popup and global settings share the hitbox option', async ({ p
     // Reset Settings turns it off again.
     await field.click()
     await expect(field).toHaveValue('Enabled')
-    await dialog.getByRole('button', { name: 'Reset Settings', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Reset Settings…', exact: true }).click()
     await confirmReset(page, 'Reset Settings')
     await expect(field).toHaveValue('Disabled')
     expect(

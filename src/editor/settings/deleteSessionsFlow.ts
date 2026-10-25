@@ -1,4 +1,5 @@
 import { computed, shallowRef } from 'vue'
+import { bump } from '../../analytics/tally'
 import { i18n } from '../../i18n'
 import type { DeleteChain } from '../../local/deleteSessions'
 import { storageStatus } from '../../local/startup/events'
@@ -79,6 +80,7 @@ export const runDeleteSessions = async (): Promise<void> => {
             cancelIsDefault: true,
         })
         if (!confirmed) return
+        bump('features.deleteSessions')
         // A peek of a chain that is about to be deleted ends first, as a row's Delete ends it before the mark.
         const peeked = peekedSession.value?.chainId
         if (peeked !== undefined && targets.some((chain) => chain.chainId === peeked)) backToNow()

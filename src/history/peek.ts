@@ -1,4 +1,5 @@
 import { computed, shallowRef, watch, type Ref } from 'vue'
+import { bump, busy, peekShown } from '../analytics/tally'
 import type { State } from '../state'
 import { sameFileContent } from '../state/fileContent'
 import { onHistoryAction } from './actions'
@@ -147,8 +148,36 @@ const loadEntry = async (key: EntryKey) => {
 /** An entry's state as peek loads it, through the same LRU and loads in flight: the change view's. */
 export const loadEntryState = async (key: EntryKey) => (await loadEntry(key)).state
 
-/** A session's peek (`audio: 'none'`) plays without BGM: the live audio is another session's. */
-export type PeekOptions = { audio?: 'live' | 'none' }
+/**
+ * The longest a peek waits for `ready`. When a change read takes longer, which only a large change
+ * does, the step shows without its marks until the read lands, rather than the chart being held.
+ */
+export const PEEK_READY_MAX_MS = 100
+
+/**
+ * A session's peek (`audio: 'none'`) plays without BGM: the live audio is another session's.
+ * `ready` is called with the loaded state before it shows; the state shows once its promise
+ * settles or after `PEEK_READY_MAX_MS`, so the step's change can land with it.
+ */
+export type PeekOptions = {
+    audio?: 'live' | 'none'
+    ready?: (state: State) => Promise<unknown> | undefined
+}
+
+/** Waits for `ready`, at most `PEEK_READY_MAX_MS`; its failure only ends the wait. */
+const waitReady = async (ready: Promise<unknown>) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+        await Promise.race([
+            ready.catch(() => undefined),
+            new Promise<void>((done) => {
+                timer = setTimeout(done, PEEK_READY_MAX_MS)
+            }),
+        ])
+    } finally {
+        clearTimeout(timer)
+    }
+}
 
 /**
  * What a peek shows: no selection at first, since the peeked state holds its own, and the live
@@ -172,6 +201,8 @@ const generation = shallowRef(0)
 export const peekRequestGeneration: Readonly<Ref<number>> = computed(() => generation.value)
 let lastRequestAt = -Infinity
 let timer: ReturnType<typeof setTimeout> | undefined
+/** Runs the debounced request now; set while one waits. */
+let pendingRun: (() => void) | undefined
 let spinnerTimer: ReturnType<typeof setTimeout> | undefined
 /** Resolves the request a later one replaced. */
 let settlePrevious: (() => void) | undefined
@@ -179,6 +210,7 @@ let settlePrevious: (() => void) | undefined
 const stopTimers = () => {
     clearTimeout(timer)
     timer = undefined
+    pendingRun = undefined
     clearTimeout(spinnerTimer)
     spinnerTimer = undefined
     spinning.value = false
@@ -210,14 +242,20 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
     lastRequestAt = now
     clearTimeout(timer)
     timer = undefined
+    pendingRun = undefined
     spinnerTimer ??= setTimeout(() => {
         if (requested.value) spinning.value = true
     }, SPINNER_AFTER_MS)
 
     return new Promise<void>((resolve, reject) => {
         settlePrevious = resolve
+        // A function, as it is read again after the wait.
+        const dropped = () => at !== generation.value || !peek.value
         const run = async () => {
             timer = undefined
+            pendingRun = undefined
+            const cached = cache.has(key)
+            const began = performance.now()
             let entry: PeekedEntry
             try {
                 entry = await loadEntry(key)
@@ -231,9 +269,17 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
                 reject(error instanceof Error ? error : new Error(String(error)))
                 return
             }
-            if (at !== generation.value || !peek.value) {
+            if (dropped()) {
                 resolve()
                 return
+            }
+            const pending = options.ready?.(entry.state)
+            if (pending) {
+                await waitReady(pending)
+                if (dropped()) {
+                    resolve()
+                    return
+                }
             }
             settlePrevious = undefined
             stopTimers()
@@ -243,11 +289,25 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
                 audio: options.audio,
             }
             displayed.value = key
+            peekShown(cached ? undefined : performance.now() - began)
             resolve()
         }
-        if (quick) timer = setTimeout(() => void run(), PEEK_DEBOUNCE_MS)
-        else void run()
+        if (quick) {
+            pendingRun = () => {
+                clearTimeout(timer)
+                void run()
+            }
+            timer = setTimeout(() => void run(), PEEK_DEBOUNCE_MS)
+        } else void run()
     })
+}
+
+/**
+ * Runs a request that is waiting out the debounce now. The debounce is for repeats of a held
+ * key, so the list calls this when the key is released. Does nothing when none waits.
+ */
+export const runPendingPeek = () => {
+    pendingRun?.()
 }
 
 const startListeners = new Set<() => void>()
@@ -393,6 +453,7 @@ export const restoreEntry = async (
         }
     }
 
+    busy(true)
     try {
         const entry = await loadEntry(key)
         if (!current()) return
@@ -412,6 +473,7 @@ export const restoreEntry = async (
         stateExpected = true
         actionExpected = true
         pushState(operation, ownState, 'restore')
+        bump('features.restore')
         stateExpected = false
         actionExpected = false
         if (current()) notifyRestored(entry.time)
@@ -420,6 +482,7 @@ export const restoreEntry = async (
         if (!onFailure) throw error
         onFailure(error)
     } finally {
+        busy(false)
         dispose()
     }
 }
