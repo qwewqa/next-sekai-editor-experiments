@@ -101,10 +101,10 @@ How the code enforces them:
 | `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
 | `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `dynamicStages`, `bgm`, `historySteps` |
 | `preview` | client start, when the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
-| `open` | each Open | `format`, `via`, `size`, `outcome`, `reason`, `took` |
+| `open` | each Open… | `format`, `via`, `size`, `outcome`, `reason`, `took` |
 | `save` | each Save, Save As… and Save to File | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
 | `export` | each Export | `format`, `target`, `size`, `took`, `outcome`, `reason` |
-| `check` | each Check File and History… | `outcome`, `took` |
+| `check` | each Check File and History | `outcome`, `took` |
 | `bgm` | each BGM chosen | `format`, `size`, `length`, `took`, `outcome` |
 | `usage` | at hide | `<command>.<source>` |
 | `edits` | at hide | `<operation>`, `undo`, `redo` |

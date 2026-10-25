@@ -16,7 +16,7 @@ import type { NotOpened } from '../worker/openHandlers'
 // imported become `kept: false`, and the chain stays bound); a hash failure with the fingerprint
 // unchanged is damage, which unlinks the chain while the import goes on. After a worker restart
 // the new worker does not have the file: the tab reads it again and runs the import's plan from
-// the start. Saves and Check File and History… wait for it (`whenImported`). An import of this tab
+// the start. Saves and Check File and History wait for it (`whenImported`). An import of this tab
 // that failed runs again from the file the tab kept; an import that no tab runs is resumed from
 // the bound handle, or ended.
 

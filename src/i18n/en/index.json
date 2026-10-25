@@ -60,7 +60,8 @@
         "laneLimits": {
             "none": "No Lane Limit",
             "six": "Limit to ±6 Lanes",
-            "custom": "Custom Lane Limit",
+            "custom": "Custom Lane Limit…",
+            "customTitle": "Custom Lane Limit",
             "maximum": "Maximum Lane (±)",
             "limited": "Lane limit: ±{0}",
             "unlimited": "No lane limit"
@@ -69,7 +70,7 @@
             "title": "1/{0} Lane Division",
             "switched": "Switched to 1/{0} lane division",
             "custom": {
-                "title": "Custom Lane Division",
+                "title": "Custom Lane Division…",
                 "modal": {
                     "title": "Custom Lane Division",
                     "division": "Division"
@@ -85,7 +86,7 @@
             "title": "1/{0} Division",
             "switched": "Switched to 1/{0} division",
             "custom": {
-                "title": "Custom Division",
+                "title": "Custom Division…",
                 "modal": {
                     "title": "Custom Division",
                     "division": "Division"
@@ -106,17 +107,20 @@
             "flipped": "Flipped {0} object vertically|Flipped {0} objects vertically"
         },
         "scaleBeat": {
-            "title": "Scale Beats",
+            "title": "Scale Beats…",
+            "dialogTitle": "Scale Beats",
             "noSelected": "Select at least two objects at different beats to scale",
             "scaled": "Scaled beats of {0} object|Scaled beats of {0} objects"
         },
         "scaleWidth": {
-            "title": "Scale Width",
+            "title": "Scale Width…",
+            "dialogTitle": "Scale Width",
             "noSelected": "Select objects with a horizontal span to scale",
             "scaled": "Scaled width of {0} object|Scaled width of {0} objects"
         },
         "scaleElevation": {
-            "title": "Scale Elevations",
+            "title": "Scale Elevations…",
+            "dialogTitle": "Scale Elevations",
             "noSelected": "Select at least two notes or stage transforms with different elevations to scale",
             "scaled": "Scaled elevations of {0} object|Scaled elevations of {0} objects"
         },
@@ -242,7 +246,8 @@
             "switched": "Switched to Offset tool"
         },
         "open": {
-            "title": "Open",
+            "title": "Open…",
+            "dialogTitle": "Open",
             "loading": "Loading file…",
             "importing": "Importing level…",
             "opened": "Opened level",
@@ -457,7 +462,7 @@
             "title": "Export Level Data…"
         },
         "previewAssets": {
-            "title": "Preview Assets…",
+            "title": "Preview Assets",
             "modal": {
                 "title": "Preview Assets"
             },
@@ -508,11 +513,12 @@
             "use": "Use",
             "alsoFile": "Also use the {0} \"{1}\" from this file",
             "remove": "Remove",
+            "removeStored": "Remove…",
             "inUse": "In use",
             "removeInUse": "Remove \"{0}\"? Default is used instead.",
             "removeUnused": "Remove \"{0}\"?",
             "removeFailed": "This item could not be removed.",
-            "chooseAgain": "Choose Again",
+            "chooseAgain": "Choose Again…",
             "noneInFile": "This file has no {0}.",
             "rights": "Items you load are stored in this browser only.",
             "progress": {
@@ -803,9 +809,11 @@
     },
     "settings": {
         "title": "Settings",
-        "resetSettings": "Reset Settings",
+        "resetSettings": "Reset Settings…",
+        "resetSettingsTitle": "Reset Settings",
         "resetSettingsHint": "Restore default settings, keeping keyboard shortcuts.",
-        "resetKeybinds": "Reset Shortcuts",
+        "resetKeybinds": "Reset Shortcuts…",
+        "resetKeybindsTitle": "Reset Shortcuts",
         "resetSettingsMessage": "Restore default settings, keeping keyboard shortcuts?",
         "resetSettingsHintStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting.",
         "resetSettingsMessageStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting?",
@@ -918,7 +926,7 @@
         "toolbar": {
             "title": "Toolbar",
             "quickSwitch": "Quick Switch",
-            "add": "Add Tool",
+            "add": "Add Tool…",
             "remove": "Remove \"{0}\" from Toolbar",
             "modal": {
                 "title": "Select Tool"
@@ -976,8 +984,8 @@
             },
             "openHistory": "Open History",
             "confirmClose": "Ask Before Closing with Unsaved Changes",
-            "exportRaw": "Export Raw Data…",
-            "exportRawTitle": "Export Raw Data",
+            "exportRaw": "Export Raw Data",
+            "open": "Open",
             "exportRawName": "{0} raw data {1}.zip",
             "storageHeading": "Storage",
             "stored": "Stored in this browser: {0} of about {1}",
@@ -1952,7 +1960,6 @@
         "closePanel": "Close {0}",
         "folders": {
             "new": "New Folder",
-            "newWith": "New Folder…",
             "moveTo": "Move to Folder…",
             "none": "No Folder",
             "expand": "Expand {0}",
@@ -2162,7 +2169,7 @@
         "sizePending": "Estimating size…"
     },
     "check": {
-        "command": "Check File and History…",
+        "command": "Check File and History",
         "title": "Check File and History",
         "checkingFile": "Checking {0}…",
         "checkingStored": "Checking stored history…",
@@ -2178,9 +2185,9 @@
     },
     "levelInfo": {
         "file": "File",
-        "check": "Check…",
+        "check": "Check",
         "tagsPlaceholder": "Separated by commas",
-        "editCover": "Edit in Cover Editor…",
+        "editCover": "Edit in Cover Editor",
         "makePreview": "Make from BGM…",
         "notLoaded": "not loaded",
         "discard": "Discard changes to level info?"
@@ -2197,7 +2204,7 @@
         "otherProject": "A different project file, \"{0}\".",
         "otherProjectUnnamed": "A different project file.",
         "notDescendant": "This version was not made from yours ({0}).",
-        "separate": "Save as a Separate File",
+        "separate": "Save as a Separate File…",
         "openOther": "Open the Other Version",
         "openOtherNote": "Your changes stay in Recent Sessions.",
         "replaceNote": "The version on disk will be kept in Recent Sessions.",
@@ -2215,7 +2222,7 @@
         "tooLong": "The name is too long"
     },
     "notice": {
-        "useOpenFile": "To open a file, use Open.",
+        "useOpenFile": "To open a file, use Open…",
         "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
         "storageUnavailable": "The editor could not access this browser’s storage. Try again.",
         "chooseAudio": "Choose Audio…",
@@ -2274,7 +2281,7 @@
         "notProject": "This ZIP is not a project file.",
         "severalProjects": "This ZIP contains several project files. Unzip it and open them one by one.",
         "scp": "This is a Sonolus package. To use its skin or other assets, choose it in Preview Assets.",
-        "openPreviewAssets": "Preview Assets…",
+        "openPreviewAssets": "Preview Assets",
         "damagedUnopened": "This file is damaged and could not be opened.",
         "damaged": "This file is damaged. It was opened without its history.",
         "historyUnreadable": "This file’s history could not be read. Saving makes a separate file.",

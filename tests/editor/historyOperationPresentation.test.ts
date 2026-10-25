@@ -816,7 +816,7 @@ test('actual recovered events retain one immutable ordered context without a pus
     )
     assert.equal(
         describeEntry(captureEntryDescription({ kind: 'export', operation: null }), en),
-        en.strings.commands.exportLevel.title,
+        en.strings.export.title,
     )
     assert.equal(
         describeEntry(captureEntryDescription({ kind: 'continue', operation: unknown }), en),

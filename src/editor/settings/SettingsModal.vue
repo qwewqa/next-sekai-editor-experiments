@@ -149,7 +149,7 @@ const resetSettingsHint = computed(() =>
 )
 const askResetSettings = () =>
     confirmReset(
-        () => i18n.value.settings.resetSettings,
+        () => i18n.value.settings.resetSettingsTitle,
         () =>
             analyticsTarget
                 ? i18n.value.settings.resetSettingsMessageStatistics
@@ -158,7 +158,7 @@ const askResetSettings = () =>
     )
 const askResetKeybinds = () =>
     confirmReset(
-        () => i18n.value.settings.resetKeybinds,
+        () => i18n.value.settings.resetKeybindsTitle,
         () => i18n.value.settings.resetKeybindsMessage,
         resetKeybinds,
     )

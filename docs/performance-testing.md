@@ -139,7 +139,7 @@ Actions, by `action`:
 - Recent Sessions: `sessionsOpen`, `sessionPeek`, `restoreSession`, `sessionDelete` and `sessionUndo`;
 - Settings: `openSettings` (until the Language field and Local Data's heading show), `openSettingsAll` (until About, the last section, is mounted) and `closeSettings`;
 - Local Data: `localData` (Settings), `deleteCounts` (Delete Sessions… up to its counts), `deleteAll` (deletes every session, so it runs once in a group of its own) and `exportRaw`;
-- files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check…);
+- files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check);
 - `dialog` (`open`: a key, or `click:<selector>`, until a dialog with `title` shows), `setting` (a setting flipped, and the frames that redraw it), and `goToIndex` (reads Go To's index for an opened file's session of `rows` rows through the storage worker, without the UI).
 
 Settings opens with Editor and Local Data and mounts the other sections in tasks after the first frame. A comment in `SettingsModal.vue` names the stages. Judge a change to Settings by `openSettings` and its `tailTask`, which shows a staging task in the 600 ms after the first screen only when it takes 50 ms or more, so 0 means every stage stayed under that. `openSettingsAll` shows how long the rest takes.

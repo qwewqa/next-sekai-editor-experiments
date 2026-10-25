@@ -24,7 +24,7 @@ import {
 } from './saveFlows'
 
 // The conflict dialog's choices: Replace keeps the version on disk
-// as an ordinary session first, then writes with `replaces`; Save as a Separate File keeps the
+// as an ordinary session first, then writes with `replaces`; Save as a Separate File… keeps the
 // `docId` in a new file; nothing is ever written over a changed file unseen.
 
 type Row = Record<string, unknown>
@@ -83,7 +83,7 @@ test('Replace keeps the version on disk as a session first, then writes with rep
     expect(session.importPending).toBeUndefined()
 })
 
-test('Save as a Separate File keeps the docId and rebinds, leaving the changed file', async ({
+test('Save as a Separate File… keeps the docId and rebinds, leaving the changed file', async ({
     page,
 }) => {
     await start(page)
@@ -91,7 +91,7 @@ test('Save as a Separate File keeps the docId and rebinds, leaving the changed f
     const own = await chainOf(page)
     const dialog = await conflict(page)
     const other = await readFile(page, 'coconut.nxsp')
-    await dialog.getByRole('button', { name: 'Save as a Separate File' }).click()
+    await dialog.getByRole('button', { name: 'Save as a Separate File…' }).click()
     await expect(notice(page).filter({ hasText: /Saved to coconut \(Chrome, / })).toBeVisible()
     const chain = await chainOf(page)
     expect(chain.docId).toBe(own.docId)
@@ -125,7 +125,7 @@ test('with storing paused, Save still writes and appends, and Replace writes not
     const dialog = await conflict(page)
     await expect(dialog).toContainText('Changes are not being stored in this browser.')
     await expect(dialog.getByRole('button', { name: 'Replace' })).toBeDisabled()
-    await expect(dialog.getByRole('button', { name: 'Save as a Separate File' })).toBeFocused()
+    await expect(dialog.getByRole('button', { name: 'Save as a Separate File…' })).toBeFocused()
 })
 
 test('Replace stores and commits the version on disk before it writes the file', async ({
@@ -220,7 +220,7 @@ test('Open the Other Version, then Save in its prompt, gives the conflict dialog
     // The prompt's Save runs after the Save that raised the first dialog has finished.
     await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
     await page.waitForTimeout(350)
-    await page.getByRole('button', { name: 'Save as a Separate File' }).click()
+    await page.getByRole('button', { name: 'Save as a Separate File…' }).click()
     await expect(notice(page).filter({ hasText: /Saved to coconut \(Chrome, / })).toBeVisible()
 })
 
@@ -272,7 +272,7 @@ test('the Replace guard: a file holding the base this browser lost rows of is ne
         'It may contain earlier Timeline steps that are no longer stored in this browser.',
     )
     await expect(dialog.getByRole('button', { name: 'Replace' })).toBeDisabled()
-    await expect(dialog.getByRole('button', { name: 'Save as a Separate File' })).toBeFocused()
+    await expect(dialog.getByRole('button', { name: 'Save as a Separate File…' })).toBeFocused()
     expect(await readFile(next, 'coconut.nxsp')).toEqual(disk)
 })
 

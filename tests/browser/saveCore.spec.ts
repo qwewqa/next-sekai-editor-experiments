@@ -124,7 +124,7 @@ test('the file rewritten with the same size and time gives the conflict dialog',
     await pressSave(page)
     const dialog = choice(page)
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
-    await expect(dialog.getByRole('button', { name: 'Save as a Separate File' })).toBeFocused()
+    await expect(dialog.getByRole('button', { name: 'Save as a Separate File…' })).toBeFocused()
     // Nothing was written over it.
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
 })

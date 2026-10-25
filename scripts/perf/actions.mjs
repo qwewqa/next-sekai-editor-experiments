@@ -1008,7 +1008,7 @@ export const actions = {
         input: async (page, cdp) =>
             click(
                 cdp,
-                await centre(page.getByRole('button', { name: 'Export Raw Data…', exact: true })),
+                await centre(page.getByRole('button', { name: 'Export Raw Data', exact: true })),
             ),
         reset: async (page, cell, state) => {
             const download = await state.download
@@ -1170,7 +1170,7 @@ export const actions = {
             await closeDialogs(page)
         },
     },
-    /** Level Info › Check…: the stored history checked, until its result shows. */
+    /** Level Info › Check: the stored history checked, until its result shows. */
     check: {
         prep: async (page) => {
             await closeHistory(page)

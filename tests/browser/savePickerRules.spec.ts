@@ -26,7 +26,7 @@ import {
 } from './saveFlows'
 
 // The save picker's rules: what a taken-over tab shows and asks,
-// the pre-bind, the version on disk kept through Save as a Separate File, the kept bytes of a
+// the pre-bind, the version on disk kept through Save as a Separate File…, the kept bytes of a
 // partial open after a reload, Export's picker, and failures that must leave the next Save able.
 
 type Row = Record<string, unknown>
@@ -228,7 +228,7 @@ test('a pre-bind shows at once, ends a revocation, and carries Save As…’s ne
     expect((await projectOf(b, 'melt.nxsp')).id).toBe(saveAs.docId)
 })
 
-test('Save as a Separate File picking the chain’s own changed file puts that version back', async ({
+test('Save as a Separate File… picking the chain’s own changed file puts that version back', async ({
     page,
 }) => {
     await start(page)
@@ -241,7 +241,7 @@ test('Save as a Separate File picking the chain’s own changed file puts that v
     await expect(dialog).toContainText('"coconut.nxsp" Changed')
     await afterGuard(page)
     await queuePicks(page, ['coconut.nxsp'])
-    await dialog.getByRole('button', { name: 'Save as a Separate File' }).click()
+    await dialog.getByRole('button', { name: 'Save as a Separate File…' }).click()
     // The version on disk is back, and the dialog asks again.
     await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
     expect(await readFile(page, 'coconut.nxsp')).toEqual(changed)
@@ -258,7 +258,7 @@ test('a version on disk that cannot be put back is offered as a download', async
     await failWrites(page, 'recovery')
     await afterGuard(page)
     await queuePicks(page, ['coconut.nxsp'])
-    await dialog.getByRole('button', { name: 'Save as a Separate File' }).click()
+    await dialog.getByRole('button', { name: 'Save as a Separate File…' }).click()
     const offer = page.getByRole('dialog').filter({ hasText: 'could not be restored' })
     await expect(offer).toContainText('"coconut.nxsp" was emptied')
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()

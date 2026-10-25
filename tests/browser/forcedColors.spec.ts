@@ -325,7 +325,7 @@ test('toolbar tools keep their edge, and the tool in use is selected', async ({ 
     const listed = list.locator('button[aria-label^="Remove"]')
     await expect(listed.first()).toBeVisible()
     await expectTools(listed, 0)
-    await dialog.getByRole('button', { name: 'Add Tool' }).first().click()
+    await dialog.getByRole('button', { name: 'Add Tool…' }).first().click()
     const picker = page.getByRole('dialog', { name: 'Select Tool' })
     await expect(picker).toBeVisible()
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
@@ -434,7 +434,7 @@ test('monochrome tool icons take the button text color', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' })
     const text = await systemColor(page, 'ButtonText')
     const toolbar = page.locator('[data-editor-toolbar]')
-    for (const title of ['Open', 'Undo', 'Help'])
+    for (const title of ['Open…', 'Undo', 'Help'])
         await expect
             .poll(() => fills(toolbar.getByTitle(title, { exact: true }), 'path'))
             .toEqual([text])
@@ -448,7 +448,7 @@ test('monochrome tool icons take the button text color', async ({ page }) => {
     await page.mouse.move(0, 0)
 
     await page.keyboard.press(',')
-    const add = page.getByRole('dialog').getByRole('button', { name: 'Add Tool' }).first()
+    const add = page.getByRole('dialog').getByRole('button', { name: 'Add Tool…' }).first()
     await expect.poll(() => fills(add, 'path')).toEqual([text])
 })
 
@@ -575,7 +575,7 @@ test('raised buttons and segment tracks keep their edge, as fields do', async ({
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
-    await expectEdges(dialog.getByRole('button', { name: /^(Reset Settings|Reset Shortcuts)$/ }))
+    await expectEdges(dialog.getByRole('button', { name: /^(Reset Settings|Reset Shortcuts)…$/ }))
 })
 
 test('Clipboard History entries keep their edge and show keyboard focus', async ({ page }) => {
@@ -616,8 +616,8 @@ test('side-by-side dialog buttons keep a gap between their edges', async ({ page
             const grow = parseFloat(outlineWidth) + parseFloat(outlineOffset)
             return { left: left - grow, right: right + grow }
         })
-    const settings = await edge('Reset Settings')
-    const shortcuts = await edge('Reset Shortcuts')
+    const settings = await edge('Reset Settings…')
+    const shortcuts = await edge('Reset Shortcuts…')
     expect(shortcuts.left - settings.right).toBeGreaterThanOrEqual(6)
 })
 
@@ -726,7 +726,7 @@ for (const colorScheme of ['light', 'dark'] as const)
         await page.keyboard.press(',')
         const dialog = page.getByRole('dialog')
         await expect(dialog).toBeVisible()
-        const button = dialog.getByRole('button', { name: 'Reset Settings', exact: true })
+        const button = dialog.getByRole('button', { name: 'Reset Settings…', exact: true })
         const ring = () =>
             button.evaluate((element) => {
                 const { outlineStyle, outlineWidth, outlineOffset } = getComputedStyle(element)

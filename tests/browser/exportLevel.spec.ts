@@ -752,7 +752,7 @@ test('a dropped file opens nothing and leaves the page where it is', async ({ pa
         return { dragover: fire('dragover'), drop: fire('drop') }
     })
     expect(result).toEqual({ dragover: true, drop: true })
-    await expect(notice(page)).toHaveText('To open a file, use Open.')
+    await expect(notice(page)).toHaveText('To open a file, use Open…')
     expect(page.url()).toBe(url)
     await expect(dialog(page)).toHaveCount(0)
 })

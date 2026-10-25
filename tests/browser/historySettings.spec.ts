@@ -173,7 +173,9 @@ test('History follows its binding as a tool, a hotkey and in the command list', 
     await openSettings(page)
     await expect(historyKey()).toHaveText('L')
     // Reset Shortcuts brings Shift+H back.
-    await settingsDialog(page).getByRole('button', { name: 'Reset Shortcuts', exact: true }).click()
+    await settingsDialog(page)
+        .getByRole('button', { name: 'Reset Shortcuts…', exact: true })
+        .click()
     await confirmReset(page, 'Reset Shortcuts')
     await expect(historyKey()).toHaveText('Shift+H')
     await closeSettings(page)
