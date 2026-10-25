@@ -85,7 +85,7 @@ export const confirmSwitch = async ({ unsaved = false } = {}) => {
     })
     // This session's Save; the switch is left for the user to repeat. Not awaited: the caller may
     // be inside a Save's own queued run (the conflict dialog), which this Save queues behind.
-    if (choice === 'save') void runCommand(save)
+    if (choice === 'save') void runCommand(save, 'button')
     return choice === 'leave'
 }
 

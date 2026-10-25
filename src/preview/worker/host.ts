@@ -1,4 +1,5 @@
 import { nextTick, reactive, shallowRef, watch } from 'vue'
+import { record } from '../../analytics/tally'
 import { recordDiagnostic } from '../../diagnostics'
 import { onResetState } from '../../history/resetHooks'
 import { PERF, recordSample } from '../../perf/probe'
@@ -127,10 +128,12 @@ const startWorker = () => {
     let onOutlinePixels: ((lit: number) => void) | undefined
     let onContext: ((lost: boolean) => void) | undefined
     let onSettled: (() => void)[] = []
+    // The worker drew a frame, which the usage statistics report with a handover.
+    let drew = false
 
     const wait = (why: string) => {
         clearTimeout(timer)
-        timer = setTimeout(() => void stop(why, false), timeoutMs)
+        timer = setTimeout(() => void stop(why, false, 'timeout'), timeoutMs)
     }
     const settle = () => {
         clearTimeout(timer)
@@ -138,13 +141,19 @@ const startWorker = () => {
     }
 
     /** Ends the worker; a reason means it failed, which the diagnostics record. */
-    const stop = async (why: string | undefined, responsive: boolean) => {
+    const stop = async (
+        why: string | undefined,
+        responsive: boolean,
+        reason?: 'webgl2' | 'error' | 'timeout' | 'transfer',
+    ) => {
         if (stopped) return
         stopped = true
         settle()
         pending = undefined
         if (why) {
             failed = true
+            if (reason)
+                record('preview', { host: 'main', reason, workerFrames: drew ? 'some' : 'none' })
             recordDiagnostic(
                 'error',
                 `The preview worker stopped, and the preview draws on the main thread: ${why}`,
@@ -196,15 +205,20 @@ const startWorker = () => {
                     maxViewportSize.value = message.maxViewportSize
                 return
             case 'failed':
-                void stop(`its WebGL2 context could not be created: ${message.message}`, true)
+                void stop(
+                    `its WebGL2 context could not be created: ${message.message}`,
+                    true,
+                    'webgl2',
+                )
                 return
             case 'error':
-                void stop(`it failed: ${message.message}`, true)
+                void stop(`it failed: ${message.message}`, true, 'error')
                 return
             case 'drawn': {
                 if (stopped) return
                 settle()
                 inFlight = false
+                drew = true
                 recordSample('previewWorkerDraw', message.ms)
                 recordSample('previewWorkerAnswer', performance.now() - postedAt)
                 const next = pending
@@ -233,14 +247,14 @@ const startWorker = () => {
     })
     worker.addEventListener('error', (event) => {
         event.preventDefault()
-        void stop(`it failed: ${event.message || 'no message'}`, true)
+        void stop(`it failed: ${event.message || 'no message'}`, true, 'error')
     })
 
     const transfer = (canvas: HTMLCanvasElement) => {
         try {
             return canvas.transferControlToOffscreen()
         } catch (error) {
-            void stop(`its canvas could not be transferred: ${String(error)}`, true)
+            void stop(`its canvas could not be transferred: ${String(error)}`, true, 'transfer')
         }
     }
 

@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch, watchEffect } from 'vue'
 import { beats, keys, times } from '..'
 import { isAppActive } from '../../activity'
+import { note } from '../../analytics/tally'
 import { state } from '../../history'
 import { playbackBgm } from '../../history/bgm'
 import { defaultGroupId } from '../../history/groups'
@@ -105,7 +106,9 @@ const { cursor, cursorListeners } = useCanvasCursor(() => undefined)
 const controlListeners = { ...controlsForNavigation(() => undefined), ...cursorListeners }
 const chartCanvas = useTemplateRef<HTMLCanvasElement>('chart')
 const overlayCanvas = useTemplateRef<HTMLCanvasElement>('overlay')
-const editorRenderer = useEditorRenderer()
+const editorRenderer = useEditorRenderer(() => {
+    note('graphicsUnavailable')
+})
 const graphicsError = editorRenderer.error
 const rendererVersion = ref(0)
 const pixelRatio = ref(devicePixelRatio || 1)

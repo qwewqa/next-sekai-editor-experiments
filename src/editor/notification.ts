@@ -1,4 +1,5 @@
 import { ref, shallowRef, watch } from 'vue'
+import { bump } from '../analytics/tally'
 import { RELEASE_NOTES_URL } from '../buildInfo'
 import { onHistoryAction } from '../history/actions'
 import { i18n } from '../i18n'
@@ -303,6 +304,7 @@ export const notify = (
         ...(options?.lines ? { lines: options.lines } : {}),
     }
     latestNotice.value = notice
+    if (options?.severity) bump(`notices.${options.severity}`)
     if (isCard(notice)) {
         raisedNow = notice.id
         queueMicrotask(() => {

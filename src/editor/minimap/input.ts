@@ -1,6 +1,7 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import { times } from '..'
 import { interruptsDrags } from '../../activity'
+import { bump } from '../../analytics/tally'
 import { settings } from '../../settings'
 import { activateEditorNavigation, resizeEscapes } from '../controls'
 import { isDragging } from '../controls/gestures/recognizers/drag'
@@ -102,8 +103,10 @@ export const useMinimapInput = (mapping: Readonly<Ref<MinimapMapping | undefined
             // Held from the row of the view's time, which the box only matches away from time 0.
             press.offset = y - current.timeToY(view.time)
             isGrabbing.value = true
+            bump('features.minimapDrag')
         } else if (event.pointerType === 'mouse') {
             jumpTo(y)
+            bump('features.minimapJump')
             press.offset = 0
             isGrabbing.value = true
         } else {
@@ -124,7 +127,10 @@ export const useMinimapInput = (mapping: Readonly<Ref<MinimapMapping | undefined
 
     const onPointerUp = (event: PointerEvent) => {
         if (event.pointerId !== press?.pointerId) return
-        if (press.tap) jumpTo(press.tap.y - press.rect.top)
+        if (press.tap) {
+            jumpTo(press.tap.y - press.rect.top)
+            bump('features.minimapJump')
+        }
         end()
     }
 

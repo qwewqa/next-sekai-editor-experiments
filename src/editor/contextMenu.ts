@@ -22,7 +22,7 @@ export const openContextMenu = (x: number, y: number) => {
     const { hits } = found
     if (!hits.length && selectedEntities.value.length) {
         closeContextMenu()
-        void runCommand(deselect)
+        void runCommand(deselect, 'menu')
         return
     }
     if (!selectedEntities.value.length || (hits.length && !selectedHit(found))) {

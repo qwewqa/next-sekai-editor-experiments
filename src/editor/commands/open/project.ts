@@ -53,6 +53,7 @@ import { revokedOf } from '../../save/watch'
 import { notifyLeft } from '../../switch'
 import { withSwitchRequest, type SwitchRequest } from '../../switchRequest'
 import { chooseAudioAction } from '../bgm/chooseAudio'
+import { endOpen } from './report'
 
 // Open File… on a `.nxsp`: read and checked in the storage worker, its level
 // through the level-data path, the confirms first (a newer major version, values this build
@@ -328,6 +329,7 @@ const openRequestedProject = async (
     }
     if (refusal !== undefined) {
         cancel()
+        endOpen('refused', 'invalid')
         await showModal(LoadingModal, {
             title,
             // eslint-disable-next-line require-yield
@@ -354,6 +356,7 @@ const openRequestedProject = async (
         } catch (error) {
             cancel()
             if (!(error instanceof OpenRefused)) throw error
+            endOpen('refused', 'invalid')
             notify(() => error.message, { card: true, severity: 'error' })
             return
         }
@@ -432,6 +435,7 @@ const openRequestedProject = async (
         leavePeek()
         // Opening it proves the user has the download.
         if (own.file.event === 'downloaded') confirmFile()
+        endOpen('done')
         notifyOpened(name, earlier, undefined, false)
         return
     }
@@ -446,8 +450,10 @@ const openRequestedProject = async (
                 // A level opened in safe mode is an import, not a recovery; nothing is stored.
                 openState(live, descriptor, { origin: 'import', source: captureName(name) })
             })
-        )
+        ) {
+            endOpen('done')
             notifyLeft(openedLine(name))
+        }
         return
     }
 
@@ -609,6 +615,7 @@ const openRequestedProject = async (
         dismissNoticeCard()
         showRows([bgmRow])
     } else notifyOpened(name, earlier, left)
+    endOpen('done')
     stored.noticed()
 }
 

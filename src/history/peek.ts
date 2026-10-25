@@ -1,4 +1,5 @@
 import { computed, shallowRef, watch, type Ref } from 'vue'
+import { bump, busy, peekShown } from '../analytics/tally'
 import type { State } from '../state'
 import { sameFileContent } from '../state/fileContent'
 import { onHistoryAction } from './actions'
@@ -253,6 +254,8 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
         const run = async () => {
             timer = undefined
             pendingRun = undefined
+            const cached = cache.has(key)
+            const began = performance.now()
             let entry: PeekedEntry
             try {
                 entry = await loadEntry(key)
@@ -286,6 +289,7 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
                 audio: options.audio,
             }
             displayed.value = key
+            peekShown(cached ? undefined : performance.now() - began)
             resolve()
         }
         if (quick) {
@@ -449,6 +453,7 @@ export const restoreEntry = async (
         }
     }
 
+    busy(true)
     try {
         const entry = await loadEntry(key)
         if (!current()) return
@@ -468,6 +473,7 @@ export const restoreEntry = async (
         stateExpected = true
         actionExpected = true
         pushState(operation, ownState, 'restore')
+        bump('features.restore')
         stateExpected = false
         actionExpected = false
         if (current()) notifyRestored(entry.time)
@@ -476,6 +482,7 @@ export const restoreEntry = async (
         if (!onFailure) throw error
         onFailure(error)
     } finally {
+        busy(false)
         dispose()
     }
 }

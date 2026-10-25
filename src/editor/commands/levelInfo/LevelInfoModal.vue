@@ -93,7 +93,7 @@ const submit = () => {
 const fileLine = statusText
 const fileId = useId()
 const check = () => {
-    void runCommand(checkProject)
+    void runCommand(checkProject, 'button')
 }
 
 // --- Cover.

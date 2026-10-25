@@ -584,7 +584,7 @@ test('Help names the menu key for rows and where unsaved work is', async ({ page
             (await import('/src/editor/commands/index.ts')) as typeof import('../../src/editor/commands')
         const { runCommand } =
             (await import('/src/editor/commands/runCommand.ts')) as typeof import('../../src/editor/commands/runCommand')
-        await runCommand(commands.help)
+        await runCommand(commands.help, 'button')
     })
     const help = page.getByRole('dialog', { name: messages.help.modal.title })
     await expect(help).toContainText(messages.help.shiftF10)

@@ -16,7 +16,7 @@ export const threeTap = (wasPlaying: () => boolean): Recognizer<3> => ({
         )
             return false
 
-        if (!wasPlaying()) void runCommand(play)
+        if (!wasPlaying()) void runCommand(play, 'gesture')
         return true
     },
 })

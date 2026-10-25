@@ -25,6 +25,7 @@ import {
     useTemplateRef,
     watch,
 } from 'vue'
+import { bump } from '../../analytics/tally'
 import { modals } from '../../modals'
 import { settings } from '../../settings'
 import { commands, isCommandName, type CommandName } from '../commands'
@@ -325,8 +326,11 @@ const onReleaseQuick = (event: PointerEvent) => {
     const name = target?.face ? activeNames.value[index] : toolbar.value[index]?.[target?.row ?? -1]
     activeIndex.value = -1
     if (!name) return
-    if (target?.face) void runCommand(commands[name])
-    else pick(index, name)
+    if (target?.face) void runCommand(commands[name], 'toolbar')
+    else {
+        bump('features.quickSwitch')
+        pick(index, name)
+    }
 }
 
 const onCancelQuick = (event: PointerEvent) => {
@@ -352,7 +356,7 @@ const onClickMain = (event: MouseEvent, index: number, name: CommandName) => {
         return
     }
 
-    void runCommand(commands[name])
+    void runCommand(commands[name], 'toolbar')
 
     activeIndex.value = -1
 }
@@ -366,7 +370,7 @@ const onClickSub = (event: MouseEvent, index: number, name: CommandName) => {
 
 // Runs a group's member, which takes the face as a flyout choice does.
 const pick = (index: number, name: CommandName) => {
-    const done = runCommand(commands[name])
+    const done = runCommand(commands[name], 'toolbar')
 
     activeIndex.value = -1
     const show = () => {

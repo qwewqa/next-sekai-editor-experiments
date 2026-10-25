@@ -9,7 +9,7 @@ import {
 import { isValidEvent } from '../../src/analytics/catalogue'
 import type { Item } from '../../src/analytics/sender'
 import { confirmWhenReady } from './confirmWhenReady'
-import { installCanvasCounters, waitForStartup } from './editorFixture'
+import { installCanvasCounters, installEditorFixture, waitForStartup } from './editorFixture'
 import { wav } from './levelInfoFiles'
 import { confirmReset } from './resetConfirm'
 import { edit, notice, pressSave, readFile, start, submitSave } from './saveFlows'
@@ -152,6 +152,24 @@ const leave = async (page: Page) => {
 
 const names = (items: Item[]) => items.map((item) => item.payload.name ?? '(pageview)')
 
+/** What the first batch of a visit holds, besides what the visit did. */
+const START = ['(pageview)', 'visit', 'settings', 'startup'] as const
+const startOf = (items: Item[]) => names(items).slice(0, START.length)
+
+/** The data of the named event in a batch. */
+const dataOf = (items: Item[], name: string) =>
+    items.find((item) => item.payload.name === name)?.payload.data
+
+/** The built-in command names, as the page knows them. */
+const builtInCommandNames = async (page: Page) =>
+    new Set(
+        await page.evaluate(async () => {
+            const names =
+                (await import('/src/editor/commands/names.ts')) as typeof import('../../src/editor/commands/names')
+            return [...names.builtInCommandNames]
+        }),
+    )
+
 const settingsSwitch = async (page: Page) => {
     await page.keyboard.press(',')
     const field = page.locator('[data-about-usage-statistics]')
@@ -174,7 +192,7 @@ test('an armed visit sends its pageview and visit at the first hide, and its edi
     await interact(page)
     await firstSend(page, batches)
     const [first = []] = batches
-    expect(names(first)).toEqual(['(pageview)', 'visit'])
+    expect(startOf(first)).toEqual([...START])
     for (const { type, payload } of first) {
         expect(type).toBe('event')
         expect(payload).toMatchObject({
@@ -197,9 +215,8 @@ test('an armed visit sends its pageview and visit at the first hide, and its edi
     await hide(page)
     const beacons = await leave(page)
     expect(batches.length).toBe(1)
-    expect(
-        beacons.map((items) => items.map((item) => [item.payload.name, item.payload.data])),
-    ).toEqual([[['edits', { 'object.add': 2 }]]])
+    expect(beacons.length).toBe(1)
+    expect(dataOf(beacons[0] ?? [], 'edits')).toEqual({ 'object.add': 2 })
 
     expect(stray).toEqual([])
     expect(messages).toEqual([])
@@ -222,7 +239,7 @@ test('a visit with no input sends nothing; the first key press sends what waited
     await expect.poll(() => clientLoaded(page)).toBe(3)
     await interact(page)
     await firstSend(page, batches)
-    expect(names(batches[0] ?? [])).toEqual(['(pageview)', 'visit'])
+    expect(startOf(batches[0] ?? [])).toEqual([...START])
 })
 
 test('turning the switch off stops at once, pagehide included, and Reset Settings keeps it off', async ({
@@ -319,7 +336,7 @@ for (const signal of ['gpc', 'dnt'] as const)
         await page.keyboard.press('Escape')
         await interact(page)
         await firstSend(page, batches)
-        expect(names(batches[0] ?? [])).toEqual(['(pageview)', 'visit'])
+        expect(startOf(batches[0] ?? []).slice(0, 3)).toEqual(START.slice(0, 3))
     })
 
 for (const answer of ['abort', 'error', 'hang'] as const)
@@ -364,7 +381,7 @@ test('offline, the batch waits for the next hide', async ({ page, context }) => 
     expect(batches).toEqual([])
     await context.setOffline(false)
     await firstSend(page, batches)
-    expect(names(batches[0] ?? [])).toEqual(['(pageview)', 'visit'])
+    expect(startOf(batches[0] ?? [])).toEqual([...START])
 })
 
 test('a client chunk that cannot load leaves the editor as it is', async ({ page, context }) => {
@@ -426,6 +443,7 @@ test('no request names the chart, its files or the saved file’s size, and ever
             .filter({ hasText: `Saved to ${CANARY}.nxsp` })
             .first(),
     ).toBeVisible()
+    const commandNames = await builtInCommandNames(page)
     const size = (await readFile(page, `${CANARY}.nxsp`))!.length
     const sent = [...batches, ...(await leave(page))]
 
@@ -436,6 +454,171 @@ test('no request names the chart, its files or the saved file’s size, and ever
     const events = sent.flat().filter((item) => item.payload.name)
     expect(events.map((item) => item.payload.name)).toContain('edits')
     for (const { payload } of events)
-        expect(isValidEvent(payload.name!, payload.data ?? {}), payload.name).toBe(true)
+        expect(isValidEvent(payload.name!, payload.data ?? {}, commandNames), payload.name).toBe(
+            true,
+        )
     expect(stray).toEqual([])
+})
+
+test('a scripted visit counts each press once by name and source, and sends the start events', async ({
+    page,
+    context,
+}) => {
+    const { batches, stray } = await mock(context)
+    const messages = watchConsole(page)
+    await installAnalytics(page)
+    await start(page)
+    await interact(page)
+    await page
+        .locator('[data-editor-toolbar]')
+        .first()
+        .getByRole('button', { name: 'Select', exact: true })
+        .click()
+    // A held key repeats; only the press counts.
+    await page.locator('canvas.editor-chart').focus()
+    for (let i = 0; i < 4; i++) await page.keyboard.down('ArrowDown')
+    await page.keyboard.up('ArrowDown')
+    // A wheel zoom counts once however many ticks.
+    const box = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.keyboard.down('Control')
+    for (let i = 0; i < 3; i++) await page.mouse.wheel(0, -100)
+    await page.keyboard.up('Control')
+    await firstSend(page, batches)
+
+    const [first = []] = batches
+    expect(startOf(first)).toEqual([...START])
+    const commandNames = await builtInCommandNames(page)
+    for (const { payload } of first)
+        if (payload.name)
+            expect(isValidEvent(payload.name, payload.data ?? {}, commandNames), payload.name).toBe(
+                true,
+            )
+    expect(dataOf(first, 'usage')).toEqual({
+        'select.toolbar': 1,
+        'scrollDown.key': 1,
+        'zoomYIn.wheel': 1,
+    })
+    // The desktop snapshot: the 23 settings, 25 keys, and no touch options.
+    const settings = dataOf(first, 'settings') ?? {}
+    expect(Object.keys(settings)).toHaveLength(25)
+    expect(settings).not.toHaveProperty('touchQuickScrollShow')
+    expect(dataOf(first, 'startup')).toMatchObject({ start: 'blank', outcome: 'done' })
+    expect(dataOf(first, 'storage')).toMatchObject({ mode: 'stored' })
+    expect(dataOf(first, 'perf')).toMatchObject({ loafSupported: true, playSeconds: '0' })
+    expect(stray).toEqual([])
+    expect(messages).toEqual([])
+})
+
+test('a Save records its outcome, and a chart with objects is counted once saved', async ({
+    page,
+    context,
+}) => {
+    const { batches } = await mock(context)
+    await installAnalytics(page)
+    await start(page)
+    await page.evaluate(installEditorFixture)
+    await page.evaluate(() => {
+        const { fixtures, show } = window.editorTest
+        show(fixtures.interaction)
+    })
+    await interact(page)
+    await pressSave(page)
+    await submitSave(page, 'Tracked')
+    await expect(notice(page).filter({ hasText: 'Saved to Tracked.nxsp' }).first()).toBeVisible()
+    // The Save has ended (the tally is no longer busy) and the client has counted the chart (the
+    // tally has none left to count): only then does the first hide carry it. A later hide would
+    // fall under the minute rule.
+    await expect
+        .poll(
+            () =>
+                page.evaluate(async () => {
+                    const tally =
+                        (await import('/src/analytics/tally.ts')) as typeof import('../../src/analytics/tally')
+                    return !tally.isBusy() && !tally.hasCharts()
+                }),
+            { timeout: 60_000 },
+        )
+        .toBe(true)
+    await firstSend(page, batches)
+    const sent = [...batches.flat(), ...(await leave(page)).flat()]
+    const data = (name: string) => sent.find((item) => item.payload.name === name)?.payload.data
+    expect(data('save')).toMatchObject({
+        action: 'save',
+        target: 'picker',
+        history: true,
+        bgm: true,
+        outcome: 'done',
+    })
+    expect(data('chart')).toMatchObject({ trigger: 'save', bgm: 'none' })
+    for (const name of ['save', 'chart'])
+        expect(isValidEvent(name, data(name) ?? {}), name).toBe(true)
+})
+
+test('a startup that ends in an error is reported once the error page is used', async ({
+    page,
+    context,
+}) => {
+    const { batches } = await mock(context)
+    await installAnalytics(page)
+    await page.addInitScript(() =>
+        sessionStorage.setItem('nse.test.startup', '{"fail":"A row could not be read"}'),
+    )
+    await page.goto('/')
+    const gate = page.locator('dialog[data-startup-gate]')
+    await expect(gate.getByRole('alert')).toBeVisible()
+    // Keys are swallowed while the error shows; a press in the page itself arms nothing.
+    await page.keyboard.press('Shift')
+    await gate.getByRole('alert').click()
+    // The client loads when the page goes idle, within 10 s; it sends at the first hide.
+    await expect
+        .poll(
+            async () => {
+                await hide(page)
+                return batches.length
+            },
+            { timeout: 60_000 },
+        )
+        .toBe(1)
+    const [first = []] = batches
+    expect(dataOf(first, 'startup')).toEqual({ start: 'blank', outcome: 'error' })
+})
+
+test('opening History and its Recent Sessions tab are counted as features', async ({
+    page,
+    context,
+}) => {
+    const { batches } = await mock(context)
+    await installAnalytics(page)
+    await start(page)
+    await interact(page)
+    await page.keyboard.press('Shift+H')
+    const dialog = page.locator('[data-history-surface="dialog"]')
+    await expect(dialog).toBeVisible()
+    await page.getByRole('tab', { name: /Sessions/ }).click()
+    await expect(dialog.getByText('Recent Sessions').first()).toBeVisible()
+    // Wait for the list's count, then for the browser's storage answers, which the client asked
+    // for first: its second `storage` event is queued by then.
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { recentSessionCount } =
+                    (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
+                return recentSessionCount.value !== undefined
+            }),
+        )
+        .toBe(true)
+    await page.evaluate(async () => {
+        await navigator.storage.estimate()
+        await navigator.storage.persisted()
+    })
+    await firstSend(page, batches)
+    expect(dataOf(batches[0] ?? [], 'features')).toEqual({ historyDialog: 1, recentTab: 1 })
+    // The sessions count is known once Recent Sessions has read its list: `storage` goes again with it.
+    const storage = (batches[0] ?? [])
+        .filter((item) => item.payload.name === 'storage')
+        .map((item) => item.payload.data)
+    expect(storage).toHaveLength(2)
+    expect(storage[0]).not.toHaveProperty('sessions')
+    expect(storage[1]).toHaveProperty('sessions')
 })

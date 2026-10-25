@@ -704,3 +704,7 @@ export const resetKeybinds = () => {
         Value.Create(settingsProperties.keyboardShortcuts),
     )
 }
+
+/** Whether a setting still has its default, for the usage statistics’ `toolbarCustomized`. */
+export const hasDefaultValue = (key: keyof typeof settingsProperties) =>
+    Value.Equal(settings[key], Value.Create(settingsProperties[key]))

@@ -43,6 +43,7 @@ import { exportMemory, KEPT_BYTES_LIMIT, rememberExport } from '../exportLevel/m
 import { showPreviewAssets } from '../previewAssets/modal'
 import { installDropGuard } from './dropGuard'
 import OpenIcon from './OpenIcon.vue'
+import { dropOpen, endOpen, openFormat, startOpen } from './report'
 
 installDropGuard()
 
@@ -54,19 +55,21 @@ export const open: Command = {
 
     leavesPeek: true,
 
-    async execute() {
+    execute() {
         return withSwitchRequest(undefined, async (request) => {
             if (!(await confirmSwitch()) || !request.isCurrent()) return
 
             // Unfiltered, keeping the handle where the picker exists.
             const { file, handle } = await pickFileForOpen('nse-open')
             if (!file || !request.isCurrent()) return
+            startOpen(file)
 
             // A failed read here surfaces in the loading modal below.
             const detected = await detectHead(file).catch(() => 'data' as const)
             if (!request.isCurrent()) return
             if (detected === 'audio') {
                 // Audio replaces the chart's BGM: an edit, so the peek ends first.
+                dropOpen()
                 leavePeek()
                 void changeBgm(file)
                 return
@@ -78,6 +81,7 @@ export const open: Command = {
                 const kind = await detectZip(file).catch(() => 'project' as const)
                 if (!request.isCurrent()) return
                 if (kind === 'archive') {
+                    dropOpen()
                     await showModal(InfoModal, {
                         title: () => i18n.value.commands.open.title,
                         message: () => i18n.value.open.severalProjects,
@@ -85,6 +89,7 @@ export const open: Command = {
                     return
                 }
                 if (kind === 'package') {
+                    dropOpen()
                     const choice = await showChoice({
                         title: () => i18n.value.commands.open.title,
                         message: () => i18n.value.open.scp,
@@ -102,12 +107,14 @@ export const open: Command = {
                 }
                 // A project file, read in the storage worker.
                 const { openProject } = await import('./project')
+                openFormat('nxsp')
                 try {
                     if (!request.isCurrent()) return
                     await openProject(file, handle, request)
                 } catch (error) {
                     recordError(error)
                     console.error(error)
+                    endOpen('failed')
                     if (request.isCurrent())
                         notify(() => describeFailure(error).headline?.() ?? errorMessage(error), {
                             card: true,
@@ -140,6 +147,7 @@ export const open: Command = {
                         if (!request.isCurrent()) return
 
                         const [type, data] = tryImport(buffer)
+                        openFormat(type)
                         let partial = false
                         try {
                             switch (type) {
@@ -209,7 +217,14 @@ export const open: Command = {
 
                         await opened(handle, buffer, type, partial, request)
                     } catch (error) {
-                        if (request.isCurrent()) throw error
+                        if (request.isCurrent()) {
+                            if (error instanceof UnsupportedFileError)
+                                endOpen('refused', 'unsupported')
+                            else if (error instanceof RefusedFileError)
+                                endOpen('refused', 'invalid')
+                            else endOpen('failed')
+                            throw error
+                        }
                     } finally {
                         stopAbort()
                     }
@@ -244,6 +259,9 @@ export const open: Command = {
                         ? i18n.value.commands.open.unsupportedParts
                         : i18n.value.commands.open.revision[message],
             })
+            // Whatever has not ended the open by now was left: a cancelled dialog or choice.
+        }).finally(() => {
+            endOpen('cancelled')
         })
     },
 }
@@ -303,6 +321,7 @@ const opened = async (
 
     // The target and the partial flag are the new chain's.
     await rememberExport()
+    endOpen('done')
     // With Reopen while the session left can be reopened.
     if (request.isCurrent()) notifyLeft(() => i18n.value.commands.open[openedMessages[type]])
 }

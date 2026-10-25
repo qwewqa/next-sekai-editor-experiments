@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { beforeEach } from 'node:test'
 import { setImmediate as settleTasks } from 'node:timers/promises'
+import * as tally from '../../src/analytics/tally'
 import type { Command } from '../../src/editor/commands'
 import { runCommand } from '../../src/editor/commands/runCommand'
 import { onHistoryAction, type HistoryAction } from '../../src/history/actions'
@@ -910,17 +911,17 @@ test('runCommand refuses edits while peeking and says why; Open, New, Undo and R
     const view = command({ readOnly: true })
     const leave = command({ leavesPeek: true })
     await peekEntry(key(1))
-    void runCommand(edit.value)
-    void runCommand(view.value)
+    void runCommand(edit.value, 'button')
+    void runCommand(view.value, 'button')
     assert.deepEqual(edit.runs, [])
     assert.deepEqual(view.runs, [true])
     assert.deepEqual(refusals, ['Test'])
     // It runs with the peek in place: a cancelled picker or nothing to undo keeps the peek.
-    void runCommand(leave.value)
+    void runCommand(leave.value, 'button')
     assert.deepEqual(leave.runs, [true])
     assert.equal(isPeeking.value, true)
     leavePeek()
-    void runCommand(edit.value)
+    void runCommand(edit.value, 'button')
     assert.deepEqual(edit.runs, [false])
     stop()
 })
@@ -998,3 +999,44 @@ for (const replacement of ['same', 'different', 'absent'] as const)
             assert.equal(loads, 2, 'an old load cannot repopulate a replaced source cache')
         }
     })
+
+test('a displayed peek counts once with its load time, a cached one as cached, a replaced one not', async () => {
+    tally.enable()
+    try {
+        source({
+            [key(1)]: { state: fake('one'), time: 1 },
+            [key(2)]: { state: fake('two'), time: 2 },
+            [key(3)]: { state: fake('three'), time: 3 },
+        })
+        // Two requests close together: the first is replaced before it displays.
+        const first = peekEntry(key(1))
+        const second = peekEntry(key(2))
+        await Promise.all([first, second])
+        // A later request for an entry held in the cache.
+        await wait(PEEK_DEBOUNCE_MS + 10)
+        await peekEntry(key(2))
+        const counted = Object.fromEntries(tally.collect().counts)
+        assert.equal(counted['features.peek'], 2)
+        assert.equal(counted['perf.peek.cached'], 1)
+        assert.equal(counted['perf.peek.<50'], 1)
+    } finally {
+        tally.disable()
+    }
+})
+
+test('a Restore that pushes a step counts, and one that changes nothing does not', async () => {
+    tally.enable()
+    try {
+        source({
+            [key(1)]: { state: fake('old'), time: 1 },
+            [key(2)]: { state: fake('live'), time: 2 },
+        })
+        await peekEntry(key(2))
+        await restoreEntry(key(2))
+        assert.equal(Object.fromEntries(tally.collect().counts)['features.restore'], undefined)
+        await restoreEntry(key(1))
+        assert.equal(Object.fromEntries(tally.collect().counts)['features.restore'], 1)
+    } finally {
+        tally.disable()
+    }
+})

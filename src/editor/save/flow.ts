@@ -102,6 +102,7 @@ import {
     storageNote,
 } from './preview'
 import { exclusive } from './queue'
+import { finishSave, savedSize, startSave, startWrite, tracked } from './report'
 import { Cancelled, withSaveAttempt, type Reserved, type SaveAttempt } from './saveAttempt'
 import { unlinkSession } from './unlink'
 import { refreshBinding } from './watch'
@@ -323,13 +324,17 @@ const bindWrite = async (
     }
 }
 
-const savedOf = (built: BuiltSave, kind: 'saved' | 'download', name: string) => ({
-    kind,
-    name,
-    size: built.blob.size,
-    stepsLine: built.stepsLine,
-    tooLarge: built.tooLarge,
-})
+const savedOf = (built: BuiltSave, kind: 'saved' | 'download', name: string) => {
+    // Every write that succeeds builds its feedback here, so the usage statistics take its size.
+    savedSize(built.blob.size)
+    return {
+        kind,
+        name,
+        size: built.blob.size,
+        stepsLine: built.stepsLine,
+        tooLarge: built.tooLarge,
+    }
+}
 
 const feedback = (built: BuiltSave, kind: 'saved' | 'download', name: string) => {
     saveUi.saved(savedOf(built, kind, name))
@@ -602,6 +607,7 @@ const downloadBuilt = async (
     request: PickRequest,
 ): Promise<Outcome> => {
     let result: SaveResult
+    startWrite('download')
     try {
         result = await session.download({ suggestedName: request.fileName, blob: built.blob })
     } catch (error) {
@@ -639,6 +645,7 @@ export const projectPicked = async (
     const { target, found, filled, identity, pre } = picked
     const { handle } = target
     const name = handle.name
+    startWrite('picker')
     let built: BuiltSave | undefined = prebuilt
     let bound = binding
     switch (identity.kind) {
@@ -1032,6 +1039,7 @@ const writeBack = async (
     const reserved = await attempt.reserve(false)
     if (!reserved) return { kind: 'cancelled' }
     const { reservation, state } = reserved
+    startWrite('writeBack')
     let built: BuiltSave | undefined
     let bound: Row = {}
     let result: SaveResult
@@ -1309,6 +1317,7 @@ export const afterOutcome = async (
     outcome: Outcome | { kind: 'noChanges' },
     again: () => Promise<void> = () => dialogSave(env, 'save'),
 ): Promise<void> => {
+    finishSave(outcome)
     switch (outcome.kind) {
         case 'done':
         case 'cancelled':
@@ -1384,7 +1393,7 @@ export const afterOutcome = async (
 const openExport = async () => {
     const { commands } = await import('../commands')
     const { runCommand } = await import('../commands/runCommand')
-    await runCommand(commands.exportLevel)
+    await runCommand(commands.exportLevel, 'button')
 }
 
 /** Downloads the bytes of an offer: the file the Save could not put back. */
@@ -1618,6 +1627,7 @@ const dialogSave = async (
         await openExport()
         return
     }
+    startSave(kind, answered(input, result))
     await afterOutcome(
         env,
         await pickAndWrite(env, {
@@ -1636,6 +1646,7 @@ const dialogSave = async (
 
 /** A Save bound by name (a download, or a file opened without a handle). */
 const downloadAgain = async (env: Env, file: StoredFile) => {
+    startSave('downloadAgain')
     const outcome = await withSaveAttempt(
         {
             env,
@@ -1669,6 +1680,7 @@ const downloadAgain = async (env: Env, file: StoredFile) => {
             }
             attempt.checkpoint()
             let result: SaveResult
+            startWrite('download')
             try {
                 result = await attempt.write({
                     kind: 'nxsp',
@@ -1704,7 +1716,7 @@ export const save = () =>
             saveUi.error(() => i18n.value.save.unavailable)
             return
         }
-        await saveNow(env)
+        await tracked('save', () => saveNow(env))
     })
 
 const saveNow = async (env: Env) => {
@@ -1770,6 +1782,7 @@ const saveNow = async (env: Env) => {
         return
     }
     if (outcome.kind === 'noChanges') {
+        finishSave(outcome)
         saveUi.noChanges(file.name, outcome.event === 'opened' ? 'opened' : 'saved')
         return
     }
@@ -1784,7 +1797,7 @@ export const saveAs = () =>
             saveUi.error(() => i18n.value.save.unavailable)
             return
         }
-        await dialogSave(env, 'saveAs')
+        await tracked('saveAs', () => dialogSave(env, 'saveAs'))
     })
 
 // Recent Sessions' Save… (⋯): Save As for a session that isn't open.
@@ -1803,7 +1816,7 @@ export const saveToFile = (sessionId: string) =>
             saveUi.error(() => i18n.value.save.unavailable)
             return
         }
-        await saveToFileNow(env, sessionId)
+        await tracked('saveToFile', () => saveToFileNow(env, sessionId))
     })
 
 const applyPending = async (sessionId: string) => {
@@ -1875,6 +1888,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
     const result = await saveUi.saveDialog(input)
     if (result?.action !== 'save') return
     const options = answered(input, result)
+    startSave('saveToFile', options)
     const estimated = estimatedTotal(input, options)
     // Its session hold before the build, so Delete Sessions… skips it. Released
     // before what follows, so Choose Another… holds it again for its own write.
@@ -1987,6 +2001,7 @@ const sessionFileBody = async (
         }
     if (!platform.pickSaveFile) {
         let result: SaveResult
+        startWrite('download')
         try {
             result = await session.download({ suggestedName: request.fileName, blob: built.blob })
         } catch (error) {
@@ -2019,6 +2034,7 @@ const sessionFilePicked = async (
 ): Promise<Outcome> => {
     const { target, filled, identity } = picked
     const name = target.handle.name
+    startWrite('picker')
     // Refused: what the editor holds of it goes back, or is offered, in the session.
     if (identity.kind === 'refused' || identity.kind === 'target')
         return {

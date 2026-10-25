@@ -17,7 +17,7 @@ Usage statistics must never make the editor worse to use. These rules hold for e
 - **No UI** but the switch in Settings › About and the note under it. No notice, prompt or console output in any state.
 - **Nothing per frame.** No code in a frame callback, the clock or the draw paths. The lint forbids importing `src/analytics/` from `src/frame.ts`, `src/rendering/` and `src/preview/engine/`.
 - **O(1) on the edit, flush, Save and startup paths.** A hook is one `bump` or `bumpCommand`: a `Map` increment behind one boolean, with no await or I/O.
-- **The client loads after startup.** It loads once the startup gate is done and the page is idle.
+- **The client loads after startup.** It loads once startup has ended, with the session open or with the gate's error, and the page is idle.
 - **Few, small requests.** At most one in flight and one a minute while the page is open, each at most 32 KB, and 30 a visit.
 - **No retries.** Nothing is sent while offline, and nothing more that visit after one failed request. A page that asks to save data sends nothing.
 - **Bounded memory:** at most 1,000 counters (900 of them `usage`), 50 queued events and 32 KB.
@@ -32,7 +32,26 @@ A change that adds work to a hot path is measured with the perf tools, with stat
 
 Nothing is sent from a visit, not even the pageview, until its first trusted `pointerdown`, `keydown`, `touchstart` or `wheel` while the page is visible. One passive listener waits for it and is removed once the visit is armed. Events measured before then wait in memory with the time they were captured. A visit that never arms sends nothing. So Umami's pageviews count visits where someone used the editor.
 
-The startup gate blocks input until the session is open, so input during startup does not arm a visit.
+The startup gate blocks input until the session is open, so input during startup does not arm a visit. When startup ends in an error, the client loads all the same, because a failed startup is the signal that matters most. The gate keeps swallowing keys and clicks outside itself, so only a click on the error page's own buttons or text arms the visit, and then the `startup` event reports the failure. Safe mode sends nothing, as for any page.
+
+## The hooks
+
+A hook is one call into `tally.ts`, or a read by the client. Nothing else on a hot path may call analytics.
+
+| Where | What |
+| --- | --- |
+| `runCommand(command, source)` | `bumpCommand` by the built-in name (`editor/commands/names.ts`) and the source its caller names; a refusal while peeking is `features.peekRefused`. A command added by `registerCommand` has no name and is not counted |
+| `onHistoryAction` | The client's listener bumps by operation id |
+| `notify`, `recordDiagnostic` | `notices.<severity>`, `errors.<kind>` |
+| `finishStartup`, `failStartup` | `markStartup`: the time, the outcome, and whether the page was ever hidden |
+| `local/start.ts` | `note('reload')` when the tab's claim is its own reload |
+| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed; `busy` while they run, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
+| `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, Quick Switch | `features.<name>` and `peekShown` |
+| `history/index.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
+| The preview worker host | `record('preview', …)` when the worker fails and the main thread takes over |
+| The editor canvas | `note('graphicsUnavailable')` when its renderer fails |
+
+The client reads the rest: the settings (`snapshot.ts`), the load events, the storage status and the pressure runs (`status.ts`), the playing state and the observers (`field.ts`). A `source` is where the press came from. Two choices to know: the key presses inside the History lists are `key`, and an Open of a project file is `restore` in `chart`, because it shows a stored session.
 
 ## When it sends
 
@@ -79,9 +98,9 @@ How the code enforces them:
 | `visit` | client start | `version`, `site`, `os`, `engine`, `standalone`, `touch`, `viewport`, `dpr`, `browserLanguage`, `returning`, `updated` |
 | `settings` | client start | `theme`, `themeShown`, `locale`, `previewInWorker`, `previewRenderScale`, `previewAntialias`, `previewShowHitboxes`, `previewNoteSpeed`, `previewAssets.<type>`, `showPreview`, `previewPosition`, `showMinimap`, `showHistory`, `historyPosition`, `dimUnchangedObjects`, `waveform`, `beatDisplay`, `toolbarQuickSwitch`, `toolbarCustomized`, `mouseSecondaryTool`, `playFollow`, `touchQuickScrollShow`, `touchLongPressContextMenu`, `confirmCloseUnsavedFile` |
 | `startup` | client start | `start`, `outcome`, `ready`, `found.<kind>` |
-| `storage` | status known, and on change | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
+| `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
 | `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `dynamicStages`, `bgm`, `historySteps` |
-| `preview` | first preview draw, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
+| `preview` | client start, when the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
 | `open` | each Open | `format`, `via`, `size`, `outcome`, `reason`, `took` |
 | `save` | each Save, Save As… and Save to File | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
 | `export` | each Export | `format`, `target`, `size`, `took`, `outcome`, `reason` |
@@ -93,6 +112,13 @@ How the code enforces them:
 | `notices` | at hide | `info`, `warning`, `error` |
 | `perf` | at hide | `peek.<time>`, `loafSupported`, `frames.<state>.<length>`, `playSeconds`, `slowInputs`, `interactions`, `visibleTime`, `cores` |
 | `errors` | at hide | `error`, `csp` |
+| `unsupported` | the support page, on its first input | `engine` |
+
+`chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline.
+
+The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
+
+`unsupported` is sent by `public/gate.js`, not by the client, when the support gate stops the editor. The build puts the target in a tag on the editor's page, `<meta name="nse-analytics" content="ORIGIN WEBSITE HOST">`, and only in a build with a target; `check:release` compares it with the manifest. The page sends one beacon on its first trusted input while visible, under the same rules as the client (a signal, an off switch, an automated browser, a request to save data, another host).
 
 Umami's own visit counts, durations and bounce rates are wrong for this client. Without a preflight it cannot send Umami's cache header, so a visit that crosses an hour splits. Count visits from the pageviews, and time from `visibleTime`.
 

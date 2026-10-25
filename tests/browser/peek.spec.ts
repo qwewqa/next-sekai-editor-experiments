@@ -747,7 +747,7 @@ test('Level Info opens read-only while peeking', async ({ page }) => {
                 '/src/editor/commands/runCommand.ts',
             ),
         ])
-        void runCommand(commands.properties)
+        void runCommand(commands.properties, 'button')
     })
     const dialog = page.getByRole('dialog')
     await expect(

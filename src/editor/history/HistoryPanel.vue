@@ -288,7 +288,7 @@ const blurAfterPointer = (event: MouseEvent) => {
 // Delete Sessions… is a command, so this button, a key bound to it and the toolbar run the same thing.
 const onDeleteSessions = async (event: MouseEvent) => {
     blurAfterPointer(event)
-    await runCommand(commands.deleteSessions)
+    await runCommand(commands.deleteSessions, 'panel')
     // In the dialog, focus stays in History. If the run left focus on the page body, it returns to the button.
     if (props.surface === 'dialog') returnFocus(deleteSessionsButton.value)
 }

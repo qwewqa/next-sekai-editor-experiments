@@ -262,7 +262,7 @@ const runCommand = (page: Page, name: string) =>
                 '/src/editor/commands/runCommand.ts',
             ),
         ])
-        await runCommand(commands[name as keyof typeof commands])
+        await runCommand(commands[name as keyof typeof commands], 'button')
     }, name)
 
 test('peeking marks what the entry changed and dims the rest, without scrolling', async ({

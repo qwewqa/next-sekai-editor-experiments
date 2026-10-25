@@ -281,3 +281,20 @@ These recur, and a spike in a run is often one of them. Check them before blamin
 - **Composed stage tile builds** are the cost in zoomed-out Composed flicks: at `pps` 100 one tile can hold over a thousand divider strokes. Check `stageTile`, and the builds per chart draw in `perf:report … frames`.
 - **Path-cache churn.** A path built anew every frame and kept in the path cache fills its 128 MiB budget with geometry nothing draws again, and the grown maps and garbage then stall chart frames. A context's current path lasts one frame for this reason (`docs/rendering.md`). A record whose `pathCache` shows steady `trimmed` counts during playback has a new case of it.
 - **The journal with storage unavailable** serializes and gzips the whole chart every 10 s while there are edits (`storing.ts`): 25 ms on coconut and 125 ms on ×8 at 1×, 110–635 ms at 4×. Its idle callback's 5 s timeout can land it in the middle of a scroll. Measure it with `journal` and a group's `storage` flag.
+
+## Usage statistics on and off
+
+Usage statistics must cost nothing measurable (`docs/analytics.md`). To check a change, run the same plan against two builds in ABBA order: A has no analytics target, and B sends to a loopback mock.
+
+1. Build both with `NSE_PERF=1`. A perf build accepts only a loopback origin, and the `webdriver` rule does not apply to one:
+
+    ```sh
+    NSE_PERF=1 node node_modules/vite/bin/vite.js build --sourcemap --outDir perf-results/A/dist --emptyOutDir
+    NSE_PERF=1 NSE_ANALYTICS_ORIGIN=http://127.0.0.1:5535 NSE_ANALYTICS_WEBSITE=<any UUID> \
+        node node_modules/vite/bin/vite.js build --sourcemap --outDir perf-results/B/dist --emptyOutDir
+    ```
+
+2. Start the mock for B's runs: `node scripts/perf/analytics-mock.mjs --port 5535 --log <file>`. It answers `POST /api/batch` as Umami does and counts what it gets (`GET /count`). Check the count after a run: B's runs must have sent something, or they measured nothing.
+3. Run each plan with `--no-build --out perf-results/A` and `--out perf-results/B`: one warm-up run of either build, discarded, then A B B A, with the pinning and the quiet-machine checks above. When load disturbs a batch, run the whole batch again rather than dropping single runs.
+
+The harness's input is trusted, so a run arms the visit, and the first batch goes at the first hide or a minute after. Cells that hide the page (`hide`) or last over a minute therefore include a send. The warm-up run is discarded because the first run of a batch is fast whichever build it is. Compare p50, p95, p99, the maximum and the counts over budget per cell, and read a difference only if it is outside the spread between the two runs of the same build.

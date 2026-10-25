@@ -23,3 +23,10 @@ export function analyticsFromEnv(env = process.env, { native = false, perf = fal
     if (!UUID.test(website)) throw new Error(`NSE_ANALYTICS_WEBSITE is not a UUID: ${website}`)
     return { origin, website }
 }
+
+/** The host each site's build runs on (src/analytics/config.ts has the same table). */
+export const SITE_HOSTS = { production: 'nse.qwewqa.dev', test: 'test.nse.qwewqa.dev' }
+
+/** The tag the support gate (public/gate.js) reads to send its one `unsupported` event. */
+export const gateTag = (target, site) =>
+    `<meta name="nse-analytics" content="${target.origin} ${target.website} ${SITE_HOSTS[site]}" />`

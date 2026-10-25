@@ -1232,7 +1232,7 @@ const onKeydown = (event: KeyboardEvent) => {
     if (name && !event.repeat) {
         handled()
         if (name === 'showChange' && row?.type === 'entry' && !row.selectable) return
-        void runCommand(commands[name])
+        void runCommand(commands[name], 'key')
     }
 }
 

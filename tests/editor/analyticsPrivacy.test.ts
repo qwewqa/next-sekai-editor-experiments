@@ -60,6 +60,7 @@ const rules: [RegExp, Category][] = [
     [/^pageview\.timestamp$/, 'time'],
     [/^visit\.(?:version|returning|updated)$/, 'version'],
     [/^visit\.(?:os|engine|browserLanguage)$/, 'system'],
+    [/^unsupported\./, 'system'],
     [/^visit\.(?:viewport|dpr)$/, 'screen'],
     [/^visit\.touch$/, 'touch'],
     [/^visit\.standalone$/, 'installed'],

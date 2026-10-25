@@ -211,7 +211,7 @@ test('Save As gives a new docId and a revision with no parent', async ({ page })
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     const dialog = saveDialog(page, 'Save As')
     await expect(dialog.getByRole('textbox')).toHaveValue('coconut (2)')
@@ -429,7 +429,7 @@ test('Save As… still saves while every covered storage read fails, as the Not 
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await submitSave(page, 'melt', 'Save As')
     await expect(notice(page).filter({ hasText: 'Saved to melt.nxsp' })).toBeVisible()

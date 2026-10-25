@@ -47,7 +47,7 @@ test('storage short after a reload: Save As… asks to read the file, and a pick
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await expect(saveDialog(page, 'Save As')).toBeVisible()
     // Asked when the dialog opened, before any picker.
@@ -85,7 +85,7 @@ test('storage holding everything: Save As… asks for nothing', async ({ page })
     await page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
     await expect(saveDialog(page, 'Save As')).toBeVisible()
     await page.waitForTimeout(500)
@@ -96,7 +96,7 @@ const saveAs = (page: import('@playwright/test').Page) =>
     page.evaluate(async () => {
         const { commands } = await import('/src/editor/commands/index.ts')
         const { runCommand } = await import('/src/editor/commands/runCommand.ts')
-        void runCommand(commands.saveAs)
+        void runCommand(commands.saveAs, 'button')
     })
 
 test('a pick of the chain’s own file whose append then fails gets the bytes read back', async ({

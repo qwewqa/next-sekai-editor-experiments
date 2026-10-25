@@ -286,3 +286,9 @@ test('the analytics code writes no storage of its own', () => {
         )
     }
 })
+
+test('the build script and the client name the same host for each site', async () => {
+    const { SITE_HOSTS: built } = await import('../../scripts/analytics.mjs')
+    const { SITE_HOSTS: client } = await import('../../src/analytics/config')
+    assert.deepEqual(built, client)
+})

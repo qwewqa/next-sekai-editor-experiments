@@ -93,3 +93,6 @@ export const previousSession = shallowRef<{ sessionId: string; name: ShownName }
  * so Settings › Local Data can follow it without loading the storage modules.
  */
 export const storageStatus = shallowRef<StorageStatus | undefined>()
+
+/** How many sessions Recent Sessions listed at its last read; undefined until it reads. */
+export const recentSessionCount = shallowRef<number>()
