@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { afterEach, beforeEach, mock } from 'node:test'
 import { flushTimeoutMs } from '../../../src/local/flush'
 import type { FlushBatch } from '../../../src/local/flushWrite'
 import { StorageWorker } from '../../../src/local/worker/client'
@@ -8,7 +8,8 @@ import { serve, type CallScope, type Endpoint, type Handlers } from '../../../sr
 // The page's watchdog over the storage worker: an unanswered call pings the worker for
 // that call's progress; one that has moved is slow, not hung, and is waited for, so a long write
 // is never cut off. One that makes no progress, whatever other calls do, or doesn't answer, is
-// restarted. Real timers, kept short.
+// restarted. The clock is mocked and moves 1 ms at a time, so a loaded machine cannot change what
+// a test sees: a real 60 ms timeout lets a stalled process miss a ping's answer.
 
 type Behaviour = { frozen: boolean }
 
@@ -58,6 +59,29 @@ const sleep = (ms: number) =>
         setTimeout(resolve, ms)
     })
 
+beforeEach(() => {
+    mock.timers.enable({ apis: ['setTimeout', 'Date'] })
+})
+
+afterEach(() => {
+    mock.timers.reset()
+})
+
+/** Moves the clock 1 ms at a time, the continuations running between, until `promise` settles. */
+const settled = async <T>(promise: Promise<T>): Promise<T> => {
+    let done = false
+    const end = () => {
+        done = true
+    }
+    void promise.then(end, end)
+    for (let ms = 0; !done; ms++) {
+        assert.ok(ms < 60_000, 'still unsettled after 60 s')
+        mock.timers.tick(1)
+        await new Promise((resolve) => setImmediate(resolve))
+    }
+    return promise
+}
+
 const handlers = (state: Behaviour): Handlers => ({
     init: () => ({ mode: 'stored' }),
     /** Long work that keeps moving: a large BGM's write, Try Again's move. */
@@ -85,7 +109,7 @@ const start = async () => {
         { appVersion: '0.6.0', flags: {}, test: true },
         { timeoutMs: 60 },
     )
-    await worker.start()
+    await settled(worker.start())
     const call = worker.call.bind(worker) as unknown as (
         method: string,
         arg?: unknown,
@@ -96,15 +120,15 @@ const start = async () => {
 
 test('a call past its timeout that keeps making progress is waited for, never cut off', async () => {
     const { call } = await start()
-    assert.equal(await call('slow', 400), 'done')
+    assert.equal(await settled(call('slow', 400)), 'done')
     assert.equal(FakeWorker.created.length, 1)
     assert.equal(FakeWorker.created[0]?.terminated, false)
 })
 
 test('a call that makes no progress restarts the worker', async () => {
     const { call } = await start()
-    await assert.rejects(call('stuck'), { name: 'TimeoutError' })
-    await sleep(20)
+    await assert.rejects(settled(call('stuck')), { name: 'TimeoutError' })
+    await settled(sleep(20))
     assert.equal(FakeWorker.created.length, 2)
     assert.equal(FakeWorker.created[0]?.terminated, true)
 })
@@ -112,9 +136,8 @@ test('a call that makes no progress restarts the worker', async () => {
 test('a hung call is restarted within about its timeout while another call keeps moving', async () => {
     const { call } = await start()
     const busy = call('slow', 1000).catch((error: unknown) => error)
-    await assert.rejects(call('stuck'), { name: 'TimeoutError' })
+    await assert.rejects(settled(call('stuck')), { name: 'TimeoutError' })
     // The first ping already finds no progress: the timeout and one ping, not two timeouts.
-    // Counted rather than timed, so a loaded machine cannot fail it.
     const sent = FakeWorker.created[0]?.sent ?? []
     const stuck = sent.find((message) => message.method === 'stuck')?.id
     assert.equal(
@@ -122,22 +145,24 @@ test('a hung call is restarted within about its timeout while another call keeps
         1,
     )
     // And before the busy call's 1000 ms are through: its progress kept nothing else alive.
-    assert.equal(((await busy) as Error).name, 'WorkerRestartedError')
-    await sleep(20)
+    assert.equal(((await settled(busy)) as Error).name, 'WorkerRestartedError')
+    await settled(sleep(20))
     assert.equal(FakeWorker.created.length, 2)
 })
 
 test('the test timeout reaches calls that give their own, as a flush does', async () => {
     const { call } = await start()
     const began = Date.now()
-    await assert.rejects(call('stuck', undefined, { timeoutMs: 10_000 }), { name: 'TimeoutError' })
+    await assert.rejects(settled(call('stuck', undefined, { timeoutMs: 10_000 })), {
+        name: 'TimeoutError',
+    })
     assert.ok(Date.now() - began < 1000)
 })
 
 test('a worker that doesn’t answer the ping is restarted', async () => {
     const { call } = await start()
-    await assert.rejects(call('freeze'), { name: 'TimeoutError' })
-    await sleep(20)
+    await assert.rejects(settled(call('freeze')), { name: 'TimeoutError' })
+    await settled(sleep(20))
     assert.equal(FakeWorker.created.length, 2)
 })
 
