@@ -520,6 +520,18 @@ const hasUnknownKindName = (json: unknown) =>
     Array.isArray(json[2]) &&
     (json[2] as unknown[]).some((pair) => isUnknownKind(pair))
 
+/**
+ * Chunks sorted by their offset in `chunks.bin`. Read in this order, most come from the window read
+ * last (`chunkAccess`); in tree order, each chunk can need a window of its own.
+ */
+export const inFileOrder = (
+    index: ReadonlyMap<string, { offset: number }>,
+    hashes: Iterable<string>,
+) => {
+    const at = (hash: string) => index.get(hash)?.offset ?? Number.MAX_SAFE_INTEGER
+    return [...hashes].sort((a, b) => at(a) - at(b))
+}
+
 /** Distinct chunks in first-use order, visiting each stored node only once. */
 export function* distinctRootChunks(
     history: Pick<HistoryForm, 'roots' | 'nodes'>,

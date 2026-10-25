@@ -186,7 +186,8 @@ const startWorker = () => {
         const message = event.data
         switch (message.type) {
             case 'ready':
-                settle()
+                // While a frame is in flight, its `drawn` settles it. Messages arrive in order.
+                if (!inFlight) settle()
                 // The same limit again redraws nothing: the canvas's own change asked for a frame.
                 if (
                     maxViewportSize.value?.width !== message.maxViewportSize.width ||

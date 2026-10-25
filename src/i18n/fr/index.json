@@ -2131,6 +2131,7 @@
     "notProject": "\"{0}\" n’est pas un fichier de projet.",
     "notKept": "Non sauvegardé. \"{0}\" n’a pas pu être lu entièrement.",
     "notKeptSafe": "Non sauvegardé. Les fichiers ne peuvent pas être remplacés en mode sans échec.",
+    "notKeptFull": "Non sauvegardé. Le stockage du navigateur est plein. Supprimez des sessions dans Paramètres › Données locales, puis sauvegardez à nouveau.",
     "saved": "Sauvegardé dans {0}",
     "savedWithoutBgmLarge": "Sauvegardé dans {0} sans sa musique",
     "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",

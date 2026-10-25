@@ -2131,6 +2131,7 @@
     "notProject": "\"{0}\" 不是專案檔案。",
     "notKept": "未儲存。無法完整讀取 \"{0}\"。",
     "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
+    "notKeptFull": "未儲存。瀏覽器儲存空間已滿。請在「設定 › 本機資料」中刪除工作階段，然後重新儲存。",
     "saved": "已儲存到 {0}",
     "savedWithoutBgmLarge": "已儲存到 {0}，未包含 BGM",
     "savedWithoutCoverLarge": "已儲存到 {0}，未包含封面",

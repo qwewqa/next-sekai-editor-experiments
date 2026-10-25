@@ -2131,6 +2131,7 @@
         "notProject": "\"{0}\" is not a project file.",
         "notKept": "Not saved. \"{0}\" could not be read completely.",
         "notKeptSafe": "Not saved. Files cannot be replaced in safe mode.",
+        "notKeptFull": "Not saved. Browser storage is full. Delete sessions in Settings › Local Data, then save again.",
         "saved": "Saved to {0}",
         "savedWithoutBgmLarge": "Saved to {0} without its BGM",
         "savedWithoutCoverLarge": "Saved to {0} without its cover",
