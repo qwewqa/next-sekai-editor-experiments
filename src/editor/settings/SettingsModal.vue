@@ -141,7 +141,7 @@ const confirmReset = async (title: () => string, message: () => string, reset: (
     })
     if (confirmed) reset()
 }
-// Reset Settings keeps Send Usage Statistics, and says so where the build shows it.
+// Reset Settings… keeps Send Usage Statistics, and says so where the build shows it.
 const resetSettingsHint = computed(() =>
     analyticsTarget
         ? i18n.value.settings.resetSettingsHintStatistics

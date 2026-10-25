@@ -2,7 +2,7 @@ import { shallowRef } from 'vue'
 import { storageGet, storageSet } from '../../storage'
 
 // Three browser-wide flags: plain keys the Settings UI doesn't show and
-// Reset Settings leaves alone.
+// Reset Settings… leaves alone.
 
 const readFlag = (key: string) => storageGet(key, false) === true
 

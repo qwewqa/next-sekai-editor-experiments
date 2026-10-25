@@ -149,8 +149,8 @@ const loadEntry = async (key: EntryKey) => {
 export const loadEntryState = async (key: EntryKey) => (await loadEntry(key)).state
 
 /**
- * The longest a peek waits for `ready`. A change read that takes longer, which only a large change
- * does, shows the step without its marks until the read lands, rather than holding the chart.
+ * The longest a peek waits for `ready`. When a change read takes longer, which only a large change
+ * does, the step shows without its marks until the read lands, rather than the chart being held.
  */
 export const PEEK_READY_MAX_MS = 100
 

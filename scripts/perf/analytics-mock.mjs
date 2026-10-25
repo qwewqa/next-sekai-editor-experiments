@@ -1,5 +1,5 @@
 // A loopback stand-in for the usage statistics server (docs/performance-testing.md, "Usage
-// statistics on and off"): it answers POST /api/batch as Umami does and counts what it gets.
+// statistics on and off"): it responds to POST /api/batch as Umami does and counts what it gets.
 //   node scripts/perf/analytics-mock.mjs [--port 5535] [--log <file>]
 // GET /count gives { requests, items, bytes }. Each request is also appended to the log file as a
 // JSON line with the event names it carried.
