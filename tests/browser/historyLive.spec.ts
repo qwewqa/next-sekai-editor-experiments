@@ -149,6 +149,39 @@ test('a burst of more than one page between refreshes keeps the older pages and 
     expect(Math.abs(after! - top!)).toBeLessThanOrEqual(1)
 })
 
+test('an older page that cannot be read ends the list in Try Again, which reads it', async ({
+    page,
+}) => {
+    await load(page)
+    await pushSteps(page, 250)
+    await flush(page)
+    await openPanel(page)
+    await expect.poll(async () => (await source(page)).loaded).toBeGreaterThan(50)
+    const loadedBefore = (await source(page)).loaded
+    const list = timeline(page, 'panel')
+    const failed = list.locator('[data-history-more-failed]')
+
+    // The next older page is read at the end of the list, and the read fails.
+    const hold = await holdWorker(page, 'readTimeline')
+    await list.evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+    })
+    await hold.reached()
+    await hold.release(true)
+    await expect(failed).toContainText('The Timeline could not be loaded.')
+    // Scrolling does not read it again by itself: the line stays until Try Again.
+    await list.evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+    })
+    await expect.poll(async () => (await source(page)).loadingMore).toBe(false)
+    await expect(failed).toBeVisible()
+    expect((await source(page)).loaded).toBe(loadedBefore)
+
+    await failed.getByRole('button', { name: 'Try Again' }).click()
+    await expect(failed).toHaveCount(0)
+    await expect.poll(async () => (await source(page)).loaded).toBeGreaterThan(loadedBefore)
+})
+
 const peekedKey = (page: Page) =>
     page.evaluate(async () => {
         const peek =

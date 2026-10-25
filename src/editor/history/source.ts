@@ -53,6 +53,8 @@ export const earlierMissing = ref(false)
 export const status = ref<'loading' | 'ready' | 'failed'>('loading')
 /** An older page is being read. */
 export const loadingMore = ref(false)
+/** The last older page could not be read: the list ends in a Try Again, and scrolling waits. */
+export const loadMoreFailed = ref(false)
 /** A newer page is being read into the gap. */
 export const loadingNewer = ref(false)
 let loading: Promise<void> | undefined
@@ -66,6 +68,7 @@ export const sourceGeneration = ref(0)
 const landings = ref(0)
 const replaceSource = () => {
     sourceGeneration.value++
+    loadMoreFailed.value = false
     return ++epoch
 }
 
@@ -291,6 +294,7 @@ export const loadMore = () => {
     if (!worker || !at || loading) return loading
     const id = session.value.sessionId
     const mark = epoch
+    loadMoreFailed.value = false
     loadingMore.value = true
     loading = (async () => {
         try {
@@ -302,7 +306,8 @@ export const loadMore = () => {
             canLoadMore.value = !!cursor
             landings.value++
         } catch {
-            // The next scroll tries again.
+            // The list ends in a line with Try Again; scrolling does not retry by itself.
+            if (session.value.sessionId === id && mark === epoch) loadMoreFailed.value = true
         } finally {
             loading = undefined
             loadingMore.value = false
