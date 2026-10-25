@@ -231,15 +231,104 @@ test('the seeder refuses a database newer than the dump', async () => {
     await world.idle()
 })
 
-test('the dumper writes a view’s own bytes and throws on what it has no tag for', () => {
+test('the dumper writes a view’s own bytes', () => {
     const buffer = new Uint8Array([0, 1, 2, 3, 4, 5]).buffer
     assert.deepEqual(encodeValue(new Uint8Array(buffer, 2, 2), noBlob), { $u8: b64([2, 3]) })
     assert.deepEqual(encodeValue(buffer, noBlob), { $ab: b64([0, 1, 2, 3, 4, 5]) })
     assert.deepEqual(encodeValue({ $a: [undefined] }, noBlob), {
         $$a: [{ $undefined: true }],
     })
-    for (const value of [new Date(0), new Map(), 1n, NaN, Infinity, new Uint16Array(1)])
-        assert.throws(() => encodeValue({ value }, noBlob), DumpError)
+})
+
+test('a value with no plain tag is tagged, never thrown on, and comes back where it can', () => {
+    const round = (value: unknown) => {
+        const tagged = encodeValue({ value }, noBlob)
+        return decodeValue(JSON.parse(JSON.stringify(tagged))) as { value: unknown }
+    }
+    // A number that is not finite, by its text.
+    assert.deepEqual(encodeValue(NaN, noBlob), { $num: 'NaN' })
+    assert.deepEqual(encodeValue(-Infinity, noBlob), { $num: '-Infinity' })
+    assert.ok(Number.isNaN(round(NaN).value))
+    assert.equal(round(Infinity).value, Infinity)
+    assert.equal(round(-Infinity).value, -Infinity)
+    // A Date, by its time value.
+    assert.deepEqual(encodeValue(new Date(1234), noBlob), { $date: 1234 })
+    assert.deepEqual(round(new Date(1234)).value, new Date(1234))
+    assert.ok(Number.isNaN((round(new Date(NaN)).value as Date).getTime()))
+    // Other typed arrays and a DataView, by their own bytes and the type's name.
+    const wide = new Uint16Array([1, 258, 65535])
+    assert.deepEqual(encodeValue(new Uint16Array(wide.buffer, 2, 1), noBlob), {
+        $typed: 'Uint16Array',
+        bytes: b64([2, 1]),
+    })
+    assert.deepEqual(round(wide).value, wide)
+    assert.deepEqual(round(new Float64Array([1.5, NaN])).value, new Float64Array([1.5, NaN]))
+    assert.deepEqual(round(new BigInt64Array([-5n])).value, new BigInt64Array([-5n]))
+    const view = new DataView(new Uint8Array([9, 8, 7, 6]).buffer, 1, 2)
+    assert.deepEqual(encodeValue(view, noBlob), { $typed: 'DataView', bytes: b64([8, 7]) })
+    assert.deepEqual(new Uint8Array((round(view).value as DataView).buffer), new Uint8Array([8, 7]))
+    // A subclass of Uint8Array, and a type this build does not know, come back as bytes.
+    class Bytes extends Uint8Array {}
+    assert.deepEqual(encodeValue(new Bytes([1, 2]), noBlob), {
+        $typed: 'Bytes',
+        bytes: b64([1, 2]),
+    })
+    assert.deepEqual(round(new Bytes([1, 2])).value, new Uint8Array([1, 2]))
+    assert.deepEqual(
+        decodeValue({ $typed: 'Uint16Array', bytes: b64([1, 2, 3]) }),
+        new Uint8Array([1, 2, 3]),
+    )
+    // Anything else: the constructor's name and its text; a String() that throws, the name alone.
+    class Thing {
+        toString() {
+            return 'a thing'
+        }
+    }
+    class Bad {
+        toString(): string {
+            throw new Error('no')
+        }
+    }
+    assert.deepEqual(encodeValue(new Thing(), noBlob), { $other: 'Thing', text: 'a thing' })
+    assert.deepEqual(encodeValue(new Map(), noBlob), { $other: 'Map', text: '[object Map]' })
+    assert.deepEqual(encodeValue(new Bad(), noBlob), { $other: 'Bad' })
+    assert.deepEqual(encodeValue(1n, noBlob), { $other: 'bigint', text: '1' })
+    assert.deepEqual(round(new Thing()), { value: undefined })
+    // Inside arrays too.
+    assert.deepEqual(encodeValue([NaN, new Thing()], noBlob), [
+        { $num: 'NaN' },
+        { $other: 'Thing', text: 'a thing' },
+    ])
+    for (const bad of [{ $num: 'one' }, { $date: 'x' }, { $typed: 'Uint8Array' }, { $other: 1 }])
+        assert.throws(() => decodeValue(bad), DumpError)
+})
+
+test('a store with one NaN still exports the whole database, and the dump reads', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const db = await openLocalData(tab)
+    await tab.run(() =>
+        db.transaction(['sessions', 'chains'], 'readwrite', async (tx) => {
+            await tx.put('chains', { chainId: 'c1', head: 's1', updatedAt: 1 })
+            await tx.put('sessions', {
+                id: 's1',
+                chainId: 'c1',
+                updatedAt: 2,
+                view: { scroll: NaN, zoom: Infinity, at: new Date(5) },
+            })
+        }),
+    )
+    const dump = await dumpOf(tab, db)
+    const rows = (name: string) => dump.stores.find((store) => store.name === name)!.records
+    assert.equal(rows('chains').length, 1)
+    assert.deepEqual(rows('sessions')[0]!.value, {
+        id: 's1',
+        chainId: 'c1',
+        updatedAt: 2,
+        view: { scroll: { $num: 'NaN' }, zoom: { $num: 'Infinity' }, at: { $date: 5 } },
+    })
+    readDump(JSON.parse(await new Blob(await dumpJsonBytes(dump)).text()))
+    await world.idle()
 })
 
 test('the reader checks tags, base64, key order and in-line keys', () => {

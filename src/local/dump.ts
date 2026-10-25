@@ -6,7 +6,11 @@ import type { Key, KeyPath, KvDatabase } from './kv/types'
 // decoder, so a bug there can't stop it. The reader validates a dump and turns it back into values.
 // A Blob is inline base64 (`$blob`) in a JSON dump, and a `$blobEntry` naming a ZIP entry beside
 // `dump.json` in Export Raw Data…'s ZIP, so the export never holds a Blob's bytes whole; there, one
-// that could not be read is a `$blobUnreadable` with its type and size.
+// that could not be read is a `$blobUnreadable` with its type and size. A value with no other
+// tag is still written, never left to fail the dump: a number that is not finite is `$num` with its
+// text, a `Date` is `$date` with its time value, a typed array other than `Uint8Array` or a
+// `DataView` is `$typed` (its type's name) with its own bytes, and anything else is `$other` with
+// its constructor's name and `String(value)`.
 
 export const DUMP_FORMAT = 'nse-local-data-dump'
 export const DUMP_VERSION = 1
@@ -89,29 +93,69 @@ const unescapeKey = (key: string) => (key.startsWith('$$') ? key.slice(1) : key)
 /** A Blob's tag: `$blob` with its bytes, `$blobEntry` with its entry's name, or `$blobUnreadable`. */
 export type BlobTag = (blob: Blob) => Record<string, unknown>
 
-/** A value as JSON with tags; throws on a type it has no tag for. */
+const TYPED = {
+    Int8Array,
+    Uint8ClampedArray,
+    Int16Array,
+    Uint16Array,
+    Int32Array,
+    Uint32Array,
+    Float32Array,
+    Float64Array,
+    BigInt64Array,
+    BigUint64Array,
+} as const
+
+/** A tag for a value with none of its own: its constructor's name, and its text if it has one. */
+const otherTag = (name: string, value: unknown) => {
+    try {
+        return { $other: name, text: String(value) }
+    } catch {
+        return { $other: name }
+    }
+}
+
+const nameOf = (value: object) => {
+    try {
+        const name = (value.constructor as { name?: unknown } | undefined)?.name
+        return typeof name === 'string' && name ? name : 'Object'
+    } catch {
+        return 'Object'
+    }
+}
+
+/** A value as JSON with tags; every value has one, so the dump never fails on a single value. */
 export const encodeValue = (value: unknown, blobTag: BlobTag): unknown => {
     if (value === undefined) return { $undefined: true }
     if (value === null || typeof value === 'boolean' || typeof value === 'string') return value
     if (typeof value === 'number') {
-        if (!Number.isFinite(value)) throw new DumpError(`No tag for the number ${value}`)
-        return value
+        return Number.isFinite(value) ? value : { $num: String(value) }
     }
-    if (typeof value !== 'object') throw new DumpError(`No tag for a ${typeof value}`)
+    if (typeof value !== 'object') return otherTag(typeof value, value)
     if (value instanceof ArrayBuffer) return { $ab: toBase64(new Uint8Array(value)) }
     // The view's own bytes, never its whole buffer.
     if (value instanceof Uint8Array && value.constructor === Uint8Array)
         return { $u8: toBase64(value) }
-    if (typeof File !== 'undefined' && value instanceof File)
-        throw new DumpError('No tag for a File')
     if (typeof Blob !== 'undefined' && value instanceof Blob) return blobTag(value)
     if (isFileHandle(value)) return { $handle: 'file', name: value.name }
+    if (value instanceof Date) {
+        const time = value.getTime()
+        return { $date: Number.isFinite(time) ? time : 'NaN' }
+    }
+    if (ArrayBuffer.isView(value)) {
+        // Its own bytes, never its whole buffer.
+        const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+        return {
+            $typed: value instanceof DataView ? 'DataView' : nameOf(value),
+            bytes: toBase64(bytes),
+        }
+    }
     if (Array.isArray(value)) {
         const out: unknown[] = []
         for (const item of value) out.push(encodeValue(item, blobTag))
         return out
     }
-    if (!isPlainObject(value)) throw new DumpError(`No tag for a ${value.constructor.name}`)
+    if (!isPlainObject(value)) return otherTag(nameOf(value), value)
     const out: Record<string, unknown> = {}
     for (const [key, item] of Object.entries(value))
         out[escapeKey(key)] = encodeValue(item, blobTag)
@@ -175,6 +219,35 @@ const decodeTag = (tag: Record<string, unknown>, options: DecodeOptions): unknow
     if (keys === '$undefined' && tag.$undefined === true) return undefined
     if (keys === '$ab') return fromBase64(text('$ab')).buffer
     if (keys === '$u8') return fromBase64(text('$u8'))
+    if (keys === '$num') {
+        const name = text('$num')
+        if (name === 'NaN') return NaN
+        if (name === 'Infinity') return Infinity
+        if (name === '-Infinity') return -Infinity
+        throw new DumpError(`Not a number's text: ${name}`)
+    }
+    if (keys === '$date') {
+        const time = tag.$date
+        if (time === 'NaN') return new Date(NaN)
+        if (typeof time !== 'number' || !Number.isFinite(time))
+            throw new DumpError("A tag's time is not a number")
+        return new Date(time)
+    }
+    if (keys === '$typed,bytes') {
+        const name = text('$typed')
+        const bytes = fromBase64(text('bytes'))
+        // A type this build does not know, or bytes of another length, come back as bytes.
+        if (name === 'DataView') return new DataView(bytes.buffer)
+        const type = Object.hasOwn(TYPED, name) ? TYPED[name as keyof typeof TYPED] : undefined
+        if (!type || bytes.length % type.BYTES_PER_ELEMENT) return bytes
+        return new type(bytes.buffer)
+    }
+    // What has no stored form comes back absent.
+    if (keys === '$other' || keys === '$other,text') {
+        text('$other')
+        if (keys === '$other,text') text('text')
+        return undefined
+    }
     if (keys === '$blob,type') return new Blob([fromBase64(text('$blob'))], { type: text('type') })
     if (keys === '$blobEntry,type') {
         const name = text('$blobEntry')
