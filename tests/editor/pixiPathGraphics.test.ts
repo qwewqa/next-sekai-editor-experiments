@@ -706,6 +706,90 @@ test('a fully scene-pinned cache preserves its budget and gives new draws only f
     }
 })
 
+test('frame-only geometry lasts until its frame is presented or its last scene pin goes', () => {
+    const cache = new PathGraphicsCache()
+    const rect = (x: number) => {
+        const path = new DrawPath()
+        path.rect(x, 0, 10, 10)
+        return path
+    }
+    const get = (path: DrawPath, frameOnly = true) =>
+        cache.get(path, { color: 0 }, false, 'nonzero', 'black', undefined, 1, frameOnly)
+    const kept = rect(0)
+    try {
+        cache.beginFrame()
+        const reused = get(kept, false)
+        const keptBytes = cache.retainedBytes
+        const current = rect(20)
+        const once = get(current)
+        assert.equal(get(current), once, 'its own frame shares it')
+        const captured = get(rect(40))
+        const release = cache.pin([captured])
+        assert.ok(release, 'a retained scene can capture it')
+        cache.endFrame()
+        assert.equal(once.destroyed, false, 'queued geometry survives presentation')
+        cache.beginFrame()
+        assert.equal(once.destroyed, true)
+        assert.equal(captured.destroyed, false)
+        assert.equal(get(kept, false), reused)
+        release()
+        assert.equal(captured.destroyed, false, 'its scene can still be in the submitted frame')
+        cache.endFrame()
+        cache.beginFrame()
+        assert.equal(captured.destroyed, true)
+        assert.equal(cache.retainedBytes, keptBytes)
+        assert.equal(cache.pinnedBytes, 0)
+        assert.equal(cache.stats.trimmed, 0)
+        assert.equal(reused.destroyed, false)
+    } finally {
+        cache.destroy()
+    }
+})
+
+test('a chart switch releases unpinned geometry and keeps pinned and queued geometry', () => {
+    const cache = new PathGraphicsCache()
+    const paths = Array.from({ length: 6 }, (_, i) => {
+        const path = new DrawPath()
+        path.rect(i * 20, 0, 10, 10)
+        return path
+    })
+    const get = (i: number) => cache.get(paths[i]!, { color: 0 }, false, 'nonzero', 'black')
+    try {
+        cache.beginFrame()
+        const unused = get(0)
+        const pinned = get(1)
+        const kept = get(2)
+        const releasePinned = cache.pin([pinned])
+        const releaseKept = cache.pin([kept])
+        assert.ok(releasePinned && releaseKept)
+        cache.endFrame()
+        cache.beginFrame()
+        const queued = get(3)
+        cache.releaseUnused()
+        assert.equal(unused.destroyed, true)
+        assert.equal(pinned.destroyed, false)
+        assert.equal(queued.destroyed, false, 'this frame can still draw it')
+        // The new chart draws one old pinned resource again; it is no longer stale.
+        assert.equal(get(2), kept)
+        releasePinned()
+        releaseKept()
+        assert.equal(pinned.destroyed, false, 'its scene can still be in the submitted frame')
+        cache.endFrame()
+        cache.beginFrame()
+        assert.equal(pinned.destroyed, true)
+        assert.equal(queued.destroyed, true, 'it was not drawn again after the switch')
+        assert.equal(kept.destroyed, false)
+        const fresh = get(4)
+        cache.endFrame()
+        cache.beginFrame()
+        assert.equal(fresh.destroyed, false, 'geometry built after the switch is cached as usual')
+        assert.equal(get(4), fresh)
+        assert.equal(cache.pinnedBytes, 0)
+    } finally {
+        cache.destroy()
+    }
+})
+
 test('destroyed scene pins release idempotently without corrupting later cache accounting', () => {
     const cache = new PathGraphicsCache()
     const path = new DrawPath('M0 0 H10 V10 H0Z')

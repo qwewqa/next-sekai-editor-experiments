@@ -39,7 +39,7 @@ const added = (policy, over) => {
     return result
 }
 
-test('the base policy is Part 0 §0.9.2’s', () => {
+test('the base policy is the expected one', () => {
     assert.equal(
         basePolicy(),
         [
@@ -59,13 +59,24 @@ test('the base policy is Part 0 §0.9.2’s', () => {
 })
 
 test('the web policy is the base, and the native one differs only by its additions', () => {
-    // The web makes no cross-origin requests.
+    // Without a usage statistics target, the web makes no cross-origin requests.
     assert.equal(webPolicy(), basePolicy())
     assert.doesNotMatch(webPolicy(), /https:/)
     assert.deepEqual(added(basePolicy(), nativePolicy()), {
         'connect-src': ['ipc:', 'http://ipc.localhost'],
     })
     assert.deepEqual(added(webPolicy(), devPolicy()), { 'connect-src': ['ws://127.0.0.1:*'] })
+})
+
+test('a usage statistics target adds its origin to connect-src, and nothing else', () => {
+    const origin = 'https://stats.nse-services.qwewqa.dev'
+    assert.deepEqual(added(webPolicy(), webPolicy([], origin)), { 'connect-src': [origin] })
+    assert.deepEqual(added(devPolicy(), devPolicy([], origin)), { 'connect-src': [origin] })
+    assert.deepEqual(
+        webPolicy([], origin).match(/https:[^ ;]*/g),
+        [origin],
+        'the only https: source is the target',
+    )
 })
 
 test('no policy allows eval or leaves the native build reaching the network', () => {

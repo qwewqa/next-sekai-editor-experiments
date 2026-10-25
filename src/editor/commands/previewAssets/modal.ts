@@ -5,7 +5,7 @@ import type { PreviewAssetsTab } from './tabs'
 let isOpen = false
 
 /**
- * Opens the Preview Assets dialog (Part 2, 2.6), a lazy chunk. With no tab it opens on the
+ * Opens the Preview Assets dialog, a lazy chunk. With no tab it opens on the
  * first type that fell back, otherwise on Skin. With a package already picked (Open File…) it
  * opens on the first type the package holds, with that tab's chooser listing the package's items.
  */

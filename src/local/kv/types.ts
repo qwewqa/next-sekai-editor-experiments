@@ -1,4 +1,4 @@
-// The key-value and transaction interface the storage core runs on (Part 1 §1.6.1): IndexedDB in
+// The key-value and transaction interface the storage core runs on: IndexedDB in
 // browsers (idb.ts), and an in-memory model for Node tests and tabs without storage (memory.ts).
 
 /** An IndexedDB key: binary keys read back as ArrayBuffer. */
@@ -36,7 +36,7 @@ export type KeyPath = string | readonly string[]
 
 export type TxMode = 'readonly' | 'readwrite'
 
-/** A hint: routine flushes are relaxed; hides, switches, restores and imports strict (§1.6.1). */
+/** A hint: routine flushes `'default'`; hides, switches, restores and imports strict. */
 export type Durability = 'default' | 'strict' | 'relaxed'
 
 export type CursorEntry = { key: Key; primaryKey: Key; value: unknown }

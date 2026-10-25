@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import type { FlushReport } from '../../src/local/flush'
 import { importLevelData, openEditor } from './memoryBaseline'
 
-// The flush budget specs' charts and edits (Part 1 §1.9.3): the generated large chart in CI and
+// The flush budget specs' charts and edits: the generated large chart in CI and
 // coconut locally, edits flushed one at a time, and the flusher's reports.
 
 export const charts = [

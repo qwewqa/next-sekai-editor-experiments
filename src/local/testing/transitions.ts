@@ -3,8 +3,7 @@ import { keyText } from '../kv/keys'
 import type { CommitReport } from '../kv/memory'
 import type { Key } from '../kv/types'
 
-// The transition check and the lock-holder assertion of architecture review A (A0+; spec A's
-// I-1 to I-5 and I-4's binding rule, work/arch/spec-A.md): what each committed read-write transaction of the
+// The transition check and the lock-holder assertion: what each committed read-write transaction of the
 // profile's database may do to a session's rows. The memory store reports a commit with the rows
 // it put (as they were before) and removed; the world adds the session locks the creating page
 // held when the transaction was created. Pure functions over those reports, so a test can feed
@@ -17,9 +16,9 @@ export type CreationContext = {
 }
 
 export type TransitionChecks = {
-    /** I-1: the creating page held the session's lock. */
+    /** The creating page held the session's lock. */
     lock?: boolean
-    /** I-2, I-4, I-5: where rows go and what a frozen session may change. */
+    /** Where rows go and what a frozen session may change. */
     transitions?: boolean
 }
 
@@ -49,7 +48,7 @@ const changed = (before: Row, after: Row, fields: readonly string[]) =>
 
 const FILE_ORIGINS = ['nxsp', 'replaced']
 
-/** The session rows an import writes while `importPending` (I-1 (c), I-5): a file's, not the page's. */
+/** The session rows an import writes while `importPending`: a file's, not the page's. */
 const importing = (before: Row | undefined, after: Row | undefined) =>
     [before, after].some(
         (session) =>
@@ -130,7 +129,7 @@ export const transitionViolations = (
                     `transition: session ${sessionId} has lastSeq ${String(after)} after creating rows up to ${String(seqs.at(-1))}`,
                 )
         }
-        // I-5: once not its chain's head, a session's rows and summary change only by `kept`
+        // Once not its chain's head, a session's rows and summary change only by `kept`
         // flips and its import's own fill.
         if (!was) continue
         const chain = before('chains', String(was.chainId))
@@ -185,7 +184,7 @@ export const transitionViolations = (
                 )
             }
 
-    // R3: a session is removed only by a page holding its lock exclusively.
+    // A session is removed only by a page holding its lock exclusively.
     if (lock)
         for (const gone of report.deletes) {
             if (gone.store !== 'sessions') continue
@@ -196,7 +195,7 @@ export const transitionViolations = (
                     )
         }
 
-    // I-4: a chain's binding is recorded only while none of its sessions is importing.
+    // A chain's binding is recorded only while none of its sessions is importing.
     if (transitions)
         for (const put of putsOf('chains')) {
             if (put.old === undefined) continue

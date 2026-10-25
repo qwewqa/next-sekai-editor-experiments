@@ -11,7 +11,7 @@ const formerNavigation = [
 ]
 
 /**
- * The toolbar step `toolbarMinimapMigrated` (Part 1 §1.4.6): Minimap goes first in a group that
+ * The toolbar step `toolbarMinimapMigrated`: Minimap goes first in a group that
  * exactly matches the old default navigation group, so Jump to Start stays its face. A
  * customised toolbar, or one that has the command, is left as it is.
  */

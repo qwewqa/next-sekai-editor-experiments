@@ -13,7 +13,7 @@ import { continueIn, handlersOf, readOpen } from '../startup/harness'
 import { widen } from '../timeline/helpers'
 import { closedChain, MemoryStorage, openDeleter, tamper, visible, WALL } from './harness'
 
-// Delete, Undo and the sweep (deletion design §3.3, §3.4): R3 (lock every session or skip),
+// Delete, Undo and the sweep, by the rules of docs/history-format.md: R3 (lock every session or skip),
 // R4 (whole and ordered), R5 (journals first, never swept unseen), R8 and R9.
 
 const chainRows = (world: ReturnType<typeof createWorld>, chainId: string) => ({
@@ -52,7 +52,7 @@ test('a chain is refused while any holder has one of its sessions, and never mar
     const holders: [string, (id: string) => string, 'exclusive' | 'shared'][] = [
         ['an open session', sessionLock, 'exclusive'],
         ['an unstored continuation’s hold on its parent', sessionLock, 'shared'],
-        ['Save to File…’s hold', sessionLock, 'shared'],
+        ['Recent Sessions’ Save…’s hold', sessionLock, 'shared'],
         ['an import', importLock, 'exclusive'],
     ]
     for (const [what, lock, mode] of holders) {

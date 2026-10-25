@@ -162,6 +162,57 @@ test('a drag starting in the left pan zone keeps the view still until it goes de
     await page.mouse.up()
 })
 
+/** Each frame's vertical pan rate for 0.3 s, in pane heights a second on the editor's clock. */
+const panRates = (page: Page) =>
+    page.evaluate(async () => {
+        const { appImport, nextTick, settings, view } = window.editorTest
+        const { time } = await appImport<typeof import('../../src/time')>('/src/time.ts')
+        const frame = () =>
+            new Promise<void>((resolve) =>
+                requestAnimationFrame(() => void nextTick().then(() => resolve())),
+            )
+        const rates: number[] = []
+        const from = time.value.now
+        let last = { now: from, time: view.time }
+        while (last.now - from < 0.3) {
+            await frame()
+            const now = time.value.now
+            if (now === last.now) continue
+            rates.push(((view.time - last.time) * settings.pps) / view.h / (now - last.now))
+            last = { now, time: view.time }
+        }
+        return rates
+    })
+
+test('a drag pans evenly, gently halfway into the top zone and fastest past its edge', async ({
+    page,
+}) => {
+    await showNote(page, 0.5)
+    await settle(page)
+    const start = await point(page, 0, 8)
+    const pane = await page.evaluate(() => ({
+        y: window.editorTest.view.y,
+        h: window.editorTest.view.h,
+    }))
+    await page.mouse.move(start.x, start.y)
+    await page.mouse.down()
+    // Halfway into the zone, close to the linear half a pane height a second.
+    await page.mouse.move(start.x, pane.y + 0.1 * pane.h, { steps: 5 })
+    await settle(page)
+    const middle = await panRates(page)
+    // Past the pane the pointer counts as at its edge.
+    await page.mouse.move(start.x, pane.y - 100, { steps: 3 })
+    await settle(page)
+    const edge = await panRates(page)
+    await page.mouse.up()
+    for (const rate of middle) {
+        expect(rate).toBeGreaterThan(0.5)
+        expect(rate).toBeLessThan(0.6)
+    }
+    // Every frame alike: focusing the dragged note, at the edge too, adds no ease of its own.
+    for (const rate of edge) expect(rate).toBeCloseTo(4.5, 1)
+})
+
 test('a drag that leaves its bottom start zone pans from the zone edge on return', async ({
     page,
 }) => {

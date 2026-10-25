@@ -13,7 +13,7 @@ import { formatSize } from './format'
 import type { ExportTarget } from './memory'
 import { exportUi } from './ui'
 
-// Export Level Data… (Part 1 §1.4.8): the File Name row, or only the To row with a target.
+// Export Level Data…: the File Name row, or only the To row with a target.
 const props = defineProps<{
     target?: ExportTarget
     /** The field's first value. */
@@ -21,7 +21,7 @@ const props = defineProps<{
     /** The field shows the source file's own name, which the picker suggests as it is. */
     sourceName: boolean
     peeking: boolean
-    /** The chain's own file, read when the dialog opened (R2). */
+    /** The chain's own file, read when the dialog opened. */
     read: Promise<ReadResult>
 }>()
 
@@ -44,7 +44,7 @@ const fileName = computed(() =>
     (fromSource.value ? value.value : `${stem.value}.nsld`).normalize('NFC'),
 )
 
-// The source's own name is a file that exists; only a typed name is checked (§0.9.9).
+// The source's own name is a file that exists; only a typed name is checked.
 const problem = computed(() => (fromSource.value ? undefined : nameProblem(value.value)))
 const revealed = ref(false)
 let pause: ReturnType<typeof setTimeout> | undefined
@@ -97,10 +97,10 @@ watch(preparing, async (file) => {
     await nextTick()
     downloadButton.value?.focus()
 })
-const preparingText = computed(() =>
+const readyText = computed(() =>
     preparing.value
         ? interpolate(
-              () => i18n.value.save.preparing,
+              () => i18n.value.save.ready,
               preparing.value.name,
               formatSize(preparing.value.size),
           )()
@@ -108,7 +108,7 @@ const preparingText = computed(() =>
 )
 
 // Cancel, × and Escape stop a running export; once a follow-up dialog takes over, it runs on.
-// An accepted pick, which the picker emptied (D5), is written first, then the dialog closes.
+// An accepted pick, which the picker emptied, is written first, then the dialog closes.
 const controller = new AbortController()
 let left = false
 let committed = false
@@ -198,7 +198,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
             @modalcancel="cancel"
         >
             <p v-if="preparing" :id="`${ids}-preparing`" data-export-preparing>
-                {{ preparingText }}
+                {{ readyText }}
             </p>
             <template v-else>
                 <div
@@ -206,7 +206,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                     class="flex flex-wrap items-center gap-x-3 gap-y-2"
                     data-export-target
                 >
-                    <span class="shrink-0 opacity-75">{{ i18n.export.to }}</span>
+                    <span class="shrink-0 text-fg/80">{{ i18n.export.to }}</span>
                     <span class="min-w-40 flex-1 break-words font-medium" data-export-target-name>{{
                         targetLabel
                     }}</span>
@@ -256,7 +256,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
                         {{ problemText }}
                     </p>
                 </div>
-                <p v-if="peeking" class="text-sm opacity-75">{{ i18n.peek.exportsCurrent }}</p>
+                <p v-if="peeking" class="text-sm text-fg/80">{{ i18n.peek.exportsCurrent }}</p>
             </template>
 
             <div class="flex justify-end gap-2">

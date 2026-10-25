@@ -19,7 +19,7 @@ import {
 } from '../../../src/calendar/calendar'
 import * as dateTime from '../../../src/i18n/dateTime'
 
-// I-7: every calendar and date-text function returns a value for any number and any zone. A time
+// Every calendar and date-text function returns a value for any number and any zone. A time
 // outside [0, 8.64e15] is taken to the nearest end of it, and a zone the engine rejects is UTC.
 
 const times = [

@@ -1,4 +1,4 @@
-// The minimap's content pipeline (design §3.3, §4.4, §4.5): one pass per animation frame decides
+// The minimap's content pipeline: one pass per animation frame decides
 // between a band redraw and a full redraw. A full redraw runs in frame slices into a CPU back
 // buffer, rasterising each slice inside the slice, and reaches the front canvas in one blit.
 
@@ -51,7 +51,7 @@ export const GEOMETRY_DEBOUNCE_MS = 100
 /** Notes between clock checks in a slice. */
 const NOTE_CHECK = 64
 
-/** Read through `editorTest.appImport` by the specs and the probe (design §9.7). */
+/** Read through `editorTest.appImport` by the specs and the probe. */
 export const minimapStats = {
     passes: 0,
     fullJobs: 0,

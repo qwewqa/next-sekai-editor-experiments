@@ -100,7 +100,7 @@ const hasSavePicker = () =>
 
 /**
  * The save picker; undefined where there is none, which downloads. Dismissing it throws
- * AbortError; any other failure is a FileError, never a download (§1.4.7 R12).
+ * AbortError; any other failure is a FileError, never a download.
  */
 const pickSaveHandle = async (picker: SavePicker, suggestedName: string) => {
     const options = savePickerOptions(picker, suggestedName)
@@ -130,7 +130,7 @@ const pickSaveFile = async ({
 }
 
 const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
-    // The gesture's first call, before any other await (Part 0 §0.9.1).
+    // The gesture's first call, before any other await.
     const permission = req.target?.kind === 'handle' ? requestWrite(req.target.handle) : undefined
     const startedAt = performance.now()
     const { signal } = req
@@ -151,7 +151,7 @@ const saveFile = async (req: SaveRequest): Promise<SaveResult> => {
     }
 
     // Without a target a save only downloads: the save picker is `pickSaveFile`, opened only by
-    // the pick session (§1.4.7).
+    // the pick session.
     const blob = await toBlob(await req.build([]))
     signal?.throwIfAborted()
     await verifyBuilt(req.kind, blob)
@@ -182,7 +182,11 @@ const read = async (target: FileTarget): Promise<Blob> => {
 const onCloseRequested = (handler: () => boolean | Promise<boolean>) => {
     const listener = (event: BeforeUnloadEvent) => {
         // beforeunload can't wait: only a synchronous false keeps the page.
-        if (handler() === false) event.preventDefault()
+        if (handler() !== false) return
+        // Chrome and Edge before 119 ask only when returnValue is set.
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        event.returnValue = true
+        event.preventDefault()
     }
     window.addEventListener('beforeunload', listener)
     return () => {

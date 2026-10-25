@@ -11,7 +11,7 @@ const json = (value: unknown) => encoder.encode(JSON.stringify(value))
 const REPOSITORY = 'sonolus/repository/'
 
 /**
- * A standard single-item package (Part 2, 2.5.2): the list, the item's details and its resources
+ * A standard single-item package: the list, the item's details and its resources
  * under `sonolus/repository/{sha1}`, every field rebuilt from what passed the checks. The same
  * item always makes the same bytes, so its sha256 names it.
  */

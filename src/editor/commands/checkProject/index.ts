@@ -9,7 +9,7 @@ import { notify } from '../../notification'
 import { environment } from '../../save/binding'
 import CheckProjectIcon from './CheckProjectIcon.vue'
 
-// Check File and History… (Part 1 §1.4.21): reads the bound file in full and the history stored in
+// Check File and History…: reads the bound file in full and the history stored in
 // this browser, repairs what the file can repair, and tells what is left in a few lines. It is
 // reachable from the command list and Level Info's file line; there is no default key.
 
@@ -40,13 +40,17 @@ export const checkProject: Command = {
         }
         const abort = new AbortController()
         const message = shallowRef(firstMessage(plan))
-        const outcome = startCheck(plan, abort.signal, (next) => {
+        const percent = shallowRef<number>()
+        const outcome = startCheck(plan, abort.signal, (next, done) => {
             message.value = next
+            percent.value = done
         })
-        // The progress dialog opens at once: a check waiting behind a Save shows as 0%. Closing it
-        // cancels the run until its finish starts.
+        // The progress dialog opens at once. Its bar slides while the check waits behind a Save and
+        // during the finish, and shows the fraction between a phase's first and last batch. Closing
+        // it cancels the run until its finish starts.
         await showModal(LoadingModal, {
             title: () => i18n.value.check.title,
+            progress: () => percent.value,
             async *task(signal: AbortSignal) {
                 const cancel = () => {
                     abort.abort()

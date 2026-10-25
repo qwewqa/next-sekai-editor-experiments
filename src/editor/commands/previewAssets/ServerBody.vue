@@ -7,12 +7,12 @@ import { typeNoun } from '../../../preview/assets/fallbackText'
 import type { ServerChooser } from '../../../preview/assets/server/chooser'
 import { serverFailureText } from '../../../preview/assets/server/liveText'
 import { interpolateRaw } from '../../../utils/interpolate'
+import SeverityIcon from '../../SeverityIcon.vue'
 import AlsoOptions from './AlsoOptions.vue'
-import AssetGlyph from './AssetGlyph.vue'
 import AssetRow from './AssetRow.vue'
 import ChooserProgress from './ChooserProgress.vue'
 
-// The chooser's From a Server view (Part 2, 2.5.3, 2.6), in the apps: the address, the server's
+// The chooser's From a Server view, in the apps: the address, the server's
 // list with its quick search and More, and the other types' items of the same name. The footer is
 // the chooser's.
 const props = defineProps<{
@@ -104,7 +104,7 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
     <div class="flex flex-col gap-3 empty:-mt-3" role="status" data-server-status>
         <ChooserProgress v-if="phase === 'connecting'" :text="strings.progress.connecting" />
         <div v-if="errorText" :id="errorId" class="relative pl-8 pr-2 text-sm" data-server-error>
-            <AssetGlyph type="warning" class="absolute left-2 top-[0.1875rem]" />
+            <SeverityIcon severity="error" class="absolute left-2 top-[0.125rem] size-4" />
             <p data-server-error-text>{{ errorText }}</p>
         </div>
     </div>
@@ -160,7 +160,7 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
                 @select="server.select(item.name)"
             />
         </div>
-        <p v-else-if="!loading" class="px-2 opacity-75" data-chooser-empty>
+        <p v-else-if="!loading" class="px-2 text-fg/80" data-chooser-empty>
             {{ strings.noneFound }}
         </p>
 
@@ -176,7 +176,7 @@ const inputClass = 'field h-9 min-w-0 appearance-none rounded-full px-4 placehol
             >
                 {{ strings.more }}
             </button>
-            <span v-if="loading" class="text-sm opacity-75" role="status" data-server-loading>{{
+            <span v-if="loading" class="text-sm text-fg/80" role="status" data-server-loading>{{
                 i18n.modals.loading.loading
             }}</span>
         </div>

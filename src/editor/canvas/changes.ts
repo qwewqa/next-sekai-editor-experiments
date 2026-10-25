@@ -4,7 +4,7 @@ import type { ChangeMarks } from '../history/changes'
 import { changeShape, type ChangeShape } from './changeGeometry'
 import type { EditorDrawContext } from './types'
 
-// A History entry's changes on the editing chart (Part 1 §1.4.11): an orange ring 3 px outside
+// A History entry's changes on the editing chart: an orange ring 3 px outside
 // what changed, with an ink edge; `+` and `−` badges for added and removed; ghosts of old notes at
 // 35% in a dashed ring; dashed lines where events were removed. Shape carries the meaning, so the
 // one colour is the hue none of the chart's objects use. Not drawn in Preview.

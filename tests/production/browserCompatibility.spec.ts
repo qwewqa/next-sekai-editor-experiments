@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { resource } from '../browser/previewResourceFixture'
 import { skipWhereTheEditorCannotStart } from '../browser/webkitSupport'
-import { chart, instrumentRendering, seedVersion } from './fixtures'
+import { chart, instrumentRendering, previewInWorker, previewPixels, seedVersion } from './fixtures'
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
@@ -65,7 +65,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         })
         for (const key of ['showPreview', 'showSidebar'])
             localStorage.setItem(`sonolus-next-sekai-editor.${key}`, 'false')
-        // The fixture hook (Part 1 §1.4.2): a blank start, at once.
+        // The fixture hook: a blank start, at once.
         localStorage.setItem('nse.test.startBlank', 'true')
         localStorage.setItem('sonolus-next-sekai-editor.pps', '120')
     })
@@ -266,6 +266,12 @@ test('lane limit commands clamp note placement in the production editor', async 
 })
 
 test('preview decodes textures and renders after opening and resizing', async ({ page }) => {
+    // Counted on the main thread, where the preview draws with Parallel Rendering off.
+    await page.evaluate(() =>
+        localStorage.setItem('sonolus-next-sekai-editor.previewInWorker', 'false'),
+    )
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.setViewportSize({ width: 1600, height: 1000 })
     await page.getByRole('tab', { name: 'Preview', exact: true }).click()
     await expect.poll(() => page.evaluate(() => window.productionSmoke.uploads)).toBe(2)
@@ -275,6 +281,20 @@ test('preview decodes textures and renders after opening and resizing', async ({
         .poll(() => page.evaluate(() => window.productionSmoke.preview))
         .toBeGreaterThan(frames)
     await expect(page.locator('.preview-viewport')).toBeVisible()
+})
+
+test('by default the preview draws in its worker where the browser can', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 1000 })
+    await page.getByRole('tab', { name: 'Preview', exact: true }).click()
+    await expect(page.locator('.preview-viewport > canvas').first()).toBeVisible()
+    const supported = await page.evaluate(
+        () =>
+            typeof OffscreenCanvas === 'function' &&
+            'transferControlToOffscreen' in HTMLCanvasElement.prototype,
+    )
+    expect(await previewInWorker(page)).toBe(supported)
+    await expect.poll(() => previewPixels(page)).toBeGreaterThan(100)
+    if (supported) expect(await page.evaluate(() => window.productionSmoke.uploads)).toBe(0)
 })
 
 test('internal copy and paste survive denied browser clipboard permissions', async ({

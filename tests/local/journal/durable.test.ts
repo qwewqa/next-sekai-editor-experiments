@@ -8,7 +8,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { append, beginSession, openJournalPage, type JournalPage } from './harness'
 
-// The not-durably-stored predicate (§1.6.7): false while storage is unavailable or paused, before
+// The not-durably-stored predicate: false while storage is unavailable or paused, before
 // the session row is written, after a failed flush, and while unflushed entries have no verified
 // journal; true for an ordinary pending flush with a verified journal.
 
@@ -41,6 +41,24 @@ test('a session is durably stored once flushed, or pending with a verified journ
     // A pending flush with no journal written yet.
     assert.equal(notDurableReason(inputs(page)), 'journal')
     assert.equal(page.writer.write(), true)
+    assert.equal(notDurableReason(inputs(page)), undefined)
+})
+
+test('a relaxed commit counts as stored, with no journal', async () => {
+    const { page, a } = await start(6)
+    append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
+    await page.flusher.flush({ strict: true })
+    append(
+        page,
+        { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) },
+        widen(a, 1),
+    )
+    assert.equal(notDurableReason(inputs(page)), 'journal')
+    // The routine flush about 1 s after the edit.
+    await page.flusher.flush()
+    assert.equal(notDurableReason(inputs(page)), undefined)
+    // With localStorage full too: nothing is left for a journal to hold.
+    page.storage.quota = 10
     assert.equal(notDurableReason(inputs(page)), undefined)
 })
 

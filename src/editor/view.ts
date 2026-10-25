@@ -1,4 +1,4 @@
-import { computed, shallowReactive, watch } from 'vue'
+import { computed, ref, shallowReactive, watch } from 'vue'
 import { times } from '.'
 import type { GroupId } from '../chart/groups'
 import type { StageId } from '../chart/stages'
@@ -8,7 +8,7 @@ import { settings } from '../settings'
 import type { Entity } from '../state/entities'
 import { beatToTime, timeToBeat } from '../state/integrals/bpms'
 import { cleanBeat, isGlobalGrid, snapBeat } from '../state/integrals/grid'
-import { time } from '../time'
+import { clockNow, keepClockWhile, time } from '../time'
 import { computedArray } from '../utils/array'
 import { align, clamp, lerp, unlerp } from '../utils/math'
 import { optional } from '../utils/optional'
@@ -153,6 +153,8 @@ export const view = shallowReactive({
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)')
 const isInstant = () => reducedMotion.matches && !settings.mouseSmoothScrolling
 
+keepClockWhile(() => !!view.scrollingX || !!view.scrollingY || !!view.scrollingPane)
+
 watch(time, ({ now, delta }) => {
     if (view.scrollingX) {
         switch (view.scrollingX.type) {
@@ -229,7 +231,19 @@ watch(time, ({ now, delta }) => {
 
 export const hoveredEntities = computedArray(() => view.entities.hovered)
 
-export const isViewRecentlyActive = computed(() => time.value.now - view.lastActive < 0.5)
+// Activity is checked against this time, which moves on activity and when 0.5 s have passed
+// since, so the recently active state needs no clock ticks.
+const activityNow = ref(performance.now() / 1000)
+let activityTimer: ReturnType<typeof setTimeout> | undefined
+const checkActivity = () => {
+    activityNow.value = performance.now() / 1000
+    const left = view.lastActive + 0.5 - activityNow.value
+    activityTimer =
+        left > 0 && Number.isFinite(left) ? setTimeout(checkActivity, left * 1000) : undefined
+}
+checkActivity()
+
+export const isViewRecentlyActive = computed(() => activityNow.value - view.lastActive < 0.5)
 
 export const viewBox = computed(() => {
     const w = settings.width
@@ -315,14 +329,15 @@ export const scrollViewXBy = (dx: number, smooth = false) => {
 
     if (smooth) {
         const base = view.scrollingX?.type === 'ease' ? view.scrollingX.to.viewLane : view.lane
+        const start = clockNow()
         view.scrollingX = {
             type: 'ease',
             from: {
-                time: time.value.now,
+                time: start,
                 viewLane: view.lane,
             },
             to: {
-                time: time.value.now + 0.25,
+                time: start + 0.25,
                 viewLane: scrolledLane(base, dx / laneScale),
             },
         }
@@ -341,11 +356,12 @@ export const scrollViewYBy = (dy: number, smooth = false) => {
             const value = navigation.getScrollY()
             // Set now, so a refit before its first step can't drop it.
             navigation.setScrollY(value)
+            const start = clockNow()
             view.scrollingPane = {
                 navigation,
-                from: { time: time.value.now, value },
+                from: { time: start, value },
                 to: {
-                    time: time.value.now + 0.25,
+                    time: start + 0.25,
                     value: (ease?.to.value ?? value) + dy / navigation.getScaleY(),
                 },
             }
@@ -362,14 +378,15 @@ export const scrollViewYBy = (dy: number, smooth = false) => {
     }
 
     if (smooth) {
+        const start = clockNow()
         view.scrollingY = {
             type: 'ease',
             from: {
-                time: time.value.now,
+                time: start,
                 viewTime: view.time,
             },
             to: {
-                time: time.value.now + 0.25,
+                time: start + 0.25,
                 viewTime: Math.max(
                     0,
                     (view.scrollingY?.type === 'ease' ? view.scrollingY.to.viewTime : view.time) +
@@ -428,10 +445,23 @@ export const focusEntityAtBeat = (beat: number) => {
     markTouch('entity', beat)
 }
 
+// Set while a drag's edge pan scrolls the view vertically, which it then owns.
+let isEdgePanningY = false
+
+/** Runs a drag update; in a frame its edge pan scrolled vertically, focuses don't pan. */
+export const withEdgePanY = (isPanning: boolean, update: () => void) => {
+    isEdgePanningY = isPanning
+    try {
+        update()
+    } finally {
+        isEdgePanningY = false
+    }
+}
+
 const panView = (t: number, allowDirectJump = true) => {
     updateViewLastActive()
 
-    if (t >= times.value.min && t <= times.value.max) return
+    if (isEdgePanningY || (t >= times.value.min && t <= times.value.max)) return
 
     // Long focus jumps skip unseen intermediate scenes; nearby navigation keeps
     // its ease. Use the full viewport, including its area before chart time zero.
@@ -449,14 +479,15 @@ const panView = (t: number, allowDirectJump = true) => {
         return
     }
 
+    const start = clockNow()
     view.scrollingY = {
         type: 'ease',
         from: {
-            time: time.value.now,
+            time: start,
             viewTime: view.time,
         },
         to: {
-            time: time.value.now + 0.25,
+            time: start + 0.25,
             viewTime: t,
         },
     }
@@ -475,7 +506,8 @@ export const updateViewPointer = (pointer?: { x: number; y: number; modifiers?: 
 }
 
 export const updateViewLastActive = () => {
-    view.lastActive = time.value.now
+    view.lastActive = activityNow.value = performance.now() / 1000
+    activityTimer ??= setTimeout(checkActivity, 500)
 }
 
 export const xToLane = (x: number) => ((x - view.x) / view.w - 0.5) * settings.width + view.lane

@@ -3,7 +3,7 @@ import { storageStatus } from '../../local/startup/events'
 import type { PauseReason, StorageStatus } from '../../local/worker/core'
 import { isSafeMode } from '../../safe'
 
-// The "Not stored" state (Part 1 §1.6.7): raised from the storage status alone, once a cause has
+// The "Not stored" state: raised from the storage status alone, once a cause has
 // held for a moment, so a brief stall never flickers. The chip, the status label, the iOS bar and
 // Settings › Local Data all read `notStored`; the per-edit states of the leave prompt
 // (`notDurableReason`) are not part of it.

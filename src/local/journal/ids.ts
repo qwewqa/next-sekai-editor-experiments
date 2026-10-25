@@ -1,6 +1,6 @@
 import { sha256, sha256Sync, toHex } from '../hash'
 
-// Ids replay derives from the journal (§1.6.4 #7), the same on every run: a kill between replay's
+// Ids replay derives from the journal, the same on every run: a kill between replay's
 // commit and the key's delete runs it again at the next load, which then finds what it made
 // instead of making a second recovery chain or `recovered` row.
 

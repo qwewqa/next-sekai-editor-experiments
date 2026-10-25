@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import type { PlatformOverride } from '../../src/platform/detect'
 import { installCanvasCounters, installEditorFixture, installTestPlatform } from './editorFixture'
 
-// Focus after a control goes (Part 1 §1.4.10.2): when an action removes, hides or disables the
+// Focus after a control goes: when an action removes, hides or disables the
 // focused control, or closes its surface, focus moves to the opener if it survives, else to the
 // chart pane, never to the page's body.
 
@@ -40,7 +40,7 @@ const notifyCard = (page: Page, dismissing: boolean) =>
 
 const focusChart = (page: Page) => page.locator('.chart-pane').first().focus()
 
-test.describe('a notice card that goes while it holds focus (F1)', () => {
+test.describe('a notice card that goes while it holds focus', () => {
     test('Close by key hands focus to the chart', async ({ page }) => {
         await boot(page)
         await focusChart(page)
@@ -82,9 +82,7 @@ test.describe('a notice card that goes while it holds focus (F1)', () => {
     })
 })
 
-test('the file chip, taken away by its own dialog, hands focus to the chart (F2)', async ({
-    page,
-}) => {
+test('the file chip, taken away by its own dialog, hands focus to the chart', async ({ page }) => {
     await boot(page)
     await page.evaluate(async () => {
         const state = await window.editorTest.appImport<
@@ -116,7 +114,7 @@ test('the file chip, taken away by its own dialog, hands focus to the chart (F2)
     await expect(page.locator('.chart-pane').first()).toBeFocused()
 })
 
-test.describe('the Elevation Editor in full screen (F3, F4a)', () => {
+test.describe('the Elevation Editor in full screen', () => {
     test.beforeEach(async ({ page }) => {
         await boot(page)
         await page.setViewportSize({ width: 700, height: 800 })
@@ -183,7 +181,7 @@ test.describe('the Elevation Editor in full screen (F3, F4a)', () => {
     })
 })
 
-test('a context menu closed by a view change gives focus back (F6)', async ({ page }) => {
+test('a context menu closed by a view change gives focus back', async ({ page }) => {
     await boot(page)
     await page.evaluate(() => {
         window.editorTest.settings.mouseSecondaryTool = 'selectContextMenu'
@@ -205,7 +203,7 @@ test('a context menu closed by a view change gives focus back (F6)', async ({ pa
     await expect(page.locator('.chart-pane').first()).toBeFocused()
 })
 
-test.describe('Export (F4b, F7)', () => {
+test.describe('Export', () => {
     const opfs: PlatformOverride = { fileSystemAccess: 'opfs' }
 
     const slowDismissedPicker = (page: Page) =>
@@ -241,9 +239,7 @@ test.describe('Export (F4b, F7)', () => {
         await expect(submit).toBeFocused()
     })
 
-    test('a second Export while the first is opening opens no second dialog (F7)', async ({
-        page,
-    }) => {
+    test('a second Export while the first is opening opens no second dialog', async ({ page }) => {
         await boot(page, opfs)
         // Two presses within the first one's read of the remembered target.
         await page.evaluate(async () => {
@@ -259,7 +255,7 @@ test.describe('Export (F4b, F7)', () => {
     })
 })
 
-test('the toolbar editor, removing the last tool of a group, focuses the group Add button (F5b)', async ({
+test('the toolbar editor, removing the last tool of a group, focuses the group Add button', async ({
     page,
 }) => {
     await boot(page)

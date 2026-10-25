@@ -3,17 +3,14 @@ import test from 'node:test'
 import { ungzip } from 'pako'
 import { serializeAutoSave } from '../../src/history/autoSave/serialize'
 import { journalContent, journalLevelData } from '../../src/local/journal/content'
-import { JOURNAL_VERSION, readJournal, type Journal } from '../../src/local/journal/format'
 import { MemoryStorage } from '../../src/local/journal/store'
-import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 import { toRecoveryFile } from '../../src/local/startup/legacy'
 import { detectFromUa } from '../../src/platform/detect'
 import { storageKey } from '../../src/storage'
-import { editStep, futureFixtureOperation } from '../helpers/historySteps'
 import { goldenChart, stateOf } from '../local/records/charts'
 import { gateSource, loadGate } from './gateHarness'
 
-// The support gate (Part 1 §1.6.10, §1.6.11.3): public/gate.js is plain ES5 that runs before the
+// The support gate: public/gate.js is plain ES5 that runs before the
 // bundle, so it reads the stored formats on its own. These tests run it in Node, with a fake
 // window, and check that what it offers is what the bundle's own readers and writers say.
 
@@ -22,15 +19,6 @@ const source = gateSource
 const gate = loadGate()
 
 const prefix = 'sonolus-next-sekai-editor.'
-
-// The gate names a day and a time in the viewer’s zone, in English.
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const day = (time: number) => `${months[new Date(time).getMonth()]} ${new Date(time).getDate()}`
-const clock = (time: number) => {
-    const date = new Date(time)
-    const two = (n: number) => String(n).padStart(2, '0')
-    return `${day(time)} ${two(date.getHours())}:${two(date.getMinutes())}`
-}
 
 const bytesOf = (data: string | Uint8Array) =>
     typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(data)
@@ -137,7 +125,7 @@ test('the wording follows the platform module’s WebKit rule, on every user age
                 assert.equal(
                     gate.message(win),
                     webkit
-                        ? 'This editor needs Safari 17 or later.'
+                        ? 'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).'
                         : 'This browser is too old for the editor.',
                 )
             }
@@ -190,187 +178,29 @@ test('the gate offers an old auto save as the bundle’s recovery file does, in 
     )
 })
 
-// Journals as the bundle writes them: one ordinary, one written while storage was unavailable.
-const journalOf = (
-    sessionId: string,
-    change: (journal: Journal) => void = () => undefined,
-): Journal => {
-    const journal: Journal = {
-        journalVersion: JOURNAL_VERSION,
-        kind: 'journal',
-        recordsV: RECORDS_V,
-        appVersion: '0.6.0',
-        writtenAt: Date.UTC(2026, 9, 15, 14, 5),
-        sessionId,
-        seq: 812,
-        descriptor: {
-            v: SESSION_V,
-            origin: 'continued',
-            parent: { id: '9e41', uptoSeq: 790 },
-            startedAt: 1_792_120_000_000,
-            edited: true,
-            hasContent: true,
-            chainId: 'chain',
-            docId: 'doc',
-            lineageId: 'lineage',
-            name: 'Coconut (Master)',
-        },
-        ...journalContent(stateOf(goldenChart())),
-        stack: {
-            keep: 8,
-            lastKept: '0123456789abcdef0123456789abcdef',
-            head: true,
-            context: {
-                head: editStep(futureFixtureOperation('gate-journal-head', {}, 'Changed BPM')),
-                headIndex: 1,
-                dropped: [
-                    editStep(futureFixtureOperation('gate-journal-dropped', {}, 'Moved notes')),
-                ],
-                omitted: 0,
-            },
-            index: 8,
-        },
-    }
-    change(journal)
-    return journal
-}
-const ordinary = journalOf('s1')
-const unavailable = journalOf('s2', (journal) => {
-    journal.stack = {
-        keep: 0,
-        head: true,
-        context: {
-            head: editStep(futureFixtureOperation('gate-unavailable-head', {}, 'Added note')),
-            headIndex: 0,
-            dropped: [],
-            omitted: 0,
-        },
-        index: 0,
-    }
-    delete journal.descriptor.name
-    journal.descriptor.sourceName = 'coconut.nsld'
-})
-
-test('the gate offers a journal’s level data, which the bundle’s reader accepts', () => {
-    for (const journal of [ordinary, unavailable]) {
-        const text = JSON.stringify(journal)
-        assert.equal(readJournal(text, journal.sessionId).kind, 'journal')
-        const file = gate.journalFile(text)
-        assert.ok(file)
-        // The same bytes as the journal's own base64, and they decode to its level data.
-        assert.deepEqual(bytesOf(file.data), Buffer.from(journal.levelDataGz, 'base64'))
-        assert.deepEqual(
-            JSON.parse(Buffer.from(ungzip(bytesOf(file.data))).toString()),
-            journalLevelData(journal),
-        )
-        assert.equal(file.type, 'application/octet-stream')
-        assert.equal(file.writtenAt, journal.writtenAt)
-    }
-    assert.equal(gate.journalFile(JSON.stringify(ordinary))?.name, 'Coconut (Master).nsld')
-    assert.equal(gate.journalFile(JSON.stringify(unavailable))?.name, 'coconut.nsld.nsld')
-    const unnamed = journalOf('s3', (journal) => {
-        delete journal.descriptor.name
-    })
-    assert.equal(gate.journalFile(JSON.stringify(unnamed))?.name, 'Untitled.nsld')
-})
-
-test('the gate reads any journalVersion and skips what holds no level data', () => {
-    const later = JSON.stringify({ ...ordinary, journalVersion: 9, kind: 'headCopy', extra: [1] })
-    assert.equal(readJournal(later, 's1').kind, 'later')
-    assert.deepEqual(
-        bytesOf(gate.journalFile(later)?.data ?? ''),
-        Buffer.from(ordinary.levelDataGz, 'base64'),
-    )
-    assert.equal(gate.journalFile('not json'), undefined)
-    assert.equal(gate.journalFile('null'), undefined)
-    assert.equal(gate.journalFile('3'), undefined)
-    assert.equal(
-        gate.journalFile(JSON.stringify({ ...ordinary, levelDataGz: undefined })),
-        undefined,
-    )
-    assert.equal(gate.journalFile(JSON.stringify({ ...ordinary, levelDataGz: '' })), undefined)
-    assert.equal(gate.journalFile(JSON.stringify({ ...ordinary, levelDataGz: 7 })), undefined)
-    assert.equal(gate.journalFile(JSON.stringify({ ...ordinary, levelDataGz: '!!!' })), undefined)
-})
-
 const stored = (items: Record<string, string>) => {
     const storage = new MemoryStorage()
     for (const [key, value] of Object.entries(items)) storage.setItem(prefix + key, value)
     return storage
 }
 
-test('the gate lists the auto save, the unreadable one, the legacy slot and each journal', () => {
+test('the gate lists the auto save and the unreadable one, and never a journal', () => {
     const storage = stored({
         'autoSave.levelData': v1,
         'autoSave.unreadable': 'damaged',
-        legacyRecovery: raw,
-        'journal.s1': JSON.stringify(ordinary),
-        'journal.s2': JSON.stringify(unavailable),
-        'journal.s3': 'not json',
+        'journal.s1': JSON.stringify({ journalVersion: 1, kind: 'journal', levelDataGz: 'H4sI' }),
         settingsOnly: '1',
     })
-    // A key under another prefix is not the editor’s.
-    storage.setItem('other.journal.x', JSON.stringify(ordinary))
     const files = gate.recoveryFiles(storage)
-    // Both journals were written at the same time, so the time tells them apart.
-    const when = clock(ordinary.writtenAt)
     assert.deepEqual(
         files.map((file) => file.label),
-        [
-            'Download Your Last Auto Save',
-            'Download Unreadable Auto Save',
-            'Download Your Last Auto Save',
-            `Download Unsaved Work from ${when}`,
-            `Download Unsaved Work from ${when}`,
-        ],
+        ['Download Your Last Auto Save', 'Download Unreadable Auto Save'],
     )
     assert.deepEqual(
         files.map((file) => file.name),
-        [
-            'coconut.nsld',
-            'Recovery.txt',
-            'Recovery.json',
-            'Coconut (Master).nsld',
-            'coconut.nsld.nsld',
-        ],
+        ['coconut.nsld', 'Recovery.txt'],
     )
-})
-
-test('the legacy slot is not offered twice beside the auto save it copies', () => {
-    const files = gate.recoveryFiles(stored({ 'autoSave.levelData': v1, legacyRecovery: v1 }))
-    assert.equal(files.length, 1)
-    assert.equal(gate.recoveryFiles(stored({ legacyRecovery: v1Unnamed })).length, 1)
     assert.equal(gate.recoveryFiles(stored({})).length, 0)
-})
-
-test('journals are listed newest first, with the time only when a day repeats', () => {
-    const at = (day: number, hour: number) => Date.UTC(2026, 9, day, hour, 30)
-    const earlier = journalOf('a', (journal) => (journal.writtenAt = at(14, 9)))
-    const sameDayEarly = journalOf('b', (journal) => (journal.writtenAt = at(16, 8)))
-    const sameDayLate = journalOf('c', (journal) => (journal.writtenAt = at(16, 9)))
-    const noTime = journalOf('d', (journal) => {
-        delete (journal as Partial<Journal>).writtenAt
-    })
-    const files = gate.recoveryFiles(
-        stored({
-            'journal.a': JSON.stringify(earlier),
-            'journal.b': JSON.stringify(sameDayEarly),
-            'journal.c': JSON.stringify(sameDayLate),
-            'journal.d': JSON.stringify(noTime),
-        }),
-    )
-    const labels = [
-        `Download Unsaved Work from ${clock(at(16, 9))}`,
-        `Download Unsaved Work from ${clock(at(16, 8))}`,
-        `Download Unsaved Work from ${day(at(14, 9))}`,
-        'Download Unsaved Work from an earlier visit',
-    ]
-    // Two of the days can coincide in a far time zone; the order is what matters then.
-    if (new Set([day(at(14, 9)), day(at(16, 8)), day(at(16, 9))]).size === 3)
-        assert.deepEqual(
-            files.map((file) => file.label),
-            labels,
-        )
 })
 
 // A window, document and storage with just what the page does.
@@ -520,7 +350,7 @@ test('an unsupported browser flags the bundle to stop and says why', () => {
     gate.run(iphone)
     assert.equal(
         iphone.document.body.children[0]?.children[0]?.textContent,
-        'This editor needs Safari 17 or later.',
+        'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).',
     )
 })
 
@@ -546,8 +376,7 @@ test('unavailable storage still shows the message', () => {
 
 test('a button downloads its file, the same bytes as the stored work', async () => {
     const storage = stored({
-        legacyRecovery: v1,
-        'journal.s1': JSON.stringify(ordinary),
+        'autoSave.levelData': v1,
         'autoSave.unreadable': 'damaged text',
     })
     const win = noLocks({ storage })
@@ -555,11 +384,7 @@ test('a button downloads its file, the same bytes as the stored work', async () 
     const buttons = buttonsOf(win)
     assert.deepEqual(
         buttons.map((button) => button.textContent),
-        [
-            'Download Unreadable Auto Save',
-            'Download Your Last Auto Save',
-            `Download Unsaved Work from ${day(ordinary.writtenAt)}`,
-        ],
+        ['Download Your Last Auto Save', 'Download Unreadable Auto Save'],
     )
     assert.ok(buttons.every((button) => button.type === 'button'))
     const downloads: { name: string; bytes: Buffer }[] = []
@@ -573,14 +398,13 @@ test('a button downloads its file, the same bytes as the stored work', async () 
     }
     assert.deepEqual(
         downloads.map((download) => download.name),
-        ['Recovery.txt', 'coconut.nsld', 'Coconut (Master).nsld'],
+        ['coconut.nsld', 'Recovery.txt'],
     )
-    assert.equal(downloads[0]?.bytes.toString(), 'damaged text')
-    assert.deepEqual(downloads[1]?.bytes, Buffer.from(JSON.parse(v1).levelData as string, 'base64'))
-    assert.deepEqual(downloads[2]?.bytes, Buffer.from(ordinary.levelDataGz, 'base64'))
+    assert.deepEqual(downloads[0]?.bytes, Buffer.from(JSON.parse(v1).levelData as string, 'base64'))
+    assert.equal(downloads[1]?.bytes.toString(), 'damaged text')
     // The links are removed again, and the object URLs freed later.
     assert.equal(win.document.body.children.filter((child) => child.tag === 'a').length, 0)
     assert.equal(win.revoked.length, 0)
     for (const timer of win.timers) timer.run()
-    assert.equal(win.revoked.length, 3)
+    assert.equal(win.revoked.length, 2)
 })

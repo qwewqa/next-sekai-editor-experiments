@@ -1,4 +1,4 @@
-// English-only constants for the test site (Part 1 §1.11.1, `site.testTitle`); not locale keys.
+// English-only constants for the test site (`site.testTitle`); not locale keys.
 export const testTitlePrefix = 'Test - '
 
 /** The site a build is for: `NSE_SITE=test` for the test site, else production. */

@@ -7,7 +7,7 @@ import type { PinnedSource } from '../nxsp/plan'
 import { NXSP_CAPS } from '../nxsp/read'
 import type { SaveStore } from './bodies'
 
-// The media rule (Part 1 §1.6.11.6, round 11 G3, owner A5): the head's BGM, cover and preview
+// The media rule: the head's BGM, cover and preview
 // audio, each with its bytes when a source holds it (this tab's memory, the media store, or an
 // append source's entry whose `sha256` begins with the head's hash) and as metadata only when none
 // does. Media that has been replaced is never written. A stored Blob is re-hashed: one gone bad is
@@ -22,7 +22,7 @@ export type MediaPlan = {
     input: MediaInput
     /** Written without its bytes: as metadata only. */
     without: boolean
-    /** Over the reader's 1 GB media cap, though held: the "without its …" line (D25). */
+    /** Over the reader's 1 GB media cap, though held: the "without its …" line. */
     tooLarge?: boolean
     /** A stored copy failed its check: damage in storage. */
     damaged?: boolean

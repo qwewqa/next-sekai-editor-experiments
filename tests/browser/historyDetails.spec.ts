@@ -18,7 +18,9 @@ type Options = {
     direction?: 'undo' | 'redo'
 }
 
-const T0 = new Date(2026, 9, 19, 5, 34, 56).getTime()
+// Built in UTC and drawn in UTC, so the times read the same in any zone the tests run in.
+const T0 = Date.UTC(new Date().getUTCFullYear(), 9, 19, 5, 34, 56)
+test.use({ timezoneId: 'UTC' })
 const details = (page: Page) => page.locator('dialog[open]')
 
 const openDetails = async (page: Page, specs: Spec[], options: Options = {}) => {

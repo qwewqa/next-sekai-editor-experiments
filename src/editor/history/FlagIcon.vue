@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The icon of a row's flag (Part 1 §1.4.10.5): Font Awesome's ban for an entry removed to save
+// The icon of a row's flag: Font Awesome's ban for an entry removed to save
 // space, its circle-exclamation for one that could not be read. 14px, in the text colour.
 defineProps<{ kind: 'removed' | 'damaged' }>()
 </script>

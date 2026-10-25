@@ -22,7 +22,7 @@ import { createPlaces, singleFlight } from './hereChecks'
 import { entryId, type Entry, type Filter } from './rows'
 import { hereRange, historyFilter } from './state'
 
-// The chain's entries for the Timeline (Part 1 §1.4.10.5): a page at a time from storage, newest
+// The chain's entries for the Timeline: a page at a time from storage, newest
 // first, with the open session's entries still waiting to be stored on top. After a jump (Go To,
 // End) the loaded run is a window read at the target: older pages load below it as before, and
 // newer ones into the gap between it and Now, until it reaches the newest entries again.
@@ -53,6 +53,11 @@ export const earlierMissing = ref(false)
 export const status = ref<'loading' | 'ready' | 'failed'>('loading')
 /** An older page is being read. */
 export const loadingMore = ref(false)
+/**
+ * The last older page could not be read. The list ends in a line with Try Again, and scrolling
+ * does not read more until it is pressed.
+ */
+export const loadMoreFailed = ref(false)
 /** A newer page is being read into the gap. */
 export const loadingNewer = ref(false)
 let loading: Promise<void> | undefined
@@ -66,6 +71,7 @@ export const sourceGeneration = ref(0)
 const landings = ref(0)
 const replaceSource = () => {
     sourceGeneration.value++
+    loadMoreFailed.value = false
     return ++epoch
 }
 
@@ -154,7 +160,7 @@ export const listedEntries = computed((): Entry[] =>
 
 const isJumped = () => newer.value !== undefined
 
-/** Whether the loaded run reaches Now or is a window after a jump (spec-C invariant 11). */
+/** Whether the loaded run reaches Now or is a window after a jump. */
 const runState = computed(() => (isJumped() ? 'jumped' : 'joined'))
 
 /** After a jump, the entries between Now and the window; undefined while the run reaches Now. */
@@ -262,13 +268,16 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
     if (session.value.sessionId !== id || mark !== epoch || isJumped() || ticket < landed) return
     landed = ticket
     // The run joins the loaded one at the oldest fresh entry already loaded; its older pages follow.
-    const join = !replace && loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
+    // A run that reached the chain's end is taken whole: a fork's parent chain may be gone since.
+    const join =
+        !replace && next && loadedFor.value === id ? joinOf(fresh, stored.value) : undefined
     if (join) {
         stored.value = [...fresh.slice(0, join.at + 1), ...stored.value.slice(join.place + 1)]
     } else {
         stored.value = fresh
         cursor = next
         earlierMissing.value = missing
+        loadMoreFailed.value = false
     }
     loadedFor.value = id
     canLoadMore.value = !!cursor
@@ -289,6 +298,7 @@ export const loadMore = () => {
     if (!worker || !at || loading) return loading
     const id = session.value.sessionId
     const mark = epoch
+    loadMoreFailed.value = false
     loadingMore.value = true
     loading = (async () => {
         try {
@@ -300,7 +310,8 @@ export const loadMore = () => {
             canLoadMore.value = !!cursor
             landings.value++
         } catch {
-            // The next scroll tries again.
+            // The list ends in a line with Try Again; scrolling does not retry by itself.
+            if (session.value.sessionId === id && mark === epoch) loadMoreFailed.value = true
         } finally {
             loading = undefined
             loadingMore.value = false
@@ -422,7 +433,7 @@ export const goToPieces = computed((): readonly TimelinePiece[] | undefined => {
     if (!at) return
     if (at.filter === 'here') return at.index.pieces
     // After a jump the loaded run is a window, so the open session's entries come from it and from
-    // the flusher's waiting entries; spec-C invariant 11 deduplicates them.
+    // the flusher's waiting entries, deduplicated.
     const listed =
         runState.value === 'jumped' ? [...pendingEntries(), ...stored.value] : entries.value
     return composeGoTo(
@@ -619,7 +630,7 @@ export const followEntries = () => {
     })
 }
 
-// --- Edits Here (§1.4.10.5): the entries whose change touches a range of beats, found newest
+// --- Edits Here: the entries whose change touches a range of beats, found newest
 // first by the worker's scan while the filter is on, and stopped when it goes off or the range
 // changes. Entries stored later are checked on their own and join at the top.
 

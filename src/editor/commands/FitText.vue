@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, useTemplateRef, watch } from 'vue'
+import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { cancelFit, queueFit } from '../../modals/form/fitBatch'
 import { createFontContext } from '../../rendering/textRaster'
 
 const props = defineProps<{
@@ -25,10 +26,13 @@ const measure = (element: HTMLElement, size: number) => {
 }
 
 // In an icon column, wide text tightens its spacing, then steps down a size;
-// spacing keeps the glyphs crisp, which a scaled transform would not.
-const fit = () => {
+// spacing keeps the glyphs crisp, which a scaled transform would not. All icons that fit in one
+// update read their fonts first, then all write their sizes (`queueFit`), so a dialog full of
+// icons recalculates styles once, not once per icon.
+let fitted: { size: number; tighten: number } | undefined
+const read = () => {
     const target = element.value
-    if (!target) return
+    if (!target) return false
     let size = props.natural
     let tighten = 0
     if (target.closest('[data-icon-column]')) {
@@ -39,13 +43,24 @@ const fit = () => {
             if (tighten <= candidate * 0.08) break
         }
     }
+    fitted = { size, tighten }
+}
+const write = () => {
+    const target = element.value
+    if (!target || !fitted) return
+    const { size, tighten } = fitted
     target.style.fontSize = `${size}px`
     target.style.letterSpacing = tighten ? `${-tighten}px` : ''
     // The last glyph's spacing is not a gap.
     target.style.marginRight = tighten ? `${tighten}px` : ''
 }
+const owner = {}
+const fit = () => {
+    queueFit(owner, [read, write])
+}
 
 onMounted(fit)
+onBeforeUnmount(() => cancelFit(owner))
 watch(() => `${props.text} ${props.room} ${props.sizes.join()}`, fit)
 </script>
 

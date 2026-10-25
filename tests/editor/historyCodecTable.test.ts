@@ -573,7 +573,7 @@ const table: Record<OperationId, Row> = {
                         { field: 'artists', before: name('A'), after: name('B') },
                         { field: 'author', before: name(''), after: name('C') },
                         { field: 'rating', before: null, after: 12 },
-                        { field: 'tags', added: 2, removed: 1, changed: 1, reordered: true },
+                        { field: 'tags', added: 2, removed: 1, reordered: true },
                         { field: 'description', before: name('x'), after: name('y') },
                         { field: 'cover', before: null, after: name('cover.png') },
                         { field: 'preview', before: name('a.mp3'), after: null },
@@ -602,10 +602,6 @@ const table: Record<OperationId, Row> = {
             [
                 'tags moved only',
                 { changes: [{ field: 'tags', added: 0, removed: 0, reordered: true }] },
-            ],
-            [
-                'tags given another icon',
-                { changes: [{ field: 'tags', added: 0, removed: 0, changed: 2 }] },
             ],
             [
                 'the same cover under another name',
@@ -669,8 +665,8 @@ const table: Record<OperationId, Row> = {
                 { changes: [{ field: 'cover', before: null, after: null }] },
             ],
             [
-                'tags with a zero change count',
-                { changes: [{ field: 'tags', added: 0, removed: 0, changed: 0 }] },
+                'tags with a changed count',
+                { changes: [{ field: 'tags', added: 1, removed: 0, changed: 1 }] },
             ],
             [
                 'tags reordered: false',

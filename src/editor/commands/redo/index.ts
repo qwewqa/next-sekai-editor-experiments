@@ -26,7 +26,7 @@ export const redo: Command = {
                 creating: [],
             }
 
-            // A move waiting for its slot is told when it lands (§1.6.4 #6).
+            // A move waiting for its slot is told when it lands.
             const queued = pendingMoveOutcome()
             if (queued) noticeOnLanding(queued)
             else notifyMove(1, step)

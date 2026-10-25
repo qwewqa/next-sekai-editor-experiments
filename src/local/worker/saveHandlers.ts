@@ -8,8 +8,9 @@ import { estimateSaveSize } from '../save/estimate'
 import { buildSave, setBuiltHookForTests, type SaveSourceFile } from '../save/execute'
 import { readReplaceDecision, readSaveNeeds } from '../save/predicate'
 import type { WorkerContext } from './handlers'
+import type { CallScope } from './rpc'
 
-// The storage worker's methods for the shared writer (Part 1 §1.6.11.6–§1.6.11.7, §1.4.7): a
+// The storage worker's methods for the shared writer: a
 // Save's build, the Save dialogs' size estimate, and the conflict dialog's Replace guard. The
 // pinned files cross the channel as `File` references; the worker inspects and copies through
 // them, and returns the built file, already checked.
@@ -23,7 +24,7 @@ export type BuildSaveRequest = {
     chainId: string
     target: SaveTarget
     options: BuildSaveOptions
-    /** The files pinned at the changed-on-disk check (Part 0 §0.9.1, source integrity). */
+    /** The files pinned at the changed-on-disk check (source integrity). */
     sources?: SaveSourceFile[]
 }
 
@@ -46,10 +47,16 @@ const breakAppend = (plan: WritePlan): WritePlan => ({
 })
 
 export const saveHandlers = (context: WorkerContext) => {
-    const store: SaveStore = {
-        read: (stores, fn) => context.core.read(stores, fn),
-        write: (stores, fn, options) => context.core.write(stores, fn, options),
+    /** The store, with each transaction ticking the call's progress when a scope is given. */
+    const storeOf = (scope?: CallScope): SaveStore => {
+        const progress = scope ? { tick: scope.tick } : {}
+        return {
+            read: (stores, fn) => context.core.read(stores, fn, progress),
+            write: (stores, fn, options) =>
+                context.core.write(stores, fn, { ...options, ...progress }),
+        }
     }
+    const store = storeOf()
     return {
         buildSave: ({ chainId, target, options, sources = [] }: BuildSaveRequest) =>
             buildSave(
@@ -62,18 +69,26 @@ export const saveHandlers = (context: WorkerContext) => {
                 },
                 sources,
             ),
-        estimateSaveSize: ({
-            chainId,
-            sessionId,
-            bgm,
-        }: {
-            chainId: string
-            sessionId?: string
-            bgm?: string
-        }) =>
-            estimateSaveSize(store, chainId, {
+        /**
+         * Each read moves the call's progress: an estimate made while an open's import writes the
+         * chain waits for its transactions, and must not be taken for a hung worker.
+         */
+        estimateSaveSize: (
+            {
+                chainId,
+                sessionId,
+                bgm,
+            }: {
+                chainId: string
+                sessionId?: string
+                bgm?: string
+            },
+            scope?: CallScope,
+        ) =>
+            estimateSaveSize(storeOf(scope), chainId, {
                 ...(sessionId === undefined ? {} : { sessionId }),
                 ...(bgm === undefined ? {} : { bgm }),
+                ...(scope ? { tick: scope.tick } : {}),
             }),
         replaceDecision: ({
             chainId,
@@ -84,12 +99,12 @@ export const saveHandlers = (context: WorkerContext) => {
             projectJson: unknown
             fingerprint: string
         }) => readReplaceDecision(store, chainId, projectJson, fingerprint),
-        /** Whether the chain's own file may hold what storage lacks (R2), from storage alone. */
+        /** Whether the chain's own file may hold what storage lacks, from storage alone. */
         saveNeeds: ({ chainId, media }: { chainId: string; media: string[] }) =>
             readSaveNeeds(store, chainId, media),
 
         /**
-         * Of `hashes`, those the media store holds (§1.6.8.4's "held"): one key read each, so a
+         * Of `hashes`, those the media store holds ("held"): one key read each, so a
          * Save dialog never waits on the chain's cut for its BGM row.
          */
         mediaHeld: (hashes: string[]) =>
@@ -102,7 +117,7 @@ export const saveHandlers = (context: WorkerContext) => {
             }),
 
         /**
-         * Test: a stored chunk gone bad without any build seeing it (SP-1's specs): a byte of a
+         * Test: a stored chunk gone bad without any build seeing it: a byte of a
          * chunk the row's state needs and no other stored row's state does. Resolves its hash, or
          * undefined when every chunk of that state is shared.
          */

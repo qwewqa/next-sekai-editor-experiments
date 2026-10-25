@@ -1,4 +1,4 @@
-// Pinned format constants (§1.6.11.8); `tests/local/formatVersions.test.ts` asserts each.
+// Pinned format constants; `tests/local/formatVersions.test.ts` asserts each.
 
 /** The record format: a root's `v` and journals' `recordsV`. Stands for engine revision 2. */
 export const RECORDS_V = 1

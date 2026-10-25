@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The independent checker for .nxsp v1 files (Part 1 §1.6.11.9).
+"""The independent checker for .nxsp v1 files.
 
 Standard library only, sharing no code with the editor: it reads `fields-v1.json` (a copy that
 `npm run format:gen` writes beside it) and checks what a v1 writer must write: every ZIP header pin,
@@ -45,7 +45,7 @@ HEX16 = re.compile(r"^[0-9a-f]{32}$")
 HEX32 = re.compile(r"^[0-9a-f]{64}$")
 ENTRY_KINDS = {"init", "continue", "edit", "undo", "redo", "restore", "save", "export", "recovered"}
 STORE_PREFIXES = ("history/chunks.bin", "assets/", "bgm/")
-# A segment copied whole from a stored source segment stays stored (§1.6.11.5).
+# A segment copied whole from a stored source segment stays stored.
 EITHER_PREFIXES = ("history/segments/",)
 
 
@@ -276,7 +276,7 @@ def check_refs(form_name, record, ids, path):
             need(x in ids[ref], f"{path}.{field['name']}: {ref} {x} missing")
 
 
-# `revision.savedAt` as a reader takes it (§1.6.11.4): RFC 3339 `date-time` and nothing looser, else absent.
+# `revision.savedAt` as a reader takes it: RFC 3339 `date-time` and nothing looser, else absent.
 
 SAVED_AT = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]+)?(?:Z|([+-])([0-9]{2}):([0-9]{2}))")
 
@@ -415,7 +415,7 @@ def media_form(form, what, prefix, entries_by_name):
 # Stable description carriers are structural; native operation payloads are opaque.
 OP_BYTES = 256 * 1024
 CONTEXT_BYTES = 128 * 1024
-# The limits of an `x` (docs/format-versioning.md, section 3), the same on every carrier: its own byte
+# The limits of an `x` (docs/format-versioning.md), the same on every carrier: its own byte
 # size and its own nesting depth counted from the `x` itself (the object is level 0). No host cap
 # (a step's depth and bytes, the recovery context's budget) counts what is in an `x`.
 EXT_BYTES = OP_BYTES
@@ -448,7 +448,7 @@ def finite_wire_json(value, path, max_bytes=OP_BYTES, max_depth=16):
     need(len(js_json(value).encode("utf-8")) <= max_bytes, f"{path}: description bytes")
 
 
-# The keys of each carrier (§1.6.11.8): `x` is ignorable on every one, and what is in it is never read.
+# The keys of each carrier: `x` is ignorable on every one, and what is in it is never read.
 STEP_KEYS = ("kind", "operation", "x", "recoveryContext")
 ITEM_KEYS = ("kind", "operation", "x")
 CONTEXT_KEYS = ("head", "headIndex", "dropped", "omitted", "x")
@@ -744,8 +744,8 @@ def check_file(path):
     if "tags" in meta:
         need(isinstance(meta["tags"], list) and meta["tags"], "metadata.tags: empty or not an array")
         for i, tag in enumerate(meta["tags"]):
-            keys_within(tag, ["title", "icon"], f"metadata.tags[{i}]")
-            need(is_str(tag.get("title")) and is_str(tag.get("icon", "")), f"metadata.tags[{i}]")
+            keys_within(tag, ["title"], f"metadata.tags[{i}]")
+            need(is_str(tag.get("title")), f"metadata.tags[{i}]")
     for kind in ("cover", "preview"):
         if kind in meta:
             f = media_form(meta[kind], f"metadata.{kind}", f"assets/{kind}.", by_name)
@@ -1031,7 +1031,7 @@ def check_history(project, history, segments, by_name, summary, rev, carriers):
 
 
 def check_complete_from(infos):
-    """A file's `completeFrom` against every given file between that revision and it (§1.6.11.9)."""
+    """A file's `completeFrom` against every given file between that revision and it."""
     for n in infos:
         if n["rows"] is None:
             continue
@@ -1091,7 +1091,7 @@ def show(path, target):
         raise Fail(f"no root, node or chunk {target}")
 
 
-# Reader mode (--read): what a v1 reader opens (§1.5.4, §1.6.11.4, §1.6.11.8), for files a writer
+# Reader mode (--read): what a v1 reader opens, for files a writer
 # doesn't make (an OS re-zip, a partial file). It reports as the editor's reader does: `full`, or
 # `partial` with its reasons, `unreadable`, or `not-project`, checking only what an open checks.
 
@@ -1528,11 +1528,11 @@ def read_project(p):
                         issues.append(("schema", path))
                         continue
                     for i, tag in enumerate(item):
-                        if not isinstance(tag, dict) or not is_str(tag.get("title")) or ("icon" in tag and not is_str(tag["icon"])):
+                        if not isinstance(tag, dict) or not is_str(tag.get("title")):
                             issues.append(("schema", f"{path}[{i}]"))
                             continue
                         for name in tag:
-                            if name not in ("title", "icon"):
+                            if name != "title":
                                 issues.append(("unknown-key", f"{path}[{i}].{name}"))
                 elif key in ("cover", "preview"):
                     media = read_media_form(item, path, issues)

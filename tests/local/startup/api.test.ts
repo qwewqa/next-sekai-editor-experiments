@@ -25,7 +25,7 @@ import {
     restoreSession,
     setSessionContext,
 } from '../../../src/local/startup/api'
-import { AUTO_SAVE_KEY, LEGACY_RECOVERY_KEY } from '../../../src/local/startup/legacy'
+import { AUTO_SAVE_KEY } from '../../../src/local/startup/legacy'
 import { readTabRecord } from '../../../src/local/startup/tab'
 import { createWorld, type World } from '../../../src/local/testing/world'
 import type { State } from '../../../src/state'
@@ -42,7 +42,7 @@ import { load, openSession } from './load'
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 
-// What the UI acts on after startup (Part 1 §1.4.1, §1.4.14) on the test core: Reopen and Restore
+// What the UI acts on after startup on the test core: Reopen and Restore
 // as a Copy, and Settings › Local Data › Recovery's rows.
 
 /** The page's localStorage, under the editor's own prefix, as Local Data reads it. */
@@ -150,7 +150,6 @@ test('Local Data’s rows: Discard removes a row only while it holds what was li
     local.setItem(storageKey(journalKey), text)
     const slot = autoSaveText(widen(a, 2))
     local.setItem(storageKey(AUTO_SAVE_KEY), slot)
-    local.setItem(storageKey(LEGACY_RECOVERY_KEY), slot)
 
     const loaded = await load(world, 'tab', storage, { core: { flags: { noStorage: true } } })
     setSessionContext(loaded.deps, loaded.recovery)
@@ -159,7 +158,7 @@ test('Local Data’s rows: Discard removes a row only while it holds what was li
     assert.equal(unreadable, false)
     assert.deepEqual(
         items.map((item) => item.kind),
-        ['journal', 'autoSave', 'legacy'],
+        ['journal', 'autoSave'],
     )
     const [journal, autoSave] = items
     assert.ok(journal?.kind === 'journal' && autoSave?.kind === 'autoSave')

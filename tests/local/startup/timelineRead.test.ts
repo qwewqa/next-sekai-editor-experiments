@@ -12,7 +12,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { beginIn, continueIn, readOpen } from './harness'
 
-// The History panel's Timeline read (Part 1 §1.4.10.5): a session's entries newest first, a page
+// The History panel's Timeline read: a session's entries newest first, a page
 // at a time, on into the session it continued at the entry it continued from.
 
 const read = (page: Page, request: Parameters<typeof readTimeline>[1]) =>
@@ -419,7 +419,7 @@ test('a cycle in damaged parent links ends the path', async () => {
     )
 })
 
-// --- Damaged rows (§1.4.10.5): a `kept: false` row whose root reaches a hash in the chain's
+// --- Damaged rows: a `kept: false` row whose root reaches a hash in the chain's
 // `badChunks` through the stored nodes' `refs` reads damaged, also after a reload.
 
 test('a kept: false row that reaches a bad chunk reads damaged; one that does not reads removed', async () => {

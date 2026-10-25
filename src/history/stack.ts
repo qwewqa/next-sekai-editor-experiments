@@ -2,6 +2,7 @@ import { computed, ref, shallowReactive, shallowRef, watch, type Ref } from 'vue
 import { recordError } from '../diagnostics'
 import type { State } from '../state'
 import { emitHistoryAction } from './actions'
+import { cappedSpan, STACK_CAP } from './cap'
 import { freezePublished } from './freeze'
 import {
     captureOperation,
@@ -18,8 +19,8 @@ export type HistoryEntry = {
 }
 
 /**
- * A slot of the undo stack (Part 1 §1.3.7): a state, or for a slot restored from storage a
- * snapshot ref whose state is built when Undo or Redo reaches it (§1.6.4 #6). The slot at the
+ * A slot of the undo stack: a state, or for a slot restored from storage a
+ * snapshot ref whose state is built when Undo or Redo reaches it. The slot at the
  * index is always loaded.
  */
 type Slot = {
@@ -34,12 +35,15 @@ const index = ref(0)
 
 const states = shallowReactive<Slot[]>([])
 
-/** A state shown in place of the current one, read-only, while viewing history. */
-export const peek = shallowRef<{ source: unknown; state: State }>()
+/**
+ * A state shown in place of the current one, read-only, while viewing history. With `audio:
+ * 'none'` it plays without BGM (a session's peek); else playback keeps the live audio.
+ */
+export const peek = shallowRef<{ source: unknown; state: State; audio?: 'live' | 'none' }>()
 
 export const isPeeking = computed(() => !!peek.value)
 
-/** Undo (negative) or Redo steps pressed while their slot loads, coalesced (§1.6.4 #6). */
+/** Undo (negative) or Redo steps pressed while their slot loads, coalesced. */
 const pendingMove = ref(0)
 
 export const canUndo = computed(() => index.value + pendingMove.value > 0)
@@ -47,8 +51,8 @@ export const canUndo = computed(() => index.value + pendingMove.value > 0)
 export const canRedo = computed(() => index.value + pendingMove.value < states.length - 1)
 
 /**
- * Whether steps before the stack's first slot are in History: a stored stack is capped
- * (§1.6.4 #6), so Undo past it after a reload says so.
+ * Whether steps before the stack's first slot are in History: the stack keeps at most
+ * `STACK_CAP` slots, so Undo past them shows a notice.
  */
 export const earlierSteps = ref(false)
 
@@ -118,7 +122,7 @@ export const setSlotLoader = (load: typeof loader) => {
 export const slotLoading = shallowRef(false)
 
 const BUSY_AFTER_MS = 150
-/** Restored slots kept loaded besides the head and its neighbours (§1.6.4 #5). */
+/** Restored slots kept loaded besides the head and its neighbours. */
 const RESTORED_LRU = 8
 
 /** Counts cancellations, so a load that finishes after one does nothing. */
@@ -163,7 +167,7 @@ const endBatch = (outcome: MoveOutcome) => {
  */
 export const pendingMoveOutcome = () => requested
 
-/** Any edit, or entering peek, cancels pending moves (§1.6.4 #6). */
+/** Any edit, or entering peek, cancels pending moves. */
 export const cancelPendingMoves = () => {
     if (!pendingMove.value && !batch) return
     pendingMove.value = 0
@@ -244,7 +248,7 @@ const step = (direction: -1 | 1): UndoableStep => {
     return crossed
 }
 
-/** Prefetches the head's neighbours when idle (§1.6.4 #6). */
+/** Prefetches the head's neighbours when idle. */
 const prefetch = () => {
     const at = generation
     const run = () => {
@@ -364,8 +368,8 @@ const sameSelection = (a: State, b: State) =>
         a.selectedEntities.every((entity, i) => entity === b.selectedEntities[i]))
 
 /**
- * Pushes a state: an edit, or Restore of a History entry (§1.4.10.5), which leaves the peek first.
- * An edit that leaves the chart as it was is no step (owner, 2026-10-19): the chart is compared
+ * Pushes a state: an edit, or Restore of a History entry, which leaves the peek first.
+ * An edit that leaves the chart as it was is no step: the chart is compared
  * as its stored records, so it holds however the entities were rebuilt. A selection it changed
  * still takes effect, as every selection change does, without a step. Returns whether a step
  * was pushed, so a caller tells the user of an edit only when there was one.
@@ -393,12 +397,20 @@ export const pushState = (
         step,
         state: publish(state),
     })
-    // The redo tail is gone: its loaded states go with it, not held until later loads push them out.
+    // Past the cap the oldest slot is dropped; its step stays in the Timeline. The head is the
+    // new slot, so it is never a dropped one.
+    const over = Math.max(0, states.length - STACK_CAP)
+    if (over) {
+        dropped.push(...states.splice(0, over))
+        earlierSteps.value = true
+    }
+    // The redo tail and the dropped slots are gone: their loaded states go with them, not held
+    // until later loads push them out.
     for (const slot of dropped) {
         const at = loadedRestored.indexOf(slot)
         if (at !== -1) loadedRestored.splice(at, 1)
     }
-    index.value++
+    index.value += 1 - over
     emitHistoryAction({ kind, state, step, isDirty: true })
     return true
 }
@@ -411,7 +423,7 @@ export const stackMoveRequestGeneration: Readonly<Ref<number>> = computed(
 
 /**
  * Undoes a step: synchronously when the slot is loaded, as callers and tests expect; otherwise
- * the move is queued while the slot loads, and further presses coalesce (§1.6.4 #6).
+ * the move is queued while the slot loads, and further presses coalesce.
  */
 export const undoState = () => {
     requested = undefined
@@ -436,7 +448,7 @@ export const redoState = () => {
     return current.value.step
 }
 
-/** Records a file event without touching the stack: a `save` or `export` entry (§1.3.8). */
+/** Records a file event without touching the stack: a `save` or `export` entry. */
 export const markFileEvent = (
     kind: 'save' | 'export',
     operation: NativeOperation,
@@ -476,9 +488,10 @@ export const resetStates = (entry: HistoryEntry, origin: 'new' | 'import' = 'new
 export type RestoredSlot = { snapshot?: Uint8Array; step: UndoableStep; isDirty: boolean }
 
 /**
- * Replaces the stack with a stored one, its slots lazy and the head given loaded (§1.3.8: a
- * reload, a new visit, an open, Restore Session). Nothing is emitted: the storage side starts
- * the session itself, with the entry each of those appends.
+ * Replaces the stack with a stored one, its slots lazy and the head given loaded (a
+ * reload, a new visit, an open, Restore Session). A stack over the cap is cut to it around the
+ * index. Nothing is emitted: the storage side starts the session itself, with the entry each of
+ * those appends.
  */
 export const restoreStates = (
     slots: readonly RestoredSlot[],
@@ -486,25 +499,28 @@ export const restoreStates = (
     head: State,
     earlier = false,
 ) => {
-    const slot = slots[at]
-    if (!slot) throw new RangeError('The index is outside the stack')
-    const restored: Slot[] = slots.map(({ snapshot, step, isDirty }) => ({
-        isDirty,
-        step: captureStep(step),
-        ...(snapshot ? { snapshot: snapshot.slice() } : {}),
-    }))
+    if (!slots[at]) throw new RangeError('The index is outside the stack')
+    const kept = cappedSpan(slots.length, at)
+    const restored: Slot[] = slots
+        .slice(kept.base, kept.base + kept.length)
+        .map(({ snapshot, step, isDirty }) => ({
+            isDirty,
+            step: captureStep(step),
+            ...(snapshot ? { snapshot: snapshot.slice() } : {}),
+        }))
+    const headAt = at - kept.base
     stacks++
     cancelPendingMoves()
-    earlierSteps.value = earlier
+    earlierSteps.value = earlier || kept.base > 0
     peek.value = undefined
     loadedRestored.length = 0
     // The head is loaded before anything can read it: watchers run as the stack changes.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    restored[at]!.state = publish(head)
+    restored[headAt]!.state = publish(head)
     states.splice(0, states.length, ...restored)
-    index.value = at
+    index.value = headAt
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    if (restored[at]!.snapshot) evictRestored(restored[at]!)
+    if (restored[headAt]!.snapshot) evictRestored(restored[headAt]!)
     prefetch()
 }
 

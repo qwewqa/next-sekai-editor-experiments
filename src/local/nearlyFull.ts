@@ -1,6 +1,6 @@
 import { HIGH_SHARE, type Estimate } from './pressure'
 
-// "Browser storage is almost full." (owner, 2026-10-23): at load, after GC and the cleanup under
+// "Browser storage is almost full.": at load, after GC and the cleanup under
 // pressure, usage still above the cleanup threshold gets one load notice pointing at Local Data,
 // where Delete Sessions… is. At most once per calendar day, so a reload does not repeat it, and only
 // at load: on the start-up card or its quick toast, within 12 s and before any edit.

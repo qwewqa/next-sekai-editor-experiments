@@ -14,7 +14,7 @@ import { openPage, testId, workerCore } from '../flush/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 
-// The transition check and the lock-holder assertion (spec-A §2, I-1 to I-5): each rule is shown
+// The transition check and the lock-holder assertion: each rule is shown
 // to report on a made-up commit, and the world's hook is shown to see a real writer that holds no
 // lock.
 
@@ -101,7 +101,7 @@ test('rows above lastSeq by the page that holds the lock are clean', () => {
     assert.deepEqual(transitionViolations(report), [])
 })
 
-test('rows created without the page holding the session’s lock are named (I-1)', () => {
+test('rows created without the page holding the session’s lock are named', () => {
     const report = commit(
         base(),
         { entries: [entry('S', 3)], sessions: [session('S', { lastSeq: 3 })] },
@@ -135,8 +135,8 @@ test('the transaction that creates the session, or an import’s batch, needs no
     assert.ok(transitionViolations(plain).some((line) => /lock:/.test(line)))
 })
 
-test('rows at or below lastSeq, or a lastSeq that is not the highest created, are named (I-2)', () => {
-    // A row filling a hole below lastSeq (the late Save of AR-1 and AR-2).
+test('rows at or below lastSeq, or a lastSeq that is not the highest created, are named', () => {
+    // A row filling a hole below lastSeq (a late Save).
     const low = commit(
         { ...base(), entries: [entry('S', 1)] },
         { entries: [entry('S', 2, { kind: 'save' })] },
@@ -162,7 +162,7 @@ test('rows at or below lastSeq, or a lastSeq that is not the highest created, ar
     )
 })
 
-test('a session that is not its chain’s head changes only by kept flips (I-5)', () => {
+test('a session that is not its chain’s head changes only by kept flips', () => {
     const frozen = {
         sessions: [session('S'), session('C', { chainId: 'c', lastSeq: 1 })],
         entries: [entry('S', 1), entry('S', 2)],
@@ -191,7 +191,7 @@ test('a session that is not its chain’s head changes only by kept flips (I-5)'
     assert.deepEqual(transitionViolations(moved), [])
 })
 
-test('a binding is recorded only while no session of the chain is importing (I-4)', () => {
+test('a binding is recorded only while no session of the chain is importing', () => {
     const importing = {
         sessions: [session('S', { importPending: true, origin: 'nxsp' })],
         chains: [chain('S', { revision: { id: 'r1' } })],
@@ -282,7 +282,7 @@ test('a worker’s transaction is judged by the locks of the page that owns it',
     }
 })
 
-test('an opened session’s import fills at or below the file’s last seq; the page’s own rows keep every rule (M3)', () => {
+test('an opened session’s import fills at or below the file’s last seq; the page’s own rows keep every rule', () => {
     const open = session('F', { origin: 'nxsp', importPending: true, lastSeq: 7, entryCount: 3 })
     const state = {
         sessions: [open],
@@ -328,7 +328,7 @@ test('an opened session’s import fills at or below the file’s last seq; the 
     assert.deepEqual(transitionViolations(unlocked, {}), [])
 })
 
-test('an opened session that is not the head keeps I-5 but for the import’s fill (M3)', () => {
+test('an opened session that is not the head keeps its rows but for the import’s fill', () => {
     const open = session('F', { origin: 'nxsp', importPending: true, lastSeq: 7, entryCount: 3 })
     const state = {
         sessions: [open, session('K', { chainId: 'c', lastSeq: 1 })],

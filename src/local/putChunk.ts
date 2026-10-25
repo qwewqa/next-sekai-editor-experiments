@@ -4,7 +4,7 @@ import { hashKey } from './db'
 import type { KvTx } from './kv/types'
 import { isChunkRowIntact, storedDay, type ChunkRow } from './records/rows'
 
-// The one `chunks` writer (Part 1 §1.6.11.2): the flush, journal replay, the migration, the
+// The one `chunks` writer: the flush, journal replay, the migration, the
 // `.nxsp` import and Check's repair all put chunks through here. It takes only a `VerifiedChunk`,
 // which only `verifyChunk` makes, so no caller can skip the check; inside the transaction it
 // does only synchronous work and its own requests.

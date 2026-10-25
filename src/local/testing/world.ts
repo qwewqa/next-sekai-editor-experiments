@@ -11,7 +11,7 @@ import type { SessionOptions } from './invariants'
 import { FakeLockManager } from './locks'
 import { transitionViolations, type CreationContext, type TransitionChecks } from './transitions'
 
-// The test core's world (§1.6.1, §1.11's test notes): one browser profile with tabs. Each tab has
+// The test core's world: one browser profile with tabs. Each tab has
 // its own connections, lock client and channels, and every delivery to it is a task of its actor
 // on the seeded scheduler, so killing a tab drops its pending work, aborts its open transactions
 // and releases its locks. A tab's storage worker is an actor of its own, which dies with the page

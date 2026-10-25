@@ -534,7 +534,7 @@
       "import": {
         "damaged": "이 파일이 손상되었거나 Sonolus 패키지가 아닙니다.",
         "fileUnreadable": "이 파일을 읽을 수 없습니다.",
-        "zip64": "이 파일은 ZIP64를 사용하며 편집기에서 읽을 수 없습니다.",
+        "zip64": "편집기는 ZIP64 파일을 읽을 수 없습니다.",
         "fileTooLarge": "이 파일이 {0}보다 큽니다.",
         "tooManyEntries": "이 파일에 항목이 {0}개를 넘습니다.",
         "badName": "이 파일에 허용되지 않는 항목 이름이 있습니다.",
@@ -569,8 +569,8 @@
       "noneFound": "항목을 찾을 수 없습니다",
       "server": {
         "unreachable": "이 서버에 연결할 수 없습니다. 주소를 확인하거나 나중에 다시 시도하세요.",
-        "auth": "이 서버는 로그인이 필요하지만 편집기는 로그인을 지원하지 않습니다.",
-        "insecure": "이 서버는 http를 사용하며, 편집기는 이를 불러올 수 없습니다.",
+        "auth": "편집기는 로그인이 필요한 서버를 사용할 수 없습니다.",
+        "insecure": "편집기는 http 서버를 사용할 수 없습니다.",
         "checksum": "이 항목의 체크섬이 서버가 보낸 내용과 일치하지 않습니다.",
         "notFound": "이 서버에 해당 항목이 없습니다.",
         "invalid": "이 주소는 Sonolus 서버가 아닙니다.",
@@ -769,7 +769,7 @@
     },
     "altN": "Alt+N (macOS에서는 Option+N)을 누르면 최신 알림으로 포커스가 이동합니다. 이어서 Esc를 누르면 닫힙니다.",
     "shiftF10": "Shift+F10 또는 메뉴 키를 누르면 포커스가 있는 항목의 메뉴가 열립니다.",
-    "recentSessions": "파일로 저장하지 않은 작업은 기록 › 최근 세션에 있습니다.",
+    "recentSessions": "저장되지 않은 작업은 기록 › 최근 세션에 있습니다.",
     "fileTitle": "파일",
     "moveBetweenDevices": "작업을 다른 기기로 옮기려면 .nxsp 파일로 저장한 다음 그 기기에서 파일을 여세요.",
     "crswap": "저장 중 충돌이 발생하면 프로젝트 파일 옆에 .crswap 파일이 남을 수 있습니다. 삭제해도 안전합니다."
@@ -807,6 +807,8 @@
     "resetSettingsHint": "키보드 단축키는 유지하고 설정을 기본값으로 복원합니다.",
     "resetKeybinds": "단축키 초기화",
     "resetSettingsMessage": "키보드 단축키는 유지하고 설정을 기본값으로 복원할까요?",
+    "resetSettingsHintStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원합니다.",
+    "resetSettingsMessageStatistics": "키보드 단축키와 사용 통계 보내기 설정은 유지하고 설정을 기본값으로 복원할까요?",
     "resetKeybindsMessage": "키보드 단축키를 기본값으로 복원할까요?",
     "editor": {
       "title": "편집기",
@@ -898,6 +900,7 @@
       "highlightSelection": "선택 항목 강조",
       "showHitboxes": "판정 범위 표시",
       "antialias": "안티앨리어싱",
+      "parallelRendering": "병렬 렌더링",
       "transport": {
         "title": "재생 컨트롤",
         "auto": "자동",
@@ -916,6 +919,7 @@
       "title": "도구 모음",
       "quickSwitch": "빠른 전환",
       "add": "도구 추가",
+      "remove": "\"{0}\"을(를) 도구 모음에서 제거",
       "modal": {
         "title": "도구 선택"
       }
@@ -943,6 +947,9 @@
       "license": "라이선스",
       "notices": "타사 고지 사항",
       "privacy": "개인정보 보호",
+      "usageStatistics": "사용 통계 보내기",
+      "usageStatisticsNote": "사용하는 도구, 주요 설정, 파일 유형과 크기, 작업에 걸리는 시간입니다. 개인정보 보호를 참조하세요.",
+      "usageStatisticsSignal": "이 브라우저가 Do Not Track 또는 Global Privacy Control을 보내므로 기본적으로 비활성화되어 있습니다.",
       "diagnostics": "진단 정보 복사…",
       "diagnosticsTitle": "진단 정보",
       "diagnosticsNote": "진단 정보에 파일 이름이나 폴더 이름이 포함될 수 있습니다. 공유하기 전에 확인하세요.",
@@ -953,6 +960,7 @@
     "localData": {
       "title": "로컬 데이터",
       "recoveryHeading": "복구",
+      "startupNoticesHeading": "시작 알림",
       "discard": "버리기…",
       "discardConfirm": "버리기",
       "cannotOpen": "(이 버전에서는 열 수 없음)",
@@ -961,16 +969,15 @@
       "recovery": {
         "journal": "이전 방문의 저장되지 않은 작업, {0} · {1}",
         "journalUndated": "이전 방문의 저장되지 않은 작업 · {0}",
-        "legacy": "이전 버전의 복구 사본 · {0}",
         "autoSave": "이전 자동 저장 · {0}",
         "unreadable": "읽을 수 없는 복구된 작업, {0} · {1}",
         "listFailed": "복구된 작업을 읽지 못했습니다",
-        "downloadFailed": "복구된 작업을 다운로드하지 못했습니다.",
-        "atLoad": "시작 알림"
+        "downloadFailed": "복구된 작업을 다운로드하지 못했습니다."
       },
       "openHistory": "기록 열기",
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
       "exportRaw": "원시 데이터 내보내기…",
+      "exportRawTitle": "원시 데이터 내보내기",
       "exportRawName": "{0} 원시 데이터 {1}.zip",
       "storageHeading": "저장 공간",
       "stored": "이 브라우저에 보관됨: {0} / 약 {1}",
@@ -978,10 +985,10 @@
       "deleteTitle": "세션 삭제",
       "lastEdited": "마지막 편집 후 {0}일 넘게 지남",
       "all": "전체",
-      "includeNotSaved": "파일에 저장되지 않은 작업 포함",
+      "includeNotSaved": "저장되지 않은 작업 포함",
       "deleteNext": "삭제…",
       "deleteConfirm": "세션 {0}개를 삭제할까요?",
-      "notSaved": "파일에 저장되지 않은 세션 {0}개: {1}.",
+      "notSaved": "저장되지 않은 변경 사항이 있는 세션 {0}개: {1}.",
       "namesMore": "{0} 외 {1}개",
       "newer": "더 새로운 버전의 편집기가 필요한 세션이 포함되어 있습니다.",
       "deleting": "삭제하는 중…",
@@ -1196,24 +1203,24 @@
     "updated": "업데이트됨: 버전 {0}",
     "whatsNew": "새로운 기능",
     "upgradeBlocked": "보관된 작업을 열려면 다른 {0} 탭을 닫아 주세요.",
-    "olderVersion": "이 브라우저에서 더 새로운 버전의 편집기가 열렸습니다. 새로고침하거나 작업을 파일로 저장해 주세요.",
+    "olderVersion": "이 브라우저에서 더 새로운 버전의 편집기가 열렸습니다. 새로고침하거나, 작업을 남기려면 저장해 주세요.",
     "tryAgain": "다시 시도",
     "continued": "{1}의 \"{0}\" 작업을 이어서 열었습니다.",
     "continuedUntitled": "{0}의 세션을 이어서 열었습니다.",
     "continuedUndated": "\"{0}\" 작업을 이어서 열었습니다.",
     "cleared": "이전 방문의 작업이 없습니다. 브라우저가 이 사이트의 저장 공간을 지웠습니다.",
     "inAppBrowser": "앱 내 브라우저로 보입니다. 일부 기능이 작동하지 않을 수 있으며, 보관된 작업이 삭제될 수 있습니다. 작업을 남기려면 이 페이지를 브라우저에서 열어 주세요.",
-    "journalKept": "\"{0}\"의 변경 사항을 적용할 수 없어 별도의 세션으로 보관했습니다.",
+    "journalKept": "\"{0}\"의 복구된 변경 사항을 별도의 세션으로 보관했습니다.",
     "fallback": "이전 방문의 저장되지 않은 작업을 복구했습니다.",
     "fallbackLocal": "이전 방문의 저장되지 않은 작업이 로컬 데이터에 있습니다.",
     "migrationFailed": "이전 자동 저장을 복원할 수 없습니다.",
-    "autoSave": "자동 저장의 \"{0}\" 작업을 이어서 열었습니다.",
+    "autoSave": "이전 자동 저장의 \"{0}\" 작업을 이어서 열었습니다.",
     "journal": "\"{0}\"의 마지막 변경 사항을 복구했습니다.",
     "journalLater": "복구된 변경 사항에는 더 새로운 버전의 편집기가 필요합니다.",
     "openElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 여기서 복원하지 않았습니다.",
     "restoreAsCopy": "사본으로 복원",
     "sessionDeleted": "이 세션은 다른 탭이나 창에서 삭제되었습니다.",
-    "autoSaveKept": "자동 저장의 \"{0}\" 작업을 별도의 세션으로 보관했습니다.",
+    "autoSaveKept": "이전 자동 저장의 \"{0}\" 작업을 별도의 세션으로 보관했습니다.",
     "autoSaveOpened": "이전 자동 저장을 열었습니다.",
     "journalFailed": "복구된 변경 사항을 보관할 수 없습니다. 사본이 로컬 데이터에 있습니다.",
     "storageNearlyFull": "브라우저 저장 공간이 거의 가득 찼습니다.",
@@ -1237,14 +1244,14 @@
       "readOnly": "더 새로운 버전의 편집기가 열렸습니다.",
       "upgrading": "다른 탭에 더 새로운 버전의 편집기가 열려 있습니다."
     },
-    "unavailable": "편집기가 이 브라우저에 변경 사항을 보관할 수 없습니다. 작업을 남기려면 파일로 저장해 주세요.",
-    "private": "비공개 창이라면 여기에 보관된 모든 내용은 창을 닫을 때 사라집니다. 작업을 남기려면 파일로 저장해 주세요.",
-    "inAppBrowser": "앱 내 브라우저로 보이며, 보관된 작업이 삭제될 수 있습니다. 작업을 남기려면 이 페이지를 브라우저에서 열어 주세요.",
-    "ios": "이 브라우저는 7일 동안 방문하지 않으면 보관된 작업을 삭제합니다. 작업을 남기려면 파일로 저장해 주세요.",
-    "safari": "Safari는 7일 동안 방문하지 않으면 보관된 작업을 삭제합니다. 작업을 남기려면 파일로 저장해 주세요.",
-    "installedWebkit": "최근 세션은 이 아이콘을 홈 화면에서 삭제할 때까지 여기에 보관됩니다. 작업을 남기려면 파일로 저장해 주세요.",
-    "persisted": "최근 세션은 데이터를 지우지 않는 한 이 브라우저에 보관됩니다. 작업을 남기려면 파일로 저장해 주세요.",
-    "default": "최근 세션은 이 브라우저에 보관되며, 공간이 부족해지면 브라우저가 지울 수 있습니다. 작업을 남기려면 파일로 저장해 주세요."
+    "unavailable": "편집기가 이 브라우저에 변경 사항을 보관할 수 없습니다. 작업을 남기려면 저장해 주세요.",
+    "private": "비공개 창이라면 여기에 보관된 모든 내용은 창을 닫을 때 사라집니다. 작업을 남기려면 저장해 주세요.",
+    "inAppBrowser": "앱 내 브라우저로 보입니다. 보관된 작업이 삭제될 수 있습니다. 작업을 남기려면 이 페이지를 브라우저에서 열어 주세요.",
+    "ios": "이 브라우저는 7일 동안 방문하지 않으면 보관된 작업을 삭제합니다. 작업을 남기려면 저장해 주세요.",
+    "safari": "Safari는 7일 동안 방문하지 않으면 보관된 작업을 삭제합니다. 작업을 남기려면 저장해 주세요.",
+    "installedWebkit": "최근 세션은 이 앱을 삭제할 때까지 여기에 보관됩니다. 작업을 남기려면 저장해 주세요.",
+    "persisted": "최근 세션은 데이터를 지우지 않는 한 이 브라우저에 보관됩니다. 작업을 남기려면 저장해 주세요.",
+    "default": "최근 세션은 공간이 부족해지지 않는 한 이 브라우저에 보관됩니다. 작업을 남기려면 저장해 주세요."
   },
   "player": {
     "started": "플레이 시작됨",
@@ -1377,7 +1384,7 @@
       "thisTab": "이 탭",
       "elsewhere": "다른 탭",
       "actions": "\"{0}\" 추가 작업",
-      "saveToFile": "파일로 저장…",
+      "saveToFile": "저장…",
       "delete": "삭제",
       "openReason": "다른 탭이나 창에서 열려 있습니다."
     },
@@ -1386,7 +1393,7 @@
       "named": "단계 세부 정보: {0}",
       "action": "세부 정보",
       "unsupported": "이 편집기는 이 단계의 세부 정보를 읽을 수 없습니다.",
-      "newer": "이 단계는 최신 버전의 편집기에서 기록되었습니다.",
+      "newer": "이 단계는 더 새로운 버전의 편집기에서 기록되었습니다.",
       "textShortened": "텍스트를 줄여 표시함",
       "varying": "값이 다름",
       "changed": "변경",
@@ -1932,7 +1939,8 @@
     "resize": {
       "left": "좌측 패널 크기 조절",
       "right": "우측 패널 크기 조절",
-      "top": "상단 패널 크기 조절"
+      "top": "상단 패널 크기 조절",
+      "minimap": "미니맵 크기 조절"
     },
     "resizeTiles": "{0} 및 {1} 크기 조절",
     "dock": {
@@ -2068,7 +2076,7 @@
   "peek": {
     "loadingShort": "불러오는 중…",
     "unavailableShort": "불러올 수 없음",
-    "settingsChanged": "설정 변경",
+    "settingsChanged": "속성 변경",
     "initialState": "초기 상태",
     "unavailable": "변경 사항을 불러올 수 없음",
     "loadingChanges": "변경 사항 불러오는 중…",
@@ -2100,6 +2108,7 @@
     "notFound": "\"{0}\"을(를) 찾을 수 없습니다.",
     "downloadStarted": "다운로드 시작됨: {0} · {1}",
     "preparing": "{0} 준비 중… {1}",
+    "ready": "준비됨: {0} · {1}",
     "download": "다운로드",
     "buildFailed": "\"{0}\"을(를) 준비하지 못했습니다.",
     "readFailed": "\"{0}\"을(를) 읽지 못했습니다.",
@@ -2109,7 +2118,7 @@
     "noSpace": "{0}을(를) 쓸 공간이 부족합니다.",
     "writeFailed": "\"{0}\"에 쓰지 못했습니다.",
     "notPutBack": "\"{0}\"이(가) 비워졌으며 내용을 복원하지 못했습니다.",
-    "openedContentGone": "\"{0}\"에 열었을 때의 내용이 더 이상 없습니다.",
+    "openedContentGone": "\"{0}\"에 이전 내용이 더 이상 없습니다.",
     "replacedContentGone": "\"{0}\"에 이전 내용이 더 이상 없습니다.",
     "title": "프로젝트 파일 저장",
     "titleAs": "다른 이름으로 저장",
@@ -2122,6 +2131,7 @@
     "notProject": "\"{0}\"은(는) 프로젝트 파일이 아닙니다.",
     "notKept": "저장되지 않았습니다. \"{0}\"을(를) 완전히 읽지 못했습니다.",
     "notKeptSafe": "저장되지 않았습니다. 안전 모드에서는 파일을 교체할 수 없습니다.",
+    "notKeptFull": "저장되지 않았습니다. 브라우저 저장 공간이 가득 찼습니다. 설정 › 로컬 데이터에서 세션을 삭제한 다음 다시 저장하세요.",
     "saved": "{0}에 저장됨",
     "savedWithoutBgmLarge": "{0}에 배경음 없이 저장됨",
     "savedWithoutCoverLarge": "{0}에 커버 없이 저장됨",
@@ -2154,8 +2164,8 @@
   "check": {
     "command": "파일 및 기록 검사…",
     "title": "파일 및 기록 검사",
-    "checkingFile": "{0} 검사 중… {1}%",
-    "checkingStored": "보관된 기록 검사 중… {0}%",
+    "checkingFile": "{0} 검사 중…",
+    "checkingStored": "보관된 기록 검사 중…",
     "changed": "\"{0}\"이(가) 검사 중에 변경되었습니다. 다시 시도하세요.",
     "stillOpening": "\"{0}\"을(를) 아직 여는 중입니다. 다시 시도하세요.",
     "noDamage": "손상이 발견되지 않았습니다.",
@@ -2189,7 +2199,7 @@
     "notDescendant": "이 버전은 사용자의 버전에서 만들어지지 않았습니다({0}).",
     "separate": "별도 파일로 저장",
     "openOther": "다른 버전 열기",
-    "openOtherNote": "변경 사항은 저장되지 않은 채로 남습니다.",
+    "openOtherNote": "변경 사항은 최근 세션에 남습니다.",
     "replaceNote": "디스크의 버전은 최근 세션에 보관됩니다.",
     "keptName": "{0} ({1} 교체됨)",
     "replaceNewer": "더 새로운 버전의 {0}에서 만들어졌습니다.",
@@ -2207,7 +2217,6 @@
   "notice": {
     "useOpenFile": "파일을 열려면 열기를 사용하세요.",
     "sameFileElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있어 이것은 별도의 사본입니다.",
-    "sameFileMaybeElsewhere": "\"{0}\" 작업이 다른 탭이나 창에서 열려 있을 수 있어 이것은 별도의 사본입니다.",
     "storageUnavailable": "편집기가 이 브라우저의 저장 공간에 접근하지 못했습니다. 다시 시도하세요.",
     "chooseAudio": "오디오 선택…",
     "bgmDiffers": "이 파일은 원래 배경음 \"{0}\"과(와) 다른 파일입니다.",
@@ -2222,7 +2231,7 @@
     "peekFailed": "이 단계를 볼 수 없음",
     "peekSessionFailed": "이 세션을 볼 수 없음",
     "openHistory": "기록 열기",
-    "earlierInHistory": "이전 단계는 기록에 있습니다",
+    "earlierInHistory": "타임라인의 이전 단계는 기록에 있습니다",
     "savedCurrent": "현재 버전을 {0}에 저장함"
   },
   "entry": {
@@ -2230,7 +2239,7 @@
     "saved": "{0} 저장됨",
     "downloaded": "{0} 다운로드됨",
     "continued": "이어서 열림",
-    "migrated": "자동 저장에서 복구됨",
+    "migrated": "이전 자동 저장 열림",
     "restoredTo": "{0} 시점으로 복원됨",
     "changedOutside": "편집기 밖에서 변경됨",
     "recoveredChanges": "변경 사항 복구됨"
@@ -2247,13 +2256,14 @@
   },
   "prompt": {
     "title": "변경 사항이 보관되지 않음",
+    "unsaved": "저장되지 않은 변경 사항",
     "notStored": "변경 사항이 이 브라우저에 보관되고 있지 않습니다. 나가면 변경 사항이 사라집니다.",
     "save": "저장",
     "leaveAnyway": "그래도 나가기"
   },
   "status": {
     "separateCopyShort": "별도 사본",
-    "notInFile": "파일에 저장되지 않음",
+    "notInFile": "저장되지 않음",
     "separateCopy": "{0}의 별도 사본",
     "opensLevelInfo": "레벨 정보를 엽니다",
     "changedSaved": "{0}, {1}에 저장한 후 변경됨",
@@ -2287,9 +2297,6 @@
     },
     "unsavedChanges": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있습니다.",
     "unsavedEarlier": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있습니다.",
-    "earlierUnchecked": "{0}을(를) 열었습니다. 최근 세션에 이 파일의 다른 버전이 있는지 확인하지 못했습니다.",
-    "unsavedEarlierMaybe": "{0}의 이전 버전에 대한 저장되지 않은 변경 사항({1})이 최근 세션에 있을 수 있습니다.",
-    "unsavedChangesMaybe": "{0}을(를) 열었습니다. {1}부터 저장되지 않은 변경 사항이 있을 수 있습니다.",
     "olderVersion": "{0}의 이전 버전입니다. {1}의 최신 버전이 최근 세션에 있습니다.",
     "restoreIt": "세션 복원",
     "damagedHistory": "\"{0}\"의 기록이 손상되었습니다. 저장하면 별도의 파일이 만들어집니다."
@@ -2297,10 +2304,7 @@
   "file": {
     "replacedElsewhere": "\"{0}\"이(가) 다른 탭이나 창에서 교체되었습니다.",
     "downloaded": "{0} · {1} 다운로드됨",
-    "opened": "{0} · {1} 열림",
-    "short": {
-      "notSaved": "저장 안 됨"
-    }
+    "opened": "{0} · {1} 열림"
   },
   "state": {
     "fileMissing": "파일 없음",
@@ -2336,7 +2340,6 @@
     "removed": "삭제됨",
     "tagsAdded": "추가된 태그",
     "tagsRemoved": "삭제된 태그",
-    "tagsChanged": "변경된 태그",
     "order": "순서",
     "folder": "폴더",
     "groupFolder": "그룹 폴더",
@@ -2351,11 +2354,10 @@
       "tags": "태그",
       "rating": "난이도",
       "cover": "커버",
-      "previewAudio": "미리 듣기",
+      "previewAudio": "미리보기 오디오",
       "duration": "길이",
       "size": "크기",
-      "type": "유형",
-      "icon": "아이콘"
+      "type": "유형"
     },
     "contentsChanged": "내용이 변경됨",
     "showMore": "더 보기",

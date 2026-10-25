@@ -22,7 +22,7 @@ import {
     type TxMode,
 } from './types'
 
-// The in-memory key-value store (§1.6.1). It models what breaks real browsers: a transaction goes
+// The in-memory key-value store. It models what breaks real browsers: a transaction goes
 // inactive when its task ends with no request of its own pending, and commits then; overlapping
 // read-write transactions run in creation order across connections; values are cloned on write
 // and read; versions, versionchange, blocked and the connection queue follow IndexedDB. Every
@@ -460,7 +460,7 @@ export type WrittenRow = { store: string; key: Key; old: unknown; value: unknown
 /** Rows a transaction removed from a store. */
 export type DeletedRows = { store: string; rows: Row[] }
 
-/** A committed read-write transaction, as the observer sees it (§1.6.1's test hooks). */
+/** A committed read-write transaction, as the observer sees it (test hooks). */
 export type CommitReport = {
     readonly actor: Actor
     readonly db: string
@@ -614,12 +614,8 @@ export class MemoryKv {
     }
 
     /**
-     * A power loss on Firefox before 126 (and WebKit, if it lacks `durability`), which ignores
-     * durability: undoes the last `count` commits whatever their durability, in commit order. It
-     * is paired with the journal writer as the page runs it there, `strictCommits: false`
-     * (`storing.ts`), so that no commit clears a journal; with the default writer a strict commit
-     * would clear the journal and the loss then undo that commit, which no browser in the gate
-     * does. Kill every tab first.
+     * A power loss on Firefox before 126, which ignores durability: undoes the last `count`
+     * commits whatever their durability, in commit order. Kill every tab first.
      */
     loseCommits(count: number) {
         if (count > this.loggedCommits)

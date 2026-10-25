@@ -7,7 +7,7 @@ import type { State } from '../../src/state'
 import type { Transaction } from '../../src/state/transaction'
 import { add, baseState, edits, entityAt, kinds, seen, type Kind } from './sameBeatKinds'
 
-// D4: states that play the same (the same chains) hash the same, however they were reached; a
+// States that play the same (the same chains) hash the same, however they were reached; a
 // different same-beat order is another state, with another root.
 
 const root = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)

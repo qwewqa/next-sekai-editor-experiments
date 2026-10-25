@@ -15,13 +15,13 @@ import type { ModelSlot, SlotStack } from '../timeline'
 import { journalContent } from './content'
 import { JOURNAL_VERSION, type Journal, type JournalDescriptor, type JournalStack } from './format'
 
-// Building a journal from the tab's session (§1.6.4 #7, §1.6.11.3): the descriptor from what
+// Building a journal from the tab's session: the descriptor from what
 // the page knows and the chain record the last flush wrote, the whole state, and the stack by
 // reference to what's committed.
 
 const hexOf = (value: unknown) => (value instanceof Uint8Array ? toHex(value) : value)
 
-/** A binding or Export target without its handle, hashes as hex (§1.6.11.3). */
+/** A binding or Export target without its handle, hashes as hex. */
 const withoutHandle = (value: unknown) => {
     if (typeof value !== 'object' || value === null) return value
     const { handle: _handle, ...rest } = value as Record<string, unknown>
@@ -47,7 +47,7 @@ export const descriptorOf = (session: FlushSession): JournalDescriptor => {
     const hasContent =
         stored.hasContent === true || session.edited || (origin !== 'new' && origin !== 'continued')
     const edited = stored.edited === true || session.edited
-    // The example's order (§1.6.11.3): the session's fields, the flags, then the chain's.
+    // The example's order: the session's fields, the flags, then the chain's.
     const {
         edited: _edited,
         hasContent: _hasContent,
@@ -112,7 +112,7 @@ const contextOf = (live: SlotStack<ModelSlot<PendingEntry>>, keep: number): Reco
 }
 
 /**
- * The journal's stack (§1.6.11.3): the committed slots the live stack still shares, up to the
+ * The journal's stack: the committed slots the live stack still shares, up to the
  * stored window's end, then the head as a new slot unless it's one of them. Without a stored
  * window in a database (a session that never flushed, storage unavailable) `keep` is 0.
  */
@@ -121,7 +121,7 @@ export const journalStack = (
     live: SlotStack<ModelSlot<PendingEntry>>,
 ): JournalStack => {
     const { committed, durable } = session.stack
-    // An unstored continuation's committed slots are its parent's stored window (§1.3.6): the
+    // An unstored continuation's committed slots are its parent's stored window: the
     // replay that applies it as its first write keeps them from there.
     const parentWindow =
         session.continuation && !session.stored && session.forkOf === undefined

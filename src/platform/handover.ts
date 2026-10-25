@@ -1,5 +1,5 @@
-import { ungzip } from 'pako'
 import { ExecutionError, executePlan, type ExecutionSource } from '../local/nxsp/execute'
+import { gunzipBlob } from '../utils/gzipStream'
 import { detection, hasActivation, isStandalone, reportsActivation } from './detect'
 import { levelDataDiskState, nxspDiskState, sameContent, sha256Hex } from './fingerprint'
 import { savePoint } from './testPause'
@@ -15,7 +15,7 @@ import {
     type SaveResult,
 } from './types'
 
-// The hand-over (Part 1 §1.5.6): every file the web writes goes through here, behind saveFile.
+// The hand-over: every file the web writes goes through here, behind saveFile.
 
 /** Below this a data: URL is a usable last resort; browsers cap or block larger ones. */
 export const DATA_URL_LIMIT = 1024 * 1024
@@ -33,7 +33,7 @@ const codes: Partial<Record<string, FileErrorCode>> = {
     NotFoundError: 'not-found',
     NotAllowedError: 'denied',
     SecurityError: 'denied',
-    // The file changed after it was read (Part 0 §0.9.1).
+    // The file changed after it was read.
     NotReadableError: 'conflict',
     QuotaExceededError: 'no-space',
     NoModificationAllowedError: 'read-only',
@@ -50,8 +50,8 @@ export const fileErrorOf = (error: unknown, disk?: DiskState): FileError => {
 const isBlob = (body: FileBody): body is Blob => body instanceof Blob
 
 /**
- * A build's file as a Blob: a Blob as it is, or a plan executed over the pinned sources (Part 1
- * §1.6.11.7). A copy that fails with its source changed is a `conflict`; any other failure is `io`.
+ * A build's file as a Blob: a Blob as it is, or a plan executed over the pinned sources.
+ * A copy that fails with its source changed is a `conflict`; any other failure is `io`.
  */
 export const toBlob = async (
     body: FileBody,
@@ -85,9 +85,7 @@ export const verifyBuilt = async (kind: SaveRequest['kind'], blob: Blob) => {
     if (kind !== 'nsld') return
     let parsed: unknown
     try {
-        parsed = JSON.parse(
-            new TextDecoder().decode(ungzip(new Uint8Array(await blob.arrayBuffer()))),
-        )
+        parsed = JSON.parse(new TextDecoder().decode(await gunzipBlob(blob)))
     } catch {
         parsed = undefined
     }
@@ -101,7 +99,7 @@ type PermissionHandle = FileSystemFileHandle & {
 }
 
 /**
- * Asks for write access. Called first on the gesture, before any other await (Part 0 §0.9.1);
+ * Asks for write access. Called first on the gesture, before any other await;
  * it resolves at once when access is already granted.
  */
 export const requestWrite = (handle: FileSystemFileHandle): Promise<PermissionState> => {
@@ -124,7 +122,7 @@ type Found = { file: File; disk: DiskState | undefined } | undefined
 /**
  * The file as it is now, measured against `expected`: for level data `disk` is undefined when
  * the file differs in size or exists where none should, since a change needs no hash and a large
- * file no read; a `.nxsp` always reads its revision id and `<cd>` (Part 0 §0.9.6).
+ * file no read; a `.nxsp` always reads its revision id and `<cd>`.
  */
 const readDisk = async (
     kind: SaveRequest['kind'],
@@ -158,7 +156,7 @@ const changedError = (
     return new FileError('conflict', message, found.disk, 'check')
 }
 
-/** A write-back's target found empty, which it writes over (R9). */
+/** A write-back's target found empty, which it writes over. */
 const overEmpty = (req: SaveRequest, found: Found) =>
     !!req.overEmpty && req.kind === 'nxsp' && found?.file.size === 0
 
@@ -189,14 +187,14 @@ const writeTo = async (
         throw new FileError('denied', `Writing to ${handle.name} was not allowed`)
     signal?.throwIfAborted()
 
-    // Source integrity (Part 0 §0.9.1): everything the write reads of the existing file comes
+    // Source integrity: everything the write reads of the existing file comes
     // from the File taken at this check.
     const sources: PinnedSource[] = []
     let pinned: DiskState | undefined
     if (expected !== undefined) {
         const found = await readDisk(kind, handle, expected)
         signal?.throwIfAborted()
-        // An empty target holds nothing to keep (R9): written over, with nothing to copy.
+        // An empty target holds nothing to keep: written over, with nothing to copy.
         const empty = overEmpty(req, found)
         if (!empty && !matches(found, expected)) throw changedError(handle, found, expected)
         if (empty) pinned = found?.disk
@@ -235,9 +233,9 @@ const writeTo = async (
         signal?.throwIfAborted()
         await savePoint('beforeClose')
         if (expected !== undefined) {
-            // Checked again just before the commit (Part 0 §0.9.6); a `.nxsp` by the whole
+            // Checked again just before the commit; a `.nxsp` by the whole
             // fingerprint of the File pinned at the first check, so a change during the build or
-            // the write is never overwritten unseen. A target emptied meanwhile is written (R9).
+            // the write is never overwritten unseen. A target emptied meanwhile is written.
             const found = await readDisk(kind, handle, expected)
             signal?.throwIfAborted()
             if (!overEmpty(req, found)) {
@@ -322,7 +320,7 @@ const clickLink = (href: string, name: string, newContext: boolean) => {
     link.href = href
     link.download = name
     link.rel = 'noopener'
-    // Never this browsing context: an ignored download opens a new one (§1.5.6).
+    // Never this browsing context: an ignored download opens a new one.
     if (newContext) link.target = '_blank'
     document.body.append(link)
     link.click()

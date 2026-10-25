@@ -5,7 +5,7 @@ import type { Key } from '../../../src/local/kv/types'
 import { replayViolations, sessionViolations } from '../../../src/local/testing/invariants'
 import { nativeOperation, originOperation } from '../../helpers/historySteps'
 
-// The session invariants of architecture review A (R-A1, R-A2): each is reported for the rows that
+// The session invariants: each is reported for the rows that
 // break it, and a whole session reports none.
 
 const entry = (sessionId: string, seq: number, time: number, extra: object = {}) => ({
@@ -111,11 +111,11 @@ test('a session opened from a file keeps its rows’ own times: no time check', 
     assert.equal(sessionViolations(dump([session('s', { origin: 'import' })], rows)).length, 2)
 })
 
-// A0+ corrections: the parent rule is for a parent in the same chain, an opened
+// The parent rule is for a parent in the same chain, an opened
 // session's holes are allowed once its import ended, learned holes are allowed, and replay runs
 // for every followable session, stack or not.
 
-test('a fork’s parent may go on as its own chain’s head: no parent rule across chains (F3)', () => {
+test('a fork’s parent may go on as its own chain’s head: no parent rule across chains', () => {
     const parent = session('p', { lastSeq: 3, entryCount: 3 })
     const fork = session('f', {
         chainId: 'other',
@@ -132,7 +132,7 @@ test('a fork’s parent may go on as its own chain’s head: no parent rule acro
     assert.deepEqual(sessionViolations(found), [])
 })
 
-test('rows an ended import never brought are holes the plan allows; a plain session’s are not (F3)', () => {
+test('rows an ended import never brought are holes that are allowed; a plain session’s are not', () => {
     const rows = [entry('s', 1, 10), entry('s', 3, 30)]
     const stored = (extra: object) => session('s', { entryCount: 2, ...extra })
     for (const origin of ['nxsp', 'replaced'])
@@ -154,7 +154,7 @@ test('a learned hole is allowed only for the seq learned', () => {
     assert.match(found[0]!, /rows 3 up to lastSeq 4/)
 })
 
-test('a session with no stored stack is replayed: a save that does not land is named (I-8)', () => {
+test('a session with no stored stack is replayed: a save that does not land is named', () => {
     const snapshot = (n: number) => new Uint8Array(16).fill(n)
     const base = {
         sessionId: 's',
@@ -216,7 +216,7 @@ test('a session with no stored stack is replayed: a save that does not land is n
     )
 })
 
-test('an opened session’s own rows keep the hole and time rules; only the file’s rows are exempt (M3)', () => {
+test('an opened session’s own rows keep the hole and time rules; only the file’s rows are exempt', () => {
     const open = (extra: object = {}) =>
         session('s', { origin: 'nxsp', lastSeq: 9, entryCount: 5, ...extra })
     const fileEnd = (id: string) => (id === 's' ? 5 : undefined)
@@ -234,7 +234,7 @@ test('an opened session’s own rows keep the hole and time rules; only the file
             sessionViolations(dump([open({ importPending })], holey), { openBase: fileEnd })[0]!,
             /rows 7, 8 up to lastSeq 9 are neither stored/,
         )
-    // Without a base recorded, all of the session's rows are the file's (as A0 had it).
+    // Without a base recorded, all of the session's rows are the file's.
     assert.deepEqual(sessionViolations(dump([open()], holey)), [])
     // Times: the file's rows keep theirs; the page's own rows are strictly in order.
     const late = [entry('s', 1, 900), entry('s', 5, 50), entry('s', 6, 70), entry('s', 7, 60)]
@@ -245,10 +245,10 @@ test('an opened session’s own rows keep the hole and time rules; only the file
     assert.ok(!found.some((line) => /row 1/.test(line)))
 })
 
-// P2 (spec-C invariant 10): Go To's binary search skips only the lowest row of a session of its own
+// Go To's binary search skips only the lowest row of a session of its own
 // rows as a divider, so a `continue` row anywhere above it must be named.
 
-test('P2: a continue row above the lowest row of an own session is named', () => {
+test('a continue row above the lowest row of an own session is named', () => {
     const rows = [entry('s', 1, 10), entry('s', 2, 20, { kind: 'continue' }), entry('s', 3, 30)]
     for (const origin of ['new', 'import', 'continued', 'migrated', 'journal'])
         assert.deepEqual(sessionViolations(dump([session('s', { origin })], rows)), [
@@ -256,7 +256,7 @@ test('P2: a continue row above the lowest row of an own session is named', () =>
         ])
 })
 
-test('P2: a continue row at the lowest row is whole, also with a hole below nothing', () => {
+test('a continue row at the lowest row is whole, also with a hole below nothing', () => {
     const rows = [entry('s', 1, 10, { kind: 'continue' }), entry('s', 2, 20), entry('s', 3, 30)]
     assert.deepEqual(sessionViolations(dump([session('s', { origin: 'continued' })], rows)), [])
     // The lowest stored row: a continuation whose seq 1 is let go and recovered over.
@@ -269,7 +269,7 @@ test('P2: a continue row at the lowest row is whole, also with a hole below noth
     )
 })
 
-test('P2: a session that holds a file’s rows, or whose origin is unknown or missing, may hold a continue row anywhere', () => {
+test('a session that holds a file’s rows, or whose origin is unknown or missing, may hold a continue row anywhere', () => {
     const rows = [entry('s', 1, 10), entry('s', 2, 20, { kind: 'continue' }), entry('s', 3, 30)]
     for (const origin of ['nxsp', 'replaced', 'future', undefined])
         assert.deepEqual(sessionViolations(dump([session('s', { origin })], rows)), [])

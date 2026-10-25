@@ -1,4 +1,4 @@
-// Where a peeked entry's changes are, for the edge arrows and Show Change (Part 1 §1.4.11): each
+// Where a peeked entry's changes are, for the edge arrows and Show Change: each
 // change's time and lanes, grouped into stops that fit on screen. Pure, so Node tests run it.
 
 /** A change's place: its time, and a note's lanes. */

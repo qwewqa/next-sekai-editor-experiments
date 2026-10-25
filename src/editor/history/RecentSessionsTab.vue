@@ -32,7 +32,7 @@ import { writesInPlace } from '../file/state'
 import { platform } from '../../platform'
 import { labelAccessibleName, labelLine, labelOf } from '../fileLabel'
 import { liveRow } from '../liveRow'
-import { readBrowserFacts, storageLineKey } from '../settings/storageLine'
+import { readBrowserFacts, storageLineKey, storageUnavailable } from '../settings/storageLine'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import MoreIcon from '../workspace/manager/icons/MoreIcon.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
@@ -57,10 +57,11 @@ import {
     type DeletedRow,
     type NavRow,
 } from './sessions'
-import { onDeleteChanged, sessionDelete } from './sessionDeleteLive'
+import { sessionDelete } from './sessionDeleteLive'
+import { onDeleteChanged } from './sessionsChanged'
 import { listFocus } from './state'
 
-// Recent Sessions (Part 1 §1.4.10.6): one row per chain, newest first, under the Timeline's day
+// Recent Sessions: one row per chain, newest first, under the Timeline's day
 // headers, in the Timeline's row styles and keys. A click or an arrow peeks the session without
 // BGM; Enter restores it; the ⋯ button, a right click, a long press, Shift+F10 and the Menu key
 // open its menu. This tab's own chain is the row with the badge, and a click on it is Back to Now.
@@ -238,10 +239,8 @@ const footer = computed(() => {
     const state = storageStatus.value
     if (!known || !state) return
     return i18n.value.storage[
-        storageLineKey({
-            ...known,
-            unavailable: state.mode === 'memory' || state.mode === 'readOnly',
-        })
+        // The same test as Local Data's line: waiting on older tabs or safe mode is not this.
+        storageLineKey({ ...known, unavailable: storageUnavailable(state, safe) })
     ]
 })
 
@@ -357,7 +356,7 @@ const undoRow = (row: DeletedRow) => {
     if (row.status !== 'lost') void sessionDelete.undo(row.id)
 }
 
-// --- Menu: Restore Session or Restore as a Copy, and Save to File….
+// --- Menu: Restore Session or Restore as a Copy, and Save….
 const menu = shallowRef<{
     row: ChainRow
     anchor: HTMLElement
@@ -402,6 +401,39 @@ const onMenuSelect = (key: string, keyboard: boolean) => {
     if (key === 'delete') void deleteRow(open.row)
     else runSessionItem(key, open.row)
 }
+
+// --- The rows drawn: a screenful and 50 more at first, more as the list scrolls near their end,
+// and always every row up to the cursor, the selected row, an open menu's row and the inline Undo
+// rows, with 50 more after them. The keys reach every row, and a long list opens as fast as a
+// short one. What is drawn only grows while the list is shown, so rows do not shift.
+const ROW_HEIGHT = 44
+const AHEAD = 50
+const drawn = ref(Math.ceil(window.innerHeight / ROW_HEIGHT) + AHEAD)
+const needed = computed(() => {
+    const ids = [cursorId.value, selectedId.value, menu.value?.row.id]
+    let last = -1
+    rows.value.forEach((row, index) => {
+        if (row.type === 'deleted' || (row.type === 'chain' && ids.includes(row.id))) last = index
+    })
+    return last + 1 + AHEAD
+})
+const drawnEnd = computed(() => Math.max(drawn.value, needed.value))
+watch(drawnEnd, (end) => {
+    drawn.value = Math.max(drawn.value, end)
+})
+const drawnRows = computed(() =>
+    rows.value.length > drawnEnd.value ? rows.value.slice(0, drawnEnd.value) : rows.value,
+)
+const allDrawn = computed(() => drawnEnd.value >= rows.value.length)
+const onScroll = () => {
+    cancelLongPress()
+    const element = scroller.value
+    if (!element || allDrawn.value) return
+    if (element.scrollTop + element.clientHeight > element.scrollHeight - 20 * ROW_HEIGHT)
+        drawn.value = drawnEnd.value + 2 * AHEAD
+}
+/** Each row's place among the rows the keys reach, for a screen reader, since not all are drawn. */
+const rowIndex = computed(() => new Map(navRows.value.map((row, index) => [row.id, index + 1])))
 
 // iOS fires no contextmenu event for a long press: a touch held still opens the menu itself.
 const LONG_PRESS_MS = 500
@@ -649,7 +681,7 @@ const notePointer = (event: PointerEvent) => {
             data-sessions-list
             tabindex="-1"
             class="sessions-list overlay-scroller h-full overflow-y-auto overscroll-contain px-1.5 pb-2 outline-none"
-            @scroll.passive="cancelLongPress"
+            @scroll.passive="onScroll"
             @keydown="onKeydown"
             @focus.self="focusRow(cursorId, false)"
             @focusin="onFocusin"
@@ -703,7 +735,7 @@ const notePointer = (event: PointerEvent) => {
                     :aria-rowcount="navRows.length"
                     class="pt-1"
                 >
-                    <template v-for="row in rows" :key="row.id">
+                    <template v-for="row in drawnRows" :key="row.id">
                         <div
                             v-if="row.type === 'header'"
                             role="presentation"
@@ -722,6 +754,7 @@ const notePointer = (event: PointerEvent) => {
                             :data-chain="row.id"
                             :data-status="row.status"
                             :tabindex="row.id === cursorId ? 0 : -1"
+                            :aria-rowindex="rowIndex.get(row.id)"
                             class="sessions-row scroll-mt-7"
                             :aria-label="deletedLabel(row)"
                             @click="onRowClick(row)"
@@ -766,6 +799,7 @@ const notePointer = (event: PointerEvent) => {
                             :data-chain="row.id"
                             :data-badge="row.badge"
                             :tabindex="row.id === cursorId ? 0 : -1"
+                            :aria-rowindex="rowIndex.get(row.id)"
                             class="sessions-row scroll-mt-7"
                             :class="{
                                 'sessions-row-selected': selectedId === row.id,
@@ -817,7 +851,11 @@ const notePointer = (event: PointerEvent) => {
                         </div>
                     </template>
                 </div>
-                <p v-if="footer" class="px-3 pb-1 pt-3 text-xs text-fg/80" data-sessions-footer>
+                <p
+                    v-if="footer && allDrawn"
+                    class="px-3 pb-1 pt-3 text-xs text-fg/80"
+                    data-sessions-footer
+                >
                     {{ footer }}
                 </p>
             </template>

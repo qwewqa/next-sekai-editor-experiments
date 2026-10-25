@@ -11,9 +11,8 @@ import {
     submitSave,
 } from './saveFlows'
 
-// Save's picker and write paths with the browser's own picker stubbed (Part 1 §1.4.7; Step 6
-// migrated this spec from level data to `.nxsp`): a dismissed picker writes and downloads nothing,
-// a picker failure is an error and never a download (R12), a failed write leaves the file as it
+// Save's picker and write paths with the browser's own picker stubbed: a dismissed picker writes and downloads nothing,
+// a picker failure is an error and never a download, a failed write leaves the file as it
 // was and binds nothing, and a browser without a save picker downloads. The stub's handles aren't
 // stored (a suspected private window), as a real browser's would be.
 
@@ -135,7 +134,7 @@ test('dismissing the save picker writes nothing, downloads nothing and binds not
     expect(await bound(page)).toBeUndefined()
 })
 
-test('a picker failure is shown as an error, never a download (R12)', async ({ page }) => {
+test('a picker failure is shown as an error, never a download', async ({ page }) => {
     await installSave(page, 'pickerFailure')
     await firstSave(page)
     await expect(page.getByRole('dialog')).toContainText(
@@ -174,7 +173,7 @@ test('a write that fails before close() aborts, stays bound to the emptied file 
         'abort',
     ])
     expect(await page.evaluate(() => window.saveReview.downloads)).toEqual([])
-    // The pick emptied the file, so the session is pre-bound to it: the next Save fills it (R9).
+    // The pick emptied the file, so the session is pre-bound to it: the next Save fills it.
     expect(await bound(page)).toBe('coconut.nxsp')
 })
 
@@ -190,7 +189,7 @@ test('a browser without a save picker downloads, bound by name', async ({ page }
     expect(await bound(page)).toBe('coconut.nxsp')
 })
 
-test('Cancel in a slow write-back’s Preparing… writes nothing, and the next Save writes (SF-5)', async ({
+test('Cancel in a slow write-back’s Preparing… writes nothing, and the next Save writes', async ({
     page,
 }) => {
     await start(page)

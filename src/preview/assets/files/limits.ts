@@ -1,4 +1,4 @@
-// What a package from a file or a server may hold (Part 2, 2.5.5). Sizes the plan gives in MB
+// What a package from a file or a server may hold. Sizes in MB
 // are decimal, so a message states them as they are.
 
 const KiB = 1024

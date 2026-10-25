@@ -1479,6 +1479,34 @@
         ]
     },
     {
+        "id": "levelInfo.set",
+        "cat": "header",
+        "members": [
+            {
+                "input": {
+                    "id": "nse.levelInfo.set",
+                    "data": {
+                        "changes": [
+                            {
+                                "field": "title",
+                                "before": { "text": "Old Title" },
+                                "after": { "text": "New Title" }
+                            },
+                            { "field": "rating", "before": null, "after": 27 },
+                            { "field": "tags", "added": 2, "removed": 1, "reordered": true },
+                            {
+                                "field": "cover",
+                                "before": { "text": "old.png" },
+                                "after": { "text": "new.png" }
+                            }
+                        ]
+                    }
+                }
+            }
+        ],
+        "locales": true
+    },
+    {
         "id": "bgm.change.file",
         "cat": "header",
         "members": [

@@ -2,9 +2,9 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import '../../editor/saveMatrix/env'
 
-// The two reads of an open that go through the `storedRead` gate (Part 1 §1.5.4): the earlier
-// chains, whose failure is a value the open turns into a notice, never a rejection; and the
-// binding check, which answers 'yes', 'no' or 'unknown'.
+// The two reads of an open that go through the `storedRead` gate: the earlier
+// chains, whose failure is a value the open passes over, never a rejection; and the binding
+// check, which answers 'yes', 'no' or 'unknown'.
 
 // The Save core's Node stubs (Vue files and the like) are installed by the import above.
 const { boundInAnotherTab, earlierChains } = await import('../../../src/local/open/project')
@@ -18,7 +18,11 @@ const failure = () => {
 
 type Calls = Record<string, (arg: unknown) => unknown>
 
-const install = (calls: Calls, held: string[] = []) => {
+const install = (
+    calls: Calls,
+    held: string[] = [],
+    journals: () => Promise<{ sessionId: string }[]> = () => Promise.resolve([]),
+) => {
     const worker = {
         call: async (method: string, arg?: unknown) => {
             const answer = calls[method]
@@ -52,7 +56,7 @@ const install = (calls: Calls, held: string[] = []) => {
                     }),
             },
         } as never,
-        { journal: { read: () => Promise.resolve([]) } } as never,
+        { journal: { read: journals } } as never,
     )
 }
 
@@ -79,6 +83,24 @@ test('earlierChains: a read that fails resolves as failed, never as a rejection 
     })
     const read = await earlierChains('doc', 'chain-new')
     assert.equal(read.storedRead, 'failed')
+})
+
+test('earlierChains: journals that cannot be listed count as none, and the chains still come back', async () => {
+    const stored = [
+        { chainId: 'a', sessionId: 'sa', bound: { handle: true }, changed: false, updatedAt: 2 },
+        { chainId: 'b', sessionId: 'sb', bound: { handle: true }, changed: true, updatedAt: 1 },
+    ]
+    install({ openEarlierChains: () => stored }, [], () => Promise.reject(failure()))
+    const read = await earlierChains('doc', 'chain-new')
+    assert.equal(read.storedRead, 'value')
+    assert.deepEqual(
+        read.storedRead === 'value' &&
+            read.storedValue.map(({ chainId, changed }) => [chainId, changed]),
+        [
+            ['a', false],
+            ['b', true],
+        ],
+    )
 })
 
 test('boundInAnotherTab: no other tab holds a session is "no"', async () => {

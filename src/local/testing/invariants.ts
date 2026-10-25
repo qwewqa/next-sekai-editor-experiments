@@ -10,9 +10,8 @@ import {
     type StackBlockRow,
 } from '../timeline'
 
-// The stored-data invariants the crash sweep checks after every kill (§1.6.1): no dangling
-// `refs` or hash, no half-deleted chain, every row reachable from its parent. Step 3b adds the
-// stored stack equal to replay; later steps add theirs.
+// The stored-data invariants the crash sweep checks after every kill: no dangling
+// `refs` or hash, no half-deleted chain, every row reachable from its parent.
 
 type Rows = Map<string, { key: Key; value: unknown }[]>
 
@@ -27,7 +26,7 @@ const packed = (bytes: unknown): Uint8Array[] => {
 
 const hex = (bytes: Uint8Array) => keyText(bytes)
 
-/** Each stored stack is a window of what its entries replay to (§1.3.9). */
+/** Each stored stack is a window of what its entries replay to. */
 export const replayViolations = (rows: Rows): string[] => {
     const all = (store: string) => rows.get(store) ?? []
     const id = (key: Key) => (typeof key === 'string' ? key : keyText(key))
@@ -77,7 +76,7 @@ export const storedViolations = (rows: Rows, options: SessionOptions = {}): stri
     for (const [id, session] of sessions)
         if (!chains.has(String(session.chainId)))
             violations.push(`session ${id}: chain ${String(session.chainId)} is missing`)
-    // A stored handle belongs to a chain field that exists (D24): deleting a chain deletes them.
+    // A stored handle belongs to a chain field that exists: deleting a chain deletes them.
     for (const row of all('handles')) {
         const handle = record(row.value)
         const field = chains.get(String(handle.chainId))?.[String(handle.role)]
@@ -106,7 +105,7 @@ export const storedViolations = (rows: Rows, options: SessionOptions = {}): stri
     for (const row of all('nodes')) {
         const node = record(row.value)
         let refs = packed(node.refs)
-        // A root's media may be absent: a state records its BGM whether or not it's held (§1.6.8.4).
+        // A root's media may be absent: a state records its BGM whether or not it's held.
         if (node.t === 'root' && Array.isArray(node.kinds))
             refs = refs.slice(0, 1 + node.kinds.length)
         for (const hash of refs)
@@ -122,7 +121,7 @@ export type SessionOptions = {
     maxSeenTime?: boolean
     /**
      * Replay every followable session's entries (default), for the stored stack and the `save`
-     * rows that land (I-8); false for a writer that stores made-up rows, which are no session's.
+     * rows that land; false for a writer that stores made-up rows, which are no session's.
      */
     replay?: boolean
     /**
@@ -130,12 +129,12 @@ export type SessionOptions = {
      * holes and times are judged for the rows above it. Absent, all of its rows count as the file's.
      */
     openBase?: (sessionId: string) => number | undefined
-    /** A `seq` the test knows was let go: a hole the plan allows. */
+    /** A `seq` the test knows was let go: a hole that is allowed. */
     hole?: (sessionId: string, seq: number) => boolean
 }
 
 /**
- * The invariants of a session's rows (architecture review §A, R-A1 and R-A2), each naming the rows
+ * The invariants of a session's rows, each naming the rows
  * that break it. They hold because one writer stores a session's rows in `seq` order:
  * - `lastSeq` is the high-water mark: no stored row lies above it;
  * - every `seq` up to `lastSeq` is stored, covered by a `recovered` row above it, the binding's
@@ -204,7 +203,7 @@ export const sessionViolations = (
             if (own.sessionId === sessionId && own.seq === seq) continue
             if (hole?.(sessionId, seq)) continue
             // A session opened from a file whose import has ended: rows an ended or abandoned
-            // import never brought are holes I-3 allows, the file's rows only.
+            // import never brought are holes allowed, the file's rows only.
             if (filed(seq)) continue
             holes.push(seq)
         }
@@ -251,7 +250,7 @@ export const sessionViolations = (
         const parent = record(session.parent)
         if (typeof parent.id === 'string' && typeof parent.uptoSeq === 'number') {
             const from = sessions.get(parent.id)
-            // The rule is for a parent in the same chain (I-5): a fork is another chain, and its
+            // The rule is for a parent in the same chain: a fork is another chain, and its
             // parent may go on as its own chain's head.
             if (from && from.chainId === session.chainId) {
                 const past = (stored.get(parent.id) ?? [])
@@ -280,9 +279,9 @@ export const sessionViolations = (
 }
 
 /**
- * Sessions with rows but no stored stack (AR-3): replay rebuilds it, so this is the degraded path,
+ * Sessions with rows but no stored stack: replay rebuilds it, so this is the degraded path,
  * not damage. A late writer's net removes it; a late flush past a replayed journal drops it by
- * design (§1.6.6), and a hand-built fixture may never have written one. So `checkStored` leaves it
+ * design, and a hand-built fixture may never have written one. So `checkStored` leaves it
  * out, and a test asks for it where no writer should have removed one.
  */
 export const missingStackViolations = (rows: Rows): string[] => {
@@ -310,7 +309,7 @@ export const checkStored = (memory: MemoryKv, options: SessionOptions = {}) =>
 
 /**
  * `checkStored` and the sessions with rows but no stored stack: for a run whose writers all hold
- * their session's lock in order, where nothing should have removed one (AR-3).
+ * their session's lock in order, where nothing should have removed one.
  */
 export const checkStrict = (memory: MemoryKv, options: SessionOptions = {}) => {
     const dump = memory.dump(DB_NAME)

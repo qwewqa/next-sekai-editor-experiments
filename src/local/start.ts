@@ -3,13 +3,11 @@ import { downloadConfirmed } from '../editor/file/flags'
 import { LOAD_ORDER } from '../editor/loadOrder'
 import {
     addLoadNotice,
-    noticeCard,
-    notification,
     notify,
+    startupNoticeCurrent,
     type NoticeAction,
 } from '../editor/notification'
-import { readRevocation, reclaimOrphans } from '../editor/save/env'
-import { onHistoryAction } from '../history/actions'
+import { reclaimOrphans } from '../editor/save/env'
 import { createHistoryOperation } from '../history/createHistoryOperation'
 import { session as currentSession } from '../history/session'
 import { i18n } from '../i18n'
@@ -22,6 +20,7 @@ import { interpolate } from '../utils/interpolate'
 import { createDeleteSessions, setDeleteSessions } from './deleteSessions'
 import { startMaintenance } from './maintenance'
 import { noticeIfNearlyFull } from './nearlyFull'
+import { resumeWhenStoring } from './open/importLoop'
 import { keptCopyChains, removeKeptCopy } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { retryStoring } from './retryStoring'
@@ -46,12 +45,12 @@ import type { StorageStatus, TestFlags } from './worker/core'
 import { transfer } from './worker/rpc'
 import storageWorkerUrl from './worker/storage.worker?worker&url'
 
-// Starts the storage worker after first paint (Part 1 §1.6.5), runs the recovery order (Part 0
-// §0.9.8: the canary, the journals, the old auto save) and opens the session this load continues
-// (§1.4.2), while the startup gate refuses input. It also says at load what the handshake found
-// (§1.4.3): stored work behind other tabs, or a database newer than this build.
+// Starts the storage worker after first paint, runs the recovery order (the canary,
+// the journals, the old auto save) and opens the session this load continues, while the startup
+// gate refuses input. It also says at load what the handshake found: stored work behind other
+// tabs, or a database newer than this build.
 
-/** The worker's test flag, seeded like the other test keys (§1.11's test notes). */
+/** The worker's test flag, seeded like the other test keys. */
 export const STORAGE_TEST_KEY = 'nse.test.storage'
 /** The fixture hook's no-storage key. */
 const NO_STORAGE_TEST_KEY = 'nse.test.noStorage'
@@ -172,6 +171,8 @@ const recoveryContext = (
     prefix: storageKey(''),
     appVersion: appVersion().appVersion,
     safe,
+    noDurability:
+        typeof IDBTransaction !== 'undefined' && !('durability' in IDBTransaction.prototype),
     operations: {
         recovered: (dropped) =>
             createHistoryOperation({
@@ -207,24 +208,17 @@ declare global {
 }
 
 /**
- * The startup sequence (§1.4.2): resolves once the session this load continues is open, and
+ * The startup sequence: resolves once the session this load continues is open, and
  * rejects when a journal, a row or the migration triggered a bug; the startup gate follows it.
  */
 /** The day the "almost full" notice last showed (a stamp, so a reload does not repeat it). */
 const NEARLY_FULL_KEY = 'nearlyFullDay'
 
-/** Whether the user worked on the chart since storing started: a late card would interrupt it. */
-let workedSinceLoad = false
-
-/** How long after the page loaded the start-up notice may still be turned into a card. */
-const NEARLY_FULL_WINDOW_MS = 12_000
-
 /**
  * After the load's maintenance run: storage still nearly full gets its load notice, once a day, and
- * only while the start-up notice is still the one shown: its card, or the quick notice a clean
- * load leaves while the user has done nothing yet. Never the faint text left after it, or a
- * card in the middle of editing. A page hidden at load had no run to wait for, so it says
- * nothing until a later load.
+ * only while the start-up notice is current (`startupNoticeCurrent`), so never a card in the
+ * middle of editing. A page hidden at load had no run to wait for, so it says nothing until a
+ * later load.
  */
 const announceNearlyFull = () => {
     if (document.visibilityState !== 'visible') return
@@ -243,12 +237,7 @@ const announceNearlyFull = () => {
             }
         },
         skip: () =>
-            !(
-                noticeCard.value?.startup === true ||
-                (notification.value.startup === true &&
-                    !workedSinceLoad &&
-                    performance.now() < NEARLY_FULL_WINDOW_MS)
-            ) ||
+            !startupNoticeCurrent() ||
             // Paused, or unavailable: the chip's dialog and Local Data cover it.
             storageStatus.value?.mode !== 'stored' ||
             storageStatus.value.reason !== undefined ||
@@ -265,7 +254,7 @@ export const startStorage = async () => {
     if (storageWorker) return
     const { flags, test } = readFlags()
     if (!canStore()) flags.noStorage = true
-    // Safe mode opens the database read-only and writes nothing but settings (§1.4.2).
+    // Safe mode opens the database read-only and writes nothing but settings.
     const safe = isSafeMode()
     if (safe) flags.readOnly = true
     const deviceId = storageGet('deviceId', undefined)
@@ -282,10 +271,6 @@ export const startStorage = async () => {
         { timeoutMs: rpcTimeoutMs },
     )
     storageWorker = worker
-    onHistoryAction(({ kind }) => {
-        if (kind === 'edit' || kind === 'restore' || kind === 'undo' || kind === 'redo')
-            workedSinceLoad = true
-    })
     watchLifecycle()
     worker.onStatus((status) => {
         storageStatus.value = status
@@ -301,7 +286,7 @@ export const startStorage = async () => {
         if (document.visibilityState === 'visible') resume()
     })
 
-    // Reload or Duplicate Tab, by the session lock, before the recovery order (§1.4.2).
+    // Reload or Duplicate Tab, by the session lock, before the recovery order.
     const claiming = claimTab(platform.locks).catch((): Claim => ({ kind: 'none' }))
     const starting = (holdStartMs ? wait(holdStartMs) : Promise.resolve())
         .then(() => worker.start())
@@ -320,7 +305,7 @@ export const startStorage = async () => {
         )
     let claim = { kind: 'none' } as Claim
     let recovery: RecoveryContext | undefined
-    // The recovery order, once the worker answered; every flush waits for it (Part 0 §0.9.8).
+    // The recovery order, once the worker answered; every flush waits for it.
     const recovered = (async () => {
         const { status, answered } = await starting
         claim = await claiming
@@ -386,9 +371,14 @@ export const startStorage = async () => {
             open = await openAtStart(deps, claim)
             // Reopen, Restore as a Copy and Local Data's rows act through these from now on.
             setSessionContext(deps, recovery)
-            // An open's import a tab didn't finish: resumed or ended once startup is done (§1.5.4).
+            // An open's import a tab didn't finish: resumed or ended once startup is done.
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
+                resumeWhenStoring(worker, {
+                    worker,
+                    locks: deps.locks,
+                    appVersion: appVersion().appVersion,
+                })
                 const context = recovery
                 // Only what definitely deleted chains left can be reclaimed.
                 const reclaim = () =>
@@ -412,7 +402,6 @@ export const startStorage = async () => {
                             worker.status?.mode === 'stored' ? worker.status.reason : undefined,
                         retryStoring,
                         reclaim,
-                        revoked: (chainId) => readRevocation(chainId) !== undefined,
                     }),
                 )
                 if (window.nseStorageTest)

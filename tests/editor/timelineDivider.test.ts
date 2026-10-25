@@ -9,7 +9,7 @@ import { captureName, type EntryDescription } from '../../src/history/operations
 import { formatDateTime } from '../../src/i18n/dateTime'
 import { futureFixtureOperation, nativeOperation } from '../helpers/historySteps'
 
-// A boundary divider names what its own entry holds (X-10): an opened file reads "Opened <file>"
+// A boundary divider names what its own entry holds: an opened file reads "Opened <file>"
 // and a continuation the time it continued from, never the entry's own time.
 
 const locales = ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht'] as const

@@ -1,7 +1,7 @@
 import type { Zone } from './calendar'
 import { joinPieces, piecesOf, type PieceEntry, type TimelinePiece } from './pieces'
 
-// Go To's pieces for a list the worker's index may not cover (spec-C invariant 11): the index's
+// Go To's pieces for a list the worker's index may not cover: the index's
 // pieces, with the open session's listed entries above the newest one the index covers joined on
 // top. Pure, so Node tests load it.
 

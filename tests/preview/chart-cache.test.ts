@@ -242,19 +242,14 @@ test('chart cache ignores selection, audio, filename and wrapper-only history ch
     const selected = source.store.slides.info.values().next().value![0]!.note
 
     assert.equal(build(source, speed), first)
-    assert.equal(
-        build(
-            {
-                ...source,
-                selectedEntities: [selected],
-                levelInfo: { ...source.levelInfo, title: 'renamed.json' },
-                bgm: { offset: 2 },
-                initialLife: 2000,
-            },
-            speed,
-        ),
-        first,
-    )
+    const changed: State = {
+        ...source,
+        selectedEntities: [selected],
+        levelInfo: { ...source.levelInfo, title: 'renamed.json' },
+        bgm: { offset: 2 },
+        initialLife: 2000,
+    }
+    assert.equal(build(changed, speed), first)
 })
 
 test('shared consumers retain one draft graph while independent committed backgrounds preserve history', () => {

@@ -19,7 +19,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Delete in Recent Sessions (Part 1 §1.4.10.6): the ⋯ menu and the Delete key mark a chain, and its
+// Delete in Recent Sessions: the ⋯ menu and the Delete key mark a chain, and its
 // row becomes an inline Undo row (the Node tests of `sessionDelete` pin the state machine; what
 // is checked here is the row, the live region, focus and the real worker); Delete is refused for a
 // chain open in another tab or held by this tab's unstored copy.
@@ -534,6 +534,21 @@ test('a fork whose parent chain was deleted ends its Timeline with a line, and R
     await flush(other)
     const copy = await flushIds(other)
     expect(copy.chainId).not.toBe(alpha.chainId)
+    // The Timeline has read the copy's edit back as stored, so it holds Alpha's rows below it.
+    await expect
+        .poll(() =>
+            other.evaluate(async (sessionId) => {
+                const { entries } = await window.editorTest.appImport<
+                    typeof import('../../src/editor/history/source')
+                >('/src/editor/history/source.ts')
+                const newest = entries.value[0]
+                return {
+                    newest: newest && { sessionId: newest.sessionId, pending: !!newest.pending },
+                    parent: entries.value.some((entry) => entry.sessionId === sessionId),
+                }
+            }, alpha.sessionId),
+        )
+        .toEqual({ newest: { sessionId: copy.sessionId, pending: false }, parent: true })
     // The first tab lets go of Alpha, and Alpha is deleted and swept.
     await closePage(page, { runBeforeUnload: false })
     await other.getByRole('tab', { name: messages.history.recentSessions }).click()

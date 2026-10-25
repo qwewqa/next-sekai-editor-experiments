@@ -1,4 +1,4 @@
-// The task scheduler the in-memory store, the fake locks and the test core deliver through (§1.6.1).
+// The task scheduler the in-memory store, the fake locks and the test core deliver through.
 // Each delivery is a task of an actor (a tab or its worker) on a lane (a transaction, a lock
 // request): FIFO within a lane; across lanes FIFO, or a seeded choice in tests. A task's promise
 // continuations run before the task ends, as in a browser's event loop, and only then do the

@@ -86,11 +86,7 @@ const seed = async (
                 title: 'Before title',
                 description: '  first\n\nlast  ',
                 rating: 1.0000001,
-                tags: [
-                    { title: 'Absent icon' },
-                    { title: 'Empty icon', icon: '' },
-                    { title: 'Whitespace icon', icon: '  ' },
-                ],
+                tags: [{ title: 'Tag' }, { title: '' }, { title: '  ' }],
             },
             bgm: {
                 ...live.bgm,
@@ -112,7 +108,7 @@ const seed = async (
                 title: 'After title',
                 description: '  changed\n\nlast  ',
                 rating: 1.0000002,
-                tags: [...before.levelInfo.tags, { title: 'Added tag', icon: 'new' }],
+                tags: [...before.levelInfo.tags, { title: 'Added tag' }],
                 cover: {
                     hash: '2'.repeat(32),
                     filename: 'cover.png',
@@ -601,7 +597,7 @@ test('an unset value reads Not set, a file with an offset change is not badged, 
 }) => {
     await seed(page, 'groups')
     await open(page)
-    // M1: an unset Force Note Speed is Not set, never 0.
+    // An unset Force Note Speed is Not set, never 0.
     const removed = dialog(page).locator('[data-property-section="groups:1"]')
     await expect(removed.locator('[data-property-badge]')).toHaveText('Removed')
     await expect(
@@ -611,11 +607,11 @@ test('an unset value reads Not set, a file with an offset change is not badged, 
     await expect(
         added.locator('[data-property-row="forceNoteSpeed"] [data-property-value]'),
     ).toHaveText('1.5')
-    // L8: the removed and the added group are both "Default", with no id after the name.
+    // The removed and the added group are both "Default", with no id after the name.
     await expect(removed.locator('h3')).toHaveText(/^Group Propertiess*Defaults*Removed$/)
     await expect(added.locator('h3')).toHaveText(/^Group Propertiess*Defaults*Added$/)
     await expect(dialog(page)).not.toContainText('(#')
-    // M2: the BGM section has a row on both sides, so it carries no badge and keeps the before.
+    // The BGM section has a row on both sides, so it carries no badge and keeps the before.
     const bgm = dialog(page).locator('[data-property-section="bgm:all"]')
     await expect(bgm.locator('[data-property-badge]')).toHaveCount(0)
     await expect(
@@ -624,7 +620,7 @@ test('an unset value reads Not set, a file with an offset change is not badged, 
     await expect(
         bgm.locator('[data-property-row="offset"] [data-property-after] [data-property-value]'),
     ).toHaveText('-120')
-    // L5: the file has one name, the one Step Details shows: without its extension.
+    // The file has one name, the one Step Details shows: without its extension.
     await expect(
         bgm.locator('[data-property-row="filename"] [data-property-before] [data-property-value]'),
     ).toHaveText('Not set')
@@ -659,13 +655,10 @@ test('a removed media section keeps only its before value, and a placeholder is 
     await expect(cover.locator('[data-property-before]')).not.toHaveCount(0)
     await expect(cover.locator('[data-property-after]')).toHaveCount(0)
     await expect(dialog(page)).not.toContainText('Not present')
-    // A tag without an icon, and one with an empty icon, both read Not set, quietly.
-    const tags = row(page, 'tags').locator('[data-property-before]')
-    for (const index of [0, 1]) {
-        const icon = tags.locator('li').nth(index).locator('[data-property-value]')
-        await expect(icon).toHaveText('Not set')
-        await expect(icon).toHaveClass(/text-fg\/80/)
-    }
+    // A tag with an empty title shows Not set in the muted style.
+    const empty = row(page, 'tags').locator('[data-property-before] li').nth(1).locator('span')
+    await expect(empty).toHaveText('Not set')
+    await expect(empty).toHaveClass(/text-fg\/80/)
 })
 
 test('property inspection keeps exact chronological values, whitespace and the live chart', async ({
@@ -1518,12 +1511,9 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
             ['fr', 'tr'].includes(locale) ? '1,0000002' : '1.0000002',
         )
         const tags = modal.locator('[data-property-row="tags"] [data-property-before]')
-        await expect(tags.locator('li').nth(0)).toContainText(messages.historyChanges.notSet)
-        // An empty icon reads as Not set too: Step Details uses one empty word.
-        await expect(tags.locator('li').nth(1)).toContainText(messages.historyChanges.notSet)
-        expect(await tags.locator('li').nth(2).locator('[data-property-value]').textContent()).toBe(
-            '  ',
-        )
+        // An empty title reads Not set; a title of spaces is kept as it is.
+        await expect(tags.locator('li').nth(1)).toHaveText(messages.historyChanges.notSet)
+        expect(await tags.locator('li').nth(2).locator('span').textContent()).toBe('  ')
         for (const field of ['description', 'rating', 'size', 'duration', 'tags']) {
             const comparison = modal.locator(`[data-property-row="${field}"]`).first()
             const geometry = await comparison.evaluate((element) => {
@@ -1700,7 +1690,7 @@ test('composed old and new change destinations stay identical while Show Edits i
     })
     await expect(page.locator('[data-peek-change]')).not.toHaveText('')
     await expect(page.locator('[data-property-summary]')).toHaveAccessibleDescription(
-        /settings changed/i,
+        /properties changed/i,
     )
     const markKinds = await page.evaluate(async () => {
         const { changeMarks } = await window.editorTest.appImport<
@@ -1815,7 +1805,7 @@ test('composed old and new change destinations stay identical while Show Edits i
     await page.screenshot({ path: testInfo.outputPath('composed-navigation-edits-off.png') })
 })
 
-test('an outside press that closes Options for Changes gives focus back to its button (X-3)', async ({
+test('an outside press that closes Options for Changes gives focus back to its button', async ({
     page,
 }) => {
     await seed(page)
@@ -1831,7 +1821,7 @@ test('an outside press that closes Options for Changes gives focus back to its b
 
 test.describe('touch Options for Changes', () => {
     test.use({ hasTouch: true })
-    test('an outside tap that closes the sheet gives focus back to its button (X-3)', async ({
+    test('an outside tap that closes the sheet gives focus back to its button', async ({
         page,
     }) => {
         await seed(page)
@@ -1853,7 +1843,7 @@ test.describe('touch Options for Changes', () => {
     })
 })
 
-test('the Property Changes title is whole in a 304 px dialog in every language (X-4)', async ({
+test('the Property Changes title is whole in a 304 px dialog in every language', async ({
     page,
 }) => {
     await seed(page)

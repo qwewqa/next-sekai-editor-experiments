@@ -19,7 +19,7 @@ test('metadata’s pinned mapping: empty strings and tags left out, rating 0 kep
         artists: '',
         author: '',
         description: '',
-        tags: [{ title: 'x' }, { title: 'y', icon: 'star' }],
+        tags: [{ title: 'x' }, { title: 'y' }],
         cover: ref,
         rating: 0,
     }
@@ -28,7 +28,7 @@ test('metadata’s pinned mapping: empty strings and tags left out, rating 0 kep
     assert.deepEqual(metadata, {
         title: 'T',
         rating: 0,
-        tags: [{ title: 'x' }, { title: 'y', icon: 'star' }],
+        tags: [{ title: 'x' }, { title: 'y' }],
         cover,
     })
     assert.deepEqual(levelInfoOf(metadata), info)

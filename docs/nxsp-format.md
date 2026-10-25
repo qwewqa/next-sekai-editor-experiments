@@ -2,8 +2,8 @@
 
 A complete description of the Next SEKAI Editor's project file, written so that a reader with no access to the editor's code can build a compatible viewer: open any v1 file, classify it as the editor does, rebuild the chart at the head and at every stored History step, and list and interpret the History timeline. A short section at the end gives the writer's rules for those who also write files.
 
-- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until Stage 1 ships (v0.6.0), v1 is changed in place, with no version bumps and no compatibility handling (owner, 2026-10-19). From the ship it is frozen (plan Part 1 §1.6.11), and any change follows [format-versioning.md](format-versioning.md).
-- **Authority.** The code is the record (`src/local/nxsp/`, `src/local/records/`, `src/zip/`, `src/history/operations/`, `src/levelData/`, `src/chart/parse/levelData/`). Where this page and the code disagree, the code wins and this page is wrong. The design rationale is in [history-format.md](history-format.md) (§2–§4) and [format-versioning.md](format-versioning.md); this page does not repeat it.
+- **Status.** Format v1 (`project.json` `version` 1, `minor` 0, `patch` 0; manifest `version` 1; records `v` 1; `levelVersion` 1). **Unshipped:** until v0.6.0 ships, v1 is changed in place, with no version bumps and no compatibility handling. From the ship it is frozen, and any change follows [format-versioning.md](format-versioning.md).
+- **Authority.** The code is in `src/local/nxsp/`, `src/local/records/`, `src/zip/`, `src/history/operations/`, `src/levelData/` and `src/chart/parse/levelData/`. Where this page and the code disagree, the code wins and this page is wrong. The design rationale is in [history-format.md](history-format.md) (§2–§4) and [format-versioning.md](format-versioning.md), and this page does not repeat it.
 - **Background assumed.** Sonolus level data, the Next SEKAI engine's archetypes and what notes, slides, connectors, guides, time-scale groups, stages, the five event kinds, BGM and offset mean. ZIP, raw DEFLATE (RFC 1951), CRC-32, SHA-256, JSON and UTF-8.
 - **Cross-check tools.** `tools/nxsp_check.py` is an independent reader and strict checker that shares no code with the editor (§17). The goldens and conformance cases are listed in §17.
 
@@ -29,17 +29,17 @@ A complete description of the Next SEKAI Editor's project file, written so that 
 
 ## 1. Conventions and terms
 
-**Notation.** JSON values are written as JSON. `a | b` is a choice; `x?` an optional key or position; `[a, b, c]` a positional array (a record). Byte layouts are little-endian. "Must" states a rule whose breach changes the classification (§14); "the writer" means the editor's v1 writer; "the reader" means the editor's v1 reader, which a compatible viewer imitates.
+**Notation.** JSON values are written as JSON. `a | b` is a choice; `x?` an optional key or position; `[a, b, c]` a positional array (a record). Byte layouts are little-endian. "Must" states a rule whose breach changes the classification (§14). "The writer" means the editor's v1 writer, and "the reader" means the editor's v1 reader. A compatible viewer imitates the reader.
 
 **Integers and numbers.** A *safe integer* is an integer `n` with `|n| <= 2^53 - 1`. A *count* (`uint`) is a safe integer `>= 0`; an *id* a safe integer `>= 1`. Numbers are judged by value as `JSON.parse` reads them (`1`, `1.0` and `1e0` are one value; `-0` is the count 0, never an id). A *finite number* is any JSON number that is not infinite after parsing (a literal past the double range parses to infinity and fails).
 
-**Text.** JSON text is UTF-8 without a byte-order mark; a reader strips one leading U+FEFF. A string is *well formed* when it holds no lone UTF-16 surrogate. Writers replace lone surrogates with U+FFFD everywhere.
+**Text.** JSON text is UTF-8 without a byte-order mark; a reader strips one leading U+FEFF. A string is *well formed* when it holds no lone UTF-16 surrogate. The writer makes the strings of `project.json` and the entries well formed (a lone surrogate becomes U+FFFD). Record strings (§8.1) and `level.json` are written as the state holds them, with a lone surrogate escaped (`"\ud83d"`), so a reader must accept that escape. The editor makes text well formed where it enters the state (`docs/history-format.md`), so its own records hold none; the rule is for files other writers produce.
 
 **Hashes.** *hash16* is the first 16 bytes of SHA-256. In files it is written as exactly 32 lowercase hex characters (`^[0-9a-f]{32}$`, the whole string); anything else (uppercase, 31 or 33 characters, a trailing newline) is not a hash. A full SHA-256 is 64 lowercase hex characters.
 
 **Times.** `time`, `fromTime` and `targetTime` are milliseconds since the Unix epoch (UTC). `revision.savedAt` is the one string time (§5.3).
 
-**Units.** Beats are beats. Lanes are lane units: the stage is 12 lanes wide, lane 0 its centre, so a left edge of `-6` and a width of `12` cover it. `bgmOffset` is in seconds everywhere in the file (the editor shows milliseconds). `initialLife` is a plain number.
+**Units.** Beats are beats. Lanes are lane units. The stage is 12 lanes wide, lane 0 its centre, so a left edge of `-6` and a width of `12` cover it. `bgmOffset` is in seconds everywhere in the file (the editor shows milliseconds). `initialLife` is a plain number.
 
 **Terms.**
 
@@ -71,7 +71,7 @@ The editor's reader (`readNxsp`, `src/local/nxsp/read.ts`) does the following. A
 5. **Check the pointers** (§4): each in its own prefix, no two on one entry (else `damaged`); every other entry that is not ignored is `unknown-entry`.
 6. **Read `level.json`** (cap 64 MiB). Missing or unreadable: `unreadable`. Top-level keys other than `bgmOffset` and `entities`: `unknown-key`.
 7. **Read the media** (§5.5): each `file` entry checked for size and SHA-256 (`media-unreadable` on a mismatch or when missing).
-8. **Read the history** (§9) only when `project.json` has `history` and the report holds no `damaged` and no `newer-minor`. Any failure here adds its reasons (`history-unreadable`, `newer-history`, `unknown-key`, `damaged`) and leaves the history unread; the level still opens.
+8. **Read the history** (§9) only when `project.json` has `history` and the report holds no `damaged` and no `newer-minor`. Any failure here adds its reasons and leaves the history unread; the level still opens. A manifest or segment that fails as a ZIP entry, is not UTF-8, is not JSON or is nested deeper than 64 is `damaged`, as is a part past its cap or the parts together past theirs; any other failure is `history-unreadable`, `newer-history` or `unknown-key` (§14.2).
 9. **Classify** (§14): `open` is `full` when the report is empty or holds only `newer-patch`, else `partial`.
 
 Then the editor parses `level.json` into a chart (§7), decides the head (§10.6), and imports the history.
@@ -114,8 +114,8 @@ End record (22 bytes): `50 4b 05 06`, disk numbers 0, the entry count twice, the
 A reader is more tolerant, so that an operating system's re-zip still opens.
 
 - **End record.** Search the last 65,535 + 22 + 20 bytes backwards for `50 4b 05 06`; take the first found (nearest the end) whose comment length runs exactly to the end of the file, else the one nearest the end whose comment fits. When the entry count is `0xFFFF` or the directory size or offset is `0xFFFFFFFF`, a ZIP64 locator must sit 20 bytes before it and the ZIP64 end record is used.
-- **Central directory.** At most 65,535 entries; more is damage that no scan may get around (`unreadable` if it stops everything). The directory must lie inside the file and hold at least 46 bytes per entry. An entry whose least range (local header, name and compressed data) runs past the file means the file was cut: the directory is not trusted.
-- **Scan.** When the directory cannot be read, entries are read by walking local headers from offset 0 (stopping at the first non-header, at a data descriptor without sizes, or at a header whose data runs past the file). The result is flagged *recovered* and reported `damaged` (path `""`, "central directory"): such a file never opens with history. No entry found: `unreadable`.
+- **Central directory.** At most 65,535 entries; more is damage that no scan may get around (`unreadable` if it stops everything). The directory must lie inside the file and hold at least 46 bytes per entry. An entry whose least range (local header, name and compressed data) runs past the file means the file was cut, and the directory is not trusted.
+- **Scan.** When the directory cannot be read, entries are read by walking local headers from offset 0 (stopping at the first non-header, at a data descriptor without sizes, or at a header whose data runs past the file). The result is flagged *recovered* and reported `damaged` (path `""`, "central directory"). Such a file never opens with history. No entry found: `unreadable`.
 - **Names.** Bit 11 set: UTF-8 (invalid bytes become U+FFFD). Bit 11 clear: UTF-8 when valid, else CP437. A leading U+FEFF is kept (so `﻿bgm/a.mp3` is not `bgm/a.mp3`). Names are compared in Unicode NFC.
 - **Directories and clutter are ignored:** names ending in `/`, anything under `__MACOSX/` or `cache/`, and any entry whose last path component is `.DS_Store`, `Thumbs.db`, `desktop.ini` or starts with `._`. Ignored entries are never `unknown-entry`, but they still count for overlaps.
 - **Ambiguity.** Two entries with one NFC name are both unfindable by that name (`damaged` "two entries with this name"). Overlapping data ranges (by the least range from the directory, and again by the real range with each local header's extra field) are `damaged` "overlapping data" for both entries, ignored entries included.
@@ -127,7 +127,7 @@ A reader is more tolerant, so that an operating system's re-zip still opens.
 | Entry | Writer's method | Named by | Holds |
 | --- | --- | --- | --- |
 | `project.json` | 8 | fixed name | Identity, revision, level info, pointers, summary (§5) |
-| `level.json` | 8 | `level`, which must be `"level.json"` | The chart now, as level data (§7) |
+| `level.json` | 8 | `level` (must be `"level.json"`) | The chart now, as level data (§7) |
 | `history/segments/<n>.json` | 8 (a segment copied whole keeps its method) | `history.segments[n-1]` | Older parts of the chronology (§9) |
 | `history/manifest.json` | 8 | `history.manifest` | The newest part and the undo stack (§9) |
 | `history/chunks.bin` | 0 | `history.chunks` | Every chunk's stored bytes, concatenated (§9.3) |
@@ -141,7 +141,7 @@ The writer's order is the table's (segments by number). Readers do not depend on
 
 **Unknown entries.** Every entry that is not ignored (§3.2), not `project.json` and not named by a pointer is `unknown-entry` (partial open). A reader of a newer-major file does not check entries.
 
-Entry names other than `project.json` and `level.json` are cosmetic: readers find entries only through pointers. The writer's media names are in §16.3. Retired names (`history/media/`, `history.media`) are unknown like any other.
+Entry names other than `project.json` and `level.json` are cosmetic. Readers find entries only through pointers. The writer's media names are in §16.3.
 
 ## 5. `project.json`
 
@@ -160,12 +160,12 @@ A JSON object, compact, UTF-8.
 | `id` | non-empty string | The document id. Required. |
 | `lineageId` | non-empty string | Provenance; copied by forks and Save As. Required. |
 | `revision` | object, optional on read | §5.3. Any form error: `invalid-key` and the whole `revision` reads as absent. |
-| `name` | string, optional | The chain's name. The apps name a file brought into their library by it (Part 3 ND15). The web reads it and does not write it: its names are automatic (a copy's "(2)", a lost file's stem). |
+| `name` | string, optional | The chain's name. The apps name a file brought into their library by it. The web reads it and does not write it, as its names are automatic (a copy's "(2)", a lost file's stem). |
 | `exportName` | string, optional | The name Export uses (may be `""`). |
 | `level` | string | Must be `"level.json"` (§4). |
 | `editor` | object, optional (`{}`) | Only `defaultGuideColors`: an array of counts, indices into `level.json` `entities` (§7.6). Other keys: `unknown-key`. A bad array: `invalid-key`, read as absent. |
 | `bgm` | media form, optional | The head's BGM (§5.5). Absent means left out, not removed. |
-| `history` | object, present exactly when the file has history | `{manifest, chunks, entries, segments?}`: `manifest` and `chunks` strings, `entries` a count (the total entry count over all parts), `segments` an array of strings. More than 4,096 segments: `damaged` (`history.segments`). Any other key (the retired `media` included): `unknown-key`, and the whole `history` reads as absent. |
+| `history` | object, present exactly when the file has history | `{manifest, chunks, entries, segments?}`: `manifest` and `chunks` strings, `entries` a count (the total entry count over all parts), `segments` an array of strings. More than 4,096 segments: `damaged` (`history.segments`). Any other key: `unknown-key`, and the whole `history` reads as absent. |
 | `summary` | object, optional | `{noteCount, durationMs, revisionId}` (counts and a string) from the head. Used only when `revisionId == revision.id`; a bad or stale `summary` is ignored, never reported. |
 | `metadata` | object, optional | Level info (§5.4). |
 | `parts` | object | Reserved, never written. Every key in it: `unknown-key` (`parts.<key>`). Not an object: `damaged`. Never kept. |
@@ -191,7 +191,7 @@ From the minimal file of §17.1 (a Save with History off):
 | `parent` | `null` (a new document) or a non-empty string: the revision this one descends from. |
 | `n` | Count, display only (parent's `n` + 1). |
 | `savedAt` | RFC 3339 `date-time`: `YYYY-MM-DDThh:mm:ss`, an optional `.fraction`, then `Z` or `±hh:mm`; uppercase `T` and `Z`; a date that exists; seconds 00–59 (no leap second). Anything else, a non-string included, reads as **absent**, never as a reason for a partial open. The writer writes UTC to the second (`2026-10-20T08:00:00Z`). |
-| `device` | `{id, label}`, both strings. `id` names the writing install **for this document's lineage**: the web writes HMAC-SHA-256 of `lineageId` under the browser's own `deviceId`, as a UUID version 8, so one install's files of two lineages carry different ids and files of one lineage the same. Readers treat it as opaque and compare it only within a lineage. `label` is the install's label, such as `Web (Chrome)`. |
+| `device` | `{id, label}`, both strings. `id` names the writing install **for this document's lineage**: the web computes HMAC-SHA-256 with the browser's own `deviceId` as the key and `lineageId` as the message, both UTF-8, takes the first 16 bytes, sets the high nibble of byte 6 to 8 (UUID version 8) and the top two bits of byte 8 to `10` (the variant), and writes them as a lowercase hyphenated UUID. So one install's files of two lineages carry different ids and files of one lineage the same. Readers treat it as opaque and compare it only within a lineage. `label` is the install's label, such as `Web (Chrome)`. |
 | `ancestors` | Array of non-empty strings, newest first; read as a set. The writer writes at most 1,024. |
 | `replaces` | Optional string, written only by Replace. |
 | `fileName` | Optional string: the file name this write used. |
@@ -199,7 +199,7 @@ From the minimal file of §17.1 (a Save with History off):
 
 ### 5.4 `metadata` and level info
 
-Keys, all optional: `title`, `artists`, `author`, `description` (strings), `rating` (finite number), `tags` (array of `{title, icon?}`, both strings), `cover`, `preview` (media forms). A wrong form is `invalid-key` at its path; a tag with another key is `unknown-key`.
+Keys, all optional: `title`, `artists`, `author`, `description` (strings), `rating` (finite number), `tags` (array of `{title}`, `title` a string), `cover`, `preview` (media forms). A wrong form is `invalid-key` at its path; a tag with another key is `unknown-key`.
 
 The pinned mapping to a state's level info: an absent string is `""`; absent `tags` is `[]`; absent `rating` is "no rating" (a rating of `0` is written as `0`); `cover` and `preview` become media references (§6.6) from their forms. The writer leaves out empty strings and empty `tags`, and leaves `metadata` out when nothing is left.
 
@@ -256,7 +256,7 @@ Every chart has at least one group and one stage. The *default* group or stage i
 
 ### 6.3 Folders and the tree
 
-A folder is `{id, name, index, folderId?}`. Folder ids are unique across both folder lists together. `index` (count) is how many entries precede the folder in the flat order; it places a folder without members. `folderId` on a folder is a parent link reserved for nesting: this build never sets it, the format keeps it, and it must not loop. Membership is the entry's `folderId`.
+A folder is `{id, name, index, folderId?}`. Folder ids are unique across both folder lists together. `index` (count) is how many entries precede the folder in the flat order; it places a folder without members. `folderId` on a folder is a parent link reserved for nesting. This build never sets it, the format keeps it, and it must not loop. Membership is the entry's `folderId`.
 
 The tree a viewer shows is built from the flat list (`buildFolderTree`, `src/chart/folders.ts`):
 
@@ -269,7 +269,7 @@ The editor keeps lists normalised: each folder's members contiguous, entries in 
 
 ### 6.4 Notes and slides
 
-A **slide** is a non-empty list of notes in beat order (ties in list order). A one-note slide is a single note. The connector between consecutive notes of a slide is described by the fields of its notes as level data does: the slide is cut into segments at its first note and at each note with `isConnectorSeparator`; a segment's type, colour, fake and critical flags, guide alpha, layer, pass-through and presentation come from its first note (the segment head); each note's `connectorEase` eases the connector leaving it.
+A **slide** is a non-empty list of notes in beat order (ties in list order). A one-note slide is a single note. The connector between consecutive notes of a slide is described by the fields of its notes as level data does. The slide is cut into segments at its first note and at each note with `isConnectorSeparator`; a segment's type, colour, fake and critical flags, guide alpha, layer, pass-through and presentation come from its first note (the segment head); each note's `connectorEase` eases the connector leaving it.
 
 | Field | Domain | Meaning |
 | --- | --- | --- |
@@ -301,7 +301,7 @@ A **slide** is a non-empty list of notes in beat order (ties in list order). A o
 
 | Kind (list) | Fields (domain) |
 | --- | --- |
-| BPM change (`bpms`) | `beat` (finite; one must be at beat 0), `bpm` (finite; level data `> 0`), `meter` (finite, default 4) |
+| BPM change (`bpms`) | `beat` (finite; one must be at beat 0), `bpm` (finite; level data `> 0`), `meter` (finite, default 4; level data `> 0`) |
 | time scale (`timeScales`) | `groupId` (id of a group), `beat`, `editorLane` (finite: the lane the editor draws its marker in; level data default −6), `timeScale` (finite), `skip` (finite), `timeScaleEase` (an ease without Back and Elastic), `timeScaleTransition` (`timeScale` \| `scroll`), `hideNotes` (boolean) |
 | camera event (`cameraEvents`) | `beat`, `cameraLeft`, `cameraSize` (lanes; level data: `cameraSize` 6 to 24), `cameraZoom` (level data `>= 0.01`), `cameraZoomTargetLane`, `cameraZoomTargetY` (level data −1 to 1), `cameraZoomVerticalAlign` (`default` \| `center`), `cameraRotation`, `cameraStageTilt` (level data 0 to 1), `eventEase` |
 | stage mask event (`stageMaskEvents`) | `stageId`, `beat`, `maskLeft`, `maskSize` (lanes; level data `>= 0`), `isMaskNotes` (boolean), `eventEase` |
@@ -313,7 +313,7 @@ All unlisted numbers are finite numbers. `eventEase` is any ease (§6.7): the ea
 
 ### 6.6 Level info and media references
 
-Level info: `title`, `artists`, `author`, `description` (strings; `""` is unset), `tags` (list of `{title, icon?}`), `cover`, `preview` (media references, optional), `rating` (finite number, optional).
+Level info: `title`, `artists`, `author`, `description` (strings; `""` is unset), `tags` (list of `{title}`), `cover`, `preview` (media references, optional), `rating` (finite number, optional).
 
 A **media reference** is `{hash, filename, size, type}`: `hash` the hash16 of the bytes (32 hex), `filename` the picked file's name or `""`, `size` a count, `type` the sniffed MIME type or `""`. A **BGM reference** adds an optional `durationMs` (count, the decoded length rounded). A state names media by reference whether or not any file holds the bytes; a restored state whose media are not in the file shows them as "not loaded".
 
@@ -327,7 +327,7 @@ A **media reference** is `{hash, filename, size, type}`: `hash` the hash16 of th
 
 `{"bgmOffset": number, "entities": [LevelDataEntity, ...]}`: ordinary Sonolus level data, not gzipped, the same the editor exports. An entity is `{name?: string, archetype: string, data: [{name, value: number} | {name, ref: string}, ...]}`. Top-level keys other than `bgmOffset` and `entities` are `unknown-key`. The file's chart *now* is this value with `project.json`'s level info and BGM (§10.6).
 
-Ids are not in level data: a parse numbers groups, stages and folders afresh. Default guide colours (§7.6) and level info and BGM metadata (`project.json`) are kept outside it.
+Ids are not in level data. A parse numbers groups, stages and folders afresh. Default guide colours (§7.6) and level info and BGM metadata (`project.json`) are kept outside it.
 
 ### 7.2 Entities the editor writes, in order
 
@@ -347,7 +347,7 @@ Ids are not in level data: a parse numbers groups, stages and folders afresh. De
 | 12 | `EditorGroupFolder` | per group folder | `editorName` (ref), `editorIndex` (value) |
 | 13 | `EditorStageFolder` | per stage folder, dynamic only | as 12 |
 
-`next` refs chain each event kind per track, and notes along a slide. Entity names are lowercase hex counters (`"0"`, `"1"`, …, `"a"`, …) given in the order names are first needed; an entity nothing refers to has no name. Records' order (§8.6) decides entity order and names, so level data is a function of the state.
+`next` refs chain each event kind per track, and notes along a slide. Entity names are lowercase hex counters (`"0"`, `"1"`, …, `"a"`, …). Folder entities are named first, group folders then stage folders, whether or not anything refers to them; the parser skips a folder entity without a name. Every other entity is named in the order it is first referred to, and has no name if nothing refers to it. Records' order (§8.6) decides entity order and names, so level data is a function of the state.
 
 ### 7.3 Note entities
 
@@ -364,7 +364,7 @@ Archetype: `Fake` when `isFake`, then `Normal` or `Critical` (left out for ancho
 | head of an active run | `HeadTap` | `HeadFlick` |
 | tail of an active run | `TailRelease` | `TailFlick` |
 
-The role follows from `noteType` and the note's place in the slide's active connector runs: `anchor`, `damage`, `forceTick` → tick; `trace` → trace, head trace or tail trace; `default` and `forceNonTick` → head, tail or single by place, and in the middle of an active run `default` is a tick and `forceNonTick` a single. A flick is `flickDirection != none`.
+The role follows from `noteType` and the note's place in the slide's active connector runs: `anchor` → anchor; `damage` → damage; `forceTick` → tick; `trace` → trace, head trace or tail trace; `default` and `forceNonTick` → head, tail or single by place, and in the middle of an active run `default` is a tick and `forceNonTick` a single. A flick is `flickDirection != none`.
 
 Data: `#TIMESCALE_GROUP` (ref), `stage` (ref; dynamic stages only), `#BEAT`, `lane = left + size / 2`, `size = size / 2`, `elevation` (only when not 0), `style`, `direction`, `isAttached` (1 only for an attached middle note), `isSeparator`, `connectorEase`, `segmentKind`, `segmentAlpha` (= `connectorGuideAlpha`), `segmentLayer`, `effectKind`, `segmentThroughJudgeLine`, `segmentPresentation`, then `next` (ref), `attachHead`/`attachTail` (attached middle notes), `activeHead` (the tail of an active run).
 
@@ -402,6 +402,7 @@ The editor's parse (`parseLevelDataChart`). A viewer that shows the head from le
 7. **Events**: each kind is read only along its chains, from `Initialization.firstCamera` and each stage's `first…Change` refs, following `next`; entities not reached are not read. Any chain without dynamic stages is refused. A loop is refused. Defaults for absent optional fields: camera `zoom` 1, `zoomTargetLane` 0, `zoomTargetY` 0, `zoomVerticalAlign` 0, `rotate` 0, `stageTilt` 1; mask `maskNotes` 0; style `editorLane` 0, `judgeLineStyle` 0, `fullWidth` 0, `noteAlpha` 1, `divisionLineAlpha` 1, and a legacy `alpha` (default 1) multiplies `laneAlpha` and `judgeLineAlpha`; transform `elevation` 0. `lane`/`size` convert back as `left = lane - size`, `width = 2 * size`.
 8. **Time scales**: each group's chain from `first` along `next` (stopping at a missing or repeated entity), then every other `#TIMESCALE_CHANGE` in entity order. `editorLane` default −6, `transitionStyle` default 0, `hideNotes` default 0.
 9. **Notes**: a note entity without a name is a one-note slide (in entity order, these come first). Named notes are joined into slides by `next`; a slide is ordered by `#BEAT` (stable). For each note: `left = lane - size`, `size = 2 * size`, `elevation` default 0, `style` default 0, `effectKind` default 0, `isSeparator`, `segmentLayer`, `segmentThroughJudgeLine`, `segmentPresentation` default 0; connector type, fake and critical flags from `segmentKind`'s base kind; `connectorStyle` from the colour digit (guides 101–108 and coloured kinds), except that a note whose entity index is in `defaultGuideColors` and whose `segmentKind` is 103 has `connectorStyle: default`.
+   - **Note archetypes** (`noteArchetypeNames` in `src/chart/parse/levelData/slide.ts`, 68 names), each with or without a leading `Fake`: `Normal` or `Critical`, then `Head`, `Tail` or nothing, then `Tap`, `Flick`, `Trace`, `TraceFlick` or `Release`, then `Note`; `NormalTickNote` and `CriticalTickNote`; `DamageNote` and `AnchorNote`. That is more than the writer uses (§7.3): `NormalReleaseNote`, `NormalHeadReleaseNote` and `NormalTailTapNote` are notes, not unknown archetypes.
    - `Fake` prefix: `isFake`. `AnchorNote`: `noteType: anchor`, no flick, `isCritical = connectorActiveIsCritical`. `DamageNote`: `noteType: damage`, no flick.
    - Otherwise `Critical` sets `isCritical`. After `Head`/`Tail`, a `Trace…` archetype is `noteType: trace` (a flick only for `TraceFlick`).
    - Else, with *prevActiveHead* meaning that an earlier segment head of the slide (its first note or a separator) was active with no non-active separator since: when there is none, or the note is the slide's last, or it is a separator whose connector is not active, a `Tick` archetype is `forceTick` (else `default`); otherwise (the middle of an active run) a non-`Tick` archetype is `forceNonTick` (else `default`). A flick only for a `…Flick` archetype.
@@ -409,7 +410,7 @@ The editor's parse (`parseLevelDataChart`). A viewer that shows the head from le
 10. **Ignored, rebuilt on export:** `Connector`, `SimLine`, `TransientHiddenTickNote`, `TransientHiddenDamageTickNote`; note fields `attachHead`, `attachTail`, `activeHead`; event fields `stage`; group field `editorHidden` (another editor's display flag). **Dropped:** `Skill`, `FeverChance`, `FeverStart`.
 11. **Validate**: a BPM change at beat 0 must exist; no negative beat; no negative note size; every BPM positive and finite; every number finite.
 
-**Report and refusal.** Unknown archetypes, unknown or doubled fields, a `ref` where a `value` belongs (or the reverse), and an engine `revision` above 2 are collected in a *level report*; any item makes the open partial ("Made by a newer version"). A choice value the parser does not know (a code outside §7.4's lists, a `forceNoteSpeed` outside 0 and 1–12) is reported and replaced by the field's default; the editor asks before opening such a file as a copy. A required field missing, a value outside the parser's schema (for example camera `size` outside 3–12, `zoom` below 0.01, an alpha outside 0–1, a `segmentAlpha` outside 0–2, `divisionSize` not a whole number `>= 1`, `initialLife` not a whole number `>= 1`, a negative `#BEAT`), a missing ref, a loop, or events without dynamic stages **refuse** the level: nothing opens. Required fields are those §7.2 lists for each archetype except: every `Initialization` field, `#BPM_CHANGE.meter`, every `editor…` field, `forceNoteSpeed`, `first`, `next`, `generateSimLines`, the `first…Change` refs, `zoom`, `zoomTargetLane`, `zoomTargetY`, `zoomVerticalAlign`, `rotate` (camera), `stageTilt`, `maskNotes`, `editorLane`, `judgeLineStyle`, `fullWidth`, `noteAlpha`, `divisionLineAlpha`, `alpha`, `elevation`, `transitionStyle`, `hideNotes`, and note `stage`, `elevation`, `style`, `isSeparator`, `segmentLayer`, `effectKind`, `segmentThroughJudgeLine`, `segmentPresentation`, which are optional.
+**Report and refusal.** Unknown archetypes, unknown or doubled fields, a `ref` where a `value` belongs (or the reverse), and an engine `revision` above 2 are collected in a *level report*; any item makes the open partial ("Made by a newer version"). A choice value the parser does not know (a code outside §7.4's lists, a `forceNoteSpeed` outside 0 and 1–12) is reported and replaced by the field's default; the editor asks before opening such a file as a copy. A required field missing, a value outside the parser's schema (for example camera `size` outside 3–12, `zoom` below 0.01, an alpha outside 0–1, a `segmentAlpha` outside 0–2, `divisionSize` not a whole number `>= 1`, `initialLife` not a whole number `>= 1`, a negative `#BEAT`), a missing ref, a loop, or events without dynamic stages **refuse** the level, and nothing opens. Required fields are those §7.2 lists for each archetype, except these optional ones: every `Initialization` field, `#BPM_CHANGE.meter`, every `editor…` field, `forceNoteSpeed`, `first`, `next`, `generateSimLines`, the `first…Change` refs, `zoom`, `zoomTargetLane`, `zoomTargetY`, `zoomVerticalAlign`, `rotate` (camera), `stageTilt`, `maskNotes`, `editorLane`, `judgeLineStyle`, `fullWidth`, `noteAlpha`, `divisionLineAlpha`, `alpha`, `elevation`, `transitionStyle`, `hideNotes`, and note `stage`, `elevation`, `style`, `isSeparator`, `segmentLayer`, `effectKind`, `segmentThroughJudgeLine`, `segmentPresentation`.
 
 ### 7.6 `editor.defaultGuideColors`
 
@@ -429,7 +430,7 @@ A **record** is a JSON array whose positions are fields; it holds only arrays, s
 
 ### 8.2 Chunks
 
-A chunk's stored form is one raw DEFLATE stream of its bytes. Reading a chunk is strict: the stream must end exactly at its last byte, with the final block set and no input left over; it must inflate to at most 16 MiB; the inflated bytes must hash to the chunk's name; and they must parse as JSON (depth 64). A chunk that hashes to its name but is not canonical (whitespace, `1.0`) is accepted as it is. A chunk is either the header record (§8.4) or a body chunk: an array of records of one kind, possibly empty (no records).
+A chunk's stored form is one raw DEFLATE stream of its bytes. Reading a chunk is strict. The stream must end exactly at its last byte, with the final block set and no input left over; it must inflate to at most 16 MiB; the inflated bytes must hash to the chunk's name; and they must parse as JSON (depth 64). A chunk that hashes to its name but is not canonical (whitespace, `1.0`) is accepted as it is. A chunk is either the header record (§8.4) or a body chunk: an array of records of one kind, possibly empty (no records).
 
 ### 8.3 Kind nodes and the root
 
@@ -448,7 +449,7 @@ A chunk's stored form is one raw DEFLATE stream of its bytes. Reading a chunk is
 | stage | `id` id, `name` string, `isFromStart` bool, `isUntilEnd` bool, `generateSimLines` enum, `folderId` id (optional; must be a stage folder) |
 | folder | `id` id, `name` string, `index` uint, `folderId` id (optional; must be a folder of the same list; no loops) |
 | levelInfo | `title`, `artists`, `author`, `description` strings, `tags` array of tag, `cover` mediaRef or `[]`, `preview` mediaRef or `[]`, `rating` number (optional) |
-| tag | `title` string, `icon` string (optional) |
+| tag | `title` string |
 | mediaRef | `hash` hash16, `filename` string, `size` uint, `type` string |
 | bgm | `hash` hash16, `filename` string, `size` uint, `type` string, `durationMs` uint (optional) |
 
@@ -510,7 +511,7 @@ The history is the concatenation of the parts: `entries` are the segments' in `h
 - **Tiling.** Taking the parts in order and each part's index in order, the first offset is 0 and each offset is the previous offset plus the previous length; the last end is the size of `chunks.bin`.
 - `history.entries` must equal the entry count.
 - Every node must hash to its key, pass §8.3 and have each child present (a depth-0 node's chunks in the index, a depth-1 node's children as depth-0 nodes of its kind); an unknown kind is newer. Every root must hash to its key and pass §8.6 step 1, its header chunk in the index and each top node present and of its kind. Nodes and roots nothing references are still checked.
-- Every entry without `kept: false`, every slot of a `recovered` entry's `stack.push` (§10.2), and every `undoStack` slot must have its root in `roots`. A `kept: false` entry may have it or not.
+- Every entry without `kept: false` must have its root in `roots`, a `recovered` one also each slot of its `stack.push` (§10.2); so must every `undoStack` slot. A `kept: false` entry may have them or not, its `stack.push` slots included.
 - `base <= index < base + slots.length`.
 
 Each failure is `history-unreadable` (newer content: `newer-history`). Reports stop after 20 items with "and N more".
@@ -519,11 +520,11 @@ Each failure is `history-unreadable` (newer content: `newer-history`). Reports s
 
 The stored forms of all chunks, concatenated with no framing, located only through the chunk index. Each chunk is verified by its hash when read (§8.2); the entry's whole CRC is never checked when it is STORE (it is read in slices). A DEFLATE `chunks.bin` (an OS re-zip) is inflated whole on first use, within its caps, and its CRC and size checked then; a failure is `history-unreadable`. Caps are checked before any of it is read: at most 2 GiB declared, STORE with `compressedSize == size`, DEFLATE within `2 * size + 1024`.
 
-**What is checked at open, what later.** At open the reader checks every part, every root and node, every root's **header chunk** (strict inflate, hash, §8.4), and every chunk of the **History head's** snapshot, decoded (§8.6). Any failure: the history is unread. Other body chunks are read only when needed (the editor's background import, a peek, a Restore): one failing then makes the snapshots that need it **damaged**, never the file; the editor marks the rows needing them `kept: false` and, when the file is the chain's own and unchanged, unbinds the chain from it.
+**What is checked at open, what later.** At open the reader checks every part, every root and node, every root's **header chunk** (strict inflate, hash, §8.4), and every chunk of the **History head's** snapshot, decoded (§8.6). Any failure: the history is unread. Other body chunks are read only when needed (the editor's background import, a peek, a Restore). A chunk that fails then makes the snapshots that need it **damaged**, never the file; the editor marks the rows needing them `kept: false` and, when the file is the chain's own and unchanged, unbinds the chain from it.
 
 ### 9.4 The undo stack
 
-`undoStack` is the head session's undo stack at the write, cut to the slots the file holds: `slots[k]` is absolute slot `base + k`, and `index` is absolute. The **History head** is `slots[index - base].snapshot`. Slots after the index are the redo tail. `step` is the step that slot's state was pushed with (`init` for slot 0 of a session that started the chain). The undo stack is not the timeline: it is what Undo and Redo would move through after the file opens.
+`undoStack` is the head session's undo stack at the write, cut to the slots the file holds: `slots[k]` is absolute slot `base + k`, and `index` is absolute. The **History head** is `slots[index - base].snapshot`. Slots after the index are the redo tail. `step` is the step that slot's state was pushed with (`init` for slot 0 of a session that started the chain). The undo stack is not the timeline. It is what Undo and Redo move through after the file opens.
 
 ## 10. Entries and the timeline
 
@@ -558,14 +559,14 @@ Entries are numbered by position (1-based, across all parts). Sessions are separ
 | `init` | `operation` (`nse.origin`) | The first state | Starts the stack with one slot (step `{kind: init, operation}`). Only as a chain's first entry. |
 | `continue` | `operation` (`nse.continue`, or `nse.origin` for a `.nxsp` open) | The state the session starts from | Keeps the stack; with none, starts one slot whose step is `init`. |
 | `edit` | `step` (kind `edit`) | The state after the step | Drops slots after the index, pushes, index + 1. |
-| `restore` | `step` (kind `restore`, `nse.restore`) | The restored state | As `edit`. |
+| `restore` | `step` (kind `restore`, `nse.restore`) | The restored entry's state with the current BGM, and the entry's BGM offset only when its BGM is the current one | As `edit`. |
 | `undo` | `step`: the step crossed (the slot left) | The state landed on | Index − 1; the snapshot is the slot landed on. |
 | `redo` | `step`: the step crossed (the slot entered) | The state landed on | Index + 1. |
 | `save` | `operation` (`nse.file.save`), `revisionId`, `device`, `appVersion` | The state saved | None. |
 | `export` | `operation` (`nse.file.export`) | The state exported | None. |
 | `recovered` | `operation` (`nse.recovery`), `recoveryContext`, `stack` | The recovered state | Keeps slots `0 … keep − 1`, appends `stack.push` (absolute numbering), sets the index to `stack.index`. |
 
-A file's chronology need not replay from its first entry to its `undoStack`: sessions may come from forks, and the writer cuts the stored stack. A viewer shows entries as they are and takes the undo stack from `undoStack`.
+A file's chronology need not replay from its first entry to its `undoStack`. Sessions may come from forks, and the writer cuts the stored stack. A viewer shows entries as they are and takes the undo stack from `undoStack`.
 
 **Saves.** In a file written by the editor, the last entry is the `save` entry of this file's own revision (`revisionId == revision.id`). Earlier `save` entries are earlier Saves (of earlier revisions, from other devices or files). An `export` entry records an Export (level data written elsewhere); no file event changes the chart.
 
@@ -584,7 +585,7 @@ A `kept: false` row whose root is present may still be decoded; the editor label
 
 - Times come from the writing devices. In a session made on one device, times never go back; a file's chronology as a whole may (sessions from several devices). The editor shows local dates and times from `time`.
 - `dirty` is informational (the Timeline does not show it).
-- `noteCount` is the root's note count when known; when the root is held it must agree with it, and a reader may take the root's.
+- `noteCount` is the root's note count when known. A writer writes the root's count, and a reader that holds the root takes the root's (readers do not check that the two agree).
 
 ### 10.5 What the editor shows
 
@@ -604,7 +605,7 @@ When the file does not match, the editor's import adds, after the file's entries
 
 `{"id": string, "version": positive integer, "data": object, "fallback": {"text": string, "locale": string}}`, written in the key order `id, data, version, fallback` with `fallback` as `{locale, text}`. Order is not significant.
 
-An operation is **known** when it has exactly these four keys, `id` is a native id (§12), `version` is `1`, `fallback.text` and `fallback.locale` are well-formed strings, its compact JSON is at most 64 KiB (UTF-8), and `data` passes the id's codec (§12). Codecs are strict: a member they do not list fails. Anything else (an unknown id, another version, data that fails, missing or extra keys, any other JSON value, `null` included) is **unsupported**: kept whole, carried through Saves, never an error, as long as it is within §11.3. Native ids start with `nse.`; tests use `test.future.*` for ids from a newer editor.
+An operation is **known** when it has exactly these four keys, `id` is a native id (§12), `version` is `1`, `fallback.text` and `fallback.locale` are well-formed strings, its compact JSON is at most 64 KiB (UTF-8), and `data` passes the id's codec (§12). Codecs are strict, and a member they do not list fails. Anything else (an unknown id, another version, data that fails, missing or extra keys, any other JSON value, `null` included) is **unsupported**: kept whole, carried through Saves, never an error, as long as it is within §11.3. Native ids start with `nse.`; tests use `test.future.*` for ids from a newer editor.
 
 ### 11.2 Titles
 
@@ -616,7 +617,7 @@ Every operation must be plain JSON: finite numbers, well-formed strings (keys in
 
 ### 11.4 Steps
 
-A step is `{kind, operation, recoveryContext?, x?}`: `kind` `init`, `edit` or `restore` (the kind that pushed it), `operation` an operation, `recoveryContext` only on a recovery step. Any other key is `unknown-key`.
+A step is `{kind, operation, recoveryContext?, x?}`: `kind` `init`, `edit` or `restore` (the kind that pushed it), `operation` an operation, `recoveryContext` written only on a recovery step, and accepted by a reader on any step. Any other key is `unknown-key`.
 
 ### 11.5 Recovery contexts
 
@@ -678,7 +679,7 @@ Allowed on: an entry, a step, a recovery context, its head and each dropped item
 | `stageId` | `{kind: stage, id, name}` | note, the four stage events |
 | `elevation` | finite | note, stageTransformEvent |
 
-An **assignment** is `{field, before, after}`; a side is `{mode: "varying"}` (the objects held different values) or `{mode: "uniform", value}` (all held `value`, which must pass the field's codec).
+An **assignment** is `{field, before, after}`; a side is `{mode: "varying"}` (the objects held different values) or `{mode: "uniform", value}` (all held `value`, and the value must pass the field's codec).
 
 **Property data** (brush and `nse.property.set`): `{subject, changed: NC+, assignments, displaced?: NC+, retainedInitialBpm?: true}` where `assignments` holds 1 to 61 assignments in strictly ascending field-id order (string comparison); `subject == subjectOfCounts(changed)`; `retainedInitialBpm` only with subject `bpm` or `objects`; `displaced` or `retainedInitialBpm` only with a `beat` assignment; every assignment applies to some changed kind and every changed kind has an assignment that applies to it.
 
@@ -736,7 +737,7 @@ Each id below has `version` 1. "Kind" is the entry or step kind it is written as
 | --- | --- | --- | --- |
 | `nse.header.set` | `{field: initialLife \| bgmOffset, before: finite, after: finite}` | Level Info (Initial Life alone), the Offset tool, the BGM dialog when only the offset changed. `bgmOffset` in seconds. | "Set Initial Life to {after}", "Set BGM Offset to {after × 1000} ms" |
 | `nse.bgm.change` | `{file: {before, after: NameText \| null}, offset?: {before, after: finite}}` | The BGM dialog or opening an audio file: a new BGM (file name without extension; `null` for none); `offset` only when it changed. Re-picking the same file is still a change. | "Changed BGM" (with `offset`), else "Changed BGM file" |
-| `nse.levelInfo.set` | `{changes: [...]}` | One Apply of the Level Info dialog. 1 to 9 changes in the order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not `initialLife` alone. Shapes: `{field: title \| artists \| author \| description, before, after: NameText}`; `{field: rating, before, after: finite \| null}`; `{field: tags, added: count, removed: count, changed?: positive, reordered?: true}` (at least one non-zero or `reordered`); `{field: cover \| preview, before, after: NameText \| null}`; `{field: initialLife, before, after: finite}`. A name pair is no change only when the texts are equal and neither is cut. | "Changed level info" |
+| `nse.levelInfo.set` | `{changes: [...]}` | One Apply of the Level Info dialog. 1 to 9 changes in the order `title artists author rating tags description cover preview initialLife`, each field once, each a real change, and not `initialLife` alone. Shapes: `{field: title \| artists \| author \| description, before, after: NameText}`; `{field: rating, before, after: finite \| null}`; `{field: tags, added: count, removed: count, reordered?: true}` (at least one non-zero or `reordered`); `{field: cover \| preview, before, after: NameText \| null}`; `{field: initialLife, before, after: finite}`. A name pair is no change only when the texts are equal and neither is cut. | "Changed level info" |
 | `nse.dynamicStages.enable` | `{created: NC}` | Enabling dynamic stages: a mask, a pivot and a style event at beat 0 on the default stage (`{stageMaskEvent: 1, stagePivotEvent: 1, stageStyleEvent: 1}`). | "Enabled dynamic stages" |
 
 ### 12.7 Groups, stages and folders
@@ -758,7 +759,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 
 | Id | Kind | `data` | Meaning | Title |
 | --- | --- | --- | --- | --- |
-| `nse.origin` | `init` entry or step; the `continue` entry of a `.nxsp` open | `{origin: new \| import \| autoSave \| recovery, source?: NameText}`, `source` only with `import` | How the chain began: a new chart, an import (an opened file's name in `source`), the migration of an old auto save, a recovery from Local Data. A `.nxsp` open writes it as its `continue`. | "Started a new level", "Opened {source}" / "Imported a level", "Recovered from auto save", "Recovered changes" |
+| `nse.origin` | `init` entry or step; the `continue` entry of a `.nxsp` open | `{origin: new \| import \| autoSave \| recovery, source?: NameText}`, `source` only with `import` | How the chain began: a new chart, an import (an opened file's name in `source`), the migration of an old auto save, a recovery from Local Data. A `.nxsp` open writes it as its `continue`. | "Started a new level", "Opened {source}" / "Imported a level", "Opened the old auto save", "Recovered changes" |
 | `nse.continue` | `continue` | `{fromTime: time}` | A new visit, Reopen, Restore Session or a fork; `fromTime` the parent session's last time. | "Continued from {fromTime}" |
 | `nse.file.save` | `save` | `{file: NameText, delivery: file \| download}` | A Save of the chain to a file (or a download). | "Saved {file}", "Downloaded {file}" |
 | `nse.file.export` | `export` | `{file: NameText, delivery: file \| download}` | Export Level Data. | "Exported {file}" |
@@ -802,7 +803,7 @@ Indexes are 0-based: for a group or stage, positions among the domain's entries 
 | Ungroup | edit | `nse.owner.ungroup` |
 | Undo, Redo | `undo`, `redo` | the crossed step's operation |
 | Restore (Timeline) | `restore` | `nse.restore` |
-| Save, Save As…, Save to File…, Download | `save` | `nse.file.save` |
+| Save, Save As…, Recent Sessions' Save…, Download | `save` | `nse.file.save` |
 | Export Level Data | `export` | `nse.file.export` |
 | Crash recovery (journal) | `recovered`, or an `edit` | `nse.recovery` |
 | Selection, view, zoom, scroll, visibility (shown, dimmed or hidden groups and stages), playback, Copy, settings | nothing | — |
@@ -826,8 +827,8 @@ The editor's open is whole only when the result is `full`, the level report (§7
 
 | Reason | Cause | Effect |
 | --- | --- | --- |
-| `damaged` | A directory recovered by scan; duplicate names; overlapping data; a pointer outside its prefix or two pointers on one entry; a history part, media or `chunks.bin` that fails as a ZIP entry or passes a cap; the parts together over 512 MiB; more than 4,096 segments; a non-object `parts` | History not read. |
-| `history-unreadable` | A part missing; a JSON or schema failure inside the history (§9, §10, §11); a dangling hash; an index that does not tile; a header or head chunk failing; a root or node not hashing to its key; `index` out of range; a key with two values; an `entries` mismatch; a resource-invalid description; a bad `x` | History not read. |
+| `damaged` | A directory recovered by scan; duplicate names; overlapping data; a pointer outside its prefix or two pointers on one entry; a manifest, segment or media entry that fails as a ZIP entry or passes its cap; `chunks.bin` past its caps; a manifest or segment that is not UTF-8, not JSON or nested deeper than 64; the parts together over 512 MiB; more than 4,096 segments; a non-object `parts` | History not read. |
+| `history-unreadable` | A part missing; a schema failure inside the history (§9, §10, §11); a dangling hash; an index that does not tile; a header or head chunk failing (its hash, its JSON or its schema), or `chunks.bin` failing as a ZIP entry while one is read (§9.3); a root or node not hashing to its key; `index` out of range; a key with two values; an `entries` mismatch; a resource-invalid description; a bad `x` | History not read. |
 | `newer-history` | A manifest `version` above 1, a root `v` above 1, an entry `kind` or kind name this build does not know | History not read. |
 | `unknown-key` | An unknown key in a closed object: `editor`, `history`, media forms, tags, `parts`, `level.json`'s top level, and anywhere in the history outside `x` | Partial; in the history, history not read. |
 | `unknown-entry` | An entry no pointer names | Partial. |
@@ -880,7 +881,7 @@ Entry names other than through pointers; the DOS times; `summary` (derive it); `
 
 ## 16. Writer rules (for round-tripping)
 
-A reader needs none of this. A writer that wants its files to open as the editor's do, unchanged on round trip, follows it; `tools/nxsp_check.py` in strict mode checks it.
+A reader needs none of this. A writer that wants its files to open as the editor's do and survive a round trip unchanged follows it. `tools/nxsp_check.py` in strict mode checks it.
 
 ### 16.1 Container and `project.json`
 
@@ -892,11 +893,11 @@ A reader needs none of this. A writer that wants its files to open as the editor
 
 ### 16.2 History
 
-- A **new or rebuilt** chronology (Save As, Save to File, a copy, a write that cannot append) is cut into segments of 500 entries while more than 500 remain; the manifest holds the last 1 to 500 and always the write's own `save` entry, last.
-- An **append** (a write-back to the chain's own file at its base): the source's segments are copied whole in order (same bytes and method); its `chunks.bin` is the new one's prefix, unchanged; its manifest becomes a new segment when it holds 500 or more entries, else its entries, roots, nodes and chunks carry into the new manifest; the new rows follow in the manifest, never split. A write-back to a file without history has nothing to copy: it writes the chain's chronology as a new one is written, keeping the file's `id` and taking its revision as `parent`, so the file gains history.
+- A **new or rebuilt** chronology (Save As, Recent Sessions' Save…, a copy, a write that cannot append) is cut into segments of 500 entries while more than 500 remain; the manifest holds the last 1 to 500 and always the write's own `save` entry, last.
+- An **append** (a write-back to the chain's own file at its base): the source's segments are copied whole in order (same bytes and method); its `chunks.bin` is the new one's prefix, unchanged; its manifest becomes a new segment when it holds 500 or more entries, else its entries, roots, nodes and chunks carry into the new manifest; the new rows follow in the manifest, never split. A write-back to a file without history has nothing to copy. When that Save includes History, it writes the chain's chronology as a new one is written, keeping the file's `id` and taking its revision as `parent`, so the file gains history.
 - Each part holds the roots, nodes and chunks its entries first reference, in first-reference order: entries in order (the snapshot, then a `recovered` entry's pushes), then the undo slots, then any other roots; for each root its header chunk, then its kinds in order, each node's chunks in order. New chunks are appended to `chunks.bin` in that order.
 - Entry keys in the order `kind`, `step` or `operation`, `recoveryContext`, `time`, `snapshot`, `noteCount`, `dirty`, `kept`, `revisionId`, `device`, `appVersion`, `stack`, `x`. A row whose state the writer does not hold whole is written `kept: false`, never left out; a row's `noteCount` is written only when known.
-- The chronology ends with this write's `save` entry. The undo stack is the saved session's, at most 5,000 slots, renumbered so that every slot's root is in the file.
+- The chronology ends with this write's `save` entry. The undo stack is the saved session's, at most 1,000 slots, renumbered so that every slot's root is in the file.
 - Snapshots: records, canonical text, hashes, split and node grouping exactly as §8; chunks deflated raw at pako's default level (any valid DEFLATE gives the same hashes).
 
 ### 16.3 Media entry names
@@ -945,12 +946,12 @@ The first note is `left 0, size 2` (lane centre 1, half-width 1); the second `le
 
 ### 17.2 A small history
 
-A first Save of a chain of three states (`05a-sessions-first-save.nxsp` of the corpus): `project.json` adds `"completeFrom":"e001-…"` to `revision`, `"name":"Small"` and `"history":{"manifest":"history/manifest.json","chunks":"history/chunks.bin","entries":5}`. The manifest (hashes shortened to 8 characters, fallbacks elided):
+A first Save of a chain of three states (`05a-sessions-first-save.nxsp` of the corpus): `project.json` adds `"completeFrom":"e001-…"` to `revision`, `"name":"Small"` (the builder was given a name, as the apps write one; the web writes none, §5.1) and `"history":{"manifest":"history/manifest.json","chunks":"history/chunks.bin","entries":5}`. The manifest (hashes shortened to 8 characters, fallbacks elided):
 
 ```json
 {"version":1,
  "entries":[
-  {"kind":"init","operation":{"id":"nse.origin","data":{"origin":"autoSave"},"version":1,"fallback":{"locale":"en","text":"Recovered from auto save"}},"time":1792746001000,"snapshot":"6caa811a…","noteCount":1},
+  {"kind":"init","operation":{"id":"nse.origin","data":{"origin":"autoSave"},"version":1,"fallback":{"locale":"en","text":"Opened the old auto save"}},"time":1792746001000,"snapshot":"6caa811a…","noteCount":1},
   {"kind":"edit","step":{"kind":"edit","operation":{"id":"nse.note.add","data":{"created":1},"version":1,"fallback":{…}}},"time":1792746002000,"snapshot":"7e372c19…","noteCount":2,"dirty":true},
   {"kind":"edit","step":{…"nse.note.add"…},"time":1792746003000,"snapshot":"2e159c27…","noteCount":3,"dirty":true},
   {"kind":"export","operation":{"id":"nse.file.export","data":{"file":{"text":"Small.nsld.gz"},"delivery":"download"},…},"time":1792746004000,"snapshot":"2e159c27…","noteCount":3,"dirty":true},
@@ -971,11 +972,11 @@ The `bpms` chunk, worked through: canonical text `[[0,60,4]]` (10 bytes); SHA-25
 
 ### 17.3 An append
 
-The second Save of that chain (`05b-sessions-append.nxsp`) was written back over the first: its `chunks.bin` begins with 05a's 331 bytes unchanged (the first five index items are 05a's), the manifest begins with 05a's five entries, `revision` is `{"id":"f001-…","parent":"e001-…","n":2,"ancestors":["e001-…"],"completeFrom":"e001-…",…}`, and the entries continue with a `continue` of `nse.origin` (`{"origin":"import","source":{"text":"small.nxsp"}}`), an `nse.externalChange` edit, edits, undos, a redo, a restore, an export, a `continue` of `nse.continue`, a `recovered` entry, two unsupported operations, an entry with `x`, and the new `save`.
+The second Save of that chain (`05b-sessions-append.nxsp`) was written back over the first. Its `chunks.bin` begins with 05a's 331 bytes unchanged (the first five index items are 05a's), the manifest begins with 05a's five entries, `revision` is `{"id":"f001-…","parent":"e001-…","n":2,"ancestors":["e001-…"],"completeFrom":"e001-…",…}`, and the entries continue with a `continue` of `nse.origin` (`{"origin":"import","source":{"text":"small.nxsp"}}`), an `nse.externalChange` edit, edits, undos, a redo, a restore, an export, a `continue` of `nse.continue`, a `recovered` entry, two unsupported operations, an entry with `x`, and the new `save`.
 
 ### 17.4 Fixtures and tools
 
-- `tests/local/nxsp/golden-v1/` (`write-1.nxsp`, `write-2.nxsp`, an append): the builder golden. `tests/zip/plan-conformance-v1/`: plan-to-bytes cases, with failures, that any writer implementation must reproduce. `tests/local/records/golden-v1/`: record and snapshot vectors (the golden and edge charts). `tools/fields-v1.json`: every record form, the kind order and the enum sets, machine-readable.
+- `tests/local/nxsp/golden-v1/` (`write-1.nxsp`, `write-2.nxsp`, an append): the builder golden. `tests/zip/plan-conformance-v1/`: plan-to-bytes cases, with failures, that any writer implementation must reproduce. `tests/local/records/golden-v1/`: record and snapshot vectors (the golden and edge charts). `tests/local/records/schema-v1/`: record values the v1 schema must accept and must reject. `tools/fields-v1.json`: every record form, the kind order and the enum sets, machine-readable.
 - `tests/native/fixtures/nxsp-v1/`: eight files the v0.6.0 editor wrote (`full`, `kept-first`, `carried`, `not-carried`, `media-not-held`, `bgm-unticked`, `no-history`, `no-media`), made by driving the real editor (`npm run fixtures:v1`) and frozen with the v0.6.0 tag; its `README.md` says what each holds. `tests/zip/nxspV1.test.ts` reads each (the head matches, the media forms, `completeFrom`, a damaged chunk, an OS re-zip), `tests/local/fixturesV1.test.ts` checks which record forms and keys they exercise, `tests/browser/formats/nxspWriteBackV1.spec.ts` saves each back in place, and `check.yml` runs the checker over them with the golden pair. See [format-versioning.md](format-versioning.md) section 8.
-- The examples in §17.1–§17.3 are files of the clean-room test corpus, written by the editor's own builder (`planNxsp` and `executePlan`).
+- The examples in §17.1–§17.3 are files of a clean-room test corpus, written by the editor's own builder (`planNxsp` and `executePlan`). The corpus is not kept, so the bytes and numbers here are its record.
 - `uv run python -I tools/nxsp_check.py --read FILE...`: an independent reader that prints one JSON line per file (kind, open, report) and agrees with the editor on every probe of `tests/local/nxsp/agreement.test.ts`. `uv run python -I tools/nxsp_check.py FILE...`: the strict writer check. `--show FILE HASH`: a record, chunk, root or node with field names.

@@ -279,7 +279,7 @@
                 "meter": "invalid meter",
                 "missingMeter": "no meter for measure {0}"
             },
-            "unsupportedParts": "This level has parts this version of the editor does not support. They were left out."
+            "unsupportedParts": "This level has parts that this version of the editor does not support. They were left out."
         },
         "paste": {
             "title": "Paste",
@@ -534,7 +534,7 @@
             "import": {
                 "damaged": "This file is damaged or is not a Sonolus package.",
                 "fileUnreadable": "This file could not be read.",
-                "zip64": "This file uses ZIP64, which the editor cannot read.",
+                "zip64": "The editor cannot read ZIP64 files.",
                 "fileTooLarge": "This file is larger than {0}.",
                 "tooManyEntries": "This file has more than {0} entries.",
                 "badName": "This file has an entry name that is not allowed.",
@@ -554,7 +554,7 @@
                 "particleCount": "This file’s {0} effect \"{1}\" has more than {2} particles.",
                 "effectGroups": "This file’s {0} effect \"{1}\" has more than {2} particle groups.",
                 "noPerfect": "This file’s {0} audio has no usable #PERFECT clip.",
-                "audioLength": "This file’s {0} audio is longer than {1} seconds in all.",
+                "audioLength": "This file’s {0} audio is longer than {1} seconds in total.",
                 "packageTooLarge": "This item is larger than {0} once stored.",
                 "storeFailed": "This item could not be stored."
             },
@@ -569,12 +569,12 @@
             "noneFound": "No items found",
             "server": {
                 "unreachable": "Could not reach this server. Check the address, or try again later.",
-                "auth": "This server needs you to sign in, which the editor does not support.",
-                "insecure": "This server uses http, which the editor cannot load.",
+                "auth": "The editor cannot use servers that need you to sign in.",
+                "insecure": "The editor cannot use http servers.",
                 "checksum": "The server’s checksum for this item does not match what it sent.",
                 "notFound": "This server does not have that item.",
                 "invalid": "This address is not a Sonolus server.",
-                "status": "This server answered with an error ({0}).",
+                "status": "This server returned an error ({0}).",
                 "filesFailed": "Could not download this item’s files from {0}.",
                 "addressEmpty": "Enter a server address.",
                 "addressInvalid": "This is not a valid server address.",
@@ -592,7 +592,7 @@
                 "tooManyEffects": "This item’s {0} data has more than {1} effects.",
                 "particleCount": "This item’s {0} effect \"{1}\" has more than {2} particles.",
                 "noPerfect": "This item’s {0} audio has no usable #PERFECT clip.",
-                "audioLength": "This item’s {0} audio is longer than {1} seconds in all.",
+                "audioLength": "This item’s {0} audio is longer than {1} seconds in total.",
                 "tooManyParticles": "This item’s {0} data has more than {1} particles.",
                 "tooManyGroups": "This item’s {0} data has more than {1} particle groups.",
                 "effectGroups": "This item’s {0} effect \"{1}\" has more than {2} particle groups.",
@@ -769,7 +769,7 @@
         },
         "altN": "Alt+N (Option+N on macOS) moves focus to the latest notice. Esc then closes it.",
         "shiftF10": "Shift+F10 or the Menu key opens the menu of the focused item.",
-        "recentSessions": "Work you did not save to a file is in History › Recent Sessions.",
+        "recentSessions": "Unsaved work is in History › Recent Sessions.",
         "fileTitle": "Files",
         "moveBetweenDevices": "To move work to another device, save it as a .nxsp file, then open the file there.",
         "crswap": "A crash while saving can leave a .crswap file next to the project file. It is safe to delete."
@@ -807,6 +807,8 @@
         "resetSettingsHint": "Restore default settings, keeping keyboard shortcuts.",
         "resetKeybinds": "Reset Shortcuts",
         "resetSettingsMessage": "Restore default settings, keeping keyboard shortcuts?",
+        "resetSettingsHintStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting.",
+        "resetSettingsMessageStatistics": "Restore default settings, keeping keyboard shortcuts and the Send Usage Statistics setting?",
         "resetKeybindsMessage": "Restore default keyboard shortcuts?",
         "editor": {
             "title": "Editor",
@@ -837,10 +839,10 @@
             "dragToPanY": "Drag to Pan Y",
             "dragToPanX": "Drag to Pan X",
             "showGroupName": "Show Group Name",
-            "hideGroupNameWhenFocusingGroup": "Hide group names when focusing a group",
+            "hideGroupNameWhenFocusingGroup": "Hide Group Names When Focusing a Group",
             "showOtherGroups": "Show Other Groups",
             "showStageName": "Show Stage Name",
-            "hideStageNameWhenFocusingStage": "Hide stage names when focusing a stage",
+            "hideStageNameWhenFocusingStage": "Hide Stage Names When Focusing a Stage",
             "showOtherStages": "Show Other Stages",
             "nameContrast": "Name Contrast",
             "showOtherObjects": "Show Other Objects",
@@ -898,6 +900,7 @@
             "highlightSelection": "Highlight Selection",
             "showHitboxes": "Show Hitboxes",
             "antialias": "Antialias",
+            "parallelRendering": "Parallel Rendering",
             "transport": {
                 "title": "Playback Controls",
                 "auto": "Auto",
@@ -916,6 +919,7 @@
             "title": "Toolbar",
             "quickSwitch": "Quick Switch",
             "add": "Add Tool",
+            "remove": "Remove \"{0}\" from Toolbar",
             "modal": {
                 "title": "Select Tool"
             }
@@ -943,6 +947,9 @@
             "license": "License",
             "notices": "Third-Party Notices",
             "privacy": "Privacy",
+            "usageStatistics": "Send Usage Statistics",
+            "usageStatisticsNote": "Which tools you use, your main settings, file types and sizes, and how long actions take. See Privacy.",
+            "usageStatisticsSignal": "Disabled by default because this browser sends Do Not Track or Global Privacy Control.",
             "diagnostics": "Copy Diagnostic Info…",
             "diagnosticsTitle": "Diagnostic Info",
             "diagnosticsNote": "Diagnostic info may include file and folder names. Check it before sharing.",
@@ -953,6 +960,7 @@
         "localData": {
             "title": "Local Data",
             "recoveryHeading": "Recovery",
+            "startupNoticesHeading": "Startup Notices",
             "discard": "Discard…",
             "discardConfirm": "Discard",
             "cannotOpen": "(cannot be opened in this version)",
@@ -961,16 +969,15 @@
             "recovery": {
                 "journal": "Unsaved work from an earlier visit, {0} · {1}",
                 "journalUndated": "Unsaved work from an earlier visit · {0}",
-                "legacy": "Recovery copy from an older version · {0}",
                 "autoSave": "Old auto save · {0}",
                 "unreadable": "Unreadable recovered work, {0} · {1}",
                 "listFailed": "Recovered work could not be read",
-                "downloadFailed": "The recovered work could not be downloaded.",
-                "atLoad": "Startup Notices"
+                "downloadFailed": "The recovered work could not be downloaded."
             },
             "openHistory": "Open History",
             "confirmClose": "Ask Before Closing with Unsaved Changes",
             "exportRaw": "Export Raw Data…",
+            "exportRawTitle": "Export Raw Data",
             "exportRawName": "{0} raw data {1}.zip",
             "storageHeading": "Storage",
             "stored": "Stored in this browser: {0} of about {1}",
@@ -978,10 +985,10 @@
             "deleteTitle": "Delete Sessions",
             "lastEdited": "Last edited over {0} day ago|Last edited over {0} days ago",
             "all": "All",
-            "includeNotSaved": "Include work not saved to a file",
+            "includeNotSaved": "Include unsaved work",
             "deleteNext": "Delete…",
             "deleteConfirm": "Delete {0} session?|Delete {0} sessions?",
-            "notSaved": "{0} session is not saved to a file: {1}.|{0} sessions are not saved to a file: {1}.",
+            "notSaved": "{0} session has unsaved changes: {1}.|{0} sessions have unsaved changes: {1}.",
             "namesMore": "{0} and {1} more",
             "newer": "This session needs a newer version of the editor.|Some of these sessions need a newer version of the editor.",
             "deleting": "Deleting…",
@@ -1196,24 +1203,24 @@
         "updated": "Updated to version {0}",
         "whatsNew": "What’s New",
         "upgradeBlocked": "Close other {0} tabs to open your stored work.",
-        "olderVersion": "A newer version of the editor has been opened in this browser. Reload, or save your work to files.",
+        "olderVersion": "A newer version of the editor has been opened in this browser. Reload, or save to keep your work.",
         "tryAgain": "Try Again",
         "continued": "Continued \"{0}\" from {1}.",
         "continuedUntitled": "Continued your session from {0}.",
         "continuedUndated": "Continued \"{0}\".",
         "cleared": "Work from earlier visits is missing. The browser cleared this site’s storage.",
         "inAppBrowser": "This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your browser.",
-        "journalKept": "A change to \"{0}\" could not be applied, so it was kept as a separate session.",
+        "journalKept": "A recovered change to \"{0}\" was kept as a separate session.",
         "fallback": "Recovered unsaved work from an earlier visit.",
         "fallbackLocal": "Unsaved work from an earlier visit is in Local Data.",
         "migrationFailed": "The old auto save could not be restored.",
-        "autoSave": "Continued \"{0}\" from auto save.",
+        "autoSave": "Continued \"{0}\" from the old auto save.",
         "journal": "Recovered your last change to \"{0}\".",
         "journalLater": "A recovered change needs a newer version of the editor.",
         "openElsewhere": "\"{0}\" was not restored here because it is open in another tab or window.",
         "restoreAsCopy": "Restore as a Copy",
         "sessionDeleted": "This session was deleted in another tab or window.",
-        "autoSaveKept": "Kept \"{0}\" from auto save as a separate session.",
+        "autoSaveKept": "Kept \"{0}\" from the old auto save as a separate session.",
         "autoSaveOpened": "Opened the old auto save.",
         "journalFailed": "A recovered change could not be stored. A copy is in Local Data.",
         "storageNearlyFull": "Browser storage is almost full.",
@@ -1237,14 +1244,14 @@
             "readOnly": "A newer version of the editor has been opened.",
             "upgrading": "A newer version of the editor is open in another tab."
         },
-        "unavailable": "The editor cannot store changes in this browser. Save to a file to keep your work.",
-        "private": "If this is a private window, everything stored here is lost when it closes. Save to a file to keep your work.",
-        "inAppBrowser": "This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.",
-        "ios": "This browser deletes stored work after 7 days without a visit. Save to a file to keep your work.",
-        "safari": "Safari deletes stored work after 7 days without a visit. Save to a file to keep your work.",
-        "installedWebkit": "Recent Sessions are kept here until this icon is removed from the Home Screen. Save to a file to keep your work.",
-        "persisted": "Recent Sessions are kept in this browser unless you clear its data. Save to a file to keep your work.",
-        "default": "Recent Sessions are kept in this browser, which may clear them if space runs low. Save to a file to keep your work."
+        "unavailable": "The editor cannot store changes in this browser. Save to keep your work.",
+        "private": "If this is a private window, everything stored here is lost when it closes. Save to keep your work.",
+        "inAppBrowser": "This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.",
+        "ios": "This browser deletes stored work after 7 days without a visit. Save to keep your work.",
+        "safari": "Safari deletes stored work after 7 days without a visit. Save to keep your work.",
+        "installedWebkit": "Recent Sessions are kept here until you remove this app. Save to keep your work.",
+        "persisted": "Recent Sessions are kept in this browser unless you clear its data. Save to keep your work.",
+        "default": "Recent Sessions are kept in this browser unless it runs low on space. Save to keep your work."
     },
     "player": {
         "started": "Started playing",
@@ -1377,7 +1384,7 @@
             "thisTab": "This tab",
             "elsewhere": "Another tab",
             "actions": "More Actions for \"{0}\"",
-            "saveToFile": "Save to File…",
+            "saveToFile": "Save…",
             "delete": "Delete",
             "openReason": "It is open in another tab or window."
         },
@@ -1396,7 +1403,7 @@
             "retainedInitialBpm": "Kept the initial BPM change",
             "pivot": "Scale Origin",
             "composedTransform": "Multiple Adjustments",
-            "released": "Moved out of Folder",
+            "released": "Moved Out of Folder",
             "recoveryContext": "Earlier Actions",
             "recoveryHead": "Recovered up to here",
             "omittedDescriptions": "Earlier actions not listed: {0}",
@@ -1932,7 +1939,8 @@
         "resize": {
             "left": "Resize Left Panels",
             "right": "Resize Right Panels",
-            "top": "Resize Top Panels"
+            "top": "Resize Top Panels",
+            "minimap": "Resize Minimap"
         },
         "resizeTiles": "Resize {0} and {1}",
         "dock": {
@@ -2063,12 +2071,12 @@
         "exported": "Exported to {0}",
         "notLevelData": "\"{0}\" is not level data.",
         "fileType": "Next SEKAI level data",
-        "unsupportedParts": "\"{0}\" has parts this version of the editor does not support."
+        "unsupportedParts": "\"{0}\" has parts that this version of the editor does not support."
     },
     "peek": {
         "loadingShort": "Loading…",
         "unavailableShort": "Unavailable",
-        "settingsChanged": "Settings changed",
+        "settingsChanged": "Properties changed",
         "initialState": "Initial state",
         "unavailable": "Changes unavailable",
         "loadingChanges": "Loading changes…",
@@ -2100,6 +2108,7 @@
         "notFound": "\"{0}\" cannot be found.",
         "downloadStarted": "Download started: {0} · {1}",
         "preparing": "Preparing {0}… {1}",
+        "ready": "Ready: {0} · {1}",
         "download": "Download",
         "buildFailed": "\"{0}\" could not be prepared.",
         "readFailed": "\"{0}\" could not be read.",
@@ -2109,8 +2118,8 @@
         "noSpace": "There is not enough space to write {0}.",
         "writeFailed": "\"{0}\" could not be written.",
         "notPutBack": "\"{0}\" was emptied and its contents could not be restored.",
-        "openedContentGone": "\"{0}\" no longer holds the content you opened.",
-        "replacedContentGone": "\"{0}\" no longer holds its earlier contents.",
+        "openedContentGone": "The contents of \"{0}\" have changed.",
+        "replacedContentGone": "The contents of \"{0}\" have changed.",
         "title": "Save Project File",
         "titleAs": "Save As",
         "history": "History",
@@ -2122,6 +2131,7 @@
         "notProject": "\"{0}\" is not a project file.",
         "notKept": "Not saved. \"{0}\" could not be read completely.",
         "notKeptSafe": "Not saved. Files cannot be replaced in safe mode.",
+        "notKeptFull": "Not saved. Browser storage is full. Delete sessions in Settings › Local Data, then save again.",
         "saved": "Saved to {0}",
         "savedWithoutBgmLarge": "Saved to {0} without its BGM",
         "savedWithoutCoverLarge": "Saved to {0} without its cover",
@@ -2131,7 +2141,7 @@
         "someStepsNotKeptLine": "Some earlier Timeline steps were not kept.",
         "someStepsMayNotBeIncluded": "Saved to {0}. Some earlier Timeline steps may not be included.",
         "someStepsMayNotBeIncludedLine": "Some earlier Timeline steps may not be included.",
-        "committedState": "The file holds the last stored version of the session open in another tab.",
+        "committedState": "This session is open in another tab. The file contains its last stored version.",
         "noChanges": "No changes since {0} was downloaded",
         "noChangesSaved": "No changes since {0} was saved",
         "noChangesOpened": "No changes since {0} was opened",
@@ -2154,8 +2164,8 @@
     "check": {
         "command": "Check File and History…",
         "title": "Check File and History",
-        "checkingFile": "Checking {0}… {1}%",
-        "checkingStored": "Checking stored history… {0}%",
+        "checkingFile": "Checking {0}…",
+        "checkingStored": "Checking stored history…",
         "changed": "\"{0}\" changed while it was being checked. Try again.",
         "stillOpening": "\"{0}\" is still being opened. Try again.",
         "noDamage": "No damage found.",
@@ -2189,12 +2199,12 @@
         "notDescendant": "This version was not made from yours ({0}).",
         "separate": "Save as a Separate File",
         "openOther": "Open the Other Version",
-        "openOtherNote": "Your changes stay unsaved.",
+        "openOtherNote": "Your changes stay in Recent Sessions.",
         "replaceNote": "The version on disk will be kept in Recent Sessions.",
         "keptName": "{0} (replaced {1})",
         "replaceNewer": "Made by a newer version of {0}.",
-        "replaceHoldsEarlier": "It holds earlier Timeline steps that are no longer stored in this browser.",
-        "replaceMayHoldEarlier": "It may hold earlier Timeline steps that are no longer stored in this browser.",
+        "replaceHoldsEarlier": "It contains earlier Timeline steps that are no longer stored in this browser.",
+        "replaceMayHoldEarlier": "It may contain earlier Timeline steps that are no longer stored in this browser.",
         "keepEditing": "Keep Editing"
     },
     "name": {
@@ -2207,7 +2217,6 @@
     "notice": {
         "useOpenFile": "To open a file, use Open.",
         "sameFileElsewhere": "\"{0}\" is open in another tab or window, so this is a separate copy.",
-        "sameFileMaybeElsewhere": "\"{0}\" may be open in another tab or window, so this is a separate copy.",
         "storageUnavailable": "The editor could not access this browser’s storage. Try again.",
         "chooseAudio": "Choose Audio…",
         "bgmDiffers": "This is a different file from the original BGM, \"{0}\".",
@@ -2222,7 +2231,7 @@
         "peekFailed": "Could not view this step",
         "peekSessionFailed": "Could not view this session",
         "openHistory": "Open History",
-        "earlierInHistory": "Earlier steps are in History",
+        "earlierInHistory": "Earlier Timeline steps are in History",
         "savedCurrent": "Saved the current version to {0}"
     },
     "entry": {
@@ -2230,7 +2239,7 @@
         "saved": "Saved {0}",
         "downloaded": "Downloaded {0}",
         "continued": "Continued",
-        "migrated": "Recovered from auto save",
+        "migrated": "Opened the old auto save",
         "restoredTo": "Restored to {0}",
         "changedOutside": "Changed outside the editor",
         "recoveredChanges": "Recovered changes"
@@ -2247,13 +2256,14 @@
     },
     "prompt": {
         "title": "Changes Not Stored",
+        "unsaved": "Unsaved Changes",
         "notStored": "Your changes are not being stored in this browser. Leaving will discard them.",
         "save": "Save",
         "leaveAnyway": "Leave Anyway"
     },
     "status": {
         "separateCopyShort": "Separate copy",
-        "notInFile": "Not saved to a file",
+        "notInFile": "Unsaved",
         "separateCopy": "Separate copy of {0}",
         "opensLevelInfo": "Opens Level Info",
         "changedSaved": "{0}, changed since {1} was saved",
@@ -2262,7 +2272,7 @@
     },
     "open": {
         "notProject": "This ZIP is not a project file.",
-        "severalProjects": "This ZIP holds several project files. Unzip it and open them one by one.",
+        "severalProjects": "This ZIP contains several project files. Unzip it and open them one by one.",
         "scp": "This is a Sonolus package. To use its skin or other assets, choose it in Preview Assets.",
         "openPreviewAssets": "Preview Assets…",
         "damagedUnopened": "This file is damaged and could not be opened.",
@@ -2282,14 +2292,11 @@
         "openLevel": "Open the Level",
         "newerValues": {
             "title": "\"{0}\" Uses Newer Features",
-            "body": "This level uses values this version of the editor does not support. Opening a separate copy replaces those values with defaults.",
+            "body": "This level uses values that this version of the editor does not support. Opening a separate copy replaces those values with defaults.",
             "openCopy": "Open a Copy"
         },
         "unsavedChanges": "Opened {0}. You have unsaved changes to it from {1}.",
-        "unsavedEarlier": "Unsaved changes to an earlier version of {0} ({1}) are in Recent Sessions.",
-        "earlierUnchecked": "Opened {0}. Recent Sessions could not be checked for other versions of it.",
-        "unsavedEarlierMaybe": "There may be unsaved changes to an earlier version of {0} ({1}) in Recent Sessions.",
-        "unsavedChangesMaybe": "Opened {0}. You may have unsaved changes to it from {1}.",
+        "unsavedEarlier": "You have unsaved changes to an earlier version of {0} ({1}). They are in Recent Sessions.",
         "olderVersion": "This is an older version of {0}. A newer one from {1} is in Recent Sessions.",
         "restoreIt": "Restore Session",
         "damagedHistory": "\"{0}\" has damaged history. Saving makes a separate file."
@@ -2297,10 +2304,7 @@
     "file": {
         "replacedElsewhere": "\"{0}\" was replaced from another tab or window.",
         "downloaded": "{0} · downloaded {1}",
-        "opened": "{0} · opened {1}",
-        "short": {
-            "notSaved": "not saved"
-        }
+        "opened": "{0} · opened {1}"
     },
     "state": {
         "fileMissing": "File missing",
@@ -2336,7 +2340,6 @@
         "removed": "Removed",
         "tagsAdded": "Tags Added",
         "tagsRemoved": "Tags Removed",
-        "tagsChanged": "Tags Changed",
         "order": "Order",
         "folder": "Folder",
         "groupFolder": "Group Folder",
@@ -2354,8 +2357,7 @@
             "previewAudio": "Preview Audio",
             "duration": "Duration",
             "size": "Size",
-            "type": "Type",
-            "icon": "Icon"
+            "type": "Type"
         },
         "contentsChanged": "Contents changed",
         "showMore": "Show More",

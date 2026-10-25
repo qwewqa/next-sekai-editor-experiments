@@ -12,7 +12,7 @@ import type { StorageCore, TestFlags } from '../../../src/local/worker/core'
 import { workerCore } from '../flush/harness'
 import { save, type Fixture } from '../save/fixture'
 
-// Check File and History…'s worker side driven as the page drives it (Part 1 §1.4.21): the file
+// Check File and History…'s worker side driven as the page drives it: the file
 // phase, the stored phase, then the finish, each call a task of the checking tab, over the real
 // storage core and handlers of a fixture's profile.
 

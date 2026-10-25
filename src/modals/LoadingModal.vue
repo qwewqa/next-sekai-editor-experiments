@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { i18n } from '../i18n'
 import ChevronIcon from '../editor/workspace/ChevronIcon.vue'
+import WaitBar from '../editor/workspace/WaitBar.vue'
 import { errorMessage } from '../utils/error'
 import BaseModal from './BaseModal.vue'
 import { describeFailure } from './loadingFailure'
@@ -9,15 +10,19 @@ import { describeFailure } from './loadingFailure'
 const props = defineProps<{
     title: () => string
     task: (signal: AbortSignal) => AsyncIterable<() => string> | Iterable<() => string>
+    /** The fraction done, 0 to 100, when the total is known. Without it the bar slides. */
+    progress?: () => number | undefined
 }>()
 
 const emit = defineEmits<{
     close: []
 }>()
 
+const ids = useId()
 const message = ref(() => i18n.value.modals.loading.loading)
 // English technical detail of a failure, behind a disclosure.
 const detail = ref<string>()
+const failed = ref(false)
 const isDetailOpen = ref(false)
 
 const controller = new AbortController()
@@ -41,6 +46,7 @@ onMounted(async () => {
             return
         }
         console.error(error)
+        failed.value = true
 
         const failure = describeFailure(error)
         message.value = failure.headline ?? (() => errorMessage(error))
@@ -56,7 +62,12 @@ const onClose = () => {
 
 <template>
     <BaseModal :title="title()" @close="onClose">
-        <span class="whitespace-break-spaces">{{ message() }}</span>
+        <div class="flex flex-col gap-2">
+            <span :id="`${ids}-text`" role="status" class="whitespace-break-spaces">{{
+                message()
+            }}</span>
+            <WaitBar v-if="!failed" :value="progress?.()" :labelledby="`${ids}-text`" />
+        </div>
         <details
             v-if="detail"
             class="mt-2 max-h-32 max-w-full overflow-auto break-words text-sm"

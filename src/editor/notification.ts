@@ -1,5 +1,6 @@
 import { ref, shallowRef, watch } from 'vue'
 import { RELEASE_NOTES_URL } from '../buildInfo'
+import { onHistoryAction } from '../history/actions'
 import { i18n } from '../i18n'
 import { launch } from '../launch'
 import { isBlockingModalOpen } from '../modals'
@@ -10,7 +11,7 @@ import { interpolate } from '../utils/interpolate'
 import { formatCount } from '../utils/size'
 import { noticeDuration, RESUME_MIN_MS } from './noticeTiming'
 
-/** A card's one button (Part 1 §1.4.1). */
+/** A card's one button. */
 export type NoticeAction = { label: () => string; run: () => void }
 
 /**
@@ -20,7 +21,7 @@ export type NoticeAction = { label: () => string; run: () => void }
  */
 export type NoticeSeverity = 'info' | 'warning' | 'error'
 
-/** One line of the start-up card, with at most one action (Part 1 §1.4.3). */
+/** One line of the start-up card, with at most one action. */
 export type NoticeLine = {
     message: () => string
     action?: NoticeAction
@@ -48,12 +49,12 @@ export type Notice = {
 let id = 0
 
 /**
- * How many load notices the start-up card shows before "and N more in Local Data" (Part 1 §1.4.3).
+ * How many load notices the start-up card shows before "and N more in Local Data".
  * One more would be a row as tall as the line it hides, so that many show whole.
  */
 export const PILL_NOTICES = 3
 
-// "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with What’s New (Part 1 §1.4.3).
+// "Next SEKAI Editor / Version X", or "Updated to version X.Y.Z" with What’s New.
 const titleLines = (): NoticeLine[] => {
     const name = PRODUCT_NAME
     if (launch.updated)
@@ -78,7 +79,7 @@ const titleLines = (): NoticeLine[] => {
     ]
 }
 
-/** A card has an action or is flagged one; other notices are quick feedback (Part 1 §1.4.1). */
+/** A card has an action or is flagged one; other notices are quick feedback. */
 const isCard = (notice: Notice) => notice.action !== undefined || notice.card === true
 
 const noticeOf = (lines: NoticeLine[]): Notice => ({
@@ -153,7 +154,7 @@ const track = () => {
 }
 track()
 
-/** A load notice (Part 1 §1.4.3): `order` is its place in the table, most important first. */
+/** A load notice: `order` is its place in the table, most important first. */
 export type LoadNotice = {
     order: number
     message: () => string
@@ -203,10 +204,33 @@ const pillLines = (): NoticeLine[] => {
     })
 }
 
+/** How long after the page loaded its start-up toast may still become the start-up card. */
+const STARTUP_WINDOW_MS = 12_000
+
+// An edit, undo, redo or restore since load: a card after it would interrupt the work.
+let workedSinceLoad = false
+onHistoryAction(({ kind }) => {
+    if (kind === 'edit' || kind === 'restore' || kind === 'undo' || kind === 'redo')
+        workedSinceLoad = true
+})
+
+/**
+ * Whether the start-up notice is still the one shown, so a load notice may join it: its card, or
+ * the quick toast of a clean load while the page is under 12 s old and nothing was edited, undone,
+ * redone or restored. Never the faint text left after it.
+ */
+export const startupNoticeCurrent = () =>
+    noticeCard.value?.startup === true ||
+    (notification.value.startup === true &&
+        !workedSinceLoad &&
+        performance.now() < STARTUP_WINDOW_MS)
+
+// The start-up notice, not yet replaced by another: what the gate's lifting shows again.
+const startupKept = () => notification.value.startup === true || noticeCard.value?.startup === true
+
 // Shows the start-up notice again: with the gate lifted, or with a load notice found. With load
 // notices or the update line it is the start-up card; else quick feedback, as in v0.5.22.
 const refreshPill = () => {
-    if (!notification.value.startup && !noticeCard.value?.startup) return
     const next = noticeOf(pillLines())
     latestNotice.value = next
     if (isCard(next)) {
@@ -223,14 +247,15 @@ const refreshPill = () => {
 watch(
     () => startupGate.phase,
     (phase) => {
-        if (phase === 'done') refreshPill()
+        if (phase === 'done' && startupKept()) refreshPill()
     },
 )
 
 /**
- * Adds a load notice (Part 1 §1.4.3): a line on the start-up card while it still shows, which then
- * stays about 8 s. Once the card has gone (an edit, another card), the line is only kept, since
- * nothing appears at an arbitrary time.
+ * Adds a load notice. Before the gate lifts, it waits for it with the rest. After,
+ * it is a line on the start-up notice while that is current, and the card then stays about 8 s.
+ * Otherwise (an edit, another notice, 12 s) the line is only kept, since nothing appears at an
+ * arbitrary time.
  */
 export const addLoadNotice = (
     message: () => string,
@@ -245,7 +270,7 @@ export const addLoadNotice = (
         at === -1
             ? [...loadNotices.value, notice]
             : [...loadNotices.value.slice(0, at), notice, ...loadNotices.value.slice(at)]
-    refreshPill()
+    if (startupGate.phase === 'done' ? startupNoticeCurrent() : startupKept()) refreshPill()
 }
 
 /**
@@ -344,7 +369,7 @@ export const dropCardAction = (action: NoticeAction) => {
 }
 
 /**
- * The card at the user's next edit, unless that edit raised it (Part 1 §1.4.1): its Undo or
+ * The card at the user's next edit, unless that edit raised it: its Undo or
  * Reopen never outlives the state it was offered for.
  */
 export const dismissCardForEdit = () => {

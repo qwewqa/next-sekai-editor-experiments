@@ -274,7 +274,7 @@ test('the save picker alone passes its id, types and folder, and a dismissal is 
     const pickers: unknown[] = []
     browser.window.showSaveFilePicker = (options) => {
         pickers.push(options)
-        // A save picker empties the file it returns (D5).
+        // A save picker empties the file it returns.
         handle.setContent(new Blob([]))
         return Promise.resolve(handle)
     }
@@ -549,12 +549,20 @@ test('picking without handles uses a file input', async () => {
 test('a close handler keeps the page only by answering false synchronously', () => {
     let answer: boolean | Promise<boolean> = false
     const stop = platform.onCloseRequested(() => answer)
+    let returnValue: unknown
     const close = () => {
-        const event = new Event('beforeunload', { cancelable: true })
+        const event: Event & { returnValue?: unknown } = new Event('beforeunload', {
+            cancelable: true,
+        })
+        // A BeforeUnloadEvent's returnValue is its own field, not Event's legacy flag.
+        Object.defineProperty(event, 'returnValue', { value: undefined, writable: true })
         browser.window.dispatchEvent(event)
+        returnValue = event.returnValue
         return event.defaultPrevented
     }
     assert.equal(close(), true)
+    // Chrome and Edge before 119 show the prompt only for returnValue.
+    assert.equal(returnValue, true)
     answer = true
     assert.equal(close(), false)
     answer = Promise.resolve(false)

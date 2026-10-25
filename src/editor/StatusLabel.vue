@@ -6,11 +6,12 @@ import { readBrowserFacts } from './settings/storageLine'
 import { levelInfo } from './commands/levelInfo'
 import { runCommand } from './commands/runCommand'
 import { raised } from './file/state'
+import { fragment } from './fileLabel'
 import { statusLabel, statusName } from './labelText'
 
 const props = defineProps<{ compact: boolean }>()
 
-// The status bar's label (Part 1 §1.3.4): the displayed name, then the bound file or why there is
+// The status bar's label: the displayed name, then the bound file or why there is
 // none, and a "•" when the file has changes. It takes the warning colour while changes are not
 // stored, and opens Level Info. On phones the reason is left out first, except where it is the
 // lasting sign that stored work can be deleted: a suspected private window, an app’s built-in
@@ -30,7 +31,9 @@ const compactReason = computed(
     () => props.compact && !statusLabel.value.file && (keepState.value || !!session.value.copyOf),
 )
 const shortReason = computed(() =>
-    session.value.copyOf ? i18n.value.status.separateCopyShort : i18n.value.file.short.notSaved,
+    session.value.copyOf
+        ? i18n.value.status.separateCopyShort
+        : fragment(i18n.value.status.notInFile),
 )
 const onClick = (event: MouseEvent) => {
     void runCommand(levelInfo)
@@ -67,14 +70,14 @@ const onClick = (event: MouseEvent) => {
                 <span
                     v-if="statusLabel.file"
                     class="min-w-0 truncate"
-                    :class="statusLabel.name && !compact ? 'ml-1 opacity-70' : ''"
+                    :class="statusLabel.name && !compact ? 'ml-1' : ''"
                     data-status-file
                 >
                     {{ statusLabel.name && !compact ? ` · ${statusLabel.file}` : statusLabel.file }}
                 </span>
                 <span
                     v-if="statusLabel.state"
-                    class="ml-1 min-w-0 truncate opacity-70"
+                    class="ml-1 min-w-0 truncate"
                     :class="[
                         keepState && !statusLabel.file ? '' : 'shrink-[10]',
                         compact && !(keepState && !statusLabel.file) ? 'hidden' : '',

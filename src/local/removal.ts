@@ -3,7 +3,7 @@ import { HANDLES } from './handleRows'
 import { KeyRange, type KvTx } from './kv/types'
 import { nextTime, stampNow } from './time'
 
-// Removing stored sessions and chains, and Delete's mark (deletion design §3.3, §3.4). The page
+// Removing stored sessions and chains, and Delete's mark. The page
 // locks every session of a chain first (R3); these transactions re-read what it locked and refuse
 // when anything differs. Rows go by key range, so a session of a newer version needs no decoding.
 
@@ -14,7 +14,7 @@ const isRow = (value: unknown): value is Row => typeof value === 'object' && val
 /** A chain's head session id; a damaged chain has none, and removal is then expected against none. */
 const headIdOf = (chain: Row) => (typeof chain.head === 'string' ? chain.head : undefined)
 
-/** The `at` of a chain's file binding: a takeover or a revocation changes it or removes it. */
+/** The `at` of a chain's file binding: a takeover changes it or removes it. */
 export const fileAtOf = (chain: Row) =>
     isRow(chain.file) && typeof chain.file.at === 'number' ? chain.file.at : undefined
 
@@ -112,7 +112,7 @@ export type MarkRequest = { chainId: string; sessions: string[]; head?: string; 
 
 export type MarkResult = { kind: 'marked'; at: number } | { kind: 'changed' } | { kind: 'gone' }
 
-/** Delete's mark (§3.4): only on the chain the page locked, unmarked and unchanged since. */
+/** Delete's mark: only on the chain the page locked, unmarked and unchanged since. */
 export const markTx = async (tx: KvTx, request: MarkRequest): Promise<MarkResult> => {
     const chain = await tx.get('chains', request.chainId)
     if (!isRow(chain) || markOf(chain) !== undefined) return { kind: 'gone' }

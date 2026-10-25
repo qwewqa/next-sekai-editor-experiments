@@ -191,7 +191,7 @@ test('export and preview share simultaneous-line eligibility and attachment boun
             assert.ok(entity)
             return value(entity, EngineArchetypeDataName.Beat)
         })
-    // Export emits slides in the records' order (§1.6.11.6), so sim lines come in another order.
+    // Export emits slides in the records' order, so sim lines come in another order.
     const ascending = (beats: number[]) => [...beats].sort((a, b) => a - b)
     assert.deepEqual(ascending(simBeats), [0, 2, 3, 5])
     assert.deepEqual(

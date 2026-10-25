@@ -5,6 +5,7 @@ import { buildZip } from '../../src/zip'
 import { fresh } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson, type Item } from '../local/nxsp/craft'
 import { damagedFile } from '../local/open/files'
+import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage, installTestPlatform, waitForStartup } from './editorFixture'
 import { openHistory, timeline } from './historyJourney'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
@@ -12,7 +13,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Opening a `.nxsp` (Part 1 §1.5.4): a new session stored at once and bound to the file, its
+// Opening a `.nxsp`: a new session stored at once and bound to the file, its
 // history imported in the background, Undo where the file left off, and the partial opens that
 // start a separate copy. Chromium's picker runs on OPFS handles through the platform override.
 
@@ -181,8 +182,8 @@ test('a .nxsp opens bound in a new session, with its history imported and Undo w
         event: 'opened',
         entry: { sessionId: session.sessionId, seq: 4, count: 4, notKept: 0 },
     })
-    // The handle has its own store (D24); a real OPFS handle never reaches IndexedDB under the
-    // override (D16).
+    // The handle has its own store; a real OPFS handle never reaches IndexedDB under the
+    // override.
     expect((chain.file as Row).handle).toBeUndefined()
     const { handles } = await rows(page, ['handles'])
     expect(handles!.map((row) => row.value)).toEqual([
@@ -270,16 +271,13 @@ test('a level with a value this build does not know asks first; Cancel opens not
     const dialog = page.getByRole('dialog').filter({ hasText: 'Uses Newer Features' })
     await expect(dialog).toContainText('"coconut.nxsp" Uses Newer Features')
     await expect(dialog.getByRole('button', { name: 'Open a Copy' })).toBeFocused()
-    // Past the dialog's 300 ms activation guard.
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Cancel' }), dialog)
     await expect(dialog).toHaveCount(0)
     expect((await sessionOf(page)).sessionId).toBe(before.sessionId)
 
     await openFile(page, 'coconut.nxsp')
     await expect(dialog).toHaveCount(1)
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Open a Copy' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open a Copy' }), dialog)
     await expect(
         notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' }),
     ).toBeVisible()
@@ -304,7 +302,7 @@ const chainOf = async (page: Page, sessionId: string) => {
     return chains!.find((row) => row.value.head === sessionId)!.value
 }
 
-/** The token stored for a chain's handle under the override (D24). */
+/** The token stored for a chain's handle under the override. */
 const handleToken = async (page: Page, chainId: string, role: string) => {
     const { handles } = await rows(page, ['handles'])
     const row = handles!.find((each) => each.value.chainId === chainId && each.value.role === role)
@@ -380,6 +378,33 @@ test('damage found by the import unlinks the session: a new docId, no binding, t
     await expect(timeline(page)).not.toContainText('not kept')
 })
 
+test('damage the import finds before the open is shown still gets its card', async ({ page }) => {
+    await start(page)
+    await writeFile(page, 'coconut.nxsp', await damagedBytes())
+    // The show waits until the import has unlinked the session, as on a busy machine.
+    await page.evaluate(() => {
+        const worker = window.nseStorageTest!.worker as unknown as {
+            call: (name: string, ...rest: unknown[]) => Promise<unknown>
+        }
+        const call = worker.call.bind(worker)
+        let found = () => {}
+        const unlinked = new Promise<void>((resolve) => (found = resolve))
+        worker.call = async (name, ...rest) => {
+            if (name === 'readSession') await unlinked
+            const result = await call(name, ...rest)
+            if (name === 'openUnlink') found()
+            return result
+        }
+    })
+    await openFile(page, 'coconut.nxsp')
+    await expect(
+        notice(page).filter({
+            hasText: '"coconut.nxsp" has damaged history. Saving makes a separate file.',
+        }),
+    ).toBeVisible()
+    expect((await sessionOf(page)).copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+})
+
 /** Slows the import, so a spec acts while it runs. */
 const slowImport = (page: Page, ms: number) =>
     page.evaluate((ms) => {
@@ -441,7 +466,7 @@ test('a reload reads no stored handle at startup; a Save or an Export reads it a
     await page.reload()
     await waitForStartup(page)
     expect((await sessionOf(page)).sessionId).toBe(session.sessionId)
-    // Startup, recovery and the idle resume check read none (D24).
+    // Startup, recovery and the idle resume check read none.
     await page.waitForTimeout(500)
     expect(await handleReads(page)).toBe(0)
     expect(await storedHandleName(page, chain.chainId as string, 'file')).toBe('coconut.nxsp')
@@ -456,7 +481,7 @@ test('Export’s target keeps its handle across a reload, read when Export opens
     const bytes = await page.evaluate(async () => {
         const { buildLevelData } =
             (await import('/src/editor/commands/exportLevel/build.ts')) as typeof import('../../src/editor/commands/exportLevel/build')
-        return [...new Uint8Array(await new Response(buildLevelData()).arrayBuffer())]
+        return [...new Uint8Array(await new Response(await buildLevelData()).arrayBuffer())]
     })
     await writeFile(page, 'LevelData', bytes)
     await openFile(page, 'LevelData')
@@ -657,7 +682,7 @@ test('a BGM recorded without its bytes opens bound with the BGM not loaded, and 
     const session = await sessionOf(page)
     expect(session.file?.name).toBe('coconut.nxsp')
     const chain = await chainOf(page, session.sessionId)
-    // Included, but not held: a Save adds its bytes once chosen (§1.5.4 step 5); nothing is kept.
+    // Included, but not held: a Save adds its bytes once chosen; nothing is kept.
     expect('options' in (chain.file as Row)).toBe(false)
 })
 
@@ -768,8 +793,7 @@ test('a newer major version asks first, then opens only the level, unbound', asy
         .filter({ hasText: 'Only the level can be opened from this file.' })
     await expect(dialog).toContainText('Made by a newer version of Next SEKAI Editor.')
     await expect(dialog.getByRole('button', { name: 'Open the Level' })).toBeFocused()
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Open the Level' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
     await expect.poll(async () => (await sessionOf(page)).sessionId).not.toBe(before.sessionId)
     const session = await sessionOf(page)
     expect(session.file).toBeUndefined()
@@ -797,8 +821,7 @@ test('a newer major version whose level is refused is an error card', async ({ p
     const dialog = page
         .getByRole('dialog')
         .filter({ hasText: 'Only the level can be opened from this file.' })
-    await page.waitForTimeout(400)
-    await dialog.getByRole('button', { name: 'Open the Level' }).click()
+    await confirmWhenReady(dialog.getByRole('button', { name: 'Open the Level' }), dialog)
     const card = notice(page).filter({ hasText: 'Made by a newer version of Next SEKAI Editor.' })
     await expect(card).toBeVisible()
     await expect(card.locator('svg[data-severity]')).toHaveAttribute('data-severity', 'error')
@@ -892,7 +915,7 @@ test('an archive of project files says to unzip it, and opens nothing', async ({
     ])
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText(
-        'This ZIP holds several project files. Unzip it and open them one by one.',
+        'This ZIP contains several project files. Unzip it and open them one by one.',
     )
     await expect(dialog).not.toContainText('not a project file')
     await dialog.getByRole('button', { name: 'OK' }).click()
@@ -941,7 +964,7 @@ test('any other ZIP is still "not a project file"', async ({ page }) => {
     )
 })
 
-// A newer `patch` (Part 1 §1.6.11.8) is a line of its own on a whole open: beside what else the
+// A newer `patch` is a line of its own on a whole open: beside what else the
 // open has to say, and given way only to an earlier session's unsaved-changes notice.
 
 const PATCH_LINE = 'Made by a newer version of Next SEKAI Editor. Some content may not be shown.'
@@ -1012,6 +1035,7 @@ test('a newer patch gives way to an earlier session’s unsaved-changes notice, 
     await edit(page, 777)
     await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
     await page.keyboard.press('n')
+    await confirmNew(page)
     await expect(notice(page).filter({ hasText: 'New level' })).toBeVisible()
     await openFile(page, 'coconut.nxsp')
     await expect(
@@ -1023,9 +1047,9 @@ test('a newer patch gives way to an earlier session’s unsaved-changes notice, 
     await expect(notice(page).filter({ hasText: PATCH_LINE })).toHaveCount(0)
 })
 
-// A read of storage that fails is a failure, not "nothing" (Part 1 §1.5.4, §1.6.5). The open has
-// succeeded whatever its earlier-chains read says; its binding check says "may" when it cannot be
-// answered.
+// A read of storage that fails is a failure, not "nothing". The open has
+// succeeded whatever its earlier-chains read says, and shows its ordinary notice; a binding check
+// that cannot be answered opens a separate copy.
 
 /** Makes the storage worker's `method` reject from now on, as a worker that stopped answering. */
 const failReads = (page: Page, methods: string[]) =>
@@ -1043,10 +1067,7 @@ const failReads = (page: Page, methods: string[]) =>
         })
     }, methods)
 
-const UNCHECKED =
-    'Opened coconut.nxsp. Recent Sessions could not be checked for other versions of it.'
-
-test('an open whose earlier chains cannot be read still opens: the line alone, with Reopen, and no error', async ({
+test('an open whose earlier chains cannot be read still opens, with the ordinary line, Reopen and no error', async ({
     page,
 }) => {
     await start(page)
@@ -1055,57 +1076,15 @@ test('an open whose earlier chains cannot be read still opens: the line alone, w
     await page.evaluate(() => window.nseFlushTest!.flusher.flush({ strict: true }))
     await failReads(page, ['openEarlierChains'])
     await openFile(page, 'coconut.nxsp')
-    const card = notice(page).filter({ hasText: UNCHECKED })
-    await expect(card).toBeVisible()
+    await expect(notice(page).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Reopen/ })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await imported(page)
     expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
 })
 
-test('an open whose earlier chains cannot be read puts the line above a BGM that is not loaded', async ({
-    page,
-}) => {
-    await start(page)
-    await writeFile(
-        page,
-        'coconut.nxsp',
-        await patchBytes((items) => {
-            const project = jsonOf(items, 'project.json')
-            project.patch = undefined
-            const { filename, type, sha256, size } = project.bgm
-            project.bgm = { filename, type, hash: sha256.slice(0, 32), size }
-            setJson(items, 'project.json', project)
-            return items.filter((item) => !item.name.startsWith('bgm/'))
-        }),
-    )
-    await failReads(page, ['openEarlierChains'])
-    await openFile(page, 'coconut.nxsp')
-    // One other row, and still the heading: alone, it would read as nothing to report.
-    const card = notice(page).filter({ hasText: UNCHECKED })
-    await expect(card).toBeVisible()
-    await expect(card).toContainText('The BGM is not loaded.')
-    await expect(card.getByRole('button', { name: 'Choose Audio…' })).toBeVisible()
-    await imported(page)
-    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
-})
-
-test('an open whose earlier chains cannot be read puts the line above a newer patch', async ({
-    page,
-}) => {
-    await start(page)
-    await writeFile(page, 'coconut.nxsp', await patchBytes())
-    await failReads(page, ['openEarlierChains'])
-    await openFile(page, 'coconut.nxsp')
-    const card = notice(page).filter({ hasText: UNCHECKED })
-    await expect(card).toBeVisible()
-    await expect(card).toContainText(PATCH_LINE)
-    await imported(page)
-    expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
-})
-
 for (const method of ['readBindings', 'readHandle'])
-    test(`a binding check that cannot be answered (${method} fails) opens a separate copy and says "may"`, async ({
+    test(`a binding check that cannot be answered (${method} fails) opens a separate copy with the ordinary line`, async ({
         page,
         context,
     }) => {
@@ -1118,15 +1097,15 @@ for (const method of ['readBindings', 'readHandle'])
         await start(other)
         await failReads(other, [method])
         await openFile(other, 'coconut.nxsp')
-        await expect(
-            notice(other).filter({
-                hasText:
-                    '"coconut.nxsp" may be open in another tab or window, so this is a separate copy.',
-            }),
-        ).toBeVisible()
+        await expect(notice(other).filter({ hasText: 'Opened coconut.nxsp' })).toBeVisible()
+        await expect(notice(other).filter({ hasText: 'another tab or window' })).toHaveCount(0)
         const session = await sessionOf(other)
         expect(session.file).toBeUndefined()
         expect(session.copyOf).toEqual({ name: 'coconut.nxsp', bound: true })
+        // The status bar says it is a copy.
+        await expect(other.locator('[data-status-text]')).toContainText(
+            'separate copy of coconut.nxsp',
+        )
         // The first tab keeps its binding.
         expect((await sessionOf(page)).file?.name).toBe('coconut.nxsp')
     })

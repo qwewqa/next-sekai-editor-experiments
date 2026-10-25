@@ -1,6 +1,6 @@
 import { compareVersions, isHighestTag, parseTag } from '../version.mjs'
 
-// The checks of `release:tag` that need neither git nor gh (Part 4, 4.2.5); tag.mjs runs them.
+// The checks of `release:tag` that need neither git nor gh; tag.mjs runs them.
 
 /** An expected stop: tag.mjs prints its message alone. */
 export class ReleaseError extends Error {}
@@ -52,7 +52,7 @@ export const isPatchVersion = (version) => Number(version.split('.')[2]) > 0
  * The format versions the build writes, in the source (4.2.5 step 2; docs/format-versioning.md).
  * `RECORDS_V` is also the root `v`. The `.nxsp` major and the manifest version are written to
  * files too. The IndexedDB `DB_VERSION`/`FORMAT_VERSION` are left out: a fix may raise them to
- * stop old tabs (Part 1 §1.12). There is no app-data `formatVersion` in the source yet.
+ * stop old tabs. There is no app-data `formatVersion` in the source yet.
  */
 export const formatConstants = [
     { name: 'LEVEL_VERSION', file: 'src/levelData/levelVersion.ts' },
@@ -98,7 +98,7 @@ export function checkPatchFormats(version, newest, before, after) {
     const list = changed.map(({ name, before, after }) => `${name} ${before ?? 'none'} to ${after ?? 'none'}`)
     throw new ReleaseError(
         `${version} is a patch version, but the formats changed since ${newest}: ${list.join(', ')}. ` +
-            'Use a minor version (Part 4, 4.9.4).',
+            'Use a minor version.',
     )
 }
 

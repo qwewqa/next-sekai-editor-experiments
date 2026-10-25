@@ -21,7 +21,7 @@ import { allSameBeatGroups, playOrder, playOrderDifferences, sameBeatCounts } fr
 import { coconutPath, hasCoconut, readLevelData, samplePaths } from './samples'
 import { stateOrderDifferences } from './stateOrder'
 
-// D4: no round trip changes the order in which same-beat events, BPMs or time-scale changes play.
+// No round trip changes the order in which same-beat events, BPMs or time-scale changes play.
 
 const levelDataOf = (state: State): LevelData =>
     serializeToLevelData(
@@ -122,10 +122,9 @@ test(
     },
 )
 
-// The step 0 corpus is third-party and never committed; this runs only where it exists.
-const corpus = [3, 4, 5]
-    .map((up) => join(import.meta.dirname, '../'.repeat(up), 'work/step0/corpus'))
-    .find((path) => existsSync(path))
+// The corpus is third-party and never committed: local-only, like coconut, or where NSE_CORPUS_DIR names it.
+const corpusDir = process.env.NSE_CORPUS_DIR ?? 'test_level_data/same-beat-corpus'
+const corpus = existsSync(corpusDir) ? corpusDir : undefined
 
 test(
     'same-beat order survives the round trip in every corpus level',

@@ -63,7 +63,7 @@ test('Open the Other Version: a handle read that fails says so, and is not the f
     assert.match(String(errors[0]?.args[0]), /^The editor could not access this browser’s storage/)
 })
 
-// Save to File… (spec D invariant 12): a session read that fails is a storage failure, not a
+// Recent Sessions' Save…: a session read that fails is a storage failure, not a
 // session that is gone. It said "Use Export Level Data…" for both.
 
 const saveToFileSays = async (readSession: () => Promise<unknown>) => {
@@ -78,14 +78,14 @@ const saveToFileSays = async (readSession: () => Promise<unknown>) => {
     return String(errors[0]?.args[0])
 }
 
-test('Save to File…: a session read that fails says the storage is not available, without the Save As… hint', async () => {
+test('Recent Sessions’ Save…: a session read that fails says the storage is not available, without the Save As… hint', async () => {
     const says = await saveToFileSays(() =>
         Promise.reject(new Error('The storage worker restarted')),
     )
     assert.match(says, /^The editor could not access this browser’s storage\. Try again\.$/)
 })
 
-test('Save to File…: a session that is gone keeps its own line (control)', async () => {
+test('Recent Sessions’ Save…: a session that is gone keeps its own line (control)', async () => {
     const says = await saveToFileSays(() => Promise.resolve({ kind: 'missing' }))
     assert.doesNotMatch(says, /could not access this browser’s storage/)
 })

@@ -48,8 +48,9 @@ export const workerCore = (world: World, tab: Tab, deps: Partial<CoreDeps> = {})
         locks: tab.locks,
         appVersion: '0.6.0',
         randomId: testId,
+        // A blocked upgrade gives up after 40 ms. The open uses the build's 8 s default. It races a
+        // real timer, and a process that stalls past a short budget would start the tab in memory.
         blockedMs: 40,
-        upgradeMs: 80,
         maintWaitMs: 200,
         ...deps,
     })
@@ -89,7 +90,7 @@ export const heldLocks = new WeakMap<Flusher, Map<string, () => void>>()
  * The page's hold on the sessions its flusher starts, as `storing.ts` takes them: the exclusive
  * `nse-session:` lock of each session the flusher begins, continues or resumes, released when
  * the session is replaced and nothing of it is pending, or with the tab. Granted at once, with no
- * task, so a seeded run is the same as before. The lock-holder assertion (I-1) judges the flusher's
+ * task, so a seeded run is the same as before. The lock-holder assertion judges the flusher's
  * transactions by it; a start that brings its own `lock` keeps its own hold.
  */
 const holdingSessions = (world: World, tab: Tab, flusher: Flusher) => {
@@ -343,7 +344,7 @@ export type SplitPage = Omit<Page, 'tab' | 'core' | 'handlers'> & {
 }
 
 /**
- * A page and its worker on separate actors (§1.6.5): the worker can be killed alone while the
+ * A page and its worker on separate actors: the worker can be killed alone while the
  * page keeps its memo and pending entries. The flusher's timers and clock are the world's.
  */
 export const openSplitPage = async (

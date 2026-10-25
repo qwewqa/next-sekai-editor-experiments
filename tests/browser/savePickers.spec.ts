@@ -8,6 +8,7 @@ import {
     notice,
     pauseAt,
     pickerCalls,
+    preparingDialog,
     pressSave,
     projectOf,
     prompts,
@@ -23,7 +24,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The save picker's rules (Part 1 §1.4.7 R1–R12; owner decision log D5; `work/d5/safety.md` §8)
+// The save picker's rules
 // on the Chromium override, whose picker empties an existing file as Chromium's does. Two pages
 // of one context share OPFS, IndexedDB, Web Locks and BroadcastChannel.
 
@@ -185,7 +186,7 @@ test('the chain’s own file changed on disk: a pick puts its bytes back and ope
     await edit(page, 2)
     await saveAs(page)
     await queuePicks(page, ['coconut.nxsp'])
-    // The read before the picker (R2) has time to finish.
+    // The read before the picker has time to finish.
     await page.waitForTimeout(500)
     await submitSave(page, undefined, 'Save As')
     await expect(page.getByRole('dialog')).toContainText('"coconut.nxsp" Changed')
@@ -218,7 +219,7 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
     await edit(page, 1)
     await pressSave(page)
     await submitSave(page, 'coconut')
-    const preparing = page.getByRole('dialog').filter({ hasText: 'Preparing coconut.nxsp' })
+    const preparing = preparingDialog(page)
     await expect(preparing).toBeVisible()
     expect(await pickerCalls(page)).toEqual([])
     await page.waitForTimeout(350)
@@ -227,26 +228,34 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
     expect(await pickerCalls(page)).toHaveLength(1)
 })
 
-test('level data opened in this tab, picked in the project picker, is refused and put back', async ({
-    page,
-}) => {
-    await start(page)
-    const level = await page.evaluate(async () => {
-        const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
-        return [...new Uint8Array(await new Response(buildLevelData()).arrayBuffer())]
+// Export compresses on the browser's stream; a file written at level 9 (an older export, or Firefox
+// before 113) is rebuilt too.
+for (const [compression, variant] of [
+    ['the browser’s stream', 0],
+    ['level 9', 1],
+] as const)
+    test(`level data gzipped by ${compression}, opened in this tab and picked in the project picker, is refused and put back`, async ({
+        page,
+    }) => {
+        await start(page)
+        const level = await page.evaluate(async (variant) => {
+            const { buildLevelDataVariants } =
+                await import('/src/editor/commands/exportLevel/build.ts')
+            const blob = (await buildLevelDataVariants())[variant]
+            return [...new Uint8Array(await blob!.arrayBuffer())]
+        }, variant)
+        await writeFile(page, 'LevelData', level)
+        await queuePicks(page, ['LevelData'])
+        await page.keyboard.press('o')
+        await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
+        await queuePicks(page, ['LevelData'])
+        await pressSave(page)
+        await submitSave(page, 'LevelData')
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toContainText('"LevelData" is not a project file.')
+        await expect(dialog.getByRole('button', { name: 'Export Level Data…' })).toBeVisible()
+        expect(await readFile(page, 'LevelData')).toEqual(level)
     })
-    await writeFile(page, 'LevelData', level)
-    await queuePicks(page, ['LevelData'])
-    await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
-    await queuePicks(page, ['LevelData'])
-    await pressSave(page)
-    await submitSave(page, 'LevelData')
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"LevelData" is not a project file.')
-    await expect(dialog.getByRole('button', { name: 'Export Level Data…' })).toBeVisible()
-    expect(await readFile(page, 'LevelData')).toEqual(level)
-})
 
 test('a download browser downloads, binds by name, and offers Download Again unchanged', async ({
     page,
@@ -318,7 +327,7 @@ test('Export’s picker: the chain’s own project file is refused and written a
     expect((after.revision as Row).parent).toBe((before.revision as Row).id)
 })
 
-test('with storing paused, a takeover keeps its revocation in localStorage; the next start applies it', async ({
+test('with storing paused, a takeover writes nothing, and the owner’s binding stands across its reload', async ({
     context,
 }) => {
     const b = await context.newPage()
@@ -335,35 +344,17 @@ test('with storing paused, a takeover keeps its revocation in localStorage; the 
     await queuePicks(a, ['coconut.nxsp'])
     await pressSave(a)
     await submitSave(a)
-    await expect(notice(a).filter({ hasText: 'Saved to coconut.nxsp' })).toBeVisible()
-    const kept = await a.evaluate(
-        (chainId) => localStorage.getItem(`sonolus-next-sekai-editor.revoke.${chainId}`),
-        bChain.chainId as string,
-    )
-    expect(JSON.parse(kept!)).toMatchObject({
-        name: 'coconut.nxsp',
-        fileAt: (bChain.file as Row).at,
-    })
+    await expect(a.getByRole('dialog')).toContainText('"coconut.nxsp" could not be written.')
 
-    // The next start applies it, after the journals and before anything else.
     await b.reload()
     await waitForStartup(b)
-    await expect
-        .poll(async () => {
-            const { chains } = await rows(b, ['chains'])
-            return chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)
-                ?.replaced
-        })
-        .toMatchObject({ name: 'coconut.nxsp' })
-    expect(
-        await b.evaluate(
-            (chainId) => localStorage.getItem(`sonolus-next-sekai-editor.revoke.${chainId}`),
-            bChain.chainId as string,
-        ),
-    ).toBeNull()
+    const { chains } = await rows(b, ['chains'])
+    const after = chains!.map((row) => row.value).find((row) => row.chainId === bChain.chainId)!
+    expect(after.file).toMatchObject({ name: 'coconut.nxsp', at: (bChain.file as Row).at })
+    expect(after.replaced).toBeUndefined()
 })
 
-test('Save to File… writes a session that isn’t open as a new file, binding nothing', async ({
+test('Recent Sessions’ Save… writes a session that isn’t open as a new file, binding nothing', async ({
     page,
 }) => {
     await start(page)
@@ -457,7 +448,7 @@ test('B mid-write: A’s pick waits for B to finish, then takes the file over', 
     // A's picker emptied the file, and B's write hasn't closed.
     await expect.poll(() => readFile(b, 'coconut.nxsp')).toEqual([])
     await release(b)
-    // B's check of the emptied file goes on without a conflict (R9): its Save lands first.
+    // B's check of the emptied file goes on without a conflict: its Save lands first.
     await expect
         .poll(async () => ((await chainById(a, bChain.chainId))?.revision as Row | undefined)?.n)
         .toBe(2)

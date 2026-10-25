@@ -3,7 +3,7 @@ import CoverEditorModal from '../utilities/coverEditor/CoverEditorModal.vue'
 import PreviewEditorModal from '../utilities/previewEditor/PreviewEditorModal.vue'
 import type { UtilityResult } from './picked'
 
-// Cover Editor and Preview Editor opened over Level Info (Part 1 §1.4.12): Generate hands the
+// Cover Editor and Preview Editor opened over Level Info: Generate hands the
 // result back instead of downloading it, and closing without Generate returns nothing.
 
 /** The cover editor started from `image`. */

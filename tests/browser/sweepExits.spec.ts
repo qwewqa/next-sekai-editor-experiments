@@ -11,7 +11,7 @@ const boot = async (page: Page) => {
     await page.evaluate(installEditorFixture)
 }
 
-test('a jump under Edits Here does not replace the loaded run (F9)', async ({ page }) => {
+test('a jump under Edits Here does not replace the loaded run', async ({ page }) => {
     await boot(page)
     const moved = await page.evaluate(async () => {
         const source = await window.editorTest.appImport<

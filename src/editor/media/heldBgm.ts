@@ -8,11 +8,10 @@ import type { State } from '../../state'
 import type { Bgm } from '../../state/bgm'
 import { releaseWaveform, type Waveform } from '../../waveform'
 
-// The BGMs this tab holds, one `Bgm` per hash (Part 1 §1.6.8.4, as amended by the Step 7 design
-// §3.6). A state read from storage names its audio by hash and holds none; this brings the bytes
-// back from memory or the media store, and attaches them to the live state without a step, a new
-// root or a change of the file state. A BGM is "held" when this tab has its bytes or the media
-// store does, and only a BGM neither holds is "not loaded".
+// The BGMs this tab holds, one `Bgm` per hash. A state read from storage names its audio by hash
+// and holds none; this brings the bytes back from memory or the media store, and attaches them to
+// the live state without a step, a new root or a change of the file state. A BGM is "held" when
+// this tab has its bytes or the media store does, and only a BGM neither holds is "not loaded".
 
 /** Decoded audio with the original bytes, shared by every state naming its hash. */
 export type HeldParts = { buffer: AudioBuffer; waveform?: Waveform; source: ArrayBuffer }

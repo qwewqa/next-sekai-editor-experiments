@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 import { readZip } from '../../builtin-assets/zip.mjs'
 
-// Every clip of the Built-in effect decodes in Chromium (Part 2, 2.11).
+// Every clip of the Built-in effect decodes in Chromium.
 test('the Built-in clips decode with decodeAudioData', async ({ page }) => {
     const entries = readZip(readFileSync('public/builtin/effect.scp'))
     const item = (

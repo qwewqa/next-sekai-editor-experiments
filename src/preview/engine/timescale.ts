@@ -105,9 +105,22 @@ export type TimescaleGroup = {
     hasScroll: boolean
     transfers: Transfer[]
     transferOffset: number
+    // Bounds on D(change, t) over every later t, for culling notes out of view.
+    suffixMin: Float64Array
+    suffixMax: Float64Array
 }
 
 const identityTransfer = (): Transfer => ({ ratio: 1, forward: 0, backward: 0 })
+
+// A group keeps its transfer tree for its lifetime, while every frame builds transfers with the
+// helpers below. The tree copies its transfers through this literal of its own. If it kept the
+// helpers' objects, V8 would allocate every transfer from those sites in the old generation
+// (pretenuring), and playback would run frequent major GCs.
+const storedTransfer = ({ ratio, forward, backward }: Transfer): Transfer => ({
+    ratio,
+    forward,
+    backward,
+})
 
 // D(left, hit) = forward + ratio * D(right, hit). Keep the reverse distance
 // separately so a reverse query does not divide by the combined ratio.
@@ -192,6 +205,28 @@ const integrate = (
 
 const scrollSpeed = (speed: number) => (speed < 0 ? Math.min(speed, -1e-4) : Math.max(speed, 1e-4))
 
+// The lowest and highest speed from `at` until the next change. Time scale
+// eases stay between their endpoints; a scroll segment keeps its speed at `at`.
+const segmentSpeeds = (
+    change: TimescaleChange | undefined,
+    next: TimescaleChange | undefined,
+    at: number,
+): [number, number] => {
+    if (!change) return [1, 1]
+    if (change.transitionStyle === 1) {
+        const speed = scrollSpeed(speedAt(change, next, at))
+        return [speed, speed]
+    }
+    if (!next || isNoneEase(change.ease)) return [change.timescale, change.timescale]
+    return [Math.min(change.timescale, next.timescale), Math.max(change.timescale, next.timescale)]
+}
+
+// Bounds on the distance covered within a segment, before its destination skip.
+const segmentBounds = ([low, high]: [number, number], width: number): [number, number] => [
+    low < 0 ? low * width : 0,
+    high > 0 ? high * width : 0,
+]
+
 const partialTransfer = (
     group: TimescaleGroup,
     index: number,
@@ -250,29 +285,57 @@ export const createTimescaleGroup = (
         scaledAtChanges,
         forceNoteSpeed,
         hasScroll: changes.some((change) => change.transitionStyle === 1),
-        transfers: Array.from({ length: transferOffset * 2 }, identityTransfer),
+        transfers: Array.from({ length: transferOffset * 2 }, () =>
+            storedTransfer({ ratio: 1, forward: 0, backward: 0 }),
+        ),
         transferOffset,
+        suffixMin: new Float64Array(changes.length),
+        suffixMax: new Float64Array(changes.length),
     }
     for (let index = 0; index + 1 < changes.length; index++) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const change = changes[index]!
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const next = changes[index + 1]!
-        group.transfers[transferOffset + index] = partialTransfer(
-            group,
-            index,
-            change.time,
-            next.time,
-            true,
+        group.transfers[transferOffset + index] = storedTransfer(
+            partialTransfer(group, index, change.time, next.time, true),
         )
     }
     for (let index = transferOffset - 1; index > 0; index--) {
-        group.transfers[index] = composeTransfers(
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            group.transfers[index * 2]!,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            group.transfers[index * 2 + 1]!,
+        group.transfers[index] = storedTransfer(
+            composeTransfers(
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                group.transfers[index * 2]!,
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                group.transfers[index * 2 + 1]!,
+            ),
         )
+    }
+
+    // D(change k, t) = forward + ratio * D(change k + 1, t) once t reaches the
+    // next change. NaN from overflowing bounds means unbounded.
+    for (let index = changes.length - 1; index >= 0; index--) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const change = changes[index]!
+        const next = changes[index + 1]
+        let [min, max] = segmentBounds(
+            segmentSpeeds(change, next, change.time),
+            next ? next.time - change.time : Infinity,
+        )
+        if (next) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const leaf = group.transfers[transferOffset + index]!
+            const forward = toNumber(leaf.forward)
+            const ratio = toNumber(leaf.ratio)
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const a = forward + ratio * group.suffixMin[index + 1]!
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const b = forward + ratio * group.suffixMax[index + 1]!
+            min = Math.min(min, a, b)
+            max = Math.max(max, a, b)
+        }
+        group.suffixMin[index] = Number.isNaN(min) ? -Infinity : min
+        group.suffixMax[index] = Number.isNaN(max) ? Infinity : max
     }
 
     return group
@@ -359,6 +422,80 @@ export const noteDistance = (
         )
     }
     return clamp(reverse ? -toNumber(transfer.backward) : toNumber(transfer.forward), -1e20, 1e20)
+}
+
+// The latest target time whose distance from `now` can be at most `distance`:
+// every later target is farther away. Changes are walked only until the
+// suffix bounds put the rest of the group out of reach, so backward speeds,
+// stops, skips and scroll transitions stay exact. The slack absorbs rounding
+// differences from noteDistance's association order.
+export const latestTargetWithin = (
+    group: TimescaleGroup,
+    now: number,
+    distance: number,
+    leftLimit = false,
+) => {
+    // noteDistance clamps its result, so that clamp is not an upper time bound.
+    if (!(distance < 1e20)) return Infinity
+    const limit = distance + 1e-6 * (1 + distance)
+    const { changes } = group
+    const first = findLastChange(changes, now, leftLimit)
+
+    // The segment holding `now` is in reach at `now` itself.
+    let last = first
+    let lastForward = 0
+    let lastRatio = 1
+    let transfer: Transfer | undefined
+    for (let index = first + 1; index < changes.length; index++) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const change = changes[index]!
+        transfer = transfer
+            ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              composeTransfers(transfer, group.transfers[group.transferOffset + index - 1]!)
+            : partialTransfer(group, first, now, change.time, true)
+        const forward = toNumber(transfer.forward)
+        const ratio = toNumber(transfer.ratio)
+        const reach = (min: number, max: number) =>
+            Math.min(forward + ratio * min, forward + ratio * max)
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (reach(group.suffixMin[index]!, group.suffixMax[index]!) > limit) break
+        const next = changes[index + 1]
+        const [min, max] = segmentBounds(
+            segmentSpeeds(change, next, change.time),
+            next ? next.time - change.time : Infinity,
+        )
+        if (!(reach(min, max) > limit)) {
+            last = index
+            lastForward = forward
+            lastRatio = ratio
+        }
+    }
+
+    const change = changes[last]
+    const next = changes[last + 1]
+    const start = last === first ? now : (change?.time ?? now)
+    const end = next ? next.time : Infinity
+    const [low, high] = segmentSpeeds(change, next, start)
+    if (!Number.isFinite(lastForward) || !Number.isFinite(lastRatio)) return end
+    // A segment that turns back reaches its farthest visible point at its end.
+    if (!(lastRatio > 0 ? low >= 0 : lastRatio < 0 && high <= 0)) return end
+    if (low === high) {
+        const rate = lastRatio * low
+        const crossing = start + (limit - lastForward) / rate
+        return rate > 0 && !Number.isNaN(crossing) ? Math.min(end, Math.max(start, crossing)) : end
+    }
+    // An eased time scale: search for the crossing within the segment.
+    const at = (t: number) =>
+        lastForward + lastRatio * toNumber(partialTransfer(group, last, start, t, false).forward)
+    if (at(end) <= limit) return end
+    let lo = start
+    let hi = end
+    for (let step = 0; step < 60 && hi - lo > 1e-9 * (1 + Math.abs(hi)); step++) {
+        const middle = (lo + hi) / 2
+        if (at(middle) <= limit) lo = middle
+        else hi = middle
+    }
+    return hi
 }
 
 export const hideNotesAt = (group: TimescaleGroup, t: number, leftLimit = false) => {

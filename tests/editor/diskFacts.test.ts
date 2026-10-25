@@ -5,7 +5,7 @@ import { executePlan, planNxsp } from '../../src/local/nxsp'
 import { fresh, NOW } from '../local/nxsp/chain'
 import { crafted, jsonOf, setJson, type Loose } from '../local/nxsp/craft'
 
-// What a `.nxsp` on disk is, as the conflict dialog and the Replace guard read it (Part 0 §0.9.6):
+// What a `.nxsp` on disk is, as the conflict dialog and the Replace guard read it:
 // by the reader's own rules, so an odd `savedAt` or a stale `summary` is never half-believed.
 
 const freshFile = () => executePlan(planNxsp(fresh().input).plan, new Map())

@@ -1,6 +1,6 @@
 import { createWorld, type Tab, type World, type WorldOptions } from './world'
 
-// The crash-at-every-await sweep (§1.6.1): a scenario runs once whole to count the victim tab's
+// The crash-at-every-await sweep: a scenario runs once whole to count the victim tab's
 // await points, then once per point with the victim killed there; recovery runs in a fresh tab,
 // and the check asserts the invariants after each.
 

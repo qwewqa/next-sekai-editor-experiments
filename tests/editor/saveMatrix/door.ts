@@ -7,7 +7,7 @@ import { originOperation } from '../../helpers/historySteps'
 import { openPage } from '../../local/flush/harness'
 import { chartState } from '../chartFixture'
 
-// The matrix's storage door (E2, work/arch/spec-E.md): the worker methods that read and write a
+// The matrix's storage door: the worker methods that read and write a
 // chain's record and its stored handles run the real handlers over a page core on `MemoryKv`.
 // The world keeps its other worker methods as fakes, each with a reason at its case in world.ts.
 
@@ -33,7 +33,6 @@ export const REAL_DOOR: ReadonlySet<string> = new Set([
     'readHandle',
     'keepHandle',
     'takeOver',
-    'applyRevocation',
     'unlinkChain',
 ])
 
@@ -71,7 +70,7 @@ export const useRealDoor = async (
 
     // A mock handle holds functions, which no store can clone (a real handle can): it crosses the
     // door as a token, and every read of it hands out a new object, as IndexedDB's structured
-    // clone does (E-3).
+    // clone does.
     const tokens = new Map<unknown, { token: string }>()
     const originals = new Map<string, FileSystemFileHandle>()
     const toToken = (handle: FileSystemFileHandle) => {
@@ -177,7 +176,7 @@ export const useRealDoor = async (
     }
     const viaDoor = async (method: string, arg?: unknown) => {
         await world.fire(`worker:${method}`, arg)
-        // A fault fires before the real handler, so a faulted call stores nothing (E-4).
+        // A fault fires before the real handler, so a faulted call stores nothing.
         const n = (calls.get(method) ?? 0) + 1
         calls.set(method, n)
         const how = world.behaviour.get(method)?.(n, arg)

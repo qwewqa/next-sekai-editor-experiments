@@ -22,7 +22,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { readMediaBytes } from '../startup/mediaRead'
 import { openPage, rows, testId, workerCore, type Page } from './harness'
 
-// A picked cover or preview clip is held by hash (Step 11 design §3.2) and stored with the entry
+// A picked cover or preview clip is held by hash and stored with the entry
 // first naming it, as the BGM is: in the same transaction as the snapshot, read back, and stored
 // again while this tab holds it and the row went missing.
 

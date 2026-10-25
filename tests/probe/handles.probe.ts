@@ -3,7 +3,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// The stored file handle probe (D16): an OPFS file handle goes into IndexedDB on a minimal page (no
+// The stored file handle probe: an OPFS file handle goes into IndexedDB on a minimal page (no
 // editor code), then is read back after a reload and after a browser restart, and used. The result
 // is logged as a "PROBE" line per step, since a crash is itself a result.
 

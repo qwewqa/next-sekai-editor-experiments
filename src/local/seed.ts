@@ -1,26 +1,38 @@
+import { ZipReader } from '../zip'
 import { DB_NAME } from './db'
-import { decodeValue, readDump, type Dump } from './dump'
+import { decodeValue, DumpError, readDump, type Dump } from './dump'
 import { HANDLES } from './handleRows'
 import { idbFactory } from './kv/idb'
 import type { KvFactory } from './kv/types'
+import { DUMP_ENTRY } from './rawExport'
 
 const hasHandle = (value: unknown) =>
     typeof value === 'object' && value !== null && 'handle' in value
 
-// The dev-only sample seeder: `?seedSample=<name>` loads `/samples/<name>.json`, a dump
-// (Part 1 §1.6.11.9), into a database with no chains and no sessions, then reloads. Imported only
-// under `import.meta.env.DEV`, so release builds have none of it.
+// The sample seeder of dev and perf builds: `?seedSample=<name>` loads `/samples/<name>.json`, a
+// dump, or `?seedSample=<name>.zip` an Export Raw Data… ZIP, into a database with no chains and no
+// sessions, then reloads. Imported only under `import.meta.env.DEV` or `__NSE_PERF__`, so release
+// builds have none of it.
 
 export type SeedResult = { seeded: true } | { seeded: false; reason: string }
 
 const refuse = (reason: string): SeedResult => ({ seeded: false, reason })
 
-/** Writes a dump's rows and localStorage keys, only into a database with no chains and no sessions. */
+/**
+ * Writes a dump's rows and localStorage keys, only into a database with no chains and no sessions.
+ * `blobs` holds the ZIP entries its `$blobEntry` tags name.
+ */
 export const seedDump = async (
     factory: KvFactory,
     dump: Dump,
     storage: Pick<Storage, 'setItem'>,
+    blobs: ReadonlyMap<string, Blob> = new Map(),
 ): Promise<SeedResult> => {
+    const blobEntry = (name: string, type: string) => {
+        const blob = blobs.get(name)
+        if (!blob) throw new DumpError(`The ZIP has no ${name}`)
+        return new Blob([blob], { type })
+    }
     if (dump.database.name !== DB_NAME) return refuse(`The dump is of ${dump.database.name}`)
     for (const store of dump.stores)
         if (store.autoIncrement || store.indexes.some((index) => index.unique || index.multiEntry))
@@ -30,9 +42,9 @@ export const seedDump = async (
         records: store.records
             .map((record) => ({
                 key: store.keyPath === null ? (decodeValue(record.key) as never) : undefined,
-                value: decodeValue(record.value),
+                value: decodeValue(record.value, { blobEntry }),
             }))
-            // A handle can't be dumped: its row, left without one, isn't seeded (D24).
+            // A handle can't be dumped: its row, left without one, isn't seeded.
             .filter(({ value }) => store.name !== HANDLES || hasHandle(value)),
     }))
     const opened = { created: false }
@@ -84,6 +96,25 @@ export const seedDump = async (
     return { seeded: true }
 }
 
+/** Seeds an Export Raw Data… ZIP: its `dump.json`, each `$blobEntry` read from its own entry. */
+export const seedRawExport = async (
+    factory: KvFactory,
+    zip: Blob,
+    storage: Pick<Storage, 'setItem'>,
+): Promise<SeedResult> => {
+    const reader = await ZipReader.open(zip)
+    const entry = reader.get(DUMP_ENTRY)
+    if (!entry) return refuse(`The ZIP has no ${DUMP_ENTRY}`)
+    const text = new TextDecoder().decode(await reader.read(entry, { maxSize: 2 ** 32 }))
+    const dump = readDump(JSON.parse(text))
+    const blobs = new Map<string, Blob>()
+    // Each checked against its CRC as it is read, one at a time.
+    for (const each of reader.entries)
+        if (each.name.startsWith('blobs/') && !each.isDirectory)
+            blobs.set(each.name, new Blob([await reader.read(each, { maxSize: 2 ** 32 })]))
+    return seedDump(factory, dump, storage, blobs)
+}
+
 /**
  * The dev page's half: seeds the sample the URL names, then reloads without the parameter. A
  * refusal leaves the URL as it is, and the editor loads as usual.
@@ -96,10 +127,14 @@ export const seedSampleFromUrl = async (): Promise<boolean> => {
     const tag = '[seedSample]'
     try {
         if (!/^[\w.-]+$/.test(name)) throw new Error(`Not a sample name: ${name}`)
-        const response = await fetch(`/samples/${name}.json`)
-        if (!response.ok) throw new Error(`/samples/${name}.json: ${response.status}`)
-        const dump = readDump(await response.json())
-        const result = await seedDump(idbFactory(indexedDB), dump, localStorage)
+        const zip = name.endsWith('.zip')
+        const path = `/samples/${zip ? name : `${name}.json`}`
+        const response = await fetch(path)
+        if (!response.ok) throw new Error(`${path}: ${response.status}`)
+        const factory = idbFactory(indexedDB)
+        const result = zip
+            ? await seedRawExport(factory, await response.blob(), localStorage)
+            : await seedDump(factory, readDump(await response.json()), localStorage)
         if (!result.seeded) {
             console.warn(`${tag} Refused, nothing changed. ${result.reason}`)
             return false

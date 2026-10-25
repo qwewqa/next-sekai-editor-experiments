@@ -1,18 +1,29 @@
 import { PRODUCT_NAME } from '../product'
 import { storageKey } from '../storage'
 import { interpolateRaw } from '../utils/interpolate'
-import { buildZip } from '../zip/writer'
+import { assembleZip, prepareEntry, type PreparedEntry } from '../zip/writer'
 import { DB_NAME } from './db'
-import { DUMP_FORMAT, DUMP_VERSION, dumpDatabase, dumpLocalStorage, type Dump } from './dump'
+import {
+    DUMP_FORMAT,
+    DUMP_VERSION,
+    dumpDatabase,
+    dumpJsonBytes,
+    dumpLocalStorage,
+    type Dump,
+} from './dump'
 import { idbFactory } from './kv/idb'
 import type { KvFactory } from './kv/types'
 
-// Export Raw Data… (Part 1 §1.4.14): everything this editor stored in this browser, as stored, in
+// Export Raw Data…: everything this editor stored in this browser, as stored, in
 // one ZIP. It runs on the page with no worker and decodes no record, so a bug in the code that
 // failed can't stop it: it imports nothing under `local/records`, `local/nxsp` or
 // `local/startup` (a unit test pins that). The way out when a storage bug ships.
 
-/** The ZIP's one entry: the dump format, with Blobs as base64. */
+/**
+ * The ZIP's first entry, DEFLATE (STORE in a browser without `CompressionStream`): the dump
+ * format, each Blob a `$blobEntry` naming a STORE entry after it, `blobs/<n>`, which holds its
+ * bytes as stored, or a `$blobUnreadable` when it could not be read.
+ */
 export const DUMP_ENTRY = 'dump.json'
 
 const emptyDump = (appVersion: string, localStorage: Record<string, string>): Dump => ({
@@ -70,13 +81,27 @@ const openExisting = async (factory: KvFactory | undefined) => {
     }
 }
 
+/**
+ * Raw DEFLATE through `CompressionStream`, a chunk at a time. Undefined where the browser has no
+ * `deflate-raw` stream (Firefox before 113): `dump.json` is then stored uncompressed.
+ */
+const deflateStream = async (blob: Blob): Promise<Blob | undefined> => {
+    if (typeof CompressionStream === 'undefined') return
+    try {
+        const stream = blob.stream().pipeThrough(new CompressionStream('deflate-raw'))
+        return await new Response(stream).blob()
+    } catch {
+        return
+    }
+}
+
 /** The ZIP, and whether the stored database was left out because it could not be read. */
 export type RawBuild = { zip: Blob; databaseUnreadable: boolean }
 
 /**
  * The ZIP of the stored data; with no database or no storage it holds `localStorage` only. A
  * database that exists but cannot be opened or read is left out and reported, so the file is
- * never taken for a complete export.
+ * never taken for a complete export. A Blob that cannot be read is left out alone: its row says so.
  */
 export const buildRawExportResult = async (
     appVersion: string,
@@ -91,19 +116,45 @@ export const buildRawExportResult = async (
     const opened = await openExisting(factory)
     let databaseUnreadable = opened.kind === 'unreadable'
     let dump: Dump | undefined
+    let media: PreparedEntry[] = []
     if (opened.kind === 'open') {
         try {
-            dump = await dumpDatabase(opened.db, { appVersion, localStorage: keys })
+            dump = await dumpDatabase(opened.db, {
+                appVersion,
+                localStorage: keys,
+                // One Blob at a time, its CRC read in slices: no Blob is ever held whole.
+                blobEntries: async (blob, name) => {
+                    try {
+                        media.push(await prepareEntry({ name, method: 'store', data: blob }))
+                        return true
+                    } catch (error) {
+                        // Its bytes are gone or unreadable; the rest is still exported.
+                        console.error(error)
+                        return false
+                    }
+                },
+            })
         } catch (error) {
             console.error(error)
+            media = []
             databaseUnreadable = true
         } finally {
             opened.db.close()
         }
     }
-    const data = new TextEncoder().encode(JSON.stringify(dump ?? emptyDump(appVersion, keys)))
+    // Written in slices, its CRC read from a Blob in slices, and deflated as a stream: writing,
+    // deflating or checking tens of megabytes in one task would block the page.
+    const data = new Blob(await dumpJsonBytes(dump ?? emptyDump(appVersion, keys)))
+    const stored = await prepareEntry({ name: DUMP_ENTRY, method: 'store', data })
+    const deflated = await deflateStream(data)
+    const entries = [
+        deflated
+            ? { ...stored, method: 8 as const, compressedSize: deflated.size, data: deflated }
+            : stored,
+        ...media,
+    ]
     return {
-        zip: await buildZip([{ name: DUMP_ENTRY, method: 'deflate', data }]),
+        zip: new Blob(assembleZip(entries), { type: 'application/zip' }),
         databaseUnreadable,
     }
 }

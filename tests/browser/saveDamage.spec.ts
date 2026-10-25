@@ -18,7 +18,7 @@ import {
     submitSave,
 } from './saveFlows'
 
-// Damage in storage that no build has seen yet (SP-1; Part 1 §1.6.11.6, §1.4.7 R2): a bad stored
+// Damage in storage that no build has seen yet: a bad stored
 // head chunk never refuses a Save, the head is written from the live records; and when the build
 // made before the picker finds damage, the chain's own file is read before the picker opens, so a
 // pick of it appends to what it holds and nothing it held is lost.

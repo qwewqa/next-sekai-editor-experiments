@@ -11,7 +11,7 @@ export const readJson = (bytes: Uint8Array): unknown => {
     }
 }
 
-/** This engine's level data by content (§1.5.2), gzipped or plain; a ChCy level is not. */
+/** This engine's level data by content, gzipped or plain; a ChCy level is not. */
 export const isLevelDataContent = (bytes: Uint8Array) => {
     const json = readJson(bytes)
     return (

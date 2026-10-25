@@ -5,6 +5,23 @@ import globals from 'globals'
 import tsEslint from 'typescript-eslint'
 import local from './scripts/eslint-plugin-local.mjs'
 
+// Shared code reaches native code only through #platform. A later no-restricted-imports entry
+// replaces this one for the files it covers, so each repeats these bans.
+const nativeImportBans = [
+    {
+        regex: '^@tauri-apps/',
+        message: 'Only the native implementation may import @tauri-apps.',
+    },
+    {
+        regex: '(^|/)platform/native(/|$)',
+        message: 'Reach the native platform only through #platform.',
+    },
+    {
+        regex: '(^|/)(library|projects)(/|$)',
+        message: 'The native-only folders load only through the native loader.',
+    },
+]
+
 export default tsEslint.config(
     {
         ignores: [
@@ -14,6 +31,7 @@ export default tsEslint.config(
             '.vite-cache/**',
             'public/**',
             'test-results*/**',
+            'perf-results/**',
             'tests/design-capture*/**',
             '.idea/**',
         ],
@@ -77,7 +95,7 @@ export default tsEslint.config(
         },
     },
 
-    // Where platform names may appear (Part 0, 0.11.1): native code stays out of shared code.
+    // Where platform names may appear: native code stays out of shared code.
     {
         files: ['src/**/*.{ts,vue}'],
         // The native implementation, the native-only folders and the one loader that imports them.
@@ -91,20 +109,7 @@ export default tsEslint.config(
             'no-restricted-imports': [
                 'error',
                 {
-                    patterns: [
-                        {
-                            regex: '^@tauri-apps/',
-                            message: 'Only the native implementation may import @tauri-apps.',
-                        },
-                        {
-                            regex: '(^|/)platform/native(/|$)',
-                            message: 'Reach the native platform only through #platform.',
-                        },
-                        {
-                            regex: '(^|/)(library|projects)(/|$)',
-                            message: 'The native-only folders load only through the native loader.',
-                        },
-                    ],
+                    patterns: nativeImportBans,
                 },
             ],
             'no-restricted-syntax': [
@@ -178,7 +183,55 @@ export default tsEslint.config(
         },
     },
 
-    // History's time (Part 1 §1.6.8.7): local time is read only by the calendar module, and every
+    // Usage statistics (docs/analytics.md): no code that runs per frame or draws reaches them.
+    {
+        files: ['src/frame.ts', 'src/rendering/**/*.ts', 'src/preview/engine/**/*.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        ...nativeImportBans,
+                        {
+                            regex: '(^|/)analytics(/|$)',
+                            message: 'Nothing per frame or in the draw paths counts usage.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    // They reach no notice, dialog or storage code, never read chart content or names, and read
+    // the local-data modules only through status.ts.
+    {
+        files: ['src/analytics/**/*.ts'],
+        ignores: ['src/analytics/status.ts'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    patterns: [
+                        ...nativeImportBans,
+                        {
+                            regex: '(^|/)(modals|notification|storage)(/|\\.|$)',
+                            message: 'Usage statistics show nothing and store nothing.',
+                        },
+                        {
+                            regex: '(^|/)local/',
+                            allowTypeImports: true,
+                            message: 'Read the local-data modules through status.ts.',
+                        },
+                        {
+                            regex: '(^|/)(state/levelInfo|history/filename|editor/shownName|documentTitle)(\\.ts)?$',
+                            message: 'Usage statistics never read chart content or names.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+
+    // History's time: local time is read only by the calendar module, and every
     // date and time on a History surface is written through the History clock and `historyFormat`.
     // These are two rules of the local plugin and add no `no-restricted-imports` object: a second
     // one would replace the native-code bans above.
@@ -193,7 +246,7 @@ export default tsEslint.config(
         plugins: { local },
         rules: { 'local/no-local-time': 'error' },
     },
-    // A day of use is not a calendar day (I-11): only countDayOfUse and NO_USE_DAY (days.ts) and
+    // A day of use is not a calendar day: only countDayOfUse and NO_USE_DAY (days.ts) and
     // the row types and storedDay (records/rows.ts) make a UseDay.
     {
         files: ['src/**/*.{ts,vue}'],
@@ -213,7 +266,7 @@ export default tsEslint.config(
         rules: { 'local/history-imports': 'error' },
     },
 
-    // The storage worker's covered reads go through the storedRead gate (Part 1 §1.6.5).
+    // The storage worker's covered reads go through the storedRead gate.
     {
         files: ['src/**/*.{ts,vue}'],
         plugins: { local },
@@ -238,6 +291,11 @@ export default tsEslint.config(
         languageOptions: {
             globals: globals.node,
         },
+    },
+    // The perf harness's page functions run in the browser.
+    {
+        files: ['scripts/perf/run.mjs', 'scripts/perf/actions.mjs'],
+        languageOptions: { globals: { ...globals.browser, ...globals.node } },
     },
 
     eslintConfigPrettier,

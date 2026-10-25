@@ -12,7 +12,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 import { beginIn, continueIn, readOpen } from './harness'
 
-// Lock leases (spec A7): one owner at a time. A lease is released by its creator unless the
+// Lock leases: one owner at a time. A lease is released by its creator unless the
 // flusher took it, and the flusher takes it only as a session registers.
 
 /** A lease that counts how often its raw release runs. */

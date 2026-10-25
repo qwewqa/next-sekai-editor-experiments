@@ -1,25 +1,27 @@
 import { computed, onBeforeUnmount, shallowRef, watch, watchEffect, type Ref } from 'vue'
 import { isAppActive } from '../activity'
-import { clearSurface } from '../editor/canvas/surface'
 import { view } from '../editor/view'
 import { dockSizeDrafts, panelWeightsDraft } from '../editor/workspace'
 import { cancelFrame, requestFrame } from '../frame'
 import { state } from '../history'
+import { timed } from '../perf/probe'
 import { isPlaying } from '../player'
-import { disposeDrawContext } from '../rendering/context'
-import { useEditorRenderer } from '../rendering/useEditorRenderer'
 import { settings } from '../settings'
 import type { State } from '../state'
 import { hasSameChartData } from '../state/data'
+import { drawPreviewFrame, type PreviewFrameInput } from './drawFrame'
 import { getPreviewState, previewEdit } from './edit'
-import { getPreviewChart } from './engine/chart'
+import { createCameraCompiler, getPreviewChart } from './engine/chart'
+import type { Quad } from './engine/math'
 import type { PreviewChart } from './engine/model'
-import { renderPreviewFrame } from './engine/render'
+import { previewBackgroundQuad } from './engine/render'
 import { createPreviewRenderer, type PreviewRenderer } from './gl'
+import { createOutlineRenderer, type OutlineRenderer } from './outlineRenderer'
 import type { LoadedParticle } from './particle'
-import { createSelectionOutline } from './selectionOutline'
+import { exposePreviewTest } from './previewTest'
 import type { LoadedSkin } from './skin'
 import type { usePreviewResources } from './usePreviewResources'
+import { previewHost, previewWorker } from './worker/host'
 
 type PreviewViewport = {
     canvasWidth: Ref<number>
@@ -27,9 +29,40 @@ type PreviewViewport = {
     pixelRatio: Ref<number>
 }
 
+// While the worker draws, the main thread computes the background's quad in the frame that
+// posts the time, from the state's cameras alone.
+const compileCameras = createCameraCompiler()
+const backgroundQuadOf = (state: State, input: PreviewFrameInput) =>
+    previewBackgroundQuad(
+        compileCameras(state),
+        input.time,
+        input.displayWidth,
+        input.displayHeight,
+        input.leftLimit,
+        input.background,
+    )
+
+type CanvasRef = Readonly<Ref<HTMLCanvasElement | null>>
+
+/**
+ * Draws the preview in one of two hosts. The main host draws on this thread, into `canvas` and
+ * `selection`. The worker host transfers `workerCanvas` and `workerSelection` to the preview's
+ * worker and posts each frame there. Either way, this decides what each frame shows.
+ */
 export const usePreviewRendering = (
-    canvas: Readonly<Ref<HTMLCanvasElement | null>>,
-    background: Readonly<Ref<HTMLDivElement | null>>,
+    {
+        canvas,
+        selection: selectionCanvas,
+        workerCanvas,
+        workerSelection,
+        background,
+    }: {
+        canvas: CanvasRef
+        selection: CanvasRef
+        workerCanvas: CanvasRef
+        workerSelection: CanvasRef
+        background: Readonly<Ref<HTMLDivElement | null>>
+    },
     {
         skin,
         particle,
@@ -38,7 +71,6 @@ export const usePreviewRendering = (
         clearGraphicsError,
     }: ReturnType<typeof usePreviewResources>,
     { canvasWidth, canvasHeight, pixelRatio }: PreviewViewport,
-    selectionCanvas?: Readonly<Ref<HTMLCanvasElement | null>>,
 ) => {
     // Selection, audio and filename changes share the same chart data. Keep them from
     // rebuilding the preview and its indexes during ordinary editor interactions.
@@ -52,12 +84,38 @@ export const usePreviewRendering = (
     // Capture changes cheaply, then resolve only the latest request when a visible
     // frame actually draws. Numeric input and pointer events may arrive repeatedly
     // before RAF; discarded requests never build a transaction or compile a chart.
-    const chartRequest = computed(() => {
+    const stateRequest = computed(() => {
         const current = chartState.value
         const edit = previewEdit.value
+        let resolved: State | undefined
+        return () => (resolved ??= getPreviewState(current, edit))
+    })
+    const chartRequest = computed(() => {
+        const getState = stateRequest.value
         const speed = settings.previewNoteSpeed
         let chart: PreviewChart | undefined
-        return () => (chart ??= getPreviewChart(getPreviewState(current, edit), speed))
+        return () => (chart ??= getPreviewChart(getState(), speed))
+    })
+
+    // Playback redraws every frame; the selected objects and stages only change with the state.
+    const selection = computed(() => {
+        if (!settings.previewHighlightSelection) return
+        const selected = getPreviewState(state.value).selectedEntities
+        const objects = new Set<object>(selected)
+        const stageIds = new Set(
+            selected.flatMap((entity) => {
+                if (entity.type === 'note' || entity.type === 'connector') return []
+                if ('stageId' in entity) return [entity.stageId]
+                if ('min' in entity && 'stageId' in entity.min) return [entity.min.stageId]
+                return []
+            }),
+        )
+        const stages = new Set(
+            [...state.value.stages.keys()].flatMap((id, index) =>
+                stageIds.has(id) ? [index] : [],
+            ),
+        )
+        return objects.size || stages.size ? { objects, stages } : undefined
     })
 
     const renderer = shallowRef<PreviewRenderer>()
@@ -118,12 +176,17 @@ export const usePreviewRendering = (
             if (!active || !nextRenderer) return
 
             try {
-                if (nextSkin && (nextRenderer !== uploadedRenderer || nextSkin !== uploadedSkin)) {
+                // A bitmap moved to the worker is detached, with no size, until it comes back or
+                // is decoded again.
+                if (
+                    nextSkin?.texture.width &&
+                    (nextRenderer !== uploadedRenderer || nextSkin !== uploadedSkin)
+                ) {
                     nextRenderer.setTexture(0, nextSkin.texture, nextSkin.interpolation)
                     uploadedSkin = nextSkin
                 }
                 if (
-                    nextParticle &&
+                    nextParticle?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextParticle !== uploadedParticle)
                 ) {
                     nextRenderer.setTexture(1, nextParticle.texture, nextParticle.interpolation)
@@ -139,11 +202,56 @@ export const usePreviewRendering = (
         },
     )
 
+    // The outline draws into its own canvas, and creates its context only once something is
+    // selected. It redraws its last frame itself after a context loss.
+    const outline = shallowRef<OutlineRenderer>()
+    watch(selectionCanvas, (overlay, _previous, onCleanup) => {
+        if (!overlay) return
+        const outlineRenderer = createOutlineRenderer(overlay, (error) => {
+            console.error('Failed to create the selection outline renderer:', error)
+            setGraphicsError(error)
+        })
+        outline.value = outlineRenderer
+        onCleanup(() => {
+            outlineRenderer.dispose()
+            if (outline.value === outlineRenderer) outline.value = undefined
+        })
+    })
+
+    // The worker host: the page's worker keeps the atlases; each panel lends it its canvases.
+    const worker = computed(() => (previewHost.kind === 'worker' ? previewWorker() : undefined))
+    // As on the main thread, a new canvas gets its context once the app is active.
+    let lentCanvas: HTMLCanvasElement | undefined
+    let takeCanvas: (() => void) | undefined
+    watch([workerCanvas, worker, isAppActive], ([element, host, active]) => {
+        if (element === lentCanvas) return
+        takeCanvas?.()
+        takeCanvas = undefined
+        lentCanvas = undefined
+        if (!element || !host || !active) return
+        takeCanvas = host.attachCanvas(element, settings.previewAntialias)
+        lentCanvas = element
+    })
+    watch(workerSelection, (element, _previous, onCleanup) => {
+        const host = worker.value
+        if (element && host) onCleanup(host.attachOverlay(element))
+    })
+    watch(
+        [worker, skin, particle],
+        ([host, nextSkin, nextParticle]) => {
+            if (!host) return
+            if (nextSkin) host.lendAtlas(0, nextSkin)
+            if (nextParticle) host.lendAtlas(1, nextParticle)
+        },
+        { immediate: true },
+    )
+
     let rafId = 0
     let renderFrame: (() => void) | undefined
     let renderedBackground: HTMLDivElement | undefined
     let renderedBackgroundTransform = ''
     let scheduledSize: { width: number; height: number } | undefined
+    let overlaySize: { width: number; height: number } | undefined
     // While a dock or tile is being dragged, keep the drawing buffers and let CSS
     // scale them: reallocating them on every pointer move was the costliest part
     // of a drag. The image keeps its aspect ratio, and releasing the handle
@@ -152,35 +260,13 @@ export const usePreviewRendering = (
     const isResizing = computed(
         () => panelWeightsDraft.value !== undefined || Object.keys(dockSizeDrafts.value).length > 0,
     )
-    let sizedOverlay: HTMLCanvasElement | undefined
-    let renderedOverlay: HTMLCanvasElement | undefined
-    let drawnOverlay: HTMLCanvasElement | undefined
-    const overlayVersion = shallowRef(0)
-    const selectionRenderer = useEditorRenderer(setGraphicsError)
-    if (selectionCanvas) {
-        watch(selectionCanvas, (overlay, _previous, onCleanup) => {
-            if (!overlay) return
-            const restoreOverlay = () => {
-                drawnOverlay = overlay
-                overlayVersion.value++
-            }
-            overlay.addEventListener('renderingready', restoreOverlay)
-            onCleanup(() => {
-                selectionRenderer.forget(overlay)
-                overlay.removeEventListener('renderingready', restoreOverlay)
-                if (drawnOverlay === overlay) drawnOverlay = undefined
-                if (renderedOverlay === overlay) renderedOverlay = undefined
-                disposeDrawContext(overlay)
-            })
-        })
-    }
 
-    const getRenderSize = (requestedScale: number) => {
-        if (!renderer.value) return
-
+    const getRenderSize = (
+        { width: maxWidth, height: maxHeight }: { width: number; height: number },
+        requestedScale: number,
+    ) => {
         const requestedWidth = canvasWidth.value * requestedScale
         const requestedHeight = canvasHeight.value * requestedScale
-        const { width: maxWidth, height: maxHeight } = renderer.value.maxViewportSize
         const fit = Math.min(1, maxWidth / requestedWidth, maxHeight / requestedHeight)
 
         return {
@@ -199,129 +285,61 @@ export const usePreviewRendering = (
                 renderFrame = undefined
                 return
             }
+            const host = worker.value
             const currentRenderer = renderer.value
             const currentSkin = skin.value
-            if (!currentRenderer || !currentSkin || !canvasWidth.value || !canvasHeight.value) {
+            // The worker host draws once the worker has a context for the panel's canvas.
+            const limits = host
+                ? workerCanvas.value && host.maxViewportSize.value
+                : currentRenderer?.maxViewportSize
+            if (!limits || !currentSkin || !canvasWidth.value || !canvasHeight.value) {
                 renderFrame = undefined
                 return
             }
 
-            const fullSize = getRenderSize(pixelRatio.value * settings.previewRenderScale)
-            if (!fullSize) return
+            const fullSize = getRenderSize(limits, pixelRatio.value * settings.previewRenderScale)
             const resizing = isResizing.value
             const renderSize = resizing ? (scheduledSize ?? fullSize) : fullSize
             scheduledSize = renderSize
+            // The outline's backing store is kept the same way.
+            const fullOverlaySize = {
+                width: Math.round(canvasWidth.value * pixelRatio.value),
+                height: Math.round(canvasHeight.value * pixelRatio.value),
+            }
+            const currentOverlaySize = resizing ? (overlaySize ?? fullOverlaySize) : fullOverlaySize
+            overlaySize = currentOverlaySize
 
+            const getState = stateRequest.value
             const getChart = chartRequest.value
             const backgroundElement = background.value
-            const backgroundLayout = loadedBackground.value
-                ? {
-                      aspectRatio: loadedBackground.value.aspectRatio,
-                      fit: loadedBackground.value.fit,
-                  }
-                : undefined
-            const selected = settings.previewHighlightSelection
-                ? getPreviewState(state.value).selectedEntities
-                : []
-            const objects = new Set(selected)
-            const stageIds = new Set(
-                selected.flatMap((entity) => {
-                    if (entity.type === 'note' || entity.type === 'connector') return []
-                    if ('stageId' in entity) return [entity.stageId]
-                    if ('min' in entity && 'stageId' in entity.min) return [entity.min.stageId]
-                    return []
-                }),
-            )
-            const stages = new Set(
-                [...state.value.stages.keys()].flatMap((id, index) =>
-                    stageIds.has(id) ? [index] : [],
-                ),
-            )
-            const overlay = selectionCanvas?.value
-            void overlayVersion.value
-            const leftLimit = !isPlaying.value
-            // Only redraws: the overlay never changes the compiled chart.
-            const showHitboxes = settings.previewShowHitboxes
-            const args = [
-                view.cursorTime,
-                renderSize.width,
-                renderSize.height,
-                canvasWidth.value,
-                canvasHeight.value,
-                settings.previewNoteSpeed,
-                settings.previewShowEffects,
-                particle.value?.particle,
-            ] as const
-            renderFrame = () => {
-                if (overlay) {
-                    const ratio = pixelRatio.value
-                    if (!resizing || overlay !== sizedOverlay) {
-                        sizedOverlay = overlay
-                        const width = Math.round(canvasWidth.value * ratio)
-                        const height = Math.round(canvasHeight.value * ratio)
-                        if (overlay.width !== width || overlay.height !== height) {
-                            if (overlay.width !== width) overlay.width = width
-                            if (overlay.height !== height) overlay.height = height
-                            if (renderedOverlay === overlay) drawnOverlay = overlay
-                        }
-                    }
-                }
-                const outline = createSelectionOutline()
-                const quad = renderPreviewFrame(
-                    currentRenderer,
-                    currentSkin.skin,
-                    getChart(),
-                    ...args,
-                    objects.size || stages.size
-                        ? { objects, stages, outline: outline.add, line: outline.addLine }
-                        : undefined,
-                    leftLimit,
-                    showHitboxes,
-                    backgroundLayout,
-                )
-                const edges = outline.edges()
-                // Once empty, the overlay stays transparent. Avoid creating or
-                // switching a second GL context on every unselected playback frame.
-                if (overlay && (edges.length || drawnOverlay === overlay)) {
-                    const ctx = selectionRenderer.getContext(overlay)
-                    renderedOverlay = overlay
-                    if (ctx && !ctx.isContextLost()) {
-                        // Map CSS pixels onto the actual backing store, which keeps
-                        // its size during a resize drag.
-                        ctx.setTransform(
-                            overlay.width / canvasWidth.value,
-                            0,
-                            0,
-                            overlay.height / canvasHeight.value,
-                            0,
-                            0,
-                        )
-                        clearSurface(ctx, overlay.width, overlay.height)
-                        if (edges.length) {
-                            const scale = args[4] / 2
-                            ctx.beginPath()
-                            for (const { a, b } of edges) {
-                                ctx.moveTo(args[3] / 2 + a.x * scale, args[4] / 2 - a.y * scale)
-                                ctx.lineTo(args[3] / 2 + b.x * scale, args[4] / 2 - b.y * scale)
-                            }
-                            ctx.lineJoin = 'round'
-                            ctx.lineCap = 'round'
-                            ctx.strokeStyle = '#06151d'
-                            ctx.lineWidth = 5
-                            ctx.stroke()
-                            ctx.strokeStyle = '#67e8f9'
-                            ctx.lineWidth = 2
-                            ctx.stroke()
-                        }
-                        ctx.flush()
-                        drawnOverlay = edges.length ? overlay : undefined
-                    }
-                }
+            const input: PreviewFrameInput = {
+                time: view.cursorTime,
+                leftLimit: !isPlaying.value,
+                width: renderSize.width,
+                height: renderSize.height,
+                displayWidth: canvasWidth.value,
+                displayHeight: canvasHeight.value,
+                overlayWidth: currentOverlaySize.width,
+                overlayHeight: currentOverlaySize.height,
+                noteSpeed: settings.previewNoteSpeed,
+                showEffects: settings.previewShowEffects,
+                // Only redraws: the overlay never changes the compiled chart.
+                showHitboxes: settings.previewShowHitboxes,
+                background: loadedBackground.value
+                    ? {
+                          aspectRatio: loadedBackground.value.aspectRatio,
+                          fit: loadedBackground.value.fit,
+                      }
+                    : undefined,
+            }
+            const selected = selection.value
+            const currentOutline = outline.value
+            const currentParticle = particle.value?.particle
+            const showBackground = (quad: Quad) => {
                 if (!backgroundElement) return
                 // Map the complete image into the engine's screen-space quad in
                 // this same frame. CSS pixels have a downward-pointing y axis.
-                const displayWidth = args[3]
-                const displayHeight = args[4]
+                const { displayWidth, displayHeight } = input
                 const scale = displayHeight / 2
                 const transform = `matrix(${[
                     ((quad.tr.x - quad.tl.x) * scale) / displayWidth,
@@ -341,17 +359,61 @@ export const usePreviewRendering = (
                     renderedBackgroundTransform = transform
                 }
             }
+            renderFrame = host
+                ? () => {
+                      host.request(() => {
+                          const state = getState()
+                          host.post(state, selected, input)
+                          showBackground(backgroundQuadOf(state, input))
+                      })
+                  }
+                : () => {
+                      if (!currentRenderer) return
+                      showBackground(
+                          drawPreviewFrame(
+                              currentRenderer,
+                              currentOutline,
+                              currentSkin.skin,
+                              currentParticle,
+                              getChart(),
+                              input,
+                              selected,
+                          ),
+                      )
+                      // The worker's last frame shows until the main host draws with the skin,
+                      // which may still be decoding again after a handover.
+                      if (
+                          currentSkin.texture.width &&
+                          uploadedRenderer === currentRenderer &&
+                          uploadedSkin === currentSkin
+                      )
+                          previewHost.retiring = false
+                  }
             if (rafId) return
-            rafId = requestFrame(() => {
-                rafId = 0
-                if (isAppActive.value) renderFrame?.()
-            })
+            rafId = requestFrame(
+                timed('previewDraw', () => {
+                    rafId = 0
+                    if (isAppActive.value) renderFrame?.()
+                }),
+            )
         },
         { flush: 'post' },
     )
 
+    const hideTest = exposePreviewTest({
+        get host() {
+            return previewHost.kind
+        },
+        outlinePixels: () =>
+            worker.value?.outlinePixels() ?? Promise.resolve(outline.value?.litPixels() ?? 0),
+        settled: () => worker.value?.settled() ?? Promise.resolve(),
+        setContextLost: (lost) => worker.value?.setContextLost(lost) ?? Promise.resolve(),
+    })
+
     onBeforeUnmount(() => {
         cancelFrame(rafId)
         renderer.value?.dispose()
+        takeCanvas?.()
+        hideTest()
     })
 }

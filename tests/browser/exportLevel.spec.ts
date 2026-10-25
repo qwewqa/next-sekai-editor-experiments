@@ -2,8 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import type { PlatformOverride } from '../../src/platform/detect'
 import { installCanvasCounters, installEditorFixture, installTestPlatform } from './editorFixture'
 
-// Export Level Data… (Part 1 §1.4.8, Step 1c). Chromium's pickers run on OPFS handles through the
-// platform override (§1.11); download browsers are simulated with fileSystemAccess: false.
+// Export Level Data…: Chromium's pickers run on OPFS handles through the
+// platform override; download browsers are simulated with fileSystemAccess: false.
 
 const errors = new WeakMap<Page, string[]>()
 
@@ -38,7 +38,7 @@ const writeFile = (page: Page, name: string, change: LevelChange = {}) =>
                 const { buildLevelData } = await window.editorTest.appImport<
                     typeof import('../../src/editor/commands/exportLevel/build')
                 >('/src/editor/commands/exportLevel/build.ts')
-                const stream = buildLevelData()
+                const stream = (await buildLevelData())
                     .stream()
                     .pipeThrough(new DecompressionStream('gzip'))
                 const json = JSON.parse(await new Response(stream).text()) as {
@@ -104,7 +104,8 @@ const pickerCalls = (page: Page) =>
             }[],
     )
 
-const notice = (page: Page) => page.getByRole('status')
+// The notice region only: a Loading dialog's line is a status too.
+const notice = (page: Page) => page.locator('[data-notice-region]')
 
 /** Opens an OPFS file with Open, as Chromium's picker would. */
 const openFile = async (page: Page, name: string) => {
@@ -298,7 +299,7 @@ const openPartial = async (page: Page, name: string) => {
     await page.keyboard.press('o')
     // The dialog follows the open, in place of its notice.
     await expect(dialog(page)).toContainText(
-        'This level has parts this version of the editor does not support. They were left out.',
+        'This level has parts that this version of the editor does not support. They were left out.',
     )
     await dialog(page).getByRole('button', { name: 'OK' }).click()
     await expect(dialog(page)).toHaveCount(0)
@@ -323,7 +324,7 @@ test('level data with an unknown archetype gets no Export target', async ({ page
 
     await openExport(page)
     await expect(dialog(page).locator('[data-export-target]')).toHaveCount(0)
-    // An unlinked copy: never the original's own name (§1.4.7).
+    // An unlinked copy: never the original's own name.
     const field = dialog(page).getByRole('textbox', { name: 'File Name' })
     await expect(field).toHaveValue('LevelData (2)')
     await expect(dialog(page).getByText('.nsld', { exact: true })).toBeVisible()
@@ -344,7 +345,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('Enter')
     await expect(dialog(page)).toContainText(
-        '"LevelData" has parts this version of the editor does not support.',
+        '"LevelData" has parts that this version of the editor does not support.',
     )
     expect(await archetypes(page, 'LevelData')).toContain('Unheard')
     await page.waitForTimeout(350)
@@ -352,7 +353,7 @@ test('a partial level picked anyway is refused and put back, through Export and 
     await expect(dialog(page)).toHaveCount(0)
 
     // p saves a project file: its picker refuses the opened level data too, and puts it back
-    // (§1.4.7 R7), with the Export hint.
+    // with the Export hint.
     await queuePicks(page, ['LevelData'])
     await page.keyboard.press('p')
     await saveProjectFile(page)
@@ -399,7 +400,7 @@ const writes = (page: Page) =>
 
 test('Escape after a pick is accepted lets the write finish, then closes', async ({ page }) => {
     await start(page, opfs)
-    // An earlier export, which the picker empties when it is picked (D5).
+    // An earlier export, which the picker empties when it is picked.
     await writeFile(page, 'Coconut.nsld', { bgmOffset: 5 })
     await openExport(page)
     await dialog(page).getByRole('textbox', { name: 'File Name' }).fill('Coconut')
@@ -549,13 +550,73 @@ test('Export shows one name: the field and the picker agree, for the source and 
     expect(JSON.stringify(call?.types)).toContain('.nsld')
 })
 
+test('both gzip paths carry the same level data, and a browser without streams uses level 9', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    const result = await page.evaluate(async () => {
+        const { buildLevelData, buildLevelDataVariants } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/exportLevel/build')
+        >('/src/editor/commands/exportLevel/build.ts')
+        const { gunzipBlob } = await window.editorTest.appImport<
+            typeof import('../../src/utils/gzipStream')
+        >('/src/utils/gzipStream.ts')
+        const text = async (blob: Blob) => {
+            const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'))
+            return new Response(stream).text()
+        }
+        const bytes = async (blob: Blob) => Array.from(new Uint8Array(await blob.arrayBuffer()))
+        const variants = await buildLevelDataVariants()
+        const texts = await Promise.all(variants.map(text))
+        const built = await buildLevelData()
+        const type = built.type
+        const same =
+            JSON.stringify(await bytes(built)) === JSON.stringify(await bytes(variants[0]!))
+
+        // Without streams: the script's level 9 bytes, and its own reader.
+        const streams = { c: window.CompressionStream, d: window.DecompressionStream }
+        Object.assign(window, { CompressionStream: undefined, DecompressionStream: undefined })
+        try {
+            const without = await buildLevelData()
+            const only = await buildLevelDataVariants()
+            const read = new TextDecoder().decode(await gunzipBlob(without))
+            return {
+                count: variants.length,
+                equal: texts.every((value) => value === texts[0]),
+                type,
+                nativeIsFirst: same,
+                level9:
+                    JSON.stringify(await bytes(without)) ===
+                    JSON.stringify(await bytes(variants[1]!)),
+                onlyOne: only.length,
+                read: read === texts[0],
+                nonEmpty: texts[0]!.includes('"entities"'),
+            }
+        } finally {
+            Object.assign(window, { CompressionStream: streams.c, DecompressionStream: streams.d })
+        }
+    })
+    expect(result).toEqual({
+        count: 2,
+        equal: true,
+        type: 'application/octet-stream',
+        nativeIsFirst: true,
+        level9: true,
+        onlyOne: 1,
+        read: true,
+        nonEmpty: true,
+    })
+})
+
 test('plain-JSON level data gets no Export target', async ({ page }) => {
     await start(page, opfs)
     const json = await page.evaluate(async () => {
         const { buildLevelData } = await window.editorTest.appImport<
             typeof import('../../src/editor/commands/exportLevel/build')
         >('/src/editor/commands/exportLevel/build.ts')
-        const stream = buildLevelData().stream().pipeThrough(new DecompressionStream('gzip'))
+        const stream = (await buildLevelData())
+            .stream()
+            .pipeThrough(new DecompressionStream('gzip'))
         return Array.from(new Uint8Array(await new Response(stream).arrayBuffer()))
     })
     await writeFile(page, 'LevelData.json', { raw: json })
@@ -607,7 +668,7 @@ test('an opened gzipped LevelData: p saves a project file, and Shift+P exports t
             },
         )
     })
-    // p never writes level data (§1.4.7): its picker suggests a project file.
+    // p never writes level data: its picker suggests a project file.
     await queuePicks(page, ['coconut.nxsp'])
     await page.keyboard.press('p')
     await saveProjectFile(page)
@@ -627,7 +688,7 @@ test('on a download browser, an imported LevelData keeps its own name', async ({
         const { buildLevelData } = await window.editorTest.appImport<
             typeof import('../../src/editor/commands/exportLevel/build')
         >('/src/editor/commands/exportLevel/build.ts')
-        return Array.from(new Uint8Array(await buildLevelData().arrayBuffer()))
+        return Array.from(new Uint8Array(await (await buildLevelData()).arrayBuffer()))
     })
     const chooser = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
@@ -663,7 +724,7 @@ test('a build that outlasted the gesture asks for one more tap', async ({ page }
     await openExport(page)
     await page.keyboard.press('Enter')
     const preparing = dialog(page).locator('[data-export-preparing]')
-    await expect(preparing).toHaveText(/^Preparing LevelData\.nsld… [\d.]+\skB/)
+    await expect(preparing).toHaveText(/^Ready: LevelData\.nsld · [\d.]+\skB/)
     const button = dialog(page).getByRole('button', { name: 'Download' })
     await expect(button).toBeFocused()
     const download = page.waitForEvent('download')

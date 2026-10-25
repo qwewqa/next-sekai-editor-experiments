@@ -19,7 +19,7 @@ import { copySourceName, shownName } from './shownName'
 import { restoreCopy } from './switch'
 
 // What this load found (the events of `local/startup/events.ts`) as the start-up pill's load
-// notices, with their actions (Part 1 §1.4.3).
+// notices, with their actions.
 
 const quoted = (name: ShownName) => () => shownName(name)
 
@@ -107,7 +107,7 @@ export const loadNoticeOf: Handlers = {
     }),
     migrated: (event) => ({
         order: LOAD_ORDER.migrated,
-        // Kept as a session of its own when another session opened (§1.4.3). Both forms are
+        // Kept as a session of its own when another session opened. Both forms are
         // confirmations, so neither carries a severity.
         message: interpolate(
             () => (event.opened ? load().autoSave : load().autoSaveKept),
@@ -117,7 +117,7 @@ export const loadNoticeOf: Handlers = {
     migratedRevision: () => ({
         order: LOAD_ORDER.migratedRevision,
         severity: 'warning',
-        // Today's warning on an older engine revision (D18).
+        // Today's warning on an older engine revision.
         message: () => i18n.value.commands.open.revision.older,
     }),
     journalRecovered: (event) => ({
@@ -174,10 +174,7 @@ export const loadNoticeOf: Handlers = {
         order: LOAD_ORDER.separateCopy,
         severity: 'info',
         message: interpolate(
-            () =>
-                event.maybe
-                    ? i18n.value.notice.sameFileMaybeElsewhere
-                    : i18n.value.notice.sameFileElsewhere,
+            () => i18n.value.notice.sameFileElsewhere,
             () => copySourceName(event.of),
         ),
     }),
@@ -202,7 +199,7 @@ const add = (event: LoadEvent) => {
 for (const event of loadEvents.value) add(event)
 onLoadEvent(add)
 
-// An app’s built-in browser, best effort (§1.4.3, §1.6.10): said at every load it is found, and not
+// An app’s built-in browser, best effort: said at every load it is found, and not
 // a load event, which are what the storage startup found.
 if (platform.capabilities.likelyInAppBrowser)
     addLoadNotice(

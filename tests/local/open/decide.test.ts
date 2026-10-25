@@ -17,7 +17,7 @@ import '../../helpers/lockChecks'
 import { fresh } from '../nxsp/chain'
 import { crafted, jsonOf, setJson } from '../nxsp/craft'
 
-// The open's decisions (Part 1 §1.5.3–§1.5.5, §1.6.11.6): the partial open's line, the binding's
+// The open's decisions: the partial open's line, the binding's
 // name, "a file matches its head" with absence never a change, the live state from level.json
 // and project.json, the binding's options, and the notice about earlier sessions.
 
@@ -41,7 +41,7 @@ test('an edited title is a change: level.json and project.json win, keeping the 
         (items) => {
             const project = jsonOf(items, 'project.json')
             project.metadata.title = 'Edited'
-            // Left out, as an unticked BGM is: absence is never a change (r11h S4, S5).
+            // Left out, as an unticked BGM is: absence is never a change.
             delete project.bgm
             setJson(items, 'project.json', project)
             return items.filter((item) => !item.name.startsWith('bgm/'))
@@ -227,39 +227,11 @@ test('earlier sessions on the file are recognised by revision', () => {
     assert.equal(earlierNotice(undefined, [same]), undefined)
 })
 
-test('a chain whose journal could not be checked has unknown changes, never none', () => {
+test('a bound chain’s pending journal counts as a change', () => {
     const base = { changed: false, bound: { handle: true }, sessionId: 's' }
     assert.equal(changedOf(base, new Set()), false)
     assert.equal(changedOf(base, new Set(['s'])), true)
-    assert.equal(changedOf(base, undefined), undefined)
     // Already changed in storage, or not bound (a journal is only Restore's for a bound chain).
-    assert.equal(changedOf({ ...base, changed: true }, undefined), true)
-    assert.equal(changedOf({ ...base, bound: undefined }, undefined), false)
-})
-
-test('unknown changes are named as possible, never as none', () => {
-    const file = { id: 'r3', ancestors: ['r2', 'r1'] }
-    const unknown = chain({
-        revision: { id: 'r3', ancestors: ['r2'] },
-        bound: { handle: false },
-        changed: undefined,
-    })
-    assert.deepEqual(earlierNotice(file, [unknown]), {
-        kind: 'unsavedChanges',
-        chain: unknown,
-        restore: true,
-        maybe: true,
-    })
-    const earlier = chain({
-        revision: { id: 'r1', ancestors: [] },
-        bound: { handle: false },
-        changed: undefined,
-    })
-    assert.deepEqual(earlierNotice(file, [earlier]), {
-        kind: 'unsavedEarlier',
-        chain: earlier,
-        maybe: true,
-    })
-    // A known change is stated plainly.
-    assert.ok(!('maybe' in (earlierNotice(file, [{ ...unknown, changed: true }]) ?? {})))
+    assert.equal(changedOf({ ...base, changed: true }, new Set()), true)
+    assert.equal(changedOf({ ...base, bound: undefined }, new Set(['s'])), false)
 })

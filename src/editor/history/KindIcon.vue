@@ -5,7 +5,7 @@ import RedoIcon from '../commands/redo/RedoIcon.vue'
 import SaveIcon from '../commands/save/SaveIcon.vue'
 import UndoIcon from '../commands/undo/UndoIcon.vue'
 
-// The icon of an entry's kind (Part 1 §1.4.10.5), 16px, in the text colour.
+// The icon of an entry's kind, 16px, in the text colour.
 defineProps<{ kind: string }>()
 </script>
 

@@ -3,7 +3,7 @@ import type { BaseEventConnectionEntity } from '../../../../state/entities/event
 import type { EventJointEntity } from '../../../../state/entities/events/joints'
 
 /**
- * Event entities in the given order (the records' order, §1.6.11.6), each linked to the
+ * Event entities in the given order (the records' order), each linked to the
  * next joint on its chain; names follow the order, so level data is a function of the state.
  */
 export const serializeEventsToLevelDataEntities = <T extends EventJointEntity>(

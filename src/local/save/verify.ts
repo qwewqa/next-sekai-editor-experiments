@@ -7,7 +7,7 @@ import { NXSP_CAPS } from '../nxsp/read'
 import { canonicalBytes, type RecordValue } from '../records/canonical'
 import { chunkCrc32 } from '../records/rows'
 
-// The post-build check (Part 1 §1.5.6; r11h S2, r11i M3): every `.nxsp` built is re-opened before
+// The post-build check: every `.nxsp` built is re-opened before
 // it's handed over or written: the central directory and every entry's CRC, the media's SHA-256,
 // every root and node hashing to its name, and every chunk the plan took from storage by its
 // stored CRC over its key and the bytes at its offset. Chunks aren't inflated or hashed again.

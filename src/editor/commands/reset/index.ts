@@ -13,11 +13,12 @@ export const reset: Command = {
     leavesPeek: true,
 
     async execute() {
-        if (!(await confirmSwitch())) return
+        // Asks first when the chart has edits no file holds.
+        if (!(await confirmSwitch({ unsaved: true }))) return
 
         resetState(false)
 
-        // "New level", with Reopen while the session left can be reopened (Part 1 §1.4.1).
+        // "New level", with Reopen while the session left can be reopened.
         notifyLeft(() => i18n.value.notice.newLevel)
     },
 }

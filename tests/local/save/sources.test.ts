@@ -12,8 +12,8 @@ import { unzip, zipItems } from '../nxsp/craft'
 import { Fixture, heldRows, save, saveOptions, sourceOf, stateAt } from './fixture'
 
 // What a write reads of the pinned files, and the refusals: only the append source is read, so a
-// 0-byte target (R9) or another file is never a conflict or damage; a change under the built file
-// is a conflict; and the guards no other test pins (§1.11.6's Exit, review minor 12).
+// 0-byte target or another file is never a conflict or damage; a change under the built file
+// is a conflict; and the guards no other test pins.
 
 const ok = <T extends object>(value: T) => {
     assert.ok(!('refused' in value), JSON.stringify(value))
@@ -48,7 +48,7 @@ const pinned = async (file: File, token = 'target') => ({
     fingerprint: (await diskOf(file)).fingerprint,
 })
 
-test('a write-back over a 0-byte target writes the chain from storage, never a conflict (R9)', async () => {
+test('a write-back over a 0-byte target writes the chain from storage, never a conflict', async () => {
     const { fixture } = await bound()
     const empty = new File([], 'coconut.nxsp', { lastModified: 123 })
     const files = [await pinned(empty)]

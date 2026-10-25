@@ -26,8 +26,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The chain's own file around a save picker (Part 1 §1.4.7 R2, R4; soundness round 2 SF2-1,
-// SF2-4..6, ADV-3, ADV-5): every picker that may return it reads it first, not only a dialog's
+// The chain's own file around a save picker: every picker that may return it reads it first, not only a dialog's
 // first; the bytes read go back under the same lock as the pick, or are offered when something
 // else filled the file; a Save during an open's import waits for it, also after a reload.
 
@@ -40,7 +39,7 @@ const saveAs = (page: Page) =>
         void runCommand(commands.saveAs)
     })
 
-/** A dialog ignores presses in its first moments (§1.4.1); a read first has time to finish. */
+/** A dialog ignores presses in its first moments; a read first has time to finish. */
 const settle = (page: Page) => page.waitForTimeout(400)
 
 /** Saved to coconut.nxsp with an undone row, then cleanup took that row: storage is short. */
@@ -55,7 +54,7 @@ const shortChain = async (page: Page) => {
     return { before, bytes }
 }
 
-test('Save As…’s Choose Another… after a refused pick reads the chain’s own file again and stays Save As… (SF2-1)', async ({
+test('Save As…’s Choose Another… after a refused pick reads the chain’s own file again and stays Save As…', async ({
     page,
 }) => {
     const { before } = await shortChain(page)
@@ -91,7 +90,7 @@ test('Save As…’s Choose Another… after a refused pick reads the chain’s 
     expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
 })
 
-test('Export’s Choose Another… after its dialog closed reads the chain’s own file again before its picker (SF2-1)', async ({
+test('Export’s Choose Another… after its dialog closed reads the chain’s own file again before its picker', async ({
     page,
 }) => {
     const { before } = await shortChain(page)
@@ -119,7 +118,7 @@ test('Export’s Choose Another… after its dialog closed reads the chain’s o
     expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
 })
 
-test('Export’s pick of the chain’s own file that is not written again gets the bytes read back (SF2-4)', async ({
+test('Export’s pick of the chain’s own file that is not written again gets the bytes read back', async ({
     page,
 }) => {
     const { bytes } = await shortChain(page)
@@ -137,7 +136,7 @@ test('Export’s pick of the chain’s own file that is not written again gets t
     expect(await readFile(page, 'coconut.nxsp')).toEqual(bytes)
 })
 
-test('the bytes read go back under the same nse-bind exclusive lock as the pick (ADV-3)', async ({
+test('the bytes read go back under the same nse-bind exclusive lock as the pick', async ({
     page,
 }) => {
     const { bytes } = await shortChain(page)
@@ -175,7 +174,7 @@ test('the bytes read go back under the same nse-bind exclusive lock as the pick 
     ).toContain('nse-bind:exclusive')
 })
 
-test('the chain’s own file filled by another write after the pick: the bytes read are offered, then the conflict shows (ADV-3)', async ({
+test('the chain’s own file filled by another write after the pick: the bytes read are offered, then the conflict shows', async ({
     page,
 }) => {
     await shortChain(page)
@@ -195,7 +194,7 @@ test('the chain’s own file filled by another write after the pick: the bytes r
     await release(page)
     const offer = page
         .getByRole('dialog')
-        .filter({ hasText: '"coconut.nxsp" no longer holds the content you opened.' })
+        .filter({ hasText: 'The contents of "coconut.nxsp" have changed.' })
     await expect(offer).toBeVisible()
     await expect(offer.getByRole('button', { name: 'Download' })).toBeVisible()
     await page.keyboard.press('Escape')
@@ -204,7 +203,7 @@ test('the chain’s own file filled by another write after the pick: the bytes r
     expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
 
-test('a stale reservation’s release never ends a later Save’s reservation of the same seq (ADV-5)', async ({
+test('a stale reservation’s release never ends a later Save’s reservation of the same seq', async ({
     page,
 }) => {
     await shortChain(page)
@@ -272,7 +271,7 @@ const openFile = async (page: Page, name: string) => {
     await expect(notice(page).filter({ hasText: name }).first()).toBeVisible()
 }
 
-test('the Save dialog shows no count while an open’s import runs, and counts once it ends (SF2-5)', async ({
+test('the Save dialog shows no count while an open’s import runs, and counts once it ends', async ({
     page,
 }) => {
     await start(page)
@@ -337,7 +336,7 @@ const reloadMidImport = async (page: Page, resume: 'late' | 'never') => {
     expect(sessions!.some((row) => row.value.importPending === true)).toBe(true)
 }
 
-test('a Save right after a reload mid-import waits for the resumed import, then saves (SF2-6)', async ({
+test('a Save right after a reload mid-import waits for the resumed import, then saves', async ({
     page,
 }) => {
     await reloadMidImport(page, 'late')
@@ -352,7 +351,7 @@ test('a Save right after a reload mid-import waits for the resumed import, then 
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
 })
 
-test('a Save whose import startup never resumed resumes it and saves, never "could not be prepared" (SF2-6)', async ({
+test('a Save whose import startup never resumed resumes it and saves, never "could not be prepared"', async ({
     page,
 }) => {
     await reloadMidImport(page, 'never')
@@ -361,14 +360,14 @@ test('a Save whose import startup never resumed resumes it and saves, never "cou
     await settle(page)
     await queuePicks(page, ['other.nxsp'])
     await submitSave(page, 'other', 'Save As')
-    // No tab runs the import, so the Save's wait resumes it as a reload would (spec A).
+    // No tab runs the import, so the Save's wait resumes it as a reload would.
     await expect(notice(page).filter({ hasText: 'Saved to other.nxsp' })).toBeVisible({
         timeout: 20_000,
     })
     await expect(page.getByText('could not be prepared')).toHaveCount(0)
 })
 
-test('a pick of the chain’s own file that storage can’t place is still the own file: the bytes read are appended to (ADV3-2)', async ({
+test('a pick of the chain’s own file that storage can’t place is still the own file: the bytes read are appended to', async ({
     page,
 }) => {
     const { before } = await shortChain(page)
@@ -401,7 +400,7 @@ test('a pick of the chain’s own file that storage can’t place is still the o
     expect((after.revision as Row).completeFrom).toBe((before.revision as Row).completeFrom)
 })
 
-test('a put-back over a file filled meanwhile learns it from its size, never reading it whole (SF3-2)', async ({
+test('a put-back over a file filled meanwhile learns it from its size, never reading it whole', async ({
     page,
 }) => {
     await shortChain(page)
@@ -435,7 +434,7 @@ test('a put-back over a file filled meanwhile learns it from its size, never rea
     await release(page)
     const offer = page
         .getByRole('dialog')
-        .filter({ hasText: '"coconut.nxsp" no longer holds the content you opened.' })
+        .filter({ hasText: 'The contents of "coconut.nxsp" have changed.' })
     await expect(offer).toBeVisible()
     const inspected = await page.evaluate(
         () => (window as unknown as { inspected: [string | null, number][] }).inspected,
@@ -445,7 +444,7 @@ test('a put-back over a file filled meanwhile learns it from its size, never rea
     expect(await readFile(page, 'coconut.nxsp')).toEqual([...other])
 })
 
-test('Export waits for an open’s import before its picker, so a pick of the file never stops the import (SF3-1)', async ({
+test('Export waits for an open’s import before its picker, so a pick of the file never stops the import', async ({
     page,
 }) => {
     await start(page)
@@ -475,7 +474,7 @@ test('Export waits for an open’s import before its picker, so a pick of the fi
     expect(sessions!.some((row) => row.value.importPending === true)).toBe(false)
 })
 
-test('Save to File… shows no count while an open’s import runs, and counts once it ends (SF3-3)', async ({
+test('Recent Sessions’ Save… shows no count while an open’s import runs, and counts once it ends', async ({
     page,
 }) => {
     await start(page)
@@ -498,7 +497,7 @@ test('Save to File… shows no count while an open’s import runs, and counts o
     await expect(dialog).toContainText(/\d steps? ·/)
 })
 
-test('the Save dialog stops counting again when an import stays pending that never runs (ADV3-3, UI3-2)', async ({
+test('the Save dialog stops counting again when an import stays pending that never runs', async ({
     page,
 }) => {
     await reloadMidImport(page, 'never')
@@ -527,7 +526,7 @@ test('the Save dialog stops counting again when an import stays pending that nev
     await expect(total).toHaveText('Estimating size…')
 })
 
-test('Export with no import to wait for still asks for a press once the press has lapsed (SF-F1)', async ({
+test('Export with no import to wait for still asks for a press once the press has lapsed', async ({
     page,
 }) => {
     // The browser reports the press as gone, as after a slow storage answer.

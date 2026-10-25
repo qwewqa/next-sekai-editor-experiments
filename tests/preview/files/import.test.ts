@@ -41,7 +41,7 @@ const en = (
 const importMessage = (error: AssetImportError) =>
     formatImportMessage(error, en, (value) => new Intl.NumberFormat('en').format(value), sizeEn)
 
-// Rejection at import (Part 2, 2.5.5, 2.11): each way a package can be wrong is refused with a
+// Rejection at import: each way a package can be wrong is refused with a
 // plain message that names the problem.
 
 const decodeAudio = decodeTestAudio
@@ -135,12 +135,7 @@ test('a bad end record is refused', async () => {
 
 test('ZIP64 is refused', async () => {
     const bytes = rawZip(scpEntries('skin'), { zip64End: true })
-    await expectRefused(
-        'skin',
-        bytes,
-        'zip64',
-        'This file uses ZIP64, which the editor cannot read.',
-    )
+    await expectRefused('skin', bytes, 'zip64', 'The editor cannot read ZIP64 files.')
 })
 
 test('ZIP64 fields in an entry of a ZIP32 file are refused', async () => {
@@ -606,7 +601,7 @@ test('sound effects without a usable #PERFECT are refused', async () => {
     )
 })
 
-test('sound effects longer than 120 seconds in all are refused', async () => {
+test('sound effects longer than 120 seconds in total are refused', async () => {
     await expectRefused(
         'effect',
         valid('effect', {
@@ -626,7 +621,7 @@ test('sound effects longer than 120 seconds in all are refused', async () => {
             },
         }),
         'audioLength',
-        'This file’s sound effects audio is longer than 120 seconds in all.',
+        'This file’s sound effects audio is longer than 120 seconds in total.',
     )
 })
 

@@ -8,6 +8,12 @@ import { WebGLDrawContext } from '../../src/rendering/context'
 import { StageMeshes, StageTriangles } from '../../src/rendering/stageMesh'
 
 const triangle = () => new Float64Array([0, 0, 2, 0, 0, 3])
+const append = (
+    stream: StageTriangles,
+    [x0, y0, x1, y1, x2, y2]: Float64Array,
+    color: number,
+    alpha: number,
+) => stream.appendTriangle(x0!, y0!, x1!, y1!, x2!, y2!, color, alpha)
 
 function meshesWithoutGpu() {
     const meshes = new StageMeshes()
@@ -22,9 +28,9 @@ function meshesWithoutGpu() {
 test('stage triangle stream preserves paint order and premultiplies opacity once', () => {
     const stream = new StageTriangles()
     const source = triangle()
-    stream.append(source, 0xff8040, 0.16)
-    stream.append(source, 0x4080ff, 0.4)
-    stream.append(source, 0xffffff, 0)
+    append(stream, source, 0xff8040, 0.16)
+    append(stream, source, 0x4080ff, 0.4)
+    append(stream, source, 0xffffff, 0)
     assert.equal(stream.vertices.length, 36)
     assert.deepEqual(source, triangle())
     assert.deepEqual(stream.vertices.slice(0, 6), [
@@ -55,7 +61,8 @@ test('custom stage geometry packs after the double transform and respects interl
     const { meshes } = meshesWithoutGpu()
     const origin = 2 ** 40
     const stream = new StageTriangles()
-    stream.append(
+    append(
+        stream,
         new Float64Array([
             origin + 0.125,
             origin + 0.25,
@@ -96,7 +103,7 @@ test('custom stage geometry packs after the double transform and respects interl
 test('stage mesh recycling frees each buffer once and retains the shared shader', () => {
     const { meshes, shader } = meshesWithoutGpu()
     const stream = new StageTriangles()
-    stream.append(triangle(), 0xffffff, 1)
+    append(stream, triangle(), 0xffffff, 1)
     const first = meshes.draw(stream.vertices, [1, 0, 0, 1, 0, 0])
     const second = meshes.draw(stream.vertices, [1, 0, 0, 1, 10, 20])
     let firstBufferDestroyed = 0
@@ -136,7 +143,7 @@ test('context queues stage meshes through its current clip parent and recycles t
         waveforms: { recycle: () => waveformRecycles++ },
     }) as unknown as WebGLDrawContext
     const stream = new StageTriangles()
-    stream.append(triangle(), 0xffffff, 0.65)
+    append(stream, triangle(), 0xffffff, 0.65)
     try {
         context.drawStageTriangles([])
         assert.equal(mutations, 0)
@@ -151,6 +158,55 @@ test('context queues stage meshes through its current clip parent and recycles t
         Object.assign(context, { mutate: () => false })
         context.drawStageTriangles(stream.vertices)
         assert.equal(parent.children.length, 0)
+    } finally {
+        meshes.destroy()
+        parent.destroy()
+    }
+})
+
+test('retained stage meshes survive frame recycling and are freed once by release or disposal', () => {
+    const { meshes } = meshesWithoutGpu()
+    const parent = new Container()
+    const context = Object.assign(Object.create(WebGLDrawContext.prototype) as object, {
+        state: { matrix: [2, 0, 0, 3, 10, 20], globalAlpha: 1 },
+        stageMeshes: meshes,
+        mutate: () => true,
+        parent: () => parent,
+        flush: () => {
+            ;(context as unknown as { recycleNodes(container: Container): void }).recycleNodes(
+                parent,
+            )
+        },
+        retained: new Map(),
+        retainedNoteBodies: new Map(),
+        waveforms: { recycle: () => {} },
+    }) as unknown as WebGLDrawContext
+    const stream = new StageTriangles()
+    append(stream, triangle(), 0xffffff, 1)
+    const kept = context.createStageMesh(stream.vertices, [2, 0, 0, 3, 0, -6])
+    const freed = context.createStageMesh(stream.vertices, [1, 0, 0, 1, 0, 0])
+    let keptDestroyed = 0
+    let freedDestroyed = 0
+    kept.geometry.getBuffer('aPosition').on('destroy', () => keptDestroyed++)
+    freed.geometry.getBuffer('aPosition').on('destroy', () => freedDestroyed++)
+    try {
+        // Packed with its own matrix, positioned in device pixels, not the current transform.
+        assert.deepEqual(Array.from(kept.geometry.getBuffer('aPosition').data.slice(0, 2)), [0, -6])
+        context.drawStageMesh(kept, 12.5, -3.25)
+        assert.deepEqual([kept.position.x, kept.position.y], [12.5, -3.25])
+        assert.equal(kept.parent, parent)
+        ;(context as unknown as { recycleNodes(container: Container): void }).recycleNodes(parent)
+        assert.equal(kept.parent, null)
+        assert.equal(keptDestroyed, 0, 'a frame never frees a retained mesh')
+        context.drawStageMesh(kept, 0, 0)
+        context.drawStageMesh(freed, 0, 0)
+        // A queued mesh is submitted before it is freed.
+        context.releaseStageMesh(freed)
+        context.releaseStageMesh(freed)
+        assert.equal(freedDestroyed, 1)
+        assert.equal(parent.children.length, 0)
+        meshes.destroy()
+        assert.equal(keptDestroyed, 1)
     } finally {
         meshes.destroy()
         parent.destroy()

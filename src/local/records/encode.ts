@@ -9,7 +9,7 @@ import type { TimeScaleObject } from '../../chart/timeScale'
 import { canonical, type RecordValue } from './canonical'
 import type { KindName } from './schema'
 
-// Explicit positional encoders per record (§1.6.11.1), never `JSON.stringify` of a model
+// Explicit positional encoders per record, never `JSON.stringify` of a model
 // object, and the v1 order. `fields.test.ts` checks every position against `fields-v1.json`.
 
 type Rec = readonly RecordValue[]
@@ -152,11 +152,11 @@ const beatPositions: Record<Exclude<KindName, 'slides'>, number> = {
     stageTransformEvents: 1,
 }
 
-/** A record's window key (§1.6.11.1): a slide's first note's beat, or the record's beat. */
+/** A record's window key: a slide's first note's beat, or the record's beat. */
 export const recordKey = (kind: KindName, record: Rec) =>
     (kind === 'slides' ? (record[0] as Rec)[2] : record[beatPositions[kind]]) as number
 
-/** A kind's records in the v1 order (§1.6.11.1), keyed for the split. */
+/** A kind's records in the v1 order, keyed for the split. */
 export type KindRecords = { kind: KindName; records: KeyedRecord[] }
 
 /**
@@ -185,7 +185,7 @@ export type EventPlace = { key: number; track: number; record: Rec }
 
 /**
  * Events (and BPMs and time scales): by window key and beat, then track, then their order
- * along the track's chain, which is the input's order (D4: same-beat events play in chain
+ * along the track's chain, which is the input's order (same-beat events play in chain
  * order, so a byte sort would change the chart).
  */
 export const sortEventRecords = <T extends EventPlace>(records: readonly T[]): T[] =>

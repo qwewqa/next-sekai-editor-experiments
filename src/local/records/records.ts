@@ -28,7 +28,7 @@ import { kindNames } from './schema'
 
 export * from './encode'
 
-// Records from a state or chart and back (§1.6.11.1), with explicit decoders per record.
+// Records from a state or chart and back, with explicit decoders per record.
 
 type Rec = readonly RecordValue[]
 
@@ -85,7 +85,7 @@ export const levelInfoRecord = (info: LevelInfo): Rec => [
     info.artists,
     info.author,
     info.description,
-    info.tags.map((tag) => [tag.title, ...optional(tag.icon)]),
+    info.tags.map((tag) => [tag.title]),
     mediaRefRecord(info.cover),
     mediaRefRecord(info.preview),
     ...optional(info.rating),
@@ -117,7 +117,7 @@ const foldersRecord = (folders: Folders | undefined): Rec =>
         ...optional(folder.folderId),
     ])
 
-/** What a header holds beside the chart (§1.6.2). */
+/** What a header holds beside the chart. */
 export type HeaderExtras = { bgmOffset: number; levelInfo: LevelInfo; bgm?: BgmMeta }
 
 /** The chart fields a header holds. */
@@ -152,7 +152,7 @@ export const orderedKindRecords = (ordered: OrderedStore): KindRecords[] =>
         .map((kind) => ({ kind, records: keyed<unknown>(ordered[kind]) }))
         .filter(({ records }) => records.length)
 
-/** A state's records (§1.6.2): what a snapshot stores. */
+/** A state's records: what a snapshot stores. */
 export const toRecords = (state: State): SnapshotRecords => ({
     header: headerRecord(state, {
         bgmOffset: state.bgm.offset,
@@ -309,10 +309,7 @@ export const levelInfoObject = (r: Rec): LevelInfo => {
         artists: asString(r[1]),
         author: asString(r[2]),
         description: asString(r[3]),
-        tags: asList(r[4]).map((tag) => ({
-            title: asString(tag[0]),
-            ...(tag[1] === undefined ? {} : { icon: asString(tag[1]) }),
-        })),
+        tags: asList(r[4]).map((tag) => ({ title: asString(tag[0]) })),
         ...(cover ? { cover } : {}),
         ...(preview ? { preview } : {}),
         ...(r[7] === undefined ? {} : { rating: asNumber(r[7]) }),
@@ -327,7 +324,7 @@ export const bgmObject = (r: Rec): BgmMeta => ({
     ...(r[4] === undefined ? {} : { durationMs: asNumber(r[4]) }),
 })
 
-/** A chart and the rest of a state from records in the v1 order (§1.6.11.1). */
+/** A chart and the rest of a state from records in the v1 order. */
 export const fromRecords = ({ header, kinds }: SnapshotRecords): RecordsContent => {
     const [initialLife, isDynamicStages, bgmOffset, groups, stages, groupFolders, stageFolders] =
         header

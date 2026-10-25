@@ -98,7 +98,7 @@ test('an unknown archetype is reported with its count, and the level still parse
     assert.equal(chart.slides.length, 1)
 })
 
-test('Skill, FeverChance and FeverStart are dropped silently, as before (D2)', () => {
+test('Skill, FeverChance and FeverStart are dropped silently, as before', () => {
     for (const archetype of ['Skill', 'FeverChance', 'FeverStart']) {
         assert.ok(!Object.hasOwn(knownArchetypes, archetype))
         assert.equal(ignoredArchetypes[archetype]?.reason, 'dropped')

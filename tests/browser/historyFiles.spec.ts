@@ -23,9 +23,9 @@ import {
 } from './historyJourney'
 import { pressSave, queuePicks, rows, submitSave } from './saveFlows'
 
-// History in files (D2 plan §3.3, F1 and F2): a future operation and a 520-entry history go
+// History in files: a future operation and a 520-entry history go
 // through Save, a reopen in a fresh context (a new chain), the Timeline, Restore and an append.
-// NSE_DUMP_FILES=<dir> keeps the saved files there, for the Python checker (plan §4).
+// NSE_DUMP_FILES=<dir> keeps the saved files there, for the Python checker.
 
 const opfs = { fileSystemAccess: 'opfs' } as const
 
@@ -160,7 +160,7 @@ test.beforeEach(({ page }) => {
     errorsFail(page)
 })
 
-test('F1: an operation from a newer editor survives Save, reopen, Restore and an append', async ({
+test('an operation from a newer editor survives Save, reopen, Restore and an append', async ({
     page,
     browser,
 }) => {
@@ -261,7 +261,7 @@ test('F1: an operation from a newer editor survives Save, reopen, Restore and an
     noErrors(page)
 })
 
-test('F2: a 520-entry file crosses a segment, pages in order, restores and appends', async ({
+test('a 520-entry file crosses a segment, pages in order, restores and appends', async ({
     page,
     browser,
 }) => {
@@ -372,7 +372,7 @@ const dividers = (page: Page) =>
             .map(({ element }) => (element.textContent ?? '').replace(/\s+/g, ' ').trim()),
     )
 
-test('an opened file’s dividers read “Opened <file>” and the time each visit continued from (X-10)', async ({
+test('an opened file’s dividers read “Opened <file>” and the time each visit continued from', async ({
     browser,
 }) => {
     test.slow()

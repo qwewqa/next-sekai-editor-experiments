@@ -12,12 +12,13 @@ import {
     rawExportName,
     type RawSources,
 } from '../../src/local/rawExport'
-import { seedDump } from '../../src/local/seed'
+import { seedDump, seedRawExport } from '../../src/local/seed'
+import { openLocalData } from '../../src/local/testing/db'
 import { createWorld, type Tab } from '../../src/local/testing/world'
 import { storageKey } from '../../src/storage'
 import { ZipReader } from '../../src/zip'
 
-// Export Raw Data… (Part 1 §1.4.14, Step 8 design §3.9).
+// Export Raw Data….
 
 const b64 = (bytes: number[]) => toBase64(new Uint8Array(bytes))
 
@@ -112,12 +113,20 @@ const withForeign = (items: Record<string, string>) => ({ ...items, 'someone.els
 const dumpOf = (tab: Tab, db: KvDatabase) =>
     tab.run(() => dumpDatabase(db, { appVersion: '0.6.0', localStorage: {} }))
 
-/** The dump.json inside the exported ZIP, which holds nothing else. */
-const readExport = async (zip: Blob) => {
+/** The export's media row, its Blob a `$blobEntry` naming the ZIP's own entry. */
+const withBlobEntry = (dump: Dump): Dump => {
+    const copy = structuredClone(dump)
+    const media = copy.stores.find((store) => store.name === 'media')!.records[0]!
+    media.value = { blob: { $blobEntry: 'blobs/0', type: 'audio/mpeg' } }
+    return copy
+}
+
+/** The dump.json inside the exported ZIP, its first entry, then `blobs` as STORE entries. */
+const readExport = async (zip: Blob, blobs: string[] = [], method = 8) => {
     const reader = await ZipReader.open(zip)
     assert.deepEqual(
-        reader.entries.map((entry) => entry.name),
-        [DUMP_ENTRY],
+        reader.entries.map((entry) => [entry.name, entry.method]),
+        [[DUMP_ENTRY, method], ...blobs.map((name) => [name, 0])],
     )
     const entry = reader.get(DUMP_ENTRY)!
     return JSON.parse(
@@ -138,17 +147,149 @@ test('a seeded profile exports to one dump that seeds the same profile again', a
         storage: fakeStorage(withForeign(dump.localStorage)),
     }
     const zip = await tab.run(() => buildRawExport('0.6.0', sources))
-    const exported = readDump(await readExport(zip))
-    // Everything stored, undecoded, with only the editor's own localStorage keys.
-    assert.deepEqual(exported, dump)
+    const exported = readDump(await readExport(zip, ['blobs/0']))
+    // Everything stored, undecoded, with only the editor's own localStorage keys; the Blob's bytes
+    // are its own entry.
+    assert.deepEqual(exported, withBlobEntry(dump))
+    const reader = await ZipReader.open(zip)
+    assert.deepEqual([...(await reader.read(reader.get('blobs/0')!, { maxSize: 3 }))], [9, 8, 7])
     // And it loads: a fresh profile seeded from the export holds the same rows.
     const other = createWorld()
     const otherTab = other.tab('b')
-    assert.deepEqual(await otherTab.run(() => seedDump(otherTab.kv, exported, fakeStorage({}))), {
+    assert.deepEqual(await otherTab.run(() => seedRawExport(otherTab.kv, zip, fakeStorage({}))), {
         seeded: true,
     })
     const again = await otherTab.kv.open(DB_NAME, undefined)
     assert.deepEqual(await dumpOf(otherTab, again), { ...dump, localStorage: {} })
+    await world.idle()
+    await other.idle()
+})
+
+test('a large Blob is its own entry, never read whole or as base64, and seeds back the same rows', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const db = await openLocalData(tab)
+    // Past one 8 MiB slice of the CRC.
+    const bytes = new Uint8Array(9 * 1024 * 1024 + 5)
+    for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 31 + (i >> 11)) & 0xff
+    const key = new Uint8Array(16).fill(7).buffer
+    const blob = new Blob([bytes], { type: 'audio/wav' })
+    await tab.run(() =>
+        db.transaction(['media'], 'readwrite', (tx) =>
+            tx.put('media', { blob, size: bytes.length, type: 'audio/wav' }, key),
+        ),
+    )
+    const sources: RawSources = { factory: tab.kv, storage: fakeStorage({}) }
+    // Every read of a Blob's bytes and every base64 string, while the export runs.
+    const arrayBuffer = Blob.prototype.arrayBuffer
+    const base64 = globalThis.btoa
+    let largestRead = 0
+    let longestBase64 = 0
+    Blob.prototype.arrayBuffer = function (this: Blob) {
+        largestRead = Math.max(largestRead, this.size)
+        return arrayBuffer.call(this)
+    }
+    globalThis.btoa = (text: string) => {
+        longestBase64 = Math.max(longestBase64, text.length)
+        return base64(text)
+    }
+    let zip: Blob
+    try {
+        zip = await tab.run(() => buildRawExport('0.6.0', sources))
+    } finally {
+        Blob.prototype.arrayBuffer = arrayBuffer
+        globalThis.btoa = base64
+    }
+    assert.ok(largestRead <= 8 * 1024 * 1024, `a read of ${largestRead} bytes`)
+    assert.ok(longestBase64 < 1024, `base64 of ${longestBase64} bytes`)
+    const exported = readDump(await readExport(zip, ['blobs/0']))
+    const media = exported.stores.find((store) => store.name === 'media')!.records
+    assert.deepEqual(media[0]!.value, {
+        blob: { $blobEntry: 'blobs/0', type: 'audio/wav' },
+        size: bytes.length,
+        type: 'audio/wav',
+    })
+    const other = createWorld()
+    const otherTab = other.tab('b')
+    assert.deepEqual(await otherTab.run(() => seedRawExport(otherTab.kv, zip, fakeStorage({}))), {
+        seeded: true,
+    })
+    const again = await otherTab.kv.open(DB_NAME, undefined)
+    assert.deepEqual(await dumpOf(otherTab, again), await dumpOf(tab, db))
+    await world.idle()
+    await other.idle()
+})
+
+const UNREADABLE = 'audio/x-gone'
+
+/** Runs `run` with every Blob of the type `UNREADABLE` failing to read, as one whose file is gone. */
+const withUnreadableBlobs = async <T>(run: () => Promise<T>): Promise<T> => {
+    const { slice, arrayBuffer } = Blob.prototype
+    const log = console.error
+    // A slice keeps its Blob's type, so the CRC's sliced reads fail too.
+    Blob.prototype.slice = function (this: Blob, start?: number, end?: number) {
+        return slice.call(this, start, end, this.type)
+    }
+    Blob.prototype.arrayBuffer = function (this: Blob) {
+        return this.type === UNREADABLE
+            ? Promise.reject(new DOMException('The file could not be read', 'NotReadableError'))
+            : arrayBuffer.call(this)
+    }
+    console.error = () => undefined
+    try {
+        return await run()
+    } finally {
+        Blob.prototype.slice = slice
+        Blob.prototype.arrayBuffer = arrayBuffer
+        console.error = log
+    }
+}
+
+test('a Blob that cannot be read is left out alone, and every other row and Blob is exported', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = stored()
+    const media = (blob: unknown) => ({ blob })
+    dump.stores.find((store) => store.name === 'media')!.records = [
+        { key: hash(3), value: media({ $blob: b64([9, 8, 7]), type: 'audio/mpeg' }) },
+        { key: hash(4), value: media({ $blob: b64([1, 2, 3, 4]), type: UNREADABLE }) },
+        { key: hash(5), value: media({ $blob: b64([6]), type: 'image/png' }) },
+    ]
+    await tab.run(() => seedDump(tab.kv, readDump(dump), { setItem: () => undefined }))
+    const sources: RawSources = { factory: tab.kv, storage: fakeStorage(dump.localStorage) }
+    const built = await withUnreadableBlobs(() =>
+        tab.run(() => buildRawExportResult('0.6.0', sources)),
+    )
+    // The database is not left out: every row is there, the unreadable Blob tagged with its type
+    // and size, and the other Blobs numbered on without it.
+    assert.equal(built.databaseUnreadable, false)
+    const expected = structuredClone(dump)
+    expected.stores.find((store) => store.name === 'media')!.records = [
+        { key: hash(3), value: media({ $blobEntry: 'blobs/0', type: 'audio/mpeg' }) },
+        { key: hash(4), value: media({ $blobUnreadable: true, type: UNREADABLE, size: 4 }) },
+        { key: hash(5), value: media({ $blobEntry: 'blobs/1', type: 'image/png' }) },
+    ]
+    assert.deepEqual(readDump(await readExport(built.zip, ['blobs/0', 'blobs/1'])), expected)
+    const reader = await ZipReader.open(built.zip)
+    const bytes = async (name: string) => [
+        ...(await reader.read(reader.get(name)!, { maxSize: 16 })),
+    ]
+    assert.deepEqual(await bytes('blobs/0'), [9, 8, 7])
+    assert.deepEqual(await bytes('blobs/1'), [6])
+    // It seeds: the unreadable Blob comes back as an empty one of its type, in its row.
+    const other = createWorld()
+    const otherTab = other.tab('b')
+    assert.deepEqual(
+        await otherTab.run(() => seedRawExport(otherTab.kv, built.zip, fakeStorage({}))),
+        { seeded: true },
+    )
+    const reseeded = structuredClone(dump)
+    reseeded.stores.find((store) => store.name === 'media')!.records[1]!.value = media({
+        $blob: '',
+        type: UNREADABLE,
+    })
+    const again = await otherTab.kv.open(DB_NAME, undefined)
+    assert.deepEqual(await dumpOf(otherTab, again), { ...reseeded, localStorage: {} })
     await world.idle()
     await other.idle()
 })
@@ -276,4 +417,33 @@ test('exporting says whether the database was left out, and still throws when th
         exportRawData('0.6.0', 'a.zip', () => Promise.reject(new Error('blocked')), refusing),
         /blocked/,
     )
+})
+
+test('without a deflate-raw stream (Firefox before 113) dump.json is stored, and seeds back the same', async (t) => {
+    const original = globalThis.CompressionStream
+    // @ts-expect-error: removed, as in a browser without it.
+    delete globalThis.CompressionStream
+    t.after(() => {
+        globalThis.CompressionStream = original
+    })
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = stored()
+    assert.deepEqual(
+        await tab.run(() => seedDump(tab.kv, readDump(dump), { setItem: () => undefined })),
+        { seeded: true },
+    )
+    const zip = await tab.run(() =>
+        buildRawExport('0.6.0', { factory: tab.kv, storage: fakeStorage(dump.localStorage) }),
+    )
+    assert.deepEqual(readDump(await readExport(zip, ['blobs/0'], 0)), withBlobEntry(dump))
+    const other = createWorld()
+    const otherTab = other.tab('b')
+    assert.deepEqual(await otherTab.run(() => seedRawExport(otherTab.kv, zip, fakeStorage({}))), {
+        seeded: true,
+    })
+    const again = await otherTab.kv.open(DB_NAME, undefined)
+    assert.deepEqual(await dumpOf(otherTab, again), { ...dump, localStorage: {} })
+    await world.idle()
+    await other.idle()
 })

@@ -1,6 +1,4 @@
-// The platform interface (Part 0 §0.9.1). Step 1a implements pickFiles, saveFile for downloads
-// and handles, onCloseRequested, onLifecycle, openExternal, fetchServer and diagnostics; Step 1c
-// inspect, read and expected for level data; Step 6 `.nxsp` revisions, plans and source integrity.
+// The platform interface.
 
 import type { WritePlan } from '../local/nxsp/plan'
 
@@ -8,7 +6,7 @@ export type PlatformKind = 'web' | 'native'
 
 export type PlatformOs = 'windows' | 'macos' | 'linux' | 'ios' | 'android' | 'other'
 
-/** What this build and device can do; feature code asks these, never `kind` (Part 0 §0.11.1). */
+/** What this build and device can do; feature code asks these, never `kind`. */
 export type PlatformCapabilities = {
     readonly writeBack: boolean
     readonly unconfirmedDownloads: boolean
@@ -20,13 +18,13 @@ export type PlatformCapabilities = {
     readonly safeModeEntry: 'query' | 'startMarker'
     readonly fileAssociations: boolean
     readonly mp3Export: boolean
-    /** Browsing and downloading from Sonolus servers (Part 2, 2.5.3): the apps only. */
+    /** Browsing and downloading from Sonolus servers: the apps only. */
     readonly serverFetch: boolean
-    /** The web found an app’s built-in browser, best effort (Part 1 §1.6.10); never in the apps. */
+    /** The web found an app’s built-in browser, best effort; never in the apps. */
     readonly likelyInAppBrowser: boolean
 }
 
-/** An app file reference: a path on desktop, a URI on mobile (Part 3). */
+/** An app file reference: a path on desktop, a URI on mobile. */
 export type NativeRef = { path: string } | { uri: string }
 
 export type FileTarget =
@@ -56,7 +54,7 @@ export type OpenedFile = {
 }
 
 /**
- * A source pinned at the changed-on-disk check (Part 0 §0.9.1, source integrity): the `File` the
+ * A source pinned at the changed-on-disk check (source integrity): the `File` the
  * check read, which every later read of the existing file goes through. On the web, Chromium
  * throws `NotReadableError` on reading it once the file changed, which is a `conflict`.
  */
@@ -70,7 +68,7 @@ export type PinnedSource = {
     disk: DiskState
 }
 
-/** A `.nxsp` built as a plan for the platform to execute (Part 1 §1.6.11.7). */
+/** A `.nxsp` built as a plan for the platform to execute. */
 export type ZipBody = { kind: 'zip'; plan: WritePlan }
 
 /** What a build returns: a Blob (as `{ kind: 'blob' }` or bare), or a plan. */
@@ -87,13 +85,13 @@ export type SavePicker = {
     id: string
     /** Offered before "All files", the first one selected; none offers "All files" alone. */
     types: SavePickerType[]
-    /** Leaves "All files" out: the project picker lists `.nxsp` files only (D5). */
+    /** Leaves "All files" out: the project picker lists `.nxsp` files only. */
     excludeAll?: boolean
     /** Where the picker opens while its id has no folder yet: a folder, or a file's own folder. */
     startIn?: 'documents' | FileSystemHandle
 }
 
-/** A save picker alone, for a file built before it (D5). */
+/** A save picker alone, for a file built before it. */
 export type PickSaveRequest = { suggestedName: string; picker: SavePicker }
 
 /** Asks for a new tap once a build has outlasted the gesture; false cancels. */
@@ -106,14 +104,14 @@ export type SaveRequest = {
     target?: FileTarget
     /** The precondition: write only if the target still matches. */
     expected?: DiskState | 'absent'
-    /** A `.nxsp` write-back: a target found empty holds nothing to keep, and is written (R9). */
+    /** A `.nxsp` write-back: a target found empty holds nothing to keep, and is written. */
     overEmpty?: boolean
     replaced?: 'keep' | 'discard'
     replaces?: string
     build: (sources: PinnedSource[]) => Promise<FileBody>
     /** Cancels a pending write before it commits. */
     signal?: AbortSignal
-    /** Held around the write to `target` (`nse-bind`, §1.6.6). */
+    /** Held around the write to `target` (`nse-bind`). */
     lock?: <T>(run: () => Promise<T>) => Promise<T>
     /** Asks for the tap a download needs when the build outlasted the gesture. */
     ready?: ReadyPrompt
@@ -131,7 +129,7 @@ export type FileErrorCode =
     | 'denied'
     | 'not-local'
     | 'no-space'
-    /** A read-only file or folder: the browser can't make its swap file (§1.4.7). */
+    /** A read-only file or folder: the browser can't make its swap file. */
     | 'read-only'
     | 'io'
 
@@ -162,7 +160,7 @@ export type LockInfo = { name: string; mode: LockMode; clientId?: string }
 
 export type LockSnapshot = { held: LockInfo[]; pending: LockInfo[] }
 
-/** navigator.locks on the web (Step 3). */
+/** navigator.locks on the web. */
 export type LockService = {
     /** The callback gets false when ifAvailable finds the lock taken; the lock goes when it settles. */
     request: <T>(
@@ -179,18 +177,18 @@ export type JournalFound = { sessionId: string; text: string; from: string }
 /** What `writeWhole` needs of a journal; it stores the JSON text of the whole object. */
 export type JournalLike = { readonly sessionId: string; readonly seq: number }
 
-/** The last-chance journal (Part 1 §1.6.4, §1.6.11.3), shaped for both platforms. */
+/** The last-chance journal, shaped for both platforms. */
 export type JournalStore = {
     /**
      * Synchronous; true only when written within the size limits and read back intact. A key
-     * holding text this page neither wrote nor loaded is never replaced (§1.6.7).
+     * holding text this page neither wrote nor loaded is never replaced.
      */
     writeWhole: (journal: JournalLike) => boolean
     /** Every pending journal. */
     read: () => Promise<JournalFound[]>
-    /** Drops this page's journal of a session once a strict committed flush covers its `seq`. */
+    /** Drops this page's journal of a session once a committed flush covers its `seq`. */
     clear: (sessionId: string, coveredSeq: number) => void
-    /** A journal this page loaded to go on writing (a same-tab reload’s own, §1.6.7). */
+    /** A journal this page loaded to go on writing (a same-tab reload’s own). */
     adopt: (found: JournalFound) => void
     /** Whether a session's key still holds the text this page last wrote (or loaded). */
     holds: (sessionId: string) => boolean
@@ -198,12 +196,10 @@ export type JournalStore = {
     remove: (found: JournalFound) => void
 }
 
-/** The apps' library (Part 3). */
 export type LibraryProvider = {
     list: () => Promise<OpenedFile[]>
 }
 
-/** The apps' updater (Part 3, 3.10). */
 export type UpdateService = {
     check: () => Promise<boolean>
 }
@@ -213,7 +209,7 @@ export type ServerFetchInit = Pick<
     'method' | 'headers' | 'body' | 'signal' | 'credentials' | 'referrerPolicy'
 >
 
-/** Copy Diagnostic Info… (Part 1 §1.4.16); Step 1b adds the rest. */
+/** Copy Diagnostic Info… */
 export type DiagnosticInfo = {
     appVersion: string
     engine: string
@@ -232,9 +228,9 @@ export type Platform = {
     /** Every file the editor writes. */
     saveFile: (req: SaveRequest) => Promise<SaveResult>
     /**
-     * A save picker alone (owner decision log D5): the picked file, which the picker emptied when
+     * A save picker alone: the picked file, which the picker emptied when
      * it existed, or undefined when dismissed. Any other failure is a `FileError`, never a
-     * download (§1.4.7 R12). Absent where there's no save picker.
+     * download. Absent where there's no save picker.
      */
     pickSaveFile?: (req: PickSaveRequest) => Promise<FileTarget | undefined>
     /** The changed-on-disk check; `nxsp` reads the revision id and `<cd>` (level data by default). */

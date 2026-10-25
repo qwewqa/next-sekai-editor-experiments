@@ -176,7 +176,7 @@ const expectSlots = async (page: Page, k: number) => {
 // --- RM1 and RM2: the root font size
 
 test.describe('a larger root font size', () => {
-    test('RM1: slots, End and clicks scale with a 20 px root', async ({ page }) => {
+    test('slots, End and clicks scale with a 20 px root', async ({ page }) => {
         test.slow()
         errorsFail(page)
         await rootAt20(page)
@@ -229,7 +229,7 @@ test.describe('a larger root font size', () => {
         expect(removed!.height).toBeCloseTo(80 * k, 0)
     })
 
-    test('RM1: the one-line threshold and the stack scale with a 20 px root', async ({ page }) => {
+    test('the one-line threshold and the stack scale with a 20 px root', async ({ page }) => {
         errorsFail(page)
         await rootAt20(page)
         await load(page)
@@ -262,7 +262,7 @@ test.describe('a larger root font size', () => {
         expect(stack).toBeCloseTo(105, 0)
     })
 
-    test('RM2: a root size change with History open and peeking rescales the rows and the strip', async ({
+    test('a root size change with History open and peeking rescales the rows and the strip', async ({
         page,
         browser,
     }) => {
@@ -444,7 +444,7 @@ const focusByKeyboard = async (page: Page, target: Locator) => {
 
 for (const scheme of schemes) {
     test.describe(`${scheme} theme`, () => {
-        test(`TH1 (${scheme}): the current row differs from a hovered row by an edge or shadow`, async ({
+        test(`${scheme}: the current row differs from a hovered row by an edge or shadow`, async ({
             page,
         }) => {
             await themed(page, scheme)
@@ -486,7 +486,7 @@ for (const scheme of schemes) {
 const insetEdge = (shadow: string) => /(rgba?\([^)]*\)) 0px 0px 0px 1px inset/.exec(shadow)?.[1]
 
 for (const scheme of schemes) {
-    test(`X-11 (${scheme}): the current row carries a 1 px inset edge, under the focus outline, and moves nothing`, async ({
+    test(`the current row (${scheme}): it carries a 1 px inset edge, under the focus outline, and moves nothing`, async ({
         page,
     }) => {
         await themed(page, scheme)
@@ -563,7 +563,9 @@ const expectRing = (name: string, ring: Awaited<ReturnType<typeof paintOf>>, out
 
 for (const scheme of schemes) {
     test.describe(`${scheme} theme, focus`, () => {
-        test(`TH2 (${scheme}): focus rings show on rows, cells and the strip`, async ({ page }) => {
+        test(`focus rings (${scheme}): they show on rows, cells and the strip`, async ({
+            page,
+        }) => {
             test.slow()
             await themed(page, scheme)
             // Row focus: Down peeks and focuses the row below Now.
@@ -603,7 +605,7 @@ for (const scheme of schemes) {
             }
         })
 
-        test(`TH3 (${scheme}): a focused disabled arrow keeps a full ring`, async ({ page }) => {
+        test(`${scheme}: a focused disabled arrow keeps a full ring`, async ({ page }) => {
             await themed(page, scheme)
             // A header-only change leaves nothing to find: both arrows are disabled.
             await page.keyboard.press('ArrowDown')
@@ -626,7 +628,7 @@ for (const scheme of schemes) {
             expect(Number(count)).toBeLessThan(1)
         })
 
-        test(`TH4 (${scheme}): state is not shown by colour alone`, async ({ page }) => {
+        test(`${scheme}: state is not shown by colour alone`, async ({ page }) => {
             await themed(page, scheme)
             await page.keyboard.press('ArrowDown')
             const current = row(page, 'Life 4')
@@ -662,7 +664,7 @@ for (const scheme of schemes) {
 
 // --- Forced colours: basic function only (the owner's rule for niche accessibility)
 
-test('TH5: with forced colours the current and the focused rows keep an edge, and Restore works', async ({
+test('with forced colours the current and the focused rows keep an edge, and Restore works', async ({
     page,
 }) => {
     errorsFail(page)
@@ -716,12 +718,12 @@ test('TH5: with forced colours the current and the focused rows keep an edge, an
     expect(restored.initialLife).not.toBe(live.initialLife)
 })
 
-// --- CH1: the chart's own chrome while peeking (INV 8)
+// --- The chart's own chrome while peeking
 
 test.describe('on a phone', () => {
     test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
 
-    test('CH1: the quick-scroll zone scrolls and the status bar stays one line while peeking', async ({
+    test('the quick-scroll zone scrolls and the status bar stays one line while peeking', async ({
         page,
     }) => {
         test.slow()

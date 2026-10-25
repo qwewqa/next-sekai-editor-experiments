@@ -265,7 +265,7 @@ for (const filter of ['all', 'saves'] as const)
                         steps,
                         where,
                     )
-                    // Every entry sits under the header of its own day (X-1 for ×N groups).
+                    // Every entry sits under the header of its own day.
                     for (const row of rows)
                         if (row.type === 'entry' && !row.child)
                             for (const member of row.members)

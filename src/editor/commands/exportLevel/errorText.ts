@@ -1,6 +1,6 @@
 import { FileError } from '../../../platform'
 
-/** The `save` message a failed file operation shows: never a browser's message (§1.4.19). */
+/** The `save` message a failed file operation shows: never a browser's message. */
 export type FileErrorKey =
     | 'buildFailed'
     | 'readFailed'

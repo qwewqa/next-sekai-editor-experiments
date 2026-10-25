@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Go To's icon (Part 1 §1.4.10.5): a calendar. While filtering, the banner under the band says so.
+// Go To's icon: a calendar. While filtering, the banner under the band says so.
 </script>
 
 <template>

@@ -3,7 +3,7 @@ import { dividerLabel } from './dividerLabel'
 import type { HistoryFormat } from './historyFormat'
 import type { Entry } from './rows'
 
-// The times and titles the Timeline writes on its rows (Part 1 §1.4.10.5), from the History
+// The times and titles the Timeline writes on its rows, from the History
 // format alone, so one calendar decides every date and Node tests can load them.
 
 /** A row's time: narrow rows omit seconds. */

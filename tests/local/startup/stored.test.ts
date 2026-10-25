@@ -11,7 +11,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { replayed, widen } from '../timeline/helpers'
 import { beginIn, continueIn, handlersOf, readOpen } from './harness'
 
-// Reading a stored session to open it (§1.4.2, §1.6.4 #6): its row, chain and stack in one read;
+// Reading a stored session to open it: its row, chain and stack in one read;
 // a removed or deleted session, or one this build can't read, is never opened; a missing stack is
 // rebuilt by replay; the most recent session skips what can't be opened.
 
@@ -150,8 +150,8 @@ test('a stack rebuilt over a stored parent that a later entry cuts below its win
     const a = stateOf(goldenChart())
     const b = widen(a)
     const parent = beginIn(page, a)
-    // Over 5,000 slots: the parent's stored window starts above slot 0.
-    for (let i = 1; i < 6_000; i++)
+    // Over 1,000 slots: the parent's stored window starts above slot 0.
+    for (let i = 1; i < 1_200; i++)
         page.flusher.append(
             { kind: 'edit', step: editStep(futureFixtureOperation(`Edit ${i}`)) },
             i % 2 ? b : a,
@@ -212,7 +212,7 @@ test('a stack rebuilt over a stored parent that a later entry cuts below its win
     assert.deepEqual(rebuilt.stack.window, { base: 0, length: 1, index: 0 })
 })
 
-// Versions (§1.6.11.8): a newer build's data is "Needs a newer version", never damaged; a
+// Versions: a newer build's data is "Needs a newer version", never damaged; a
 // malformed version is not newer, and is not read either.
 
 const tamperNodes = async (

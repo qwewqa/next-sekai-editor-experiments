@@ -1,7 +1,7 @@
 import type { DeleteChain } from '../../local/deleteSessions'
 import { interpolateRaw } from '../../utils/interpolate'
 
-// The pure view of Delete Sessions… (Local Data design §3.7): which chains each range picks, the
+// The pure view of Delete Sessions…: which chains each range picks, the
 // counts the dialog shows, and the confirm's lines. Counts and lines come from the same `chosen`,
 // so what the dialog promises is what the confirm names and what is deleted.
 
@@ -17,7 +17,7 @@ type Pickable = Pick<DeleteChain, 'ageDays' | 'notSaved'>
 export const inRange = (chain: Pickable, range: DeleteRange) =>
     range === 'all' || chain.ageDays > range
 
-/** The chains a range picks; work not saved to a file only when the box is ticked. */
+/** The chains a range picks; unsaved work only when the box is ticked. */
 export const chosen = <T extends Pickable>(
     chains: readonly T[],
     range: DeleteRange,
@@ -35,7 +35,7 @@ export const NAMES_SHOWN = 3
 export type ConfirmTexts = {
     /** "Delete {0} session?|Delete {0} sessions?" */
     confirm: string
-    /** "{0} is not saved to a file: {1}.|{0} are not saved to a file: {1}." */
+    /** "{0} session has unsaved changes: {1}.|{0} sessions have unsaved changes: {1}." */
     notSaved: string
     /** "{0} and {1} more" */
     namesMore: string

@@ -16,11 +16,11 @@ import {
     writeChainFields,
     type ChainFieldsResult,
 } from '../startup/stored'
-import type { Progress } from './core'
+import { refuseUnlessStored, StorageRefusedError, type Progress } from './core'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
-// The storage worker's startup methods (Part 1 §1.4.2, §1.6.9, §1.8): the canary's ids, reading
+// The storage worker's startup methods: the canary's ids, reading
 // a session to open it, the most recent session, chain-field writes from the head, and the auto
 // save migration's transaction.
 
@@ -37,14 +37,17 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
         },
     })
     return {
-        /** `meta.dbInstanceId` and `meta.deviceId`, for the canary (§1.6.9). */
-        readMetaIds: () =>
-            context.core.read(['meta'], async (tx) => ({
+        /** `meta.dbInstanceId` and `meta.deviceId`, for the canary; never memory's. */
+        readMetaIds: async () => {
+            // A worker restarted over memory: its ids would read as a cleared database.
+            if (context.core.status.mode === 'memory') throw new StorageRefusedError('failed')
+            return context.core.read(['meta'], async (tx) => ({
                 dbInstanceId: await readMeta(tx, 'dbInstanceId'),
                 deviceId: await readMeta(tx, 'deviceId'),
-            })),
+            }))
+        },
 
-        /** Whether `meta.migratedHashes` holds an old auto save's hash (§1.8). */
+        /** Whether `meta.migratedHashes` holds an old auto save's hash. */
         migratedBefore: (hash: string) =>
             context.core.read(['meta'], async (tx) =>
                 ((await readMeta(tx, 'migratedHashes')) ?? []).includes(hash),
@@ -54,7 +57,7 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
         readSession: (sessionId: string, scope?: CallScope) =>
             context.core.read(READ_STORES, (tx) => readSessionForOpen(tx, sessionId), scope),
 
-        /** The most recent session a new visit continues (§1.4.2). */
+        /** The most recent session a new visit continues. */
         readNewestSession: (_: undefined, scope?: CallScope) =>
             context.core.read(READ_STORES, readNewestSession, scope),
 
@@ -65,7 +68,7 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
         readBindings: (sessionIds: string[]) =>
             context.core.read(['sessions', 'chains'], (tx) => readBindings(tx, sessionIds)),
 
-        /** Chain fields from the chain's head (§1.3.1), committed strictly. */
+        /** Chain fields from the chain's head, committed strictly. */
         writeChainFields: (
             request: Parameters<typeof writeChainFields>[1],
             scope?: CallScope,
@@ -79,7 +82,7 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
                 },
             ),
 
-        /** The `recovered` store's rows without their bytes (§1.6.11.2), for Local Data. */
+        /** The `recovered` store's rows without their bytes, for Local Data. */
         listRecovered: () =>
             context.core.read(['recovered'], async (tx) =>
                 (await tx.getAll('recovered')).map((row) => {
@@ -104,18 +107,19 @@ export const startupHandlers = (context: WorkerContext, outside: Waiter = direct
             return row?.bytes ? await outside.wait(row.bytes.text()) : undefined
         },
 
-        /** Discard… on unreadable recovered work (§1.4.14): the only thing that removes a row. */
+        /** Discard… on unreadable recovered work: the only thing that removes a row. */
         discardRecovered: (id: string, scope?: CallScope) =>
             context.core.write(['recovered'], (tx) => tx.delete('recovered', id), {
                 durability: 'strict',
                 ...scope,
             }),
 
-        /** The auto save as a session (§1.8), in one strict transaction. */
+        /** The auto save as a session, in one strict transaction, only into the database. */
         migrateAutoSave: async (
             batch: MigrationBatch,
             scope?: CallScope,
         ): Promise<MigrationResult> => {
+            refuseUnlessStored(context.core.status)
             const progress: Progress = scope ?? {}
             const prepared = await prepareFlush(
                 {

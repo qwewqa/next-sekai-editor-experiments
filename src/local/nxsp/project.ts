@@ -6,7 +6,7 @@ import { toWellFormed } from '../records/wellFormed'
 import { isObject, setKey } from './json'
 import { NXSP_FORMAT, NXSP_VERSION } from './version'
 
-// `project.json` v1 (§1.6.11.4): its fields, the pinned `metadata` mapping, `summary`, the media
+// `project.json` v1: its fields, the pinned `metadata` mapping, `summary`, the media
 // forms and the entry names the writer makes. Reading reports every unknown or invalid key.
 
 /** A media item in `project.json`: with its bytes (`file`, `sha256`), or as metadata only (`hash`). */
@@ -43,7 +43,7 @@ export type MetadataForm = {
     artists?: string
     author?: string
     rating?: number
-    tags?: { title: string; icon?: string }[]
+    tags?: { title: string }[]
     description?: string
     cover?: MediaForm
     preview?: MediaForm
@@ -111,7 +111,7 @@ const isId = (value: unknown): value is string => typeof value === 'string' && v
 const isHex64 = (value: unknown): value is string =>
     typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
 
-/** The most `history.segments` a reader accepts (§1.6.11.4). */
+/** The most `history.segments` a reader accepts. */
 export const SEGMENT_CAP = 4096
 
 /** Reads a media form; the issues name what's wrong. */
@@ -152,7 +152,7 @@ const RFC_3339 =
     /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/
 
 /**
- * `revision.savedAt` as epoch milliseconds, by RFC 3339 `date-time` and nothing looser (§1.6.11.4):
+ * `revision.savedAt` as epoch milliseconds, by RFC 3339 `date-time` and nothing looser:
  * `YYYY-MM-DDThh:mm:ss`, an optional fraction, then `Z` or `±hh:mm`, with an uppercase `T` and
  * `Z`, a date that exists, and seconds 00 to 59 (a leap second `:60` is not accepted). Anything
  * else, a non-string included, is absent: the reader never guesses, as `Date.parse` does.
@@ -235,7 +235,7 @@ const readHistory = (value: unknown, issues: ProjectIssue[]): HistoryPointers | 
     }
     let ok = true
     for (const key of Object.keys(value)) {
-        // `media` is a retired name (r12 A5): unknown like any other key.
+        // `media` is a retired name: unknown like any other key.
         if (!['manifest', 'chunks', 'entries', 'segments'].includes(key)) {
             issues.push({ reason: 'unknown-key', path: `history.${key}` })
             ok = false
@@ -313,24 +313,17 @@ const readMetadata = (value: unknown, issues: ProjectIssue[]) => {
                     issues.push({ reason: 'schema', path })
                     break
                 }
-                const tags: { title: string; icon?: string }[] = []
+                const tags: { title: string }[] = []
                 for (const [i, tag] of (item as unknown[]).entries()) {
-                    if (
-                        !isObject(tag) ||
-                        !isString(tag.title) ||
-                        (tag.icon !== undefined && !isString(tag.icon))
-                    ) {
+                    if (!isObject(tag) || !isString(tag.title)) {
                         issues.push({ reason: 'schema', path: `${path}[${i}]` })
                         continue
                     }
                     for (const name of Object.keys(tag)) {
-                        if (name !== 'title' && name !== 'icon')
+                        if (name !== 'title')
                             issues.push({ reason: 'unknown-key', path: `${path}[${i}].${name}` })
                     }
-                    tags.push({
-                        title: tag.title,
-                        ...(isString(tag.icon) ? { icon: tag.icon } : {}),
-                    })
+                    tags.push({ title: tag.title })
                 }
                 metadata.tags = tags
                 break
@@ -355,7 +348,7 @@ export type ProjectRead = {
 }
 
 /**
- * Reads a `project.json` whose `format` is `nxsp` and `version` is 1 (§1.6.11.4); the caller
+ * Reads a `project.json` whose `format` is `nxsp` and `version` is 1; the caller
  * checks those two first. Every unknown or invalid key is an issue, except where v1 keeps or
  * ignores it: unknown top-level and `metadata` keys go to `extra`, unknown keys in `revision`
  * and `summary` are ignored, and a non-string `completeFrom` reads as absent.
@@ -430,14 +423,14 @@ export const readProject = (json: Record<string, unknown>): ProjectRead => {
     return { project, extra, issues }
 }
 
-/** The summary when it was computed for this revision (Part 0 §0.9.10's rule for derived keys). */
+/** The summary when it was computed for this revision. */
 export const currentSummary = (project: ProjectV1) =>
     project.summary && project.summary.revisionId === project.revision?.id
         ? project.summary
         : undefined
 
 /**
- * Where `revision.completeFrom` points, as placed (§1.6.11.6): the value when it is the file's own
+ * Where `revision.completeFrom` points, as placed: the value when it is the file's own
  * id or among its `ancestors`, else the file's own id. `undefined` for a file without a revision.
  */
 export const placedCompleteFrom = (revision: RevisionForm | undefined) => {
@@ -448,7 +441,7 @@ export const placedCompleteFrom = (revision: RevisionForm | undefined) => {
         : id
 }
 
-// The pinned `metadata` mapping (§1.6.11.4)
+// The pinned `metadata` mapping
 
 /** A media form's `mediaRef`: the 16-byte prefix of `sha256`, or `hash`. */
 export const mediaRefOf = (media: MediaForm, filename = media.filename ?? ''): MediaRef => ({
@@ -470,10 +463,7 @@ export const levelInfoOf = (metadata: MetadataForm | undefined): LevelInfo => {
         artists: m.artists ?? '',
         author: m.author ?? '',
         description: m.description ?? '',
-        tags: (m.tags ?? []).map((tag) => ({
-            title: tag.title,
-            ...(tag.icon === undefined ? {} : { icon: tag.icon }),
-        })),
+        tags: (m.tags ?? []).map((tag) => ({ title: tag.title })),
         ...(m.cover ? { cover: mediaRefOf(m.cover) } : {}),
         ...(m.preview ? { preview: mediaRefOf(m.preview) } : {}),
         ...(m.rating === undefined ? {} : { rating: m.rating }),
@@ -493,14 +483,7 @@ export const metadataOf = (
         ...(info.artists ? { artists: info.artists } : {}),
         ...(info.author ? { author: info.author } : {}),
         ...(info.rating === undefined ? {} : { rating: info.rating }),
-        ...(info.tags.length
-            ? {
-                  tags: info.tags.map((tag) => ({
-                      title: tag.title,
-                      ...(tag.icon === undefined ? {} : { icon: tag.icon }),
-                  })),
-              }
-            : {}),
+        ...(info.tags.length ? { tags: info.tags.map((tag) => ({ title: tag.title })) } : {}),
         ...(info.description ? { description: info.description } : {}),
         ...(media.cover ? { cover: media.cover } : {}),
         ...(media.preview ? { preview: media.preview } : {}),
@@ -508,7 +491,7 @@ export const metadataOf = (
     return Object.keys(metadata).length ? metadata : undefined
 }
 
-// `summary` (§1.6.11.4)
+// `summary`
 
 /**
  * The head's `noteCount` and `durationMs`: the time of the latest note beat, summing the segments
@@ -547,7 +530,7 @@ export const summaryOf = (records: SnapshotRecords) => {
     }
 }
 
-// Entry names (§1.6.11.4)
+// Entry names
 
 const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i
 
@@ -570,7 +553,7 @@ const TYPE_EXTENSIONS: Readonly<Record<string, string>> = {
 
 /**
  * A name's ASCII letters, digits, `-`, `_` and `.`, the rest dropped, with dots and spaces at either
- * end dropped (Part 0 §0.9.9) and runs of spaces between as one `-`.
+ * end dropped and runs of spaces between as one `-`.
  */
 const asciiPart = (text: string) =>
     toWellFormed(text)
@@ -593,8 +576,8 @@ const extensionOf = (filename: string, type: string) =>
 const STEM_LIMIT = 120
 
 /**
- * The BGM's entry name, `bgm/<stem>.<ext>` (§1.6.11.4): the stem is the original name's ASCII
- * part (the whole name when it has no extension `extensionOf` takes), with Part 0 §0.9.9's
+ * The BGM's entry name, `bgm/<stem>.<ext>`: the stem is the original name's ASCII
+ * part (the whole name when it has no extension `extensionOf` takes), with this
  * replacement (edge dots dropped, a reserved name before the first dot given a `-`, a long one
  * cut at 120 with no ellipsis), or `bgm` when nothing is left.
  */

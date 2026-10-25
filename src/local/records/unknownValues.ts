@@ -1,8 +1,8 @@
 import { RECORDS_V, SESSION_V } from './version'
 
 // What this build does with a value it doesn't know in an enum field of a stored row
-// (§1.6.11.2's table), so a stale tab or an older build never guesses, and which sessions
-// and chains are "Needs a newer version" (§1.6.11.8).
+// (the table), so a stale tab or an older build never guesses, and which sessions
+// and chains are "Needs a newer version".
 
 const known = <T extends string>(values: readonly T[], value: unknown): value is T =>
     (values as readonly unknown[]).includes(value)
@@ -23,7 +23,7 @@ export const readOrigin = (value: unknown): SessionOrigin | undefined =>
     known(sessionOrigins, value) ? value : undefined
 
 /**
- * What a session's rows hold (Part 1 §1.6.8.7): `own` sessions hold only rows this editor stamped,
+ * What a session's rows hold: `own` sessions hold only rows this editor stamped,
  * whose times never decrease along `seq` and whose `continue` row is only the lowest; `file`
  * sessions hold rows copied from a file, with the file's times in any order. The origin is set when
  * the session is created and never changes.
@@ -65,13 +65,6 @@ export type MediaKind = (typeof mediaKinds)[number]
 /** `media.kind`: an unknown value is still media, reachable by `refs` as usual (`undefined` here). */
 export const readMediaKind = (value: unknown): MediaKind | undefined =>
     known(mediaKinds, value) ? value : undefined
-
-export const userAssetTypes = ['skin', 'particle', 'background', 'effect'] as const
-export type UserAssetType = (typeof userAssetTypes)[number]
-
-/** `userAssets.type`: an unknown value isn't listed, and Manage… never removes it. */
-export const isListedUserAsset = (type: unknown): type is UserAssetType =>
-    known(userAssetTypes, type)
 
 /** `recovered.source`: a row of any source, known or not, is listed as unreadable recovered work. */
 export const recoveredSources = ['journal', 'journalFile'] as const
@@ -123,7 +116,7 @@ export type SessionReadability = {
 }
 
 /**
- * How this build stands to a session (§1.6.11.8): `readable`; `newer`, written by a newer build
+ * How this build stands to a session: `readable`; `newer`, written by a newer build
  * (a session `v` or root `v` above this build's, an unknown entry kind), which reads as "Needs a
  * newer version"; or `unsupported`, a malformed `v` that this build does not read either,
  * and says so plainly instead of calling it newer. Newer wins when both are found.
@@ -155,7 +148,7 @@ export const isReadableSession = (session: SessionReadability) =>
 
 /**
  * Whether this build can read a chain: one session it can't read makes the whole chain
- * "Needs a newer version" (§1.6.11.8): never continued, restored, reduced, swept or saved.
+ * "Needs a newer version": never continued, restored, reduced, swept or saved.
  */
 export const isReadableChain = (sessions: Iterable<SessionReadability>) => {
     for (const session of sessions) if (!isReadableSession(session)) return false

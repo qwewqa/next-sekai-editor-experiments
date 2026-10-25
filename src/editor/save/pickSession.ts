@@ -31,13 +31,13 @@ import {
     type SaveAttempt,
 } from './saveAttempt'
 
-// The pick session (Part 1 §1.4.7, spec B): every save picker opens here, and nowhere else. It
+// The pick session: every save picker opens here, and nowhere else. It
 // waits for the imports and the read of the chain's own file, checks the activation last, opens the
 // picker, and from the picker's return holds `nse-bind` exclusive until the file is written, or
 // what the editor holds of it is put back or offered. The flows own what is built and written
 // over the picked file; the session owns everything around the pick.
 
-// Reading the chain's own file before a picker (R2).
+// Reading the chain's own file before a picker.
 
 /** The chain's own file read before a picker: its bytes, and the handle they were read from. */
 export type PreRead = { blob: Blob; disk: DiskState; atBase: boolean; handle: FileSystemFileHandle }
@@ -100,13 +100,13 @@ const readOwn = async (
 }
 
 /**
- * Reads the chain's own file before a save picker that may return it (R2): whole, and only when it
+ * Reads the chain's own file before a save picker that may return it: whole, and only when it
  * isn't at the base, when storage lacks rows of its base (the carry test, and damage storage knows
  * of) or head media it may hold. Read access is asked for only when storage lacks something;
- * otherwise only a grant already held reads. `damaged`: a build just found damage in storage
- * (SP-1), so the file is read whatever storage says, but only with a grant already held. `prompt:
- * false`: a read just before a picker opens, on the same press, also only with a grant already
- * held (a prompt would spend the press the picker needs). Never rejects.
+ * otherwise only a grant already held reads. `damaged`: a build just found damage in storage, so
+ * the file is read whatever storage says, but only with a grant already held. `prompt: false`: a
+ * read just before a picker opens, on the same press, also only with a grant already held (a prompt
+ * would spend the press the picker needs). Never rejects.
  */
 export const readOwnFile = async (
     env: Env,
@@ -123,15 +123,15 @@ export const readOwnFile = async (
     }
 }
 
-// What a picked file is (R3, R7).
+// What a picked file is.
 
-/** What a picked handle is (R3, R7). */
+/** What a picked handle is. */
 export type Picked =
     | { kind: 'own' }
     | { kind: 'other'; owner: HandleOwner }
-    /** An Export target: Export's picker writes it (E1, E2); a project picker refuses it (R7). */
+    /** An Export target: Export's picker writes it; a project picker refuses it. */
     | { kind: 'target'; owner: HandleOwner }
-    /** `bytes`: those kept at its open, once kept (R7). */
+    /** `bytes`: those kept at its open, once kept. */
     | { kind: 'refused'; reason: RefusedReason; bytes?: Promise<Blob | undefined> }
     | { kind: 'unknown' }
 
@@ -167,8 +167,8 @@ const sameOrUnsure = async (
 }
 
 /**
- * A pick `identify` can't place (R8: storage's owners unread, no handle held) that is the file the
- * bytes in hand were read from, or may be: the chain's own (ADV3-2). So bytes read from what may be
+ * A pick `identify` can't place (storage's owners unread, no handle held) that is the file the
+ * bytes in hand were read from, or may be: the chain's own. So bytes read from what may be
  * the picked file are appended to or put back, never written over.
  */
 const placed = async (
@@ -185,7 +185,7 @@ const kept = async (opened: OpenedSource) =>
     (await opened.keptCopy) ?? (opened.bytes && new Blob([opened.bytes]))
 
 /**
- * Identifies a picked file under `nse-bind` (R3, R7), outside any transaction. Without storage
+ * Identifies a picked file under `nse-bind`, outside any transaction. Without storage
  * (`env` undefined) only the file this session was opened from is known. Export writes over the
  * level data it was opened from, whole; every other picker refuses it.
  */
@@ -213,18 +213,18 @@ const identify = async (
     const held = own && heldHandle(env.chainId, own.name)
     if (held && (await same(handle, held))) return { kind: 'own' }
     const list = await storedRead(env.worker, 'listHandleOwners', undefined)
-    // A failed list leaves the pick to the other facts, else `unknown` (R11), as today: no other
-    // chain is known, and the pick is R8's.
+    // A failed list leaves the pick to the other facts, else `unknown`, as today: no other
+    // chain is known, and the pick is treated as an unplaced one.
     const owners: HandleOwner[] = list.storedRead === 'value' ? list.storedValue : []
     for (const owner of owners) {
         if (!owner.handle) continue
         const read = await handleOf(env.worker, owner.chainId, owner.role)
-        // A failed read of one owner's handle leaves the pick to the other facts, else `unknown`
-        // (R11), as today.
+        // A failed read of one owner's handle leaves the pick to the other facts, else `unknown`,
+        // as today.
         const stored = read.storedRead === 'value' ? read.storedValue : undefined
         if (!stored || !(await same(handle, stored))) continue
         if (owner.role === 'exportTarget') return { kind: 'target', owner }
-        // A partial open's file, in this tab after a reload or in another tab (R7, D26).
+        // A partial open's file, in this tab after a reload or in another tab.
         if (owner.role === 'kept')
             return { kind: 'refused', reason: 'notKept', bytes: readKeptCopy(owner.chainId) }
         return owner.chainId === env.chainId ? { kind: 'own' } : { kind: 'other', owner }
@@ -236,41 +236,44 @@ const identify = async (
 const levelBuilder = () => import('../commands/exportLevel/build')
 
 /**
- * The bytes an Export target holds, re-exported from this chain's live state when they hash to
- * what the target last held (R7); undefined for another chain's target or any other state.
+ * The bytes an Export target holds, re-exported from this chain's live state, with either
+ * compression, when they hash to what the target last held; undefined for another chain's
+ * target or any other state.
  */
 const targetBytes = async (env: Env, owner: HandleOwner) => {
     if (owner.chainId !== env.chainId) return
     try {
         const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
-        // A failed read keeps today's outcome: no bytes are offered back for the picked file (R7).
+        // A failed read keeps today's outcome: no bytes are offered back for the picked file.
         if (read.storedRead === 'failed') return
         const record = read.storedValue
         const target = isRow(record?.exportTarget) ? record.exportTarget : undefined
         const disk = isRow(target?.disk) ? (target.disk as DiskState) : undefined
         if (!disk) return
-        const { buildLevelData } = await levelBuilder()
-        const bytes = await buildLevelData().arrayBuffer()
-        return (await diskStateOfBytes(bytes, 0)).fingerprint === disk.fingerprint
-            ? new Blob([bytes])
-            : undefined
+        const { buildLevelDataVariants } = await levelBuilder()
+        for (const built of await buildLevelDataVariants()) {
+            const bytes = await built.arrayBuffer()
+            if ((await diskStateOfBytes(bytes, 0)).fingerprint === disk.fingerprint)
+                return new Blob([bytes])
+        }
+        return
     } catch {
         return
     }
 }
 
-/** A project picker's pick of an Export target: level data, refused and put back (R7). */
+/** A project picker's pick of an Export target: level data, refused and put back. */
 const refusedTarget = (env: Env, picked: Picked): Exclude<Picked, { kind: 'target' }> =>
     picked.kind === 'target'
         ? { kind: 'refused', reason: 'levelData', bytes: targetBytes(env, picked.owner) }
         : picked
 
-/** Writes bytes back into a picked file while it's still empty (R4, R7); true when it holds them. */
+/** Writes bytes back into a picked file while it's still empty; true when it holds them. */
 const putBack = async (target: FileTarget, bytes: ArrayBuffer | Blob) => {
     try {
-        // Its size first: a filled file is never read and hashed whole only to learn that (SF3-2).
+        // Its size first: a filled file is never read and hashed whole only to learn that.
         if ((await platform.read(target)).size !== 0) return false
-        // Its precondition is the empty file as this write's kind measures it (R9).
+        // Its precondition is the empty file as this write's kind measures it.
         const empty = await platform.inspect(target)
         if (empty === 'missing' || empty.size !== 0) return false
         await platform.saveFile({
@@ -305,7 +308,7 @@ const beginsWith = async (target: FileTarget, bytes: Blob) => {
 
 // The session.
 
-/** The project picker (§1.4.7): one id, so the browser remembers where it was. */
+/** The project picker: one id, so the browser remembers where it was. */
 export const projectPicker = (startIn: SavePicker['startIn'] = 'documents'): SavePicker => ({
     id: 'nse-project',
     types: [{ description: i18n.value.save.fileType, extension: '.nxsp' }],
@@ -317,7 +320,7 @@ export type PickSpec = Omit<AttemptSpec, 'importWait' | 'ui'> & {
     readonly purpose: 'save' | 'export' | 'saveToFile'
     /** The dialog's read of the chain's own file, or `'start'`: one starting now, with a grant held. */
     readonly read: Promise<ReadResult> | 'start'
-    /** The chain whose imports are waited for, when it is not the environment's (Save to File…). */
+    /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
     /** Called at the commit point, when the picker returned a file. */
     readonly committed?: () => void
@@ -361,7 +364,7 @@ export type PickedFile = {
 }
 
 export type PickSession = Omit<SaveAttempt, 'write' | 'commit' | 'closePreparing'> & {
-    /** SP-1: the build found damage in storage; a read now, with a grant already held. */
+    /** The build found damage in storage; a read now, with a grant already held. */
     readAgain(): Promise<void>
     /**
      * Opens the picker and runs `inLock` on its pick inside the hold. What the editor holds of the
@@ -411,7 +414,7 @@ export const withPickSession = <T>(
     body: (session: PickSession) => Promise<T | Dismissed | Ending>,
 ): Promise<T | Dismissed | Ending> => {
     const { env } = spec
-    // Started on the press, not after the waits: R2's read of the chain's own file.
+    // Started on the press, not after the waits: the read of the chain's own file.
     const reading: Promise<ReadResult> =
         spec.read === 'start'
             ? env
@@ -518,7 +521,7 @@ export const withPickSession = <T>(
                             return attempt.reserve(false)
                         },
                         write: async (request) => {
-                            // The empty file as this write's kind measures it (R9).
+                            // The empty file as this write's kind measures it.
                             const expected =
                                 request.kind === 'nxsp'
                                     ? disk
@@ -565,7 +568,7 @@ export const withPickSession = <T>(
                 }
                 if (!identity) return
                 if (landed) {
-                    // Save to File… wrote another document over the chain's own file: what was read
+                    // Recent Sessions' Save… wrote another document over the chain's own file: what was read
                     // of it first is offered, since the file no longer holds it.
                     const earlier = slot?.blob
                     if (spec.purpose === 'saveToFile' && identity.kind === 'own' && earlier?.size)
@@ -597,7 +600,7 @@ export const withPickSession = <T>(
                 // put-back whose read-back failed); anything else lost them, and they are offered.
                 const emptied = await isEmpty()
                 if (!emptied && (await beginsWith(target, bytes))) return
-                // Save to File… took the chain's own file for another document: it holds that now.
+                // Recent Sessions' Save… took the chain's own file for another document: it holds that now.
                 const replaced =
                     spec.purpose === 'saveToFile' && identity.kind === 'own' && !emptied
                 offer = { emptied, bytes, ...(replaced ? { replaced } : {}) }
@@ -676,7 +679,7 @@ export const withPickSession = <T>(
                         pressed = false
                         continue
                     }
-                    // R12: a wait that outlasted the press asks for a new one.
+                    // A wait that outlasted the press asks for a new one.
                     if (!pressed && lapsed()) {
                         if (!(await attempt.ready('save', size))) throw new Cancelled()
                         startedAt = performance.now()

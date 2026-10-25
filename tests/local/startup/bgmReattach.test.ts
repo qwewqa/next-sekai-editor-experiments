@@ -14,8 +14,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { load } from './load'
 
 // A session whose BGM is in the media store plays after a reload or a new visit, and says
-// "not loaded" only for a BGM that neither memory nor the store holds (Part 1 §1.6.8.4, Step 7
-// design §3.6).
+// "not loaded" only for a BGM that neither memory nor the store holds.
 
 const song = (seed: number) => {
     const bytes = new Uint8Array(4096)

@@ -14,7 +14,7 @@ import {
     submitSave,
 } from './saveFlows'
 
-// The History row of the Save dialogs counts the steps the file would hold (Part 1 §1.4.7): the
+// The History row of the Save dialogs counts the steps the file would hold: the
 // entries of the chain, with no `save` entry of the write itself, which is the number Go To and
 // the Timeline count. Until the estimate says so the row shows no number, never "0 steps".
 
@@ -95,7 +95,7 @@ test('Save As shows the steps the Timeline counts, the first Save’s entry amon
     expect(again).toBe(await timelineSteps(page))
 })
 
-test('Save to File from Recent Sessions shows the steps its session holds', async ({ page }) => {
+test('Recent Sessions’ Save… shows the steps its session holds', async ({ page }) => {
     await start(page)
     for (let beat = 1; beat <= 4; beat++) await edit(page, beat)
     await pressSave(page)
@@ -120,7 +120,7 @@ test('Save to File from Recent Sessions shows the steps its session holds', asyn
 })
 
 // A fork is a new chain: the Timeline goes on into its parent's chain, but a file holds only the
-// chain's own rows (Part 1 §1.6.11.6), so the dialog counts those, and the file agrees with it.
+// chain's own rows, so the dialog counts those, and the file agrees with it.
 test('a fork shows the steps of its own chain, which are the steps its file holds', async ({
     context,
 }) => {

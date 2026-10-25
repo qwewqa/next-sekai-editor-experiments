@@ -28,7 +28,7 @@ import { goldenChart, stateOf } from '../records/charts'
 import { sampleState } from '../records/samples'
 import { widen } from '../timeline/helpers'
 
-// Journals while storage is unavailable (Part 1 §1.6.7, §1.11.4's exit): never cleared, a
+// Journals while storage is unavailable: never cleared, a
 // same-tab reload continuing from its own, two tabs keeping their own, and an earlier visit's
 // recovered as a session once IndexedDB works again.
 

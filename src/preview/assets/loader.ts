@@ -17,7 +17,7 @@ export const reasonOf = (error: unknown): AssetErrorCode =>
     error instanceof AssetError ? error.code : 'corrupt'
 
 /**
- * Loads one asset by the fallback chain (Part 2, 2.4.2): the chosen source, then Default, then
+ * Loads one asset by the fallback chain: the chosen source, then Default, then
  * Built-in. Resolves undefined when aborted; rejects with Default's failure when the chain is exhausted.
  */
 export const createAssetLoader = (options: {

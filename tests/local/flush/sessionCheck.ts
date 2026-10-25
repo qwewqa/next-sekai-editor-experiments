@@ -4,14 +4,13 @@ import { DB_NAME } from '../../../src/local/db'
 import { checkStored, missingStackViolations } from '../../../src/local/testing/invariants'
 import { createWorld as create, type World } from '../../../src/local/testing/world'
 
-// Session invariants after every test (architecture review A0): a file's tests build worlds with
+// Session invariants after every test: a file's tests build worlds with
 // `createCheckedWorld` and declare them with `checkedTest`, which runs the stored-data checker
 // (`checkStored`, with the session invariants of `sessionViolations`) over each world its body
 // made when the body ends. A test that builds a state today's writers or a hand-made writer leave
 // violating the invariants calls `expectViolations` with them, as patterns: it then fails if they
-// change, so the evidence the review cites stays exact until the fix removes it. A0+ adds what a
-// commit hook sees: the world's transition rules and, in a checked world, the lock-holder
-// assertion (I-1), and the holes the flushers made (`world.holes`, R2-2 and R3-7).
+// change, so the evidence the review cites stays exact until the fix removes it. A commit hook adds the world's
+// transition rules and, in a checked world, the lock-holder assertion, and the holes the flushers made (`world.holes`).
 
 let worlds: World[] = []
 let expected: readonly RegExp[] = []

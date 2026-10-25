@@ -1,0 +1,49 @@
+name: Stats deploy
+
+# Deploys the stats service to dev or prod from this repository, by hand only. Prod waits for the maintainer's
+# approval on the Environment stats-prod and deploys from main only. No stored secrets: the job assumes
+# the account's nse-stats-deploy role by OIDC, and only the Environment stats-<env> can assume it.
+on:
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: Where to deploy
+                type: choice
+                options: [dev, prod]
+                required: true
+
+permissions:
+    contents: read
+
+concurrency:
+    group: stats-${{ inputs.environment }}
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        timeout-minutes: 40
+        environment: stats-${{ inputs.environment }}
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Prod deploys from main only
+              if: inputs.environment == 'prod' && github.ref != 'refs/heads/main'
+              run: |
+                  echo "Prod deploys only from main." >&2
+                  exit 1
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            # A dev deploy can run from any branch, so the template rules run first.
+            - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+            - run: uv run infra/check_templates.py
+            - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+              with:
+                  role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/nse-stats-deploy
+                  aws-region: us-west-2
+            - run: bash infra/stats/scripts/deploy.sh ${{ inputs.environment }}
+              env:
+                  SOURCE_COMMIT: ${{ github.sha }}
+                  MONITOR_WEBSITE: ${{ vars.STATS_MONITOR_WEBSITE }}

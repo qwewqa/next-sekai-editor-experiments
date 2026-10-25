@@ -1,15 +1,16 @@
 import type { StageProps, Transition } from '../../preview/engine/stage'
 import { StageTriangles } from '../../rendering/stageMesh'
+import { convexDirection } from '../../rendering/triangleClip'
 import { timeToBeat } from '../../state/integrals/bpms'
 import { clamp, lerp } from '../../utils/math'
 import type { Range } from '../../utils/range'
 import type { ScopeLookup } from '../scopeRules'
 import { sampleComposed } from './composedSampling'
 import {
-    clipButtStrokeToStage,
+    appendButtStroke,
+    appendStageQuad,
+    appendStageStroke,
     dividerQuadsAreDisjoint,
-    triangulateButtStroke,
-    triangulateStageQuad,
     type StageQuad,
 } from './stageGeometry'
 import type { EditorDrawContext } from './types'
@@ -41,6 +42,22 @@ const samePaint = (a: StagePoint, b: StagePoint) =>
     borderWidth(a.leftBorderStyle, 1) === borderWidth(b.leftBorderStyle, 1) &&
     borderWidth(a.rightBorderStyle, 1) === borderWidth(b.rightBorderStyle, 1)
 
+/**
+ * Where stage paint goes. Queued triangles are in scene coordinates; `flush`
+ * receives them in painter order before any ordinary slice that follows.
+ */
+export type StageOutput = {
+    readonly triangles: StageTriangles
+    flush(vertices: readonly number[]): void
+    /** A slice the triangle stream cannot represent, drawn with the ordinary renderer. */
+    slice(draw: (context: EditorDrawContext) => void): void
+}
+
+const submit = (output: StageOutput) => {
+    output.flush(output.triangles.vertices)
+    output.triangles.vertices.length = 0
+}
+
 const drawSlice = (
     context: EditorDrawContext,
     a: StagePoint,
@@ -48,9 +65,10 @@ const drawSlice = (
     opacity: number,
     laneDivision: number,
     gridOffset: number,
-    triangles?: StageTriangles,
+    output?: StageOutput,
 ) => {
     const { ctx, ups, scale, bounds } = context
+    const triangles = output?.triangles
     const alpha = clamp((a.laneAlpha * (1 - a.fullWidth) + b.laneAlpha * (1 - b.fullWidth)) / 2)
     if (alpha <= 0) return
     // A slice is straight between its sampled endpoints. For offscreen shapes,
@@ -72,7 +90,14 @@ const drawSlice = (
     }
     const yA = a.time * ups
     const yB = b.time * ups
-    if (triangles) {
+    // Redraws this slice with the ordinary renderer, after the triangles before it.
+    const fallback = (output: StageOutput) => {
+        submit(output)
+        output.slice((target) => {
+            drawSlice(target, a, b, opacity, laneDivision, gridOffset)
+        })
+    }
+    if (output) {
         const padding =
             Math.max(
                 borderWidth(a.leftBorderStyle, scale),
@@ -81,34 +106,34 @@ const drawSlice = (
                 borderWidth(b.rightBorderStyle, scale),
             ) / 2
         if (
-            !triangles.supportsBounds(
+            !output.triangles.supportsBounds(
                 left - padding,
                 Math.min(yA, yB) - padding,
                 right + padding,
                 Math.max(yA, yB) + padding,
             )
         ) {
-            ctx.drawStageTriangles(triangles.vertices)
-            triangles.vertices.length = 0
-            drawSlice(context, a, b, opacity, laneDivision, gridOffset)
+            fallback(output)
             return
         }
     }
     const quad: StageQuad = [a.left, yA, b.left, yB, b.right, yB, a.right, yA]
+    const direction = triangles && convexDirection(quad)
     const start = triangles?.vertices.length ?? 0
     let supported = true
-    const append = (points: Float64Array | undefined, color: number, paintAlpha: number) => {
-        if (!points) supported = false
-        else triangles?.append(points, color, paintAlpha)
-    }
     const finish = () => {
-        if (triangles) {
+        if (output) {
             for (const side of ['left', 'right'] as const) {
                 const style = side === 'left' ? 'leftBorderStyle' : 'rightBorderStyle'
                 const width = (borderWidth(a[style], scale) + borderWidth(b[style], scale)) / 2
                 if (width <= 0) continue
-                append(
-                    triangulateButtStroke(a[side], yA, b[side], yB, width),
+                supported &&= appendButtStroke(
+                    output.triangles,
+                    a[side],
+                    yA,
+                    b[side],
+                    yB,
+                    width,
                     0xb4d6e8,
                     opacity * alpha * 0.65,
                 )
@@ -116,14 +141,9 @@ const drawSlice = (
             if (!supported) {
                 // An unusual crossing or overlapping divider set keeps the native
                 // coverage-union path. Submit preceding slices before this fallback.
-                triangles.vertices.length = start
-                ctx.drawStageTriangles(triangles.vertices)
-                triangles.vertices.length = 0
-                drawSlice(context, a, b, opacity, laneDivision, gridOffset)
-            } else if (triangles.vertices.length >= 6 * 65536) {
-                ctx.drawStageTriangles(triangles.vertices)
-                triangles.vertices.length = 0
-            }
+                output.triangles.vertices.length = start
+                fallback(output)
+            } else if (output.triangles.vertices.length >= 6 * 65536) submit(output)
         } else drawBorders(context, a, b, opacity * alpha)
     }
     // A collapsed stage keeps only its borders, as in the engine.
@@ -131,7 +151,8 @@ const drawSlice = (
         finish()
         return
     }
-    if (triangles) append(triangulateStageQuad(quad), 0x83b6d0, opacity * alpha * 0.16)
+    if (triangles)
+        supported &&= appendStageQuad(triangles, quad, direction, 0x83b6d0, opacity * alpha * 0.16)
     else {
         ctx.save()
         ctx.beginPath()
@@ -203,8 +224,15 @@ const drawSlice = (
             const xA = pivotA + index * spacing
             const xB = pivotB + index * spacing
             if (triangles)
-                append(
-                    clipButtStrokeToStage(xA, yA, xB, yB, 1 / scale, quad),
+                supported &&= appendStageStroke(
+                    triangles,
+                    xA,
+                    yA,
+                    xB,
+                    yB,
+                    1 / scale,
+                    quad,
+                    direction,
                     0xb4d6e8,
                     opacity * alpha * lineAlpha,
                 )
@@ -255,6 +283,13 @@ const drawBorders = (context: EditorDrawContext, a: StagePoint, b: StagePoint, a
     ctx.restore()
 }
 
+/** These sampled stage segments use straight butt strokes. Other inherited
+ * stroke/compositing modes retain the ordinary renderer's semantics. */
+export const supportsStageTriangles = (context: EditorDrawContext) =>
+    context.ctx.lineCap === 'butt' &&
+    context.ctx.globalCompositeOperation === 'source-over' &&
+    !context.ctx.getLineDash().length
+
 /** The engine Preview's mask shapes and pivot-relative divisions in editor coordinates. */
 export const drawComposedStages = (
     context: EditorDrawContext,
@@ -262,26 +297,43 @@ export const drawComposedStages = (
     scope: ScopeLookup,
     laneDivision = 1,
 ) => {
+    let output: StageOutput | undefined
+    if (supportsStageTriangles(context)) {
+        const transform = context.ctx.getTransform()
+        output = {
+            triangles: new StageTriangles([
+                transform.a,
+                transform.b,
+                transform.c,
+                transform.d,
+                transform.e,
+                transform.f,
+            ]),
+            flush: (vertices) => {
+                context.ctx.drawStageTriangles(vertices)
+            },
+            slice: (draw) => {
+                draw(context)
+            },
+        }
+    }
+    traceComposedStages(context, beats, scope, laneDivision, output)
+}
+
+/**
+ * Paints the stages within `beats` to `output` in painter order, or with the
+ * ordinary renderer when there is none. Only `bounds.l` and `bounds.r` of the
+ * context's bounds limit the paint.
+ */
+export const traceComposedStages = (
+    context: EditorDrawContext,
+    beats: Range<number>,
+    scope: ScopeLookup,
+    laneDivision: number,
+    output?: StageOutput,
+) => {
     const { composed } = context
     if (!composed) return
-    // These sampled stage segments use straight butt strokes. Other inherited
-    // stroke/compositing modes retain the ordinary renderer's semantics.
-    let triangles: StageTriangles | undefined
-    if (
-        context.ctx.lineCap === 'butt' &&
-        context.ctx.globalCompositeOperation === 'source-over' &&
-        !context.ctx.getLineDash().length
-    ) {
-        const transform = context.ctx.getTransform()
-        triangles = new StageTriangles([
-            transform.a,
-            transform.b,
-            transform.c,
-            transform.d,
-            transform.e,
-            transform.f,
-        ])
-    }
     for (const [id, data] of composed.stages) {
         const visibility = scope.stage(id)
         if (visibility === 'hidden') continue
@@ -333,10 +385,10 @@ export const drawComposedStages = (
                     visibility === 'dimmed' ? 0.25 : 1,
                     laneDivision,
                     gridOffset,
-                    triangles,
+                    output,
                 )
             }
         }
     }
-    if (triangles) context.ctx.drawStageTriangles(triangles.vertices)
+    if (output) submit(output)
 }

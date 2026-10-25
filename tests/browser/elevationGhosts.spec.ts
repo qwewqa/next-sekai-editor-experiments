@@ -130,9 +130,29 @@ const pair: Note[][] = [
     ],
 ]
 
+type Pane = 'elevation' | 'chart' | 'overlay'
+const selectors: Record<Pane, string> = {
+    elevation: '.elevation-canvas',
+    chart: 'canvas.editor-chart',
+    overlay: 'canvas.editor-overlay',
+}
+
+/** Waits for a canvas's first frame: until then it has the default 300 by 150 backing. */
+const drawn = (page: Page, pane: Pane) =>
+    expect
+        .poll(() =>
+            page.evaluate((selector) => {
+                const canvas = document.querySelector<HTMLCanvasElement>(selector)
+                const width = canvas?.getBoundingClientRect().width ?? 0
+                return width > 0 && Math.abs(canvas!.width - width * devicePixelRatio) <= 1
+            }, selectors[pane]),
+        )
+        .toBe(true)
+
 /** A displayed lane and elevation in the Elevation Editor, in client pixels. */
-const at = (page: Page, lane: number, elevation: number) =>
-    page.evaluate(
+const at = async (page: Page, lane: number, elevation: number) => {
+    await drawn(page, 'elevation')
+    return page.evaluate(
         async ({ lane, elevation }) => {
             const scene = await window.editorTest.appImport<
                 typeof import('../../src/editor/elevation/scene')
@@ -143,17 +163,12 @@ const at = (page: Page, lane: number, elevation: number) =>
         },
         { lane, elevation },
     )
-
-type Pane = 'elevation' | 'chart' | 'overlay'
-const selectors: Record<Pane, string> = {
-    elevation: '.elevation-canvas',
-    chart: 'canvas.editor-chart',
-    overlay: 'canvas.editor-overlay',
 }
 
 /** The device pixel of a canvas under a client point. */
-const devicePoint = (page: Page, pane: Pane, point: { x: number; y: number }) =>
-    page.evaluate(
+const devicePoint = async (page: Page, pane: Pane, point: { x: number; y: number }) => {
+    await drawn(page, pane)
+    return page.evaluate(
         ({ selector, point }) => {
             const canvas = document.querySelector<HTMLCanvasElement>(selector)!
             const box = canvas.getBoundingClientRect()
@@ -164,6 +179,7 @@ const devicePoint = (page: Page, pane: Pane, point: { x: number; y: number }) =>
         },
         { selector: selectors[pane], point },
     )
+}
 
 const pixel = (page: Page, pane: Pane, point: { x: number; y: number }) =>
     page.evaluate(

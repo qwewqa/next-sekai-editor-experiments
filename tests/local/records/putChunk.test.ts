@@ -12,7 +12,7 @@ import { createWorld } from '../../../src/local/testing/world'
 import { useDay } from '../../helpers/useDay'
 import { goldenChart, stateOf } from './charts'
 
-// `putChunk` (§1.6.11.2): an intact row stays with its first `day`; a row whose CRC fails is
+// `putChunk`: an intact row stays with its first `day`; a row whose CRC fails is
 // replaced by the verified bytes.
 
 const setup = async () => {

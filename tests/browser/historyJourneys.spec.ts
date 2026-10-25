@@ -31,7 +31,7 @@ import {
 import { pressSave, projectOf, queuePicks, readFile, submitSave } from './saveFlows'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// The History journeys of D2 package P1 (work/history-redesign/testplan/plan.md §3.1): real
+// The History journeys: real
 // tool input from a blank chart through History, and the peek-safety checks, the top data risk:
 // Save, Export, a reload and a crash while a chart other than the live one is shown must never
 // write that chart. Every write is checked against the live state by its content (the level in
@@ -264,7 +264,7 @@ const addVolume = (page: Page, count: number) =>
 
 // --- J1
 
-test('J1: edit, group, peek, Details, Restore, Undo, Redo and reload, all by real input', async ({
+test('edit, group, peek, Details, Restore, Undo, Redo and reload, all by real input', async ({
     page,
 }) => {
     test.slow()
@@ -436,9 +436,7 @@ const openExport = async (page: Page) => {
     return dialog
 }
 
-test('J2: Save, Export and a reload while peeking write and show the live chart', async ({
-    page,
-}) => {
+test('Save, Export and a reload while peeking write and show the live chart', async ({ page }) => {
     test.slow()
     errorsFail(page)
     await load(page, { platform: opfs })
@@ -541,7 +539,7 @@ test('J2: Save, Export and a reload while peeking write and show the live chart'
     expect(await rootOf(page, 'state')).toBe(liveRoot)
 })
 
-test('J2: a crash while peeking recovers the live chart, never the peeked one', async ({
+test('a crash while peeking recovers the live chart, never the peeked one', async ({
     playwright,
     browserName,
 }, testInfo) => {
@@ -660,7 +658,7 @@ test('J2: a crash while peeking recovers the live chart, never the peeked one', 
 
 const isRestore = (title: string) => title.startsWith(restoredPrefix)
 
-test('J3: Restore chains and "Already matches", saved and reopened', async ({ page, context }) => {
+test('Restore chains and "Already matches", saved and reopened', async ({ page, context }) => {
     test.slow()
     errorsFail(page)
     await load(page, { platform: opfs })
@@ -751,9 +749,9 @@ test('J3: Restore chains and "Already matches", saved and reopened', async ({ pa
     noErrors(next)
 })
 
-// --- J4
+// --- Peek and Restore an entry still waiting for its flush
 
-test('J4: peek and Restore an entry still waiting for its flush', async ({ page }) => {
+test('peek and Restore an entry still waiting for its flush', async ({ page }) => {
     test.slow()
     errorsFail(page)
     await load(page)

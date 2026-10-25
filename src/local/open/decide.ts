@@ -11,11 +11,11 @@ import { canonical } from '../records/canonical'
 import { levelDataMatchesState } from '../records/normalised'
 import { levelInfoRecord } from '../records/records'
 
-// The open's decisions (Part 1 §1.5.3–§1.5.5), apart from the editor so Node tests run them:
+// The open's decisions, apart from the editor so Node tests run them:
 // which line a partial open shows, the name a binding takes, whether a file matches its
 // history's head, and the live state.
 
-/** The line a partial open shows (§1.4.19's `open.*`), most serious first. */
+/** The line a partial open shows (`open.*`), most serious first. */
 export type PartialLine =
     | { kind: 'damaged' }
     | { kind: 'historyUnreadable' }
@@ -55,7 +55,7 @@ export const partialLine = (
 const SUFFIX = /^(.*?) ?\(\d+\)(\.[^.]*)?$/u
 
 /**
- * The name a binding takes (§1.5.3, round 8): on a browser without a handle, the name the file's
+ * The name a binding takes: on a browser without a handle, the name the file's
  * revision recorded when the opened file's is that name with a browser's suffix, so repeated
  * Saves don't drift to "coconut (3) (1).nxsp". With a handle, the handle's name.
  */
@@ -66,11 +66,11 @@ export const bindingName = (opened: string, recorded: string | undefined, handle
     return `${match[1] ?? ''}${match[2] ?? ''}` === recorded ? recorded : opened
 }
 
-/** A media item's 16-byte hash as hex, from either form (§1.6.11.4). */
+/** A media item's 16-byte hash as hex, from either form. */
 export const mediaHash = (form: MediaForm) =>
     form.file === undefined ? form.hash : form.sha256.slice(0, 32)
 
-/** `bgm` as a state's record (§1.6.11.6): its hash, name, size and type, without a duration. */
+/** `bgm` as a state's record: its hash, name, size and type, without a duration. */
 export const bgmMetaOf = (form: MediaForm): BgmMeta => ({
     ...mediaRefOf(form, bgmFilenameOf(form)),
 })
@@ -79,7 +79,7 @@ const sameLevelInfo = (a: LevelInfo, b: LevelInfo) =>
     canonical(levelInfoRecord(a)) === canonical(levelInfoRecord(b))
 
 /**
- * A file matches its head (§1.6.11.6, r11f integrity S9): `level.json` matches the head state,
+ * A file matches its head: `level.json` matches the head state,
  * `metadata` is the head's level info by the pinned mapping, and `bgm`, when present, names the
  * head's BGM. An absent `bgm` was left out, never a difference.
  */
@@ -95,7 +95,7 @@ export const matchesHead = (
 }
 
 /**
- * The live state from `level.json` and `project.json` when they win (§1.5.5): level info from
+ * The live state from `level.json` and `project.json` when they win: level info from
  * `metadata` by the pinned mapping, and the BGM from `bgm`, or the head's record as it is when
  * `bgm` is absent (it was left out, not removed).
  */
@@ -121,31 +121,27 @@ export type EarlierChain = {
     revision?: { id: string; ancestors: readonly string[] }
     /** Bound, with or without a handle. */
     bound?: { handle: boolean }
-    /** Its head differs from its file event's state; undefined when that could not be read. */
-    changed: boolean | undefined
+    /** Its head differs from its file event's state, or a pending journal holds changes. */
+    changed: boolean
     /** Its latest session is open in another tab. */
     openElsewhere: boolean
     updatedAt: number
 }
 
-/** Whether a chain has changes: unknown when its journal could not be checked. */
+/** Whether a chain has changes: in storage, or, for a bound chain, in a pending journal. */
 export const changedOf = (
     chain: { changed: boolean; bound?: unknown; sessionId: string },
-    journals: ReadonlySet<string> | undefined,
-): boolean | undefined => {
-    if (chain.changed) return true
-    if (!chain.bound) return false
-    return journals ? journals.has(chain.sessionId) : undefined
-}
+    journals: ReadonlySet<string>,
+) => chain.changed || (!!chain.bound && journals.has(chain.sessionId))
 
-/** What the open says about earlier sessions on its file (§1.5.4 step 4). */
+/** What the open says about earlier sessions on its file. */
 export type EarlierNotice =
-    | { kind: 'unsavedChanges'; chain: EarlierChain; restore: boolean; maybe?: true }
-    | { kind: 'unsavedEarlier'; chain: EarlierChain; maybe?: true }
+    | { kind: 'unsavedChanges'; chain: EarlierChain; restore: boolean }
+    | { kind: 'unsavedEarlier'; chain: EarlierChain }
     | { kind: 'olderVersion'; chain: EarlierChain }
 
 /**
- * Earlier sessions on this file, recognised by revision (§1.5.4 step 4, Part 0 §0.9.5): unsaved
+ * Earlier sessions on this file, recognised by revision: unsaved
  * changes on this revision, or on an earlier one (Restore only with a handle, whose Save meets
  * the conflict dialog), or a newer version in Recent Sessions. The most recent such chain.
  */
@@ -157,28 +153,19 @@ export const earlierNotice = (
     const newest = [...chains]
         .filter((chain) => !chain.openElsewhere)
         .sort((a, b) => b.updatedAt - a.updatedAt)
-    // Unknown changes count as possible: the notice says "may", never "no changes".
     const unsaved = newest.find(
-        (chain) => chain.bound && chain.changed !== false && chain.revision?.id === file.id,
+        (chain) => chain.bound && chain.changed && chain.revision?.id === file.id,
     )
-    if (unsaved)
-        return {
-            kind: 'unsavedChanges',
-            chain: unsaved,
-            restore: true,
-            ...(unsaved.changed === undefined ? { maybe: true as const } : {}),
-        }
+    if (unsaved) return { kind: 'unsavedChanges', chain: unsaved, restore: true }
     const earlier = newest.find(
         (chain) =>
             chain.bound &&
-            chain.changed !== false &&
+            chain.changed &&
             chain.revision !== undefined &&
             file.ancestors.includes(chain.revision.id),
     )
-    const maybe = earlier?.changed === undefined ? { maybe: true as const } : {}
-    if (earlier?.bound?.handle)
-        return { kind: 'unsavedChanges', chain: earlier, restore: true, ...maybe }
-    if (earlier) return { kind: 'unsavedEarlier', chain: earlier, ...maybe }
+    if (earlier?.bound?.handle) return { kind: 'unsavedChanges', chain: earlier, restore: true }
+    if (earlier) return { kind: 'unsavedEarlier', chain: earlier }
     const newer = newest.find((chain) => chain.revision?.ancestors.includes(file.id))
     if (newer) return { kind: 'olderVersion', chain: newer }
 }

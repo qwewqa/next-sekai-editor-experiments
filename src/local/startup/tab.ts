@@ -5,7 +5,7 @@ import { sessionLock } from '../locks'
 import type { CopyOf } from '../names'
 import { tryLease, type LockLease } from '../sessions'
 
-// What a tab remembers across its own reloads (Part 1 §1.4.2): the open session, in
+// What a tab remembers across its own reloads: the open session, in
 // sessionStorage, which survives reloads of that tab only (and a Duplicate Tab copies it), and the
 // marker written on `pagehide` and `freeze`, which only shortens the wait for a late flush. The
 // rule itself is the session lock: free, it's a reload; held by another tab, a Duplicate Tab.
@@ -25,7 +25,10 @@ export type TabRecord = {
 }
 
 const TAB_KEY = storageKey('tab')
-/** `nse.unloaded`: the session whose page went away on `pagehide` or `freeze`. */
+/**
+ * The `unloaded` marker, `<prefix>unloaded` in sessionStorage: the session whose page went away on
+ * `pagehide` or `freeze`.
+ */
 const MARKER_KEY = storageKey('unloaded')
 
 const session = () => {
@@ -89,7 +92,7 @@ export const watchMarker = (current: () => string | undefined) => {
     clearMarker()
     if (watching || typeof window === 'undefined') return
     watching = true
-    // A page restored from the back-forward cache, or resumed after a freeze (§1.4.2).
+    // A page restored from the back-forward cache, or resumed after a freeze.
     window.addEventListener('pageshow', clearMarker)
     document.addEventListener('resume', clearMarker)
     platform.onLifecycle((event) => {
@@ -107,7 +110,7 @@ export const watchMarker = (current: () => string | undefined) => {
     })
 }
 
-/** The wait for a late flush from the page that went away (§1.6.6: about 2 s). */
+/** The wait for a late flush from the page that went away (about 2 s). */
 export const MARKER_WAIT_MS = 2000
 
 /**

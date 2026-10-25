@@ -3,7 +3,7 @@ import type { StorageStatus, TestFlags } from '../../src/local/worker/core'
 import { installCanvasCounters } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// The upgrade handshake in a real browser, with two tabs (Part 1 §1.6.1; Step 3a's exit): the
+// The upgrade handshake in a real browser, with two tabs: the
 // build opens version 1; a simulated newer tab is the build with the test flag `dbVersion: 2`, a
 // frozen tab the flag `ignoreVersionChange`. Each tab's flag is in its own sessionStorage.
 
@@ -189,7 +189,7 @@ test('a database newer than this build opens read-only, with its load notice', a
     // The heading with the product and the version, then a row for the load notice.
     await expect(old.locator('.notification-pill > div')).toHaveText([
         'Next SEKAI Editor · Version 0.6.0',
-        'A newer version of the editor has been opened in this browser. Reload, or save your work to files.',
+        'A newer version of the editor has been opened in this browser. Reload, or save to keep your work.',
     ])
     await expect(old.locator('.notification-pill svg[data-severity="warning"]')).toHaveCount(1)
     expect(

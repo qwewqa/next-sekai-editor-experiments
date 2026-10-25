@@ -40,7 +40,7 @@ import { settings } from '../../settings'
 import { createState, type State } from '../../state'
 import type { Entity, EntityType } from '../../state/entities'
 import { beatToTime } from '../../state/integrals/bpms'
-import { time } from '../../time'
+import { clockNow } from '../../time'
 import { interpolateRaw } from '../../utils/interpolate'
 import { formatCount } from '../../utils/size'
 import { getComposedLayout } from '../composedView'
@@ -60,7 +60,7 @@ import { historyOperationContext } from './historyOperationContext'
 import { createChangePaint, createPropertyInspection, createShowEdits } from './inspection'
 import { peekedInfo, peekedLabel, type ChainKey, type PeekedInfo } from './selection'
 
-// The change view (Part 1 §1.4.11): what the peeked entry changed against the entry before it on
+// The change view: what the peeked entry changed against the entry before it on
 // the Timeline, from the worker by roots, or diffed here from states in memory for entries not
 // stored yet. The chart never scrolls on its own: the bar counts, the edge arrows and Show Change
 // bring the changes into view when asked.
@@ -436,9 +436,10 @@ const rawChangeMarks = computed((): ChangeMarks | undefined => {
     return marksOf(change.state, change.set.objects)
 })
 
+// A step's peek, not a session's: a session's has no change, so it never dims.
 const paint = createChangePaint<Entity, ChangeMarks>(
     rawChangeMarks,
-    isPeeking,
+    computed(() => isPeeking.value && !!peekedInfo.value),
     showEdits,
     comparisonStatus,
     computed(() => peekChange.value?.set.layout !== 'none'),
@@ -619,10 +620,11 @@ const scrollTo = (stop: Stop) => {
         view.scrollingY = undefined
         view.time = target
     } else {
+        const start = clockNow()
         view.scrollingY = {
             type: 'ease',
-            from: { time: time.value.now, viewTime: view.time },
-            to: { time: time.value.now + 0.25, viewTime: target },
+            from: { time: start, viewTime: view.time },
+            to: { time: start + 0.25, viewTime: target },
         }
     }
     // Lanes pan when the stop lies off the lanes in view.

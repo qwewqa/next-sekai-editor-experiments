@@ -16,9 +16,7 @@ import { unzip, zipItems } from '../nxsp/craft'
 import { BGM } from '../nxsp/helpers'
 import { checkFiles, Fixture, hasUv, heldRows, save, sourceOf, stateAt } from './fixture'
 
-// The settled history model's exit items (Part 1 §1.11.6: "The history model", "completeFrom
-// and the line", "Bodies from storage are verified", "What each write changes", "A long chain",
-// "A re-zipped source") over chains in a test profile.
+// The settled history model's exit items over chains in a test profile.
 
 const diskOf = (file: File) => nxspDiskState(file, file.lastModified).then((disk) => ({ ...disk }))
 
@@ -299,7 +297,7 @@ test('a byte flipped in the built chunks.bin fails the post-build check; nothing
     }
 })
 
-test('Save to File… of a session with a damaged head refuses; nothing is written', async () => {
+test('Recent Sessions’ Save… of a session with a damaged head refuses; nothing is written', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     await fixture.edit(5)
@@ -333,7 +331,7 @@ test('a stored BGM gone bad is marked damaged; a write-back copies the file’s 
     assert.equal(read.media.bgm?.form.sha256, BGM.sha256)
 })
 
-test('Save to File… changes nothing on the chain; a later write-back holds every row once', async () => {
+test('Recent Sessions’ Save… changes nothing on the chain; a later write-back holds every row once', async () => {
     const { fixture, file } = await bound()
     await fixture.edit(2)
     await fixture.flush()
@@ -504,7 +502,7 @@ test('a file past a reader cap is refused with the cap named, nothing built', as
     assert.equal(built.limit, 'project')
 })
 
-// The carry test's status (spec A, I-11 and I-18): `missing` is a known loss, `unproven` is not.
+// The carry test's status: `missing` is a known loss, `unproven` is not.
 
 describe('carryStatus', () => {
     const base = { revisionId: 'r' }

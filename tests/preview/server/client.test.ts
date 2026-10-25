@@ -3,7 +3,7 @@ import test from 'node:test'
 import { createServerClient, ServerError } from '../../../src/preview/assets/server/client'
 import { createFakeServer, json, type FakeServerOptions } from './fakeServer'
 
-// The server client (Part 2, 2.5.3, 2.11): requests, paging, quick search, SRL resolution and the
+// The server client: requests, paging, quick search, SRL resolution and the
 // failures of a web page told apart.
 
 const setup = (options: FakeServerOptions = {}, client: { isOnline?: () => boolean } = {}) => {

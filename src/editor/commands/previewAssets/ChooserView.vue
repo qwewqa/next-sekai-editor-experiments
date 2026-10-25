@@ -10,12 +10,13 @@ import type { ServerChooser } from '../../../preview/assets/server/chooser'
 import { serverFailureText } from '../../../preview/assets/server/liveText'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { pickFile } from '../../../utils/file'
-import AssetGlyph from './AssetGlyph.vue'
+import WaitBar from '../../workspace/WaitBar.vue'
+import SeverityIcon from '../../SeverityIcon.vue'
 import AssetRow from './AssetRow.vue'
 import ChooserModeSwitch from './ChooserModeSwitch.vue'
 import ServerBody from './ServerBody.vue'
 
-// The chooser, in the tab in place of the source list (Part 2, 2.6): From a File or, in the apps,
+// The chooser, in the tab in place of the source list: From a File or, in the apps,
 // From a Server, by the switch under the title (the server's view is ServerBody's); the web has no
 // switch, as it fetches no servers. Reading the file and
 // its errors show under Select File…, connecting and its errors under the address; storing or
@@ -166,7 +167,7 @@ const primaryClass = `${baseClass} btn-primary`
             </button>
             <span
                 v-if="fileName"
-                class="min-w-0 truncate opacity-75"
+                class="min-w-0 truncate text-fg/80"
                 :title="fileName"
                 data-chooser-file-name
                 >{{ fileName }}</span
@@ -175,12 +176,7 @@ const primaryClass = `${baseClass} btn-primary`
 
         <div v-if="isFile && phase === 'reading'" class="px-2" role="status" data-chooser-progress>
             <p class="text-sm">{{ strings.progress.reading }}</p>
-            <div
-                class="chooser-bar mt-1 h-1 overflow-hidden rounded-full bg-fg/20"
-                aria-hidden="true"
-            >
-                <div class="chooser-bar-fill h-full w-1/3 rounded-full bg-fg" />
-            </div>
+            <WaitBar class="mt-1" />
         </div>
 
         <p
@@ -189,7 +185,9 @@ const primaryClass = `${baseClass} btn-primary`
             aria-live="polite"
             data-chooser-error
         >
-            <AssetGlyph type="warning" class="absolute left-2 top-[0.1875rem]" />{{ error }}
+            <SeverityIcon severity="error" class="absolute left-2 top-[0.125rem] size-4" />{{
+                error
+            }}
         </p>
 
         <div v-if="!isFile" ref="serverBody" class="contents">
@@ -219,7 +217,7 @@ const primaryClass = `${baseClass} btn-primary`
                     @select="chooser.select(item.name)"
                 />
             </div>
-            <p v-else class="px-2 opacity-75" data-chooser-empty>
+            <p v-else class="px-2 text-fg/80" data-chooser-empty>
                 {{ interpolateRaw(strings.noneInFile, typeNoun(type)) }}
             </p>
 
@@ -248,7 +246,7 @@ const primaryClass = `${baseClass} btn-primary`
             </div>
         </template>
 
-        <p class="px-2 text-sm opacity-75" data-chooser-rights>{{ strings.rights }}</p>
+        <p class="px-2 text-sm text-fg/80" data-chooser-rights>{{ strings.rights }}</p>
 
         <div
             class="sticky -bottom-2 -mx-1 -mb-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t border-fg/25 bg-modal px-3 py-3 max-[440px]:flex-col max-[440px]:items-stretch"
@@ -261,12 +259,7 @@ const primaryClass = `${baseClass} btn-primary`
                 data-chooser-progress
             >
                 <p class="text-sm">{{ workingText }}</p>
-                <div
-                    class="chooser-bar mt-1 h-1 overflow-hidden rounded-full bg-fg/20"
-                    aria-hidden="true"
-                >
-                    <div class="chooser-bar-fill h-full w-1/3 rounded-full bg-fg" />
-                </div>
+                <WaitBar class="mt-1" />
             </div>
             <p
                 v-else-if="failure"
@@ -275,7 +268,9 @@ const primaryClass = `${baseClass} btn-primary`
                 aria-live="polite"
                 data-chooser-error
             >
-                <AssetGlyph type="warning" class="absolute left-0 top-[0.1875rem]" />{{ failure }}
+                <SeverityIcon severity="error" class="absolute left-0 top-[0.125rem] size-4" />{{
+                    failure
+                }}
             </p>
             <div class="flex gap-2 max-[440px]:flex-col">
                 <button
@@ -301,26 +296,3 @@ const primaryClass = `${baseClass} btn-primary`
         </div>
     </section>
 </template>
-
-<style scoped>
-.chooser-bar-fill {
-    animation: chooser-slide 1.1s ease-in-out infinite;
-}
-
-@keyframes chooser-slide {
-    from {
-        transform: translateX(-100%);
-    }
-    to {
-        transform: translateX(300%);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .chooser-bar-fill {
-        animation: none;
-        width: 100%;
-        opacity: 0.4;
-    }
-}
-</style>

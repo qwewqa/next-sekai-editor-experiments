@@ -8,7 +8,7 @@ import { notify } from '../../notification'
 
 /**
  * Tells the user what Undo or Redo did, once it has done it. A move onto a slot that is not loaded
- * waits for the slot (§1.6.4 #6), and an edit or a peek can cancel it or the read can fail, so its
+ * waits for the slot, and an edit or a peek can cancel it or the read can fail, so its
  * notice is raised when the chart changes, never on the key press (the notice is then untrue).
  * Presses queued together share one outcome and one notice, which names the last step crossed.
  */
@@ -26,8 +26,9 @@ export const noticeOnLanding = (outcome: Promise<MoveOutcome>) => {
 
 /** The slot could not be read: nothing changed, and the next press tries again. */
 const notifyFailed = (direction: -1 | 1) => {
-    notify(() =>
-        direction < 0 ? i18n.value.commands.undo.failed : i18n.value.commands.redo.failed,
+    notify(
+        () => (direction < 0 ? i18n.value.commands.undo.failed : i18n.value.commands.redo.failed),
+        { card: true, severity: 'error' },
     )
 }
 

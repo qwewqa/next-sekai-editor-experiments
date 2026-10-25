@@ -410,7 +410,7 @@ test('Generate captures only its three fresh notes and a repeat adds no step', a
     expect(result.sameStep).toBe(true)
 })
 
-// Editing a BPM to the value it has changes nothing, so it pushes no step (owner, 2026-10-19).
+// Editing a BPM to the value it has changes nothing, so it pushes no step.
 test('BPM producer captures initial anchor and actual first destination replacement, and an edit that changes nothing pushes no step', async ({
     page,
 }) => {
@@ -519,8 +519,8 @@ test('Time Scale producer captures both actually replaced same-group destination
     })
 })
 
-// Editing a Time Scale to the values it has leaves the chart as it was: no step (owner,
-// 2026-10-19), though the edit still selects it.
+// Editing a Time Scale to the values it has leaves the chart as it was: no step,
+// though the edit still selects it.
 test('a Time Scale edit that changes nothing pushes no step', async ({ page }) => {
     const result = await page.evaluate(async () => {
         const { show, fixtures, history, appImport } = window.editorTest
@@ -641,7 +641,7 @@ for (const direction of ['horizontal', 'pinned'] as const)
         expect(head.data).not.toHaveProperty('displaced')
     })
 
-// X-14: a Select drag on a note's edge changes its width and nothing else, so it is a resize.
+// A Select drag on a note's edge changes its width and nothing else, so it is a resize.
 for (const mode of ['edge', 'body', 'edge and beat'] as const)
     test(`Select records a drag of a note's ${mode} as ${mode === 'body' ? 'a move' : 'a resize'}`, async ({
         page,
@@ -791,7 +791,7 @@ test('Brush captures coupled Note fields, ignores derived connector operands and
 })
 
 // A connector has no remover, so Eraser on a connector-only selection removes nothing and pushes
-// no step (owner, 2026-10-19: no step for a no-op). Delete leaves the initial BPM alone.
+// no step. Delete leaves the initial BPM alone.
 test('Eraser on only a connector pushes no step and Delete excludes initial BPM', async ({
     page,
 }) => {

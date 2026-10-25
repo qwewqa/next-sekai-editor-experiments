@@ -6,10 +6,10 @@ import type { StorageStatus } from '../../src/local/worker/core'
 import { closePage, installCanvasCounters, installEditorFixture } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// The journal kill tests (Part 1 §1.6.4 #7, Step 3b's exit): edits that only the journal holds
+// The journal kill tests: edits that only the journal holds
 // (flushes held, as a kill leaves them), then the tab killed, then a new visit whose
 // `startupApplyJournals` applies the journal to the session in IndexedDB. What each browser's
-// kill exercises (§1.11's test notes): Chromium page.close() and CDP Page.crash after a hidden
+// kill exercises: Chromium page.close() and CDP Page.crash after a hidden
 // visibilitychange; Firefox and WebKit page.close() only.
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
@@ -399,7 +399,7 @@ test('two guides, the default-coloured one created second and earlier, recover w
     expect(hex(entry.snapshot)).toBe(expected.root)
 })
 
-test('a second hide for the same seq writes nothing, and the key goes only after a strict commit', async ({
+test('a second hide for the same seq writes nothing, and the key goes once a commit covers it', async ({
     page,
 }) => {
     await boot(page)
@@ -486,7 +486,7 @@ test('a kill with a flush in flight leaves the edit stored or journalled, and a 
     const outcomes = await next.evaluate(() =>
         window.nseJournalTest!.outcomes.map((outcome) => outcome.kind),
     )
-    // Applied, covered by the flush that landed, or nothing left once a strict commit cleared it.
+    // Applied, covered by the flush that landed, or nothing left once a commit cleared it.
     expect(outcomes.every((kind) => kind === 'applied' || kind === 'covered')).toBe(true)
     const rows = await rowsOf(next, ['entries'])
     const entries = rows

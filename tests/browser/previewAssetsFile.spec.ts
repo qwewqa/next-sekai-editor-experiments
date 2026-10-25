@@ -17,7 +17,7 @@ import {
 } from './previewAssetsPackages'
 import { resource } from './previewResourceFixture'
 
-// The Preview Assets dialog with From a File (Part 2, 2.5.2, 2.6; the A3 tests of 2.11). With
+// The Preview Assets dialog with From a File. With
 // A3_SHOTS_DIR set, each state is also saved there as a screenshot.
 const shotsDir = process.env.A3_SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
@@ -272,7 +272,7 @@ test.describe('From a File', () => {
         // It is stored, the footer counts it and the preview shows it.
         expect(await stored(page)).toHaveLength(1)
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(
-            /^Stored: 1 item, [\d.]+ kB$/,
+            /^Stored: 1 item, [\d.]+\skB$/,
         )
         await expect
             .poll(() => slot(page, 'skin'))
@@ -677,7 +677,7 @@ test.describe('the Stored tab', () => {
         const neon = items.filter({ hasText: 'Neon Skin' })
         const spark = items.filter({ hasText: 'Spark' })
         await expect(neon).toContainText('Skin · neon.scp')
-        await expect(neon.locator('[data-stored-size]')).toHaveText(/^[\d.]+ kB$/)
+        await expect(neon.locator('[data-stored-size]')).toHaveText(/^[\d.]+\skB$/)
         await expect(neon.locator('[data-stored-in-use]')).toHaveText('In use')
         await expect(spark.locator('[data-stored-in-use]')).toHaveCount(0)
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(/^Stored: 2 items, /)
@@ -746,7 +746,7 @@ test.describe('the Stored tab', () => {
             await refreshStored()
         })
         await expect(dialog(page).locator('[data-stored-line]')).toHaveText(
-            /^Stored: 1 item, [\d.]+ kB$/,
+            /^Stored: 1 item, [\d.]+\skB$/,
         )
     })
 })
@@ -864,7 +864,7 @@ test.describe('refusing a file', () => {
         await refused(
             page,
             rawZip(entries, { zip64End: true }),
-            'This file uses ZIP64, which the editor cannot read.',
+            'The editor cannot read ZIP64 files.',
         )
 
         // A ratio bomb: 30 MB of zeros deflated into a texture.

@@ -1,4 +1,4 @@
-// Builds the Built-in set in memory: the four SCPs, the icon renders and the lock (Part 2, 2.9.3).
+// Builds the Built-in set in memory: the four SCPs, the icon renders and the lock.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { gzip } from 'pako'

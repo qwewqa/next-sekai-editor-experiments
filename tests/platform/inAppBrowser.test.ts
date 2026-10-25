@@ -7,7 +7,7 @@ import { createMockPlatform } from '../../src/platform/mock'
 import { platform as nativePlatform } from '../../src/platform/native'
 
 // The fixtures are user agents from ua-parser-js, Matomo device-detector and inapp-spy, read on
-// 2026-10-19 (work/history-redesign/webview/ua-research.md). None is a capture from a device.
+// 2026-10-19. None is a capture from a device.
 
 const env = (userAgent: string, rest: Partial<UaEnv> = {}): UaEnv => ({
     userAgent,

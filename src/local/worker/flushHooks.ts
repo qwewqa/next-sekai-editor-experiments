@@ -1,4 +1,4 @@
-// The post-flush hook (Part 1 §1.6.11.10): called in the storage worker after each committed
+// The post-flush hook: called in the storage worker after each committed
 // flush. The web registers none; the apps count their canary here. A hook's failure never fails
 // the flush. The flush calls runFlushHooks once its transaction has committed.
 

@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwind from 'tailwindcss'
 import { defaultClientConditions, defineConfig } from 'vite'
+import { analyticsFromEnv } from './scripts/analytics.mjs'
 import { devPolicy, injectPolicy, nativePolicy, webPolicy } from './scripts/csp.mjs'
 import { nativeIndexHtml } from './scripts/native.mjs'
 import { probePlugin, samplesPlugin } from './scripts/samples.mjs'
@@ -17,13 +18,21 @@ import { themes } from './src/themes'
 const repository = process.env.GITHUB_REPOSITORY || 'qwewqa/next-sekai-editor-experiments'
 const root = fileURLToPath(new URL('.', import.meta.url))
 
-// The Vite entries (Part 5, 5.1.3); the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
+// The Vite entries; the editor's is 'index' to keep its index-* chunk names. The apps' build has the editor only.
 const pages = (mode: string) => ({
     index: resolve(root, 'index.html'),
     ...(mode !== 'native' && existsSync(resolve(root, 'privacy/index.html'))
         ? { privacy: resolve(root, 'privacy/index.html') }
         : {}),
 })
+
+// Usage statistics: off unless both variables are set. The apps' build fails with them
+// (docs/analytics.md).
+const analyticsFor = (mode: string) =>
+    analyticsFromEnv(process.env, {
+        native: mode === 'native',
+        perf: process.env.NSE_PERF === '1',
+    })
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -34,7 +43,7 @@ export default defineConfig(({ mode }) => ({
         watch: { ignored: ['**/test-results*/**', '**/playwright-report/**'] },
     },
     resolve: {
-        // Native mode (Part 2, 2.4.1): #platform and #asset-defaults take their native targets.
+        // Native mode: #platform and #asset-defaults take their native targets.
         conditions: mode === 'native' ? ['native', ...defaultClientConditions] : undefined,
     },
     build: {
@@ -42,7 +51,7 @@ export default defineConfig(({ mode }) => ({
         rolldownOptions: { input: pages(mode) },
     },
     // The storage worker is written as a module worker and emitted as a classic one: Firefox 105
-    // has no module workers, and an iife build can't split (Part 1 §1.6.5).
+    // has no module workers, and an iife build can't split.
     worker: {
         format: 'iife',
     },
@@ -85,7 +94,7 @@ export default defineConfig(({ mode }) => ({
             },
         },
         {
-            // The apps' page has no web-only tags or icon (Part 2, 2.7.1).
+            // The apps' page has no web-only tags or icon.
             name: 'native-html',
             apply: () => mode === 'native',
             transformIndexHtml: nativeIndexHtml,
@@ -97,16 +106,19 @@ export default defineConfig(({ mode }) => ({
             transformIndexHtml: applyTestSite,
         },
         {
-            // The policy (Part 0 §0.9.2) as the first child of <head>, hashing the inline scripts as they
+            // The policy as the first child of <head>, hashing the inline scripts as they
             // end up, so it runs after theme-script. `vite dev` has none unless NSE_DEV_CSP=1.
             name: 'csp',
             apply: (_config, { command }) => command === 'build' || process.env.NSE_DEV_CSP === '1',
             transformIndexHtml: {
                 order: 'post',
                 handler: (html, { server }) =>
-                    injectPolicy(
-                        html,
-                        server ? devPolicy : mode === 'native' ? nativePolicy : webPolicy,
+                    injectPolicy(html, (scripts) =>
+                        server
+                            ? devPolicy(scripts, analyticsFor(mode)?.origin)
+                            : mode === 'native'
+                              ? nativePolicy(scripts)
+                              : webPolicy(scripts, analyticsFor(mode)?.origin),
                     ),
             },
         },
@@ -114,8 +126,11 @@ export default defineConfig(({ mode }) => ({
     define: {
         __GITHUB_REPOSITORY__: JSON.stringify(repository),
         __NSE_SITE__: JSON.stringify(siteFromEnv()),
+        // NSE_PERF=1: a perf build with the frame probes (docs/performance-testing.md).
+        __NSE_PERF__: JSON.stringify(process.env.NSE_PERF === '1'),
         __HAS_PRIVACY_PAGE__: JSON.stringify('privacy' in pages(mode)),
         __NATIVE__: JSON.stringify(mode === 'native'),
         __APP_VERSION__: JSON.stringify(appVersion({ cwd: root }).appVersion),
+        __NSE_ANALYTICS__: JSON.stringify(analyticsFor(mode)),
     },
 }))

@@ -1,7 +1,7 @@
 import { choiceKey } from './choice'
 import type { AssetChoice, AssetStatus, AssetType } from './types'
 
-/** The reason sentence a fallback gets (Part 2, 2.6's `reason.*`): the panel and the dialog share it. */
+/** The reason sentence a fallback gets: the panel and the dialog share it. */
 export type ReasonKey =
     | 'fileGone'
     | 'storageUnavailable'

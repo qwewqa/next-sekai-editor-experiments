@@ -1,18 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
-import { resource } from './previewResourceFixture'
-
-const outlinePixels = (page: Page) =>
-    page.evaluate(() => {
-        const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')
-        if (!canvas) return 0
-        // Empty selection intentionally needs no GPU surface. Reading it must
-        // not allocate one merely to find that no outline was drawn.
-        const data = window.editorRendering
-            .peekDrawContext(canvas)
-            ?.getImageData(0, 0, canvas.width, canvas.height).data
-        return data ? data.filter((value, index) => index % 4 === 3 && value > 0).length : 0
-    })
+import { outlinePixels, resource } from './previewResourceFixture'
 
 test.beforeEach(async ({ page }) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
@@ -119,6 +107,40 @@ test('connectors, moving slide heads, and stage events highlight their visible o
     await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
     expect(await page.evaluate(() => window.editorTest.view.cursorTime)).toBe(3)
     expect(await page.evaluate(() => window.editorTest.history.canUndo.value)).toBe(false)
+})
+
+test('the outline follows playback frames', async ({ page }) => {
+    await page.evaluate(() => {
+        const { fixtures, show, view, history } = window.editorTest
+        const base = fixtures.interaction.slides[0]?.[0]
+        if (!base) throw new Error('Missing fixture')
+        show(
+            {
+                ...fixtures.interaction,
+                slides: [
+                    [
+                        { ...base, beat: 4 },
+                        { ...base, beat: 8 },
+                    ],
+                ],
+            },
+            3,
+        )
+        view.cursorTime = 3
+        const { note, connector } = history.state.value.store.slides
+        history.replaceState({
+            ...history.state.value,
+            selectedEntities: [...note.values(), ...connector.values()].flat(),
+        })
+    })
+    await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
+    for (const time of [3.05, 3.1, 3.15, 3.2]) {
+        await page.evaluate(async (time) => {
+            window.editorTest.view.cursorTime = time
+            for (let i = 0; i < 4; i++) await new Promise((done) => requestAnimationFrame(done))
+        }, time)
+        expect(await outlinePixels(page)).toBeGreaterThan(0)
+    }
 })
 
 test('selected invisible anchors show a preview line that respects the highlight toggle', async ({

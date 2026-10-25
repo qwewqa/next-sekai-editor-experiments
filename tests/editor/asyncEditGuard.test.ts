@@ -62,7 +62,7 @@ test('an edit, Undo and Redo permanently invalidate confirmation', () => {
     }
 })
 
-// An edit that leaves the chart as it was is no step (owner, 2026-10-19), so what the user
+// An edit that leaves the chart as it was is no step, so what the user
 // confirmed still holds.
 test('an edit that changes nothing leaves confirmation valid', () => {
     const guard = createAsyncEditGuard()
@@ -129,7 +129,7 @@ test('origin abort and disposal invalidate permanently while independent prompts
 })
 
 // The held-BGM attach changes the live state with no step while a dialog or a confirm is open;
-// what the user typed or picked must still apply (final review R2 #1).
+// what the user typed or picked must still apply.
 const bgmMeta = { hash: 'h', filename: 'a.mp3', size: 4, type: 'audio/mpeg' }
 const unattached = { bgm: { offset: 0, meta: bgmMeta }, selectedEntities: [] } as unknown as State
 const withAudio = (state: State, offset = state.bgm.offset) =>

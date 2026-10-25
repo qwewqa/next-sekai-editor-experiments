@@ -1,4 +1,4 @@
-// How long a clip is, read from its container before anything decodes it (Part 2, 2.5.5): a few
+// How long a clip is, read from its container before anything decodes it: a few
 // MB of compressed audio can decode to GB of samples, so the 120 s cap is checked first. Each
 // reader takes the most a decoder could make of the bytes, never what a header merely claims:
 // a WAV's bytes after `data`, the frames of an MP3, ADTS or FLAC stream, the packets of an Ogg

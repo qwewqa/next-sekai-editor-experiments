@@ -27,7 +27,7 @@ export type WorkerContext = {
     emit: (event: string, data?: unknown) => void
 }
 
-/** A chain's stored handle for its binding, Export target or kept file (D24). */
+/** A chain's stored handle for its binding, Export target or kept file. */
 export const readHandle = (
     core: StorageCore,
     { chainId, role }: { chainId: string; role: HandleRole },
@@ -98,7 +98,7 @@ export const createContext = (emit: WorkerContext['emit']) => {
         resume: () => context.core.resume(),
 
         /**
-         * A chain's stored handle for its binding or Export target (D24): only when a Save, an
+         * A chain's stored handle for its binding or Export target: only when a Save, an
          * Export or a resumed import needs it, through the page's `handleOf`.
          */
         readHandle: (request: { chainId: string; role: HandleRole }) =>

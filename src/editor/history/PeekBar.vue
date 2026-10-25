@@ -18,6 +18,7 @@ import {
 import { settings } from '../../settings'
 import { view } from '../view'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
+import WaitSpinner from '../workspace/WaitSpinner.vue'
 import ChangeArrows from './ChangeArrows.vue'
 import InfoIcon from './InfoIcon.vue'
 import { useRootFontSize } from '../useRootFontSize'
@@ -170,7 +171,7 @@ const text = computed(() => {
 })
 
 // Leaving the peek takes the strip away, by Back to Now, Restore, Escape, Undo or anything else:
-// focus in it, or in its options menu, goes to the chart (§1.4.10.2, X-2).
+// focus in it, or in its options menu, goes to the chart.
 watch(
     isPeeking,
     (peeking) => {
@@ -272,11 +273,7 @@ const onKeydown = (event: KeyboardEvent) => {
                     data-peek-details
                     @click="details"
                 >
-                    <span
-                        v-if="peekLoading"
-                        class="size-4 shrink-0 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
-                        aria-hidden="true"
-                    />
+                    <WaitSpinner v-if="peekLoading" class="size-4" />
                     <InfoIcon v-else class="size-4 shrink-0 fill-current" />
                     <span v-if="!layout.tiny" class="min-w-0 truncate tabular-nums">{{
                         text

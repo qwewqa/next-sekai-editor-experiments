@@ -27,7 +27,7 @@ export const serializeToLevelDataEntities = (
 ) => {
     let id = 0
     const getName = () => (id++).toString(16)
-    // One order for every kind, the records' (§1.6.11.6): level data is a function of the state.
+    // One order for every kind, the records': level data is a function of the state.
     const ordered = orderStore(store)
 
     const initialization = {

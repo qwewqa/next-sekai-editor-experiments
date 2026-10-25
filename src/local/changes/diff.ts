@@ -1,7 +1,7 @@
 import type { RecordValue } from '../records/canonical'
 import { kindNames, type KindName } from '../records/schema'
 
-// What a History entry changed (Part 1 §1.4.11): the records two snapshots differ in, as objects
+// What a History entry changed: the records two snapshots differ in, as objects
 // added, removed or changed. One core for the storage worker, which narrows the records by hash,
 // and the page, which narrows them by identity: supersets give the same answer, as the shared
 // records cancel in the multiset difference.

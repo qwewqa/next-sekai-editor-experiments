@@ -82,7 +82,7 @@ export const installCanvasCounters = (legacyCanvas = false) => {
     for (const setting of ['showPreview', 'showSidebar', 'showMinimap']) {
         localStorage.setItem(`sonolus-next-sekai-editor.${setting}`, 'false')
     }
-    // The fixture hook (Part 1 §1.4.2): every load starts blank and at once, as specs expect.
+    // The fixture hook: every load starts blank and at once, as specs expect.
     localStorage.setItem('nse.test.startBlank', 'true')
     // The fixture hook: the shown version never depends on the checkout's tags.
     localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
@@ -111,7 +111,7 @@ export const installCanvasCounters = (legacyCanvas = false) => {
 }
 
 /**
- * Waits until the startup gate lifts (Part 1 §1.4.2): until the session is open, input is
+ * Waits until the startup gate lifts: until the session is open, input is
  * swallowed. Specs without the fixture hook (`installCanvasCounters`) wait before their first input.
  */
 export const waitForStartup = (page: Page) =>
@@ -135,7 +135,7 @@ export const waitForStartup = (page: Page) =>
         )
         .toBe('done')
 
-/** Seeds the platform override (Part 1 §1.6.10): pass it to addInitScript with the override. */
+/** Seeds the platform override: pass it to addInitScript with the override. */
 export const installTestPlatform = (override: PlatformOverride) => {
     localStorage.setItem('nse.test.platform', JSON.stringify(override))
 }
@@ -152,7 +152,7 @@ export const installEditorFixture = async (waitForRendering: boolean | void = tr
     // second copy of a module that owns reactive state.
     const resolve = (pathname: string) => moduleUrls.get(pathname) ?? pathname
     const appImport = <T>(pathname: string): Promise<T> => import(resolve(pathname))
-    // The startup gate swallows input until the session is open (Part 1 §1.4.2), and a chart
+    // The startup gate swallows input until the session is open, and a chart
     // shown before then would be replaced by the stored session it opens.
     const { startupGate } =
         await appImport<typeof import('../../src/startup/gate')>('/src/startup/gate.ts')
@@ -546,7 +546,7 @@ if (process.env.NSE_DEV_CSP === '1') {
  * Closes a page, as a kill (`runBeforeUnload: false`) or a tab closed (`true`), and waits until
  * the browser has released its Web Locks. Playwright's close resolves before Chromium drops a
  * closed page's locks, and the gap reaches about a second under load. A load that meets the session
- * lock still held takes the session as open in another tab (§1.4.2), as it must for a live tab, so
+ * lock still held takes the session as open in another tab, as it must for a live tab, so
  * a spec's next visit waits for the release instead.
  */
 export const closePage = async (page: Page, { runBeforeUnload }: { runBeforeUnload: boolean }) => {

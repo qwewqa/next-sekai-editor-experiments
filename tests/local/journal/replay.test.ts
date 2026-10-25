@@ -23,7 +23,7 @@ import { append, beginSession, openJournalPage, replayAll, replayIn } from './ha
 
 const same = (a: unknown, b: unknown) => assert(equalJson(a as JsonValue, b as JsonValue))
 
-// Journal replay on the test core (§1.6.4 #7, Step 3b's exit): against a live session, a late
+// Journal replay on the test core: against a live session, a late
 // flush, a missing, deleted or continued session, newer journals, and a damaged key.
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
@@ -96,18 +96,14 @@ test('a killed tab’s journal is applied to its session, keeping the committed 
 
 test('a journal a flush covered is deleted without an entry: a late flush landed first', async () => {
     const { world, page, session } = await killedAfterEdits(2)
+    const key = `nse.journal.${session.id}`
+    const text = page.storage.getItem(key)!
     await page.flusher.flush()
+    // The page went before its removal of the key reached disk.
+    page.storage.setItem(key, text)
     const before = entriesOf(world, session.id).length
-    // That flush was relaxed: the apply's strict commit writes a row before the key goes.
-    const strictWhileKept: boolean[] = []
-    world.memory.faults.put = (store) => {
-        if (store === 'meta') strictWhileKept.push(page.storage.length === 1)
-        return undefined
-    }
     const { outcomes } = await replayAll(world, page.storage)
-    world.memory.faults.put = undefined
     assert.equal(outcomes[0]?.kind, 'covered')
-    assert.deepEqual(strictWhileKept, [true])
     assert.equal(entriesOf(world, session.id).length, before)
     assert.equal(page.storage.length, 0)
 })
@@ -471,7 +467,7 @@ test('a flush that lands after replay leaves the replayed stack alone', async ()
     const { world, page, session, states } = await killedAfterEdits(13)
     const { outcomes } = await replayAll(world, page.storage)
     assert.equal(outcomes[0]?.kind, 'applied')
-    // The dead page's flush lands late (§1.6.6), with the entries the journal covered.
+    // The dead page's flush lands late, with the entries the journal covered.
     await page.flusher.flush()
     assert.equal(page.results.at(-1)?.kind, 'stored')
     assert.deepEqual(

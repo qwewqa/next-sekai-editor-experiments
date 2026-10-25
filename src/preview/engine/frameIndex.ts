@@ -1,5 +1,11 @@
 import type { PreviewChart, PreviewNote } from './model'
-import { createTimeIndex, queryTimeIndex, type TimeIndex } from './timeIndex'
+import {
+    createTimeIndex,
+    createTimeIndexOfEntries,
+    queryTimeIndex,
+    type TimeIndex,
+    type TimeIndexEntry,
+} from './timeIndex'
 
 export const CONNECTOR_THROUGH_JUDGE_LINE_DESPAWN_DELAY = 5
 export const SLIDE_EFFECT_DESPAWN_DELAY = 0.6
@@ -17,21 +23,22 @@ const progressGroups = (note: PreviewNote) =>
         ? [note.attachHead.groupIndex, note.attachTail.groupIndex]
         : [note.groupIndex]
 
-type IndexedItem<T> = { item: T; index: number }
-type GroupTimeIndex<T> = Map<number, TimeIndex<IndexedItem<T>>>
+type GroupTimeIndex<T> = Map<number, TimeIndex<T>>
 
 // A special group must not disable lookahead for the rest of the chart. An
 // attached note or connector can depend on several groups; index it under each
 // endpoint group, then union the candidates without changing submission order.
+// Each item has one entry, shared by its groups' partitions. The entry's `index` is the
+// item's position in the chart.
 const createGroupTimeIndex = <T>(
     items: T[],
     groups: (item: T) => number[],
     start: (item: T) => number,
     end: (item: T) => number,
 ): GroupTimeIndex<T> => {
-    const partitions = new Map<number, IndexedItem<T>[]>()
+    const partitions = new Map<number, TimeIndexEntry<T>[]>()
     items.forEach((item, index) => {
-        const entry = { item, index }
+        const entry: TimeIndexEntry<T> = { item, index, start: start(item), end: end(item) }
         for (const group of groups(item)) {
             let partition = partitions.get(group)
             if (!partition) {
@@ -45,14 +52,7 @@ const createGroupTimeIndex = <T>(
         }
     })
     return new Map(
-        [...partitions].map(([group, entries]) => [
-            group,
-            createTimeIndex(
-                entries,
-                ({ item }) => start(item),
-                ({ item }) => end(item),
-            ),
-        ]),
+        [...partitions].map(([group, entries]) => [group, createTimeIndexOfEntries(entries)]),
     )
 }
 
@@ -72,68 +72,62 @@ export const queryGroupTimeIndex = <T>(
                 now,
                 latestTargets[group] ?? fallbackLatestTarget,
                 leftLimit,
-            ).map(({ item }) => item)
+            )
 
-    const matches = new Set<IndexedItem<T>>()
+    // An entry indexed under several groups is the same object in each, so
+    // equal neighbours after the index sort are its repeats.
+    const matches: TimeIndexEntry<T>[] = []
     for (const [group, partition] of index) {
-        for (const { item } of queryTimeIndex(
+        for (const entry of queryTimeIndex(
             partition,
             now,
             latestTargets[group] ?? fallbackLatestTarget,
             leftLimit,
             false,
         )) {
-            matches.add(item)
+            matches.push(entry)
         }
     }
-    return [...matches].sort((a, b) => a.index - b.index)
+    matches.sort((a, b) => a.index - b.index)
+    return matches.filter((entry, position) => entry !== matches[position - 1])
 }
 
 const createFrameIndex = (chart: PreviewChart) => {
-    const minimumTimescales = chart.groups.map((group) => {
-        let minimumTimescale = 1
-        for (const change of group.changes) {
-            // Scroll, reversals, stops and backwards skips need the full future
-            // range: target time alone cannot bound their visual position.
-            if (change.transitionStyle === 1 || change.skipSeconds < 0 || !(change.timescale > 0)) {
-                return 0
-            }
-            minimumTimescale = Math.min(minimumTimescale, change.timescale)
-        }
-        return minimumTimescale
-    })
+    const notes = createGroupTimeIndex(
+        chart.notes,
+        progressGroups,
+        earliestTarget,
+        (note) => note.targetTime,
+    )
+    const connectors = createGroupTimeIndex(
+        chart.connectors,
+        ({ head, tail }) => [...progressGroups(head), ...progressGroups(tail)],
+        (connector) => Math.min(earliestTarget(connector.head), earliestTarget(connector.tail)),
+        (connector) =>
+            Math.min(
+                Math.max(connector.head.targetTime, connector.tail.targetTime) +
+                    (connector.throughJudgeLine ? CONNECTOR_THROUGH_JUDGE_LINE_DESPAWN_DELAY : 0),
+                connector.activeTail?.targetTime ?? Infinity,
+            ),
+    )
+    const simLines = createGroupTimeIndex(
+        chart.simLines,
+        ({ left, right }) => [...progressGroups(left), ...progressGroups(right)],
+        ({ left, right }) => Math.min(earliestTarget(left), earliestTarget(right)),
+        ({ left, right }) => Math.min(left.targetTime, right.targetTime),
+    )
     return {
-        minimumTimescales,
-        notes: createGroupTimeIndex(
-            chart.notes,
-            progressGroups,
-            earliestTarget,
-            (note) => note.targetTime,
-        ),
+        // Groups whose bound a frame needs; tests clear `cull` to traverse every future entry.
+        usedGroups: [...new Set([...notes.keys(), ...connectors.keys(), ...simLines.keys()])],
+        cull: true,
+        notes,
         effects: createTimeIndex(
             chart.notes,
             (note) => note.targetTime,
             (note) => note.targetTime + MAX_HIT_EFFECT_DURATION,
         ),
-        connectors: createGroupTimeIndex(
-            chart.connectors,
-            ({ head, tail }) => [...progressGroups(head), ...progressGroups(tail)],
-            (connector) => Math.min(earliestTarget(connector.head), earliestTarget(connector.tail)),
-            (connector) =>
-                Math.min(
-                    Math.max(connector.head.targetTime, connector.tail.targetTime) +
-                        (connector.throughJudgeLine
-                            ? CONNECTOR_THROUGH_JUDGE_LINE_DESPAWN_DELAY
-                            : 0),
-                    connector.activeTail?.targetTime ?? Infinity,
-                ),
-        ),
-        simLines: createGroupTimeIndex(
-            chart.simLines,
-            ({ left, right }) => [...progressGroups(left), ...progressGroups(right)],
-            ({ left, right }) => Math.min(earliestTarget(left), earliestTarget(right)),
-            ({ left, right }) => Math.min(left.targetTime, right.targetTime),
-        ),
+        connectors,
+        simLines,
         slides: createTimeIndex(
             chart.slides,
             (slide) => slide.activeHead.targetTime,
@@ -183,16 +177,7 @@ export const getFrameIndex = (chart: PreviewChart) => {
     return index
 }
 
-export const latestVisibleTarget = (
-    now: number,
-    minimumTimescale: number,
-    maximumPreempt: number,
-    progressStart: number,
-    minimumYOffset: number,
-) => {
-    if (minimumTimescale <= 0 || !Number.isFinite(maximumPreempt)) return Infinity
-    const distance = maximumPreempt * Math.max(0, 1 - progressStart - minimumYOffset)
-    // noteDistance clamps its result, so that clamp is not an upper time bound.
-    if (distance >= 1e20) return Infinity
-    return now + distance / minimumTimescale + 1e-7
-}
+// The farthest a note can be from the judge line and still be in view: its
+// approach window, extended by the lowest stage offset.
+export const visibleDistance = (preempt: number, progressStart: number, minimumYOffset: number) =>
+    preempt * Math.max(0, 1 - progressStart - minimumYOffset)

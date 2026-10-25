@@ -33,7 +33,7 @@ import type { EditableProperties } from '../../src/state/operations/editable'
 import { createTransaction, type Transaction } from '../../src/state/transaction'
 import { stateOrderDifferences } from '../local/records/stateOrder'
 
-// Every kind whose same-beat order is state (D4): each event kind, time scales and BPMs. Each
+// Every kind whose same-beat order is state: each event kind, time scales and BPMs. Each
 // object carries a tag in one field, so an order reads as a list of tags.
 
 export const stageId = (id: number) => id as StageId

@@ -1,6 +1,6 @@
 import type { State } from '../state'
 
-// The displayed name (Part 1 §1.3.5): the first of the bound file's stem, the Name (only a copy's
+// The displayed name: the first of the bound file's stem, the Name (only a copy's
 // automatic "<name> (2)" is set now, so a copy saved as a file is named by it), the title,
 // the imported file's stem (unless "LevelData", which names nothing), the BGM's stem, and the
 // date fallback ("Untitled · Oct 16, 2:41 PM", formatted where it's shown).
@@ -21,9 +21,9 @@ export type DisplayName =
     | { kind: 'date' }
 
 /**
- * What a separate copy was made from (§1.3.1): the bound file's name, or the session's own name.
+ * What a separate copy was made from: the bound file's name, or the session's own name.
  * A chain with no name of its own has an empty `name` and the source's `at`, its start, which
- * names it as the date fallback is shown, "Untitled · Oct 16, 2:41 PM" (X-13).
+ * names it as the date fallback is shown, "Untitled · Oct 16, 2:41 PM".
  */
 export type CopyOf = { readonly name: string; readonly bound: boolean; readonly at?: number }
 
@@ -77,27 +77,27 @@ const COPY_NUMBER = / \((\d{1,2})\)$/
 /** Whether a name ends in a copy number, " (2)". */
 export const hasCopyNumber = (name: string) => COPY_NUMBER.test(name)
 
-/** The next copy's name: "Coconut (3)" after "Coconut (2)", else "Coconut (2)" (§1.3.1). */
+/** The next copy's name: "Coconut (3)" after "Coconut (2)", else "Coconut (2)". */
 export const nextCopyName = (name: string) => {
     const match = COPY_NUMBER.exec(name)
     return match ? `${name.slice(0, match.index)} (${Number(match[1]) + 1})` : `${name} (2)`
 }
 
-/** A fork's name, "<name> (2)" (§1.3.1); none when the displayed name is the date fallback. */
+/** A fork's name, "<name> (2)"; none when the displayed name is the date fallback. */
 export const forkNameOf = (parts: NameParts) => {
     const shown = displayName(parts)
     return shown.kind === 'date' ? undefined : nextCopyName(shown.text)
 }
 
 /**
- * The name a chain takes when it loses its file (§1.3.5): the file's stem, over any name it had.
+ * The name a chain takes when it loses its file: the file's stem, over any name it had.
  * Every web name is automatic, and the file name is the one the user chose last, by saving.
  */
 export const keptNameOf = (name: unknown, fileName: unknown) =>
     text(fileName) ? stemOf(fileName as string) : text(name)
 
 /**
- * The displayed name as a file name (§1.4.7's prefill): as shown, since the shown name is already a
+ * The displayed name as a file name: as shown, since the shown name is already a
  * stem; empty for the date fallback and for "LevelData", which names nothing.
  */
 export const prefillOf = (shown: DisplayName) =>

@@ -40,7 +40,7 @@ type Press = {
 }
 
 /**
- * The strip's press, drag, wheel and Escape (Part 1 §1.4.22). It writes only `view.time` and the
+ * The strip's press, drag, wheel and Escape. It writes only `view.time` and the
  * scroll and active fields; it never edits the chart or leaves a peek.
  */
 export const useMinimapInput = (mapping: Readonly<Ref<MinimapMapping | undefined>>) => {

@@ -55,6 +55,81 @@ test('main editor counts offscreen notes and indicators disappear after panning 
     await expect(indicators).toHaveCount(0)
 })
 
+test('main editor badges follow edits, undo, peeks, lane zoom, pans and long scrolls', async ({
+    page,
+}) => {
+    const editor = page.locator('.editor-chart').locator('..')
+    const indicators = editor.locator('.offscreen-note-indicator')
+    // One badge a side, or none.
+    const counts = async (left: number, right: number) => {
+        await expect(indicators).toHaveCount(+!!left + +!!right)
+        for (const [side, count] of [
+            ['left', left],
+            ['right', right],
+        ] as const)
+            if (count)
+                await expect(
+                    editor.locator(`.offscreen-note-indicator[data-side="${side}"]`),
+                ).toHaveAttribute('data-count', `${count}`)
+    }
+    await counts(1, 12)
+    // The note in the lanes moves past the right edge.
+    await page.evaluate(async () => {
+        const { history, store, appImport, historySteps } = window.editorTest
+        const { createTransaction } = await appImport<typeof import('../../src/state/transaction')>(
+            '/src/state/transaction.ts',
+        )
+        const { replaceNote } = await appImport<
+            typeof import('../../src/state/mutations/slides/note')
+        >('/src/state/mutations/slides/note.ts')
+        const note = [...store.getAllEntities()].find(
+            (entity) => entity.type === 'note' && entity.left === 0,
+        )
+        if (note?.type !== 'note') throw new Error('Expected the fixture note')
+        const transaction = createTransaction(history.state.value)
+        replaceNote(transaction, note, { ...note, left: 40 })
+        history.pushState(
+            historySteps.nativeOperation(
+                { id: 'nse.object.move', data: { subject: 'note', changed: { note: 1 } } },
+                'Move',
+            ),
+            transaction.commit([]),
+        )
+    })
+    await counts(1, 13)
+    const edited = await page.evaluateHandle(() => window.editorTest.history.state.value)
+    await page.keyboard.press('Control+z')
+    await counts(1, 12)
+    await page.evaluate((state) => {
+        window.editorTest.history.peek.value = { source: 'test', state }
+    }, edited)
+    await counts(1, 13)
+    await page.evaluate(() => {
+        window.editorTest.history.peek.value = undefined
+    })
+    await counts(1, 12)
+    await page.evaluate(() => {
+        window.editorTest.settings.width = 100
+    })
+    await counts(0, 0)
+    await page.evaluate(() => {
+        window.editorTest.settings.width = 20
+        window.editorTest.view.lane = 40
+    })
+    await counts(2, 0)
+    // Beat 500, far past the beats grouped so far, just under the top edge.
+    await page.evaluate(() => {
+        const { view, settings } = window.editorTest
+        view.lane = 0
+        view.time = 250 - (view.h / 2 - 5) / settings.pps
+    })
+    await counts(0, 1)
+    await page.evaluate(() => {
+        window.editorTest.view.time = 1.5
+    })
+    await counts(1, 12)
+})
+
 test('elevation editor shows directional counts and stays legible on phones', async ({
     page,
 }, testInfo) => {

@@ -1,6 +1,6 @@
 # The plan conformance set, v1
 
-Frozen with Formats v1 (§1.6.11.7): the same plan gives the same bytes on every platform. The web executor (`tests/zip/planConformance.test.ts`) and Rust (`cargo test`, Part 3 3.14.3) each run every case. Never edit these files once v0.6.0 ships.
+Frozen with Formats v1: the same plan gives the same bytes on every platform. The web executor (`tests/zip/planConformance.test.ts`) runs every case, and any other writer of the format must reproduce them. Never edit these files once v0.6.0 ships.
 
 Each `<case>/` holds:
 
@@ -14,6 +14,6 @@ Each `<case>/` holds:
 
 The cases: `fresh` and `append` (the builder golden's two writes); appends onto `write-1.nxsp` rewritten as other tools write it: `source-deflated-descriptors` (DEFLATE throughout, data descriptors with and without their signature, so `chunks.bin` and the media are `inflate` copies), `source-local-extra` (local extra fields that differ from the central directory's), `source-zip64` (ZIP64 extra fields and end record) and `source-comment-signature` (an archive comment holding an end-record signature); and the failures: `fail-crc-mismatch`, `fail-inflate-trailing`, `fail-inflate-truncated` and `fail-bomb` (a deflated `chunks.bin` inflating past its declared size) are damage in the source (`io`); `fail-changed-bytes` (the source rewritten after `inspect` with a longer `project.json`, so every copy's `dataOffset` moved) is a `conflict`; `fail-method-mismatch`, `fail-wrong-crc`, `fail-too-many-entries` (65,535 entries), `fail-method8-two-parts`, `fail-method8-inflate` and `fail-dataoffset-mismatch` are plan errors.
 
-Written by `NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts` in Step 6, from the builder golden (`tests/local/nxsp/golden-v1/`).
+Written by `NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts`, from the builder golden (`tests/local/nxsp/golden-v1/`).
 
-The format freeze package regenerated every case that holds a `.nxsp` (`NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts`, after the builder golden) before v0.6.0 shipped: its `project.json` gained `patch` and its `save` entries `appVersion`. The planned bytes of the failure cases changed with them; their expected error codes did not.
+Every case that holds a `.nxsp` (`NSE_WRITE_GOLDEN=1 npx tsx --test tests/zip/planConformance.test.ts`, after the builder golden) was regenerated before v0.6.0 shipped: its `project.json` gained `patch` and its `save` entries `appVersion`. The planned bytes of the failure cases changed with them; their expected error codes did not.

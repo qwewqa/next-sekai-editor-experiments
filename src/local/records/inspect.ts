@@ -1,7 +1,7 @@
 import fields from './fields-v1.json'
 import type { SnapshotSource } from './snapshot'
 
-// The debug viewer (§1.6.11.1): records are positional, so this names their fields from
+// The debug viewer: records are positional, so this names their fields from
 // `fields-v1.json`. The dev console, the golden README and record test failures print through it.
 
 type FieldEntry = { name: string; type: string; optional?: boolean }

@@ -9,8 +9,8 @@ import { backToNow, requestSessionPeek } from './selection'
 import { restoreMode, type ChainRow, type SessionRow } from './sessions'
 import { historyTab } from './state'
 
-// What Recent Sessions' rows do (Part 1 §1.4.10.6, §1.4.7): Restore Session, Restore as a Copy
-// and Save to File…, from the menu, Enter, the peek bar or a load notice. Each runs the checks
+// What Recent Sessions' rows do: Restore Session, Restore as a Copy
+// and Save…, from the menu, Enter, the peek bar or a load notice. Each runs the checks
 // `openSession` makes (lock, head, binding, journal first); the row's badge only picks the label,
 // and a stale one never decides anything.
 
@@ -40,7 +40,7 @@ export const restoreRow = async (row: ChainRow, mode: 'restore' | 'copy') => {
     return opened
 }
 
-/** Save to File…: the session's head with its history, as a new file. */
+/** Save… (the row menu): the session's head with its history, as a new file. */
 export const saveRowToFile = async (row: ChainRow) => {
     const { saveToFile } = await import('../save/flow')
     await saveToFile(row.chain.head.sessionId)
@@ -61,7 +61,7 @@ export const sessionMenuItems = (
     // The head may be held since the list was read: the item reads as of now.
     const elsewhere = row.badge === 'elsewhere' || held.has(row.chain.head.sessionId)
     const mode = safe || elsewhere ? 'copy' : 'restore'
-    // A row that needs a newer version says why once, under Restore; Save to File… is off the same way.
+    // A row that needs a newer version says why once, under Restore; Save… is off the same way.
     const off = row.readable === 'newer' ? { disabled: true } : {}
     const why = row.readable === 'newer' ? { description: strings.load.sessionLater } : {}
     const items: SessionMenuItem[] =

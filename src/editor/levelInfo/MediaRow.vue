@@ -2,7 +2,7 @@
 import { useId } from 'vue'
 import BaseField from '../../modals/form/BaseField.vue'
 
-// A labelled media row of Level Info (Part 1 §1.4.12): what the slot holds on one line, its
+// A labelled media row of Level Info: what the slot holds on one line, its
 // actions beside or below it. The label is the group's name.
 defineProps<{
     label: string

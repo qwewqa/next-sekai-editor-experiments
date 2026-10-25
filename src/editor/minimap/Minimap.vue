@@ -3,13 +3,14 @@ import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
 import { times } from '..'
 import { undimmed } from '../history/changes'
 import { view } from '../view'
-import { MINIMAP_REM } from '../workspace'
+import { minimapWidth } from '../workspace'
 import type { MinimapAnnotation } from './annotations'
 import { changeTicks } from './changeTicks'
 import { useMinimapContent } from './content'
 import { boxGeometry, useMinimapInput } from './input'
-import { backingSize } from './mapping'
+import { backingSize, type MinimapMapping } from './mapping'
 import { minimapStats } from './pipeline'
+import { timed } from '../../perf/probe'
 
 // A single word reads as a native element to the linter.
 defineOptions({ name: 'MinimapStrip' })
@@ -18,32 +19,76 @@ const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const annotationCanvas = useTemplateRef<HTMLCanvasElement>('annotations')
 const box = useTemplateRef<HTMLElement>('box')
 const cursor = useTemplateRef<HTMLElement>('cursor')
+const edge = useTemplateRef<SVGElement>('edge')
 
 const { mapping } = useMinimapContent(canvas)
 const { isGrabbing, onPointerDown, onPointerMove, onPointerUp, onPointerEnd, onWheel } =
     useMinimapInput(mapping)
 
-// The box and the cursor move by style, outside the template: one watcher, no canvas work.
+// The box, the cursor and the edge mark move by style, outside the template: one watcher, no
+// canvas work. A style is written only when its value changed, with the rows rounded to device
+// pixels, so playback writes about once per pixel moved rather than once per frame.
 let boxHeight = -1
-watch(
-    [() => times.value, () => view.cursorTime, mapping, box, cursor],
-    ([, cursorTime, current, boxElement, cursorElement]) => {
-        if (!boxElement || !cursorElement) return
-        boxElement.style.visibility = cursorElement.style.visibility = current ? '' : 'hidden'
+let shown = false
+let lastBoxTop = Number.NaN
+let lastCursorY = Number.NaN
+let edgeShown = false
+const placeOverlay = timed(
+    'minimapOverlay',
+    (
+        cursorTime: number,
+        current: MinimapMapping | undefined,
+        boxElement: HTMLElement | null,
+        cursorElement: HTMLElement | null,
+        edgeElement: HTMLElement | SVGElement | null,
+    ) => {
+        if (!boxElement || !cursorElement || !edgeElement) return
+        const show = current !== undefined
+        if (show !== shown) {
+            shown = show
+            boxElement.style.visibility = cursorElement.style.visibility = show ? '' : 'hidden'
+            // The transforms are written again when the strip comes back.
+            lastBoxTop = lastCursorY = Number.NaN
+            if (!show) {
+                edgeShown = false
+                edgeElement.style.visibility = 'hidden'
+            }
+        }
         if (!current) return
+        const { scale } = current.geometry
         const geometry = boxGeometry(current)
-        boxElement.style.transform = `translateY(${geometry.top}px)`
+        const boxTop = Math.round(geometry.top * scale) / scale
+        if (boxTop !== lastBoxTop) {
+            lastBoxTop = boxTop
+            boxElement.style.transform = `translateY(${boxTop}px)`
+        }
         // A layout of one element, so only when the zoom, pane or mapping changes it.
         if (geometry.height !== boxHeight) {
             boxHeight = geometry.height
             boxElement.style.height = `${geometry.height}px`
         }
-        cursorElement.style.transform = `translateY(${current.timeToY(cursorTime)}px)`
+        const cursorY = Math.round(current.timeToY(cursorTime) * scale) / scale
+        if (cursorY !== lastCursorY) {
+            lastCursorY = cursorY
+            cursorElement.style.transform = `translateY(${cursorY}px)`
+        }
+        // The line and the box stay at the top past the last note; the mark says so.
+        const past = cursorTime > current.end || times.value.max > current.end
+        if (past !== edgeShown) {
+            edgeShown = past
+            edgeElement.style.visibility = past ? '' : 'hidden'
+        }
+    },
+)
+watch(
+    [() => times.value, () => view.cursorTime, mapping, box, cursor, edge],
+    ([, cursorTime, current, boxElement, cursorElement, edgeElement]) => {
+        placeOverlay(cursorTime, current, boxElement, cursorElement, edgeElement)
     },
     { flush: 'post' },
 )
 
-// The annotation painters are a static list (Part 1 §1.4.22).
+// The annotation painters are a static list.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const painters: MinimapAnnotation<any>[] = [changeTicks]
 
@@ -88,7 +133,7 @@ onBeforeUnmount(() => {
     <div
         class="relative flex-none touch-none select-none overflow-hidden bg-bg shadow-[inset_1px_0_0_rgb(255_255_255/0.1)]"
         :class="isGrabbing ? 'cursor-grabbing' : 'cursor-pointer'"
-        :style="{ width: `${MINIMAP_REM}rem` }"
+        :style="{ width: `${minimapWidth}px` }"
         aria-hidden="true"
         data-minimap
         @mousedown.prevent
@@ -108,11 +153,11 @@ onBeforeUnmount(() => {
         <canvas
             v-if="hasAnnotations"
             ref="annotations"
-            class="pointer-events-none absolute inset-0 size-full"
+            class="pointer-events-none absolute inset-0 z-[1] size-full"
         />
         <div
             ref="box"
-            class="absolute inset-x-px top-0 border border-white/70 bg-white/10 forced-colors:border-[CanvasText]"
+            class="absolute left-[6px] right-px top-0 border-2 border-white/85 bg-white/[0.16] shadow-[0_0_0_1px_rgb(0_0_0/0.6)] forced-colors:border-[CanvasText]"
             :class="isGrabbing ? 'cursor-grabbing' : 'cursor-grab'"
             data-minimap-box
             style="visibility: hidden"
@@ -123,5 +168,19 @@ onBeforeUnmount(() => {
             data-minimap-cursor
             style="visibility: hidden"
         />
+        <svg
+            ref="edge"
+            class="pointer-events-none absolute left-[calc(50%+2px)] top-0 -translate-x-1/2 text-white forced-colors:text-[CanvasText]"
+            width="11"
+            height="6"
+            viewBox="0 0 11 6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            data-minimap-edge
+            style="visibility: hidden"
+        >
+            <path d="M1 5 5.5 1 10 5" />
+        </svg>
     </div>
 </template>

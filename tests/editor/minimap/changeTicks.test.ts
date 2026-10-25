@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createMapping } from '../../../src/editor/minimap/mapping'
-import { MIN_TICK_HEIGHT, tickRuns } from '../../../src/editor/minimap/tickRuns'
+import {
+    HAIRLINE_MAX_RUN,
+    HAIRLINE_MAX_RUNS,
+    MIN_TICK_HEIGHT,
+    TICK_WIDTH,
+    hairlineRuns,
+    tickRuns,
+} from '../../../src/editor/minimap/tickRuns'
 import { beatToTime, calculateBpms, type BpmIntegral } from '../../../src/state/integrals/bpms'
 
 // 60 BPM up to beat 10 (10 s), then 120 BPM: beat 12 is at 11 s.
@@ -34,7 +41,7 @@ test('places within 2 device px share a tick, farther ones do not', () => {
     assert.equal(runs([10, 10.6, 11.2, 11.8], 1).length, 4)
 })
 
-test('a run is at least 2 CSS px tall, centred on its places, and spans a long run', () => {
+test('a run is at least 3 CSS px tall, centred on its places, and spans a long run', () => {
     const [single] = runs([50], 1)
     assert.ok(single)
     assert.equal(single[1], MIN_TICK_HEIGHT)
@@ -55,8 +62,8 @@ test('rows follow the time on the tempo the places are in', () => {
     )
     assert.equal(out.length, 2)
     // Painted from the bottom of the strip up.
-    assert.ok(Math.abs((out[0]?.[0] ?? 0) + 1 - rowAt(5, 1)) < 1e-9)
-    assert.ok(Math.abs((out[1]?.[0] ?? 0) + 1 - rowAt(11, 1)) < 1e-9)
+    assert.ok(Math.abs((out[0]?.[0] ?? 0) + MIN_TICK_HEIGHT / 2 - rowAt(5, 1)) < 1e-9)
+    assert.ok(Math.abs((out[1]?.[0] ?? 0) + MIN_TICK_HEIGHT / 2 - rowAt(11, 1)) < 1e-9)
 })
 
 test('places beyond the range clamp to the top row', () => {
@@ -80,4 +87,34 @@ test('3,400 places merge in one pass to at most one rect per run', () => {
     assert.ok(calls >= 1)
     // Dense places merge into a single stretch.
     assert.equal(runs(times, 2).length, 1)
+})
+
+test('the edge tick is 5 CSS px wide and at least 3 CSS px tall', () => {
+    assert.equal(TICK_WIDTH, 5)
+    assert.equal(MIN_TICK_HEIGHT, 3)
+})
+
+const run = (height: number) => ({ top: 10, height })
+
+test('a few short runs get hairlines, and long stretches do not', () => {
+    const runs = [run(3), run(HAIRLINE_MAX_RUN - 0.5), run(HAIRLINE_MAX_RUN), run(120)]
+    assert.deepEqual(hairlineRuns(runs), [run(3), run(HAIRLINE_MAX_RUN - 0.5)])
+})
+
+test('a select-all move is one long stretch and gets no hairline', () => {
+    const times = Array.from({ length: 3400 }, (_, i) => (i / 3400) * 99)
+    const mapping = createMapping({ width: 40, height: 400, scale: 2 }, 100)
+    const merged: { top: number; height: number }[] = []
+    tickRuns(
+        times.map((time) => ({ time })),
+        mapping,
+        (top, height) => merged.push({ top, height }),
+    )
+    assert.deepEqual(hairlineRuns(merged), [])
+})
+
+test('many short runs get no hairlines, so the strip does not haze', () => {
+    const runs = Array.from({ length: HAIRLINE_MAX_RUNS }, () => run(3))
+    assert.equal(hairlineRuns(runs).length, HAIRLINE_MAX_RUNS)
+    assert.deepEqual(hairlineRuns([...runs, run(3)]), [])
 })

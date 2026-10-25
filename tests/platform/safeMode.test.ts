@@ -21,19 +21,17 @@ import {
 import { rawExportNote } from '../../src/startup/rawExportNote'
 import { storageKey } from '../../src/storage'
 
-// Safe mode's rule and the startup gate's state (Part 1 §1.4.2).
+// Safe mode's rule and the startup gate's state.
 
 test('safe mode writes only settings and keys outside the editor’s own', () => {
     registerSettingKeys(['theme', 'locale'])
     for (const key of ['theme', 'locale', 'toolbarExportMigrated'])
         assert.equal(safeModeMayWrite(storageKey(key)), true, key)
     for (const key of [
-        'legacyRecovery',
         'canary',
         'deviceId',
         'lastAppVersion',
         'journal.1f0c',
-        'revoke.chain',
         'diagnostics',
         'autoSave.levelData',
         'autoSave.unreadable',

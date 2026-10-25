@@ -6,7 +6,10 @@ declare global {
     interface Window {
         webglLifecycle: {
             restore?: () => void
-            overlayFlushes: number
+            /** Draws of the selection outline, each of which clears first. */
+            overlayDraws: number
+            outlines: WeakMap<HTMLCanvasElement, WebGL2RenderingContext>
+
             captured?: { data: Uint8ClampedArray; width: number; height: number }
             comparison?: {
                 changedPixels: number
@@ -41,9 +44,23 @@ const pixels = (page: Page, selector: string, capture = false) =>
             if (!canvas) return { alpha: 0, digest: '', image: '' }
             const { peekDrawContext } = await window.editorRenderingReady
             const ctx = peekDrawContext(canvas)
-            if (!ctx) return { alpha: 0, digest: '', image: '' }
-            if ('ready' in ctx) await ctx.ready
-            const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            const outline = window.webglLifecycle.outlines.get(canvas)
+            let pixels: ImageData
+            if (ctx) {
+                if ('ready' in ctx) await ctx.ready
+                pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            } else if (outline) {
+                // The outline's own context, premultiplied, rows from the top.
+                const { width, height } = canvas
+                const raw = new Uint8Array(width * height * 4)
+                outline.readPixels(0, 0, width, height, outline.RGBA, outline.UNSIGNED_BYTE, raw)
+                pixels = new ImageData(width, height)
+                for (let y = 0; y < height; y++)
+                    pixels.data.set(
+                        raw.subarray((height - 1 - y) * width * 4, (height - y) * width * 4),
+                        y * width * 4,
+                    )
+            } else return { alpha: 0, digest: '', image: '' }
             const data = pixels.data
             const digest = await crypto.subtle.digest('SHA-256', data)
             let image = ''
@@ -170,21 +187,32 @@ test.beforeEach(async ({ page }) => {
         route.fulfill({ body: resource('particles') }),
     )
     await page.addInitScript(installCanvasCounters)
+    await page.addInitScript(() => {
+        window.webglLifecycle = { overlayDraws: 0, outlines: new WeakMap() }
+        const getContext = HTMLCanvasElement.prototype.getContext
+        HTMLCanvasElement.prototype.getContext = function (
+            this: HTMLCanvasElement,
+            ...args: [string, ...unknown[]]
+        ) {
+            const context = Reflect.apply(getContext, this, args) as RenderingContext | null
+            if (context instanceof WebGL2RenderingContext && this.matches('.preview-selection'))
+                window.webglLifecycle.outlines.set(this, context)
+            return context
+        } as typeof getContext
+        const clear = WebGL2RenderingContext.prototype.clear
+        WebGL2RenderingContext.prototype.clear = function (...args) {
+            if (
+                this.canvas instanceof HTMLCanvasElement &&
+                this.canvas.matches('.preview-selection')
+            )
+                window.webglLifecycle.overlayDraws++
+            return clear.apply(this, args)
+        }
+    })
     await page.goto('/')
     await expect(page.locator('canvas.editor-chart')).toBeVisible()
     await page.evaluate(installEditorFixture)
-    await page.evaluate(async () => {
-        window.webglLifecycle = { overlayFlushes: 0 }
-        const { WebGLDrawContext } = await window.editorRenderingReady
-        const flush = WebGLDrawContext.prototype.flush
-        WebGLDrawContext.prototype.flush = function (...args) {
-            if (
-                this.canvas instanceof HTMLCanvasElement &&
-                this.canvas.classList.contains('preview-selection')
-            )
-                window.webglLifecycle.overlayFlushes++
-            return flush.apply(this, args)
-        }
+    await page.evaluate(() => {
         const { fixtures, show, view } = window.editorTest
         const base = fixtures.interaction.slides[0]![0]!
         show(
@@ -286,15 +314,14 @@ test('preview allocates no selection renderer for empty frames and clears only w
         }
     })
     expect(
-        await page.evaluate(async () => {
+        await page.evaluate(() => {
             const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')!
-            const { peekDrawContext } = await window.editorRenderingReady
             return {
-                allocated: !!peekDrawContext(canvas),
-                flushes: window.webglLifecycle.overlayFlushes,
+                allocated: window.webglLifecycle.outlines.has(canvas),
+                draws: window.webglLifecycle.overlayDraws,
             }
         }),
-    ).toEqual({ allocated: false, flushes: 0 })
+    ).toEqual({ allocated: false, draws: 0 })
     await page.evaluate(() => {
         const { history, view } = window.editorTest
         view.cursorTime = 3
@@ -306,17 +333,15 @@ test('preview allocates no selection renderer for empty frames and clears only w
     await expect
         .poll(async () => (await pixels(page, '.preview-selection')).alpha)
         .toBeGreaterThan(0)
-    const selectedFlushes = await page.evaluate(() => window.webglLifecycle.overlayFlushes)
+    const selectedDraws = await page.evaluate(() => window.webglLifecycle.overlayDraws)
     await page.evaluate(() => {
         const { history } = window.editorTest
         history.replaceState({ ...history.state.value, selectedEntities: [] })
     })
     await settle(page)
-    expect(await page.evaluate(() => window.webglLifecycle.overlayFlushes)).toBe(
-        selectedFlushes + 1,
-    )
+    expect(await page.evaluate(() => window.webglLifecycle.overlayDraws)).toBe(selectedDraws + 1)
     expect((await pixels(page, '.preview-selection')).alpha).toBe(0)
-    const clearedFlushes = await page.evaluate(() => window.webglLifecycle.overlayFlushes)
+    const clearedDraws = await page.evaluate(() => window.webglLifecycle.overlayDraws)
     await page.evaluate(async () => {
         for (let i = 0; i < 8; i++) {
             window.editorTest.view.cursorTime = 3 + i / 100
@@ -324,14 +349,15 @@ test('preview allocates no selection renderer for empty frames and clears only w
             await new Promise(requestAnimationFrame)
         }
     })
-    expect(await page.evaluate(() => window.webglLifecycle.overlayFlushes)).toBe(clearedFlushes)
+    expect(await page.evaluate(() => window.webglLifecycle.overlayDraws)).toBe(clearedDraws)
     await page.setViewportSize({ width: 1450, height: 900 })
     await settle(page)
     expect((await pixels(page, '.preview-selection')).alpha).toBe(0)
-    const resizedFlushes = await page.evaluate(() => window.webglLifecycle.overlayFlushes)
+    const resizedDraws = await page.evaluate(() => window.webglLifecycle.overlayDraws)
     await loseContext(page, '.preview-selection')
     await restoreContext(page, '.preview-selection')
-    expect(await page.evaluate(() => window.webglLifecycle.overlayFlushes)).toBe(resizedFlushes + 1)
+    // A restored buffer is transparent, so an empty outline draws nothing.
+    expect(await page.evaluate(() => window.webglLifecycle.overlayDraws)).toBe(resizedDraws)
     expect((await pixels(page, '.preview-selection')).alpha).toBe(0)
 })
 
@@ -365,10 +391,9 @@ test('preview selection restores identically and respects deselection during con
     expect(
         await page.evaluate(async () => {
             const canvas = document.querySelector<HTMLCanvasElement>('.preview-selection')!
-            const { peekDrawContext } = await window.editorRenderingReady
             window.editorTest.settings.showPreview = false
             await window.editorTest.nextTick()
-            return peekDrawContext(canvas) === undefined
+            return window.webglLifecycle.outlines.get(canvas)!.isContextLost()
         }),
     ).toBe(true)
 })

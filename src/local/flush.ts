@@ -45,7 +45,7 @@ import {
 
 export { onFlushCommitted } from './worker/flushHooks'
 
-// The main thread's flush (Part 1 §1.6.4 step 2): entries are appended synchronously with their
+// The main thread's flush: entries are appended synchronously with their
 // `State`, and about 1 s after the last change their snapshots are extracted through the identity
 // memo, in slices of about 8 ms, and sent to the storage worker as bytes. On hide, before a
 // switch and right after a media pick it runs at once and strictly. Entries stay pending until
@@ -65,19 +65,19 @@ export type PendingEntry = EntryDescription & {
     readonly dirty: boolean
     /** A journal-only reload resets its unavailable stack to this one current-state slot. */
     readonly recoveryBaseline?: UndoableStep
-    /** A `save` entry's revision, device and the app version that wrote it (§1.3.3). */
+    /** A `save` entry's revision, device and the app version that wrote it. */
     readonly revisionId?: string
     readonly device?: { readonly id: string; readonly label: string }
     readonly appVersion?: string
 }
 
-/** A Save's identity unit waiting for its flush: committed with its `save` entry (§1.3.2). */
+/** A Save's identity unit waiting for its flush: committed with its `save` entry. */
 export type PendingIdentity = IdentityUnit & {
     /** The `save` entry's `seq`: the unit goes with the batch that stores it, or a later one. */
     readonly seq: number
 }
 
-/** What a Save reserved (§1.6.11.6): its `save` entry's `seq` in the current session. */
+/** What a Save reserved: its `save` entry's `seq` in the current session. */
 export type SaveReservation = {
     readonly session: FlushSession
     readonly seq: number
@@ -99,7 +99,7 @@ export type EndSaveResult = 'added' | 'kept' | 'letGo' | 'notCurrent' | 'ended'
 
 /**
  * The storage worker's backstop found entries at or below the session's `lastSeq` that the
- * writer order should have made impossible (§2.5): it stored the ones with no row and skipped
+ * writer order should have made impossible: it stored the ones with no row and skipped
  * the ones a `recovered` entry covers. Reported, never thrown: the data is stored.
  */
 export class FlushOrderError extends Error {
@@ -122,18 +122,18 @@ export type FlushSession = {
     readonly origin: SessionOrigin
     readonly startedAt: number
     readonly sourceName?: string
-    /** A fork's old chain, whose record it copies (§1.3.1). */
+    /** A fork's old chain, whose record it copies. */
     readonly forkOf?: string
-    /** The stored session it continues: a continuation's, or a fork's (D10). */
+    /** The stored session it continues: a continuation's, or a fork's. */
     readonly parent?: { readonly id: string; readonly uptoSeq: number }
     /**
      * A continuation (a new visit, Reopen): stored from its first own entry, its `continue` entry
-     * first; its first write moves the chain's head from the parent (§1.3.1, §1.3.6).
+     * first; its first write moves the chain's head from the parent.
      */
     readonly continuation?: boolean
     /** Stored at once whatever its origin: it set chain fields before its first write. */
     atOnce?: boolean
-    /** A fork's name on the record it makes, "<name> (2)" (§1.3.1). */
+    /** A fork's name on the record it makes, "<name> (2)". */
     readonly forkName?: string
     /** Chain fields set before its first write, `null` removing: written with its record. */
     chainSet?: Record<string, unknown>
@@ -142,26 +142,29 @@ export type FlushSession = {
     nextSeq: number
     /**
      * The newest `seq` of an entry this session holds, stored, pending or in memory only: the
-     * journal's `seq` (§1.6.4). Never a reserved or skipped one, and never lowered.
+     * journal's `seq`. Never a reserved or skipped one, and never lowered.
      */
     entrySeq: number
     readonly pending: PendingEntry[]
     /** Acknowledged by an in-memory store only: sent again after a worker restart. */
     readonly memoryOnly: PendingEntry[]
-    /** Resolves once this tab holds the session's lock (§1.6.6). */
+    /** Resolves once this tab holds the session's lock. */
     readonly ready: Promise<unknown>
-    /** Its stack as acknowledged, which each flush's entries are replayed over (§1.6.4 #6). */
+    /** Its stack as acknowledged, which each flush's entries are replayed over. */
     readonly stack: SessionStack<PendingEntry>
-    /** The newest entry acknowledged from a database, and the newest committed strictly. */
+    /**
+     * The newest entry committed to a database: the journal covers the rest. And the
+     * newest committed strictly: a hide's or a switch's strict flush syncs those between.
+     */
     ackedSeq: number
     strictSeq: number
-    /** Whether it has an entry of an editing kind (§1.6.11.2's `edited`). */
+    /** Whether it has an entry of an editing kind. */
     edited: boolean
     /** Its chain record as the last flush wrote it, for the journal's descriptor. */
     chain?: Record<string, unknown>
     /** Runs once the session is replaced and nothing of it is pending: releases its lock. */
     done?: () => void
-    /** An unstored continuation's hold on its parent (§1.3.6): released at its first write. */
+    /** An unstored continuation's hold on its parent: released at its first write. */
     parentDone?: () => void
     /**
      * A continuation that started from a journal holds its parent until the journal's key goes
@@ -169,7 +172,7 @@ export type FlushSession = {
      */
     journalParent?: () => void
     /**
-     * A Save's reservation (§1.6.11.6): entries after its `seq` wait until the Save appends its
+     * A Save's reservation: entries after its `seq` wait until the Save appends its
      * `save` entry or lets the `seq` go, so the entry is never behind a stored one. Ended by the
      * object, never by its `seq`: a later Save may reserve the same one.
      */
@@ -198,7 +201,7 @@ export type StoredStack = {
     index: number
 }
 
-/** A new session continuing a stored one (§1.3.1): in its chain, or as a fork of it. */
+/** A new session continuing a stored one: in its chain, or as a fork of it. */
 export type ContinueStart = {
     id: string
     chainId: string
@@ -223,7 +226,7 @@ export type ContinueStart = {
     parentUntilReleased?: boolean
 }
 
-/** A stored session taken up again by its own tab's reload (§1.4.2): no entry is added. */
+/** A stored session taken up again by its own tab's reload: no entry is added. */
 export type ResumeStart = {
     id: string
     chainId: string
@@ -244,7 +247,7 @@ export type ResumeStart = {
     lock?: LockLease
 }
 
-/** What writing chain fields found (§1.3.1: only the chain's head writes its record). */
+/** What writing chain fields found (only the chain's head writes its record). */
 export type ChainWriteResult =
     | { kind: 'stored'; chain: Record<string, unknown> }
     | { kind: 'notHead'; lastSeq: number; lastTime: number }
@@ -281,9 +284,9 @@ export type FlushDeps = {
     view?: () => SessionView | undefined
     /** The lock of a session the flusher starts itself (a fork): taken as the fork registers. */
     lockSession?: (id: string) => LockLease
-    /** A session's chain was continued elsewhere: its further entries went to this fork (D10). */
+    /** A session's chain was continued elsewhere: its further entries went to this fork. */
     onFork?: (fork: FlushSession, from: FlushSession) => void
-    /** A fork's name from its old session: "<name> (2)" (§1.3.1). */
+    /** A fork's name from its old session: "<name> (2)". */
     forkName?: (from: FlushSession) => string | undefined
     /** Captures a `continue` operation from the source entry time. */
     continueOperation: (fromTime: number) => JsonValue
@@ -301,25 +304,25 @@ export type FlushDeps = {
         appVersion: string
     }) => Promise<ChainWriteResult>
     /**
-     * Stores a media item alone, after its flush's read-back failed (§1.6.8.4): resolves whether
+     * Stores a media item alone, after its flush's read-back failed: resolves whether
      * it's stored right now. Without it the item is left not held in storage.
      */
     storeMedia?: (item: BatchMedia) => Promise<boolean>
-    /** The media the live state holds, which may have been attached after its step (§2.3). */
+    /** The media the live state holds, which may have been attached after its step. */
     liveHeld?: () => BatchMedia[]
     onFlushed?: (report: FlushReport) => void
     /** The roots a flush stored for its entries' states, so peek can find them in memory. */
     onRoots?: (roots: readonly (readonly [State, Uint8Array])[]) => void
     /**
      * A flush in a database made the chain record or moved its head (a continuation's or a fork's
-     * first write): other tabs' Recent Sessions lists change (§1.6.6 hints).
+     * first write): other tabs' Recent Sessions lists change hints.
      */
     onChainMoved?: (session: FlushSession) => void
-    /** A flush or a strict sync committed a session's entries up to `seq` in a database. */
-    onCommitted?: (session: FlushSession, commit: { seq: number; strict: boolean }) => void
+    /** A flush committed a session's entries up to `seq` in a database. */
+    onCommitted?: (session: FlushSession, seq: number) => void
     /**
-     * Commits strictly what relaxed flushes stored (§1.6.4: a journal is cleared only once a
-     * strict commit covers its `seq`); without it, a hide's flush with nothing new does nothing.
+     * Commits strictly what routine flushes stored, so a hide or a switch leaves it on disk
+     * Without it, a hide's flush with nothing new does nothing.
      */
     syncStrict?: () => Promise<boolean>
     onError?: (error: unknown) => void
@@ -329,7 +332,7 @@ export type FlushDeps = {
     clearTimer?: (handle: unknown) => void
 }
 
-/** About 1 s after the last change (an internal constant; §1.6.4). */
+/** About 1 s after the last change (an internal constant). */
 export const FLUSH_DELAY_MS = 1000
 /** Entries in one batch at most, and about this much new text, so one transaction stays short. */
 export const BATCH_ENTRIES = 64
@@ -345,7 +348,7 @@ export const MEDIA_ATTEMPTS = 6
 type FlushOptions = { strict?: boolean; oneGo?: boolean }
 
 /**
- * A call's timeout by the bytes it carries (§1.6.5): the usual 10 s, and a second more per MB,
+ * A call's timeout by the bytes it carries: the usual 10 s, and a second more per MB,
  * since a large BGM is hashed, stored and read back in it.
  */
 export const mediaTimeoutMs = (bytes: number) => 10_000 + bytes / 1000
@@ -356,7 +359,7 @@ export const flushTimeoutMs = (batch: FlushBatch) =>
         batch.text.byteLength + batch.media.reduce((sum, item) => sum + item.bytes.byteLength, 0),
     )
 
-/** The media items a state holds the bytes of: the BGM's, the cover's and the preview's (§1.6.8.4). */
+/** The media items a state holds the bytes of: the BGM's, the cover's and the preview's. */
 export const heldMediaOf = (state: State): BatchMedia[] => heldItemsOf(state)
 
 /** The unit as a batch carries it. */
@@ -376,10 +379,10 @@ const unitOf = ({
     ...(clearExport ? { clearExport } : {}),
 })
 
-/** Recent Sessions' summary of a head (§1.6.11.2). */
+/** Recent Sessions' summary of a head. */
 export const summaryOf = (state: State, noteCount: number): ChainSummary => {
     const { title, artists, author, rating, tags } = state.levelInfo
-    // The BGM's file name, for a chart named by its song (§1.3.5); IndexedDB only.
+    // The BGM's file name, for a chart named by its song; IndexedDB only.
     const bgmName = state.bgm.meta?.filename ?? state.bgm.filename
     return {
         ...(title ? { title } : {}),
@@ -441,11 +444,11 @@ export class Flusher {
     private readonly knownMedia = new Set<string>()
     /** Media the worker found missing: sent again with their bytes. */
     private readonly resendMedia = new Set<string>()
-    /** Media sent in a flush not yet answered: read back even if found stored (§1.6.8.4). */
+    /** Media sent in a flush not yet answered: read back even if found stored. */
     private readonly unconfirmed = new Set<string>()
     /**
      * Media whose read-back failed: stored again alone, with backoff, and left out of flushes
-     * meanwhile, so it never holds back the history (§1.6.8.4).
+     * meanwhile, so it never holds back the history.
      */
     private readonly failedMedia = new Map<string, BatchMedia>()
     private mediaTimer: unknown
@@ -464,8 +467,8 @@ export class Flusher {
     /** Whether the last strict sync failed or reached only an in-memory store. */
     syncFailed = false
     /**
-     * The replaced session's strict commit at the last `begin()` (§1.3.8): resolves whether
-     * everything of it is committed strictly in a database, for Step 4's switch prompt.
+     * The replaced session's strict commit at the last `begin()`: resolves whether
+     * everything of it is committed in a database, for the switch prompt.
      */
     outgoing: Promise<boolean> = Promise.resolve(true)
     private retryMs = 0
@@ -506,9 +509,9 @@ export class Flusher {
     }
 
     /**
-     * Starts a session with its first entry (§1.3.6): `init`. A new or blank session is stored
+     * Starts a session with its first entry: `init`. A new or blank session is stored
      * from its first own entry; one that brings content in is stored at once. The replaced
-     * session is committed strictly (§1.3.8): its pending entries, or what relaxed flushes stored.
+     * session is committed strictly: its pending entries, or what routine flushes stored.
      */
     begin(start: SessionStart): FlushSession {
         const session: FlushSession = {
@@ -535,7 +538,7 @@ export class Flusher {
     }
 
     /**
-     * Continues a stored session in a new one (§1.3.1): its `continue` entry first, pointing at
+     * Continues a stored session in a new one: its `continue` entry first, pointing at
      * the parent's head, over the parent's stack. Stored from its first own entry, when its write
      * moves the chain's head, or as a fork, a new chain copied from the old record.
      */
@@ -580,7 +583,7 @@ export class Flusher {
     }
 
     /**
-     * Takes up a stored session again, as its own tab's reload does (§1.4.2): no entry is added,
+     * Takes up a stored session again, as its own tab's reload does: no entry is added,
      * and the next entry follows its `lastSeq` over its stored stack.
      */
     resumeSession(start: ResumeStart): FlushSession {
@@ -622,7 +625,7 @@ export class Flusher {
     }
 
     /**
-     * Takes up a session from its own journal while storage is unavailable (§1.6.7: a same-tab
+     * Takes up a session from its own journal while storage is unavailable (a same-tab
      * reload continues from it): its ids and descriptor kept, its state as its first entry, its
      * `seq`s after the journal's, so the journal it goes on writing holds both visits' edits.
      */
@@ -688,8 +691,8 @@ export class Flusher {
     }
 
     /**
-     * Makes a session the current one. The replaced session is committed strictly (§1.3.8): its
-     * pending entries, or what relaxed flushes stored; `outgoing` says whether that held.
+     * Makes a session the current one. The replaced session is committed strictly: its
+     * pending entries, or what routine flushes stored; `outgoing` says whether that held.
      */
     private switchTo(
         session: FlushSession,
@@ -735,7 +738,7 @@ export class Flusher {
     }
 
     /**
-     * Sets chain fields of the current session (§1.3.1: a rename, Export's target and name),
+     * Sets chain fields of the current session (a rename, Export's target and name),
      * `undefined` removing one. A session not stored yet commits its first row with them, as a
      * continuation commits before it writes a file; a stored one writes them as the chain's head,
      * and one that isn't the head any more goes on as a fork, which takes them. Resolves whether
@@ -783,7 +786,7 @@ export class Flusher {
                 return true
             }
             if (result.kind === 'notHead' && this.sessions.includes(session)) {
-                // Another tab continued the chain: this session goes on as a fork (D10), which
+                // Another tab continued the chain: this session goes on as a fork, which
                 // starts with a `continue` entry at the head when it has no entries of its own.
                 const fork = this.fork(session, result.lastSeq)
                 const head = fork.stack.committed.at(fork.stack.committed.index)
@@ -808,7 +811,7 @@ export class Flusher {
     /**
      * Appends an entry to the current session: synchronous, as push, undo and redo are. A state
      * holding media not yet stored (a pick) flushes at once and strictly: the journal doesn't
-     * carry media (§1.6.4). An undo or redo onto a slot not loaded gives its stored root instead.
+     * carry media. An undo or redo onto a slot not loaded gives its stored root instead.
      */
     append(description: EntryDescription, state: State | Uint8Array, dirty: boolean) {
         const session = this.current
@@ -845,14 +848,14 @@ export class Flusher {
 
     /**
      * The newest entry's `seq` the session holds; 0 before any. A reserved `seq`, a kept one and
-     * the `seq`s a resume jumped over are not entries, so the journal never names them (§1.6.4).
+     * the `seq`s a resume jumped over are not entries, so the journal never names them.
      */
     newestSeq(session: FlushSession) {
         return session.entrySeq
     }
 
     /**
-     * Reserves the current session's next `seq` for a Save's `save` entry (§1.6.11.6): edits made
+     * Reserves the current session's next `seq` for a Save's `save` entry: edits made
      * while the file is built get later ones, and wait for it. One at a time.
      */
     reserveSave(): SaveReservation | undefined {
@@ -921,7 +924,7 @@ export class Flusher {
     /**
      * Resolves once no Save holds the current session's reservation: at once when none does, or
      * when `signal` aborts. A Save that must wait for another flow's reservation (Export's own
-     * pick) waits here, and never while it holds `nse-bind` (§1.6.6).
+     * pick) waits here, and never while it holds `nse-bind`.
      */
     reservationEnded(signal?: AbortSignal): Promise<void> {
         if (this.current?.reserved === undefined || signal?.aborted) return Promise.resolve()
@@ -942,7 +945,7 @@ export class Flusher {
     }
 
     /**
-     * What a Save's build takes from this tab (§1.6.11.6): the entries before its reservation that
+     * What a Save's build takes from this tab: the entries before its reservation that
      * no store acknowledged yet, and the stack they give, slots `first` on.
      */
     unstored(session: FlushSession) {
@@ -966,13 +969,12 @@ export class Flusher {
     }
 
     /**
-     * Whether some entry isn't committed strictly in a database: the journal's trigger (§1.6.4).
-     * A stored session's entries past its strict commit are relaxed, held in memory only (storage
-     * unavailable, §1.6.7) or still to send. A blank start with no edit has nothing to store, so
-     * nothing to journal.
+     * Whether some entry isn't committed to a database: the journal's trigger. Such
+     * entries are still to send, in flight, failed, or held in memory only (storage unavailable).
+     * A blank start with no edit has nothing to store, so nothing to journal.
      */
     unflushed(session: FlushSession) {
-        if (session.strictSeq >= this.newestSeq(session)) return false
+        if (session.ackedSeq >= this.newestSeq(session)) return false
         return session.stored || this.flushable(session)
     }
 
@@ -1020,8 +1022,8 @@ export class Flusher {
     }
 
     /**
-     * Flushes everything pending now. `strict` for hide, a switch and media (§1.6.1); `oneGo`
-     * extracts without yielding, for hide (§1.6.4): a flush already running then finishes its
+     * Flushes everything pending now. `strict` for hide, a switch and media; `oneGo`
+     * extracts without yielding, for hide: a flush already running then finishes its
      * extraction at once and sends strictly. Resolves once every batch was tried.
      */
     flush(options: FlushOptions = {}): Promise<void> {
@@ -1145,7 +1147,7 @@ export class Flusher {
         }
     }
 
-    /** Commits strictly what relaxed flushes stored, so their journals can be cleared. */
+    /** Commits strictly what routine flushes stored, so it is on disk. */
     private async syncStrict() {
         const behind = this.sessions.filter((session) => session.strictSeq < session.ackedSeq)
         if (!behind.length || !this.deps.syncStrict) return
@@ -1155,7 +1157,7 @@ export class Flusher {
             this.syncFailed = !(await this.deps.syncStrict())
             if (this.syncFailed) return
         } catch (error) {
-            // The journal stays until a later strict commit covers it.
+            // Left to the next strict commit.
             this.syncFailed = true
             this.deps.onError?.(error)
             return
@@ -1163,9 +1165,7 @@ export class Flusher {
         behind.forEach((session, i) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const seq = seqs[i]!
-            if (seq <= session.strictSeq) return
-            session.strictSeq = seq
-            this.deps.onCommitted?.(session, { seq, strict: true })
+            session.strictSeq = Math.max(session.strictSeq, seq)
         })
     }
 
@@ -1173,17 +1173,13 @@ export class Flusher {
     private retire() {
         for (const session of [...this.sessions]) {
             if (session === this.current) continue
-            // A blank start never edited stores nothing (§1.3.6).
+            // A blank start never edited stores nothing.
             if (!this.flushable(session) && session.reserved === undefined)
                 session.pending.length = 0
             // Held in memory only: kept, so a worker restart can send it again, while a database
             // may still take it (Try Again).
             if (this.noDatabase) session.memoryOnly.length = 0
             if (session.pending.length || session.memoryOnly.length) continue
-            // Committed relaxed only: kept until a strict commit covers it, so its journal clears,
-            // unless no database will answer in this tab any more.
-            if (this.deps.syncStrict && !this.noDatabase && session.ackedSeq > session.strictSeq)
-                continue
             this.sessions.splice(this.sessions.indexOf(session), 1)
             this.releaseParent(session)
             session.done?.()
@@ -1426,7 +1422,7 @@ export class Flusher {
                 : {}),
             ...(stack ? { stack: stack.wire } : {}),
             ...(identity ? { identity: unitOf(identity) } : {}),
-            durability: isStrict ? 'strict' : 'relaxed',
+            durability: isStrict ? 'strict' : 'default',
         }
         const mainMs = slices.reduce((sum, ms) => sum + ms, 0) + performance.now() - start
         // Read before the buffer is transferred.
@@ -1472,7 +1468,7 @@ export class Flusher {
                     session.docId = identity.docId
                     this.deps.onIdentity?.(session, identity)
                 }
-                // Taken over since the Save (R5, R6): the unit goes, and the record stands.
+                // Taken over since the Save: the unit goes, and the record stands.
                 if (identity && result.staleIdentity) {
                     if (session.identity === identity) session.identity = undefined
                     this.deps.onStaleIdentity?.(session)
@@ -1504,7 +1500,7 @@ export class Flusher {
                     const seq = Math.max(session.ackedSeq, result.lastSeq)
                     session.ackedSeq = seq
                     if (isStrict) session.strictSeq = Math.max(session.strictSeq, seq)
-                    this.deps.onCommitted?.(session, { seq, strict: isStrict })
+                    this.deps.onCommitted?.(session, seq)
                 }
                 if (result.chainMoved && !result.memory) this.deps.onChainMoved?.(session)
                 const failed = new Set(result.mediaFailed)
@@ -1537,7 +1533,7 @@ export class Flusher {
                 session.stack.unsync()
                 return 'retry'
             case 'missing':
-                // The closure check found windows gone (§1.6.6): forget only those, send them again.
+                // The closure check found windows gone: forget only those, send them again.
                 this.extractor.fail(batch, new Error('Missing windows'))
                 this.extractor.forgetHashes(new Set(result.chunks), plans)
                 for (const hash of result.media) this.resendMedia.add(hash)
@@ -1546,7 +1542,7 @@ export class Flusher {
                     session.stack.unsync()
                 return 'retry'
             case 'notHead':
-                // Another tab continued the chain: further entries go to a fork (§1.3.1, D10).
+                // Another tab continued the chain: further entries go to a fork.
                 this.extractor.fail(batch, new Error('Not the head'))
                 this.fork(session, result.lastSeq)
                 return 'stored'
@@ -1604,13 +1600,13 @@ export class Flusher {
 
     /**
      * Moves a session's pending entries to a new session in a new chain, copied from the old
-     * chain's record, whose parent is the stored session (D10). A stored session never changes
+     * chain's record, whose parent is the stored session. A stored session never changes
      * chain, so the chain that continued it keeps its whole history.
      */
     private fork(from: FlushSession, lastSeq: number | undefined): FlushSession {
         // Entries a kill after commit already stored stay the stored session's.
         const moving = from.pending.filter((entry) => lastSeq === undefined || entry.seq > lastSeq)
-        // A continuation that lost the race forks from the parent it continued (§1.3.1).
+        // A continuation that lost the race forks from the parent it continued.
         const parent =
             lastSeq !== undefined
                 ? { id: from.id, uptoSeq: lastSeq }

@@ -34,10 +34,10 @@ export const lyonNoticeFiles = [...lyonNoticeHashes.keys()]
 
 // The extension point for files copied from public/: a step that adds one lists it here (or in a list
 // beside this one, staged below), and in validateFileNames and tests/release/artifacts.test.mjs.
-// gate.js is the support gate (Part 1 §1.6.10): a classic script that index.html loads ahead of the bundle.
+// gate.js is the support gate: a classic script that index.html loads ahead of the bundle.
 export const staticFiles = ['favicon.ico', 'thumbnail.png', 'gate.js']
 export const builtinTypes = ['skin', 'particle', 'background', 'effect']
-// The four Built-in packages (Part 2, 2.5.7), and the Sonolus server folder made from them.
+// The four Built-in packages, and the Sonolus server folder made from them.
 export const builtinFiles = builtinTypes.map((type) => `builtin/${type}.scp`)
 const builtinServerFile =
     /^builtin-server\/sonolus\/(?:info|(?:skins|particles|backgrounds|effects)\/(?:info|list|nse-builtin)|repository\/[0-9a-f]{40})$/
@@ -173,7 +173,7 @@ async function dependencyNotices(root, kind) {
 }
 
 /**
- * The static Sonolus server the four Built-in packages make (Part 2, 2.5.7): every entry of every
+ * The static Sonolus server the four Built-in packages make: every entry of every
  * package, and one merged sonolus/info. Takes the packages' bytes by type; returns bytes by path.
  */
 export function builtinServerFiles(packages) {
@@ -198,7 +198,7 @@ export function builtinServerFiles(packages) {
     return files
 }
 
-/** The web-only static files (Part 2, 2.7.1), the Built-in packages and the server folder made from them. */
+/** The web-only static files, the Built-in packages and the server folder made from them. */
 export async function stageWebStatic(root, destination) {
     await mkdir(destination, { recursive: true })
     for (const file of staticFiles) {
@@ -366,7 +366,7 @@ function validAppVersion(manifest) {
     )
 }
 
-// The Vite entries (Part 5 adds /privacy/ and /app/); the third-party notice pages are static documents.
+// The Vite entries, /privacy/ and /app/ included; the third-party notice pages are static documents.
 const pageEntries = /^(?:index|privacy\/index|app\/index)\.html$/
 
 // The support gate is a plain classic script with no async or defer, ahead of every module script.
@@ -376,11 +376,13 @@ function gateComesFirst(html) {
     return Boolean(gate && module && gate.index < module.index)
 }
 
-// The pages' policy is the web policy hashing exactly their inline scripts, first in <head>.
+// The pages' policy is the web policy hashing exactly their inline scripts, first in <head>, with
+// the build's analytics origin as its only cross-origin source.
 async function checkPages(directory, files, manifest) {
     for (const file of files.filter((file) => pageEntries.test(file))) {
         const html = (await regularFile(join(directory, file))).toString('utf8')
-        if (pageMetaPolicy(html) !== webPolicy(inlineScripts(html)) || !metaIsFirst(html))
+        const policy = webPolicy(inlineScripts(html), manifest.analytics?.origin)
+        if (pageMetaPolicy(html) !== policy || !metaIsFirst(html))
             throw new Error(`Content Security Policy differs from the web policy: ${file}`)
     }
     const index = (await regularFile(join(directory, 'index.html'))).toString('utf8')
@@ -393,6 +395,31 @@ async function checkPages(directory, files, manifest) {
 // The apps' bridge and the dev-only sample seeder (src/local/seed.ts) must not reach the web build.
 // A production-site build names no test key but these (src/platform/testKeys.ts); the test site may.
 const liveTestKeys = ['nse.test.version', 'nse.test.storage', 'nse.test.startBlank']
+
+// The usage statistics' client is one chunk, which only a build with a target has, and the bundle
+// names that target.
+async function checkAnalytics(directory, files, analytics) {
+    const scripts = []
+    for (const file of files.filter((file) => file.endsWith('.js')))
+        scripts.push({ file, text: (await regularFile(join(directory, file))).toString('utf8') })
+    const clients = scripts.filter(({ text }) => text.includes('/api/batch'))
+    if (!analytics) {
+        if (clients.length)
+            throw new Error(`Release without analytics contains its client: ${clients[0].file}`)
+        return
+    }
+    if (clients.length !== 1) throw new Error('Release requires exactly one analytics client')
+    for (const value of [analytics.origin, analytics.website])
+        if (!scripts.some(({ text }) => text.includes(value)))
+            throw new Error(`Release does not name its analytics target: ${value}`)
+}
+
+const validAnalytics = (analytics) =>
+    analytics === null ||
+    (typeof analytics === 'object' &&
+        Object.keys(analytics).sort().join() === 'origin,website' &&
+        /^https:\/\/[a-z0-9.-]+(?::\d+)?$/.test(analytics.origin) &&
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(analytics.website))
 
 async function checkBundles(directory, files, site) {
     for (const file of files.filter((file) => /\.(?:js|html|css)$/.test(file))) {
@@ -419,11 +446,13 @@ export async function checkRelease(directory, expected = {}) {
         typeof manifest.atTag !== 'boolean' ||
         !validAppVersion(manifest) ||
         !['production', 'test'].includes(manifest.site) ||
-        typeof manifest.sourceDirty !== 'boolean'
+        typeof manifest.sourceDirty !== 'boolean' ||
+        !validAnalytics(manifest.analytics)
     )
         throw new Error('Invalid release metadata')
     for (const [key, value] of Object.entries(expected)) {
-        if (manifest[key] !== value) throw new Error(`Release metadata mismatch: ${key}`)
+        if (JSON.stringify(manifest[key]) !== JSON.stringify(value))
+            throw new Error(`Release metadata mismatch: ${key}`)
     }
     const files = await listFiles(directory)
     validateFileNames(files, assets)
@@ -431,6 +460,7 @@ export async function checkRelease(directory, expected = {}) {
     await checkBuiltinRelease(directory, files)
     await checkPages(directory, files, manifest)
     await checkBundles(directory, files, manifest.site)
+    await checkAnalytics(directory, files, manifest.analytics)
     const recorded = Object.keys(manifest.files).sort()
     if (
         JSON.stringify(recorded) !==

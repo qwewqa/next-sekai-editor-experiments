@@ -22,10 +22,9 @@ import {
     type ServerFetchInit,
 } from './types'
 
-// The in-memory platform for tests, injected with setPlatformForTests. Step 1a covers the 1a
-// subset; Step 1c adds inspect, read and expected with level data's sha256 fingerprint; Step 6
-// the `.nxsp` revision semantics (the revision id and `<cd>`, Part 0 §0.9.6), pinned sources whose
-// reads fail once the file changed, as Chromium's do (§0.9.1), plans, and fault points.
+// The in-memory platform for tests, injected with setPlatformForTests. It has the `.nxsp` revision
+// semantics (the revision id and `<cd>`), pinned sources whose reads fail once the file changed, as
+// Chromium's do, plans, and fault points.
 
 /** Where a write can be interrupted: after its first check, after the build, before `close()`, after it. */
 export type MockPoint = 'checked' | 'built' | 'beforeClose' | 'closed'
@@ -57,7 +56,7 @@ export type MockPlatform = Platform & {
     /**
      * What each save picker (`pickSaveFile`) returns in turn: a target, or a dismissal (`'cancel'`;
      * `'download'` is no target either). A picked target is emptied when it exists and created
-     * empty when it does not (D5). A save without a target only downloads.
+     * empty when it does not. A save without a target only downloads.
      */
     readonly saveTargets: (FileTarget | 'cancel' | 'download')[]
     /** Each `pickSaveFile` call's request. */
@@ -166,7 +165,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
 
     /**
      * The file as `getFile()` gives it: a snapshot whose reads fail with `NotReadableError` once
-     * the file changed, as Chromium's do (Part 0 §0.9.1).
+     * the file changed, as Chromium's do.
      */
     const fileOf = (name: string) => {
         const blob = files.get(name)
@@ -270,7 +269,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
                 const { expected } = req
                 // Source integrity: the File taken at the check is the only source of the old bytes.
                 const file = fileOf(name)
-                // A write-back's empty target holds nothing to keep (R9): written, with nothing to copy.
+                // A write-back's empty target holds nothing to keep: written, with nothing to copy.
                 const overEmpty = () =>
                     !!req.overEmpty && kind === 'nxsp' && fileOf(name)?.size === 0
                 const emptied = overEmpty()
@@ -343,7 +342,7 @@ export const createMockPlatform = (options: MockPlatformOptions = {}): MockPlatf
 
     const pickerCalls: PickSaveRequest[] = []
 
-    /** A save picker alone: the next target, emptied when it exists, as Chromium's (D5). */
+    /** A save picker alone: the next target, emptied when it exists, as Chromium's. */
     const pickSaveFile = async (req: PickSaveRequest): Promise<FileTarget | undefined> => {
         pickerCalls.push(req)
         await Promise.resolve()

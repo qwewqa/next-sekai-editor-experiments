@@ -15,7 +15,7 @@ import {
 import type { KindName } from '../records/schema'
 import type { ChangeTotals, DiffInput, KindCandidates } from './diff'
 
-// The page's narrowing (Part 1 §1.4.11): two states in memory, for entries not stored yet. States
+// The page's narrowing: two states in memory, for entries not stored yet. States
 // along one undo stack share every untouched slide and grid bucket, so only those that differ by
 // identity give their records; unrelated states give all of theirs, which cancel in the diff.
 

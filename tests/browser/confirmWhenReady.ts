@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
-// A Confirm or Choice dialog ignores activations in its first 300 ms (Part 1 §1.4.1). A press inside
+// A Confirm or Choice dialog ignores activations in its first 300 ms. A press inside
 // the guard is a no-op by design, so these helpers press again until the dialog is gone: they wait on
 // what the dialog does, never on a fixed time. `dialog` must name that one dialog for good; with
 // dialogs stacked, `.nth(i)` keeps pointing at the same one once it closes, where `.last()` would not.
@@ -24,3 +24,9 @@ export const confirmKeyWhenReady = (target: Locator | Page, key: string, dialog:
         () => ('keyboard' in target ? target.keyboard.press(key) : target.press(key)),
         dialog,
     )
+
+/** Answers New's "Unsaved Changes" question with New. */
+export const confirmNew = (page: Page) => {
+    const dialog = page.getByRole('dialog', { name: 'Unsaved Changes' })
+    return confirmWhenReady(dialog.getByRole('button', { name: 'New' }), dialog)
+}

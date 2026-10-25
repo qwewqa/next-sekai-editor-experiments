@@ -2,7 +2,7 @@ import { liveState } from '../../history/stack'
 import { documentDeviceId, type DeviceSource } from '../../local/deviceId'
 import { fromHex16, toHex } from '../../local/hash'
 import { hasWebLocks } from '../../local/locks'
-import type { Revocation, SaveEntryForm } from '../../local/save/bind'
+import type { SaveEntryForm } from '../../local/save/bind'
 import type { IdentityUnit } from '../../local/save/commit'
 import { storedRead, type ReadWorker } from '../../local/storedRead'
 import { platform } from '../../platform'
@@ -10,11 +10,11 @@ import { detection } from '../../platform/detect'
 import type { LockMode } from '../../platform/types'
 import { storageGet, storageKey, storageRemove, storageSet } from '../../storage'
 
-// What the Save core keeps outside storage (Part 1 §1.4.7): this browser's device, the handles
-// this tab picked, `nse-bind`, `revoke.<chainId>` (R11) and the marker of a write whose binding
-// isn't stored yet (our own completed Save).
+// What the Save core keeps outside storage: this browser's device, the handles
+// this tab picked, `nse-bind` and the marker of a write whose binding isn't stored yet (our own
+// completed Save).
 
-/** The lock that keeps one writer per file (§1.6.6, owner decision log D5). */
+/** The lock that keeps one writer per file. */
 export const BIND_LOCK = 'nse-bind'
 
 /**
@@ -29,7 +29,7 @@ export const withBind = <T>(mode: LockMode, fn: () => Promise<T>): Promise<T> =>
 let memoryDeviceId: string | undefined
 
 /**
- * This browser's `deviceId` (§1.3.3), kept in localStorage; in memory where it can't be. Files
+ * This browser's `deviceId`, kept in localStorage; in memory where it can't be. Files
  * never hold it: they record the device id derived from it per lineage (`ownDeviceId`).
  */
 export const deviceId = () => {
@@ -44,7 +44,7 @@ export const deviceId = () => {
     return memoryDeviceId
 }
 
-/** "Web (Chrome)", "Web (Edge)", "Web (Firefox)", "Web (Safari)" (§1.3.3). */
+/** "Web (Chrome)", "Web (Edge)", "Web (Firefox)", "Web (Safari)". */
 export const deviceLabel = () => {
     const { engine } = detection()
     const agent = typeof navigator === 'undefined' ? '' : navigator.userAgent
@@ -60,12 +60,12 @@ export const deviceLabel = () => {
     }
 }
 
-/** What a Save is given: the file records the device of its lineage, derived from it (§1.3.3). */
+/** What a Save is given: the file records the device of its lineage, derived from it. */
 export const deviceSource = (): DeviceSource => ({ deviceId: deviceId(), label: deviceLabel() })
 
 let ownDevice: { deviceId: string; lineageId: string; id: string } | undefined
 
-/** This browser's device id in files of `lineageId` (§1.3.3): a save there with it is its own. */
+/** This browser's device id in files of `lineageId`: a save there with it is its own. */
 export const ownDeviceId = (lineageId: string) => {
     const id = deviceId()
     if (ownDevice?.deviceId !== id || ownDevice.lineageId !== lineageId)
@@ -74,7 +74,7 @@ export const ownDeviceId = (lineageId: string) => {
 }
 
 // The handles this tab picked or read, by chain: the main thread's own copy for permission
-// requests and writes (§1.3.2).
+// requests and writes.
 const handles = new Map<string, { name: string; handle: FileSystemFileHandle }>()
 
 export const rememberHandle = (chainId: string, handle: FileSystemFileHandle) => {
@@ -91,59 +91,7 @@ export const heldHandle = (chainId: string, name: string) => {
     return held?.name === name ? held.handle : undefined
 }
 
-// R11: a revocation storage couldn't take.
-
-const revokeKey = (chainId: string) => `revoke.${chainId}`
-
-export const readRevocation = (chainId: string): Revocation | undefined => {
-    const value = storageGet(revokeKey(chainId), undefined) as Partial<Revocation> | undefined
-    if (
-        typeof value?.by !== 'string' ||
-        typeof value.at !== 'number' ||
-        typeof value.name !== 'string' ||
-        typeof value.fileAt !== 'number'
-    )
-        return
-    return value as Revocation
-}
-
-/** Writes a revocation and reads it back: true only when it's there. */
-export const writeRevocation = (chainId: string, revoke: Revocation) => {
-    try {
-        storageSet(revokeKey(chainId), revoke)
-        return JSON.stringify(readRevocation(chainId)) === JSON.stringify(revoke)
-    } catch {
-        return false
-    }
-}
-
-export const removeRevocation = (chainId: string) => {
-    try {
-        storageRemove(revokeKey(chainId))
-    } catch {
-        // Applied already: a stale key names a binding that's gone, and is skipped.
-    }
-}
-
-/** Every chain with a revocation waiting. */
-export const pendingRevocations = () => {
-    const prefix = storageKey('revoke.')
-    const found: { chainId: string; revoke: Revocation }[] = []
-    try {
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i)
-            if (!key?.startsWith(prefix)) continue
-            const chainId = key.slice(prefix.length)
-            const revoke = readRevocation(chainId)
-            if (revoke) found.push({ chainId, revoke })
-        }
-    } catch {
-        // No localStorage: nothing was kept there.
-    }
-    return found
-}
-
-// The marker of a write not yet recorded: what our own completed Save commits (§1.4.7).
+// The marker of a write not yet recorded: what our own completed Save commits.
 
 /** A write whose binding isn't stored yet: its `save` entry and identity unit, hashes as hex. */
 export type SaveMarker = {
@@ -167,9 +115,10 @@ export const writeMarker = (marker: SaveMarker) => {
 }
 
 export const readMarker = (chainId: string): SaveMarker | undefined => {
-    const value = storageGet(markerKey(chainId), undefined) as SaveMarker | undefined
-    return typeof value?.entry.revisionId === 'string' && typeof value.unit.docId === 'string'
-        ? value
+    // A marker this build did not write may lack either part.
+    const value = storageGet(markerKey(chainId), undefined) as Partial<SaveMarker> | undefined
+    return typeof value?.entry?.revisionId === 'string' && typeof value.unit?.docId === 'string'
+        ? (value as SaveMarker)
         : undefined
 }
 
@@ -190,18 +139,18 @@ export type KeptCopies = {
 }
 
 /**
- * Removes what a deleted chain left on this side of storage: its Save marker, its revocation and
- * its kept bytes, at a load's idle time. Each goes only when the record read worked and found no
- * chain (definite deletion).
+ * Removes what a deleted chain left on this side of storage: its Save marker and its kept bytes,
+ * at a load's idle time. Each goes only when the record read worked and found no chain (definite
+ * deletion).
  */
 export const reclaimOrphans = async (worker: ReadWorker, kept?: KeptCopies) => {
     const chains = new Set<string>()
     try {
-        for (const prefix of [storageKey('saving.'), storageKey('revoke.')])
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i)
-                if (key?.startsWith(prefix)) chains.add(key.slice(prefix.length))
-            }
+        const prefix = storageKey('saving.')
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key?.startsWith(prefix)) chains.add(key.slice(prefix.length))
+        }
     } catch {
         // No localStorage: only kept bytes to look at.
     }
@@ -211,7 +160,6 @@ export const reclaimOrphans = async (worker: ReadWorker, kept?: KeptCopies) => {
         // A failed read keeps everything: it goes only when the read worked and found no chain.
         if (read.storedRead !== 'value' || read.storedValue !== undefined) continue
         removeMarker(chainId)
-        removeRevocation(chainId)
         if (copies.has(chainId)) await kept?.remove(chainId)
     }
 }
@@ -245,5 +193,5 @@ export const markerFile = (file: Record<string, unknown>) => {
     return { ...rest, hash: hash instanceof Uint8Array ? toHex(hash) : String(hash) }
 }
 
-/** The live state, never a peek (Save acts on the live session, §1.4.7). */
+/** The live state, never a peek (Save acts on the live session). */
 export const savedState = () => liveState.value

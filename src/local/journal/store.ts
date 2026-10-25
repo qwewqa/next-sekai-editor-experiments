@@ -1,22 +1,21 @@
 import type { JournalFound, JournalLike, JournalStore } from '../../platform/types'
 import { trimOptionalJournalContext } from './format'
 
-// `JournalStore` over localStorage (§1.6.4 #7, §1.6.11.3): one key per session, overwritten on
+// `JournalStore` over localStorage: one key per session, overwritten on
 // each write and verified by reading it back; a write that would pass the size limits isn't
 // made. A store is one page load's: it never replaces or clears a key whose text it neither wrote
-// nor loaded (§1.6.7's backstop). The mock runs the same code over an in-memory Storage.
+// nor loaded (the backstop). The mock runs the same code over an in-memory Storage.
 
-/** One key's most characters (§1.6.4: about 1 MB; coconut's journal is under 100 KB). */
+/** One key's most characters (about 1 MB; coconut's journal is under 100 KB). */
 export const JOURNAL_KEY_LIMIT = 1024 * 1024
 /**
- * All `journal.*` and `legacyRecovery` keys together, and until the migration retires it today's
- * auto save, which leaves room for settings.
+ * All `journal.*` keys together, and until the migration retires it today's auto save, which
+ * leaves room for settings.
  */
 export const JOURNAL_TOTAL_LIMIT = 4 * 1024 * 1024
 
 const JOURNAL = 'journal.'
-const LEGACY = 'legacyRecovery'
-/** Today's auto save (`autoSave.levelData`, `autoSave.unreadable`), which Step 4 migrates. */
+/** Today's auto save (`autoSave.levelData`, `autoSave.unreadable`). */
 const AUTO_SAVE = 'autoSave.'
 const AUTO_SAVE_SLOT = 'autoSave.levelData'
 
@@ -40,21 +39,17 @@ export const storageJournalStore = (
     }
 
     /**
-     * Characters the other journals, the legacy slot and the auto save hold, with their keys, and
-     * room for the auto save to grow to this journal's size: it holds the same chart, so journals
-     * never push its next write over the browser's quota.
+     * Characters the other journals and the auto save hold, with their keys, and room for the
+     * auto save to grow to this journal's size: it holds the same chart, so journals never push
+     * its next write over the browser's quota.
      */
-    const othersSize = (store: JournalStorage, own: string, size: number, skip?: string) => {
+    const othersSize = (store: JournalStorage, own: string, size: number) => {
         let total = 0
         let autoSave = 0
         for (let i = 0; i < store.length; i++) {
             const key = store.key(i)
-            if (key === null || key === own || key === skip) continue
-            const counted =
-                key.startsWith(prefix + JOURNAL) ||
-                key === prefix + LEGACY ||
-                key.startsWith(prefix + AUTO_SAVE)
-            if (!counted) continue
+            if (key === null || key === own) continue
+            if (!key.startsWith(prefix + JOURNAL) && !key.startsWith(prefix + AUTO_SAVE)) continue
             const length = store.getItem(key)?.length ?? 0
             if (key === prefix + AUTO_SAVE_SLOT) autoSave = length
             total += key.length + length
@@ -80,24 +75,17 @@ export const storageJournalStore = (
                 if (!ours(store, key)) return false
                 let candidate = journal
                 let text = JSON.stringify(candidate)
-                const fits = (skip?: string) =>
-                    othersSize(store, key, text.length, skip) + key.length + text.length <=
+                const fits = () =>
+                    othersSize(store, key, text.length) + key.length + text.length <=
                     JOURNAL_TOTAL_LIMIT
-                while (text.length > JOURNAL_KEY_LIMIT || (!fits() && !fits(prefix + LEGACY))) {
+                while (text.length > JOURNAL_KEY_LIMIT || !fits()) {
                     const trimmed = trimOptionalJournalContext(candidate)
                     if (!trimmed) return false
                     candidate = trimmed
                     text = JSON.stringify(candidate)
                 }
-                if (!fits()) {
-                    // The legacy slot is the one left out first when space is short (§1.6.4),
-                    // only when that makes room.
-                    if (store.getItem(prefix + LEGACY) === null || !fits(prefix + LEGACY))
-                        return false
-                    store.removeItem(prefix + LEGACY)
-                }
                 store.setItem(key, text)
-                // Only a write read back intact counts (§1.6.4): the same length and characters.
+                // Only a write read back intact counts: the same length and characters.
                 const back = store.getItem(key)
                 const verified = back !== null && back.length === text.length && back === text
                 owned.set(key, text)

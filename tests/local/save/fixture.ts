@@ -115,6 +115,8 @@ export class Fixture {
     readonly world: World
     readonly tab: Tab
     readonly store: SaveStore
+    /** The storage core, for the worker's handlers. */
+    core!: ReturnType<typeof workerCore>
     readonly chainId = nextId('chain-')
     readonly docId = nextId('doc-')
     sessions: FixtureSession[] = []
@@ -139,6 +141,7 @@ export class Fixture {
             write: (stores, fn, options) => tab.run(() => core.write(stores, fn, options)),
         }
         const fixture = new Fixture(world, tab, store)
+        fixture.core = core
         await fixture.putChain({ docId: fixture.docId, lineageId: 'lineage' })
         return fixture
     }
@@ -342,7 +345,7 @@ export class Fixture {
         })
     }
 
-    /** A reserved `seq` no row took: a Save that wrote nothing let it go (a hole the plan allows). */
+    /** A reserved `seq` no row took: a Save that wrote nothing let it go (a hole that is allowed). */
     isHole = (sessionId: string, seq: number) =>
         this.reserved.some((each) => each.sessionId === sessionId && each.seq === seq) &&
         !this.sessions.some(
@@ -622,7 +625,7 @@ export const commit = async (
     assert.equal(committed, true)
 }
 
-/** The binding a write's identity unit stores (§1.6.11.2). */
+/** The binding a write's identity unit stores. */
 export const bindingOf = (
     built: BuiltSave,
     reserved: ReturnType<Fixture['reserveSave']>,
@@ -650,7 +653,7 @@ export const bindingOf = (
     }
 }
 
-/** A written file's rows with their states (§1.6.11.6): `kind|time|snapshot` → count, held only. */
+/** A written file's rows with their states: `kind|time|snapshot` → count, held only. */
 export const heldRows = async (blob: Blob) => {
     const read = await readNxsp(blob)
     if (read.kind !== 'nxsp' || !read.history) throw new Error('No history')
@@ -673,7 +676,7 @@ export const hasUv = spawnSync('uv', ['--version'], { encoding: 'utf8' }).status
 
 /**
  * Runs `tools/nxsp_check.py` over files in order (oldest first), which also checks each file's
- * `completeFrom` against every earlier file it names (§1.6.11.9). Returns its status and output.
+ * `completeFrom` against every earlier file it names. Returns its status and output.
  */
 export const checkFiles = async (files: readonly Blob[]) => {
     const dir = mkdtempSync(join(tmpdir(), 'nse-save-'))
@@ -698,7 +701,7 @@ export const checkFiles = async (files: readonly Blob[]) => {
 }
 
 /**
- * "Replay defines the stack" (§1.3.9) for a written file: its undo stack is a window of replay of
+ * "Replay defines the stack" for a written file: its undo stack is a window of replay of
  * its own chronology, numbered from its first entry; when replay can't follow the chronology (a
  * session removed from its middle), the stack is the head alone.
  */

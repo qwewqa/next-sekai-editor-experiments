@@ -17,9 +17,10 @@ import {
     restoreFromStrip,
     rowTitles,
     timeline,
+    timelineRead,
 } from './historyJourney'
 
-// Two tabs and continuation (D2 plan §3.3, F3 and F4): each tab's Timeline lists its own
+// Two tabs and continuation: each tab's Timeline lists its own
 // session's rows, a fork or a continuation divides from what it came from, and one tab's History
 // never reaches the other.
 
@@ -154,7 +155,7 @@ const recordNotices = (page: Page) =>
 const seenNotices = (page: Page) =>
     page.evaluate(() => (window as unknown as { seenNotices: string[] }).seenNotices)
 
-test('F3: a duplicated tab forks with a divider, and nothing it does reaches the first tab', async ({
+test('a duplicated tab forks with a divider, and nothing it does reaches the first tab', async ({
     page,
     context,
 }) => {
@@ -166,6 +167,7 @@ test('F3: a duplicated tab forks with a divider, and nothing it does reaches the
     const original = await liveOf(page)
     expect(original.notes).toHaveLength(2)
     await openPanel(page)
+    await timelineRead(page, 'panel')
     await recordNotices(page)
     const aRows = await rowTitles(page, 'panel')
 
@@ -173,6 +175,7 @@ test('F3: a duplicated tab forks with a divider, and nothing it does reaches the
     await edits(b, 'B', 2)
     await flush(b)
     await openHistory(b)
+    await timelineRead(b)
     const listed = await rowsAndDividers(b)
     const at = listed.findIndex((text) => text?.startsWith('| '))
     expect(listed.slice(0, at)).toEqual([expect.stringMatching(/^Now/), 'B 2', 'B 1'])
@@ -238,7 +241,7 @@ const chainKinds = (page: Page) =>
         return chain
     })
 
-test('F4: a new visit continues with a divider, its earlier rows peek and restore, and Go To counts both visits', async ({
+test('a new visit continues with a divider, its earlier rows peek and restore, and Go To counts both visits', async ({
     page,
     context,
 }) => {

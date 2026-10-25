@@ -23,10 +23,11 @@ import {
     rowLabels,
     rowTitles,
     timeline,
+    timelineRead,
 } from './historyJourney'
 import { pressSave, readFile, submitSave } from './saveFlows'
 
-// D2 package P2: reload, lazy slots, queued moves and recovery (testplan/plan.md §3.2, R1 to R6).
+// Reload, lazy slots, queued moves and recovery.
 // After a reload the stack holds only its head and the head's neighbours (the rest are stored
 // roots), so Undo and Redo past them wait for the storage worker: the worker's slot read is held
 // to keep a move waiting. The queued-move rules themselves are unit-tested in
@@ -264,7 +265,7 @@ test.beforeEach(async ({ page }) => {
     await recordNotices(page)
 })
 
-test('R1: Undo by real keys over unloaded slots waits, shows the busy cursor, then lands exactly', async ({
+test('Undo by real keys over unloaded slots waits, shows the busy cursor, then lands exactly', async ({
     page,
 }) => {
     test.slow()
@@ -316,7 +317,7 @@ test('R1: Undo by real keys over unloaded slots waits, shows the busy cursor, th
     await expect.poll(() => lifeOf(page)).toBe(head - 3)
 })
 
-test('R2: an edit while Undo waits applies to the chart on screen, and the Undo never lands', async ({
+test('an edit while Undo waits applies to the chart on screen, and the Undo never lands', async ({
     page,
 }) => {
     test.slow()
@@ -349,7 +350,7 @@ test('R2: an edit while Undo waits applies to the chart on screen, and the Undo 
     expect(await moveNotices(page)).toHaveLength(1)
 })
 
-test('R3: a queued Undo onto an unloadable slot changes nothing, and the next press undoes one step', async ({
+test('a queued Undo onto an unloadable slot changes nothing, and the next press undoes one step', async ({
     page,
 }) => {
     test.slow()
@@ -384,7 +385,7 @@ test('R3: a queued Undo onto an unloadable slot changes nothing, and the next pr
     expect(await lifeOf(page)).toBe(head - 2)
 })
 
-test('R4: a step eight back in the Timeline of a reloaded stack peeks and restores', async ({
+test('a step eight back in the Timeline of a reloaded stack peeks and restores', async ({
     page,
 }) => {
     test.slow()
@@ -410,7 +411,7 @@ test('R4: a step eight back in the Timeline of a reloaded stack peeks and restor
     await expect.poll(() => lifeOf(page)).toBe(head)
 })
 
-test('R5: the Timeline survives a reload exactly, with an edit only the journal holds', async ({
+test('the Timeline survives a reload exactly, with an edit only the journal holds', async ({
     page,
 }) => {
     test.slow()
@@ -435,6 +436,7 @@ test('R5: the Timeline survives a reload exactly, with an edit only the journal 
     await tapWhileHeld(page, { lane: -4, beat: 5 })
     const live = await liveOf(page)
     await openHistory(page)
+    await timelineRead(page)
     const titles = await rowTitles(page)
     const labels = await rowLabels(page)
     const count = await timeline(page).getAttribute('aria-rowcount')
@@ -449,6 +451,7 @@ test('R5: the Timeline survives a reload exactly, with an edit only the journal 
     await reloadAndWait(page)
     expect(await liveOf(page)).toEqual(live)
     await openHistory(page)
+    await timelineRead(page)
     // The journal holds the chart, not the step that made it: the edit comes back as a Recovered
     // entry in its place. Every stored row is as it was, with its time.
     const addedOne = en.tools.note.added.split('|')[0]!.replace('{0}', '1')
@@ -465,7 +468,7 @@ test('R5: the Timeline survives a reload exactly, with an edit only the journal 
     expect(await timeline(page).getAttribute('aria-rowcount')).toBe(count)
 })
 
-test('R6: after a crash the recovered rows are in the Timeline, and peek and Restore work on them', async ({
+test('after a crash the recovered rows are in the Timeline, and peek and Restore work on them', async ({
     playwright,
     browserName,
 }, testInfo) => {

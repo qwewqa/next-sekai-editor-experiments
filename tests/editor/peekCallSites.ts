@@ -3,7 +3,7 @@
 
 /**
  * Every direct pushState and replaceState call, by file, and what keeps it from writing while
- * peeking (§1.4.11): pushState then throws in development and tests, and replaceState changes
+ * peeking: pushState then throws in development and tests, and replaceState changes
  * only the peeked state.
  * - command: runs from a command runCommand refuses while peeking
  * - tool: a tool other than select, suspended while peeking
@@ -84,4 +84,6 @@ export const callSites: Record<string, { push: number; replace: number; gate: Ga
     // Enabling dynamic stages, from the stage commands and the stage event tools.
     'src/history/dynamicStages.ts': { push: 1, replace: 0, gate: 'command' },
     'src/history/peek.ts': { push: 1, replace: 0, gate: 'restore' },
+    // The perf harness's selection, in perf builds only.
+    'src/perf/hook.ts': { push: 0, replace: 2, gate: 'selection' },
 }

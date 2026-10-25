@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue'
 import type { StorageStatus } from '../../local/worker/core'
 import { platform } from '../../platform'
 import {
@@ -9,7 +10,7 @@ import {
 } from '../../platform/detect'
 import type { PlatformOs } from '../../platform/types'
 
-// The storage line at the top of Settings › Local Data (Part 1 §1.4.13): one static line, the
+// The storage line at the top of Settings › Local Data: one static line, the
 // first condition that holds. It never overclaims, and says what can still remove stored work.
 
 export type StorageLineKey =
@@ -23,15 +24,15 @@ export type StorageLineKey =
     | 'default'
 
 export type StorageFacts = {
-    /** Storage unavailable, insecure origins included (§1.6.5). */
+    /** Storage unavailable, insecure origins included. */
     unavailable: boolean
     privateSuspected: boolean
-    /** Likely an app’s built-in browser (§1.6.10). */
+    /** Likely an app’s built-in browser. */
     inAppBrowser: boolean
     persisted: boolean
     os: PlatformOs
     engine: Engine
-    /** A Home Screen web app (§1.7.5). */
+    /** A Home Screen web app. */
     standalone: boolean
 }
 
@@ -53,31 +54,87 @@ export const storageLineKey = (facts: StorageFacts): StorageLineKey => {
     return facts.persisted ? 'persisted' : 'default'
 }
 
-/** What the browser says about its storage (§1.6.9), with the test override first. */
-export const readBrowserFacts = async () => {
+/** The browser's total for this origin; absent where it gives no usable figures. */
+export type StorageTotal = { usage: number; quota: number }
+
+type BrowserStorage = {
+    facts: {
+        persisted: boolean
+        privateSuspected: boolean
+        inAppBrowser: boolean
+        os: PlatformOs
+        engine: Engine
+        standalone: boolean
+    }
+    total: StorageTotal | undefined
+}
+
+/**
+ * What the browser says about its storage, with the test override first: its facts and the total,
+ * from one `estimate()`.
+ */
+const readStorage = async (): Promise<BrowserStorage> => {
     const override = platformOverride()
     let persisted = override.persisted
-    let quota: number | undefined
+    let estimate: StorageEstimate | undefined
     try {
         persisted ??= await navigator.storage.persisted()
     } catch {
         // Unknown counts as not persisted.
     }
-    if (override.privateSuspected === undefined)
-        try {
-            quota = (await navigator.storage.estimate()).quota
-        } catch {
-            // Without an estimate nothing suggests a private window.
-        }
+    try {
+        estimate = await navigator.storage.estimate()
+    } catch {
+        // Without an estimate nothing suggests a private window, and no total shows.
+    }
+    const { usage, quota } = estimate ?? {}
     const { os, engine } = detection()
     return {
-        persisted: persisted === true,
-        privateSuspected:
-            override.privateSuspected ??
-            (quota !== undefined && suspectPrivate({ persisted: persisted === true, quota })),
-        inAppBrowser: platform.capabilities.likelyInAppBrowser,
-        os,
-        engine,
-        standalone: isStandalone(),
+        facts: {
+            persisted: persisted === true,
+            privateSuspected:
+                override.privateSuspected ??
+                (quota !== undefined && suspectPrivate({ persisted: persisted === true, quota })),
+            inAppBrowser: platform.capabilities.likelyInAppBrowser,
+            os,
+            engine,
+            standalone: isStandalone(),
+        },
+        // Without both figures, no number shows.
+        total:
+            usage !== undefined && quota !== undefined && Number.isFinite(usage) && quota > 0
+                ? { usage, quota }
+                : undefined,
     }
+}
+
+/**
+ * The last read. Local Data shows it at once and updates in place when a newer read ends. Absent
+ * until the first read ends.
+ */
+export const browserStorage = shallowRef<BrowserStorage>()
+
+let reading: Promise<BrowserStorage> | undefined
+
+/** Reads the storage figures now (a read already under way is shared), and keeps the result. */
+export const readBrowserStorage = () =>
+    (reading ??= readStorage()
+        .then((read) => (browserStorage.value = read))
+        .finally(() => {
+            reading = undefined
+        }))
+
+/** What the browser says about its storage. */
+export const readBrowserFacts = async () => (await readBrowserStorage()).facts
+
+/**
+ * Starts the first read once the page is idle after startup, with the same timing as the close
+ * prompt's modules (`closePrompt.ts`).
+ */
+export const readStorageWhenIdle = () => {
+    const run = () => {
+        if (!browserStorage.value && !reading) void readBrowserStorage()
+    }
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 3000 })
+    else setTimeout(run, 1000)
 }

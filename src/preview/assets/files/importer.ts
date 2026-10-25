@@ -9,7 +9,7 @@ import { LIMITS } from './limits'
 import type { SourcePackage } from './package'
 import { repackItem } from './repack'
 
-// Importing one item (Part 2, 2.5.2): check it all, repack it into a standard single-item
+// Importing one item: check it all, repack it into a standard single-item
 // package and name it by its sha256. Nothing is stored here; the caller puts the record.
 
 export type ImportContext = {

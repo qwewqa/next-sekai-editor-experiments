@@ -6,7 +6,7 @@ import { i18n } from '../i18n'
 import { panelText } from './assets/fallbackText'
 import { dismissFallback, panelFallbacks } from './assets/active'
 
-// The small line a fallback gets in the panel (Part 2, 2.4.2): at load or after the user's own
+// The small line a fallback gets in the panel: at load or after the user's own
 // change, once per choice and reason.
 const strings = computed(() => i18n.value.commands.previewAssets)
 </script>
@@ -30,7 +30,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
             <div class="ml-auto flex shrink-0 items-center gap-1">
                 <button
                     type="button"
-                    class="btn focus-out btn-secondary h-7 shrink-0 rounded-full px-3"
+                    class="btn focus-out btn-secondary relative h-7 shrink-0 rounded-full px-3 before:absolute before:-inset-0.5"
                     data-asset-fallback-open
                     @click="showPreviewAssets(fallback.type)"
                 >
@@ -38,7 +38,7 @@ const strings = computed(() => i18n.value.commands.previewAssets)
                 </button>
                 <button
                     type="button"
-                    class="ghost focus-out ghost-band flex size-7 shrink-0 items-center justify-center rounded-full"
+                    class="ghost focus-out ghost-band relative flex size-7 shrink-0 items-center justify-center rounded-full before:absolute before:-inset-0.5"
                     :aria-label="i18n.modals.close"
                     :title="i18n.modals.close"
                     data-asset-fallback-dismiss

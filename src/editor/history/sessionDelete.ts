@@ -4,7 +4,7 @@ import type { Mark, MarkDeletedResult, UndoDeletedResult } from '../../local/del
 import type { RecentChain } from '../../local/recent'
 import { interpolateRaw } from '../../utils/interpolate'
 
-// Delete's UI model (Part 1 §1.4.10.6): the chains this tab marked for Delete and their inline
+// Delete's UI model: the chains this tab marked for Delete and their inline
 // Undo rows. Delete only runs from a visible list, so the row carries Undo and what came of it;
 // a polite live region in the list announces each outcome. The marks live here in memory only;
 // storage keeps the `deleting` mark and the sweep needs nothing from this module. Pure and light,

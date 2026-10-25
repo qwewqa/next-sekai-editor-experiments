@@ -47,10 +47,28 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
         try {
             const { ctx, canvas, resources } = await make()
             const renderer = resources.renderer
+            // Record each GC pass, and whether a frame's render ran it.
+            const runs: boolean[] = []
+            let inFrame = false
+            let ran!: () => void
+            const passed = new Promise<void>((resolve) => {
+                ran = resolve
+            })
+            const run = renderer.gc.run.bind(renderer.gc)
+            renderer.gc.run = () => {
+                runs.push(inFrame)
+                run()
+                ran()
+            }
             const draw = () => {
-                ctx.fillStyle = '#ff0000'
-                ctx.fillRect(0, 0, 64, 64)
-                ctx.flush()
+                inFrame = true
+                try {
+                    ctx.fillStyle = '#ff0000'
+                    ctx.fillRect(0, 0, 64, 64)
+                    ctx.flush()
+                } finally {
+                    inFrame = false
+                }
             }
             // Pixi 8.22 keeps destroyed native targets as null entries in this
             // registered GC collection. Inspect it to ensure replacing its
@@ -65,9 +83,12 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
                     tombstones: values.filter((value) => value === null).length,
                 }
             }
+            // Advance the clock, not timers: GC's 10 s and 11 s tasks are overdue
+            // from the next render on, so only the scheduler keeps them out of frames.
+            performance.now = () => originalNow.call(performance) + 32_000
             draw()
             for (let i = 0; i < 40; i++) {
-                const surface = ctx.createStageSurface(16, 16)
+                const surface = ctx.createSurface(16, 16)
                 try {
                     const child = surface.getContext()
                     child.fillStyle = '#00ff00'
@@ -84,15 +105,22 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
                 requests: requests - beforeIdle.requests,
                 callbacks: callbacks - beforeIdle.callbacks,
             }
-            const afterIdle = snapshot()
-            // Advance the clock, not timers: maintenance must await a real
-            // render, then run the existing 30s / 31s GC callbacks once.
-            performance.now = () => originalNow.call(performance) + 32_000
-            draw()
+            // Frames go on: no pass and no compaction until they stop. The check
+            // that initialization's render armed comes at the real due time.
+            for (let i = 0; i < 20; i++)
+                await new Promise((resolve) =>
+                    originalRaf.call(window, () => {
+                        draw()
+                        resolve(undefined)
+                    }),
+                )
+            const moving = { runs: runs.length, ...snapshot() }
+            await passed
             const resumed = snapshot()
             const red = [...ctx.getImageData(20, 20, 1, 1).data]
             const second = await make()
             const gcEnabled = renderer.gc.enabled
+            const gcFrequency = (renderer.gc as unknown as { _frequency: number })._frequency
             const eventSystem = !!renderer.events
             const touchAction = canvas.style.touchAction
             const firstGlError = resources.gl.getError()
@@ -108,10 +136,12 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
             return {
                 webgl2: resources.gl instanceof WebGL2RenderingContext,
                 churn,
-                afterIdle,
+                moving,
+                runs,
                 resumed,
                 idle,
                 gcEnabled,
+                gcFrequency,
                 eventSystem,
                 touchAction,
                 inputListeners,
@@ -131,10 +161,14 @@ test(`explicit rendering owns maintenance and leaves idle input alone (WebGL2)`,
     })
     expect(result.webgl2).toBe(true)
     expect(result.churn.tombstones).toBeGreaterThanOrEqual(40)
-    expect(result.afterIdle).toEqual(result.churn)
+    expect(result.moving).toEqual({ runs: 0, ...result.churn })
+    expect(result.runs).toEqual([false])
     expect(result.resumed).toEqual({ live: 1, tombstones: 0 })
     expect(result.idle).toEqual({ requests: 0, callbacks: 0 })
     expect(result.gcEnabled).toBe(true)
+    // Passes run at idle time, so the period stays in Pixi's range.
+    expect(result.gcFrequency).toBeGreaterThanOrEqual(10_000)
+    expect(result.gcFrequency).toBeLessThanOrEqual(30_000)
     expect(result.eventSystem).toBe(false)
     expect(result.touchAction).toBe('pan-x')
     expect(result.inputListeners).toEqual([])

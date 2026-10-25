@@ -1,5 +1,8 @@
+import type { Page } from '@playwright/test'
+// The handle's global type.
 import { SkinSpriteName } from '@sonolus/core'
 import { gzipSync } from 'node:zlib'
+import type {} from '../../src/preview/previewTest'
 
 // Tiny in-memory packages keep these tests independent of optional local skins.
 const archive = (entries: Record<string, Buffer>) => {
@@ -80,3 +83,7 @@ export const resource = (kind: 'skins' | 'particles') =>
         ),
         texture,
     })
+
+/** The selection outline's pixels with any alpha, in either preview host. */
+export const outlinePixels = (page: Page) =>
+    page.evaluate(() => window.nsePreviewTest?.outlinePixels() ?? 0)

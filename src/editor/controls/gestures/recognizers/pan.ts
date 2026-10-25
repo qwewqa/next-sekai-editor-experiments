@@ -1,5 +1,5 @@
 import { settings } from '../../../../settings'
-import { time } from '../../../../time'
+import { clockNow } from '../../../../time'
 import { scrollViewXBy, scrollViewYBy, view } from '../../../view'
 import type { Recognizer } from './recognizer'
 
@@ -61,7 +61,7 @@ export const pan = (): Recognizer<2> => {
             if (active.y) scrollViewYBy(dy)
 
             updates.push({
-                t: time.value.now,
+                t: clockNow(),
                 dx,
                 dy,
             })
@@ -71,9 +71,10 @@ export const pan = (): Recognizer<2> => {
 
         reset(cancelled) {
             if (!cancelled && settings.touchScrollInertia) {
+                const now = clockNow()
                 if (active?.x) {
                     const dx = updates
-                        .filter(({ t }) => time.value.now - t <= 0.1)
+                        .filter(({ t }) => now - t <= 0.1)
                         .reduce((sum, { dx }) => sum + dx, 0)
                     view.scrollingX = {
                         type: 'inertia',
@@ -83,7 +84,7 @@ export const pan = (): Recognizer<2> => {
 
                 if (active?.y) {
                     const dy = updates
-                        .filter(({ t }) => time.value.now - t <= 0.1)
+                        .filter(({ t }) => now - t <= 0.1)
                         .reduce((sum, { dy }) => sum + dy, 0)
                     view.scrollingY = {
                         type: 'inertia',

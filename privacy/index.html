@@ -58,7 +58,7 @@
                         <h1 class="text-2xl font-bold text-fg-strong sm:text-3xl">Privacy</h1>
                         <p class="text-sm text-fg/80">
                             Last updated:
-                            <time datetime="2026-10-23">October 23, 2026</time>
+                            <time datetime="2026-10-25">October 25, 2026</time>
                         </p>
                     </div>
 
@@ -87,9 +87,11 @@
                             The Short Version
                         </h2>
                         <p>
-                            The web editor collects nothing about you. It has no accounts,
-                            analytics, cookies or crash reports. The site is static files on GitHub
-                            Pages, and we run no server that receives your data.
+                            The web editor has no accounts, cookies or crash reports. It sends usage
+                            statistics to our own server, such as which tools you use and how long
+                            actions take. It never sends your charts or file names. Turn them off in
+                            Settings › About › Send Usage Statistics. The site itself is static
+                            files on GitHub Pages.
                         </p>
                     </section>
 
@@ -97,14 +99,16 @@
                         <h2 id="web" class="text-lg font-bold text-fg-strong">The Web Editor</h2>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
-                                Your editing sessions and their history, settings and stored assets
-                                stay in this browser’s storage. Files go only where you save them.
+                                Your editing sessions, their history, your settings and your stored
+                                assets stay in this browser’s storage. Files go only where you save
+                                them.
                             </li>
                             <li>
-                                Audio you choose (BGM, preview audio) and covers are stored with the
-                                sessions that use them. When space runs low, audio and covers that
-                                only earlier Timeline steps use may be deleted. Nothing else is
-                                deleted automatically.
+                                BGM, preview audio and covers are stored with the sessions that use
+                                them. When space runs low, audio and covers may be deleted if only
+                                earlier Timeline steps use them. No other data is deleted
+                                automatically. Your browser may also clear this site’s storage.
+                                Settings › Local Data says when.
                             </li>
                         </ul>
                         <h3 class="mt-2 font-bold text-fg-strong">Requests It Makes</h3>
@@ -120,7 +124,104 @@
                                     >GitHub’s privacy statement</a
                                 >.
                             </li>
+                            <li>
+                                Usage statistics to stats.nse-services.qwewqa.dev, unless you turn
+                                them off. See Usage Statistics.
+                            </li>
                         </ul>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="usage">
+                        <h2 id="usage" class="text-lg font-bold text-fg-strong">
+                            Usage Statistics
+                        </h2>
+                        <p>
+                            The editor sends these to stats.nse-services.qwewqa.dev, a server we run
+                            on Amazon Web Services in the United States:
+                        </p>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                how often each tool, command and kind of edit is used, and how it
+                                was started, such as from a key, the toolbar or a menu;
+                            </li>
+                            <li>
+                                the main settings, such as the theme, the language and whether the
+                                minimap is shown;
+                            </li>
+                            <li>
+                                the kind and approximate size of files you open, save and export,
+                                what a save included, and whether that worked;
+                            </li>
+                            <li>the approximate length of music files;</li>
+                            <li>
+                                the approximate size of the chart and of its Timeline, such as
+                                “1,000 to 2,000 notes”, and approximately how many sessions Recent
+                                Sessions lists;
+                            </li>
+                            <li>
+                                how a visit started, for example whether earlier work was recovered,
+                                and how many notices and errors appeared, without their messages;
+                            </li>
+                            <li>
+                                how long startup takes, how long it takes to open, save, export and
+                                check files and to load music, and how long the chart takes to show
+                                at a Timeline step;
+                            </li>
+                            <li>
+                                whether Check File and History found problems, how often the editor
+                                is slow to respond, and approximately how long playback and the
+                                visit lasted;
+                            </li>
+                            <li>
+                                the editor’s version, whether it was updated since your last visit,
+                                and whether this browser has used it before;
+                            </li>
+                            <li>
+                                your operating system, browser and its language, your screen size
+                                and pixel density, an approximate window size, whether the screen is
+                                a touch screen, the number of processor cores as a range, whether
+                                the preview could use graphics and draw in parallel, and whether the
+                                editor is installed;
+                            </li>
+                            <li>
+                                whether this browser’s storage is available, whether this looks like
+                                a private window, and approximately how full it is;
+                            </li>
+                            <li>
+                                the site you came from, if you followed a link from another site,
+                                without the rest of its address.
+                            </li>
+                        </ul>
+                        <p>Each is sent with the time it happened.</p>
+                        <p>
+                            It never sends your charts or their content, file names, level titles or
+                            other text you type, or any identifier stored in your browser. Counts,
+                            such as how often a tool is used, and the screen size are sent as they
+                            are. Other numbers, such as sizes and times, are sent as ranges.
+                        </p>
+                        <p>
+                            The server receives your IP address and browser’s user agent with each
+                            request. It uses them to count visits and to find your country, and does
+                            not store them. It also finds your region and city, and deletes them
+                            within a day. To count visits it keeps a code made from them that
+                            changes every day. It sets no cookies and stores nothing in your
+                            browser.
+                        </p>
+                        <p>
+                            We keep the statistics with no time limit for now. The release notes and
+                            this page will announce any limit we set. Only the maintainer can see
+                            them.
+                        </p>
+                        <p>
+                            Nothing is sent from a visit until you use the editor, for example by
+                            clicking or pressing a key.
+                        </p>
+                        <p>
+                            <strong class="text-fg-strong">Turning them off.</strong> Turn off
+                            Settings › About › Send Usage Statistics. Nothing more is sent from that
+                            moment. If your browser sends Do Not Track or Global Privacy Control,
+                            the editor sends nothing unless you turn the setting on.
+                        </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="content">
@@ -128,8 +229,8 @@
                             Content from Files
                         </h2>
                         <p>
-                            Skins and other preview assets you load from a file are stored on your
-                            device only. They stay under their authors’ terms.
+                            Skins and other preview assets you load from a file are stored in this
+                            browser only. They stay under their authors’ terms.
                         </p>
                     </section>
 
@@ -139,16 +240,24 @@
                         </h2>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
-                                <strong class="text-fg-strong">We keep nothing.</strong> GitHub’s
-                                request logs are kept under GitHub’s policy. Questions go to
+                                <strong class="text-fg-strong">Usage statistics.</strong> We keep
+                                the usage statistics described above with no time limit for now.
+                                They contain no name, account or identifier, so there is no way to
+                                find or delete one person’s statistics. To stop any more being sent,
+                                turn off Settings › About › Send Usage Statistics. Questions go to
                                 <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
                             </li>
                             <li>
+                                <strong class="text-fg-strong">GitHub’s logs.</strong> GitHub keeps
+                                its request logs under its own policy.
+                            </li>
+                            <li>
                                 <strong class="text-fg-strong">Files you send us.</strong> If you
-                                send us a file to fix a problem (a project file, or a raw data
-                                export from Settings › Local Data › Recovery), we use it only for
-                                that and delete it when the problem is fixed. Send it by email, not
-                                in a public issue: it holds your charts and audio.
+                                send us a file to help fix a problem, we use it only for that and
+                                delete it when the problem is fixed. This can be a project file or
+                                the file from Export Raw Data… in Settings › Local Data › Recovery.
+                                Send it by email, not in a public issue. It contains your charts and
+                                audio.
                             </li>
                             <li>
                                 <strong class="text-fg-strong">Data in your browser.</strong>
@@ -163,7 +272,7 @@
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="changes">
                         <h2 id="changes" class="text-lg font-bold text-fg-strong">Changes</h2>
                         <p>
-                            The date at the top of this page shows its last change, and the
+                            The date at the top of this page shows when it last changed, and the
                             <a
                                 href="https://github.com/%GITHUB_REPOSITORY%/blob/main/CHANGELOG.md"
                                 class="link"
@@ -171,8 +280,8 @@
                                 rel="noopener"
                                 >changelog</a
                             >
-                            lists each release. A change in what is sent, for example adding crash
-                            reporting, would be announced in the release notes.
+                            lists each release. The release notes would announce any change in what
+                            is sent, for example adding crash reporting.
                         </p>
                     </section>
                 </main>

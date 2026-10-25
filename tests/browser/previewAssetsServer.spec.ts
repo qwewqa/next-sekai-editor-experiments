@@ -5,7 +5,7 @@ import { collection, patched, type Type } from './previewAssetsPackages'
 import { BASE, filesOf, ORIGIN, serve } from './previewAssetsServers'
 import { resource } from './previewResourceFixture'
 
-// The Preview Assets dialog with From a Server (Part 2, 2.5.3, 2.6; the A4 tests of 2.11), which
+// The Preview Assets dialog with From a Server, which
 // only the apps have: the page gets their capability from a test platform whose fetch asks fake
 // servers in Node (previewAssetsServers.ts). The web, with no servers, is tested too. With
 // A4_SHOTS_DIR set, each state is also saved there as a screenshot.
@@ -574,7 +574,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, BASE)
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
-            'This server needs you to sign in, which the editor does not support.',
+            'The editor cannot use servers that need you to sign in.',
         )
     })
 
@@ -585,7 +585,7 @@ test.describe('when a server cannot be used', () => {
         await chooseServer(page)
         await connect(page, 'http://server.test/api')
         await expect(errorOf(page).locator('[data-server-error-text]')).toHaveText(
-            'This server uses http, which the editor cannot load.',
+            'The editor cannot use http servers.',
         )
         expect(server.state.requests).toEqual([])
         await field(page).fill('')
@@ -610,7 +610,7 @@ test.describe('when a server cannot be used', () => {
         await connect(page, `${BASE}/elsewhere`)
         await expect(errorOf(page)).toContainText('This address is not a Sonolus server.')
         await connect(page, `${BASE}/broken`)
-        await expect(errorOf(page)).toContainText('This server answered with an error (503).')
+        await expect(errorOf(page)).toContainText('This server returned an error (503).')
     })
 
     test('an item with a wrong checksum is refused in the server’s words, and nothing is stored', async ({
@@ -1049,13 +1049,13 @@ test.describe('looks', () => {
                 await shot(page, name('error-unreachable'))
                 server.state.down = false
                 await connect(page, `${ORIGIN}/auth`)
-                await expect(errorOf(page)).toContainText('needs you to sign in')
+                await expect(errorOf(page)).toContainText('need you to sign in')
                 await shot(page, name('error-auth'))
                 await connect(page, `${ORIGIN}/broken`)
-                await expect(errorOf(page)).toContainText('answered with an error (503)')
+                await expect(errorOf(page)).toContainText('returned an error (503)')
                 await shot(page, name('error-status'))
                 await connect(page, 'http://server.test/api')
-                await expect(errorOf(page)).toContainText('uses http')
+                await expect(errorOf(page)).toContainText('http servers')
                 await shot(page, name('error-http'))
                 await context.setOffline(true)
                 await connect(page, BASE)

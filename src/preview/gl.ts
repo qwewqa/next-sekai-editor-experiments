@@ -135,6 +135,55 @@ const writeVertex = (
     data[offset + 9] = a
 }
 
+/**
+ * A linked program of two shaders, which are deleted once linked. On a failure nothing is left,
+ * and the error names `name` with the log.
+ */
+export const linkProgram = (
+    gl: WebGL2RenderingContext,
+    name: string,
+    vertexShader: string,
+    fragmentShader: string,
+) => {
+    const shaders: WebGLShader[] = []
+    const program = gl.createProgram()
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
+        if (!program) throw new Error(`Failed to create ${name} shader program`)
+        for (const [type, source] of [
+            [gl.VERTEX_SHADER, vertexShader],
+            [gl.FRAGMENT_SHADER, fragmentShader],
+        ] as const) {
+            const shader = gl.createShader(type)
+            if (!shader) throw new Error('Failed to create shader')
+            shaders.push(shader)
+            gl.shaderSource(shader, source)
+            gl.compileShader(shader)
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+                throw new Error(
+                    `Failed to compile ${name} shader: ${gl.getShaderInfoLog(shader) ?? ''}`,
+                )
+            gl.attachShader(program, shader)
+        }
+        gl.linkProgram(program)
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+            throw new Error(
+                `Failed to link ${name} shader program: ${gl.getProgramInfoLog(program) ?? ''}`,
+            )
+        return program
+    } catch (error) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- As above.
+        if (program) gl.deleteProgram(program)
+        throw error
+    } finally {
+        for (const shader of shaders) {
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- As above.
+            if (program) gl.detachShader(program, shader)
+            gl.deleteShader(shader)
+        }
+    }
+}
+
 export const createPreviewRenderer = (
     canvas: HTMLCanvasElement,
     antialias = true,
@@ -144,7 +193,6 @@ export const createPreviewRenderer = (
     const gl = getContext(antialias) ?? (antialias ? getContext(false) : null)
     if (!gl) throw new Error('WebGL2 is unavailable or disabled in this browser')
 
-    const shaders: WebGLShader[] = []
     const textures: WebGLTexture[] = []
     let program: WebGLProgram | null = null
     let buffer: WebGLBuffer | null = null
@@ -163,8 +211,6 @@ export const createPreviewRenderer = (
             gl.deleteProgram(program)
             program = null
         }
-        for (const shader of shaders) gl.deleteShader(shader)
-        shaders.length = 0
         // Explicit deletion also releases resources on implementations without this
         // optional extension; losing the context additionally frees its browser slot.
         gl.getExtension('WEBGL_lose_context')?.loseContext()
@@ -175,36 +221,7 @@ export const createPreviewRenderer = (
     let aspectLocation: WebGLUniformLocation | null
 
     try {
-        const compile = (type: number, source: string) => {
-            const shader = gl.createShader(type)
-            if (!shader) throw new Error('Failed to create shader')
-            shaders.push(shader)
-
-            gl.shaderSource(shader, source)
-            gl.compileShader(shader)
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-                throw new Error(
-                    `Failed to compile preview shader: ${gl.getShaderInfoLog(shader) ?? ''}`,
-                )
-            return shader
-        }
-
-        program = gl.createProgram()
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
-        if (!program) throw new Error('Failed to create preview shader program')
-
-        gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX_SHADER))
-        gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER))
-        gl.linkProgram(program)
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-            throw new Error(
-                `Failed to link preview shader program: ${gl.getProgramInfoLog(program) ?? ''}`,
-            )
-        for (const shader of shaders) {
-            gl.detachShader(program, shader)
-            gl.deleteShader(shader)
-        }
-        shaders.length = 0
+        program = linkProgram(gl, 'preview', VERTEX_SHADER, FRAGMENT_SHADER)
         gl.useProgram(program)
 
         const positionLocation = gl.getAttribLocation(program, 'a_position')

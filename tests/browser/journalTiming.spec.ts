@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { existsSync } from 'node:fs'
 import { charts, median, open } from './flushBudget'
 
-// The journal's main-thread budgets (Part 1 §1.9.3, desktop): the write on hide (the whole
+// The journal's main-thread budgets (desktop): the write on hide (the whole
 // state, level data gzipped at level 1) under 40 ms, and replay on load under 300 ms. In the
 // timing project, run alone. Medians, so one garbage collection doesn't decide it.
 
@@ -36,7 +36,7 @@ for (const chart of charts) {
                 // The hide's write: the whole state, as a trigger makes it.
                 window.nseFlushTest!.journal.writer!.write()
             }, i)
-        // Today's auto save write of the same state, for comparison (§1.9.3).
+        // Today's auto save write of the same state, for comparison.
         const autoSave = await page.evaluate(async () => {
             const { history, appImport } = window.editorTest
             const { serializeToLevelData } = await appImport<

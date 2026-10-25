@@ -160,7 +160,7 @@ test('level data serialization is byte-identical to the output before the shared
         )
     })
     // Recorded from the serializer before the schedule moved into a shared module, without attached
-    // lanes; re-recorded when entities took the records' order (§1.6.11.6), checked to hold the same
+    // lanes; re-recorded when entities took the records' order, checked to hold the same
     // entities and parse to the same chart.
     assert.equal(
         createHash('sha256').update(hashes.join('\n')).digest('hex'),
@@ -333,7 +333,7 @@ test('the preview overlay schedules exactly the hidden ticks that level data exp
                 attachTail: previewNote(tick.note.attachTail?.source),
             })),
         )
-        // Export emits slides in the records' order (§1.6.11.6), the preview in insertion order.
+        // Export emits slides in the records' order, the preview in insertion order.
         const sorted = <T>(ticks: T[]) => ticks.map((tick) => JSON.stringify(tick)).sort()
         assert.deepEqual(sorted(scheduled), sorted(exported))
         count += scheduled.length

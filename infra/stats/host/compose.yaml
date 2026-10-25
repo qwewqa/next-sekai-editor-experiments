@@ -1,0 +1,75 @@
+# Run by update.sh as:
+#   docker compose --env-file images.env --env-file /data/secrets.env --env-file /data/stats.env up -d
+name: nse-stats
+
+x-logging: &logging
+    driver: journald
+
+services:
+    caddy:
+        image: ${CADDY_IMAGE:?}
+        restart: unless-stopped
+        # Only 443 is published. Certificates come from the TLS-ALPN-01 challenge on it.
+        ports:
+            - '443:443'
+        environment:
+            STATS_HOSTNAME: ${STATS_HOSTNAME:?}
+        volumes:
+            - ./Caddyfile:/etc/caddy/Caddyfile:ro
+            - /data/caddy:/data
+        networks: [frontend]
+        security_opt: ['no-new-privileges:true']
+        logging: *logging
+        depends_on:
+            umami: { condition: service_healthy }
+
+    umami:
+        image: ${UMAMI_IMAGE:?}
+        restart: unless-stopped
+        # The dashboard is reached only through the SSM tunnel to the instance's loopback address.
+        ports:
+            - '127.0.0.1:3000:3000'
+        environment:
+            DATABASE_URL: postgresql://umami:${POSTGRES_PASSWORD:?}@db:5432/umami
+            APP_SECRET: ${APP_SECRET:?}
+            SALT_ROTATION: day
+            DISABLE_TELEMETRY: '1'
+            DISABLE_UPDATES: '1'
+            PRIVATE_MODE: '1'
+            CLIENT_IP_HEADER: x-real-ip
+        networks: [frontend, backend]
+        security_opt: ['no-new-privileges:true']
+        logging: *logging
+        healthcheck:
+            test: ['CMD', 'curl', '-fsS', 'http://localhost:3000/api/heartbeat']
+            interval: 15s
+            timeout: 5s
+            retries: 20
+            start_period: 60s
+        depends_on:
+            db: { condition: service_healthy }
+
+    db:
+        image: ${POSTGRES_IMAGE:?}
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: umami
+            POSTGRES_USER: umami
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+        # PostgreSQL 18 keeps its data under /var/lib/postgresql/18/docker, so the volume is the parent.
+        volumes:
+            - /data/postgres:/var/lib/postgresql
+        networks: [backend]
+        security_opt: ['no-new-privileges:true']
+        logging: *logging
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U umami -d umami']
+            interval: 10s
+            timeout: 5s
+            retries: 10
+
+networks:
+    frontend: {}
+    # No route out and no published port: PostgreSQL is reached only by Umami.
+    backend:
+        internal: true

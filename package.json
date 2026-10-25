@@ -16,8 +16,13 @@
     "scripts": {
         "postinstall": "node scripts/patch-pixi-default-batcher.mjs",
         "fixtures:generated-large": "node scripts/generate-large-chart.mjs",
+        "perf": "node scripts/perf/run.mjs",
+        "perf:report": "node scripts/perf/report.mjs",
+        "perf:stress": "node scripts/perf/stress.mjs",
+        "perf:seeds": "playwright test --config playwright.samples.config.ts perfSeeds",
+        "perf:preview": "tsx scripts/perf/preview.mjs",
         "format:gen": "tsx scripts/format-gen.mjs",
-        "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs",
+        "test": "tsx --test \"tests/{editor,preview,platform,zip,local,builtin,landing,samples}/**/*.test.{ts,mjs}\" tests/licensing.test.mjs tests/citations.test.mjs",
         "test:browser": "node scripts/test-browser.mjs",
         "test:timing": "playwright test --project=timing --no-deps",
         "test:compatibility": "npm run build && playwright test --config playwright.compatibility.config.ts",
@@ -52,6 +57,7 @@
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@jridgewell/trace-mapping": "^0.3.31",
         "@playwright/test": "^1.63.0",
         "@resvg/resvg-wasm": "2.6.2",
         "@tsconfig/node22": "^22.0.5",

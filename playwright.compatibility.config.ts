@@ -12,13 +12,13 @@ const storageSpecs = [
     'storageCommitOnUnload.spec.ts',
     'storageWorker.spec.ts',
     'storageFlush.spec.ts',
-    // The journal's kill tests (Step 3b): page.close() in Firefox and WebKit.
+    // The journal's kill tests: page.close() in Firefox and WebKit.
     'journalKill.spec.ts',
-    // Startup, the recovery order and the auto save migration (Step 4).
+    // Startup, the recovery order and the auto save migration.
     'startupSessions.spec.ts',
-    // Opening a `.nxsp` and its background import (Step 6).
+    // Opening a `.nxsp` and its background import.
     'openProject.spec.ts',
-    // Saving where there's no save picker: the download flow (Step 6).
+    // Saving where there's no save picker: the download flow.
     'saveDownload.spec.ts',
     // The v1 web storage fixtures seeded into a profile and read by the editor (release prep, Part 1 §1.6.11.9).
     'webStorageV1.spec.ts',
@@ -40,7 +40,13 @@ export default defineConfig({
     projects: [
         { name: 'firefox', use: { browserName: 'firefox' } },
         { name: 'webkit', use: { browserName: 'webkit' } },
-        // The storage core (Part 1 §1.11.3, Step 3a): the handshake, commit on unload, the worker's
+        // The preview drawn in its worker: its handovers, and its pixels against the main thread's.
+        {
+            name: 'firefox-preview-worker',
+            testMatch: ['previewWorker.spec.ts'],
+            use: { browserName: 'firefox' },
+        },
+        // The storage core: the handshake, commit on unload, the worker's
         // restart and the flush, in each engine. They boot the editor in two tabs, slower here
         // than in Chromium.
         {
@@ -88,7 +94,7 @@ export default defineConfig({
             use: { browserName: 'webkit', baseURL: previewUrl },
         },
         // The release build's classic storage worker under the web policy, its Blob restart and
-        // the flush (Step 3a).
+        // the flush.
         {
             name: 'firefox-production-storage',
             testDir: './tests/production',

@@ -1,6 +1,7 @@
 import { triangulateLyon } from './lyon'
 import type { DrawPath, PathCommand } from './path'
 import { parseSvgPath } from './pathSvg'
+import { arcSegments } from './strokeSegments'
 import libtess from './vendor/libtess.js'
 
 type Point = [number, number]
@@ -10,7 +11,7 @@ type Matrix = readonly [number, number, number, number, number, number, number, 
 
 // Internal loops prove each index against array length; do not add a runtime
 // bounds check to every coordinate access in tessellation.
-const indexed = <T>(values: readonly T[], index: number): T => values[index] as T
+const indexed = <T>(values: ArrayLike<T>, index: number): T => values[index] as T
 export type StrokeOptions = {
     width: number
     cap: CanvasLineCap
@@ -598,8 +599,7 @@ export function tessellateStroke(
         outlines.push({ points: points as Points, closed: true })
     }
     const arc = (center: Point, start: number, sweep: number, omitCenter = false) => {
-        const step = Math.min(Math.PI / 2, 2 * Math.acos(Math.max(-1, 1 - tolerance / half)))
-        const count = Math.max(1, Math.ceil(Math.abs(sweep) / Math.max(1e-5, step)))
+        const count = arcSegments(sweep, half, tolerance)
         const points: Point[] = omitCenter ? [] : [center]
         for (let i = 0; i <= count; i++) {
             const a = start + (sweep * i) / count

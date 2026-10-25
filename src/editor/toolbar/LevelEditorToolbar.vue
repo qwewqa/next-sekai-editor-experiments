@@ -235,16 +235,24 @@ const onOverMain = (event: PointerEvent, index: number) => {
 
 // Quick switch: a press on a face opens its flyout, after a moment or on movement so a tap
 // doesn't flash it; the release picks the face or row under it, and anywhere else cancels.
+// Once held, it slides to another face on its row, which becomes the target and opens its flyout.
 const quickDelay = 150
 const quickSlop = 6
-let quick: { id: number; index: number; x: number; y: number; timer?: number } | undefined
-// The flyout row a quick switch press is over.
+let quick:
+    | { id: number; index: number; face: HTMLElement; x: number; y: number; timer?: number }
+    | undefined
+// The flyout row a quick switch press is over, and the face a held press targets, shown pressed.
 const quickOver = ref<number>()
+const quickFace = ref<number>()
+// Only the group of a held press or an open flyout takes input. Inert also drops the press look
+// the browser keeps on a face a press slid away from.
+const owner = computed(() => quickFace.value ?? activeIndex.value)
 
 const openQuick = () => {
     if (!quick) return
     clearTimeout(quick.timer)
     quick.timer = undefined
+    quickFace.value = quick.index
     if ((toolbar.value[quick.index]?.length ?? 0) > 1) activeIndex.value = quick.index
 }
 
@@ -252,6 +260,7 @@ const endQuick = () => {
     clearTimeout(quick?.timer)
     quick = undefined
     quickOver.value = undefined
+    quickFace.value = undefined
 }
 
 // The face or row of the pressed group under a point, if any.
@@ -264,22 +273,45 @@ const quickTargetAt = (x: number, y: number) => {
     return row === -1 ? undefined : { row }
 }
 
+// Another group under a held press, on its target's row; other rows are under the flyout.
+const quickSwitchAt = (event: PointerEvent) => {
+    if (!quick || quick.timer) return
+    const index = groupAt(event)
+    const cell = groups.value[index]?.getBoundingClientRect()
+    const target = groups.value[quick.index]?.getBoundingClientRect()
+    if (index === quick.index || !cell || !target) return
+    return Math.abs(cell.top - target.top) < target.height / 2 ? index : undefined
+}
+
+// Capture moves along, as the previous face turns inert.
+const switchQuick = (event: PointerEvent, index: number) => {
+    const face = groups.value[index]?.querySelector<HTMLElement>(':scope > button')
+    if (!quick || !face) return
+    quick.index = index
+    quick.face = face
+    face.setPointerCapture(event.pointerId)
+    quickFace.value = index
+    activeIndex.value = (toolbar.value[index]?.length ?? 0) > 1 ? index : -1
+}
+
 const onPressMain = (event: PointerEvent, index: number) => {
     if (!settings.toolbarQuickSwitch || quick || event.button !== 0) return
-    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-    quick = { id: event.pointerId, index, x: event.clientX, y: event.clientY }
+    const face = event.currentTarget as HTMLElement
+    face.setPointerCapture(event.pointerId)
+    quick = { id: event.pointerId, index, face, x: event.clientX, y: event.clientY }
     // A hovered flyout is already open; any other closes until this one shows.
-    if (activeIndex.value !== index) {
-        activeIndex.value = -1
-        quick.timer = window.setTimeout(openQuick, quickDelay)
-    }
+    if (activeIndex.value !== index) activeIndex.value = -1
+    quick.timer = window.setTimeout(openQuick, quickDelay)
 }
 
 const onMoveQuick = (event: PointerEvent) => {
     if (event.pointerId !== quick?.id) return
     if (quick.timer && Math.hypot(event.clientX - quick.x, event.clientY - quick.y) > quickSlop)
         openQuick()
-    quickOver.value = quickTargetAt(event.clientX, event.clientY)?.row
+    const row = quickTargetAt(event.clientX, event.clientY)?.row
+    const index = row === undefined ? quickSwitchAt(event) : undefined
+    if (index !== undefined) switchQuick(event, index)
+    quickOver.value = row
 }
 
 const onReleaseQuick = (event: PointerEvent) => {
@@ -287,7 +319,9 @@ const onReleaseQuick = (event: PointerEvent) => {
     const { index } = quick
     const target = quickTargetAt(event.clientX, event.clientY)
     endQuick()
-    ;(event.currentTarget as HTMLElement).blur()
+    // The face pressed first holds focus after a slide.
+    const focused = document.activeElement
+    if (focused instanceof HTMLElement && root.value?.contains(focused)) focused.blur()
     const name = target?.face ? activeNames.value[index] : toolbar.value[index]?.[target?.row ?? -1]
     activeIndex.value = -1
     if (!name) return
@@ -296,7 +330,8 @@ const onReleaseQuick = (event: PointerEvent) => {
 }
 
 const onCancelQuick = (event: PointerEvent) => {
-    if (event.pointerId !== quick?.id) return
+    // A slide moves capture away from the previous face.
+    if (event.pointerId !== quick?.id || event.currentTarget !== quick.face) return
     endQuick()
     activeIndex.value = -1
 }
@@ -456,9 +491,12 @@ const place = () => {
     }
 }
 
-// The top layer shows over dialogs and the context menu, so either opening closes the flyout.
+// The top layer shows over dialogs and the context menu, so either opening closes the flyout
+// and ends a quick switch press, which would open another.
 watch([() => modals.length, contextMenu], ([count, menu], [before]) => {
-    if (count > before || menu) activeIndex.value = -1
+    if (!(count > before || menu)) return
+    endQuick()
+    activeIndex.value = -1
 })
 
 // A flyout opens with its checked value centred, without moving focus; later, only a clipped one moves.
@@ -505,9 +543,11 @@ watch([room, short, height, isCoarsePointer], async () => {
     await follow()
 })
 
-// Escape closes an open flyout and returns focus to its tool.
+// Escape ends a quick switch press, and closes an open flyout, returning focus to its tool.
 const onKeydown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || activeIndex.value === -1) return
+    if (event.key !== 'Escape') return
+    endQuick()
+    if (activeIndex.value === -1) return
     // Escape stays with a focused field, row or dialog; a hovered flyout just closes.
     const active = document.activeElement
     if (
@@ -557,13 +597,16 @@ onBeforeUnmount(() => {
                 :ref="(element) => element && (groups[i] = element as HTMLElement)"
                 class="pointer-events-auto"
                 :class="{ 'z-20': activeIndex === i }"
-                :inert="activeIndex !== -1 && activeIndex !== i"
+                :inert="owner !== -1 && owner !== i"
             >
                 <!-- A square pseudo-element, centred in place, takes input in the corners; the face stays unpositioned.
                      The chrome tier is on the shown tool, not the row, so the flyout's faces keep the surface values. -->
                 <LevelEditorToolbarTool
                     class="surface-chrome size-[--tool-size] justify-center before:absolute before:size-[--tool-size]"
-                    :class="{ 'toolbar-quick-switch': settings.toolbarQuickSwitch }"
+                    :class="{
+                        'toolbar-quick-switch': settings.toolbarQuickSwitch,
+                        'is-pressed': quickFace === i,
+                    }"
                     :name="activeName"
                     :state="stateOf(activeName, i)"
                     gated

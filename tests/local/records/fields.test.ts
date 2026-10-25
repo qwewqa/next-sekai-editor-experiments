@@ -11,7 +11,7 @@ import { kindNames, type KindName } from '../../../src/local/records/schema'
 import type { State } from '../../../src/state'
 import { edgeChart, goldenChart, stateOf } from './charts'
 
-// Positions checked independently of `toRecords` (§1.6.11.1): every golden and edge record
+// Positions checked independently of `toRecords`: every golden and edge record
 // equals `fields.map(f => model[f.name] ?? f.default)` over its model object, so a swapped
 // pair of positions fails here rather than freezing into v1.
 
@@ -96,7 +96,7 @@ test('every golden and edge record matches fields-v1.json position by position',
     checkState(stateOf(edgeChart()), 'edge')
 })
 
-// §1.6.11.1's tables as the plan writes them; the plan's tables are regenerated from
+// The field tables, regenerated from
 // fields-v1.json, so the two never disagree.
 const planTables: Record<string, string[]> = {
     root: ['v', 'header', 'kinds', 'noteCount'],
@@ -116,7 +116,7 @@ const planTables: Record<string, string[]> = {
     stage: ['id', 'name', 'isFromStart', 'isUntilEnd', 'generateSimLines', 'folderId?'],
     folder: ['id', 'name', 'index', 'folderId?'],
     levelInfo: ['title', 'artists', 'author', 'description', 'tags', 'cover', 'preview', 'rating?'],
-    tag: ['title', 'icon?'],
+    tag: ['title'],
     mediaRef: ['hash', 'filename', 'size', 'type'],
     bgm: ['hash', 'filename', 'size', 'type', 'durationMs?'],
     note: [
@@ -205,7 +205,7 @@ const planTables: Record<string, string[]> = {
     ],
 }
 
-test('§1.6.11.1’s tables match fields-v1.json', () => {
+test('the field tables match fields-v1.json', () => {
     for (const [name, positions] of Object.entries(planTables)) {
         const form = table[name] as Entry[]
         assert.deepEqual(
@@ -283,7 +283,7 @@ test('the kind order is the kindOrder array, which a reader with unordered objec
     assert.ok(!inOrder(['slides', 'slides']))
 })
 
-test('the ids a record names are refs to their header maps (D9)', () => {
+test('the ids a record names are refs to their header maps', () => {
     const refs = Object.entries(table).flatMap(([name, form]) =>
         Array.isArray(form)
             ? form.flatMap((field) => {

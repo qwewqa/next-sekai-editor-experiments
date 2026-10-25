@@ -2,7 +2,7 @@ import { dateText, hostZone } from '../calendar/calendar'
 import { readMeta, writeMeta } from './db'
 import type { KvTx } from './kv/types'
 
-// Days of use (Part 1 §1.6.8.7): `meta.daysOfUse` goes up by one at most once per calendar day,
+// Days of use: `meta.daysOfUse` goes up by one at most once per calendar day,
 // the local date of monotonic `now`, on which the editor is used. Rows stamp `day` with it, and
 // "within the past N days" means `daysOfUse - day < N`, so a clock that jumps can't expire
 // anything early.
@@ -10,7 +10,7 @@ import type { KvTx } from './kv/types'
 /**
  * A count of days of use: what `meta.daysOfUse` and every row's `day` hold. It is not a calendar
  * day (`DayKey`), so the two can't be mixed up: retention counts `UseDay`s, ages shown to the user
- * count `DayKey`s. Only `countDayOfUse`, `NO_USE_DAY` and the row types make one (I-11; the
+ * count `DayKey`s. Only `countDayOfUse`, `NO_USE_DAY` and the row types make one (the
  * `local/no-use-day-cast` rule bans `as UseDay` elsewhere).
  */
 export type UseDay = number & { readonly __useDay: true }

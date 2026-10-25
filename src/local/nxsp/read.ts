@@ -12,6 +12,7 @@ import {
     checkPart,
     combineParts,
     distinctRootChunks,
+    inFileOrder,
     type HistoryForm,
     type ManifestForm,
     type SegmentForm,
@@ -19,11 +20,11 @@ import {
 import { readProject, type MediaForm, type ProjectExtra, type ProjectV1 } from './project'
 import { NXSP_FORMAT, NXSP_MINOR, NXSP_PATCH, NXSP_VERSION } from './version'
 
-// The `.nxsp` reader (§1.5.4, §1.6.11.4, §1.6.11.8): what a file holds, and a report of everything
+// The `.nxsp` reader: what a file holds, and a report of everything
 // it didn't read. Any report makes the open partial; the open decides what to say. Damage (an
 // ambiguous file, a cap passed, headers that disagree) means no history; so does a newer `minor`.
 
-/** The reader caps (§1.6.11.4): no conforming writer reaches them. */
+/** The reader caps: no conforming writer reaches them. */
 export type NxspCaps = {
     project: number
     level: number
@@ -58,8 +59,8 @@ export const NXSP_CAPS: NxspCaps = {
  * - `unknown-entry`, `unknown-key`: content v1 doesn't name (`parts`' keys included);
  * - `invalid-key`: a known `project.json` key of the wrong form;
  * - `newer-history`: a manifest `version`, root `v`, entry kind or kind name this build doesn't know;
- * - `history-unreadable`: history that breaks v1's rules (§1.6.11.5);
- * - `damaged`: an ambiguous or oversized file, or one whose ZIP structure fails (§1.6.11.4);
+ * - `history-unreadable`: history that breaks v1's rules;
+ * - `damaged`: an ambiguous or oversized file, or one whose ZIP structure fails;
  * - `media-unreadable`: a media entry missing or failing its size or SHA-256.
  */
 export type ReportReason =
@@ -87,7 +88,7 @@ export type ChunkAccess = {
     read: (hash: string) => Promise<Uint8Array>
 }
 
-/** A history the open checked (§1.6.11.8): roots, nodes, the header chunks and the head's chunks. */
+/** A history the open checked: roots, nodes, the header chunks and the head's chunks. */
 export type ReadHistory = HistoryForm & {
     chunks: ChunkAccess
     /** The head snapshot's records, decoded and schema-checked. */
@@ -156,7 +157,7 @@ const POINTER_PREFIXES = {
 } as const
 
 /**
- * Reads a `.nxsp` (§1.5.4). Caps default to §1.6.11.4's; tests pass smaller ones. The result's
+ * Reads a `.nxsp`. Caps default to the format's; tests pass smaller ones. The result's
  * report lists everything not read; with any item the open is partial.
  */
 export const readNxsp = async (
@@ -179,7 +180,7 @@ export const readNxsp = async (
             report: [{ reason: 'damaged', path: '', detail: describe(error) }],
         }
     }
-    // A scan finds what a cut file still holds: never its history (§1.5.9).
+    // A scan finds what a cut file still holds: never its history.
     if (reader.recovered) damaged('', 'central directory')
     for (const name of reader.duplicates) damaged(name, 'two entries with this name')
     for (const name of reader.overlapping) damaged(name, 'overlapping data')
@@ -284,7 +285,7 @@ export const readNxsp = async (
 
         return {
             kind: 'nxsp',
-            // A newer `patch` alone is a notice, never a partial open (§1.6.11.8).
+            // A newer `patch` alone is a notice, never a partial open.
             open: report.some(({ reason }) => reason !== 'newer-patch') ? 'partial' : 'full',
             projectJson,
             ...(project ? { project } : {}),
@@ -303,7 +304,7 @@ export const readNxsp = async (
 
 type Pointer = { path: string; name: string; prefix: string }
 
-/** Every pointer in `project.json` (§1.6.11.4), with the prefix it must stay in. */
+/** Every pointer in `project.json`, with the prefix it must stay in. */
 const pointersOf = (project: ProjectV1): Pointer[] => {
     const pointers: Pointer[] = [
         { path: 'level', name: project.level, prefix: POINTER_PREFIXES.level },
@@ -341,7 +342,7 @@ const pointersOf = (project: ProjectV1): Pointer[] => {
     return pointers
 }
 
-/** A media entry, its size and full SHA-256 checked against `project.json` (§1.5.4). */
+/** A media entry, its size and full SHA-256 checked against `project.json`. */
 const readMedia = async (
     reader: ZipReader,
     form: MediaForm & { file: string },
@@ -368,7 +369,7 @@ const readMedia = async (
     return { form, entry, bytes: new Blob([new Uint8Array(bytes)]) }
 }
 
-/** Reads and checks the history (§1.6.11.5, §1.6.11.8): its parts, then the open's checks. */
+/** Reads and checks the history: its parts, then the open's checks. */
 const readHistory = async (
     reader: ZipReader,
     pointers: NonNullable<ProjectV1['history']>,
@@ -474,7 +475,11 @@ const readHistory = async (
             return parsed.get(hash)
         }
         try {
-            for (const chunk of distinctRootChunks(history, [history.head]))
+            // In file order: the head's chunks are spread across the file.
+            for (const chunk of inFileOrder(
+                history.index,
+                distinctRootChunks(history, [history.head]),
+            ))
                 await parsedChunk(chunk)
             const headRecords = decodeSnapshot(headRoot, {
                 node: (hash) => history.nodes.get(hash),
@@ -493,12 +498,15 @@ const readHistory = async (
     }
 }
 
+/** How much of a STORE `chunks.bin` one read takes: a chunk is a few kilobytes. */
+const CHUNK_WINDOW = 2 * 1024 * 1024
+
 /**
- * `chunks.bin`, read lazily: a STORE entry by slices of the file (its CRC is never read whole; each
- * chunk is verified by its hash instead), a DEFLATE one (an OS re-zip) inflated once, capped at its
- * declared size.
+ * `chunks.bin`, read lazily: a STORE entry by windows of the file (its CRC is never read whole;
+ * each chunk is verified by its hash instead), a DEFLATE one (an OS re-zip) inflated once, capped
+ * at its declared size.
  */
-const chunkAccess = (
+export const chunkAccess = (
     reader: ZipReader,
     entry: ZipEntry,
     index: ReadonlyMap<string, { offset: number; length: number }>,
@@ -506,11 +514,39 @@ const chunkAccess = (
 ): ChunkAccess => {
     let whole: Promise<Uint8Array> | undefined
     let file: Promise<Blob> | undefined
+    // The last window read: chunks are read mostly in file order, so most come from it. One window
+    // at a time: a chunk outside it, while it is still being read, is read on its own, so reads
+    // made all at once never hold a window each.
+    let lastWindow: { start: number; end: number; bytes: Promise<Uint8Array> } | undefined
+    let reading = false
     const range = async (offset: number, length: number) => {
         if (entry.method === 0) {
             if (entry.compressedSize !== entry.size) throw new ZipError('size', entry.name)
             file ??= reader.stored(entry)
-            return new Uint8Array(await (await file).slice(offset, offset + length).arrayBuffer())
+            const blob = await file
+            const slice = async (start: number, end: number) =>
+                new Uint8Array(await blob.slice(start, end).arrayBuffer())
+            let held = lastWindow
+            if (!held || offset < held.start || offset + length > held.end) {
+                if (reading || length > CHUNK_WINDOW) return slice(offset, offset + length)
+                const end = Math.min(blob.size, offset + CHUNK_WINDOW)
+                reading = true
+                const window = { start: offset, end, bytes: slice(offset, end) }
+                held = window
+                lastWindow = window
+                void window.bytes.then(
+                    () => {
+                        reading = false
+                    },
+                    () => {
+                        reading = false
+                        if (lastWindow === window) lastWindow = undefined
+                    },
+                )
+            }
+            // A copy: a view of the window would keep all of it in memory and be stored whole.
+            const at = offset - held.start
+            return (await held.bytes).slice(at, at + length)
         }
         whole ??= reader.read(entry, { maxSize: cap.chunksBin })
         return (await whole).slice(offset, offset + length)

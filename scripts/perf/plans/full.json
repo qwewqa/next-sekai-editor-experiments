@@ -1,0 +1,1041 @@
+{
+    "defaults": {
+        "minimap": true,
+        "preview": true,
+        "reps": 5,
+        "warmup": 1
+    },
+    "groups": [
+        {
+            "id": "B-d-coc",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "pagekeys",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "minimapdrag",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "composed"
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "basic"
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "basic"
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "elevation": true,
+                    "tag": "elon"
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "elevation": true,
+                    "selection": true,
+                    "tag": "allon",
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "minimap": false,
+                    "preview": false,
+                    "tag": "alloff"
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "composed",
+                    "elevation": true,
+                    "selection": true,
+                    "tag": "allon"
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 15,
+                    "reps": 3,
+                    "trace": true
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 15,
+                    "reps": 3,
+                    "elevation": true,
+                    "selection": true,
+                    "tag": "allon"
+                }
+            ]
+        },
+        {
+            "id": "B-ph-coc",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "quicktouch",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "minimapdrag",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "basic"
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "elevation": true,
+                    "tag": "elon"
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "elevation": true,
+                    "selection": true,
+                    "tag": "allon",
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "minimap": false,
+                    "preview": false,
+                    "tag": "alloff"
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 15,
+                    "reps": 3,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-d-r21888",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "wheel",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "minimapdrag",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "pagekeys",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "composed",
+                    "tag": "z1000"
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "basic",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "tag": "z1000"
+                }
+            ]
+        },
+        {
+            "id": "B-ph-r21888",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "quicktouch",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "minimapdrag",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-d-br",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/real-21506.json",
+            "bgm": "perf-results/data/brainrot.mp3",
+            "defaults": {
+                "start": 30
+            },
+            "cells": [
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "pagekeys",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "minimapdrag",
+                    "layout": "composed"
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3
+                }
+            ]
+        },
+        {
+            "id": "B-ph-br",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/real-21506.json",
+            "bgm": "perf-results/data/brainrot.mp3",
+            "defaults": {
+                "start": 30
+            },
+            "cells": [
+                {
+                    "scenario": "quicktouch",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "minimapdrag",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-d-str",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 15,
+                    "reps": 3,
+                    "trace": true
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "composed",
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed"
+                }
+            ]
+        },
+        {
+            "id": "B-ph-str",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 15,
+                    "reps": 3,
+                    "trace": true
+                },
+                {
+                    "scenario": "quicktouch",
+                    "layout": "composed"
+                }
+            ]
+        },
+        {
+            "id": "B-d-gen",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "tests/fixtures/generated-large.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "wheel",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "basic",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-ph-gen",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "tests/fixtures/generated-large.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "quicktouch",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "quicktouch",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-d-r23792",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/real-23792.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "wheel",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "basic",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-ph-r23792",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/real-23792.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "quicktouch",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "quicktouch",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-d-r16471",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/real-16471.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "wheel",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "wheel",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "basic",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-ph-r16471",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/real-16471.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "quicktouch",
+                    "layout": "basic",
+                    "pps": 100
+                },
+                {
+                    "scenario": "quicktouch",
+                    "layout": "composed",
+                    "pps": 100,
+                    "trace": true
+                },
+                {
+                    "scenario": "flick",
+                    "layout": "composed",
+                    "pps": 100
+                },
+                {
+                    "scenario": "play1x",
+                    "layout": "composed",
+                    "seconds": 12,
+                    "reps": 3,
+                    "pps": 100,
+                    "trace": true
+                }
+            ]
+        },
+        {
+            "id": "B-x4-resize",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "resizedrag",
+                    "layout": "composed",
+                    "handle": "Resize Minimap",
+                    "dx": -80,
+                    "trace": true,
+                    "tag": "mm"
+                },
+                {
+                    "scenario": "resizedrag",
+                    "layout": "composed",
+                    "handle": "Resize Minimap",
+                    "dx": -80,
+                    "preview": false,
+                    "tag": "mm-nopv"
+                },
+                {
+                    "scenario": "resizedrag",
+                    "layout": "basic",
+                    "handle": "Resize Minimap",
+                    "dx": -80,
+                    "tag": "mm"
+                },
+                {
+                    "scenario": "resizedrag",
+                    "layout": "composed",
+                    "handle": "Resize Elevation Editor",
+                    "dx": -120,
+                    "elevation": true,
+                    "minimap": false,
+                    "trace": true,
+                    "tag": "el"
+                },
+                {
+                    "scenario": "resizedrag",
+                    "layout": "basic",
+                    "handle": "Resize Elevation Editor",
+                    "dx": -120,
+                    "elevation": true,
+                    "minimap": false,
+                    "tag": "el"
+                },
+                {
+                    "scenario": "resizedrag",
+                    "layout": "composed",
+                    "handle": "Resize Elevation Editor",
+                    "dx": -120,
+                    "elevation": true,
+                    "tag": "el-mm"
+                }
+            ]
+        },
+        {
+            "id": "B-d-resize",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "resizedrag",
+                    "layout": "composed",
+                    "handle": "Resize Minimap",
+                    "dx": -80,
+                    "trace": true,
+                    "tag": "mm"
+                },
+                {
+                    "scenario": "resizedrag",
+                    "layout": "composed",
+                    "handle": "Resize Elevation Editor",
+                    "dx": -120,
+                    "elevation": true,
+                    "minimap": false,
+                    "trace": true,
+                    "tag": "el"
+                }
+            ]
+        },
+        {
+            "id": "B-idle-d",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "defaults": {
+                "seconds": 60,
+                "noLoop": true,
+                "reps": 1,
+                "warmup": 0,
+                "traceEach": true
+            },
+            "cells": [
+                {
+                    "scenario": "idle",
+                    "layout": "composed",
+                    "tag": "pv"
+                },
+                {
+                    "scenario": "idle",
+                    "layout": "composed",
+                    "preview": false,
+                    "tag": "nopv"
+                },
+                {
+                    "scenario": "idle",
+                    "layout": "basic",
+                    "preview": false,
+                    "minimap": false,
+                    "tag": "bare"
+                }
+            ]
+        },
+        {
+            "id": "B-idle-ph",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "defaults": {
+                "seconds": 60,
+                "noLoop": true,
+                "reps": 1,
+                "warmup": 0,
+                "traceEach": true
+            },
+            "cells": [
+                {
+                    "scenario": "idle",
+                    "layout": "composed",
+                    "tag": "pv"
+                },
+                {
+                    "scenario": "idle",
+                    "layout": "composed",
+                    "preview": false,
+                    "tag": "nopv"
+                }
+            ]
+        },
+        {
+            "id": "B-mem-r21888",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "memory",
+                    "layout": "composed",
+                    "reps": 1,
+                    "warmup": 0,
+                    "seconds": 200,
+                    "speed": 1,
+                    "sampleEvery": 40
+                }
+            ]
+        },
+        {
+            "id": "B-mem-str",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "memory",
+                    "layout": "composed",
+                    "reps": 1,
+                    "warmup": 0,
+                    "seconds": 300,
+                    "speed": 2,
+                    "sampleEvery": 60
+                }
+            ]
+        },
+        {
+            "id": "B-ns-coc-d",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "storage": {
+                "noStorage": true
+            },
+            "cells": [
+                {
+                    "scenario": "journal",
+                    "layout": "composed",
+                    "reps": 2,
+                    "warmup": 0,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "B-ns-coc-x4",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "storage": {
+                "noStorage": true
+            },
+            "cells": [
+                {
+                    "scenario": "journal",
+                    "layout": "composed",
+                    "reps": 2,
+                    "warmup": 0,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "B-ns-str-d",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "storage": {
+                "noStorage": true
+            },
+            "cells": [
+                {
+                    "scenario": "journal",
+                    "layout": "composed",
+                    "reps": 2,
+                    "warmup": 0,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "B-ns-str-x4",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "storage": {
+                "noStorage": true
+            },
+            "cells": [
+                {
+                    "scenario": "journal",
+                    "layout": "composed",
+                    "reps": 2,
+                    "warmup": 0,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "E-d-r21888",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "editflip",
+                    "layout": "basic",
+                    "pps": 100,
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                },
+                {
+                    "scenario": "drag",
+                    "layout": "basic",
+                    "pps": 100,
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                },
+                {
+                    "scenario": "editflip",
+                    "layout": "composed",
+                    "pps": 100,
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "E-x4-r21888",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "editflip",
+                    "layout": "basic",
+                    "pps": 100,
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                },
+                {
+                    "scenario": "drag",
+                    "layout": "basic",
+                    "pps": 100,
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                },
+                {
+                    "scenario": "editflip",
+                    "layout": "composed",
+                    "pps": 100,
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "E-d-str",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "editflip",
+                    "layout": "basic",
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "E-x4-str",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "editflip",
+                    "layout": "basic",
+                    "count": 50,
+                    "reps": 3,
+                    "keepRaw": true,
+                    "traceEach": true
+                }
+            ]
+        },
+        {
+            "id": "H-r21888-x4",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/real-21888.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "hide",
+                    "layout": "basic",
+                    "after": 2000,
+                    "reps": 3,
+                    "warmup": 1,
+                    "keepRaw": true,
+                    "traceEach": true,
+                    "tag": "a2000"
+                },
+                {
+                    "scenario": "hide",
+                    "layout": "basic",
+                    "after": 0,
+                    "reps": 3,
+                    "warmup": 0,
+                    "keepRaw": true,
+                    "traceEach": true,
+                    "tag": "a0"
+                }
+            ]
+        },
+        {
+            "id": "H-str-x4",
+            "profile": "desktop1280x4",
+            "hz": 120,
+            "chart": "perf-results/data/stress-x8.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "hide",
+                    "layout": "basic",
+                    "after": 2000,
+                    "reps": 3,
+                    "warmup": 1,
+                    "keepRaw": true,
+                    "traceEach": true,
+                    "tag": "a2000"
+                },
+                {
+                    "scenario": "hide",
+                    "layout": "basic",
+                    "after": 0,
+                    "reps": 3,
+                    "warmup": 0,
+                    "keepRaw": true,
+                    "traceEach": true,
+                    "tag": "a0"
+                }
+            ]
+        },
+        {
+            "id": "N-d-coc",
+            "profile": "desktop1600",
+            "hz": "native",
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "notch",
+                    "layout": "basic",
+                    "pps": 100,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "notch",
+                    "layout": "composed",
+                    "pps": 100,
+                    "keepRaw": true,
+                    "trace": true
+                },
+                {
+                    "scenario": "notch",
+                    "layout": "composed",
+                    "keepRaw": true
+                }
+            ]
+        },
+        {
+            "id": "N-ph-coc",
+            "profile": "phone",
+            "hz": 120,
+            "chart": "perf-results/data/coconut.json",
+            "bgm": "perf-results/data/coconut.mp3",
+            "cells": [
+                {
+                    "scenario": "notch",
+                    "layout": "basic",
+                    "pps": 100,
+                    "keepRaw": true
+                },
+                {
+                    "scenario": "notch",
+                    "layout": "composed",
+                    "pps": 100,
+                    "keepRaw": true,
+                    "trace": true
+                },
+                {
+                    "scenario": "notch",
+                    "layout": "composed",
+                    "keepRaw": true
+                }
+            ]
+        }
+    ]
+}

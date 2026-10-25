@@ -287,6 +287,7 @@ const removed = [
     'file.short.downloaded',
     'file.short.opened',
     'file.short.notConfirmed',
+    'file.short.notSaved',
     'state.short.fileMissing',
     'state.short.changedOnDisk',
     'state.short.newerOnDisk',
@@ -316,6 +317,11 @@ const removed = [
     'workspace.folders.deleted',
     'workspace.folders.duplicated',
     'history.details.nameShortened',
+    'settings.localData.recovery.legacy',
+    'notice.sameFileMaybeElsewhere',
+    'open.earlierUnchecked',
+    'open.unsavedEarlierMaybe',
+    'open.unsavedChangesMaybe',
 ]
 
 test('every English message is read by some source file', () => {

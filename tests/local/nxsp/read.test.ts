@@ -77,7 +77,7 @@ test('not a project: no project.json, or another format', async () => {
     assert.equal(garbage.kind, 'unreadable')
 })
 
-// Ambiguity and damage (§1.6.11.4)
+// Ambiguity and damage
 
 test('two entries with the same name are damage: the file opens without its history', async () => {
     const file = await rawFile((entries) => {
@@ -313,7 +313,7 @@ test('parts that is not an object is damage; a key in parts is unknown', async (
     assert.equal(empty.open, 'full')
 })
 
-// Unknown content (§1.6.11.8)
+// Unknown content
 
 test('an unknown entry makes the open partial; ignored entries do not', async () => {
     const unknown = nxsp(
@@ -369,6 +369,8 @@ test('unknown top-level and metadata keys are kept as extra; anywhere else they 
         ['metadata.cover.zz', (p: Loose) => (p.metadata.cover.zz = 1)],
         ['metadata.preview.zz', (p: Loose) => (p.metadata.preview.zz = 1)],
         ['metadata.tags[0].zz', (p: Loose) => (p.metadata.tags[0].zz = 1)],
+        // A tag is `{ title }` only.
+        ['metadata.tags[0].icon', (p: Loose) => (p.metadata.tags[0].icon = 'star')],
     ] as const) {
         const read = nxsp(
             await readCrafted((items) => {
@@ -471,7 +473,7 @@ test('versions: a newer major reads the level only; a newer minor skips the hist
     assert.ok(level.history)
 })
 
-// History (§1.6.11.5)
+// History
 
 const changeManifest = (change: (manifest: Loose) => void) =>
     readCrafted((items) => {
@@ -803,7 +805,7 @@ test('a crafted file that only reorders entries still opens fully', async () => 
     assert.equal(nxsp(await readNxsp(file)).open, 'full')
 })
 
-// A newer patch (§1.6.11.8): additive content an older reader can leave out
+// A newer patch: additive content an older reader can leave out
 
 test('a newer patch alone opens whole and keeps its history; absent reads as 0', async () => {
     const newer = nxsp(
@@ -849,7 +851,7 @@ test('a newer patch alone opens whole and keeps its history; absent reads as 0',
     }
 })
 
-// `savedAt` (§1.6.11.4): RFC 3339 only, else absent, never a reason to open partial
+// `savedAt`: RFC 3339 only, else absent, never a reason to open partial
 
 test('an odd savedAt reads as absent and does not make the open partial', async () => {
     for (const savedAt of [
@@ -889,7 +891,7 @@ test('an odd savedAt reads as absent and does not make the open partial', async 
     assert.equal(missing.project?.revision?.savedAt, undefined)
 })
 
-// `x`, the ignorable carrier (§1.6.11.8), and unknown keys in a step
+// `x`, the ignorable carrier, and unknown keys in a step
 
 test('x is ignorable on a step, a slot, an undo stack and the manifest, and is carried unread', async () => {
     const x = { future: [1, { deep: true }], note: 'kept' }

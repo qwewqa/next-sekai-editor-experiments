@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-// I-2: the calendar module agrees with the `Date` code it replaces, in the zone the host runs in
+// The calendar module agrees with the `Date` code it replaces, in the zone the host runs in
 // (a caller sets TZ before importing this). The old code is copied here as it was in rows.ts,
 // labels.ts, days.ts, GoToList.vue and dateTime.ts.
 

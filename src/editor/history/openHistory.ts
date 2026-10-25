@@ -18,7 +18,7 @@ import { checkHistoryCalendar } from './calendarClock'
 import { createHistoryPresentation, type HistoryCloseResult } from './presentation'
 import { historyFilter, historyTab, listFocus, type HistoryTab } from './state'
 
-// The ways in (Part 1 §1.4.10.1): the History command always runs the dialog; the links in notices,
+// The ways in: the History command always runs the dialog; the links in notices,
 // Settings and the like select the tab, and run the dialog only when the tab is Disabled.
 
 const historyId = shallowRef<number>()
@@ -70,7 +70,7 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
             // user, who asked, is told.
             recordError(error)
             if (at !== generation) return
-            notify(() => i18n.value.history.loadFailed)
+            notify(() => i18n.value.history.loadFailed, { card: true, severity: 'error' })
             if (reopenAt !== undefined) openElevationEditor(reopenAt)
             return
         }
@@ -149,7 +149,7 @@ export const showHistoryLink = (tab: HistoryTab = 'timeline') => {
     showPanel('history')
 }
 
-/** The notice button that opens History at a tab (Part 1 §1.4.1, §1.4.3). */
+/** The notice button that opens History at a tab. */
 export const openHistoryAction = (tab: HistoryTab = 'timeline'): NoticeAction => ({
     label: () => i18n.value.notice.openHistory,
     run: () => {

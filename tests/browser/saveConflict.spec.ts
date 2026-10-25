@@ -23,7 +23,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The conflict dialog's choices (Part 1 §1.4.7, Part 0 §0.9.6): Replace keeps the version on disk
+// The conflict dialog's choices: Replace keeps the version on disk
 // as an ordinary session first, then writes with `replaces`; Save as a Separate File keeps the
 // `docId` in a new file; nothing is ever written over a changed file unseen.
 
@@ -225,7 +225,7 @@ test('the Replace guard: a file holding the base this browser lost rows of is ne
     // A thinned root is a flag the chain can't show it holds: the uncertain reason. Rows gone from
     // the chain give the definite one (`replaceDecision` units).
     await expect(dialog).toContainText(
-        'It may hold earlier Timeline steps that are no longer stored in this browser.',
+        'It may contain earlier Timeline steps that are no longer stored in this browser.',
     )
     await expect(dialog.getByRole('button', { name: 'Replace' })).toBeDisabled()
     await expect(dialog.getByRole('button', { name: 'Save as a Separate File' })).toBeFocused()

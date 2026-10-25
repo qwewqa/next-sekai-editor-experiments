@@ -1,4 +1,4 @@
-// The native frontend (Part 2, 2.7.1; Part 3, 3.2.2): a Vite build in native mode into dist-native/, from a
+// The native frontend: a Vite build in native mode into dist-native/, from a
 // staged public folder that holds only an allowlist, so a local public/resource/ can never leak in.
 import { existsSync } from 'node:fs'
 import { cp, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'

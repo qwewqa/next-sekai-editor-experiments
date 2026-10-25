@@ -1,4 +1,4 @@
-// Settings' sections in their order (Part 1 §1.4.14): the index and openSettings(section) name them.
+// Settings' sections in their order: the index and openSettings(section) name them.
 export const SETTINGS_SECTIONS = [
     'editor',
     'localData',

@@ -30,6 +30,10 @@ jobs:
         timeout-minutes: 25
         outputs:
             deploy: ${{ steps.highest.outputs.deploy }}
+        env:
+            # Usage statistics: only a version tag's build has a target (docs/analytics.md).
+            NSE_ANALYTICS_ORIGIN: ${{ startsWith(github.ref, 'refs/tags/v') && vars.ANALYTICS_ORIGIN || '' }}
+            NSE_ANALYTICS_WEBSITE: ${{ startsWith(github.ref, 'refs/tags/v') && vars.ANALYTICS_WEBSITE_PRODUCTION || '' }}
         steps:
             - name: Check out source
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

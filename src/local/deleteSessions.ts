@@ -10,7 +10,7 @@ import type { ShownName } from './startup/events'
 import { storedRead, type ReadWorker, type StoredRead } from './storedRead'
 import type { PauseReason } from './worker/core'
 
-// Delete Sessions… (deletion design §3.6; Local Data design §3.7). The page reads the chains once
+// Delete Sessions…. The page reads the chains once
 // (`readDeleteChoices`), the dialog counts and names them, and `deleteSessions` then removes
 // exactly the chains it is given, each whole through the removal primitive: a chain opened, given
 // a journal or edited since the read is skipped. It runs GC afterwards, so a full browser finds
@@ -54,9 +54,7 @@ export type DeleteSessionsDeps = {
     paused: () => PauseReason | undefined
     /** Try Again for storing; called after GC when storing is paused `full`. */
     retryStoring: () => Promise<unknown>
-    /** Whether a revocation of the chain's binding is pending (`revoke.<chainId>` in localStorage). */
-    revoked?: (chainId: string) => boolean
-    /** Removes what deleted chains left outside storage (markers, revocations, kept copies). */
+    /** Removes what deleted chains left outside storage (markers, kept copies). */
     reclaim?: () => Promise<void>
     zone?: () => Zone
     now?: () => number
@@ -109,10 +107,7 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
                 ...(chain.fileAt === undefined ? {} : { fileAt: chain.fileAt }),
                 sessions: chain.sessions,
                 ageDays: Math.max(0, daysBetween(dayKey(chain.updatedAt, zone), today)),
-                notSaved: notSavedToFile(
-                    { ...chain, revoked: deps.revoked?.(chain.chainId) === true },
-                    downloadsConfirmed,
-                ),
+                notSaved: notSavedToFile(chain, downloadsConfirmed),
                 readable: chain.readable,
                 name: { name: displayName(chain.nameParts), at: chain.startedAt },
             })
@@ -136,12 +131,6 @@ export const createDeleteSessions = (deps: DeleteSessionsDeps) => {
         let waited = 0
         for (const [index, chain] of targets.entries()) {
             if (signal?.aborted) break
-            // Counted as saved, then revoked by a takeover this storage could not take: skipped.
-            if (!chain.notSaved && deps.revoked?.(chain.chainId) === true) {
-                skipped++
-                onProgress?.(index + 1, targets.length)
-                continue
-            }
             let result: RemoveLockedResult
             for (;;) {
                 result = await deps.removeLocked({

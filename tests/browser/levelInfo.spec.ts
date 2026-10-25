@@ -13,7 +13,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// Level Info (Part 1 §1.4.12, Step 11 design §3.1): the form, its draft and the one step a Confirm
+// Level Info: the form, its draft and the one step a Confirm
 // makes, the discard confirm, the utilities that return their result to it, the "not loaded" rows,
 // and a picked cover and preview reaching storage and a saved file.
 

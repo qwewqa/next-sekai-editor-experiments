@@ -23,12 +23,37 @@ void main() { outColor=vColor; }
 
 export class StageMesh extends Mesh<Geometry, Shader> {}
 
-/** Stage slices keep painter order in one triangle stream, without stencil barriers. */
+/**
+ * Flat-colored stage slices keep painter order in one
+ * triangle stream, without stencil barriers.
+ */
 export class StageMeshes {
     private shader: Shader | undefined
     private readonly live = new Set<StageMesh>()
+    // Owned by a caller's cache across frames; recycling a frame leaves them intact.
+    private readonly retained = new Set<StageMesh>()
 
-    draw(vertices: readonly number[], matrix: Matrix) {
+    draw(vertices: ArrayLike<number>, matrix: Matrix) {
+        const mesh = this.create(vertices, matrix)
+        this.live.add(mesh)
+        return mesh
+    }
+
+    /** A mesh the caller keeps across frames and returns with `release`. */
+    retain(vertices: readonly number[], matrix: Matrix) {
+        const mesh = this.create(vertices, matrix)
+        this.retained.add(mesh)
+        return mesh
+    }
+
+    release(mesh: StageMesh) {
+        if (!this.retained.delete(mesh)) return
+        mesh.removeFromParent()
+        mesh.geometry.destroy(true)
+        mesh.destroy()
+    }
+
+    private create(vertices: ArrayLike<number>, matrix: Matrix) {
         this.shader ??= new Shader({
             glProgram: GlProgram.from({ name: 'editor-stage-colors', vertex, fragment }),
             resources: {},
@@ -50,9 +75,7 @@ export class StageMeshes {
                 aColor: { buffer, format: 'float32x4', stride: 24, offset: 8 },
             },
         })
-        const mesh = new StageMesh({ geometry, shader: this.shader })
-        this.live.add(mesh)
-        return mesh
+        return new StageMesh({ geometry, shader: this.shader })
     }
 
     recycle(mesh: StageMesh) {
@@ -63,6 +86,7 @@ export class StageMeshes {
 
     destroy() {
         for (const mesh of this.live) this.recycle(mesh)
+        for (const mesh of this.retained) this.release(mesh)
         this.shader?.destroy()
         this.shader = undefined
     }
@@ -92,12 +116,20 @@ export class StageTriangles {
         return true
     }
 
-    append(triangles: Float64Array, color: number, alpha: number) {
+    appendTriangle(
+        x0: number,
+        y0: number,
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+        color: number,
+        alpha: number,
+    ) {
         if (!(alpha > 0)) return
         const r = (((color >>> 16) & 255) / 255) * alpha
         const g = (((color >>> 8) & 255) / 255) * alpha
         const b = ((color & 255) / 255) * alpha
-        for (let i = 0; i < triangles.length; i += 2)
-            this.vertices.push(triangles[i] ?? 0, triangles[i + 1] ?? 0, r, g, b, alpha)
+        this.vertices.push(x0, y0, r, g, b, alpha, x1, y1, r, g, b, alpha, x2, y2, r, g, b, alpha)
     }
 }

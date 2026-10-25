@@ -83,7 +83,6 @@ test.describe('the storage line', () => {
             const dialog = saveDialog(page)
             const storage = dialog.locator('[data-save-storage-line]')
             await expect(storage).toHaveText(line)
-            await expect(storage).not.toContainText('Save to a file')
             const downloading = page.waitForEvent('download')
             await submitSave(page, 'coconut')
             await downloading
@@ -230,7 +229,7 @@ test('the file opened by name keeps its history, "Already in" it; its BGM row is
     await expect(bgm.locator('[data-save-name-line]')).toHaveText('song.mp3')
 })
 
-test('a file without history opened by name: History is ticked and can be unticked (SF-4)', async ({
+test('a file without history opened by name: History is ticked and can be unticked', async ({
     page,
 }) => {
     await start(page, { fileSystemAccess: false })
@@ -255,7 +254,7 @@ test('a file without history opened by name: History is ticked and can be untick
     await expect(history.getByRole('checkbox')).toBeChecked()
 })
 
-test.describe('Save to File…', () => {
+test.describe('Recent Sessions’ Save…', () => {
     const toFile = (page: Page, sessionId: string) =>
         page.evaluate((sessionId) => {
             void import('/src/editor/save/flow.ts').then((flow) => flow.saveToFile(sessionId))
@@ -349,7 +348,7 @@ test('a feedback for a session another tab holds says so to assistive technology
     })
     expect(said.plain).toBe('Saved to restored.nxsp')
     expect(said.committed).toBe(
-        'Saved to restored.nxsp The file holds the last stored version of the session open in another tab.',
+        'Saved to restored.nxsp This session is open in another tab. The file contains its last stored version.',
     )
 })
 

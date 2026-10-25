@@ -14,3 +14,6 @@ tests/fixtures/web-storage-v1/** -text
 *.nxsp binary
 tools/fields-v1.json text eol=lf
 tests/zip/plan-conformance-v1/** -text
+
+# Shell scripts and units run on Linux.
+infra/** text eol=lf

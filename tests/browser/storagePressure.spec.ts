@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { waitForStartup } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// Cleanup under storage pressure (deletion design §3.7, DEL-D1 final): when storing pauses for a
+// Cleanup under storage pressure: when storing pauses for a
 // full browser, cached earlier media goes and storing resumes; with nothing to remove, storing
 // stays paused with its signs. An earlier step whose BGM went says "BGM not loaded".
 

@@ -4,7 +4,7 @@ import { changedFields, draftOf, draftOver } from '../../src/editor/levelInfo/dr
 import type { State } from '../../src/state'
 import { emptyLevelInfo, type LevelInfo, type MediaRef } from '../../src/state/levelInfo'
 
-// What a Level Info Apply writes (Part 1 §1.4.12): the fields the user changed, laid over the live
+// What a Level Info Apply writes: the fields the user changed, laid over the live
 // state, so a change made meanwhile (the dialog's own BGM steps, a rating set elsewhere) stays.
 
 const file = (hash: string, filename = 'cover.png'): MediaRef => ({
@@ -58,7 +58,7 @@ test('a changed Initial Life, rating and removed cover are written; an emptied t
 })
 
 test('tags are parsed only when the line was edited, against the live tags', () => {
-    const tags = [{ title: 'Fan-made', icon: 'star' }, { title: 'Expert' }]
+    const tags = [{ title: 'Fan-made' }, { title: 'Expert' }]
     const opening = draftOf({ ...emptyLevelInfo, tags }, 1000)
     const kept = draftOver(opening, { ...opening }, live({ tags }))
     assert.equal(kept.levelInfo.tags, tags)

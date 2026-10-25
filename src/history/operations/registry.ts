@@ -8,7 +8,6 @@ import {
     nil,
     object,
     oneOf,
-    positive,
     refine,
     union,
     type ValueOf,
@@ -154,9 +153,9 @@ const fileChange = object({ before: fileName, after: fileName })
 const ownerDomain = oneOf(['group', 'stage'])
 
 /**
- * One field of a Level Info Apply (§1.4.12): its text fields before and after as captured names
+ * One field of a Level Info Apply: its text fields before and after as captured names
  * (an unset field is the empty name), the rating, how many tags by title were added and removed
- * (v1 edits titles only and keeps icons; the tags themselves are in the snapshots, which Property
+ * and whether the kept tags moved (the tags themselves are in the snapshots, which Property
  * Changes diffs), the cover and preview as files, and the Initial Life the dialog also holds.
  */
 const levelInfoChange = union(
@@ -168,14 +167,14 @@ const levelInfoChange = union(
     object({ field: literal('rating'), before: union(finite, nil), after: union(finite, nil) }),
     object(
         { field: literal('tags'), added: count, removed: count },
-        // Tags kept but given another icon, and kept but moved: each is a change of state.
-        { changed: positive, reordered: literal(true) },
+        // Tags kept but moved are a change of state.
+        { reordered: literal(true) },
     ),
     object({ field: oneOf(['cover', 'preview']), before: fileName, after: fileName }),
     object({ field: literal('initialLife'), before: finite, after: finite }),
 )
 export type LevelInfoChange = ValueOf<typeof levelInfoChange>
-/** The dialog's field order, which a step's changes follow (§1.4.12). */
+/** The dialog's field order, which a step's changes follow. */
 export const levelInfoFields = [
     'title',
     'artists',
@@ -190,8 +189,7 @@ export const levelInfoFields = [
 const fieldAt = (change: LevelInfoChange) => levelInfoFields.indexOf(change.field)
 /** Whether a change changes anything. A cut name may hide a real difference, so it counts. */
 const isChange = (change: LevelInfoChange) => {
-    if (change.field === 'tags')
-        return change.added + change.removed + (change.changed ?? 0) > 0 || !!change.reordered
+    if (change.field === 'tags') return change.added + change.removed > 0 || !!change.reordered
     if (change.field === 'rating' || change.field === 'initialLife')
         return change.before !== change.after
     // Names and files: equal captured names are no change, unless a cut name hides a difference.
@@ -461,7 +459,16 @@ export const decodeOperation = (raw: JsonValue): DecodedOperation => {
     return { status: 'unsupported', raw, ...(fallback ? { fallback } : {}) }
 }
 
-export const captureOperation = (value: unknown) => captureJson(value)
+/** The operations this function returned: frozen, so one captured again is returned as it is. */
+const capturedOperations = new WeakSet()
+
+export const captureOperation = (value: unknown): JsonValue => {
+    if (typeof value === 'object' && value !== null && capturedOperations.has(value))
+        return value as JsonValue
+    const captured = captureJson(value)
+    if (typeof captured === 'object' && captured !== null) capturedOperations.add(captured)
+    return captured
+}
 
 export const createOperation = (
     input: NativeOperationInput,

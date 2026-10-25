@@ -16,7 +16,7 @@ import {
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
-// The storage worker's deletion methods (deletion design §3.11): Delete's target, mark and Undo,
+// The storage worker's deletion methods: Delete's target, mark and Undo,
 // the marked chains a sweep removes, the removal transaction, GC and cleanup under pressure. Every deleting transaction
 // runs inside `core.exclusive` (R1); the page holds the session locks (R3).
 

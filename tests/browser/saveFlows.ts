@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test'
 import { installTestPlatform, waitForStartup } from './editorFixture'
 
-// Helpers for the Save core's specs (Part 1 §1.4.7): a stored page under the platform override,
+// Helpers for the Save core's specs: a stored page under the platform override,
 // edits through the history, OPFS files the override's pickers return, and storage rows.
 
 type Row = Record<string, unknown>
@@ -299,6 +299,8 @@ export const saveReserved = (page: Page) =>
                 ?.session?.reserved !== undefined,
     )
 
-/** The "Preparing…" dialog of a file. */
+/** The "Preparing…" dialog of a file, also once it says "Ready:" and waits for the press. */
 export const preparingDialog = (page: Page, name = 'coconut.nxsp') =>
-    page.getByRole('dialog').filter({ hasText: `Preparing ${name}` })
+    page.getByRole('dialog').filter({
+        hasText: new RegExp(`(Preparing|Ready:) ${name.replaceAll('.', '\\.')}`),
+    })

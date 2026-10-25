@@ -1,7 +1,7 @@
 import { i18n } from '../i18n'
 import { notify } from './notification'
 
-// The in-app browser line's Copy Link (Part 1 §1.4.3): the page without its query or hash, which
+// The in-app browser line's Copy Link: the page without its query or hash, which
 // keeps `?safe` and the like out of what is pasted into a browser.
 
 /** The clipboard API, else the older copy command, which some hosts still allow. */

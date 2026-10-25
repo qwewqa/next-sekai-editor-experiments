@@ -77,7 +77,7 @@ export type ManagerModel<T> = {
 }
 
 /** A name as stored after renaming, or `undefined` when it is blank. */
-/** A typed name, well formed (§1.6.11's conventions) and trimmed; undefined when blank. */
+/** A typed name, well formed and trimmed; undefined when blank. */
 export const normalizeName = (name: string) => toWellFormed(name).trim() || undefined
 
 /** Modifiers of a click on a row's name: Shift selects a range, Ctrl or Cmd toggles. */

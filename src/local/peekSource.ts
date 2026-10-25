@@ -10,7 +10,7 @@ import { decodeSnapshot, encodeSnapshot } from './records/snapshot'
 import type { StorageWorker } from './worker/client'
 import type { SnapshotRead } from './worker/peekHandlers'
 
-// Where peek gets an entry's state (Part 1 §1.4.11, §1.9.2 #5): this tab's memory first (an
+// Where peek gets an entry's state: this tab's memory first (an
 // entry not yet stored, or a state the undo stack still holds), else the stored snapshot, read
 // and verified in the worker and built here.
 
@@ -96,7 +96,7 @@ export const readStoredState = async (
 }
 
 /**
- * The undo stack's loader for a restored slot (§1.6.4 #6): verified, since the slot becomes the
+ * The undo stack's loader for a restored slot: verified, since the slot becomes the
  * live head. A missing or damaged snapshot fails the load, which cancels the move.
  */
 export const slotLoader =

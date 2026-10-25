@@ -8,7 +8,7 @@ import { isNewerRootVersion, isReadableRootVersion } from '../records/unknownVal
 import type { SnapshotParts } from './flushHandlers'
 import type { WorkerContext } from './handlers'
 
-// Peek's reads (Part 1 §1.4.11): a History entry's row, and a snapshot verified (§1.6.2), so the
+// Peek's reads: a History entry's row, and a snapshot verified, so the
 // page can build the entry's state. Rows are read in one transaction; hashing waits until it
 // has ended, since an await on anything else would end it early.
 
@@ -17,7 +17,7 @@ export type EntryInfo = { time: number; snapshot: string; kept: boolean }
 
 /**
  * A snapshot read for peek: `missing` when its root is gone, `damaged` when a part is, `newer`
- * when a newer build wrote its root (a `v` above this build's: never damage, §1.6.11.8).
+ * when a newer build wrote its root (a `v` above this build's: never damage).
  */
 export type SnapshotRead =
     | { kind: 'missing' }
@@ -50,7 +50,7 @@ export const peekHandlers = (context: WorkerContext) => ({
 
     /**
      * A snapshot's root, nodes and chunks, each checked against its hash; one an open's import
-     * hasn't stored whole yet is read from the file this worker opened (§1.5.4).
+     * hasn't stored whole yet is read from the file this worker opened.
      */
     readSnapshotVerified: async (hex: string): Promise<SnapshotRead> => {
         const stored = await readVerified(context, hex)
@@ -60,7 +60,7 @@ export const peekHandlers = (context: WorkerContext) => ({
     },
 })
 
-/** A stored snapshot, verified (§1.6.2). */
+/** A stored snapshot, verified. */
 const readVerified = async (context: WorkerContext, hex: string): Promise<SnapshotRead> => {
     if (!isHash16Hex(hex)) return { kind: 'missing' }
     const read = await context.core.read(['nodes', 'chunks'], async (tx) => {

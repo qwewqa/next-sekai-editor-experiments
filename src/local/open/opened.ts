@@ -1,7 +1,7 @@
 import type { DiskState } from '../../platform/types'
 import { zipFingerprint } from '../../zip/fingerprint'
 import { readNxsp, type NxspRead, type ReadHistory } from '../nxsp'
-import type { UndoStackForm } from '../nxsp/manifest'
+import { inFileOrder, type UndoStackForm } from '../nxsp/manifest'
 import type { MediaForm, ProjectExtra, ProjectV1 } from '../nxsp/project'
 import type { MediaKind, ReportItem } from '../nxsp/read'
 import type { RecordValue } from '../records/canonical'
@@ -9,12 +9,12 @@ import type { SnapshotRecords } from '../records/encode'
 import type { SnapshotParts } from '../worker/flushHandlers'
 import { planImport, type ImportBatch } from './plan'
 
-// Files this worker opened (Part 1 §1.5.4): each `.nxsp` read once here, kept while its open is
+// Files this worker opened: each `.nxsp` read once here, kept while its open is
 // stored and its background import runs, so the batches, and peeks of states not imported yet,
 // read the file the tab opened. A worker restart loses them; the page reads the file again.
 
 /**
- * The file's rows whose root it lacks (§1.6.11.6, D25): the binding's `notKept`, counted by roots
+ * The file's rows whose root it lacks: the binding's `notKept`, counted by roots
  * as a Save counts it, never by the `kept` flag (a flagged row whose state another row keeps is held).
  */
 export const lackingRoots = (history: {
@@ -139,7 +139,7 @@ const decoder = new TextDecoder()
 
 /**
  * A snapshot's parts from a file this worker opened, each verified against its hash: how a
- * peek or an undo reaches a state its import hasn't stored yet (§1.5.4). Undefined when no
+ * peek or an undo reaches a state its import hasn't stored yet. Undefined when no
  * opened file holds it whole.
  */
 export const snapshotFromOpened = async (hex: string): Promise<SnapshotParts | undefined> => {
@@ -150,18 +150,20 @@ export const snapshotFromOpened = async (hex: string): Promise<SnapshotParts | u
         try {
             const nodes: Record<string, RecordValue[]> = {}
             const chunks: Record<string, unknown> = {}
-            const chunk = async (hash: string) => {
-                chunks[hash] = JSON.parse(decoder.decode(await history.chunks.read(hash)))
-            }
-            const node = async (hash: string) => {
+            // Walk the nodes first (they are in memory), then read the chunks in file order. Reading
+            // each chunk during the walk would jump back and forth in the file.
+            const wanted = new Set<string>([root[1] as string])
+            const node = (hash: string) => {
                 const json = history.nodes.get(hash)
                 if (!json) throw new Error(`No node ${hash}`)
                 nodes[hash] = json
                 for (const child of json[2] as string[])
-                    await (json[1] === 1 ? node(child) : chunk(child))
+                    if (json[1] === 1) node(child)
+                    else wanted.add(child)
             }
-            await chunk(root[1] as string)
-            for (const [, top] of root[2] as [string, string][]) await node(top)
+            for (const [, top] of root[2] as [string, string][]) node(top)
+            for (const hash of inFileOrder(history.index, wanted))
+                chunks[hash] = JSON.parse(decoder.decode(await history.chunks.read(hash)))
             return { root, nodes, chunks }
         } catch {
             // A part that fails its hash: the import finds it too and says so.

@@ -12,12 +12,7 @@ import {
 import { peekedKey, peekSourceGeneration } from '../../history/peek'
 import { session } from '../../history/session'
 import { headStep } from '../../history/stack'
-import {
-    captureOperationRecipe,
-    describeStep,
-    stepLang,
-    type OperationRecipe,
-} from '../../history/operationPresentation'
+import { captureOperationRecipe, describeStep, stepLang } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
 import { settings } from '../../settings'
 import { focusLost } from '../../utils/focusFallback'
@@ -31,6 +26,7 @@ import { isApplePlatform, matchBindings } from '../controls/bindings'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
+import WaitSpinner from '../workspace/WaitSpinner.vue'
 import { useRootFontSize } from '../useRootFontSize'
 import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
@@ -38,7 +34,13 @@ import GapArrowIcon from './GapArrowIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
-import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
+import {
+    createRecipeCache,
+    heightOf,
+    isCountedParent,
+    presentRow,
+    recipeOfRow,
+} from './rowPresentation'
 import { useHistoryCalendar } from './calendarClock'
 import { historyFormat } from './historyFormat'
 import { historyOperationContext } from './historyOperationContext'
@@ -48,6 +50,7 @@ import { canFocusHistory } from './openHistory'
 import {
     buildRows,
     entryId,
+    pinnedIsRow,
     previousOf,
     type Entry,
     type EntryRow,
@@ -76,6 +79,7 @@ import {
     jumpTo as jumpToEntry,
     jumpToOldest,
     loadingMore,
+    loadMoreFailed,
     loadingNewer,
     loadMore,
     loadNewer,
@@ -97,7 +101,7 @@ import {
 } from './state'
 
 // The Timeline is a rows-first treegrid of the chain's entries, newest first and windowed.
-// Selecting a row peeks it; the controls for leaving or restoring are on the canvas (§1.4.11).
+// Selecting a row peeks it; the controls for leaving or restoring are on the canvas.
 
 const props = defineProps<{
     /** The tab in a dock, or the dialog: each keeps its own scroll and focus rules. */
@@ -121,25 +125,34 @@ followEntries()
 useScrollMemory(() => `${props.surface}:history`, list)
 
 // The headers' ages are measured against the History clock, rebuilt at each hour and when the
-// zone changes: a row changes tier only then, and always below the top of the list (Part 1
-// §1.4.10.5).
+// zone changes: a row changes tier only then, and always below the top of the list.
 const calendar = useHistoryCalendar()
 const format = computed(() => historyFormat(calendar.value, settings.locale))
 
-const built = computed(() =>
-    buildRows(listedEntries.value, {
-        filter: historyFilter.value,
-        expanded: expandedGroups.value,
-        damaged: damagedEntries.value,
-        newer: newerEntries.value,
-        removed: removedEntries.value,
-        calendar: calendar.value,
-        gap: gap.value,
-        // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
-        more: historyFilter.value === 'here' ? here.scanning : canLoadMore.value,
-        pinned: peekedInfo.value?.pinned,
-    }),
-)
+const buildOptions = () => ({
+    filter: historyFilter.value,
+    expanded: expandedGroups.value,
+    damaged: damagedEntries.value,
+    newer: newerEntries.value,
+    removed: removedEntries.value,
+    calendar: calendar.value,
+    gap: gap.value,
+    // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
+    more: historyFilter.value === 'here' ? here.scanning : canLoadMore.value,
+})
+// Every peek, arrow step and Go To sets a new pin, and building the rows costs a pass over every
+// loaded entry. The rows are built without the pin, and again with it only when the pinned run is
+// not one row already, so a peek of a row that is already one run leaves the rows, and everything
+// derived from them, unchanged.
+const unpinned = computed(() => buildRows(listedEntries.value, buildOptions()))
+const peekPin = computed(() => peekedInfo.value?.pinned)
+const built = computed(() => {
+    const rows = unpinned.value
+    const pin = peekPin.value
+    return !pin || pinnedIsRow(rows, pin)
+        ? rows
+        : buildRows(listedEntries.value, { ...buildOptions(), pinned: pin })
+})
 
 // A timeline of only its first state says so, under Now.
 const isEmpty = computed(
@@ -161,11 +174,9 @@ const headLabel = computed(
     () => headStep.value && describeStep(headStep.value, operationContext.value),
 )
 const headLang = computed(() => headStep.value && stepLang(headStep.value, operationContext.value))
-const recipes = computed(() => {
-    const result = new Map<string, OperationRecipe>()
-    for (const row of rows.value) if (row.type === 'entry') result.set(row.id, recipeOfRow(row))
-    return result
-})
+// Kept across builds: a step or a loaded page reuses the recipes of the rows that stay the same.
+const recipeCache = createRecipeCache()
+const recipes = computed(() => recipeCache(rows.value))
 const recipeOf = (row: EntryRow) =>
     peekedInfo.value?.rowId === row.id
         ? peekedInfo.value.recipe
@@ -238,17 +249,24 @@ const tail = computed(() => {
         return { kind: 'skeleton', height: SKELETON_ROWS * rowHeight.value }
     if (isEmpty.value) return { kind: 'empty', height: MESSAGE.value }
     if (loadingMore.value) return { kind: 'more', height: rowHeight.value }
+    if (loadMoreFailed.value && canLoadMore.value)
+        return { kind: 'moreFailed', height: FAILED.value }
     // The chain's oldest stored session continues one that is gone: the list ends with a line.
     if (earlierMissing.value && !canLoadMore.value)
         return { kind: 'ended', height: rowHeight.value }
     return { kind: 'none', height: 0 }
 })
 const contentHeight = computed(() => geometry.value.total + tail.value.height + PAD_BOTTOM.value)
-// Try Again goes with the failure it answers: focus on it goes to the cursor's row (X-2).
+// Try Again goes with the failure it answers: focus on it goes to the cursor's row.
 watch(
     () => tail.value.kind,
     (kind, was) => {
-        if (was !== 'failed' || kind === 'failed') return
+        if (
+            (was !== 'failed' && was !== 'moreFailed') ||
+            kind === 'failed' ||
+            kind === 'moreFailed'
+        )
+            return
         if (!document.activeElement?.closest('[data-history-failed]')) return
         void nextTick(() => {
             if (!disposed && focusLost()) void focusRow(cursorId.value, 'row', false)
@@ -799,7 +817,7 @@ const topEntry = (): Target | 'now' => {
 }
 
 // Rows inserted or removed above the first one on screen move the scroll position by as much,
-// so nothing under the pointer moves (Part 1 §1.4.10.5). At the very top, new rows simply appear.
+// so nothing under the pointer moves. At the very top, new rows simply appear.
 watch(
     geometry,
     (next, previous) => {
@@ -1222,6 +1240,7 @@ const onScroll = () => {
     if (
         historyFilter.value !== 'here' &&
         canLoadMore.value &&
+        !loadMoreFailed.value &&
         element.scrollTop + element.clientHeight > geometry.value.total - 400
     )
         void loadMore()
@@ -1230,7 +1249,8 @@ const onScroll = () => {
 // A short list loads on until it fills the pane.
 watch([() => geometry.value.total, viewport, canLoadMore], () => {
     if (historyFilter.value === 'here') return
-    if (canLoadMore.value && geometry.value.total < viewport.value + 400) void loadMore()
+    if (canLoadMore.value && !loadMoreFailed.value && geometry.value.total < viewport.value + 400)
+        void loadMore()
 })
 
 let observer: ResizeObserver | undefined
@@ -1283,7 +1303,7 @@ watch(
 const domId = (id: string) => `history-row-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`
 
 // A save from another device names it: this browser's own carries its id for the chain's lineage,
-// which every session the Timeline lists shares (§1.3.3).
+// which every session the Timeline lists shares.
 const thisDevice = () => {
     const open = flusher?.session
     return open?.id === session.value.sessionId ? ownDeviceId(open.lineageId) : undefined
@@ -1309,8 +1329,8 @@ const flagKindOf = (row: EntryRow) => (row.flags.damaged ? 'damaged' : 'removed'
 // 340 px at the default size, scaled with the root font size like the one-line threshold.
 const narrow = computed(() => width.value > 0 && width.value < 340 * k.value)
 // From 18rem a row is one line: its mark, title, count, delta and time on one centre line. Below,
-// the count, delta and time go under the title, at its edge (Part 1 §1.4.10.5).
-// One-line rows from 18rem: px at the 16 px rem, scaled like the slots (owner decision, 2026-10-19).
+// the count, delta and time go under the title, at its edge.
+// One-line rows from 18rem: px at the 16 px rem, scaled like the slots.
 const ONE_LINE = 18 * 16
 const oneLine = computed(() => width.value >= ONE_LINE * k.value)
 
@@ -1671,19 +1691,18 @@ defineExpose({
                     <span
                         class="flex size-9 shrink-0 items-center justify-center"
                         aria-hidden="true"
-                        ><span
-                            v-if="tail.kind === 'checking'"
-                            class="size-3.5 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                        ><WaitSpinner v-if="tail.kind === 'checking'" class="size-4"
                     /></span>
                     <span class="min-w-0 truncate pl-2">{{
                         tail.kind === 'checking' ? i18n.history.checking : notCheckedText
                     }}</span>
                 </div>
                 <div
-                    v-else-if="tail.kind === 'failed'"
+                    v-else-if="tail.kind === 'failed' || tail.kind === 'moreFailed'"
                     class="absolute inset-x-1.5 flex flex-col items-center justify-center gap-3 px-3 text-center text-sm text-fg/80"
                     :style="{ top: `${geometry.total}px`, height: `${FAILED}px` }"
                     data-history-failed
+                    :data-history-more-failed="tail.kind === 'moreFailed' ? '' : undefined"
                 >
                     <span>{{
                         historyFilter === 'here'
@@ -1694,7 +1713,13 @@ defineExpose({
                         v-if="historyFilter !== 'here' || here.canRetry"
                         type="button"
                         class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                        @click="historyFilter === 'here' ? retryHere() : retry()"
+                        @click="
+                            tail.kind === 'moreFailed'
+                                ? loadMore()
+                                : historyFilter === 'here'
+                                  ? retryHere()
+                                  : retry()
+                        "
                     >
                         {{ i18n.history.tryAgain }}
                     </button>
@@ -1713,9 +1738,7 @@ defineExpose({
                     :style="{ top: `${geometry.total}px`, height: `${rowHeight}px` }"
                     aria-hidden="true"
                 >
-                    <span
-                        class="size-4 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
-                    />
+                    <WaitSpinner class="size-4" />
                 </div>
             </div>
         </div>

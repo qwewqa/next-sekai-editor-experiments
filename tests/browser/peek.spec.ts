@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { confirmWhenReady } from './confirmWhenReady'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
-// Peek (Part 1 §1.4.11) and its gating: an entry's state shown read-only while writers keep the
+// Peek and its gating: an entry's state shown read-only while writers keep the
 // live state, commands and tools refused with the notice, Undo leaving first, drags and scaling
 // sessions cancelled, the read-only panels, the Elevation Editor closed or behind its overlay,
 // Restore, and Copy while peeking then pasting after leaving. History's own panel is 5-panel's;
@@ -777,4 +777,87 @@ test('Restore pushes the entry as an undoable step, and a matching one changes n
     expect(await newestSeq(page)).toBe(first + 2)
     await page.keyboard.press('z')
     expect((await beats(page)).live).toEqual([5, 7, 9])
+})
+
+/** A 12 s mono WAV whose loudness steps every 250 ms in a pattern that repeats every 750 ms. */
+const steppedWav = (gain: number) => {
+    const rate = 8000
+    const samples = 12 * rate
+    const data = Buffer.alloc(44 + samples * 2)
+    data.write('RIFF', 0)
+    data.writeUInt32LE(data.length - 8, 4)
+    data.write('WAVEfmt ', 8)
+    data.writeUInt32LE(16, 16)
+    data.writeUInt16LE(1, 20)
+    data.writeUInt16LE(1, 22)
+    data.writeUInt32LE(rate, 24)
+    data.writeUInt32LE(rate * 2, 28)
+    data.writeUInt16LE(2, 32)
+    data.writeUInt16LE(16, 34)
+    data.write('data', 36)
+    data.writeUInt32LE(samples * 2, 40)
+    for (let index = 0; index < samples; index++) {
+        const level = [0.9, 0.1, 0.5][Math.floor(index / (rate / 4)) % 3]!
+        data.writeInt16LE(Math.round(Math.sin(index / 3) * level * gain * 32767), 44 + index * 2)
+    }
+    return data.toString('base64')
+}
+
+/** Picks a BGM with an offset in the BGM dialog. */
+const pickBgm = async (page: Page, base64: string, offsetMs: string) => {
+    await page.evaluate(async (base64) => {
+        const bytes = Uint8Array.from(atob(base64), (value) => value.charCodeAt(0))
+        const { changeBgm } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/bgm')
+        >('/src/editor/commands/bgm/index.ts')
+        void changeBgm(new File([bytes], 'song.wav', { type: 'audio/wav' }))
+    }, base64)
+    // Once the file is read: the loading dialog has closed.
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toHaveCount(1)
+    await expect(dialog.locator('input[type="button"]')).toHaveValue(/\d/)
+    await dialog.getByRole('spinbutton', { name: 'Offset (ms)', exact: true }).fill(offsetMs)
+    await dialog.getByRole('button', { name: 'Confirm', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+}
+
+/** The chart pane below the peek bars, notices masked, once two shots in a row agree. */
+const chartShot = async (page: Page) => {
+    const box = (await page.locator('canvas.editor-chart').boundingBox())!
+    const options = {
+        clip: { x: box.x + 8, y: box.y + 140, width: box.width - 16, height: box.height - 280 },
+        mask: [notice(page)],
+    }
+    let previous = await page.screenshot(options)
+    for (let tries = 0; tries < 20; tries++) {
+        await page.evaluate(
+            () =>
+                new Promise((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                ),
+        )
+        const shot = await page.screenshot(options)
+        if (shot.equals(previous)) return shot
+        previous = shot
+    }
+    throw new Error('The chart did not settle')
+}
+
+test('a step’s peek from before a BGM change draws the live waveform at the live offset', async ({
+    page,
+}) => {
+    await page.evaluate(() => (window.editorTest.settings.waveform = 'volume'))
+    await pickBgm(page, steppedWav(0.8), '0')
+    const earlier = await newestSeq(page)
+    await pickBgm(page, steppedWav(1), '400')
+    const current = await newestSeq(page)
+    expect(current).toBe(earlier + 1)
+
+    // A step with the current BGM draws it at the step’s offset, here the live one.
+    await peek(page, current)
+    const live = await chartShot(page)
+    // The earlier BGM’s offset does not fit the current audio, so the live offset stays.
+    await peek(page, earlier)
+    expect((await chartShot(page)).equals(live), 'the waveform moved').toBe(true)
+    await leave(page)
 })

@@ -3,8 +3,8 @@ import { onResetState } from '../../history/resetHooks'
 import { session } from '../../history/session'
 import type { Filter } from './rows'
 
-// The History panel's tab, filter and open groups, kept while the editor is open (Part 1
-// §1.4.10), shared by the tab and the dialog.
+// The History panel's tab, filter and open groups, kept while the editor is open
+// (Edits Here ends with its session), shared by the tab and the dialog.
 
 export type HistoryTab = 'timeline' | 'sessions'
 
@@ -13,7 +13,7 @@ export const historyTab = ref<HistoryTab>('timeline')
 export const historyFilter = ref<Filter>('all')
 
 /**
- * Edits Here's beats, taken once as the filter is turned on (Part 1 §1.4.10.5): `to` ends the last
+ * Edits Here's beats, taken once as the filter is turned on: `to` ends the last
  * beat, which starts at `last`.
  */
 export const hereRange = shallowRef<{ from: number; to: number; last: number }>()
@@ -69,5 +69,14 @@ export const restoreHistoryView = (
     }
 }
 
-watch(() => session.value.sessionId, clearHistoryView, { flush: 'sync' })
+watch(
+    () => session.value.sessionId,
+    () => {
+        clearHistoryView()
+        // Another session's chart (Open, New, Restore Session; never a peek): Edits Here's beats
+        // were taken from the one before, so the filter goes back to All.
+        if (historyFilter.value === 'here') historyFilter.value = 'all'
+    },
+    { flush: 'sync' },
+)
 onResetState(clearHistoryView)

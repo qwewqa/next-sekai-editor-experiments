@@ -8,8 +8,8 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// `?safe` (Part 1 §1.4.2, §1.4.10.6): Recent Sessions lists what is stored and reads it, and the
-// only way into a session is a copy that stores nothing. Save to File… still writes the file.
+// `?safe`: Recent Sessions lists what is stored and reads it, and the
+// only way into a session is a copy that stores nothing. Recent Sessions' Save… still writes the file.
 
 const messages = JSON.parse(
     readFileSync(new URL('../../src/i18n/en/index.json', import.meta.url), 'utf8'),
@@ -90,7 +90,7 @@ test('safe mode lists the stored sessions, peeks them, and Restore as a Copy ope
     expect(await storedRows(page)).toBe(before)
 })
 
-test('safe mode’s menu is Restore as a Copy and Save to File…, and Save to File… writes the file', async ({
+test('safe mode’s menu is Restore as a Copy and Save…, and Save… writes the file', async ({
     page,
 }) => {
     await safePage(page)
@@ -108,4 +108,17 @@ test('safe mode’s menu is Restore as a Copy and Save to File…, and Save to F
     expect(download.suggestedFilename()).toBe('alpha.nxsp')
     // Nothing was applied to storage to write it.
     expect(await storedRows(page)).toBe(before)
+})
+
+test('safe mode has no Delete Sessions… button, and the command says why', async ({ page }) => {
+    await safePage(page)
+    await expect(row(page, 'Alpha')).toBeVisible()
+    await expect(page.locator('[data-history-delete-sessions]')).toHaveCount(0)
+    await page.evaluate(async () => {
+        const { commands } =
+            (await import('/src/editor/commands/index.ts')) as typeof import('../../src/editor/commands')
+        void commands.deleteSessions.execute()
+    })
+    await expect(notice(page, messages.safe.bar)).toBeVisible()
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
 })

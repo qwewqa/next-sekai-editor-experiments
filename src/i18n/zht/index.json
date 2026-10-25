@@ -534,7 +534,7 @@
       "import": {
         "damaged": "此檔案已損毀，或不是 Sonolus 套件。",
         "fileUnreadable": "無法讀取此檔案。",
-        "zip64": "此檔案使用 ZIP64，編輯器無法讀取。",
+        "zip64": "編輯器無法讀取 ZIP64 檔案。",
         "fileTooLarge": "此檔案超過 {0}。",
         "tooManyEntries": "此檔案的條目超過 {0} 個。",
         "badName": "此檔案包含不允許的條目名稱。",
@@ -569,8 +569,8 @@
       "noneFound": "找不到項目",
       "server": {
         "unreachable": "無法連線到此伺服器。請檢查位址，或稍後再試。",
-        "auth": "此伺服器需要登入，編輯器不支援登入。",
-        "insecure": "此伺服器使用 http，編輯器無法載入。",
+        "auth": "編輯器無法使用需要登入的伺服器。",
+        "insecure": "編輯器無法使用 http 伺服器。",
         "checksum": "此項目的檢查碼與伺服器傳送的內容不符。",
         "notFound": "此伺服器上沒有該項目。",
         "invalid": "此位址不是 Sonolus 伺服器。",
@@ -603,7 +603,7 @@
       "title": "歷史記錄"
     },
     "showChange": {
-      "title": "顯示變更"
+      "title": "顯示變更位置"
     },
     "editsHere": {
       "title": "尋找此處的編輯"
@@ -769,7 +769,7 @@
     },
     "altN": "按 Alt+N（macOS 上為 Option+N）可將焦點移至最新通知。之後按 Esc 可將其關閉。",
     "shiftF10": "按 Shift+F10 或功能表鍵可開啟目前焦點所在項目的選單。",
-    "recentSessions": "未儲存到檔案的內容在「歷史記錄 › 最近工作階段」中。",
+    "recentSessions": "未儲存的內容在「歷史記錄 › 最近工作階段」中。",
     "fileTitle": "檔案",
     "moveBetweenDevices": "要將內容移到另一台裝置，請儲存為 .nxsp 檔案，然後在那台裝置上開啟該檔案。",
     "crswap": "儲存時發生當機，可能會在專案檔案旁留下 .crswap 檔案。可以放心刪除。"
@@ -807,6 +807,8 @@
     "resetSettingsHint": "還原預設設定，保留鍵盤快捷鍵。",
     "resetKeybinds": "重置快捷鍵",
     "resetSettingsMessage": "要還原預設設定並保留鍵盤快捷鍵嗎？",
+    "resetSettingsHintStatistics": "還原預設設定，保留鍵盤快捷鍵和「傳送使用統計」。",
+    "resetSettingsMessageStatistics": "要還原預設設定並保留鍵盤快捷鍵和「傳送使用統計」嗎？",
     "resetKeybindsMessage": "要還原預設鍵盤快捷鍵嗎？",
     "editor": {
       "title": "編輯器",
@@ -898,6 +900,7 @@
       "highlightSelection": "醒目顯示選取物件",
       "showHitboxes": "顯示判定範圍",
       "antialias": "反鋸齒",
+      "parallelRendering": "平行渲染",
       "transport": {
         "title": "播放控制",
         "auto": "自動",
@@ -916,6 +919,7 @@
       "title": "工具列",
       "quickSwitch": "快速切換",
       "add": "新增工具",
+      "remove": "從工具列移除「{0}」",
       "modal": {
         "title": "新增工具"
       }
@@ -943,6 +947,9 @@
       "license": "授權條款",
       "notices": "第三方聲明",
       "privacy": "隱私",
+      "usageStatistics": "傳送使用統計",
+      "usageStatisticsNote": "使用的工具、主要設定、檔案類型和大小，以及操作所需的時間。請參閱「隱私」。",
+      "usageStatisticsSignal": "預設停用，因為此瀏覽器傳送了 Do Not Track 或 Global Privacy Control。",
       "diagnostics": "複製診斷資訊…",
       "diagnosticsTitle": "診斷資訊",
       "diagnosticsNote": "診斷資訊可能包含檔案名稱與資料夾名稱。分享前請先檢查。",
@@ -953,6 +960,7 @@
     "localData": {
       "title": "本機資料",
       "recoveryHeading": "恢復",
+      "startupNoticesHeading": "啟動通知",
       "discard": "捨棄…",
       "discardConfirm": "捨棄",
       "cannotOpen": "（此版本無法開啟）",
@@ -961,16 +969,15 @@
       "recovery": {
         "journal": "先前造訪中未儲存的內容，{0} · {1}",
         "journalUndated": "先前造訪中未儲存的內容 · {0}",
-        "legacy": "舊版本的恢復副本 · {0}",
         "autoSave": "舊的自動儲存 · {0}",
         "unreadable": "無法讀取的已恢復內容，{0} · {1}",
         "listFailed": "無法讀取已恢復的內容",
-        "downloadFailed": "無法下載已恢復的內容。",
-        "atLoad": "啟動通知"
+        "downloadFailed": "無法下載已恢復的內容。"
       },
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更",
       "exportRaw": "匯出原始資料…",
+      "exportRawTitle": "匯出原始資料",
       "exportRawName": "{0} 原始資料 {1}.zip",
       "storageHeading": "儲存空間",
       "stored": "此瀏覽器中已存放：{0}，總容量約 {1}",
@@ -978,10 +985,10 @@
       "deleteTitle": "刪除工作階段",
       "lastEdited": "上次編輯已超過 {0} 天",
       "all": "全部",
-      "includeNotSaved": "包含未儲存到檔案的內容",
+      "includeNotSaved": "包含未儲存的內容",
       "deleteNext": "刪除…",
       "deleteConfirm": "要刪除 {0} 個工作階段嗎？",
-      "notSaved": "有 {0} 個工作階段未儲存到檔案：{1}。",
+      "notSaved": "有 {0} 個工作階段包含未儲存的變更：{1}。",
       "namesMore": "{0} 及其他 {1} 個",
       "newer": "其中有工作階段需要較新版本的編輯器。",
       "deleting": "正在刪除…",
@@ -1196,24 +1203,24 @@
     "updated": "已更新至版本 {0}",
     "whatsNew": "新功能",
     "upgradeBlocked": "請關閉其他 {0} 分頁，以開啟已存放的內容。",
-    "olderVersion": "此瀏覽器中已開啟過較新版本的編輯器。請重新載入，或將內容儲存為檔案。",
+    "olderVersion": "此瀏覽器中已開啟過較新版本的編輯器。請重新載入，或儲存以保留內容。",
     "tryAgain": "重試",
     "continued": "已從 {1} 繼續 \"{0}\"。",
     "continuedUntitled": "已繼續 {0} 的工作階段。",
     "continuedUndated": "已繼續 \"{0}\"。",
     "cleared": "先前造訪的內容已遺失。瀏覽器清除了此網站的儲存空間。",
     "inAppBrowser": "這似乎是應用程式內建瀏覽器。部分功能可能無法使用，已存放的內容也可能被刪除。如需保留內容，請在瀏覽器中開啟此頁面。",
-    "journalKept": "無法套用對 \"{0}\" 的變更，已將其保留為獨立的工作階段。",
+    "journalKept": "已將對 \"{0}\" 的已恢復變更保留為獨立的工作階段。",
     "fallback": "已恢復先前造訪中未儲存的內容。",
     "fallbackLocal": "先前造訪中未儲存的內容在本機資料中。",
     "migrationFailed": "無法還原舊的自動儲存。",
-    "autoSave": "已從自動儲存繼續 \"{0}\"。",
+    "autoSave": "已從舊的自動儲存繼續 \"{0}\"。",
     "journal": "已恢復對 \"{0}\" 的最後變更。",
     "journalLater": "已恢復的變更需要較新版本的編輯器。",
     "openElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此未在此處還原。",
     "restoreAsCopy": "還原為副本",
     "sessionDeleted": "此工作階段已在另一個分頁或視窗中刪除。",
-    "autoSaveKept": "已將自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
+    "autoSaveKept": "已將舊的自動儲存中的 \"{0}\" 保留為獨立的工作階段。",
     "autoSaveOpened": "已開啟舊的自動儲存。",
     "journalFailed": "無法存放已恢復的變更。副本在本機資料中。",
     "storageNearlyFull": "瀏覽器儲存空間幾乎已滿。",
@@ -1237,14 +1244,14 @@
       "readOnly": "已開啟過較新版本的編輯器。",
       "upgrading": "另一個分頁中開啟了較新版本的編輯器。"
     },
-    "unavailable": "編輯器無法在此瀏覽器中存放變更。請將內容儲存到檔案中以保留。",
-    "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請將內容儲存到檔案中以保留。",
-    "inAppBrowser": "這似乎是應用程式內建瀏覽器，它可能會刪除已存放的內容。如需保留內容，請在瀏覽器中開啟此頁面。",
-    "ios": "此瀏覽器會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
-    "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請將內容儲存到檔案中以保留。",
-    "installedWebkit": "最近的工作階段會保留在此處，直到此圖示從主畫面移除。請將內容儲存到檔案中以保留。",
-    "persisted": "除非清除此瀏覽器的資料，否則最近的工作階段會保留在其中。請將內容儲存到檔案中以保留。",
-    "default": "最近的工作階段會保留在此瀏覽器中，空間不足時瀏覽器可能會將其清除。請將內容儲存到檔案中以保留。"
+    "unavailable": "編輯器無法在此瀏覽器中存放變更。請儲存以保留內容。",
+    "private": "如果這是無痕視窗，此處存放的所有內容會在關閉視窗時遺失。請儲存以保留內容。",
+    "inAppBrowser": "這似乎是應用程式內建瀏覽器。已存放的內容可能被刪除。如需保留內容，請在瀏覽器中開啟此頁面。",
+    "ios": "此瀏覽器會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。",
+    "safari": "Safari 會在 7 天未造訪後刪除已存放的內容。請儲存以保留內容。",
+    "installedWebkit": "最近的工作階段會保留在此處，直到您移除此應用程式。請儲存以保留內容。",
+    "persisted": "除非清除此瀏覽器的資料，否則最近的工作階段會保留在其中。請儲存以保留內容。",
+    "default": "除非空間不足，否則最近的工作階段會保留在此瀏覽器中。請儲存以保留內容。"
   },
   "player": {
     "started": "開始播放",
@@ -1377,7 +1384,7 @@
       "thisTab": "此分頁",
       "elsewhere": "其他分頁",
       "actions": "\"{0}\" 的更多操作",
-      "saveToFile": "儲存到檔案…",
+      "saveToFile": "儲存…",
       "delete": "刪除",
       "openReason": "已在另一個分頁或視窗中開啟。"
     },
@@ -1932,7 +1939,8 @@
     "resize": {
       "left": "調整左側面板大小",
       "right": "調整右側面板大小",
-      "top": "調整頂部面板大小"
+      "top": "調整頂部面板大小",
+      "minimap": "調整小地圖大小"
     },
     "resizeTiles": "調整{0}和{1}的大小",
     "dock": {
@@ -2068,7 +2076,7 @@
   "peek": {
     "loadingShort": "載入中…",
     "unavailableShort": "無法取得",
-    "settingsChanged": "設定已變更",
+    "settingsChanged": "屬性已變更",
     "initialState": "初始狀態",
     "unavailable": "無法取得變更",
     "loadingChanges": "正在載入變更…",
@@ -2100,6 +2108,7 @@
     "notFound": "找不到 \"{0}\"。",
     "downloadStarted": "已開始下載：{0} · {1}",
     "preparing": "正在準備 {0}… {1}",
+    "ready": "已準備好：{0} · {1}",
     "download": "下載",
     "buildFailed": "無法準備 \"{0}\"。",
     "readFailed": "無法讀取 \"{0}\"。",
@@ -2109,7 +2118,7 @@
     "noSpace": "空間不足，無法寫入 {0}。",
     "writeFailed": "無法寫入 \"{0}\"。",
     "notPutBack": "\"{0}\" 已被清空，且無法還原其內容。",
-    "openedContentGone": "\"{0}\" 已不再包含開啟時的內容。",
+    "openedContentGone": "\"{0}\" 已不再包含先前的內容。",
     "replacedContentGone": "\"{0}\" 已不再包含先前的內容。",
     "title": "儲存專案檔案",
     "titleAs": "另存新檔",
@@ -2122,6 +2131,7 @@
     "notProject": "\"{0}\" 不是專案檔案。",
     "notKept": "未儲存。無法完整讀取 \"{0}\"。",
     "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
+    "notKeptFull": "未儲存。瀏覽器儲存空間已滿。請在「設定 › 本機資料」中刪除工作階段，然後重新儲存。",
     "saved": "已儲存到 {0}",
     "savedWithoutBgmLarge": "已儲存到 {0}，未包含 BGM",
     "savedWithoutCoverLarge": "已儲存到 {0}，未包含封面",
@@ -2154,8 +2164,8 @@
   "check": {
     "command": "檢查檔案和歷史記錄…",
     "title": "檢查檔案和歷史記錄",
-    "checkingFile": "正在檢查 {0}… {1}%",
-    "checkingStored": "正在檢查已存放的歷史記錄… {0}%",
+    "checkingFile": "正在檢查 {0}…",
+    "checkingStored": "正在檢查已存放的歷史記錄…",
     "changed": "\"{0}\" 在檢查期間已變更。請重試。",
     "stillOpening": "\"{0}\" 仍在開啟中。請重試。",
     "noDamage": "未發現損毀。",
@@ -2189,7 +2199,7 @@
     "notDescendant": "此版本並非基於您的版本 ({0})。",
     "separate": "另存為獨立檔案",
     "openOther": "開啟另一個版本",
-    "openOtherNote": "您的變更仍未儲存。",
+    "openOtherNote": "您的變更會保留在「最近工作階段」中。",
     "replaceNote": "磁碟上的版本將保留在「最近工作階段」中。",
     "keptName": "{0}（{1} 被取代）",
     "replaceNewer": "由較新版本的 {0} 建立。",
@@ -2205,9 +2215,8 @@
     "tooLong": "名稱過長"
   },
   "notice": {
-    "useOpenFile": "要開啟檔案，請使用 \"開啟\"。",
+    "useOpenFile": "要開啟檔案，請使用「開啟」。",
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
-    "sameFileMaybeElsewhere": "\"{0}\" 可能已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",
     "bgmDiffers": "這與原本的 BGM \"{0}\" 不是同一個檔案。",
@@ -2222,7 +2231,7 @@
     "peekFailed": "無法檢視此步驟",
     "peekSessionFailed": "無法檢視此工作階段",
     "openHistory": "開啟歷史記錄",
-    "earlierInHistory": "更早的步驟在歷史記錄中",
+    "earlierInHistory": "時間軸中較早的步驟在歷史記錄中",
     "savedCurrent": "已將目前版本儲存到 {0}"
   },
   "entry": {
@@ -2230,10 +2239,10 @@
     "saved": "已儲存 {0}",
     "downloaded": "已下載 {0}",
     "continued": "已繼續",
-    "migrated": "已從自動儲存恢復",
+    "migrated": "已開啟舊的自動儲存",
     "restoredTo": "已還原到 {0}",
     "changedOutside": "在編輯器外變更",
-    "recoveredChanges": "已復原變更"
+    "recoveredChanges": "已恢復變更"
   },
   "session": {
     "untitled": "未命名 · {0}",
@@ -2247,13 +2256,14 @@
   },
   "prompt": {
     "title": "變更未存放",
+    "unsaved": "未儲存的變更",
     "notStored": "變更未存放在此瀏覽器中。離開後這些變更將遺失。",
     "save": "儲存",
     "leaveAnyway": "仍然離開"
   },
   "status": {
     "separateCopyShort": "獨立副本",
-    "notInFile": "未儲存到檔案",
+    "notInFile": "未儲存",
     "separateCopy": "{0} 的獨立副本",
     "opensLevelInfo": "開啟關卡資訊",
     "changedSaved": "{0}，自儲存到 {1} 後已變更",
@@ -2287,9 +2297,6 @@
     },
     "unsavedChanges": "已開啟 {0}。您在 {1} 對它有未儲存的變更。",
     "unsavedEarlier": "對 {0} 早期版本的未儲存變更（{1}）在「最近工作階段」中。",
-    "earlierUnchecked": "已開啟 {0}。無法檢查「最近工作階段」中是否有它的其他版本。",
-    "unsavedEarlierMaybe": "對 {0} 早期版本的未儲存變更（{1}）可能在「最近工作階段」中。",
-    "unsavedChangesMaybe": "已開啟 {0}。您在 {1} 對它可能有未儲存的變更。",
     "olderVersion": "這是 {0} 的舊版本。{1} 的較新版本在「最近工作階段」中。",
     "restoreIt": "還原工作階段",
     "damagedHistory": "\"{0}\" 的歷史記錄已損毀。儲存時會建立獨立的檔案。"
@@ -2297,10 +2304,7 @@
   "file": {
     "replacedElsewhere": "\"{0}\" 已從另一個分頁或視窗被取代。",
     "downloaded": "{0} · {1} 已下載",
-    "opened": "{0} · {1} 已開啟",
-    "short": {
-      "notSaved": "未儲存"
-    }
+    "opened": "{0} · {1} 已開啟"
   },
   "state": {
     "fileMissing": "檔案遺失",
@@ -2336,7 +2340,6 @@
     "removed": "已移除",
     "tagsAdded": "已新增的標籤",
     "tagsRemoved": "已移除的標籤",
-    "tagsChanged": "已修改的標籤",
     "order": "順序",
     "folder": "資料夾",
     "groupFolder": "圖層資料夾",
@@ -2354,8 +2357,7 @@
       "previewAudio": "預覽音訊",
       "duration": "長度",
       "size": "大小",
-      "type": "類型",
-      "icon": "圖示"
+      "type": "類型"
     },
     "contentsChanged": "內容已變更",
     "showMore": "顯示更多",

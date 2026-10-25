@@ -1,0 +1,420 @@
+{
+    "defaults": { "scenario": "act", "reps": 5, "warmup": 0, "cellTimeout": 900 },
+    "groups": [
+        {
+            "id": "d-h1800",
+            "profile": "desktop1600",
+            "hz": "native",
+            "seed": "perf-results/data/seeds/history-1800.json",
+            "boot": true,
+            "cells": [
+                { "action": "historyOpen", "warmup": 1, "reps": 5 },
+                { "action": "listWheel", "reps": 3 },
+                { "action": "peekRow", "row": 3, "stride": 25, "reps": 5 },
+                { "action": "arrowStep", "reps": 8 },
+                { "action": "arrowHold", "reps": 3 },
+                { "action": "peekWhole", "reps": 3 },
+                { "action": "changeArrow", "reps": 5 },
+                { "action": "showEdits", "reps": 4 },
+                { "action": "editsHere", "reps": 3 },
+                { "action": "showAll", "reps": 3 },
+                { "action": "expandGroup", "reps": 5 },
+                { "action": "goToOpen", "warmup": 1, "reps": 5 },
+                { "action": "goToPick", "reps": 3 },
+                { "action": "restore", "reps": 5 },
+                { "action": "editOpen", "reps": 3 },
+                { "action": "check", "reps": 1 },
+                { "action": "exportLevel", "reps": 3 },
+                {
+                    "action": "dialog",
+                    "open": "click:[data-status-label]",
+                    "title": "Level Info",
+                    "tag": "levelinfo",
+                    "reps": 3
+                },
+                { "action": "dialog", "open": "m", "title": "BGM", "tag": "bgm", "reps": 3 },
+                { "action": "localData", "reps": 3 },
+                { "action": "deleteCounts", "reps": 3 },
+                { "action": "exportRaw", "reps": 2 },
+                {
+                    "action": "save",
+                    "reps": 3,
+                    "keepDownload": "perf-results/data/seeds/history-1800.nxsp"
+                },
+                { "scenario": "startup", "reps": 3 },
+                { "action": "undo", "reps": 10 }
+            ]
+        },
+        {
+            "id": "d-h20h",
+            "profile": "desktop1600",
+            "hz": "native",
+            "seed": "perf-results/data/seeds/history-20h.json",
+            "boot": true,
+            "cells": [
+                { "action": "historyOpen", "warmup": 1, "reps": 5 },
+                { "action": "listWheel", "reps": 3 },
+                { "action": "peekRow", "row": 3, "stride": 25, "reps": 5 },
+                { "action": "arrowStep", "reps": 8 },
+                { "action": "arrowHold", "reps": 3 },
+                { "action": "peekWhole", "reps": 3 },
+                { "action": "changeArrow", "reps": 5 },
+                { "action": "showEdits", "reps": 4 },
+                { "action": "editsHere", "reps": 3 },
+                { "action": "showAll", "reps": 3 },
+                { "action": "expandGroup", "reps": 5 },
+                { "action": "goToOpen", "warmup": 1, "reps": 5 },
+                { "action": "goToPick", "reps": 3 },
+                { "action": "restore", "reps": 5 },
+                { "action": "editOpen", "reps": 3 },
+                { "action": "check", "reps": 1 },
+                { "action": "exportLevel", "reps": 3 },
+                {
+                    "action": "dialog",
+                    "open": "click:[data-status-label]",
+                    "title": "Level Info",
+                    "tag": "levelinfo",
+                    "reps": 3
+                },
+                { "action": "dialog", "open": "m", "title": "BGM", "tag": "bgm", "reps": 3 },
+                { "action": "localData", "reps": 3 },
+                { "action": "deleteCounts", "reps": 3 },
+                { "action": "exportRaw", "reps": 2 },
+                {
+                    "action": "save",
+                    "reps": 3,
+                    "keepDownload": "perf-results/data/seeds/history-20h.nxsp"
+                },
+                { "scenario": "startup", "reps": 3 },
+                { "action": "undo", "reps": 10 }
+            ]
+        },
+        {
+            "id": "d-bound1800",
+            "profile": "desktop1600",
+            "hz": "native",
+            "seed": "perf-results/data/seeds/history-1800.json",
+            "platform": { "fileSystemAccess": "opfs" },
+            "cells": [{ "action": "save", "reps": 5 }]
+        },
+        {
+            "id": "d-bound20h",
+            "profile": "desktop1600",
+            "hz": "native",
+            "seed": "perf-results/data/seeds/history-20h.json",
+            "platform": { "fileSystemAccess": "opfs" },
+            "cells": [{ "action": "save", "reps": 5 }]
+        },
+        {
+            "id": "d-open1800",
+            "profile": "desktop1600",
+            "hz": "native",
+            "cells": [
+                { "action": "open", "file": "perf-results/data/seeds/history-1800.nxsp", "reps": 1 }
+            ]
+        },
+        {
+            "id": "d-open20h",
+            "profile": "desktop1600",
+            "hz": "native",
+            "cells": [
+                { "action": "open", "file": "perf-results/data/seeds/history-20h.nxsp", "reps": 1 }
+            ]
+        },
+        {
+            "id": "d-open20h-save",
+            "profile": "desktop1600",
+            "hz": "native",
+            "cells": [
+                {
+                    "action": "open",
+                    "file": "perf-results/data/seeds/history-20h.nxsp",
+                    "reps": 1,
+                    "waitImport": false
+                },
+                { "action": "save", "reps": 1, "tag": "during-import" }
+            ]
+        },
+        {
+            "id": "d-s500",
+            "profile": "desktop1600",
+            "hz": "native",
+            "seed": "perf-results/data/seeds/sessions-500.json",
+            "boot": true,
+            "cells": [
+                { "scenario": "startup", "reps": 3 },
+                { "action": "sessionsOpen", "warmup": 1, "reps": 5 },
+                { "action": "listWheel", "list": "sessions", "reps": 3 },
+                { "action": "sessionPeek", "reps": 5 },
+                { "action": "sessionDelete", "row": 4, "reps": 3 },
+                { "action": "sessionUndo", "row": 12, "reps": 3 },
+                { "action": "restoreSession", "row": 20, "stride": 5, "reps": 3 },
+                { "action": "deleteCounts", "reps": 3 },
+                { "action": "localData", "reps": 3 },
+                { "action": "exportRaw", "reps": 1 },
+                { "action": "deleteAll", "reps": 1 }
+            ]
+        },
+        {
+            "id": "d-s2000",
+            "profile": "desktop1600",
+            "hz": "native",
+            "seed": "perf-results/data/seeds/sessions-2000.json",
+            "boot": true,
+            "cells": [
+                { "scenario": "startup", "reps": 3 },
+                { "action": "sessionsOpen", "warmup": 1, "reps": 5 },
+                { "action": "listWheel", "list": "sessions", "reps": 3 },
+                { "action": "sessionPeek", "reps": 5 },
+                { "action": "sessionDelete", "row": 4, "reps": 3 },
+                { "action": "sessionUndo", "row": 12, "reps": 3 },
+                { "action": "restoreSession", "row": 20, "stride": 5, "reps": 3 },
+                { "action": "deleteCounts", "reps": 3 },
+                { "action": "localData", "reps": 3 },
+                { "action": "exportRaw", "reps": 1 },
+                { "action": "deleteAll", "reps": 1 }
+            ]
+        },
+        {
+            "id": "d-c21888",
+            "profile": "desktop1600",
+            "hz": "native",
+            "cells": [
+                { "action": "open", "file": "perf-results/data/real-21888.json", "reps": 3 },
+                { "action": "historyOpen", "reps": 3 },
+                { "action": "save", "reps": 3 },
+                { "action": "exportLevel", "reps": 3 },
+                { "action": "setting", "setting": "showMinimap", "reps": 4 },
+                {
+                    "scenario": "resizedrag",
+                    "handle": "Resize Minimap",
+                    "dx": -80,
+                    "reps": 3,
+                    "warmup": 1
+                },
+                { "action": "newChart", "reps": 1 }
+            ]
+        },
+        {
+            "id": "d-c23792",
+            "profile": "desktop1600",
+            "hz": "native",
+            "cells": [
+                { "action": "open", "file": "perf-results/data/real-23792.json", "reps": 3 },
+                { "action": "historyOpen", "reps": 3 },
+                { "action": "save", "reps": 3 },
+                { "action": "exportLevel", "reps": 3 },
+                { "action": "setting", "setting": "showMinimap", "reps": 4 },
+                {
+                    "scenario": "resizedrag",
+                    "handle": "Resize Minimap",
+                    "dx": -80,
+                    "reps": 3,
+                    "warmup": 1
+                },
+                { "action": "newChart", "reps": 1 }
+            ]
+        },
+        {
+            "id": "d-stress-x8",
+            "profile": "desktop1600",
+            "hz": "native",
+            "cells": [
+                { "action": "open", "file": "perf-results/data/stress-x8.json", "reps": 3 },
+                { "action": "historyOpen", "reps": 3 },
+                { "action": "save", "reps": 3 },
+                { "action": "exportLevel", "reps": 3 },
+                { "action": "setting", "setting": "showMinimap", "reps": 4 },
+                {
+                    "scenario": "resizedrag",
+                    "handle": "Resize Minimap",
+                    "dx": -80,
+                    "reps": 3,
+                    "warmup": 1
+                },
+                { "action": "newChart", "reps": 1 }
+            ]
+        },
+        {
+            "id": "d-goto",
+            "profile": "desktop1600",
+            "hz": "native",
+            "cells": [
+                { "action": "goToIndex", "rows": 10000, "reps": 3, "tag": "10k" },
+                { "action": "goToIndex", "rows": 50000, "reps": 3, "tag": "50k" }
+            ]
+        },
+        {
+            "id": "p-h1800",
+            "profile": "phone",
+            "hz": 120,
+            "seed": "perf-results/data/seeds/history-1800.json",
+            "boot": true,
+            "cells": [
+                { "action": "historyOpen", "warmup": 1, "reps": 3 },
+                { "action": "listWheel", "reps": 2 },
+                { "action": "peekRow", "row": 3, "stride": 25, "reps": 3 },
+                { "action": "arrowStep", "reps": 5 },
+                { "action": "arrowHold", "reps": 2 },
+                { "action": "peekWhole", "reps": 2 },
+                { "action": "changeArrow", "reps": 3 },
+                { "action": "showEdits", "reps": 2 },
+                { "action": "editsHere", "reps": 2 },
+                { "action": "showAll", "reps": 2 },
+                { "action": "expandGroup", "reps": 3 },
+                { "action": "goToOpen", "warmup": 1, "reps": 3 },
+                { "action": "goToPick", "reps": 2 },
+                { "action": "restore", "reps": 3 },
+                { "action": "editOpen", "reps": 2 },
+                { "action": "check", "reps": 1 },
+                { "action": "exportLevel", "reps": 2 },
+                {
+                    "action": "dialog",
+                    "open": "click:[data-status-label]",
+                    "title": "Level Info",
+                    "tag": "levelinfo",
+                    "reps": 2
+                },
+                { "action": "dialog", "open": "m", "title": "BGM", "tag": "bgm", "reps": 2 },
+                { "action": "localData", "reps": 2 },
+                { "action": "deleteCounts", "reps": 2 },
+                { "action": "exportRaw", "reps": 1 },
+                { "action": "save", "reps": 2 },
+                { "scenario": "startup", "reps": 2 },
+                { "action": "undo", "reps": 6 }
+            ]
+        },
+        {
+            "id": "p-h20h",
+            "profile": "phone",
+            "hz": 120,
+            "seed": "perf-results/data/seeds/history-20h.json",
+            "boot": true,
+            "cells": [
+                { "action": "historyOpen", "warmup": 1, "reps": 3 },
+                { "action": "listWheel", "reps": 2 },
+                { "action": "peekRow", "row": 3, "stride": 25, "reps": 3 },
+                { "action": "arrowStep", "reps": 5 },
+                { "action": "arrowHold", "reps": 2 },
+                { "action": "peekWhole", "reps": 2 },
+                { "action": "changeArrow", "reps": 3 },
+                { "action": "showEdits", "reps": 2 },
+                { "action": "editsHere", "reps": 2 },
+                { "action": "showAll", "reps": 2 },
+                { "action": "expandGroup", "reps": 3 },
+                { "action": "goToOpen", "warmup": 1, "reps": 3 },
+                { "action": "goToPick", "reps": 2 },
+                { "action": "restore", "reps": 3 },
+                { "action": "editOpen", "reps": 2 },
+                { "action": "check", "reps": 1 },
+                { "action": "exportLevel", "reps": 2 },
+                {
+                    "action": "dialog",
+                    "open": "click:[data-status-label]",
+                    "title": "Level Info",
+                    "tag": "levelinfo",
+                    "reps": 2
+                },
+                { "action": "dialog", "open": "m", "title": "BGM", "tag": "bgm", "reps": 2 },
+                { "action": "localData", "reps": 2 },
+                { "action": "deleteCounts", "reps": 2 },
+                { "action": "exportRaw", "reps": 1 },
+                { "action": "save", "reps": 2 },
+                { "scenario": "startup", "reps": 2 },
+                { "action": "undo", "reps": 6 }
+            ]
+        },
+        {
+            "id": "p-open1800",
+            "profile": "phone",
+            "hz": 120,
+            "cells": [
+                { "action": "open", "file": "perf-results/data/seeds/history-1800.nxsp", "reps": 1 }
+            ]
+        },
+        {
+            "id": "p-open20h",
+            "profile": "phone",
+            "hz": 120,
+            "cells": [
+                { "action": "open", "file": "perf-results/data/seeds/history-20h.nxsp", "reps": 1 }
+            ]
+        },
+        {
+            "id": "p-open20h-save",
+            "profile": "phone",
+            "hz": 120,
+            "cells": [
+                {
+                    "action": "open",
+                    "file": "perf-results/data/seeds/history-20h.nxsp",
+                    "reps": 1,
+                    "waitImport": false
+                },
+                { "action": "save", "reps": 1, "tag": "during-import" }
+            ]
+        },
+        {
+            "id": "p-s500",
+            "profile": "phone",
+            "hz": 120,
+            "seed": "perf-results/data/seeds/sessions-500.json",
+            "boot": true,
+            "cells": [
+                { "scenario": "startup", "reps": 2 },
+                { "action": "sessionsOpen", "warmup": 1, "reps": 3 },
+                { "action": "listWheel", "list": "sessions", "reps": 2 },
+                { "action": "sessionPeek", "reps": 3 },
+                { "action": "sessionDelete", "row": 4, "reps": 2 },
+                { "action": "sessionUndo", "row": 12, "reps": 2 },
+                { "action": "restoreSession", "row": 20, "stride": 5, "reps": 2 },
+                { "action": "deleteCounts", "reps": 2 },
+                { "action": "localData", "reps": 2 },
+                { "action": "exportRaw", "reps": 1 },
+                { "action": "deleteAll", "reps": 1 }
+            ]
+        },
+        {
+            "id": "p-s2000",
+            "profile": "phone",
+            "hz": 120,
+            "seed": "perf-results/data/seeds/sessions-2000.json",
+            "boot": true,
+            "cells": [
+                { "scenario": "startup", "reps": 2 },
+                { "action": "sessionsOpen", "warmup": 1, "reps": 3 },
+                { "action": "listWheel", "list": "sessions", "reps": 2 },
+                { "action": "sessionPeek", "reps": 3 },
+                { "action": "sessionDelete", "row": 4, "reps": 2 },
+                { "action": "sessionUndo", "row": 12, "reps": 2 },
+                { "action": "restoreSession", "row": 20, "stride": 5, "reps": 2 },
+                { "action": "deleteCounts", "reps": 2 },
+                { "action": "localData", "reps": 2 },
+                { "action": "exportRaw", "reps": 1 },
+                { "action": "deleteAll", "reps": 1 }
+            ]
+        },
+        {
+            "id": "p-c21888",
+            "profile": "phone",
+            "hz": 120,
+            "cells": [
+                { "action": "open", "file": "perf-results/data/real-21888.json", "reps": 2 },
+                { "action": "historyOpen", "reps": 2 },
+                { "action": "save", "reps": 2 },
+                { "action": "exportLevel", "reps": 2 },
+                { "action": "setting", "setting": "showMinimap", "reps": 2 },
+                { "action": "newChart", "reps": 1 }
+            ]
+        },
+        {
+            "id": "p-goto",
+            "profile": "phone",
+            "hz": 120,
+            "cells": [
+                { "action": "goToIndex", "rows": 10000, "reps": 3, "tag": "10k" },
+                { "action": "goToIndex", "rows": 50000, "reps": 3, "tag": "50k" }
+            ]
+        }
+    ]
+}

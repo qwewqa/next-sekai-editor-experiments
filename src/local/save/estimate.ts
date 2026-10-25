@@ -1,4 +1,4 @@
-import { captureEntryDescription } from '../../history/operations'
+import { captureEntryDescription, utf8Length } from '../../history/operations'
 import { hashKey } from '../db'
 import { fromHex16, toHex } from '../hash'
 import { unpackHashes, type NodesRow } from '../records/rows'
@@ -6,7 +6,7 @@ import type { SaveStore } from './bodies'
 import { CUT_STORES, readCut } from './cut'
 import { chainRows, ModelError } from './model'
 
-// The Save dialogs' size preview (Part 1 §1.4.7; owner, 2026-10-16): `estimateSaveSize`, from
+// The Save dialogs' size preview: `estimateSaveSize`, from
 // stored sizes, never inflating or hashing a body. For the rows the write would hold, each
 // distinct root's and node's row `size` and each chunk's stored length; the media rows' sizes;
 // the manifest by a per-entry and per-record estimate, deflated; `level.json` from the head's
@@ -38,7 +38,7 @@ export type SaveSizeEstimate = {
     importing?: true
 }
 
-/** Constants fixed on the generated large chart and the golden chart (§1.4.7). */
+/** Constants fixed on the generated large chart and the golden chart. */
 export const ESTIMATE = {
     /** An entry's JSON framing beyond its captured description, before deflate. */
     entryBytes: 150,
@@ -104,12 +104,14 @@ const readMany = async (store: SaveStore, name: string, keys: readonly string[])
 
 /**
  * The estimate of a Save of a chain's session (its head unless given). `bgm` is the head's BGM hash
- * when the page knows it; otherwise the media rows' `kind` hint tells it. Undefined without the chain.
+ * when the page knows it; otherwise the media rows' `kind` hint tells it. `tick` reports progress
+ * during the pass over a long chain's rows, so the watchdog does not restart the worker. Undefined
+ * without the chain.
  */
 export const estimateSaveSize = async (
     store: SaveStore,
     chainId: string,
-    { sessionId, bgm: bgmHash }: { sessionId?: string; bgm?: string } = {},
+    { sessionId, bgm: bgmHash, tick }: { sessionId?: string; bgm?: string; tick?: () => void } = {},
 ): Promise<SaveSizeEstimate | undefined> => {
     const cut = await store.read(CUT_STORES, (tx) => readCut(tx, chainId, sessionId))
     if (!cut) return
@@ -128,19 +130,17 @@ export const estimateSaveSize = async (
     }
     const roots = new Set<string>()
     let manifest = 0
-    for (const { entry } of rows) {
-        manifest +=
-            ESTIMATE.entryBytes +
-            new TextEncoder().encode(JSON.stringify(captureEntryDescription(entry))).byteLength
-        if (entry.stack)
-            manifest += new TextEncoder().encode(JSON.stringify(entry.stack)).byteLength
+    for (const [i, { entry }] of rows.entries()) {
+        if (i % 500 === 499) tick?.()
+        manifest += ESTIMATE.entryBytes + utf8Length(JSON.stringify(captureEntryDescription(entry)))
+        if (entry.stack) manifest += utf8Length(JSON.stringify(entry.stack))
         if (entry.kept) roots.add(toHex(entry.snapshot))
     }
     manifest += ESTIMATE.entryBytes
     const slots = cut.stack?.slots ?? []
     for (const slot of slots) {
         roots.add(toHex(slot.snapshot))
-        manifest += new TextEncoder().encode(JSON.stringify(slot.step)).byteLength
+        manifest += utf8Length(JSON.stringify(slot.step))
     }
     const window = cut.stack?.window
     const head = window && slots[window.index - window.base]

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { analyticsTarget, browserSignalSet } from '../../analytics/start'
+import { preference } from '../../analytics/config'
 import {
     GITHUB_REPOSITORY,
     HAS_PRIVACY_PAGE,
@@ -9,8 +11,10 @@ import {
 } from '../../buildInfo'
 import { i18n } from '../../i18n'
 import { showModal } from '../../modals'
+import ToggleField from '../../modals/form/ToggleField.vue'
 import { appVersion, platform } from '../../platform'
 import { PRODUCT_NAME } from '../../product'
+import { settings } from '../../settings'
 import { interpolateRaw } from '../../utils/interpolate'
 import { collectDiagnosticText } from './diagnosticInfo'
 import DiagnosticsModal from './DiagnosticsModal.vue'
@@ -34,8 +38,20 @@ const links = computed(() => [
         : []),
 ])
 
+// Send Usage Statistics, only in a build that has somewhere to send them. It
+// shows the user's choice, else off where the browser sends Do Not Track or Global Privacy Control.
+const usageStatistics = computed({
+    get: () => preference(settings.usageStatistics, browserSignalSet),
+    set: (value: boolean) => (settings.usageStatistics = value),
+})
+const usageStatisticsNote = computed(() =>
+    settings.usageStatistics === null && browserSignalSet
+        ? about.value.usageStatisticsSignal
+        : about.value.usageStatisticsNote,
+)
+
 const buttonClass =
-    'btn btn-secondary inline-flex h-9 max-w-full items-center gap-1 rounded-full px-4'
+    'btn btn-secondary inline-flex h-9 min-w-24 max-w-full items-center gap-1 rounded-full px-4'
 
 const open = (href: string) => {
     platform.openExternal(new URL(href, location.href).href)
@@ -52,6 +68,14 @@ const diagnostics = async () => {
             <div class="font-medium" data-about-name>{{ PRODUCT_NAME }}</div>
             <div data-about-version>{{ interpolateRaw(about.version, shown) }}</div>
         </div>
+
+        <ToggleField
+            v-if="analyticsTarget"
+            v-model="usageStatistics"
+            :label="about.usageStatistics"
+            :notes="[usageStatisticsNote]"
+            data-about-usage-statistics
+        />
 
         <div class="flex flex-wrap gap-2" data-about-links>
             <a

@@ -7,6 +7,7 @@ import SelectField from '../../modals/form/SelectField.vue'
 import ToggleField from '../../modals/form/ToggleField.vue'
 import { previewAspectRatios, previewNoteSpeed, previewRenderScale } from '../../preview/options'
 import { previewControlOptions, previewTransportOptions } from '../../preview/settingsOptions'
+import { workerHostSupported } from '../../preview/worker/host'
 import { settings } from '../../settings'
 import { showPreviewAssets } from '../commands/previewAssets/modal'
 import { closeSettingsKey } from './closeSettings'
@@ -68,6 +69,11 @@ const openAssets = () => {
             :step="previewRenderScale.step"
         />
         <ToggleField v-model="settings.previewAntialias" :label="i18n.settings.preview.antialias" />
+        <ToggleField
+            v-if="workerHostSupported"
+            v-model="settings.previewInWorker"
+            :label="i18n.settings.preview.parallelRendering"
+        />
         <SelectField
             v-model="settings.previewTransportPosition"
             :label="i18n.settings.preview.transport.title"

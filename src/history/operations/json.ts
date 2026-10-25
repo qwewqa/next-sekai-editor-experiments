@@ -15,9 +15,51 @@ export const OPERATION_NATIVE_BYTES = 64 * 1024
 
 export class OperationDataError extends Error {}
 
-const encoder = new TextEncoder()
+/** The UTF-8 length of `text` as `TextEncoder` encodes it: a lone surrogate as U+FFFD, 3 bytes. */
+export const utf8Length = (text: string) => {
+    let size = text.length
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i)
+        if (code < 0x80) continue
+        if (code < 0x800) size += 1
+        else if (code >= 0xd800 && code <= 0xdbff) {
+            const next = text.charCodeAt(i + 1)
+            // A pair is 4 bytes for its 2 code units.
+            if (next >= 0xdc00 && next <= 0xdfff) i++
+            size += 2
+        } else size += 2
+    }
+    return size
+}
 
-export const jsonBytes = (value: JsonValue) => encoder.encode(JSON.stringify(value)).byteLength
+/**
+ * The UTF-8 length of `JSON.stringify(text)`, counted without building it: the quotes, 2 bytes for
+ * each 2-character escape and 6 for each 6-character one. Undefined when `text` has a lone
+ * surrogate.
+ */
+export const jsonStringBytes = (text: string): number | undefined => {
+    let size = text.length + 2
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i)
+        if (code >= 0x20 && code < 0x80) {
+            // A quote or a backslash is escaped.
+            if (code === 0x22 || code === 0x5c) size += 1
+        } else if (code < 0x20) {
+            // Backspace, tab, line feed, form feed and carriage return have short escapes.
+            size += code === 8 || code === 9 || code === 10 || code === 12 || code === 13 ? 1 : 5
+        } else if (code < 0x800) size += 1
+        else if (code >= 0xd800 && code <= 0xdbff) {
+            const next = text.charCodeAt(i + 1)
+            if (!(next >= 0xdc00 && next <= 0xdfff)) return undefined
+            i++
+            size += 2
+        } else if (code >= 0xdc00 && code <= 0xdfff) return undefined
+        else size += 2
+    }
+    return size
+}
+
+export const jsonBytes = (value: JsonValue) => utf8Length(JSON.stringify(value))
 
 const wellFormed = (text: string) => {
     for (let i = 0; i < text.length; i++) {
@@ -57,8 +99,9 @@ export const captureJson = (
         if (size > bytes) throw new OperationDataError('Operation data exceeds its byte limit')
     }
     const text = (value: string) => {
-        if (!wellFormed(value)) throw new OperationDataError('Operation text is not well formed')
-        add(encoder.encode(JSON.stringify(value)).byteLength)
+        const size = jsonStringBytes(value)
+        if (size === undefined) throw new OperationDataError('Operation text is not well formed')
+        add(size)
         return value
     }
     const visit = (value: unknown, level: number): JsonValue => {

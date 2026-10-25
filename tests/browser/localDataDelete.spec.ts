@@ -16,7 +16,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Settings › Local Data › Delete Sessions… (Local Data design §3.7, §5): ranges with counts that
+// Settings › Local Data › Delete Sessions…: ranges with counts that
 // follow the box, a confirm that names the work it deletes, and the removal.
 
 const messages = JSON.parse(
@@ -188,7 +188,7 @@ test('Delete… is off at zero, the confirm names the unsaved work and the newer
     await expect(confirm.locator('p')).toHaveCount(3)
     // Newest first; the fixture’s chain has no work to lose, so it is not named.
     await expect(confirm).toContainText(
-        '4 sessions are not saved to a file: "Fresh", "Week", "Month" and 1 more.',
+        '4 sessions have unsaved changes: "Fresh", "Week", "Month" and 1 more.',
     )
     await expect(confirm).toContainText(
         'Some of these sessions need a newer version of the editor.',
@@ -213,7 +213,7 @@ test('with the box unticked the unsaved work is kept, and what is deleted leaves
     await page.locator('[data-delete-next]').click()
     const confirm = confirmDialog(page)
     await expect(confirm).toContainText('Delete 1 session?')
-    await expect(confirm).not.toContainText('not saved to a file')
+    await expect(confirm).not.toContainText('unsaved changes')
     await expect(confirm).not.toContainText('newer version')
     await confirmWhenReady(
         confirm.getByRole('button', { name: messages.modals.confirm.delete }),
@@ -360,6 +360,45 @@ test('Storage shows what the browser holds, only when the estimate says both fig
     await expect(page.locator('[data-local-data-storage] [data-not-stored-line]')).toHaveCount(0)
 })
 
+test('Local Data shows the storage line and the total at once, from the read after startup', async ({
+    page,
+}) => {
+    // The first estimate answers; the ones after it wait for the spec.
+    await page.addInitScript(() => {
+        let calls = 0
+        let release = () => undefined as void
+        const gate = new Promise<void>((resolve) => (release = () => resolve()))
+        ;(window as unknown as { releaseEstimates: () => void }).releaseEstimates = release
+        StorageManager.prototype.estimate = async () => {
+            if (++calls > 1) await gate
+            return { usage: 84_000_000, quota: 2_100_000_000 }
+        }
+    })
+    errorsFail(page)
+    await load(page)
+    await expect
+        .poll(
+            () =>
+                page.evaluate(async () => {
+                    const { browserStorage } =
+                        (await import('/src/editor/settings/storageLine.ts')) as typeof import('../../src/editor/settings/storageLine')
+                    return browserStorage.value?.total?.usage
+                }),
+            { timeout: 15_000 },
+        )
+        .toBe(84_000_000)
+    await openLocalData(page)
+    // This visit's read is still waiting, so these come from the kept one.
+    await expect(page.locator('[data-storage-line]')).toBeVisible({ timeout: 2000 })
+    await expect(stored(page)).toHaveText('Stored in this browser: 84 MB of about 2.1 GB', {
+        timeout: 2000,
+    })
+    await page.evaluate(() => {
+        ;(window as unknown as { releaseEstimates: () => void }).releaseEstimates()
+    })
+    await expect(stored(page)).toBeVisible()
+})
+
 test('no figure is guessed: without a quota the total is left out', async ({ page }) => {
     await estimateOf(page, { usage: 84_000_000 })
     errorsFail(page)
@@ -403,7 +442,7 @@ test('Export Raw Data… downloads the stored data and says so', async ({ page }
     )
     await expect(notice(page, /^Download started: Next SEKAI Editor raw data/)).toBeVisible()
     // The progress dialog is gone.
-    await expect(page.getByRole('dialog', { name: local.exportRaw })).toHaveCount(0)
+    await expect(page.getByRole('dialog', { name: local.exportRawTitle })).toHaveCount(0)
 })
 
 test.describe('almost full', () => {
@@ -434,7 +473,7 @@ test.describe('almost full', () => {
         await expect(line(page)).toBeVisible({ timeout: 15_000 })
     })
 
-    // The notice would be a card turned up while the user is editing (final review R2 #4).
+    // The notice would be a card turned up while the user is editing.
     test('an edit made before the load’s run ends leaves it unsaid and unstamped', async ({
         page,
     }) => {
@@ -456,5 +495,89 @@ test.describe('almost full', () => {
             ),
         ).toBeNull()
         await expect(line(page)).toHaveCount(0)
+    })
+})
+
+// Delete Sessions… is a command: a bound key, the command list and the History band run one flow.
+test('a bound key and the command list open it too, and a second run while one is open opens nothing more', async ({
+    page,
+}) => {
+    await seed(page)
+    await page.evaluate(() => {
+        const { settings } = window.editorTest
+        settings.keyboardShortcuts = { ...settings.keyboardShortcuts, deleteSessions: 'F8' }
+    })
+    await page.keyboard.press('F8')
+    await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+    await page.locator('[data-delete-sessions] button', { hasText: 'Cancel' }).click()
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
+    // Two runs in one tick: the second finds the first reading, before any dialog stands.
+    await page.evaluate(async () => {
+        const { commands } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands')
+        >('/src/editor/commands/index.ts')
+        const { runCommand } = await window.editorTest.appImport<
+            typeof import('../../src/editor/commands/runCommand')
+        >('/src/editor/commands/runCommand.ts')
+        void runCommand(commands.deleteSessions)
+        void runCommand(commands.deleteSessions)
+    })
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(1)
+    await page.locator('[data-delete-sessions] button', { hasText: 'Cancel' }).click()
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
+})
+
+test.describe('from Recent Sessions', () => {
+    const trash = (page: Page) => page.locator('[data-history-delete-sessions]')
+
+    test('the band button opens the same dialog as Settings, and what it deletes leaves the list at once', async ({
+        page,
+    }) => {
+        await seed(page)
+        const rows = await recentRows(page)
+        await expect(rows.filter({ hasText: 'Month' })).toHaveCount(1)
+        await trash(page).focus()
+        await page.keyboard.press('Enter')
+        await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+        // The pointer is over the list, which holds its rows still for any other refresh. The dialogs
+        // are driven without moving it, and the pointer is placed by its event so the hold is certain.
+        await page.locator('[data-sessions-list]').dispatchEvent('pointerenter')
+        expect(await counts(page)).toEqual({ '1': '1', '7': '1', '30': '1', '90': '1', all: '1' })
+        await page.locator('[data-delete-include]').dispatchEvent('click')
+        expect(await counts(page)).toEqual({ '1': '5', '7': '4', '30': '3', '90': '2', all: '5' })
+        await page.locator('[data-delete-range="30"]').dispatchEvent('click')
+        await page.locator('[data-delete-next]').dispatchEvent('click')
+        const confirm = confirmDialog(page)
+        await expect(confirm).toContainText('Delete 3 sessions?')
+        await expect(async () => {
+            await confirm
+                .getByRole('button', { name: messages.modals.confirm.delete })
+                .dispatchEvent('click')
+            await expect(deleteDialog(page)).toBeHidden({ timeout: 300 })
+        }).toPass({ timeout: 10_000 })
+        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible()
+        await expect(rows.filter({ hasText: 'Month' })).toHaveCount(0)
+        await expect(rows.filter({ hasText: 'Later' })).toHaveCount(0)
+        await expect(rows.filter({ hasText: 'Week' })).toHaveCount(1)
+    })
+
+    test('a run that deletes the peeked session goes back to now first', async ({ page }) => {
+        await seed(page)
+        const rows = await recentRows(page)
+        await rows.filter({ hasText: 'Month' }).click()
+        await expect(page.locator('[data-peek-bar]')).toBeVisible()
+        await trash(page).click()
+        await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+        await page.locator('[data-delete-include]').click()
+        await page.locator('[data-delete-range="30"]').click()
+        await page.locator('[data-delete-next]').click()
+        await confirmWhenReady(
+            confirmDialog(page).getByRole('button', { name: messages.modals.confirm.delete }),
+            deleteDialog(page),
+        )
+        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible()
+        await expect(page.locator('[data-peek-back]')).toHaveCount(0)
+        await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+        await expect(rows.filter({ hasText: 'Month' })).toHaveCount(0)
     })
 })

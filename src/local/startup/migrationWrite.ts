@@ -10,7 +10,7 @@ import type { StateBatch } from '../stateBatch'
 import { nextTime } from '../time'
 import { blockRow, chainFlagsAtCreation } from '../timeline'
 
-// The auto save migration's transaction (Part 1 §1.8), in the storage worker: the old slot
+// The auto save migration's transaction, in the storage worker: the old slot
 // becomes a session, a new chain with one `init` entry, stored at once and strictly, unless
 // `meta.migratedHashes` already holds its hash, so the same slot read twice, or written back by
 // an old tab, never makes a second session, and one migrated before never comes back.
@@ -19,9 +19,9 @@ export type MigrationBatch = StateBatch & {
     /** The SHA-256 of the slot's raw text (its UTF-8 bytes), as hex. */
     hash: string
     ids: { chainId: string; docId: string; lineageId: string; sessionId: string }
-    /** The slot's file name, as the import rule names it (§1.3.5). */
+    /** The slot's file name, as the import rule names it. */
     sourceName?: string
-    /** The `init` entry's label: "Recovered from auto save". */
+    /** The `init` entry's label: "Opened the old auto save". */
     operation: JsonValue
     appVersion: string
     wall: number
@@ -65,9 +65,9 @@ export const writeMigration = async (
         head: sessionId,
         docId,
         lineageId,
-        // The import rule (§1.3.5): no Name, the slot's file name as the source's.
+        // The import rule: no Name, the slot's file name as the source's.
         ...(batch.sourceName === undefined ? {} : { sourceName: batch.sourceName }),
-        // Its work is in no file: edited from its first entry (§1.4.9).
+        // Its work is in no file: edited from its first entry.
         ...chainFlagsAtCreation('migrated'),
         startedAt: time,
         updatedAt: time,

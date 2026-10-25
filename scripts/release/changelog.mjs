@@ -1,7 +1,7 @@
 import { compareVersions, parseTag } from '../version.mjs'
 import { ReleaseError } from './rules.mjs'
 
-// CHANGELOG.md's format and its cut at a release (Part 4, 4.2.4 and 4.2.5).
+// CHANGELOG.md's format and its cut at a release.
 
 const bullet = /^- (?:\((?:Web|Apps)\) )?(?!\()\S(?:.*\S)?$/
 const released = /^## (0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*) \((\d{4})-(\d{2})-(\d{2})\)$/

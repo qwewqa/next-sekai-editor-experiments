@@ -2,8 +2,8 @@ import { KEPT_BYTES_LIMIT } from '../../editor/commands/exportLevel/memory'
 import { storableHandle } from '../handles'
 import type { StorageWorker } from '../worker/client'
 
-// The bytes kept at a partial or unlinked open (Part 1 §1.5.4, owner decision log D5, D26): a save
-// picker that empties that file puts them back (§1.4.7 R7). They're copied into the origin private
+// The bytes kept at a partial or unlinked open: a save
+// picker that empties that file puts them back. They're copied into the origin private
 // file system, whatever their size, with the open's handle in the `handles` store, so a reload of
 // the session keeps them; where OPFS fails, in memory up to 64 MB. Copies can be reclaimed
 // only after definite deletion; an absent session lock can be a reload in progress.
@@ -47,7 +47,7 @@ export const removeKeptCopy = async (chainId: string) => {
     }
 }
 
-/** The copies being made now: a save picker waits for them (spec B, rule 3). */
+/** The copies being made now: a save picker waits for them. */
 const copying = new Set<Promise<unknown>>()
 
 /** Whether a copy of an opened file is still being kept. */
@@ -67,7 +67,7 @@ export const whenCopied = async (signal?: AbortSignal) => {
 }
 
 /**
- * Keeps a file's bytes for a chain, with its handle (§1.5.4): resolves the copy once it's whole,
+ * Keeps a file's bytes for a chain, with its handle: resolves the copy once it's whole,
  * or undefined when it couldn't be kept.
  */
 export const keepCopy = (

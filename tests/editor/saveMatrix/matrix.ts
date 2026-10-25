@@ -13,7 +13,7 @@ import {
 const { exportByPicker } = await import('../../../src/editor/commands/exportLevel/flow')
 const { FileError } = await import('../../../src/platform')
 
-// The fault matrix (B0): every picker path, every pick it can meet, every exit point, each cell
+// The fault matrix: every picker path, every pick it can meet, every exit point, each cell
 // run against the real flows over the fake storage in ./world, then checked against the invariants.
 
 /**
@@ -380,15 +380,15 @@ const last = (plan: PickPlan) => plan.picks.at(-1)!
 const single = (plan: PickPlan) => plan.picks.length === 1
 const writesFile = (plan: PickPlan) => ['own', 'other', 'unknown', 'fresh'].includes(last(plan))
 const pickerPath = (path: PathDef) => path.picker
-/** A picker that reads the chain's own file first (R2): every picker, Save to File… included. */
+/** A picker that reads the chain's own file first: every picker, Recent Sessions' Save… included. */
 const readsFirst = (path: PathDef) => path.picker && path.setup.own === 'bound'
-/** A picker whose pick is built again afterwards: Save to File… and Export build once. */
+/** A picker whose pick is built again afterwards: Recent Sessions' Save… and Export build once. */
 const rebuilds = (path: PathDef) =>
     pickerPath(path) && path.family === 'save' && path.id !== 'save-to-file'
 const anyPick = (path: PathDef) => path.picker
-/** A picker on the pick session: every one since B4. */
+/** A picker on the pick session: every one. */
 const onSession = (path: PathDef) => path.picker
-/** A picker of the Save family that reserves: Export and Save to File… reserve nothing of their own. */
+/** A picker of the Save family that reserves: Export and Recent Sessions' Save… reserve nothing of their own. */
 const reserves = (path: PathDef) =>
     path.picker && path.family === 'save' && path.id !== 'save-to-file'
 
@@ -745,7 +745,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'takeover-fails',
-        exit: 'storage paused: the takeover cannot be kept',
+        exit: 'storage paused: the takeover cannot be recorded',
         applies: (path, p) =>
             path.picker &&
             path.writes &&
@@ -764,7 +764,17 @@ export const FAULTS: FaultDef[] = [
                     : path.family === 'export'
                       ? ['other']
                       : ['other', 'unknown', 'fresh']
-            return { effective: () => calls > 0 || !takes.includes(last(p)) }
+            // Another chain's file is refused: Recent Sessions' Save… takes the open chain's own too.
+            const owner =
+                last(p) === 'other'
+                    ? { chainId: 'chain-other', name: FILES.other }
+                    : last(p) === 'own' && path.id === 'save-to-file'
+                      ? { chainId: 'chain-own', name: FILES.own }
+                      : undefined
+            return {
+                effective: () => calls > 0 || !takes.includes(last(p)),
+                ...(owner ? { facts: { notTakenOver: owner } } : {}),
+            }
         },
     },
     {
@@ -880,7 +890,7 @@ export const FAULTS: FaultDef[] = [
     },
     {
         id: 'import-picker-while-running',
-        exit: 'this session’s import runs, though Save to File… waits for the written session’s chain only (waited for at the pick, then picker)',
+        exit: 'this session’s import runs, though Recent Sessions’ Save… waits for the written session’s chain only (waited for at the pick, then picker)',
         applies: (path, p) =>
             path.id === 'save-to-file' &&
             single(p) &&
@@ -1119,7 +1129,7 @@ export const runCell = async (
     const setup: Setup = { ...path.setup, ...fault.setup }
     const kind = planned.picks.find((pick) => ['opened', 'chart', 'partial'].includes(pick))
     // After a reload (`held: false`) only storage knows a partial open's file: its handle is kept
-    // there, and exportMemory is empty (D26). Elsewhere the open is in memory.
+    // there, and exportMemory is empty. Elsewhere the open is in memory.
     if (kind === 'partial' && setup.held === false) setup.kept = 'afterReload'
     else if (kind)
         setup.opened =

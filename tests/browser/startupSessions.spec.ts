@@ -5,7 +5,7 @@ import { skipWhereTheEditorCannotStart } from './webkitSupport'
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.
 skipWhereTheEditorCannotStart()
 
-// Startup (Part 1 §1.4.2, §1.11.4's exit): which session a load opens. A same-tab reload keeps
+// Startup: which session a load opens. A same-tab reload keeps
 // its session, decided by the session lock; a Duplicate Tab forks; a new visit continues the most
 // recent session, or starts blank when it's open in another tab; a first visit starts blank. The
 // recovery order runs first: the canary, the journals, the old auto save.
@@ -123,7 +123,7 @@ const loadEvents = (page: Page) =>
 const claimOf = (page: Page) => page.evaluate(() => window.nseStartupTest?.claim)
 
 /**
- * Binds the open session's chain to a file, as a Save would (Step 6 writes the file). Without a
+ * Binds the open session's chain to a file, as a Save would. Without a
  * handle: Playwright's Chromium kills a page that reads an OPFS handle back from IndexedDB.
  */
 const bind = (page: Page, name: string) =>
@@ -211,7 +211,7 @@ test('edit, kill, reload: the reload recovers its own journal in the same sessio
     const record = await tabRecord(page)
     const { sessionId } = await sessionOf(page)
     const next = await withTabRecord(context, record)
-    // A tab the browser discarded says so; it's only a hint, and changes nothing (§1.4.2).
+    // A tab the browser discarded says so; it's only a hint, and changes nothing.
     await next.addInitScript(() => {
         Object.defineProperty(document, 'wasDiscarded', { configurable: true, value: true })
     })
@@ -417,7 +417,7 @@ test('an unedited blank start, the session held elsewhere, continues it with its
     await opened(next)
     expect(await lifeOf(next)).toBe(990)
     expect(await loadEvents(next)).toEqual(['continued'])
-    // The continuation carries the chain's fields, its binding included (§1.4.2).
+    // The continuation carries the chain's fields, its binding included.
     expect((await flushSession(next)).file).toEqual({ name: 'coconut.nxsp', handle: false })
 })
 
@@ -458,7 +458,7 @@ test('the marker clears when the page shows again, so a later Duplicate Tab isn�
         document.dispatchEvent(new Event('visibilitychange'))
     })
     expect(await marker()).toBeNull()
-    // A page restored from the back-forward cache clears it on `pageshow` (§1.4.2).
+    // A page restored from the back-forward cache clears it on `pageshow`.
     await page.evaluate(() => {
         window.dispatchEvent(new Event('pagehide'))
     })
@@ -509,7 +509,7 @@ test.describe('the canary', () => {
     })
 })
 
-test('the migration: its session is the one a first load continues, and the legacy slot holds the slot without an edit', async ({
+test('the migration: its session is the one a first load continues, and the old key goes', async ({
     page,
 }) => {
     const levelData = { bgmOffset: 0, entities: [{ archetype: 'Initialization', data: [] }] }
@@ -539,13 +539,10 @@ test('the migration: its session is the one a first load continues, and the lega
     expect(origin).toBe('migrated')
     expect(
         await page.evaluate(
-            (prefix) => ({
-                slot: localStorage.getItem(`${prefix}autoSave.levelData`),
-                legacy: localStorage.getItem(`${prefix}legacyRecovery`),
-            }),
+            (prefix) => localStorage.getItem(`${prefix}autoSave.levelData`),
             prefix,
         ),
-    ).toEqual({ slot: null, legacy: stored })
+    ).toBeNull()
 })
 
 test.describe('storage unavailable', () => {
@@ -614,8 +611,7 @@ test.describe('storage unavailable', () => {
                 (await import('/src/local/startup/api.ts')) as typeof import('../../src/local/startup/api')
             return (await recoveryItems()).items.map((item) => item.kind)
         })
-        // The legacy slot, written from the journal, is offered for Download too.
-        expect(items).toEqual(['journal', 'legacy'])
+        expect(items).toEqual(['journal'])
     })
 })
 
@@ -808,13 +804,11 @@ test('safe mode’s real startup opens blank and read-only, and writes no journa
     await opened(page)
     expect(await lifeOf(page)).toBe(1000)
     expect(await page.evaluate(() => window.nseFlushTest === undefined)).toBe(true)
-    // What the normal page left as it went (its journal, the legacy slot) stays as it is.
+    // What the normal page left as it went (its journal, the canary) stays as it is.
     const kept = () =>
         page.evaluate(() =>
             Object.fromEntries(
-                Object.entries(localStorage).filter(([key]) =>
-                    /\.(journal\.|legacyRecovery|canary)/.test(key),
-                ),
+                Object.entries(localStorage).filter(([key]) => /\.(journal\.|canary)/.test(key)),
             ),
         )
     const before = await kept()
@@ -842,6 +836,25 @@ const reopenedTab = async (context: BrowserContext, record: string) => {
     return page
 }
 
+/**
+ * Whether a page of the context waits for the session's lock: a reload in the marker's wait
+ * (`MARKER_WAIT_MS`), which ends in a separate copy when the lock is still held 2 s on.
+ */
+const waitsForLock = (page: Page, sessionId: string) =>
+    expect
+        .poll(
+            () =>
+                page.evaluate(
+                    async (name) =>
+                        (await navigator.locks.query()).pending?.some(
+                            (lock) => lock.name === name,
+                        ) ?? false,
+                    `nse-session:${sessionId}`,
+                ),
+            { intervals: [50], timeout: 20_000 },
+        )
+        .toBe(true)
+
 test('Reopen Closed Tab: the lock coming free within the wait is a reload; held past it, a separate copy', async ({
     page,
     context,
@@ -852,7 +865,7 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     const record = await tabRecord(page)
     const { sessionId } = await sessionOf(page)
 
-    // The other tab still holds it past the wait (D19): a fork.
+    // The other tab still holds it past the wait: a fork.
     const copy = await reopenedTab(context, record)
     await visit(copy)
     expect(await claimOf(copy)).toBe('duplicate')
@@ -862,7 +875,7 @@ test('Reopen Closed Tab: the lock coming free within the wait is a reload; held 
     // It closes within the wait: a reload of the same session.
     const reopened = await reopenedTab(context, record)
     const visiting = visit(reopened)
-    await reopened.waitForTimeout(500)
+    await waitsForLock(page, sessionId)
     await page.close({ runBeforeUnload: false })
     await visiting
     expect(await claimOf(reopened)).toBe('reload')
@@ -883,12 +896,14 @@ test('a late flush landing during the marker’s wait is in the session the relo
     await edit(page, 960)
     const reloaded = await reopenedTab(context, record)
     const visiting = visit(reloaded)
-    await reloaded.waitForTimeout(300)
-    // The unloading page's flush lands while the reload waits, then the page goes.
-    await page.evaluate(() => {
-        window.nseFlushTest!.stall = false
+    await waitsForLock(page, sessionId)
+    // The unloading page's flush lands while the reload waits, then the page goes at once: the
+    // wait is only 2 s, so nothing between them polls.
+    await page.evaluate(async () => {
+        const hooks = window.nseFlushTest!
+        hooks.stall = false
+        await hooks.flusher.flush()
     })
-    await settled(page)
     await page.close({ runBeforeUnload: false })
     await visiting
     expect(await claimOf(reloaded)).toBe('reload')
@@ -952,7 +967,7 @@ test('Start Blank’s edits while the worker hasn’t answered have a journal: a
     expect(await lifeOf(next)).toBe(930)
 })
 
-// Local Data's recovery rows (Part 1 §1.4.14): a Download that cannot read its row says so and
+// Local Data's recovery rows: a Download that cannot read its row says so and
 // leaves the row, and a row gone since it was listed reads the list again.
 
 const seedRecovered = async (page: Page) => {
@@ -1020,27 +1035,4 @@ test('Local Data’s Download of a recovered row gone since it was listed reads 
     await page.evaluate(() => window.nseStorageTest!.worker.call('discardRecovered', 'recovered-1'))
     await row.getByRole('button', { name: 'Download' }).click()
     await expect(row).toHaveCount(0)
-})
-
-test('a load whose binding check could not be answered says the file "may" be open elsewhere', async ({
-    page,
-    context,
-}) => {
-    await seed(context)
-    await visit(page)
-    await page.evaluate(async () => {
-        const { addLoadEvent } =
-            (await import('/src/local/startup/events.ts')) as typeof import('../../src/local/startup/events')
-        addLoadEvent({
-            kind: 'separateCopy',
-            of: { name: 'coconut.nxsp', bound: true },
-            maybe: true,
-        })
-    })
-    await expect(
-        page.locator('.notification, .notification-pill').filter({
-            hasText:
-                '"coconut.nxsp" may be open in another tab or window, so this is a separate copy.',
-        }),
-    ).toBeVisible()
 })

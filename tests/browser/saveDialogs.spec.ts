@@ -6,7 +6,7 @@ import type {
     SavedFeedback,
 } from '../../src/editor/save/dialogs'
 
-// Step 6's Save dialogs (Part 1 §1.4.7): the Save and Save As dialog with File Name's rules, the
+// The Save dialogs: the Save and Save As dialog with File Name's rules, the
 // History and BGM rows and the size preview, the Preparing dialog, the conflict dialog, the
 // not-found, denied and read-only dialogs, and the feedback after a write. They are opened through
 // `saveUi`, as the Save flows call them.
@@ -377,6 +377,51 @@ test.describe('the Save dialog', () => {
         await expect.poll(() => result(page)).toEqual({ action: 'export' })
     })
 
+    test('in Japanese the Export link keeps its brackets on its line', async ({
+        page,
+        context,
+    }) => {
+        await seed(context)
+        await visit(page)
+        await page.evaluate(async () => {
+            const { settings } =
+                (await import('/src/settings.ts')) as typeof import('../../src/settings')
+            settings.locale = 'ja'
+        })
+        await openSave(page, { exportLine: true })
+        const line = dialog(page).locator('[data-save-export]')
+        await expect(line).toHaveText(
+            'Sonolus 用のレベルデータには「レベルデータを出力…」を使ってください。',
+        )
+        // The widths, from a 320 px phone's up, at which 「 ends a line before the link or 」 starts
+        // one after it.
+        const broken = await line.evaluate((p) => {
+            const button = p.querySelector('button')!
+            const rectOf = (char: string) => {
+                const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
+                while (walker.nextNode()) {
+                    const node = walker.currentNode as Text
+                    const at = node.data.indexOf(char)
+                    if (at < 0 || button.contains(node)) continue
+                    const range = document.createRange()
+                    range.setStart(node, at)
+                    range.setEnd(node, at + 1)
+                    return range.getBoundingClientRect()
+                }
+                throw new Error(`no ${char}`)
+            }
+            const widths: number[] = []
+            for (let width = 240; width <= 420; width += 2) {
+                p.style.width = `${width}px`
+                const link = button.getBoundingClientRect()
+                if (rectOf('「').bottom <= link.top || rectOf('」').top >= link.bottom)
+                    widths.push(width)
+            }
+            return widths
+        })
+        expect(broken).toEqual([])
+    })
+
     test('Cancel and Escape answer nothing', async ({ page, context }) => {
         await seed(context)
         await visit(page)
@@ -447,11 +492,21 @@ test.describe('the Preparing dialog', () => {
         await page.evaluate(() =>
             (
                 window.saveSeen.preparing as {
-                    importing: (p: { done: number; total: number }) => void
+                    importing: (p: { done: number; total: number } | undefined) => void
                 }
             ).importing({ done: 20, total: 80 }),
         )
         await expect(dialog(page).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
+        // The import is over: the bar slides for the build, and does not stay full.
+        await page.evaluate(() =>
+            (
+                window.saveSeen.preparing as {
+                    importing: (p: { done: number; total: number } | undefined) => void
+                }
+            ).importing(undefined),
+        )
+        await expect(dialog(page).getByRole('progressbar')).toHaveCount(0)
+        await expect(dialog(page).locator('[data-save-progress]')).toBeVisible()
         await page.evaluate(() =>
             (window.saveSeen.preparing as { built: (size: number) => void }).built(12_400_000),
         )
@@ -465,6 +520,8 @@ test.describe('the Preparing dialog', () => {
         })
         const button = dialog(page).getByRole('button', { name: 'Download' })
         await expect(button).toBeFocused()
+        await expect(dialog(page)).toContainText('Ready: coconut.nxsp · 12.4 MB')
+        await expect(dialog(page).locator('[data-save-progress]')).toHaveCount(0)
         await guard(page)
         await button.click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(true)
@@ -505,7 +562,7 @@ test.describe('the Preparing dialog', () => {
         await guard(page)
         await dialog(page).getByRole('button', { name: 'Cancel' }).click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.aborted)).toBe(true)
-        // A press asked for once the activation lapsed has nothing to wait for (SF-2).
+        // A press asked for once the activation lapsed has nothing to wait for.
         await page.evaluate(() => {
             void (
                 window.saveSeen.preparing as { ready: (a: string, s: number) => Promise<boolean> }
@@ -519,17 +576,19 @@ test.describe('the Preparing dialog', () => {
 })
 
 test.describe('the conflict dialog', () => {
+    // Built in UTC and drawn in UTC, so the times read the same in any zone the tests run in.
+    test.use({ timezoneId: 'UTC' })
     const disk = {
         saved: {
             kind: 'saved',
             device: { id: 'a', label: 'iPad' },
-            savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
+            savedAt: Date.UTC(new Date().getUTCFullYear(), 9, 16, 14, 41),
             notes: 1220,
         },
         web: {
             kind: 'saved',
             device: { id: 'a', label: 'Web (Chrome)' },
-            savedAt: new Date(new Date().getFullYear(), 9, 16, 14, 41).getTime(),
+            savedAt: Date.UTC(new Date().getUTCFullYear(), 9, 16, 14, 41),
             notes: 1,
         },
         other: { kind: 'otherProject', name: 'Melt' },
@@ -558,7 +617,7 @@ test.describe('the conflict dialog', () => {
         await expect(
             dialog(page).getByRole('button', { name: 'Save as a Separate File' }),
         ).toBeFocused()
-        await expect(dialog(page).getByText('Your changes stay unsaved.')).toBeVisible()
+        await expect(dialog(page).getByText('Your changes stay in Recent Sessions.')).toBeVisible()
         await expect(
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),
         ).toBeVisible()
@@ -627,13 +686,13 @@ test.describe('the conflict dialog', () => {
                 name: 'coconut.nxsp',
                 disk: disk.saved,
                 replaceDisabled:
-                    'It holds earlier Timeline steps that are no longer stored in this browser.',
+                    'It contains earlier Timeline steps that are no longer stored in this browser.',
             },
         })
         const replace = dialog(page).getByRole('button', { name: 'Replace' })
         await expect(replace).toBeDisabled()
         await expect(dialog(page)).toContainText(
-            'It holds earlier Timeline steps that are no longer stored in this browser.',
+            'It contains earlier Timeline steps that are no longer stored in this browser.',
         )
         await expect(
             dialog(page).getByText('The version on disk will be kept in Recent Sessions.'),

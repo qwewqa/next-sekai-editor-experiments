@@ -9,7 +9,7 @@ import type { SaveUi } from './dialogs'
 import { removeMarker, savedState, writeMarker, type SaveMarker } from './env'
 import { openPreparing, PREPARING_MS, waitForChainImports, type PreparingSlot } from './imports'
 
-// One Save attempt (Part 1 §1.4.7, spec B): every Save, Export's pick and Save to File… that may
+// One Save attempt: every Save, Export's pick and Recent Sessions' Save… that may
 // write a file runs in one. It owns the Save's cancel and its one "Preparing…", the wait for the chain's
 // imports, the reservation and how that reservation ends, and the failure the user is shown. The
 // flows own what is built and what is asked; they never end a reservation themselves.
@@ -25,7 +25,7 @@ export class Cancelled extends Error {
     }
 }
 
-/** A continuation not stored yet commits its first row before its first file write (§1.3.1). */
+/** A continuation not stored yet commits its first row before its first file write. */
 export const commitFirst = async (env: Env) => {
     const { session } = env
     if (!session.stored) session.atOnce = true
@@ -40,9 +40,9 @@ export type AttemptSpec = {
     readonly surface: 'save' | 'export'
     readonly ui: { preparing: SaveUi['preparing'] }
     readonly commitFirst: boolean
-    /** 'chain': waits for every import of the chain (A2), a failed list counting as pending. */
+    /** 'chain': waits for every import of the chain, a failed list counting as pending. */
     readonly importWait: 'none' | 'chain'
-    /** The chain whose imports are waited for, when it is not the environment's (Save to File…). */
+    /** The chain whose imports are waited for, when it is not the environment's (Recent Sessions' Save…). */
     readonly importChain?: string
     /** A write-back's, requested at the press and awaited after the commit. */
     readonly permission?: Promise<PermissionState>
@@ -81,7 +81,7 @@ export type SaveAttempt = {
     reserve(wait?: boolean): Promise<Reserved | undefined>
     /** Runs `work`; "Preparing…" opens when it outlasts `PREPARING_MS`. */
     preparing<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T>
-    /** The press a lapsed activation needs (§1.4.7 R12): false on Cancel. */
+    /** The press a lapsed activation needs: false on Cancel. */
     ready(action: 'save' | 'download', size: number): Promise<boolean>
     /**
      * Writes a known file or downloads, and ends the reservation as the landing needs: kept when the

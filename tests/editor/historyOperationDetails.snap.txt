@@ -315,6 +315,33 @@ R: Offset (ms) [offset]: 0 > 1,234.5678901234567
 T: Set BGM Offset to 250 ms
 R: Offset (ms) [offset]: -500 > 250
 
+#levelInfo.set en
+T: Changed level info
+R: Title [title]: Old Title > New Title
+R: Rating [rating]: ~Not set > 27
+R: Tags Added [tagsAdded]: 2
+R: Tags Removed [tagsRemoved]: 1
+R: Tags [tagsOrder]: Changed
+R: Cover [cover]: old.png > new.png
+
+#levelInfo.set fr
+T: Informations du niveau modifiées
+R: Titre [title]: Old Title > New Title
+R: Difficulté [rating]: ~Non défini > 27
+R: Tags ajoutés [tagsAdded]: 2
+R: Tags supprimés [tagsRemoved]: 1
+R: Tags [tagsOrder]: Modification
+R: Couverture [cover]: old.png > new.png
+
+#levelInfo.set ja
+T: 譜面情報を変更しました
+R: タイトル [title]: Old Title > New Title
+R: 難易度 [rating]: ~未設定 > 27
+R: 追加したタグ [tagsAdded]: 2
+R: 削除したタグ [tagsRemoved]: 1
+R: タグ [tagsOrder]: 変更
+R: ジャケット [cover]: old.png > new.png
+
 #bgm.change.file en
 T: Changed BGM file
 R: File [file]: old.mp3 > new song.mp3
@@ -521,7 +548,7 @@ T: Deleted "" group
 
 #owner.ungroup.3 en
 T: Ungrouped "Folder One" folder
-R: Moved out of Folder [released]: 3 groups
+R: Moved Out of Folder [released]: 3 groups
 
 #owner.ungroup.3 fr
 T: Dossier "Folder One" dissous
@@ -544,7 +571,7 @@ T: Opened My Level.nse
 T: Imported a level
 
 #origin.autoSave en
-T: Recovered from auto save
+T: Opened the old auto save
 
 #origin.recovery en
 T: Recovered changes
@@ -609,7 +636,7 @@ F: Actions sans étape propre dans la chronologie : 64
 E: 65 earlier, head 30, omitted 12
 
 #recovery.context.big ja
-T: 変更を復元しました
+T: 変更を回復しました
 F: タイムラインに個別に記録されていない操作：64
 E: 65 earlier, head 30, omitted 12
 

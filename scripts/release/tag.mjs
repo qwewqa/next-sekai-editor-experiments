@@ -18,7 +18,7 @@ import {
     usage,
 } from './rules.mjs'
 
-// `npm run release:tag -- X.Y.Z [--commit <sha>] [--edit]` (Part 4, 4.2.5). The rules are in
+// `npm run release:tag -- X.Y.Z [--commit <sha>] [--edit]`. The rules are in
 // rules.mjs and changelog.mjs; this file only runs git and gh.
 
 const run = (command, args, options = {}) =>

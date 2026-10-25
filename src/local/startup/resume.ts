@@ -5,7 +5,7 @@ import type { SessionOrigin } from '../flushWrite'
 import { journalState } from '../journal/content'
 import { readJournal } from '../journal/format'
 
-// A same-tab reload while storage is unavailable (Part 1 §1.6.7): the page is still its session,
+// A same-tab reload while storage is unavailable: the page is still its session,
 // so it continues from its own journal, keeping the session's ids and descriptor, and goes on
 // writing that key. Pure, so the Node tests run it.
 

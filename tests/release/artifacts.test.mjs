@@ -28,6 +28,7 @@ const metadata = {
     atTag: false,
     site: 'production',
     sourceDirty: false,
+    analytics: null,
 }
 const page = `<!doctype html>
 <html>
@@ -40,7 +41,7 @@ const page = `<!doctype html>
     <body><script type="module" src="/assets/index-12345678.js"></script></body>
 </html>
 `
-// The editor's page loads the support gate, a classic script, ahead of the bundle (Part 1 §1.6.10).
+// The editor's page loads the support gate, a classic script, ahead of the bundle.
 const indexPage = page.replace('<title>', '<script src="/gate.js"></script><title>')
 const withPolicy = (html) => injectPolicy(html, webPolicy)
 
@@ -173,6 +174,59 @@ test('a production bundle names no test key but the three live ones', async (t) 
     await write(directory, 'index.html', withPolicy(applyTestSite(indexPage)))
     await writeReleaseManifest(directory, { ...metadata, site: 'test' }, assets)
     await checkRelease(directory)
+})
+
+test('a build with a usage statistics target names it, in its policy and its one client', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    const analytics = {
+        origin: 'https://stats.nse-services.qwewqa.dev',
+        website: '11111111-2222-3333-4444-555555555555',
+    }
+    const withTarget = { ...metadata, analytics }
+    const policy = (html) => injectPolicy(html, (scripts) => webPolicy(scripts, analytics.origin))
+    const client = `fetch("${analytics.origin}/api/batch")`
+    const build = async ({ index = client, origin = analytics.origin, pages = true } = {}) => {
+        if (pages) {
+            await write(directory, 'index.html', policy(indexPage))
+            await write(directory, 'privacy/index.html', policy(page))
+        }
+        await write(directory, 'assets/index-12345678.js', `site("${analytics.website}")`)
+        await write(directory, 'assets/client-12345678.js', index.replace(analytics.origin, origin))
+        await writeReleaseManifest(directory, withTarget, assets)
+    }
+    await build()
+    await checkRelease(directory, { analytics })
+    await assert.rejects(
+        checkRelease(directory, { analytics: { ...analytics, website: 'another' } }),
+        /metadata mismatch: analytics/,
+    )
+    await assert.rejects(checkRelease(directory, { analytics: null }), /metadata mismatch/)
+    await build({ origin: 'https://elsewhere.example' })
+    await assert.rejects(checkRelease(directory), /does not name its analytics target/)
+    await build({ pages: false })
+    await write(directory, 'index.html', withPolicy(indexPage))
+    await writeReleaseManifest(directory, withTarget, assets)
+    await assert.rejects(checkRelease(directory), /Content Security Policy differs/)
+    await build({ index: `${client};${client}` })
+    await write(directory, 'assets/second-12345678.js', client)
+    await writeReleaseManifest(directory, withTarget, assets)
+    await assert.rejects(checkRelease(directory), /exactly one analytics client/)
+    await writeReleaseManifest(
+        directory,
+        { ...withTarget, analytics: { origin: 'http://x' } },
+        assets,
+    )
+    await assert.rejects(checkRelease(directory), /Invalid release metadata/)
+})
+
+test('a build without a target has no usage statistics client', async (t) => {
+    const { directory, assets } = await releaseFixture(t)
+    await write(directory, 'assets/client-12345678.js', 'fetch("https://x/api/batch")')
+    await writeReleaseManifest(directory, metadata, assets)
+    await assert.rejects(
+        checkRelease(directory),
+        /without analytics contains its client: assets.client-12345678.js/,
+    )
 })
 
 test('an extra hashed bundle still fails when it was not recorded by the build', async (t) => {

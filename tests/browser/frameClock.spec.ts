@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test'
-import { installCanvasCounters, installEditorFixture } from './editorFixture'
+import { expect, test, type Page } from '@playwright/test'
+import { installCanvasCounters, installEditorFixture, touchInput } from './editorFixture'
 
 // Run the real clock and view watchers, controlling only the browser clock inputs.
 const exerciseClock = async (scenario: 'motion' | 'activation') => {
@@ -197,4 +197,169 @@ test('activation and repeated or older frames never reverse or jump editor motio
     )
     expect(samples[11]).toEqual({ ...samples[10], delta: 0 })
     expect(samples[12]).toEqual(samples[11])
+})
+
+// The clock ticks only while something needs it (src/time.ts). These count its ticks in the page
+// and start each motion from a clock that has been idle.
+declare global {
+    interface Window {
+        clockTicks: number
+        inertiaStarts: number[]
+    }
+}
+
+const countTicks = (page: Page) =>
+    page.evaluate(async () => {
+        const { appImport, view } = window.editorTest
+        const { time } = await appImport<typeof import('../../src/time')>('/src/time.ts')
+        const vue = performance
+            .getEntriesByType('resource')
+            .find((entry) => new URL(entry.name).pathname.endsWith('/deps/vue.js'))!.name
+        const { watch } = (await import(vue)) as typeof import('vue')
+        window.clockTicks = 0
+        window.inertiaStarts = []
+        watch(time, () => window.clockTicks++, { flush: 'sync' })
+        watch(
+            () => view.scrollingY,
+            (scrolling) => {
+                if (scrolling?.type === 'inertia') window.inertiaStarts.push(scrolling.value)
+            },
+            { flush: 'sync' },
+        )
+    })
+
+const ticks = (page: Page) => page.evaluate(() => window.clockTicks)
+
+const frames = (page: Page, count: number) =>
+    page.evaluate(
+        (count) =>
+            new Promise<void>((resolve) => {
+                let left = count
+                const step = () => (--left <= 0 ? resolve() : requestAnimationFrame(step))
+                requestAnimationFrame(step)
+            }),
+        count,
+    )
+
+/** Expects the clock to stop: 30 frames with no tick, once work in flight, such as storing, ends. */
+const expectIdle = (page: Page) =>
+    expect
+        .poll(async () => {
+            const before = await ticks(page)
+            await frames(page, 30)
+            return (await ticks(page)) - before
+        })
+        .toBe(0)
+
+const isScrolling = (page: Page) =>
+    page.evaluate(() => {
+        const { view } = window.editorTest
+        return !!(view.scrollingX || view.scrollingY || view.scrollingPane)
+    })
+
+test('an idle editor runs no clock ticks, and an eased scroll wakes the clock and ends', async ({
+    page,
+}) => {
+    await countTicks(page)
+    await expectIdle(page)
+
+    const target = await page.evaluate(() => {
+        const { view, settings } = window.editorTest
+        settings.mouseSmoothScrolling = true
+        return view.time + 120 / settings.pps
+    })
+    const chart = (await page.locator('canvas.editor-chart').boundingBox())!
+    await page.mouse.move(chart.x + chart.width / 2, chart.y + chart.height / 2)
+    await page.mouse.wheel(0, -120)
+    await expect.poll(() => isScrolling(page)).toBe(false)
+    expect(await page.evaluate(() => window.editorTest.view.time)).toBeCloseTo(target, 9)
+    expect(await ticks(page)).toBeGreaterThan(2)
+    await expectIdle(page)
+})
+
+test('playback wakes an idle clock, moves the cursor on its ticks and lets it stop', async ({
+    page,
+}) => {
+    await countTicks(page)
+    await expectIdle(page)
+    const start = await page.evaluate(async () => {
+        const { appImport, view } = window.editorTest
+        const { startOrStopPlayer } =
+            await appImport<typeof import('../../src/editor/player')>('/src/editor/player.ts')
+        view.cursorTime = 1
+        startOrStopPlayer()
+        return window.clockTicks
+    })
+    await expect
+        .poll(() => page.evaluate(() => window.editorTest.view.cursorTime))
+        .toBeGreaterThan(1.2)
+    expect((await ticks(page)) - start).toBeGreaterThan(5)
+    await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { startOrStopPlayer } =
+            await appImport<typeof import('../../src/editor/player')>('/src/editor/player.ts')
+        startOrStopPlayer()
+    })
+    await expectIdle(page)
+})
+
+// History stores a step's records in slices, one per idle period. Without frames, Chrome's idle
+// periods come about 50 ms apart, so a flush of many steps took three times as long at 60 Hz.
+test('a History flush runs the clock until its steps are stored', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('nse.test.storage', '{}'))
+    await page.reload()
+    await expect(page.locator('canvas.editor-chart')).toBeVisible()
+    await page.evaluate(installEditorFixture)
+    await countTicks(page)
+    await expectIdle(page)
+    const ticked = await page.evaluate(async () => {
+        const { history } = window.editorTest
+        for (let i = 0; i < 30; i++)
+            history.pushState(
+                window.editorTest.historySteps.futureInitialLife(
+                    history.state.value.initialLife,
+                    history.state.value.initialLife + 1,
+                    `Step ${i + 1}`,
+                ),
+                { ...history.state.value, initialLife: history.state.value.initialLife + 1 },
+            )
+        const before = window.clockTicks
+        await window.nseFlushTest!.flusher.flush({ strict: true })
+        return window.clockTicks - before
+    })
+    // About one step a frame.
+    expect(ticked).toBeGreaterThan(20)
+    await expectIdle(page)
+})
+
+test.describe('touch', () => {
+    test.use({ hasTouch: true })
+
+    test('a quick-scroll flick from an idle clock throws at its last 100 ms’ speed and comes to rest', async ({
+        page,
+    }) => {
+        const touch = await touchInput(page)
+        await countTicks(page)
+        await expectIdle(page)
+        const { x, y, w, h } = await page.evaluate(() => {
+            window.editorTest.settings.touchScrollInertia = true
+            const { x, y, w, h } = window.editorTest.view
+            return { x, y, w, h }
+        })
+        // Eight 20 px moves 3 frames apart: at most three of them fall in the last 100 ms.
+        const at = { x: x + w - 12, y: y + h * 0.3 }
+        await touch('touchStart', [[at.x, at.y]])
+        for (let i = 1; i <= 8; i++) {
+            await frames(page, 3)
+            await touch('touchMove', [[at.x, at.y + 20 * i]])
+        }
+        await touch('touchEnd', [])
+        await expect.poll(() => page.evaluate(() => window.inertiaStarts.length)).toBe(1)
+        const [velocity] = await page.evaluate(() => window.inertiaStarts)
+        // A clock that read one time for every move would count all eight.
+        expect(velocity).toBeGreaterThan(0)
+        expect(velocity).toBeLessThanOrEqual((4 * 20) / 0.1)
+        await expect.poll(() => isScrolling(page)).toBe(false)
+        await expectIdle(page)
+    })
 })

@@ -3,8 +3,7 @@ import { mediaTimeoutMs } from './flush'
 import { heldItem } from './heldMedia'
 import { storageWorker } from './start'
 
-// A media item as a Blob, for a thumbnail, playing, or a utility to start from (Step 11 design
-// §3.2): the bytes this tab holds, else the media store's, which re-hashes them against the key.
+// A media item as a Blob, for a thumbnail, playing, or a utility to start from: the bytes this tab holds, else the media store's, which re-hashes them against the key.
 
 export type MediaBlob =
     | { kind: 'blob'; blob: Blob }

@@ -7,7 +7,7 @@ import type { Store } from '../state/store'
 
 // Whether two states hold the same chart: the same records in the same order, and the same header.
 // An action whose result equals the chart it started from is no History step. The records are the
-// stored chart (Part 1 §1.6.2), so equal records mean equal files, however the entities were
+// stored chart, so equal records mean equal files, however the entities were
 // rebuilt on the way. States along one undo stack share what an edit did not touch, so the check
 // reads only the kinds and slides that differ by identity. The selection is not part of the chart.
 
@@ -69,7 +69,7 @@ const sameSlides = (a: Store['slides']['note'], b: Store['slides']['note']) => {
     return before.every((text, i) => text === after[i])
 }
 
-/** An event kind compares in the order the file lists it, as same-beat order is state (D4). */
+/** An event kind compares in the order the file lists it, as same-beat order is state. */
 const sameEvents = (a: Store, b: Store, kind: EventKind) => {
     if (gridTypes[kind].every((type) => a.grid[type] === b.grid[type])) return true
     const before = orderEvents(a, kind)

@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { cachedEstimate, estimateSaveSize } from '../../../src/local/save/estimate'
+import { saveHandlers } from '../../../src/local/worker/saveHandlers'
 import { ZipReader } from '../../../src/zip/reader'
 import { BGM, COVER, PREVIEW } from '../nxsp/helpers'
 import { Fixture, save } from './fixture'
 
-// `estimateSaveSize` (Part 1 §1.4.7): from stored sizes, cached per chain, close to the file.
+// `estimateSaveSize`: from stored sizes, cached per chain, close to the file.
 
 /** The written file's history entries and the rest, by their stored sizes. */
 const measured = async (file: Blob) => {
@@ -80,7 +81,7 @@ test('the cache is for the BGM the page names: another BGM is a new estimate', a
     )
 })
 
-test('an estimate counted while an open’s import runs is not kept: the next one counts again (SF-6)', async () => {
+test('an estimate counted while an open’s import runs is not kept: the next one counts again', async () => {
     const fixture = await Fixture.create()
     await fixture.start(0)
     for (let k = 1; k <= 5; k++) await fixture.edit(k)
@@ -105,4 +106,27 @@ test('an estimate counted while an open’s import runs is not kept: the next on
     assert.equal(after.importing, undefined)
     assert.notEqual(after, during)
     assert.deepEqual(cachedEstimate(fixture.chainId, id, lastSeq), after)
+})
+
+test('the worker’s estimate moves its call’s progress at each read, so a slow one is not taken for a hung worker', async () => {
+    const fixture = await Fixture.create()
+    await fixture.start(0)
+    for (let k = 1; k <= 5; k++) await fixture.edit(k)
+    await fixture.flush()
+    const handlers = saveHandlers({ core: fixture.core, test: true, emit: () => undefined })
+    let ticks = 0
+    const estimate = await fixture.tab.run(() =>
+        handlers.estimateSaveSize(
+            { chainId: fixture.chainId },
+            {
+                id: 1,
+                tick: () => {
+                    ticks++
+                },
+            },
+        ),
+    )
+    assert.ok(estimate)
+    // Each read ticks as it starts and ends.
+    assert.ok(ticks >= 2, `${ticks} ticks`)
 })

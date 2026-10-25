@@ -36,7 +36,7 @@ import {
 } from '../timeline'
 import type { JournalDescriptor, JournalStack } from './format'
 
-// Journal replay's transaction (Part 1 §1.6.4 #7 steps 3–4), in the storage worker: under the
+// Journal replay's transaction, in the storage worker: under the
 // session lock the page holds, one strict transaction checks the session and applies the
 // journal to it, or, when it can't be applied there, makes a recovery session in a new chain.
 // Every read comes before the first write.
@@ -64,7 +64,7 @@ export type JournalApplyResult =
     | { kind: 'applied'; created: boolean }
     /** A flush already covered it. */
     | { kind: 'covered' }
-    /** Kept as a separate session in a new chain (§1.6.4: "could not be applied"). */
+    /** Kept as a separate session in a new chain. */
     | { kind: 'recovery'; sessionId: string; chainId: string; why: string }
     /** Its chain needs a newer version: left in place. */
     | { kind: 'later'; why: string }
@@ -101,13 +101,13 @@ const chainFieldsOf = (descriptor: JournalDescriptor): Row => {
     return fields
 }
 
-/** `revision.id` of the record is among the descriptor revision's ancestors (§1.6.4 step 4). */
+/** `revision.id` of the record is among the descriptor revision's ancestors. */
 const descends = (next: unknown, base: unknown) => {
     if (!isRow(next) || !isRow(base) || typeof base.id !== 'string') return false
     return Array.isArray(next.ancestors) && next.ancestors.includes(base.id)
 }
 
-/** The record has no `replaced`, or the binding's `at` is above `replaced.at` (D5). */
+/** The record has no `replaced`, or the binding's `at` is above `replaced.at`. */
 const afterReplaced = (file: unknown, replaced: unknown) => {
     if (replaced === undefined) return true
     if (!isRow(file) || !isRow(replaced)) return false
@@ -168,7 +168,7 @@ export const setJournalApplyHookForTests = (hook: typeof applyHook) => {
     applyHook = hook
 }
 
-/** A continuation starts after its parent's last entry (§1.6.11.2). */
+/** A continuation starts after its parent's last entry. */
 const continuedAfter = (parent: Row | undefined) =>
     typeof parent?.updatedAt === 'number' ? parent.updatedAt + 1 : -Infinity
 
@@ -176,7 +176,7 @@ export const writeJournalApply = async (
     tx: KvTx,
     batch: JournalApplyBatch,
     prepared: PreparedFlush,
-    /** Why an apply failed: then it's kept as a recovery session (§1.6.4). */
+    /** Why an apply failed: then it's kept as a recovery session. */
     { force }: { force?: string } = {},
 ): Promise<JournalApplyResult> => {
     const { sessionId, seq, descriptor, stack } = batch
@@ -204,7 +204,7 @@ export const writeJournalApply = async (
             why: 'kept at an earlier load',
         }
 
-    // Never a recovered entry in a chain this build can't fully read (§1.6.4 step 2). A newer
+    // Never a recovered entry in a chain this build can't fully read. A newer
     // generation is left for a newer build. A malformed one is not newer: the journal is kept as a
     // separate session through the ordinary recovery write below, never dropped before it.
     let unsupportedWhy: string | undefined
@@ -228,15 +228,12 @@ export const writeJournalApply = async (
         const entries = await tx.getAll('entries', range)
         if (entries.some((row) => !isRow(row) || !isKnownEntryKind(row.kind)))
             return { kind: 'later', why: 'its session needs a newer version' }
-        // A flush already covered it (§1.6.4 step 3). That flush may have been relaxed, so this
-        // transaction writes a row: its strict commit makes it durable before the key goes.
-        if (typeof session.lastSeq === 'number' && session.lastSeq >= seq) {
-            await writeMeta(tx, 'maxSeenTime', (await readMeta(tx, 'maxSeenTime')) ?? 0)
+        // A flush already covered it.
+        if (typeof session.lastSeq === 'number' && session.lastSeq >= seq)
             return { kind: 'covered' }
-        }
     }
 
-    // An unstored continuation's journal (§1.3.6): applied as its first write would be, moving
+    // An unstored continuation's journal: applied as its first write would be, moving
     // the head from its parent while the parent is still the head as it was continued.
     const parentRow =
         !session && chain && descriptor.origin === 'continued' && descriptor.parent
@@ -300,7 +297,7 @@ export const writeJournalApply = async (
     const time = stamp(now)
     applyHook?.(force)
     if (recoveryWhy) {
-        // A new chain copied from the descriptor as a fork is (§1.6.11.2), with no binding.
+        // A new chain copied from the descriptor as a fork is, with no binding.
         const { chainId: newChain, docId, sessionId: newSession } = batch.recovery
         const record = forkRecord(chainFieldsOf(descriptor))
         await tx.put('chains', {
@@ -405,7 +402,7 @@ export const writeJournalApply = async (
         Math.max(clampTime(descriptor.startedAt, now), continuedAfter(parent)),
         time,
     )
-    // A session that never flushed is made with its own ids (§1.6.4 step 3); its `v` is kept.
+    // A session that never flushed is made with its own ids; its `v` is kept.
     await tx.put(
         'sessions',
         session
@@ -447,11 +444,11 @@ export const writeJournalApply = async (
             ...common,
         })
     } else {
-        // A continuation's first write moves the head to it (§1.3.1).
+        // A continuation's first write moves the head to it.
         const fields: Row = { ...common, ...(continuing ? { head: sessionId } : {}) }
-        // The identity fields only as one unit, and only when safe (§1.6.4 step 4): a write-back
+        // The identity fields only as one unit, and only when safe: a write-back
         // whose binding flush the tab didn't live to commit, or a first Save's on a record with
-        // no binding yet (D15), never over a binding a save picker took over since (D5).
+        // no binding yet, never over a binding a save picker took over since.
         if (
             descriptor.docId === chain.docId &&
             (descends(descriptor.revision, chain.revision) ||
@@ -461,7 +458,7 @@ export const writeJournalApply = async (
             const own = chainFieldsOf(descriptor)
             fields.revision = own.revision
             fields.file = own.file
-            // The stored handle stays for the same file only (D24).
+            // The stored handle stays for the same file only.
             if (!isRow(own.file) || !isRow(chain.file) || own.file.name !== chain.file.name)
                 await deleteHandleRow(tx, chainId, 'file')
         }

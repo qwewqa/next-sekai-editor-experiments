@@ -12,7 +12,7 @@ import { readNxsp } from '../../../src/local/nxsp/read'
 import { canonicalBytes, type RecordValue } from '../../../src/local/records/canonical'
 import { jsonOf, setJson, unzip, zipItems, type Item, type Loose } from './craft'
 
-// The independent checker (`tools/nxsp_check.py`, §1.6.11.9) over the builder golden's output and
+// The independent checker (`tools/nxsp_check.py`) over the builder golden's output and
 // over crafted bad files, each failing for its reason. Python runs through `uv` with `-I`; without
 // `uv` on the machine the test is skipped (CI installs it for the checker step).
 
@@ -203,7 +203,7 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
                 }),
                 'metadata.title',
             ],
-            // The patch number and the app version of a save (§1.6.11.4, §1.6.11.5).
+            // The patch number and the app version of a save.
             [
                 'patch-missing',
                 craft((items) => {
@@ -360,6 +360,16 @@ test('the checker fails each crafted file for its reason', { skip: !hasUv }, asy
                     setJson(items, 'history/manifest.json', m)
                 }),
                 'unknown keys',
+            ],
+            // A tag is `{ title }` only.
+            [
+                'tag-icon',
+                craft((items) => {
+                    const p = jsonOf(items, 'project.json')
+                    p.metadata.tags[0].icon = 'star'
+                    setJson(items, 'project.json', p)
+                }),
+                "metadata.tags[0]: unknown keys ['icon']",
             ],
             [
                 'chunk-hash',

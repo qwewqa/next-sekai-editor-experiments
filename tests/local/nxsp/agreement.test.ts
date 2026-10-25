@@ -15,7 +15,7 @@ import { fresh } from './chain'
 import { jsonOf, overHistoryCap, setJson, unzip, zipItems, type Item, type Loose } from './craft'
 import { entry } from './helpers'
 
-// The reader and the independent checker agree (§1.6.11.9): every crafted probe is read by
+// The reader and the independent checker agree: every crafted probe is read by
 // `readNxsp` and by the checker's reader mode, and both must open it the same way (`full`, or
 // `partial` with the same reasons, `unreadable` or `not-project`). Every probe the checker passes
 // as a writer's file must also open fully. Python runs through `uv` with `-I`; without `uv` the
@@ -316,7 +316,7 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         }),
         'patch-string': await probe(project((p) => (p.patch = '1'))),
         'patch-negative': await probe(project((p) => (p.patch = -1))),
-        // Plan §1.6.11.8: `x` is ignorable on every structural object, and carried unread.
+        // `x` is ignorable on every structural object, and carried unread.
         'x-everywhere': await probe(
             manifest((m) => {
                 const x = { future: [1, { deep: true }] }
@@ -365,7 +365,7 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
         'manifest-version-newer': await probe(manifest((m) => (m.version = 2))),
         'manifest-version-float': await probe(manifest((m) => (m.version = 1.5))),
         'manifest-version-zero': await probe(manifest((m) => (m.version = 0))),
-        // Plan §1.6.11.8: a key no carrier knows, inside a slot or a step, is "unknown-key".
+        // A key no carrier knows, inside a slot or a step, is "unknown-key".
         'step-unknown-key': await probe(manifest((m) => (m.undoStack.slots[0].step.zz = 1))),
         'entry-step-unknown-key': await probe(
             manifest((m) => (m.entries.find((e: Loose) => e.step).step.zz = 1)),
@@ -385,7 +385,7 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
             manifest((m) => (m.entries.find((e: Loose) => e.kind === 'save').appVersion = 6)),
         ),
         'appversion-on-edit': await probe(manifest((m) => (m.entries[1].appVersion = '0.6.0'))),
-        // Plan §1.6.11.4: names are UTF-8 as Rust's from_utf8_lossy reads them, which keeps U+FEFF.
+        // Names are UTF-8 as Rust's from_utf8_lossy reads them, which keeps U+FEFF.
         'bom-name': await (async () => {
             const { items } = await goldenItems()
             const bom = [0xef, 0xbb, 0xbf]
@@ -495,7 +495,7 @@ const probes = async (): Promise<Record<string, Uint8Array>> => {
 type Opened = { kind: string; open: string | null; reasons: string[] }
 
 /**
- * What the plan says each of these opens as (§1.6.11.4, §1.6.11.8), written out apart from either
+ * What each of these opens as by the format, written out apart from either
  * reader: both readers can share a deviation, and agreeing with each other cannot catch it.
  */
 const expectedByPlan: Record<string, Opened> = {
@@ -598,7 +598,7 @@ test('the reader and the checker open every probe alike', { skip: !hasUv }, asyn
             }
             assert.deepEqual(py, js, `${name}: ${JSON.stringify(line.report)}`)
             const planned = expectedByPlan[name]
-            if (planned) assert.deepEqual(js, planned, `${name} by the plan`)
+            if (planned) assert.deepEqual(js, planned, `${name} by the format`)
             // Never the dangerous direction: a file the checker passes always opens fully.
             if (strict.includes(`ok ${paths[i] ?? ''}`))
                 assert.deepEqual([js.kind, js.open], ['nxsp', 'full'], name)

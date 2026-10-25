@@ -5,6 +5,7 @@ import {
     decodeValue,
     dumpDatabase,
     DumpError,
+    dumpJsonBytes,
     dumpLocalStorage,
     encodeValue,
     readDump,
@@ -16,9 +17,11 @@ import { seedDump } from '../../src/local/seed'
 import { openLocalData } from '../../src/local/testing/db'
 import { createWorld, type Tab } from '../../src/local/testing/world'
 
-// The dump format (Part 1 §1.6.11.9) and the dev-only sample seeder.
+// The dump format and the dev-only sample seeder.
 
 const b64 = (bytes: number[]) => toBase64(new Uint8Array(bytes))
+
+const noBlob = (): never => assert.fail('No Blob here')
 
 const hash = (n: number) => ({ $ab: b64(Array.from({ length: 16 }, (_, i) => (i + n) % 256)) })
 
@@ -123,7 +126,7 @@ const fakeStorage = () => {
 const dumpOf = (tab: Tab, db: KvDatabase) =>
     tab.run(() => dumpDatabase(db, { appVersion: '0.6.0', localStorage: {} }))
 
-/** The dump without the handles, which the seeder leaves out: a `handles` row goes whole (D24). */
+/** The dump without the handles, which the seeder leaves out: a `handles` row goes whole. */
 const withoutHandle = (dump: Dump) => {
     const copy = structuredClone(dump)
     const chain = copy.stores.find((store) => store.name === 'chains')!.records[0]!
@@ -151,6 +154,25 @@ test('a seeded dump reads back equal', async () => {
     assert.ok((chain.file as { hash: unknown }).hash instanceof Uint8Array)
     assert.equal(chain.$dollar, 'kept')
     assert.ok('gone' in chain && chain.gone === undefined)
+    await world.idle()
+})
+
+test('a Blob the export could not read seeds as an empty Blob of its type, in its row', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const dump = sampleDump()
+    const media = dump.stores.find((store) => store.name === 'media')!.records[0]!
+    media.value = { blob: { $blobUnreadable: true, type: 'audio/mpeg', size: 3 }, size: 3 }
+    assert.deepEqual(await tab.run(() => seedDump(tab.kv, readDump(dump), fakeStorage())), {
+        seeded: true,
+    })
+    const seeded = withoutHandle(dump)
+    seeded.stores.find((store) => store.name === 'media')!.records[0]!.value = {
+        blob: { $blob: '', type: 'audio/mpeg' },
+        size: 3,
+    }
+    const db = await tab.kv.open('nse-local-data', undefined)
+    assert.deepEqual(await dumpOf(tab, db), seeded)
     await world.idle()
 })
 
@@ -209,20 +231,123 @@ test('the seeder refuses a database newer than the dump', async () => {
     await world.idle()
 })
 
-test('the dumper writes a view’s own bytes and throws on what it has no tag for', () => {
+test('the dumper writes a view’s own bytes', () => {
     const buffer = new Uint8Array([0, 1, 2, 3, 4, 5]).buffer
-    assert.deepEqual(encodeValue(new Uint8Array(buffer, 2, 2), new Map()), { $u8: b64([2, 3]) })
-    assert.deepEqual(encodeValue(buffer, new Map()), { $ab: b64([0, 1, 2, 3, 4, 5]) })
-    assert.deepEqual(encodeValue({ $a: [undefined] }, new Map()), {
+    assert.deepEqual(encodeValue(new Uint8Array(buffer, 2, 2), noBlob), { $u8: b64([2, 3]) })
+    assert.deepEqual(encodeValue(buffer, noBlob), { $ab: b64([0, 1, 2, 3, 4, 5]) })
+    assert.deepEqual(encodeValue({ $a: [undefined] }, noBlob), {
         $$a: [{ $undefined: true }],
     })
-    for (const value of [new Date(0), new Map(), 1n, NaN, Infinity, new Uint16Array(1)])
-        assert.throws(() => encodeValue({ value }, new Map()), DumpError)
+})
+
+test('a value with no plain tag is tagged, never thrown on, and comes back where it can', () => {
+    const round = (value: unknown) => {
+        const tagged = encodeValue({ value }, noBlob)
+        return decodeValue(JSON.parse(JSON.stringify(tagged))) as { value: unknown }
+    }
+    // A number that is not finite, by its text.
+    assert.deepEqual(encodeValue(NaN, noBlob), { $num: 'NaN' })
+    assert.deepEqual(encodeValue(-Infinity, noBlob), { $num: '-Infinity' })
+    assert.ok(Number.isNaN(round(NaN).value))
+    assert.equal(round(Infinity).value, Infinity)
+    assert.equal(round(-Infinity).value, -Infinity)
+    // A Date, by its time value.
+    assert.deepEqual(encodeValue(new Date(1234), noBlob), { $date: 1234 })
+    assert.deepEqual(round(new Date(1234)).value, new Date(1234))
+    assert.ok(Number.isNaN((round(new Date(NaN)).value as Date).getTime()))
+    // Other typed arrays and a DataView, by their own bytes and the type's name.
+    const wide = new Uint16Array([1, 258, 65535])
+    assert.deepEqual(encodeValue(new Uint16Array(wide.buffer, 2, 1), noBlob), {
+        $typed: 'Uint16Array',
+        bytes: b64([2, 1]),
+    })
+    assert.deepEqual(round(wide).value, wide)
+    assert.deepEqual(round(new Float64Array([1.5, NaN])).value, new Float64Array([1.5, NaN]))
+    assert.deepEqual(round(new BigInt64Array([-5n])).value, new BigInt64Array([-5n]))
+    const view = new DataView(new Uint8Array([9, 8, 7, 6]).buffer, 1, 2)
+    assert.deepEqual(encodeValue(view, noBlob), { $typed: 'DataView', bytes: b64([8, 7]) })
+    assert.deepEqual(new Uint8Array((round(view).value as DataView).buffer), new Uint8Array([8, 7]))
+    // A subclass of Uint8Array, and a type this build does not know, come back as bytes.
+    class Bytes extends Uint8Array {}
+    assert.deepEqual(encodeValue(new Bytes([1, 2]), noBlob), {
+        $typed: 'Bytes',
+        bytes: b64([1, 2]),
+    })
+    assert.deepEqual(round(new Bytes([1, 2])).value, new Uint8Array([1, 2]))
+    assert.deepEqual(
+        decodeValue({ $typed: 'Uint16Array', bytes: b64([1, 2, 3]) }),
+        new Uint8Array([1, 2, 3]),
+    )
+    // Anything else: the constructor's name and its text; a String() that throws, the name alone.
+    class Thing {
+        toString() {
+            return 'a thing'
+        }
+    }
+    class Bad {
+        toString(): string {
+            throw new Error('no')
+        }
+    }
+    assert.deepEqual(encodeValue(new Thing(), noBlob), { $other: 'Thing', text: 'a thing' })
+    assert.deepEqual(encodeValue(new Map(), noBlob), { $other: 'Map', text: '[object Map]' })
+    assert.deepEqual(encodeValue(new Bad(), noBlob), { $other: 'Bad' })
+    assert.deepEqual(encodeValue(1n, noBlob), { $other: 'bigint', text: '1' })
+    assert.deepEqual(round(new Thing()), { value: undefined })
+    // Inside arrays too.
+    assert.deepEqual(encodeValue([NaN, new Thing()], noBlob), [
+        { $num: 'NaN' },
+        { $other: 'Thing', text: 'a thing' },
+    ])
+    for (const bad of [{ $num: 'one' }, { $date: 'x' }, { $typed: 'Uint8Array' }, { $other: 1 }])
+        assert.throws(() => decodeValue(bad), DumpError)
+})
+
+test('a store with one NaN still exports the whole database, and the dump reads', async () => {
+    const world = createWorld()
+    const tab = world.tab('a')
+    const db = await openLocalData(tab)
+    await tab.run(() =>
+        db.transaction(['sessions', 'chains'], 'readwrite', async (tx) => {
+            await tx.put('chains', { chainId: 'c1', head: 's1', updatedAt: 1 })
+            await tx.put('sessions', {
+                id: 's1',
+                chainId: 'c1',
+                updatedAt: 2,
+                view: { scroll: NaN, zoom: Infinity, at: new Date(5) },
+            })
+        }),
+    )
+    const dump = await dumpOf(tab, db)
+    const rows = (name: string) => dump.stores.find((store) => store.name === name)!.records
+    assert.equal(rows('chains').length, 1)
+    assert.deepEqual(rows('sessions')[0]!.value, {
+        id: 's1',
+        chainId: 'c1',
+        updatedAt: 2,
+        view: { scroll: { $num: 'NaN' }, zoom: { $num: 'Infinity' }, at: { $date: 5 } },
+    })
+    readDump(JSON.parse(await new Blob(await dumpJsonBytes(dump)).text()))
+    await world.idle()
 })
 
 test('the reader checks tags, base64, key order and in-line keys', () => {
     assert.throws(() => decodeValue({ $ab: 'AQ' }), /padded/)
     assert.throws(() => decodeValue({ $new: 1 }), /unknown tag/)
+    // A Blob in a ZIP entry needs the ZIP, and names only `blobs/<n>`.
+    assert.throws(() => decodeValue({ $blobEntry: 'blobs/0', type: '' }), /not given/)
+    const entry = { blobEntry: (name: string) => name }
+    assert.equal(decodeValue({ $blobEntry: 'blobs/12', type: '' }, entry), 'blobs/12')
+    for (const name of ['blobs/01', 'dump.json', 'blobs/../x'])
+        assert.throws(() => decodeValue({ $blobEntry: name, type: '' }, entry), /Not a Blob entry/)
+    // A Blob the export could not read: `true`, its type and its size as a byte count.
+    for (const bad of [
+        { $blobUnreadable: false, type: '', size: 0 },
+        { $blobUnreadable: true, type: 1, size: 0 },
+        { $blobUnreadable: true, type: '', size: -1 },
+        { $blobUnreadable: true, type: '', size: 0.5 },
+    ])
+        assert.throws(() => decodeValue(bad), DumpError)
     assert.deepEqual(decodeValue({ $$x: { $undefined: true } }), { $x: undefined })
     const swap = sampleDump()
     swap.stores.find((store) => store.name === 'entries')!.records.reverse()
@@ -253,4 +378,35 @@ test('localStorage: only the editor’s keys, in order', () => {
         ['sonolus-next-sekai-editor.a', '1'],
         ['sonolus-next-sekai-editor.b', '2'],
     ])
+})
+
+test('the dump written in slices parses to the dump, however many records and slices', async (t) => {
+    const parse = async (dump: Dump) =>
+        JSON.parse(await new Blob(await dumpJsonBytes(dump)).text()) as unknown
+    const sample = sampleDump()
+    assert.deepEqual(await parse(sample), JSON.parse(JSON.stringify(sample)))
+    const empty: Dump = { ...sample, stores: [], localStorage: {} }
+    assert.deepEqual(await parse(empty), JSON.parse(JSON.stringify(empty)))
+    // Many records, with a clock that moves a slice's length at every read: a slice per record.
+    const many: Dump = {
+        ...sample,
+        stores: [
+            { ...sample.stores[0]!, records: [] },
+            {
+                ...sample.stores[0]!,
+                name: 'zz',
+                records: Array.from({ length: 300 }, (_, i) => ({
+                    key: `k${i}`,
+                    value: {
+                        text: 'é😀"\
+'.repeat(i % 5),
+                        n: i,
+                    },
+                })),
+            },
+        ],
+    }
+    let now = 0
+    t.mock.method(performance, 'now', () => (now += 20))
+    assert.deepEqual(await parse(many), JSON.parse(JSON.stringify(many)))
 })

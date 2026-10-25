@@ -8,7 +8,7 @@ const older =
     'This level was made for an older engine revision. It now uses the current revision, so check that it still looks and plays as expected.'
 // A newer revision is content this build does not read, so Open says so in place of the warning.
 const newer =
-    'This level has parts this version of the editor does not support. They were left out.'
+    'This level has parts that this version of the editor does not support. They were left out.'
 const recoveryKey = 'sonolus-next-sekai-editor.autoSave.levelData'
 const asideKey = 'sonolus-next-sekai-editor.autoSave.unreadable'
 
@@ -158,7 +158,7 @@ const save = async (page: Page) => {
             value: undefined,
         })
     })
-    // Level data is Export Level Data's (Shift+P); p saves a project file (§1.4.7).
+    // Level data is Export Level Data's (Shift+P); p saves a project file.
     const downloading = page.waitForEvent('download')
     await page.keyboard.press('Shift+P')
     const exporting = page.getByRole('dialog').filter({ hasText: 'Export Level Data' })
@@ -347,9 +347,9 @@ test('pasting copied data from an older revision with elevation never warns', as
 /** Waits until startup has opened the session this load continues. */
 const opened = waitForStartup
 
-// The old auto save migrates into a session at load (Part 1 §1.8): no dialog then, and a slot
+// The old auto save migrates into a session at load: no dialog then, and a slot
 // this build can't read whole (a newer revision) stays, never migrated. An older revision the
-// change can matter to says so at load, as Open warns (D18).
+// change can matter to says so at load, as Open warns.
 const loadEvents = (page: Page) =>
     page.evaluate(async () => {
         const { loadEvents } =
@@ -405,7 +405,7 @@ test('an auto save from a newer revision stays as stored on every start, never m
     }
 })
 
-test('an auto save set aside by an older build stays, and the last one migrates silently', async ({
+test('an auto save set aside by an older build stays, and the last one migrates without a dialog or a second line', async ({
     page,
 }) => {
     const aside = JSON.stringify(level(undefined, 1.5))
@@ -421,4 +421,6 @@ test('an auto save set aside by an older build stays, and the last one migrates 
     await expectNoDialogs(page)
     await expect.poll(async () => (await current(page)).elevations).toEqual([0, 0])
     expect(await page.evaluate((key) => localStorage.getItem(key), asideKey)).toBe(aside)
+    // The migrated slot's line stands alone; the set-aside one stays listed in Local Data.
+    expect(await loadEvents(page)).not.toContain('migrationFailed')
 })

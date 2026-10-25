@@ -35,7 +35,7 @@ import { beginIn, continueIn, readOpen } from '../startup/harness'
 import { widen } from '../timeline/helpers'
 import { openPage, rows, workerCore } from './harness'
 
-// P0 and P3 of spec-C invariant 10: a session's `origin` is set when it is created and never changes,
+// A session's `origin` is set when it is created and never changes,
 // and rows copied from a file are written only in sessions of a `file` origin. Go To's binary
 // search is exact only under them. Every transaction of every worker in a run is checked as it
 // writes: a `put` of an existing session row keeps its origin, and while an open copies a file's
@@ -71,7 +71,7 @@ const guarded = async (run: (seen: Seen, copying: { on: boolean }) => Promise<vo
                             seen.violations.push(
                                 `session ${row.id}: origin changed from its first write`,
                             )
-                        // P3: while an open copies a file's rows, the session is a file's.
+                        // While an open copies a file's rows, the session is a file's.
                         if (copying.on) {
                             const origin = readOrigin(row.origin)
                             if (!origin || ORIGIN_RULE[origin] !== 'file')

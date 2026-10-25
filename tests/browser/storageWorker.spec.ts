@@ -3,7 +3,7 @@ import type { StorageStatus } from '../../src/local/worker/core'
 import { installCanvasCounters } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// The storage worker's crash and restart on the dev server (Part 1 §1.6.5): here it restarts from
+// The storage worker's crash and restart on the dev server: here it restarts from
 // its URL, since a module worker can't import from a blob: base; the production config checks the
 // Blob copy (tests/production/csp.spec.ts).
 

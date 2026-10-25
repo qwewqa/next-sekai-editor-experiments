@@ -6,7 +6,7 @@ import type { World } from '../../../src/local/testing/world'
 import { rows } from '../flush/harness'
 import { closedChain, daysPass, MemoryStorage, openDeleter, visible } from './harness'
 
-// Delete → sweep → GC killed at every await (deletion design §3.3's table): the next load's sweep
+// Delete → sweep → GC killed at every await: the next load's sweep
 // and GC leave whole data, and the chain is either back unmarked or gone, never half-deleted.
 
 type Setup = { storage: MemoryStorage; deleted: string; kept: string }

@@ -13,7 +13,7 @@ import {
     type StackWindow,
 } from '../timeline'
 
-// A build's consistent cut (Part 1 §1.11.6, r12-arch-web L6): the chain record, its session rows,
+// A build's consistent cut: the chain record, its session rows,
 // their entries and the saved session's stack blocks, read in one read-only transaction. Bodies
 // are immutable, and no remover touches a chain while a build holds one of its session locks
 // (deletion R3), so they can follow in later transactions.
@@ -24,13 +24,13 @@ type Row = Record<string, unknown>
 
 const isRow = (value: unknown): value is Row => typeof value === 'object' && value !== null
 
-/** A stored entry row as the writer reads it (§1.6.11.2). */
+/** A stored entry row as the writer reads it. */
 export type EntryRow = EntryDescription & {
     sessionId: string
     seq: number
     time: number
     snapshot: Uint8Array
-    /** The state's note count; absent when the row doesn't say (never taken as 0, HS-1). */
+    /** The state's note count; absent when the row doesn't say (never taken as 0). */
     noteCount?: number
     dirty: boolean
     kept: boolean
@@ -52,7 +52,7 @@ export type SessionRow = {
     importPending?: true
 }
 
-/** The chain's binding as stored (Part 0 §0.9.1), the fields the writer reads. */
+/** The chain's binding as stored, the fields the writer reads. */
 export type StoredBinding = {
     name?: string
     event?: string
@@ -90,7 +90,7 @@ export type ChainCut = {
     entries: Map<string, EntryRow[]>
     /** Rows that didn't read as entries: the chain is not usable by this build. */
     unreadable: number
-    /** The saved session (the head, or Save to File…'s) and its stored stack. */
+    /** The saved session (the head, or Recent Sessions' Save…'s) and its stored stack. */
     sessionId: string | undefined
     stack?: StoredStackCut
 }

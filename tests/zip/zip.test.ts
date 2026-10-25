@@ -36,6 +36,15 @@ test('crc32 matches the zlib CRC', () => {
     assert.equal(crc32(data), zlibCrc32(data))
     // Continuing over a split gives the whole's CRC.
     assert.equal(crc32(data.subarray(4000), crc32(data.subarray(0, 4000))), crc32(data))
+    // Views at any offset and length, as zlib computes them.
+    let seed = 1
+    const next = () => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0)
+    const random = new Uint8Array(70_000).map(() => next() >>> 24)
+    for (let i = 0; i < 200; i++) {
+        const from = next() % 1000
+        const view = random.subarray(from, from + (next() % 69_000))
+        assert.equal(crc32(view), zlibCrc32(view))
+    }
 })
 
 test('round trip: STORE and DEFLATE entries, UTF-8 names, empty data', async () => {

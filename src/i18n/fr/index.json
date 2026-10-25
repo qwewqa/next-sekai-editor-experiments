@@ -534,7 +534,7 @@
       "import": {
         "damaged": "Ce fichier est endommagé ou n’est pas un paquet Sonolus.",
         "fileUnreadable": "Impossible de lire ce fichier.",
-        "zip64": "Ce fichier utilise ZIP64, que l’éditeur ne peut pas lire.",
+        "zip64": "L’éditeur ne peut pas lire les fichiers ZIP64.",
         "fileTooLarge": "Ce fichier dépasse {0}.",
         "tooManyEntries": "Ce fichier contient plus de {0} entrées.",
         "badName": "Ce fichier contient un nom d’entrée non autorisé.",
@@ -569,12 +569,12 @@
       "noneFound": "Aucun élément trouvé",
       "server": {
         "unreachable": "Impossible de joindre ce serveur. Vérifiez l’adresse ou réessayez plus tard.",
-        "auth": "Ce serveur demande de se connecter à un compte, ce que l’éditeur ne prend pas en charge.",
-        "insecure": "Ce serveur utilise http, que l’éditeur ne peut pas charger.",
+        "auth": "L’éditeur ne peut pas utiliser les serveurs qui demandent de se connecter à un compte.",
+        "insecure": "L’éditeur ne peut pas utiliser les serveurs http.",
         "checksum": "La somme de contrôle du serveur pour cet élément ne correspond pas à ce qu’il a envoyé.",
         "notFound": "Ce serveur n’a pas cet élément.",
         "invalid": "Cette adresse n’est pas celle d’un serveur Sonolus.",
-        "status": "Ce serveur a répondu par une erreur ({0}).",
+        "status": "Ce serveur a renvoyé une erreur ({0}).",
         "filesFailed": "Impossible de télécharger les fichiers de cet élément depuis {0}.",
         "addressEmpty": "Saisissez l’adresse d’un serveur.",
         "addressInvalid": "Cette adresse de serveur n’est pas valide.",
@@ -769,7 +769,7 @@
     },
     "altN": "Alt+N (Option+N sous macOS) place le focus sur la dernière notification. Esc la ferme ensuite.",
     "shiftF10": "Maj+F10 ou la touche Menu ouvre le menu de l’élément qui a le focus.",
-    "recentSessions": "Le travail non sauvegardé dans un fichier se trouve dans Historique › Récentes.",
+    "recentSessions": "Le travail non sauvegardé se trouve dans Historique › Récentes.",
     "fileTitle": "Fichiers",
     "moveBetweenDevices": "Pour déplacer votre travail vers un autre appareil, sauvegardez-le dans un fichier .nxsp, puis ouvrez ce fichier sur l’autre appareil.",
     "crswap": "Un plantage pendant la sauvegarde peut laisser un fichier .crswap à côté du fichier de projet. Vous pouvez le supprimer sans risque."
@@ -807,6 +807,8 @@
     "resetSettingsHint": "Restaurer les paramètres par défaut en conservant les raccourcis clavier.",
     "resetKeybinds": "Réinitialiser les raccourcis",
     "resetSettingsMessage": "Restaurer les paramètres par défaut en conservant les raccourcis clavier ?",
+    "resetSettingsHintStatistics": "Restaurer les paramètres par défaut en conservant les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation.",
+    "resetSettingsMessageStatistics": "Restaurer les paramètres par défaut en conservant les raccourcis clavier et le paramètre Envoyer des statistiques d’utilisation ?",
     "resetKeybindsMessage": "Restaurer les raccourcis clavier par défaut ?",
     "editor": {
       "title": "Éditeur",
@@ -898,6 +900,7 @@
       "highlightSelection": "Mettre la sélection en évidence",
       "showHitboxes": "Afficher les hitboxes",
       "antialias": "Anticrénelage",
+      "parallelRendering": "Rendu en parallèle",
       "transport": {
         "title": "Commandes de lecture",
         "auto": "Auto",
@@ -916,6 +919,7 @@
       "title": "Barre d’outils",
       "quickSwitch": "Changement rapide",
       "add": "Ajouter un outil",
+      "remove": "Retirer \"{0}\" de la barre d’outils",
       "modal": {
         "title": "Sélectionner l’outil"
       }
@@ -943,6 +947,9 @@
       "license": "Licence",
       "notices": "Mentions des composants tiers",
       "privacy": "Confidentialité",
+      "usageStatistics": "Envoyer des statistiques d’utilisation",
+      "usageStatisticsNote": "Les outils utilisés, les principaux paramètres, le type et la taille des fichiers, et la durée des actions. Voir Confidentialité.",
+      "usageStatisticsSignal": "Désactivé par défaut, car ce navigateur envoie Do Not Track ou Global Privacy Control.",
       "diagnostics": "Copier les informations de diagnostic…",
       "diagnosticsTitle": "Informations de diagnostic",
       "diagnosticsNote": "Les informations de diagnostic peuvent inclure des noms de fichiers et de dossiers. Vérifiez-les avant de les partager.",
@@ -953,6 +960,7 @@
     "localData": {
       "title": "Données locales",
       "recoveryHeading": "Récupération",
+      "startupNoticesHeading": "Notifications au démarrage",
       "discard": "Abandonner…",
       "discardConfirm": "Abandonner",
       "cannotOpen": "(ne peut pas être ouvert dans cette version)",
@@ -961,16 +969,15 @@
       "recovery": {
         "journal": "Travail non sauvegardé d’une visite précédente, {0} · {1}",
         "journalUndated": "Travail non sauvegardé d’une visite précédente · {0}",
-        "legacy": "Copie de récupération d’une ancienne version · {0}",
         "autoSave": "Ancienne sauvegarde automatique · {0}",
         "unreadable": "Travail récupéré illisible, {0} · {1}",
         "listFailed": "Le travail récupéré n’a pas pu être lu",
-        "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé.",
-        "atLoad": "Notifications au démarrage"
+        "downloadFailed": "Le travail récupéré n’a pas pu être téléchargé."
       },
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
       "exportRaw": "Exporter les données brutes…",
+      "exportRawTitle": "Exporter les données brutes",
       "exportRawName": "{0} données brutes {1}.zip",
       "storageHeading": "Stockage",
       "stored": "Stocké dans ce navigateur : {0} sur environ {1}",
@@ -978,10 +985,10 @@
       "deleteTitle": "Supprimer des sessions",
       "lastEdited": "Dernière modification il y a plus de {0} jour|Dernière modification il y a plus de {0} jours",
       "all": "Tout",
-      "includeNotSaved": "Inclure le travail non sauvegardé dans un fichier",
+      "includeNotSaved": "Inclure le travail non sauvegardé",
       "deleteNext": "Supprimer…",
       "deleteConfirm": "Supprimer {0} session ?|Supprimer {0} sessions ?",
-      "notSaved": "{0} session n’est pas sauvegardée dans un fichier : {1}.|{0} sessions ne sont pas sauvegardées dans un fichier : {1}.",
+      "notSaved": "{0} session a des modifications non sauvegardées : {1}.|{0} sessions ont des modifications non sauvegardées : {1}.",
       "namesMore": "{0} et {1} autres",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
@@ -1196,24 +1203,24 @@
     "updated": "Mis à jour vers la version {0}",
     "whatsNew": "Nouveautés",
     "upgradeBlocked": "Fermez les autres onglets de {0} pour ouvrir votre travail stocké.",
-    "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou sauvegardez votre travail dans des fichiers.",
+    "olderVersion": "Une version plus récente de l’éditeur a été ouverte dans ce navigateur. Rechargez la page, ou sauvegardez pour conserver votre travail.",
     "tryAgain": "Réessayer",
     "continued": "Session reprise : \"{0}\" ({1}).",
     "continuedUntitled": "Votre session a été reprise ({0}).",
     "continuedUndated": "Session reprise : \"{0}\".",
     "cleared": "Le travail des visites précédentes est introuvable. Le navigateur a effacé le stockage de ce site.",
     "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Certaines fonctionnalités peuvent ne pas fonctionner, et le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
-    "journalKept": "Une modification de \"{0}\" n’a pas pu être appliquée, elle a donc été conservée dans une session séparée.",
+    "journalKept": "Une modification récupérée de \"{0}\" a été conservée dans une session séparée.",
     "fallback": "Travail non sauvegardé d’une visite précédente récupéré.",
     "fallbackLocal": "Du travail non sauvegardé d’une visite précédente se trouve dans Données locales.",
     "migrationFailed": "L’ancienne sauvegarde automatique n’a pas pu être restaurée.",
-    "autoSave": "Reprise de \"{0}\" depuis la sauvegarde automatique.",
+    "autoSave": "Reprise de \"{0}\" depuis l’ancienne sauvegarde automatique.",
     "journal": "Dernière modification de \"{0}\" récupérée.",
     "journalLater": "Une modification récupérée nécessite une version plus récente de l’éditeur.",
     "openElsewhere": "\"{0}\" n’a pas été restauré ici, car il est ouvert dans un autre onglet ou une autre fenêtre.",
     "restoreAsCopy": "Restaurer en copie",
     "sessionDeleted": "Cette session a été supprimée dans un autre onglet ou une autre fenêtre.",
-    "autoSaveKept": "\"{0}\" de la sauvegarde automatique a été conservé dans une session séparée.",
+    "autoSaveKept": "\"{0}\" de l’ancienne sauvegarde automatique a été conservé dans une session séparée.",
     "autoSaveOpened": "Ancienne sauvegarde automatique ouverte.",
     "journalFailed": "Une modification récupérée n’a pas pu être stockée. Une copie se trouve dans Données locales.",
     "storageNearlyFull": "Le stockage du navigateur est presque plein.",
@@ -1237,14 +1244,14 @@
       "readOnly": "Une version plus récente de l’éditeur a été ouverte.",
       "upgrading": "Une version plus récente de l’éditeur est ouverte dans un autre onglet."
     },
-    "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez dans un fichier pour conserver votre travail.",
-    "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez dans un fichier pour conserver votre travail.",
-    "inAppBrowser": "Cela semble être le navigateur intégré d’une application, qui peut supprimer le travail stocké. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
-    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
-    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez dans un fichier pour conserver votre travail.",
-    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que cette icône soit retirée de l’écran d’accueil. Sauvegardez dans un fichier pour conserver votre travail.",
-    "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez dans un fichier pour conserver votre travail.",
-    "default": "Les sessions récentes sont conservées dans ce navigateur, qui peut les effacer si l’espace vient à manquer. Sauvegardez dans un fichier pour conserver votre travail."
+    "unavailable": "L’éditeur ne peut pas stocker les modifications dans ce navigateur. Sauvegardez pour conserver votre travail.",
+    "private": "S’il s’agit d’une fenêtre privée, tout ce qui est stocké ici est perdu à sa fermeture. Sauvegardez pour conserver votre travail.",
+    "inAppBrowser": "Cela semble être le navigateur intégré d’une application. Le travail stocké peut être supprimé. Pour conserver votre travail, ouvrez cette page dans votre navigateur.",
+    "ios": "Ce navigateur supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
+    "safari": "Safari supprime le travail stocké après 7 jours sans visite. Sauvegardez pour conserver votre travail.",
+    "installedWebkit": "Les sessions récentes sont conservées ici jusqu’à ce que vous supprimiez cette application. Sauvegardez pour conserver votre travail.",
+    "persisted": "Les sessions récentes sont conservées dans ce navigateur, sauf si vous effacez ses données. Sauvegardez pour conserver votre travail.",
+    "default": "Les sessions récentes sont conservées dans ce navigateur, sauf si l’espace vient à manquer. Sauvegardez pour conserver votre travail."
   },
   "player": {
     "started": "Lecture démarrée",
@@ -1377,7 +1384,7 @@
       "thisTab": "Cet onglet",
       "elsewhere": "Autre onglet",
       "actions": "Plus d’actions pour \"{0}\"",
-      "saveToFile": "Sauvegarder dans un fichier…",
+      "saveToFile": "Sauvegarder…",
       "delete": "Supprimer",
       "openReason": "Elle est ouverte dans un autre onglet ou une autre fenêtre."
     },
@@ -1386,7 +1393,7 @@
       "named": "Détails de l’étape : {0}",
       "action": "Détails",
       "unsupported": "Cet éditeur ne peut pas lire les détails de cette étape.",
-      "newer": "Cette étape a été enregistrée par une version plus récente de l’éditeur.",
+      "newer": "Cette étape a été créée par une version plus récente de l’éditeur.",
       "textShortened": "Texte affiché en abrégé",
       "varying": "Variable",
       "changed": "Modification",
@@ -1932,7 +1939,8 @@
     "resize": {
       "left": "Redimensionner les panneaux de gauche",
       "right": "Redimensionner les panneaux de droite",
-      "top": "Redimensionner les panneaux du haut"
+      "top": "Redimensionner les panneaux du haut",
+      "minimap": "Redimensionner la minicarte"
     },
     "resizeTiles": "Redimensionner {0} et {1}",
     "dock": {
@@ -2068,7 +2076,7 @@
   "peek": {
     "loadingShort": "Chargement…",
     "unavailableShort": "Indisponible",
-    "settingsChanged": "Paramètres modifiés",
+    "settingsChanged": "Propriétés modifiées",
     "initialState": "État initial",
     "unavailable": "Modifications indisponibles",
     "loadingChanges": "Chargement des modifications…",
@@ -2100,6 +2108,7 @@
     "notFound": "\"{0}\" est introuvable.",
     "downloadStarted": "Téléchargement lancé : {0} · {1}",
     "preparing": "Préparation de {0}… {1}",
+    "ready": "Prêt : {0} · {1}",
     "download": "Télécharger",
     "buildFailed": "\"{0}\" n’a pas pu être préparé.",
     "readFailed": "\"{0}\" n’a pas pu être lu.",
@@ -2109,7 +2118,7 @@
     "noSpace": "Il n’y a pas assez d’espace pour écrire {0}.",
     "writeFailed": "\"{0}\" n’a pas pu être écrit.",
     "notPutBack": "\"{0}\" a été vidé et son contenu n’a pas pu être restauré.",
-    "openedContentGone": "\"{0}\" ne contient plus ce que vous avez ouvert.",
+    "openedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
     "replacedContentGone": "\"{0}\" ne contient plus son contenu antérieur.",
     "title": "Sauvegarder le fichier de projet",
     "titleAs": "Sauvegarder sous",
@@ -2122,6 +2131,7 @@
     "notProject": "\"{0}\" n’est pas un fichier de projet.",
     "notKept": "Non sauvegardé. \"{0}\" n’a pas pu être lu entièrement.",
     "notKeptSafe": "Non sauvegardé. Les fichiers ne peuvent pas être remplacés en mode sans échec.",
+    "notKeptFull": "Non sauvegardé. Le stockage du navigateur est plein. Supprimez des sessions dans Paramètres › Données locales, puis sauvegardez à nouveau.",
     "saved": "Sauvegardé dans {0}",
     "savedWithoutBgmLarge": "Sauvegardé dans {0} sans sa musique",
     "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",
@@ -2154,8 +2164,8 @@
   "check": {
     "command": "Vérifier le fichier et l’historique…",
     "title": "Vérifier le fichier et l’historique",
-    "checkingFile": "Vérification de {0}… {1} %",
-    "checkingStored": "Vérification de l’historique stocké… {0} %",
+    "checkingFile": "Vérification de {0}…",
+    "checkingStored": "Vérification de l’historique stocké…",
     "changed": "\"{0}\" a changé pendant la vérification. Réessayez.",
     "stillOpening": "\"{0}\" est encore en cours d’ouverture. Réessayez.",
     "noDamage": "Aucun dommage trouvé.",
@@ -2189,7 +2199,7 @@
     "notDescendant": "Cette version n’a pas été créée à partir de la vôtre ({0}).",
     "separate": "Sauvegarder dans un fichier séparé",
     "openOther": "Ouvrir l’autre version",
-    "openOtherNote": "Vos modifications restent non sauvegardées.",
+    "openOtherNote": "Vos modifications restent dans les sessions récentes.",
     "replaceNote": "La version sur le disque sera conservée dans les sessions récentes.",
     "keptName": "{0} (remplacé le {1})",
     "replaceNewer": "Créé par une version plus récente de {0}.",
@@ -2207,7 +2217,6 @@
   "notice": {
     "useOpenFile": "Pour ouvrir un fichier, utilisez Ouvrir.",
     "sameFileElsewhere": "\"{0}\" est ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
-    "sameFileMaybeElsewhere": "\"{0}\" est peut-être ouvert dans un autre onglet ou une autre fenêtre, ceci est donc une copie séparée.",
     "storageUnavailable": "L’éditeur n’a pas pu accéder au stockage de ce navigateur. Réessayez.",
     "chooseAudio": "Choisir l’audio…",
     "bgmDiffers": "Ce fichier est différent de la musique d’origine, \"{0}\".",
@@ -2222,7 +2231,7 @@
     "peekFailed": "Impossible de consulter cette étape",
     "peekSessionFailed": "Impossible de consulter cette session",
     "openHistory": "Ouvrir l’historique",
-    "earlierInHistory": "Les étapes précédentes sont dans l’historique",
+    "earlierInHistory": "Les étapes antérieures de la chronologie sont dans l’historique",
     "savedCurrent": "Version actuelle sauvegardée dans {0}"
   },
   "entry": {
@@ -2230,7 +2239,7 @@
     "saved": "{0} sauvegardé",
     "downloaded": "{0} téléchargé",
     "continued": "Session reprise",
-    "migrated": "Récupéré de la sauvegarde automatique",
+    "migrated": "Ancienne sauvegarde automatique ouverte",
     "restoredTo": "Restauré au {0}",
     "changedOutside": "Modifié en dehors de l’éditeur",
     "recoveredChanges": "Modifications récupérées"
@@ -2247,13 +2256,14 @@
   },
   "prompt": {
     "title": "Modifications non stockées",
+    "unsaved": "Modifications non sauvegardées",
     "notStored": "Vos modifications ne sont pas stockées dans ce navigateur. Elles seront perdues si vous quittez.",
     "save": "Sauvegarder",
     "leaveAnyway": "Quitter quand même"
   },
   "status": {
     "separateCopyShort": "Copie séparée",
-    "notInFile": "Non sauvegardé dans un fichier",
+    "notInFile": "Non sauvegardé",
     "separateCopy": "Copie séparée de {0}",
     "opensLevelInfo": "Ouvre les informations du niveau",
     "changedSaved": "{0}, modifié depuis la sauvegarde de {1}",
@@ -2287,9 +2297,6 @@
     },
     "unsavedChanges": "{0} ouvert. Ce fichier a des modifications non sauvegardées ({1}).",
     "unsavedEarlier": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont dans les sessions récentes.",
-    "earlierUnchecked": "{0} ouvert. Impossible de vérifier si les sessions récentes contiennent d’autres versions de ce fichier.",
-    "unsavedEarlierMaybe": "Des modifications non sauvegardées d’une version antérieure de {0} ({1}) sont peut-être dans les sessions récentes.",
-    "unsavedChangesMaybe": "{0} ouvert. Ce fichier a peut-être des modifications non sauvegardées ({1}).",
     "olderVersion": "Ceci est une version antérieure de {0}. Une version plus récente ({1}) est dans les sessions récentes.",
     "restoreIt": "Restaurer la session",
     "damagedHistory": "L’historique de \"{0}\" est endommagé. La sauvegarde crée un fichier séparé."
@@ -2297,10 +2304,7 @@
   "file": {
     "replacedElsewhere": "\"{0}\" a été remplacé depuis un autre onglet ou une autre fenêtre.",
     "downloaded": "{0} · téléchargé {1}",
-    "opened": "{0} · ouvert {1}",
-    "short": {
-      "notSaved": "non sauvegardé"
-    }
+    "opened": "{0} · ouvert {1}"
   },
   "state": {
     "fileMissing": "Fichier introuvable",
@@ -2336,7 +2340,6 @@
     "removed": "Supprimé",
     "tagsAdded": "Tags ajoutés",
     "tagsRemoved": "Tags supprimés",
-    "tagsChanged": "Tags modifiés",
     "order": "Ordre",
     "folder": "Dossier",
     "groupFolder": "Dossier de groupes",
@@ -2351,11 +2354,10 @@
       "tags": "Tags",
       "rating": "Difficulté",
       "cover": "Couverture",
-      "previewAudio": "Extrait audio",
+      "previewAudio": "Aperçu audio",
       "duration": "Durée",
       "size": "Taille",
-      "type": "Type",
-      "icon": "Icône"
+      "type": "Type"
     },
     "contentsChanged": "Contenu modifié",
     "showMore": "Afficher plus",

@@ -1,10 +1,9 @@
 # Colour system
 
-The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css`, `tailwind.colors.js` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 11) enforces the rules.
+The roles, tokens and control recipes behind the editor's UI colour, and the rules that keep them consistent. The values and recipes live in `src/themes.css`, `tailwind.colors.js` and `src/controls.css`. A guard test (`tests/editor/colorRoles.test.ts`, section 9) enforces the rules.
 
-- **Scope.** UI colour roles. Chart content keeps its own colours (section 13).
-- **Migration.** The system lands in stages; section 12 lists them and what each covers.
-- **Related.** [design-language.md](design-language.md) covers surfaces, shape, size and the History surfaces; [ui-review-checklist.md](ui-review-checklist.md) is the review questions.
+- **Scope.** UI colour roles. Chart content keeps its own colours (section 10).
+- **Related.** [design-language.md](design-language.md) covers surfaces, shape, size, the History surfaces, and waits and feedback; [ui-review-checklist.md](ui-review-checklist.md) is the review questions.
 
 ---
 
@@ -20,7 +19,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 1. **Name a role, not a colour.** Components use role tokens (`primary`, `danger-fill`, `press`) through the recipes, never raw palette classes (`amber-300`) or literals in UI chrome.
    - *Reason:* a role can be retuned in one place, and the guard test can check its use.
-   - *Exceptions:* chart content (section 13); shadows that are geometry rather than a role, such as the dock edge.
+   - *Exceptions:* chart content (section 10); shadows that are geometry rather than a role, such as the dock edge.
 
 2. **Mint means on.** The tool in use, a switch that is on, Show Edits, Select while selecting, rows checked for an action and the peek ring are mint. The quick notice is mint too, as the brand's one transient voice.
    - *Reason:* it is the app's brand colour, and in v0.5.22 it was every on-state. Giving it one meaning lets a user read it at a glance.
@@ -28,7 +27,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
    - *Exception:* the hover and press glow is mint. It is a shadow, never a fill, and it lasts only while pointed at or pressed, so it cannot read as on.
 
 3. **Ink is the primary action.** A button is primary when it is the default that Enter presses, or the commit of a mode or form (Restore commits peek mode). A footer has at most one filled button, and it is the one Enter presses.
-   - *Reason:* the safe path is the strongest, which serves the data-loss rule. The Enter target is obvious, and the primary cannot be mistaken for an on-state.
+   - *Reason:* the safe path is the strongest, in line with the data-loss rule. The Enter target is obvious, and the primary cannot be mistaken for an on-state.
    - *Exception:* a destructive ConfirmModal fills its own action red, because that action is the one Enter presses (see 8.2).
 
 4. **Red means destructive or failed. It is told apart by form.**
@@ -39,7 +38,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 5. **Status hues come with their glyphs.** Warning is amber with a triangle, and info is blue with a circle. There is no success hue (success is the quick notice).
    - *Reason:* amber and red are close for deuteranopia (light ΔE 1); the glyph and the words carry the meaning.
-   - *Exception:* the change orange is drawn only on the chart, never in the UI (section 13).
+   - *Exception:* the change orange is drawn only on the chart, never in the UI (section 10).
 
 6. **Roles that must differ, differ in lightness, not hue alone.** Check fill against fill, under colour-vision deficiency too, not only text against fill. Section 4.3 is the check.
    - *Reason:* about 1 man in 12 has a red-green deficiency, and a hue-only difference vanishes for him. That is why a pale lavender dark primary was rejected (deutan ΔE 2.0 from mint), and why the light press face is darker than the mint (deutan ΔE 1.6 at a lighter grey).
@@ -57,14 +56,14 @@ Each principle gives its reason and its known exceptions. When one does not fit 
    - *Exception:* a trigger whose menu or popover is open holds its hover look. It opts in with `aria-haspopup` plus `aria-expanded`; a disclosure opts in with `.holds-open`.
 
 9. **Press is one step beyond hover, ink strengthened.**
-   - A raised face takes the `press` tone, its ink becomes `fg-strong`, it sinks, and it keeps its glow (see 8.1 for the decision).
+   - A raised face takes the `press` tone, its ink becomes `fg-strong`, it sinks, and it keeps its glow (8.1 gives the reasons).
    - A filled face steps its own fill.
    - A ghost takes a second tint step, the same size as its first.
    - *Reason:* a press must read as a touch on every surface, never as on or disabled. Disabled fades the ink; press strengthens it, and the glow shows it is live.
    - *Direction:* the step goes the way that keeps the label at 4.5:1. That is usually the same direction as hover and toward the label. The exceptions, each forced by contrast:
      - dark filled faces with dark ink (periwinkle, coral) lighten;
      - on the mid-tone light chrome, a press darkens (`chrome-press`), because a lighter step dims its white ink below 4.5:1.
-   - *Classify by behaviour:* anything held under a finger, key or drag is a press, including the held transport step, the flyout row under a press-drag and the resize line being dragged.
+   - *Classify by behaviour:* anything held under a finger, key or drag is a press, including the held transport step, the toolbar face a Quick Switch press holds, the flyout row under a press-drag and the resize line being dragged.
 
 10. **Focus is a 2 px ring drawn 2 px inside the face, in the face's own ink.** Face shows on both sides of the ring, so it reads on any fill over any surface.
     - *Reason:* a ring is visible only if it contrasts with what lies on both sides of it. A ring flush with the edge merges with a surround of its own colour: the white ring of an ink pill on a white-ish modal, or the ink ring of a light tool over the ink-coloured chart.
@@ -90,7 +89,7 @@ Each principle gives its reason and its known exceptions. When one does not fit 
     - *Reason:* one attribute can mean different things. `aria-pressed` marks a checked Manager row and a toolbar value in use; `aria-expanded` marks folder disclosure. Section 6.3 lists every current use.
     - *Rule:* before styling from an attribute, list its current uses.
 
-15. **A token retune lands with every consumer of that token.** The `selected` retune and the ManagerRow tint therefore ship together in C0.
+15. **A token retune lands with every consumer of that token.** When `selected` is retuned, for example, the ManagerRow tint that uses it is adjusted in the same change.
 
 16. **Keep the feel.** The palette stays seven hues; no surface colour changes; the light `accent`, `danger` and surfaces are byte-identical to v0.5.22.
 
@@ -102,9 +101,9 @@ Each principle gives its reason and its known exceptions. When one does not fit 
 
 Values are RGB channel triples, as in `src/themes.css`. OKLCH is given as L C h.
 
-These are unchanged from v0.5.22:
+These keep their v0.5.22 values (principle 16):
 
-- the surfaces and inks: `fg`, `fg-strong`, `bg`, `scrim`, `button`, `header`, `header-hover`, `modal`, `popup`, `popup-hover`, `popup-edge`, `preview`, `knob`, `recess`, `band-hover`, `change`;
+- the surfaces and inks: `fg`, `fg-strong`, `bg`, `scrim`, `button`, `header`, `header-hover`, `modal`, `popup`, `popup-hover`, `popup-edge`, `preview`, `knob`, `recess`, `band-hover`;
 - `accent` and `on-accent` (the same in both themes);
 - the light `danger` and `on-danger`, and the dark `danger`.
 
@@ -114,25 +113,26 @@ These are unchanged from v0.5.22:
 |---|---|---|---|---|
 | On; brand | `accent` | 119 239 220 `#77efdc` (.877 .112 182) | same | Tool in use, switch track on, Show Edits, Select on, snap on, rail marker, peek ring, quick notice |
 | Ink on mint | `on-accent` | 48 51 77 `#30334d` | same | Glyphs and text on `accent` / `accent-press`; the switch knob when on |
-| On, pressed | `accent-press` *new* | 72 201 182 `#48c9b6` (.760) | same | Pressing something that is on |
-| Thin mint marks | `accent-strong` *new* | 20 128 116 `#148074` (.541 .092 183) | 119 239 220 (= accent) | Drop-target ring, current-and-checked ring, any thin mint mark on a light surface |
-| Checked rows | `selected` *retuned* | 165 227 214 `#a5e3d6` (.870 .065 180) | 40 85 90 `#28555a` (.420) | Rows checked for an action; the drop-target fill. Full strength, no `/40` |
-| Primary | `primary` *new* | 68 68 102 `#444466` (.402 .057 284), = fg | 157 159 214 `#9d9fd6` (.721 .080 283) periwinkle | The one primary button of a dialog, strip or form |
-| Ink on primary | `on-primary` *new* | 255 255 255 | 35 37 57 `#232539` | |
-| Primary pressed | `primary-press` *new* | 95 95 133 `#5f5f85` (.501) | 183 185 234 `#b7b9ea` (.801) | |
-| Raised face pressed | `press` *new* | 193 193 219 `#c1c1db` (.819 .036 286) | 102 105 139 `#66698b` (.531) | Every raised neutral control while pressed or held |
-| Ghost pressed | `ghost-press` *new, alpha* | fg / 0.25 | fg / 0.20 | A ghost or menu row while pressed, over any panel or popup |
-| Band pressed | `band-press` *new, alpha* | white / 0.8 | white / 0.2 | A ghost on a header band while pressed (`band-hover` is white/0.4 and /0.1) |
-| Chrome pressed | `chrome-press` *new, alpha* | black / 0.18 | white / 0.2 | A ghost on the dark chrome while pressed |
-| Destructive and error text | `danger` | 185 28 28 `#b91c1c` | 255 184 184 `#ffb8b8` (unchanged) | Quiet destructive labels, destructive menu rows, error lines |
-| Destructive fill | `danger-fill` *new* | 185 28 28 | 237 117 110 `#ed756e` (.700 .150 25) coral | The destructive confirm; a pressed quiet destructive; a pressed destructive menu row |
-| Ink on destructive fill | `on-danger` *dark retuned* | 255 255 255 | 35 37 57 (was 48 51 77) | |
-| Destructive pressed | `danger-press` *new* | 205 72 64 `#cd4840` | 247 149 141 `#f7958d` | |
-| Warning | `warning` *new* | 146 91 12 `#925b0c` (.521 .110 68) | 255 218 124 `#ffda7c` (.900 .121 88) | Warning text and glyphs, always with the triangle |
-| Info | `info` *new* | 22 102 170 `#1666aa` (.501 .130 250) | 190 227 255 `#bee3ff` (.898 .055 241) | Info glyphs and text, always with the circle |
-| Switch off track | `toggle-off` *new* | 143 143 163 `#8f8fa3` | 117 120 151 `#757897` | ToggleSwitch when off |
+| On, pressed | `accent-press` | 72 201 182 `#48c9b6` (.760) | same | Pressing something that is on |
+| Thin mint marks | `accent-strong` | 20 128 116 `#148074` (.541 .092 183) | 119 239 220 (= accent) | Drop-target ring, current-and-checked ring, any thin mint mark on a light surface |
+| Checked rows | `selected` | 165 227 214 `#a5e3d6` (.870 .065 180) | 40 85 90 `#28555a` (.420) | Rows checked for an action; the drop-target fill. Full strength, no `/40` |
+| Primary | `primary` | 68 68 102 `#444466` (.402 .057 284), = fg | 157 159 214 `#9d9fd6` (.721 .080 283) periwinkle | The one primary button of a dialog, strip or form |
+| Ink on primary | `on-primary` | 255 255 255 | 35 37 57 `#232539` | |
+| Primary pressed | `primary-press` | 95 95 133 `#5f5f85` (.501) | 183 185 234 `#b7b9ea` (.801) | |
+| Raised face pressed | `press` | 193 193 219 `#c1c1db` (.819 .036 286) | 102 105 139 `#66698b` (.531) | Every raised neutral control while pressed or held |
+| Ghost pressed | `ghost-press` (alpha) | fg / 0.25 | fg / 0.20 | A ghost or menu row while pressed, over any panel or popup |
+| Band pressed | `band-press` (alpha) | white / 0.8 | white / 0.2 | A ghost on a header band while pressed (`band-hover` is white/0.4 and /0.1) |
+| Chrome pressed | `chrome-press` (alpha) | black / 0.18 | white / 0.2 | A ghost on the dark chrome while pressed |
+| Destructive and error text | `danger` | 185 28 28 `#b91c1c` | 255 184 184 `#ffb8b8` | Quiet destructive labels, destructive menu rows, error lines |
+| Destructive fill | `danger-fill` | 185 28 28 | 237 117 110 `#ed756e` (.700 .150 25) coral | The destructive confirm; a pressed quiet destructive; a pressed destructive menu row |
+| Ink on destructive fill | `on-danger` | 255 255 255 | 35 37 57 | |
+| Destructive pressed | `danger-press` | 205 72 64 `#cd4840` | 247 149 141 `#f7958d` | |
+| Warning | `warning` | 146 91 12 `#925b0c` (.521 .110 68) | 255 218 124 `#ffda7c` (.900 .121 88) | Warning text and glyphs, always with the triangle |
+| Info | `info` | 22 102 170 `#1666aa` (.501 .130 250) | 190 227 255 `#bee3ff` (.898 .055 241) | Info glyphs and text, always with the circle |
+| Switch off track | `toggle-off` | 143 143 163 `#8f8fa3` | 117 120 151 `#757897` | ToggleSwitch when off |
+| History changes | `change` | 255 155 66 `#ff9b42` | same | Defined but not read: the change marks use `CHANGE_COLOR` in `src/editor/canvas/changes.ts` (section 10) |
 
-**Chrome tier.** The dark chrome over the chart (status bar, panel rail, toolbar row, elevation header, offscreen badges) is mid-tone in light and dark in dark. `.surface-chrome` on those roots sets status values that pass 4.5:1 on both:
+**Chrome tier.** The dark chrome over the chart (status bar, panel rail, toolbar row, elevation header, offscreen badges) is mid-tone in light and dark in dark. `.surface-chrome` on those roots sets status values that pass 4.5:1 on both (the offscreen badges use only white and do not carry it):
 
 | Token | Value | On light chrome | On dark chrome |
 |---|---|---|---|
@@ -143,14 +143,14 @@ These are unchanged from v0.5.22:
 
 `accent` is not overridden on the chrome. It is the same mint in both themes: 4.64:1 on the light chrome and 9.99:1 on the dark. White/80 text stays at 4.80 and 9.43.
 
-`.surface-chrome` cascades to every descendant. Put it on roots whose descendants are all chrome, not on a root that also contains light faces or popups. The toolbar flyout (white faces on `popover`, inside the toolbar row's DOM) is the case to watch: under `.surface-chrome` its `accent-strong`, `danger` and `focus-out` would flip to the pale chrome values. Today nothing in the flyout uses them, so this is a caveat, not a defect. If a flyout face ever needs one of those roles, move the class inward to the chrome parts.
+`.surface-chrome` cascades to every descendant. Put it on roots whose descendants are all chrome, not on a root that also contains light faces or popups. The toolbar flyout (white faces on `popover`, inside the toolbar row's DOM) is the case to watch: under `.surface-chrome` its `accent-strong`, `danger` and `focus-out` would flip to the pale chrome values. Nothing in the flyout uses them. If a flyout face ever needs one of those roles, move the class inward to the chrome parts.
 
-**Deliberate exception: the shown toolbar tool.** `LevelEditorToolbar.vue` puts `surface-chrome` on each shown tool, a white raised face over the chart. The toolbar row is listed as chrome, but its root is a transparent container that also holds the flyout, so the class cannot go there. The tool is the only element that carries it, and the class stays off the flyout (the flyout is a sibling, not a descendant). Nothing inside a tool face uses `danger`, `warning`, `info`, `accent-strong` or `focus-out`, so the class changes no colour today. If a tool face ever needs one of those roles, drop the class from the tool and set the role's chrome value on the face that needs it.
+**Deliberate exception: the shown toolbar tool.** `LevelEditorToolbar.vue` puts `surface-chrome` on each shown tool, a white raised face over the chart. The toolbar row is listed as chrome, but its root is a transparent container that also holds the flyout, so the class cannot go there. The tool is the only element that carries it, and the class stays off the flyout (the flyout is a sibling, not a descendant). Nothing inside a tool face uses `danger`, `warning`, `info`, `accent-strong` or `focus-out`, so the class changes no colour there. If a tool face ever needs one of those roles, drop the class from the tool and set the role's chrome value on the face that needs it.
 
 **Shadows** (`tailwind.colors.js` `boxShadow`, themes.css):
 
 - `shadow-pressed`, the sink: light `inset 0 1px 3px rgb(48 51 77 / .35)`, dark `… rgb(0 0 0 / .5)`.
-- The glow is today's `shadow-md` geometry in mint, set by the recipes as `--glow`, and red (`danger-fill`) on destructive buttons.
+- The glow is the `shadow-md` geometry in mint, set by the recipes as `--glow`, and red (`danger-fill`) on destructive buttons.
 - There is no latched shadow: the on-state is flat.
 
 `index.html` `theme-color` stays `#77efdc`.
@@ -228,14 +228,7 @@ WCAG 2 relative luminance. ΔE is OKLab ×100, where about 2 is the threshold of
 | Destructive fill | 0 / 8.2 | 0 / 7.5 |
 | On (mint) | 0 / 11.7 | 0 / 11.7 |
 
-A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (1.30:1) on dark pills; both are now at least 6.5, and every raised press adds the sink and the glow.
-
-### 4.5 Changes from v0.5.22
-
-- Switch knob on: 1.38:1 (white on mint) → 8.89:1 (ink knob).
-- Light drop ring: 1.35:1 → 3.33:1 on its tint.
-- Light status warning text: 4.46:1 → 4.77:1. Info glyph: 3.86:1 → 4.78:1.
-- Dark destructive fill: pale pink, lighter than the neutral pill → coral with 5.28:1 ink.
+The step from hover to press is at least ΔE 6.5 on every surface, and every raised press adds the sink and the glow. A step no larger than hover gives only ΔE 3.4 on light bands.
 
 ---
 
@@ -254,7 +247,8 @@ A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (
 | Primary | `primary` fill | The one filled button |
 | Destructive confirm | `danger-fill` | Label; red |
 | Destructive choice | `danger` label on a neutral pill | Quiet until pressed |
-| Error | `danger` text | Glyph, `role="alert"` |
+| Field problem | `danger` text under the field | Red, under the field; `role="alert"`, `aria-invalid` |
+| Outcome in a dialog (a file that could not be read) | `fg` text with a severity glyph | The glyph; a live region (polite; the failed Remove is an alert) |
 | Warning / info | `warning` / `info` | Triangle / circle |
 | Current in a single-select list | `button` + `shadow-md` | Raised pill |
 | Band tab marker | `fg` 4 px bar | A bar |
@@ -279,7 +273,7 @@ A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (
 
 - **Restore** is undoable: `restoreEntry` pushes a `restore` entry, or nothing when it already matches. It is the commit of peek mode, so it is `btn-primary`.
 - **Back to Now** is `btn-secondary`.
-- In the strip, mint now marks only the mode: the ring and Show Edits.
+- In the strip, mint marks only the mode: the ring and Show Edits.
 
 ### 5.4 Selection
 
@@ -306,20 +300,22 @@ A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (
   - Show Edits;
   - Manager Select;
   - the elevation snap square.
-- **Who does not:** toolbar value items keep their check, so they do not get `btn-toggle`. The tool's `aria-pressed` is `state.current`, which is also true for a value in use.
+- **Who does not:** toolbar value items keep their check, so they do not get `btn-toggle`. The tool's `aria-pressed` is `state.current`, and `state.current` is also true for a value in use.
 
 ### 5.6 Notices and status
 
 - **Quick notice:** the mint pill for every quick notice, as in v0.5.22.
+  - A failure of something the user asked for is a card with the error glyph, not a quick notice. design-language.md, section 9, says which notice fits and gives the one exception.
 - **Notice cards** stay neutral surfaces: `bg-modal` with `ring-fg/10` in the pane, `bg-popup` with the popup outline and ring over a dialog. The card is the peek strip's surface, so there is no tint and no coloured edge.
-  - Severity is a leading 16 px glyph (`SeverityIcon`) in `text-warning` (triangle), `text-danger` (circle with an exclamation mark) or `text-info` (circle with an i). It is the optional `severity` field on `Notice`, `NoticeLine` and `LoadNotice`, set where the notice is raised, and it adds no strings. Contrast is the `warning`, `info` and `danger` pairs of 4.1 on `modal` (in the pane) and `popup` (over a dialog); a glyph needs 3.
+  - Severity is a leading 16 px glyph (`SeverityIcon`) in `text-warning` (triangle), `text-danger` (circle with an exclamation mark) or `text-info` (circle with an i). It is the optional `severity` field on `Notice`, `NoticeLine` and `LoadNotice`, set where the notice is raised, and it has no text of its own. Contrast is the `warning`, `info` and `danger` pairs of 4.1 on `modal` (in the pane) and `popup` (over a dialog); a glyph needs 3.
   - The mapping rule:
     - error: what the user asked for did not happen;
     - warning: work is at risk or was affected, and the user should act or check;
     - info: worth knowing, with nothing at risk;
     - neutral (no `severity`, no glyph): a confirmation or a route back, such as Open History, Reopen, "Download started" and "Continued … from …".
-  - Two start-up lines that could be read either way: "This session was deleted in another tab or window." is a warning (work was affected), and "Kept … as a separate session." is neutral, like "Continued … from auto save" (both forms of `migrated` are confirmations).
+  - Two start-up lines that could be read either way: "This session was deleted in another tab or window." is a warning (work was affected), and "Kept … as a separate session." is neutral, like "Continued … from the old auto save" (both forms of `migrated` are confirmations).
   - The glyph is a second cue. The message carries the meaning, and the live region reads only the text.
+  - `SeverityIcon` also leads inline lines in a dialog that report an outcome, at 16 px: the Preview Assets chooser's file and server errors, the failed Remove and the note under a fallback row (error for what failed, warning for a fallback or for storage that cannot be reached), and the warning mark on a fallback's tab. The tab sits on the band, where the warning pair is 3.0:1, the floor for a glyph.
   - The card's action is `btn-secondary`, 36 px in normal weight on a single card (32 px on a start-up row).
 - **Status bar:** the root gets `.surface-chrome`.
   - The not-stored label and the warning glyphs are `text-warning`; info glyphs are `text-info`.
@@ -329,15 +325,14 @@ A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (
 ### 5.7 Text fields
 
 - `field` is raised, as a secondary button, and hovers with the glow. Focus is the inside ring.
-- `aria-invalid="true"` adds a 2 px red ring at the edge. It is apart from the focus ring, which stays inside in the field's ink, so a focused invalid field shows both.
+- `aria-invalid="true"` adds a 2 px red ring at the edge. It is separate from the focus ring. That ring stays inside, in the field's ink, so a focused invalid field shows both.
 - It also does not look like a focused quiet-destructive button, whose red ring sits 2 px inside a pill.
 - The four `aria-invalid` sites are ExportModal, ServerBody, ScaleSelectionModal and SaveDialog.
 
-### 5.8 Immediate destructive buttons
+### 5.8 Destructive buttons outside dialogs
 
-- **Reset Settings and Reset Shortcuts:** a quiet red label (`btn-danger-quiet`) and a confirmation, specified in 8.3.
-- **Remove for a stored asset not in use:** a quiet red label and a confirmation, as for one in use, with its own message (8.4). It deletes stored data that may not be reloadable.
-- **Reset to Default and Use Built-in for All:** quiet red only. A confirm or undo for them is a follow-up.
+- **Reset Settings, Reset Shortcuts and Remove for a stored preview asset:** a quiet red label (`btn-danger-quiet`) and a confirmation (8.3).
+- **Reset to Default and Use Built-in for All** in Preview Assets: a quiet red label with no confirmation. Each rewrites every type's source in one press.
 
 ---
 
@@ -347,32 +342,13 @@ A press that stepped no further than hover gave ΔE 3.4 on light bands and 6.1 (
 
 The recipes are CSS in `src/controls.css`, wrapped in `@layer components`, and registered by a small Tailwind plugin. That way every build context can use them: templates (`class="btn btn-secondary"`), global CSS, the landing pages, and **Vue `<style>` blocks** (`@apply ghost`).
 
-The plugin is required. In Tailwind 3 a `<style>` block cannot `@apply` a class defined in another CSS file, and ManagerRow, PreviewTransport, PanelRail and TimelineList all style their controls in scoped CSS. Compiling a separate file with `@apply btn btn-secondary` expands the recipe, `:active` and `:focus-visible` rules included, and a two-recipe merge (`@apply ghost btn-toggle`) shows the limit below.
-
-```js
-// tailwind.controls.js: the control recipes in src/controls.css, for every Tailwind build.
-const { readFileSync } = require('node:fs')
-const postcss = require('postcss')
-const plugin = require('tailwindcss/plugin')
-
-// Tailwind finds a config's dependencies by scanning its files' text for require('...') calls, and builds
-// every stylesheet again when one changes. controls.css is read with readFileSync below, so it needs a
-// line Tailwind can see, or a running dev server keeps the recipes it started with. This is only text to
-// Tailwind and the file is never loaded: require('./src/controls.css')
-
-module.exports = plugin(({ addComponents }) => {
-    const root = postcss.parse(readFileSync(require.resolve('./src/controls.css'), 'utf8'))
-    const rules = []
-    root.walkAtRules('layer', (layer) => rules.push(...layer.nodes.map((node) => node.clone())))
-    addComponents(rules)
-})
-```
+The plugin is required. In Tailwind 3 a `<style>` block cannot `@apply` a class defined in another CSS file, and ManagerRow, PreviewTransport, PanelRail and TimelineList all style their controls in scoped CSS. The plugin, `tailwind.controls.js`, parses `controls.css` with PostCSS and adds the rules of its `@layer` as components. A `<style>` block can then `@apply btn btn-secondary` and get the whole recipe, `:active` and `:focus-visible` rules included. A two-recipe merge (`@apply ghost btn-toggle`) has the limit below.
 
 - Both `tailwind.config.js` and `tailwind.landing.config.js` add `plugins: [require('./tailwind.controls')]`.
-- A running dev server picks up `controls.css` edits. Tailwind scans `tailwind.controls.js` for `require('...')` text to find the config's dependencies, and the file's comment names `./src/controls.css` in that form, so Tailwind treats it as one: an edit rebuilds the global CSS and every Vue `<style>` block that uses `@apply`, with no restart. Keep that line when changing the plugin. A dev server started before this was added, or one that serves a different checkout, still needs a restart.
+- A running dev server picks up `controls.css` edits. Tailwind finds a config's dependencies by scanning its files for `require('...')` text. The plugin reads `controls.css` with `readFileSync`, so a comment in the plugin names `require('./src/controls.css')` for Tailwind to see. An edit then rebuilds the global CSS and every Vue `<style>` block that uses `@apply`, with no restart. Keep that line when changing the plugin. A dev server that serves a different checkout still needs a restart.
 - Recipes set colour, elevation, state and focus only. Size and shape stay at the call site.
 - **Compound recipe selectors do not carry through a merged `@apply`.** `.row-checked.row-current` becomes `.x.row-current` and `.row-checked.x`, and neither matches. Combine such classes at the call site. A rule that must hold in scoped CSS is written with one recipe class: the on-toggle hover glow is `.btn-toggle[aria-pressed='true']:hover:not(:active)`, not `.ghost.btn-toggle…`.
-- **Hover sits under `(hover: hover) and (pointer: fine)`,** the query Tailwind's `hover:` emits under `hoverOnlyWhenSupported`, which the 71 sites it replaces used. A device that reports hover with a coarse pointer therefore keeps no glow after a tap.
+- **Hover sits under `(hover: hover) and (pointer: fine)`.** This is the query Tailwind's `hover:` emits under `hoverOnlyWhenSupported`. A device that reports hover with a coarse pointer therefore keeps no glow after a tap.
 
 ### 6.2 The recipes
 
@@ -401,7 +377,7 @@ module.exports = plugin(({ addComponents }) => {
 **Open triggers:**
 
 - `.btn` and `.ghost` with `[aria-haspopup][aria-expanded='true']` (or `.holds-open`) hold their hover look, except while pressed.
-- That covers Brush Add, change options (…), the row More button, the Manager bulk Move and More buttons and Go To (`aria-haspopup="dialog"`). Go To gains an open state it did not have.
+- That covers Brush Add, change options (…), the Manager row and Recent Sessions row More buttons, the Manager bulk Move and More buttons and Go To (`aria-haspopup="dialog"`).
 - Disclosures that should hold open, such as PreviewSettings, add `.holds-open`.
 
 **Order inside the file matters** and is commented in it: rest, then the on-state, then hover, then open, then press, then the on-state's press. Equal-specificity rules therefore resolve press over hover and on over hover.
@@ -422,10 +398,10 @@ Prefer making the face the element.
 | | ManagerRow `.manager-name` | **Checked row** while selecting | None (not a toggle); the row takes `row-checked` |
 | | ManagerRow `.manager-mode` | Select on | `ghost btn-toggle` |
 | | ElevationEditor `.elevation-square` | Snap grid on | `btn btn-secondary btn-toggle` |
-| `aria-haspopup` + `aria-expanded` | ChangeArrows options, BrushPropertiesFields Add, ManagerList bulk Move and More, ManagerRow More (`menu`); HistoryPanel Go To (`dialog`) | A popup is open | Holds the hover look |
+| `aria-haspopup` + `aria-expanded` | ChangeArrows options, BrushPropertiesFields Add, ManagerList bulk Move and More, ManagerRow More, RecentSessionsTab row More (`menu`); HistoryPanel Go To (`dialog`) | A popup is open | Holds the hover look |
 | `aria-expanded` alone | TimelineList groups, ManagerRow folders, PropertiesPanel sections, PropertiesBlock, PanelRail tabs and toggle, PreviewTransport, toolbar groups | Disclosure | None, unless `.holds-open` (PreviewSettings only) |
 | `aria-invalid` | ExportModal, ServerBody, ScaleSelectionModal, SaveDialog | Invalid field | `field` red edge |
-| `.is-pressed` (class) | PreviewTransport held step (today `is-held`), toolbar flyout row under a press-drag (today `!bg-accent`) | Held | The press look |
+| `.is-pressed` (class) | PreviewTransport held step, the toolbar face a Quick Switch press holds, toolbar flyout row under a press-drag | Held | The press look |
 
 ---
 
@@ -455,9 +431,9 @@ Prefer making the face the element.
 
 ---
 
-## 8. Behaviour changes
+## 8. Press feedback and confirmations
 
-### 8.1 Press feedback: the decision
+### 8.1 Why a press keeps the glow
 
 Three treatments were compared side by side, on a specimen of every control and in the dialog footers, in both themes, with touch (`:active` alone) and mouse presses:
 
@@ -465,7 +441,7 @@ Three treatments were compared side by side, on a specimen of every control and 
 2. neutral plus the mint glow;
 3. the glow without the sink.
 
-**Chosen: neutral plus the glow on raised controls.**
+**Raised controls take the neutral press plus the glow.**
 
 - **Dark theme.** Neutral alone is the weakest press there: label contrast caps the face step (1.55:1). The glow makes a tap unmistakable on the dark chart, the dark modal and the transport strip.
 - **Light theme.** The glow removes the remaining disabled reading: disabled never glows, and a pressed face does.
@@ -476,182 +452,51 @@ Three treatments were compared side by side, on a specimen of every control and 
 
 ### 8.2 ConfirmModal: the accidental-activation guard
 
-- **Today:** a held or doubled Enter confirms a destructive delete. Enter on the menu's Delete row opens the confirm on keydown with focus on Delete, and ConfirmModal has none of ChoiceModal's guard.
-- **Change:** ConfirmModal ignores activations within `GUARD_MS` (300 ms) of opening and swallows key repeat on Enter and Space, exactly as ChoiceModal does. Focus stays on Delete. There is no visual and no string change.
-- **Shared code.** One rule in one place, applied to every component that shares the risk:
+A held or doubled Enter must not confirm a destructive delete. Enter on a menu's Delete row opens the confirm on keydown with focus on Delete, so a held or repeated key reaches that button.
 
-```ts
-// src/modals/activationGuard.ts
-/** Activations within this long of a dialog opening are ignored (Part 1 §1.4.1). */
-export const GUARD_MS = 300
+- ConfirmModal and ChoiceModal ignore activations within `GUARD_MS` (300 ms) of opening, and swallow key repeat on Enter and Space. Both call `useActivationGuard()` in `src/modals/activationGuard.ts`, the only place that defines `GUARD_MS`. Their buttons return early when `accidental()`, and their button rows take `@keydown.capture="onKeydown"`.
+- ConfirmModal's focus on open stays on its action.
+- The ×, Esc and outside presses stay unguarded, because closing is safe.
+- `tests/browser/confirmDialog.spec.ts` checks that a held Enter and a doubled Enter (80 ms) do not confirm, that a fresh press after 300 ms does, and that focus on open is Delete.
+- Other specs that confirm a Confirm or Choice dialog press through the guard with `confirmWhenReady` or `confirmKeyWhenReady` (`tests/browser/confirmWhenReady.ts`). A press inside the guard does nothing by design, so the helper presses again until the dialog has closed. It never waits a fixed time. A spec that tests the guard itself holds time with `page.clock`, as `confirmDialog.spec.ts` does.
 
-/** A press within the first moments, or a held key, is not a choice. Call during setup. */
-export const useActivationGuard = () => {
-    const openedAt = performance.now()
-    return {
-        accidental: () => performance.now() - openedAt < GUARD_MS,
-        /** On the button row, in the capture phase: key repeat never reaches the focused button. */
-        onKeydown: (event: KeyboardEvent) => {
-            if (event.repeat && (event.key === 'Enter' || event.key === ' ')) {
-                event.preventDefault()
-                event.stopPropagation()
-            }
-        },
-    }
-}
-```
+### 8.3 Reset Settings, Reset Shortcuts and Remove: confirm with Cancel as the default
 
-- **Wiring:**
-  - `GUARD_MS` is defined only there.
-  - ChoiceModal and ConfirmModal call `useActivationGuard()`.
-  - ConfirmModal's buttons return early when `accidental()`, and its button row gets `@keydown.capture="onKeydown"`.
-  - The ×, Esc and outside presses stay unguarded, because closing is safe.
-- **Test:** a new `tests/browser/confirmDialog.spec.ts`, mirroring choiceDialog's held-Enter test:
-  - a held Enter and a doubled Enter (80 ms) do not confirm;
-  - a fresh press after 300 ms does;
-  - focus on open is Delete.
+None of these can be undone. Remove deletes a stored preview asset whether or not a type uses it, and the user may not be able to load it again.
 
-### 8.3 Reset Settings and Reset Shortcuts: confirm
-
-- **Buttons:** both become `btn btn-danger-quiet`.
-- **Dialog:** each opens ChoiceModal with its own label as the title and as the destructive button, a new message, and `cancelIsDefault: true`. Cancel is therefore primary, focused and rightmost, or on top when stacked on a phone.
-- **Why Cancel is the safe default:** a reset cannot be undone. This is the existing pattern for Remove on a stored asset that is in use. ConfirmModal's focus-on-action is kept for undoable deletes (8.2).
-- **Guard:** ChoiceModal's guard applies.
-- **Strings:** two new messages (`settings.resetSettingsMessage`, `settings.resetKeybindsMessage`), in all seven locales.
-- **Notices:** none follows, as today.
-- **Scope phrase kept:** "Restore default settings, keeping keyboard shortcuts?" says that shortcuts survive, because touch users have no tooltip to say it.
-
-### 8.4 Remove an unused stored asset: confirm
-
-- **Today:** Remove on a stored preview asset asks first only when a type uses it (`removeInUse`); an unused one is deleted at once. That is stored data, which the user may not be able to load again.
-- **Change:** every Remove confirms. The unused one reuses the in-use dialog: title and danger button `remove`, a new message `commands.previewAssets.removeUnused`, `cancelIsDefault: true`, so Cancel is the focused primary and a stray Enter removes nothing.
-- **Strings:** one new key, `commands.previewAssets.removeUnused`, in seven locales.
-- **Code:** `StoredAssets.vue` picks the message by `row.users.length` and always confirms.
-- **Test:** `previewAssetsFile.spec.ts` ("One that is not in use goes at once") now confirms.
+- Each opens ChoiceModal with its own label as the title and as the destructive button, and `cancelIsDefault: true`. Cancel is therefore primary, focused and rightmost, or on top when stacked on a phone, and a stray Enter cancels.
+- ChoiceModal's guard (8.2) applies.
+- ConfirmModal's focus on its action is for deletes that can be undone (5.2).
+- No notice follows a reset.
+- Reset Settings' message, "Restore default settings, keeping keyboard shortcuts?", says that shortcuts are kept, because touch users have no tooltip to say it.
 
 ---
 
-## 9. Old → new
-
-### 9.1 Accent uses
-
-| Category | Lines | Old | New |
-|---|---|---|---|
-| Press | 117 | `active:` / `group-active:` / `peer-active:` / `has-[:active]:bg-accent text-on-accent` | The recipe's press: `press`, `ghost-press`, `band-press` or `chrome-press`, with `fg-strong`; filled faces use their own `*-press` |
-| Hover | 71 | `hover:shadow-accent` | `.btn` hover (the same mint glow), red on destructive buttons |
-| Focus | 14 accent + 99 fg | `ring-accent`, `ring-fg`, `ring-white`, accent box-shadows | The recipe ring (inside, own ink); `focus-out` on small faces; `focus-edge` on rows and menu rows |
-| Primary | 14 | `bg-accent text-on-accent active:bg-button active:text-fg` | `btn btn-primary` |
-| On / held | 7 | `bg-accent` | `btn-toggle` (on); held transport → `.is-pressed` (a press); Brush Add open → holds its hover glow; PreviewSettings open → `holds-open` |
-| Switch track | — | `bg-accent` / `bg-fg/25`, knob tinted on press | `switch-track` / `switch-knob`; no knob tint |
-| Current marker | 2 | Rail bar; ManagerRow current+checked `ring-accent` | Rail bar unchanged; ring → `accent-strong` |
-| Drop target | 1 | `bg-selected/35 ring-accent` | `row-drop` |
-| Drag-over (flyout `quickOver`) | 1 | `!bg-accent` | `.is-pressed` |
-| Peek ring | 1 | `ring-accent` | Unchanged |
-| Filter dot | 1 | `bg-accent` | Removed; `accent-strong` if kept |
-| Offscreen badge hover ring | 1 | `ring-accent` | `ring-white/60` (chrome hover) |
-| Resize line | 1 | Accent while dragged or focused, accent/60 hovered | White/60 hovered, white when dragged or focused. A drag is a press, and white is the chrome's ink |
-| Spinner | 1 | StartupGate `text-accent` | `text-fg`, as every other spinner |
-| Quick notice, brand | 4 | Mint | Unchanged |
-| Chip ink, forced-colours icon ink | 3 | `text-on-accent` | Unchanged (ink, not a role) |
-
-### 9.2 Other highlight colours
-
-| Category | Old | New |
-|---|---|---|
-| Selected segment, radio row, History row, asset row | Raised `bg-button` | `row-current` or the same tokens (unchanged look) |
-| Rows checked for an action | `bg-selected/40` | `row-checked` (full strength, retuned) |
-| Row hover | `bg-fg/10`, `bg-button/70`, `popup-hover` | Unchanged; press steps beyond it |
-| Rail selected tab | white/10 + mint bar; press hides the bar | Unchanged; press `chrome-press`, and the bar stays |
-| Manager band Select on | `bg-fg text-header` | Mint and flat (`ghost btn-toggle`): an on-state like every other. An ink fill would now read as a primary |
-| Tool in use | Mint, `focus-visible:ring-white` | Mint and flat; ring inside in `on-accent` |
-| Disabled | Opacity 40 / 60 / 70 | Unchanged |
-
-### 9.3 Raw palette and literals
-
-| Where | Old | New |
-|---|---|---|
-| StatusLabel | `text-amber-300` | `text-warning` (chrome tier) |
-| FileChip | `text-amber-300` / `text-sky-300` | `text-warning` / `text-info` |
-| PanelRail chevron | `rgb(255 255 255 / .1)` | `bg-white/10` (`ghost-chrome` hover) |
-| Command chips `bpm.ts`, `timeScale.ts` | `bg-[#f0f]`, `bg-[#ff0]` | Unchanged: they name chart objects (exempt) |
-| Dock edge shadows | `rgb(0 0 0 / .45)` | Unchanged: geometry, not a role |
-
-### 9.4 Destructive and overwriting actions
-
-| Action | New look |
-|---|---|
-| Delete groups / stages / folders (ConfirmModal) | `btn-danger`, focused, guarded (8.2) |
-| Destructive menu rows (Delete selection, Delete group or folder) | `.popup-item.text-danger` (unchanged markup); presses `danger-fill` |
-| Replace on save or export conflict, Leave Anyway, Discard recovery, Remove an asset in use | `btn-danger-quiet`; the safe default `btn-primary` |
-| Reset Settings, Reset Shortcuts | `btn-danger-quiet` + confirmation (8.3) |
-| Remove an unused stored asset | `btn-danger-quiet` + confirmation (8.4) |
-| Reset to Default, Use Built-in for All | `btn-danger-quiet` only; a confirm or undo is a follow-up |
-| History Restore | `btn-primary` (undoable) |
-| Restore as a Copy, Restore Session | `btn-secondary` |
-| Dynamic stages confirm | `btn-primary` |
-
----
-
-## 10. History surfaces
-
-The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, `ring-fg`, `hover:bg-header-hover`). Wherever one gives a colour, state or focus class, use the right-hand column instead. Geometry is unchanged. Keyed by element:
-
-| Element | Replace the colour, state and focus classes with |
-|---|---|
-| PeekBar pane ring | `ring-2 ring-inset ring-accent` (unchanged; allowlisted: a mode in force) |
-| `[data-peek-details]` date button | `ghost` (hover `fg/10`, which in light equals `header-hover` within ΔE 1; press `ghost-press`; focus inside) |
-| `[data-peek-back]` | `btn btn-secondary` |
-| `[data-peek-restore]` | `btn btn-primary`. The older `ring-inset ring-fg` is invisible on ink; the recipe's ring is `on-primary` |
-| spinner | `border-fg/25 border-t-fg` (unchanged) |
-| `[data-show-edits]` (24 px) | `ghost btn-toggle focus-out` with `:aria-pressed`; delete `bg-accent … hover:bg-accent/80 active:bg-button`; on = mint face, off = no face with the hidden eye |
-| `[data-change-options]` (24 px) | `ghost focus-out`; its `aria-haspopup` + `aria-expanded` hold the open look; delete `{ 'bg-header-hover': menuOpen }` |
-| `[data-property-summary]` (24 px) | `ghost focus-out` |
-| arrows | An inner face, not `ghost focus-out` on the 48 px button: the button is layout only and its child `.change-face` is a 24 px circle (`size-6 rounded-full`) round the 12 px `centered` chevron, so the fill and ring sit on the glyph. The face takes the ghost tokens: hover `bg-fg/10`, press `bg-ghost-press text-fg-strong`, focus an `outline` on the face, 1 px outside, in `fg`. A disabled arrow (`aria-disabled="true"`) takes no hover or press; keep the 40 % opacity on the chevron and count only, so the focus ring stays full |
-| forced colours | Covered by the recipe (`btn-toggle` on → Highlight); delete the pressed retarget |
-| Go To | `ghost ghost-band`, flat on the band (its `aria-haspopup="dialog"` + `aria-expanded` hold `band-hover` while open) |
-| band tabs | The inner-face pattern on the band: `.history-tab:hover .history-tab-pill { bg-band-hover }`, `:active … { bg-band-press text-fg-strong }`, `:focus-visible … { outline 2px currentColor, offset -4px }`; marker `bg-fg` (unchanged) |
-| Go To rows `.goto-item:active` | `bg-ghost-press text-fg-strong` |
-| filter dot | Removed; if kept, `bg-accent-strong` |
-| History dialog footer | View Chart `btn btn-secondary`; close `ghost ghost-band` (BaseModal) |
-| row pill `::before` | Selected `bg-button shadow-md` (the `row-current` tokens on a pseudo-element); hover `bg-button/70` (unchanged) |
-| main-pill press | A plain row presses its row pill, a group its text pill: `bg-press text-fg-strong shadow-pressed` (was `bg-accent text-on-accent`). Not `bg-ghost-press`: in dark it equals the current row's `bg-button` fill within 1.09:1, so the press would not read |
-| focus | Row pill and main pill take `focus-edge` (replacing `ring-2 ring-inset ring-fg`): the row exception (principle 10), since `fg` contrasts with the pill and the modal |
-| guide line | `bg-fg/30` (unchanged) |
-| disclosure | `ghost` (delete `hover:bg-fg/10 … active:bg-accent … ring-fg`) |
-| Details pill on unavailable rows | `ghost` |
-| Step Details, Property Changes: Show More, View Chart, Try Again | `btn btn-secondary` |
-| Status badge | `bg-fg/8` chip (unchanged) |
-| Change marks | Canvas orange via `--color-change` (C9) |
-
-`historyPanel.spec.ts` (the accent shadow) changes with the History surfaces.
-
----
-
-## 11. The guard test
+## 9. The guard test
 
 `tests/editor/colorRoles.test.ts` (node test, in `npm test`).
 
-### 11.1 What it scans
+### 9.1 What it scans
 
 - Every `src/**/*.{vue,ts,css}`, as text.
 - Template and TS class strings and `@apply` lines are tokenised with their variant prefixes.
 - CSS rules (in `.css` and `<style>` blocks) are parsed, so a rule's selector supplies the state for the `@apply`, `theme('colors.*')` and `var(--color-*)` uses in its body.
 - Comments are stripped.
 
-### 11.2 What it forbids outside `src/themes.css` and `src/controls.css`
+### 9.2 What it forbids outside `src/themes.css` and `src/controls.css`
 
 | Rule | Catches | Reason |
 |---|---|---|
 | `press-is-mint` | Mint, or any `bg-`, `text-`, `fill-`, `ring-`, `border-` (and the other colour prefixes) `on-accent`, with or without an opacity, under any press variant (`active:`, `group-active:`, `peer-active:`, `has-[:active]:`, `enabled:active:`, `[.popup-item:enabled:active_&]:`), and any CSS rule whose selector is `:active`, `.is-held`, `.is-pressed` or `-pressed` (ignoring `:not(:active)`) with mint in its body | Press is never on |
 | `mint-outside-recipes` | `bg-` / `text-` / `ring-` / `fill-` / `border-` / `outline-` / `shadow-` with `accent`, `accent-press`, `accent-strong` or `selected`; `theme('colors.accent' / 'on-accent' / 'selected')`; `var(--color-accent / on-accent / selected)` | On-states come from recipes; **bare `bg-accent` included** |
 | `hover-glow-outside-recipes` | `shadow-accent` with any variant | The glow lives in `.btn` |
-| `focus-colour` | `focus:`, `focus-visible:` or `group-focus-visible:` with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`, which carries no colour prefix, so it passes; `.popup-item` in `index.css` moves to it in C0 |
-| `focus-outline-none` | `focus:outline-none` or `focus-visible:outline-none` (in a class string or `@apply`) in a non-exempt file | The recipe ring sits in the components layer, and a leftover `outline-none` of equal specificity in the later utilities layer removes it without any visible error. 29 sites today |
+| `focus-colour` | A focus variant (`focus:`, `focus-visible:`, `focus-within:`, `group-focus-visible:` or `peer-focus-visible:`) with `ring-` / `outline-` in `fg`, `white`, `current`, `on-accent` or mint, and CSS `:focus` rules with mint | Focus comes from the recipes. Rows and menu rows use `focus-edge`. It carries no colour prefix, so it passes; `.popup-item` in `index.css` uses it |
+| `focus-outline-none` | `outline-none` under any of those focus variants, such as `focus:outline-none` or `focus-visible:outline-none` (in a class string or `@apply`), in a non-exempt file | The recipe ring sits in the components layer, and a leftover `outline-none` of equal specificity in the later utilities layer removes it without any visible error |
 | `danger-fill-outside-recipes` | `bg-danger` | `.btn-danger` / `danger-fill` |
 | `raw-palette` | Tailwind palette colours (`amber-300`, `sky-300`, …) | Tokens |
 | `colour-literal` | `bg-[#…]`, `text-[rgb(…)]` | Tokens |
 
-### 11.3 Exemptions and allowances
+### 9.3 Exemptions and allowances
 
 **Exempt files** (chart content), each with its reason:
 
@@ -663,7 +508,7 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 - `NoteShapeIcon.vue`
 - `commands/bpm.ts` and `timeScale.ts`
 
-**Allowed mint outside recipes.** Each entry is a file, a pattern the line must match, and a reason:
+**Allowed mint outside recipes.** Each entry is a file, a pattern the line must match, and a reason. An entry excuses only `mint-outside-recipes` and `hover-glow-outside-recipes`; the line still fails the other rules.
 
 | File | Allowed | Reason |
 |---|---|---|
@@ -674,99 +519,20 @@ The History redesign specs name the old roles (`bg-accent`, `active:bg-accent`, 
 
 Adding to either list needs a reason in the entry.
 
-### 11.4 Transition (closed)
+A migration can exempt files it has not reached yet in lists named `tests/editor/colorRoles/legacy-C<n>.txt` or `legacy-C<n>-H<n>.txt`. The test reads them when the directory exists, and fails on a listed file that is already clean and on a violating file that is not listed. No such list exists now.
 
-- During the migration each colour package kept an allowlist file, `tests/editor/colorRoles/legacy-C<n>.txt` (C8 one per History package, `legacy-C8-H<n>.txt`), of the files it had not migrated yet. Each package deleted its own list as its last commit, and the directory is gone: **no file is exempt now** except those in 11.3.
-- The test still reads such lists if the directory exists and tolerates its absence, so a later migration can add lists again. It fails on a listed file that is already clean, so stale entries cannot linger, and on a violating file that is not listed.
+### 9.4 Fixtures
 
-### 11.5 Fixtures
-
-A unit test feeds one synthetic snippet per inventoried form through the detector and expects a hit. The forms are a class string, `group-active:`, `peer-active:`, `has-[:active]:`, `!bg-accent`, `@apply bg-accent` in an `:active` rule, `theme('colors.accent')` in a `:focus-visible` rule, `hover:shadow-accent`, `focus-visible:ring-white`, `focus-visible:outline-none`, `focus:outline-none`, `@apply focus-visible:outline-none`, `group-active:bg-on-accent/30`, `active:border-on-accent`, `text-amber-300` and `bg-[#fff]`. A second list of snippets must pass: the recipes (`btn btn-secondary`, `ghost ghost-band btn-toggle`, `row-checked row-current focus-edge`, `focus-out`), `text-danger bg-danger-fill text-on-danger`, `bg-ghost-press text-fg-strong` and a plain `outline-none`. The test requires every snippet of the first list to hit and every snippet of the second to pass, so the check keeps working after the legacy cases are gone.
+A unit test feeds one synthetic line per inventoried form through the detector and expects a hit. Each is a bare line, not a CSS rule: `bg-accent text-on-accent` in a class string, `active:`, `group-active:`, `peer-active:` and `has-[:active]:` with mint, `!bg-accent`, `@apply bg-accent text-on-accent`, `color: theme('colors.accent')`, `hover:shadow-accent`, `focus-visible:ring-white`, `focus-visible:outline-fg`, `focus-visible:outline-none`, `focus:outline-none`, `@apply focus-visible:outline-none`, `group-active:bg-on-accent/30`, `active:border-on-accent`, `active:ring-on-accent`, `text-amber-300` and `bg-[#fff]`. A second list must pass: the recipes (`btn btn-secondary`, `btn btn-primary focus-out`, `ghost ghost-band btn-toggle`, `row-checked row-current focus-edge`, `row-select`), `text-danger bg-danger-fill text-on-danger`, `bg-ghost-press text-fg-strong`, `active:bg-ghost-press`, `focus-visible:outline-offset-2`, `@apply bg-press text-fg-strong`, `text-warning text-info`, a plain `outline-none` and `bg-on-accent`. The test requires every snippet of the first list to hit and every snippet of the second to pass, so the check keeps working when no file in `src` violates a rule.
 
 ---
 
-## 12. Migration packages
-
-**Process:**
-
-- **Closed.** The packages landed and their allowlists are deleted (11.4); this section records what each moved, for reading the history. C9 (the change token) was optional and is not built, and `changes.ts` still holds `#ff9b42` (section 13). The foundation, package C0, landed first and alone; packages C1–C7 then landed in any order, with the UI mixed (some dialogs ink, some mint) in between.
-- Every file belongs to exactly one package.
-- Each package runs its targeted specs. The full Playwright suite runs once, after C10.
-- **Naming.** These are *colour packages*, apart from the numbered steps of the main plan.
-
-### C0: foundation, safety, Reset and Remove confirmations, and checked-row consumers
-
-| Group | Files |
-|---|---|
-| Tokens and mechanism | `src/themes.css`, `tailwind.colors.js`, `tailwind.config.js`, `tailwind.landing.config.js`, `tailwind.controls.js`, `src/controls.css` |
-| Global CSS | `src/index.css`: `.popup-item` press `enabled:active:bg-ghost-press enabled:active:text-fg-strong`; `.popup-item.text-danger:enabled:active { bg-danger-fill text-on-danger }`; focus `focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-fg` becomes `focus-edge`, so the guard's `focus-colour` and `focus-outline-none` rules pass |
-| | `src/editor/LevelEditorContextMenu.vue`: the shortcut hint `[.popup-item:enabled:active_&]:text-on-accent` becomes `[.popup-item:enabled:active_&]:text-inherit` (`fg-strong`, or `on-danger` on the Delete row). It must change with the `.popup-item` press, or a pressed hint falls to 1.9:1 |
-| | `src/selectLists.css`: option press `ghost-press` / `fg-strong` |
-| Safety (8.2) | `src/modals/activationGuard.ts`, `src/modals/ConfirmModal.vue`, `src/modals/ChoiceModal.vue`, `src/modals/choice.ts` (doc comments say "primary", not "accent colour"). ConfirmModal and ChoiceModal also use the recipes |
-| Dialog shell and footers | `src/modals/BaseModal.vue` (the × is `ghost ghost-band`, with its size and shape), `src/modals/InfoModal.vue` (OK) and `src/modals/form/FormModal.vue` (submit): `btn btn-primary h-9 min-w-24 max-w-full truncate rounded-full px-4` |
-| Reset and Remove confirmations (8.3, 8.4) | `src/editor/settings/SettingsModal.vue`, `src/editor/commands/previewAssets/StoredAssets.vue`, `src/i18n/{en,ja,ko,zhs,zht,fr,tr}/index.json` (three new keys: `settings.resetSettingsMessage`, `settings.resetKeybindsMessage`, `commands.previewAssets.removeUnused`) |
-| Retune consumers | `src/editor/workspace/manager/ManagerRow.vue`: the whole file, which keeps its own class names (`manager-row-selected`, `manager-row-drop`), so `managerSelection.spec` and `managerFolders.spec` need no change |
-| Tests | `tests/editor/colorRoles.test.ts` (its allowlists are gone, 11.4); `tests/browser/confirmDialog.spec.ts`; `tests/browser/confirmWhenReady.ts` |
-| | Updated: `settings.spec.ts`, `defaultPanels.spec.ts`, `previewHitboxes.spec.ts`, `shortcuts.spec.ts`, `localizations.spec.ts`, `forcedColors.spec.ts` (Reset buttons, dialogs, Manager) |
-| | Updated: `choiceDialog.spec.ts` expected three distinct backgrounds for Cancel, Replace and Save as a Separate File; with Replace quiet there are two, so it asserts the danger choice's text colour or class instead. `themes.spec.ts` clicks Reset Settings, which now opens a confirmation. `previewAssetsFile.spec.ts` ("One that is not in use goes at once") now confirms |
-| | Run: `managerSelection.spec.ts`, `managerFolders.spec.ts`, `managerModal.spec.ts`, and, because they touch ManagerRow, `managerPanels.spec.ts` (the computed background of a dragged row), `managerDuplicate.spec.ts` and `hitAreas.spec.ts` |
-
-**Specs that confirm a Confirm or Choice dialog** press through its 300 ms guard with `confirmWhenReady` or `confirmKeyWhenReady` (`tests/browser/confirmWhenReady.ts`). A press inside the guard does nothing by design, so the helper presses again until the dialog has closed. It never waits a fixed time. A spec that tests the guard itself holds time with `page.clock`, as `confirmDialog.spec.ts` does.
-
-ManagerRow's changes:
-
-- `.manager-row-selected:not(.manager-row-current)` takes `row-checked`;
-- current-and-checked takes the `accent-strong` ring;
-- `.manager-row-drop` takes `row-drop`;
-- `.manager-icon-button` takes `ghost` (`ghost-band` on the heading);
-- `.manager-mode` adds `btn-toggle`;
-- `.manager-name` presses `ghost-press`;
-- focus goes inside.
-
-Visible after C0:
-
-- menu and select-list presses go neutral;
-- dialogs that use ConfirmModal or ChoiceModal take ink primaries and quiet destructive choices;
-- every dialog shell has the band-press ×, and the Info OK and form submit buttons are ink primaries;
-- Settings shows the quiet Reset buttons and their confirmations, and Remove on every stored preview asset confirms;
-- Manager rows are retuned.
-
-Nothing else changes until used.
-
-### C1–C7: parallel
-
-| # | Package | Files | Specs |
-|---|---|---|---|
-| C1 | Form fields | `src/modals/form/{BaseField, ChoiceField, FileField, KeyField, MultiNumberField, MultiSelectField, MultiToggleField, NumberField, OptionalNumberField, OptionalSelectField, SelectField, TextField, ToggleField, ToggleSwitch}.vue` | `choiceFields.spec`, form specs |
-| C2 | Command dialogs | `src/editor/commands/exportLevel/ExportModal.vue`; `previewAssets/{AlsoOptions, AssetRow, AssetSources, ChooserModeSwitch, ChooserView, PreviewAssetsModal, ServerBody}.vue` (`StoredAssets.vue` is in C0); `scaleSelection/ScaleSelectionModal.vue` | Export, preview-assets and scale specs; `aria-invalid` on three fields |
-| C3 | Settings, utilities, save, startup, rendering, landing | `src/editor/settings/{DiagnosticsModal, SettingsAbout, SettingsIndex, SettingsLocalData, SettingsPreview, SettingsSection}.vue`, `settings/toolbar/SettingsToolbarAddButton.vue`; `src/editor/utilities/{UtilitiesModal, coverEditor/CoverEditorModal, previewEditor/PreviewEditorModal}.vue`; `src/editor/save/{PreparingDialog, SaveDialog}.vue`; `src/startup/{SafeModeBar, StartupGate}.vue`; `src/rendering/RenderingError.vue`; `src/landing/landing.css` | Save, startup, settings-section and landing specs |
-| C4 | Workspace | `src/editor/workspace/{PanelRail, ResizeHandle}.vue`; `manager/{ManagerAddButton, ManagerList, ManagerModal, StagesManager}.vue`; `panels/PropertiesPanel.vue`; `properties/PropertiesBlock.vue` | `panelRail.spec` and `propertiesPanel.spec` assert the pressed fill is mint and now assert the neutral press, with the rail marker kept |
-| C5 | Toolbar, tools, elevation, badge | `src/editor/toolbar/{LevelEditorToolbar, LevelEditorToolbarTool}.vue`; `src/editor/tools/brush/BrushPropertiesFields.vue`, `tools/paste/PasteSidebar.vue`; `src/editor/elevation/ElevationEditor.vue`; `src/editor/OffscreenNoteBadge.vue` (`LevelEditorContextMenu.vue` is in C0) | `toolbarPressed`, `toolbarQuickSwitch`, `editorLayoutControls`, `elevationViewport` |
-| C6 | Status bar and notices | `src/editor/{StatusLabel, StatusScope, NoticeCard, LevelEditor}.vue`; `src/editor/file/FileChip.vue` | Status and notice specs. C6 changes only NoticeCard's role classes |
-| C7 | Preview | `src/preview/{AssetFallbackLine, LevelPreview, PreviewSettings, PreviewTransport}.vue` | Preview specs (held step → `.is-pressed`) |
-
-C5 toolbar notes:
-
-- tools, modes and open panels add `btn-toggle`; value items do not;
-- the flyout's press-drag row uses `.is-pressed`;
-- the elevation square is `btn-toggle`.
-
-### C8–C10
-
-- **C8, History:** `src/editor/history/{ChangeArrows, GoToIcon, GoToList, HistoryDialog, HistoryPanel, PeekBar, TimelineList}.vue`, in three History packages: H1 `ChangeArrows`, `PeekBar`; H2 `GoToIcon`, `GoToList`, `HistoryDialog`, `HistoryPanel`; H3 `TimelineList`. It lands with the History redesign, which applies section 10 directly after C0. Spec: `historyPanel.spec`.
-- **C9, change token (optional):** `src/editor/canvas/changes.ts` reads `--color-change` in place of its `#ff9b42`.
-- **C10, close-out:** done for the guard: the `tests/editor/colorRoles/` directory is deleted (its loader stays, tolerating the absence). Remove leftover `peer-checked:peer-active` patches (none remain in `src`).
-
-**Scope.** About 300 class-string edits in 85 files, mostly mechanical; 7 browser specs with about 15 assertions on classes; three new strings in seven locales.
-
----
-
-## 13. Out of scope: chart content and the change orange
+## 10. Out of scope: chart content and the change orange
 
 Chart content keeps its own colours:
 
 - notes, connectors, guides, grid and stages;
-- the minimap's content and change ticks (its box and cursor are UI: white on `bg`);
+- the minimap's content and change ticks (its box and cursor are UI: white on `bg`, the box with a dark outer ring);
 - the elevation canvas and the preview renderer;
 - NoteShapeIcon;
 - the BPM and time-scale chips;
@@ -778,11 +544,9 @@ Light warning (h 68) and the change orange (h 59) are 9° apart, not 20°. They 
 
 ---
 
-## 14. Risks and limits
+## 11. Risks and limits
 
-- **Mixed UI between packages.** Use an integration branch and make no release until C10.
-- **`controls.css` reaches Tailwind through a plugin that reads it with `readFileSync`.** Tailwind rebuilds only for dependencies it can see, so the plugin names the file in a `require('./src/controls.css')` comment (6.1) and edits reach a running dev server. Check a long-lived server before a capture round all the same: probe a recently added recipe in the served `/src/index.css`.
-- **Safari 16.0–16.3** draws outlines as rectangles, so the inside ring is square on rounded pills there. Focus stays visible; this is accepted under the old-iOS rule (practical scope).
+- **`controls.css` reaches Tailwind through a plugin that reads it with `readFileSync`.** Tailwind rebuilds only for dependencies it can see, so the plugin names the file in a `require('./src/controls.css')` comment (6.1) and edits reach a running dev server. Check a long-lived server before you take screenshots all the same: probe a recently added recipe in the served `/src/index.css`.
 - **Light theme, on against secondary,** differs mainly in hue (ΔE 17, protan 8). Form carries the state, as in v0.5.22.
 - **Dark switch track off against the pill** is 1.92:1; the knob carries the state.
 - **Light warning against danger** is deutan-confusable; the glyphs carry it.

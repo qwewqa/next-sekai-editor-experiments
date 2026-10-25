@@ -18,7 +18,7 @@ import { decodeSnapshot, encodeSnapshot } from '../../../src/local/records/snaps
 import { createState, type State } from '../../../src/state'
 import { folder, goldenChart, stage, stateOf } from './charts'
 
-// Nested folders in v1 (owner decision, 2026-10-19; plan §1.6.11.1): the record schema keeps
+// Nested folders in v1: the record schema keeps
 // `folder.folderId` on purpose, and a later nesting feature writes v1 roots. This build never sets
 // it, so what it does with one is pinned here: the state loads, shows its folders flat (each at
 // the top level with its own members), edits and saves without throwing, and the link survives a

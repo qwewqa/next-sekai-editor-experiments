@@ -42,6 +42,8 @@ type Clip = {
     matrix: Matrix
     rule: CanvasFillRule
     pixels?: PixelBounds
+    /** Built from the current path, which no later frame draws again. */
+    frameOnly: boolean
 }
 type State = {
     clips: Clip[]
@@ -91,6 +93,8 @@ const canvasScalar = (value: number) =>
     Math.max(-3.4028234663852886e38, Math.min(3.4028234663852886e38, Math.fround(value)))
 
 const contexts = new WeakMap<HTMLCanvasElement, WebGLDrawContext>()
+// Every context not yet disposed, surfaces included, for `releaseUnusedPaths`.
+const live = new Set<WeakRef<WebGLDrawContext>>()
 const pixiMatrix = (m: Matrix) => new PixiMatrix(...m)
 export class RenderSurface {
     private readonly context: WebGLDrawContext
@@ -98,7 +102,6 @@ export class RenderSurface {
         resources: RenderingResources,
         private w: number,
         private h: number,
-        readonly stageCache = false,
     ) {
         this.context = new WebGLDrawContext(this, resources)
     }
@@ -213,6 +216,13 @@ export class WebGLDrawContext {
     private pathMatrix = identity()
     private readonly transformPrecision = getCanvasTransformPrecision()
     private inheritedStyle?: CSSStyleDeclaration
+    private inheritedDirection?: {
+        connected: boolean
+        dir: string
+        lang: string
+        canvasDir: string
+        value: CanvasDirection
+    }
     private scene = new Container()
     private origin: [number, number] = [0, 0]
     private clearPending = true
@@ -257,12 +267,14 @@ export class WebGLDrawContext {
     private readonly retainedNoteBodies = new Map<Container, RetainedNoteBodies>()
     private readonly waveforms = new WaveformMeshes()
     private readonly stageMeshes = new StageMeshes()
+    private readonly ref = new WeakRef(this)
     constructor(
         readonly canvas: HTMLCanvasElement | RenderSurface,
         resources?: RenderingResources,
     ) {
         this.resources = resources ?? new RenderingResources(canvas as HTMLCanvasElement)
         this.resources.clients.add(this)
+        live.add(this.ref)
         this.ensure()
     }
     get ready() {
@@ -287,9 +299,7 @@ export class WebGLDrawContext {
             this.width = this.canvas.width
             this.height = this.canvas.height
             if (this.canvas instanceof RenderSurface)
-                this.target = this.canvas.stageCache
-                    ? this.resources.stageTarget(this.width, this.height)
-                    : this.resources.target(this.width, this.height)
+                this.target = this.resources.target(this.width, this.height)
             else this.resources.renderer.resize(this.width, this.height, 1)
         }
         return true
@@ -336,6 +346,7 @@ export class WebGLDrawContext {
         this.disposed = true
         this.resetSurface()
         this.resources.clients.delete(this)
+        live.delete(this.ref)
         for (const texture of this.frames) texture.destroy()
         for (const node of this.graphicPool) node.destroy({ context: false })
         for (const nodes of this.graphicsByContext.values())
@@ -362,14 +373,28 @@ export class WebGLDrawContext {
     createSurface(width: number, height: number) {
         return new RenderSurface(this.resources, width, height)
     }
-    /** Full-redraw stage pixels keep no MSAA or stencil storage between updates. */
-    createStageSurface(width: number, height: number) {
-        return new RenderSurface(this.resources, width, height, true)
-    }
     /** Ordered, premultiplied stage slice triangles already include their paint opacity. */
     drawStageTriangles(vertices: readonly number[]) {
         if (!vertices.length || !this.mutate()) return
         this.parent().addChild(this.stageMeshes.draw(vertices, this.state.matrix))
+    }
+    /**
+     * Packs stage triangles with `matrix` into a mesh the caller owns across
+     * frames, until `releaseStageMesh` or this context's disposal.
+     */
+    createStageMesh(vertices: readonly number[], matrix: Matrix) {
+        return this.stageMeshes.retain(vertices, matrix)
+    }
+    /** Queues a retained stage mesh offset by whole or fractional device pixels, ignoring the transform. */
+    drawStageMesh(mesh: StageMesh, x: number, y: number) {
+        if (!this.mutate()) return
+        mesh.position.set(x, y)
+        this.parent().addChild(mesh)
+    }
+    releaseStageMesh(mesh: StageMesh) {
+        // A queued mesh must not be destroyed before its frame is submitted.
+        if (mesh.parent) this.flush()
+        this.stageMeshes.release(mesh)
     }
     private recycleNodes(container: Container) {
         for (const child of container.removeChildren()) {
@@ -738,6 +763,10 @@ export class WebGLDrawContext {
         range.releaseGeometry?.()
         range.released = true
     }
+    /** Another chart was installed: release the path geometry no frame since has drawn. */
+    releaseUnusedPaths() {
+        this.paths.releaseUnused()
+    }
     flush() {
         if (!this.ensure() || !this.resources.initialized) return
         if (!this.clearPending && !this.scene.children.length) return
@@ -859,6 +888,7 @@ export class WebGLDrawContext {
                     'mask',
                     undefined,
                     factor,
+                    clip.frameOnly,
                 )
                 if (this.paths.isEmpty(context)) group.visible = false
                 else {
@@ -878,7 +908,12 @@ export class WebGLDrawContext {
         this.activeParent = parent
         return parent
     }
-    private drawShape(shape: DrawPath, stroke: boolean, rule: CanvasFillRule = 'nonzero') {
+    private drawShape(
+        shape: DrawPath,
+        stroke: boolean,
+        rule: CanvasFillRule = 'nonzero',
+        frameOnly = false,
+    ) {
         if (!this.mutate()) return
         const s = this.state
         const paint = stroke
@@ -893,6 +928,7 @@ export class WebGLDrawContext {
             paint.key,
             { dash: s.dash, dashOffset: s.lineDashOffset },
             factor,
+            frameOnly,
         )
         if (this.paths.isEmpty(context)) return
         const graphic = this.pathNode(
@@ -1147,8 +1183,9 @@ export class WebGLDrawContext {
 
     fill(path?: DrawPath | CanvasFillRule, rule: CanvasFillRule = 'nonzero') {
         if (!this.ensure()) return
-        const shape = path instanceof DrawPath ? path : this.currentPath()
-        if (shape) this.drawShape(shape, false, typeof path === 'string' ? path : rule)
+        const current = !(path instanceof DrawPath)
+        const shape = current ? this.currentPath() : path
+        if (shape) this.drawShape(shape, false, typeof path === 'string' ? path : rule, current)
     }
     /** Connector body and gradient use one nearby, reference-time coordinate space. */
     fillConnectorBody(path: DrawPath, yScale: number, originY: number) {
@@ -1192,7 +1229,7 @@ export class WebGLDrawContext {
     stroke(path?: DrawPath) {
         if (!this.ensure()) return
         const shape = path ?? this.currentPath()
-        if (shape) this.drawShape(shape, true)
+        if (shape) this.drawShape(shape, true, 'nonzero', !path)
     }
     /** Fake-connector cross: union the two certified stroke boundaries when possible. */
     strokeFakeMarker(path: DrawPath) {
@@ -1374,7 +1411,8 @@ export class WebGLDrawContext {
         this.restore()
     }
     clip(path?: DrawPath | CanvasFillRule, rule: CanvasFillRule = 'nonzero') {
-        const shape = path instanceof DrawPath ? path : this.currentPath()
+        const current = !(path instanceof DrawPath)
+        const shape = current ? this.currentPath() : path
         if (!shape) return
         const matrix = this.state.matrix
         const command = shape.commands.length === 1 ? shape.commands[0] : undefined
@@ -1402,6 +1440,7 @@ export class WebGLDrawContext {
                 matrix: [...matrix],
                 rule: typeof path === 'string' ? path : rule,
                 pixels,
+                frameOnly: current,
             },
         ]
     }
@@ -1873,8 +1912,30 @@ export class WebGLDrawContext {
     }
     private textDirection(): CanvasDirection {
         if (this.state.direction !== 'inherit') return this.state.direction
-        this.inheritedStyle ??= getComputedStyle(this.resources.canvas)
-        return this.inheritedStyle.direction === 'rtl' ? 'rtl' : 'ltr'
+        // Reading a computed style forces a style recalculation whenever the page changed since
+        // the last one, such as the preview clock's text. The result changes only with the
+        // page language or direction (or the canvas moving in or out of the page), so keep it
+        // until the attributes that set them change.
+        const canvas = this.resources.canvas
+        const root = document.documentElement
+        const cached = this.inheritedDirection
+        if (
+            cached?.connected === canvas.isConnected &&
+            cached.dir === root.dir &&
+            cached.lang === root.lang &&
+            cached.canvasDir === canvas.dir
+        )
+            return cached.value
+        this.inheritedStyle ??= getComputedStyle(canvas)
+        const value = this.inheritedStyle.direction === 'rtl' ? 'rtl' : 'ltr'
+        this.inheritedDirection = {
+            connected: canvas.isConnected,
+            dir: root.dir,
+            lang: root.lang,
+            canvasDir: canvas.dir,
+            value,
+        }
+        return value
     }
     fillText(text: string, x: number, y: number, maxWidth?: number) {
         if (!this.ensure()) return
@@ -2330,6 +2391,14 @@ export const getDrawContext = (canvas: HTMLCanvasElement | RenderSurface): WebGL
     return context
 }
 export const peekDrawContext = (canvas: HTMLCanvasElement) => contexts.get(canvas)
+/** Another chart was installed: every context releases the path geometry no frame since has drawn. */
+export const releaseUnusedPaths = () => {
+    for (const ref of live) {
+        const context = ref.deref()
+        if (context) context.releaseUnusedPaths()
+        else live.delete(ref)
+    }
+}
 export const disposeDrawContext = (canvas: HTMLCanvasElement | RenderSurface) => {
     if ('dispose' in canvas) canvas.dispose()
     else contexts.get(canvas)?.dispose()

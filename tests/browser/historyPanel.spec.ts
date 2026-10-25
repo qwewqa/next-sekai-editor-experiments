@@ -8,12 +8,12 @@ import {
 import { row as historyRow } from './historyJourney'
 import { flushed, notice, pressSave, queuePicks, submitSave } from './saveFlows'
 
-// The History tab and dialog, the Timeline and the peek bar (Part 1 §1.4.10, §1.4.11, Step 5).
+// The History tab and dialog, the Timeline and the peek bar.
 // Entries are made through the undo stack's own `pushState`, as history.spec.ts does.
 
 const prefix = 'sonolus-next-sekai-editor.'
 // Screenshots are written only when NSE_SHOTS is set.
-const shots = 'D:/sonolus/nse-next/work/step5/redesign-shots'
+const shots = 'test-results/history-shots'
 const shoot = async (page: Page, name: string) => {
     if (process.env.NSE_SHOTS) await page.screenshot({ path: `${shots}/${name}.png` })
 }
@@ -79,6 +79,19 @@ const lives = (page: Page) =>
         const { history } = window.editorTest
         return { shown: history.state.value.initialLife, live: history.liveState.value.initialLife }
     })
+
+/** Pushes `count` steps, each raising the initial life by one. */
+const pushLives = (page: Page, count: number) =>
+    page.evaluate((count) => {
+        const { history, historySteps } = window.editorTest
+        for (let i = 0; i < count; i++) {
+            const life = history.state.value.initialLife
+            history.pushState(historySteps.futureInitialLife(life, life + 1, `Step ${i}`), {
+                ...history.state.value,
+                initialLife: life + 1,
+            })
+        }
+    }, count)
 
 /** Stores what the tab holds, so every entry can be read from storage. */
 const stored = (page: Page) =>
@@ -340,8 +353,11 @@ test.describe('the tab', () => {
         })
         await settle(page)
         await expect(page.locator('[data-workspace-dock]')).toHaveCount(0)
+        // The minimap strip, shown by default, is no tab: the chart takes the window beside it.
+        await expect(page.locator('[data-minimap]')).toBeVisible()
         const pane = await page.locator('.chart-pane').boundingBox()
-        expect(pane?.width).toBeGreaterThan(1590)
+        const strip = await page.locator('[data-minimap]').boundingBox()
+        expect((pane?.width ?? 0) + (strip?.width ?? 0)).toBeGreaterThan(1590)
         await shoot(page, 'hidden-desktop')
         await page.keyboard.press(',')
         await expect(page.getByRole('dialog')).toBeVisible()
@@ -370,6 +386,22 @@ test.describe('the dialog', () => {
         await page.keyboard.press('Shift+H')
         await expect(sheet(page)).toHaveCount(0)
         await expect(page.locator('[data-editor-toolbar]')).toBeVisible()
+    })
+
+    test('Delete Sessions… opens over the sheet, Escape closes only it, and focus returns to the button', async ({
+        page,
+    }) => {
+        await page.keyboard.press('Shift+H')
+        await expect(sheet(page)).toBeVisible()
+        await sheet(page).getByRole('tab', { name: 'Recent Sessions' }).click()
+        const trash = sheet(page).locator('[data-history-delete-sessions]')
+        await trash.focus()
+        await page.keyboard.press('Enter')
+        await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
+        await expect(sheet(page)).toBeVisible()
+        await expect(trash).toBeFocused()
     })
 
     test('the toolbar tool and the command list run the same command', async ({ page }) => {
@@ -692,16 +724,17 @@ test.describe('links', () => {
     })
 })
 
-test.describe('the 242 px right sheet', () => {
-    // A phone in portrait at 379 px: the History sheet on the right, its band in the small mode.
+test.describe('the narrowest right sheet', () => {
+    // A short pane just over 31rem (504 px): the History sheet on the right, 312 px, its band in
+    // the small mode in English and the icon mode where the tabs are shorter.
     test.use({
-        viewport: { width: 390, height: 379 },
+        viewport: { width: 504, height: 379 },
         deviceScaleFactor: 3,
         hasTouch: true,
         isMobile: true,
     })
 
-    test('Timeline is whole in every language, and Recent Sessions takes the shortfall (X-6)', async ({
+    test('Timeline is whole in every language, and Recent Sessions takes the shortfall', async ({
         page,
     }) => {
         await page.keyboard.press('Shift+H')
@@ -749,15 +782,38 @@ test.describe('the 242 px right sheet', () => {
                 }
             })
             test.info().annotations.push({ type: locale, description: JSON.stringify(measured) })
-            expect(measured.band).toBeGreaterThan(240)
-            expect(measured.band).toBeLessThan(244)
-            expect(measured.mode).toBe('small')
+            expect(measured.band).toBeGreaterThan(310)
+            expect(measured.band).toBeLessThan(315)
+            if (locale === 'en') expect(measured.mode).toBe('small')
             expect(measured.apart).toBe(true)
             expect(measured.clipped).toBe(false)
-            if (locale === 'tr') await shoot(page, 'x6-tr-242')
+            if (locale === 'tr') await shoot(page, 'x6-tr-312')
             if (!measured.timeline.whole) cut.push(`${locale}: ${measured.timeline.text}`)
             // Recent Sessions keeps its 48 px floor.
             expect(measured.sessions.width).toBeGreaterThanOrEqual(48)
+            // On Recent Sessions the tabs stay where they are, and the trash button ends before the ×.
+            const tabBoxes = () =>
+                band.evaluate((element) =>
+                    ['timeline', 'sessions'].map((id) => {
+                        const { x, width } = element
+                            .querySelector(`[data-history-focus="tab-${id}"]`)!
+                            .getBoundingClientRect()
+                        return { x, width }
+                    }),
+                )
+            const onTimeline = await tabBoxes()
+            await band.getByRole('tab', { name: measured.sessions.text }).click()
+            await expect(band.locator('[data-history-delete-sessions]')).toBeVisible()
+            expect(await tabBoxes()).toEqual(onTimeline)
+            const apartFromClose = await band.evaluate(
+                (element) =>
+                    element.querySelector('[data-history-delete-sessions]')!.getBoundingClientRect()
+                        .right <=
+                    element.querySelector('[data-history-close]')!.getBoundingClientRect().left,
+            )
+            expect(apartFromClose).toBe(true)
+            await band.getByRole('tab', { name: measured.timeline.text }).click()
+            await expect(band.locator('[data-history-delete-sessions]')).toHaveCount(0)
         }
         expect(cut).toEqual([])
     })
@@ -867,11 +923,36 @@ test.describe('the Timeline', () => {
             expect(goTo.x).toBeGreaterThanOrEqual(tabs.x + tabs.width - 2)
             return goTo
         }
+        // Recent Sessions keeps the Timeline's tabs where they are, and its end slot holds the trash
+        // button in the place Go To has: the same mode, tabs, and right edge.
+        const sessionsSlot = async () => {
+            const panel = surface(page, 'panel')
+            const tabBoxes = async () => [
+                await panel.locator('[data-history-focus="tab-timeline"]').boundingBox(),
+                await panel.locator('[data-history-focus="tab-sessions"]').boundingBox(),
+            ]
+            const modeHere = await mode()
+            const onTimeline = await tabBoxes()
+            const goTo = await panel.locator('[data-history-goto-button]').boundingBox()
+            await panel.getByRole('tab', { name: 'Recent Sessions' }).click()
+            const trash = panel.locator('[data-history-delete-sessions]')
+            await expect(trash).toBeVisible()
+            await expect(panel.locator('[data-history-goto-button]')).toBeHidden()
+            expect(await mode()).toBe(modeHere)
+            expect(await tabBoxes()).toEqual(onTimeline)
+            const box = await trash.boundingBox()
+            expect(box?.width).toBe(36)
+            expect(box?.height).toBe(36)
+            expect(box!.x + box!.width).toBeCloseTo(goTo!.x + goTo!.width, 1)
+            await panel.getByRole('tab', { name: 'Timeline' }).click()
+            await expect(panel.locator('[data-history-delete-sessions]')).toHaveCount(0)
+        }
         // The desktop's right dock is wide enough for the label.
         await openTab(page)
         expect(await mode()).toBe('label')
         const labelled = await oneLine()
         expect(labelled.width).toBeGreaterThan(36)
+        await sessionsSlot()
         // A left dock under the label's fit (349 px in English) takes the icon alone, and under
         // the whole tabs' fit (285 px) the tabs take their smaller labels. Neither wraps.
         await page.setViewportSize({ width: 844, height: 390 })
@@ -887,12 +968,14 @@ test.describe('the Timeline', () => {
         await expect(surface(page, 'panel')).toBeVisible()
         expect(await mode()).toBe('icon')
         expect((await oneLine()).width).toBe(36)
+        await sessionsSlot()
         await page.evaluate(() => {
             window.editorTest.settings.leftDockWidth = 220
         })
         await settle(page)
         expect(await mode()).toBe('small')
         expect((await oneLine()).width).toBe(36)
+        await sessionsSlot()
     })
 
     test('the list is windowed, with ARIA positions, and a header pins while it scrolls', async ({
@@ -1179,7 +1262,7 @@ test.describe('keys with focus in the list', () => {
 })
 
 test.describe('after a reload', () => {
-    test('Undo at the first stored slot says earlier steps are in History, with Open History', async ({
+    test('Undo at the first stored slot says earlier Timeline steps are in History, with Open History', async ({
         page,
     }) => {
         // A stack restored from a capped window (Shown.earlier), as a reload gives it.
@@ -1202,7 +1285,7 @@ test.describe('after a reload', () => {
             )
         })
         await page.keyboard.press('z')
-        await expect(page.getByText('Earlier steps are in History').first()).toBeVisible()
+        await expect(page.getByText('Earlier Timeline steps are in History').first()).toBeVisible()
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(surface(page, 'panel')).toBeVisible()
         await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
@@ -1211,47 +1294,58 @@ test.describe('after a reload', () => {
         )
     })
 
-    // The real thing, 5,100 steps and a reload: slow, so only with NSE_LONG_SPECS set.
-    test('Undo past the stored part of a 5,000-step stack after a reload', async ({ page }) => {
-        test.skip(!process.env.NSE_LONG_SPECS, 'Takes about two minutes')
+    // The real thing, 1,100 steps and a reload: slow, so only with NSE_LONG_SPECS set.
+    test('Undo past the stored part of a 1,100-step stack after a reload', async ({ page }) => {
+        test.skip(!process.env.NSE_LONG_SPECS, 'Takes about half a minute')
         test.setTimeout(300_000)
-        // The stored stack keeps 5,000 slots: past them an undo after a reload has no state.
-        await page.evaluate(() => {
-            const { history } = window.editorTest
-            for (let i = 0; i < 5100; i++)
-                history.pushState(
-                    window.editorTest.historySteps.futureInitialLife(
-                        history.state.value.initialLife,
-                        history.state.value.initialLife + 1,
-                        `Step ${i}`,
-                    ),
-                    {
-                        ...history.state.value,
-                        initialLife: history.state.value.initialLife + 1,
-                    },
-                )
-        })
+        // The stored stack keeps 1,000 slots: past them an undo after a reload has no state.
+        await pushLives(page, 1100)
         await stored(page)
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await waitForStartup(page)
         // The reloaded stack as storage restored it: the fixture would replace it.
-        await page.evaluate(async () => {
+        const undos = await page.evaluate(async () => {
             const url = performance
                 .getEntriesByType('resource')
                 .map((entry) => entry.name)
                 .find((name) => new URL(name).pathname === '/src/history/index.ts')
             const history = (await import(url ?? '')) as typeof import('../../src/history')
             // Undo as far as it goes: moves onto slots not loaded settle one after another.
-            while (history.canUndo.value) history.undoState()
+            let count = 0
+            for (; history.canUndo.value; count++) history.undoState()
             while (history.slotLoading.value)
                 await new Promise((resolve) => setTimeout(resolve, 50))
+            return count
         })
+        expect(undos).toBe(999)
         await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
         await page.keyboard.press('z')
-        await expect(page.getByText('Earlier steps are in History').first()).toBeVisible()
+        await expect(page.getByText('Earlier Timeline steps are in History').first()).toBeVisible()
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(surface(page, 'panel')).toBeVisible()
+    })
+})
+
+test.describe('the undo cap', () => {
+    test('Undo stops at the cap in the tab, and shows that earlier steps are in History', async ({
+        page,
+    }) => {
+        await pushLives(page, 1010)
+        const undos = await page.evaluate(() => {
+            const { history } = window.editorTest
+            let count = 0
+            for (; history.canUndo.value; count++) history.undoState()
+            return count
+        })
+        expect(undos).toBe(999)
+        await page.keyboard.press('z')
+        await expect(page.getByText('Earlier Timeline steps are in History').first()).toBeVisible()
+        await page.getByRole('button', { name: 'Open History' }).click()
+        await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        )
     })
 })
 

@@ -14,7 +14,7 @@ import type { Progress } from './core'
 import type { WorkerContext } from './handlers'
 import type { CallScope } from './rpc'
 
-// The storage worker's Check File and History… methods (Part 1 §1.4.21). The page drives them
+// The storage worker's Check File and History… methods. The page drives them
 // inside its Save queue, holding `nse-maint` shared from the stored phase's start until it calls
 // `checkFinish`: the file phase, the stored phase, then the finish. Each phase's state stays here
 // under its id until the finish or `checkDrop`; a worker restart loses it (`notOpened`).

@@ -32,7 +32,7 @@ import { resumeImports, startImport, type ImportOutcome } from './importLoop'
 import { keepCopy } from './kept'
 import type { OpenReadReply } from './opened'
 
-// The page's side of opening a `.nxsp` (Part 1 §1.5.4 step 3 on): the new chain and session stored
+// The page's side of opening a `.nxsp`: the new chain and session stored
 // at once in the worker's first transaction, then opened in this tab as a stored session is, its
 // background import started, and the chain's identity updated in this tab when damage unlinks it.
 
@@ -74,9 +74,9 @@ export const dropProjectRead = (id: string) => {
 export type BoundElsewhere = 'yes' | 'no' | 'unknown'
 
 /**
- * Whether another tab's open session is bound to this file (§1.3.2, `isSameEntry`): such an open
+ * Whether another tab's open session is bound to this file (`isSameEntry`): such an open
  * is a separate copy, and so is one that can't be told apart (`unknown`: a failed read, a handle
- * this page can't hold, or a throw), which the notice says with "may".
+ * this page can't hold, or a throw).
  */
 export const boundInAnotherTab = async (handle: FileSystemFileHandle): Promise<BoundElsewhere> => {
     const { open } = context()
@@ -92,27 +92,27 @@ export const boundInAnotherTab = async (handle: FileSystemFileHandle): Promise<B
             handle,
         )
     } catch {
-        // Uncertain ownership opens a separate copy, and says so.
+        // Uncertain ownership opens a separate copy.
         return 'unknown'
     }
 }
 
-/** The chains this browser has on the document, as the open's notice reads them (§1.5.4). */
+/** The chains this browser has on the document, as the open's notice reads them. */
 export const earlierChains = async (
     docId: string,
     exclude: string,
 ): Promise<StoredRead<EarlierChain[]>> => {
     const { open, recovery } = context()
     const read = await storedRead(open.worker, 'openEarlierChains', { docId, exclude })
-    // The failure goes to the open, which still succeeds and says so.
+    // The failure goes to the open, which still succeeds.
     if (read.storedRead === 'failed') return read
     const stored = read.storedValue
     // A dead tab's pending journal holds changes storage doesn't: Restore applies it first. When
-    // the journals cannot be read, a bound chain that looks unchanged has unknown changes.
+    // the journals cannot be read, only the changes storage holds count.
     const journals = await recovery.journal
         .read()
         .then((found) => new Set(found.map((each) => each.sessionId)))
-        .catch(() => undefined)
+        .catch(() => new Set<string>())
     return readValue(
         await Promise.all(
             stored.map(async (chain) => ({
@@ -134,7 +134,7 @@ export type StoreOpen = {
     handle?: FileSystemFileHandle
     /** Bound to the file: a whole open, not open in another tab. */
     bind?: { name: string }
-    /** Takes the file's identity: a whole open (§1.3.3); otherwise a new `docId` and no revision. */
+    /** Takes the file's identity: a whole open; otherwise a new `docId` and no revision. */
     identity: boolean
     /** The live state when it isn't the history's head. */
     level?: StateBatch
@@ -156,11 +156,13 @@ export type StoredOpen =
           shown: boolean
           state?: State
           import?: Promise<ImportOutcome>
+          /** Called once the open's own notice is up: damage found before it gets its card now. */
+          noticed: () => void
       }
 
 const isEmpty = (value: object) => !Object.keys(value).length
 
-/** The chain record's identity and names from `project.json` (§1.5.4 step 6). */
+/** The chain record's identity and names from `project.json`. */
 const chainFields = async (open: StoreOpen) => {
     const { project, extra, disk } = open.read
     const fields: Record<string, unknown> = { sourceName: open.sourceName }
@@ -215,6 +217,9 @@ export const storeAndShow = async (
     let job: Promise<ImportOutcome> | undefined
     let kept: Promise<Blob | undefined> | undefined
     let damaged: { record: Record<string, unknown>; first: boolean } | undefined
+    // The open's notice would replace a damage card raised before it, so that card waits for it.
+    let noticed = false
+    let unsaid = false
     const retainBytes = () => {
         if (open.handle)
             kept ??= keepCopy(deps.worker, chainId, open.file, open.handle).catch(() => undefined)
@@ -222,6 +227,7 @@ export const storeAndShow = async (
     }
     const applyDamage = (record: Record<string, unknown>, first: boolean) => {
         const copy = retainBytes()
+        if (first && !noticed) unsaid = true
         unlinkedSession(
             sessionId,
             open.bind?.name ?? open.file.name,
@@ -231,7 +237,7 @@ export const storeAndShow = async (
             open.handle
                 ? { file: open.file, handle: open.handle, ...(copy ? { copy } : {}) }
                 : undefined,
-            () => ownership.transferred && request.isCurrent(),
+            () => noticed && ownership.transferred && request.isCurrent(),
         )
     }
     try {
@@ -329,6 +335,17 @@ export const storeAndShow = async (
             shown: ownership.transferred,
             ...(state ? { state } : {}),
             ...(job ? { import: job } : {}),
+            noticed: () => {
+                noticed = true
+                if (
+                    unsaid &&
+                    ownership.transferred &&
+                    request.isCurrent() &&
+                    currentSession.value.sessionId === sessionId
+                )
+                    notifyDamaged(open.bind?.name ?? open.file.name)
+                unsaid = false
+            },
         }
     } finally {
         // A lock no session took is kept until the import's batches and the kept copy settle.
@@ -344,7 +361,7 @@ export const storeAndShow = async (
     }
 }
 
-/** What Replace keeps first (§1.4.7): the version on disk, read whole, as an unbound session. */
+/** What Replace keeps first: the version on disk, read whole, as an unbound session. */
 export type KeepVersion = {
     read: NxspReply
     file: Blob
@@ -358,10 +375,9 @@ export type KeepVersion = {
 }
 
 /**
- * Stores the version on disk as a new, unbound, ordinary session in Recent Sessions (§1.4.7
- * Replace, Part 0 §0.9.6): its first transaction, then its history's batches, each committed
- * strictly, under the new session's lock. True only when all of it is stored: Replace writes
- * nothing otherwise.
+ * Stores the version on disk as a new, unbound, ordinary session in Recent Sessions: its first
+ * transaction, then its history's batches, each committed strictly, under the new session's lock.
+ * True only when all of it is stored: Replace writes nothing otherwise.
  */
 export const storeKept = async (keep: KeepVersion) => {
     const { open: deps } = takeRead(keep.read.id)
@@ -405,7 +421,11 @@ export const storeKept = async (keep: KeepVersion) => {
             chainId,
             id: keep.read.id,
             batches: stored.batches,
-            source: { file: keep.file },
+            source: {
+                file: keep.file,
+                ...(keep.read.disk ? { disk: keep.read.disk } : {}),
+                ...(revision ? { revisionId: revision.id } : {}),
+            },
             appVersion: keep.appVersion,
         })
         return outcome.kind === 'done'
@@ -417,9 +437,13 @@ export const storeKept = async (keep: KeepVersion) => {
     }
 }
 
+const damagedMessage = (name: string) => interpolate(() => i18n.value.open.damagedHistory, name)
+const notifyDamaged = (name: string) =>
+    notify(damagedMessage(name), { card: true, severity: 'warning' })
+
 /**
- * Damage found after the open unlinked the chain (§1.6.11.8): when the session is open in this
- * tab it takes the new identity, its journal is written again with it (r12-freeze item 2), its
+ * Damage found after the open unlinked the chain: when the session is open in this
+ * tab it takes the new identity, its journal is written again with it, its
  * label reads "Separate copy of …", and the file's bytes are kept for a picker that would empty
  * it. The notice comes with the first damage found.
  */
@@ -448,7 +472,7 @@ const unlinkedSession = (
     if (currentSession.value.sessionId === sessionId) {
         const { file: bound, ...rest } = currentSession.value
         const copyOf = { name, bound: true }
-        // Its file's stem stays its name, as the record's (§1.3.5).
+        // Its file's stem stays its name, as the record's.
         const keptName = keptNameOf(rest.name, bound?.name)
         currentSession.value = {
             ...rest,
@@ -469,16 +493,17 @@ const unlinkedSession = (
             }
     }
     if (!first || !canNotify() || (!resumed && currentSession.value.sessionId !== sessionId)) return
-    // Its notice: a card after an open, a load notice after a resume (§1.4.3).
-    const message = interpolate(() => i18n.value.open.damagedHistory, name)
-    if (resumed) addLoadNotice(message, undefined, LOAD_ORDER.damagedHistory, 'warning')
-    else notify(message, { card: true, severity: 'warning' })
+    // Its notice: a card after an open, a load notice after a resume.
+    if (resumed)
+        addLoadNotice(damagedMessage(name), undefined, LOAD_ORDER.damagedHistory, 'warning')
+    else notifyDamaged(name)
 }
 
 /**
- * Resumes the open's imports no tab runs, from the bound handle, or ends them (§1.5.4): what the
- * next load does after startup, and what a Save's wait for the chain's imports does for one that
- * nothing runs. It skips an import this tab runs and one whose lock another tab holds.
+ * Resumes the open's imports that no tab runs, or ends them. The next load runs it after
+ * startup, and a Save's or a Check's wait for the chain's imports runs it for an import that
+ * nothing runs. An import this tab started is read from the file the tab kept, and any other
+ * from the bound handle. It skips an import this tab runs and one whose lock another tab holds.
  */
 export const resumeUnfinishedImports = (appVersion: string) => {
     const { open: deps } = context()
@@ -496,8 +521,8 @@ export const resumeUnfinishedImports = (appVersion: string) => {
 }
 
 /**
- * After startup, an open's import a tab didn't finish is resumed from the bound handle, or ended
- * (§1.5.4): never during startup or recovery, so a stored handle is read only here (D16).
+ * After startup, an open's import a tab didn't finish is resumed from the bound handle, or ended:
+ * never during startup or recovery, so a stored handle is read only here.
  */
 export const resumeAfterStartup = (appVersion: string) => {
     const run = () => {
@@ -508,7 +533,7 @@ export const resumeAfterStartup = (appVersion: string) => {
 }
 
 /**
- * The opened file's BGM, decoded in the background (§1.5.4 step 5, §1.6.8.4): attached to the
+ * The opened file's BGM, decoded in the background: attached to the
  * live state when it still names it. Nothing is pushed: the state is the same.
  */
 export const attachOpenedBgm = async (

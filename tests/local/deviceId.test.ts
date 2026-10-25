@@ -3,7 +3,7 @@ import test from 'node:test'
 import { documentDeviceId, hmacSha256 } from '../../src/local/deviceId'
 import { toHex } from '../../src/local/hash'
 
-// A document's device id (§1.3.3): HMAC-SHA-256 of its lineage under the install's deviceId.
+// A document's device id: HMAC-SHA-256 of its lineage under the install's deviceId.
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
@@ -31,4 +31,13 @@ test('one install and lineage give one id; another lineage or install gives anot
     assert.notEqual(documentDeviceId(install, 'lineage-b'), id)
     assert.notEqual(documentDeviceId('another-install', 'lineage-a'), id)
     assert.notEqual(id, install)
+})
+
+test('the id is pinned: the HMAC’s first 16 bytes, with version 8 and variant 10', () => {
+    // Computed apart from this code (Python's hmac); a rewrite that slices or sets bits differently
+    // makes every own save read as another device's.
+    assert.equal(
+        documentDeviceId('c3f00000-0000-4000-8000-000000000000', 'lineage-a'),
+        'ddbe03da-f8bc-8997-a041-499da3b5cc32',
+    )
 })

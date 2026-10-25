@@ -534,7 +534,7 @@
       "import": {
         "damaged": "Bu dosya bozuk veya bir Sonolus paketi değil.",
         "fileUnreadable": "Bu dosya okunamadı.",
-        "zip64": "Bu dosya, editörün okuyamadığı ZIP64 biçimini kullanıyor.",
+        "zip64": "Editör ZIP64 dosyalarını okuyamaz.",
         "fileTooLarge": "Bu dosya {0} sınırından büyük.",
         "tooManyEntries": "Bu dosyada {0} girdiden fazlası var.",
         "badName": "Bu dosyada izin verilmeyen bir girdi adı var.",
@@ -569,12 +569,12 @@
       "noneFound": "Öğe bulunamadı",
       "server": {
         "unreachable": "Bu sunucuya ulaşılamadı. Adresi kontrol edin veya daha sonra tekrar deneyin.",
-        "auth": "Bu sunucu oturum açmayı gerektiriyor; editör bunu desteklemiyor.",
-        "insecure": "Bu sunucu http kullanıyor; editör bunu yükleyemez.",
+        "auth": "Editör, oturum açmayı gerektiren sunucuları kullanamaz.",
+        "insecure": "Editör http sunucularını kullanamaz.",
         "checksum": "Bu öğe için sunucunun sağlama toplamı, gönderdiği içerikle eşleşmiyor.",
         "notFound": "Bu sunucuda böyle bir öğe yok.",
         "invalid": "Bu adres bir Sonolus sunucusu değil.",
-        "status": "Sunucu bir hatayla yanıt verdi ({0}).",
+        "status": "Sunucu bir hata döndürdü ({0}).",
         "filesFailed": "Bu öğenin dosyaları {0} adresinden indirilemedi.",
         "addressEmpty": "Bir sunucu adresi girin.",
         "addressInvalid": "Bu sunucu adresi geçerli değil.",
@@ -769,7 +769,7 @@
     },
     "altN": "Alt+N (macOS’ta Option+N) odağı en son bildirime taşır. Ardından Esc onu kapatır.",
     "shiftF10": "Shift+F10 veya Menü tuşu, odaktaki öğenin menüsünü açar.",
-    "recentSessions": "Dosyaya kaydedilmemiş çalışma Geçmiş › Son Oturumlar’da.",
+    "recentSessions": "Kaydedilmemiş çalışma Geçmiş › Son Oturumlar’da.",
     "fileTitle": "Dosyalar",
     "moveBetweenDevices": "Çalışmayı başka bir cihaza taşımak için .nxsp dosyası olarak kaydedin, ardından dosyayı orada açın.",
     "crswap": "Kaydederken bir çökme olursa proje dosyasının yanında bir .crswap dosyası kalabilir. Silmek güvenlidir."
@@ -807,6 +807,8 @@
     "resetSettingsHint": "Klavye kısayollarını koruyarak varsayılan ayarları geri yükler.",
     "resetKeybinds": "Kısayolları Sıfırla",
     "resetSettingsMessage": "Klavye kısayolları korunarak varsayılan ayarlar geri yüklensin mi?",
+    "resetSettingsHintStatistics": "Klavye kısayollarını ve Kullanım İstatistiklerini Gönder ayarını koruyarak varsayılan ayarları geri yükler.",
+    "resetSettingsMessageStatistics": "Klavye kısayolları ve Kullanım İstatistiklerini Gönder ayarı korunarak varsayılan ayarlar geri yüklensin mi?",
     "resetKeybindsMessage": "Varsayılan klavye kısayolları geri yüklensin mi?",
     "editor": {
       "title": "Editör",
@@ -898,6 +900,7 @@
       "highlightSelection": "Seçimi Vurgula",
       "showHitboxes": "İsabet Kutularını Göster",
       "antialias": "Kenar Yumuşatma",
+      "parallelRendering": "Paralel Çizim",
       "transport": {
         "title": "Oynatma Denetimleri",
         "auto": "Otomatik",
@@ -916,6 +919,7 @@
       "title": "Araç Çubuğu",
       "quickSwitch": "Hızlı Geçiş",
       "add": "Araç Ekle",
+      "remove": "\"{0}\" Aracını Araç Çubuğundan Kaldır",
       "modal": {
         "title": "Araç Seç"
       }
@@ -943,6 +947,9 @@
       "license": "Lisans",
       "notices": "Üçüncü Taraf Lisansları",
       "privacy": "Gizlilik",
+      "usageStatistics": "Kullanım İstatistiklerini Gönder",
+      "usageStatisticsNote": "Kullandığınız araçlar, temel ayarlarınız, dosya türleri ve boyutları ile işlemlerin ne kadar sürdüğü. Gizlilik’e bakın.",
+      "usageStatisticsSignal": "Bu tarayıcı Do Not Track veya Global Privacy Control gönderdiği için varsayılan olarak devre dışı.",
       "diagnostics": "Tanılama Bilgilerini Kopyala…",
       "diagnosticsTitle": "Tanılama Bilgileri",
       "diagnosticsNote": "Tanılama bilgileri dosya ve klasör adlarını içerebilir. Paylaşmadan önce kontrol edin.",
@@ -953,6 +960,7 @@
     "localData": {
       "title": "Yerel Veriler",
       "recoveryHeading": "Kurtarma",
+      "startupNoticesHeading": "Başlangıç Bildirimleri",
       "discard": "Sil…",
       "discardConfirm": "Sil",
       "cannotOpen": "(bu sürümde açılamıyor)",
@@ -961,16 +969,15 @@
       "recovery": {
         "journal": "Önceki bir ziyaretten kaydedilmemiş çalışma, {0} · {1}",
         "journalUndated": "Önceki bir ziyaretten kaydedilmemiş çalışma · {0}",
-        "legacy": "Eski bir sürümden kurtarma kopyası · {0}",
         "autoSave": "Eski otomatik kaydetme verisi · {0}",
         "unreadable": "Okunamayan kurtarılmış çalışma, {0} · {1}",
         "listFailed": "Kurtarılmış çalışma okunamadı",
-        "downloadFailed": "Kurtarılmış çalışma indirilemedi.",
-        "atLoad": "Başlangıç Bildirimleri"
+        "downloadFailed": "Kurtarılmış çalışma indirilemedi."
       },
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
       "exportRaw": "Ham Verileri Dışa Aktar…",
+      "exportRawTitle": "Ham Verileri Dışa Aktar",
       "exportRawName": "{0} ham veriler {1}.zip",
       "storageHeading": "Depolama Alanı",
       "stored": "Bu tarayıcıda saklanan: {0} / yaklaşık {1}",
@@ -978,10 +985,10 @@
       "deleteTitle": "Oturumları Sil",
       "lastEdited": "Son düzenleme {0} günden uzun süre önce",
       "all": "Tümü",
-      "includeNotSaved": "Dosyaya kaydedilmemiş çalışmayı dahil et",
+      "includeNotSaved": "Kaydedilmemiş çalışmayı dahil et",
       "deleteNext": "Sil…",
       "deleteConfirm": "{0} oturum silinsin mi?",
-      "notSaved": "{0} oturum dosyaya kaydedilmedi: {1}.",
+      "notSaved": "{0} oturumda kaydedilmemiş değişiklikler var: {1}.",
       "namesMore": "{0} ve {1} tane daha",
       "newer": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.|Bu oturumlardan bazıları için editörün daha yeni bir sürümü gerekiyor.",
       "deleting": "Siliniyor…",
@@ -1196,24 +1203,24 @@
     "updated": "{0} sürümüne güncellendi",
     "whatsNew": "Yenilikler",
     "upgradeBlocked": "Saklanan çalışmanızı açmak için diğer {0} sekmelerini kapatın.",
-    "olderVersion": "Bu tarayıcıda editörün daha yeni bir sürümü açıldı. Sayfayı yeniden yükleyin veya çalışmanızı dosyalara kaydedin.",
+    "olderVersion": "Bu tarayıcıda editörün daha yeni bir sürümü açıldı. Sayfayı yeniden yükleyin veya çalışmanızı korumak için kaydedin.",
     "tryAgain": "Tekrar Dene",
     "continued": "\"{0}\" devam ettirildi ({1}).",
     "continuedUntitled": "Oturumunuz devam ettirildi ({0}).",
     "continuedUndated": "\"{0}\" devam ettirildi.",
     "cleared": "Önceki ziyaretlerdeki çalışma bulunamıyor. Tarayıcı bu sitenin depolama alanını temizlemiş.",
     "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Bazı özellikler çalışmayabilir ve saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
-    "journalKept": "\"{0}\" üzerindeki bir değişiklik uygulanamadı, bu yüzden ayrı bir oturum olarak saklandı.",
+    "journalKept": "\"{0}\" üzerindeki kurtarılan bir değişiklik ayrı bir oturum olarak saklandı.",
     "fallback": "Önceki bir ziyaretten kaydedilmemiş çalışma kurtarıldı.",
     "fallbackLocal": "Önceki bir ziyaretten kaydedilmemiş çalışma Yerel Veriler’de.",
     "migrationFailed": "Eski otomatik kaydetme verisi geri yüklenemedi.",
-    "autoSave": "\"{0}\", otomatik kaydetmeden devam ettirildi.",
+    "autoSave": "\"{0}\", eski otomatik kaydetme verisinden devam ettirildi.",
     "journal": "\"{0}\" üzerindeki son değişiklik kurtarıldı.",
     "journalLater": "Kurtarılan bir değişiklik için editörün daha yeni bir sürümü gerekiyor.",
     "openElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık olduğu için burada geri yüklenmedi.",
     "restoreAsCopy": "Kopya Olarak Geri Yükle",
     "sessionDeleted": "Bu oturum başka bir sekmede veya pencerede silindi.",
-    "autoSaveKept": "\"{0}\", otomatik kaydetmeden ayrı bir oturum olarak saklandı.",
+    "autoSaveKept": "Eski otomatik kaydetme verisindeki \"{0}\" ayrı bir oturum olarak saklandı.",
     "autoSaveOpened": "Eski otomatik kaydetme verisi açıldı.",
     "journalFailed": "Kurtarılan bir değişiklik saklanamadı. Bir kopyası Yerel Veriler’de.",
     "storageNearlyFull": "Tarayıcının depolama alanı neredeyse dolu.",
@@ -1237,14 +1244,14 @@
       "readOnly": "Editörün daha yeni bir sürümü açıldı.",
       "upgrading": "Editörün daha yeni bir sürümü başka bir sekmede açık."
     },
-    "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor; bu tarayıcı saklanan çalışmayı silebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
-    "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "installedWebkit": "Son oturumlar, bu simge Ana Ekran’dan kaldırılana kadar burada tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "persisted": "Son oturumlar, verilerini temizlemediğiniz sürece bu tarayıcıda tutulur. Çalışmanızı korumak için bir dosyaya kaydedin.",
-    "default": "Son oturumlar bu tarayıcıda tutulur; alan azalırsa tarayıcı bunları silebilir. Çalışmanızı korumak için bir dosyaya kaydedin."
+    "unavailable": "Editör bu tarayıcıda değişiklikleri saklayamıyor. Çalışmanızı korumak için kaydedin.",
+    "private": "Bu özel bir pencereyse burada saklanan her şey pencere kapandığında kaybolur. Çalışmanızı korumak için kaydedin.",
+    "inAppBrowser": "Bu, bir uygulamanın yerleşik tarayıcısı gibi görünüyor. Saklanan çalışma silinebilir. Çalışmanızı korumak için bu sayfayı tarayıcınızda açın.",
+    "ios": "Bu tarayıcı, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin.",
+    "safari": "Safari, 7 gün ziyaret edilmezse saklanan çalışmayı siler. Çalışmanızı korumak için kaydedin.",
+    "installedWebkit": "Son Oturumlar, bu uygulamayı kaldırana kadar burada tutulur. Çalışmanızı korumak için kaydedin.",
+    "persisted": "Son Oturumlar, verilerini temizlemediğiniz sürece bu tarayıcıda tutulur. Çalışmanızı korumak için kaydedin.",
+    "default": "Son Oturumlar, alan azalmadığı sürece bu tarayıcıda tutulur. Çalışmanızı korumak için kaydedin."
   },
   "player": {
     "started": "Oynatmaya başlandı",
@@ -1377,7 +1384,7 @@
       "thisTab": "Bu sekme",
       "elsewhere": "Başka sekme",
       "actions": "\"{0}\" için diğer işlemler",
-      "saveToFile": "Dosyaya Kaydet…",
+      "saveToFile": "Kaydet…",
       "delete": "Sil",
       "openReason": "Başka bir sekmede veya pencerede açık."
     },
@@ -1386,7 +1393,7 @@
       "named": "Adım ayrıntıları: {0}",
       "action": "Ayrıntılar",
       "unsupported": "Bu editör bu adımın ayrıntılarını okuyamıyor.",
-      "newer": "Bu adım editörün daha yeni bir sürümüyle kaydedildi.",
+      "newer": "Bu adım editörün daha yeni bir sürümüyle oluşturuldu.",
       "textShortened": "Metin kısaltılarak gösteriliyor",
       "varying": "Değişken",
       "changed": "Değiştirilen",
@@ -1932,7 +1939,8 @@
     "resize": {
       "left": "Sol panelleri yeniden boyutlandır",
       "right": "Sağ panelleri yeniden boyutlandır",
-      "top": "Üst panelleri yeniden boyutlandır"
+      "top": "Üst panelleri yeniden boyutlandır",
+      "minimap": "Mini haritayı yeniden boyutlandır"
     },
     "resizeTiles": "{0} ve {1} panellerini yeniden boyutlandır",
     "dock": {
@@ -2068,7 +2076,7 @@
   "peek": {
     "loadingShort": "Yükleniyor…",
     "unavailableShort": "Kullanılamıyor",
-    "settingsChanged": "Ayarlar değiştirildi",
+    "settingsChanged": "Özellikler değiştirildi",
     "initialState": "İlk durum",
     "unavailable": "Değişiklikler kullanılamıyor",
     "loadingChanges": "Değişiklikler yükleniyor…",
@@ -2100,6 +2108,7 @@
     "notFound": "\"{0}\" bulunamıyor.",
     "downloadStarted": "İndirme başlatıldı: {0} · {1}",
     "preparing": "{0} hazırlanıyor… {1}",
+    "ready": "Hazır: {0} · {1}",
     "download": "İndir",
     "buildFailed": "\"{0}\" hazırlanamadı.",
     "readFailed": "\"{0}\" okunamadı.",
@@ -2109,7 +2118,7 @@
     "noSpace": "{0} dosyasını yazmak için yeterli alan yok.",
     "writeFailed": "\"{0}\" yazılamadı.",
     "notPutBack": "\"{0}\" boşaltıldı ve içeriği geri yüklenemedi.",
-    "openedContentGone": "\"{0}\" artık açtığınız içeriği içermiyor.",
+    "openedContentGone": "\"{0}\" artık önceki içeriğini içermiyor.",
     "replacedContentGone": "\"{0}\" artık önceki içeriğini içermiyor.",
     "title": "Proje Dosyasını Kaydet",
     "titleAs": "Farklı Kaydet",
@@ -2122,6 +2131,7 @@
     "notProject": "\"{0}\" bir proje dosyası değil.",
     "notKept": "Kaydedilmedi. \"{0}\" tamamen okunamadı.",
     "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
+    "notKeptFull": "Kaydedilmedi. Tarayıcının depolama alanı dolu. Ayarlar › Yerel Veriler’den oturumları silin, ardından yeniden kaydedin.",
     "saved": "{0} dosyasına kaydedildi",
     "savedWithoutBgmLarge": "{0} dosyasına arka plan müziği olmadan kaydedildi",
     "savedWithoutCoverLarge": "{0} dosyasına kapak olmadan kaydedildi",
@@ -2154,8 +2164,8 @@
   "check": {
     "command": "Dosyayı ve Geçmişi Denetle…",
     "title": "Dosyayı ve Geçmişi Denetle",
-    "checkingFile": "{0} denetleniyor… %{1}",
-    "checkingStored": "Saklanan geçmiş denetleniyor… %{0}",
+    "checkingFile": "{0} denetleniyor…",
+    "checkingStored": "Saklanan geçmiş denetleniyor…",
     "changed": "\"{0}\" denetlenirken değişti. Tekrar deneyin.",
     "stillOpening": "\"{0}\" hâlâ açılıyor. Tekrar deneyin.",
     "noDamage": "Hasar bulunamadı.",
@@ -2189,7 +2199,7 @@
     "notDescendant": "Bu sürüm sizinkinden oluşturulmadı ({0}).",
     "separate": "Ayrı Dosya Olarak Kaydet",
     "openOther": "Diğer Sürümü Aç",
-    "openOtherNote": "Değişiklikleriniz kaydedilmemiş olarak kalır.",
+    "openOtherNote": "Değişiklikleriniz Son Oturumlar’da kalır.",
     "replaceNote": "Diskteki sürüm Son Oturumlar’da saklanır.",
     "keptName": "{0} ({1} değiştirildi)",
     "replaceNewer": "Daha yeni bir {0} sürümüyle oluşturuldu.",
@@ -2207,7 +2217,6 @@
   "notice": {
     "useOpenFile": "Bir dosya açmak için Aç’ı kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
-    "sameFileMaybeElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık olabilir, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",
     "bgmDiffers": "Bu, özgün arka plan müziği olan \"{0}\" dosyasından farklı bir dosya.",
@@ -2222,7 +2231,7 @@
     "peekFailed": "Bu adım görüntülenemedi",
     "peekSessionFailed": "Bu oturum görüntülenemedi",
     "openHistory": "Geçmişi Aç",
-    "earlierInHistory": "Önceki adımlar Geçmiş’te",
+    "earlierInHistory": "Zaman Çizgisi’ndeki önceki adımlar Geçmiş’te",
     "savedCurrent": "Güncel sürüm {0} dosyasına kaydedildi"
   },
   "entry": {
@@ -2230,7 +2239,7 @@
     "saved": "{0} kaydedildi",
     "downloaded": "{0} indirildi",
     "continued": "Devam ettirildi",
-    "migrated": "Otomatik kaydetmeden kurtarıldı",
+    "migrated": "Eski otomatik kaydetme verisi açıldı",
     "restoredTo": "{0} anına geri yüklendi",
     "changedOutside": "Editör dışında değiştirildi",
     "recoveredChanges": "Değişiklikler kurtarıldı"
@@ -2247,13 +2256,14 @@
   },
   "prompt": {
     "title": "Değişiklikler Saklanmıyor",
+    "unsaved": "Kaydedilmemiş Değişiklikler",
     "notStored": "Değişiklikleriniz bu tarayıcıda saklanmıyor. Ayrılırsanız bu değişiklikler kaybolur.",
     "save": "Kaydet",
     "leaveAnyway": "Yine de Ayrıl"
   },
   "status": {
     "separateCopyShort": "Ayrı kopya",
-    "notInFile": "Dosyaya kaydedilmedi",
+    "notInFile": "Kaydedilmemiş",
     "separateCopy": "{0} için ayrı kopya",
     "opensLevelInfo": "Seviye bilgisini açar",
     "changedSaved": "{0}, {1} dosyasına kaydedildikten sonra değişti",
@@ -2287,9 +2297,6 @@
     },
     "unsavedChanges": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz var ({1}).",
     "unsavedEarlier": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da.",
-    "earlierUnchecked": "{0} açıldı. Son Oturumlar’da bu dosyanın başka sürümleri olup olmadığı denetlenemedi.",
-    "unsavedEarlierMaybe": "{0} dosyasının önceki bir sürümündeki kaydedilmemiş değişiklikler ({1}) Son Oturumlar’da olabilir.",
-    "unsavedChangesMaybe": "{0} açıldı. Bu dosyada kaydedilmemiş değişiklikleriniz olabilir ({1}).",
     "olderVersion": "Bu, {0} dosyasının eski bir sürümü. Daha yeni bir sürüm ({1}) Son Oturumlar’da.",
     "restoreIt": "Oturumu Geri Yükle",
     "damagedHistory": "\"{0}\" dosyasının geçmişi hasarlı. Kaydetmek ayrı bir dosya oluşturur."
@@ -2297,10 +2304,7 @@
   "file": {
     "replacedElsewhere": "\"{0}\" başka bir sekmeden veya pencereden değiştirildi.",
     "downloaded": "{0} · {1} indirildi",
-    "opened": "{0} · {1} açıldı",
-    "short": {
-      "notSaved": "kaydedilmedi"
-    }
+    "opened": "{0} · {1} açıldı"
   },
   "state": {
     "fileMissing": "Dosya yok",
@@ -2336,7 +2340,6 @@
     "removed": "Kaldırıldı",
     "tagsAdded": "Eklenen Etiketler",
     "tagsRemoved": "Kaldırılan Etiketler",
-    "tagsChanged": "Değiştirilen Etiketler",
     "order": "Sıra",
     "folder": "Klasör",
     "groupFolder": "Grup Klasörü",
@@ -2354,8 +2357,7 @@
       "previewAudio": "Önizleme Sesi",
       "duration": "Süre",
       "size": "Boyut",
-      "type": "Tür",
-      "icon": "Simge"
+      "type": "Tür"
     },
     "contentsChanged": "İçerik değişti",
     "showMore": "Daha Fazla Göster",

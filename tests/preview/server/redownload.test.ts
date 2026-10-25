@@ -18,7 +18,7 @@ import { scpEntries } from '../files/fixtures'
 import { createFakeServer, filesFromEntries } from './fakeServer'
 
 // A server item whose package left storage is downloaded again at load, and Default is used when
-// that cannot be done (Part 2, 2.4.2, 2.5.4, 2.11).
+// that cannot be done.
 
 Object.defineProperty(globalThis, 'createImageBitmap', {
     configurable: true,

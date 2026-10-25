@@ -32,8 +32,8 @@ import {
     timeScaleRecord,
 } from './encode'
 
-// The `State`→`Chart` extractor (§1.6.2) and the one emission order: `toRecords` and the
-// level-data serializer both take a state's entities in this order (§1.6.11.6), so level data
+// The `State`→`Chart` extractor and the one emission order: `toRecords` and the
+// level-data serializer both take a state's entities in this order, so level data
 // is a function of the record set.
 
 /** Every entity of a grid once, in bucket order; joints sit in one bucket each. */
@@ -71,7 +71,7 @@ export type Ordered<T> = { entity: T; key: number; record: readonly RecordValue[
 
 export type OrderedSlide = Ordered<readonly NoteEntity[]> & { slideId: SlideId }
 
-/** A store's records' entities in the v1 order (§1.6.11.1), kind by kind. */
+/** A store's records' entities in the v1 order, kind by kind. */
 export type OrderedStore = {
     slides: OrderedSlide[]
     bpms: Ordered<BpmEntity>[]
@@ -226,7 +226,7 @@ export const noteObjectOf = (note: NoteEntity): NoteObject => ({
 
 const entities = <T>(list: readonly Ordered<T>[]) => list.map(({ entity }) => entity)
 
-/** The `Chart` a state holds (§1.6.2), every kind in the v1 order. */
+/** The `Chart` a state holds, every kind in the v1 order. */
 export const extractChart = (state: State, ordered = orderStore(state.store)): Chart => ({
     initialLife: state.initialLife,
     isDynamicStages: state.isDynamicStages,

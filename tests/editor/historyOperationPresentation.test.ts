@@ -182,7 +182,7 @@ const fixture = [
                 { field: 'title', before: captureName(''), after: captureName('Coconut') },
                 { field: 'artists', before: captureName('A'), after: captureName('B') },
                 { field: 'rating', before: null, after: 12 },
-                { field: 'tags', added: 2, removed: 1, changed: 1, reordered: true },
+                { field: 'tags', added: 2, removed: 1, reordered: true },
                 { field: 'cover', before: null, after: captureName('cover.png') },
                 { field: 'initialLife', before: 1000, after: 900 },
             ],
@@ -972,7 +972,7 @@ test('an empty file name never leaves a dangling space', () => {
     }
 })
 
-// X-14: a Select drag that took an edge is a resize, titled and grouped as one, and never a move.
+// A Select drag that took an edge is a resize, titled and grouped as one, and never a move.
 test('a resize is titled "Resized" in every locale, and groups with resizes and not with moves', () => {
     const resize = (count: number): NativeOperationInput => ({
         id: 'nse.object.move',

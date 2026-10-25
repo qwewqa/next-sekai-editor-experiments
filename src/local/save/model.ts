@@ -1,3 +1,4 @@
+import { cappedSpan } from '../../history/cap'
 import { toHex } from '../hash'
 import { sessionReadability } from '../records/unknownValues'
 import {
@@ -9,13 +10,13 @@ import {
 } from '../timeline'
 import type { ChainCut, EntryRow, SessionRow } from './cut'
 
-// The settled history model's rules over a cut (Part 1 §1.6.11.6): the chain order of sessions
+// The settled history model's rules over a cut: the chain order of sessions
 // and its guard, the chronology, "later than the cut", the carry test, and the undo stack's cut
 // and renumbering. Pure functions: the builder (build.ts) applies them.
 
 /** Why a chain can't be written: each is a refusal, never a filtered file. */
 export type ModelRefusal =
-    /** A session or entry kind this build doesn't know (§1.6.11.6): "Needs a newer version". */
+    /** A session or entry kind this build doesn't know: "Needs a newer version". */
     | 'needsNewer'
     /** An older or malformed session generation: not newer, and not read either, so "damaged". */
     | 'unreadableHead'
@@ -32,7 +33,7 @@ export class ModelError extends Error {
 /** A row of the chain with its session's start, for the cut. */
 export type ChainRow = { entry: EntryRow; startedAt: number }
 
-/** Whether this build can write the chain (§1.6.11.6): every session's `v` and entry kinds known. */
+/** Whether this build can write the chain: every session's `v` and entry kinds known. */
 export const checkReadable = (cut: ChainCut) => {
     if (cut.unreadable) throw new ModelError('needsNewer')
     for (const session of cut.sessions) {
@@ -44,7 +45,7 @@ export const checkReadable = (cut: ChainCut) => {
 }
 
 /**
- * The chain's sessions in chain order, by `startedAt` (§1.6.11.6). The guard: sessions sharing a
+ * The chain's sessions in chain order, by `startedAt`. The guard: sessions sharing a
  * `startedAt` (data from before the rule, or a bug) are ordered by their parent links; when the
  * links don't order them, the write fails rather than guess.
  */
@@ -79,7 +80,7 @@ export const orderSessions = (sessions: readonly SessionRow[]): SessionRow[] => 
 
 /**
  * The chain's rows in chain order: its sessions by `startedAt`, each by `seq`. With `upto`, only
- * the sessions up to that one (Save to File… of an earlier session, §1.6.11.6).
+ * the sessions up to that one (Recent Sessions' Save… of an earlier session).
  */
 export const chainRows = (cut: ChainCut, upto?: string): ChainRow[] => {
     const rows: ChainRow[] = []
@@ -94,7 +95,7 @@ export const chainRows = (cut: ChainCut, upto?: string): ChainRow[] => {
 export type Cut = { sessionId: string; seq: number; startedAt: number }
 
 /**
- * "Later than the cut" (§1.6.11.6): a row whose session started after the cut's session, or in
+ * "Later than the cut": a row whose session started after the cut's session, or in
  * that session with a higher `seq`. It needs nothing but the binding, so it holds when the cut's
  * session, or any other, has since been deleted.
  */
@@ -103,7 +104,7 @@ export const isLater = (row: ChainRow, cut: Cut) =>
     (row.entry.sessionId === cut.sessionId && row.entry.seq > cut.seq)
 
 /**
- * Whether the file a binding records holds a history (§1.6.11.2): its cut counts at least one
+ * Whether the file a binding records holds a history: its cut counts at least one
  * entry. A Save without History stores no cut; an open of a file without history stores one of
  * count 0. A file with history always holds an entry (its last write's `save`), so "no cut" and
  * "count 0" both mean no history, and nothing there for a write to carry or keep.
@@ -111,7 +112,7 @@ export const isLater = (row: ChainRow, cut: Cut) =>
 export const bindingHasHistory = (file: { entry?: { count: number } } | undefined) =>
     !!file?.entry && file.entry.count > 0
 
-/** A binding's cut as the carry test reads it (§1.6.11.6). */
+/** A binding's cut as the carry test reads it. */
 export type CountedCut = Cut & { count: number; notKept: number; inexact?: true }
 
 /**
@@ -135,11 +136,11 @@ export const ownRow = (
     return sessionStored(cut.sessionId) ? 'absent' : 'sessionGone'
 }
 
-/** What the carry test finds (§1.6.11.6, I-18): `missing` is known loss, `unproven` is not. */
+/** What the carry test finds: `missing` is known loss, `unproven` is not. */
 export type CarryStatus = 'carries' | 'missing' | 'unproven'
 
 /**
- * The carry test (§1.6.11.6, D25; invariants I-11 and I-18 of spec A): a write that isn't an
+ * The carry test: a write that isn't an
  * append carries its base's `completeFrom` only when the cut isn't `inexact`, the chain holds the
  * cut's own row (`ownRow`), its rows up to the cut still number `cut.count`, and the rows among
  * them that are flagged (stored `kept: false`, or marked by this build) and whose state no
@@ -189,11 +190,22 @@ export const carries = (
     flagged: (row: ChainRow) => boolean,
 ) => carryStatus(rows, cut, base, sessionStored, flagged) === 'carries'
 
-/** The undo stack a write holds: its slots and absolute `base` and `index` (§1.6.11.5). */
+/** The undo stack a write holds: its slots and absolute `base` and `index`. */
 export type WriteStack = { base: number; slots: ReplaySlot[]; index: number }
 
+/** The stack cut to the cap around its index, as the tab and the stored window keep it. */
+export const capStack = (stack: WriteStack): WriteStack => {
+    const kept = cappedSpan(stack.base + stack.slots.length, stack.index, stack.base)
+    const from = kept.base - stack.base
+    return {
+        base: kept.base,
+        slots: stack.slots.slice(from, from + kept.length),
+        index: stack.index,
+    }
+}
+
 /**
- * The stack cut at slots whose snapshot the file doesn't hold (§1.3.9): the longest run of held
+ * The stack cut at slots whose snapshot the file doesn't hold: the longest run of held
  * slots around the index. The head itself is always held.
  */
 export const cutStack = (stack: WriteStack, held: (slot: ReplaySlot) => boolean): WriteStack => {
@@ -210,7 +222,7 @@ export const cutStack = (stack: WriteStack, held: (slot: ReplaySlot) => boolean)
 }
 
 /**
- * How far the session's slot numbers are from the file's (§1.6.11.5): absolute numbers in a file
+ * How far the session's slot numbers are from the file's: absolute numbers in a file
  * count from replay of its own first entry, so a chronology that starts later than the session's
  * numbering (sessions removed before it) is renumbered. Replay of the written chronology gives
  * the file's index and stack; undefined when replay can't follow it.

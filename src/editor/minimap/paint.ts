@@ -1,4 +1,4 @@
-// Everything the minimap draws on its content canvas (design §4.3 and §4.4): positions, the
+// Everything the minimap draws on its content canvas: positions, the
 // canonical paint order, the gutter rules, hold and slide bodies, notes and their colours.
 // A band redraw and a full redraw paint the same items in this order, so they blend identically.
 

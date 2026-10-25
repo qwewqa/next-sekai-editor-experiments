@@ -3,7 +3,6 @@ import test from 'node:test'
 import {
     isKnownEntryKind,
     isKnownNodeType,
-    isListedUserAsset,
     isNewerRootVersion,
     isNewerSessionVersion,
     isReadableChain,
@@ -40,7 +39,7 @@ test('an unknown entry kind or a newer root makes a session, and its chain, unre
     assert.equal(isKnownEntryKind('recovered'), true)
 })
 
-test('unknown enum values follow §1.6.11.2’s table', () => {
+test('unknown enum values follow the field table', () => {
     assert.equal(readOrigin('continued'), 'continued')
     assert.equal(readOrigin('fallback'), undefined)
     assert.deepEqual(readFileEvent('saved', undefined), { event: 'saved', confirmed: false })
@@ -48,8 +47,6 @@ test('unknown enum values follow §1.6.11.2’s table', () => {
     assert.deepEqual(readFileEvent('synced', true), { event: 'downloaded', confirmed: false })
     assert.equal(readMediaKind('cover'), 'cover')
     assert.equal(readMediaKind('thumbnail'), undefined)
-    assert.equal(isListedUserAsset('skin'), true)
-    assert.equal(isListedUserAsset('font'), false)
     assert.equal(isKnownNodeType('root'), true)
     assert.equal(isKnownNodeType('tree'), false)
 })

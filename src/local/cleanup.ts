@@ -7,7 +7,7 @@ import { headOf } from './open/earlier'
 import { isKnownNodeType, isNewerRootVersion, isNewerSessionVersion } from './records/unknownValues'
 import type { StorageCore } from './worker/core'
 
-// Cleanup under pressure (deletion design §3.7, DEL-D1 final): the one automatic removal of stored
+// Cleanup under pressure: the one automatic removal of stored
 // data, and it removes only cached earlier media, the media rows no chain's latest state uses. It
 // never removes Timeline history. An earlier step whose BGM went says "BGM not loaded" and offers
 // Choose Audio…; the open tab's own audio and the flush's re-store of held media cover the rest.
@@ -43,7 +43,7 @@ const packed = (value: unknown): Uint8Array[] => {
 
 class Unsafe extends Error {}
 
-/** A session's last entry's snapshot: where it landed when its stack was removed (§2.5). */
+/** A session's last entry's snapshot: where it landed when its stack was removed. */
 const lastSnapshot = async (tx: KvTx, session: Row) => {
     if (typeof session.lastSeq !== 'number') return
     const entry = await tx.get('entries', [session.id as string, session.lastSeq])

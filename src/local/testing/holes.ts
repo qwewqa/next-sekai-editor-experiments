@@ -1,7 +1,7 @@
 import type { FlushDeps, Flusher } from '../flush'
 
-// The holes the flusher makes (spec A, R2-2 and R3-7): a `seq` below a session's `lastSeq`
-// with no row is allowed (I-3) when a Save reserved it and its end did not add a `save` row there.
+// The holes the flusher makes: a `seq` below a session's `lastSeq`
+// with no row is allowed when a Save reserved it and its end did not add a `save` row there.
 // The ledger learns them from every `reserveSave`, from every `endSave` that did not put a `save`
 // entry in `pending` at its `seq` (decided as the end returns), and from the marker a resume reads
 // (`reservedSeq`): a resume numbers past the marker, so every `seq` it jumps over, from the stored

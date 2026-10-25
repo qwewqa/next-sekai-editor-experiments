@@ -4,7 +4,6 @@ import { vFocusRescue } from '../../directives/focusRescue'
 import { i18n } from '../../i18n'
 import { formatDate } from '../../i18n/when'
 import { showModal } from '../../modals'
-import type { DeleteChain } from '../../local/deleteSessions'
 import { storageStatus } from '../../local/startup/events'
 import type { RecoveryItem } from '../../local/startup/api'
 import { showChoice } from '../../modals/choice'
@@ -14,8 +13,10 @@ import { FileError, platform } from '../../platform'
 import { isSafeMode } from '../../safe'
 import { settings } from '../../settings'
 import { interpolate, interpolateRaw } from '../../utils/interpolate'
+import { commands } from '../commands'
 import { formatSize } from '../commands/exportLevel/format'
 import { fileErrorText } from '../commands/exportLevel/ui'
+import { runCommand } from '../commands/runCommand'
 import { notStored } from '../file/notStored'
 import { pausedReasonLine } from '../file/notStoredReason'
 import { tryStoringAgain } from '../file/tryAgain'
@@ -23,30 +24,34 @@ import { showHistoryLink } from '../history/openHistory'
 import { loadNotices, notify } from '../notification'
 import SeverityIcon from '../SeverityIcon.vue'
 import type { RawExportRun } from '../../startup/rawExportNote'
-import { shownName } from '../shownName'
 import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
-import { confirmLines } from './deleteChoices'
-import DeleteSessionsDialog from './DeleteSessionsDialog.vue'
+import { canDeleteSessions, deleteSessionsRunning } from './deleteSessionsFlow'
 import SettingsSection from './SettingsSection.vue'
-import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
+import {
+    browserStorage,
+    readBrowserStorage,
+    storageLineKey,
+    storageUnavailable,
+} from './storageLine'
 
-// Settings › Local Data (Part 1 §1.4.14): the storage line, the Storage subsection (what the
-// browser holds, why changes are not being stored, Delete Sessions…) and Recovery: Open History,
-// the rows for what the recovery order set aside, Export Raw Data… and this load's notices. In
-// safe mode it only reads: no Delete Sessions…, no Discard….
+// Settings › Local Data: the storage line, the Storage subsection (what the
+// browser holds, why changes are not being stored, Delete Sessions…), Recovery (Open History, the
+// rows for what the recovery order set aside, Export Raw Data…) and Startup Notices, this load's
+// notices. In safe mode it only reads: no Delete Sessions…, no Discard….
 
 const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
 const safe = isSafeMode()
 
-// --- The storage line (§1.4.13).
-const facts = ref<Awaited<ReturnType<typeof readBrowserFacts>>>()
-onMounted(async () => {
-    facts.value = await readBrowserFacts()
+// --- The storage line and the total. Both show at once from the read kept since startup, and
+// update in place when the read started on mount ends. If no read has ended yet, they appear when
+// one does.
+onMounted(() => {
+    void readBrowserStorage()
 })
 const storageLine = computed(() => {
-    const known = facts.value
+    const known = browserStorage.value?.facts
     const status = storageStatus.value
     if (!known || !status) return
     return i18n.value.storage[
@@ -55,22 +60,8 @@ const storageLine = computed(() => {
 })
 
 // --- Storage: the total the browser holds, the not-stored line, Delete Sessions….
-const stored = ref<{ usage: number; quota: number }>()
-// Without both figures no number shows: a guess would be worse than none.
-const readTotal = async () => {
-    try {
-        const { usage, quota } = await navigator.storage.estimate()
-        stored.value =
-            usage !== undefined && quota !== undefined && Number.isFinite(usage) && quota > 0
-                ? { usage, quota }
-                : undefined
-    } catch {
-        stored.value = undefined
-    }
-}
-onMounted(readTotal)
 const storedText = computed(() => {
-    const total = stored.value
+    const total = browserStorage.value?.total
     // In memory nothing is stored here, whatever the browser holds for the origin.
     if (!total || !storageStatus.value || storageStatus.value.mode === 'memory') return
     return interpolateRaw(strings.value.stored, formatSize(total.usage), formatSize(total.quota))
@@ -101,17 +92,12 @@ const retryOrReload = async (action: 'retry' | 'reload') => {
     }
 }
 
-// Delete Sessions… acts on the stored database: not while an upgrade holds it, not in safe mode.
-const canDelete = computed(() => {
-    const status = storageStatus.value
-    return !safe && status?.mode === 'stored' && status.reason !== 'upgrading'
-})
 const hasStorage = computed(
     () =>
         storageLine.value !== undefined ||
         storedText.value !== undefined ||
         notStoredLine.value !== undefined ||
-        canDelete.value,
+        canDeleteSessions.value,
 )
 
 // --- Recovery rows. The storage-side modules load when a row is acted on.
@@ -146,8 +132,6 @@ const label = (item: RecoveryItem) => {
             const text = interpolateRaw(recovery.autoSave, size)
             return item.readable ? text : `${text} ${strings.value.cannotOpen}`
         }
-        case 'legacy':
-            return interpolateRaw(recovery.legacy, size)
         case 'recovered':
             return interpolateRaw(recovery.unreadable, formatDate(item.foundAt), size)
     }
@@ -188,7 +172,7 @@ const download = async (item: RecoveryItem) => {
 }
 
 // Open replaces what this tab shows, so it asks first when that would lose work. The old auto
-// save opens when this build reads it (§1.8 step 5); its key stays until discarded.
+// save opens when this build reads it; its key stays until discarded.
 const open = async (item: RecoveryItem & { kind: 'journal' | 'autoSave' }) => {
     if (!(await confirmSwitch())) return
     const recovery = await api()
@@ -204,7 +188,7 @@ const open = async (item: RecoveryItem & { kind: 'journal' | 'autoSave' }) => {
     )
 }
 
-// Downloading is the safe default, and removes nothing (§1.4.14).
+// Downloading is the safe default, and removes nothing.
 const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) => {
     const size = formatSize(item.size)
     const choice = await showChoice<'discard' | 'download'>({
@@ -229,12 +213,13 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
     }
 }
 
-// The setting is the web's (§1.4.14): not offered where downloads are never confirmed (iPhone and
-// iPad never show the close prompt, §1.4.9), and not in the apps, which close on their own terms.
+// The setting is the web's: not offered where downloads are never confirmed (iPhone and
+// iPad never show the close prompt), and not in the apps, which close on their own terms.
 const showsClosePrompt =
     platform.capabilities.browserStorage && !platform.capabilities.unconfirmedDownloads
 
-const buttonClass = 'btn btn-secondary inline-flex h-9 max-w-full items-center rounded-full px-4'
+// The raised-button geometry (design-language §4).
+const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
 
 // For people with customised toolbars: closes Settings first, so History is not behind it.
 const openHistory = () => {
@@ -247,97 +232,21 @@ const afterRowGone = () =>
     document.querySelector<HTMLElement>('[data-recovery-row] button') ??
     document.querySelector<HTMLElement>('[data-open-history]')
 
-// --- Delete Sessions…: the choice, the confirm, then the removal with its progress.
-const deleting = ref(false)
+// --- Delete Sessions…: the command, as the History band and a bound key run it; the total is read again after.
 const deleteSessions = async () => {
-    if (deleting.value) return
-    deleting.value = true
-    try {
-        const sessions = await import('../../local/deleteSessions')
-        // Read first, so the dialog never shows counts it does not know.
-        const read = await sessions.readDeleteChoices()
-        if (read.storedRead === 'failed') {
-            notify(() => i18n.value.history.sessions.loadFailed, { card: true, severity: 'error' })
-            return
-        }
-        const targets: DeleteChain[] | undefined = await showModal(DeleteSessionsDialog, {
-            chains: read.storedValue,
-        })
-        if (!targets?.length) return
-        // Cancel is the default: a stray Enter deletes nothing.
-        const confirmed = await showChoice({
-            title: () => strings.value.deleteTitle,
-            lines: () => {
-                const { history, modals } = i18n.value
-                return confirmLines(targets, (chain) => shownName(chain.name), {
-                    confirm: strings.value.deleteConfirm,
-                    notSaved: strings.value.notSaved,
-                    namesMore: strings.value.namesMore,
-                    newer: strings.value.newer,
-                    listJoin: modals.form.listJoin,
-                    quoted: history.quoted,
-                })
-            },
-            choices: [{ value: true, label: () => i18n.value.modals.confirm.delete, danger: true }],
-            cancelIsDefault: true,
-        })
-        if (!confirmed) return
-        const abort = new AbortController()
-        const outcome = sessions
-            .deleteSessions(targets, undefined, abort.signal)
-            .catch((error: unknown) => {
-                console.error(error)
-                return { kind: 'failed' as const, deleted: 0 }
-            })
-        // Closing the dialog stops the run between chains; each chain's removal is whole.
-        await showModal(LoadingModal, {
-            title: () => strings.value.deleteTitle,
-            async *task(signal: AbortSignal) {
-                const cancel = () => {
-                    abort.abort()
-                }
-                signal.addEventListener('abort', cancel, { once: true })
-                yield () => strings.value.deleting
-                try {
-                    await outcome
-                } finally {
-                    signal.removeEventListener('abort', cancel)
-                }
-            },
-        })
-        const result = await outcome
-        // A card, not a quick toast that fades over the open dialog. What was asked for and did not
-        // go is never silent; closing the dialog asked to stop.
-        const notDeleted = abort.signal.aborted ? 0 : targets.length - result.deleted
-        const done =
-            result.deleted > 0
-                ? interpolate(() => i18n.value.session.deletedMany, String(result.deleted))
-                : undefined
-        const failed =
-            notDeleted > 0
-                ? interpolate(() => strings.value.notDeleted, String(notDeleted))
-                : undefined
-        if (done && failed)
-            notify(() => done() + '\n' + failed(), {
-                lines: [{ message: done }, { message: failed, severity: 'error' }],
-            })
-        else if (done) notify(done, { card: true })
-        else if (failed) notify(failed, { card: true, severity: 'error' })
-        await readTotal()
-    } finally {
-        deleting.value = false
-    }
+    await runCommand(commands.deleteSessions)
+    await readBrowserStorage()
 }
 
 // --- Export Raw Data…: everything stored, as stored, for reporting a problem.
 const exportRaw = async () => {
     const outcome: { run?: RawExportRun } = {}
     await showModal(LoadingModal, {
-        title: () => strings.value.exportRaw,
-        async *task() {
+        title: () => strings.value.exportRawTitle,
+        async *task(signal: AbortSignal) {
             yield () => i18n.value.modals.loading.loading
             const action = await import('../../startup/rawExportAction')
-            const run = (outcome.run = await action.runRawExportAction())
+            const run = (outcome.run = await action.runRawExportAction(signal))
             // The modal says what failed, and stays for the user to close.
             if (run.kind === 'failed')
                 throw new Error(
@@ -405,11 +314,11 @@ const exportRaw = async () => {
                 </button>
             </div>
 
-            <div v-if="canDelete">
+            <div v-if="canDeleteSessions">
                 <button
                     type="button"
                     :class="buttonClass"
-                    :disabled="deleting"
+                    :disabled="deleteSessionsRunning"
                     data-delete-sessions-open
                     @click="deleteSessions"
                 >
@@ -475,15 +384,15 @@ const exportRaw = async () => {
                 </button>
                 <span class="text-sm text-fg/80">{{ strings.exportRawNote }}</span>
             </div>
+        </div>
 
-            <div v-if="loadNotices.length" class="flex flex-col gap-1" data-at-load>
-                <div class="text-sm font-bold text-fg/80">{{ strings.recovery.atLoad }}</div>
-                <ul class="flex list-disc flex-col gap-1 pl-5">
-                    <li v-for="(notice, i) in loadNotices" :key="i">
-                        {{ notice.message() }}
-                    </li>
-                </ul>
-            </div>
+        <div v-if="loadNotices.length" class="flex flex-col gap-3" data-at-load>
+            <h3 class="text-sm font-bold text-fg/80">{{ strings.startupNoticesHeading }}</h3>
+            <ul class="flex list-disc flex-col gap-1 pl-5">
+                <li v-for="(notice, i) in loadNotices" :key="i">
+                    {{ notice.message() }}
+                </li>
+            </ul>
         </div>
     </SettingsSection>
 </template>

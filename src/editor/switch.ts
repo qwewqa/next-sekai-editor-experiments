@@ -10,7 +10,7 @@ import { takeBgmLine } from './commands/bgm/chooseAudio'
 import { runCommand } from './commands/runCommand'
 import { save } from './commands/save'
 import { chipSentence } from './file/chipDialogs'
-import { hasChangesNotInFile } from './file/closePrompt'
+import { hasChangesNotInFile, hasEditsNotInFile, loadStoring } from './file/closePrompt'
 import { confirmFile, downloadNotConfirmed, fileChanged } from './file/state'
 import {
     dismissNoticeCard,
@@ -24,15 +24,16 @@ import { shownName } from './shownName'
 import { withSwitchRequest, type SwitchRequest } from './switchRequest'
 
 // Leaving a session in this tab (New, Open, Reopen, Restore as a Copy, Leave Safe Mode): the
-// in-app not-stored prompt (Part 1 §1.4.9), and the Reopen notice that follows (§1.4.1). The
-// storage modules load after first paint, so they are imported when a switch runs.
+// in-app not-stored prompt, New's unsaved-changes prompt, and the Reopen notice
+// that follows. The storage modules load after first paint, so they are imported when a
+// switch runs.
 
 /**
- * Whether leaving the open session loses work (§1.4.9): it has changes no file holds, and it
+ * Whether leaving the open session loses work: it has changes no file holds, and it
  * isn't durably stored. The journal is written first, as every switch does.
  */
 const wouldLoseWork = async () => {
-    const { flusher, isDurablyStored } = await import('../local/storing')
+    const { flusher, isDurablyStored } = await loadStoring()
     const session = flusher?.session
     // Before storing starts, or in safe mode, nothing is stored: today's changes flag decides.
     const edited = session ? session.edited && isDirty.value : isDirty.value
@@ -42,13 +43,26 @@ const wouldLoseWork = async () => {
 }
 
 /**
- * Asks before a switch that would lose work: "Your changes are not being stored in this browser.
- * Leaving loses them." [Cancel] [Leave Anyway] [Save]. True to go on; Cancel and Save stay.
+ * New asks before it replaces a chart with edits no file holds: "Unsaved Changes"
+ * [New] [Cancel], Cancel being the default, so a stray `n` replaces nothing.
  */
-export const confirmSwitch = async () => {
-    if (!(await wouldLoseWork())) return true
+const confirmUnsaved = async () =>
+    !hasEditsNotInFile() ||
+    !!(await showChoice({
+        title: () => i18n.value.prompt.unsaved,
+        choices: [{ value: true, label: () => i18n.value.commands.reset.title, danger: true }],
+        cancelIsDefault: true,
+    }))
+
+/**
+ * Asks before a switch that would lose work: "Your changes are not being stored in this browser.
+ * Leaving will discard them." [Cancel] [Leave Anyway] [Save]. True to go on; Cancel and Save stay.
+ * `unsaved` (New): otherwise asks too when the chart has edits no file holds, never twice.
+ */
+export const confirmSwitch = async ({ unsaved = false } = {}) => {
+    if (!(await wouldLoseWork())) return !unsaved || (await confirmUnsaved())
     // The work is in a download that is not confirmed: Save would only offer it again, so the
-    // way out is the confirm (§1.3.4).
+    // way out is the confirm.
     if (downloadNotConfirmed.value && !fileChanged.value) {
         const choice = await showChoice<'leave' | 'confirm'>({
             title: () => i18n.value.confirm.title,
@@ -69,7 +83,7 @@ export const confirmSwitch = async () => {
             { value: 'save', label: () => i18n.value.prompt.save, default: true },
         ],
     })
-    // This session's Save (§1.4.7); the switch is left for the user to repeat.
+    // This session's Save; the switch is left for the user to repeat.
     if (choice === 'save') await runCommand(save)
     return choice === 'leave'
 }
@@ -166,11 +180,11 @@ export const restoreCopy = (sessionId: string) =>
 
 /**
  * The notice after a switch: its message, and Reopen "<previous>" while the session left can be
- * reopened (§1.4.1), unless `offer` is false. When it turns out not to be (Leave Anyway), the
+ * reopened, unless `offer` is false. When it turns out not to be (Leave Anyway), the
  * notice is plain. `line` is a second row of the card (the BGM that is not loaded).
  */
 export const notifyLeft = (message: () => string, offer = true, line?: NoticeLine) => {
-    // The switch ends the session the cards were raised in (Part 1 §1.4.1).
+    // The switch ends the session the cards were raised in.
     dismissNoticeCard()
     const left = previousSession.value
     const plain = () => {

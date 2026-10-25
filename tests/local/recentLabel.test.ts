@@ -12,7 +12,7 @@ import { goldenChart, stateOf } from './records/charts'
 import { beginIn, handlersOf, readOpen } from './startup/harness'
 import { widen } from './timeline/helpers'
 
-// A Recent Sessions row of a closed chain whose file another chain took over (§1.3.4): the list
+// A Recent Sessions row of a closed chain whose file another chain took over: the list
 // read and the label a row shows, `labelOf`, the status bar's.
 
 // `labelOf` reads the catalogue and the locale: the English catalogue and a settings object with
@@ -37,7 +37,7 @@ registerHooks({
 
 const { labelLine, labelOf } = await import('../../src/editor/fileLabel')
 
-test('a row whose file another chain took over reads "Not saved to a file"', async () => {
+test('a row whose file another chain took over reads "Unsaved"', async () => {
     const world = createWorld({ seed: 1 })
     const page = await openPage(world, world.tab('a'))
     const state = stateOf(goldenChart())
@@ -92,5 +92,5 @@ test('a row whose file another chain took over reads "Not saved to a file"', asy
         })
         assert.ok(revoked)
     })
-    assert.equal(await row(), 'not saved to a file')
+    assert.equal(await row(), 'unsaved')
 })

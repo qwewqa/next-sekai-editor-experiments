@@ -9,7 +9,7 @@ import { operationTime } from '../../../src/history/operationPresentation/format
 import type { OperationStrings } from '../../../src/history/operationPresentation/types'
 import * as dateTime from '../../../src/i18n/dateTime'
 
-// I-1: every text History writes comes from one calendar's zone. The Intl formatters are cached, so
+// Every text History writes comes from one calendar's zone. The Intl formatters are cached, so
 // each is run in one zone, then another, then the first again, with the cache warm. The host runs
 // in Kiritimati (UTC+14), so a text in the engine's zone cannot pass for either.
 process.env.TZ = 'Pacific/Kiritimati'

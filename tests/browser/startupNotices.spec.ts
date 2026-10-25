@@ -1,9 +1,9 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { confirmWhenReady } from './confirmWhenReady'
+import { confirmNew, confirmWhenReady } from './confirmWhenReady'
 import { closePage } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
-// Step 4's UI (Part 1 §1.4.3, §1.3.4, §1.4.1, §1.4.9, §1.4.14): the load notices in the start-up
+// The load notices in the start-up
 // pill with their actions, the status bar label and the page title, the Reopen notice, the in-app
 // not-stored prompt, and Settings › Local Data's Recovery rows.
 
@@ -104,6 +104,15 @@ const run = (page: Page, id: string) =>
         await runCommand(commands[id as keyof typeof commands])
     }, id)
 
+const unsaved = (page: Page) => page.getByRole('dialog', { name: 'Unsaved Changes' })
+
+/** New on a chart with unsaved changes: it asks first, and New goes on. */
+const runNew = async (page: Page) => {
+    const going = run(page, 'reset')
+    await confirmNew(page)
+    await going
+}
+
 const addEvent = (page: Page, event: object) =>
     page.evaluate(async (event) => {
         const { addLoadEvent } =
@@ -134,7 +143,7 @@ test.describe('load notices in the start-up pill', () => {
         )
         // No storage line at load, on any override (Z22).
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
-        // Its one button is Open History (Step 5), so the pill sits with the action notices.
+        // Its one button is Open History, so the pill sits with the action notices.
         await expect(pill(next).locator('[data-notice-action]')).toHaveText(['Open History'])
         // It goes at the first edit.
         await edit(next, 980)
@@ -155,7 +164,7 @@ test.describe('load notices in the start-up pill', () => {
         await closePage(page, { runBeforeUnload: false })
         const next = await context.newPage()
         await visit(next)
-        await expect(pill(next)).toContainText(/Continued ".+" from auto save\./)
+        await expect(pill(next)).toContainText(/Continued ".+" from the old auto save\./)
         await expect(pill(next)).not.toContainText(/ from [A-Z][a-z]{2} \d/)
     })
 
@@ -229,7 +238,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(lines).toHaveText([
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
-            'Continued "Coconut (Master)" from auto save.',
+            'Continued "Coconut (Master)" from the old auto save.',
             'A recovered change needs a newer version of the editor.',
         ])
     })
@@ -248,6 +257,10 @@ test.describe('load notices in the start-up pill', () => {
                     (await import('/src/history/index.ts')) as typeof import('../../src/history')
                 resetState(false)
             })
+            // A load notice comes at load, before any edit: a reload keeps this tab's blank session.
+            await page.reload()
+            await expect(page.locator('canvas.editor-chart')).toBeVisible()
+            await opened(page)
             expect(await lifeOf(page)).toBe(1000)
             const name = { name: { kind: 'name', text: 'Coconut (Master)' }, at: Date.now() }
             await addEvent(
@@ -298,7 +311,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(heading).toBeInViewport()
         // Every notice of this load is listed there, not only the three on the pill.
         const atLoad = page.locator('[data-at-load]')
-        await expect(atLoad).toContainText('Startup Notices')
+        await expect(atLoad.getByRole('heading', { name: 'Startup Notices' })).toBeVisible()
         await expect(atLoad.locator('li')).toHaveText([
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             'The old auto save could not be restored.',
@@ -371,6 +384,39 @@ test.describe('load notices in the start-up pill', () => {
         await expect(page.locator('[data-notice-close]')).toHaveCount(0)
     })
 
+    // A line found late (a resumed import finding damaged history) while the clean load's toast
+    // is still the quick notice: only kept, never a card at an arbitrary time.
+    for (const after of ['an edit', '12 s'] as const)
+        test(`a load notice after ${after} is kept for Local Data, with no card`, async ({
+            page,
+        }) => {
+            await visit(page)
+            await expect(page.locator('.notification')).toHaveText(
+                'Next SEKAI Editor\nVersion 0.6.0',
+            )
+            if (after === 'an edit') await edit(page, 990)
+            else
+                await page.evaluate(() => {
+                    const now = performance.now.bind(performance)
+                    performance.now = () => now() + 12_000
+                })
+            const shown = await page.evaluate(async () => {
+                const n =
+                    (await import('/src/editor/notification.ts')) as typeof import('../../src/editor/notification')
+                const startup = n.notification.value.startup === true
+                n.addLoadNotice(() => 'Late line.', undefined, 0, 'warning')
+                return { startup, card: n.noticeCard.value !== undefined }
+            })
+            expect(shown).toEqual({ startup: true, card: false })
+            await expect(pill(page)).toHaveCount(0)
+            await page.evaluate(async () => {
+                const { openSettings } =
+                    (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
+                void openSettings('localData')
+            })
+            await expect(page.locator('[data-at-load] li')).toHaveText(['Late line.'])
+        })
+
     test.describe('on a phone', () => {
         test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })
 
@@ -398,7 +444,7 @@ test.describe('load notices in the start-up pill', () => {
     test.describe('on a touch tablet', () => {
         test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true })
 
-        test('the card goes back above the toolbar when the History sheet closes (X-8)', async ({
+        test('the card goes back above the toolbar when the History sheet closes', async ({
             page,
         }) => {
             await visit(page)
@@ -440,7 +486,7 @@ test.describe('load notices in the start-up pill', () => {
         // phone's, where the heading has 118 px.
         test.use({ viewport: { width: 560, height: 390 }, hasTouch: true, isMobile: true })
 
-        test('the heading keeps the version whole, on a line of its own when it must (X-9)', async ({
+        test('the heading keeps the version whole, on a line of its own when it must', async ({
             page,
             context,
         }) => {
@@ -538,6 +584,44 @@ test.describe('load notices in the start-up pill', () => {
         })
     })
 
+    test.describe('on a phone with the dock open', () => {
+        // The pane under the dock is 360 × 312: too narrow for the right sheet, and too short for a
+        // bottom sheet with a useful list, so History opens as the full dialog over the card.
+        test.use({ viewport: { width: 360, height: 640 }, hasTouch: true, isMobile: true })
+
+        test('History opens as the full dialog, and the card under it keeps its time', async ({
+            page,
+            context,
+        }) => {
+            await context.addInitScript((prefix) => {
+                localStorage.setItem(`${prefix}showPreview`, 'true')
+                localStorage.setItem(`${prefix}showSidebar`, 'true')
+            }, prefix)
+            await visit(page)
+            await page.clock.install()
+            await addEvent(page, { kind: 'storageCleared' })
+            await expect(pill(page)).toBeVisible()
+            const text = await pill(page).innerText()
+            const { width } = (await pill(page).boundingBox())!
+            await run(page, 'history')
+            const history = page.locator('[data-history-presentation]')
+            await expect(history).toHaveAttribute('data-history-presentation', 'compact')
+            await expect(page.locator('[data-tool-dialog]')).toHaveCount(0)
+            // Under the dialog, its time does not run.
+            await page.clock.runFor(20_000)
+            await page.keyboard.press('Escape')
+            await expect(history).toHaveCount(0)
+            await expect(pill(page)).toBeVisible()
+            expect(await pill(page).innerText()).toBe(text)
+            expect((await pill(page).boundingBox())!.width).toBe(width)
+            // Then it stays its own 8 s.
+            await page.clock.runFor(6_000)
+            await expect(pill(page)).toBeVisible()
+            await page.clock.runFor(2_500)
+            await expect(pill(page)).toHaveCount(0)
+        })
+    })
+
     test('every line is read by the one live region', async ({ page }) => {
         await visit(page)
         await addEvent(page, { kind: 'storageCleared' })
@@ -552,14 +636,12 @@ test.describe('the status bar label', () => {
     const label = (page: Page) => page.locator('[data-status-text]')
     const button = (page: Page) => page.locator('[data-status-label]')
 
-    test('an unbound session shows "not saved to a file", and the page title mirrors it', async ({
-        page,
-    }) => {
+    test('an unbound session shows "unsaved", and the page title mirrors it', async ({ page }) => {
         await visit(page)
         await expect(label(page)).toHaveText(
-            /^Untitled · [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}\s?[AP]M · not saved to a file$/,
+            /^Untitled · [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2}\s?[AP]M · unsaved$/,
         )
-        await expect(page).toHaveTitle(/^Untitled · .* · not saved to a file – Next SEKAI Editor$/)
+        await expect(page).toHaveTitle(/^Untitled · .* · unsaved – Next SEKAI Editor$/)
         await page.evaluate(async () => {
             const { pushState, state } =
                 (await import('/src/history/index.ts')) as typeof import('../../src/history')
@@ -573,8 +655,8 @@ test.describe('the status bar label', () => {
                 },
             )
         })
-        await expect(label(page)).toHaveText('Coconut · not saved to a file')
-        await expect(page).toHaveTitle('Coconut · not saved to a file – Next SEKAI Editor')
+        await expect(label(page)).toHaveText('Coconut · unsaved')
+        await expect(page).toHaveTitle('Coconut · unsaved – Next SEKAI Editor')
     })
 
     test('a bound session shows the file name alone, whatever its Name', async ({
@@ -631,7 +713,7 @@ test.describe('the status bar label', () => {
         )
     })
 
-    // X-13: an untitled chart has no name of its own, so its copy names it by its date, as the
+    // An untitled chart has no name of its own, so its copy names it by its date, as the
     // "open in another tab" notice does, and the label and title never carry an empty name.
     test('a Duplicate Tab of an untitled chart names its date and leaves no empty name', async ({
         page,
@@ -684,7 +766,7 @@ test.describe('the status bar label', () => {
     test('pressing it opens the level’s dialog, and it describes itself', async ({ page }) => {
         await visit(page)
         await expect(button(page)).toHaveAccessibleDescription('Opens Level Info')
-        await expect(button(page)).toHaveAccessibleName(/ · not saved to a file$/)
+        await expect(button(page)).toHaveAccessibleName(/ · unsaved$/)
         await button(page).click()
         await expect(page.getByRole('dialog')).toBeVisible()
     })
@@ -719,7 +801,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         const notice = page.locator('.notification-pill')
         await expect(notice).toContainText('New level')
         await expect(notice.getByRole('button', { name: /^Reopen Session from / })).toBeVisible()
@@ -733,7 +815,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         await run(page, 'undo')
         const notice = page.locator('.notification-pill')
         await expect(notice).toContainText('Nothing to undo')
@@ -747,7 +829,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         await edit(page, 980)
         await run(page, 'undo')
         await run(page, 'undo')
@@ -765,13 +847,13 @@ test.describe('Reopen', () => {
     })
 
     // Reopen and Restore as a Copy say why a session cannot be opened, as Restore Session does,
-    // and the card stops offering a Reopen that cannot work (final review R2 #3).
+    // and the card stops offering a Reopen that cannot work.
     test('Reopen of a session deleted since says so and is offered no more', async ({ page }) => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
         const chainId = await page.evaluate(() => window.nseFlushTest!.flusher.session!.chainId)
-        await run(page, 'reset')
+        await runNew(page)
         const notice = page.locator('.notification-pill')
         const reopen = notice.getByRole('button', { name: /^Reopen / })
         await expect(reopen).toBeVisible()
@@ -821,7 +903,7 @@ test.describe('Reopen', () => {
         await visit(page)
         await edit(page, 990)
         await settled(page)
-        await run(page, 'reset')
+        await runNew(page)
         await expect(
             page.locator('.notification-pill').getByRole('button', { name: /^Reopen / }),
         ).toBeVisible()
@@ -878,11 +960,77 @@ test.describe('Reopen', () => {
         const next = await context.newPage()
         await visit(next)
         expect(await lifeOf(next)).toBe(990)
-        await run(next, 'reset')
+        await runNew(next)
         const notice = next.locator('.notification-pill')
         await notice.getByRole('button', { name: /^Reopen / }).click()
         await expect.poll(() => lifeOf(next)).toBe(990)
     })
+})
+
+// New (`n`) asks before it replaces a chart with unsaved changes (owner 2026-10-23), as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
+test.describe('New with unsaved changes', () => {
+    test('n asks first: Cancel keeps the chart, New makes the new level with Reopen', async ({
+        page,
+    }) => {
+        await visit(page)
+        await edit(page, 990)
+        await settled(page)
+        await page.keyboard.press('n')
+        await expect(unsaved(page)).toBeVisible()
+        // New (danger), then Cancel, the default, on the right: a stray Enter replaces nothing.
+        await expect(unsaved(page).locator('[data-choice-buttons] button')).toHaveText([
+            'New',
+            'Cancel',
+        ])
+        await expect(unsaved(page).getByRole('button', { name: 'Cancel' })).toBeFocused()
+        await confirmWhenReady(unsaved(page).getByRole('button', { name: 'Cancel' }), unsaved(page))
+        expect(await lifeOf(page)).toBe(990)
+        await page.keyboard.press('n')
+        await confirmNew(page)
+        await expect.poll(() => lifeOf(page)).toBe(1000)
+        const notice = page.locator('.notification-pill')
+        await expect(notice).toContainText('New level')
+        await notice.getByRole('button', { name: /^Reopen / }).click()
+        await expect.poll(() => lifeOf(page)).toBe(990)
+    })
+
+    test('n on a fresh level, and right after New, does not ask', async ({ page }) => {
+        await visit(page)
+        await page.keyboard.press('n')
+        await expect(page.locator('.notification')).toHaveText('New level')
+        await page.keyboard.press('n')
+        await expect(page.locator('.notification')).toHaveText('New level')
+        await expect(unsaved(page)).toHaveCount(0)
+    })
+
+    // A download counts as the file here, confirmed or not: the chart stays in Recent Sessions.
+    for (const confirmed of [true, false])
+        test(`n right after a Save does not ask, the download ${confirmed ? 'confirmed' : 'not confirmed'}`, async ({
+            page,
+        }) => {
+            await page.addInitScript(
+                ({ prefix, confirmed }) => {
+                    localStorage.setItem(
+                        'nse.test.platform',
+                        JSON.stringify({ fileSystemAccess: false }),
+                    )
+                    if (confirmed) localStorage.setItem(`${prefix}downloadConfirmed`, 'true')
+                },
+                { prefix, confirmed },
+            )
+            await visit(page)
+            await edit(page, 990)
+            const download = page.waitForEvent('download')
+            const saving = run(page, 'save')
+            const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
+            await save.getByRole('button', { name: 'Save', exact: true }).click()
+            await download
+            await saving
+            await page.keyboard.press('n')
+            await expect.poll(() => lifeOf(page)).toBe(1000)
+            await expect(page.locator('.notification-pill')).toContainText('New level')
+            await expect(unsaved(page)).toHaveCount(0)
+        })
 })
 
 test.describe('the not-stored prompt', () => {
@@ -918,6 +1066,8 @@ test.describe('the not-stored prompt', () => {
         )
         await leaving
         await expect.poll(() => lifeOf(page)).toBe(1000)
+        // One prompt only: New's own question does not follow.
+        await expect(unsaved(page)).toHaveCount(0)
         // Nothing was stored, so the notice is plain.
         await expect(page.locator('.notification')).toHaveText('New level')
         await expect(page.locator('.notification-pill')).toHaveCount(0)
@@ -941,7 +1091,7 @@ test.describe('the not-stored prompt', () => {
         const going = run(page, 'reset')
         const download = page.waitForEvent('download')
         await confirmWhenReady(prompt(page).getByRole('button', { name: 'Save' }), prompt(page))
-        // An unbound session's Save asks for its file first (§1.4.7).
+        // An unbound session's Save asks for its file first.
         const save = page.getByRole('dialog').filter({ hasText: 'Save Project File' })
         await save.getByRole('button', { name: 'Save', exact: true }).click()
         await download
@@ -1061,7 +1211,10 @@ test.describe('Settings › Local Data', () => {
                 (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
             void openSettings()
         })
-        const titles = await page.locator('[data-settings-section] > h2').allTextContents()
+        // The sections after the first screen mount in the frames after the dialog opens.
+        const headings = page.locator('[data-settings-section] > h2')
+        await expect(headings).toHaveCount(10)
+        const titles = await headings.allTextContents()
         expect(titles.map((title) => title.trim())).toEqual([
             'Editor',
             'Local Data',
@@ -1087,7 +1240,7 @@ test.describe('Settings › Local Data', () => {
         await visit(page)
         await openLocalData(page)
         await expect(page.locator('[data-storage-line]')).toHaveText(
-            'Recent Sessions are kept in this browser, which may clear them if space runs low. Save to a file to keep your work.',
+            'Recent Sessions are kept in this browser unless it runs low on space. Save to keep your work.',
         )
     })
 
@@ -1128,7 +1281,7 @@ test.describe('Settings › Local Data', () => {
                 'The editor cannot store changes in this browser.',
             )
             const rows = later.locator('[data-recovery-row]')
-            await expect(rows).toHaveCount(3)
+            await expect(rows).toHaveCount(2)
             const journal = later.locator('[data-recovery-row="journal"]')
             await expect(journal).toContainText(
                 /Unsaved work from an earlier visit, [A-Z][a-z]{2} \d/,
@@ -1138,9 +1291,6 @@ test.describe('Settings › Local Data', () => {
             await expect(autoSave).toContainText('Old auto save')
             await expect(autoSave).toContainText('(cannot be opened in this version)')
             await expect(autoSave.getByRole('button')).toHaveText(['Download', 'Discard…'])
-            const legacy = later.locator('[data-recovery-row="legacy"]')
-            await expect(legacy).toContainText('Recovery copy from an older version')
-            await expect(legacy.getByRole('button')).toHaveText(['Download'])
             // The load notices of this load are listed too.
             await expect(later.locator('[data-at-load] li')).toContainText([
                 'Unsaved work from an earlier visit is in Local Data.',
@@ -1301,13 +1451,13 @@ test('safe mode opens read-only on purpose, so its pill has no "newer version" l
     )
 })
 
-// An app’s built-in browser (Part 1 §1.4.3, §1.4.13, §1.6.10): one more line on the start-up card
+// An app’s built-in browser: one more line on the start-up card
 // with Copy Link, and a storage line in Settings › Local Data.
 test.describe('the in-app browser line', () => {
     const inApp =
         'This looks like an app’s built-in browser. Some features may not work, and stored work may be deleted. To keep your work, open this page in your browser.'
     const inAppStorage =
-        'This looks like an app’s built-in browser, which may delete stored work. To keep your work, open this page in your browser.'
+        'This looks like an app’s built-in browser. Stored work may be deleted. To keep your work, open this page in your browser.'
     const androidWebView =
         'Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0.6613.127 Mobile Safari/537.36'
     const iosWebView =
@@ -1370,7 +1520,7 @@ test.describe('the in-app browser line', () => {
             'Next SEKAI Editor · Version 0.6.0',
             'Work from earlier visits is missing. The browser cleared this site’s storage.',
             inApp,
-            'Continued "Coconut (Master)" from auto save.',
+            'Continued "Coconut (Master)" from the old auto save.',
         ])
     })
 

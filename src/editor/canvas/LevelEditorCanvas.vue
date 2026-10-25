@@ -3,8 +3,9 @@ import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch, watchEffe
 import { beats, keys, times } from '..'
 import { isAppActive } from '../../activity'
 import { state } from '../../history'
+import { playbackBgm } from '../../history/bgm'
 import { defaultGroupId } from '../../history/groups'
-import { cullAllEntities } from '../../history/store'
+import { cullAllEntities, cullEntities } from '../../history/store'
 import { isPlaying } from '../../player'
 import { previewEdit } from '../../preview/edit'
 import { settings } from '../../settings'
@@ -23,6 +24,7 @@ import { BPM_LABEL } from '../../state/entities/bpm'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { beatToTime, isSameTempo, timeToBeat } from '../../state/integrals/bpms'
 import { computedArray } from '../../utils/array'
+import { computedRange } from '../../utils/range'
 import { activateEditorNavigation, controlsForNavigation, useCanvasCursor } from '../controls'
 import { isDragging } from '../controls/gestures/recognizers/drag'
 import { computedVisibleEntities, isEntityInBeatRange } from '../entities/visibility'
@@ -51,12 +53,14 @@ import OffscreenNoteIndicators from '../OffscreenNoteIndicators.vue'
 import QuickScrollZone from '../QuickScrollZone.vue'
 import { hitOffscreenIndicator, useOffscreenIndicators } from '../offscreenIndicators'
 import {
-    groupOffscreenNotes,
     isSameOffscreenGroups,
     OFFSCREEN_REACH,
     offscreenSlotNear,
+    placeOffscreenSlots,
     RANGE_LABEL_HEIGHT,
+    slotOffscreenNotes,
     type OffscreenNoteGroup,
+    type OffscreenSlots,
 } from '../offscreenNotes'
 import {
     edgeLabelBoxes,
@@ -87,11 +91,12 @@ import { createNoteRenderer } from './notes'
 import { raisedToolChain } from '../raisedTool'
 import { orderEntities, raisedChains, toDrawSteps, type DrawStep } from './ordering'
 import { createFrameScheduler, prepareSurface } from './surface'
+import { timed } from '../../perf/probe'
 import { clearTextWidths, FIGURE_MIDDLE, measureFigureMiddle, measureTextMiddle } from './text'
 import type { EdgeLabelYs, EditorDrawContext } from './types'
 import { createWaveformRenderer } from './waveform'
 import { createComposedLayout } from '../composed'
-import { createStageSurface, SUSTAINED_MS } from './stageSurface'
+import { createStageSurface } from './stageSurface'
 import { VectorRanges } from './vectorRanges'
 import { SectionPlanner, selectSections, type SectionPlan } from './sections'
 
@@ -109,9 +114,6 @@ const fontMiddle = ref(0.25)
 const figureMiddle = ref(FIGURE_MIDDLE)
 const redrawVersion = ref(0)
 const waveformVersion = ref(0)
-// Bumped once shifted stage pixels have held still for a motion's gap, to redraw them exactly.
-const stageSettle = ref(0)
-let stageSettleTimer: ReturnType<typeof setTimeout> | undefined
 const chartFrame = createFrameScheduler()
 const overlayFrame = createFrameScheduler()
 const notes = createNoteRenderer()
@@ -231,33 +233,17 @@ const sceneHovered = computed(() =>
 const hoveredSet = computed(() => new Set(sceneHovered.value))
 // Badges count notes as far past the pane as their slots reach.
 const offscreenRange = computed(() => beatRange(OFFSCREEN_REACH + 4))
+// The keys already reach that far, and the grouping leaves out any note past its slots, so the
+// candidates need no range of their own outside a previewed drop. Whole chunks of keys are taken,
+// so scrolling regroups them once a chunk.
+const OFFSCREEN_CHUNK = 8
+const offscreenKeys = computedRange(() => ({
+    min: Math.floor(keys.value.min / OFFSCREEN_CHUNK) * OFFSCREEN_CHUNK,
+    max: Math.ceil((keys.value.max + 1) / OFFSCREEN_CHUNK) * OFFSCREEN_CHUNK - 1,
+}))
 const offscreenNotes = computedArray(() => {
-    const { min, max } = offscreenRange.value
-    return culledEntities.value.filter(
-        (entity) => entity.type === 'note' && isEntityInBeatRange(entity, min, max),
-    )
-})
-// Note spans in lanes and seconds, which scrolling leaves unchanged.
-const offscreenCandidates = computed(() => {
-    const bpms = sceneState.value.bpms
-    const layout = composed.value
-    const { entities, selected } = showEntities(offscreenNotes.value, () => offscreenRange.value)
-    return orderEntities(entities, selected, visibility(), chains.value).flatMap(
-        ({ entity, highlighted, opacity }) => {
-            if (entity.type !== 'note') return []
-            const position = layout?.notePosition(entity) ?? entity
-            return [
-                {
-                    entity,
-                    left: position.left,
-                    right: position.left + position.size,
-                    time: beatToTime(bpms, entity.beat),
-                    highlighted,
-                    opacity,
-                },
-            ]
-        },
-    )
+    const { min, max } = offscreenKeys.value
+    return [...cullEntities('note', min, max, sceneState.value.store)]
 })
 // Only horizontal scrolling and zoom change which notes are off a side.
 const offscreenAxis = computed<{ l: number; scale: number; width: number }>((previous) => {
@@ -267,13 +253,31 @@ const offscreenAxis = computed<{ l: number; scale: number; width: number }>((pre
         ? previous
         : { l, scale, width: view.w }
 })
+// The notes off a side, with their spans in pane x and their times. Notes in the lanes are left
+// out before ordering, which is per entity: the few that remain keep their painter order.
 const offscreenSideNotes = computed(() => {
     const { l, scale, width } = offscreenAxis.value
-    return offscreenCandidates.value.flatMap((note) => {
-        const left = (note.left - l) * scale
-        const right = (note.right - l) * scale
-        return right < 0 || left > width ? [{ ...note, left, right }] : []
-    })
+    const bpms = sceneState.value.bpms
+    const layout = composed.value
+    const { entities, selected } = showEntities(offscreenNotes.value, () => offscreenRange.value)
+    const spans = new Map<Entity, { left: number; right: number }>()
+    const sideNotes: Entity[] = []
+    for (const entity of entities) {
+        if (entity.type !== 'note') continue
+        const position = layout?.notePosition(entity) ?? entity
+        const left = (position.left - l) * scale
+        const right = (position.left + position.size - l) * scale
+        if (right >= 0 && left <= width) continue
+        spans.set(entity, { left, right })
+        sideNotes.push(entity)
+    }
+    return orderEntities(sideNotes, selected, visibility(), chains.value).flatMap(
+        ({ entity, highlighted, opacity }) => {
+            const span = spans.get(entity)
+            if (entity.type !== 'note' || !span) return []
+            return [{ entity, ...span, time: beatToTime(bpms, entity.beat), highlighted, opacity }]
+        },
+    )
 })
 // The pane y badges were last placed from, unrounded.
 let lastOffscreenAnchor = 0
@@ -298,9 +302,9 @@ const offscreenAnchor = computed(() => {
     const ratio = pixelRatio.value
     return Math.round(lastOffscreenAnchor * ratio) / ratio
 })
-const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
+// Scrolling only places these slots, and an unchanged slot keeps its badge.
+const offscreenSlots = computed<OffscreenSlots<NoteEntity>>((previous) => {
     const { time: origin, pixels } = offscreenOrigin.value
-    const anchor = offscreenAnchor.value
     const notes = offscreenSideNotes.value.map(({ entity, left, right, time, ...note }) => ({
         ...note,
         left,
@@ -310,8 +314,12 @@ const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) =>
         // Dimmed notes are counted but not selectable.
         target: isVisible(entity) ? toCommittedEntity(entity) : undefined,
     }))
+    return slotOffscreenNotes(notes, view.w, previous)
+})
+const offscreenGroups = computed<OffscreenNoteGroup<NoteEntity>[]>((previous) => {
+    const anchor = offscreenAnchor.value
     // Clear of the range labels in the corners.
-    const groups = groupOffscreenNotes(notes, view.w, 0, view.h, RANGE_LABEL_HEIGHT, anchor)
+    const groups = placeOffscreenSlots(offscreenSlots.value, 0, view.h, RANGE_LABEL_HEIGHT, anchor)
     // Unchanged badges keep their array, so they don't re-render.
     return previous && isSameOffscreenGroups(previous, groups) ? previous : groups
 })
@@ -597,11 +605,12 @@ watchEffect(
         const covered = coveredYs.value
         const ghostYs = ghostBpmYs.value
         const currentLabels = labels.value
-        const currentWaveform = settings.waveform === 'off' ? undefined : inputs.state.bgm.waveform
-        const offset = inputs.state.bgm.offset + bgmOffsetDelta.value
+        // The audio that plays, where it plays: a step's peek may keep the live offset.
+        const playback = playbackBgm.value
+        const currentWaveform = settings.waveform === 'off' ? undefined : playback.waveform
+        const offset = playback.offset + bgmOffsetDelta.value
         void waveformVersion.value
-        void stageSettle.value
-        chartFrame.schedule((timestamp) => {
+        const draw = (timestamp: number) => {
             notes.beginFrame(timestamp)
             nameSprites.beginFrame(timestamp)
             const ctx = prepareSurface(
@@ -653,15 +662,7 @@ watchEffect(
                 notes.prepareRuns(context, objects, raisedAt, preview?.entities)
             }
             waveform.draw(context, currentWaveform, offset, currentTimes)
-            const shiftedStages = stages.draw(
-                context,
-                inputs.width,
-                inputs.height,
-                currentBeats,
-                scope,
-                laneDivision,
-            )
-            clearTimeout(stageSettleTimer)
+            stages.draw(context, inputs.width, inputs.height, currentBeats, scope, laneDivision)
             drawGridLines(context, currentBeats, division, laneDivision, beatDisplay, grid)
             ctx.save()
             ctx.strokeStyle = '#fff'
@@ -737,13 +738,8 @@ watchEffect(
             notes.endFrame()
             vectors.endFrame()
             annotations.endFrame()
-            stages.finishFrame()
-            if (shiftedStages) {
-                // Idle time begins after the whole chart is submitted. Slow object
-                // drawing must not consume the pause before an exact settled redraw.
-                stageSettleTimer = setTimeout(() => stageSettle.value++, SUSTAINED_MS)
-            }
-        })
+        }
+        chartFrame.schedule(timed('chartDraw', draw))
     },
     { flush: 'post' },
 )
@@ -784,7 +780,7 @@ watchEffect(
             hover === undefined
                 ? undefined
                 : timeLineEnds(inputs, 6, lineSpanAt(hoverLabelCenter.value, columnBoxes.value))
-        overlayFrame.schedule((timestamp) => {
+        const draw = (timestamp: number) => {
             notes.beginFrame(timestamp)
             nameSprites.beginFrame(timestamp)
             const ctx = prepareSurface(
@@ -885,7 +881,8 @@ watchEffect(
                 strokeDashedTimeLine(ctx, hoverEnds, hover * inputs.ups, inputs.scale)
             ctx.restore()
             ctx.flush()
-        })
+        }
+        overlayFrame.schedule(timed('overlayDraw', draw))
     },
     { flush: 'post' },
 )
@@ -938,7 +935,6 @@ onMounted(() => {
 onUnmounted(() => {
     vectors.clear()
     annotations.clear()
-    clearTimeout(stageSettleTimer)
     chartFrame.cancel()
     overlayFrame.cancel()
     notes.clear()

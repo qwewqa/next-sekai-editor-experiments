@@ -1,6 +1,6 @@
 import { nextTick } from 'vue'
 
-// Where focus goes when an action takes away the control that held it (Part 1 §1.4.10.2): to its
+// Where focus goes when an action takes away the control that held it: to its
 // opener when that is still shown, else to the chart, so the keys never fall to the page's body.
 
 /** Whether focus has fallen to the page: on its body or nowhere, as when its control was removed. */

@@ -1,4 +1,4 @@
-// Pinned `.nxsp` constants (§1.6.11.8); `tests/local/formatVersions.test.ts` asserts each. What
+// Pinned `.nxsp` constants; `tests/local/formatVersions.test.ts` asserts each. What
 // each number guards, and the checklist for changing a format, is `docs/format-versioning.md`.
 
 /** `project.json`'s `format`: how Open recognises a project file. */
@@ -25,7 +25,7 @@ export const NXSP_PATCH = 0
 export const MANIFEST_VERSION = 1
 
 /**
- * The `minor` that introduced each thing a file can use (§1.6.11.8): the writer writes the
+ * The `minor` that introduced each thing a file can use: the writer writes the
  * maximum over what it writes. A table entry is a `minor` only for what an older reader would
  * MISREAD (a later `manifestVersion`, a merge revision). Anything it merely cannot show is
  * additive: it goes in as 0 here and in `PATCH_TABLE` with the `patch` that introduces it (a new

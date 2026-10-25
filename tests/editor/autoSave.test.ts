@@ -5,13 +5,7 @@ import { gzipSync } from 'node:zlib'
 import { parseAutoSave } from '../../src/history/autoSave/parse'
 import { serializeAutoSave } from '../../src/history/autoSave/serialize'
 import { serializeToLevelData } from '../../src/levelData/serialize'
-import { JOURNAL_TOTAL_LIMIT, MemoryStorage } from '../../src/local/journal/store'
-import {
-    legacyFromJournal,
-    toRecoveryFile,
-    writeLegacyRecovery,
-    writesLegacySlot,
-} from '../../src/local/startup/legacy'
+import { toRecoveryFile } from '../../src/local/startup/legacy'
 import { parseAutoSaveSlot } from '../../src/local/startup/steps'
 import { goldenChart, stateOf } from '../local/records/charts'
 
@@ -48,8 +42,8 @@ test('a recovery with a null guide alpha, as older editors saved, restores it as
     assert.deepEqual(parseAutoSave(levelData(null)), { levelData: levelData(1) })
 })
 
-// The migration's and the journal's side of the old auto save (Part 1 §1.8): what a recovery
-// file is, the legacy slot's form, budget and time box, and which slots the migration reads.
+// The old auto save's side of recovery: what a recovery file is, and which slots the
+// migration reads.
 
 const gzipBase64 = (value: unknown) => gzipSync(JSON.stringify(value)).toString('base64')
 
@@ -85,32 +79,6 @@ test('a recovery file is the journal’s or the slot’s gzipped level data as .
     assert.equal(fromRaw.name, 'Recovery.json')
     assert.equal(await fromRaw.blob.text(), raw)
     assert.equal(toRecoveryFile('{"broken').name, 'Recovery.txt')
-})
-
-test('the legacy slot is the old auto save’s v1 form, written until 0.6.3, and left out when space is short', () => {
-    const legacy = legacyFromJournal(
-        { levelDataGz: 'H4sI', editorMetadata: { defaultGuideColors: [3] } },
-        'coconut',
-    )
-    assert.deepEqual(legacy, {
-        version: 1,
-        filename: 'coconut',
-        levelData: 'H4sI',
-        defaultGuideColors: [3],
-    })
-    assert.equal(writesLegacySlot('0.6.0'), true)
-    assert.equal(writesLegacySlot('0.6.2+abc1234'), true)
-    assert.equal(writesLegacySlot('0.6.3'), false)
-    assert.equal(writesLegacySlot('0.7.0'), false)
-    assert.equal(writesLegacySlot('1.0.0'), false)
-
-    const storage = new MemoryStorage()
-    assert.equal(writeLegacyRecovery('small', storage, 'nse.'), true)
-    assert.equal(storage.getItem('nse.legacyRecovery'), 'small')
-    // Journals fill the budget: the legacy slot is the one left out, an older copy removed.
-    storage.setItem('nse.journal.a', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 100))
-    assert.equal(writeLegacyRecovery('y'.repeat(200), storage, 'nse.'), false)
-    assert.equal(storage.getItem('nse.legacyRecovery'), null)
 })
 
 test('the migration reads a slot this build reads whole, and leaves one it doesn’t', () => {

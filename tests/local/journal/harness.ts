@@ -82,8 +82,7 @@ export const openJournalPage = async (
         world,
         world.tab(name),
         {
-            onCommitted: (session, { seq, strict }) =>
-                ref.writer?.committed(session.id, seq, strict),
+            onCommitted: (session, seq) => ref.writer?.committed(session.id, seq),
             onFork: (fork, from) => ref.writer?.forked(from, fork),
             syncStrict: () => {
                 if (ref.sync) failing(ref.sync)
@@ -122,8 +121,7 @@ export const openSplitJournalPage = async (
         ...setup,
         flush: {
             ...setup.flush,
-            onCommitted: (session, { seq, strict }) =>
-                ref.writer?.committed(session.id, seq, strict),
+            onCommitted: (session, seq) => ref.writer?.committed(session.id, seq),
             onFork: (fork, from) => ref.writer?.forked(from, fork),
             syncStrict: async () => {
                 if (ref.sync) failing(ref.sync)

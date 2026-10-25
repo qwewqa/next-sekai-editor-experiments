@@ -3,236 +3,280 @@ import test from 'node:test'
 import type { StageId } from '../../src/chart/stages'
 import { createStageSurface } from '../../src/editor/canvas/stageSurface'
 import type { EditorDrawContext } from '../../src/editor/canvas/types'
-import { fullScope } from '../../src/editor/scopeRules'
+import { createScopeLookup, fullScope, type ScopeLookup } from '../../src/editor/scopeRules'
 
-test('stage cache is lazy, bounded and releases lost or unused backing stores', (t) => {
-    const allocated: ReturnType<typeof canvas>[] = []
-    const resourceOwner = {}
-    const canvas = (width = 0, height = 0) => {
-        const item = {
-            width,
-            height,
-            lost: false,
-            clears: 0,
-            blits: 0,
-            ctx: {
-                globalAlpha: 1,
-                isReady: true,
-                save() {},
-                restore() {},
-                setTransform() {},
-                resourceOwner,
-                maxSurfaceSize: 4096,
-                createStageSurface(width: number, height: number): unknown {
-                    const surface = canvas(width, height)
-                    allocated.push(surface)
-                    return surface
-                },
-                clear() {
-                    item.clears++
-                },
-                clearRect() {
-                    item.clears++
-                },
-                flush() {},
-                drawImage() {
-                    item.blits++
-                },
-                isContextLost() {
-                    return item.lost
-                },
-            },
-            getContext() {
-                return item.ctx
-            },
-            dispose() {
-                item.width = item.height = 0
-            },
-        }
-        return item
-    }
-    const target = canvas()
-    const context = {
-        ctx: target.ctx,
-        pixelRatio: 1.25,
-        scale: 25,
-        ups: -2,
-        bounds: { l: -4, r: 4, t: -4, b: 0, w: 8, h: 4 },
-        state: { bpms: [] },
-    } as unknown as EditorDrawContext
-    const surface = createStageSurface()
-    t.after(() => surface.clear())
-    const draw = (width = 200, height = 100) =>
-        surface.draw(context, width, height, { min: 0, max: 8 }, fullScope, 1)
-    draw()
-    assert.equal(allocated.length, 0, 'Basic never allocates or blits a stage surface')
-    assert.equal(target.blits, 0)
-    context.composed = {
-        // A stage outside this view needs no paths, but still caches transparent
-        // pixels. Its lifecycle must be identical to a visible stage bitmap.
-        stages: new Map([[1 as StageId, { startBeat: 20, endBeat: 24 }]]),
-    } as EditorDrawContext['composed']
-    draw()
-    assert.equal(allocated.length, 1)
-    assert.deepEqual([allocated[0]!.width, allocated[0]!.height], [250, 125])
-    const initialClears = allocated[0]!.clears
-    context.state = { ...context.state, selectedEntities: [] }
-    context.bounds = { ...context.bounds }
-    draw()
-    assert.equal(allocated[0]!.clears, initialClears, 'equal view reuses its bitmap')
-    assert.equal(target.blits, 2)
-    allocated[0]!.lost = true
-    draw()
-    assert.equal(allocated.length, 2)
-    assert.deepEqual([allocated[0]!.width, allocated[0]!.height], [0, 0])
-    assert.equal(target.blits, 3)
-    draw(4096, 4096)
-    assert.equal(allocated.length, 2, 'over-budget surfaces draw directly')
-    assert.equal(target.blits, 3)
-    assert.deepEqual([allocated[1]!.width, allocated[1]!.height], [0, 0])
-    draw()
-    assert.equal(allocated.length, 3)
-    surface.clear()
-    assert.deepEqual([allocated[2]!.width, allocated[2]!.height], [0, 0])
-    draw()
-    assert.equal(allocated.length, 4)
-    draw()
-    assert.equal(allocated.length, 4, 'a healthy WebGL surface is reused')
-    context.composed = undefined
-    draw()
-    assert.deepEqual([allocated[3]!.width, allocated[3]!.height], [0, 0])
-    assert.equal(allocated.length, 4)
+const stageProps = (left = -2, right = 2, pivot = 0) => ({
+    left,
+    right,
+    pivotLane: pivot,
+    xLaneTranslate: 0,
+    laneAlpha: 1,
+    fullWidth: 0,
+    divisionLineAlpha: 1,
+    division: { start: { size: 2, parity: 0 }, end: { size: 2, parity: 0 }, progress: 0 },
+    leftBorderStyle: { start: 1, end: 1, progress: 0 },
+    rightBorderStyle: { start: 1, end: 1, progress: 0 },
 })
 
-test('a motion window is released after an exact last moving frame', (t) => {
-    t.mock.timers.enable({ apis: ['setTimeout'] })
-    let now = 0
-    let renderMs = 0
-    let releaseAt = 0
-    const schedule = setTimeout
-    t.mock.method(globalThis, 'setTimeout', (callback: () => void, delay?: number) => {
-        releaseAt = now + (delay ?? 0)
-        return schedule(callback, delay)
-    })
-    t.mock.method(performance, 'now', () => now)
-    const allocated: { width: number; height: number }[] = []
-    const resourceOwner = {}
-    const canvas = (width = 0, height = 0) => {
-        const ctx = {
-            globalAlpha: 1,
-            isReady: true,
-            save() {},
-            restore() {},
-            setTransform() {},
-            resourceOwner,
-            maxSurfaceSize: 4096,
-            createStageSurface(width: number, height: number): unknown {
-                const surface = canvas(width, height)
-                allocated.push(surface)
-                return surface
-            },
-            clear() {},
-            clearRect() {},
-            flush() {},
-            drawImage() {
-                // A GPU surface's queued stage render finishes when it is blitted.
-                now += renderMs
-            },
-            isContextLost: () => false,
-        }
-        const surface = {
-            width,
-            height,
-            getContext: () => ctx,
-            ctx,
-            dispose() {
-                surface.width = surface.height = 0
-            },
-        }
-        return surface
+type Mesh = { id: number; vertices: number[]; matrix: number[]; released: boolean }
+
+// A renderer double: retained meshes record their packed scene, draws record their offsets.
+const fakeRenderer = () => {
+    const meshes: Mesh[] = []
+    const draws: { mesh: Mesh; x: number; y: number }[] = []
+    const ops: string[] = []
+    const ctx = {
+        lineCap: 'butt',
+        globalCompositeOperation: 'source-over',
+        globalAlpha: 1,
+        lineWidth: 1,
+        strokeStyle: '#000',
+        fillStyle: '#000',
+        resourceOwner: {},
+        lost: false,
+        getLineDash: () => [] as number[],
+        getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+        isContextLost() {
+            return this.lost
+        },
+        createStageMesh(vertices: readonly number[], matrix: number[]) {
+            const mesh = { id: meshes.length, vertices: [...vertices], matrix, released: false }
+            meshes.push(mesh)
+            return mesh
+        },
+        drawStageMesh(mesh: Mesh, x: number, y: number) {
+            assert.equal(mesh.released, false, 'a released mesh is never drawn')
+            draws.push({ mesh, x, y })
+            ops.push(`mesh:${mesh.id}`)
+        },
+        releaseStageMesh(mesh: Mesh) {
+            assert.equal(mesh.released, false, 'each mesh is released once')
+            mesh.released = true
+        },
+        drawStageTriangles() {
+            ops.push('direct')
+        },
+        save() {},
+        restore() {},
+        beginPath() {},
+        moveTo() {},
+        lineTo() {},
+        closePath() {},
+        clip() {},
+        stroke() {},
+        fill() {
+            ops.push('fill')
+        },
     }
+    return { ctx, meshes, draws, ops }
+}
+
+const setup = (stage: (id: number, beat: number) => ReturnType<typeof stageProps> | undefined) => {
+    const renderer = fakeRenderer()
+    const stages = new Map([
+        [1 as StageId, { startBeat: 0, endBeat: 1000, breakpoints: [] }],
+        [2 as StageId, { startBeat: 0, endBeat: 1000, breakpoints: [] }],
+    ])
     const context = {
-        ctx: canvas().ctx,
+        ctx: renderer.ctx,
         pixelRatio: 1,
         scale: 25,
-        ups: -2,
-        bounds: { l: -4, r: 4, t: -4, b: 0, w: 8, h: 4 },
-        state: { bpms: [{ x: 0, y: 0, s: 1 }] },
-        composed: { stages: new Map([[1 as StageId, { startBeat: 20, endBeat: 24 }]]) },
+        ups: -1,
+        // 400 by 200 CSS pixels: 16 lanes by 8 seconds.
+        bounds: { l: -8, r: 8, t: -18, b: -10, w: 16, h: 8 },
+        state: { bpms: [{ x: 0, y: 0, s: 1, meter: 4, measure: 0, measureBeat: 0 }] },
+        composed: { stages, stage, gridOffset: () => 0 },
     } as unknown as EditorDrawContext
     const surface = createStageSurface()
-    t.after(() => surface.clear())
-    const draw = (time: number, t: number) => {
-        now = time
-        context.bounds = { ...context.bounds, t, b: t + 4 }
-        return surface.draw(context, 200, 100, { min: 0, max: 8 }, fullScope, 1)
+    let scope: ScopeLookup = fullScope
+    let laneDivision = 1
+    const draw = (change: Partial<EditorDrawContext> = {}) => {
+        Object.assign(context, change)
+        renderer.draws.length = 0
+        renderer.ops.length = 0
+        // One second per beat.
+        const { bounds, ups } = context
+        const beats = { min: Math.max(0, bounds.b / ups), max: bounds.t / ups }
+        surface.draw(context, 400, 200, beats, scope, laneDivision)
     }
-    draw(0, -4)
-    assert.equal(draw(10, -4.01), false, 'a single step draws exactly')
-    assert.equal(draw(20, -4.02), true, 'sustained motion shifts a window')
-    const window = allocated.find((item) => item.height > 100)
-    assert.ok(window)
-    // Spaced past a motion's gap, the last moving frame draws exactly and nothing draws after it.
-    assert.equal(draw(200, -4.03), false)
-    t.mock.timers.tick(2499)
-    assert.ok(window.height > 0, 'kept through a pause')
-    t.mock.timers.tick(1)
-    assert.deepEqual([window.width, window.height], [0, 0])
-
-    // A window first drawn on the last moving frame is released too, with no draw after it.
-    draw(3000, -4.03)
-    draw(3010, -4.04)
-    assert.equal(draw(3020, -4.05), true)
-    const last = allocated.filter((item) => item.height > 100).at(-1)!
-    assert.notEqual(last, window)
-    t.mock.timers.tick(2500)
-    assert.deepEqual([last.width, last.height], [0, 0])
-
-    // A window reaches a view ahead: motion that crosses it within four frames draws exactly.
-    const count = allocated.length
-    draw(6000, -4.05)
-    draw(6010, -2.95)
-    assert.equal(draw(6020, -1.85), false)
-    assert.equal(allocated.length, count)
-    // Slower motion still shifts a window.
-    assert.equal(draw(6030, -1.75), true)
-    assert.equal(allocated.length, count + 1)
-    const slow = allocated.at(-1)!
-
-    // Speeding past what a window holds releases it at once, not seconds after the motion.
-    assert.equal(draw(6040, -0.65), true)
-    assert.equal(draw(6050, 0.45), true)
-    assert.equal(draw(6060, 1.55), true)
-    assert.ok(slow.height > 0)
-    assert.equal(draw(6070, 2.65), false)
-    assert.deepEqual([slow.width, slow.height], [0, 0])
-    assert.equal(draw(6080, 3.75), false)
-    assert.equal(allocated.length, count + 1)
-
-    // Cold complex stages can exceed the motion gap. That rendering time must
-    // not turn every successive input frame into an isolated exact redraw.
-    surface.clear()
-    renderMs = 250
-    assert.equal(draw(8000, -4), false)
-    assert.equal(draw(now + 16, -4.01), false, 'the first move still draws exactly')
-    assert.equal(draw(now + 16, -4.02), true, 'slow consecutive frames warm the window')
-    assert.equal(draw(now + 16, -4.03), true, 'the next slow frame reuses shifted pixels')
-    assert.equal(draw(now + 101, -4.04), false, 'an actual idle gap still draws exactly')
-    assert.equal(draw(now + 16, -4.04), false, 'a settled view draws exactly')
-    renderMs = 3000
-    assert.equal(draw(now + 16, -4.05), false)
-    assert.equal(draw(now + 16, -4.06), true)
-    assert.equal(releaseAt, now + 2500, 'window expiry starts after even a 3-second render')
-    surface.clear()
-    renderMs = 0
-    const slowFrame = (top: number) => {
-        const shifted = draw(now + 16, top)
-        now += 250 // The rest of the chart, after stages.draw, can also be slow.
-        surface.finishFrame()
-        return shifted
+    return {
+        ...renderer,
+        context,
+        surface,
+        draw,
+        scroll(seconds: number) {
+            const { bounds } = context
+            draw({ bounds: { ...bounds, t: bounds.t - seconds, b: bounds.b - seconds } })
+        },
+        setScope(next: ScopeLookup) {
+            scope = next
+        },
+        setLaneDivision(next: number) {
+            laneDivision = next
+        },
     }
-    assert.equal(slowFrame(-4), false)
-    assert.equal(slowFrame(-4.01), false)
-    assert.equal(slowFrame(-4.02), true, 'slow remaining chart work is not an idle gap')
-    assert.equal(draw(now + 101, -4.03), false, 'real idle time after the full frame stays exact')
+}
+
+test('tiles are built once in view and only offset while the view scrolls', () => {
+    const chart = setup(() => stageProps())
+    chart.draw()
+    // 200 CSS pixels of 128-pixel tiles: two or three tiles, each one mesh.
+    const built = chart.meshes.length
+    assert.ok(built >= 2 && built <= 3, `built ${built}`)
+    assert.deepEqual(
+        chart.draws.map(({ mesh }) => mesh.id),
+        chart.meshes.map(({ id }) => id),
+    )
+    const before = chart.draws.map(({ mesh, y }) => [mesh.id, y])
+    // A small scroll redraws the same meshes 2.5 device pixels lower, building none.
+    chart.scroll(0.1)
+    assert.equal(chart.meshes.length, built + 1, 'one tile ahead is prepared while moving')
+    const ahead = chart.meshes.at(-1)!
+    assert.ok(chart.draws.every(({ mesh }) => mesh !== ahead))
+    for (const [id, y] of before) {
+        const draw = chart.draws.find(({ mesh }) => mesh.id === id)!
+        assert.ok(Math.abs(draw.y - ((y as number) + 2.5)) < 1e-9)
+        assert.equal(draw.x, 8 * 25)
+    }
+    // The prepared tile is drawn without building when it comes into view.
+    chart.scroll(4)
+    assert.ok(chart.draws.some(({ mesh }) => mesh === ahead))
+    // A still redraw builds nothing.
+    const count = chart.meshes.length
+    chart.draw()
+    chart.draw()
+    assert.equal(chart.meshes.length, count)
+    assert.ok(chart.meshes.every(({ released }) => !released))
+})
+
+test('tiles draw in chart time order and an unsupported slice keeps its place', () => {
+    // Stage 2 is too wide to pack: its slices fall back to the ordinary renderer.
+    const chart = setup((id) => (id === 1 ? stageProps(-6, -4) : stageProps(-2, 200000)))
+    chart.draw()
+    // Earlier chart time is lower on screen: each tile draws its stage 1 mesh, then stage 2's fill.
+    assert.ok(chart.ops.length >= 4)
+    for (let i = 0; i < chart.ops.length; i += 2) {
+        assert.match(chart.ops[i]!, /^mesh:/)
+        assert.equal(chart.ops[i + 1], 'fill')
+    }
+    const ys = chart.draws.map(({ y }) => y)
+    assert.deepEqual(
+        ys,
+        [...ys].sort((a, b) => b - a),
+    )
+})
+
+test('edits, zoom, pixel ratio, scope, lane division and the renderer release every tile', () => {
+    const chart = setup(() => stageProps())
+    const { context } = chart
+    const changes: [string, () => void][] = [
+        [
+            'stage event',
+            () =>
+                chart.draw({
+                    composed: { ...context.composed!, stages: new Map(context.composed!.stages) },
+                }),
+        ],
+        ['tempo', () => chart.draw({ state: { ...context.state, bpms: [...context.state.bpms] } })],
+        ['zoom', () => chart.draw({ scale: 30, bounds: { ...context.bounds, r: 5.33, w: 13.33 } })],
+        ['time zoom', () => chart.draw({ ups: -2 })],
+        ['pixel ratio', () => chart.draw({ pixelRatio: 1.5 })],
+        [
+            'scope',
+            () => {
+                chart.setScope(createScopeLookup({ stageId: 2 as StageId }))
+                chart.draw()
+            },
+        ],
+        [
+            'lane division',
+            () => {
+                chart.setLaneDivision(4)
+                chart.draw()
+            },
+        ],
+        [
+            'renderer',
+            () => chart.draw({ ctx: { ...context.ctx, resourceOwner: {} } as typeof context.ctx }),
+        ],
+        [
+            'context loss',
+            () => {
+                ;(context.ctx as unknown as { lost: boolean }).lost = true
+                chart.draw()
+                ;(context.ctx as unknown as { lost: boolean }).lost = false
+            },
+        ],
+    ]
+    chart.draw()
+    for (const [name, change] of changes) {
+        const old = [...chart.meshes]
+        change()
+        chart.draw()
+        assert.ok(
+            old.every(({ released }) => released),
+            `${name} releases the old tiles`,
+        )
+        assert.ok(chart.meshes.length > old.length, `${name} builds new tiles`)
+        assert.ok(chart.draws.length > 0)
+        assert.ok(
+            chart.draws.every(({ mesh }) => !old.includes(mesh)),
+            `${name} draws new tiles`,
+        )
+    }
+})
+
+test('a pan within the tiles’ lane margin reuses them; a farther pan builds them again', () => {
+    const chart = setup(() => stageProps())
+    const { context } = chart
+    chart.draw()
+    const built = chart.meshes.length
+    const pan = (lanes: number) =>
+        chart.draw({
+            bounds: { ...context.bounds, l: context.bounds.l + lanes, r: context.bounds.r + lanes },
+        })
+    // A quarter view: four lanes either side.
+    pan(3.5)
+    assert.equal(chart.meshes.length, built)
+    assert.equal(chart.draws[0]?.x, (8 - 3.5) * 25)
+    pan(1)
+    assert.ok(chart.meshes.slice(0, built).every(({ released }) => released))
+    assert.ok(chart.meshes.length > built)
+})
+
+test('limits release the oldest tiles out of view, never visible ones', () => {
+    const chart = setup((_, beat) => stageProps(-2, 2, beat))
+    chart.draw()
+    // Far jumps leave many tiles behind; at most 96 stay retained.
+    for (let i = 0; i < 80; i++) chart.scroll(8)
+    const live = chart.meshes.filter(({ released }) => !released)
+    assert.ok(chart.surface.stats.tiles <= 96)
+    assert.ok(chart.surface.stats.tiles > 2)
+    assert.ok(chart.draws.every(({ mesh }) => !mesh.released))
+    // The first tiles were the oldest.
+    assert.ok(chart.meshes[0]!.released)
+    assert.equal(
+        live.reduce((sum, mesh) => sum + mesh.vertices.length, 0),
+        chart.surface.stats.floats,
+    )
+})
+
+test('Basic and unsupported drawing state release tiles; clear releases each mesh once', () => {
+    const chart = setup(() => stageProps())
+    chart.draw()
+    const first = [...chart.meshes]
+    chart.draw({ composed: undefined })
+    assert.ok(first.every(({ released }) => released))
+    assert.equal(chart.surface.stats.tiles, 0)
+    chart.draw({ composed: setup(() => stageProps()).context.composed })
+    const second = [...chart.meshes]
+    ;(chart.context.ctx as unknown as { lineCap: string }).lineCap = 'round'
+    chart.draw()
+    assert.ok(second.every(({ released }) => released))
+    assert.ok(chart.ops.includes('fill'), 'an unusual stroke state draws directly')
+    ;(chart.context.ctx as unknown as { lineCap: string }).lineCap = 'butt'
+    chart.draw()
+    chart.surface.clear()
+    chart.surface.clear()
+    assert.ok(chart.meshes.every(({ released }) => released))
 })

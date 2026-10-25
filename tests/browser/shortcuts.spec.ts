@@ -262,7 +262,7 @@ test.describe('chords', () => {
         expect(await isEdited(page)).toBe(false)
     })
 
-    // Ctrl/Cmd+S is Save's fixed alias (§1.4.6), so g stands for the plain letters here.
+    // Ctrl/Cmd+S is Save's fixed alias, so g stands for the plain letters here.
     for (const [chord, tool] of [
         ['Control+g', 'eraser'],
         ['Meta+b', 'brush'],
@@ -909,6 +909,8 @@ test('shortcut chips use the locale’s key names', async ({ page }) => {
     await expect(hints.filter({ hasText: /^Suppr$/ })).toHaveCount(1)
     await page.keyboard.press('Escape')
     await page.keyboard.press(',')
+    // The shortcut rows mount in the frames after the dialog opens.
+    await expect(page.locator('[data-settings-section="about"]')).toBeAttached()
     const chips = (await page.locator('.key-field-button').allTextContents()).map((text) =>
         text.trim(),
     )

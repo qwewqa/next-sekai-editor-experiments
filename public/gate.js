@@ -1,29 +1,15 @@
-// The support gate (Part 1 §1.6.10): a classic script that runs before the bundle and, when the
+// The support gate: a classic script that runs before the bundle and, when the
 // browser lacks a feature the editor needs, shows a plain page instead and flags the bundle's
-// entry (src/support.ts) to stop. It offers the work stored by earlier versions as downloads. Plain ES5 with no imports: it can't use
-// the bundle, and it must run in browsers the bundle can't. English only (the locale files load
-// with the bundle).
+// entry (src/support.ts) to stop. It offers the old auto save as downloads. Plain ES5 with no
+// imports: it can't use the bundle, and it must run in browsers the bundle can't. English only
+// (the locale files load with the bundle).
 ;(function (root) {
     'use strict'
 
     // src/storage.ts's prefix (package.json's name); tests/platform/gate.test.ts checks they agree.
     var PREFIX = 'sonolus-next-sekai-editor.'
-    var MONTHS = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-    ]
 
-    // The features the design needs (§1.6.10); the names are for tests and the console.
+    // The features the design needs; the names are for tests and the console.
     function missingFeatures(win) {
         var missing = []
         var nav = win.navigator || {}
@@ -53,7 +39,7 @@
 
     function message(win) {
         return isWebKit(win)
-            ? 'This editor needs Safari 17 or later.'
+            ? 'This editor requires Safari 17 or later (iOS 17 or later on iPhone and iPad).'
             : 'This browser is too old for the editor.'
     }
 
@@ -76,9 +62,9 @@
         return name.slice(-extension.length).toLowerCase() === extension ? name : name + extension
     }
 
-    // An old auto save's stored text as a file: the same choices as src/history/autoSave/
-    // unreadable.ts's toRecoveryFile. The v1 form's level data is the gzipped `.nsld`; raw level
-    // data goes out unchanged as `.json`; anything else as the stored text.
+    // An old auto save's stored text as a file: the same choices as src/local/startup/legacy.ts's
+    // toRecoveryFile. The v1 form's level data is the gzipped `.nsld`; raw level data goes out
+    // unchanged as `.json`; anything else as the stored text.
     function toRecoveryFile(text) {
         try {
             var data = JSON.parse(text)
@@ -107,90 +93,20 @@
         return { name: 'Recovery.txt', type: 'text/plain', data: text }
     }
 
-    // A pending journal's level data (§1.6.11.3), already the gzipped `.nsld`; undefined when the
-    // value isn't a journal with level data. Any `journalVersion` is read.
-    function journalFile(text) {
-        try {
-            var journal = JSON.parse(text)
-            if (typeof journal !== 'object' || journal === null) return undefined
-            if (typeof journal.levelDataGz !== 'string' || !journal.levelDataGz) return undefined
-            var descriptor = journal.descriptor
-            var name = 'Untitled'
-            if (typeof descriptor === 'object' && descriptor !== null) {
-                if (typeof descriptor.name === 'string' && descriptor.name) name = descriptor.name
-                else if (typeof descriptor.sourceName === 'string' && descriptor.sourceName)
-                    name = descriptor.sourceName
-            }
-            return {
-                name: safeName(name) + '.nsld',
-                type: 'application/octet-stream',
-                data: decodeBase64(journal.levelDataGz),
-                writtenAt: typeof journal.writtenAt === 'number' ? journal.writtenAt : undefined,
-            }
-        } catch (error) {
-            return undefined
-        }
-    }
-
-    function dayOf(time) {
-        var date = new Date(time)
-        return MONTHS[date.getMonth()] + ' ' + date.getDate()
-    }
-
-    function timeOf(time) {
-        var date = new Date(time)
-        return (
-            dayOf(time) +
-            ' ' +
-            ('0' + date.getHours()).slice(-2) +
-            ':' +
-            ('0' + date.getMinutes()).slice(-2)
-        )
-    }
-
-    // Everything stored that the gate offers, in order: the auto save, an unreadable one set aside,
-    // the legacy slot the migration copied (not twice when it is the same text), then each pending
-    // journal, newest first. `storage` is localStorage.
+    // Everything stored that the gate offers, in order: the auto save, then an unreadable one set
+    // aside. `storage` is localStorage.
     function recoveryFiles(storage) {
         var files = []
-        var texts = []
-        var journals = []
         var autoSave = [
             ['autoSave.levelData', 'Download Your Last Auto Save'],
             ['autoSave.unreadable', 'Download Unreadable Auto Save'],
-            ['legacyRecovery', 'Download Your Last Auto Save'],
         ]
-        var i
-        for (i = 0; i < autoSave.length; i++) {
+        for (var i = 0; i < autoSave.length; i++) {
             var text = storage.getItem(PREFIX + autoSave[i][0])
-            if (text === null || texts.indexOf(text) !== -1) continue
-            texts.push(text)
+            if (text === null) continue
             var file = toRecoveryFile(text)
             file.label = autoSave[i][1]
             files.push(file)
-        }
-        var journalPrefix = PREFIX + 'journal.'
-        for (i = 0; i < storage.length; i++) {
-            var key = storage.key(i)
-            if (key === null || key.slice(0, journalPrefix.length) !== journalPrefix) continue
-            var found = journalFile(storage.getItem(key))
-            if (found) journals.push(found)
-        }
-        journals.sort(function (a, b) {
-            return (b.writtenAt || 0) - (a.writtenAt || 0)
-        })
-        var days = {}
-        for (i = 0; i < journals.length; i++) {
-            var day = journals[i].writtenAt === undefined ? '' : dayOf(journals[i].writtenAt)
-            days[day] = (days[day] || 0) + 1
-        }
-        for (i = 0; i < journals.length; i++) {
-            var at = journals[i].writtenAt
-            // Two on one day are told apart by their time.
-            var when =
-                at === undefined ? 'an earlier visit' : days[dayOf(at)] > 1 ? timeOf(at) : dayOf(at)
-            journals[i].label = 'Download Unsaved Work from ' + when
-            files.push(journals[i])
         }
         return files
     }
@@ -249,7 +165,7 @@
     }
 
     // Returns true when the browser is unsupported. An insecure context skips the check: storage
-    // is unavailable there anyway (§1.6.5).
+    // is unavailable there anyway.
     function run(win) {
         if (win.isSecureContext === false) return false
         var missing = missingFeatures(win)
@@ -279,7 +195,6 @@
         isWebKit: isWebKit,
         message: message,
         toRecoveryFile: toRecoveryFile,
-        journalFile: journalFile,
         recoveryFiles: recoveryFiles,
         run: run,
     }

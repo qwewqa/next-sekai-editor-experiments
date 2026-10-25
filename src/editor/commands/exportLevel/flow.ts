@@ -23,7 +23,7 @@ import {
 } from './memory'
 import { withTargetLock } from './targetLock'
 
-// Export Level Data…'s writes (Part 1 §1.4.8), apart from its dialogs, so Node tests can run them.
+// Export Level Data…'s writes, apart from its dialogs, so Node tests can run them.
 
 /** What a follow-up dialog answers; undefined is Cancel. */
 export type ExportUi = {
@@ -51,14 +51,14 @@ export type ExportUi = {
     failed: (name: string, error: FileError) => Promise<'chooseAnother' | undefined>
     exported: (name: string) => void
     downloadStarted: (name: string, size: number) => void
-    /** Records the export in the session's timeline (Part 1 §1.3.8). */
+    /** Records the export in the session's timeline. */
     markExported?: (name: string, delivery: 'file' | 'download') => void
 }
 
 export type ExportContext = {
     ui: ExportUi
-    /** Builds the file; called before any picker, since a picker empties what it returns (D5). */
-    build: () => Blob
+    /** Builds the file; called before any picker, since a picker empties what it returns. */
+    build: () => Blob | Promise<Blob>
     /** The name a picker suggests or a download takes. */
     suggestedName: string
     /** The picker's types: the `.nsld` type, or none for "All files" alone. */
@@ -71,11 +71,11 @@ export type ExportContext = {
     /** Aborted when the dialog is cancelled: nothing more is written or shown. */
     signal?: AbortSignal
     /**
-     * The dialog's read of the chain's own file (R2), or `'start'` (the default): one starting
+     * The dialog's read of the chain's own file, or `'start'` (the default): one starting
      * when the picker is asked for, with a grant already held.
      */
     read?: Promise<ReadResult> | 'start'
-    /** Called when the picker returned a file: its write runs to its end, cancel or not (D5). */
+    /** Called when the picker returned a file: its write runs to its end, cancel or not. */
     committed?: () => void
 }
 
@@ -91,10 +91,10 @@ const cancelled = (ctx: ExportContext) => !!ctx.signal?.aborted
 const built = (ctx: ExportContext) => {
     let size = 0
     return {
-        build: () => {
-            const blob = ctx.build()
+        build: async () => {
+            const blob = await ctx.build()
             size = blob.size
-            return Promise.resolve(blob)
+            return blob
         },
         size: () => size,
     }
@@ -127,7 +127,7 @@ type Found =
 
 /**
  * The target as one read finds it, so its disk state and its content check describe the same
- * bytes (Part 0 §0.9.1, the pinned source).
+ * bytes.
  */
 const readTarget = async (target: FileTarget): Promise<Found> => {
     try {
@@ -189,7 +189,7 @@ const choose = async <T extends string>(
 const ended = (choice: string | undefined): ExportOutcome =>
     choice === 'done' ? 'done' : 'cancelled'
 
-/** A target that is not as expected; never written over unless it is level data (§1.4.8). */
+/** A target that is not as expected; never written over unless it is level data. */
 const conflicted = async (ctx: ExportContext, target: ExportTarget): Promise<ExportOutcome> => {
     const { name } = target
     const found = await readTarget({ kind: 'handle', handle: target.handle })
@@ -294,7 +294,7 @@ const failed = (ctx: ExportContext, error: FileError, fallback: string) => {
 
 /** Exports through the save picker, or downloads where there is none. */
 export const exportByPicker = async (ctx: ExportContext): Promise<ExportOutcome> => {
-    // Only the pick session opens a picker: build, verify, pick and write run there (B4).
+    // Only the pick session opens a picker: build, verify, pick and write run there.
     if (platform.pickSaveFile) {
         // A failure after a Cancel, before a file was picked, is the Cancel's: no dialog follows.
         const pick = { committed: false }

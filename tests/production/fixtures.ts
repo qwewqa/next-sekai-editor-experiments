@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 // A real imported USC chart keeps this smoke independent of app modules or
 // test-only state hooks. BPM 60 places its note at 250 ms for simple mouse input.
 export const chart = Buffer.from(
@@ -194,6 +195,41 @@ export const instrumentRendering = () => {
 }
 
 /** The fixture's version, and the release already seen: seeded settings make an existing user, who would otherwise see "Updated to version" over the canvas. */
+/** The preview's lit pixels, from a screenshot: a canvas drawn in a worker cannot be read back. */
+export const previewPixels = async (page: Page) => {
+    const png = await page.locator('.preview-viewport').screenshot()
+    return page.evaluate(async (png) => {
+        const image = new Image()
+        image.src = `data:image/png;base64,${png}`
+        await image.decode()
+        const canvas = document.createElement('canvas')
+        canvas.width = image.naturalWidth
+        canvas.height = image.naturalHeight
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(image, 0, 0)
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+        let lit = 0
+        // The viewport is black where nothing is drawn.
+        for (let i = 0; i < data.length; i += 4)
+            if (data[i]! + data[i + 1]! + data[i + 2]! > 96) lit++
+        return lit
+    }, png.toString('base64'))
+}
+
+/** Whether the preview's canvas was given to its worker: the page can no longer draw into it. */
+export const previewInWorker = (page: Page) =>
+    page
+        .locator('.preview-viewport > canvas')
+        .first()
+        .evaluate((canvas: HTMLCanvasElement) => {
+            try {
+                canvas.getContext('webgl2')
+                return false
+            } catch {
+                return true
+            }
+        })
+
 export const seedVersion = () => {
     localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
     localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))

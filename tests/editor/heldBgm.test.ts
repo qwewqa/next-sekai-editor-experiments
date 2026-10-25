@@ -29,7 +29,7 @@ import type { State } from '../../src/state'
 import type { Bgm } from '../../src/state/bgm'
 import { initialStep } from '../helpers/historySteps'
 
-// The BGMs this tab holds (Part 1 §1.6.8.4, Step 7 design §3.6): one `Bgm` per hash in a small
+// The BGMs this tab holds: one `Bgm` per hash in a small
 // cache, the live watcher that attaches audio to a state that names it, and the notice rule.
 
 const meta = (hash: string) => ({ hash, filename: `${hash}.mp3`, size: 4, type: 'audio/mpeg' })

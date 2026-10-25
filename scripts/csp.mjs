@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
 
-// Part 0 §0.9.2: one base policy, with the native and dev additions. The web adds nothing: it
-// makes no cross-origin requests.
+// One base policy, with the native and dev additions. The web adds one origin at most: the usage
+// statistics' endpoint, in connect-src, when the build has one (docs/analytics.md). It makes no
+// other cross-origin request.
 const base = {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'wasm-unsafe-eval'"],
@@ -25,6 +26,12 @@ export const scriptHashes = (scripts) =>
         (text) => `'sha256-${createHash('sha256').update(text).digest('base64')}'`,
     )
 
+/** The additions with the analytics origin in connect-src, when there is one. */
+const withAnalytics = (additions, origin) =>
+    origin
+        ? { ...additions, 'connect-src': [...(additions['connect-src'] ?? []), origin] }
+        : additions
+
 function policy(additions, scripts) {
     const directives = { ...base }
     for (const [name, sources] of Object.entries(additions))
@@ -37,9 +44,12 @@ function policy(additions, scripts) {
 
 /** Each takes the texts of the page's inline scripts, which get a hash source. */
 export const basePolicy = (scripts = []) => policy({}, scripts)
-export const webPolicy = (scripts = []) => policy({}, scripts)
+/** The second argument is the build's usage statistics endpoint, if it has one. */
+export const webPolicy = (scripts = [], analyticsOrigin) =>
+    policy(withAnalytics({}, analyticsOrigin), scripts)
 export const nativePolicy = (scripts = []) => policy(nativeAdditions, scripts)
-export const devPolicy = (scripts = []) => policy(devAdditions, scripts)
+export const devPolicy = (scripts = [], analyticsOrigin) =>
+    policy(withAnalytics(devAdditions, analyticsOrigin), scripts)
 
 /** The text of every inline script: a `<script>` without `src`, as the browser hashes it. */
 export function inlineScripts(html) {

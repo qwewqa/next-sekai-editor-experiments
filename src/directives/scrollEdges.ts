@@ -36,9 +36,12 @@ const apply = (element: HTMLElement, edges: { before: boolean; after: boolean })
 // panel resized or re-rendered. The marks only change a mask, never layout.
 const pending = new Set<HTMLElement>()
 let frame = 0
+let microtask = false
 
 const flush = () => {
+    if (frame) cancelAnimationFrame(frame)
     frame = 0
+    microtask = false
     const elements = [...pending]
     pending.clear()
     const edges = elements.map((element) => {
@@ -78,8 +81,12 @@ export const vScrollEdges: Directive<HTMLElement> = {
         element.addEventListener('scroll', schedule, { passive: true })
 
         states.set(element, { horizontal, schedule, resize, mutation })
-        // The first marks are applied right away, so content never shows unfaded.
-        apply(element, measure(element, horizontal))
+        // The first marks are applied after the update that mounted the element and before it is
+        // drawn, so content never shows unfaded. Every container mounted in that update is measured together,
+        // once the rest of the update (a dialog opening, text fitting) has laid them out.
+        pending.add(element)
+        if (!microtask) queueMicrotask(flush)
+        microtask = true
     },
     updated(element) {
         states.get(element)?.schedule()

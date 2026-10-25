@@ -15,7 +15,7 @@ const props = withDefaults(
         state?: CommandState
         /** Beside a label, a column checking the value in use. */
         checkColumn?: boolean
-        /** In the editor's toolbar: drawn disabled while peeking refuses it (§1.4.11). */
+        /** In the editor's toolbar: drawn disabled while peeking refuses it. */
         gated?: boolean
     }>(),
     { state: undefined },

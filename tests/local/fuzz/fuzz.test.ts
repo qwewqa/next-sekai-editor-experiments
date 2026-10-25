@@ -20,8 +20,7 @@ import { append, beginSession, openJournalPage } from '../journal/harness'
 import { goldenChart, stateOf } from '../records/charts'
 import { widen } from '../timeline/helpers'
 
-// Fuzzing the readers of untrusted bytes that feed the damage paths (Part 1 §1.11.6;
-// r12-arch-core M6), with fast-check: mutated inputs must give a result (damage, unreadable,
+// Fuzzing the readers of untrusted bytes that feed the damage paths, with fast-check: mutated inputs must give a result (damage, unreadable,
 // partial), never an uncaught throw or a hang, and a failure shrinks to its fewest mutations.
 // `npm test` runs a short pass; NSE_FUZZ=<runs> runs longer, NSE_FUZZ_SEED=<s> replays a seed.
 

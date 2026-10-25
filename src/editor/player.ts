@@ -9,7 +9,7 @@ import {
     stopPreviewPlayer,
 } from '../player'
 import { settings } from '../settings'
-import { time } from '../time'
+import { clockNow, keepClockWhile, time } from '../time'
 import { interpolate } from '../utils/interpolate'
 import { formatDecimal } from '../utils/size'
 import { audioPreviewRequest } from './audioPreview'
@@ -47,7 +47,7 @@ const transport = createTransport({
             return settings.pps
         },
     },
-    now: () => time.value.now,
+    now: clockNow,
     focus: (time) => {
         // Transport seeks and returns keep their existing animation.
         focusView(time, false)
@@ -67,6 +67,7 @@ const transport = createTransport({
     },
 })
 
+keepClockWhile(() => transport.isPlaying)
 watch(time, transport.update)
 watch(auditionVersion, transport.flushAudition)
 // Record intent synchronously, then coalesce audio at the normal Vue flush.

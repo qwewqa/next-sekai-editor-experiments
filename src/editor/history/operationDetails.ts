@@ -34,7 +34,8 @@ export const openOperationDetails = async (
         } catch (error) {
             // The chunk did not load: the user, who asked, is told, and nothing else changes.
             recordError(error)
-            if (source === sourceGeneration.value) notify(() => i18n.value.notice.peekFailed)
+            if (source === sourceGeneration.value)
+                notify(() => i18n.value.notice.peekFailed, { card: true, severity: 'error' })
             return
         }
         if (

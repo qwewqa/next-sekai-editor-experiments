@@ -1,7 +1,13 @@
 import { readMeta, writeMeta } from '../db'
 import { MaintTimeoutError } from '../locks'
 import { directWaiter, type Waiter } from '../scheduler'
-import { StoragePausedError, StorageRefusedError, type Progress } from '../worker/core'
+import { TRANSIENT_STORAGE_ERRORS } from '../storageFailure'
+import {
+    refuseUnlessStored,
+    StoragePausedError,
+    StorageRefusedError,
+    type Progress,
+} from '../worker/core'
 import type { WorkerContext } from '../worker/handlers'
 import type { CallScope } from '../worker/rpc'
 import {
@@ -12,10 +18,10 @@ import {
     type JournalApplyResult,
 } from './apply'
 
-// The storage worker's journal methods (Part 1 §1.6.4 #7): replay's transaction, an unreadable
-// journal's bytes kept in the `recovered` store, and the strict commit that lets a journal go.
+// The storage worker's journal methods: replay's transaction, an unreadable
+// journal's bytes kept in the `recovered` store, and the strict commit a hide's flush ends with.
 
-/** A journal key that couldn't be read: its text, kept as it was (§1.6.11.2's `recovered`). */
+/** A journal key that couldn't be read: its text, kept as it was (`recovered`). */
 export type RecoveredBytes = {
     id: string
     source: 'journal'
@@ -34,33 +40,19 @@ export class JournalUnappliableError extends Error {
     override name = 'JournalUnappliableError'
 }
 
-/**
- * IndexedDB's errors for storage being unavailable, full or busy, which a later load may not
- * meet. Others (`DataError`, `ConstraintError`, `DataCloneError`…) come back at every load.
- */
-const TRANSIENT = new Set([
-    'QuotaExceededError',
-    'UnknownError',
-    'AbortError',
-    'InvalidStateError',
-    'TransactionInactiveError',
-    'TimeoutError',
-    'NotReadableError',
-])
-
 /** Whether a failure is storage's (unavailable, full, busy), which a later load may not meet. */
 export const isStorageFailure = (error: unknown) => {
     if (error instanceof StorageRefusedError || error instanceof MaintTimeoutError) return true
     const cause = error instanceof StoragePausedError ? error.cause : error
     return (
-        (cause instanceof DOMException && TRANSIENT.has(cause.name)) ||
+        (cause instanceof DOMException && TRANSIENT_STORAGE_ERRORS.has(cause.name)) ||
         cause instanceof MaintTimeoutError ||
         cause instanceof StorageRefusedError
     )
 }
 
 export const journalHandlers = (context: WorkerContext, outside: Waiter = directWaiter) => {
-    // Each wait outside IndexedDB counts as the call's progress (§1.6.5).
+    // Each wait outside IndexedDB counts as the call's progress.
     const waiterOf = (progress: Progress): Waiter => ({
         wait: async (promise) => {
             try {
@@ -72,14 +64,16 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
     })
     return {
         /**
-         * Applies a journal, or keeps it as a recovery session, in one strict transaction. An apply
-         * that fails by an error that will recur is kept as a recovery session instead, and one
-         * that can't be either throws `JournalUnappliableError`, so no journal fails every load.
+         * Applies a journal, or keeps it as a recovery session, in one strict transaction, only
+         * into the database. An apply that fails by an error that will recur is kept as a recovery
+         * session instead, and one that can't be either throws `JournalUnappliableError`, so no
+         * journal fails every load.
          */
         applyJournal: async (
             batch: JournalApplyBatch,
             scope?: CallScope,
         ): Promise<JournalApplyResult> => {
+            refuseUnlessStored(context.core.status)
             const progress: Progress = scope ?? {}
             const write = (force?: string) =>
                 context.core.write(
@@ -108,12 +102,14 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
         },
 
         /**
-         * Moves an unreadable journal's bytes into the `recovered` store, strictly. Its id comes
-         * from the bytes, so a second run finds the row. Resolves false when the browser refuses
-         * the Blob (WebKit's private windows): the key stays, and storing isn't paused.
+         * Moves an unreadable journal's bytes into the `recovered` store, strictly, only in the
+         * database. Its id comes from the bytes, so a second run finds the row. Resolves false when
+         * the browser refuses the Blob (WebKit's private windows): the key stays, and storing isn't
+         * paused.
          */
-        keepRecovered: (item: RecoveredBytes, scope?: CallScope) =>
-            context.core.write(
+        keepRecovered: async (item: RecoveredBytes, scope?: CallScope) => {
+            refuseUnlessStored(context.core.status)
+            return context.core.write(
                 ['recovered', 'meta'],
                 async (tx) => {
                     if ((await tx.getKey('recovered', item.id)) !== undefined) return true
@@ -136,13 +132,13 @@ export const journalHandlers = (context: WorkerContext, outside: Waiter = direct
                     return put
                 },
                 { durability: 'strict', ...scope },
-            ),
+            )
+        },
 
         /**
-         * Commits strictly, so what relaxed flushes stored before it is durable too and their
-         * journals can be cleared (§1.6.4: a key is cleared only after a strict commit covers it).
-         * Resolves whether it committed to the database: an in-memory store's commit covers
-         * nothing the database holds.
+         * Commits strictly, so what routine flushes stored before it is on disk too (a
+         * hide's and a switch's flush is strict). Resolves whether it committed to the database:
+         * an in-memory store's commit syncs nothing the database holds.
          */
         syncStrict: async (_: undefined, scope?: CallScope): Promise<boolean> => {
             if (context.core.status.mode !== 'stored') return false

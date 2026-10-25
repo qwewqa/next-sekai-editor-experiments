@@ -4,16 +4,16 @@ import { join, relative, sep } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-// B4 acceptance (work/arch/spec-B.md, invariants 1 and 2): a save picker is opened only in the
+// Acceptance: a save picker is opened only in the
 // pick-session module, a Save's reservation is taken and ended only through SaveAttempt, and
-// `nse-bind` is held exclusive only by the pick session. Every Save, Export and Save to File… run
-// on the session since B4.
+// `nse-bind` is held exclusive only by the pick session. Every Save, Export and Recent Sessions' Save… run
+// on the session.
 
 const root = fileURLToPath(new URL('../../../src/', import.meta.url))
 
-/** The only module that may open a save picker and hold `nse-bind` exclusive (B2's pick session). */
+/** The only module that may open a save picker and hold `nse-bind` exclusive (the pick session). */
 const PICK_SESSION = 'editor/save/pickSession.ts'
-/** The only module that may take and end a Save's reservation (B1's SaveAttempt). */
+/** The only module that may take and end a Save's reservation (SaveAttempt). */
 const SAVE_ATTEMPT = 'editor/save/saveAttempt.ts'
 /** The flusher owns the reservation; the platforms own `pickSaveFile`. */
 const OWNERS = ['local/flush.ts']
@@ -49,7 +49,7 @@ const sites = (
     return found
 }
 
-test('B4 acceptance: pickers are opened only in the pick-session module', () => {
+test('acceptance: pickers are opened only in the pick-session module', () => {
     // `pickSaveFile(` is a call of the platform's picker; `picker:` in a request would be a
     // `saveFile` opening one.
     const opened = sites(/\bpickSaveFile\s*\(|\bpicker:\s*\{/, [PICK_SESSION], (file) =>
@@ -58,7 +58,7 @@ test('B4 acceptance: pickers are opened only in the pick-session module', () => 
     assert.deepEqual(opened, [], 'save pickers opened outside the pick session')
 })
 
-test('B4 acceptance: reservations are taken and ended only through SaveAttempt', () => {
+test('acceptance: reservations are taken and ended only through SaveAttempt', () => {
     const allowed = [SAVE_ATTEMPT, ...OWNERS]
     const skip = (file: string) => file.startsWith(TESTING)
     assert.deepEqual(
@@ -73,7 +73,7 @@ test('B4 acceptance: reservations are taken and ended only through SaveAttempt',
     )
 })
 
-test('B4 acceptance: nse-bind is held exclusive only by the pick session', () => {
+test('acceptance: nse-bind is held exclusive only by the pick session', () => {
     const held = sites(/withBind\(\s*'exclusive'/, [PICK_SESSION])
     assert.deepEqual(held, [], 'nse-bind held exclusive outside the pick session')
 })

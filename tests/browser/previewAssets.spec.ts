@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { resource } from './previewResourceFixture'
 
-// The Preview Assets dialog with Default and Built-in (Part 2, 2.6; the A2 tests of 2.11). With
+// The Preview Assets dialog with Default and Built-in. With
 // A2_SHOTS_DIR set, each state is also saved there as a screenshot.
 const shotsDir = process.env.A2_SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
