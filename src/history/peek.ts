@@ -241,6 +241,8 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
 
     return new Promise<void>((resolve, reject) => {
         settlePrevious = resolve
+        // A function, as it is read again after the wait.
+        const dropped = () => at !== generation.value || !peek.value
         const run = async () => {
             timer = undefined
             let entry: PeekedEntry
@@ -256,14 +258,14 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
                 reject(error instanceof Error ? error : new Error(String(error)))
                 return
             }
-            if (at !== generation.value || !peek.value) {
+            if (dropped()) {
                 resolve()
                 return
             }
             const pending = options.ready?.(entry.state)
             if (pending) {
                 await waitReady(pending)
-                if (at !== generation.value || !peek.value) {
+                if (dropped()) {
                     resolve()
                     return
                 }
