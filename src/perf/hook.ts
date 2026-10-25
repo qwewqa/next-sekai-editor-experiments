@@ -39,7 +39,7 @@ const nsePerf = {
     changePlayerSpeed,
     openElevationEditor,
     closeElevationEditor,
-    /** Startup's phase: 'done' once the session it continues is shown. */
+    /** The startup phase; 'done' once the session being continued is shown. */
     startup: () => startupGate.phase,
     /** The peek: the key asked for, the key shown, its spinner, and its change view's state. */
     peek: () => ({

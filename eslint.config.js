@@ -242,7 +242,7 @@ export default tsEslint.config(
     },
     // The perf harness's page functions run in the browser.
     {
-        files: ['scripts/perf/run.mjs'],
+        files: ['scripts/perf/run.mjs', 'scripts/perf/actions.mjs'],
         languageOptions: { globals: { ...globals.browser, ...globals.node } },
     },
 

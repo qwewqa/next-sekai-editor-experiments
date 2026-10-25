@@ -1427,7 +1427,7 @@ try {
         contexts.add(context)
         try {
             const page = context.pages()[0] ?? (await context.newPage())
-            // No run may open a native dialog: one blocks the run, on the screen of whoever watches.
+            // No run may open a native dialog. It blocks the run and shows on the screen of whoever uses the machine.
             // The pickers are off (Open takes the file input, Save downloads, or the app's test
             // pickers under a group's `platform`), JS dialogs are dismissed, and Playwright takes
             // every download (`acceptDownloads`; a scenario saves one it keeps).
@@ -1581,7 +1581,7 @@ try {
                     })
                 } catch (error) {
                     log('cell failed', id, String(error.stack ?? error))
-                    // The page may be stuck: the group's browser closes, and the next group runs.
+                    // The page may be stuck. Close the group's browser and run the next group.
                     if (error instanceof CellTimeout) break
                     await page.keyboard.press('Escape').catch(() => {})
                 }

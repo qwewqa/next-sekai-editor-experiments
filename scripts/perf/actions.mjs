@@ -27,8 +27,8 @@ export const installActionProbe = () => {
             { capture: true, passive: true },
         )
     const compile = (source) => source && new Function('P', 'A', `return (${source})`)
-    /** Scrolls only scroll containers: scrollIntoView also scrolls clipped ancestors and the page. */
-    /** Puts back clipped ancestors of `element` (or the page's root levels) that were scrolled. */
+    // scrollIntoView also scrolls clipped ancestors and the page. This resets the clipped
+    // ancestors of `element` (or the page's first levels) that moved.
     const unscroll = (element) => {
         const list = [document.documentElement, document.body]
         if (element) for (let e = element.parentElement; e; e = e.parentElement) list.push(e)
@@ -167,8 +167,8 @@ export const installActionProbe = () => {
             const rel = (t) => (t === undefined ? undefined : t - lastInput)
             return {
                 timedOut: done === undefined,
-                // To the frame after the one where the result showed: that frame's own work (the
-                // rows, the chart) is done by then, and its paint follows.
+                // To the start of the frame after the one that showed the result, so the work of
+                // that frame (rows, chart) is included.
                 response: rel(a.frames.find((t) => done !== undefined && t > done)),
                 resultFrame: rel(done),
                 busy: rel(a.at.busy),
@@ -392,7 +392,7 @@ const notice = (pattern) =>
     `[...document.querySelectorAll('.notification, .notification-pill')].some((n) => ${pattern}.test(n.textContent) && !A.includes(n))`
 // The app's modals are <dialog> elements; some menus and popovers use the role.
 const openDialogs = `[...document.querySelectorAll('dialog[open], [role=dialog]')]`
-/** The button "Preparing…" shows once the file is ready. */
+/** The button that "Preparing…" shows once the file is ready. */
 const preparedButton = `[...document.querySelectorAll('dialog[open]')].filter((d) => /Preparing/.test(d.textContent)).flatMap((d) => [...d.querySelectorAll('button')]).find((b) => /^(Save|Download)$/.test(b.textContent.trim()))`
 const noticesBefore = `[...document.querySelectorAll('.notification, .notification-pill')]`
 
@@ -871,7 +871,7 @@ export const actions = {
             done: `document.querySelectorAll('[data-sessions-deleted]').length > A`,
         }),
         input: (page, cdp) => press(cdp, 'Delete'),
-        reset: async (page) => {
+        reset: async () => {
             await sleep(500)
         },
     },
@@ -1007,8 +1007,8 @@ export const actions = {
         },
         spec: () => ({
             before: noticesBefore,
-            // Done when written, or when "Preparing…" offers its button: a build that outlasts the
-            // press waits for a second press, which is the user's, not the wait.
+            // Done when the file is written, or when "Preparing…" shows its button. A build that
+            // outlasts the first press waits for a second press by the user, outside the response.
             done: `${notice(/^(Saved to|Download started)/)} || ${preparedButton} !== undefined`,
             busy: `/Preparing/.test(document.body.textContent)`,
             marks: { preparing: `/Preparing/.test(document.body.textContent)` },
@@ -1063,8 +1063,8 @@ export const actions = {
             const chooser = await state.chooser
             await chooser.setFiles(cell.file)
         },
-        // A project file's history is stored in the background: `imported`, from the input, is
-        // when storage lists no open import (unless `waitImport` is false).
+        // A project file's history is stored in the background. `imported` is the time from the
+        // input until storage reports no import in progress (skipped when `waitImport` is false).
         reset: async (page, cell, state) => {
             if (cell.waitImport !== false)
                 state.extra = {

@@ -13,7 +13,7 @@ import { Editor, prefix, SampleClock, seedContext } from './driver'
 // - chain-small: coconut with a dozen edits, the chain `scripts/perf/seeds.mjs` copies into
 //   500 or 2,000 chains.
 //
-// A visit mixes what charting does: runs of notes placed with the Note tool, small flips near a
+// A visit mixes typical charting edits: runs of notes placed with the Note tool, small flips near a
 // time that walks the chart, runs of undos (a new edit after them is a branch), runs of Initial
 // Life steps (×N rows), and a flip of the whole chart every 400 steps, in a row of its own, for
 // the change view.
@@ -157,8 +157,8 @@ const runVisit = async (
     region.next = Math.max(region.next, chartEnd + 4)
     let walk = between(0, chartEnd)
     const walkEnd = chartEnd
-    // Each step stored before the clock moves on: a call in flight across a few passes would
-    // outlast the worker's 10 s timeout on the moved clock, and the tab would give up on it.
+    // Store each step before advancing the clock. A call still in flight after a few passes would
+    // pass the worker's 10 s timeout on the advanced clock, and the tab would stop waiting for it.
     const pass = async (ms: number) => {
         await ed.flush()
         await clock.pass(ms)
@@ -201,10 +201,10 @@ const runVisit = async (
             for (let i = 0; i < run && made < plan.steps; i++) {
                 walk = (walk + between(0.5, 4)) % walkEnd
                 if (
-                    await page.evaluate(
-                        ([b, n]) => window.perfSeed.flipNear(b, n),
-                        [walk, int(1, 3)],
-                    )
+                    await page.evaluate(([b, n]) => window.perfSeed.flipNear(b, n), [
+                        walk,
+                        int(1, 3),
+                    ] as [number, number])
                 )
                     await gap()
             }

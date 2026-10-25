@@ -1,8 +1,8 @@
 // Copies a seed's chains into many, for Recent Sessions at scale (docs/performance-testing.md,
 // "Seeds"):
 //   node scripts/perf/seeds.mjs <seed.json> <out.json> <chains> [hours between them, 6]
-// Each copy gets new chain, document, lineage and session ids and is moved back in time by its
-// place in the list, so the newest is the seed's own time. The copies share the seed's chunks and
+// Each copy gets new chain, document, lineage and session ids and is shifted earlier by its
+// place in the list. The first copy keeps the seed's times. The copies share the seed's chunks and
 // nodes, which are keyed by their hash.
 import { randomUUID } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
