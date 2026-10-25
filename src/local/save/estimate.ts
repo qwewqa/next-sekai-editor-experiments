@@ -129,11 +129,8 @@ export const estimateSaveSize = async (
     const roots = new Set<string>()
     let manifest = 0
     for (const { entry } of rows) {
-        manifest +=
-            ESTIMATE.entryBytes +
-            utf8Length(JSON.stringify(captureEntryDescription(entry)))
-        if (entry.stack)
-            manifest += utf8Length(JSON.stringify(entry.stack))
+        manifest += ESTIMATE.entryBytes + utf8Length(JSON.stringify(captureEntryDescription(entry)))
+        if (entry.stack) manifest += utf8Length(JSON.stringify(entry.stack))
         if (entry.kept) roots.add(toHex(entry.snapshot))
     }
     manifest += ESTIMATE.entryBytes

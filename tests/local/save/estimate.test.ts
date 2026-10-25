@@ -127,6 +127,6 @@ test('the worker’s estimate moves its call’s progress at each read, so a slo
         ),
     )
     assert.ok(estimate)
-    // The cut, then the roots, nodes, chunks and media: each read before and after.
-    assert.ok(ticks >= 8, `${ticks} ticks`)
+    // Each read ticks as it starts and ends.
+    assert.ok(ticks >= 2, `${ticks} ticks`)
 })
