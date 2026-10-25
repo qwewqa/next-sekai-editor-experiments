@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { i18n } from '../i18n'
+import WaitSpinner from '../editor/workspace/WaitSpinner.vue'
 import { openInSafeMode } from '../safe'
 import { interpolate } from '../utils/interpolate'
 import {
@@ -75,28 +76,7 @@ const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-
         @cancel.prevent
     >
         <template v-if="shown">
-            <svg
-                v-if="startupGate.phase === 'opening'"
-                class="size-8 animate-spin text-fg motion-reduce:animate-none"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-            >
-                <circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                    stroke="currentColor"
-                    stroke-opacity="0.25"
-                    stroke-width="3"
-                />
-                <path
-                    d="M21 12a9 9 0 0 0-9-9"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                />
-            </svg>
+            <WaitSpinner v-if="startupGate.phase === 'opening'" class="size-8" />
             <p
                 :id="textId"
                 :role="startupGate.phase === 'error' ? 'alert' : 'status'"

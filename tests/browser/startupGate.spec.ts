@@ -175,6 +175,16 @@ test.describe('the startup gate', () => {
         expect((await seen()).filter((s) => s.type === 'keydown')).toHaveLength(1)
     })
 
+    test('the spinner turns, and under reduced motion pulses instead of standing still', async ({
+        page,
+    }) => {
+        await startupFlags(page, { hold: true })
+        await boot(page)
+        await expect(gate(page).locator('svg')).toHaveCSS('animation-name', 'spin')
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await expect(gate(page).locator('svg')).toHaveCSS('animation-name', 'pulse')
+    })
+
     test('the session’s name is told once it is known', async ({ page }) => {
         await startupFlags(page, { hold: true })
         await boot(page)
