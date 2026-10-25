@@ -32,7 +32,7 @@ import type { AssetType } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { formatSize } from '../exportLevel/format'
-import AssetGlyph from './AssetGlyph.vue'
+import SeverityIcon from '../../SeverityIcon.vue'
 import AssetSources from './AssetSources.vue'
 import StoredAssets from './StoredAssets.vue'
 import { clearStoredThumbnails } from './storedThumbnails'
@@ -268,10 +268,10 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                         class="preview-assets-tab-pill flex h-9 items-center rounded-full px-3 transition-colors"
                     >
                         <span class="preview-assets-tab-label relative whitespace-nowrap">
-                            <AssetGlyph
+                            <SeverityIcon
                                 v-if="fallbackOf(item)"
-                                type="warning"
-                                class="mr-1 inline align-[-0.1em]"
+                                severity="warning"
+                                class="mr-1 inline size-4 align-[-0.15em]"
                                 data-tab-warning
                             />{{ label(item) }}
                         </span>

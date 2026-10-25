@@ -64,7 +64,7 @@ watch(
         </span>
         <span class="pointer-events-none min-w-0 flex-1">
             <span class="block truncate" data-asset-row-name>{{ name }}</span>
-            <span v-if="detail" class="block truncate text-sm opacity-75">{{ detail }}</span>
+            <span v-if="detail" class="block truncate text-sm text-fg/80">{{ detail }}</span>
         </span>
     </label>
 </template>
