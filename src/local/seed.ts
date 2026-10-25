@@ -9,8 +9,9 @@ import { DUMP_ENTRY } from './rawExport'
 const hasHandle = (value: unknown) =>
     typeof value === 'object' && value !== null && 'handle' in value
 
-// The dev-only sample seeder: `?seedSample=<name>` loads `/samples/<name>.json`, a dump, or `?seedSample=<name>.zip` an Export Raw Data… ZIP, into a database with no
-// chains and no sessions, then reloads. Imported only under `import.meta.env.DEV`, so release
+// The sample seeder of dev and perf builds: `?seedSample=<name>` loads `/samples/<name>.json`, a
+// dump, or `?seedSample=<name>.zip` an Export Raw Data… ZIP, into a database with no chains and no
+// sessions, then reloads. Imported only under `import.meta.env.DEV` or `__NSE_PERF__`, so release
 // builds have none of it.
 
 export type SeedResult = { seeded: true } | { seeded: false; reason: string }

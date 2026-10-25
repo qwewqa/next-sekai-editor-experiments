@@ -6,10 +6,11 @@
 import { chromium } from '@playwright/test'
 import { execFileSync, spawn } from 'node:child_process'
 import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
+import { installActionProbe, runAction } from './actions.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -669,6 +670,24 @@ const scenarios = {
         events.push({ at: (seconds * 1000) / 2, fn: () => void page.keyboard.press('u') })
         return schedule(events)
     },
+    // A user action (`action`, scripts/perf/actions.mjs): input to the frame that shows its result.
+    act(page, cdp, cell) {
+        if (!actionStates.has(cell)) actionStates.set(cell, { rep: 0 })
+        return runAction(page, cdp, cell, actionStates.get(cell))
+    },
+    // A reload: the startup gate, the chart and the session it continues (a group's `boot`).
+    async startup(page) {
+        await page.reload()
+        await page.waitForFunction(() => window.nseBoot?.done !== undefined, null, {
+            timeout: 300_000,
+            polling: 100,
+        })
+        await sleep(1500)
+        const boot = await page.evaluate(() => window.nseBoot)
+        // The reload ended the collector's run; a new one for runOnce to stop.
+        await page.evaluate(() => window.nsePerfRun.start(true))
+        return boot
+    },
     // Memory over a long scroll, a long playback, then New and Open again.
     async memory(page, cdp, cell, profile, prep, group) {
         const out = []
@@ -863,17 +882,78 @@ const prepares = {
     hide: (page, cell) => selectNear(page, cell.count ?? 20),
     journal: (page, cell) => selectNear(page, cell.count ?? 20),
 }
-const customKeys = ['idle', 'resizedrag', 'notch', 'editflip', 'drag', 'hide', 'journal', 'memory']
+const customKeys = [
+    'idle',
+    'resizedrag',
+    'notch',
+    'editflip',
+    'drag',
+    'hide',
+    'journal',
+    'memory',
+    'act',
+    'startup',
+]
+const actionStates = new WeakMap()
+
+// The boot probe (a group's `boot`): first paint, the startup gate, the chart, and startup's end.
+const bootProbe = () => {
+    const boot = (window.nseBoot = {})
+    const loop = () => {
+        const t = performance.now()
+        boot.paint ??= performance.getEntriesByName('first-contentful-paint')[0]?.startTime
+        if (boot.gate === undefined && document.querySelector('dialog[open]')) boot.gate = t
+        if (boot.chart === undefined && document.querySelector('canvas.editor-chart')) boot.chart = t
+        if (window.nsePerf?.startup() === 'done') {
+            boot.done = t
+            return
+        }
+        if (t < 300_000) requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+}
 
 // ---- runs
 
 const openChart = async (page, group) => {
-    await page.goto(baseUrl)
+    if (group.seed) {
+        // A dump seeded into the empty profile (src/local/seed.ts); the page reloads without it.
+        const file = resolve(root, group.seed)
+        const name = basename(file).replace(/\.json$/, '')
+        await page.route(`**/samples/${name}.json`, (route) =>
+            route.fulfill({ path: file, contentType: 'application/json' }),
+        )
+        page.on('console', (m) => m.text().startsWith('[seedSample]') && log(m.text()))
+        await page.goto(`${baseUrl}?seedSample=${name}`)
+        await page.waitForURL((url) => !url.search.includes('seedSample'), { timeout: 600_000 })
+    } else await page.goto(baseUrl)
     await page.locator('canvas.editor-chart').waitFor({ state: 'visible', timeout: 60_000 })
-    await page.waitForFunction(() => !!window.nsePerf, null, { timeout: 30_000 })
-    await page.evaluate(installCollector)
+    await page.waitForFunction(() => window.nsePerf?.startup() === 'done', null, {
+        timeout: 300_000,
+    })
     await page.mouse.move(5, 5)
     await page.waitForTimeout(1000)
+    if (group.chart) await openLevel(page, group)
+    await page.waitForTimeout(1500)
+    return page.evaluate(() => {
+        const P = window.nsePerf
+        const gl = document.createElement('canvas').getContext('webgl2')
+        const debug = gl?.getExtension('WEBGL_debug_renderer_info')
+        const s = P.state.value
+        return {
+            renderer: debug
+                ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)
+                : gl?.getParameter(gl.RENDERER),
+            notes: [...s.store.slides.note.values()].flat().length,
+            isDynamicStages: s.isDynamicStages,
+            bgm: !!s.bgm.buffer,
+            dpr: devicePixelRatio,
+            userAgent: navigator.userAgent,
+        }
+    })
+}
+
+const openLevel = async (page, group) => {
     const chart = resolve(root, group.chart)
     const opening = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
@@ -909,23 +989,6 @@ const openChart = async (page, group) => {
         await modal.getByRole('button', { name: 'Confirm', exact: true }).click()
         await modal.waitFor({ state: 'detached', timeout: 30_000 })
     }
-    await page.waitForTimeout(1500)
-    return page.evaluate(() => {
-        const P = window.nsePerf
-        const gl = document.createElement('canvas').getContext('webgl2')
-        const debug = gl?.getExtension('WEBGL_debug_renderer_info')
-        const s = P.state.value
-        return {
-            renderer: debug
-                ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)
-                : gl?.getParameter(gl.RENDERER),
-            notes: [...s.store.slides.note.values()].flat().length,
-            isDynamicStages: s.isDynamicStages,
-            bgm: !!s.bgm.buffer,
-            dpr: devicePixelRatio,
-            userAgent: navigator.userAgent,
-        }
-    })
 }
 
 const configure = (page, cell) =>
@@ -1012,7 +1075,7 @@ const cellId = (group, cell) =>
     [
         group.id,
         cell.layout ?? 'basic',
-        cell.scenario,
+        cell.scenario === 'act' ? cell.action : cell.scenario,
         cell.pps && cell.pps !== 1000 ? `pps${cell.pps}` : '',
         cell.minimap === false ? 'nomm' : '',
         cell.preview === false ? 'nopv' : '',
@@ -1082,7 +1145,14 @@ process.on('exit', stopChildren)
 writeFileSync(
     `${runDir}/meta.json`,
     JSON.stringify(
-        { plan: resolve(planPath), dist, baseUrl, affinity: expectedAffinity, priority },
+        {
+            plan: resolve(planPath),
+            dist,
+            baseUrl,
+            affinity: expectedAffinity,
+            priority,
+            site: process.env.NSE_SITE ?? 'production',
+        },
         null,
         1,
     ),
@@ -1116,7 +1186,6 @@ try {
                     configurable: true,
                     value: undefined,
                 })
-                localStorage.setItem('nse.test.startBlank', 'true')
                 localStorage.setItem(
                     'nse.test.version',
                     JSON.stringify({ appVersion: '0.6.0', atTag: true }),
@@ -1126,6 +1195,19 @@ try {
                     JSON.stringify('0.6.0'),
                 )
             })
+            // A seeded group continues the seeded session; the others start blank.
+            if (!group.seed)
+                await page.addInitScript(() => localStorage.setItem('nse.test.startBlank', 'true'))
+            // The platform override (`nse.test.platform`; a build with NSE_SITE=test reads it) and
+            // other keys.
+            for (const [key, value] of Object.entries({
+                ...(group.platform && { 'nse.test.platform': JSON.stringify(group.platform) }),
+                ...group.local,
+            }))
+                await page.addInitScript(([k, v]) => localStorage.setItem(k, v), [key, value])
+            await page.addInitScript(installCollector)
+            await page.addInitScript(installActionProbe)
+            if (group.boot) await page.addInitScript(bootProbe)
             // Storage test flags, and the first lifecycle listeners, before the app's.
             if (group.storage)
                 await page.addInitScript(
@@ -1209,7 +1291,17 @@ try {
                         }) + '\n',
                     )
                     const med = (fn) => runs.map(fn).sort((a, b) => a - b)[runs.length >> 1]
-                    log('cell', id, {
+                    if (cell.scenario === 'act')
+                        log('cell', id, {
+                            response: [
+                                med((r) => r.input.response ?? Infinity),
+                                Math.max(...runs.map((r) => r.input.response ?? Infinity)),
+                            ],
+                            longestTask: Math.max(...runs.map((r) => r.input.longestTask)),
+                            marks: runs.map((r) => r.input.marks),
+                            cold: cold?.input?.response,
+                        })
+                    else log('cell', id, {
                         chart: [
                             med((r) => r.probes.chartDraw?.p50),
                             med((r) => r.probes.chartDraw?.p95),

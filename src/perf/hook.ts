@@ -4,15 +4,19 @@ import {
     isElevationEditorOpen,
     openElevationEditor,
 } from '../editor/elevation/state'
+import { comparisonStatus, peekChange } from '../editor/history/changes'
 import { minimapStats } from '../editor/minimap/pipeline'
 import { changePlayerSpeed, startOrStopPlayer } from '../editor/player'
 import { view } from '../editor/view'
 import { replaceState, state } from '../history'
+import { displayedPeekKey, peekLoading, peekedKey } from '../history/peek'
+import { liveState, slotLoading } from '../history/stack'
 import { getAllEntities } from '../history/store'
 import { isPlaying } from '../player'
 import { peekDrawContext } from '../rendering/context'
 import type { PathGraphicsCache } from '../rendering/pathGraphics'
 import { settings } from '../settings'
+import { startupGate } from '../startup/gate'
 import { beatToTime } from '../state/integrals/bpms'
 import { perfSamples } from './probe'
 
@@ -35,6 +39,20 @@ const nsePerf = {
     changePlayerSpeed,
     openElevationEditor,
     closeElevationEditor,
+    /** Startup's phase: 'done' once the session it continues is shown. */
+    startup: () => startupGate.phase,
+    /** The peek: the key asked for, the key shown, its spinner, and its change view's state. */
+    peek: () => ({
+        key: peekedKey.value,
+        shown: displayedPeekKey.value,
+        loading: peekLoading.value,
+        change: comparisonStatus.value,
+        changeKey: peekChange.value?.key,
+    }),
+    /** The live state, and whether a stack move waits for a slot to load. */
+    live: () => ({ state: liveState.value, loading: slotLoading.value }),
+    /** The storage worker, once storage has started. */
+    worker: async () => (await import('../local/start')).storageWorker,
     /** Selects the `count` plain notes nearest `time`; their screen points, nearest first. */
     selectNear(time: number, count: number) {
         const bpms = state.value.bpms
