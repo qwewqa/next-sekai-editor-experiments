@@ -23,7 +23,7 @@ Usage statistics must never make the editor worse to use. These rules hold for e
 - **Bounded memory:** at most 1,000 counters (900 of them `usage`), 50 queued events and 32 KB.
 - **Silent failure.** A blocked, offline, failing or hanging endpoint, or a client chunk gone after a deploy, shows nothing and holds nothing up.
 - **No storage.** No IndexedDB, Cache Storage or quota. The only stored value is the switch's setting. The lint keeps `src/analytics/` away from the notice, dialog and storage modules. Only `status.ts` may import the local-data modules, and only to read.
-- **Opt-out at once.** Turning the switch off drops the queue and the counters, and nothing more is sent, even when the page closes. Other open tabs stop too. Reset Settings keeps the choice.
+- **Opt-out at once.** Turning the switch off drops the queue and the counters, and nothing more is sent, even when the page closes. Other open tabs stop too. Reset Settings… keeps the choice.
 - **The data paths are never touched.** The client reads what the flows already know. It never calls a storage, Save or History function.
 
 A change that adds work to a hot path is measured with the perf tools, with statistics on and off (`docs/performance-testing.md`).
@@ -32,7 +32,7 @@ A change that adds work to a hot path is measured with the perf tools, with stat
 
 Nothing is sent from a visit, not even the pageview, until its first trusted `pointerdown`, `keydown`, `touchstart` or `wheel` while the page is visible. One passive listener waits for it and is removed once the visit is armed. Events measured before then wait in memory with the time they were captured. A visit that never arms sends nothing. So Umami's pageviews count visits where someone used the editor.
 
-The startup gate blocks input until the session is open, so input during startup does not arm a visit. When startup ends in an error, the client loads all the same, because a failed startup is the signal that matters most. The gate keeps swallowing keys and clicks outside itself, so only a click on the error page's own buttons or text arms the visit, and then the `startup` event reports the failure. Safe mode sends nothing, as for any page.
+The startup gate blocks input until the session is open, so input during startup does not arm a visit. When startup ends in an error, the client loads all the same, because a failed startup is the signal that matters most. The gate still blocks keys and clicks outside itself, so only a click on the error page's own buttons or text arms the visit, and then the `startup` event reports the failure. In safe mode nothing is sent.
 
 ## The hooks
 
@@ -45,7 +45,7 @@ A hook is one call into `tally.ts`, or a read by the client. Nothing else on a h
 | `notify`, `recordDiagnostic` | `notices.<severity>`, `errors.<kind>` |
 | `finishStartup`, `failStartup` | `markStartup`: the time, the outcome, and whether the page was ever hidden |
 | `local/start.ts` | `note('reload')` when the tab's claim is its own reload |
-| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed; `busy` while they run, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
+| Open, Save, Export, Check, Choose Audio | `record` with the raw size and the time since the last picker or dialog closed. All but Export also call `busy` while they run, as Restore does, for the long-frame split. A Save-family action ends in `afterOutcome`, an Open in `open/report.ts` |
 | `peekEntry`, `restoreEntry`, the History dialog and panel, Recent Sessions, Delete Sessions…, the minimap, Quick Switch | `features.<name>` and `peekShown` |
 | `history/index.ts` | `chartChanged` after a file is opened, a stored session is shown, and after a Save; the client counts the chart in an idle callback; while playback runs it schedules nothing, and the count waits until playback stops |
 | The preview worker host | `record('preview', …)` when the worker fails and the main thread takes over |
@@ -71,7 +71,7 @@ The client reads the rest: the settings (`snapshot.ts`), the load events, the st
 - the browser is not automated (`navigator.webdriver`), unless a dev build's test key or a loopback origin points it at a mock;
 - the page is on its site's host (`nse.qwewqa.dev` or `test.nse.qwewqa.dev`) or on this machine, so a copy of the files hosted elsewhere sends nothing.
 
-The switch appears only in a build with a target. Reset Settings skips it, and its hint says so in those builds.
+The switch appears only in a build with a target. Reset Settings… skips it, and its hint says so in those builds.
 
 ## Privacy rules
 
@@ -100,9 +100,9 @@ How the code enforces them:
 | `startup` | client start | `start`, `outcome`, `ready`, `found.<kind>` |
 | `storage` | status known, on a change to paused or memory, and when the Recent Sessions count becomes known | `mode`, `reason`, `persisted`, `usage`, `quota`, `cleanup`, `sessions` |
 | `chart` | after Open, a restore and a Save | `trigger`, `notes`, `slides`, `bpms`, `timeScales`, `events`, `stages`, `groups`, `dynamicStages`, `bgm`, `historySteps` |
-| `preview` | client start, when the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
+| `preview` | client start if the preview is shown, and a handover | `host`, `reason`, `workerFrames`, `graphics` |
 | `open` | each Open… | `format`, `via`, `size`, `outcome`, `reason`, `took` |
-| `save` | each Save, Save As… and Save to File | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
+| `save` | each Save, Save As…, Download Again and Recent Sessions' Save… | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
 | `export` | each Export | `format`, `target`, `size`, `took`, `outcome`, `reason` |
 | `check` | each Check File and History | `outcome`, `took` |
 | `bgm` | each BGM chosen | `format`, `size`, `length`, `took`, `outcome` |
@@ -115,6 +115,8 @@ How the code enforces them:
 | `unsupported` | the support page, on its first input | `engine` |
 
 `chart.historySteps` is the size of the Undo window, at most 1,000 steps (`STACK_CAP`), not the length of the Timeline.
+
+`peek.<time>` is the time from the start of the load, after the debounce, until the step shows with its change. Up to 100 ms of it is the wait for the change. A step whose state comes from the cache is counted as `cached` and not timed.
 
 The Recent Sessions count (`sessions`) is known only after the History tab has read its list. If the first `storage` event went without it, one more goes when the count becomes known. The client reads no storage of its own for it.
 

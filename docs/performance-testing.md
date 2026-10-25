@@ -184,7 +184,7 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 
 - The `phone` profile is 390×844 at DPR 3, with touch, `isMobile` and a **4× CDP CPU throttle**.
 - The throttle slows the CPU only. GPU costs at DPR 3 are not scaled, so a real phone can be slower on fill rate than these runs show.
-- Workers are not throttled. The harness throttles the page's own session only, and a worker target refuses `Emulation.setCPUThrottlingRate` (measured), so the storage worker and the preview's worker run at full speed, and a phone figure that includes worker time is a lower bound.
+- Workers are not throttled. The harness throttles the page's own session only, and a worker target returns an error for `Emulation.setCPUThrottlingRate` (measured), so the storage worker and the preview's worker run at full speed, and a phone figure that includes worker time is a lower bound.
 - Use touch scenarios on it (`quicktouch`, `flick`, `minimapdrag`): wheel and keys are not phone input.
 
 ### Runs, cold and warm, and the two axes
@@ -294,7 +294,7 @@ Usage statistics must cost nothing measurable (`docs/analytics.md`). To check a 
         node node_modules/vite/bin/vite.js build --sourcemap --outDir perf-results/B/dist --emptyOutDir
     ```
 
-2. Start the mock for B's runs: `node scripts/perf/analytics-mock.mjs --port 5535 --log <file>`. It answers `POST /api/batch` as Umami does and counts what it gets (`GET /count`). Check the count after a run: B's runs must have sent something, or they measured nothing.
+2. Start the mock for B's runs: `node scripts/perf/analytics-mock.mjs --port 5535 --log <file>`. It responds to `POST /api/batch` as Umami does and counts what it gets (`GET /count`). Check the count after a run: B's runs must have sent something, or they measured nothing.
 3. Run each plan with `--no-build --out perf-results/A` and `--out perf-results/B`: one warm-up run of either build, discarded, then A B B A, with the pinning and the quiet-machine checks above. When load disturbs a batch, run the whole batch again rather than dropping single runs.
 
 The harness's input is trusted, so a run arms the visit, and the first batch goes at the first hide or a minute after. Cells that hide the page (`hide`) or last over a minute therefore include a send. The warm-up run is discarded because the first run of a batch is fast whichever build it is. Compare p50, p95, p99, the maximum and the counts over budget per cell, and read a difference only if it is outside the spread between the two runs of the same build.

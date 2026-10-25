@@ -682,7 +682,7 @@ try {
 
 let resetting = false
 
-/** Whether Reset Settings is running, changing its keys one at a time. */
+/** Whether Reset Settings… is running, changing its keys one at a time. */
 export const isResettingSettings = () => resetting
 
 export const resetSettings = () => {
