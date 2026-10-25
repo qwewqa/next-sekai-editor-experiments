@@ -10,6 +10,8 @@ import {
     type ConfirmTexts,
 } from '../../src/editor/settings/deleteChoices'
 import en from '../../src/i18n/en/index.json'
+import fr from '../../src/i18n/fr/index.json'
+import { setInterpolationLocale } from '../../src/utils/interpolate'
 
 // Delete Sessions…' pure view: the counts the dialog shows are what
 // the confirm names and what is deleted, so they come from one `chosen`.
@@ -98,6 +100,27 @@ test('more than three not-saved names end with "and N more"', () => {
         'Delete 5 sessions?',
         '5 sessions have unsaved changes: "A", "B", "C" and 2 more.',
     ])
+})
+
+test('the "more" count takes its plural form from the count, not the names', () => {
+    const frTexts: ConfirmTexts = {
+        confirm: fr.settings.localData.deleteConfirm,
+        notSaved: fr.settings.localData.notSaved,
+        namesMore: fr.settings.localData.namesMore,
+        newer: fr.settings.localData.newer,
+        listJoin: fr.modals.form.listJoin,
+        quoted: fr.history.quoted,
+    }
+    const rows = ['A', 'B', 'C', 'D', 'E'].map((name) => row(100, name, { notSaved: true }))
+    setInterpolationLocale(() => 'fr')
+    try {
+        const one = confirmLines(rows.slice(0, 4), (chain) => chain.name, frTexts).at(-1)
+        const two = confirmLines(rows, (chain) => chain.name, frTexts).at(-1)
+        assert.match(one as string, / et 1 autre./)
+        assert.match(two as string, / et 2 autres./)
+    } finally {
+        setInterpolationLocale(() => 'en')
+    }
 })
 
 test('the newer line shows only when the chosen set holds a newer chain, singular for one session', () => {

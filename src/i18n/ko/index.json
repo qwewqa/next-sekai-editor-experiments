@@ -989,7 +989,7 @@
       "deleteNext": "삭제…",
       "deleteConfirm": "세션 {0}개를 삭제할까요?",
       "notSaved": "저장되지 않은 변경 사항이 있는 세션 {0}개: {1}.",
-      "namesMore": "{0} 외 {1}개",
+      "namesMore": "{1} 외 {0}개",
       "newer": "더 새로운 버전의 편집기가 필요한 세션이 포함되어 있습니다.",
       "deleting": "삭제하는 중…",
       "exportRawNote": "문제를 신고할 때 사용합니다.",

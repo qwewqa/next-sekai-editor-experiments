@@ -67,7 +67,7 @@ export const confirmLines = <T extends Pickable & Pick<DeleteChain, 'readable'>>
             .reduce((text, name) => interpolateRaw(texts.listJoin, text, name))
         const shown =
             unsaved.length > NAMES_SHOWN
-                ? interpolateRaw(texts.namesMore, names, String(unsaved.length - NAMES_SHOWN))
+                ? interpolateRaw(texts.namesMore, String(unsaved.length - NAMES_SHOWN), names)
                 : names
         lines.push(interpolateRaw(texts.notSaved, String(unsaved.length), shown))
     }

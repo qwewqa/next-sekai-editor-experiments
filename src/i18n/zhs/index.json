@@ -989,7 +989,7 @@
       "deleteNext": "删除…",
       "deleteConfirm": "要删除 {0} 个会话吗？",
       "notSaved": "有 {0} 个会话包含未保存的更改：{1}。",
-      "namesMore": "{0} 及其他 {1} 个",
+      "namesMore": "{1} 及其他 {0} 个",
       "newer": "其中有会话需要更新版本的编辑器。",
       "deleting": "正在删除…",
       "exportRawNote": "用于报告问题。",

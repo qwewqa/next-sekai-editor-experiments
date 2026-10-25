@@ -989,7 +989,7 @@
       "deleteNext": "Supprimer…",
       "deleteConfirm": "Supprimer {0} session ?|Supprimer {0} sessions ?",
       "notSaved": "{0} session a des modifications non sauvegardées : {1}.|{0} sessions ont des modifications non sauvegardées : {1}.",
-      "namesMore": "{0} et {1} autres",
+      "namesMore": "{1} et {0} autre|{1} et {0} autres",
       "newer": "Cette session nécessite une version plus récente de l’éditeur.|Certaines de ces sessions nécessitent une version plus récente de l’éditeur.",
       "deleting": "Suppression…",
       "exportRawNote": "Pour signaler un problème.",
