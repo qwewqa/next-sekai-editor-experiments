@@ -15,6 +15,7 @@ import { pickFile } from '../../../utils/file'
 import { runCommand } from '../runCommand'
 import { statusText } from '../../labelText'
 import { peekedSession } from '../../history/selection'
+import { stopPlayer } from '../../player'
 import { changedFields, type Draft } from '../../levelInfo/draft'
 import MediaRow from '../../levelInfo/MediaRow.vue'
 import {
@@ -127,6 +128,8 @@ const togglePlay = async () => {
     }
     const url = preview.url.value
     if (!url) return
+    // Otherwise the chart would keep playing under the clip.
+    stopPlayer(false)
     const element = new Audio(url)
     audio = element
     playing.value = true

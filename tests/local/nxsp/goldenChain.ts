@@ -80,7 +80,11 @@ export const fixedChunks = (store: Store): Map<string, InputChunk> => {
     for (const [hash, chunk] of store.chunks) {
         const fixed = fromB64(stored[hash] ?? '')
         assert.deepEqual(inflateStrict(fixed), inflateStrict(chunk.stored), `chunk ${hash}`)
-        chunks.set(hash, { stored: fixed, crc32: chunkCrc32(Buffer.from(hash, 'hex'), fixed) })
+        chunks.set(hash, {
+            stored: fixed,
+            crc32: chunkCrc32(Buffer.from(hash, 'hex'), fixed),
+            size: chunk.size,
+        })
     }
     return chunks
 }

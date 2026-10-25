@@ -97,6 +97,7 @@ const sourceMatches = (source: State, selected: readonly Entity[], candidate: St
     candidate === source ||
     (hasSameChartData(source, candidate) &&
         candidate.bgm === source.bgm &&
+        candidate.levelInfo === source.levelInfo &&
         candidate.initialLife === source.initialLife &&
         candidate.selectedEntities.length === selected.length &&
         candidate.selectedEntities.every((entity, index) => entity === selected[index]))

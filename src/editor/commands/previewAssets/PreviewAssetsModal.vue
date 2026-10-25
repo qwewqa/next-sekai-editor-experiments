@@ -17,6 +17,7 @@ import { platform } from '../../../platform'
 import { assetTypes, withRecentServer } from '../../../preview/assets/choice'
 import { reasonText, typeLabel } from '../../../preview/assets/fallbackText'
 import { fallbacks } from '../../../preview/assets/active'
+import { applyAssetChoices } from '../../../preview/assets'
 import { createAssetChooser, storedChoice } from '../../../preview/assets/files/chooser'
 import type { SourcePackage } from '../../../preview/assets/files/package'
 import { decodeToCheck } from '../../../preview/assets/files/audio'
@@ -65,9 +66,7 @@ const choosers = Object.fromEntries(
             decodeAudio: decodeToCheck,
             decodeImage: decodeImageToCheck,
             describe: importMessage,
-            apply: (choices) => {
-                settings.previewAssets = { ...settings.previewAssets, ...choices }
-            },
+            apply: applyAssetChoices,
             onStorageChanged: () => void refreshStored(),
         }),
     ]),
@@ -86,9 +85,7 @@ const servers = Object.fromEntries(
             decodeImage: decodeImageToCheck,
             describe: serverItemText,
             toChoice: storedChoice,
-            apply: (choices) => {
-                settings.previewAssets = { ...settings.previewAssets, ...choices }
-            },
+            apply: applyAssetChoices,
             recent: () => settings.recentServers,
             remember: (address) => {
                 settings.recentServers = withRecentServer(settings.recentServers, address)
