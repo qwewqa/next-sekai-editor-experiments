@@ -919,6 +919,7 @@
       "title": "도구 모음",
       "quickSwitch": "빠른 전환",
       "add": "도구 추가",
+      "remove": "\"{0}\"을(를) 도구 모음에서 제거",
       "modal": {
         "title": "도구 선택"
       }
@@ -976,6 +977,7 @@
       "openHistory": "기록 열기",
       "confirmClose": "저장되지 않은 변경 사항이 있으면 닫기 전에 확인",
       "exportRaw": "원시 데이터 내보내기…",
+      "exportRawTitle": "원시 데이터 내보내기",
       "exportRawName": "{0} 원시 데이터 {1}.zip",
       "storageHeading": "저장 공간",
       "stored": "이 브라우저에 보관됨: {0} / 약 {1}",
@@ -2106,6 +2108,7 @@
     "notFound": "\"{0}\"을(를) 찾을 수 없습니다.",
     "downloadStarted": "다운로드 시작됨: {0} · {1}",
     "preparing": "{0} 준비 중… {1}",
+    "ready": "준비됨: {0} · {1}",
     "download": "다운로드",
     "buildFailed": "\"{0}\"을(를) 준비하지 못했습니다.",
     "readFailed": "\"{0}\"을(를) 읽지 못했습니다.",
@@ -2128,6 +2131,7 @@
     "notProject": "\"{0}\"은(는) 프로젝트 파일이 아닙니다.",
     "notKept": "저장되지 않았습니다. \"{0}\"을(를) 완전히 읽지 못했습니다.",
     "notKeptSafe": "저장되지 않았습니다. 안전 모드에서는 파일을 교체할 수 없습니다.",
+    "notKeptFull": "저장되지 않았습니다. 브라우저 저장 공간이 가득 찼습니다. 설정 › 로컬 데이터에서 세션을 삭제한 다음 다시 저장하세요.",
     "saved": "{0}에 저장됨",
     "savedWithoutBgmLarge": "{0}에 배경음 없이 저장됨",
     "savedWithoutCoverLarge": "{0}에 커버 없이 저장됨",
@@ -2160,8 +2164,8 @@
   "check": {
     "command": "파일 및 기록 검사…",
     "title": "파일 및 기록 검사",
-    "checkingFile": "{0} 검사 중… {1}%",
-    "checkingStored": "보관된 기록 검사 중… {0}%",
+    "checkingFile": "{0} 검사 중…",
+    "checkingStored": "보관된 기록 검사 중…",
     "changed": "\"{0}\"이(가) 검사 중에 변경되었습니다. 다시 시도하세요.",
     "stillOpening": "\"{0}\"을(를) 아직 여는 중입니다. 다시 시도하세요.",
     "noDamage": "손상이 발견되지 않았습니다.",

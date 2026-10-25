@@ -26,6 +26,7 @@ import { isApplePlatform, matchBindings } from '../controls/bindings'
 import ManagerMenu from '../workspace/manager/ManagerMenu.vue'
 import OverlayScrollbar from '../workspace/OverlayScrollbar.vue'
 import ChevronIcon from '../workspace/ChevronIcon.vue'
+import WaitSpinner from '../workspace/WaitSpinner.vue'
 import { useRootFontSize } from '../useRootFontSize'
 import { useScrollMemory } from '../workspace/useScrollMemory'
 import FlagIcon from './FlagIcon.vue'
@@ -78,6 +79,7 @@ import {
     jumpTo as jumpToEntry,
     jumpToOldest,
     loadingMore,
+    loadMoreFailed,
     loadingNewer,
     loadMore,
     loadNewer,
@@ -247,6 +249,8 @@ const tail = computed(() => {
         return { kind: 'skeleton', height: SKELETON_ROWS * rowHeight.value }
     if (isEmpty.value) return { kind: 'empty', height: MESSAGE.value }
     if (loadingMore.value) return { kind: 'more', height: rowHeight.value }
+    if (loadMoreFailed.value && canLoadMore.value)
+        return { kind: 'moreFailed', height: FAILED.value }
     // The chain's oldest stored session continues one that is gone: the list ends with a line.
     if (earlierMissing.value && !canLoadMore.value)
         return { kind: 'ended', height: rowHeight.value }
@@ -257,7 +261,12 @@ const contentHeight = computed(() => geometry.value.total + tail.value.height + 
 watch(
     () => tail.value.kind,
     (kind, was) => {
-        if (was !== 'failed' || kind === 'failed') return
+        if (
+            (was !== 'failed' && was !== 'moreFailed') ||
+            kind === 'failed' ||
+            kind === 'moreFailed'
+        )
+            return
         if (!document.activeElement?.closest('[data-history-failed]')) return
         void nextTick(() => {
             if (!disposed && focusLost()) void focusRow(cursorId.value, 'row', false)
@@ -1231,6 +1240,7 @@ const onScroll = () => {
     if (
         historyFilter.value !== 'here' &&
         canLoadMore.value &&
+        !loadMoreFailed.value &&
         element.scrollTop + element.clientHeight > geometry.value.total - 400
     )
         void loadMore()
@@ -1239,7 +1249,8 @@ const onScroll = () => {
 // A short list loads on until it fills the pane.
 watch([() => geometry.value.total, viewport, canLoadMore], () => {
     if (historyFilter.value === 'here') return
-    if (canLoadMore.value && geometry.value.total < viewport.value + 400) void loadMore()
+    if (canLoadMore.value && !loadMoreFailed.value && geometry.value.total < viewport.value + 400)
+        void loadMore()
 })
 
 let observer: ResizeObserver | undefined
@@ -1680,19 +1691,18 @@ defineExpose({
                     <span
                         class="flex size-9 shrink-0 items-center justify-center"
                         aria-hidden="true"
-                        ><span
-                            v-if="tail.kind === 'checking'"
-                            class="size-3.5 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
+                        ><WaitSpinner v-if="tail.kind === 'checking'" class="size-4"
                     /></span>
                     <span class="min-w-0 truncate pl-2">{{
                         tail.kind === 'checking' ? i18n.history.checking : notCheckedText
                     }}</span>
                 </div>
                 <div
-                    v-else-if="tail.kind === 'failed'"
+                    v-else-if="tail.kind === 'failed' || tail.kind === 'moreFailed'"
                     class="absolute inset-x-1.5 flex flex-col items-center justify-center gap-3 px-3 text-center text-sm text-fg/80"
                     :style="{ top: `${geometry.total}px`, height: `${FAILED}px` }"
                     data-history-failed
+                    :data-history-more-failed="tail.kind === 'moreFailed' ? '' : undefined"
                 >
                     <span>{{
                         historyFilter === 'here'
@@ -1703,7 +1713,13 @@ defineExpose({
                         v-if="historyFilter !== 'here' || here.canRetry"
                         type="button"
                         class="btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4"
-                        @click="historyFilter === 'here' ? retryHere() : retry()"
+                        @click="
+                            tail.kind === 'moreFailed'
+                                ? loadMore()
+                                : historyFilter === 'here'
+                                  ? retryHere()
+                                  : retry()
+                        "
                     >
                         {{ i18n.history.tryAgain }}
                     </button>
@@ -1722,9 +1738,7 @@ defineExpose({
                     :style="{ top: `${geometry.total}px`, height: `${rowHeight}px` }"
                     aria-hidden="true"
                 >
-                    <span
-                        class="size-4 animate-spin rounded-full border-2 border-fg/25 border-t-fg"
-                    />
+                    <WaitSpinner class="size-4" />
                 </div>
             </div>
         </div>

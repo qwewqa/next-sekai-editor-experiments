@@ -321,7 +321,10 @@ test('toolbar tools keep their edge, and the tool in use is selected', async ({ 
     await expect(dialog).toBeVisible()
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
     const list = dialog.locator('section', { has: page.getByRole('heading', { name: 'Toolbar' }) })
-    await expectTools(list.locator('button:not([aria-label])'), 0)
+    // Each tool is named by its removal; the Add Tool buttons are not tools.
+    const listed = list.locator('button[aria-label^="Remove"]')
+    await expect(listed.first()).toBeVisible()
+    await expectTools(listed, 0)
     await dialog.getByRole('button', { name: 'Add Tool' }).first().click()
     const picker = page.getByRole('dialog', { name: 'Select Tool' })
     await expect(picker).toBeVisible()

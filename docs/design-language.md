@@ -1,6 +1,6 @@
 # Design language
 
-How the editor's UI is built: surfaces, shape, size, spacing, type and the History surfaces. Use it when you add or change UI, so new work looks like it belongs. Colour roles and control recipes are in [color-system.md](color-system.md). The questions to ask in review are in [ui-review-checklist.md](ui-review-checklist.md).
+How the editor's UI is built: surfaces, shape, size, spacing, type, the History surfaces, and waits and feedback. Use it when you add or change UI, so new work looks like it belongs. Colour roles and control recipes are in [color-system.md](color-system.md). The questions to ask in review are in [ui-review-checklist.md](ui-review-checklist.md).
 
 - **Principles, not laws.** Each rule has a reason. When a case does not fit, depart from it and say why in the change. The rules with the least room to bend are about data safety: guard the user’s work, and never show a notice that is not true ([engineering-principles.md](engineering-principles.md), principles 7 and 9).
 - **The code is the record.** Paths are relative to the repository root. Pixel values assume the 16 px root font size set in `src/index.css`. Surfaces that mirror sizes in script follow a changed root size (`src/editor/useRootFontSize.ts`).
@@ -107,7 +107,7 @@ Colour, elevation, hover, press and focus of every button family come from the r
 - 16 px for rows, fields, buttons and dialog body; `text-lg` bold for dialog titles; `text-sm` for menus, the rail (`font-medium`), strips, notice cards, History rows and Properties headings (bold); `text-xs` for meta, counts, captions and the status bar (`text-white/80` on the chrome).
 - Bold for titles, band labels, tabs and section headings; `font-semibold` for folder names; buttons normal.
 - Counts, deltas and times are `tabular-nums`, so a changing number does not move the line.
-- **Secondary text floor:** `text-fg/80` on a light modal is 4.69:1, the lowest alpha that passes 4.5:1 there. `fg/75` is 4.16, `fg/70` is 3.70 and a 60 % fade is 2.96, so `fg/70` is for glyphs and disabled states only. On `header` only full `fg` passes (4.97:1; `fg/80` is 3.44), so meta text on a band is full ink (`ManagerRow.vue` forces it). Dark has more room (`fg/70` is 5.6:1 on its modal), so judge light first.
+- **Secondary text floor:** `text-fg/80` on a light modal is 4.69:1, the lowest alpha that passes 4.5:1 there. `fg/75` is 4.16, `fg/70` is 3.70 and a 60 % fade is 2.96, so `fg/70` is for glyphs and disabled states only. On `header` only full `fg` passes (4.97:1; `fg/80` is 3.44), so meta text on a band is full ink (`ManagerRow.vue` forces it). `opacity-75` fails the same way (4.16:1), so use `text-fg/80`. On the status bar, text stays `white/80` (4.82:1 on the light chrome) and is not dimmed further. Dark has more room (`fg/70` is 5.6:1 on its modal), so judge light first.
 - Muted text is not the same as unavailable: an unavailable History row fades its marks and text but keeps the reason at `fg/80` ([section 8](#8-the-history-surfaces)).
 
 ## 7. Responsive
@@ -168,7 +168,88 @@ The History surfaces follow the rules above and add a few patterns of their own.
 - On a phone the dialog stays a centred card that sizes to its content, like every other `BaseModal`.
 - Property Changes shows Before and After in two columns. An added or removed entry has one side, so its rows show that value alone, with no empty column.
 
-## 9. Principles for new UI
+## 9. Waits and feedback
+
+How the editor shows work in progress, what it shows when something fails or is empty, and where a confirmation puts focus.
+
+### When a wait shows
+
+- **Pick the delay by what the indicator would replace.** An indicator that is the only response to a press, or that fills an empty place, shows at once: the Loading dialog and the placeholder rows. An indicator that would replace something still on screen waits about 150 ms, so a short wait does not flicker. The peek strip's date keeps its info glyph until then (`src/history/peek.ts`), and the busy cursor of a queued Undo starts then (`src/history/stack.ts`).
+- **Placeholder rows show at once.** They stand where the rows will be, in the rows' own shape, and have no text, so a short wait shows only a brief change of shape. Without them a list that is loading would look empty for that moment (engineering principle 4). The Timeline's first page and the first read of Recent Sessions are examples.
+- **Keep what is still true.** Where the old content is still correct, keep it for up to 250 ms before a loading form replaces it, so most changes are one swap. A glyph beside it can turn into a spinner sooner, at 150 ms. The peek strip and change capsule do this (section 8).
+- **A line that moves other content waits 500 ms** when the control the user pressed already shows the press. The chosen Preview Assets row is checked at once, and its "Loading…" line comes only for a slow switch (`AssetSources.vue`). Render the line only once a timer fires, so it takes no space until then (ui-review-checklist.md, "Hidden content still takes space").
+- **A dialog whose whole job is the wait opens with the press.** Check File and History…, Open and BGM show the Loading dialog at once, as Open and BGM did in v0.5.22. The dialog is the response to the press, and its title names the work.
+- **A dialog in a flow that usually ends without one waits 1 s.** Save, and Export where the browser has a save picker, show Preparing only for a build that takes longer (`PREPARING_MS` in `src/editor/save/imports.ts`). Until then the pressed button is disabled. Export without a picker shows its Ready line in its own dialog instead.
+- **Startup has no press.** The startup gate blocks input from the first frame and shows after 150 ms (`src/startup/gate.ts`).
+- **No minimum time.** Once the work is done, the result shows at once. The delay already removes most flicker, and a hold would be a second timer on every wait. A dialog held open would also delay the user.
+- **A delay is one timer per wait.** Do not read layout or poll on each frame to decide whether to show an indicator.
+
+### How a wait looks
+
+Pick the form by where the wait is. Every form uses the ink (`fg`, or white over the preview) and no accent, so a wait never reads as an on state or a selection.
+
+| Where | Form | Examples |
+| --- | --- | --- |
+| Rows that are not there yet | Placeholder rows on the rows' grid: `bg-fg/10` bars, `motion-safe:animate-pulse`, `aria-hidden` | Timeline, Recent Sessions, Go To |
+| A slot that holds a glyph, or the end of a list | `WaitSpinner`, 16 px | Peek strip date, older Timeline page, Edits Here scan |
+| A dialog whose content is the wait, or a step that blocks the dialog | The status text, then `WaitBar` under it: sliding while the total is unknown, filled to the fraction when it is known | Loading dialog, Preparing (not once it says Ready), the Preview Assets chooser's Reading file…, Connecting… and Storing… |
+| A line that waits beside content that stays usable | The text alone | Estimating size…, Loading changes…, a Preview Assets row's Loading… |
+| The startup gate | `WaitSpinner` at 32 px over the text | Startup gate |
+| Over the preview | The v0.5.22 "Loading skin…" overlay | `LevelPreview.vue` |
+| A queued key or pointer action with nothing of its own on screen | The `progress` cursor | Undo waiting for its stored step |
+
+- **One spinner and one bar.** `src/editor/workspace/WaitSpinner.vue` and `WaitBar.vue` are the only ones. Do not copy their markup. Copies drifted in size and in how they handled reduced motion.
+- **No spinner inside a button.** A button whose work has started is disabled (`opacity-40`), and its dialog or line shows the wait.
+- **Show a fraction only when the total is known** and the work usually takes seconds. The bar shows it. The text names the work and does not repeat the percentage. A bar with no fraction yet slides. Check's bar slides while Check waits behind a Save, until each phase's first batch is done, between the phases, and during Check's finish.
+
+### What a wait says
+
+- Name the work with a present participle and the ellipsis character: "Reading file…", "Checking older steps…". Use "Loading…" alone only where its place already says what loads.
+- Change the text when the work moves to a new stage, not on every frame.
+- No "please wait", and no reassurance.
+
+### Cancel, and the rest of the UI
+
+- **A wait blocks the editor only when the user started it and must see it through.** A file read, a build or a check may be a dialog that blocks the editor, and the dialog can be closed. Any other wait leaves the rest usable and disables only the controls whose press would conflict.
+- **Cancel stops the work at its next safe point.** A blocking wait can be cancelled with the dialog's ×, with Escape, and with Cancel when the dialog has a footer. Work that already finished stays, such as a removed session or a written repair, and the outcome says what happened. Once a step has started that cannot be stopped, such as Check's finish, closing the dialog only hides it.
+- **A wait that cannot be cancelled has a way out once it is clearly slow.** The startup gate adds Start Blank and Open in Safe Mode after 10 s.
+- **A wait in place needs no cancel.** Moving on ends it: another step, another row, closing the panel.
+- **A press during a wait is not dropped silently.** It takes effect once the result arrives, as the change arrows do, or it is refused with a reason.
+
+### Motion and accessibility
+
+- **Reduced motion.** `src/index.css` limits transitions to colour and opacity and leaves animations alone. Each animation opts out itself: `motion-safe:` on the motion, and a fade in its place. A spinner or a sliding bar that only stopped would look stuck, so it pulses its opacity. Placeholder rows already look like placeholders when still, so they only drop the pulse (`motion-safe:animate-pulse`).
+- **Status text is a live region** (`role="status"`) that is in the page before its text changes, so a screen reader reads each stage. The Loading dialog does this. Preparing's line has none: focus moves to its button, and the line is that button's description. Lines that mount together with their text are announced unreliably: the chooser's Reading file… and Storing… lines and both of its error lines, an asset's Loading line, and the Edits Here scan row. Fix them when the file next changes for another reason.
+- **Glyphs, bars and placeholder rows are `aria-hidden`.** A bar that shows a fraction is `role="progressbar"` with its value, labelled by the status text.
+- **Focus stays where it was** during a wait in place. A wait dialog follows the dialog rules, and a button that appears when the work is ready takes focus (Preparing).
+
+### Which notice
+
+Section 8 describes the notice card and the quick toast. This part says which one to use.
+
+- **Quick toast:** the outcome of what the user just did, read in passing, and a refusal with a reason the user can see. "Undid …", "Nothing to undo", "Selected notes are already vertical", "Copied the link".
+- **Card:** a failure of something the user asked for, such as reading or writing storage or a file, a network request, or loading a chunk. It is a card with the error glyph (color-system.md 5.6), even when the failure is rare. A quick toast fades within a second and is easy to miss. "Could not restore" is an example.
+  - The exception is a button pressed on a card. Its outcome is a quick toast, so the card the user is acting on stays. Copy Link on the startup card does this ("Could not copy the link").
+- **Inline, in a dialog:**
+  - A problem with what the user typed is red text under the field (`text-sm text-danger`, `role="alert"`), with `aria-invalid` on the field. Save and Export do this.
+  - The outcome of an action inside a dialog, such as a file that could not be read, is a `text-sm` line in ink with a `SeverityIcon` in its leading slot, in a live region. The From a Server error in the Preview Assets chooser does this, in a region that stays mounted.
+
+### Status glyphs
+
+- `SeverityIcon.vue` is the one warning, error and info glyph, at every size. color-system.md 5.6 says which severity fits. Local copies drew three different triangles, one of them in the text colour.
+
+### Empty lists
+
+- **Empty is not failed and not loading.** A list that can be empty has its own line for it, apart from its failure line (with Try Again) and its loading form (engineering principle 4). A list that stops short because an older page failed to load ends in the failure line with Try Again, rather than stopping at the last row with no line.
+- A fragment names what is missing and has no full stop: "No stored items", "No changes yet". A full sentence has one: "This file has no skins."
+- The line is `text-fg/80`: `text-sm` in a list pane, the dialog's body size in a dialog. In a list that fills its pane, centre it in a block of fixed height (Timeline, Recent Sessions). In a dialog, start it at the text column like the lines around it (Preview Assets).
+
+### Confirmations
+
+- An undoable delete confirms with `ConfirmModal`. The red button is the default and has focus: the user already asked, and Undo can take it back. A delete or reset that cannot be undone uses `ChoiceModal` with `cancelIsDefault`, so a stray Enter cancels. Both ignore presses in their first 300 ms. See color-system.md 5.2, 8.2 and 8.3.
+- A dialog's title drops its command's ellipsis. The command "Export Level Data…" opens a dialog titled "Export Level Data".
+
+## 10. Principles for new UI
 
 1. **Use the roles.** Theme tokens and the recipes, not palette colours or hand-rolled hover and press states. A retune then lands everywhere, and the guard test can check it. A scrim over the chart or a preview overlay (`bg-black/30`) is geometry rather than a role; chrome that sits over the chart may use white or black ink where the chrome tier says so.
 2. **Pick a size from the scale.** 36 px, or 32 px where space is tight, or 28 px inside a recess track. Grow the hit area with `::before` rather than the face. A visible 44 px control is a sign something else is wrong. Only the error fallback button (`rendering/RenderingError.vue`, `min-h-11`) and the toolbar on touch have one.
@@ -176,7 +257,7 @@ The History surfaces follow the rules above and add a few patterns of their own.
 4. **Size to content, then fit.** A floating strip is as wide as what it must hold, and a fit measures that content from the producer's own forms. Check it in the longest locale and at the narrowest pane.
 5. **Reuse the pattern before adding a variant.** A second local copy of a control (a selectable row, a tab strip) is the sign to add or use a shared recipe. The same role looks the same in every dialog that shares a shell.
 6. **Align to a grid.** Bands, rows, headers and dividers share columns. Indentation, guide lines, glyph size and weight each say one thing.
-7. **Every interactive element has all its states:** rest, hover, press, focus, on and disabled, plus loading and empty where they exist.
+7. **Every interactive element has all its states:** rest, hover, press, focus, on and disabled, plus loading and empty where they exist ([section 9](#9-waits-and-feedback)).
 8. **Secondary text stays legible:** no lighter than `fg/80` on a light modal, full `fg` on bands. Disabled may fade.
 9. **Reserve space for what may appear.** Content that is hidden but still in flow takes space. Remove an element until it is shown, rather than hiding it, and keep geometry stable while content changes.
 10. **Respect the browser floor.** Check selectors and features against the build target before writing CSS. An unsupported selector invalidates its whole rule.

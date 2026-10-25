@@ -28,7 +28,12 @@ import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
 import { canDeleteSessions, deleteSessionsRunning } from './deleteSessionsFlow'
 import SettingsSection from './SettingsSection.vue'
-import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
+import {
+    browserStorage,
+    readBrowserStorage,
+    storageLineKey,
+    storageUnavailable,
+} from './storageLine'
 
 // Settings › Local Data: the storage line, the Storage subsection (what the
 // browser holds, why changes are not being stored, Delete Sessions…), Recovery (Open History, the
@@ -39,13 +44,14 @@ const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
 const safe = isSafeMode()
 
-// --- The storage line.
-const facts = ref<Awaited<ReturnType<typeof readBrowserFacts>>>()
-onMounted(async () => {
-    facts.value = await readBrowserFacts()
+// --- The storage line and the total. Both show at once from the read kept since startup, and
+// update in place when the read started on mount ends. If no read has ended yet, they appear when
+// one does.
+onMounted(() => {
+    void readBrowserStorage()
 })
 const storageLine = computed(() => {
-    const known = facts.value
+    const known = browserStorage.value?.facts
     const status = storageStatus.value
     if (!known || !status) return
     return i18n.value.storage[
@@ -54,22 +60,8 @@ const storageLine = computed(() => {
 })
 
 // --- Storage: the total the browser holds, the not-stored line, Delete Sessions….
-const stored = ref<{ usage: number; quota: number }>()
-// Without both figures no number shows: a guess would be worse than none.
-const readTotal = async () => {
-    try {
-        const { usage, quota } = await navigator.storage.estimate()
-        stored.value =
-            usage !== undefined && quota !== undefined && Number.isFinite(usage) && quota > 0
-                ? { usage, quota }
-                : undefined
-    } catch {
-        stored.value = undefined
-    }
-}
-onMounted(readTotal)
 const storedText = computed(() => {
-    const total = stored.value
+    const total = browserStorage.value?.total
     // In memory nothing is stored here, whatever the browser holds for the origin.
     if (!total || !storageStatus.value || storageStatus.value.mode === 'memory') return
     return interpolateRaw(strings.value.stored, formatSize(total.usage), formatSize(total.quota))
@@ -226,7 +218,8 @@ const discard = async (item: RecoveryItem & { kind: 'autoSave' | 'recovered' }) 
 const showsClosePrompt =
     platform.capabilities.browserStorage && !platform.capabilities.unconfirmedDownloads
 
-const buttonClass = 'btn btn-secondary inline-flex h-9 max-w-full items-center rounded-full px-4'
+// The raised-button geometry (design-language §4).
+const buttonClass = 'btn btn-secondary h-9 min-w-24 max-w-full truncate rounded-full px-4'
 
 // For people with customised toolbars: closes Settings first, so History is not behind it.
 const openHistory = () => {
@@ -242,18 +235,18 @@ const afterRowGone = () =>
 // --- Delete Sessions…: the command, as the History band and a bound key run it; the total is read again after.
 const deleteSessions = async () => {
     await runCommand(commands.deleteSessions, 'button')
-    await readTotal()
+    await readBrowserStorage()
 }
 
 // --- Export Raw Data…: everything stored, as stored, for reporting a problem.
 const exportRaw = async () => {
     const outcome: { run?: RawExportRun } = {}
     await showModal(LoadingModal, {
-        title: () => strings.value.exportRaw,
-        async *task() {
+        title: () => strings.value.exportRawTitle,
+        async *task(signal: AbortSignal) {
             yield () => i18n.value.modals.loading.loading
             const action = await import('../../startup/rawExportAction')
-            const run = (outcome.run = await action.runRawExportAction())
+            const run = (outcome.run = await action.runRawExportAction(signal))
             // The modal says what failed, and stays for the user to close.
             if (run.kind === 'failed')
                 throw new Error(

@@ -21,6 +21,7 @@ import { interpolate } from '../utils/interpolate'
 import { createDeleteSessions, setDeleteSessions } from './deleteSessions'
 import { startMaintenance } from './maintenance'
 import { noticeIfNearlyFull } from './nearlyFull'
+import { resumeWhenStoring } from './open/importLoop'
 import { keptCopyChains, removeKeptCopy } from './open/kept'
 import { resumeAfterStartup } from './open/project'
 import { retryStoring } from './retryStoring'
@@ -375,6 +376,11 @@ export const startStorage = async () => {
             // An open's import a tab didn't finish: resumed or ended once startup is done.
             if (!safe && status.mode === 'stored') {
                 resumeAfterStartup(appVersion().appVersion)
+                resumeWhenStoring(worker, {
+                    worker,
+                    locks: deps.locks,
+                    appVersion: appVersion().appVersion,
+                })
                 const context = recovery
                 // Only what definitely deleted chains left can be reclaimed.
                 const reclaim = () =>

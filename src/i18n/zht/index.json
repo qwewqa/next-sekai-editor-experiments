@@ -919,6 +919,7 @@
       "title": "工具列",
       "quickSwitch": "快速切換",
       "add": "新增工具",
+      "remove": "從工具列移除「{0}」",
       "modal": {
         "title": "新增工具"
       }
@@ -976,6 +977,7 @@
       "openHistory": "開啟歷史記錄",
       "confirmClose": "關閉前詢問未儲存的變更",
       "exportRaw": "匯出原始資料…",
+      "exportRawTitle": "匯出原始資料",
       "exportRawName": "{0} 原始資料 {1}.zip",
       "storageHeading": "儲存空間",
       "stored": "此瀏覽器中已存放：{0}，總容量約 {1}",
@@ -2106,6 +2108,7 @@
     "notFound": "找不到 \"{0}\"。",
     "downloadStarted": "已開始下載：{0} · {1}",
     "preparing": "正在準備 {0}… {1}",
+    "ready": "已準備好：{0} · {1}",
     "download": "下載",
     "buildFailed": "無法準備 \"{0}\"。",
     "readFailed": "無法讀取 \"{0}\"。",
@@ -2128,6 +2131,7 @@
     "notProject": "\"{0}\" 不是專案檔案。",
     "notKept": "未儲存。無法完整讀取 \"{0}\"。",
     "notKeptSafe": "未儲存。安全模式下無法取代檔案。",
+    "notKeptFull": "未儲存。瀏覽器儲存空間已滿。請在「設定 › 本機資料」中刪除工作階段，然後重新儲存。",
     "saved": "已儲存到 {0}",
     "savedWithoutBgmLarge": "已儲存到 {0}，未包含 BGM",
     "savedWithoutCoverLarge": "已儲存到 {0}，未包含封面",
@@ -2160,8 +2164,8 @@
   "check": {
     "command": "檢查檔案和歷史記錄…",
     "title": "檢查檔案和歷史記錄",
-    "checkingFile": "正在檢查 {0}… {1}%",
-    "checkingStored": "正在檢查已存放的歷史記錄… {0}%",
+    "checkingFile": "正在檢查 {0}…",
+    "checkingStored": "正在檢查已存放的歷史記錄…",
     "changed": "\"{0}\" 在檢查期間已變更。請重試。",
     "stillOpening": "\"{0}\" 仍在開啟中。請重試。",
     "noDamage": "未發現損毀。",
@@ -2211,7 +2215,7 @@
     "tooLong": "名稱過長"
   },
   "notice": {
-    "useOpenFile": "要開啟檔案，請使用 \"開啟\"。",
+    "useOpenFile": "要開啟檔案，請使用「開啟」。",
     "sameFileElsewhere": "\"{0}\" 已在另一個分頁或視窗中開啟，因此這是獨立的副本。",
     "storageUnavailable": "編輯器無法存取此瀏覽器的儲存空間。請重試。",
     "chooseAudio": "選擇音訊…",

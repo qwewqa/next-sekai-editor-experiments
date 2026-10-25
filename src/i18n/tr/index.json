@@ -919,6 +919,7 @@
       "title": "Araç Çubuğu",
       "quickSwitch": "Hızlı Geçiş",
       "add": "Araç Ekle",
+      "remove": "\"{0}\" Aracını Araç Çubuğundan Kaldır",
       "modal": {
         "title": "Araç Seç"
       }
@@ -976,6 +977,7 @@
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
       "exportRaw": "Ham Verileri Dışa Aktar…",
+      "exportRawTitle": "Ham Verileri Dışa Aktar",
       "exportRawName": "{0} ham veriler {1}.zip",
       "storageHeading": "Depolama Alanı",
       "stored": "Bu tarayıcıda saklanan: {0} / yaklaşık {1}",
@@ -2106,6 +2108,7 @@
     "notFound": "\"{0}\" bulunamıyor.",
     "downloadStarted": "İndirme başlatıldı: {0} · {1}",
     "preparing": "{0} hazırlanıyor… {1}",
+    "ready": "Hazır: {0} · {1}",
     "download": "İndir",
     "buildFailed": "\"{0}\" hazırlanamadı.",
     "readFailed": "\"{0}\" okunamadı.",
@@ -2128,6 +2131,7 @@
     "notProject": "\"{0}\" bir proje dosyası değil.",
     "notKept": "Kaydedilmedi. \"{0}\" tamamen okunamadı.",
     "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
+    "notKeptFull": "Kaydedilmedi. Tarayıcının depolama alanı dolu. Ayarlar › Yerel Veriler’den oturumları silin, ardından yeniden kaydedin.",
     "saved": "{0} dosyasına kaydedildi",
     "savedWithoutBgmLarge": "{0} dosyasına arka plan müziği olmadan kaydedildi",
     "savedWithoutCoverLarge": "{0} dosyasına kapak olmadan kaydedildi",
@@ -2160,8 +2164,8 @@
   "check": {
     "command": "Dosyayı ve Geçmişi Denetle…",
     "title": "Dosyayı ve Geçmişi Denetle",
-    "checkingFile": "{0} denetleniyor… %{1}",
-    "checkingStored": "Saklanan geçmiş denetleniyor… %{0}",
+    "checkingFile": "{0} denetleniyor…",
+    "checkingStored": "Saklanan geçmiş denetleniyor…",
     "changed": "\"{0}\" denetlenirken değişti. Tekrar deneyin.",
     "stillOpening": "\"{0}\" hâlâ açılıyor. Tekrar deneyin.",
     "noDamage": "Hasar bulunamadı.",

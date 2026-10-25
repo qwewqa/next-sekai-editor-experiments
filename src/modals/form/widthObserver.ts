@@ -11,10 +11,21 @@ export const observeWidth = (element: Element, callback: () => void) => {
             target.callback()
         }
     })
-    // The first observer entry supplies the width without a synchronous layout
-    // during each field's mount. It also refits a dialog once it is visible.
+    // The first observer entry supplies the width without a synchronous layout during each
+    // field's mount, unless the fit has recorded it already (`fittedAtWidth`). A fit in a hidden
+    // dialog records no width, so its fields refit once it is visible.
     callbacks.set(element, { width: NaN, callback })
     observer.observe(element)
+}
+
+/**
+ * Records that the element was fitted at this width, so the observer's entry for the same width
+ * does not fit it again. The width is the one the observer reports (the content box, as the layout
+ * gives it, not scaled by a transform). A hidden element gives NaN, and the first entry then refits.
+ */
+export const fittedAtWidth = (element: Element, width: number) => {
+    const target = callbacks.get(element)
+    if (target) target.width = width
 }
 
 export const unobserveWidth = (element: Element) => {

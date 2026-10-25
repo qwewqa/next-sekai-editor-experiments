@@ -88,6 +88,7 @@ export const saveHandlers = (context: WorkerContext) => {
             estimateSaveSize(storeOf(scope), chainId, {
                 ...(sessionId === undefined ? {} : { sessionId }),
                 ...(bgm === undefined ? {} : { bgm }),
+                ...(scope ? { tick: scope.tick } : {}),
             }),
         replaceDecision: ({
             chainId,

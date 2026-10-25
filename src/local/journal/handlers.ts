@@ -1,6 +1,7 @@
 import { readMeta, writeMeta } from '../db'
 import { MaintTimeoutError } from '../locks'
 import { directWaiter, type Waiter } from '../scheduler'
+import { TRANSIENT_STORAGE_ERRORS } from '../storageFailure'
 import {
     refuseUnlessStored,
     StoragePausedError,
@@ -39,26 +40,12 @@ export class JournalUnappliableError extends Error {
     override name = 'JournalUnappliableError'
 }
 
-/**
- * IndexedDB's errors for storage being unavailable, full or busy, which a later load may not
- * meet. Others (`DataError`, `ConstraintError`, `DataCloneError`…) come back at every load.
- */
-const TRANSIENT = new Set([
-    'QuotaExceededError',
-    'UnknownError',
-    'AbortError',
-    'InvalidStateError',
-    'TransactionInactiveError',
-    'TimeoutError',
-    'NotReadableError',
-])
-
 /** Whether a failure is storage's (unavailable, full, busy), which a later load may not meet. */
 export const isStorageFailure = (error: unknown) => {
     if (error instanceof StorageRefusedError || error instanceof MaintTimeoutError) return true
     const cause = error instanceof StoragePausedError ? error.cause : error
     return (
-        (cause instanceof DOMException && TRANSIENT.has(cause.name)) ||
+        (cause instanceof DOMException && TRANSIENT_STORAGE_ERRORS.has(cause.name)) ||
         cause instanceof MaintTimeoutError ||
         cause instanceof StorageRefusedError
     )

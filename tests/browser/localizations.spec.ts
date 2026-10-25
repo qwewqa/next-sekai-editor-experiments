@@ -214,6 +214,8 @@ for (const locale of ['en', 'fr', 'ja', 'ko', 'tr', 'zhs', 'zht']) {
             await page.keyboard.press(',')
             const dialog = page.getByRole('dialog')
             await expect(dialog).toBeVisible()
+            // The shortcut rows mount in the frames after the dialog opens.
+            await expect(dialog.locator('[data-settings-section="about"]')).toBeAttached()
             // Shortcut names wrap beside their icons, which all stay.
             expect(await clipped()).toEqual([])
             const icons = page.getByRole('dialog').locator('.form-field-icon')

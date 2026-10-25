@@ -238,6 +238,40 @@ test('with the open’s import still running: the check waits for it, then finds
     expect(await keptFalse(page)).toBe(0)
 })
 
+test('while the check waits for its first batch, the bar slides and the line has no percentage', async ({
+    page,
+}) => {
+    await start(page)
+    await opened(page, await distinctBytes())
+    const hold = await holdCheck(page, 'checkFileBatch')
+    const dialog = checkDialog(page)
+    await expect(dialog).toContainText('Checking coconut.nxsp…')
+    // Nothing is done yet: a bar filled to 0 would read as an empty track, so it slides.
+    await expect(dialog.locator('.wait-bar-slide')).toHaveCount(1)
+    await expect(dialog.getByRole('progressbar')).toHaveCount(0)
+    await expect(dialog).not.toContainText('%')
+    await hold.release()
+    await expect(dialog).toContainText('No damage found.', { timeout: 20_000 })
+})
+
+test('under reduced motion the waiting bar stops sliding and pulses', async ({ page }) => {
+    await start(page)
+    await opened(page, await distinctBytes())
+    const hold = await holdCheck(page, 'checkFileBatch')
+    const bar = checkDialog(page).locator('.wait-bar-slide')
+    expect(await bar.evaluate((element) => getComputedStyle(element).animationName)).toMatch(
+        /wait-bar-slide/,
+    )
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect(bar).toHaveCSS('animation-name', /wait-bar-pulse/)
+    // It fills the track, so nothing slides.
+    const box = (await bar.boundingBox())!
+    const track = (await bar.locator('..').boundingBox())!
+    expect(box.width).toBeCloseTo(track.width, 0)
+    await hold.release()
+    await expect(checkDialog(page)).toContainText('No damage found.', { timeout: 20_000 })
+})
+
 test('Cancel mid-check writes nothing, then the run ends', async ({ page }) => {
     await start(page)
     const good = await distinctBytes()

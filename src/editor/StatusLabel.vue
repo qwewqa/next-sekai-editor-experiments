@@ -70,14 +70,14 @@ const onClick = (event: MouseEvent) => {
                 <span
                     v-if="statusLabel.file"
                     class="min-w-0 truncate"
-                    :class="statusLabel.name && !compact ? 'ml-1 opacity-70' : ''"
+                    :class="statusLabel.name && !compact ? 'ml-1' : ''"
                     data-status-file
                 >
                     {{ statusLabel.name && !compact ? ` · ${statusLabel.file}` : statusLabel.file }}
                 </span>
                 <span
                     v-if="statusLabel.state"
-                    class="ml-1 min-w-0 truncate opacity-70"
+                    class="ml-1 min-w-0 truncate"
                     :class="[
                         keepState && !statusLabel.file ? '' : 'shrink-[10]',
                         compact && !(keepState && !statusLabel.file) ? 'hidden' : '',

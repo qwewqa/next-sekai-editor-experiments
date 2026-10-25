@@ -919,6 +919,7 @@
       "title": "Barre d’outils",
       "quickSwitch": "Changement rapide",
       "add": "Ajouter un outil",
+      "remove": "Retirer \"{0}\" de la barre d’outils",
       "modal": {
         "title": "Sélectionner l’outil"
       }
@@ -976,6 +977,7 @@
       "openHistory": "Ouvrir l’historique",
       "confirmClose": "Demander avant de fermer avec des modifications non sauvegardées",
       "exportRaw": "Exporter les données brutes…",
+      "exportRawTitle": "Exporter les données brutes",
       "exportRawName": "{0} données brutes {1}.zip",
       "storageHeading": "Stockage",
       "stored": "Stocké dans ce navigateur : {0} sur environ {1}",
@@ -2106,6 +2108,7 @@
     "notFound": "\"{0}\" est introuvable.",
     "downloadStarted": "Téléchargement lancé : {0} · {1}",
     "preparing": "Préparation de {0}… {1}",
+    "ready": "Prêt : {0} · {1}",
     "download": "Télécharger",
     "buildFailed": "\"{0}\" n’a pas pu être préparé.",
     "readFailed": "\"{0}\" n’a pas pu être lu.",
@@ -2128,6 +2131,7 @@
     "notProject": "\"{0}\" n’est pas un fichier de projet.",
     "notKept": "Non sauvegardé. \"{0}\" n’a pas pu être lu entièrement.",
     "notKeptSafe": "Non sauvegardé. Les fichiers ne peuvent pas être remplacés en mode sans échec.",
+    "notKeptFull": "Non sauvegardé. Le stockage du navigateur est plein. Supprimez des sessions dans Paramètres › Données locales, puis sauvegardez à nouveau.",
     "saved": "Sauvegardé dans {0}",
     "savedWithoutBgmLarge": "Sauvegardé dans {0} sans sa musique",
     "savedWithoutCoverLarge": "Sauvegardé dans {0} sans sa couverture",
@@ -2160,8 +2164,8 @@
   "check": {
     "command": "Vérifier le fichier et l’historique…",
     "title": "Vérifier le fichier et l’historique",
-    "checkingFile": "Vérification de {0}… {1} %",
-    "checkingStored": "Vérification de l’historique stocké… {0} %",
+    "checkingFile": "Vérification de {0}…",
+    "checkingStored": "Vérification de l’historique stocké…",
     "changed": "\"{0}\" a changé pendant la vérification. Réessayez.",
     "stillOpening": "\"{0}\" est encore en cours d’ouverture. Réessayez.",
     "noDamage": "Aucun dommage trouvé.",

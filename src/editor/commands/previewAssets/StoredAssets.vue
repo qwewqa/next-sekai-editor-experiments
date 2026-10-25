@@ -16,6 +16,7 @@ import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
 import { formatSize } from '../exportLevel/format'
+import SeverityIcon from '../../SeverityIcon.vue'
 import AssetGlyph from './AssetGlyph.vue'
 import { storedThumbnail } from './storedThumbnails'
 
@@ -76,11 +77,11 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
 
 <template>
     <p v-if="storedUnavailable" class="relative py-2 pl-10 pr-3" data-stored-unavailable>
-        <AssetGlyph type="warning" class="absolute left-3 top-[0.6875rem]" />{{
+        <SeverityIcon severity="warning" class="absolute left-3 top-[0.75rem] size-4" />{{
             strings.storedUnavailable
         }}
     </p>
-    <p v-else-if="!rows.length && storedLoaded" class="px-3 py-2 opacity-75" data-stored-empty>
+    <p v-else-if="!rows.length && storedLoaded" class="px-3 py-2 text-fg/80" data-stored-empty>
         {{ strings.storedEmpty }}
     </p>
     <ul v-if="rows.length" class="flex flex-col" data-stored-list>
@@ -106,14 +107,14 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                 <span :id="`${uid}-${row.meta.key}`" class="block truncate" data-stored-title>{{
                     row.meta.title
                 }}</span>
-                <span class="block truncate text-sm opacity-75" data-stored-detail>{{
+                <span class="block truncate text-sm text-fg/80" data-stored-detail>{{
                     [label(row.meta.type), displayOrigin(row.meta.origin)].join(' · ')
                 }}</span>
             </span>
             <span
                 class="flex shrink-0 items-center gap-3 max-[440px]:w-full max-[440px]:pl-[3.25rem]"
             >
-                <span class="text-sm opacity-75" data-stored-size>{{
+                <span class="text-sm text-fg/80" data-stored-size>{{
                     formatSize(row.meta.size)
                 }}</span>
                 <!-- The pill keeps its place in a row not in use, so the columns line up. -->
@@ -140,9 +141,10 @@ const buttonClass = 'btn btn-danger-quiet h-9 min-w-24 max-w-full truncate round
                 role="alert"
                 data-stored-remove-failed
             >
-                <AssetGlyph type="warning" class="absolute left-[1.75rem] top-[0.1875rem]" />{{
-                    strings.removeFailed
-                }}
+                <SeverityIcon
+                    severity="error"
+                    class="absolute left-[1.75rem] top-[0.125rem] size-4"
+                />{{ strings.removeFailed }}
             </p>
         </li>
     </ul>

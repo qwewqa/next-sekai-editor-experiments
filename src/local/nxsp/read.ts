@@ -12,6 +12,7 @@ import {
     checkPart,
     combineParts,
     distinctRootChunks,
+    inFileOrder,
     type HistoryForm,
     type ManifestForm,
     type SegmentForm,
@@ -474,7 +475,11 @@ const readHistory = async (
             return parsed.get(hash)
         }
         try {
-            for (const chunk of distinctRootChunks(history, [history.head]))
+            // In file order: the head's chunks are spread across the file.
+            for (const chunk of inFileOrder(
+                history.index,
+                distinctRootChunks(history, [history.head]),
+            ))
                 await parsedChunk(chunk)
             const headRecords = decodeSnapshot(headRoot, {
                 node: (hash) => history.nodes.get(hash),

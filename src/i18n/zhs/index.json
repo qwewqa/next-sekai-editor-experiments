@@ -919,6 +919,7 @@
       "title": "工具栏",
       "quickSwitch": "快速切换",
       "add": "添加工具",
+      "remove": "从工具栏移除“{0}”",
       "modal": {
         "title": "添加工具"
       }
@@ -976,6 +977,7 @@
       "openHistory": "打开历史记录",
       "confirmClose": "关闭前询问未保存的更改",
       "exportRaw": "导出原始数据…",
+      "exportRawTitle": "导出原始数据",
       "exportRawName": "{0} 原始数据 {1}.zip",
       "storageHeading": "存储",
       "stored": "此浏览器中已存储：{0}，总容量约 {1}",
@@ -2106,6 +2108,7 @@
     "notFound": "找不到“{0}”。",
     "downloadStarted": "已开始下载：{0} · {1}",
     "preparing": "正在准备 {0}… {1}",
+    "ready": "已准备好：{0} · {1}",
     "download": "下载",
     "buildFailed": "无法准备“{0}”。",
     "readFailed": "无法读取“{0}”。",
@@ -2128,6 +2131,7 @@
     "notProject": "“{0}”不是项目文件。",
     "notKept": "未保存。无法完整读取“{0}”。",
     "notKeptSafe": "未保存。安全模式下无法替换文件。",
+    "notKeptFull": "未保存。浏览器存储空间已满。请在“设置 › 本地数据”中删除会话，然后重新保存。",
     "saved": "已保存到 {0}",
     "savedWithoutBgmLarge": "已保存到 {0}，未包含背景音乐",
     "savedWithoutCoverLarge": "已保存到 {0}，未包含封面",
@@ -2160,8 +2164,8 @@
   "check": {
     "command": "检查文件和历史记录…",
     "title": "检查文件和历史记录",
-    "checkingFile": "正在检查 {0}… {1}%",
-    "checkingStored": "正在检查已存储的历史记录… {0}%",
+    "checkingFile": "正在检查 {0}…",
+    "checkingStored": "正在检查已存储的历史记录…",
     "changed": "“{0}”在检查期间已更改。请重试。",
     "stillOpening": "“{0}”仍在打开中。请重试。",
     "noDamage": "未发现损坏。",

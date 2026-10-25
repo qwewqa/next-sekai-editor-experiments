@@ -14,6 +14,14 @@ import {
 } from '../controls/bindings'
 import SettingsSection from './SettingsSection.vue'
 
+const props = defineProps<{
+    /** How many rows to show; Settings mounts them in batches. All when unset. */
+    rows?: number
+}>()
+
+// The rows in the commands' order.
+const shown = computed(() => (Object.keys(commands) as CommandName[]).slice(0, props.rows))
+
 const getKey = (name: CommandName) => settings.keyboardShortcuts[name]
 
 // Unbinding saves '', so a later start can't mistake it for a new command.
@@ -68,18 +76,18 @@ const notes = computed(() => {
 <template>
     <SettingsSection id="keyboardShortcuts" :title="i18n.settings.keyboardShortcuts.title">
         <KeyField
-            v-for="(command, name) in commands"
+            v-for="name in shown"
             :key="name"
-            :label="command.title()"
+            :label="commands[name].title()"
             :model-value="getKey(name)"
             :notes="notes.get(name)"
             @update:model-value="setKey(name, $event)"
         >
             <template #icon>
                 <component
-                    :is="command.icon.is"
+                    :is="commands[name].icon.is"
                     class="h-4 w-auto min-w-4 fill-current"
-                    v-bind="command.icon.props"
+                    v-bind="commands[name].icon.props"
                 />
             </template>
         </KeyField>

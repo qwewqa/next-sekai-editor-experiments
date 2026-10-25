@@ -421,7 +421,11 @@ export const storeKept = async (keep: KeepVersion) => {
             chainId,
             id: keep.read.id,
             batches: stored.batches,
-            source: { file: keep.file },
+            source: {
+                file: keep.file,
+                ...(keep.read.disk ? { disk: keep.read.disk } : {}),
+                ...(revision ? { revisionId: revision.id } : {}),
+            },
             appVersion: keep.appVersion,
         })
         return outcome.kind === 'done'
@@ -496,9 +500,10 @@ const unlinkedSession = (
 }
 
 /**
- * Resumes the open's imports no tab runs, from the bound handle, or ends them: what the
- * next load does after startup, and what a Save's wait for the chain's imports does for one that
- * nothing runs. It skips an import this tab runs and one whose lock another tab holds.
+ * Resumes the open's imports that no tab runs, or ends them. The next load runs it after
+ * startup, and a Save's or a Check's wait for the chain's imports runs it for an import that
+ * nothing runs. An import this tab started is read from the file the tab kept, and any other
+ * from the bound handle. It skips an import this tab runs and one whose lock another tab holds.
  */
 export const resumeUnfinishedImports = (appVersion: string) => {
     const { open: deps } = context()

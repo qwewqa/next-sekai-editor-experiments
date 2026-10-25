@@ -341,13 +341,25 @@ const feedback = (built: BuiltSave, kind: 'saved' | 'download', name: string) =>
 }
 
 /**
+ * The line for a Save refused while an import is pending. While storing is paused full, the import
+ * cannot store until the user frees space, and the line says so. Otherwise it says that the file
+ * could not be read completely.
+ */
+const importingText = (source: string) => {
+    const status = storageStatus.value
+    return status?.mode === 'stored' && status.reason === 'full'
+        ? () => i18n.value.save.notKeptFull
+        : interpolate(() => i18n.value.save.notKept, source)
+}
+
+/**
  * A refusal's message: a reader cap, a newer version, damage, an open's import not
  * finished (`source`: the file it reads), or a bug.
  */
 const refusalText = (refusal: BuildRefused, name: string, source = name) => {
     const { refused } = refusal.refusal
     // The import the Save waited for didn't start or end: the file is not read whole yet.
-    if (refused === 'importing') return interpolate(() => i18n.value.save.notKept, source)
+    if (refused === 'importing') return importingText(source)
     if (refused === 'needsNewer')
         return () => interpolateRaw(i18n.value.conflict.replaceNewer, PRODUCT_NAME)
     if (refused === 'unreadableHead') return interpolate(() => i18n.value.save.unreadable, name)
@@ -1010,7 +1022,7 @@ const recognise = async (
 /** An import of the chain still running after the Save's wait: refused as the build refuses it. */
 const importingOutcome = (handle: FileSystemFileHandle): Outcome => ({
     kind: 'error',
-    message: interpolate(() => i18n.value.save.notKept, handle.name),
+    message: importingText(handle.name),
 })
 
 const writeBack = async (

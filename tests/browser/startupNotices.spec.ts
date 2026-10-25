@@ -1211,7 +1211,10 @@ test.describe('Settings › Local Data', () => {
                 (await import('/src/editor/settings/openSettings.ts')) as typeof import('../../src/editor/settings/openSettings')
             void openSettings()
         })
-        const titles = await page.locator('[data-settings-section] > h2').allTextContents()
+        // The sections after the first screen mount in the frames after the dialog opens.
+        const headings = page.locator('[data-settings-section] > h2')
+        await expect(headings).toHaveCount(10)
+        const titles = await headings.allTextContents()
         expect(titles.map((title) => title.trim())).toEqual([
             'Editor',
             'Local Data',
