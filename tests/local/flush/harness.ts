@@ -48,8 +48,9 @@ export const workerCore = (world: World, tab: Tab, deps: Partial<CoreDeps> = {})
         locks: tab.locks,
         appVersion: '0.6.0',
         randomId: testId,
+        // A blocked upgrade gives up after 40 ms. The open uses the build's 8 s default. It races a
+        // real timer, and a process that stalls past a short budget would start the tab in memory.
         blockedMs: 40,
-        upgradeMs: 80,
         maintWaitMs: 200,
         ...deps,
     })

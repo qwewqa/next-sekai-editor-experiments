@@ -131,7 +131,6 @@ test('a package that does not fit does not pause storing for the history', async
         randomId: () => 'id',
         flags,
         blockedMs: 40,
-        upgradeMs: 80,
         maintWaitMs: 40,
     })
     await tab.run(() => core.start())
