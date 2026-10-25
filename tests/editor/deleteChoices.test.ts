@@ -116,8 +116,8 @@ test('the "more" count takes its plural form from the count, not the names', () 
     try {
         const one = confirmLines(rows.slice(0, 4), (chain) => chain.name, frTexts).at(-1)
         const two = confirmLines(rows, (chain) => chain.name, frTexts).at(-1)
-        assert.match(one as string, / et 1 autre./)
-        assert.match(two as string, / et 2 autres./)
+        assert.match(one as string, / et 1 autre\.$/)
+        assert.match(two as string, / et 2 autres\.$/)
     } finally {
         setInterpolationLocale(() => 'en')
     }

@@ -47,7 +47,7 @@ test('About is the last section, with the name, the version and the links in ord
         await expect(link).toHaveAttribute('target', '_blank')
         await expect(link).toHaveAttribute('rel', /noopener/)
     }
-    // No app row before the native apps, and nothing else links to the apps.
+    // No app row until the native apps ship, and nothing else links to the apps.
     await expect(about(page)).not.toContainText('Apps for')
     await expect(about(page)).not.toContainText('Get the App')
     await expect(about(page)).not.toContainText('This is the test site')

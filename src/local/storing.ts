@@ -233,8 +233,9 @@ export const startStoring = (
     const writes: JournalWrite[] = []
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
-        // Keep the app clock running during an extraction: it runs a slice per idle period, which
-        // comes every frame while frames run and about every 50 ms without them.
+        // Keep the app clock running during an extraction, so its slices come every frame: it runs
+        // one slice per idle period, and without frames Chrome's idle periods come about 50 ms
+        // apart.
         runJob: (job, options) => {
             const release = keepClockWhile(() => true)
             return runSliced(job, options).finally(release)
@@ -485,7 +486,7 @@ export const startStoring = (
             const pending = id
                 ? await storedRead(worker, 'openPendingImports', undefined)
                 : undefined
-            // A failed read of the pending list rethrows the load's error, as today.
+            // A failed read of the pending list rethrows the load's error.
             if (
                 !id ||
                 pending?.storedRead !== 'value' ||

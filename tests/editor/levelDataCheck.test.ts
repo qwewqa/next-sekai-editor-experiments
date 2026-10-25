@@ -40,7 +40,7 @@ const levels = () => {
     return found
 }
 
-// Seeded and bounded: the damage kinds and outcomes show up within the first few hundred damages.
+// Seeded and bounded: the damage kinds and outcomes show up within the first few hundred damaged copies.
 const DAMAGES_PER_DOCUMENT = 500
 const ENTITIES_PER_LEVEL = 300
 

@@ -37,8 +37,9 @@ import {
     checkedTest as test,
 } from './sessionCheck'
 
-// Scenario tests on the real flusher, journal, worker core and resume: what the checker allows and reports,
-// the hole learning, the two power losses, and a recognised Save that records its binding and no row.
+// Scenario tests on the real flusher, journal, worker core and resume: what the checker
+// allows and reports, the hole
+// learning, the two power losses, and a recognised Save that records its binding and no row.
 
 const rootOf = (state: State) => toHex(encodeSnapshot(toRecords(state)).root.hash)
 const DEVICE = { id: 'device-1', label: 'Web (Chrome)' }

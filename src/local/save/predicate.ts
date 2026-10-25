@@ -135,7 +135,7 @@ export type ReplaceDecision = {
 
 /**
  * The Replace guard: Replace is disabled when the file on disk
- * holds the chain's base (by `holdsHistory`, O the base as the binding records it) and the write
+ * holds the chain's base (`holdsHistory`, with O the base as the binding records it) and the write
  * wouldn't carry it, so the only durable holder of earlier versions is never overwritten. The
  * reason is definite only for rows gone; a flag or a root whose state the file lacks gives the
  * uncertain one.

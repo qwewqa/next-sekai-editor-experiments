@@ -8,7 +8,7 @@ import {
 } from '../../src/editor/commands/exportLevel/fileName'
 import { insertExportLevel } from '../../src/settings/toolbarExport'
 
-test('a typed file name is checked against the portable name checks', () => {
+test('a typed file name gets the portable name checks', () => {
     assert.equal(nameProblem('Coconut (Master)'), undefined)
     assert.equal(nameProblem(''), undefined)
     assert.equal(nameProblem('Café 日本語'), undefined)

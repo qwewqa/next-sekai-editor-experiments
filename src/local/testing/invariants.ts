@@ -140,8 +140,8 @@ export type SessionOptions = {
  * - every `seq` up to `lastSeq` is stored, covered by a `recovered` row above it, the binding's
  *   own Save row (a kept gap the file may hold), a hole the test says it let go (`hole`: a
  *   released reservation under later rows), or, only while `importPending`, a row to come;
- * - `time` never decreases in `seq` within a session, and `maxSeenTime` reaches every row's (
- *   a session of origin `nxsp` or `replaced` holds a file's rows with its times, in any order, so
+ * - `time` never decreases in `seq` within a session, and `maxSeenTime` reaches every row's time (a
+ *   session of origin `nxsp` or `replaced` holds a file's rows with its times, in any order, so
  *   only the rows above the file's are checked: the binary search of Go To's index runs only over
  *   sessions that `ORIGIN_RULE` calls `own`, a subset of the sessions checked here);
  * - a `continue` row is only at the lowest stored `seq` of a session of an `own` origin;

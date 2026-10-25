@@ -3,7 +3,7 @@ import type { StorageStatus } from '../../src/local/worker/core'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 import { skipWhereTheEditorCannotStart } from './webkitSupport'
 
-// Storing alongside the old auto save: every change is an entry, and the
+// Storing: every change is an entry, and the
 // flush stores the session, its chain record and the snapshots in IndexedDB.
 
 // A WebKit build without OffscreenCanvas (Playwright's on Windows) cannot start the editor.

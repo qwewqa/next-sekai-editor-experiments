@@ -2,8 +2,8 @@ import { WEB_MIGRATION_FLAGS } from './settings/migrationFlags'
 import { storageKey } from './storage'
 
 // Safe mode on the web (`?safe`): a blank editor over a read-only database that
-// writes nothing to localStorage but settings and the migration flags. It is imported ahead of everything that stores
-// (`launch.ts` imports it first), so the guard below is in place before any write.
+// writes nothing to localStorage but settings and the migration flags. It is imported ahead of
+// everything that stores (`launch.ts` imports it first), so the guard below is in place before any write.
 
 export const SAFE_PARAM = 'safe'
 
@@ -24,7 +24,8 @@ export const registerSettingKeys = (keys: Iterable<string>) => {
 const flagKeys = new Set(WEB_MIGRATION_FLAGS.map(storageKey))
 const ownPrefix = storageKey('')
 
-/** Whether safe mode lets this localStorage key change: a setting, or a key outside the editor's own. */
+/** Whether safe mode lets this localStorage key change: a setting, a migration flag, or a key outside
+ * the editor's own. */
 export const safeModeMayWrite = (key: string) =>
     !key.startsWith(ownPrefix) || settingKeys.has(key) || flagKeys.has(key)
 
@@ -89,7 +90,7 @@ export const setLeaveSafeModeGuard = (guard: LeaveGuard | undefined) => {
 
 /**
  * Leave Safe Mode: back to the editor without the parameter, after the registered guard, or
- * `fallback` (today's changes prompt, until the not-stored prompt registers) when there is none.
+ * `fallback` (the unsaved-changes prompt, until the not-stored prompt registers) when there is none.
  */
 export const leaveSafeMode = async (fallback?: LeaveGuard) => {
     const guard = leaveGuard ?? fallback

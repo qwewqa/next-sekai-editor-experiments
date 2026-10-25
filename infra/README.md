@@ -99,4 +99,4 @@ shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.
 bash infra/stats/scripts/contract-test.sh   # needs Docker, curl, jq and Linux
 ```
 
-`infra-check.yml` runs the same on a change under `infra/`. Its `stats-compose` job runs the contract test against the real images.
+`infra-check.yml` runs the same when `infra/` or an infra workflow changes. Its `stats-compose` job runs the contract test against the real images.

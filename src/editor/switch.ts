@@ -35,7 +35,7 @@ import { withSwitchRequest, type SwitchRequest } from './switchRequest'
 const wouldLoseWork = async () => {
     const { flusher, isDurablyStored } = await loadStoring()
     const session = flusher?.session
-    // Before storing starts, or in safe mode, nothing is stored: the changes flag decides.
+    // Before storing starts, or in safe mode, nothing is stored: `isDirty` decides.
     const edited = session ? session.edited && isDirty.value : isDirty.value
     if (!edited) return false
     // A file that holds the work (a Save, an open) is as good as a store; an unconfirmed download is not.

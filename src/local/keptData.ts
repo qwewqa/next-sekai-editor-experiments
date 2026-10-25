@@ -17,8 +17,8 @@ export type SavedFacts = {
  * Whether a stored chain has work no file holds: bound and changed since its file event, bound by
  * a download that isn't confirmed, or unbound with content. The stored-chain twin of
  * `hasChangesNotInFile` (`editor/file/closePrompt.ts`). A chain this build can't read counts as
- * not saved. `downloadConfirmedHere` is this browser's answer for downloads: true when this
- * browser confirms downloads.
+ * not saved. `downloadConfirmedHere` is true when a download was confirmed in this browser, on a
+ * platform that can confirm one.
  */
 export const notSavedToFile = (facts: SavedFacts, downloadConfirmedHere: boolean) => {
     if (facts.readable === 'newer' || facts.readable === 'damaged') return true

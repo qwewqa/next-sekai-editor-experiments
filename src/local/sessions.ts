@@ -154,5 +154,5 @@ export class TabClient {
     }
 }
 
-/** A session's paste identity: per page load and per session opened, as today. */
+/** A session's paste identity: per page load and per session opened. */
 export { chartSessionId as pasteId } from '../history/chartSession'

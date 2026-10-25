@@ -43,7 +43,7 @@ test('a field fitted at the width the entry reports is not fitted again, a later
     assert.equal(field.fits(), 1)
 })
 
-test('a width recorded rounded to six digits is not fitted again, a 1/64 px change is', () => {
+test('a width recorded to six significant digits is not fitted again; a 1/64 px change is', () => {
     const field = watched()
     // The computed style gives 312.297 for the layout width 312.296875.
     fittedAtWidth(field.element as Element, 312.297)

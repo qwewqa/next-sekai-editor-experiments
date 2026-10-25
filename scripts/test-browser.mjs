@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 
-// Runs the parallel chromium batch (with the preview's worker host), then the timing specs alone even if it failed:
-// as a project dependency, any chromium failure would skip them.
+// Runs the parallel chromium batch (with the preview's worker host), then the timing specs
+// alone even if it failed: as a project dependency, any chromium failure would skip them.
 // Arguments go to the chromium run, e.g. npm run test:browser -- --workers=4.
 const cli = createRequire(import.meta.url).resolve('@playwright/test/cli')
 const run = (...args) =>

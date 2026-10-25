@@ -392,7 +392,10 @@ const notice = (pattern) =>
     `[...document.querySelectorAll('.notification, .notification-pill')].some((n) => ${pattern}.test(n.textContent) && !A.includes(n))`
 // The app's modals are <dialog> elements; some menus and popovers use the role.
 const openDialogs = `[...document.querySelectorAll('dialog[open], [role=dialog]')]`
-/** The button the Save dialog shows once the file is ready; the dialog is found by its text element. */
+/**
+ * The Save or Download button the Preparing dialog shows once the file is ready. The dialog is
+ * found by `[data-save-preparing]`, not by its text, which changes when the file is ready.
+ */
 const preparedButton = `[...document.querySelectorAll('dialog[open]')].filter((d) => d.querySelector('[data-save-preparing]')).flatMap((d) => [...d.querySelectorAll('button')]).find((b) => /^(Save|Download)$/.test(b.textContent.trim()))`
 const noticesBefore = `[...document.querySelectorAll('.notification, .notification-pill')]`
 

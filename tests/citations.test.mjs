@@ -48,7 +48,7 @@ const RULES = [
     },
     {
         name: 'a numbered invariant or rule',
-        pattern: /\binvariants? \d+|\brules? \d+(?: and \d+)?\b/,
+        pattern: /\binvariants? \d+|\brules? \d+(?: and \d+)?\b/i,
     },
     {
         name: 'a plan section with a step',

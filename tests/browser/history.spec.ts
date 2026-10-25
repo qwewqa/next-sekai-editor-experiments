@@ -5,9 +5,9 @@ import { confirmWhenReady } from './confirmWhenReady'
 import { closePage, installEditorFixture, waitForStartup } from './editorFixture'
 import legacyColors from './fixtures/legacy-colors.json' with { type: 'json' }
 
-// History across loads: the old auto save is
-// retired. Its slot migrates into a session, a closed tab's work comes back through its
-// journal and the new visit that continues its session, and a reload keeps the session.
+// History across loads: the old auto save is retired. Its slot migrates into a session, a
+// closed tab's work comes back through its journal and the new visit that continues its
+// session, and a reload keeps the session.
 
 const prefix = 'sonolus-next-sekai-editor.'
 

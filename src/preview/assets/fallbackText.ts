@@ -25,7 +25,8 @@ export const reasonText = (fallback: FallbackState) => {
     const noun = typeNoun(fallback.type)
     switch (fallback.reason) {
         case 'fileGone':
-            // The native apps add the on-this-device wording, chosen by the browserStorage capability.
+            // The native apps will need the on-this-device wording here, chosen by the `browserStorage`
+            // capability.
             return interpolateRaw(reason.fileGone, noun)
         case 'storageUnavailable':
             return interpolateRaw(reason.storageUnavailable, noun)

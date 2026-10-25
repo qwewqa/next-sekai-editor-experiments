@@ -37,7 +37,7 @@ export type ConfirmTexts = {
     confirm: string
     /** "{0} session has unsaved changes: {1}.|{0} sessions have unsaved changes: {1}." */
     notSaved: string
-    /** "{0} and {1} more" */
+    /** "{1} and {0} more": {0} is the count, which picks the plural form. */
     namesMore: string
     /** "This session needs a newer version of the editor.|Some of these sessions need …" */
     newer: string
