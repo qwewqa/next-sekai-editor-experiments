@@ -1,4 +1,4 @@
-import { captureEntryDescription } from '../../history/operations'
+import { captureEntryDescription, utf8Length } from '../../history/operations'
 import { hashKey } from '../db'
 import { fromHex16, toHex } from '../hash'
 import { unpackHashes, type NodesRow } from '../records/rows'
@@ -131,16 +131,16 @@ export const estimateSaveSize = async (
     for (const { entry } of rows) {
         manifest +=
             ESTIMATE.entryBytes +
-            new TextEncoder().encode(JSON.stringify(captureEntryDescription(entry))).byteLength
+            utf8Length(JSON.stringify(captureEntryDescription(entry)))
         if (entry.stack)
-            manifest += new TextEncoder().encode(JSON.stringify(entry.stack)).byteLength
+            manifest += utf8Length(JSON.stringify(entry.stack))
         if (entry.kept) roots.add(toHex(entry.snapshot))
     }
     manifest += ESTIMATE.entryBytes
     const slots = cut.stack?.slots ?? []
     for (const slot of slots) {
         roots.add(toHex(slot.snapshot))
-        manifest += new TextEncoder().encode(JSON.stringify(slot.step)).byteLength
+        manifest += utf8Length(JSON.stringify(slot.step))
     }
     const window = cut.stack?.window
     const head = window && slots[window.index - window.base]
