@@ -16,15 +16,16 @@ const categories = {
     use: 'how often each tool, command and kind of edit is used, and how it was started',
     settings: 'the main settings',
     files: 'the kind and approximate size of files you open, save and export',
+    saved: 'what a save included',
     music: 'the approximate length of music files',
     outcome: 'and whether that worked',
     chart: 'the approximate size of the chart and of its Timeline',
     sessions: 'how many sessions Recent Sessions lists',
     start: 'how a visit started',
     notices: 'how many notices and errors appeared, without their messages',
-    times: 'how long startup, opening, saving and checking files take',
-    check: 'whether a check found problems',
-    peek: 'showing a Timeline step',
+    times: 'how long startup takes, how long it takes to open, save, export and check files and to load music',
+    check: 'whether Check File and History found problems',
+    peek: 'how long the chart takes to show at a Timeline step',
     slow: 'how often the editor is slow to respond',
     lasted: 'approximately how long playback and the visit lasted',
     version:
@@ -35,21 +36,20 @@ const categories = {
     cores: 'the number of processor cores as a range',
     preview: 'whether the preview could use graphics and draw in parallel',
     installed: 'whether the editor is installed',
-    storage: 'whether this browser’s storage is available, and approximately how full it is',
+    storage:
+        'whether this browser’s storage is available, whether this looks like a private window, and approximately how full it is',
     referrer: 'the site you came from',
+    time: 'Each is sent with the time it happened.',
 }
 type Category = keyof typeof categories
 
-/**
- * What need not be on the page: values every request has the same, or that tell the server
- * nothing it does not already know.
- */
+/** What need not be on the page: values that are the same in every request. */
 const unlisted: Record<string, string> = {
+    'pageview.website': 'our id for the site; the same in every request',
     'pageview.url': 'always /',
     'pageview.title': 'always empty',
-    'pageview.hostname': 'which of our two sites, which the request shows anyway',
+    'pageview.hostname': 'which of our two sites; the same in every request',
     'visit.site': 'which of our two sites, as the hostname',
-    'pageview.timestamp': 'when the item was recorded, which the server sees when it arrives',
 }
 
 /** The category of each property, by `<event>.<key>`; the first match wins. */
@@ -57,6 +57,7 @@ const rules: [RegExp, Category][] = [
     [/^pageview\.language$/, 'settings'],
     [/^pageview\.screen$/, 'screen'],
     [/^pageview\.referrer$/, 'referrer'],
+    [/^pageview\.timestamp$/, 'time'],
     [/^visit\.(?:version|returning|updated)$/, 'version'],
     [/^visit\.(?:os|engine|browserLanguage)$/, 'system'],
     [/^visit\.(?:viewport|dpr)$/, 'screen'],
@@ -73,6 +74,7 @@ const rules: [RegExp, Category][] = [
     [/^preview\./, 'preview'],
     [/^(?:open|save|export|bgm)\.took$/, 'times'],
     [/^bgm\.length$/, 'music'],
+    [/^save\.(?:history|bgm)$/, 'saved'],
     [/^(?:open|save|export|bgm)\.(?:outcome|reason|step)$/, 'outcome'],
     [/^(?:open|save|export|bgm)\./, 'files'],
     [/^check\.took$/, 'times'],
@@ -86,7 +88,7 @@ const rules: [RegExp, Category][] = [
 ]
 
 const properties = [
-    ...['url', 'title', 'hostname', 'language', 'screen', 'referrer', 'timestamp'].map(
+    ...['website', 'url', 'title', 'hostname', 'language', 'screen', 'referrer', 'timestamp'].map(
         (key) => `pageview.${key}`,
     ),
     'usage.<command>.<source>',
