@@ -1124,6 +1124,12 @@ test.describe('the not-stored prompt', () => {
             await save.getByRole('button', { name: 'Save', exact: true }).click()
             await download
             await going
+            // The prompt does not wait for its Save, so the repeat starts after the Save has finished.
+            await expect(
+                page
+                    .locator('.notification, .notification-pill')
+                    .filter({ hasText: /Download started/ }),
+            ).toBeVisible()
             expect(await lifeOf(page)).toBe(990)
             const repeated = run(page, 'reset')
             if (confirmed) {
