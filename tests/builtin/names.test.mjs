@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { skinSprites } from '../../builtin-assets/manifest.mjs'
+import { omittedSprites, skinSprites } from '../../builtin-assets/manifest.mjs'
 import { particleEffects } from '../../builtin-assets/particles.mjs'
 import { collectNames, nameListHash } from '../../scripts/extract-engine-names.mjs'
 import { readFixture } from './helpers.mjs'
 
 test('the fixture names its engine commit and its list hash', () => {
     const fixture = readFixture()
-    assert.equal(fixture.engine.commit, 'd3a3cef')
+    assert.equal(fixture.engine.commit, 'pending')
     assert.deepEqual(fixture.counts, {
-        spritesDeclared: 1335,
-        sprites: 1324,
+        spritesDeclared: 1351,
+        sprites: 1340,
         particles: 505,
         clips: 15,
     })
@@ -33,13 +33,13 @@ test('the manifest expands to the engine’s names and the counts of the design'
     const { sprites, groups } = skinSprites()
     assert.deepEqual(
         fixture.sprites.filter((name) => !sprites.has(name)),
-        ['Sekai Stage'],
+        [...omittedSprites].sort(),
     )
     assert.deepEqual(
         [...sprites.keys()].filter((name) => !fixture.sprites.includes(name)),
         [],
     )
-    assert.equal(groups.get('Judgment'), 49)
+    assert.equal(groups.get('Judgment'), 41)
     assert.equal(groups.get('Style colours'), 1000)
     assert.equal(groups.get('Flick arrows'), 96)
     assert.equal(particleEffects().length, 505)

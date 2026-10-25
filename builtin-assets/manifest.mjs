@@ -9,6 +9,8 @@ import {
     damage,
     diamondColors,
     guideColor,
+    laneAlpha,
+    laneColors,
     mix,
     stage,
     styleColors,
@@ -21,8 +23,14 @@ export const productName = product.name
 /** Bumped when the set's art changes. */
 export const setVersion = 1
 
-/** The one sprite the set leaves out on purpose. */
-export const omittedSprites = ['Sekai Stage']
+/**
+ * The sprites the set leaves out on purpose: the stage that bakes in its dividers, and the colored
+ * judgment bands, which are the uncolored band in the base set.
+ */
+export const omittedSprites = [
+    'Sekai Stage',
+    ...colorNames.map((color) => `Sekai Judgment Background ${color}`),
+]
 
 const image = (template, vars = {}, options = {}) => ({
     template,
@@ -237,12 +245,16 @@ export function skinSprites() {
     })
 
     group('Stage, Sekai', () => {
-        // Lane effects draw under the lane, so it lets them through, like the base's (0.40).
-        add('Sekai Lane Background', solid(stage.lane, 0.55, 4, 64))
+        // Lane effects draw under the lane, so it lets them through, like the base's.
+        add('Sekai Lane Background', solid(stage.lane, laneAlpha, 4, 64))
+        for (const [color, shade] of Object.entries(laneColors))
+            add(`Sekai Lane Background ${color}`, solid(shade, laneAlpha, 4, 64))
         add('Sekai Lane Divider', solid(stage.stroke, 0.3, 4, 64))
         add('Sekai Stage Border', solid(stage.stroke, 0.7, 4, 64))
         for (const name of ['Lane Background', 'Lane Divider', 'Stage Border'])
             alias(`Sekai ${name} Preview`, `Sekai ${name}`)
+        for (const color of Object.keys(laneColors))
+            alias(`Sekai Lane Background Preview ${color}`, `Sekai Lane Background ${color}`)
     })
 
     // Opaque strips and dividers in the base's colours: its edge colour at the stage edges and on
@@ -254,7 +266,6 @@ export function skinSprites() {
         add('Sekai Judgment Background', solid(shade, alpha))
         for (const color of colorNames) {
             const [edge, centre] = baseColors.judgmentLine[color]
-            add(`Sekai Judgment Background ${color}`, solid(shade, alpha))
             add(
                 `Sekai Judgment Gradient ${color}`,
                 image('judgment-gradient', { edge, centre }, { stretch: true }),

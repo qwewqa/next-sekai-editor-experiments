@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { before, test } from 'node:test'
 import { buildAll, renderSpec } from '../../builtin-assets/build.mjs'
-import { skinSprites } from '../../builtin-assets/manifest.mjs'
+import { omittedSprites, skinSprites } from '../../builtin-assets/manifest.mjs'
 import { renderSvg } from '../../builtin-assets/svg.mjs'
 import { readBuiltinItem, readFixture } from './helpers.mjs'
 import { decode, pixelAt } from './pngDecode.mjs'
@@ -42,19 +42,19 @@ test('the lock records every output with its sha256', () => {
             path,
         )
     }
-    assert.equal(lock.counts.skinNames, 1323)
+    assert.equal(lock.counts.skinNames, 1331)
     assert.equal(lock.counts.particleEffects, 505)
     assert.equal(lock.counts.clips, 15)
 })
 
-test('the skin has every engine sprite except Sekai Stage', () => {
+test('the skin has every engine sprite except those the set omits', () => {
     const fixture = readFixture()
     const names = new Set(skin.json('data').sprites.map((sprite) => sprite.name))
     assert.deepEqual(
         fixture.sprites.filter((name) => !names.has(name)),
-        ['Sekai Stage'],
+        [...omittedSprites].sort(),
     )
-    assert.equal(names.size, fixture.sprites.length - 1)
+    assert.equal(names.size, fixture.sprites.length - omittedSprites.length)
 })
 
 test('the particle and effect have every engine name', () => {

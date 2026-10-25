@@ -4,7 +4,7 @@ import { buildCharts } from './builtinChart'
 import { installCanvasCounters, installEditorFixture } from './editorFixture'
 
 // The preview with the Built-in skin, particle and background for reference charts:
-// every note type, the flick directions, slides and guides, and the eight styles, at a desktop and
+// every note type, the flick directions, slides and guides, the eight styles and the lane and judgment line colors, at a desktop and
 // a phone size in both themes, with the far end of the lane in the first shot. With SHOTS_DIR set
 // the shots are saved there; either way each must show something other than the empty stage.
 const shotsDir = process.env.SHOTS_DIR
@@ -23,6 +23,8 @@ const times: Record<string, number[]> = {
     types: [1.6, 2.95, 4.5],
     slides: [1.6, 3.6, 7.8],
     styles: [1.6, 3.2, 5.5],
+    // Halfway to Red, on Red, halfway to Blue and on Blue.
+    colors: [1, 2, 3, 4],
 }
 
 const settle = (page: Page) =>

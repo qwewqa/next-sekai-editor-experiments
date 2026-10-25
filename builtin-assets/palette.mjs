@@ -13,6 +13,21 @@ export { activeColors, damageColor, guideColors, noteStyleColors }
 /** The style colours in the engine's order, capitalised as in sprite and effect names. */
 export const colorNames = ['Neutral', 'Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Black']
 
+/** The lane background of each colour but Default, which is `stage.lane`; drawn at `laneAlpha`. */
+export const laneColors = {
+    Neutral: '#9e9e9e',
+    Red: '#99415a',
+    Green: '#0b7643',
+    Blue: '#4160a7',
+    Yellow: '#977e0d',
+    Purple: '#734f99',
+    Cyan: '#02717a',
+    Black: '#000000',
+}
+
+/** The lane background's body alpha, which the engine's colour fades assume. */
+export const laneAlpha = 0.4
+
 /** [outer, inner, accent] of a style colour name. */
 export const styleColors = (name) => noteStyleColors[name.toLowerCase()]
 

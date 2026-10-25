@@ -13,6 +13,10 @@ type SkinData = {
 }
 type ParticleData = { effects: { name: string }[] }
 
+const colorBands = ['Neutral', 'Red', 'Green', 'Blue', 'Yellow', 'Purple', 'Cyan', 'Black'].map(
+    (color) => `Sekai Judgment Background ${color}`,
+)
+
 const fixture = readFixture() as { sprites: string[]; particles: string[]; clips: string[] }
 
 test('resolveSkin takes its first choices, for the default and all 8 styles', () => {
@@ -27,9 +31,10 @@ test('resolveSkin takes its first choices, for the default and all 8 styles', ()
         return sprite
     })
 
-    // The only declared name the set leaves out.
+    // The declared names the set leaves out: the stage, and the colored judgment bands, which
+    // resolve to the uncolored band.
     const missed = [...misses].filter((name) => fixture.sprites.includes(name))
-    assert.deepEqual(missed, ['Sekai Stage'])
+    assert.deepEqual(missed.sort(), ['Sekai Stage', ...colorBands].sort())
     assert.equal(skin.sekaiStage, undefined)
     for (const field of [
         'cover',
@@ -44,6 +49,11 @@ test('resolveSkin takes its first choices, for the default and all 8 styles', ()
     ] as const)
         assert.ok(skin[field], field)
     assert.equal(skin.judgments.length, 8)
+    // Nine different lanes, and one band for all the judgment colors.
+    assert.equal(skin.laneBackgrounds.length, noteStyles.length)
+    assert.equal(new Set(skin.laneBackgrounds).size, noteStyles.length)
+    assert.equal(skin.laneBackgrounds[0], skin.laneBackground)
+    assert.equal(new Set(skin.judgments.map((judgment) => judgment.background)).size, 1)
     for (const judgment of skin.judgments) {
         assert.ok(judgment.background && judgment.gradient && judgment.edge)
         assert.ok(judgment.singleLine && judgment.edgeLeft && judgment.center)
