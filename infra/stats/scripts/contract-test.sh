@@ -56,7 +56,7 @@ step "a batch from a browser"
 RESPONSE=$(curl -fsS -D /tmp/nse-contract.headers -X POST http://localhost:3000/api/batch \
     -H 'Content-Type: text/plain' -H "User-Agent: $BROWSER" -H 'X-Real-IP: 203.0.113.7' --data "$BATCH")
 echo "$RESPONSE"
-[ "$(jq .processed <<< "$RESPONSE")" = 8 ] && [ "$(jq .errors <<< "$RESPONSE")" = 0 ] || fail "the batch was not processed"
+if [ "$(jq .processed <<< "$RESPONSE")" != 8 ] || [ "$(jq .errors <<< "$RESPONSE")" != 0 ]; then fail "the batch was not processed"; fi
 grep -qi '^access-control-allow-origin: \*' /tmp/nse-contract.headers || fail "no CORS header on the batch response"
 [ "$(sql -c "SELECT count(*) FROM website_event WHERE website_id = '$WEBSITE'")" = 8 ] || fail "expected 8 stored events"
 [ "$(sql -c "SELECT count(*) FROM event_data WHERE website_id = '$WEBSITE'")" -ge 15 ] || fail "the event data was not stored"

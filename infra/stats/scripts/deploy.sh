@@ -20,7 +20,7 @@ output() { aws cloudformation describe-stacks --stack-name "$1" --query "Stacks[
 # The first default subnet, ordered by zone name. A different subnet would replace the instance, so the order must stay the same.
 read -r SUBNET VPC ZONE < <(aws ec2 describe-subnets --filters Name=default-for-az,Values=true \
     --query 'sort_by(Subnets,&AvailabilityZone)[0].[SubnetId,VpcId,AvailabilityZone]' --output text)
-[ -n "${SUBNET:-}" ] && [ "$SUBNET" != None ] || { echo "No default subnet. Run: aws ec2 create-default-vpc" >&2; exit 1; }
+if [ -z "${SUBNET:-}" ] || [ "$SUBNET" = None ]; then echo "No default subnet. Run: aws ec2 create-default-vpc" >&2; exit 1; fi
 
 aws cloudformation deploy \
     --stack-name "$STACK" \
