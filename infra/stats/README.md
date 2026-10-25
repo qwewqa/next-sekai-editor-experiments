@@ -120,7 +120,7 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
 Dev exists only while an analytics test runs, in `nse-dev`, and is deleted completely afterwards.
 
 1. Run Stats deploy for `dev`.
-2. Run `bash infra/stats/scripts/dashboard.sh dev`, sign in as `admin` / `umami`, and create the website `local`. Dev is reachable only through the tunnel, so `admin` stays.
+2. Run `bash infra/stats/scripts/dashboard.sh dev`, sign in as `admin` / `umami`, and create the website `local`. The dev dashboard is reachable only through the tunnel, so `admin` stays.
 3. Point a dev build at it:
 
     ```sh
@@ -185,11 +185,11 @@ The monthly cost of each environment, at 730 hours a month, in `us-west-2` on de
 | Dump bucket              | `AWS::S3::Bucket`            | under $0.15                | under $0.01             | S3 Standard $0.023 per GB-month (S3 price list, published 2026-10-15). About five dumps of up to 1 GB, and none are read                                                                                                               |
 | Alarm                    | `AWS::CloudWatch::Alarm`     | $0.10                      | none                    | $0.10 per standard-resolution alarm metric a month (CloudWatch price list, published 2026-10-07; https://aws.amazon.com/cloudwatch/pricing/). The price list also shows 10 free alarm metrics, so the real charge may be $0. Prod only |
 | DNS record               | `AWS::Route53::RecordSet`    | under $0.01                | under $0.01             | $0.40 per million queries (https://aws.amazon.com/route53/pricing/)                                                                                                                                                                    |
-| **Stats total**          |                              | **$19.06 plus the bucket** | **$0.0154 an hour**     |                                                                                                                                                                                                                                        |
+| **Stats total**          |                              | **$19.05 plus the bucket** | **$0.0154 an hour**     |                                                                                                                                                                                                                                        |
 | Services zone (baseline) | `AWS::Route53::HostedZone`   | $0.50                      | $0.50 a month           | $0.50 per hosted zone (Route 53 price list, published 2026-09-11). Shared by every service, and the whole cost of dev while stats is down                                                                                              |
 | **With the zone**        |                              | **about $19.70**           | **$0.50 a month down**  |                                                                                                                                                                                                                                        |
 
-A four-hour dev test costs about $0.06. A dev stack left up for a month costs about $11, which the reaper and the $1 budget are there to stop.
+A four-hour dev test costs about $0.06. A dev stack left up for a month costs about $11. The reaper and the $1 budget are there to stop that.
 
 Not billed at this size: data transfer (the first 100 GB a month out is free), Session Manager, the alert topic’s emails, the budget, EC2’s default recovery, the IAM roles and the default KMS key for encrypted volumes.
 

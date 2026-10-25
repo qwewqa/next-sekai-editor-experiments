@@ -24,9 +24,7 @@ test('a jump under Edits Here does not replace the loaded run', async ({ page })
     expect(moved).toEqual({ moved: false })
 })
 
-test('a switch’s watcher goes with its Reopen card, however the card goes (F11)', async ({
-    page,
-}) => {
+test('a switch’s watcher goes with its Reopen card, however the card goes', async ({ page }) => {
     await boot(page)
     // The watchers on the session left: one for each switch that still offers Reopen.
     const subscribers = () =>

@@ -14,8 +14,8 @@ import { createState, type State, type StateExtras } from '../../../src/state'
 import type { BgmMeta } from '../../../src/state/bgm'
 import type { LevelInfo } from '../../../src/state/levelInfo'
 
-// The record tests' golden and edge charts, which also load in the browser specs: they that freeze with v1
-//. Changing the golden or edge chart changes frozen vectors: never after v0.6.0.
+// The record tests' golden and edge charts, which also load in the browser specs: they freeze with v1.
+// Changing the golden or edge chart changes frozen vectors: never after v0.6.0.
 
 export const group = (id: number) => id as GroupId
 export const stage = (id: number) => id as StageId

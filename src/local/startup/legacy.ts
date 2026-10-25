@@ -1,7 +1,7 @@
 // The old auto save's keys, which the migration moves into a session,
 // and recovery data as a file to keep.
 
-/** Today's auto save slot, which the migration moves into a session. */
+/** The old auto save slot, which the migration moves into a session. */
 export const AUTO_SAVE_KEY = 'autoSave.levelData'
 /** A slot an older build set aside as unreadable; it stays until downloaded or discarded. */
 export const AUTO_SAVE_UNREADABLE_KEY = 'autoSave.unreadable'

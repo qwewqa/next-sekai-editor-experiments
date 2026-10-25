@@ -989,7 +989,7 @@
             "deleteNext": "Delete…",
             "deleteConfirm": "Delete {0} session?|Delete {0} sessions?",
             "notSaved": "{0} session has unsaved changes: {1}.|{0} sessions have unsaved changes: {1}.",
-            "namesMore": "{0} and {1} more",
+            "namesMore": "{1} and {0} more",
             "newer": "This session needs a newer version of the editor.|Some of these sessions need a newer version of the editor.",
             "deleting": "Deleting…",
             "exportRawNote": "For reporting a problem.",

@@ -114,7 +114,7 @@ const damageOnly = async (fixture: Fixture, k: number, others: number[]) => {
 }
 
 test('damage no build has found: the self-pick is written from storage, the step kept: false and the line shown', async () => {
-    // The property test's "edit, edit, save, edit, edit, damage, pick" (save-prop): the carry test
+    // The sequence "edit, edit, save, edit, edit, damage, pick": the carry test
     // reads stored rows only, so it can't see a bad chunk, and the file isn't read. The write
     // from storage finds the damage, marks the row and says so.
     const fixture = await Fixture.create()

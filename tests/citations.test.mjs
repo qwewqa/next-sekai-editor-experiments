@@ -44,7 +44,15 @@ const RULES = [
     { name: 'a review round', pattern: /\b[Rr]ound \d+\b|\br\d+-[a-z]+/ },
     {
         name: 'a decision record',
-        pattern: /\(owner,(?: \d{4}-|\s*$)|\bowner decision\b|\bdecision log\b|\bspec[- ][A-Z]\b/,
+        pattern: /\(owner,?(?: \d{4}-|\s*$)|\bowner decision\b|\bdecision log\b|\bspec[- ][A-Z]\b/i,
+    },
+    {
+        name: 'a numbered invariant or rule',
+        pattern: /\binvariants? \d+|\brules? \d+(?: and \d+)?\b/i,
+    },
+    {
+        name: 'a plan section with a step',
+        pattern: /\b[0-6]\.\d+\.\d+(?:'s)? step\b|\bfollows [0-6]\.\d+\.\d+/,
     },
     {
         name: 'a path outside the repository',
@@ -53,7 +61,8 @@ const RULES = [
     },
 ]
 
-const SCANNED = /\.(?:ts|mts|mjs|cjs|js|vue|css|html|md|py|toml|yml|yaml)$/
+const SCANNED =
+    /\.(?:ts|mts|mjs|cjs|js|vue|css|html|md|py|toml|yml|yaml|sh|sql|ps1|service|timer|env)$|(?:^|\/)Caddyfile$/
 
 test('code, tests and docs cite nothing outside the repository', () => {
     const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })

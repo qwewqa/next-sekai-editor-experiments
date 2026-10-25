@@ -190,7 +190,7 @@ export type SessionStart = {
     operation: JsonValue
     dirty: boolean
     ready?: Promise<unknown>
-    /** The session's lock: the flusher takes it as the session registers (A7). */
+    /** The session's lock: the flusher takes it as the session registers. */
     lock?: LockLease
 }
 
@@ -321,7 +321,7 @@ export type FlushDeps = {
     /** A flush committed a session's entries up to `seq` in a database. */
     onCommitted?: (session: FlushSession, seq: number) => void
     /**
-     * Commits strictly what routine flushes stored, so a hide or a switch leaves it on disk
+     * Commits strictly what routine flushes stored, so a hide or a switch leaves it on disk.
      * Without it, a hide's flush with nothing new does nothing.
      */
     syncStrict?: () => Promise<boolean>
@@ -698,7 +698,7 @@ export class Flusher {
         session: FlushSession,
         leases: { lock?: LockLease; parentLock?: LockLease; parentUntilReleased?: boolean },
     ): FlushSession {
-        // The session's leases are taken here, first, after everything that can throw (A7). Both
+        // The session's leases are taken here, first, after everything that can throw. Both
         // must be held before either is taken, so a lost one leaves the other to its creator.
         const { lock, parentLock } = leases
         if ((lock && lock.state !== 'held') || (parentLock && parentLock.state !== 'held'))
@@ -1623,7 +1623,7 @@ export class Flusher {
         )?.stack
         from.pending.length = 0
         const id = this.newId()
-        // Everything that can throw is built first: the lease is taken straight after (A7).
+        // Everything that can throw is built first: the lease is taken straight after.
         const forkStack = from.stack.forkedStack(inherited)
         const forkChain = from.chain
             ? { ...forkRecord(from.chain), ...(forkName ? { name: forkName } : {}) }

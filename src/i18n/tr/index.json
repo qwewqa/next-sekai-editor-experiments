@@ -989,7 +989,7 @@
       "deleteNext": "Sil…",
       "deleteConfirm": "{0} oturum silinsin mi?",
       "notSaved": "{0} oturumda kaydedilmemiş değişiklikler var: {1}.",
-      "namesMore": "{0} ve {1} tane daha",
+      "namesMore": "{1} ve {0} tane daha",
       "newer": "Bu oturum için editörün daha yeni bir sürümü gerekiyor.|Bu oturumlardan bazıları için editörün daha yeni bir sürümü gerekiyor.",
       "deleting": "Siliniyor…",
       "exportRawNote": "Sorun bildirmek için.",

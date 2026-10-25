@@ -190,8 +190,7 @@ test('Reload in the dialog reloads the page', async ({ page, context }) => {
     await Promise.all([page.waitForEvent('load'), press(page, 'Reload')])
 })
 
-// iOS shows no leave prompt of its own, so unstored work is asked about before the reload
-//.
+// iOS shows no leave prompt of its own, so unstored work is asked about before the reload.
 test('Reload with work that is stored nowhere asks first, and Cancel keeps the page', async ({
     page,
     context,

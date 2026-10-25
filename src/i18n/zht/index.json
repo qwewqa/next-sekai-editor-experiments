@@ -989,7 +989,7 @@
       "deleteNext": "刪除…",
       "deleteConfirm": "要刪除 {0} 個工作階段嗎？",
       "notSaved": "有 {0} 個工作階段包含未儲存的變更：{1}。",
-      "namesMore": "{0} 及其他 {1} 個",
+      "namesMore": "{1} 及其他 {0} 個",
       "newer": "其中有工作階段需要較新版本的編輯器。",
       "deleting": "正在刪除…",
       "exportRawNote": "用於回報問題。",

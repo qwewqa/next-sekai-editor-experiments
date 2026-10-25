@@ -618,7 +618,7 @@ const migrateSetting = (key: string, value: unknown) => {
 const normalize = <T extends Type.TSchema>(schema: T, value: unknown) =>
     Value.Decode(schema, Value.Repair(schema, value))
 
-// The only keys safe mode writes.
+// The settings keys safe mode may write.
 registerSettingKeys(Object.keys(settingsProperties))
 
 export const settings = Object.defineProperties(

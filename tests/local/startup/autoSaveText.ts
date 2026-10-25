@@ -3,7 +3,7 @@ import { serializeEditorMetadata } from '../../../src/levelData/editorMetadata'
 import { serializeToLevelData } from '../../../src/levelData/serialize'
 import type { State } from '../../../src/state'
 
-/** The old auto save's value for a state, as today's editor writes it; `edit` changes its level data. */
+/** The old auto save's value for a state, in the format v0.5.22 wrote; `edit` changes its level data. */
 export const autoSaveText = (
     state: State,
     filename = 'coconut',

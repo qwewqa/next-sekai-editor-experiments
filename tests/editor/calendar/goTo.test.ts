@@ -6,7 +6,7 @@ import { composeGoTo } from '../../../src/calendar/goTo'
 import { piecesOf, type PieceEntry } from '../../../src/calendar/pieces'
 import { brutePieces } from '../../helpers/piecesBrute'
 
-// Spec-C invariant 11: Go To's pieces are the index's pieces with the open session's listed
+// Go To's pieces are the index's pieces with the open session's listed
 // entries above what the index covers joined on top, so they equal the pieces of the whole list.
 // Checked against `piecesOf` (and the plain restatement) over random lists, zones and covers.
 

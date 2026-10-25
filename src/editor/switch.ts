@@ -35,7 +35,7 @@ import { withSwitchRequest, type SwitchRequest } from './switchRequest'
 const wouldLoseWork = async () => {
     const { flusher, isDurablyStored } = await loadStoring()
     const session = flusher?.session
-    // Before storing starts, or in safe mode, nothing is stored: today's changes flag decides.
+    // Before storing starts, or in safe mode, nothing is stored: `isDirty` decides.
     const edited = session ? session.edited && isDirty.value : isDirty.value
     if (!edited) return false
     // A file that holds the work (a Save, an open) is as good as a store; an unconfirmed download is not.
@@ -83,8 +83,9 @@ export const confirmSwitch = async ({ unsaved = false } = {}) => {
             { value: 'save', label: () => i18n.value.prompt.save, default: true },
         ],
     })
-    // This session's Save; the switch is left for the user to repeat.
-    if (choice === 'save') await runCommand(save, 'button')
+    // This session's Save; the switch is left for the user to repeat. Not awaited: the caller may
+    // be inside a Save's own queued run (the conflict dialog), which this Save queues behind.
+    if (choice === 'save') void runCommand(save, 'button')
     return choice === 'leave'
 }
 

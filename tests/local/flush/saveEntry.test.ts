@@ -610,7 +610,7 @@ test('a flush stores pending entries a write put `lastSeq` past, never skipping 
     })
     assert.equal(sessionRow(world).lastSeq, 4)
     await page.flusher.endSave(reservation, undefined, undefined, true)
-    // The backstop stored both and reported the breach (A3): nothing else is an error.
+    // The backstop stored both and reported the breach: nothing else is an error.
     assert.equal(page.errors.length, 1)
     const [breach] = page.errors as FlushOrderError[]
     assert.ok(breach instanceof FlushOrderError)

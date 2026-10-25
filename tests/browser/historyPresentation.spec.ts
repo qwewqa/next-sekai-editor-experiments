@@ -1386,7 +1386,7 @@ for (const width of [1600, 390, 320]) {
                     belowHit: false,
                 })
                 // The caption is display: contents (both widths 0), so check the real spans. The time never
-                // shrinks; the count gives way first at 320 (F20), so it is asserted at the other widths.
+                // shrinks; the count gives way first at 320, so it is asserted at the other widths.
                 const fits = (selector: string) =>
                     group
                         .locator(selector)

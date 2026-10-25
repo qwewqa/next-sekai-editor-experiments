@@ -373,7 +373,7 @@ const refusalText = (refusal: BuildRefused, name: string, source = name) => {
 
 const knownNames = async (env: Env) => {
     const read = await storedRead(env.worker, 'listHandleOwners', undefined)
-    // A failed list suggests as if no file were known, as today: the name is only a suggestion,
+    // A failed list suggests as if no file were known: the name is only a suggestion,
     // and the picker or the write still checks the file.
     if (read.storedRead === 'failed') return new Set<string>()
     return new Set(read.storedValue.map((owner) => owner.name.normalize('NFC').toLocaleLowerCase()))
@@ -450,7 +450,7 @@ export const notTakenOver = (name: string): Outcome =>
  */
 const followPreBind = async (env: Env, reservation: SaveReservation, name: string) => {
     const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
-    // A failed read keeps today's outcome: the session follows the next read of its record.
+    // After a failed read, the session follows the next read of its record.
     const record = read.storedRead === 'value' ? read.storedValue : undefined
     if (!record) return
     env.session.chain = record
@@ -765,7 +765,7 @@ export const projectPicked = async (
             if (done.preBound) {
                 await followPreBind(env, reservation, name)
                 const reread = await readBinding(env)
-                // A failed read keeps the binding the Save started from, as today.
+                // A failed read keeps the binding the Save started from.
                 bound = reread.storedRead === 'value' ? reread.storedValue : binding
             }
             if (tookOver) broadcastUpdated()
@@ -813,7 +813,7 @@ export const projectPicked = async (
 /** The disk state another chain's binding records, for a file filled while a pick waited. */
 const ownerDisk = async (env: Env, owner: HandleOwner) => {
     const read = await storedRead(env.worker, 'readChainRecord', owner.chainId)
-    // A failed read keeps today's outcome: no disk state is known for the other chain's file.
+    // After a failed read, no disk state is known for the other chain's file.
     const record = read.storedRead === 'value' ? read.storedValue : undefined
     const file = isRow(record?.file) ? record.file : undefined
     return file && file.at === owner.at && isRow(file.disk) ? (file.disk as DiskState) : undefined
@@ -868,7 +868,7 @@ const ownCompletedSave = async (
     // The record as it is now, under `nse-bind`: the binding the Save started from is the one
     // the transaction checks it still holds.
     const read = await storedRead(env.worker, 'readChainRecord', env.chainId)
-    // A failed read keeps today's outcome: the Save is not recognised, and its marker stays.
+    // After a failed read, the Save is not recognised, and its marker stays.
     const record = read.storedRead === 'value' ? read.storedValue : undefined
     if (!record) return 'no'
     const at = (field: unknown) =>
@@ -902,7 +902,7 @@ const ownCompletedSave = async (
     removeMarker(env.chainId, marker.entry.revisionId)
     rememberHandle(env.chainId, handle)
     const after = await storedRead(env.worker, 'readChainRecord', env.chainId)
-    // A failed read keeps today's outcome: the session keeps the record it had.
+    // After a failed read, the session keeps the record it had.
     if (after.storedRead === 'value' && after.storedValue) env.session.chain = after.storedValue
     if (currentSession.value.sessionId === env.session.id)
         bindFile({
@@ -1139,7 +1139,7 @@ const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileH
         })
         const decision = read.storedRead === 'value' ? read.storedValue : undefined
         relation = decision?.relation
-        // Replace needs its guard (invariant 6): a failed read, or no decision, never leaves it
+        // Replace needs its guard: a failed read, or no decision, never leaves it
         // enabled. It gives the uncertain reason, unless a reason of the dialog's own applies.
         if (!decision)
             replaceDisabled =
@@ -1231,7 +1231,7 @@ const replace = async (
             .catch(() => undefined)
         const changed = now && (now === 'missing' || !sameContent(now, pinned.disk))
         const reread = changed ? await readBinding(env) : undefined
-        // A failed read shows the bar's error below, as today.
+        // A failed read shows the bar's error below.
         const binding = reread?.storedRead === 'value' ? reread.storedValue : undefined
         if (kept === 'failed' && now === 'missing') {
             await afterOutcome(env, {
@@ -1341,7 +1341,7 @@ export const afterOutcome = async (
             saveUi.error(outcome.message)
             return
         case 'conflict':
-            // Only a binding of this very file has a conflict dialog (m5): anything else changed.
+            // Only a binding of this very file has a conflict dialog: anything else changed.
             if (outcome.binding.file?.name !== outcome.handle.name) {
                 await afterOutcome(env, changedWhilePicked(outcome.handle.name))
                 return
@@ -1831,7 +1831,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
     try {
         read = await env.worker.call('readSession', sessionId)
     } catch (error) {
-        // Storage could not be read: that is not a missing session (invariant 12). Not
+        // Storage could not be read: that is not a missing session. Not
         // `save.storageUnavailable`: its "use Save As…" would save the open session, not this one.
         recordError(error)
         saveUi.error(() => i18n.value.notice.storageUnavailable)
@@ -2114,7 +2114,8 @@ export const fileDownloadAgain = () =>
 
 /**
  * Open the Other Version: the file on disk as a new session in place of this one, which
- * keeps its changes. A file that can't be read says so.
+ * keeps its changes. It asks first when this session's work is not stored. A file that can't
+ * be read says so.
  */
 const openOther = (
     handle: FileSystemFileHandle | undefined,
@@ -2122,6 +2123,11 @@ const openOther = (
     supplied?: SwitchRequest,
 ) =>
     withSwitchRequest(supplied, async (request) => {
+        // Ask first, as every other switch does, when the switch would lose work held only in
+        // memory. `../switch` is imported here because it pulls in the dialogs and the chip,
+        // which Save's core does not need.
+        const { confirmSwitch } = await import('../switch')
+        if (!(await confirmSwitch()) || !request.isCurrent()) return
         try {
             const opened = await handle?.getFile().catch(() => undefined)
             if (!request.isCurrent()) return
@@ -2136,7 +2142,7 @@ const openOther = (
         }
     })
 
-/** Reads the bound file's stored handle ahead of a Save, once the session is edited (n5). */
+/** Reads the bound file's stored handle ahead of a Save, once the session is edited. */
 export const prefetchHandle = async () => {
     const env = environment()
     const file = env && quickBinding(env).file

@@ -67,7 +67,7 @@
     }
 
     /* --- Raised buttons: hover glows, press sinks. */
-    /* The hover glow is today's shadow-md geometry in mint (red on destructive buttons). It is
+    /* The hover glow has the offsets and blurs of `shadow-md`, in mint (red on destructive buttons). It is
        set whole, so a flat on-state glows too. */
     .btn,
     .ghost,

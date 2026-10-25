@@ -141,7 +141,7 @@ test.describe('load notices in the start-up pill', () => {
         await expect(pill(next)).toContainText(
             /Continued "coconut" from (\d{1,2}:\d{2}|[A-Z][a-z]{2}\u00A0\d{1,2})/,
         )
-        // No storage line at load, on any override (Z22).
+        // No storage line at load, on any override.
         await expect(pill(next)).not.toContainText(/stored|browser|Recent Sessions/i)
         // Its one button is Open History, so the pill sits with the action notices.
         await expect(pill(next).locator('[data-notice-action]')).toHaveText(['Open History'])
@@ -967,7 +967,7 @@ test.describe('Reopen', () => {
     })
 })
 
-// New (`n`) asks before it replaces a chart with unsaved changes (owner 2026-10-23), as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
+// New (`n`) asks before it replaces a chart with unsaved changes, as v0.5.22's Reset did; the chart stays in Recent Sessions either way.
 test.describe('New with unsaved changes', () => {
     test('n asks first: Cancel keeps the chart, New makes the new level with Reopen', async ({
         page,
@@ -1124,6 +1124,12 @@ test.describe('the not-stored prompt', () => {
             await save.getByRole('button', { name: 'Save', exact: true }).click()
             await download
             await going
+            // The prompt does not wait for its Save, so the repeat starts after the Save has finished.
+            await expect(
+                page
+                    .locator('.notification, .notification-pill')
+                    .filter({ hasText: /Download started/ }),
+            ).toBeVisible()
             expect(await lifeOf(page)).toBe(990)
             const repeated = run(page, 'reset')
             if (confirmed) {

@@ -296,10 +296,10 @@ test('a fork’s journal takes over its old session’s key, with the old chain�
     assert.deepEqual(outcomes, [])
 })
 
-test('the budget counts today’s auto save, and leaves it room to grow to the journal’s size', async () => {
+test('the budget counts the old auto save, and leaves it room to grow to the journal’s size', async () => {
     const { page, session, a } = await start(11)
     append(page, { kind: 'edit', step: editStep(futureFixtureOperation('Changed note')) }, widen(a))
-    // Today's auto save holds most of the budget: no journal is written over it.
+    // The old auto save holds most of the budget: no journal is written over it.
     page.storage.setItem('nse.autoSave.levelData', 'x'.repeat(JOURNAL_TOTAL_LIMIT - 1000))
     assert.equal(page.writer.write(), false)
     page.storage.removeItem('nse.autoSave.levelData')
