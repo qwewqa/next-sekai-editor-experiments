@@ -38,7 +38,7 @@ provide(closeSettingsKey, () => {
 // children of the scroller (gap and scroll-edge fades depend on it). A jump to one that is not
 // mounted yet mounts the stages up to it, then scrolls once the labels of the new fields are
 // fitted, since a fit that stacks a value below its label moves everything under it.
-const SHORTCUT_BATCH = 30
+const SHORTCUT_BATCH = 20
 const FIRST_SHORTCUT_STAGE = 4
 const LAST_STAGE = FIRST_SHORTCUT_STAGE + Math.ceil(Object.keys(commands).length / SHORTCUT_BATCH)
 const stageOf: Record<SettingsSectionId, number> = {
