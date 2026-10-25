@@ -611,6 +611,49 @@ test('arrowing keeps the dim and holds the beat across a tempo change', async ({
     ).toBe(false)
 })
 
+test('a header-only step shown without its change draws none of the step before it', async ({
+    page,
+}) => {
+    // Both steps stay in memory, so the header-only state shares its store with the one before.
+    await edit(page, 'Moved A', { kind: 'move', beats: [5] })
+    await edit(page, 'Header A', { kind: 'life' })
+    await openTab(page)
+    await row(page, 'Moved A').click()
+    await expect(peekLine(page)).toHaveText('1 change')
+    const marked = () =>
+        page.evaluate(async () => {
+            const module = await window.editorTest.appImport<
+                typeof import('../../src/editor/history/changes')
+            >('/src/editor/history/changes.ts')
+            return {
+                marks: !!module.changeMarks.value,
+                ticks: !!module.minimapChangePlaces.value,
+            }
+        })
+    expect(await marked()).toEqual({ marks: true, ticks: true })
+    // A change read that never lands: the next step shows at the cap without its change.
+    await page.evaluate(async () => {
+        const { setPeekReady } = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/selection')
+        >('/src/editor/history/selection.ts')
+        setPeekReady(() => new Promise(() => undefined))
+    })
+    await list(page).press('ArrowUp')
+    await expect(page.locator('[data-peek-text]')).toHaveAttribute('title', 'Header A')
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { displayedPeekKey, peekedKey } =
+                    await window.editorTest.appImport<typeof import('../../src/history/peek')>(
+                        '/src/history/peek.ts',
+                    )
+                return displayedPeekKey.value === peekedKey.value
+            }),
+        )
+        .toBe(true)
+    expect(await marked()).toEqual({ marks: false, ticks: false })
+})
+
 test('switching entries keeps the whole peek bar filled, never blank or dashed between', async ({
     page,
 }) => {
