@@ -41,6 +41,7 @@ export const TIMEOUT = 15_000
 /**
  * `hidden`: the page was hidden, or 60 s passed; `fetch` with `keepalive`, at most one a minute.
  * `leaving`: the page is going away (`pagehide`); `sendBeacon`, whatever the minute rule says.
+ * Neither sends while a request is in flight.
  */
 export type SendMode = 'hidden' | 'leaving'
 
@@ -78,13 +79,11 @@ export const createSender = (env: SenderEnv) => {
 
     /** Sends what is queued, with `more` (the summaries), when the rules allow. */
     const send = (mode: SendMode, more: () => Item[] = () => []) => {
-        if (stopped || requests >= REQUEST_LIMIT || !env.onLine()) return
+        // One request at a time: a request that has not ended (a hanging endpoint) holds back
+        // the rest of the visit, the beacon at pagehide included.
+        if (stopped || inFlight || requests >= REQUEST_LIMIT || !env.onLine()) return
         const now = env.now()
-        if (
-            mode === 'hidden' &&
-            (inFlight || (lastSent !== undefined && now - lastSent < SEND_INTERVAL))
-        )
-            return
+        if (mode === 'hidden' && lastSent !== undefined && now - lastSent < SEND_INTERVAL) return
         for (const item of more()) add(item)
         if (!queue.length) return
         const size = queue.length

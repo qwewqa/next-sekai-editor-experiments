@@ -141,20 +141,22 @@ test('while the page is open, sends are a minute apart; pagehide sends anyway, b
     env.now = SEND_INTERVAL
     sender.send('hidden')
     assert.equal(calls.length, 2, 'a minute later')
+    await answer(calls[1]!, 1)
     sender.add(item())
     sender.send('leaving')
-    assert.equal(beacons.length, 1, 'pagehide, with a request in flight and within the minute')
+    assert.equal(beacons.length, 1, 'pagehide, within the minute')
     assert.equal((JSON.parse(beacons[0]!) as Item[]).length, 1)
 })
 
-test('one request at a time while the page is open', () => {
-    const { sender, calls, env } = harness()
+test('one request at a time: none while one is in flight, the pagehide beacon included', () => {
+    const { sender, calls, beacons, env } = harness()
     sender.add(item())
     sender.send('hidden')
     sender.add(item())
     env.now = 2 * SEND_INTERVAL
     sender.send('hidden')
-    assert.equal(calls.length, 1)
+    sender.send('leaving')
+    assert.equal(calls.length + beacons.length, 1)
 })
 
 test('offline, nothing is sent and the queue and summaries wait', () => {
@@ -268,5 +270,19 @@ test('the analytics code sets no interval and never listens for unload', () => {
     for (const file of readdirSync(folder)) {
         const source = readFileSync(new URL(file, folder), 'utf8')
         assert.doesNotMatch(source, /setInterval|['"](?:before)?unload['"]/, file)
+    }
+})
+
+// The switch's setting is the only stored value, and settings.ts writes it. A dev build's test key
+// is read, never written.
+test('the analytics code writes no storage of its own', () => {
+    const folder = new URL('../../src/analytics/', import.meta.url)
+    for (const file of readdirSync(folder)) {
+        const source = readFileSync(new URL(file, folder), 'utf8')
+        assert.doesNotMatch(
+            source,
+            /localStorage\.(?!getItem)|sessionStorage|indexedDB|caches\.|navigator\.storage|document\.cookie/,
+            file,
+        )
     }
 })
