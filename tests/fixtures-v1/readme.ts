@@ -4,7 +4,7 @@ export const nxspReadme = (build: string) => `# \`.nxsp\` v1 fixtures
 
 Written once by \`npm run fixtures:v1\` (\`tests/fixtures-v1/write.fixtures.ts\`) from the editor build
 \`${build}\`: the real editor in Chromium on a dev server, driven through a scripted scenario
-(`tests/fixtures-v1`). Each file is what that build wrote, and \`SHA256SUMS\` pins its bytes.
+(\`tests/fixtures-v1\`). Each file is what that build wrote, and \`SHA256SUMS\` pins its bytes.
 
 They are frozen when v0.6.0 is tagged and never changed after it. Every later build opens each one
 (\`tests/zip/nxspV1.test.ts\`, \`tests/browser/formats/nxspWriteBackV1.spec.ts\`,
