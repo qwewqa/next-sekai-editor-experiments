@@ -90,7 +90,11 @@ const verifyPending = async (pending: PendingRecords | undefined, bodies: Bodies
         if (!equalBytes(await hash16(canonical), hash)) continue
         // The same check every chunk put has: the stored form inflates to the bytes hashed.
         const chunk = await verifyChunk({ hash, stored: deflateChunk(canonical), canonical })
-        bodies.chunks.set(hex, { stored: chunk.stored, crc32: chunkCrc32(hash, chunk.stored) })
+        bodies.chunks.set(hex, {
+            stored: chunk.stored,
+            crc32: chunkCrc32(hash, chunk.stored),
+            size: chunk.size,
+        })
     }
 }
 
@@ -195,13 +199,14 @@ export const loadBodies = async (
     }
     const chunkList = [...new Set(chunkKeys)].filter(needChunk)
     for (const [hex, row] of await readRows(store, 'chunks', chunkList)) {
-        const value = row as { bytes?: unknown; crc32?: unknown } | undefined
+        const value = row as { bytes?: unknown; crc32?: unknown; size?: unknown } | undefined
         if (
             value?.bytes instanceof Uint8Array &&
             typeof value.crc32 === 'number' &&
+            typeof value.size === 'number' &&
             isChunkRowIntact(fromHex16(hex), { bytes: value.bytes, crc32: value.crc32 })
         )
-            bodies.chunks.set(hex, { stored: value.bytes, crc32: value.crc32 })
+            bodies.chunks.set(hex, { stored: value.bytes, crc32: value.crc32, size: value.size })
         else bodies.bad.add(hex)
     }
 

@@ -68,8 +68,11 @@ export type MediaInput =
       }
     | { hash: string; size: number; type: string; filename: string }
 
-/** A chunk taken from storage or this tab: its stored form, and the row's CRC for the post-build check. */
-export type InputChunk = { stored: Uint8Array; crc32: number }
+/**
+ * A chunk taken from storage or this tab: its stored form, the row's CRC for the post-build
+ * check, and its canonical (inflated) length, which the reader caps.
+ */
+export type InputChunk = { stored: Uint8Array; crc32: number; size: number }
 
 /**
  * The history a write holds. With `append`, the source's history is copied whole first (its
@@ -321,7 +324,7 @@ type Part = {
 const emptyPart = (): Part => ({ entries: [], roots: {}, nodes: {}, chunks: [] })
 
 /** Lays out the history's parts: which entries, roots, nodes and chunks each holds. */
-const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) => {
+const planHistory = (history: HistoryInput, sources: readonly PinnedSource[], caps: BuildCaps) => {
     const placedRoots = new Set<string>()
     const placedNodes = new Set<string>()
     const placedChunks = new Set<string>()
@@ -420,6 +423,8 @@ const planHistory = (history: HistoryInput, sources: readonly PinnedSource[]) =>
     const placeChunk = (hash: string, part: Part) => {
         if (placedChunks.has(hash)) return
         const chunk = history.chunks.get(hash) ?? fail(`Chunk ${hash} has no source`)
+        // A chunk the reader would refuse to inflate leaves the whole history unreadable.
+        if (chunk.size > caps.chunk) fail('history/chunks.bin is over its cap', 'chunks')
         placedChunks.add(hash)
         const length = chunk.stored.length
         part.chunks.push([hash, cursor, length])
@@ -549,7 +554,7 @@ export const planNxsp = (
     )
         fail('The head’s BGM and the write’s disagree')
 
-    const laid = history ? planHistory(history, sources) : undefined
+    const laid = history ? planHistory(history, sources, caps) : undefined
     const segmentEntries: PlannedEntry[] = []
     let manifestEntry: PlannedEntry | undefined
     let historyManifest: ManifestForm | undefined

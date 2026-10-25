@@ -559,6 +559,12 @@ test('the builder refuses every reader cap as a PlanError naming it', () => {
     refuses('part', () => planNxsp(input, [], { manifest: 100 }))
     refuses('chunks', () => planNxsp(input, [], { chunksBin: 100 }))
     refuses('cover', () => planNxsp(input, [], { media: 5 }))
+    // A chunk by its inflated length: the largest passes at its own size, not one byte under.
+    const largest = Math.max(
+        ...[...(input.history?.chunks.values() ?? [])].map((chunk) => chunk.size),
+    )
+    refuses('chunks', () => planNxsp(input, [], { chunk: largest - 1 }))
+    assert.ok(planNxsp(input, [], { chunk: largest }).plan)
     refuses('segments', () => planNxsp(longChain(1001).input, [], { segments: 1 }))
     // The parts together: just over their sum is refused, their sum passes.
     const long = longChain(1001).input
