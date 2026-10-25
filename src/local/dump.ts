@@ -88,7 +88,17 @@ const blobsOf = (values: unknown[]) => {
 
 const escapeKey = (key: string) => (key.startsWith('$') ? `$${key}` : key)
 
-const unescapeKey = (key: string) => (key.startsWith('$$') ? key.slice(1) : key)
+const unescapeKey = (key: string) => (key.startsWith('$') ? key.slice(1) : key)
+
+/** Sets an own key, `__proto__` included (plain assignment would set the prototype instead). */
+const setOwn = (target: Record<string, unknown>, key: string, value: unknown) => {
+    Object.defineProperty(target, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+    })
+}
 
 /** A Blob's tag: `$blob` with its bytes, `$blobEntry` with its entry's name, or `$blobUnreadable`. */
 export type BlobTag = (blob: Blob) => Record<string, unknown>
@@ -161,7 +171,7 @@ export const encodeValue = (value: unknown, blobTag: BlobTag): unknown => {
     if (!isPlainObject(value)) return otherTag(nameOf(value), value)
     const out: Record<string, unknown> = {}
     for (const [key, item] of Object.entries(value))
-        out[escapeKey(key)] = encodeValue(item, blobTag)
+        setOwn(out, escapeKey(key), encodeValue(item, blobTag))
     return out
 }
 
@@ -290,7 +300,7 @@ const decodeInner = (value: unknown, options: DecodeOptions): unknown => {
     const out: Record<string, unknown> = {}
     for (const [key, item] of entries) {
         const decoded = decodeInner(item, options)
-        if (decoded !== OMIT) out[unescapeKey(key)] = decoded
+        if (decoded !== OMIT) setOwn(out, unescapeKey(key), decoded)
     }
     return out
 }

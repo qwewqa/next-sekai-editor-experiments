@@ -331,6 +331,14 @@ test('a store with one NaN still exports the whole database, and the dump reads'
     await world.idle()
 })
 
+test('a __proto__ key survives encoding, a JSON round trip and decoding', () => {
+    const text = '{"extra":{"__proto__":{"kept":123},"other":1}}'
+    const tagged = encodeValue(JSON.parse(text), noBlob)
+    assert.equal(JSON.stringify(tagged), text)
+    const decoded = decodeValue(JSON.parse(JSON.stringify(tagged)))
+    assert.equal(JSON.stringify(decoded), text)
+})
+
 test('the reader checks tags, base64, key order and in-line keys', () => {
     assert.throws(() => decodeValue({ $ab: 'AQ' }), /padded/)
     assert.throws(() => decodeValue({ $new: 1 }), /unknown tag/)
