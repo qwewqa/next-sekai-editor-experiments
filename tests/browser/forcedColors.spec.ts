@@ -434,7 +434,7 @@ test('monochrome tool icons take the button text color', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark' })
     const text = await systemColor(page, 'ButtonText')
     const toolbar = page.locator('[data-editor-toolbar]')
-    for (const title of ['Open', 'Undo', 'Help'])
+    for (const title of ['Open…', 'Undo', 'Help'])
         await expect
             .poll(() => fills(toolbar.getByTitle(title, { exact: true }), 'path'))
             .toEqual([text])
