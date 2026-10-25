@@ -58,7 +58,7 @@ export type ExportUi = {
 export type ExportContext = {
     ui: ExportUi
     /** Builds the file; called before any picker, since a picker empties what it returns. */
-    build: () => Blob
+    build: () => Blob | Promise<Blob>
     /** The name a picker suggests or a download takes. */
     suggestedName: string
     /** The picker's types: the `.nsld` type, or none for "All files" alone. */
@@ -91,10 +91,10 @@ const cancelled = (ctx: ExportContext) => !!ctx.signal?.aborted
 const built = (ctx: ExportContext) => {
     let size = 0
     return {
-        build: () => {
-            const blob = ctx.build()
+        build: async () => {
+            const blob = await ctx.build()
             size = blob.size
-            return Promise.resolve(blob)
+            return blob
         },
         size: () => size,
     }

@@ -481,7 +481,7 @@ test('Export’s target keeps its handle across a reload, read when Export opens
     const bytes = await page.evaluate(async () => {
         const { buildLevelData } =
             (await import('/src/editor/commands/exportLevel/build.ts')) as typeof import('../../src/editor/commands/exportLevel/build')
-        return [...new Uint8Array(await new Response(buildLevelData()).arrayBuffer())]
+        return [...new Uint8Array(await new Response(await buildLevelData()).arrayBuffer())]
     })
     await writeFile(page, 'LevelData', bytes)
     await openFile(page, 'LevelData')

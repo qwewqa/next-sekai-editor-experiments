@@ -227,26 +227,34 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
     expect(await pickerCalls(page)).toHaveLength(1)
 })
 
-test('level data opened in this tab, picked in the project picker, is refused and put back', async ({
-    page,
-}) => {
-    await start(page)
-    const level = await page.evaluate(async () => {
-        const { buildLevelData } = await import('/src/editor/commands/exportLevel/build.ts')
-        return [...new Uint8Array(await new Response(buildLevelData()).arrayBuffer())]
+// Export compresses on the browser's stream; a file written at level 9 (an older export, or Firefox
+// before 113) is rebuilt too.
+for (const [compression, variant] of [
+    ['the browser’s stream', 0],
+    ['level 9', 1],
+] as const)
+    test(`level data gzipped by ${compression}, opened in this tab and picked in the project picker, is refused and put back`, async ({
+        page,
+    }) => {
+        await start(page)
+        const level = await page.evaluate(async (variant) => {
+            const { buildLevelDataVariants } =
+                await import('/src/editor/commands/exportLevel/build.ts')
+            const blob = (await buildLevelDataVariants())[variant]
+            return [...new Uint8Array(await blob!.arrayBuffer())]
+        }, variant)
+        await writeFile(page, 'LevelData', level)
+        await queuePicks(page, ['LevelData'])
+        await page.keyboard.press('o')
+        await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
+        await queuePicks(page, ['LevelData'])
+        await pressSave(page)
+        await submitSave(page, 'LevelData')
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toContainText('"LevelData" is not a project file.')
+        await expect(dialog.getByRole('button', { name: 'Export Level Data…' })).toBeVisible()
+        expect(await readFile(page, 'LevelData')).toEqual(level)
     })
-    await writeFile(page, 'LevelData', level)
-    await queuePicks(page, ['LevelData'])
-    await page.keyboard.press('o')
-    await expect(notice(page).filter({ hasText: 'Opened level' })).toBeVisible()
-    await queuePicks(page, ['LevelData'])
-    await pressSave(page)
-    await submitSave(page, 'LevelData')
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('"LevelData" is not a project file.')
-    await expect(dialog.getByRole('button', { name: 'Export Level Data…' })).toBeVisible()
-    expect(await readFile(page, 'LevelData')).toEqual(level)
-})
 
 test('a download browser downloads, binds by name, and offers Download Again unchanged', async ({
     page,

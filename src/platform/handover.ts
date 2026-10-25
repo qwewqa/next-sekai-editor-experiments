@@ -1,5 +1,5 @@
-import { ungzip } from 'pako'
 import { ExecutionError, executePlan, type ExecutionSource } from '../local/nxsp/execute'
+import { gunzipBlob } from '../utils/gzipStream'
 import { detection, hasActivation, isStandalone, reportsActivation } from './detect'
 import { levelDataDiskState, nxspDiskState, sameContent, sha256Hex } from './fingerprint'
 import { savePoint } from './testPause'
@@ -85,9 +85,7 @@ export const verifyBuilt = async (kind: SaveRequest['kind'], blob: Blob) => {
     if (kind !== 'nsld') return
     let parsed: unknown
     try {
-        parsed = JSON.parse(
-            new TextDecoder().decode(ungzip(new Uint8Array(await blob.arrayBuffer()))),
-        )
+        parsed = JSON.parse(new TextDecoder().decode(await gunzipBlob(blob)))
     } catch {
         parsed = undefined
     }

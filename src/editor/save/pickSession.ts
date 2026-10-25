@@ -236,8 +236,9 @@ const identify = async (
 const levelBuilder = () => import('../commands/exportLevel/build')
 
 /**
- * The bytes an Export target holds, re-exported from this chain's live state when they hash to
- * what the target last held; undefined for another chain's target or any other state.
+ * The bytes an Export target holds, re-exported from this chain's live state, with either
+ * compression, when they hash to what the target last held; undefined for another chain's
+ * target or any other state.
  */
 const targetBytes = async (env: Env, owner: HandleOwner) => {
     if (owner.chainId !== env.chainId) return
@@ -249,11 +250,13 @@ const targetBytes = async (env: Env, owner: HandleOwner) => {
         const target = isRow(record?.exportTarget) ? record.exportTarget : undefined
         const disk = isRow(target?.disk) ? (target.disk as DiskState) : undefined
         if (!disk) return
-        const { buildLevelData } = await levelBuilder()
-        const bytes = await buildLevelData().arrayBuffer()
-        return (await diskStateOfBytes(bytes, 0)).fingerprint === disk.fingerprint
-            ? new Blob([bytes])
-            : undefined
+        const { buildLevelDataVariants } = await levelBuilder()
+        for (const built of await buildLevelDataVariants()) {
+            const bytes = await built.arrayBuffer()
+            if ((await diskStateOfBytes(bytes, 0)).fingerprint === disk.fingerprint)
+                return new Blob([bytes])
+        }
+        return
     } catch {
         return
     }
