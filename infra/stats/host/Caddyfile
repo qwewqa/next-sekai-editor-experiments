@@ -1,0 +1,36 @@
+{
+	admin off
+	# Port 80 stays closed, so there is nothing to redirect from.
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+	}
+}
+
+{$STATS_HOSTNAME} {
+	# Only the collect paths are public. Caddy writes no access log.
+	@collect {
+		method POST
+		path /api/send /api/batch
+	}
+	@heartbeat {
+		method GET
+		path /api/heartbeat
+	}
+
+	handle @collect {
+		# The sender keeps a batch under 32 KB; this cap is four times that.
+		request_body {
+			max_size 128KB
+		}
+		reverse_proxy umami:3000 {
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle @heartbeat {
+		reverse_proxy umami:3000
+	}
+	handle {
+		respond 404
+	}
+}

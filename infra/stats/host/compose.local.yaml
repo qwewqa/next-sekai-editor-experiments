@@ -1,0 +1,44 @@
+# Umami and PostgreSQL on http://localhost:3000 for app-side work and for the CI contract test.
+# Same images as the server (images.env), fixed local-only secrets, nothing public.
+#   docker compose --env-file infra/stats/host/images.env -f infra/stats/host/compose.local.yaml up
+# The first sign-in is admin / umami. `down -v` deletes the data.
+name: nse-stats-local
+
+services:
+    umami:
+        image: ${UMAMI_IMAGE:?}
+        ports:
+            - '127.0.0.1:3000:3000'
+        environment:
+            DATABASE_URL: postgresql://umami:local@db:5432/umami
+            APP_SECRET: local-only-not-a-secret
+            SALT_ROTATION: day
+            DISABLE_TELEMETRY: '1'
+            DISABLE_UPDATES: '1'
+            PRIVATE_MODE: '1'
+            CLIENT_IP_HEADER: x-real-ip
+        healthcheck:
+            test: ['CMD', 'curl', '-fsS', 'http://localhost:3000/api/heartbeat']
+            interval: 5s
+            timeout: 5s
+            retries: 40
+            start_period: 20s
+        depends_on:
+            db: { condition: service_healthy }
+
+    db:
+        image: ${POSTGRES_IMAGE:?}
+        environment:
+            POSTGRES_DB: umami
+            POSTGRES_USER: umami
+            POSTGRES_PASSWORD: local
+        volumes:
+            - db:/var/lib/postgresql
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U umami -d umami']
+            interval: 3s
+            timeout: 5s
+            retries: 20
+
+volumes:
+    db: {}

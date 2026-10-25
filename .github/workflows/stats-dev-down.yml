@@ -1,0 +1,39 @@
+name: Stats dev down
+
+# Deletes the stats dev stack and the resources it retained, then checks that no billable stats resource is
+# left. Runs by hand, or every six hours to delete a dev stack that is over 12 hours old. Dev only: the
+# prod role does not trust the Environment stats-dev, and no workflow deletes prod.
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '17 */6 * * *'
+
+permissions:
+    contents: read
+
+concurrency:
+    group: stats-dev
+    cancel-in-progress: false
+
+jobs:
+    down:
+        # A scheduled run waits for the repository variable STATS_DEV_REAPER=on, set once the baseline and the
+        # stats-dev Environment exist. Before then it would fail and email every six hours.
+        if: github.event_name == 'workflow_dispatch' || vars.STATS_DEV_REAPER == 'on'
+        runs-on: ubuntu-latest
+        timeout-minutes: 40
+        environment: stats-dev
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+              with:
+                  role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/nse-stats-deploy
+                  aws-region: us-west-2
+            - run: bash infra/stats/scripts/dev-down.sh ${{ github.event_name == 'schedule' && '--reaper' || '' }}
+              env:
+                  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
