@@ -247,8 +247,8 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 | Primary | `primary` fill | The one filled button |
 | Destructive confirm | `danger-fill` | Label; red |
 | Destructive choice | `danger` label on a neutral pill | Quiet until pressed |
-| Field problem | `danger` text under the field | `role="alert"`, `aria-invalid` |
-| Outcome in a dialog (a file that could not be read) | Ink text | `SeverityIcon`, polite live region |
+| Field problem | `danger` text under the field | Red, under the field; `role="alert"`, `aria-invalid` |
+| Outcome in a dialog (a file that could not be read) | `fg` text with a severity glyph | The glyph; a live region (polite; the failed Remove is an alert) |
 | Warning / info | `warning` / `info` | Triangle / circle |
 | Current in a single-select list | `button` + `shadow-md` | Raised pill |
 | Band tab marker | `fg` 4 px bar | A bar |
@@ -305,7 +305,7 @@ The step from hover to press is at least ΔE 6.5 on every surface, and every rai
 ### 5.6 Notices and status
 
 - **Quick notice:** the mint pill for every quick notice, as in v0.5.22.
-  - A failure of something the user asked for is a card with the error glyph, not a quick notice. design-language.md, section 9, says which notice fits.
+  - A failure of something the user asked for is a card with the error glyph, not a quick notice. design-language.md, section 9, says which notice fits and gives the one exception.
 - **Notice cards** stay neutral surfaces: `bg-modal` with `ring-fg/10` in the pane, `bg-popup` with the popup outline and ring over a dialog. The card is the peek strip's surface, so there is no tint and no coloured edge.
   - Severity is a leading 16 px glyph (`SeverityIcon`) in `text-warning` (triangle), `text-danger` (circle with an exclamation mark) or `text-info` (circle with an i). It is the optional `severity` field on `Notice`, `NoticeLine` and `LoadNotice`, set where the notice is raised, and it has no text of its own. Contrast is the `warning`, `info` and `danger` pairs of 4.1 on `modal` (in the pane) and `popup` (over a dialog); a glyph needs 3.
   - The mapping rule:
