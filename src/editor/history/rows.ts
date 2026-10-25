@@ -293,6 +293,20 @@ export const buildRows = (
     return rows
 }
 
+/**
+ * Whether `pinned` is already the run of one closed row. Pinning it then gives the same rows, since
+ * a pin only splits runs at its own ends.
+ */
+export const pinnedIsRow = (rows: readonly Row[], pinned: readonly string[]) => {
+    const row = rows.find((each) => each.id === pinned[0])
+    return (
+        row?.type === 'entry' &&
+        !row.child &&
+        row.members.length === pinned.length &&
+        row.members.every((member, i) => entryId(member) === pinned[i])
+    )
+}
+
 /** The entry an entry is compared with: Edits Here's, else the next older one loaded. */
 export const previousOf = (newestFirst: readonly Entry[], entry: Entry) => {
     if (entry.previous) return entry.previous

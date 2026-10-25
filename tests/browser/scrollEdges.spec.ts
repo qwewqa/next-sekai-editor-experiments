@@ -101,3 +101,37 @@ test('the fade reaches past the gap between rows, so a clip at a gap still shows
     expect(gap).toBeGreaterThan(0)
     expect(fade).toBeGreaterThanOrEqual(gap * 1.5)
 })
+
+test('a dialog is drawn with its fade and fitted icons from its first frame', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 600 })
+    // The state in the first frame the dialog shows, read before paint, and the state once
+    // everything has settled.
+    const states = await page.evaluate(async () => {
+        const { appImport } = window.editorTest
+        const { openSettings } = await appImport<
+            typeof import('../../src/editor/settings/openSettings')
+        >('/src/editor/settings/openSettings.ts')
+        const state = () => {
+            const dialog = document.querySelector('dialog[open]')
+            return {
+                edges: [...(dialog?.querySelectorAll('.scroll-edges') ?? [])].map((element) => [
+                    element.hasAttribute('data-scroll-before'),
+                    element.hasAttribute('data-scroll-after'),
+                ]),
+                icons: [...(dialog?.querySelectorAll('[data-icon-column] span') ?? [])].map(
+                    (span) =>
+                        getComputedStyle(span).fontSize + getComputedStyle(span).letterSpacing,
+                ),
+            }
+        }
+        void openSettings()
+        const first = await new Promise<ReturnType<typeof state>>((resolve) =>
+            requestAnimationFrame(() => resolve(state())),
+        )
+        for (let i = 0; i < 10; i++) await new Promise(requestAnimationFrame)
+        return { first, settled: state() }
+    })
+    expect(states.first.edges).toContainEqual([false, true])
+    expect(states.first.icons.length).toBeGreaterThan(0)
+    expect(states.first).toEqual(states.settled)
+})
