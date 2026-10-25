@@ -487,3 +487,58 @@ test('a bound key and the command list open it too, and a second run while one i
     await page.locator('[data-delete-sessions] button', { hasText: 'Cancel' }).click()
     await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
 })
+
+test.describe('from Recent Sessions', () => {
+    const trash = (page: Page) => page.locator('[data-history-delete-sessions]')
+
+    test('the band button opens the same dialog as Settings, and what it deletes leaves the list at once', async ({
+        page,
+    }) => {
+        await seed(page)
+        const rows = await recentRows(page)
+        await expect(rows.filter({ hasText: 'Month' })).toHaveCount(1)
+        await trash(page).focus()
+        await page.keyboard.press('Enter')
+        await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+        // The pointer is over the list, which holds its rows still for any other refresh. The dialogs
+        // are driven without moving it, and the pointer is placed by its event so the hold is certain.
+        await page.locator('[data-sessions-list]').dispatchEvent('pointerenter')
+        expect(await counts(page)).toEqual({ '1': '1', '7': '1', '30': '1', '90': '1', all: '1' })
+        await page.locator('[data-delete-include]').dispatchEvent('click')
+        expect(await counts(page)).toEqual({ '1': '5', '7': '4', '30': '3', '90': '2', all: '5' })
+        await page.locator('[data-delete-range="30"]').dispatchEvent('click')
+        await page.locator('[data-delete-next]').dispatchEvent('click')
+        const confirm = confirmDialog(page)
+        await expect(confirm).toContainText('Delete 3 sessions?')
+        await expect(async () => {
+            await confirm
+                .getByRole('button', { name: messages.modals.confirm.delete })
+                .dispatchEvent('click')
+            await expect(deleteDialog(page)).toBeHidden({ timeout: 300 })
+        }).toPass({ timeout: 10_000 })
+        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible()
+        await expect(rows.filter({ hasText: 'Month' })).toHaveCount(0)
+        await expect(rows.filter({ hasText: 'Later' })).toHaveCount(0)
+        await expect(rows.filter({ hasText: 'Week' })).toHaveCount(1)
+    })
+
+    test('a run that deletes the peeked session goes back to now first', async ({ page }) => {
+        await seed(page)
+        const rows = await recentRows(page)
+        await rows.filter({ hasText: 'Month' }).click()
+        await expect(page.locator('[data-peek-bar]')).toBeVisible()
+        await trash(page).click()
+        await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+        await page.locator('[data-delete-include]').click()
+        await page.locator('[data-delete-range="30"]').click()
+        await page.locator('[data-delete-next]').click()
+        await confirmWhenReady(
+            confirmDialog(page).getByRole('button', { name: messages.modals.confirm.delete }),
+            deleteDialog(page),
+        )
+        await expect(notice(page, 'Deleted 3 sessions')).toBeVisible()
+        await expect(page.locator('[data-peek-back]')).toHaveCount(0)
+        await expect(page.locator('[data-peek-bar]')).toHaveCount(0)
+        await expect(rows.filter({ hasText: 'Month' })).toHaveCount(0)
+    })
+})

@@ -255,6 +255,7 @@ const entryPoints = [
     'src/editor/controls/mouse.ts',
     'src/editor/elevation/ElevationEditor.vue',
     'src/editor/file/chipDialogs.ts',
+    'src/editor/history/HistoryPanel.vue',
     'src/editor/history/RecentSessionsTab.vue',
     'src/editor/history/TimelineList.vue',
     'src/editor/save/flow.ts',

@@ -388,6 +388,22 @@ test.describe('the dialog', () => {
         await expect(page.locator('[data-editor-toolbar]')).toBeVisible()
     })
 
+    test('Delete Sessions… opens over the sheet, Escape closes only it, and focus returns to the button', async ({
+        page,
+    }) => {
+        await page.keyboard.press('Shift+H')
+        await expect(sheet(page)).toBeVisible()
+        await sheet(page).getByRole('tab', { name: 'Recent Sessions' }).click()
+        const trash = sheet(page).locator('[data-history-delete-sessions]')
+        await trash.focus()
+        await page.keyboard.press('Enter')
+        await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
+        await expect(sheet(page)).toBeVisible()
+        await expect(trash).toBeFocused()
+    })
+
     test('the toolbar tool and the command list run the same command', async ({ page }) => {
         const face = page.locator('[data-editor-toolbar] button[title="Undo"]')
         await face.hover()
@@ -775,6 +791,29 @@ test.describe('the narrowest right sheet', () => {
             if (!measured.timeline.whole) cut.push(`${locale}: ${measured.timeline.text}`)
             // Recent Sessions keeps its 48 px floor.
             expect(measured.sessions.width).toBeGreaterThanOrEqual(48)
+            // On Recent Sessions the tabs stay where they are, and the trash button ends before the ×.
+            const tabBoxes = () =>
+                band.evaluate((element) =>
+                    ['timeline', 'sessions'].map((id) => {
+                        const { x, width } = element
+                            .querySelector(`[data-history-focus="tab-${id}"]`)!
+                            .getBoundingClientRect()
+                        return { x, width }
+                    }),
+                )
+            const onTimeline = await tabBoxes()
+            await band.getByRole('tab', { name: measured.sessions.text }).click()
+            await expect(band.locator('[data-history-delete-sessions]')).toBeVisible()
+            expect(await tabBoxes()).toEqual(onTimeline)
+            const apartFromClose = await band.evaluate(
+                (element) =>
+                    element.querySelector('[data-history-delete-sessions]')!.getBoundingClientRect()
+                        .right <=
+                    element.querySelector('[data-history-close]')!.getBoundingClientRect().left,
+            )
+            expect(apartFromClose).toBe(true)
+            await band.getByRole('tab', { name: measured.timeline.text }).click()
+            await expect(band.locator('[data-history-delete-sessions]')).toHaveCount(0)
         }
         expect(cut).toEqual([])
     })
@@ -884,11 +923,36 @@ test.describe('the Timeline', () => {
             expect(goTo.x).toBeGreaterThanOrEqual(tabs.x + tabs.width - 2)
             return goTo
         }
+        // Recent Sessions keeps the Timeline's tabs where they are, and its end slot holds the trash
+        // button in the place Go To has: the same mode, tabs, and right edge.
+        const sessionsSlot = async () => {
+            const panel = surface(page, 'panel')
+            const tabBoxes = async () => [
+                await panel.locator('[data-history-focus="tab-timeline"]').boundingBox(),
+                await panel.locator('[data-history-focus="tab-sessions"]').boundingBox(),
+            ]
+            const modeHere = await mode()
+            const onTimeline = await tabBoxes()
+            const goTo = await panel.locator('[data-history-goto-button]').boundingBox()
+            await panel.getByRole('tab', { name: 'Recent Sessions' }).click()
+            const trash = panel.locator('[data-history-delete-sessions]')
+            await expect(trash).toBeVisible()
+            await expect(panel.locator('[data-history-goto-button]')).toBeHidden()
+            expect(await mode()).toBe(modeHere)
+            expect(await tabBoxes()).toEqual(onTimeline)
+            const box = await trash.boundingBox()
+            expect(box?.width).toBe(36)
+            expect(box?.height).toBe(36)
+            expect(box!.x + box!.width).toBeCloseTo(goTo!.x + goTo!.width, 1)
+            await panel.getByRole('tab', { name: 'Timeline' }).click()
+            await expect(panel.locator('[data-history-delete-sessions]')).toHaveCount(0)
+        }
         // The desktop's right dock is wide enough for the label.
         await openTab(page)
         expect(await mode()).toBe('label')
         const labelled = await oneLine()
         expect(labelled.width).toBeGreaterThan(36)
+        await sessionsSlot()
         // A left dock under the label's fit (349 px in English) takes the icon alone, and under
         // the whole tabs' fit (285 px) the tabs take their smaller labels. Neither wraps.
         await page.setViewportSize({ width: 844, height: 390 })
@@ -904,12 +968,14 @@ test.describe('the Timeline', () => {
         await expect(surface(page, 'panel')).toBeVisible()
         expect(await mode()).toBe('icon')
         expect((await oneLine()).width).toBe(36)
+        await sessionsSlot()
         await page.evaluate(() => {
             window.editorTest.settings.leftDockWidth = 220
         })
         await settle(page)
         expect(await mode()).toBe('small')
         expect((await oneLine()).width).toBe(36)
+        await sessionsSlot()
     })
 
     test('the list is windowed, with ARIA positions, and a header pins while it scrolls', async ({

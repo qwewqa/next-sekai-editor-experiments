@@ -157,6 +157,22 @@ test('compact History returns to its own row and keeps a virtualized Tab entry p
     await expect(list(page).locator('[data-history-row][tabindex="0"]')).toHaveCount(1)
 })
 
+test('Delete Sessions… opens over compact History, and after a click the focus is on its button', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await open(page)
+    await listed(page)
+    await presentation(page).getByRole('tab', { name: 'Recent Sessions' }).click()
+    const trash = presentation(page).locator('[data-history-delete-sessions]')
+    await trash.click()
+    await expect(page.locator('[data-delete-sessions]')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-delete-sessions]')).toHaveCount(0)
+    await expect(presentation(page)).toBeVisible()
+    await expect(trash).toBeFocused()
+})
+
 for (const action of ['Home', 'Tab', 'outside', 'blur'] as const)
     test(`Details native close preserves newer focus intent: ${action}`, async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 844 })
