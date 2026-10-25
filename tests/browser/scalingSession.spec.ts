@@ -598,9 +598,9 @@ test('a Level Info change made while scaling is open cancels the scaling and kee
     await info.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect(info).toHaveCount(0)
     await expect(panel(page)).toHaveCount(0)
-    expect(
-        await page.evaluate(() => window.editorTest.history.state.value.levelInfo.title),
-    ).toBe('Changed')
+    expect(await page.evaluate(() => window.editorTest.history.state.value.levelInfo.title)).toBe(
+        'Changed',
+    )
     expect((await summary(page)).stored.map((note) => note.beat)).toEqual([3, 5, 8])
 })
 

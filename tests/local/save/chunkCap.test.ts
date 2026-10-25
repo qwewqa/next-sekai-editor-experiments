@@ -19,7 +19,7 @@ const oversized = () => {
 
 const refusal = (built: Awaited<ReturnType<typeof save>>['built']) => {
     assert.ok('refused' in built, 'the Save wrote the file')
-    return built
+    return built as { refused: string; limit?: string }
 }
 
 test('a stored chunk past the reader’s cap is refused, not written', async () => {
