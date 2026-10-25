@@ -1,5 +1,6 @@
 import { curveTolerance, resolutionScale, roundCappedSegments } from '../rendering/strokeSegments'
 import type { Vec } from './engine/math'
+import { linkProgram } from './gl'
 
 // The selection outline's own small WebGL2 renderer, used by both preview hosts. It draws the
 // outline as the editor's context drew it: round-capped segments, a dark 5 px stroke under a
@@ -83,34 +84,7 @@ export const createOutlineRenderer = (
     let vertices = new Float32Array(0)
 
     const setUp = (gl: WebGL2RenderingContext): Program => {
-        const compile = (type: number, source: string) => {
-            const shader = gl.createShader(type)
-            if (!shader) throw new Error('Failed to create shader')
-            gl.shaderSource(shader, source)
-            gl.compileShader(shader)
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-                throw new Error(
-                    `Failed to compile outline shader: ${gl.getShaderInfoLog(shader) ?? ''}`,
-                )
-            return shader
-        }
-        const program = gl.createProgram()
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
-        if (!program) throw new Error('Failed to create outline shader program')
-        const shaders = [
-            compile(gl.VERTEX_SHADER, VERTEX_SHADER),
-            compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER),
-        ]
-        for (const shader of shaders) gl.attachShader(program, shader)
-        gl.linkProgram(program)
-        for (const shader of shaders) {
-            gl.detachShader(program, shader)
-            gl.deleteShader(shader)
-        }
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-            throw new Error(
-                `Failed to link outline shader program: ${gl.getProgramInfoLog(program) ?? ''}`,
-            )
+        const program = linkProgram(gl, 'outline', VERTEX_SHADER, FRAGMENT_SHADER)
         gl.useProgram(program)
         const buffer = gl.createBuffer()
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Allocation may fail on a lost/exhausted context despite DOM declarations.
