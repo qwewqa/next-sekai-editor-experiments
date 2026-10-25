@@ -7,8 +7,8 @@ declare global {
     }
 }
 
-const groupOption = 'Hide group names when focusing a group'
-const stageOption = 'Hide stage names when focusing a stage'
+const groupOption = 'Hide Group Names When Focusing a Group'
+const stageOption = 'Hide Stage Names When Focusing a Stage'
 
 test.beforeEach(async ({ page }) => {
     await page.addInitScript(installCanvasCounters)

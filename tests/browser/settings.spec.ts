@@ -642,10 +642,10 @@ test('Name Contrast follows the Show Other rows rather than splitting them', asy
     const start = labels.indexOf('Show Group Name')
     expect(labels.slice(start, start + 9)).toEqual([
         'Show Group Name',
-        'Hide group names when focusing a group',
+        'Hide Group Names When Focusing a Group',
         'Show Other Groups',
         'Show Stage Name',
-        'Hide stage names when focusing a stage',
+        'Hide Stage Names When Focusing a Stage',
         'Show Other Stages',
         'Show Other Objects',
         'Name Contrast',
