@@ -37,6 +37,12 @@ export const reloadPreviewResources = () => {
     ensurePreviewResources()
 }
 
+/** Decodes the skin's and particle's atlases again, for atlases a stopped worker kept. */
+export const decodeAtlasesAgain = () => {
+    assetSession.reload('skin')
+    assetSession.reload('particle')
+}
+
 if (import.meta.hot) {
     import.meta.hot.dispose(() => {
         assetSession.dispose()

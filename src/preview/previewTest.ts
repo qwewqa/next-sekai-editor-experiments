@@ -5,6 +5,10 @@ export type PreviewTestHandle = {
     host: 'main' | 'worker'
     /** The selection outline's pixels with any alpha. */
     outlinePixels: () => Promise<number>
+    /** Resolves once the worker host has drawn the frames asked for; at once in the main host. */
+    settled: () => Promise<void>
+    /** The worker host's context loss, which the specs cannot reach; resolves once it is handled. */
+    setContextLost: (lost: boolean) => Promise<void>
 }
 
 declare global {
