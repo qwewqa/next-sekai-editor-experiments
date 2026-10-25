@@ -155,8 +155,8 @@ const holdMaint = (signal: AbortSignal) =>
     })
 
 /**
- * The dialog's line, and how far its bar is (0 to 100). A bar without a fraction slides: it waits
- * behind a Save, before a phase's first batch and during the finish.
+ * The dialog's line, and the bar's fraction from 0 to 100. Without a fraction the bar slides: while
+ * the check waits behind a Save, until a phase's first batch is done, and during the finish.
  */
 type Say = (message: () => string, percent?: number) => void
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { NoticeSeverity } from './notification'
 
-// A notice card's severity glyph (colour system §5.6): Font Awesome's triangle-exclamation for a
+// The severity glyph of a notice card or of an inline line in a dialog (colour system §5.6): Font Awesome's triangle-exclamation for a
 // warning, circle-exclamation for an error and circle-info for info. The message carries the
 // meaning, so this is a second cue; the caller sets its size.
 defineProps<{ severity: NoticeSeverity }>()

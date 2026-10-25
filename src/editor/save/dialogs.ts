@@ -74,8 +74,8 @@ export type SaveDialogResult =
 export type Preparing = {
     /** Aborted by the dialog's Cancel, × or Escape: the Save stops (an accepted pick runs on). */
     readonly signal: AbortSignal
-    /** The import's progress while the Save waits for it. */
-    importing: (progress: { done: number; total: number }) => void
+    /** The import's progress while the Save waits for it; undefined once the wait ends. */
+    importing: (progress: { done: number; total: number } | undefined) => void
     /** The file's size: the estimate while it builds, the built size once known. */
     built: (size: number) => void
     /**

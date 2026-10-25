@@ -118,6 +118,7 @@ export const waitForChainImports = async (
             return 'cancelled'
         } finally {
             stop()
+            dialog.importing(undefined)
         }
     }
 }

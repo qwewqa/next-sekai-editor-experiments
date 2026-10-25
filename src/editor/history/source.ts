@@ -53,7 +53,10 @@ export const earlierMissing = ref(false)
 export const status = ref<'loading' | 'ready' | 'failed'>('loading')
 /** An older page is being read. */
 export const loadingMore = ref(false)
-/** The last older page could not be read: the list ends in a Try Again, and scrolling waits. */
+/**
+ * The last older page could not be read. The list ends in a line with Try Again, and scrolling
+ * does not read more until it is pressed.
+ */
 export const loadMoreFailed = ref(false)
 /** A newer page is being read into the gap. */
 export const loadingNewer = ref(false)
@@ -274,6 +277,7 @@ export const refresh = async ({ replace = false } = {}): Promise<void> => {
         stored.value = fresh
         cursor = next
         earlierMissing.value = missing
+        loadMoreFailed.value = false
     }
     loadedFor.value = id
     canLoadMore.value = !!cursor

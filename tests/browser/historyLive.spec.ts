@@ -182,6 +182,34 @@ test('an older page that cannot be read ends the list in Try Again, which reads 
     await expect.poll(async () => (await source(page)).loaded).toBeGreaterThan(loadedBefore)
 })
 
+test('a refresh that replaces the loaded run takes the Try Again of a failed older page away', async ({
+    page,
+}) => {
+    await load(page)
+    await pushSteps(page, 250)
+    await flush(page)
+    await openPanel(page)
+    await expect.poll(async () => (await source(page)).loaded).toBeGreaterThan(50)
+    const list = timeline(page, 'panel')
+    const failed = list.locator('[data-history-more-failed]')
+    const hold = await holdWorker(page, 'readTimeline')
+    await list.evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+    })
+    await hold.reached()
+    await hold.release(true)
+    await expect(failed).toBeVisible()
+    // A different run replaces the list (as a session change without a reset does): its older
+    // pages are unread, so the failure of the old run's page does not carry over.
+    await page.evaluate(async () => {
+        const source = await window.editorTest.appImport<
+            typeof import('../../src/editor/history/source')
+        >('/src/editor/history/source.ts')
+        await source.refresh({ replace: true })
+    })
+    await expect(failed).toHaveCount(0)
+})
+
 const peekedKey = (page: Page) =>
     page.evaluate(async () => {
         const peek =

@@ -492,11 +492,21 @@ test.describe('the Preparing dialog', () => {
         await page.evaluate(() =>
             (
                 window.saveSeen.preparing as {
-                    importing: (p: { done: number; total: number }) => void
+                    importing: (p: { done: number; total: number } | undefined) => void
                 }
             ).importing({ done: 20, total: 80 }),
         )
         await expect(dialog(page).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
+        // The import is over: the bar slides for the build, and does not stay full.
+        await page.evaluate(() =>
+            (
+                window.saveSeen.preparing as {
+                    importing: (p: { done: number; total: number } | undefined) => void
+                }
+            ).importing(undefined),
+        )
+        await expect(dialog(page).getByRole('progressbar')).toHaveCount(0)
+        await expect(dialog(page).locator('[data-save-progress]')).toBeVisible()
         await page.evaluate(() =>
             (window.saveSeen.preparing as { built: (size: number) => void }).built(12_400_000),
         )
@@ -510,6 +520,8 @@ test.describe('the Preparing dialog', () => {
         })
         const button = dialog(page).getByRole('button', { name: 'Download' })
         await expect(button).toBeFocused()
+        await expect(dialog(page)).toContainText('Ready: coconut.nxsp · 12.4 MB')
+        await expect(dialog(page).locator('[data-save-progress]')).toHaveCount(0)
         await guard(page)
         await button.click()
         await expect.poll(() => page.evaluate(() => window.saveSeen.result)).toBe(true)

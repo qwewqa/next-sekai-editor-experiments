@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The one bar under a wait's status text. Without `value` it slides, for a wait of unknown length.
 // With `value` (0 to 100) it fills to the fraction. Under reduced motion the sliding bar fills the
-// track and pulses, so a wait still looks live. The text beside it names the work; the bar shows
+// track and pulses, so a wait still looks live. The text above it names the work; the bar shows
 // the fraction.
 defineProps<{
     value?: number
@@ -43,7 +43,7 @@ defineProps<{
     }
 }
 
-/* Tailwind's pulse only dips to half opacity, which a fill at 40% would hardly show. */
+/* Not Tailwind's pulse: it runs from full to half opacity, so a full-width fill would look like a full bar. This one stays faint. */
 @media (prefers-reduced-motion: reduce) {
     .wait-bar-slide {
         width: 100%;

@@ -7,10 +7,11 @@ import { formatSize } from '../../utils/size'
 import WaitBar from '../workspace/WaitBar.vue'
 import type { PreparingModel } from './dialogs'
 
-// "Preparing coconut.nxsp… 12 MB", then "Ready: coconut.nxsp · 12 MB": one small surface for a build that is
-// slow, or a Save waiting for an open's import. Cancel stops the Save; when the build has
-// outlasted the press, its button becomes [Download] or [Save], focused, and that press is the
-// gesture.
+// "Preparing coconut.nxsp… 12 MB", or "Ready: coconut.nxsp · 12 MB" once a build that outlasted
+// the press is done: one small surface for a build that is slow, or a Save waiting for an open's
+// import. Cancel stops the Save; when the build is ready, its button becomes [Download] or
+// [Save], focused, and that press is the gesture. The bar slides while it works, and shows the
+// import's fraction while a Save waits for one.
 const props = defineProps<{ name: string; model: PreparingModel; kind?: 'save' | 'export' }>()
 
 const emit = defineEmits<{ close: [go: boolean] }>()
@@ -64,7 +65,7 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
         <div class="flex flex-col gap-2">
             <p :id="`${ids}-text`" data-save-preparing>{{ text }}</p>
             <WaitBar
-                v-if="progress !== undefined"
+                v-if="!model.ready"
                 :value="progress"
                 :labelledby="`${ids}-text`"
                 data-save-progress

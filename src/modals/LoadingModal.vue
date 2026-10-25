@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { i18n } from '../i18n'
 import ChevronIcon from '../editor/workspace/ChevronIcon.vue'
 import WaitBar from '../editor/workspace/WaitBar.vue'
@@ -10,7 +10,7 @@ import { describeFailure } from './loadingFailure'
 const props = defineProps<{
     title: () => string
     task: (signal: AbortSignal) => AsyncIterable<() => string> | Iterable<() => string>
-    /** The fraction done, 0 to 100, when the task knows it; without it the bar slides. */
+    /** The fraction done, 0 to 100, when the total is known. Without it the bar slides. */
     progress?: () => number | undefined
 }>()
 
@@ -18,6 +18,7 @@ const emit = defineEmits<{
     close: []
 }>()
 
+const ids = useId()
 const message = ref(() => i18n.value.modals.loading.loading)
 // English technical detail of a failure, behind a disclosure.
 const detail = ref<string>()
@@ -62,8 +63,10 @@ const onClose = () => {
 <template>
     <BaseModal :title="title()" @close="onClose">
         <div class="flex flex-col gap-2">
-            <span role="status" class="whitespace-break-spaces">{{ message() }}</span>
-            <WaitBar v-if="!failed" :value="progress?.()" />
+            <span :id="`${ids}-text`" role="status" class="whitespace-break-spaces">{{
+                message()
+            }}</span>
+            <WaitBar v-if="!failed" :value="progress?.()" :labelledby="`${ids}-text`" />
         </div>
         <details
             v-if="detail"

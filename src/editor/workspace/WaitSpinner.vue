@@ -1,5 +1,6 @@
 <template>
-    <!-- The one spinner (a slot that holds a glyph, the end of a list, the startup gate); sized by the parent. Under reduced motion it pulses instead of turning, so a wait still looks live. -->
+    <!-- The one spinner (a slot that holds a glyph, the end of a list, the startup gate); the caller
+         sets its size. Under reduced motion it pulses instead of turning, so a wait still looks live. -->
     <svg
         class="shrink-0 text-fg motion-safe:animate-spin motion-reduce:animate-pulse"
         viewBox="0 0 24 24"

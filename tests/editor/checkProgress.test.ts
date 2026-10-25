@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { phaseFraction } from '../../src/editor/check/progress'
 
-// Check's bar slides until a phase has a batch behind it, so a check waiting behind a Save never
-// shows an empty track and a finished phase does not leave a stale fraction.
+// Check's bar slides until a phase has a batch behind it, so a bar at 0 never looks like an
+// empty track.
 
 test('the first batch of a phase has no fraction, so the bar slides while the check waits', () => {
     assert.equal(phaseFraction(0, 0, 1000), undefined)
