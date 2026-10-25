@@ -59,6 +59,17 @@ if (mode === 'frames') {
             probe('clockFrame', 'p50', 'p95', 'p99'),
             counts('clockFrame'),
             probe('previewDraw', 'p50', 'p95'),
+            // The worker host: its draw, and its frames a second against the clock's.
+            `${probe('previewWorkerDraw', 'p50', 'p95')} (${fixed(
+                m((r) => ((r.probes.previewWorkerDraw?.n ?? NaN) / r.frames.spanMs) * 1000),
+                0,
+            )}/${fixed(
+                m((r) => r.frames.fps),
+                0,
+            )} fps, ${fixed(
+                m((r) => r.probes.previewReplaced?.n ?? 0),
+                0,
+            )} replaced)`,
             `${fixed(
                 m((r) => (r.probes.stageTile?.n ?? 0) / r.probes.chartDraw?.n),
                 2,
@@ -96,6 +107,7 @@ if (mode === 'frames') {
                 'clock p50/p95/p99',
                 'clock > budget/2x/4x',
                 'preview p50/p95',
+                'worker draw p50/p95 (fps/clock fps, replaced)',
                 'stage tiles per draw (build p50/p95/max)',
                 'interval p50/p95/p99/max (n)',
                 'intervals > 2x/4x',

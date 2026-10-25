@@ -10,6 +10,7 @@ import { view } from '../editor/view'
 import { replaceState, state } from '../history'
 import { getAllEntities } from '../history/store'
 import { isPlaying } from '../player'
+import { previewHost } from '../preview/worker/host'
 import { peekDrawContext } from '../rendering/context'
 import type { PathGraphicsCache } from '../rendering/pathGraphics'
 import { settings } from '../settings'
@@ -28,6 +29,8 @@ const nsePerf = {
     settings,
     state,
     isPlaying,
+    /** Which host draws the preview. */
+    previewHost: (): 'main' | 'worker' => previewHost.kind,
     isElevationEditorOpen,
     minimapStats,
     perfSamples,
