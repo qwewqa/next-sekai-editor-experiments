@@ -11,6 +11,7 @@ const stageProps = (left = -2, right = 2, pivot = 0) => ({
     pivotLane: pivot,
     xLaneTranslate: 0,
     laneAlpha: 1,
+    laneColor: { start: 0, end: 0, progress: 0 },
     fullWidth: 0,
     divisionLineAlpha: 1,
     division: { start: { size: 2, parity: 0 }, end: { size: 2, parity: 0 }, progress: 0 },
