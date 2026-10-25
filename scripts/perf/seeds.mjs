@@ -68,6 +68,18 @@ for (let k = 0; k < count; k++)
             out.handles.push({ ...handle, chainId })
     }
 
+/** IndexedDB's order for these keys: numbers before strings, arrays by element. */
+const compareKeys = (a, b) => {
+    if (Array.isArray(a)) {
+        for (let i = 0; i < Math.min(a.length, b.length); i++) {
+            const c = compareKeys(a[i], b[i])
+            if (c) return c
+        }
+        return a.length - b.length
+    }
+    if (typeof a !== typeof b) return typeof a === 'number' ? -1 : 1
+    return a < b ? -1 : a > b ? 1 : 0
+}
 const keys = {
     chains: (v) => v.chainId,
     sessions: (v) => v.id,
@@ -76,7 +88,10 @@ const keys = {
     handles: (v) => [v.chainId, v.role],
 }
 for (const [name, values] of Object.entries(out))
-    store(name).records = values.map((value) => ({ key: keys[name](value), value }))
+    // A dump lists each store's records in key order, as IndexedDB returns them.
+    store(name).records = values
+        .map((value) => ({ key: keys[name](value), value }))
+        .sort((a, b) => compareKeys(a.key, b.key))
 writeFileSync(output, `${JSON.stringify(dump)}\n`)
 console.log(
     `${output}: ${out.chains.length} chains, ${out.sessions.length} sessions, ${out.entries.length} entries`,

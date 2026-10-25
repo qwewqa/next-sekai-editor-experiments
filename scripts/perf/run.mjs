@@ -1,6 +1,7 @@
 // Runs a perf plan against a perf build in headed Chromium (docs/performance-testing.md).
 //   npm run perf -- <plan.json> [--name <run>] [--out perf-results] [--port 5360]
 //     [--affinity 0xFFFF0000] [--priority AboveNormal] [--url <served build>] [--no-build]
+//     [--groups <regex of group ids>] [--timeout <minutes>]
 // Builds with NSE_PERF=1 and sourcemaps into <out>/dist, serves it with vite preview, runs each
 // group in a fresh browser profile and writes <out>/<run>/results.jsonl, traces and screenshots.
 import { chromium } from '@playwright/test'
@@ -817,9 +818,14 @@ const scenarios = {
         return schedule(events)
     },
     // A user action (`action`, scripts/perf/actions.mjs): input to the frame that shows its result.
-    act(page, cdp, cell) {
+    async act(page, cdp, cell) {
         if (!actionStates.has(cell)) actionStates.set(cell, { rep: 0 })
-        return runAction(page, cdp, cell, actionStates.get(cell))
+        const state = actionStates.get(cell)
+        const result = await runAction(page, cdp, cell, state, async () => {
+            // What the page showed when the result never came.
+            await page.screenshot({ path: `${runDir}/timeout-${cell.action}-${state.rep}.png` })
+        })
+        return result
     },
     // A reload: the startup gate, the chart and the session it continues (a group's `boot`).
     async startup(page) {
@@ -1077,9 +1083,19 @@ const openChart = async (page, group) => {
         await page.route(`**/samples/${name}.json`, (route) =>
             route.fulfill({ path: file, contentType: 'application/json' }),
         )
-        page.on('console', (m) => m.text().startsWith('[seedSample]') && log(m.text()))
+        let refused
+        const refusal = new Promise((_, reject) => (refused = reject))
+        refusal.catch(() => {})
+        page.on('console', (m) => {
+            if (!m.text().startsWith('[seedSample]')) return
+            log(m.text())
+            if (/Refused|Failed/.test(m.text())) refused(new Error(m.text()))
+        })
         await page.goto(`${baseUrl}?seedSample=${name}`)
-        await page.waitForURL((url) => !url.search.includes('seedSample'), { timeout: 600_000 })
+        await Promise.race([
+            page.waitForURL((url) => !url.search.includes('seedSample'), { timeout: 600_000 }),
+            refusal,
+        ])
     } else await page.goto(baseUrl)
     await page.locator('canvas.editor-chart').waitFor({ state: 'visible', timeout: 60_000 })
     await page.waitForFunction(() => window.nsePerf?.startup() === 'done', null, {
@@ -1383,7 +1399,9 @@ writeFileSync(
 log('run', name, 'pinned', pin([process.pid, ...children.map((c) => c.pid)]).length)
 
 try {
-    for (const group of plan.groups) {
+    for (const group of plan.groups.filter(
+        (g) => !args.groups || new RegExp(args.groups).test(g.id),
+    )) {
         const profile = typeof group.profile === 'string' ? PROFILES[group.profile] : group.profile
         if (!profile) throw new Error(`Unknown profile ${group.profile}`)
         const hz = group.hz === 'native' ? 240 : (group.hz ?? 60)
@@ -1397,7 +1415,6 @@ try {
             isMobile: !!profile.isMobile,
             locale: 'en-US',
             acceptDownloads: true,
-            downloadsPath: `${runDir}/downloads`,
             args: [
                 '--autoplay-policy=no-user-gesture-required',
                 // Moving the cursor plays a moment of BGM, and the tab's audio indicator then
@@ -1412,9 +1429,16 @@ try {
             const page = context.pages()[0] ?? (await context.newPage())
             // No run may open a native dialog: one blocks the run, on the screen of whoever watches.
             // The pickers are off (Open takes the file input, Save downloads, or the app's test
-            // pickers under a group's `platform`), JS dialogs are dismissed, and downloads land
-            // in the run's folder.
-            page.on('dialog', (dialog) => void dialog.dismiss().catch(() => {}))
+            // pickers under a group's `platform`), JS dialogs are dismissed, and Playwright takes
+            // every download (`acceptDownloads`; a scenario saves one it keeps).
+            // A beforeunload prompt is accepted, so a reload goes through.
+            page.on(
+                'dialog',
+                (dialog) =>
+                    void (
+                        dialog.type() === 'beforeunload' ? dialog.accept() : dialog.dismiss()
+                    ).catch(() => {}),
+            )
             await page.addInitScript(() => {
                 for (const picker of [
                     'showOpenFilePicker',

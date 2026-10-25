@@ -3,6 +3,8 @@
 // prepares the page, sends one input (or a held key or a wheel run), and waits for the frame that
 // shows its result.
 
+import { copyFileSync, statSync } from 'node:fs'
+
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms))
 
 // ---- in the page
@@ -25,7 +27,30 @@ export const installActionProbe = () => {
             { capture: true, passive: true },
         )
     const compile = (source) => source && new Function('P', 'A', `return (${source})`)
+    /** Scrolls only scroll containers: scrollIntoView also scrolls clipped ancestors and the page. */
+    const unscroll = () => {
+        for (const e of [
+            document.documentElement,
+            document.body,
+            ...document.querySelectorAll('*'),
+        ]) {
+            if (!e.scrollTop && !e.scrollLeft) continue
+            const style = getComputedStyle(e)
+            if (
+                /auto|scroll/.test(style.overflowY + style.overflowX) &&
+                e !== document.documentElement
+            )
+                continue
+            e.scrollTop = 0
+            e.scrollLeft = 0
+        }
+    }
     window.nsePerfAct = {
+        unscroll,
+        centre(element) {
+            element?.scrollIntoView({ block: 'center' })
+            unscroll()
+        },
         arm(spec) {
             const P = window.nsePerf
             const a = (armed = {
@@ -82,7 +107,8 @@ export const installActionProbe = () => {
                     }
                     if (a.busy && a.at.busy === undefined && check(a.busy)) a.at.busy = t
                     for (const [name, fn] of Object.entries(a.marks))
-                        if (a.at.marks[name] === undefined && check(fn)) a.at.marks[name] = t
+                        if (a.released && a.at.marks[name] === undefined && check(fn))
+                            a.at.marks[name] = t
                     if (a.released && a.at.done === undefined && check(a.done)) a.at.done = t
                 }
                 const tail = a.at.done !== undefined && t - a.at.done >= (spec.tail ?? 200)
@@ -105,6 +131,7 @@ export const installActionProbe = () => {
             armed.releasedAt = performance.now()
         },
         finished: () => !!armed?.finished,
+        inputAt: () => armed?.input ?? armed?.manual,
         result() {
             const a = armed
             const input = a.input ?? a.manual
@@ -238,7 +265,7 @@ const rowAt = (page, selector, n) =>
                 .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
             const row = rows[Math.min(n, rows.length - 1)]
             if (!row) return
-            row.scrollIntoView({ block: 'center' })
+            window.nsePerfAct.centre(row)
             const r = row.getBoundingClientRect()
             return {
                 x: r.x + Math.min(r.width / 2, 120),
@@ -259,7 +286,7 @@ const findRow = async (page, pattern) => {
                     re.test(r.getAttribute('aria-label') ?? ''),
                 )
                 if (row) {
-                    row.scrollIntoView({ block: 'center' })
+                    window.nsePerfAct.centre(row)
                     return true
                 }
                 const list = document.querySelector(`${d} [data-history-list]`)
@@ -288,6 +315,13 @@ const findRow = async (page, pattern) => {
         },
         { d: dialog, source: pattern },
     )
+}
+/** Closes the Go To popover, which a click elsewhere only dismisses. */
+const closeGoTo = async (page) => {
+    if (await visible(page, '[data-history-goto]')) {
+        await page.keyboard.press('Escape')
+        await sleep(300)
+    }
 }
 const click = async (cdp, { x, y }) => {
     await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y })
@@ -342,6 +376,8 @@ const peekBefore = `P.peek().shown`
 const changeKnown = `(() => { const p = P.peek(); return p.changeKey === p.key && p.change !== 'loading' })()`
 const notice = (pattern) =>
     `[...document.querySelectorAll('.notification, .notification-pill')].some((n) => ${pattern}.test(n.textContent) && !A.includes(n))`
+// The app's modals are <dialog> elements; some menus and popovers use the role.
+const openDialogs = `[...document.querySelectorAll('dialog[open], [role=dialog]')]`
 const noticesBefore = `[...document.querySelectorAll('.notification, .notification-pill')]`
 
 // ---- the actions
@@ -352,7 +388,7 @@ export const actions = {
     historyOpen: {
         prep: closeHistory,
         spec: () => ({
-            done: `document.querySelectorAll('${dialog} [data-history-row]').length > 1 && !document.querySelector('[data-history-loading]')`,
+            done: `document.querySelectorAll('${dialog} [data-history-row]').length > 0 && !document.querySelector('[data-history-loading]')`,
             busy: `!!document.querySelector('[data-history-loading]')`,
         }),
         input: (page) => page.keyboard.press('Shift+H'),
@@ -474,7 +510,7 @@ export const actions = {
         prep: async (page, cell, state) => {
             await openHistory(page)
             await noPeek(page)
-            const at = await findRow(page, cell.pattern ?? '^Flipped [\\d,]{4,}')
+            const at = await findRow(page, cell.pattern ?? 'Flipped [\\d,]{4,}')
             if (!at) throw new Error('No whole-chart row')
             state.label = at.label
             // A neighbour first, so the whole-chart row is the next peek.
@@ -557,6 +593,7 @@ export const actions = {
                 undefined,
                 120_000,
             ).catch(() => {})
+            await closeGoTo(page)
             await page
                 .getByRole('button', { name: 'Show All' })
                 .click()
@@ -577,6 +614,7 @@ export const actions = {
                 undefined,
                 120_000,
             )
+            await closeGoTo(page)
             await sleep(300)
         },
         spec: () => ({
@@ -592,7 +630,7 @@ export const actions = {
             await noPeek(page)
             const found = await page.evaluate(() => {
                 const b = document.querySelector('[data-history-disclosure][aria-expanded="false"]')
-                b?.scrollIntoView({ block: 'center' })
+                window.nsePerfAct.centre(b)
                 return !!b
             })
             if (!found) throw new Error('No group drawn')
@@ -657,7 +695,7 @@ export const actions = {
         input: async (page, cdp, cell) => {
             const options = page.locator('[data-goto-list] [data-goto-item="day"]')
             const target = cell.pick === 'first' ? options.first() : options.last()
-            await target.scrollIntoViewIfNeeded()
+            await target.evaluate((e) => window.nsePerfAct.centre(e))
             await click(cdp, await centre(target))
         },
         reset: noPeek,
@@ -828,8 +866,8 @@ export const actions = {
             before: `document.querySelectorAll('[data-sessions-deleted]').length`,
             done: `document.querySelectorAll('[data-sessions-deleted]').length < A`,
         }),
-        input: async (page, cdp) =>
-            click(cdp, await centre(page.locator('[data-sessions-undo]').first())),
+        // Space on the deleted row, which keeps the focus: its Undo.
+        input: (page) => page.keyboard.press('Space'),
     },
 
     // Settings › Local Data
@@ -853,7 +891,9 @@ export const actions = {
         prep: async (page) => {
             await actions.localData.prep(page)
             await page.keyboard.press(',')
-            await page.locator('[data-delete-sessions-open]').scrollIntoViewIfNeeded()
+            await page
+                .locator('[data-delete-sessions-open]')
+                .evaluate((e) => window.nsePerfAct.centre(e))
             await sleep(500)
         },
         spec: () => ({
@@ -899,7 +939,7 @@ export const actions = {
                 .catch(() => undefined)
         },
         spec: () => ({
-            done: `window.__busySeen && !document.querySelector('.loading-modal, [data-loading-modal]') && !/Loading…/.test(document.querySelector('[role=dialog]:last-of-type')?.textContent ?? '')`,
+            done: `window.__busySeen && !${openDialogs}.some((d) => /Loading…/.test(d.textContent))`,
             busy: `(window.__busySeen ||= /Loading…/.test(document.body.textContent))`,
             timeout: 600_000,
         }),
@@ -910,13 +950,8 @@ export const actions = {
             ),
         reset: async (page, cell, state) => {
             const download = await state.download
-            state.bytes = download
-                ? await download.createReadStream().then(async (s) => {
-                      let n = 0
-                      for await (const chunk of s) n += chunk.length
-                      return n
-                  })
-                : undefined
+            const path = await download?.path().catch(() => undefined)
+            state.bytes = path ? statSync(path).size : undefined
             await page.evaluate(() => (window.__busySeen = false))
             await closeDialogs(page)
         },
@@ -964,7 +999,12 @@ export const actions = {
         },
         reset: async (page, cell, state) => {
             const download = await Promise.race([state.download, sleep(3000)])
-            if (download && cell.keepDownload) await download.saveAs(cell.keepDownload)
+            if (download) {
+                const path = await download.path().catch(() => undefined)
+                if (!path) throw new Error(`The download failed: ${await download.failure()}`)
+                state.bytes = statSync(path).size
+                if (cell.keepDownload) copyFileSync(path, cell.keepDownload)
+            }
             await sleep(1000)
         },
     },
@@ -982,11 +1022,8 @@ export const actions = {
         },
         spec: () => ({
             before: 'P.live().state',
-            done: `P.live().state !== A && !document.querySelector('[role=dialog]')`,
+            done: `P.live().state !== A && !${openDialogs}.length`,
             busy: `/Loading file…|Importing/.test(document.body.textContent)`,
-            marks: {
-                imported: `P.live().state !== A && !/Importing|Storing/.test(document.body.textContent)`,
-            },
             timeout: 600_000,
             tail: 500,
         }),
@@ -995,7 +1032,21 @@ export const actions = {
             const chooser = await state.chooser
             await chooser.setFiles(cell.file)
         },
-        reset: async (page) => {
+        // A project file's history is stored in the background: `imported`, from the input, is
+        // when storage lists no open import (unless `waitImport` is false).
+        reset: async (page, cell, state) => {
+            if (cell.waitImport !== false)
+                state.extra = {
+                    imported: await page.evaluate(async () => {
+                        const worker = await window.nsePerf.worker()
+                        const from = window.nsePerfAct.inputAt()
+                        for (;;) {
+                            const pending = await worker.call('openPendingImports')
+                            if (!pending.length) return performance.now() - from
+                            await new Promise((done) => setTimeout(done, 50))
+                        }
+                    }),
+                }
             await page
                 .getByRole('dialog')
                 .getByRole('button', { name: 'OK' })
@@ -1004,7 +1055,7 @@ export const actions = {
             await sleep(2000)
         },
     },
-    /** New (n) and its prompt's New, leaving the open chart. */
+    /** New (n), leaving the open chart. */
     newChart: {
         prep: async (page) => {
             await closeHistory(page)
@@ -1013,25 +1064,15 @@ export const actions = {
                 .locator('canvas.editor-chart')
                 .focus()
                 .catch(() => {})
-            await page.keyboard.press('n')
-            await page
-                .getByRole('dialog')
-                .getByRole('button', { name: 'New', exact: true })
-                .waitFor({ timeout: 10_000 })
             await sleep(300)
         },
         spec: () => ({
             before: 'P.live().state',
-            done: `P.live().state !== A && !document.querySelector('[role=dialog]')`,
+            done: `P.live().state !== A && !${openDialogs}.length`,
             tail: 500,
         }),
-        input: async (page, cdp) =>
-            click(
-                cdp,
-                await centre(
-                    page.getByRole('dialog').getByRole('button', { name: 'New', exact: true }),
-                ),
-            ),
+        // An unedited chart (just opened) asks nothing.
+        input: (page) => page.keyboard.press('n'),
     },
     exportLevel: {
         prep: async (page, cell, state) => {
@@ -1048,13 +1089,96 @@ export const actions = {
                 .catch(() => undefined)
             await sleep(300)
         },
-        spec: () => ({ done: `!document.querySelector('[role=dialog]')`, timeout: 120_000 }),
+        spec: () => ({
+            before: noticesBefore,
+            done: notice(/^(Exported|Download started)/),
+            timeout: 120_000,
+        }),
         input: async (page) =>
             page.getByRole('dialog').getByRole('textbox', { name: 'File Name' }).press('Enter'),
         reset: async (page, cell, state) => {
             await state.download
             await closeDialogs(page)
         },
+    },
+    /** Level Info › Check…: the stored history checked, until its result shows. */
+    check: {
+        prep: async (page) => {
+            await closeHistory(page)
+            await closeDialogs(page)
+            await page.locator('[data-status-label]').click()
+            await page.locator('[data-level-info-check]').waitFor()
+            await sleep(300)
+        },
+        spec: () => ({
+            done: `${openDialogs}.some((d) => /No damage found|Checked |damaged/.test(d.textContent))`,
+            busy: `${openDialogs}.some((d) => /Checking/.test(d.textContent))`,
+            timeout: 600_000,
+        }),
+        input: async (page, cdp) =>
+            click(cdp, await centre(page.locator('[data-level-info-check]'))),
+        reset: closeDialogs,
+    },
+    /**
+     * Go To's index of an opened file's session of `rows` rows (10,000 or 50,000), written as
+     * rows of their own: the worker's first read, a read from its memo, and one after 20 rows are
+     * added. Read through the storage worker, without the UI.
+     */
+    goToIndex: {
+        measure: (page, cell, state) =>
+            page.evaluate(
+                async ({ count, tag }) => {
+                    const worker = await window.nsePerf.worker()
+                    const id = `perf-${tag}-${count}`
+                    const now = Date.now()
+                    const database = await new Promise((resolve, reject) => {
+                        const request = indexedDB.open('nse-local-data')
+                        request.onsuccess = () => resolve(request.result)
+                        request.onerror = () => reject(request.error)
+                    })
+                    const write = async (from, to) => {
+                        const tx = database.transaction(['sessions', 'entries'], 'readwrite')
+                        const entries = tx.objectStore('entries')
+                        for (let seq = from; seq <= to; seq++)
+                            entries.put({
+                                sessionId: id,
+                                seq,
+                                time: now - (count + 40 - seq) * 120_000,
+                                kind: 'edit',
+                                snapshot: new Uint8Array(32),
+                                kept: true,
+                            })
+                        tx.objectStore('sessions').put({
+                            id,
+                            chainId: id,
+                            origin: 'nxsp',
+                            lastSeq: to,
+                            entryCount: to,
+                        })
+                        await new Promise((resolve) => (tx.oncomplete = resolve))
+                    }
+                    const read = async () => {
+                        const began = performance.now()
+                        await worker.call('readTimelineIndex', { sessionId: id, zone: 'UTC' })
+                        return performance.now() - began
+                    }
+                    await write(1, count)
+                    const first = await read()
+                    const hits = []
+                    for (let i = 0; i < 5; i++) hits.push(await read())
+                    const extended = []
+                    let last = count
+                    for (let i = 0; i < 5; i++) {
+                        await write(last + 1, last + 20)
+                        last += 20
+                        extended.push(await read())
+                    }
+                    database.close()
+                    const median = (values) => values.sort((a, b) => a - b)[values.length >> 1]
+                    return { response: first, first, hit: median(hits), extend: median(extended) }
+                },
+                { count: cell.rows ?? 10_000, tag: state.rep },
+            ),
     },
     /** A dialog by its key or button (`open`: a key, or `click:<selector>`), until its title shows. */
     dialog: {
@@ -1068,7 +1192,7 @@ export const actions = {
             await sleep(300)
         },
         spec: (cell) => ({
-            done: `[...document.querySelectorAll('[role=dialog]')].some((d) => d.textContent.includes(${JSON.stringify(cell.title)}))`,
+            done: `${openDialogs}.some((d) => d.textContent.includes(${JSON.stringify(cell.title)}))`,
         }),
         input: async (page, cdp, cell) =>
             cell.open.startsWith('click:')
@@ -1092,11 +1216,17 @@ export const actions = {
 }
 
 /** The `act` scenario: one repeat of `cell.action`. */
-export const runAction = async (page, cdp, cell, state) => {
+export const runAction = async (page, cdp, cell, state, onTimeout) => {
     const action = actions[cell.action]
     if (!action) throw new Error(`Unknown action ${cell.action}`)
     page._cdp = cdp
+    if (action.measure) {
+        const result = await action.measure(page, cell, state)
+        state.rep++
+        return result
+    }
     await action.prep?.(page, cell, state)
+    await page.evaluate(() => window.nsePerfAct.unscroll())
     await page.evaluate((spec) => window.nsePerfAct.arm(spec), action.spec(cell, state))
     await action.input(page, cdp, cell, state)
     const spec = action.spec(cell, state)
@@ -1106,9 +1236,12 @@ export const runAction = async (page, cdp, cell, state) => {
         polling: 100,
     })
     const result = await page.evaluate(() => window.nsePerfAct.result())
+    if (result.timedOut) await onTimeout?.()
     await action.reset?.(page, cell, state)
     result.label = state.label
     if (state.bytes !== undefined) result.bytes = state.bytes
+    Object.assign(result, state.extra)
+    state.extra = undefined
     state.rep++
     return result
 }

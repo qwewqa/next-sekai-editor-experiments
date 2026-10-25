@@ -15,7 +15,8 @@ import { Editor, prefix, SampleClock, seedContext } from './driver'
 //
 // A visit mixes what charting does: runs of notes placed with the Note tool, small flips near a
 // time that walks the chart, runs of undos (a new edit after them is a branch), runs of Initial
-// Life steps (×N rows), and a flip of the whole chart every 400 steps, for the change view.
+// Life steps (×N rows), and a flip of the whole chart every 400 steps, in a row of its own, for
+// the change view.
 
 const root = resolve(import.meta.dirname, '../..')
 const level = join(root, 'test_level_data/coconut-next-sekai-24887.json.gz')
@@ -168,9 +169,16 @@ const runVisit = async (
             random() < 0.02 ? between(2 * MINUTE, 6 * MINUTE) : between(1 * SECOND, 5 * SECOND),
         )
         if (made % 400 === 0) {
-            await page.evaluate(() => window.perfSeed.flipAll())
-            made++
-            await pass(between(3 * SECOND, 8 * SECOND))
+            // Between Initial Life steps, so the flip has a row of its own, not one in a ×N run.
+            for (const run of [
+                () => window.perfSeed.life(),
+                () => window.perfSeed.flipAll(),
+                () => window.perfSeed.life(),
+            ]) {
+                await page.evaluate(run)
+                made++
+                await pass(between(3 * SECOND, 8 * SECOND))
+            }
         }
     }
     while (made < plan.steps) {
@@ -267,7 +275,6 @@ const SEEDS: Record<string, () => Plan[]> = {
     'history-1800': () => visits([1, 0], 900, 8),
     'history-20h': () => visits([12, 11, 10, 8, 7, 5, 4, 2, 1, 0], 2000, 6),
     'chain-small': () => visits([0], 12, 8),
-    debug: () => visits([1, 0], 150, 8),
 }
 
 for (const [name, plans] of Object.entries(SEEDS))
