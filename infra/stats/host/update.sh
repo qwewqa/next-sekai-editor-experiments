@@ -14,6 +14,9 @@ imds() {
 }
 tag() { imds "tags/instance/$1" 2> /dev/null || true; }
 
+# Without the data volume, Compose would start a new empty database on the root volume.
+mountpoint -q /data || { echo "/data is not mounted" >&2; exit 1; }
+
 DIR=/opt/nse-stats
 COMMIT=$(tag nse:commit)
 ENVIRONMENT=$(tag nse:env)
@@ -57,6 +60,11 @@ install -m 0644 "$DIR/nse-stats-nightly.service" "$DIR/nse-stats-nightly.timer" 
 mkdir -p /etc/systemd/journald.conf.d
 printf '[Journal]\nSystemMaxUse=200M\nMaxRetentionSec=2week\n' > /etc/systemd/journald.conf.d/nse-stats.conf
 systemctl restart systemd-journald
+# Docker, and so the containers, never start before /data is mounted.
+mkdir -p /etc/systemd/system/docker.service.d
+printf '[Unit]
+RequiresMountsFor=/data
+' > /etc/systemd/system/docker.service.d/nse-data.conf
 systemctl daemon-reload
 systemctl enable --now docker
 if [ "$ENVIRONMENT" = prod ]; then

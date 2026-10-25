@@ -55,7 +55,6 @@ Resources:
     SecurityGroup:
         Type: AWS::EC2::SecurityGroup
         Properties:
-            GroupName: nse-stats
             GroupDescription: HTTPS only
             VpcId: !Ref VpcId
             SecurityGroupIngress:
@@ -111,7 +110,7 @@ Resources:
 
     DataVolume:
         Type: AWS::EC2::Volume
-        DeletionPolicy: Retain
+        DeletionPolicy: RetainExceptOnCreate
         UpdateReplacePolicy: Retain
         Properties:
             AvailabilityZone: !Ref AvailabilityZone
@@ -170,12 +169,15 @@ Resources:
                     DEV=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$(echo $VOL | tr -d -)
                     for i in $(seq 1 60); do [ -e "$DEV" ] && break; sleep 5; done
                     [ -e "$DEV" ]
-                    blkid "$DEV" > /dev/null || mkfs.ext4 -L nse-data "$DEV"
+                    # Format only a disk with nothing on it: blkid exits 2 for that, and any other failure stops the boot.
+                    rc=0
+                    blkid -p "$DEV" > /dev/null || rc=$?
+                    if [ $rc -eq 2 ]; then mkfs.ext4 -L nse-data "$DEV"; elif [ $rc -ne 0 ]; then exit 1; fi
                     mkdir -p /data
                     grep -q ' /data ' /etc/fstab || echo 'LABEL=nse-data /data ext4 defaults,nofail 0 2' >> /etc/fstab
                     mount -a
-                    apt-get update -y
-                    DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose-v2 unattended-upgrades
+                    apt-get -o DPkg::Lock::Timeout=600 update -y
+                    DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y docker.io docker-compose-v2 unattended-upgrades
                     snap install aws-cli --classic
                     cat > /etc/apt/apt.conf.d/52nse-reboot <<'CONF'
                     Unattended-Upgrade::Automatic-Reboot "true";
@@ -193,7 +195,7 @@ Resources:
 
     ElasticIp:
         Type: AWS::EC2::EIP
-        DeletionPolicy: Retain
+        DeletionPolicy: RetainExceptOnCreate
         UpdateReplacePolicy: Retain
         Properties:
             Domain: vpc
@@ -219,7 +221,7 @@ Resources:
     # Weekly pg_dump files (12.5). Versioned in prod, so a deleted dump can be restored for seven days.
     DumpBucket:
         Type: AWS::S3::Bucket
-        DeletionPolicy: Retain
+        DeletionPolicy: RetainExceptOnCreate
         UpdateReplacePolicy: Retain
         Properties:
             BucketName: !Sub nse-stats-${AWS::AccountId}-dumps

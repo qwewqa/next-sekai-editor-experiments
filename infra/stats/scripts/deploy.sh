@@ -65,8 +65,10 @@ for _ in $(seq 1 60); do
 done
 [ "$ping" = Online ] || { echo "The instance never registered with Session Manager" >&2; exit 1; }
 
-# The instance's own first-boot run holds a lock, so this waits for it. An Umami version change dumps first.
-run_on_instance /usr/local/bin/nse-stats-update
+# On a new instance the user data may still be installing, so wait for cloud-init first (its exit status is
+# ignored: 2 means warnings). The update then waits on the first boot's own run through a lock. An Umami
+# version change dumps first.
+run_on_instance 'cloud-init status --wait > /dev/null; /usr/local/bin/nse-stats-update'
 
 echo "Smoke check: https://$HOST/api/heartbeat"
 curl -fsS --retry 30 --retry-delay 10 --retry-all-errors "https://$HOST/api/heartbeat" | grep -q '"ok":true'
