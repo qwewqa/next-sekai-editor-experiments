@@ -7,6 +7,7 @@ import { easeValues, type Ease } from '../../ease'
 import { onResetState } from '../../history/resetHooks'
 import type { State } from '../../state'
 import type { EntityOfType, EntityType } from '../../state/entities'
+import type { SlideId } from '../../state/entities/slides'
 import type { NoteEntity } from '../../state/entities/slides/note'
 import { allowsSimLine, getNoteRole, type NoteRole } from '../../state/entities/slides/semantics'
 import { findIntegral } from '../../state/integrals'
@@ -164,6 +165,49 @@ export const createCameraCompiler = () => {
         )
 }
 
+// Merges `added` into `base` without the `removed` items, giving the order of a
+// stable sort by time of every slide's items in info-map order: time, then the
+// slide's rank, then its place in the slide. `added` must be in that map order,
+// and `head` gives the note whose time and slide an item sorts by. Returns
+// undefined if `base` is not in that order, which happens only if unchanged
+// slides swapped places in the map. The caller then sorts in full.
+const mergeByTime = <T>(
+    base: T[],
+    removed: Set<T>,
+    added: T[],
+    head: (item: T) => PreviewNote,
+    rank: Map<SlideId | undefined, number>,
+): T[] | undefined => {
+    const timeOf = (item: T) => head(item).targetTime
+    const rankOf = (item: T) => rank.get(head(item).source?.slideId) ?? NaN
+    added.sort((a, b) => timeOf(a) - timeOf(b))
+    const merged: T[] = []
+    let next = 0
+    let prevTime = NaN
+    let prevRank = 0
+    for (const item of base) {
+        if (removed.has(item)) continue
+
+        const time = timeOf(item)
+        const itemRank = rankOf(item)
+        if (time === prevTime && !(prevRank <= itemRank)) return undefined
+        prevTime = time
+        prevRank = itemRank
+
+        for (; next < added.length; next++) {
+            const other = added[next] as T
+            const otherTime = timeOf(other)
+            if (otherTime > time || (otherTime === time && rankOf(other) > itemRank)) break
+            merged.push(other)
+        }
+        merged.push(item)
+    }
+    while (next < added.length) merged.push(added[next++] as T)
+    return merged
+}
+
+type NoteData = Pick<PreviewChart, 'notes' | 'connectors' | 'slides' | 'chains' | 'simLines'>
+
 // Transactions preserve untouched slide arrays and event grids. Recompile only
 // changed slides while reusing metadata, note objects and connector graphs from
 // the rest of the chart. Weak keys let discarded drag snapshots be collected.
@@ -179,10 +223,16 @@ export const createPreviewChartBuilder = () => {
     }>()
     const compileCameras = createCameraCompiler()
     const cachedSlides = createDependencyCache<WeakMap<SlideInfo, CompiledSlide>>()
-    const cachedNoteData =
-        createDependencyCache<
-            Pick<PreviewChart, 'notes' | 'connectors' | 'slides' | 'chains' | 'simLines'>
-        >()
+    const cachedNoteData = createDependencyCache<NoteData>()
+    // The last build's inputs and sorted arrays, replaced only when a build returns.
+    let lastBuild:
+        | {
+              info: StoreSlides['info']
+              slideCache: WeakMap<SlideInfo, CompiledSlide>
+              notes: PreviewNote[]
+              connectors: PreviewConnector[]
+          }
+        | undefined
     const cachedChart = createDependencyCache<PreviewChart>()
     const build = (state: PreviewChartSource, noteSpeed: number): PreviewChart => {
         const bpms = state.bpms
@@ -342,14 +392,28 @@ export const createPreviewChartBuilder = () => {
         // Camera, stage-event and note-speed edits leave the note graph alone.
         // Retain its aggregate arrays as well as the per-slide graphs, so those
         // edits do not sort the whole chart or rebuild its visibility indexes.
+        // Other changes merge the notes and connectors of changed slides into the
+        // last build's order. The result equals a full build, and a new slide
+        // cache is a full build.
         const { notes, connectors, slides, chains, simLines } = cachedNoteData(
             [state.store.slides.info, slideCache, state.stages, isDynamicStages],
             () => {
-                const notes: PreviewNote[] = []
-                const connectors: PreviewConnector[] = []
                 const slides: PreviewSlide[] = []
                 const chains: PreviewNoteChain[] = []
                 const simLines: PreviewSimLine[] = []
+
+                const base = lastBuild?.slideCache === slideCache ? lastBuild : undefined
+                const rank = new Map<SlideId | undefined, number>()
+                const addedNotes: PreviewNote[] = []
+                const addedConnectors: PreviewConnector[] = []
+                const removedNotes = new Set<PreviewNote>()
+                const removedConnectors = new Set<PreviewConnector>()
+                const remove = (compiled: CompiledSlide | undefined) => {
+                    for (const note of compiled?.notes ?? []) removedNotes.add(note)
+                    for (const connector of compiled?.connectors ?? [])
+                        removedConnectors.add(connector)
+                }
+                let retained = 0
 
                 const partitionedAllowSimLines = new Map<
                     StageId | undefined,
@@ -369,7 +433,7 @@ export const createPreviewChartBuilder = () => {
                     return allowSimLines
                 }
 
-                for (const infos of state.store.slides.info.values()) {
+                for (const [slideId, infos] of state.store.slides.info) {
                     let compiled = slideCache.get(infos)
                     if (!compiled) {
                         const notes: PreviewNote[] = []
@@ -565,10 +629,16 @@ export const createPreviewChartBuilder = () => {
                         }
                         slideCache.set(infos, compiled)
                     }
-                    // Avoid spread arguments: a single long slide may exceed the argument
-                    // limit, and unchanged slides share their already compiled objects.
-                    for (const note of compiled.notes) notes.push(note)
-                    for (const connector of compiled.connectors) connectors.push(connector)
+                    rank.set(slideId, rank.size)
+                    const previousInfos = base?.info.get(slideId)
+                    if (previousInfos) retained++
+                    if (previousInfos !== infos) {
+                        // Avoid spread arguments: a single long slide may exceed the
+                        // argument limit.
+                        for (const note of compiled.notes) addedNotes.push(note)
+                        for (const connector of compiled.connectors) addedConnectors.push(connector)
+                        if (previousInfos) remove(slideCache.get(previousInfos))
+                    }
                     for (const slide of compiled.slides) slides.push(slide)
                     chains.push(compiled.chain)
                     for (const { stageId, tick, note } of compiled.simCandidates) {
@@ -595,9 +665,38 @@ export const createPreviewChartBuilder = () => {
                     }
                 }
 
-                notes.sort((a, b) => a.targetTime - b.targetTime)
-                connectors.sort((a, b) => a.head.targetTime - b.head.targetTime)
+                if (base && retained < base.info.size) {
+                    for (const [slideId, infos] of base.info) {
+                        if (!state.store.slides.info.has(slideId)) remove(slideCache.get(infos))
+                    }
+                }
+                // The full build: every slide's items in map order, sorted by time.
+                const sortAll = <T>(
+                    pick: (slide: CompiledSlide) => T[],
+                    head: (item: T) => PreviewNote,
+                ) => {
+                    const all: T[] = []
+                    for (const infos of state.store.slides.info.values()) {
+                        const compiled = slideCache.get(infos)
+                        for (const item of compiled ? pick(compiled) : []) all.push(item)
+                    }
+                    return all.sort((a, b) => head(a).targetTime - head(b).targetTime)
+                }
+                const noteHead = (note: PreviewNote) => note
+                const connectorHead = (connector: PreviewConnector) => connector.head
+                const notes =
+                    mergeByTime(base?.notes ?? [], removedNotes, addedNotes, noteHead, rank) ??
+                    sortAll((slide) => slide.notes, noteHead)
+                const connectors =
+                    mergeByTime(
+                        base?.connectors ?? [],
+                        removedConnectors,
+                        addedConnectors,
+                        connectorHead,
+                        rank,
+                    ) ?? sortAll((slide) => slide.connectors, connectorHead)
 
+                lastBuild = { info: state.store.slides.info, slideCache, notes, connectors }
                 return { notes, connectors, slides, chains, simLines }
             },
         )
