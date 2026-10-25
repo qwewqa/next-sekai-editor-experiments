@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
-import { instrumentRendering } from './fixtures'
+import { instrumentRendering, previewInWorker, previewPixels } from './fixtures'
 
 // The release build under its exact policy.
 
@@ -92,40 +92,57 @@ test('the page carries the web policy first, hashing its one inline script', asy
     expect(meta).not.toContain('https:')
 })
 
-test('Pixi starts, the Lyon wasm runs and the preview packages load without a violation', async ({
-    page,
-}) => {
-    const errors = await watch(page)
-    const manifest = (await (await page.request.get('/release-manifest.json')).json()) as {
-        previewAssets: unknown[]
-        files: Record<string, string>
-    }
-    const wasm = Object.keys(manifest.files).filter((file) => file.endsWith('.wasm'))
-    const requested: string[] = []
-    page.on('request', (request) => requested.push(new URL(request.url()).pathname))
-    await page.goto('/')
+for (const inWorker of [false, true])
+    test(`Pixi starts, the Lyon wasm runs and the preview packages load without a violation${inWorker ? ', the preview in its worker' : ''}`, async ({
+        page,
+    }) => {
+        const errors = await watch(page)
+        await page.addInitScript((inWorker) => {
+            localStorage.setItem(
+                'sonolus-next-sekai-editor.previewInWorker',
+                JSON.stringify(inWorker),
+            )
+        }, inWorker)
+        const manifest = (await (await page.request.get('/release-manifest.json')).json()) as {
+            previewAssets: unknown[]
+            files: Record<string, string>
+        }
+        const wasm = Object.keys(manifest.files).filter((file) => file.endsWith('.wasm'))
+        const requested: string[] = []
+        page.on('request', (request) => requested.push(new URL(request.url()).pathname))
+        await page.goto('/')
 
-    // Pixi init throws without pixi.js/unsafe-eval, so the chart never draws.
-    await expect(page.locator('canvas.editor-chart')).toBeVisible()
-    await expect.poll(() => page.evaluate(() => window.productionSmoke.chart)).toBeGreaterThan(0)
-    await expect.poll(() => page.evaluate(() => window.productionSmoke.overlay)).toBeGreaterThan(0)
-    await expect(page.getByText('does not allow unsafe-eval')).toHaveCount(0)
+        // Pixi init throws without pixi.js/unsafe-eval, so the chart never draws.
+        await expect(page.locator('canvas.editor-chart')).toBeVisible()
+        await expect
+            .poll(() => page.evaluate(() => window.productionSmoke.chart))
+            .toBeGreaterThan(0)
+        await expect
+            .poll(() => page.evaluate(() => window.productionSmoke.overlay))
+            .toBeGreaterThan(0)
+        await expect(page.getByText('does not allow unsafe-eval')).toHaveCount(0)
 
-    // The kernel was requested and instantiated, not skipped for the JS tessellator.
-    expect(wasm).toHaveLength(1)
-    await expect.poll(async () => (await read(page)).wasm).toContain('instantiate ok')
-    expect((await read(page)).wasm.filter((entry) => entry.includes('failed'))).toEqual([])
-    expect(requested.filter((path) => path.endsWith('.wasm'))).toEqual(['/' + wasm[0]])
+        // The kernel was requested and instantiated, not skipped for the JS tessellator.
+        expect(wasm).toHaveLength(1)
+        await expect.poll(async () => (await read(page)).wasm).toContain('instantiate ok')
+        expect((await read(page)).wasm.filter((entry) => entry.includes('failed'))).toEqual([])
+        expect(requested.filter((path) => path.endsWith('.wasm'))).toEqual(['/' + wasm[0]])
 
-    // A preview SCP load: each declared package decoded and uploaded to the preview.
-    await expect
-        .poll(() => page.evaluate(() => window.productionSmoke.uploads))
-        .toBe(manifest.previewAssets.length)
+        if (inWorker) {
+            // The release build's classic worker script runs under the policy and draws.
+            await expect.poll(() => previewInWorker(page)).toBe(true)
+            expect(requested.some((path) => /\/preview\.worker-[\w-]+\.js$/.test(path))).toBe(true)
+            await expect.poll(() => previewPixels(page)).toBeGreaterThan(100)
+        } else
+            // A preview SCP load: each declared package decoded and uploaded to the preview.
+            await expect
+                .poll(() => page.evaluate(() => window.productionSmoke.uploads))
+                .toBe(manifest.previewAssets.length)
 
-    expect((await read(page)).violations).toEqual([])
-    expect((await read(page)).hooked).toEqual([])
-    expect(errors).toEqual([])
-})
+        expect((await read(page)).violations).toEqual([])
+        expect((await read(page)).hooked).toEqual([])
+        expect(errors).toEqual([])
+    })
 
 test('the storage worker runs as a classic worker and restarts from its Blob copy', async ({
     page,

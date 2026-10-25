@@ -898,6 +898,7 @@
             "highlightSelection": "Highlight Selection",
             "showHitboxes": "Show Hitboxes",
             "antialias": "Antialias",
+            "parallelRendering": "Parallel Rendering",
             "transport": {
                 "title": "Playback Controls",
                 "auto": "Auto",

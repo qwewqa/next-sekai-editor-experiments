@@ -12,12 +12,7 @@ import {
 import { peekedKey, peekSourceGeneration } from '../../history/peek'
 import { session } from '../../history/session'
 import { headStep } from '../../history/stack'
-import {
-    captureOperationRecipe,
-    describeStep,
-    stepLang,
-    type OperationRecipe,
-} from '../../history/operationPresentation'
+import { captureOperationRecipe, describeStep, stepLang } from '../../history/operationPresentation'
 import { i18n } from '../../i18n'
 import { settings } from '../../settings'
 import { focusLost } from '../../utils/focusFallback'
@@ -38,7 +33,13 @@ import GapArrowIcon from './GapArrowIcon.vue'
 import KindIcon from './KindIcon.vue'
 import { headerText, newerStepsText, pinnedText } from './labels'
 import { showChangeOf } from './changes'
-import { heightOf, isCountedParent, presentRow, recipeOfRow } from './rowPresentation'
+import {
+    createRecipeCache,
+    heightOf,
+    isCountedParent,
+    presentRow,
+    recipeOfRow,
+} from './rowPresentation'
 import { useHistoryCalendar } from './calendarClock'
 import { historyFormat } from './historyFormat'
 import { historyOperationContext } from './historyOperationContext'
@@ -48,6 +49,7 @@ import { canFocusHistory } from './openHistory'
 import {
     buildRows,
     entryId,
+    pinnedIsRow,
     previousOf,
     type Entry,
     type EntryRow,
@@ -125,20 +127,30 @@ useScrollMemory(() => `${props.surface}:history`, list)
 const calendar = useHistoryCalendar()
 const format = computed(() => historyFormat(calendar.value, settings.locale))
 
-const built = computed(() =>
-    buildRows(listedEntries.value, {
-        filter: historyFilter.value,
-        expanded: expandedGroups.value,
-        damaged: damagedEntries.value,
-        newer: newerEntries.value,
-        removed: removedEntries.value,
-        calendar: calendar.value,
-        gap: gap.value,
-        // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
-        more: historyFilter.value === 'here' ? here.scanning : canLoadMore.value,
-        pinned: peekedInfo.value?.pinned,
-    }),
-)
+const buildOptions = () => ({
+    filter: historyFilter.value,
+    expanded: expandedGroups.value,
+    damaged: damagedEntries.value,
+    newer: newerEntries.value,
+    removed: removedEntries.value,
+    calendar: calendar.value,
+    gap: gap.value,
+    // Edits Here is exact once its own scan has finished; the Timeline's paging does not apply.
+    more: historyFilter.value === 'here' ? here.scanning : canLoadMore.value,
+})
+// Every peek, arrow step and Go To sets a new pin, and building the rows costs a pass over every
+// loaded entry. The rows are built without the pin, and again with it only when the pinned run is
+// not one row already, so a peek of a row that is already one run leaves the rows, and everything
+// derived from them, unchanged.
+const unpinned = computed(() => buildRows(listedEntries.value, buildOptions()))
+const peekPin = computed(() => peekedInfo.value?.pinned)
+const built = computed(() => {
+    const rows = unpinned.value
+    const pin = peekPin.value
+    return !pin || pinnedIsRow(rows, pin)
+        ? rows
+        : buildRows(listedEntries.value, { ...buildOptions(), pinned: pin })
+})
 
 // A timeline of only its first state says so, under Now.
 const isEmpty = computed(
@@ -160,11 +172,9 @@ const headLabel = computed(
     () => headStep.value && describeStep(headStep.value, operationContext.value),
 )
 const headLang = computed(() => headStep.value && stepLang(headStep.value, operationContext.value))
-const recipes = computed(() => {
-    const result = new Map<string, OperationRecipe>()
-    for (const row of rows.value) if (row.type === 'entry') result.set(row.id, recipeOfRow(row))
-    return result
-})
+// Kept across builds: a step or a loaded page reuses the recipes of the rows that stay the same.
+const recipeCache = createRecipeCache()
+const recipes = computed(() => recipeCache(rows.value))
 const recipeOf = (row: EntryRow) =>
     peekedInfo.value?.rowId === row.id
         ? peekedInfo.value.recipe

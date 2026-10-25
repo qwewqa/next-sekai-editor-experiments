@@ -43,6 +43,7 @@ Options:
 - `--affinity` and `--priority` pin the run (see "Where the processes run").
 - `--timeout <minutes>` stops a stuck run after that time (default 240) and closes its browsers.
 - `--groups` runs only the groups whose `id` matches a regular expression.
+- `--preview-host main` or `worker` sets the host that draws the preview (`docs/rendering.md`), whatever the setting says; a group's `previewHost` sets it for one group. Without either, the host follows Settings › Preview › Parallel Rendering, which is on by default. Each record's `info.previewHost` names the host that drew.
 
 ## The probes
 
@@ -52,7 +53,8 @@ A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
     - `clockFrame`: the app clock's whole frame, with the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
-    - `previewDraw`, `elevationDraw` and `minimapOverlay`;
+    - `previewDraw`, `elevationDraw` and `minimapOverlay`. In the worker host, `previewDraw` is the main thread's part of a frame: resolving the state, building the chart's diff and posting the frame;
+    - the worker host's `previewWorkerDraw`, the worker's draw with any rebuild, and `previewWorkerAnswer`, the time from posting a frame until the worker's `drawn` message arrives. `previewReplaced` counts the frames that a newer request replaced before they were sent. `perf:report … frames` gives the worker's frames per second beside the clock's;
     - `stageTile`: each Composed stage tile build. `perf:report … frames` gives the builds per chart draw.
 
 Other builds define the flag false: `timed` returns its callback, and the hook is never imported or bundled. Probes collect only while a run has switched them on.
@@ -95,6 +97,7 @@ Each cell can set:
     - preview interactions: `scrub`, a 3 s drag back and forth across the preview; `seek`, a tap on the step button named `button` (for example `Forward 100 ms`) every 120 ms for 3 s; `cursorjumps`, the cursor moved to a new time every 120 ms for 3 s; `notespeed`, the note speed changed every frame for 2 s, as a slider drag does; `reopen`, the chart opened again over itself, marked `nse-open` and `nse-opened`;
     - `act`: a user action, `action` (see "Actions");
     - `startup`: a reload that records, from the start of the page, the times of the first paint, the startup gate, the chart and the end of startup (`paint`, `gate`, `chart`, `done`). Its group needs `boot`;
+    - `heaps`: the main thread's heap and each worker's heap after a forced GC, when the chart has opened and again after `seconds` (60) of playback. Each worker's heap is read through its own CDP session;
     - `memory`: one long run that records the JS heap and DOM counts after a forced GC at each stage: opened, after sweeps of the whole chart at several zooms and layouts, after `seconds` (200) of playback at `speed` (1, 1.5 or 2) sampled every `sampleEvery` s (40, without GC), after New, after Open again, and after one more sweep. It writes `heap-<stage>.json` sampling profiles to the run folder (read them with `perf:report … heap`) and records the process tree's memory at each stage;
 - `layout`;
 - `minimap`, `preview`, `elevation` (beside the chart) and `selection` (every note and connector);
@@ -207,7 +210,8 @@ A seed has the storage formats of the day it was made. Make the seeds again afte
 - **The idle collector loop requests frames.** `idle` without `noLoop` measures the collector, not the editor. The loop also keeps frames coming while the app clock is stopped, so a wake from idle, such as `notch`'s wheel, needs `noLoop` and `traceEach` to be measured as a user meets it.
 - **The app's clock stops when nothing moves** (`docs/rendering.md`). An idle editor requests no animation frames, and over 60 s on the desktop profile its browser processes use 1–2.6% of a core. Idle CPU well above that means something keeps the clock or another frame loop running.
 - **The gate's pump adds animation frames to counts.** Under `hz: 60` or `120`, animation frame counts include the gate's, so compare counts only within one `hz`.
-- **`previewDraw` on an edit frame includes the preview's rebuild.** It is not the steady cost.
+- **`previewDraw` on an edit frame includes the preview's rebuild.** It is not the steady cost. In the worker host the rebuild is in `previewWorkerDraw`.
+- **The worker host's frames reach the screen separately from the main thread's.** The worker's canvas is committed when the task that drew it ends. To see whether a worker frame and a main-thread frame reach the same display frame, read the `viz` events of a light trace.
 - **Preview playback is cheapest at a chart's opening.** Dense passages cost 2–5 times more, so a playback cell for the preview should include them (`start`). `npm run perf:preview` prints the heaviest seconds.
 - **Moving the cursor plays a moment of BGM**, and Chrome then animates its tab audio indicator. That adds about a second of browser frames that the app does not cause. The harness launches Chromium with `--mute-audio` for this reason.
 - **The GC pass grows with the session.** Later in a session (`memory`, or after many cells in one group) it costs more than in a fresh one, because it walks every tracked resource. Compare cells from fresh groups.

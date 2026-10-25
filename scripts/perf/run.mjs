@@ -2,6 +2,7 @@
 //   npm run perf -- <plan.json> [--name <run>] [--out perf-results] [--port 5360]
 //     [--affinity 0xFFFF0000] [--priority AboveNormal] [--url <served build>] [--no-build]
 //     [--groups <regex of group ids>] [--timeout <minutes>]
+//     [--preview-host main|worker]
 // Builds with NSE_PERF=1 and sourcemaps into <out>/dist, serves it with vite preview, runs each
 // group in a fresh browser profile and writes <out>/<run>/results.jsonl, traces and screenshots.
 import { chromium } from '@playwright/test'
@@ -719,6 +720,23 @@ const scenarios = {
             .catch(() => {})
         await sleep(cell.wait ?? 3000)
     },
+    // The main thread's heap and each worker's after a forced GC: opened, then after `seconds`
+    // (60) of playback from the cell's start.
+    async heaps(page, cdp, cell) {
+        const snap = async (label) => {
+            await cdp.send('HeapProfiler.collectGarbage')
+            const workers = await workerHeaps(cdp, true)
+            await sleep(300)
+            await cdp.send('HeapProfiler.collectGarbage')
+            const heap = await cdp.send('Runtime.getHeapUsage')
+            return { label, main: heap.usedSize, workers }
+        }
+        const out = [await snap('opened')]
+        await scenarios.play(page, cdp, { ...cell, seconds: cell.seconds ?? 60 })
+        out.push(await snap('played'))
+        log('heaps', JSON.stringify(out))
+        return out
+    },
     // Nothing for `seconds` (5): what the editor does while idle.
     async idle(page, cdp, cell) {
         const before = procs()
@@ -1052,6 +1070,7 @@ const customKeys = [
     'cursorjumps',
     'act',
     'startup',
+    'heaps',
 ]
 const actionStates = new WeakMap()
 
@@ -1071,6 +1090,53 @@ const bootProbe = () => {
         if (t < 300_000) requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
+}
+
+// ---- the page's workers
+
+// Each dedicated worker of the page, through the page's session (flatten: false, so it relays
+// their messages), for their heaps.
+const workerSessions = new WeakMap()
+const watchWorkers = async (cdp) => {
+    const sessions = new Map()
+    const pending = new Map()
+    let nextId = 0
+    cdp.on('Target.attachedToTarget', ({ sessionId, targetInfo }) => {
+        if (targetInfo.type === 'worker') sessions.set(sessionId, targetInfo)
+    })
+    cdp.on('Target.detachedFromTarget', ({ sessionId }) => sessions.delete(sessionId))
+    cdp.on('Target.receivedMessageFromTarget', ({ message }) => {
+        const reply = JSON.parse(message)
+        pending.get(reply.id)?.(reply)
+        pending.delete(reply.id)
+    })
+    await cdp.send('Target.setAutoAttach', {
+        autoAttach: true,
+        waitForDebuggerOnStart: false,
+        flatten: false,
+    })
+    const send = (sessionId, method, params = {}) =>
+        new Promise((resolve) => {
+            const id = ++nextId
+            pending.set(id, resolve)
+            cdp.send('Target.sendMessageToTarget', {
+                sessionId,
+                message: JSON.stringify({ id, method, params }),
+            }).catch(() => resolve({}))
+        })
+    workerSessions.set(cdp, { sessions, send })
+}
+/** Each worker's used heap in bytes, by its name, after a forced GC when `gc`. */
+const workerHeaps = async (cdp, gc) => {
+    const workers = workerSessions.get(cdp)
+    const out = {}
+    if (!workers) return out
+    for (const [sessionId, info] of workers.sessions) {
+        if (gc) await workers.send(sessionId, 'HeapProfiler.collectGarbage')
+        const reply = await workers.send(sessionId, 'Runtime.getHeapUsage')
+        out[info.title || info.url] = reply.result?.usedSize
+    }
+    return out
 }
 
 // ---- runs
@@ -1468,6 +1534,13 @@ try {
             await page.addInitScript(installCollector)
             await page.addInitScript(installActionProbe)
             if (group.boot) await page.addInitScript(bootProbe)
+            // The preview's host: perf builds read its test key.
+            const previewHost = group.previewHost ?? args['preview-host']
+            if (previewHost)
+                await page.addInitScript(
+                    (v) => localStorage.setItem('nse.test.previewHost', v),
+                    previewHost,
+                )
             // Storage test flags, and the first lifecycle listeners, before the app's.
             if (group.storage)
                 await page.addInitScript(
@@ -1491,8 +1564,10 @@ try {
             if (group.hz !== 'native') await page.addInitScript(gateFrames, hz)
             page.on('pageerror', (error) => log('pageerror', error.message))
             const info = await openChart(page, group)
+            info.previewHost = await page.evaluate(() => window.nsePerf.previewHost())
             log('group', group.id, info, 'pinned', pin([process.pid]).length)
             const cdp = await context.newCDPSession(page)
+            await watchWorkers(cdp)
             await cdp.send('Emulation.setCPUThrottlingRate', { rate: profile.throttle })
             for (const base of group.cells) {
                 const cell = { ...plan.defaults, ...group.defaults, ...base }

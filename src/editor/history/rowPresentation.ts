@@ -30,6 +30,37 @@ export const recipeOfRow = (row: EntryRow): OperationRecipe =>
     )
 
 /**
+ * Row recipes kept from one build to the next. A recipe depends only on the row's
+ * members, `partial` and `child`, and entries are never changed in place, so a row with the same
+ * `partial`, `child` and member objects as before reuses its recipe. Rows a build leaves out stay
+ * kept, so a filter turned off again (Show All) reuses theirs, until the cache holds more than
+ * `limit` rows and twice the rows built; it then keeps only those.
+ */
+export const createRecipeCache = (limit = 20_000) => {
+    let kept = new Map<string, { row: EntryRow; recipe: OperationRecipe }>()
+    return (rows: readonly Row[]): ReadonlyMap<string, OperationRecipe> => {
+        const recipes = new Map<string, OperationRecipe>()
+        for (const row of rows) {
+            if (row.type !== 'entry') continue
+            const old = kept.get(row.id)
+            const recipe =
+                old &&
+                !!old.row.partial === !!row.partial &&
+                old.row.child === row.child &&
+                old.row.members.length === row.members.length &&
+                old.row.members.every((member, i) => member === row.members[i])
+                    ? old.recipe
+                    : recipeOfRow(row)
+            kept.set(row.id, { row, recipe })
+            recipes.set(row.id, recipe)
+        }
+        if (kept.size > Math.max(limit, 2 * recipes.size))
+            kept = new Map([...kept].filter(([id]) => recipes.has(id)))
+        return recipes
+    }
+}
+
+/**
  * The one device formatter for rows: "Saved on iPad" for an app device, "Saved in the web editor
  * (Chrome)" for a web label, which is never shown raw. A web label is
  * "Web (Chrome)", or "Web" when the browser is not known.

@@ -710,3 +710,66 @@ test('opening the ⋯ menu of a row peeks that row, and the menu names its chain
     await expect(page.getByRole('menu')).toHaveCount(0)
     await expect(rowFor(page, 'Beta')).toBeFocused()
 })
+
+test('a long list draws rows as they are needed, and keys and scrolling reach every row', async ({
+    page,
+}) => {
+    errorsFail(page)
+    await load(page)
+    // 90 closed chains, named 1 to 90 (90 is the newest), and the open one.
+    await page.evaluate(async () => {
+        const { history, historySteps } = window.editorTest
+        for (let i = 1; i <= 90; i++) {
+            const state = history.state.value
+            history.pushState(historySteps.futureInitialLife(state.initialLife, i, `Life ${i}`), {
+                ...state,
+                initialLife: i,
+                levelInfo: { ...state.levelInfo, title: `Chain ${i}` },
+            })
+            await window.nseFlushTest!.flusher.flush({ strict: true })
+            history.resetState(false)
+        }
+    })
+    await openSessions(page)
+    const grid = page.getByRole('grid', { name: messages.history.recentSessions })
+    const total = Number(await grid.getAttribute('aria-rowcount'))
+    // A screenful and 50 more rows are drawn at first, and no footer until all are.
+    const drawn = await rowsOf(page).count()
+    expect(drawn).toBeLessThan(total)
+    await expect(page.locator('[data-sessions-footer]')).toHaveCount(0)
+
+    // End moves to the last row, which is then drawn, focused, selected and numbered for a screen
+    // reader.
+    await rowsOf(page).first().focus()
+    await page.keyboard.press('End')
+    const last = rowsOf(page).last()
+    await expect(last).toBeFocused()
+    await expect(last).toHaveAttribute('aria-selected', 'true')
+    await expect(last).toHaveAttribute('aria-rowindex', String(total))
+    await expect(rowsOf(page)).toHaveCount(total)
+
+    // Delete and Undo on it, at the end of the list.
+    await page.keyboard.press('ArrowUp')
+    const chain = rowFor(page, 'Chain 1')
+    await expect(chain).toBeFocused()
+    await page.keyboard.press('Delete')
+    const deleted = page.locator('[data-sessions-deleted]')
+    await expect(deleted).toHaveCount(1)
+    await deleted.getByRole('button', { name: messages.commands.undo.title }).click()
+    await expect(deleted).toHaveCount(0)
+    await expect(chain).toHaveCount(1)
+
+    // A fresh list draws its first rows again, and scrolling draws the rest.
+    await page.getByRole('tab', { name: messages.history.timeline }).click()
+    await page.getByRole('tab', { name: messages.history.recentSessions }).click()
+    await expect(page.locator('[data-sessions-loading]')).toHaveCount(0)
+    await expect(rowsOf(page)).toHaveCount(drawn)
+    const list = page.locator('[data-sessions-list]')
+    await expect
+        .poll(async () => {
+            await list.evaluate((element) => element.scrollTo(0, element.scrollHeight))
+            return rowsOf(page).count()
+        })
+        .toBe(total)
+    await expect(page.locator('[data-sessions-footer]')).toBeVisible()
+})

@@ -898,6 +898,7 @@
       "highlightSelection": "선택 항목 강조",
       "showHitboxes": "판정 범위 표시",
       "antialias": "안티앨리어싱",
+      "parallelRendering": "병렬 렌더링",
       "transport": {
         "title": "재생 컨트롤",
         "auto": "자동",

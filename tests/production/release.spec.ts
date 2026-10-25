@@ -78,6 +78,11 @@ test('release assets, preview, chart editing and FFT audio work in the productio
     )
     page.on('request', (request) => requests.push(request.url()))
     await page.addInitScript(instrumentRendering)
+    // Its preview counts are of the main thread's drawing, which Parallel Rendering off keeps;
+    // csp.spec.ts and browserCompatibility.spec.ts check the preview's worker.
+    await page.addInitScript(() =>
+        localStorage.setItem('sonolus-next-sekai-editor.previewInWorker', 'false'),
+    )
     await page.goto('/')
 
     await test.step('start the bundled Pixi renderer and distribute its dependency notices', async () => {

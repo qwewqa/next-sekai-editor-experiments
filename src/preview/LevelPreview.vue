@@ -11,11 +11,14 @@ import PreviewTransport from './PreviewTransport.vue'
 import { usePreviewRendering } from './usePreviewRendering'
 import { usePreviewResources } from './usePreviewResources'
 import { usePreviewViewport } from './usePreviewViewport'
+import { previewHost } from './worker/host'
 
 const container = useTemplateRef<HTMLDivElement>('container')
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const background = useTemplateRef<HTMLDivElement>('background')
 const selectionCanvas = useTemplateRef<HTMLCanvasElement>('selection')
+const workerCanvas = useTemplateRef<HTMLCanvasElement>('workerCanvas')
+const workerSelection = useTemplateRef<HTMLCanvasElement>('workerSelection')
 const resources = usePreviewResources()
 const { status, errorDetail, loadVersion, reload } = resources
 // Default's image shows from the first frame; any other choice leaves the colour until it loads.
@@ -64,7 +67,11 @@ const {
     onControlsResize,
     onTimeResize,
 } = viewport
-usePreviewRendering(canvas, background, resources, viewport, selectionCanvas)
+usePreviewRendering(
+    { canvas, selection: selectionCanvas, workerCanvas, workerSelection, background },
+    resources,
+    viewport,
+)
 
 const isErrorDetailOpen = ref(false)
 </script>
@@ -92,18 +99,34 @@ const isErrorDetailOpen = ref(false)
                     aria-hidden="true"
                     data-background-mask
                 />
-                <canvas
-                    ref="canvas"
-                    :key="`${loadVersion}:${settings.previewAntialias}`"
-                    class="absolute inset-0 h-full w-full"
-                />
-
-                <canvas
-                    ref="selection"
-                    :key="`selection:${loadVersion}`"
-                    class="preview-selection pointer-events-none absolute inset-0 h-full w-full"
-                    aria-hidden="true"
-                />
+                <!-- The worker host's canvases, which it draws into from its worker. After a
+                handover they keep its last frame until the main host draws over them. -->
+                <template v-if="previewHost.kind === 'worker' || previewHost.retiring">
+                    <canvas
+                        ref="workerCanvas"
+                        :key="`worker:${previewHost.generation}:${loadVersion}:${settings.previewAntialias}`"
+                        class="absolute inset-0 h-full w-full"
+                    />
+                    <canvas
+                        ref="workerSelection"
+                        :key="`worker-selection:${previewHost.generation}:${loadVersion}`"
+                        class="preview-selection pointer-events-none absolute inset-0 h-full w-full"
+                        aria-hidden="true"
+                    />
+                </template>
+                <template v-if="previewHost.kind === 'main'">
+                    <canvas
+                        ref="canvas"
+                        :key="`${loadVersion}:${settings.previewAntialias}`"
+                        class="absolute inset-0 h-full w-full"
+                    />
+                    <canvas
+                        ref="selection"
+                        :key="`selection:${loadVersion}`"
+                        class="preview-selection pointer-events-none absolute inset-0 h-full w-full"
+                        aria-hidden="true"
+                    />
+                </template>
 
                 <div
                     v-if="status !== 'ready'"

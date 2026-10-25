@@ -13,26 +13,13 @@ import { PathMeshGeometry } from './pathMesh'
 import { parseSvgPath } from './pathSvg'
 import { isNativeStrokeStrip, nativeStrokeBoundary, pathTriangles } from './pathTriangles'
 import { retainPaint, scalePaint } from './pixiPaint'
+import { curveTolerance, resolutionScale } from './strokeSegments'
 
 type Point = [number, number]
 type MatrixValues = Extract<PathCommand, readonly ['transform', unknown]>[1]
 type Extras = { dash: readonly number[]; dashOffset: number }
 const tau = 2 * Math.PI
-export const curveTolerance = 0.1
-
-/** Quantized maximum stretch, including the editor's device-pixel transform. */
-export function resolutionScale(matrix: readonly number[]) {
-    const [a = 1, b = 0, c = 0, d = 1] = matrix
-    const trace = a * a + b * b + c * c + d * d
-    const determinant = a * d - b * c
-    const stretch = Math.sqrt(
-        (trace + Math.sqrt(Math.max(0, trace * trace - 4 * determinant * determinant))) / 2,
-    )
-    if (!Number.isFinite(stretch) || !stretch) return 1
-    // A finite bucket set bounds zoom-dependent variants. The editor's normal
-    // device scales are well inside this range; cache bytes bound residency.
-    return 2 ** Math.max(-8, Math.min(16, Math.ceil(Math.log2(stretch))))
-}
+export { curveTolerance, resolutionScale }
 const at = <T>(items: readonly T[], i: number) => items[i] as T
 const matrixFrom = (m: MatrixValues) => new Matrix(m[0], m[3], m[1], m[4], m[2], m[5])
 const transformPoint = (p: Point, m: Matrix): Point => [
