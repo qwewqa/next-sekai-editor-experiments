@@ -189,7 +189,7 @@ export const installActionProbe = () => {
                 longestTask: Math.max(0, ...a.tasks.filter(overlaps).map(([, d]) => d)),
                 tasksOver50: a.tasks.filter(overlaps).length,
                 longestLoaf: Math.max(0, ...a.loaf.filter(overlaps).map(([, d]) => d)),
-                frameMax: Math.max(0, ...intervals),
+                frameMax: intervals.reduce((m, x) => Math.max(m, x), 0),
                 frames: intervals.length,
                 frameP50: pct(intervals, 50),
                 frameP95: pct(intervals, 95),
@@ -281,6 +281,10 @@ const rowAt = (page, selector, n) =>
     )
 /** Scrolls the Timeline down until a row whose name matches `pattern` is drawn. */
 const findRow = async (page, pattern) => {
+    await page.evaluate((d) => {
+        document.querySelector(`${d} [data-history-list]`).scrollTop = 0
+    }, dialog)
+    await sleep(300)
     for (let i = 0; i < 400; i++) {
         const found = await page.evaluate(
             ({ d, source }) => {
@@ -862,15 +866,17 @@ export const actions = {
         prep: async (page, cell, state) => {
             await actions.sessionDelete.prep(page, cell, state)
             await page.keyboard.press('Delete')
-            await page.locator('[data-sessions-undo]').first().waitFor()
+            const undo = page.locator('[data-sessions-undo]').first()
+            await undo.waitFor()
+            await undo.evaluate((e) => window.nsePerfAct.centre(e))
             await sleep(500)
         },
         spec: () => ({
             before: `document.querySelectorAll('[data-sessions-deleted]').length`,
             done: `document.querySelectorAll('[data-sessions-deleted]').length < A`,
         }),
-        // Space on the deleted row, which keeps the focus: its Undo.
-        input: (page) => page.keyboard.press('Space'),
+        input: async (page, cdp) =>
+            click(cdp, await centre(page.locator('[data-sessions-undo]').first())),
     },
 
     // Settings › Local Data
@@ -1025,7 +1031,8 @@ export const actions = {
         },
         spec: () => ({
             before: 'P.live().state',
-            done: `P.live().state !== A && !${openDialogs}.length`,
+            // A level file may open with a warning on top: the chart under it counts.
+            done: `P.live().state !== A && !${openDialogs}.some((d) => /Loading file…|Importing level…/.test(d.textContent))`,
             busy: `/Loading file…|Importing/.test(document.body.textContent)`,
             timeout: 600_000,
             tail: 500,
