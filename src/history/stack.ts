@@ -2,6 +2,7 @@ import { computed, ref, shallowReactive, shallowRef, watch, type Ref } from 'vue
 import { recordError } from '../diagnostics'
 import type { State } from '../state'
 import { emitHistoryAction } from './actions'
+import { cappedSpan, STACK_CAP } from './cap'
 import { freezePublished } from './freeze'
 import {
     captureOperation,
@@ -50,8 +51,8 @@ export const canUndo = computed(() => index.value + pendingMove.value > 0)
 export const canRedo = computed(() => index.value + pendingMove.value < states.length - 1)
 
 /**
- * Whether steps before the stack's first slot are in History: a stored stack is capped
- *, so Undo past it after a reload says so.
+ * Whether steps before the stack's first slot are in History: the stack keeps at most
+ * `STACK_CAP` slots, so Undo past them shows a notice.
  */
 export const earlierSteps = ref(false)
 
@@ -396,12 +397,20 @@ export const pushState = (
         step,
         state: publish(state),
     })
-    // The redo tail is gone: its loaded states go with it, not held until later loads push them out.
+    // Past the cap the oldest slot is dropped; its step stays in the Timeline. The head is the
+    // new slot, so it is never a dropped one.
+    const over = Math.max(0, states.length - STACK_CAP)
+    if (over) {
+        dropped.push(...states.splice(0, over))
+        earlierSteps.value = true
+    }
+    // The redo tail and the dropped slots are gone: their loaded states go with them, not held
+    // until later loads push them out.
     for (const slot of dropped) {
         const at = loadedRestored.indexOf(slot)
         if (at !== -1) loadedRestored.splice(at, 1)
     }
-    index.value++
+    index.value += 1 - over
     emitHistoryAction({ kind, state, step, isDirty: true })
     return true
 }
@@ -480,8 +489,9 @@ export type RestoredSlot = { snapshot?: Uint8Array; step: UndoableStep; isDirty:
 
 /**
  * Replaces the stack with a stored one, its slots lazy and the head given loaded (a
- * reload, a new visit, an open, Restore Session). Nothing is emitted: the storage side starts
- * the session itself, with the entry each of those appends.
+ * reload, a new visit, an open, Restore Session). A stack over the cap is cut to it around the
+ * index. Nothing is emitted: the storage side starts the session itself, with the entry each of
+ * those appends.
  */
 export const restoreStates = (
     slots: readonly RestoredSlot[],
@@ -489,25 +499,28 @@ export const restoreStates = (
     head: State,
     earlier = false,
 ) => {
-    const slot = slots[at]
-    if (!slot) throw new RangeError('The index is outside the stack')
-    const restored: Slot[] = slots.map(({ snapshot, step, isDirty }) => ({
-        isDirty,
-        step: captureStep(step),
-        ...(snapshot ? { snapshot: snapshot.slice() } : {}),
-    }))
+    if (!slots[at]) throw new RangeError('The index is outside the stack')
+    const kept = cappedSpan(slots.length, at)
+    const restored: Slot[] = slots
+        .slice(kept.base, kept.base + kept.length)
+        .map(({ snapshot, step, isDirty }) => ({
+            isDirty,
+            step: captureStep(step),
+            ...(snapshot ? { snapshot: snapshot.slice() } : {}),
+        }))
+    const headAt = at - kept.base
     stacks++
     cancelPendingMoves()
-    earlierSteps.value = earlier
+    earlierSteps.value = earlier || kept.base > 0
     peek.value = undefined
     loadedRestored.length = 0
     // The head is loaded before anything can read it: watchers run as the stack changes.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    restored[at]!.state = publish(head)
+    restored[headAt]!.state = publish(head)
     states.splice(0, states.length, ...restored)
-    index.value = at
+    index.value = headAt
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    if (restored[at]!.snapshot) evictRestored(restored[at]!)
+    if (restored[headAt]!.snapshot) evictRestored(restored[headAt]!)
     prefetch()
 }
 

@@ -235,7 +235,7 @@ test('a seeded chain record’s unknown field: a continuation keeps it, and a fo
     assert.deepEqual(checkStored(world.memory), [])
 })
 
-test('a continuation of a 20,000-step stack copies about 20 block rows', async () => {
+test('a continuation of a 20,000-step stack copies only its window’s 5 block rows', async () => {
     const world = createWorld({ seed: 5 })
     const first = await openPage(world, world.tab('a'))
     const a = stateOf(goldenChart())
@@ -252,8 +252,8 @@ test('a continuation of a 20,000-step stack copies about 20 block rows', async (
 
     const page = await openPage(world, world.tab('b'))
     const read = await readOpen(page, session.id)
-    assert.equal(read.stack.window.length, 5000)
-    assert.equal(read.stack.blocks.length, 21)
+    assert.equal(read.stack.window.length, 1000)
+    assert.equal(read.stack.blocks.length, 5)
     continueIn(page, read)
     page.flusher.append(
         { kind: 'edit', step: editStep(futureFixtureOperation('One more')) },
@@ -263,7 +263,7 @@ test('a continuation of a 20,000-step stack copies about 20 block rows', async (
     await page.flusher.flush()
     assert.deepEqual(page.errors, [])
     const copied = page.reports.at(-1)!.stats.rowsByStore.stackBlocks ?? 0
-    assert.equal(copied, 21)
+    assert.equal(copied, 5)
     // The next edit rewrites one block, as any flush does.
     page.flusher.append(
         { kind: 'edit', step: editStep(futureFixtureOperation('And another')) },

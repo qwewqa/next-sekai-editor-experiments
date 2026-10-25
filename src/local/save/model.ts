@@ -1,3 +1,4 @@
+import { cappedSpan } from '../../history/cap'
 import { toHex } from '../hash'
 import { sessionReadability } from '../records/unknownValues'
 import {
@@ -191,6 +192,17 @@ export const carries = (
 
 /** The undo stack a write holds: its slots and absolute `base` and `index`. */
 export type WriteStack = { base: number; slots: ReplaySlot[]; index: number }
+
+/** The stack cut to the cap around its index, as the tab and the stored window keep it. */
+export const capStack = (stack: WriteStack): WriteStack => {
+    const kept = cappedSpan(stack.base + stack.slots.length, stack.index, stack.base)
+    const from = kept.base - stack.base
+    return {
+        base: kept.base,
+        slots: stack.slots.slice(from, from + kept.length),
+        index: stack.index,
+    }
+}
 
 /**
  * The stack cut at slots whose snapshot the file doesn't hold: the longest run of held

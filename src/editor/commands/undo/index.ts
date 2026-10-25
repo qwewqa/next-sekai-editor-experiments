@@ -37,7 +37,7 @@ export const undo: Command = {
             // after replacing the chart by mistake gets the work back. Else
             // Open History, at Recent Sessions when the Timeline holds only its first entry.
             if (earlierSteps.value)
-                // A reloaded stack is capped: the steps before it are in the Timeline.
+                // The stack is capped: the steps before it are in the Timeline.
                 notify(() => i18n.value.notice.earlierInHistory, {
                     action: openHistoryAction(),
                 })
