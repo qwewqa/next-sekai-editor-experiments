@@ -104,7 +104,8 @@ const pickerCalls = (page: Page) =>
             }[],
     )
 
-const notice = (page: Page) => page.getByRole('status')
+// The notice region only: a Loading dialog's line is a status too.
+const notice = (page: Page) => page.locator('[data-notice-region]')
 
 /** Opens an OPFS file with Open, as Chromium's picker would. */
 const openFile = async (page: Page, name: string) => {
@@ -723,7 +724,7 @@ test('a build that outlasted the gesture asks for one more tap', async ({ page }
     await openExport(page)
     await page.keyboard.press('Enter')
     const preparing = dialog(page).locator('[data-export-preparing]')
-    await expect(preparing).toHaveText(/^Preparing LevelData\.nsld… [\d.]+\skB/)
+    await expect(preparing).toHaveText(/^Ready: LevelData\.nsld · [\d.]+\skB/)
     const button = dialog(page).getByRole('button', { name: 'Download' })
     await expect(button).toBeFocused()
     const download = page.waitForEvent('download')

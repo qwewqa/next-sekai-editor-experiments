@@ -70,7 +70,7 @@ export const openHistoryDialog = async (tab?: HistoryTab) => {
             // user, who asked, is told.
             recordError(error)
             if (at !== generation) return
-            notify(() => i18n.value.history.loadFailed)
+            notify(() => i18n.value.history.loadFailed, { card: true, severity: 'error' })
             if (reopenAt !== undefined) openElevationEditor(reopenAt)
             return
         }

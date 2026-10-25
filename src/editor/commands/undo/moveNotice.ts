@@ -26,8 +26,9 @@ export const noticeOnLanding = (outcome: Promise<MoveOutcome>) => {
 
 /** The slot could not be read: nothing changed, and the next press tries again. */
 const notifyFailed = (direction: -1 | 1) => {
-    notify(() =>
-        direction < 0 ? i18n.value.commands.undo.failed : i18n.value.commands.redo.failed,
+    notify(
+        () => (direction < 0 ? i18n.value.commands.undo.failed : i18n.value.commands.redo.failed),
+        { card: true, severity: 'error' },
     )
 }
 

@@ -4,12 +4,14 @@ import { i18n } from '../../i18n'
 import BaseModal from '../../modals/BaseModal.vue'
 import { interpolate } from '../../utils/interpolate'
 import { formatSize } from '../../utils/size'
+import WaitBar from '../workspace/WaitBar.vue'
 import type { PreparingModel } from './dialogs'
 
-// "Preparing coconut.nxsp… 12 MB": one small surface for a build that is
-// slow, or a Save waiting for an open's import. Cancel stops the Save; when the build has
-// outlasted the press, its button becomes [Download] or [Save], focused, and that press is the
-// gesture.
+// "Preparing coconut.nxsp… 12 MB", or "Ready: coconut.nxsp · 12 MB" once a build that outlasted
+// the press is done: one small surface for a build that is slow, or a Save waiting for an open's
+// import. Cancel stops the Save; when the build is ready, its button becomes [Download] or
+// [Save], focused, and that press is the gesture. The bar slides while it works, and shows the
+// import's fraction while a Save waits for one.
 const props = defineProps<{ name: string; model: PreparingModel; kind?: 'save' | 'export' }>()
 
 const emit = defineEmits<{ close: [go: boolean] }>()
@@ -19,7 +21,7 @@ const readyButton = useTemplateRef<HTMLButtonElement>('readyButton')
 
 const text = computed(() =>
     interpolate(
-        () => i18n.value.save.preparing,
+        () => (props.model.ready ? i18n.value.save.ready : i18n.value.save.preparing),
         props.name,
         props.model.size ? formatSize(props.model.size) : '',
     )().trim(),
@@ -62,18 +64,12 @@ const buttonClass = 'btn h-9 min-w-24 max-w-full truncate rounded-full px-4'
     >
         <div class="flex flex-col gap-2">
             <p :id="`${ids}-text`" data-save-preparing>{{ text }}</p>
-            <div
-                v-if="progress !== undefined"
-                class="h-1 overflow-hidden rounded-full bg-fg/20"
-                role="progressbar"
-                :aria-labelledby="`${ids}-text`"
-                aria-valuemin="0"
-                aria-valuemax="100"
-                :aria-valuenow="progress"
+            <WaitBar
+                v-if="!model.ready"
+                :value="progress"
+                :labelledby="`${ids}-text`"
                 data-save-progress
-            >
-                <div class="h-full rounded-full bg-fg" :style="{ width: `${progress}%` }" />
-            </div>
+            />
         </div>
         <div class="flex justify-end gap-2">
             <button

@@ -2106,6 +2106,7 @@
     "notFound": "\"{0}\" bulunamıyor.",
     "downloadStarted": "İndirme başlatıldı: {0} · {1}",
     "preparing": "{0} hazırlanıyor… {1}",
+    "ready": "Hazır: {0} · {1}",
     "download": "İndir",
     "buildFailed": "\"{0}\" hazırlanamadı.",
     "readFailed": "\"{0}\" okunamadı.",
@@ -2160,8 +2161,8 @@
   "check": {
     "command": "Dosyayı ve Geçmişi Denetle…",
     "title": "Dosyayı ve Geçmişi Denetle",
-    "checkingFile": "{0} denetleniyor… %{1}",
-    "checkingStored": "Saklanan geçmiş denetleniyor… %{0}",
+    "checkingFile": "{0} denetleniyor…",
+    "checkingStored": "Saklanan geçmiş denetleniyor…",
     "changed": "\"{0}\" denetlenirken değişti. Tekrar deneyin.",
     "stillOpening": "\"{0}\" hâlâ açılıyor. Tekrar deneyin.",
     "noDamage": "Hasar bulunamadı.",

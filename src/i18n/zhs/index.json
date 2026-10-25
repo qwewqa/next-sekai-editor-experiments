@@ -2106,6 +2106,7 @@
     "notFound": "找不到“{0}”。",
     "downloadStarted": "已开始下载：{0} · {1}",
     "preparing": "正在准备 {0}… {1}",
+    "ready": "已准备好：{0} · {1}",
     "download": "下载",
     "buildFailed": "无法准备“{0}”。",
     "readFailed": "无法读取“{0}”。",
@@ -2160,8 +2161,8 @@
   "check": {
     "command": "检查文件和历史记录…",
     "title": "检查文件和历史记录",
-    "checkingFile": "正在检查 {0}… {1}%",
-    "checkingStored": "正在检查已存储的历史记录… {0}%",
+    "checkingFile": "正在检查 {0}…",
+    "checkingStored": "正在检查已存储的历史记录…",
     "changed": "“{0}”在检查期间已更改。请重试。",
     "stillOpening": "“{0}”仍在打开中。请重试。",
     "noDamage": "未发现损坏。",

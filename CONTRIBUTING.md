@@ -77,7 +77,7 @@ Keep a rule at the scope it was made for. Do not turn a rule for one control or 
 
 Read these before you change the UI and when you review a UI change:
 
-- [docs/design-language.md](docs/design-language.md): surfaces, shape, sizes, spacing and the History surfaces.
+- [docs/design-language.md](docs/design-language.md): surfaces, shape, sizes, spacing, the History surfaces, and waits and feedback.
 - [docs/color-system.md](docs/color-system.md): colour roles and the control recipes in `src/controls.css`.
 - [docs/ui-review-checklist.md](docs/ui-review-checklist.md): the questions to ask in review, from past defects.
 - [docs/writing.md](docs/writing.md): the writing rules for user-facing text, these docs, code comments and commit messages.

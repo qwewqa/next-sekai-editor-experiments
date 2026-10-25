@@ -299,6 +299,8 @@ export const saveReserved = (page: Page) =>
                 ?.session?.reserved !== undefined,
     )
 
-/** The "Preparing…" dialog of a file. */
+/** The "Preparing…" dialog of a file, also once it says "Ready:" and waits for the press. */
 export const preparingDialog = (page: Page, name = 'coconut.nxsp') =>
-    page.getByRole('dialog').filter({ hasText: `Preparing ${name}` })
+    page.getByRole('dialog').filter({
+        hasText: new RegExp(`(Preparing|Ready:) ${name.replaceAll('.', '\\.')}`),
+    })

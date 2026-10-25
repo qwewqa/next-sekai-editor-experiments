@@ -2106,6 +2106,7 @@
         "notFound": "\"{0}\" cannot be found.",
         "downloadStarted": "Download started: {0} · {1}",
         "preparing": "Preparing {0}… {1}",
+        "ready": "Ready: {0} · {1}",
         "download": "Download",
         "buildFailed": "\"{0}\" could not be prepared.",
         "readFailed": "\"{0}\" could not be read.",
@@ -2160,8 +2161,8 @@
     "check": {
         "command": "Check File and History…",
         "title": "Check File and History",
-        "checkingFile": "Checking {0}… {1}%",
-        "checkingStored": "Checking stored history… {0}%",
+        "checkingFile": "Checking {0}…",
+        "checkingStored": "Checking stored history…",
         "changed": "\"{0}\" changed while it was being checked. Try again.",
         "stillOpening": "\"{0}\" is still being opened. Try again.",
         "noDamage": "No damage found.",

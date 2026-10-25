@@ -29,7 +29,7 @@ import { displayOrigin } from '../../../preview/assets/serverUrl'
 import type { AssetChoice } from '../../../preview/assets/types'
 import { settings } from '../../../settings'
 import { interpolateRaw } from '../../../utils/interpolate'
-import AssetGlyph from './AssetGlyph.vue'
+import SeverityIcon from '../../SeverityIcon.vue'
 import AssetRow from './AssetRow.vue'
 import ChooserView from './ChooserView.vue'
 import { storedThumbnail } from './storedThumbnails'
@@ -232,16 +232,16 @@ onBeforeUnmount(() => {
                     :class="canChooseAgain ? 'pb-1' : 'pb-2'"
                     data-asset-note
                 >
-                    <AssetGlyph
+                    <SeverityIcon
                         v-if="hasWarning"
-                        type="warning"
-                        class="absolute left-[4.25rem] top-[0.4375rem]"
+                        severity="warning"
+                        class="absolute left-[4.25rem] top-[0.375rem] size-4"
                     />{{ noteText }}
                 </p>
                 <div v-if="canChooseAgain" class="pb-2 pl-[5.75rem] pr-3">
                     <button
                         type="button"
-                        class="btn focus-out btn-secondary inline-flex h-7 items-center rounded-full px-3 text-sm"
+                        class="btn focus-out btn-secondary relative inline-flex h-7 items-center rounded-full px-3 text-sm before:absolute before:-inset-0.5"
                         data-asset-choose-again
                         @click="chooseAgain"
                     >
@@ -251,14 +251,14 @@ onBeforeUnmount(() => {
             </template>
             <p
                 v-else-if="row.id === selectedId && loadingShown"
-                class="asset-loading pb-2 pl-[5.75rem] pr-3 pt-1 text-sm opacity-75"
+                class="asset-loading pb-2 pl-[5.75rem] pr-3 pt-1 text-sm text-fg/80"
                 role="status"
                 data-asset-loading
             >
                 {{ i18n.modals.loading.loading }}
             </p>
         </template>
-        <p v-if="type === 'effect'" class="px-3 pt-3 text-sm opacity-75" data-effect-hint>
+        <p v-if="type === 'effect'" class="px-3 pt-3 text-sm text-fg/80" data-effect-hint>
             {{ strings.effectHint }}
         </p>
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 pt-3">
@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
             <span
                 v-if="hasServers"
                 :id="hintId"
-                class="min-w-0 text-sm opacity-75"
+                class="min-w-0 text-sm text-fg/80"
                 data-asset-choose-hint
                 >{{ strings.chooseHint }}</span
             >
@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
         opacity: 0;
     }
     to {
-        opacity: 0.75;
+        opacity: 1;
     }
 }
 </style>

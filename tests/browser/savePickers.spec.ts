@@ -8,6 +8,7 @@ import {
     notice,
     pauseAt,
     pickerCalls,
+    preparingDialog,
     pressSave,
     projectOf,
     prompts,
@@ -218,7 +219,7 @@ test('the project picker lists .nxsp only, and a build that outlasted the press 
     await edit(page, 1)
     await pressSave(page)
     await submitSave(page, 'coconut')
-    const preparing = page.getByRole('dialog').filter({ hasText: 'Preparing coconut.nxsp' })
+    const preparing = preparingDialog(page)
     await expect(preparing).toBeVisible()
     expect(await pickerCalls(page)).toEqual([])
     await page.waitForTimeout(350)
