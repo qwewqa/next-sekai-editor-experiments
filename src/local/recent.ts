@@ -96,7 +96,9 @@ export const readRecentChains = async (tx: KvTx): Promise<RecentRead[]> => {
     const heads = records.map((record) =>
         typeof record.head === 'string' && record.head ? byId.get(record.head) : undefined,
     )
-    const roots = await Promise.all(heads.map((head) => (head ? headOf(tx, head) : undefined)))
+    const roots = await Promise.all(
+        heads.map((head) => (head ? headOf(tx, head) : Promise.resolve(undefined))),
+    )
     return records.map((value, i) => {
         const chainId = value.chainId as string
         const head = heads[i]

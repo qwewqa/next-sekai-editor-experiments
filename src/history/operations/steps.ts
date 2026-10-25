@@ -135,7 +135,7 @@ export const captureRecoveryContext = (value: unknown): RecoveryContext => {
  * Steps this function returned. A capture is frozen all the way down (`captureJson`), so one
  * captured again would pass the same checks and come out equal: it is returned as it is.
  */
-const capturedSteps = new WeakSet<object>()
+const capturedSteps = new WeakSet()
 
 export const captureStep = (value: unknown): UndoableStep => {
     if (isObject(value) && capturedSteps.has(value)) return value as unknown as UndoableStep

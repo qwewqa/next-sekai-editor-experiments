@@ -460,7 +460,7 @@ export const decodeOperation = (raw: JsonValue): DecodedOperation => {
 }
 
 /** Operations this function returned, frozen: returned as they are when captured again. */
-const capturedOperations = new WeakSet<object>()
+const capturedOperations = new WeakSet()
 
 export const captureOperation = (value: unknown): JsonValue => {
     if (typeof value === 'object' && value !== null && capturedOperations.has(value))
