@@ -214,6 +214,52 @@ test('one Apply that changes the title and Initial Life is one step, and Undo re
     expect(await undoable(page)).toBe(false)
 })
 
+test('Play on the Preview Audio stops the chart’s playback and keeps its position', async ({
+    page,
+}) => {
+    await pickBgm(page, wav(2))
+    await page.evaluate(async () => {
+        const { settings } =
+            (await import('/src/settings.ts')) as typeof import('../../src/settings')
+        const { view } =
+            (await import('/src/editor/view.ts')) as typeof import('../../src/editor/view')
+        const { startOrStopPlayer } =
+            (await import('/src/editor/player.ts')) as typeof import('../../src/editor/player')
+        settings.playStartPosition = 'cursor'
+        settings.playFollow = false
+        view.cursorTime = 0
+        startOrStopPlayer()
+    })
+    const playing = () =>
+        page.evaluate(async () => {
+            const { isPlaying } =
+                (await import('/src/player.ts')) as typeof import('../../src/player')
+            return isPlaying.value
+        })
+    const cursor = () =>
+        page.evaluate(
+            async () =>
+                ((await import('/src/editor/view.ts')) as typeof import('../../src/editor/view'))
+                    .view.cursorTime,
+        )
+    await expect.poll(playing).toBe(true)
+    await expect.poll(cursor).toBeGreaterThan(0)
+
+    const form = await openLevelInfo(page)
+    await pick(page, form.locator('[data-level-info-preview-choose]'), {
+        name: 'preview.wav',
+        mimeType: 'audio/wav',
+        buffer: clip,
+    })
+    await form.locator('[data-level-info-preview-play]').click()
+    await expect.poll(playing).toBe(false)
+    // Stopped where it was, not returned to where it started.
+    const stoppedAt = await cursor()
+    expect(stoppedAt).toBeGreaterThan(0)
+    await page.waitForTimeout(300)
+    expect(await cursor()).toBe(stoppedAt)
+})
+
 test('Escape in the description asks before it throws the typed text away', async ({ page }) => {
     const form = await openLevelInfo(page)
     const description = field(form, 'Description')
