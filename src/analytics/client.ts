@@ -1,6 +1,7 @@
 import { watch } from 'vue'
 import { SITE } from '../buildInfo'
 import { builtInCommandNames } from '../editor/commands/names'
+import { isPanelVisible } from '../editor/workspace'
 import { onHistoryAction, type HistoryAction } from '../history/actions'
 import { liveState, stackLength } from '../history/stack'
 import { languageTag } from '../i18n/plural'
@@ -302,6 +303,13 @@ export const startClient = (target: AnalyticsTarget) => {
     tally.watchCharts(countCharts)
     if (tally.hasCharts()) countCharts()
 
+    // The History panel shown, however it was opened: a link, its tab, a setting.
+    const stopPanel = watch(
+        () => isPanelVisible('history'),
+        (shown) => {
+            if (shown) tally.bump('features.historyPanel')
+        },
+    )
     const stopEdits = onHistoryAction(countEdit)
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pagehide', onPageHide)
@@ -314,6 +322,7 @@ export const startClient = (target: AnalyticsTarget) => {
             clearTimeout(timer)
             field.stop()
             stopStorage()
+            stopPanel()
             tally.watchCharts(undefined)
             document.removeEventListener('visibilitychange', onVisibility)
             window.removeEventListener('pagehide', onPageHide)

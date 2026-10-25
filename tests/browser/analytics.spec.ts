@@ -579,3 +579,20 @@ test('a startup that ends in an error is reported once the error page is used', 
     const [first = []] = batches
     expect(dataOf(first, 'startup')).toEqual({ start: 'blank', outcome: 'error' })
 })
+
+test('opening History and its Recent Sessions tab are counted as features', async ({
+    page,
+    context,
+}) => {
+    const { batches } = await mock(context)
+    await installAnalytics(page)
+    await start(page)
+    await interact(page)
+    await page.keyboard.press('Shift+H')
+    const dialog = page.locator('[data-history-surface="dialog"]')
+    await expect(dialog).toBeVisible()
+    await page.getByRole('tab', { name: /Sessions/ }).click()
+    await expect(dialog.getByText('Recent Sessions').first()).toBeVisible()
+    await firstSend(page, batches)
+    expect(dataOf(batches[0] ?? [], 'features')).toEqual({ historyDialog: 1, recentTab: 1 })
+})

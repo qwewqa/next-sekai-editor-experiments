@@ -148,7 +148,6 @@ export const showHistoryLink = (tab: HistoryTab = 'timeline') => {
     }
     checkHistoryCalendar()
     listFocus.value = { surface: 'panel', at: performance.now() }
-    bump('features.historyPanel')
     showPanel('history')
 }
 
