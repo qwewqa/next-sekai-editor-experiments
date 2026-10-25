@@ -139,10 +139,10 @@ test('division commands are named as their dialog is, as lane division commands 
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name)) {
         const messages = read(locale)
-        // Not French "Passer à la division personnalisée" beside "Division personnalisée".
+        // Not French "Passer à la division personnalisée" beside "Division personnalisée". The command's ellipsis aside.
         for (const axis of ['divisions', 'laneDivisions'])
             assert.equal(
-                messages[`commands.${axis}.custom.title`],
+                messages[`commands.${axis}.custom.title`]?.replace(/…$/, ''),
                 messages[`commands.${axis}.custom.modal.title`],
                 `${locale} ${axis}`,
             )
