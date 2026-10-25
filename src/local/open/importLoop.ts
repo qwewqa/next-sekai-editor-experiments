@@ -213,12 +213,12 @@ const runBatches = async (job: ImportJob, reread = false): Promise<ImportOutcome
     const restarted = () => {
         if (resumes === MAX_RESUMES)
             throw new Error(
-                `An import’s storage calls failed or went to a new storage worker ${MAX_RESUMES + 1} times.`,
+                `An import’s storage calls were cut off or went to a new storage worker ${MAX_RESUMES + 1} times.`,
             )
         resumes++
         recordDiagnostic(
             'error',
-            `An import’s storage call failed or went to a new storage worker. The file is read again (retry ${resumes} of ${MAX_RESUMES}).`,
+            `An import’s storage call was cut off or went to a new storage worker. The file is read again (retry ${resumes} of ${MAX_RESUMES}).`,
         )
     }
     /** Reads the file again in the worker; false when it changed or can't be read. */
