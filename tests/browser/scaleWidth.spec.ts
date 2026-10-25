@@ -93,7 +93,7 @@ const point = async (page: Page, lane: number, elevation = false) => {
 const open = async (page: Page, elevation = false) => {
     const hit = await point(page, elevation ? 1 : -3, elevation)
     await page.mouse.click(hit.x, hit.y, { button: 'right' })
-    await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Scale Width…', exact: true }).click()
     await expect(panel(page)).toBeVisible()
     await settle(page)
 }
@@ -339,7 +339,7 @@ test('size-one notes keep a movable middle and separate resize edges', async ({ 
     await settle(page)
     const start = await point(page, -3.5)
     await page.mouse.click(start.x, start.y, { button: 'right' })
-    await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Scale Width…', exact: true }).click()
     await drag(page, -3.5, -2.5)
     await expectWidths(page, [[-3, 1]])
     await drag(page, -2, -1)
@@ -469,7 +469,7 @@ for (const layout of ['basic', 'composed'] as const) {
         await expect(page.locator('.elevation-canvas')).toBeVisible()
         const hit = await point(page, shown(2), true)
         await page.mouse.click(hit.x, hit.y, { button: 'right' })
-        await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).click()
+        await page.getByRole('menuitem', { name: 'Scale Width…', exact: true }).click()
         await drag(page, shown(2), shown(3), true)
         await expectWidths(page, [[-3, 2]])
         await expect(factor(page)).toHaveValue('1')
@@ -537,9 +537,9 @@ test('the separate transform group remains reachable on a short portrait phone',
     for (const title of [
         'Flip Horizontally',
         'Flip Vertically',
-        'Scale Width',
-        'Scale Beats',
-        'Scale Elevations',
+        'Scale Width…',
+        'Scale Beats…',
+        'Scale Elevations…',
         'Make Vertical',
         'Combine into Slide',
         'Split Slide',
@@ -549,8 +549,8 @@ test('the separate transform group remains reachable on a short portrait phone',
         await expect(expanded).toBeInViewport()
     }
     const menu = page
-        .getByTitle('Scale Width', { exact: true })
-        .filter({ hasText: 'Scale Width' })
+        .getByTitle('Scale Width…', { exact: true })
+        .filter({ hasText: 'Scale Width…' })
         .locator('..')
     const bounds = await menu.boundingBox()
     // The menu may rise over the top panel dock, which holds the Preview tab, but stays in the window.

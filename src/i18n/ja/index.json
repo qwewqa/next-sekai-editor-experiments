@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "レーン制限なし",
       "six": "±6レーンに制限",
-      "custom": "カスタムレーン制限",
+      "custom": "カスタムレーン制限…",
+      "customTitle": "カスタムレーン制限",
       "maximum": "最大レーン (±)",
       "limited": "レーン制限：±{0}",
       "unlimited": "レーン制限なし"
@@ -69,7 +70,7 @@
       "title": "レーン分割 1/{0}",
       "switched": "レーン分割を1/{0}に変更しました",
       "custom": {
-        "title": "カスタムレーン分割",
+        "title": "カスタムレーン分割…",
         "modal": {
           "title": "カスタムレーン分割",
           "division": "分割数"
@@ -85,7 +86,7 @@
       "title": "分割 1/{0}",
       "switched": "拍を1/{0}ずつ分割しました",
       "custom": {
-        "title": "カスタム分割",
+        "title": "カスタム分割…",
         "modal": {
           "title": "カスタム分割",
           "division": "分割数"
@@ -106,17 +107,20 @@
       "flipped": "{0}個のオブジェクトを上下反転しました"
     },
     "scaleBeat": {
-      "title": "拍を拡大・縮小",
+      "title": "拍を拡大・縮小…",
+      "dialogTitle": "拍を拡大・縮小",
       "noSelected": "異なる拍にあるオブジェクトを2つ以上選択してください",
       "scaled": "{0}個のオブジェクトの拍を拡大・縮小しました"
     },
     "scaleWidth": {
-      "title": "幅を拡大・縮小",
+      "title": "幅を拡大・縮小…",
+      "dialogTitle": "幅を拡大・縮小",
       "noSelected": "横方向に幅のあるオブジェクトを選択してください",
       "scaled": "{0} 個のオブジェクトの幅を拡大・縮小しました"
     },
     "scaleElevation": {
-      "title": "高さを拡大・縮小",
+      "title": "高さを拡大・縮小…",
+      "dialogTitle": "高さを拡大・縮小",
       "noSelected": "高さが異なるノーツまたはステージ変形イベントを2つ以上選択してください",
       "scaled": "{0}個のオブジェクトの高さを拡大・縮小しました"
     },
@@ -242,7 +246,8 @@
       "switched": "オフセットツールに切り替えました"
     },
     "open": {
-      "title": "ファイルを開く",
+      "title": "ファイルを開く…",
+      "dialogTitle": "ファイルを開く",
       "loading": "ファイルを読み込み中…",
       "importing": "譜面をインポート中…",
       "opened": "譜面を開きました",
@@ -457,7 +462,7 @@
       "title": "レベルデータを出力…"
     },
     "previewAssets": {
-      "title": "プレビューアセット…",
+      "title": "プレビューアセット",
       "modal": {
         "title": "プレビューアセット"
       },
@@ -2162,7 +2167,7 @@
     "sizePending": "サイズを見積もり中…"
   },
   "check": {
-    "command": "ファイルと履歴をチェック…",
+    "command": "ファイルと履歴をチェック",
     "title": "ファイルと履歴のチェック",
     "checkingFile": "{0} をチェック中…",
     "checkingStored": "保管されている履歴をチェック中…",
@@ -2178,9 +2183,9 @@
   },
   "levelInfo": {
     "file": "ファイル",
-    "check": "チェック…",
+    "check": "チェック",
     "tagsPlaceholder": "カンマ区切り",
-    "editCover": "ジャケットエディターで編集…",
+    "editCover": "ジャケットエディターで編集",
     "makePreview": "BGM から作成…",
     "notLoaded": "未読み込み",
     "discard": "譜面情報の変更を破棄しますか？"
@@ -2274,7 +2279,7 @@
     "notProject": "この ZIP はプロジェクトファイルではありません。",
     "severalProjects": "この ZIP には複数のプロジェクトファイルが含まれています。解凍して、1つずつ開いてください。",
     "scp": "これはSonolusパッケージです。スキンなどのアセットを使うには、プレビューアセットで選択してください。",
-    "openPreviewAssets": "プレビューアセット…",
+    "openPreviewAssets": "プレビューアセット",
     "damagedUnopened": "このファイルは破損しているため、開けませんでした。",
     "damaged": "このファイルは破損しています。履歴なしで開きました。",
     "historyUnreadable": "このファイルの履歴を読み込めませんでした。保存すると別のファイルになります。",

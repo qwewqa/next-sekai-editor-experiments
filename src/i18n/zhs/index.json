@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "不限制轨道",
       "six": "限制为 ±6 轨道",
-      "custom": "自定义轨道限制",
+      "custom": "自定义轨道限制…",
+      "customTitle": "自定义轨道限制",
       "maximum": "最大轨道（±）",
       "limited": "轨道限制：±{0}",
       "unlimited": "不限制轨道"
@@ -69,7 +70,7 @@
       "title": "1/{0} 轨道细分",
       "switched": "已切换到 1/{0} 轨道细分",
       "custom": {
-        "title": "自定义轨道细分",
+        "title": "自定义轨道细分…",
         "modal": {
           "title": "自定义轨道细分",
           "division": "细分"
@@ -85,7 +86,7 @@
       "title": "1/{0} 分割",
       "switched": "已切换到 1/{0} 分割",
       "custom": {
-        "title": "自定义分割",
+        "title": "自定义分割…",
         "modal": {
           "title": "自定义分割",
           "division": "分割"
@@ -106,17 +107,20 @@
       "flipped": "已垂直翻转 {0} 个对象"
     },
     "scaleBeat": {
-      "title": "缩放节拍间距",
+      "title": "缩放节拍间距…",
+      "dialogTitle": "缩放节拍间距",
       "noSelected": "请选择至少两个位于不同节拍的对象进行缩放",
       "scaled": "已缩放 {0} 个对象的节拍间距"
     },
     "scaleWidth": {
-      "title": "缩放宽度",
+      "title": "缩放宽度…",
+      "dialogTitle": "缩放宽度",
       "noSelected": "请选择具有横向跨度的对象进行缩放",
       "scaled": "已缩放 {0} 个对象的宽度"
     },
     "scaleElevation": {
-      "title": "缩放高度间距",
+      "title": "缩放高度间距…",
+      "dialogTitle": "缩放高度间距",
       "noSelected": "请选择至少两个高度不同的音符或舞台变换进行缩放",
       "scaled": "已缩放 {0} 个对象的高度间距"
     },
@@ -242,7 +246,8 @@
       "switched": "已切换到偏移工具"
     },
     "open": {
-      "title": "打开",
+      "title": "打开…",
+      "dialogTitle": "打开",
       "loading": "正在加载文件…",
       "importing": "正在导入关卡…",
       "opened": "已打开关卡",
@@ -457,7 +462,7 @@
       "title": "导出关卡数据…"
     },
     "previewAssets": {
-      "title": "预览资源…",
+      "title": "预览资源",
       "modal": {
         "title": "预览资源"
       },
@@ -2162,7 +2167,7 @@
     "sizePending": "正在估算大小…"
   },
   "check": {
-    "command": "检查文件和历史记录…",
+    "command": "检查文件和历史记录",
     "title": "检查文件和历史记录",
     "checkingFile": "正在检查 {0}…",
     "checkingStored": "正在检查已存储的历史记录…",
@@ -2178,9 +2183,9 @@
   },
   "levelInfo": {
     "file": "文件",
-    "check": "检查…",
+    "check": "检查",
     "tagsPlaceholder": "用逗号分隔",
-    "editCover": "在封面编辑器中编辑…",
+    "editCover": "在封面编辑器中编辑",
     "makePreview": "从背景音乐生成…",
     "notLoaded": "未加载",
     "discard": "要放弃对关卡信息的更改吗？"
@@ -2274,7 +2279,7 @@
     "notProject": "此 ZIP 不是项目文件。",
     "severalProjects": "此 ZIP 包含多个项目文件。请解压后逐个打开。",
     "scp": "这是 Sonolus 包。要使用其中的皮肤或其他资源，请在预览资源中选择。",
-    "openPreviewAssets": "预览资源…",
+    "openPreviewAssets": "预览资源",
     "damagedUnopened": "此文件已损坏，无法打开。",
     "damaged": "此文件已损坏。已在不含历史记录的情况下打开。",
     "historyUnreadable": "无法读取此文件的历史记录。保存时会创建单独的文件。",

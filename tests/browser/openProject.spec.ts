@@ -937,7 +937,7 @@ test('a Sonolus package points to Preview Assets, which opens', async ({ page })
     await expect(dialog).not.toContainText('not a project file')
     // A press in the dialog's first moments is ignored (the activation guard): press until it counts.
     await expect(async () => {
-        await dialog.getByRole('button', { name: 'Preview Assets…' }).click({ timeout: 1000 })
+        await dialog.getByRole('button', { name: 'Preview Assets' }).click({ timeout: 1000 })
         await expect(page.getByRole('dialog', { name: 'Preview Assets' })).toBeVisible({
             timeout: 1000,
         })

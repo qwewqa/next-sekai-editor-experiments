@@ -43,10 +43,10 @@ test('context beat scaling fixes the first beat and is undoable', async ({ page 
     await selectTwo(page)
     await click(page, -3, 3)
     const menu = page.getByRole('menu')
-    await expect(menu.getByRole('menuitem', { name: 'Scale Elevations', exact: true })).toHaveCount(
-        0,
-    )
-    await menu.getByRole('menuitem', { name: 'Scale Beats', exact: true }).click()
+    await expect(
+        menu.getByRole('menuitem', { name: 'Scale Elevations…', exact: true }),
+    ).toHaveCount(0)
+    await menu.getByRole('menuitem', { name: 'Scale Beats…', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('spinbutton', { name: 'Scale Factor', exact: true }).fill('2')

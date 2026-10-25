@@ -11,7 +11,7 @@ const model = ref(settings.customMaxLane)
 
 <template>
     <FormModal
-        :title="i18n.commands.laneLimits.custom"
+        :title="i18n.commands.laneLimits.customTitle"
         @close="$emit('close')"
         @submit="$emit('close', model)"
     >

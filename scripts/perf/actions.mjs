@@ -1170,7 +1170,7 @@ export const actions = {
             await closeDialogs(page)
         },
     },
-    /** Level Info › Check…: the stored history checked, until its result shows. */
+    /** Level Info › Check: the stored history checked, until its result shows. */
     check: {
         prep: async (page) => {
             await closeHistory(page)

@@ -326,7 +326,7 @@ test('scaling width shows ew-resize over selected objects only', async ({ page }
     await settle(page)
     const target = await point(page, 1.5, 5)
     await page.mouse.click(target.x, target.y, { button: 'right' })
-    await page.getByRole('menuitem', { name: 'Scale Width', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Scale Width…', exact: true }).click()
     await expect(page.locator('.scaling-panel')).toBeVisible()
     await settle(page)
     await expectCursor(page, 1.5, 5, 'ew-resize')

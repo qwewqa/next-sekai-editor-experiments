@@ -17,7 +17,7 @@ import { stackLongValuesKey } from '../../../modals/form/fieldLayout'
 provide(stackLongValuesKey, true)
 
 const props = defineProps<{
-    /** Level Info's Edit in Cover Editor…: the cover to start from. */
+    /** Level Info's Edit in Cover Editor: the cover to start from. */
     start?: Blob
     /** Opened from Level Info: Generate hands the cover back instead of downloading it. */
     apply?: boolean

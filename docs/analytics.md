@@ -85,7 +85,7 @@ How the code enforces them:
 | `open` | each Open | `format`, `via`, `size`, `outcome`, `reason`, `took` |
 | `save` | each Save, Save As… and Save to File | `action`, `target`, `history`, `bgm`, `size`, `took`, `outcome`, `reason`, `step` |
 | `export` | each Export | `format`, `target`, `size`, `took`, `outcome`, `reason` |
-| `check` | each Check File and History… | `outcome`, `took` |
+| `check` | each Check File and History | `outcome`, `took` |
 | `bgm` | each BGM chosen | `format`, `size`, `length`, `took`, `outcome` |
 | `usage` | at hide | `<command>.<source>` |
 | `edits` | at hide | `<operation>`, `undo`, `redo` |

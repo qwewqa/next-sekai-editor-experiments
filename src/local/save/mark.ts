@@ -3,7 +3,7 @@ import { packHashes, unpackHashes } from '../records/rows'
 import type { SaveStore } from './bodies'
 import type { EntryRow } from './cut'
 
-// Damage a build found in storage, or Check File and History… left after its
+// Damage a build found in storage, or Check File and History left after its
 // repair: the rows whose states need a body that's missing or fails are marked
 // `kept: false` (one-way), and its hash goes into the chain's `badChunks` for History's "damaged"
 // label (display only, never shrunk). Field-level read-modify-writes in one transaction; a failure

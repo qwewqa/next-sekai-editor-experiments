@@ -60,7 +60,8 @@
     "laneLimits": {
       "none": "Şerit Sınırı Yok",
       "six": "±6 Şeritle Sınırla",
-      "custom": "Özel Şerit Sınırı",
+      "custom": "Özel Şerit Sınırı…",
+      "customTitle": "Özel Şerit Sınırı",
       "maximum": "Maksimum Şerit (±)",
       "limited": "Şerit sınırı: ±{0}",
       "unlimited": "Şerit sınırı yok"
@@ -69,7 +70,7 @@
       "title": "1/{0} Şerit Bölümü",
       "switched": "1/{0} şerit bölümüne geçildi",
       "custom": {
-        "title": "Özel Şerit Bölümü",
+        "title": "Özel Şerit Bölümü…",
         "modal": {
           "title": "Özel Şerit Bölümü",
           "division": "Bölüm"
@@ -85,7 +86,7 @@
       "title": "1/{0} Bölüm",
       "switched": "1/{0} bölümüne geçildi",
       "custom": {
-        "title": "Özelleştirilebilir Bölüm",
+        "title": "Özelleştirilebilir Bölüm…",
         "modal": {
           "title": "Özelleştirilebilir Bölüm",
           "division": "Bölüm"
@@ -106,17 +107,20 @@
       "flipped": "{0} nesne dikey çevrildi"
     },
     "scaleBeat": {
-      "title": "Vuruşları Ölçekle",
+      "title": "Vuruşları Ölçekle…",
+      "dialogTitle": "Vuruşları Ölçekle",
       "noSelected": "Ölçeklemek için farklı vuruşlarda en az iki nesne seçin",
       "scaled": "{0} nesnenin vuruşları ölçeklendi"
     },
     "scaleWidth": {
-      "title": "Genişliği Ölçekle",
+      "title": "Genişliği Ölçekle…",
+      "dialogTitle": "Genişliği Ölçekle",
       "noSelected": "Ölçeklemek için yatay genişliği olan nesneler seçin",
       "scaled": "{0} nesnenin genişliği ölçeklendi"
     },
     "scaleElevation": {
-      "title": "Yükseklikleri Ölçekle",
+      "title": "Yükseklikleri Ölçekle…",
+      "dialogTitle": "Yükseklikleri Ölçekle",
       "noSelected": "Ölçeklemek için farklı yüksekliklerde en az iki nota veya sahne dönüşümü seçin",
       "scaled": "{0} nesnenin yükseklikleri ölçeklendi"
     },
@@ -242,7 +246,8 @@
       "switched": "Zaman Kayması aracına geçildi"
     },
     "open": {
-      "title": "Aç",
+      "title": "Aç…",
+      "dialogTitle": "Aç",
       "loading": "Dosya yükleniyor…",
       "importing": "Seviye içe aktarılıyor…",
       "opened": "Seviye açıldı",
@@ -457,7 +462,7 @@
       "title": "Seviye Verisini Dışa Aktar…"
     },
     "previewAssets": {
-      "title": "Önizleme Varlıkları…",
+      "title": "Önizleme Varlıkları",
       "modal": {
         "title": "Önizleme Varlıkları"
       },
@@ -2162,7 +2167,7 @@
     "sizePending": "Boyut tahmin ediliyor…"
   },
   "check": {
-    "command": "Dosyayı ve Geçmişi Denetle…",
+    "command": "Dosyayı ve Geçmişi Denetle",
     "title": "Dosyayı ve Geçmişi Denetle",
     "checkingFile": "{0} denetleniyor…",
     "checkingStored": "Saklanan geçmiş denetleniyor…",
@@ -2178,9 +2183,9 @@
   },
   "levelInfo": {
     "file": "Dosya",
-    "check": "Denetle…",
+    "check": "Denetle",
     "tagsPlaceholder": "Virgülle ayrılmış",
-    "editCover": "Kapak Editöründe Düzenle…",
+    "editCover": "Kapak Editöründe Düzenle",
     "makePreview": "Arka Plan Müziğinden Oluştur…",
     "notLoaded": "yüklenmedi",
     "discard": "Seviye bilgilerindeki değişiklikler silinsin mi?"
@@ -2274,7 +2279,7 @@
     "notProject": "Bu ZIP bir proje dosyası değil.",
     "severalProjects": "Bu ZIP birden fazla proje dosyası içeriyor. Arşivden çıkarıp tek tek açın.",
     "scp": "Bu bir Sonolus paketi. Görünümünü veya diğer varlıklarını kullanmak için Önizleme Varlıkları’nda seçin.",
-    "openPreviewAssets": "Önizleme Varlıkları…",
+    "openPreviewAssets": "Önizleme Varlıkları",
     "damagedUnopened": "Bu dosya hasarlı ve açılamadı.",
     "damaged": "Bu dosya hasarlı. Geçmişi olmadan açıldı.",
     "historyUnreadable": "Bu dosyanın geçmişi okunamadı. Kaydetmek ayrı bir dosya oluşturur.",

@@ -357,7 +357,7 @@ test('width scaling clamps the dragged edge, preserves cancellation and permits 
 test('all three lane limit commands remain accessible on a phone', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 568 })
     await page.getByTitle('No Lane Limit', { exact: true }).tap()
-    for (const title of ['No Lane Limit', 'Limit to ±6 Lanes', 'Custom Lane Limit']) {
+    for (const title of ['No Lane Limit', 'Limit to ±6 Lanes', 'Custom Lane Limit…']) {
         const command = page.getByTitle(title, { exact: true }).filter({ hasText: title })
         await command.scrollIntoViewIfNeeded()
         await expect(command).toBeInViewport()

@@ -645,7 +645,7 @@ test('changing visibility cancels a pending scaling session', async ({ page }) =
     const original = await notes(page)
     const target = await point(page, -3, 3)
     await page.mouse.click(target.x, target.y, { button: 'right' })
-    await page.getByRole('menuitem', { name: 'Scale Beats', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Scale Beats…', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
     await dialog.getByRole('spinbutton', { name: 'Scale Factor', exact: true }).fill('2')

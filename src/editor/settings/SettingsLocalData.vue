@@ -354,7 +354,7 @@ const exportRaw = async () => {
                         data-recovery-open
                         @click="open(item)"
                     >
-                        {{ i18n.commands.open.title }}
+                        {{ i18n.commands.open.dialogTitle }}
                     </button>
                     <button
                         type="button"

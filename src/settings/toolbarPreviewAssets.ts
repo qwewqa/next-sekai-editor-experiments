@@ -1,4 +1,4 @@
-/** The group `toolbarPreviewAssetsMigrated` looks for: the playback group before Preview Assets… joined it. */
+/** The group `toolbarPreviewAssetsMigrated` looks for: the playback group before Preview Assets joined it. */
 const formerPlayback = [
     'offset',
     'bgm',
@@ -11,7 +11,7 @@ const formerPlayback = [
 ]
 
 /**
- * The toolbar step `toolbarPreviewAssetsMigrated`: Preview Assets… goes first in
+ * The toolbar step `toolbarPreviewAssetsMigrated`: Preview Assets goes first in
  * a group that exactly matches the old default playback group, so Play stays its face. A
  * customised toolbar, or one that has the command, is left as it is.
  */

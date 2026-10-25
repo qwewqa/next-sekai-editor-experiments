@@ -229,7 +229,7 @@ test('Escape in the description asks before it throws the typed text away', asyn
     expect((await levelInfoOf(page)).description).toBe('Typed but not left')
 })
 
-test('Make from BGM… and Edit in Cover Editor… return their result with the typed fields kept', async ({
+test('Make from BGM… and Edit in Cover Editor return their result with the typed fields kept', async ({
     page,
 }) => {
     const form = await openLevelInfo(page)
@@ -342,9 +342,9 @@ test('a cover that is not loaded says so, and the same file brings it back witho
     await expect(dialog(page)).toHaveCount(0)
 })
 
-test('Check… on the file line runs Check File and History', async ({ page }) => {
+test('Check on the file line runs Check File and History', async ({ page }) => {
     const form = await openLevelInfo(page)
-    await form.getByRole('button', { name: 'Check…', exact: true }).click()
+    await form.getByRole('button', { name: 'Check', exact: true }).click()
     const report = page.getByRole('dialog', { name: 'Check File and History', exact: true })
     await expect(report).toContainText('No damage found.')
     await report.getByRole('button', { name: 'Close', exact: true }).last().click()

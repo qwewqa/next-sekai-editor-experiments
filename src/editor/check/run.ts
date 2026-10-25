@@ -20,7 +20,7 @@ import { unlinkSession } from '../save/unlink'
 import { phaseFraction } from './progress'
 import { refusalLine, reportLines, type CheckText, type Findings } from './report'
 
-// Check File and History… on the page: which file, then the
+// Check File and History on the page: which file, then the
 // run inside the Save queue: the wait for the chain's imports, `nse-maint` shared from there to
 // the finish, the file read in full, the stored history, and the finish with the worker's repair,
 // marks and media removal. The unlink of a damaged file follows. Cancel works until the finish
