@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test'
 
-// The v1 format fixtures' writer (npm run fixtures:v1; Part 1 §1.6.11.9): it drives the real editor
+// The v1 format fixtures' writer (npm run fixtures:v1): it drives the real editor
 // on a dev server and writes the fixtures only with NSE_WRITE_FIXTURES=1. Run it once, before the
 // v0.6.0 tag, with TZ=UTC.
 const port = process.env.PLAYWRIGHT_PORT ?? '5283'

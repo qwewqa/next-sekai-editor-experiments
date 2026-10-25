@@ -25,7 +25,7 @@ import {
     type DumpJson,
 } from './seed'
 
-// The v1 web storage fixtures (tests/fixtures/web-storage-v1/, Part 1 §1.6.11.9) read by the
+// The v1 web storage fixtures (tests/fixtures/web-storage-v1/) read by the
 // running editor: a fresh profile seeded from a dump, the editor loaded over it, as it is when a
 // maintainer loads a user's dump or a later build meets a profile v1 wrote. Each test names the
 // bug it catches. WebKit's private contexts refuse Blobs, so the Blob stores are left out of the

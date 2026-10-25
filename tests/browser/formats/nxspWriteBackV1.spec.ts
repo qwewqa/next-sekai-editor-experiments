@@ -9,8 +9,8 @@ import { queuePicks, readFile, writeFile } from '../saveFlows'
 import { skipWhereTheEditorCannotStart } from '../webkitSupport'
 import { rowsOf, seededContext, visit } from './seed'
 
-// Each v1 `.nxsp` fixture with history (tests/native/fixtures/nxsp-v1/, Part 1 §1.6.11.9), opened
-// under the OPFS override, edited once and saved back in place (§1.6.11.6). The Save is an append:
+// Each v1 `.nxsp` fixture with history (tests/native/fixtures/nxsp-v1/), opened
+// under the OPFS override, edited once and saved back in place. The Save is an append:
 // the result opens fully, its chronology begins with the fixture's, its `chunks.bin` begins with the
 // fixture's bytes, its segments are the fixture's, and its `completeFrom` is the fixture's. This is
 // the path that would lose a user's history if a later appender misread a v1 source.

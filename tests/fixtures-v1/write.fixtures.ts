@@ -30,8 +30,8 @@ import {
 import { Products } from './products'
 import { nxspReadme, webReadme } from './readme'
 
-// The v1 format fixtures' writer (`npm run fixtures:v1`; Part 1 §1.6.11.9). It drives the real
-// editor through the scenario of work/release/fixtures/scenario.md and writes the fixtures only
+// The v1 format fixtures' writer (`npm run fixtures:v1`). It drives the real
+// editor through the scripted scenario of its context files and writes the fixtures only
 // with NSE_WRITE_FIXTURES=1, and only into empty folders (NSE_FIXTURES_OUT=<dir> writes both
 // folders under <dir> instead, for a dry run). Run it with TZ=UTC.
 

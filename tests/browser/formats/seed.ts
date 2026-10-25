@@ -39,7 +39,7 @@ export const valuesOf = (dump: DumpJson, store: string) =>
 /** The stores that hold Blobs: WebKit's private contexts refuse them in IndexedDB. */
 export const BLOB_STORES = ['media', 'recovered', 'userAssets']
 
-/** The chains of the main dump by the letters the scenario uses (Part 1 §1.6.11.9). */
+/** The chains of the main dump by the letters the scenario uses. */
 export const chainsOf = (dump: DumpJson) => {
     const chains = valuesOf(dump, 'chains')
     const sessions = valuesOf(dump, 'sessions')

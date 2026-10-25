@@ -21,7 +21,7 @@ import { nxspFolder, webFolder } from '../fixtures-v1/folders'
 import { FIXTURE_BUILDS, SUMS_DIGESTS } from './fixturesV1Pins'
 import { rows } from './flush/harness'
 
-// The v1 fixtures as a set (Part 1 §1.6.11.9): their checksums, that both dumps and the raw
+// The v1 fixtures as a set: their checksums, that both dumps and the raw
 // export's dump load, and what the files and rows together exercise. Each test names the bug it
 // catches. The fixtures are the v0.6.0 editor's own output and never change; this test is why a
 // later build's regeneration of them cannot go unnoticed.

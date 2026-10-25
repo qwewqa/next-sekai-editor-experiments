@@ -1,17 +1,17 @@
-// The two folders' README.md files: what each fixture holds and which scenario step made it.
+// The two folders' README.md files: what each fixture holds and which step made it.
 
 export const nxspReadme = (build: string) => `# \`.nxsp\` v1 fixtures
 
 Written once by \`npm run fixtures:v1\` (\`tests/fixtures-v1/write.fixtures.ts\`) from the editor build
-\`${build}\`: the real editor in Chromium on a dev server, driven through the scenario of Part 1
-§1.6.11.9. Each file is what that build wrote, and \`SHA256SUMS\` pins its bytes.
+\`${build}\`: the real editor in Chromium on a dev server, driven through a scripted scenario
+(`tests/fixtures-v1`). Each file is what that build wrote, and \`SHA256SUMS\` pins its bytes.
 
 They are frozen when v0.6.0 is tagged and never changed after it. Every later build opens each one
 (\`tests/zip/nxspV1.test.ts\`, \`tests/browser/formats/nxspWriteBackV1.spec.ts\`,
 \`tests/local/fixturesV1.test.ts\`), and \`check.yml\` runs the independent checker over them. A gap is
 filled by running the writer of the \`v0.6.0\` tag, never a later build's.
 
-The files, with the steps that made them (A1 to A13, B, D and E are the scenario's steps and
+The files, with the steps that made them (A1 to A13, B, D and E are the writer's steps and
 contexts):
 
 | File | Made by | Holds |

@@ -3,7 +3,7 @@ import vm from 'node:vm'
 import type { MemoryStorage } from '../../src/local/journal/store'
 
 // The support gate (`public/gate.js`) as the browser runs it, for tests: plain ES5 that runs before
-// the bundle and reads the stored formats on its own (Part 1 §1.6.10, §1.6.11.3).
+// the bundle and reads the stored formats on its own.
 
 const source = readFileSync('public/gate.js', 'utf8')
 

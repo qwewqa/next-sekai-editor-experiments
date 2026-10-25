@@ -49,7 +49,7 @@ import {
     type Tab,
 } from './world'
 
-// Context A: a write-back browser on its own device (Part 1 §1.6.11.9, scenario steps 1 to 13).
+// Context A: a write-back browser on its own device (steps A1 to A13).
 
 /** The build the fixtures carry: the dev server's own version string, which no reader compares. */
 export const BUILD = appVersion({ cwd: resolve(import.meta.dirname, '../..') }).appVersion

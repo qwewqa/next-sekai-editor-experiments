@@ -8,7 +8,7 @@ import { crafted, jsonOf, setJson } from '../local/nxsp/craft'
 import { headInput } from '../local/nxsp/helpers'
 import { goldenChart, note, stage, stateOf, type FixtureChart } from '../local/records/charts'
 
-// The level the scenario starts from: the records golden chart (Part 1 §1.6.11.1) without what only
+// The level the scenario starts from: the records golden chart without what only
 // dynamic stages hold (the scenario turns them on and adds them through the editor), and without
 // media (the scenario adds those through the editor), plus one note in each of 18 more 16-beat
 // windows, so a kind holds more than 16 chunks and its node has depth 1.
@@ -65,7 +65,7 @@ export const startInput = (now: number, appVersion: string): BuildInput => {
         ...headInput(state),
         summary: summaryOf(toRecords(state)),
         media: {},
-        // Names no build reads: they ride through every Save of the chain (Part 1 §1.6.11.4).
+        // Names no build reads: they ride through every Save of the chain.
         extra: {
             zzTopLevel: { carried: true },
             metadata: { zzMeta: ['carried', 1] },

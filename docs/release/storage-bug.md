@@ -1,6 +1,6 @@
 # When a release breaks storage
 
-The steps for the maintainer when a release stops users from reaching their stored work, and the reply to post. The rules behind it are in the release plan (Part 4 §4.9.3). Export Raw Data… is in every build from v0.6.0 on, and it reads the database without the editor's record decoder, so it works when Recent Sessions and Save… do not.
+The steps for the maintainer when a release stops users from reaching their stored work, and the reply to post. Export Raw Data… is in every build from v0.6.0 on, and it reads the database without the editor's record decoder, so it works when Recent Sessions and Save… do not.
 
 ## 1. When to use it
 
@@ -49,7 +49,7 @@ Work the editor could not read is under Settings › Local Data › Recovery: th
 
 If the build cannot read a chain, fix the reader on a branch and load the dump again into a fresh profile. The seeder refuses the profile that was seeded already.
 
-There is no `tools/recover.py`. It is deferred until a storage bug needs it (Part 4 §4.9.3).
+There is no `tools/recover.py`. It is deferred until a storage bug needs it.
 
 ## 7. Returning the files
 

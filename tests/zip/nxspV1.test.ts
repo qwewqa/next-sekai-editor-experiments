@@ -13,7 +13,7 @@ import { nxspFolder } from '../fixtures-v1/folders'
 import { crafted, jsonOf, setJson, unzip } from '../local/nxsp/craft'
 import { rawZip, type RawEntry } from './rawZip'
 
-// The v1 `.nxsp` fixtures (`tests/native/fixtures/nxsp-v1/`, Part 1 §1.6.11.9), read by the editor's
+// The v1 `.nxsp` fixtures (`tests/native/fixtures/nxsp-v1/`), read by the editor's
 // reader as every later build must read them. Each test names the bug it catches: a later build
 // that misreads a v1 file. The files are the v0.6.0 editor's own output; what is crafted here is
 // made from `full.nxsp` at test time.
