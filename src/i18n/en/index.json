@@ -1729,6 +1729,9 @@
             "laneAlpha": {
                 "label": "Lane Alpha"
             },
+            "laneColor": {
+                "label": "Lane Color"
+            },
             "left": {
                 "label": "Lane"
             },

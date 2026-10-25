@@ -1729,6 +1729,9 @@
       "laneAlpha": {
         "label": "Opacité des voies"
       },
+      "laneColor": {
+        "label": "Couleur des voies"
+      },
       "left": {
         "label": "Voie"
       },

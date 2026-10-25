@@ -1729,6 +1729,9 @@
       "laneAlpha": {
         "label": "レーンの不透明度"
       },
+      "laneColor": {
+        "label": "レーンの色"
+      },
       "left": {
         "label": "レーン"
       },

@@ -1729,6 +1729,9 @@
       "laneAlpha": {
         "label": "軌道不透明度"
       },
+      "laneColor": {
+        "label": "軌道顏色"
+      },
       "left": {
         "label": "軌道"
       },

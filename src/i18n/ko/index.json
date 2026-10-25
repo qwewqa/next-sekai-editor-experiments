@@ -1729,6 +1729,9 @@
       "laneAlpha": {
         "label": "레인 불투명도"
       },
+      "laneColor": {
+        "label": "레인 색상"
+      },
       "left": {
         "label": "레인"
       },

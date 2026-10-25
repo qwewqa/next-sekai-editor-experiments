@@ -52,8 +52,9 @@ const open = async (page: Page, settings: Record<string, unknown> = {}) => {
         // Each head gets a tail, so connector fields show.
         chart.slides = chart.slides.map(([head]) => [head!, { ...head!, beat: head!.beat + 1 }])
         chart.timeScales = structuredClone(fixtures.events.timeScales)
-        // Two stage style events, one cyan and one black.
+        // Two stage style events, one cyan and one black. The first has a red lane.
         chart.stageStyleEvents = structuredClone(fixtures.events.stageStyleEvents).slice(0, 2)
+        Object.assign(chart.stageStyleEvents[0]!, { laneColor: 'red' })
         Object.assign(chart.stageStyleEvents[1]!, { judgmentLineColor: 'black' })
         history.resetState(false, chart, 0, { sourceName: 'glyphs.json' })
         Object.assign(window.editorTest.settings, {
@@ -166,6 +167,36 @@ test('stage style color fields show the judgment line hue', async ({ page }) => 
     // Mixed values show no swatch.
     await select(page, 'stageStyleEventJoint', [0, 1])
     await expect(lead(page, 'Judgment Line Color')).toHaveCount(0)
+})
+
+test('Lane Color shows a ring for Default and the color’s swatch for the others', async ({
+    page,
+}) => {
+    await open(page)
+    const dot = (label: string) => lead(page, label).locator('circle:not([data-swatch-edge])')
+    await select(page, 'stageStyleEventJoint', [0])
+    await expect(dot('Lane Color')).toHaveAttribute('fill', '#d6737b')
+    const color = field(page, 'Lane Color').locator('select')
+    await expect(color.locator('.select-option-glyph circle:not([data-swatch-edge])')).toHaveCount(
+        9,
+    )
+    // Default is the dashed ring, as in Note Color.
+    await expect(
+        color
+            .getByRole('option', { name: 'Default', exact: true })
+            .locator('circle:not([data-swatch-edge])'),
+    ).toHaveAttribute('stroke-dasharray', '2.2 2')
+    await expect(
+        color
+            .getByRole('option', { name: 'Black', exact: true })
+            .locator('circle:not([data-swatch-edge])'),
+    ).toHaveAttribute('fill', '#555555')
+    await select(page, 'stageStyleEventJoint', [1])
+    await expect(dot('Lane Color')).toHaveAttribute('stroke-dasharray', '2.2 2')
+    // Mixed values show no swatch, and the Judgment Line Color above is untouched.
+    await select(page, 'stageStyleEventJoint', [0, 1])
+    await expect(lead(page, 'Lane Color')).toHaveCount(0)
+    await expect(field(page, 'Lane Color').locator('.form-field-mixed-value')).toHaveCount(2)
 })
 
 test('note type and SFX fields picture the note', async ({ page }) => {
