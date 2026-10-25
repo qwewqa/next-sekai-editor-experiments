@@ -22,14 +22,7 @@ import type {
 // preview's worker, sends each frame's chart changes, selection and time, and hands over to
 // the main host when the worker fails.
 
-/** `main` or `worker`: which host draws the preview, whatever the setting says. */
-export const PREVIEW_HOST_KEY = 'nse.test.previewHost'
-/** The worker host's test flags (PreviewWorkerFlags, as JSON). */
-export const PREVIEW_WORKER_FLAGS_KEY = 'nse.test.previewWorker'
-
 const readKey = (key: string) => {
-    // Perf builds read it too, so one build can measure both hosts.
-    if (!testKeysOpen && !PERF) return null
     try {
         return localStorage.getItem(key)
     } catch {
@@ -37,9 +30,13 @@ const readKey = (key: string) => {
     }
 }
 
+// Test builds read these keys, and perf builds too, so one build can measure both hosts. Each
+// read is behind the build's constants, so a release bundle has neither key.
 const readFlags = (): PreviewWorkerFlags => {
+    if (!testKeysOpen && !PERF) return {}
     try {
-        const parsed = JSON.parse(readKey(PREVIEW_WORKER_FLAGS_KEY) ?? '{}') as unknown
+        // The worker host's test flags, as JSON.
+        const parsed = JSON.parse(readKey('nse.test.previewWorker') ?? '{}') as unknown
         return typeof parsed === 'object' && parsed !== null ? parsed : {}
     } catch {
         return {}
@@ -52,7 +49,8 @@ const canUseWorkerHost = () =>
     typeof OffscreenCanvas === 'function' &&
     typeof HTMLCanvasElement.prototype.transferControlToOffscreen === 'function'
 
-const forcedHost = readKey(PREVIEW_HOST_KEY)
+/** `main` or `worker`: which host draws the preview, whatever the setting says. */
+const forcedHost = testKeysOpen || PERF ? readKey('nse.test.previewHost') : null
 /** Whether the browser can draw the preview in its worker; the setting shows only where it can. */
 export const workerHostSupported = canUseWorkerHost()
 const supported = workerHostSupported
