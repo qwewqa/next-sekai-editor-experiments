@@ -116,7 +116,7 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 
 The `act` scenario measures one user action at a time (`scripts/perf/actions.mjs`). Each repeat prepares the page, which is not measured, sends one input, and waits for the first animation frame where the action's result shows. The record's `input` holds:
 
-- `response`: from the input event to that frame, in ms. A held input (`arrowHold`, `listWheel`) is timed from its last event;
+- `response`: from the input event to the start of the frame after that one, in ms, so the work of the frame that shows the result is in it. A held input (`arrowHold`, `listWheel`) is timed from its last event. `resultFrame` is the start of the frame where the result first showed;
 - `busy`: when a busy state first showed (a spinner, "Preparing…", "Deleting…");
 - `marks`: later points the action names, such as `change` (the peek's change view is known) or `complete` (Edits Here has checked every entry);
 - `eventMax`: the longest Event Timing entry for the inputs (16 ms and over), and `keyEvents`, the spread of a held key's entries;

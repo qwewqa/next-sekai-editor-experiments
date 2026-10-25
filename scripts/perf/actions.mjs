@@ -28,12 +28,12 @@ export const installActionProbe = () => {
         )
     const compile = (source) => source && new Function('P', 'A', `return (${source})`)
     /** Scrolls only scroll containers: scrollIntoView also scrolls clipped ancestors and the page. */
-    const unscroll = () => {
-        for (const e of [
-            document.documentElement,
-            document.body,
-            ...document.querySelectorAll('*'),
-        ]) {
+    /** Puts back clipped ancestors of `element` (or the page's root levels) that were scrolled. */
+    const unscroll = (element) => {
+        const list = [document.documentElement, document.body]
+        if (element) for (let e = element.parentElement; e; e = e.parentElement) list.push(e)
+        else list.push(...document.querySelectorAll('body > *, body > * > *, body > * > * > *'))
+        for (const e of list) {
             if (!e.scrollTop && !e.scrollLeft) continue
             const style = getComputedStyle(e)
             if (
@@ -49,7 +49,7 @@ export const installActionProbe = () => {
         unscroll,
         centre(element) {
             element?.scrollIntoView({ block: 'center' })
-            unscroll()
+            unscroll(element)
         },
         arm(spec) {
             const P = window.nsePerf
@@ -161,7 +161,10 @@ export const installActionProbe = () => {
             const rel = (t) => (t === undefined ? undefined : t - lastInput)
             return {
                 timedOut: done === undefined,
-                response: rel(done),
+                // To the frame after the one where the result showed: that frame's own work (the
+                // rows, the chart) is done by then, and its paint follows.
+                response: rel(a.frames.find((t) => done !== undefined && t > done)),
+                resultFrame: rel(done),
                 busy: rel(a.at.busy),
                 marks: Object.fromEntries(Object.entries(a.at.marks).map(([k, t]) => [k, rel(t)])),
                 inputs: a.inputs.length,
