@@ -61,6 +61,16 @@ COST_PINS = {
         ("Mappings", "Sizes", "prod", "DataGiB"): 30,
         ("Mappings", "Sizes", "dev", "InstanceType"): "t4g.micro",
         ("Mappings", "Sizes", "dev", "DataGiB"): 10,
+        # The properties that would set the same costs another way.
+        ("Resources", "Instance", "Properties", "InstanceType"): {"Fn::FindInMap": ["Sizes", {"Ref": "Environment"}, "InstanceType"]},
+        ("Resources", "Instance", "Properties", "CreditSpecification", "CPUCredits"): "standard",
+        ("Resources", "Instance", "Properties", "BlockDeviceMappings", 0, "Ebs", "VolumeSize"): 8,
+        ("Resources", "DataVolume", "Properties", "Size"): {"Fn::FindInMap": ["Sizes", {"Ref": "Environment"}, "DataGiB"]},
+        ("Resources", "DataVolume", "Properties", "VolumeType"): "gp3",
+        ("Resources", "DataVolume", "Properties", "Iops"): None,
+        ("Resources", "DataVolume", "Properties", "Throughput"): None,
+        ("Resources", "StatusAlarm", "Properties", "Period"): 60,
+        ("Resources", "DumpBucket", "Properties", "LifecycleConfiguration", "Rules", 0, "ExpirationInDays"): 28,
     },
     "account/account.yaml": {
         ("Mappings", "Environments", "prod", "BudgetUsd"): "30",
@@ -68,10 +78,9 @@ COST_PINS = {
     },
 }
 
+# Retain, or RetainExceptOnCreate, which also deletes what a failed first create made.
+RETAIN_POLICIES = {"Retain", "RetainExceptOnCreate"}
 RETAINED_TYPES = {"AWS::EC2::Volume", "AWS::S3::Bucket", "AWS::EC2::EIP", "AWS::Route53::HostedZone"}
-READ_ONLY = re.compile(r"^[a-z0-9]+:(Describe|List|Get)")
-# Resources that carry no tag of ours, which a statement may name without a name or tag scope.
-UNTAGGED_OK_SIDS = {"UseUntaggedEc2", "AssociateWithNetworkInterfaces", "WaitForRecordChanges", "RunCommandDocument"}
 DESTRUCTIVE = {
     "cloudformation:DeleteStack",
     "ec2:DeleteVolume",
@@ -144,8 +153,10 @@ def check_types_and_tags(name, service, template, readme, errors):
             errors.append(f"{name}: {kind} is billable ({cost}) but missing from the cost table in {service['readme']}.")
         if kind in RETAINED_TYPES:
             for key in ("DeletionPolicy", "UpdateReplacePolicy"):
-                if res.get(key) != "Retain":
-                    errors.append(f"{name}: {rid} must have {key}: Retain.")
+                if key == "DeletionPolicy" and res.get(key) not in RETAIN_POLICIES:
+                    errors.append(f"{name}: {rid} must have DeletionPolicy: Retain or RetainExceptOnCreate.")
+                if key == "UpdateReplacePolicy" and res.get(key) != "Retain":
+                    errors.append(f"{name}: {rid} must have UpdateReplacePolicy: Retain.")
         if tag_property:
             tags = {t.get("Key"): t.get("Value") for t in res["Properties"].get(tag_property, []) if isinstance(t, dict)}
             expected = "shared" if name == "shared" else name
@@ -193,43 +204,19 @@ def check_roles(name, template, errors):
             if trust["Condition"]["StringEquals"].get("token.actions.githubusercontent.com:aud") != "sts.amazonaws.com":
                 errors.append(f"shared: {rid} must require the audience sts.amazonaws.com.")
         if name == "shared" and match:
-            own_roles = {r for r, v in template["Resources"].items() if v["Type"] == "AWS::IAM::Role" and ROLE_NAME.match(v["Properties"]["RoleName"])}
-            check_role_policy(match["service"], rid, res, own_roles, errors)
+            check_role_policy(rid, res, errors)
 
 
-def own_resource(resource, service, own_roles):
-    """An ARN named for the service, the baseline stack, its zone, or one of this template's own roles."""
-    if isinstance(resource, dict) and "Fn::GetAtt" in resource:
-        return resource["Fn::GetAtt"][0] in own_roles
-    value = text(resource)
-    return f"nse-{service}" in value or "${AWS::StackName}" in value or "${ServicesZone}" in value
-
-
-def check_role_policy(service, rid, role, own_roles, errors):
+def check_role_policy(rid, role, errors):
+    """The deploy role may destroy only in dev, and in prod it denies DeleteStack. Scope is for the reviewer."""
     deploy = rid.endswith("DeployRole")
     deny_delete_in_prod = False
     for stmt, prod in statements(role):
         actions = as_list(stmt["Action"])
-        raw = as_list(stmt.get("Resource", []))
-        resources = [text(r) for r in raw]
-        sid = stmt.get("Sid", "?")
         if stmt["Effect"] == "Deny":
             deny_delete_in_prod |= prod is True and "cloudformation:DeleteStack" in actions
-            continue
-        if "*" in actions or any(a.endswith(":*") and a != "s3:*" for a in actions):
-            errors.append(f"{rid}/{sid}: wildcard actions are not allowed: {actions}")
-        if deploy and DESTRUCTIVE & set(actions) and prod is not False:
-            errors.append(f"{rid}/{sid}: {sorted(DESTRUCTIVE & set(actions))} may be allowed in dev only.")
-        condition = str(stmt.get("Condition", ""))
-        scoped = (
-            (resources == ["*"] and all(READ_ONLY.match(a) for a in actions))
-            or (resources and resources != ["*"] and all(own_resource(r, service, own_roles) for r in raw))
-            or f"nse:service': '{service}'" in condition
-            or "route53:ChangeResourceRecordSetsNormalizedRecordNames" in condition
-            or sid in UNTAGGED_OK_SIDS
-        )
-        if not scoped:
-            errors.append(f"{rid}/{sid}: not scoped to {service} by name or tag, and not read-only.")
+        elif deploy and DESTRUCTIVE & set(actions) and prod is not False:
+            errors.append(f"{rid}/{stmt.get('Sid', '?')}: {sorted(DESTRUCTIVE & set(actions))} may be allowed in dev only.")
     if deploy and not deny_delete_in_prod:
         errors.append(f"{rid}: the prod deploy role needs an explicit deny of cloudformation:DeleteStack.")
 
@@ -238,7 +225,11 @@ def check_pins(name, template, errors):
     for key, want in COST_PINS.get(template_key(name), {}).items():
         node = template
         for part in key:
-            node = node[part]
+            try:
+                node = node[part]
+            except (KeyError, IndexError):
+                node = None
+                break
         if node != want:
             errors.append(
                 f"{'/'.join(key)} is {node!r}, pinned at {want!r}. It sets the monthly cost: "

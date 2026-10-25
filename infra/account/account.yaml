@@ -124,6 +124,8 @@ Resources:
                                 - cloudformation:DeleteChangeSet
                                 - cloudformation:GetTemplate
                                 - cloudformation:UpdateTerminationProtection
+                                # deploy.sh passes the two tags with --tags.
+                                - cloudformation:TagResource
                             Resource:
                                 - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats/*
                                 - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/nse-stats-*/*
@@ -260,11 +262,13 @@ Resources:
                                 - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:elastic-ip/*
                             Condition:
                                 StringEquals: { 'aws:RequestTag/nse:service': stats }
-                          # Resources a launch or a security group refers to, none of which carry a tag of ours.
+                          # Resources a launch or a security group refers to, none of which carry a tag of ours. That
+                          # includes the root volume: CloudFormation tags only the instance (CreateVolume stays scoped).
                           - Sid: UseUntaggedEc2
                             Effect: Allow
                             Action: [ec2:RunInstances, ec2:CreateSecurityGroup]
                             Resource:
+                                - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
                                 - !Sub arn:aws:ec2:${AWS::Region}::image/*
                                 - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet/*
                                 - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
@@ -298,7 +302,12 @@ Resources:
                                 - ec2:DetachVolume
                                 - ec2:AssociateAddress
                                 - ec2:DisassociateAddress
+                                # A failed first create is rolled back, address and volume included (RetainExceptOnCreate).
+                                - ec2:ReleaseAddress
                                 - ec2:TerminateInstances
+                                # Changing the instance type stops and starts the instance.
+                                - ec2:StopInstances
+                                - ec2:StartInstances
                                 - ec2:RebootInstances
                                 - ec2:ModifyInstanceAttribute
                                 - ec2:ModifyInstanceMetadataOptions
@@ -361,11 +370,26 @@ Resources:
                             Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/nse-stats-*
                             Condition:
                                 StringEquals: { 'iam:PassedToService': ec2.amazonaws.com }
+                          # nse-stats-* also matches these two roles, which this baseline owns. A service cannot widen
+                          # its own permissions.
+                          - Sid: NotTheBaselineRoles
+                            Effect: Deny
+                            Action: 'iam:*'
+                            Resource:
+                                - !Sub arn:aws:iam::${AWS::AccountId}:role/nse-stats-deploy
+                                - !Sub arn:aws:iam::${AWS::AccountId}:role/nse-stats-cfn
                           # The bucket itself, not its objects: the dumps are written by the instance.
                           - Sid: StatsBuckets
                             Effect: Allow
                             Action: s3:*
                             Resource: arn:aws:s3:::nse-stats-*
+                          # The first alarm with an EC2 action (the prod reboot alarm) creates this role in a new account.
+                          - Sid: AlarmRebootActionRole
+                            Effect: Allow
+                            Action: iam:CreateServiceLinkedRole
+                            Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/events.amazonaws.com/AWSServiceRoleForCloudWatchEvents
+                            Condition:
+                                StringEquals: { 'iam:AWSServiceName': events.amazonaws.com }
                           - Sid: StatsAlarms
                             Effect: Allow
                             Action:
