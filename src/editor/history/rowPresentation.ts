@@ -30,6 +30,35 @@ export const recipeOfRow = (row: EntryRow): OperationRecipe =>
     )
 
 /**
+ * Row recipes kept from one build to the next. A recipe depends only on the row's
+ * members, `partial` and `child`, and entries are never changed in place, so a row with the same
+ * `partial`, `child` and member objects as before reuses its recipe. Rows that are gone are dropped.
+ */
+export const createRecipeCache = () => {
+    let kept = new Map<string, { row: EntryRow; recipe: OperationRecipe }>()
+    return (rows: readonly Row[]): ReadonlyMap<string, OperationRecipe> => {
+        const next = new Map<string, { row: EntryRow; recipe: OperationRecipe }>()
+        const recipes = new Map<string, OperationRecipe>()
+        for (const row of rows) {
+            if (row.type !== 'entry') continue
+            const old = kept.get(row.id)
+            const recipe =
+                old &&
+                !!old.row.partial === !!row.partial &&
+                old.row.child === row.child &&
+                old.row.members.length === row.members.length &&
+                old.row.members.every((member, i) => member === row.members[i])
+                    ? old.recipe
+                    : recipeOfRow(row)
+            next.set(row.id, { row, recipe })
+            recipes.set(row.id, recipe)
+        }
+        kept = next
+        return recipes
+    }
+}
+
+/**
  * The one device formatter for rows: "Saved on iPad" for an app device, "Saved in the web editor
  * (Chrome)" for a web label, which is never shown raw. A web label is
  * "Web (Chrome)", or "Web" when the browser is not known.
