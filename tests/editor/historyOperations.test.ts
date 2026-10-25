@@ -842,3 +842,26 @@ test('unknown keys are found at the levels of a step, a context and an entry', (
     // Not objects: left alone, for the codec to refuse.
     assert.deepEqual(stripUnknownStepKeys(5), { value: 5, unknown: [] })
 })
+
+test('a capture is frozen all the way down, so capturing it again returns it as it is', () => {
+    const operation = wire('future.action', { index: 1, list: [1, 'two', { three: null }] })
+    const x = { future: [1, { deep: true }] }
+    const head = captureStep({ kind: 'edit', operation, x: { head: true } })
+    const context = createRecoveryContext(head, [step(2), step(3)], 1)
+    const captured = captureStep({ kind: 'edit', operation, x, recoveryContext: { ...context, x } })
+    const unfrozen: string[] = []
+    const walk = (value: unknown, path: string) => {
+        if (typeof value !== 'object' || value === null) return
+        if (!Object.isFrozen(value)) unfrozen.push(path)
+        for (const [key, item] of Object.entries(value)) walk(item, `${path}.${key}`)
+    }
+    walk(captured, 'step')
+    walk(operation, 'operation')
+    assert.deepEqual(unfrozen, [])
+    // Captured again: the same value, equal to a capture of a fresh copy.
+    assert.equal(captureStep(captured), captured)
+    assert.equal(captureOperation(operation), operation)
+    sameJson(captureStep(structuredClone(JSON.parse(JSON.stringify(captured)))), captured)
+    // An equal value that is not a capture is checked as any other.
+    assert.throws(() => captureStep({ ...JSON.parse(JSON.stringify(captured)), extra: 1 }))
+})

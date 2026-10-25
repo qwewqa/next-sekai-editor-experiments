@@ -28,14 +28,23 @@ const plannedJson = (entry: PlannedEntry): unknown => {
 
 const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
+/**
+ * Each source's checked parts. A build reads them several times; a source is inspected for one
+ * build and never changed, so its parts are checked once.
+ */
+const checkedSources = new WeakMap<PinnedSource, readonly SegmentForm[]>()
+
 /** The source's parts in order, each checked: its segments, then its manifest. */
 export const sourceParts = (source: PinnedSource): SegmentForm[] => {
+    const known = checkedSources.get(source)
+    if (known) return [...known]
     const parsed = source.manifest ?? fail('the source has no history')
     const parts: SegmentForm[] = []
     for (const [i, segment] of parsed.segments.entries())
         parts.push(checkPart(segment, `segments[${i}]`, false).part ?? fail(`segment ${i}`))
     parts.push(checkPart(parsed.manifest, 'manifest', true).part ?? fail('manifest'))
-    return parts
+    checkedSources.set(source, parts)
+    return [...parts]
 }
 
 /** The source's history pointers and its segments' entries, in `history.segments` order. */

@@ -131,7 +131,14 @@ export const captureRecoveryContext = (value: unknown): RecoveryContext => {
     return captured
 }
 
+/**
+ * Steps this function returned. A capture is frozen all the way down (`captureJson`), so one
+ * captured again would pass the same checks and come out equal: it is returned as it is.
+ */
+const capturedSteps = new WeakSet<object>()
+
 export const captureStep = (value: unknown): UndoableStep => {
+    if (isObject(value) && capturedSteps.has(value)) return value as unknown as UndoableStep
     const captured = captureJson(value, {
         bytes: 2 * OPERATION_WIRE_BYTES + RECOVERY_CONTEXT_BYTES + 4096,
         depth: OPERATION_WIRE_DEPTH + 4,
@@ -148,6 +155,7 @@ export const captureStep = (value: unknown): UndoableStep => {
         (hasContext && !context(captured.recoveryContext))
     )
         throw new OperationDataError('Invalid History step')
+    capturedSteps.add(captured)
     return captured as unknown as UndoableStep
 }
 
