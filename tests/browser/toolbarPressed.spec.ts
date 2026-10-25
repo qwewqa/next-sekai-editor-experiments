@@ -82,7 +82,7 @@ test('the toolbar shows the tool in use as pressed', async ({ page }) => {
     await expect(select).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(() => fillOf(select)).toBe('accent')
     // Plain actions are not toggles; modes not in use are.
-    for (const title of ['Undo', 'Open', 'Help'])
+    for (const title of ['Undo', 'Open…', 'Help'])
         await expect(shown(page).and(page.getByTitle(title, { exact: true }))).not.toHaveAttribute(
             'aria-pressed',
         )
@@ -626,7 +626,7 @@ const pick = async (page: Page, face: string, title: string) => {
 
 test('the default toolbar’s faces follow the tool and values in use', async ({ page }) => {
     const initial = [
-        'Open',
+        'Open…',
         'Play',
         'Undo',
         'Select*',

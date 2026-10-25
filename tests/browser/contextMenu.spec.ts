@@ -71,7 +71,7 @@ test('localized scale controls fit a narrow phone and reject invalid factors', a
     await expect.poll(() => page.evaluate(() => window.editorTest.view.w)).toBe(320)
     await selectTwo(page)
     await click(page, -3, 3)
-    await page.getByRole('menuitem', { name: 'Mettre les temps à l’échelle', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Mettre les temps à l’échelle…', exact: true }).click()
     const dialog = page.getByRole('dialog')
     const input = dialog.getByRole('spinbutton', { name: 'Facteur d’échelle', exact: true })
     await input.fill('0')
