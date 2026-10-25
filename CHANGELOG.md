@@ -20,6 +20,7 @@
 - On iPhone and iPad, playback is heard in silent mode.
 - Names with dots, such as "feat. Miku", are no longer cut at the first dot.
 - Settings has an About section with the version and **Copy Diagnostic Info…**, for reporting a problem.
+- The web editor sends usage statistics. Turn them off in **Settings › About › Send Usage Statistics**. The privacy page lists what is sent.
 - The preview is now rendered in parallel with the rest of the editor, so the chart stays smoother during playback and edits, especially on dense charts. If the preview looks wrong or does not appear, turn off **Settings › Preview › Parallel Rendering**.
 - The editor is now named "Next SEKAI Editor" (formerly "Sonolus Next SEKAI Editor").
 - **Safari 17 or later is required** (iOS 17 or later on iPhone and iPad).

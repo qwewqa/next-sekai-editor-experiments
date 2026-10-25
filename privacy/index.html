@@ -58,7 +58,7 @@
                         <h1 class="text-2xl font-bold text-fg-strong sm:text-3xl">Privacy</h1>
                         <p class="text-sm text-fg/80">
                             Last updated:
-                            <time datetime="2026-10-24">October 24, 2026</time>
+                            <time datetime="2026-10-25">October 25, 2026</time>
                         </p>
                     </div>
 
@@ -87,9 +87,11 @@
                             The Short Version
                         </h2>
                         <p>
-                            The web editor collects nothing about you. It has no accounts,
-                            analytics, cookies or crash reports. The site is static files on GitHub
-                            Pages, and we run no server that receives your data.
+                            The web editor has no accounts, cookies or crash reports. It sends usage
+                            statistics to our own server: counts of the tools, settings and files
+                            you use, and how long actions take, never your charts or file names.
+                            Turn it off in Settings › About › Send Usage Statistics. The site itself
+                            is static files on GitHub Pages.
                         </p>
                     </section>
 
@@ -122,7 +124,86 @@
                                     >GitHub’s privacy statement</a
                                 >.
                             </li>
+                            <li>
+                                Usage statistics to stats.nse-services.qwewqa.dev, unless you turn
+                                them off. See Usage Statistics.
+                            </li>
                         </ul>
+                    </section>
+
+                    <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="usage">
+                        <h2 id="usage" class="text-lg font-bold text-fg-strong">
+                            Usage Statistics
+                        </h2>
+                        <p>
+                            The editor sends these to stats.nse-services.qwewqa.dev, a server we run
+                            on Amazon Web Services in the United States:
+                        </p>
+                        <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
+                            <li>
+                                how often each tool and command is used, and whether from a key, the
+                                toolbar or a menu;
+                            </li>
+                            <li>
+                                a few important settings, such as the theme, the language and
+                                whether the minimap is shown;
+                            </li>
+                            <li>
+                                the kind and approximate size of files you open, save and export,
+                                and whether that worked;
+                            </li>
+                            <li>
+                                the approximate size of the chart, such as “1,000 to 2,000 notes”,
+                                and approximately how many Timeline steps and sessions in Recent
+                                Sessions this browser keeps;
+                            </li>
+                            <li>
+                                how a visit started, for example whether earlier work was recovered,
+                                and how many notices and errors appeared, without their messages;
+                            </li>
+                            <li>
+                                how long startup, opening and saving take, how often the editor is
+                                slow to respond, and approximately how long playback and the visit
+                                lasted;
+                            </li>
+                            <li>
+                                the editor’s version, your operating system and browser, your screen
+                                size, an approximate window size, the number of processor cores as a
+                                range, whether the preview could use graphics, and whether the
+                                editor is installed;
+                            </li>
+                            <li>
+                                whether this browser’s storage is available and how full it is,
+                                approximately.
+                            </li>
+                        </ul>
+                        <p>
+                            It never sends your charts or their content, file names, level titles or
+                            other text you type, or any identifier stored in your browser. Numbers
+                            such as sizes and counts are sent as ranges.
+                        </p>
+                        <p>
+                            The server receives your IP address and browser’s user agent with each
+                            request. It uses them to count visits and to find your country, and does
+                            not store them. To count visits it keeps a code made from them that
+                            changes every day. It sets no cookies and stores nothing in your
+                            browser.
+                        </p>
+                        <p>
+                            We keep the statistics until we decide on a time limit, which the
+                            release notes and this page would announce. Only the maintainer can see
+                            them.
+                        </p>
+                        <p>
+                            Nothing is sent from a visit until you use the editor, for example by
+                            clicking or pressing a key.
+                        </p>
+                        <p>
+                            <strong class="text-fg-strong">Turning it off.</strong> Turn off
+                            Settings › About › Send Usage Statistics. Nothing more is sent from that
+                            moment. If your browser sends Do Not Track or Global Privacy Control,
+                            the editor sends nothing unless you turn the setting on.
+                        </p>
                     </section>
 
                     <section class="flex max-w-[65ch] flex-col gap-3" aria-labelledby="content">
@@ -141,8 +222,12 @@
                         </h2>
                         <ul class="flex list-disc flex-col gap-2 pl-5 marker:text-fg/60">
                             <li>
-                                <strong class="text-fg-strong">We keep nothing.</strong> GitHub’s
-                                request logs are kept under GitHub’s policy. Questions go to
+                                <strong class="text-fg-strong">Usage statistics.</strong> We keep
+                                the usage statistics described above with no time limit for now.
+                                They contain no name, account or identifier, so there is no way to
+                                find or delete one person’s statistics. To stop any more being sent,
+                                turn off Settings › About › Send Usage Statistics. GitHub’s request
+                                logs are kept under GitHub’s policy. Questions go to
                                 <a href="mailto:nse@qwewqa.dev" class="link">nse@qwewqa.dev</a>.
                             </li>
                             <li>
