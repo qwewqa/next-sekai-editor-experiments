@@ -19,7 +19,10 @@ const settle = (page: Page) =>
         )
     })
 
-const open = async (page: Page, host: 'main' | 'worker', flags: Record<string, unknown> = {}) => {
+/** `setting` leaves the host to the setting, stored as given unless undefined. */
+type Host = 'main' | 'worker' | { setting?: boolean }
+
+const open = async (page: Page, host: Host, flags: Record<string, unknown> = {}) => {
     await page.route('**/resource/skin.scp*', (route) => route.fulfill({ body: resource('skins') }))
     await page.route('**/resource/particle.scp*', (route) =>
         route.fulfill({ body: resource('particles') }),
@@ -27,7 +30,15 @@ const open = async (page: Page, host: 'main' | 'worker', flags: Record<string, u
     await page.addInitScript(installCanvasCounters)
     await page.addInitScript(
         ({ host, flags }) => {
-            localStorage.setItem('nse.test.previewHost', host)
+            if (typeof host === 'string') localStorage.setItem('nse.test.previewHost', host)
+            else {
+                localStorage.removeItem('nse.test.previewHost')
+                if (host.setting !== undefined)
+                    localStorage.setItem(
+                        'sonolus-next-sekai-editor.previewInWorker',
+                        JSON.stringify(host.setting),
+                    )
+            }
             localStorage.setItem('nse.test.previewWorker', JSON.stringify(flags))
             // The worker reports its counters here; the main host's are counted below.
             window.previewTest = {
@@ -169,6 +180,58 @@ test('a skin switch moves the new atlas to the worker, which keeps drawing', asy
     // Each switch decodes its skin once, on the main thread.
     expect(await page.evaluate(() => window.hostTest.decodes)).toBe(4)
     expect(await hostOf(page)).toBe('worker')
+})
+
+test('the setting moves the preview between hosts at once, and it keeps drawing', async ({
+    page,
+}) => {
+    await open(page, { setting: true })
+    expect(await hostOf(page)).toBe('worker')
+    await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(2)
+    for (const [on, host] of [
+        [false, 'main'],
+        [true, 'worker'],
+        [false, 'main'],
+    ] as const) {
+        const drawn = () =>
+            page.evaluate((host) => {
+                const { previewTest, hostTest } = window
+                return host === 'main' ? hostTest.mainFrames : previewTest.frames
+            }, host)
+        const before = await drawn()
+        // The first change through the panel's own switch.
+        if (!on && host === 'main' && before === 0)
+            await page
+                .locator('.preview-controls')
+                .getByRole('switch', { name: 'Parallel Rendering', exact: true })
+                .uncheck()
+        else await page.evaluate((on) => (window.editorTest.settings.previewInWorker = on), on)
+        await expect.poll(() => hostOf(page)).toBe(host)
+        await expect.poll(drawn).toBeGreaterThan(before)
+        await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
+        // The panel has one host's canvases again, and draws a new time.
+        await expect(page.locator('.preview-viewport canvas')).toHaveCount(2)
+        const now = await drawn()
+        await page.evaluate(() => (window.editorTest.view.cursorTime += 0.1))
+        await expect.poll(drawn).toBeGreaterThan(now)
+    }
+    // The atlases moved back and forth; nothing was decoded again.
+    expect(await page.evaluate(() => window.hostTest.decodes)).toBe(2)
+    await expect(page.locator('.preview')).not.toContainText('could not be started')
+})
+
+test('with the setting on, a failing worker still hands over for the page’s life', async ({
+    page,
+}) => {
+    await open(page, { setting: true }, { throwOnFrame: 1 })
+    await expect.poll(() => hostOf(page)).toBe('main')
+    await expect.poll(() => page.evaluate(() => window.hostTest.mainFrames)).toBeGreaterThan(0)
+    // Turning the setting off and on again keeps the main thread drawing.
+    await page.evaluate(() => (window.editorTest.settings.previewInWorker = false))
+    await page.evaluate(() => (window.editorTest.settings.previewInWorker = true))
+    await settle(page)
+    expect(await hostOf(page)).toBe('main')
+    expect(await page.evaluate(() => window.editorTest.settings.previewInWorker)).toBe(true)
 })
 
 test('the worker host restores a lost context and uploads the atlases again', async ({ page }) => {

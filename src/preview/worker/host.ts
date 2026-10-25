@@ -1,8 +1,9 @@
-import { reactive, shallowRef } from 'vue'
+import { nextTick, reactive, shallowRef, watch } from 'vue'
 import { recordDiagnostic } from '../../diagnostics'
 import { onResetState } from '../../history/resetHooks'
 import { PERF, recordSample } from '../../perf/probe'
 import { testKeysOpen } from '../../platform/testKeys'
+import { settings } from '../../settings'
 import type { State } from '../../state'
 import type { PreviewFrameInput, PreviewSelection } from '../drawFrame'
 import type { LoadedParticle } from '../particle'
@@ -21,7 +22,7 @@ import type {
 // preview's worker, sends each frame's chart changes, selection and time, and hands over to
 // the main host when the worker fails.
 
-/** `main` or `worker`: which host draws the preview. */
+/** `main` or `worker`: which host draws the preview, whatever the setting says. */
 export const PREVIEW_HOST_KEY = 'nse.test.previewHost'
 /** The worker host's test flags (PreviewWorkerFlags, as JSON). */
 export const PREVIEW_WORKER_FLAGS_KEY = 'nse.test.previewWorker'
@@ -51,13 +52,24 @@ const canUseWorkerHost = () =>
     typeof OffscreenCanvas === 'function' &&
     typeof HTMLCanvasElement.prototype.transferControlToOffscreen === 'function'
 
+const forcedHost = readKey(PREVIEW_HOST_KEY)
+/** Whether the browser can draw the preview in its worker; the setting shows only where it can. */
+export const workerHostSupported = canUseWorkerHost()
+const supported = workerHostSupported
+/** A worker failed: the main thread draws for the rest of the page's life. */
+let failed = false
+const wantsWorker = () =>
+    (forcedHost === 'main' || forcedHost === 'worker'
+        ? forcedHost === 'worker'
+        : settings.previewInWorker) &&
+    supported &&
+    !failed
+
 /**
- * Which host draws the preview: the main thread, unless the test key asks for the worker and
- * the browser can run it. A worker that fails hands over to the main thread for the rest of
- * the page's life.
+ * Which host draws the preview: the worker where the setting asks for it and the browser can
+ * run it, else the main thread.
  */
-const initialHost: 'main' | 'worker' =
-    readKey(PREVIEW_HOST_KEY) === 'worker' && canUseWorkerHost() ? 'worker' : 'main'
+const initialHost: 'main' | 'worker' = wantsWorker() ? 'worker' : 'main'
 export const previewHost = reactive({
     kind: initialHost,
     /** The worker's canvases still show its last frame, until the main host draws one. */
@@ -120,15 +132,19 @@ const startWorker = () => {
         timer = undefined
     }
 
-    const handOver = async (why: string, responsive: boolean) => {
+    /** Ends the worker; a reason means it failed, which the diagnostics record. */
+    const stop = async (why: string | undefined, responsive: boolean) => {
         if (stopped) return
         stopped = true
         settle()
         pending = undefined
-        recordDiagnostic(
-            'error',
-            `The preview worker stopped, and the preview draws on the main thread: ${why}`,
-        )
+        if (why) {
+            failed = true
+            recordDiagnostic(
+                'error',
+                `The preview worker stopped, and the preview draws on the main thread: ${why}`,
+            )
+        }
         // A worker that still answers hands the atlases back; otherwise they are decoded again.
         let returned = false
         if (responsive && lent.some(Boolean)) {
@@ -151,9 +167,16 @@ const startWorker = () => {
         }
         worker.terminate()
         if (!returned && lent.some(Boolean)) decodeAtlasesAgain()
+        client = undefined
         previewHost.retiring = attached > 0
         previewHost.kind = 'main'
+        // The setting went back on while this worker stopped: a new one starts.
+        if (wantsWorker())
+            void nextTick(() => {
+                if (wantsWorker()) previewHost.kind = 'worker'
+            })
     }
+    const handOver = (why: string, responsive: boolean) => stop(why, responsive)
 
     worker.addEventListener('message', (event: MessageEvent<FromPreviewWorker>) => {
         const message = event.data
@@ -218,6 +241,8 @@ const startWorker = () => {
 
     return {
         maxViewportSize,
+        /** Ends the worker, which hands the atlases back; the main host draws next. */
+        stop: () => stop(undefined, true),
         /** Gives the preview's canvas to the worker; the returned function takes it away. */
         attachCanvas: (canvas: HTMLCanvasElement, antialias: boolean) => {
             if (stopped) return () => undefined
@@ -319,3 +344,13 @@ let client: ReturnType<typeof startWorker> | undefined
 
 /** The page's preview worker, started on first use. */
 export const previewWorker = () => (client ??= startWorker())
+
+// The setting moves the preview between hosts at once: the panel's canvases are mounted again,
+// as for a handover.
+watch(wantsWorker, (worker) => {
+    // A worker that is stopping starts again when it has stopped.
+    if (worker) {
+        if (!client) previewHost.kind = 'worker'
+    } else if (client) void client.stop()
+    else previewHost.kind = 'main'
+})

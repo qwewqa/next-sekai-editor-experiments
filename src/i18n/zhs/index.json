@@ -898,6 +898,7 @@
       "highlightSelection": "高亮所选对象",
       "showHitboxes": "显示判定范围",
       "antialias": "抗锯齿",
+      "parallelRendering": "并行渲染",
       "transport": {
         "title": "播放控件",
         "auto": "自动",

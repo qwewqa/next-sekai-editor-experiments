@@ -898,6 +898,7 @@
       "highlightSelection": "醒目顯示選取物件",
       "showHitboxes": "顯示判定範圍",
       "antialias": "反鋸齒",
+      "parallelRendering": "平行渲染",
       "transport": {
         "title": "播放控制",
         "auto": "自動",

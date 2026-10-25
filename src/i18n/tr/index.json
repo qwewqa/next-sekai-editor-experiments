@@ -898,6 +898,7 @@
       "highlightSelection": "Seçimi Vurgula",
       "showHitboxes": "İsabet Kutularını Göster",
       "antialias": "Kenar Yumuşatma",
+      "parallelRendering": "Paralel Çizim",
       "transport": {
         "title": "Oynatma Denetimleri",
         "auto": "Otomatik",
