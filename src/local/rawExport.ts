@@ -14,7 +14,7 @@ import {
 import { idbFactory } from './kv/idb'
 import type { KvFactory } from './kv/types'
 
-// Export Raw Data…: everything this editor stored in this browser, as stored, in
+// Export Raw Data: everything this editor stored in this browser, as stored, in
 // one ZIP. It runs on the page with no worker and decodes no record, so a bug in the code that
 // failed can't stop it: it imports nothing under `local/records`, `local/nxsp` or
 // `local/startup` (a unit test pins that). The way out when a storage bug ships.

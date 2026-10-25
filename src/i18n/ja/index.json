@@ -513,11 +513,12 @@
       "use": "使用",
       "alsoFile": "このファイルの{0}「{1}」も使用",
       "remove": "削除",
+      "removeStored": "削除…",
       "inUse": "使用中",
       "removeInUse": "「{0}」を削除しますか？代わりにデフォルトを使用します。",
       "removeUnused": "「{0}」を削除しますか？",
       "removeFailed": "この項目を削除できませんでした。",
-      "chooseAgain": "もう一度選択",
+      "chooseAgain": "もう一度選択…",
       "noneInFile": "このファイルに{0}はありません。",
       "rights": "読み込んだ項目はこのブラウザーにのみ保管されます。",
       "progress": {
@@ -808,9 +809,11 @@
   },
   "settings": {
     "title": "設定",
-    "resetSettings": "設定をリセット",
+    "resetSettings": "設定をリセット…",
+    "resetSettingsTitle": "設定をリセット",
     "resetSettingsHint": "キーボードショートカットを保持して、設定を初期値に戻します。",
-    "resetKeybinds": "ショートカットをリセット",
+    "resetKeybinds": "ショートカットをリセット…",
+    "resetKeybindsTitle": "ショートカットをリセット",
     "resetSettingsMessage": "キーボードショートカットを保持して、設定を初期値に戻しますか？",
     "resetSettingsHintStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻します。",
     "resetSettingsMessageStatistics": "キーボードショートカットと「使用状況の統計を送信」を保持して、設定を初期値に戻しますか？",
@@ -923,7 +926,7 @@
     "toolbar": {
       "title": "ツールバー",
       "quickSwitch": "クイックスイッチ",
-      "add": "ツールを追加",
+      "add": "ツールを追加…",
       "remove": "「{0}」をツールバーから削除",
       "modal": {
         "title": "ツールを選択"
@@ -981,8 +984,8 @@
       },
       "openHistory": "履歴を開く",
       "confirmClose": "未保存の変更があるときは閉じる前に確認する",
-      "exportRaw": "生データを出力…",
-      "exportRawTitle": "生データを出力",
+      "exportRaw": "生データを出力",
+      "open": "ファイルを開く",
       "exportRawName": "{0} 生データ {1}.zip",
       "storageHeading": "ストレージ",
       "stored": "このブラウザーに保管: {0} / 約 {1}",
@@ -1957,7 +1960,6 @@
     "closePanel": "{0}を閉じる",
     "folders": {
       "new": "新規フォルダー",
-      "newWith": "新規フォルダー…",
       "moveTo": "フォルダーへ移動…",
       "none": "フォルダーなし",
       "expand": "{0}を展開",
@@ -2202,7 +2204,7 @@
     "otherProject": "別のプロジェクトファイル「{0}」です。",
     "otherProjectUnnamed": "別のプロジェクトファイルです。",
     "notDescendant": "このバージョンは、お使いのバージョンから作られたものではありません ({0})。",
-    "separate": "別のファイルとして保存",
+    "separate": "別のファイルとして保存…",
     "openOther": "もう一方のバージョンを開く",
     "openOtherNote": "変更は最近のセッションに残ります。",
     "replaceNote": "ディスク上のバージョンは最近のセッションに保管されます。",
@@ -2220,7 +2222,7 @@
     "tooLong": "名前が長すぎます"
   },
   "notice": {
-    "useOpenFile": "ファイルを開くには「ファイルを開く…」を使用してください。",
+    "useOpenFile": "ファイルを開くには「ファイルを開く…」を使ってください。",
     "sameFileElsewhere": "「{0}」は別のタブまたはウィンドウで開かれているため、これは別のコピーです。",
     "storageUnavailable": "このブラウザーのストレージにアクセスできませんでした。もう一度お試しください。",
     "chooseAudio": "音声を選択…",

@@ -513,11 +513,12 @@
       "use": "Kullan",
       "alsoFile": "Bu dosyadaki \"{1}\" öğesini ({0}) de kullan",
       "remove": "Kaldır",
+      "removeStored": "Kaldır…",
       "inUse": "Kullanımda",
       "removeInUse": "\"{0}\" kaldırılsın mı? Bunun yerine Varsayılan kullanılır.",
       "removeUnused": "\"{0}\" kaldırılsın mı?",
       "removeFailed": "Bu öğe kaldırılamadı.",
-      "chooseAgain": "Tekrar Seç",
+      "chooseAgain": "Tekrar Seç…",
       "noneInFile": "Bu dosyada {0} yok.",
       "rights": "Yüklediğiniz öğeler yalnızca bu tarayıcıda saklanır.",
       "progress": {
@@ -808,9 +809,11 @@
   },
   "settings": {
     "title": "Ayarlar",
-    "resetSettings": "Ayarları Sıfırla",
+    "resetSettings": "Ayarları Sıfırla…",
+    "resetSettingsTitle": "Ayarları Sıfırla",
     "resetSettingsHint": "Klavye kısayollarını koruyarak varsayılan ayarları geri yükler.",
-    "resetKeybinds": "Kısayolları Sıfırla",
+    "resetKeybinds": "Kısayolları Sıfırla…",
+    "resetKeybindsTitle": "Kısayolları Sıfırla",
     "resetSettingsMessage": "Klavye kısayolları korunarak varsayılan ayarlar geri yüklensin mi?",
     "resetSettingsHintStatistics": "Klavye kısayollarını ve Kullanım İstatistiklerini Gönder ayarını koruyarak varsayılan ayarları geri yükler.",
     "resetSettingsMessageStatistics": "Klavye kısayolları ve Kullanım İstatistiklerini Gönder ayarı korunarak varsayılan ayarlar geri yüklensin mi?",
@@ -923,7 +926,7 @@
     "toolbar": {
       "title": "Araç Çubuğu",
       "quickSwitch": "Hızlı Geçiş",
-      "add": "Araç Ekle",
+      "add": "Araç Ekle…",
       "remove": "\"{0}\" Aracını Araç Çubuğundan Kaldır",
       "modal": {
         "title": "Araç Seç"
@@ -981,8 +984,8 @@
       },
       "openHistory": "Geçmişi Aç",
       "confirmClose": "Kaydedilmemiş Değişiklikler Varken Kapatmadan Önce Sor",
-      "exportRaw": "Ham Verileri Dışa Aktar…",
-      "exportRawTitle": "Ham Verileri Dışa Aktar",
+      "exportRaw": "Ham Verileri Dışa Aktar",
+      "open": "Aç",
       "exportRawName": "{0} ham veriler {1}.zip",
       "storageHeading": "Depolama Alanı",
       "stored": "Bu tarayıcıda saklanan: {0} / yaklaşık {1}",
@@ -1956,9 +1959,8 @@
     },
     "closePanel": "{0} panelini kapat",
     "folders": {
-      "new": "Yeni klasör",
-      "newWith": "Yeni klasör…",
-      "moveTo": "Klasöre taşı…",
+      "new": "Yeni Klasör",
+      "moveTo": "Klasöre Taşı…",
       "none": "Klasör yok",
       "expand": "{0} öğesini genişlet",
       "collapse": "{0} öğesini daralt",
@@ -2202,7 +2204,7 @@
     "otherProject": "Farklı bir proje dosyası: \"{0}\".",
     "otherProjectUnnamed": "Farklı bir proje dosyası.",
     "notDescendant": "Bu sürüm sizinkinden oluşturulmadı ({0}).",
-    "separate": "Ayrı Dosya Olarak Kaydet",
+    "separate": "Ayrı Dosya Olarak Kaydet…",
     "openOther": "Diğer Sürümü Aç",
     "openOtherNote": "Değişiklikleriniz Son Oturumlar’da kalır.",
     "replaceNote": "Diskteki sürüm Son Oturumlar’da saklanır.",
@@ -2220,7 +2222,7 @@
     "tooLong": "Ad çok uzun"
   },
   "notice": {
-    "useOpenFile": "Bir dosya açmak için Aç…’ı kullanın.",
+    "useOpenFile": "Bir dosya açmak için Aç… komutunu kullanın.",
     "sameFileElsewhere": "\"{0}\" başka bir sekmede veya pencerede açık, bu yüzden bu ayrı bir kopya.",
     "storageUnavailable": "Editör bu tarayıcının depolama alanına erişemedi. Tekrar deneyin.",
     "chooseAudio": "Ses Seç…",

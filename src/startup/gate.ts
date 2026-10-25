@@ -35,7 +35,7 @@ declare global {
 export type StartupPhase = 'opening' | 'error' | 'done'
 
 /**
- * The error state's Export Raw Data…: its label, in the app's language, and what it does.
+ * The error state's Export Raw Data: its label, in the app's language, and what it does.
  * `run` resolves to a line to show under the buttons, when the export did not go through whole.
  */
 export type RawExport = { label: () => string; run: () => Promise<string | undefined> }
@@ -48,11 +48,11 @@ type GateState = {
     slow: boolean
     /** The failed startup's own text. */
     error: string
-    /** Export Raw Data… on the error state, registered by `setRawExport`; undefined until then. */
+    /** Export Raw Data on the error state, registered by `setRawExport`; undefined until then. */
     rawExport: RawExport | undefined
     /** Its export is running: the button waits, so a second press starts no second download. */
     rawExportRunning: boolean
-    /** What the last Export Raw Data… press says, if it did not go through whole. */
+    /** What the last Export Raw Data press says, if it did not go through whole. */
     rawExportNote: string | undefined
 }
 
@@ -198,7 +198,7 @@ export const startBlank = async () => {
     finishStartup()
 }
 
-/** Export Raw Data… registers here once built, and the error state offers it. */
+/** Export Raw Data registers here once built, and the error state offers it. */
 export const setRawExport = (rawExport: RawExport | undefined) => {
     startupGate.rawExport = rawExport
 }
