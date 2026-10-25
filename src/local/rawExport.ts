@@ -13,8 +13,9 @@ import type { KvFactory } from './kv/types'
 // `local/startup` (a unit test pins that). The way out when a storage bug ships.
 
 /**
- * The ZIP's first entry: the dump format, each Blob a `$blobEntry` naming a STORE entry after it,
- * `blobs/<n>`, which holds its bytes as stored, or a `$blobUnreadable` when it could not be read.
+ * The ZIP's first entry, stored uncompressed: the dump format, each Blob a `$blobEntry` naming a
+ * STORE entry after it, `blobs/<n>`, which holds its bytes as stored, or a `$blobUnreadable` when
+ * it could not be read.
  */
 export const DUMP_ENTRY = 'dump.json'
 
@@ -121,7 +122,12 @@ export const buildRawExportResult = async (
         }
     }
     const data = new TextEncoder().encode(JSON.stringify(dump ?? emptyDump(appVersion, keys)))
-    const entries = [await prepareEntry({ name: DUMP_ENTRY, method: 'deflate', data }), ...media]
+    // STORE, its CRC read from a Blob in slices: deflating or checking tens of megabytes in one
+    // task would stop the page.
+    const entries = [
+        await prepareEntry({ name: DUMP_ENTRY, method: 'store', data: new Blob([data]) }),
+        ...media,
+    ]
     return {
         zip: new Blob(assembleZip(entries), { type: 'application/zip' }),
         databaseUnreadable,

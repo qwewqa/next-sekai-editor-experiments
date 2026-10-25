@@ -240,6 +240,9 @@ export const dumpLocalStorage = (storage: Storage, prefix: string) => {
     return out
 }
 
+/** The longest the dump encodes in one task. */
+const ENCODE_SLICE_MS = 16
+
 /**
  * Dumps every store of an open database, read in one transaction with plain cursors. Blobs are
  * read after it commits, since reading one would end the transaction. With `blobEntries` no Blob
@@ -267,12 +270,30 @@ export const dumpDatabase = async (
         : []
     const values = read.flatMap(({ entries }) => entries.map((entry) => entry.value))
     const blobTag = blobEntries ? await entryTags(values, blobEntries) : await inlineTags(values)
+    // Encoded in slices of about a frame, with a task between them: a long history is tens of
+    // megabytes of base64, and Export Raw Data… runs on the page.
+    let since = performance.now()
+    const encoded: DumpRecord[][] = []
+    for (const { entries } of read) {
+        const records: DumpRecord[] = []
+        for (const entry of entries) {
+            records.push({
+                key: encodeValue(entry.primaryKey, blobTag),
+                value: encodeValue(entry.value, blobTag),
+            })
+            if (performance.now() - since > ENCODE_SLICE_MS) {
+                await new Promise((resolve) => setTimeout(resolve, 0))
+                since = performance.now()
+            }
+        }
+        encoded.push(records)
+    }
     return {
         format: DUMP_FORMAT,
         version: DUMP_VERSION,
         appVersion,
         database: { name: db.name, version: db.version },
-        stores: read.map(({ name, info, entries }) => ({
+        stores: read.map(({ name, info }, i) => ({
             name,
             keyPath: info.keyPath,
             autoIncrement: false,
@@ -284,10 +305,7 @@ export const dumpDatabase = async (
                     unique: false,
                     multiEntry: false,
                 })),
-            records: entries.map((entry) => ({
-                key: encodeValue(entry.primaryKey, blobTag),
-                value: encodeValue(entry.value, blobTag),
-            })),
+            records: encoded[i] ?? [],
         })),
         localStorage,
     }

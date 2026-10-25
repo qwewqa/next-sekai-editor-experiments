@@ -121,12 +121,12 @@ const withBlobEntry = (dump: Dump): Dump => {
     return copy
 }
 
-/** The dump.json inside the exported ZIP, its first entry, then `blobs` as STORE entries. */
+/** The dump.json inside the exported ZIP, its first entry, then `blobs`, all STORE entries. */
 const readExport = async (zip: Blob, blobs: string[] = []) => {
     const reader = await ZipReader.open(zip)
     assert.deepEqual(
         reader.entries.map((entry) => [entry.name, entry.method]),
-        [[DUMP_ENTRY, 8], ...blobs.map((name) => [name, 0])],
+        [[DUMP_ENTRY, 0], ...blobs.map((name) => [name, 0])],
     )
     const entry = reader.get(DUMP_ENTRY)!
     return JSON.parse(

@@ -8,6 +8,8 @@ for (let n = 0; n < 256; n++) {
 /** The zlib CRC-32. Pass the previous result as `crc` to continue over more data. */
 export const crc32 = (data: Uint8Array, crc = 0) => {
     let c = ~crc
-    for (const byte of data) c = (table[(c ^ byte) & 0xff] ?? 0) ^ (c >>> 8)
+    // An indexed loop: an iterator over the bytes takes about four times as long.
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let i = 0; i < data.length; i++) c = (table[(c ^ (data[i] ?? 0)) & 0xff] ?? 0) ^ (c >>> 8)
     return ~c >>> 0
 }
