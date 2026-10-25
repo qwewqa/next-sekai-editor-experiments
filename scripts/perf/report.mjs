@@ -1,6 +1,7 @@
 // Markdown tables from a perf run (docs/performance-testing.md).
 //   npm run perf:report -- <run dir> frames [cell filter]   per-frame work and frame intervals
 //   npm run perf:report -- <run dir> work [cell filter]     traced runs: work per frame by kind
+//   npm run perf:report -- <run dir> ui [cell filter]       `act` and `startup` cells: response, busy state, marks, longest task
 //   npm run perf:report -- <run dir> long <trace> [min ms]  the longest tasks and their functions
 //   npm run perf:report -- <run dir> tasks [trace filter] [min ms]  tasks over min ms (4) after each mark, by what ran in them
 //   npm run perf:report -- <run dir> idle [trace filter]    main-thread counts, busy threads and frames in an idle trace
@@ -17,7 +18,7 @@ const [dir, mode = 'frames', filter = '', min, extra] = process.argv.slice(2)
 if (!dir) throw new Error('Usage: npm run perf:report -- <run dir> <mode> [filter]')
 const run = resolve(dir)
 const { dist } = JSON.parse(readFileSync(`${run}/meta.json`, 'utf8'))
-const rows = ['frames', 'work'].includes(mode)
+const rows = ['frames', 'work', 'ui'].includes(mode)
     ? readFileSync(`${run}/results.jsonl`, 'utf8')
           .trim()
           .split('\n')
@@ -38,7 +39,77 @@ const table = (head, lines) =>
     ].join('\n')
 const skip = /^\((idle|root)\)/
 
-if (mode === 'frames') {
+if (mode === 'ui') {
+    // Each action's repeats: its response (input to the frame that shows the result) and the rest.
+    const pct = (values, p) => {
+        const sorted = values.filter(Number.isFinite).sort((a, b) => a - b)
+        return sorted.length
+            ? sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))]
+            : NaN
+    }
+    const spread = (values, digits = 0) =>
+        values.some(Number.isFinite)
+            ? `${fixed(pct(values, 50), digits)}/${fixed(pct(values, 95), digits)}/${fixed(Math.max(...values.filter(Number.isFinite)), digits)}`
+            : '–'
+    const lines = rows
+        .filter((row) => ['act', 'startup'].includes(row.cell.scenario))
+        .map((row) => {
+            const results = row.runs.map((r) => r.input ?? {})
+            const pick = (key) => results.map((r) => r[key])
+            const marks = [...new Set(results.flatMap((r) => Object.keys(r.marks ?? {})))]
+            const extra = [
+                'imported',
+                'bytes',
+                'first',
+                'hit',
+                'extend',
+                'paint',
+                'gate',
+                'chart',
+                'done',
+            ]
+                .filter((key) => results.some((r) => r[key] !== undefined))
+                .map((key) => `${key} ${spread(pick(key))}`)
+            return [
+                row.id,
+                results.length,
+                `${spread(pick('response'))}${results.some((r) => r.timedOut) ? ' (timed out)' : ''}`,
+                fixed(row.cold?.input?.response, 0),
+                spread(pick('busy')),
+                marks.map((m) => `${m} ${spread(results.map((r) => r.marks?.[m]))}`).join('; ') ||
+                    '–',
+                fixed(Math.max(0, ...pick('eventMax').filter(Number.isFinite)), 0),
+                fixed(Math.max(0, ...pick('longestTask').filter(Number.isFinite)), 0),
+                fixed(Math.max(0, ...pick('longestLoaf').filter(Number.isFinite)), 0),
+                results.some((r) => r.keyEvents)
+                    ? spread(results.map((r) => r.keyEvents?.p95))
+                    : '–',
+                `${fixed(pct(pick('frameP95'), 50))}/${fixed(Math.max(0, ...pick('frameMax').filter(Number.isFinite)))}`,
+                `${fixed(Math.max(0, ...pick('afterMax').filter(Number.isFinite)), 0)}/${fixed(Math.max(0, ...pick('tailTask').filter(Number.isFinite)), 0)}`,
+                extra.join('; ') || '–',
+            ]
+        })
+    console.log(
+        table(
+            [
+                'cell',
+                'n',
+                'response p50/p95/max',
+                'cold',
+                'busy',
+                'marks',
+                'event max',
+                'longest task',
+                'longest LoAF',
+                'key event p95',
+                'frame p95/max',
+                'after: frame/task',
+                'other',
+            ],
+            lines,
+        ),
+    )
+} else if (mode === 'frames') {
     const lines = rows.map((row) => {
         const m = (fn) => median(row.runs.map(fn))
         const probe = (name, ...keys) =>

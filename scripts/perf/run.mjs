@@ -1,15 +1,17 @@
 // Runs a perf plan against a perf build in headed Chromium (docs/performance-testing.md).
 //   npm run perf -- <plan.json> [--name <run>] [--out perf-results] [--port 5360]
 //     [--affinity 0xFFFF0000] [--priority AboveNormal] [--url <served build>] [--no-build]
+//     [--groups <regex of group ids>] [--timeout <minutes>]
 // Builds with NSE_PERF=1 and sourcemaps into <out>/dist, serves it with vite preview, runs each
 // group in a fresh browser profile and writes <out>/<run>/results.jsonl, traces and screenshots.
 import { chromium } from '@playwright/test'
 import { execFileSync, spawn } from 'node:child_process'
 import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
+import { installActionProbe, runAction } from './actions.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -815,6 +817,29 @@ const scenarios = {
         events.push({ at: (seconds * 1000) / 2, fn: () => void page.keyboard.press('u') })
         return schedule(events)
     },
+    // A user action (`action`, scripts/perf/actions.mjs): input to the frame that shows its result.
+    async act(page, cdp, cell) {
+        if (!actionStates.has(cell)) actionStates.set(cell, { rep: 0 })
+        const state = actionStates.get(cell)
+        const result = await runAction(page, cdp, cell, state, async () => {
+            // What the page showed when the result never came.
+            await page.screenshot({ path: `${runDir}/timeout-${cell.action}-${state.rep}.png` })
+        })
+        return result
+    },
+    // A reload: the startup gate, the chart and the session it continues (a group's `boot`).
+    async startup(page) {
+        await page.reload()
+        await page.waitForFunction(() => window.nseBoot?.done !== undefined, null, {
+            timeout: 300_000,
+            polling: 100,
+        })
+        await sleep(1500)
+        const boot = await page.evaluate(() => window.nseBoot)
+        // The reload ended the collector's run; a new one for runOnce to stop.
+        await page.evaluate(() => window.nsePerfRun.start(true))
+        return boot
+    },
     // Memory over a long scroll, a long playback, then New and Open again.
     async memory(page, cdp, cell, profile, prep, group) {
         const out = []
@@ -1025,17 +1050,80 @@ const customKeys = [
     'notespeed',
     'reopen',
     'cursorjumps',
+    'act',
+    'startup',
 ]
+const actionStates = new WeakMap()
+
+// The boot probe (a group's `boot`): first paint, the startup gate, the chart, and startup's end.
+const bootProbe = () => {
+    const boot = (window.nseBoot = {})
+    const loop = () => {
+        const t = performance.now()
+        boot.paint ??= performance.getEntriesByName('first-contentful-paint')[0]?.startTime
+        if (boot.gate === undefined && document.querySelector('dialog[open]')) boot.gate = t
+        if (boot.chart === undefined && document.querySelector('canvas.editor-chart'))
+            boot.chart = t
+        if (window.nsePerf?.startup() === 'done') {
+            boot.done = t
+            return
+        }
+        if (t < 300_000) requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+}
 
 // ---- runs
 
 const openChart = async (page, group) => {
-    await page.goto(baseUrl)
+    if (group.seed) {
+        // A dump seeded into the empty profile (src/local/seed.ts); the page reloads without it.
+        const file = resolve(root, group.seed)
+        const name = basename(file).replace(/\.json$/, '')
+        await page.route(`**/samples/${name}.json`, (route) =>
+            route.fulfill({ path: file, contentType: 'application/json' }),
+        )
+        let refused
+        const refusal = new Promise((_, reject) => (refused = reject))
+        refusal.catch(() => {})
+        page.on('console', (m) => {
+            if (!m.text().startsWith('[seedSample]')) return
+            log(m.text())
+            if (/Refused|Failed/.test(m.text())) refused(new Error(m.text()))
+        })
+        await page.goto(`${baseUrl}?seedSample=${name}`)
+        await Promise.race([
+            page.waitForURL((url) => !url.search.includes('seedSample'), { timeout: 600_000 }),
+            refusal,
+        ])
+    } else await page.goto(baseUrl)
     await page.locator('canvas.editor-chart').waitFor({ state: 'visible', timeout: 60_000 })
-    await page.waitForFunction(() => !!window.nsePerf, null, { timeout: 30_000 })
-    await page.evaluate(installCollector)
+    await page.waitForFunction(() => window.nsePerf?.startup() === 'done', null, {
+        timeout: 300_000,
+    })
     await page.mouse.move(5, 5)
     await page.waitForTimeout(1000)
+    if (group.chart) await openLevel(page, group)
+    await page.waitForTimeout(1500)
+    return page.evaluate(() => {
+        const P = window.nsePerf
+        const gl = document.createElement('canvas').getContext('webgl2')
+        const debug = gl?.getExtension('WEBGL_debug_renderer_info')
+        const s = P.state.value
+        return {
+            renderer: debug
+                ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)
+                : gl?.getParameter(gl.RENDERER),
+            notes: [...s.store.slides.note.values()].flat().length,
+            isDynamicStages: s.isDynamicStages,
+            bgm: !!s.bgm.buffer,
+            dpr: devicePixelRatio,
+            userAgent: navigator.userAgent,
+        }
+    })
+}
+
+const openLevel = async (page, group) => {
     const chart = resolve(root, group.chart)
     const opening = page.waitForEvent('filechooser')
     await page.keyboard.press('o')
@@ -1071,23 +1159,6 @@ const openChart = async (page, group) => {
         await modal.getByRole('button', { name: 'Confirm', exact: true }).click()
         await modal.waitFor({ state: 'detached', timeout: 30_000 })
     }
-    await page.waitForTimeout(1500)
-    return page.evaluate(() => {
-        const P = window.nsePerf
-        const gl = document.createElement('canvas').getContext('webgl2')
-        const debug = gl?.getExtension('WEBGL_debug_renderer_info')
-        const s = P.state.value
-        return {
-            renderer: debug
-                ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)
-                : gl?.getParameter(gl.RENDERER),
-            notes: [...s.store.slides.note.values()].flat().length,
-            isDynamicStages: s.isDynamicStages,
-            bgm: !!s.bgm.buffer,
-            dpr: devicePixelRatio,
-            userAgent: navigator.userAgent,
-        }
-    })
 }
 
 const configure = (page, cell, group) =>
@@ -1213,7 +1284,7 @@ const cellId = (group, cell) =>
     [
         group.id,
         cell.layout ?? 'basic',
-        cell.scenario,
+        cell.scenario === 'act' ? cell.action : cell.scenario,
         cell.pps && cell.pps !== 1000 ? `pps${cell.pps}` : '',
         cell.minimap === false ? 'nomm' : '',
         cell.preview === false ? 'nopv' : '',
@@ -1227,6 +1298,36 @@ const cellId = (group, cell) =>
 // ---- main
 
 const children = []
+const contexts = new Set()
+/** Closes every browser the run started, then the servers. */
+const shutDown = async (code) => {
+    for (const context of contexts) await context.close().catch(() => {})
+    stopChildren()
+    if (code !== undefined) process.exit(code)
+}
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGBREAK']) process.on(signal, () => void shutDown(130))
+// A run that outlives `--timeout` minutes (240) is stuck: its browsers close and it exits.
+setTimeout(
+    () => {
+        log('run timed out')
+        void shutDown(1)
+    },
+    Number(args.timeout ?? 240) * 60_000,
+).unref()
+class CellTimeout extends Error {}
+/** A cell longer than `cellTimeout` s (900) is stuck: its group's browser closes. */
+const withinCell = (cell, run) => {
+    let timer
+    return Promise.race([
+        run(),
+        new Promise((_, reject) => {
+            timer = setTimeout(
+                () => reject(new CellTimeout(`Timed out after ${cell.cellTimeout ?? 900} s`)),
+                (cell.cellTimeout ?? 900) * 1000,
+            )
+        }),
+    ]).finally(() => clearTimeout(timer))
+}
 let baseUrl = args.url
 if (!baseUrl) {
     if (!args.noBuild) {
@@ -1283,7 +1384,14 @@ process.on('exit', stopChildren)
 writeFileSync(
     `${runDir}/meta.json`,
     JSON.stringify(
-        { plan: resolve(planPath), dist, baseUrl, affinity: expectedAffinity, priority },
+        {
+            plan: resolve(planPath),
+            dist,
+            baseUrl,
+            affinity: expectedAffinity,
+            priority,
+            site: process.env.NSE_SITE ?? 'production',
+        },
         null,
         1,
     ),
@@ -1291,7 +1399,9 @@ writeFileSync(
 log('run', name, 'pinned', pin([process.pid, ...children.map((c) => c.pid)]).length)
 
 try {
-    for (const group of plan.groups) {
+    for (const group of plan.groups.filter(
+        (g) => !args.groups || new RegExp(args.groups).test(g.id),
+    )) {
         const profile = typeof group.profile === 'string' ? PROFILES[group.profile] : group.profile
         if (!profile) throw new Error(`Unknown profile ${group.profile}`)
         const hz = group.hz === 'native' ? 240 : (group.hz ?? 60)
@@ -1304,6 +1414,7 @@ try {
             hasTouch: !!profile.hasTouch,
             isMobile: !!profile.isMobile,
             locale: 'en-US',
+            acceptDownloads: true,
             args: [
                 '--autoplay-policy=no-user-gesture-required',
                 // Moving the cursor plays a moment of BGM, and the tab's audio indicator then
@@ -1313,15 +1424,28 @@ try {
                 `--window-size=${profile.viewport.width + 40},${profile.viewport.height + 160}`,
             ],
         })
+        contexts.add(context)
         try {
             const page = context.pages()[0] ?? (await context.newPage())
+            // No run may open a native dialog. It blocks the run and shows on the screen of whoever uses the machine.
+            // The pickers are off (Open takes the file input, Save downloads, or the app's test
+            // pickers under a group's `platform`), JS dialogs are dismissed, and Playwright takes
+            // every download (`acceptDownloads`; a scenario saves one it keeps).
+            // A beforeunload prompt is accepted, so a reload goes through.
+            page.on(
+                'dialog',
+                (dialog) =>
+                    void (
+                        dialog.type() === 'beforeunload' ? dialog.accept() : dialog.dismiss()
+                    ).catch(() => {}),
+            )
             await page.addInitScript(() => {
-                // The file input path: the native picker cannot be driven.
-                Object.defineProperty(window, 'showOpenFilePicker', {
-                    configurable: true,
-                    value: undefined,
-                })
-                localStorage.setItem('nse.test.startBlank', 'true')
+                for (const picker of [
+                    'showOpenFilePicker',
+                    'showSaveFilePicker',
+                    'showDirectoryPicker',
+                ])
+                    Object.defineProperty(window, picker, { configurable: true, value: undefined })
                 localStorage.setItem(
                     'nse.test.version',
                     JSON.stringify({ appVersion: '0.6.0', atTag: true }),
@@ -1331,6 +1455,19 @@ try {
                     JSON.stringify('0.6.0'),
                 )
             })
+            // A seeded group continues the seeded session; the others start blank.
+            if (!group.seed)
+                await page.addInitScript(() => localStorage.setItem('nse.test.startBlank', 'true'))
+            // The platform override (`nse.test.platform`; a build with NSE_SITE=test reads it) and
+            // other keys.
+            for (const [key, value] of Object.entries({
+                ...(group.platform && { 'nse.test.platform': JSON.stringify(group.platform) }),
+                ...group.local,
+            }))
+                await page.addInitScript(([k, v]) => localStorage.setItem(k, v), [key, value])
+            await page.addInitScript(installCollector)
+            await page.addInitScript(installActionProbe)
+            if (group.boot) await page.addInitScript(bootProbe)
             // Storage test flags, and the first lifecycle listeners, before the app's.
             if (group.storage)
                 await page.addInitScript(
@@ -1361,84 +1498,100 @@ try {
                 const cell = { ...plan.defaults, ...group.defaults, ...base }
                 const id = cellId(group, cell)
                 try {
-                    const config = await configure(page, cell, group)
-                    await page.screenshot({ path: `${runDir}/${id}.png` })
-                    const runs = []
-                    let cold
-                    for (let i = 0; i < (cell.warmup ?? 1); i++) {
-                        const r = await runOnce(
-                            page,
-                            cdp,
-                            cell,
-                            profile,
-                            hz,
-                            i === 0 && cell.traceCold ? `${id}-cold` : undefined,
-                            false,
-                            group,
-                        )
-                        cold ??= r
-                    }
-                    for (let i = 0; i < (cell.reps ?? 5); i++)
-                        runs.push(
-                            await runOnce(
+                    await withinCell(cell, async () => {
+                        const config = await configure(page, cell, group)
+                        await page.screenshot({ path: `${runDir}/${id}.png` })
+                        const runs = []
+                        let cold
+                        for (let i = 0; i < (cell.warmup ?? 1); i++) {
+                            const r = await runOnce(
                                 page,
                                 cdp,
                                 cell,
                                 profile,
                                 hz,
-                                cell.traceEach ? `${id}-r${i}` : undefined,
-                                true,
+                                i === 0 && cell.traceCold ? `${id}-cold` : undefined,
+                                false,
                                 group,
-                            ),
+                            )
+                            cold ??= r
+                        }
+                        for (let i = 0; i < (cell.reps ?? 5); i++)
+                            runs.push(
+                                await runOnce(
+                                    page,
+                                    cdp,
+                                    cell,
+                                    profile,
+                                    hz,
+                                    cell.traceEach ? `${id}-r${i}` : undefined,
+                                    true,
+                                    group,
+                                ),
+                            )
+                        const traced = cell.trace
+                            ? await runOnce(page, cdp, cell, profile, hz, id, false, group)
+                            : undefined
+                        const pinned = pin([process.pid])
+                        appendFileSync(
+                            `${runDir}/results.jsonl`,
+                            JSON.stringify({
+                                id,
+                                group: group.id,
+                                profile: group.profile,
+                                hz,
+                                chart: group.chart,
+                                cell,
+                                config,
+                                info,
+                                cold,
+                                runs,
+                                traced,
+                                procs: pinned.length,
+                                offPin: offPin(pinned),
+                            }) + '\n',
                         )
-                    const traced = cell.trace
-                        ? await runOnce(page, cdp, cell, profile, hz, id, false, group)
-                        : undefined
-                    const pinned = pin([process.pid])
-                    appendFileSync(
-                        `${runDir}/results.jsonl`,
-                        JSON.stringify({
-                            id,
-                            group: group.id,
-                            profile: group.profile,
-                            hz,
-                            chart: group.chart,
-                            cell,
-                            config,
-                            info,
-                            cold,
-                            runs,
-                            traced,
-                            procs: pinned.length,
-                            offPin: offPin(pinned),
-                        }) + '\n',
-                    )
-                    const med = (fn) => runs.map(fn).sort((a, b) => a - b)[runs.length >> 1]
-                    log('cell', id, {
-                        chart: [
-                            med((r) => r.probes.chartDraw?.p50),
-                            med((r) => r.probes.chartDraw?.p95),
-                        ],
-                        clock: [
-                            med((r) => r.probes.clockFrame?.p50),
-                            med((r) => r.probes.clockFrame?.p95),
-                        ],
-                        interval: [
-                            med((r) => r.frames.p50),
-                            med((r) => r.frames.p95),
-                            med((r) => r.frames.max),
-                        ],
+                        const med = (fn) => runs.map(fn).sort((a, b) => a - b)[runs.length >> 1]
+                        if (cell.scenario === 'act')
+                            log('cell', id, {
+                                response: [
+                                    med((r) => r.input.response ?? Infinity),
+                                    Math.max(...runs.map((r) => r.input.response ?? Infinity)),
+                                ],
+                                longestTask: Math.max(...runs.map((r) => r.input.longestTask)),
+                                marks: runs.map((r) => r.input.marks),
+                                cold: cold?.input?.response,
+                            })
+                        else
+                            log('cell', id, {
+                                chart: [
+                                    med((r) => r.probes.chartDraw?.p50),
+                                    med((r) => r.probes.chartDraw?.p95),
+                                ],
+                                clock: [
+                                    med((r) => r.probes.clockFrame?.p50),
+                                    med((r) => r.probes.clockFrame?.p95),
+                                ],
+                                interval: [
+                                    med((r) => r.frames.p50),
+                                    med((r) => r.frames.p95),
+                                    med((r) => r.frames.max),
+                                ],
+                            })
                     })
                 } catch (error) {
                     log('cell failed', id, String(error.stack ?? error))
+                    // The page may be stuck. Close the group's browser and run the next group.
+                    if (error instanceof CellTimeout) break
                     await page.keyboard.press('Escape').catch(() => {})
                 }
             }
         } finally {
-            await context.close()
+            contexts.delete(context)
+            await context.close().catch(() => {})
         }
     }
 } finally {
-    stopChildren()
+    await shutDown()
 }
 log('done')

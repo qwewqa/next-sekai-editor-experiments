@@ -41,12 +41,14 @@ Options:
 - `--no-build` reuses the last build.
 - `--url` measures a server you started yourself, such as the dev server. The dev server needs `NSE_PERF=1` too.
 - `--affinity` and `--priority` pin the run (see "Where the processes run").
+- `--timeout <minutes>` stops a stuck run after that time (default 240) and closes its browsers.
+- `--groups` runs only the groups whose `id` matches a regular expression.
 
 ## The probes
 
 A perf build (`NSE_PERF=1`, the `__NSE_PERF__` define) adds two things:
 
-- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)` to select the plain notes nearest a time and return their screen points, `chartEnd()` for the last entity's time, and `pathCaches()` for the chart and overlay canvases' path-cache counters and resident bytes.
+- `window.nsePerf`, the harness's handle on the view, settings, state, player and minimap stats (`src/perf/hook.ts`). It also has `selectNear(time, count)` to select the plain notes nearest a time and return their screen points, `chartEnd()` for the last entity's time, `pathCaches()` for the chart and overlay canvases' path-cache counters and resident bytes, `startup()` for the startup phase, `peek()` for the entry asked for, the entry shown, the spinner and the change view's state, `live()` for the live state and whether Undo or Redo waits for a step to load, and `worker()` for the storage worker.
 - Per-frame timings (`src/perf/probe.ts`):
     - `chartDraw` and `overlayDraw`: the chart's frame callbacks;
     - `clockFrame`: the app clock's whole frame, with the time watchers, Vue's flush and the draws it triggers. The clock runs only while something moves through it (eases, inertia, playback, a tool drag), so direct scrolls such as `quicktouch` and `minimapdrag` have few or no clock frames: compare their `chartDraw` and frame intervals;
@@ -68,7 +70,11 @@ A plan is JSON (see `scripts/perf/plans/example.json`): `defaults` for every cel
 - `id`;
 - `profile`: `desktop1600`, `desktop1280`, `desktop1280x4`, `phone`, or an object with `viewport`, `deviceScaleFactor`, `hasTouch`, `isMobile` and `throttle`;
 - `hz`: `"native"`, or 60 or 120 for the frame gate;
-- `chart`: a level data path from the editor root;
+- `chart`: the path of a level file from the editor root, opened with Open. A group with a `seed` can leave it out;
+- optional `seed`: a dump (see "Seeds") written into the fresh profile before the app opens its database. The app then continues the seeded session, as it does when the editor is opened again;
+- optional `boot`: a probe that runs from the start of the page, for the `startup` scenario;
+- optional `platform`: the `nse.test.platform` override, such as `{ "fileSystemAccess": "opfs" }` for a Save that writes back to its file through the app's test pickers. Release builds ignore it, so build with `NSE_SITE=test npm run perf`;
+- optional `local`: other localStorage keys, as strings;
 - optional `bgm`;
 - optional `settings`, app settings set before each cell, such as `{ "playFollow": false }`;
 - optional `browserArgs`, extra Chromium flags such as `--js-flags=--no-allocation-site-pretenuring`;
@@ -87,6 +93,8 @@ Each cell can set:
     - `journal`: an edit, then scrolling back and forth for `seconds` (22) with a second edit halfway, across the 10 s journal ticks. Pair it with a group's `storage` flag;
     - `edits`: selects `count` (50) notes near the view, then flips, undoes, redoes, deletes, undoes, copies, pastes (hovering the pasted notes for 1 s before placing them) and undoes, `wait` ms (1500) apart. Each step is marked (`nse-flip`, `nse-paste` and so on);
     - preview interactions: `scrub`, a 3 s drag back and forth across the preview; `seek`, a tap on the step button named `button` (for example `Forward 100 ms`) every 120 ms for 3 s; `cursorjumps`, the cursor moved to a new time every 120 ms for 3 s; `notespeed`, the note speed changed every frame for 2 s, as a slider drag does; `reopen`, the chart opened again over itself, marked `nse-open` and `nse-opened`;
+    - `act`: a user action, `action` (see "Actions");
+    - `startup`: a reload that records, from the start of the page, the times of the first paint, the startup gate, the chart and the end of startup (`paint`, `gate`, `chart`, `done`). Its group needs `boot`;
     - `memory`: one long run that records the JS heap and DOM counts after a forced GC at each stage: opened, after sweeps of the whole chart at several zooms and layouts, after `seconds` (200) of playback at `speed` (1, 1.5 or 2) sampled every `sampleEvery` s (40, without GC), after New, after Open again, and after one more sweep. It writes `heap-<stage>.json` sampling profiles to the run folder (read them with `perf:report … heap`) and records the process tree's memory at each stage;
 - `layout`;
 - `minimap`, `preview`, `elevation` (beside the chart) and `selection` (every note and connector);
@@ -99,9 +107,41 @@ Each cell can set:
 - `settings`: app settings for this cell, applied after the group's. They stay set for the group's later cells;
 - `allocProfile`: sample allocations, every `allocInterval` bytes (32,768), over each untraced run, into `alloc-<cell>-<n>.json`;
 - `keepRaw`: keep the raw probe samples, long tasks and long animation frames in the record;
+- `cellTimeout`: how many seconds a cell may run before it counts as stuck and its group's browser closes (900);
 - `tag`.
 
 A group can set `storage`, an object written to the `nse.test.storage` test key before the app starts, for example `{ "noStorage": true }` for a browser without storage. A group's own `defaults` override the plan's.
+
+## Actions
+
+The `act` scenario measures one user action at a time (`scripts/perf/actions.mjs`). Each repeat prepares the page (not measured), sends one input, and waits for the first animation frame in which the action's result shows. The record's `input` holds:
+
+- `response`: the time in ms from the input event to the start of the frame after the one that first shows the result, so it includes that frame's own work. A held input (`arrowHold`, `listWheel`) is timed from its last event. `resultFrame` is the start of the frame that first showed the result;
+- `busy`: when a spinner or a message such as "Preparing…" or "Deleting…" first showed;
+- `marks`: later times that the action records, such as `change` (the peek's change view is known) or `complete` (Edits Here has checked every entry);
+- `eventMax`: the longest Event Timing entry for the inputs (16 ms and over), and `keyEvents`, the count, percentiles and maximum of a held key's entries;
+- `longestTask` and `longestLoaf`: the longest task and long animation frame between the input and the result (50 ms and over), and `tailTask`, the longest task in the time the action keeps watching after the result;
+- `frameP50`, `frameP95` and `frameMax`: frame intervals between the input and the result;
+- the action's own figures: `bytes` of a download, `imported` (when the background import after Open finished), and the times of Go To's index reads.
+
+Actions, by `action`:
+
+- History's Timeline: `historyOpen` (Shift+H), `listWheel` (3 s of wheel over the Timeline, or Recent Sessions with `list: "sessions"`), `peekRow` (a click on row `row`, then `stride` rows further down at each repeat), `arrowStep` (one ↓), `arrowHold` (↓ held `seconds` at 30 Hz), `peekWhole` (a row whose name matches `pattern`, by default a flip of the whole chart), `changeArrow` (an edge arrow while that row is peeked), `showEdits`, `editsHere` (through Go To) and `showAll`, `expandGroup`, `goToOpen`, `goToPick` (the oldest day in Go To), `restore` (the peeked row), `undo` (`key`, z by default), and `editOpen` (a flip with the Timeline open, and the work in the 2.5 s after it);
+- Recent Sessions: `sessionsOpen`, `sessionPeek`, `restoreSession`, `sessionDelete` and `sessionUndo`;
+- Local Data: `localData` (Settings), `deleteCounts` (Delete Sessions… up to its counts), `deleteAll` (deletes every session, so it runs once in a group of its own) and `exportRaw`;
+- files: `save` (the first repeat names the file), `open` (`file`, through the file input), `newChart`, `exportLevel` and `check` (Level Info › Check…);
+- `dialog` (`open`: a key, or `click:<selector>`, until a dialog with `title` shows), `setting` (a setting flipped, and the frames that redraw it), and `goToIndex` (reads Go To's index for an opened file's session of `rows` rows through the storage worker, without the UI).
+
+`npm run perf:report -- <run> ui` tabulates them. Response is how long the user waits. Compare it with one frame for actions that should feel immediate, and with 100 ms (desktop) or 200 ms (the phone stand-in) for the others. A long task during the response also delays every other input.
+
+## Seeds
+
+A seed is a dump of the editor's storage in the `nse-local-data-dump` format. A perf build writes it into a group's fresh profile through `?seedSample=` (`src/local/seed.ts`). Seeds are made on a dev server and kept in `perf-results/data/seeds/`:
+
+- `npm run perf:seeds` (`tests/samples/perfSeeds.samples.ts`, `PLAYWRIGHT_PORT` and `PERF_SEEDS` to pick) makes long histories of coconut by running the editor's own commands with the clock advanced between steps: `history-1800`, about 1,800 steps in two visits, and `history-20h`, about 20,000 steps in ten visits of two hours over twelve days, each with a flip of the whole chart every 400 steps, and `chain-small`, a dozen edits. `history-20h` takes about an hour.
+- `node scripts/perf/seeds.mjs <seed.json> <out.json> <chains> [hours]` makes `<chains>` copies of a seed's chains, for Recent Sessions and Delete Sessions… with many sessions. Each copy is `hours` (6) older than the one before. The copies share the seed's chunks.
+
+A seed has the storage formats of the day it was made. Make the seeds again after a format change, since the seeder refuses a dump it cannot write.
 
 ## What works, and what misleads
 
@@ -171,6 +211,10 @@ A group can set `storage`, an object written to the `nse.test.storage` test key 
 - **Preview playback is cheapest at a chart's opening.** Dense passages cost 2–5 times more, so a playback cell for the preview should include them (`start`). `npm run perf:preview` prints the heaviest seconds.
 - **Moving the cursor plays a moment of BGM**, and Chrome then animates its tab audio indicator. That adds about a second of browser frames that the app does not cause. The harness launches Chromium with `--mute-audio` for this reason.
 - **The GC pass grows with the session.** Later in a session (`memory`, or after many cells in one group) it costs more than in a fresh one, because it walks every tracked resource. Compare cells from fresh groups.
+- **No run may open a native dialog.** A native picker or prompt blocks the run and shows on the screen of whoever uses the machine. The harness turns the pickers off (Open takes the file input, Save downloads, or a group's `platform` gives the app's test pickers), dismisses JS dialogs, accepts the beforeunload prompt of a reload, and has Playwright accept every download.
+- **A run closes every browser it starts.** When a cell runs past its `cellTimeout`, the harness closes that group's browser and goes on with the next group. When a run passes `--timeout` (240 minutes) or gets a signal, it closes every browser and its server. After a run, check that no browser of the run (its profile folder is under the run's `--out`) and no `run.mjs` process is still running, and stop any that is by its PID.
+- **`scrollIntoView` scrolls the page too.** The editor's root hides its overflow but can still be scrolled, and a scrolled root shifts every button away from where it is clicked. The actions scroll rows into view with `nsePerfAct.centre`, which scrolls them in and then resets any clipped ancestor that moved.
+- **A dev server in the same checkout stops during a run.** Its file watcher fails on the locked files of the browser profile under `perf-results/`. While `npm run perf:seeds` or `npm run dev` is running in the checkout, set `--out` to a folder outside it.
 - **The process tree** (`idle`, `memory`) is read with `scripts/perf/proc.ps1` on Windows: CPU seconds, working set, private bytes, and GPU dedicated and shared memory per process.
 
 ### Where the processes run
