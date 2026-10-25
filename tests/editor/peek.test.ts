@@ -14,6 +14,7 @@ import {
     onPeekRefused,
     onPeekStart,
     parseEntryKey,
+    PEEK_DEBOUNCE_MS,
     PEEK_LRU,
     PEEK_READY_MAX_MS,
     peekedKey,
@@ -23,6 +24,7 @@ import {
     peekSourceGeneration,
     resetPeekForTests,
     restoreEntry,
+    runPendingPeek,
     setPeekEffects,
     setPeekSource,
     type EntryKey,
@@ -614,6 +616,30 @@ test('a newer request, a leave or a Restore during the wait drops the waiting st
     await wait(10)
     assert.equal(isPeeking.value, false)
     assert.equal(nameOf(liveState.value), 'two')
+})
+
+test('a request waiting out the debounce runs at once on runPendingPeek, and only the latest runs', async () => {
+    const loads = source({
+        [key(1)]: { state: fake('one'), time: 1 },
+        [key(2)]: { state: fake('two'), time: 2 },
+        [key(3)]: { state: fake('three'), time: 3 },
+    })
+    runPendingPeek()
+    const first = peekEntry(key(1))
+    const second = peekEntry(key(2))
+    const third = peekEntry(key(3))
+    await first
+    const flushed = Date.now()
+    runPendingPeek()
+    await Promise.all([second, third])
+    // Well inside the debounce: the third was shown without waiting for it.
+    assert.ok(Date.now() - flushed < PEEK_DEBOUNCE_MS / 2)
+    assert.equal(nameOf(state.value), 'three')
+    assert.deepEqual(loads, [key(1), key(3)])
+    // Nothing waits now.
+    runPendingPeek()
+    await wait(PEEK_DEBOUNCE_MS + 20)
+    assert.deepEqual(loads, [key(1), key(3)])
 })
 
 test('an entry that cannot be read rejects and leaves the peek', async () => {

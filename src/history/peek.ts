@@ -200,6 +200,8 @@ const generation = shallowRef(0)
 export const peekRequestGeneration: Readonly<Ref<number>> = computed(() => generation.value)
 let lastRequestAt = -Infinity
 let timer: ReturnType<typeof setTimeout> | undefined
+/** Runs the debounced request now; set while one waits. */
+let pendingRun: (() => void) | undefined
 let spinnerTimer: ReturnType<typeof setTimeout> | undefined
 /** Resolves the request a later one replaced. */
 let settlePrevious: (() => void) | undefined
@@ -207,6 +209,7 @@ let settlePrevious: (() => void) | undefined
 const stopTimers = () => {
     clearTimeout(timer)
     timer = undefined
+    pendingRun = undefined
     clearTimeout(spinnerTimer)
     spinnerTimer = undefined
     spinning.value = false
@@ -238,6 +241,7 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
     lastRequestAt = now
     clearTimeout(timer)
     timer = undefined
+    pendingRun = undefined
     spinnerTimer ??= setTimeout(() => {
         if (requested.value) spinning.value = true
     }, SPINNER_AFTER_MS)
@@ -248,6 +252,7 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
         const dropped = () => at !== generation.value || !peek.value
         const run = async () => {
             timer = undefined
+            pendingRun = undefined
             let entry: PeekedEntry
             try {
                 entry = await loadEntry(key)
@@ -283,9 +288,22 @@ export const peekEntry = (key: EntryKey, options: PeekOptions = {}): Promise<voi
             displayed.value = key
             resolve()
         }
-        if (quick) timer = setTimeout(() => void run(), PEEK_DEBOUNCE_MS)
-        else void run()
+        if (quick) {
+            pendingRun = () => {
+                clearTimeout(timer)
+                void run()
+            }
+            timer = setTimeout(() => void run(), PEEK_DEBOUNCE_MS)
+        } else void run()
     })
+}
+
+/**
+ * Runs a request that is waiting out the debounce now. The debounce is for repeats of a held
+ * key, so the list calls this when the key is released. Does nothing when none waits.
+ */
+export const runPendingPeek = () => {
+    pendingRun?.()
 }
 
 const startListeners = new Set<() => void>()
