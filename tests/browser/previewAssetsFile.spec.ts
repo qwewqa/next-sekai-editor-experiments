@@ -18,8 +18,8 @@ import {
 import { resource } from './previewResourceFixture'
 
 // The Preview Assets dialog with From a File. With
-// A3_SHOTS_DIR set, each state is also saved there as a screenshot.
-const shotsDir = process.env.A3_SHOTS_DIR
+// SHOTS_DIR set, each state is also saved there as a screenshot.
+const shotsDir = process.env.SHOTS_DIR
 if (shotsDir) mkdirSync(shotsDir, { recursive: true })
 
 const KEY = 'sonolus-next-sekai-editor.'

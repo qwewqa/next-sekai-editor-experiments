@@ -3,7 +3,7 @@ import { inlineScripts, webPolicy } from '../../scripts/csp.mjs'
 import { testTitlePrefix } from '../../scripts/site.mjs'
 import { analyticsOf } from './analytics'
 
-// The landing pages in the release build. Only /privacy/ exists before Stage 2.
+// The landing pages in the release build. Only /privacy/ exists before the native apps.
 
 const hosted = Boolean(process.env.PRODUCTION_TEST_URL)
 

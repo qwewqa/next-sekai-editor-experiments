@@ -1198,7 +1198,7 @@ test('property rows and tag lists disclose exactly 100 items at a time', async (
     await expect(dialog(page).getByText('Historical group 150', { exact: true })).toHaveCount(0)
     await dialog(page).locator('[data-property-more]').click()
     await expect(dialog(page).locator('[data-property-row]')).toHaveCount(150)
-    // The count is shown only while more remain (F27).
+    // The count is shown only while more remain.
     await expect(dialog(page).locator('[data-property-count]')).toHaveCount(0)
     await page.keyboard.press('Escape')
     await page.locator('[data-peek-back]').click()

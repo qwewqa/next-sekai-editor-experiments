@@ -1131,7 +1131,7 @@ const conflictInput = async (env: Env, binding: Binding, handle: FileSystemFileH
         })
         const decision = read.storedRead === 'value' ? read.storedValue : undefined
         relation = decision?.relation
-        // Replace needs its guard (invariant 6): a failed read, or no decision, never leaves it
+        // Replace needs its guard: a failed read, or no decision, never leaves it
         // enabled. It gives the uncertain reason, unless a reason of the dialog's own applies.
         if (!decision)
             replaceDisabled =
@@ -1332,7 +1332,7 @@ export const afterOutcome = async (
             saveUi.error(outcome.message)
             return
         case 'conflict':
-            // Only a binding of this very file has a conflict dialog (m5): anything else changed.
+            // Only a binding of this very file has a conflict dialog: anything else changed.
             if (outcome.binding.file?.name !== outcome.handle.name) {
                 await afterOutcome(env, changedWhilePicked(outcome.handle.name))
                 return
@@ -1818,7 +1818,7 @@ const saveToFileNow = async (env: Env, sessionId: string) => {
     try {
         read = await env.worker.call('readSession', sessionId)
     } catch (error) {
-        // Storage could not be read: that is not a missing session (invariant 12). Not
+        // Storage could not be read: that is not a missing session. Not
         // `save.storageUnavailable`: its "use Save As…" would save the open session, not this one.
         recordError(error)
         saveUi.error(() => i18n.value.notice.storageUnavailable)
@@ -2120,7 +2120,7 @@ const openOther = (
         }
     })
 
-/** Reads the bound file's stored handle ahead of a Save, once the session is edited (n5). */
+/** Reads the bound file's stored handle ahead of a Save, once the session is edited. */
 export const prefetchHandle = async () => {
     const env = environment()
     const file = env && quickBinding(env).file

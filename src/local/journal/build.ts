@@ -47,7 +47,7 @@ export const descriptorOf = (session: FlushSession): JournalDescriptor => {
     const hasContent =
         stored.hasContent === true || session.edited || (origin !== 'new' && origin !== 'continued')
     const edited = stored.edited === true || session.edited
-    // The example's order: the session's fields, the flags, then the chain's.
+    // The session's fields come first, then the flags, then the chain's.
     const {
         edited: _edited,
         hasContent: _hasContent,

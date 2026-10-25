@@ -9,7 +9,7 @@ import { createWorld as create, type World } from '../../../src/local/testing/wo
 // (`checkStored`, with the session invariants of `sessionViolations`) over each world its body
 // made when the body ends. A test that builds a state today's writers or a hand-made writer leave
 // violating the invariants calls `expectViolations` with them, as patterns: it then fails if they
-// change, so the evidence the review cites stays exact until the fix removes it. A commit hook adds the world's
+// change, so a known violation stays exact until a fix removes it. A commit hook adds the world's
 // transition rules and, in a checked world, the lock-holder assertion, and the holes the flushers made (`world.holes`).
 
 let worlds: World[] = []

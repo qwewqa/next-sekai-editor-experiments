@@ -21,9 +21,8 @@ import {
 
 // A Save while an open's background import runs: it
 // waits for the import inside "Preparing…", then appends; damage the import finds meanwhile
-// unlinks the session and the Save goes on as Save As…. And two follow-ups of the open package:
-// a kill right after the unlink with a pending journal comes back unlinked, and Undo right after a
-// reload waits for the resumed import.
+// unlinks the session and the Save goes on as Save As…. Also: a kill right after the unlink with a pending journal comes back unlinked, and Undo right
+// after a reload waits for the resumed import.
 
 type Row = Record<string, unknown>
 

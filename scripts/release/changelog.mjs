@@ -86,7 +86,7 @@ export function parseChangelog(text) {
     return { sections, problems }
 }
 
-/** The problems with a changelog's format; empty when it follows 4.2.4. */
+/** The problems with a changelog's format; empty when it follows the format CONTRIBUTING gives (Releasing). */
 export const checkChangelog = (text) => parseChangelog(text).problems
 
 function parseValid(text) {

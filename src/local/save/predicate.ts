@@ -40,9 +40,9 @@ export const relation = (i: Facts, h: Facts): Relation => {
 }
 
 /**
- * "N holds O", rules 1 and 2: N descends from O or is O, and when O has history, N's
- * `completeFrom` is O's id or one of O's ancestors and N has at least as many entries. Rule 3 (the
- * head's media) is the caller's, where it applies; the Replace guard leaves it out.
+ * "N holds O" by history: N descends from O or is O, and when O has history, N's `completeFrom` is
+ * O's id or one of O's ancestors and N has at least as many entries. Whether N also carries the
+ * head's media is the caller's to check, where it applies; the Replace guard leaves it out.
  */
 export const holdsHistory = (n: Facts, o: Facts) => {
     if (!n.revision || !o.revision) return false
@@ -135,7 +135,7 @@ export type ReplaceDecision = {
 
 /**
  * The Replace guard: Replace is disabled when the file on disk
- * holds the chain's base (rules 1 and 2, O the base as the binding records it) and the write
+ * holds the chain's base (by `holdsHistory`, O the base as the binding records it) and the write
  * wouldn't carry it, so the only durable holder of earlier versions is never overwritten. The
  * reason is definite only for rows gone; a flag or a root whose state the file lacks gives the
  * uncertain one.

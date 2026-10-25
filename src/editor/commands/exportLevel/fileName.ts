@@ -1,5 +1,6 @@
-// The portable name rules 1–4, which the web's File Name fields check, and the
-// replacement that makes a name the editor suggests valid.
+// The portable name checks (forbidden and control characters, a dot or space at either end,
+// reserved names, the length), which the web's File Name fields run, and the replacement that
+// makes a name the editor suggests valid.
 
 export type NameProblem =
     | { reason: 'invalidChar'; char: string }

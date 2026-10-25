@@ -25,7 +25,7 @@ import {
     writeFile,
 } from './saveFlows'
 
-// The save picker's rules where reviews found gaps: what a taken-over tab shows and asks,
+// The save picker's rules: what a taken-over tab shows and asks,
 // the pre-bind, the version on disk kept through Save as a Separate File, the kept bytes of a
 // partial open after a reload, Export's picker, and failures that must leave the next Save able.
 
