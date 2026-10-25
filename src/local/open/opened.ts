@@ -150,7 +150,8 @@ export const snapshotFromOpened = async (hex: string): Promise<SnapshotParts | u
         try {
             const nodes: Record<string, RecordValue[]> = {}
             const chunks: Record<string, unknown> = {}
-            // The parts first, then their chunks in file order: a tree walk would read all over it.
+            // Walk the nodes first (they are in memory), then read the chunks in file order. Reading
+            // each chunk during the walk would jump back and forth in the file.
             const wanted = new Set<string>([root[1] as string])
             const node = (hash: string) => {
                 const json = history.nodes.get(hash)

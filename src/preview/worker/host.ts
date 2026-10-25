@@ -186,7 +186,7 @@ const startWorker = () => {
         const message = event.data
         switch (message.type) {
             case 'ready':
-                // A frame in flight is settled by its own answer; messages arrive in order.
+                // While a frame is in flight, its `drawn` settles it. Messages arrive in order.
                 if (!inFlight) settle()
                 // The same limit again redraws nothing: the canvas's own change asked for a frame.
                 if (

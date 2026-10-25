@@ -2131,7 +2131,7 @@
     "notProject": "\"{0}\" bir proje dosyası değil.",
     "notKept": "Kaydedilmedi. \"{0}\" tamamen okunamadı.",
     "notKeptSafe": "Kaydedilmedi. Güvenli modda dosyalar değiştirilemez.",
-    "notKeptFull": "Kaydedilmedi. Tarayıcının depolama alanı dolu. Ayarlar › Yerel Veriler’den oturumları silin, sonra yeniden kaydedin.",
+    "notKeptFull": "Kaydedilmedi. Tarayıcının depolama alanı dolu. Ayarlar › Yerel Veriler’den oturumları silin, ardından yeniden kaydedin.",
     "saved": "{0} dosyasına kaydedildi",
     "savedWithoutBgmLarge": "{0} dosyasına arka plan müziği olmadan kaydedildi",
     "savedWithoutCoverLarge": "{0} dosyasına kapak olmadan kaydedildi",

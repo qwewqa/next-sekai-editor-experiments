@@ -521,8 +521,8 @@ const hasUnknownKindName = (json: unknown) =>
     (json[2] as unknown[]).some((pair) => isUnknownKind(pair))
 
 /**
- * Chunks in the order of their places in `chunks.bin`. Reads in this order take the file in
- * forward windows; the same chunks in tree order can read a window for each.
+ * Chunks sorted by their offset in `chunks.bin`. Read in this order, most come from the window read
+ * last (`chunkAccess`); in tree order, each chunk can need a window of its own.
  */
 export const inFileOrder = (
     index: ReadonlyMap<string, { offset: number }>,

@@ -336,8 +336,9 @@ const feedback = (built: BuiltSave, kind: 'saved' | 'download', name: string) =>
 }
 
 /**
- * The line for a Save refused while an import is pending: that storing is paused full, which keeps
- * the import from storing and which the user can end, else that the file is not read completely.
+ * The line for a Save refused while an import is pending. While storing is paused full, the import
+ * cannot store until the user frees space, and the line says so. Otherwise it says that the file
+ * could not be read completely.
  */
 const importingText = (source: string) => {
     const status = storageStatus.value

@@ -6,11 +6,11 @@ import type { Key, KeyPath, KvDatabase } from './kv/types'
 // decoder, so a bug there can't stop it. The reader validates a dump and turns it back into values.
 // A Blob is inline base64 (`$blob`) in a JSON dump, and a `$blobEntry` naming a ZIP entry beside
 // `dump.json` in Export Raw Data…'s ZIP, so the export never holds a Blob's bytes whole; there, one
-// that could not be read is a `$blobUnreadable` with its type and size. A value with no other
-// tag is still written, never left to fail the dump: a number that is not finite is `$num` with its
-// text, a `Date` is `$date` with its time value, a typed array other than `Uint8Array` or a
-// `DataView` is `$typed` (its type's name) with its own bytes, and anything else is `$other` with
-// its constructor's name and `String(value)`.
+// that could not be read is a `$blobUnreadable` with its type and size; a `File` is written as a
+// Blob. Values that JSON has no form for are tagged too, so no single value can make the dump fail.
+// A number that is not finite is `$num` with its text, and a `Date` is `$date` with its time value.
+// A `DataView` or a typed array other than `Uint8Array` is `$typed` (its type's name) with its own
+// bytes. Any other value is `$other` with its type's or constructor's name and `String(value)`.
 
 export const DUMP_FORMAT = 'nse-local-data-dump'
 export const DUMP_VERSION = 1
@@ -106,7 +106,10 @@ const TYPED = {
     BigUint64Array,
 } as const
 
-/** A tag for a value with none of its own: its constructor's name, and its text if it has one. */
+/**
+ * A tag for a value with none of its own: its `typeof` or constructor's name, and its text if it
+ * has one.
+ */
 const otherTag = (name: string, value: unknown) => {
     try {
         return { $other: name, text: String(value) }
@@ -124,7 +127,7 @@ const nameOf = (value: object) => {
     }
 }
 
-/** A value as JSON with tags; every value has one, so the dump never fails on a single value. */
+/** A value as JSON, with a tag where JSON has no form for it; no value makes it throw. */
 export const encodeValue = (value: unknown, blobTag: BlobTag): unknown => {
     if (value === undefined) return { $undefined: true }
     if (value === null || typeof value === 'boolean' || typeof value === 'string') return value
@@ -236,13 +239,14 @@ const decodeTag = (tag: Record<string, unknown>, options: DecodeOptions): unknow
     if (keys === '$typed,bytes') {
         const name = text('$typed')
         const bytes = fromBase64(text('bytes'))
-        // A type this build does not know, or bytes of another length, come back as bytes.
+        // A type this build does not know, or a byte length that is not a whole number of its
+        // elements, comes back as bytes.
         if (name === 'DataView') return new DataView(bytes.buffer)
         const type = Object.hasOwn(TYPED, name) ? TYPED[name as keyof typeof TYPED] : undefined
         if (!type || bytes.length % type.BYTES_PER_ELEMENT) return bytes
         return new type(bytes.buffer)
     }
-    // What has no stored form comes back absent.
+    // A value with no stored form comes back as `undefined`.
     if (keys === '$other' || keys === '$other,text') {
         text('$other')
         if (keys === '$other,text') text('text')

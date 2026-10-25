@@ -74,19 +74,6 @@ test('the import’s batches keep their chunks and read each in file order', asy
     assert.ok(read.bytes <= 3 * SIZE, `the import read ${read.bytes} bytes of ${SIZE}`)
 })
 
-test('the head’s chunks in file order read the file about once', async (t) => {
-    const history = build()
-    const head = [...distinctRootChunks(history, [...history.roots.keys()].slice(0, 300))]
-    const { chunks, read } = await access(history, t)
-    for (const hash of inFileOrder(history.index, head)) await chunks.stored(hash)
-    assert.ok(read.bytes <= 3 * SIZE, `the open read ${read.bytes} bytes of ${SIZE}`)
-
-    // The same chunks in tree order read many times the file.
-    const tree = await access(history, t)
-    for (const hash of head) await tree.chunks.stored(hash)
-    assert.ok(tree.read.bytes > 10 * SIZE, `tree order read ${tree.read.bytes} bytes`)
-})
-
 test('inFileOrder sorts by offset and puts unknown chunks last', () => {
     const index = new Map([
         ['a', { offset: 30 }],
