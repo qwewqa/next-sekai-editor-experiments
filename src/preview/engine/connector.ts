@@ -44,6 +44,7 @@ import {
     vec,
     type EaseTypeValue,
     type Quad,
+    type Vec,
 } from './math'
 import {
     ConnectorKind,
@@ -267,26 +268,34 @@ export const drawConnector = (
     )
         return
 
-    const drawQuad: DrawQuad = (layout, baseA, elevation) => {
-        const zNormal = getConnectorZ(
+    // A connector's layer keys change only with the elevation, so its segments share them.
+    let keyElevation = Number.NaN
+    let normalKey: ZKey | undefined
+    let activeKey: ZKey | undefined
+    const keyAt = (active: boolean, elevation: number) => {
+        if (!Object.is(elevation, keyElevation)) {
+            keyElevation = elevation
+            normalKey = activeKey = undefined
+        }
+        const key = active ? activeKey : normalKey
+        if (key) return key
+        const created = getConnectorZ(
             context,
             kind,
             segmentHeadTargetTime,
             segmentHeadLane,
-            false,
+            active,
             layer,
             elevation,
         )
+        if (active) activeKey = created
+        else normalKey = created
+        return created
+    }
+    const drawQuad: DrawQuad = (layout, baseA, elevation) => {
+        const zNormal = keyAt(false, elevation)
         if (visualState === ConnectorVisualState.active && sprites.active) {
-            const zActive = getConnectorZ(
-                context,
-                kind,
-                segmentHeadTargetTime,
-                segmentHeadLane,
-                true,
-                layer,
-                elevation,
-            )
+            const zActive = keyAt(true, elevation)
             const aModifier = (Math.cos(2 * Math.PI * context.now) + 1) / 2
             draw(sprites.normal, layout, zNormal, baseA * easeOutCubic(aModifier))
             draw(sprites.active, layout, zActive, baseA * easeOutCubic(1 - aModifier))
@@ -602,6 +611,13 @@ type SegmentEnd = {
     linearFrac: number
 }
 
+const sameSegmentEnd = (a: SegmentEnd, b: SegmentEnd) =>
+    Object.is(a.lane, b.lane) &&
+    Object.is(a.size, b.size) &&
+    Object.is(a.travel, b.travel) &&
+    Object.is(a.interpFrac, b.interpFrac) &&
+    Object.is(a.linearFrac, b.linearFrac)
+
 const drawConnectorDefault = (
     layout: PreviewLayout,
     drawQuad: DrawQuad,
@@ -843,19 +859,26 @@ const drawConnectorDefault = (
         )
     }
 
+    const constantAffine = constantTransform ? stageTransformToAffine(headTransform) : undefined
     const transformAt = (interpFrac: number, linearFrac: number) =>
         elevationTransform
             ? stageTransformToAffine(elevationTransform(interpFrac, linearFrac))
             : hasTransform
-              ? stageTransformToAffine(
-                    constantTransform
-                        ? headTransform
-                        : blendStageTransform(headTransform, tailTransform, interpFrac),
-                )
+              ? (constantAffine ??
+                stageTransformToAffine(
+                    blendStageTransform(headTransform, tailTransform, interpFrac),
+                ))
               : undefined
+    // A segment usually starts where the previous one ended; reuse that end's edge.
+    let previousEnd: SegmentEnd | undefined
+    let previousTransform: ReturnType<typeof transformAt>
+    let previousEdge: { left: Vec; right: Vec } | undefined
     const drawSegment = (start: SegmentEnd, end: SegmentEnd, baseA: number) => {
         if (baseA <= 0) return
-        const startTransform = transformAt(start.interpFrac, start.linearFrac)
+        const reuse = previousEnd !== undefined && sameSegmentEnd(start, previousEnd)
+        const startTransform = reuse
+            ? previousTransform
+            : transformAt(start.interpFrac, start.linearFrac)
         const endTransform = transformAt(end.interpFrac, end.linearFrac)
         const edge = ({ lane, size, travel }: SegmentEnd, transform = startTransform) => {
             const left = perspectiveVec(layout, lane - size, 1, travel)
@@ -864,8 +887,11 @@ const drawConnectorDefault = (
                 ? { left: applyAffine(transform, left), right: applyAffine(transform, right) }
                 : { left, right }
         }
-        const a = edge(start)
+        const a = reuse && previousEdge ? previousEdge : edge(start)
         const b = edge(end, endTransform)
+        previousEnd = end
+        previousTransform = endTransform
+        previousEdge = b
         // Keep the segment below both endpoint notes without accumulating depth offsets.
         const elevation =
             startTransform && endTransform
