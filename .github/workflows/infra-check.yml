@@ -24,7 +24,7 @@ jobs:
                   persist-credentials: false
             - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
             - run: uv run --with cfn-lint==1.58.0 cfn-lint infra/account/account.yaml infra/stats/stats.yaml
-            # Our rules: tags, ports, allowlisted resource types and their cost notes, role scopes, no delete outside dev-down.
+            # Our rules: tags, ports, allowlisted resource types and their cost notes, cost-setting pins, deploy-role trust and delete rules, no delete outside dev-down.
             - run: uv run infra/check_templates.py
             - run: shellcheck infra/create-accounts.sh infra/stats/host/*.sh infra/stats/scripts/*.sh
 

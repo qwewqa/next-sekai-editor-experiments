@@ -21,9 +21,7 @@ Every resource carries the tags `nse:service` (`stats`, or `shared` for the base
 
 ## Set-up, once
 
-The management account is touched in steps 1, 5 and 6, and never again, however many services are added.
-
-**Before anything else,** push the branch that adds or changes `infra/` to a `ci/<name>` branch and get Infra check green, including the Compose job, before the change reaches `main`. The contract test cannot run without Docker, so CI is its first run.
+The management account is touched in steps 1 and 6, and never again, however many services are added.
 
 1. **Create the accounts**, in the management account: `bash infra/create-accounts.sh <prod email> <dev email>`, or Organizations › AWS accounts › Add an AWS account in the console. Each needs an email address that no other AWS account uses (a plus-address on one mailbox works). Put both in an OU `nse` if the Organization uses OUs.
 2. **Profiles.** Without IAM Identity Center, add to `~/.aws/config` (the ids stay in this local file):
@@ -68,6 +66,8 @@ Nothing is needed in the management account.
 
 Infrastructure costs money every month, so every change that can change the bill is reviewed before it merges. The review is by someone other than the author, who is given the change and the code and checks both security and cost. The change also writes down the monthly cost delta for each environment, with the price and where it was read, in the service’s cost table.
 
+A service’s template can create roles with any permissions: `nse-<service>-cfn` may create roles named `nse-<service>-*` with any inline policy. So the review reads every IAM statement in the template. A permissions boundary would close this, and is not used.
+
 `check_templates.py` backs this. It fails when a template creates a resource type missing from the service’s table, when a billable type is missing from the service’s runbook, and when an instance size, volume size or budget differs from the pinned values. Fix a failure by reviewing the cost, updating the runbook’s table, and then the table in the script.
 
 **The baseline’s cost** (prices read from the AWS price list on 2026-10-25, `us-west-2`):
@@ -83,7 +83,9 @@ Each environment’s zone is the whole idle cost of `nse-dev`, $0.50 a month, an
 
 **Cost per service** is in Cost Explorer, grouped by the `nse:service` tag, once the tags are activated (step 6).
 
-## Checking changes locally
+## Checking changes
+
+Push a branch that adds or changes `infra/` to a `ci/<name>` branch first, and get Infra check green, including the Compose job, before the change reaches `main`. The contract test cannot run without Docker, so CI is its first run.
 
 No AWS access is needed:
 
