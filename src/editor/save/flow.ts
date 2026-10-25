@@ -574,8 +574,9 @@ const saveBody = async (
     session.checkpoint()
     if (!platform.pickSaveFile) return downloadBuilt(session, env, reserved, built, request)
 
-    // The build found damage in storage that the carry test couldn't see: the chain's own
-    // file is still whole until a picker empties it, so it's read now, and a pick of it appends.
+    // The build found damage in storage that the check of the base's rows could not see. The
+    // chain's own file is still whole until a picker empties it, so it is read now, and a pick of
+    // it appends.
     if (binding.file && (built.damaged.length > 0 || built.marked > 0)) await session.readAgain()
 
     const picked = await session.pick(

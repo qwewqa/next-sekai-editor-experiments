@@ -87,6 +87,7 @@ const startWorkerHost = () => {
 type PreviewTestCounters = {
     uploads: number
     frames: number
+    releases?: number
     vertices: number[]
     aspect: number
 }
@@ -96,8 +97,16 @@ const addCounters = (counters: PreviewWorkerCounters) => {
     if (!target) return
     target.uploads += counters.uploads
     target.frames += counters.frames
+    if (counters.releases) target.releases = (target.releases ?? 0) + counters.releases
     if (counters.vertices) target.vertices = counters.vertices
     if (counters.aspect !== undefined) target.aspect = counters.aspect
+}
+
+// A worker's context is released only two animation frames after its canvas left the page. In
+// Firefox, releasing it sooner, or terminating the worker, could stop the page from painting until
+// the next input, or hang the worker.
+const afterTwoFrames = (run: () => void) => {
+    requestAnimationFrame(() => requestAnimationFrame(run))
 }
 
 const startWorker = () => {
@@ -139,6 +148,15 @@ const startWorker = () => {
         clearTimeout(timer)
         timer = undefined
     }
+    // Counts canvas replacements. Only the latest one posts `release`, so each replacement starts
+    // the two frames again.
+    let replaced = 0
+    const releaseLater = () => {
+        const current = ++replaced
+        afterTwoFrames(() => {
+            if (current === replaced && !stopped) post({ type: 'release' })
+        })
+    }
 
     /** Ends the worker; a reason means it failed, which the diagnostics record. */
     const stop = async (
@@ -179,11 +197,31 @@ const startWorker = () => {
                 returned = true
             }
         }
-        worker.terminate()
+        // A worker that does not respond is terminated at once. One that does keeps its canvases
+        // until the page no longer shows them.
+        if (!responsive) worker.terminate()
         if (!returned && lent.some(Boolean)) decodeAtlasesAgain()
         client = undefined
         previewHost.retiring = attached > 0
         previewHost.kind = 'main'
+        if (responsive) {
+            const end = () => {
+                afterTwoFrames(() => {
+                    worker.terminate()
+                })
+            }
+            if (!previewHost.retiring) end()
+            else {
+                const stopWatching = watch(
+                    () => previewHost.retiring,
+                    (retiring) => {
+                        if (retiring) return
+                        stopWatching()
+                        end()
+                    },
+                )
+            }
+        }
         // The setting went back on while this worker stopped: a new one starts.
         if (wantsWorker())
             void nextTick(() => {
@@ -277,7 +315,9 @@ const startWorker = () => {
             wait('it did not start')
             return () => {
                 attached--
-                if (!stopped) post({ type: 'canvas', antialias })
+                if (stopped) return
+                post({ type: 'canvas', antialias })
+                releaseLater()
             }
         },
         attachOverlay: (canvas: HTMLCanvasElement) => {
@@ -286,7 +326,9 @@ const startWorker = () => {
             if (!offscreen) return () => undefined
             post({ type: 'overlay', canvas: offscreen }, [offscreen])
             return () => {
-                if (!stopped) post({ type: 'overlay' })
+                if (stopped) return
+                post({ type: 'overlay' })
+                releaseLater()
             }
         },
         /** Moves an atlas to the worker, which keeps it and closes the one it replaces. */

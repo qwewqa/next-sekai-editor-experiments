@@ -37,6 +37,10 @@ let renderer: PreviewRenderer | undefined
 let lost = false
 let lose: WEBGL_lose_context | null | undefined
 let outline: OutlineRenderer | undefined
+// The renderers of canvases the page no longer shows. Each keeps its context until the main
+// thread posts `release`. In Firefox, losing a context while the page may still draw its canvas
+// can stop the page from painting, or hang this worker.
+const retired: { dispose: () => void }[] = []
 
 // The skin's and the particle's atlases, kept for the page's lifetime and uploaded to every
 // new context.
@@ -100,7 +104,7 @@ const onRestored = () => {
 }
 
 const releaseCanvas = () => {
-    renderer?.dispose()
+    if (renderer) retired.push(renderer)
     renderer = undefined
     canvas?.removeEventListener('webglcontextlost', onLost)
     canvas?.removeEventListener('webglcontextrestored', onRestored)
@@ -123,7 +127,7 @@ const resolveSelection = () => {
 
 // Test builds count what the preview specs count on the main thread's canvas.
 const installCounters = () => {
-    const current: PreviewWorkerCounters = { uploads: 0, frames: 0 }
+    const current: PreviewWorkerCounters = { uploads: 0, frames: 0, releases: 0 }
     counters = current
     const isPreview = (gl: WebGL2RenderingContext) => gl.canvas === canvas
     const names = new WeakMap<object, unknown>()
@@ -162,15 +166,18 @@ const installCounters = () => {
         const data = args[2]
         if (isPreview(gl) && data instanceof Float32Array) current.vertices?.push(...data)
     })
+    // Each renderer deletes its program when it releases its context.
+    watch('deleteProgram', () => current.releases++)
 }
 
 const report = () => {
     if (!testKeysOpen || !counters) return
-    const { uploads, frames, vertices, aspect } = counters
-    if (!uploads && !frames && aspect === undefined) return
-    post({ type: 'counters', counters: { uploads, frames, vertices, aspect } })
+    const { uploads, frames, releases, vertices, aspect } = counters
+    if (!uploads && !frames && !releases && aspect === undefined) return
+    post({ type: 'counters', counters: { uploads, frames, releases, vertices, aspect } })
     counters.uploads = 0
     counters.frames = 0
+    counters.releases = 0
     counters.vertices = undefined
     counters.aspect = undefined
 }
@@ -204,7 +211,7 @@ const handle = (message: ToPreviewWorker) => {
             if (renderer) post({ type: 'ready', maxViewportSize: renderer.maxViewportSize })
             return
         case 'overlay':
-            outline?.dispose()
+            if (outline) retired.push(outline)
             outline =
                 message.canvas &&
                 createOutlineRenderer(message.canvas, (error) => {
@@ -241,10 +248,14 @@ const handle = (message: ToPreviewWorker) => {
             post({ type: 'drawn', ms })
             return
         }
+        case 'release':
+            for (const item of retired.splice(0)) item.dispose()
+            return
         case 'return': {
+            // The canvases stay. The main thread terminates the worker once the page no longer
+            // shows them.
             const bitmaps = [atlases[0]?.bitmap, atlases[1]?.bitmap]
             atlases.length = 0
-            releaseCanvas()
             post(
                 { type: 'atlases', bitmaps },
                 bitmaps.filter((bitmap) => bitmap !== undefined),

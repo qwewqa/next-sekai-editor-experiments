@@ -214,6 +214,8 @@ test('opening Settings batches layout across its fields', async ({ page }) => {
     await page.keyboard.press(',')
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
+    // Settings mounts its later sections in short tasks after it opens; About comes last.
+    await expect(page.locator('[data-settings-section="about"]')).toBeAttached()
     await settle(page)
     const count = await dialog.locator('.form-field').count()
     expect(count).toBeGreaterThan(100)

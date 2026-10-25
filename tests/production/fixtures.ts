@@ -230,6 +230,28 @@ export const previewInWorker = (page: Page) =>
             }
         })
 
+/** Whether a worker can draw WebGL2 into an OffscreenCanvas, which the preview's worker needs. */
+export const workerWebgl2 = (page: Page) =>
+    page.evaluate(
+        () =>
+            new Promise<boolean>((resolve) => {
+                const source = `postMessage(typeof OffscreenCanvas === 'function' && new OffscreenCanvas(1, 1).getContext('webgl2') !== null)`
+                const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }))
+                const worker = new Worker(url)
+                const done = (value: boolean) => {
+                    worker.terminate()
+                    URL.revokeObjectURL(url)
+                    resolve(value)
+                }
+                worker.onmessage = (event) => done(event.data === true)
+                worker.onerror = () => done(false)
+            }),
+    )
+
+/** The errors the app recorded for Copy Diagnostic Info. */
+export const diagnostics = (page: Page) =>
+    page.evaluate(() => localStorage.getItem('sonolus-next-sekai-editor.diagnostics') ?? '')
+
 export const seedVersion = () => {
     localStorage.setItem('nse.test.version', JSON.stringify({ appVersion: '0.6.0', atTag: true }))
     localStorage.setItem('sonolus-next-sekai-editor.lastAppVersion', JSON.stringify('0.6.0'))

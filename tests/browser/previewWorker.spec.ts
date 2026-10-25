@@ -7,7 +7,16 @@ import { outlinePixels, resource } from './previewResourceFixture'
 
 declare global {
     interface Window {
-        hostTest: { mainFrames: number; decodes: number; freezeAudio?: (time?: number) => void }
+        hostTest: {
+            mainFrames: number
+            decodes: number
+            /** Preview workers terminated. */
+            terminated: number
+            freezeAudio?: (time?: number) => void
+            /** Holds animation frames until `resumeFrames`. */
+            holdFrames?: () => void
+            resumeFrames?: () => void
+        }
     }
 }
 
@@ -51,7 +60,7 @@ const open = async (page: Page, host: Host, flags: Record<string, unknown> = {})
                 aspect: 0,
                 errors: [],
             }
-            window.hostTest = { mainFrames: 0, decodes: 0 }
+            window.hostTest = { mainFrames: 0, decodes: 0, terminated: 0 }
             // A page without focus draws nothing, as when the app is in the background.
             Object.defineProperty(document, 'hasFocus', { configurable: true, value: () => true })
             const clear = WebGL2RenderingContext.prototype.clear
@@ -81,6 +90,41 @@ const open = async (page: Page, host: Host, flags: Record<string, unknown> = {})
             })
             window.hostTest.freezeAudio = (value) => {
                 frozen = value
+            }
+            // Held frames run on resume. Their ids map to the new ones, so a cancel still works.
+            const raf = window.requestAnimationFrame.bind(window)
+            const caf = window.cancelAnimationFrame.bind(window)
+            let held: Map<number, FrameRequestCallback> | undefined
+            const resumed = new Map<number, number>()
+            let heldId = 1e9
+            window.requestAnimationFrame = (callback) => {
+                if (!held) return raf(callback)
+                held.set(++heldId, callback)
+                return heldId
+            }
+            window.cancelAnimationFrame = (id) => {
+                if (!held?.delete(id)) caf(resumed.get(id) ?? id)
+            }
+            window.hostTest.holdFrames = () => {
+                held = new Map()
+            }
+            window.hostTest.resumeFrames = () => {
+                const callbacks = held ?? new Map<number, FrameRequestCallback>()
+                held = undefined
+                for (const [id, callback] of callbacks) resumed.set(id, raf(callback))
+            }
+            // A preview worker is the one sent the start message.
+            const previewWorkers = new WeakSet<Worker>()
+            const postMessage = Worker.prototype.postMessage
+            Worker.prototype.postMessage = function (this: Worker, ...args: unknown[]) {
+                const message = args[0] as { type?: string; flags?: unknown } | undefined
+                if (message?.type === 'start' && message.flags) previewWorkers.add(this)
+                return Reflect.apply(postMessage, this, args) as void
+            }
+            const terminate = Worker.prototype.terminate
+            Worker.prototype.terminate = function (this: Worker) {
+                if (previewWorkers.has(this)) window.hostTest.terminated++
+                terminate.call(this)
             }
         },
         { host, flags },
@@ -308,6 +352,35 @@ test('with the setting on, a failing worker still hands over for the page’s li
     await settle(page)
     expect(await hostOf(page)).toBe('main')
     expect(await page.evaluate(() => window.editorTest.settings.previewInWorker)).toBe(true)
+})
+
+test('a replaced canvas’s context, and a stopped worker, go only after the page draws without them', async ({
+    page,
+}) => {
+    await open(page, { setting: true })
+    await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(2)
+    await expect.poll(() => page.evaluate(() => window.previewTest.frames)).toBeGreaterThan(0)
+    // A new canvas while frames are held. The old one keeps its context until two frames pass.
+    await page.evaluate(() => {
+        window.hostTest.holdFrames!()
+        window.editorTest.settings.previewAntialias = false
+    })
+    await expect.poll(() => page.evaluate(() => window.previewTest.uploads)).toBe(4)
+    expect(await page.evaluate(() => window.previewTest.releases ?? 0)).toBe(0)
+    await page.evaluate(() => window.hostTest.resumeFrames!())
+    await expect.poll(() => page.evaluate(() => window.previewTest.releases ?? 0)).toBe(1)
+    // The setting off while frames are held. The worker hands the atlases back and keeps its
+    // canvases.
+    await page.evaluate(() => {
+        window.hostTest.holdFrames!()
+        window.editorTest.settings.previewInWorker = false
+    })
+    await expect.poll(() => hostOf(page)).toBe('main')
+    expect(await page.evaluate(() => window.hostTest.terminated)).toBe(0)
+    await page.evaluate(() => window.hostTest.resumeFrames!())
+    await expect.poll(() => page.evaluate(() => window.hostTest.mainFrames)).toBeGreaterThan(0)
+    await expect.poll(() => page.evaluate(() => window.hostTest.terminated)).toBe(1)
+    await expect(page.locator('.preview-viewport canvas')).toHaveCount(2)
 })
 
 test('the worker host restores a lost context and uploads the atlases again', async ({ page }) => {

@@ -21,6 +21,8 @@ export type PreviewWorkerFlags = {
 export type PreviewWorkerCounters = {
     uploads: number
     frames: number
+    /** Renderers that released their context. */
+    releases: number
     /** The last frame's vertices, once a frame cleared since the last report. */
     vertices?: number[]
     aspect?: number
@@ -28,9 +30,14 @@ export type PreviewWorkerCounters = {
 
 export type ToPreviewWorker =
     | { type: 'start'; test: boolean; flags: PreviewWorkerFlags }
-    /** The preview's canvas, or none when the panel closes; the atlases stay. */
+    /**
+     * The preview's canvas, or none when the panel closes; the atlases stay. The canvas it
+     * replaces keeps its context until `release`.
+     */
     | { type: 'canvas'; canvas?: OffscreenCanvas; antialias: boolean }
     | { type: 'overlay'; canvas?: OffscreenCanvas }
+    /** The canvases replaced so far left the page two animation frames ago. Release their contexts. */
+    | { type: 'release' }
     | {
           type: 'atlas'
           slot: 0 | 1
@@ -45,7 +52,7 @@ export type ToPreviewWorker =
           selection?: { places: Int32Array; stages: number[] } | null
           input: PreviewFrameInput
       }
-    /** Hand the atlases back to the main thread. */
+    /** Hand the atlases back to the main thread. The canvases stay until the worker is terminated. */
     | { type: 'return' }
     | { type: 'outlinePixels' }
     | { type: 'loseContext' }
