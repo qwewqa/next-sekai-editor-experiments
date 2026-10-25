@@ -1,5 +1,5 @@
 /**
- * The undo stack's most slots, in the tab and in the stored window [WS-31]. Steps before them
+ * The undo stack's most slots, in the tab and in the stored window. Steps before them
  * stay in History's Timeline. Readers take a stored or file stack of any length and cut it.
  */
 export const STACK_CAP = 1000
