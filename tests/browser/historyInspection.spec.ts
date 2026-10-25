@@ -1463,16 +1463,16 @@ test('cached header-only comparison waits for its actual displayed entry', async
         .toEqual({
             requested: 'readiness:2',
             displayed: 'readiness:1',
-            computed: 'readiness:2',
-            status: 'known',
-            header: true,
-            sameStore: true,
+            computed: undefined,
+            status: 'loading',
+            header: undefined,
+            sameStore: false,
             life: 1100,
             shown: undefined,
             inspectable: false,
             inspection: undefined,
         })
-    // The bar still shows the displayed step's summary for this quick moment, but nothing can open for B.
+    // B reads its change as it shows (after the debounce), so nothing can open for B yet; the bar still shows the displayed step's summary for this quick moment.
     await page.clock.runFor(100)
     await expect(page.locator('[data-property-summary]')).toBeVisible()
     await page.clock.resume()
