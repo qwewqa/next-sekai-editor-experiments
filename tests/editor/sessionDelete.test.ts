@@ -191,3 +191,15 @@ test('closing the lists drops the inline rows', async () => {
     assert.equal(t.model.inline.value.size, 0)
     assert.equal(t.model.announcement.value, '')
 })
+
+test('a row’s Delete is not counted as Delete Sessions…', async () => {
+    const tally = await import('../../src/analytics/tally')
+    tally.enable()
+    try {
+        const t = setup()
+        await t.model.remove(chain('a'), 'Alpha')
+        assert.equal(tally.collect().counts.has('features.deleteSessions'), false)
+    } finally {
+        tally.disable()
+    }
+})

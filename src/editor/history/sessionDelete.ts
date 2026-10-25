@@ -1,5 +1,4 @@
 import { shallowRef } from 'vue'
-import { bump } from '../../analytics/tally'
 import { i18n } from '../../i18n'
 import type { Mark, MarkDeletedResult, UndoDeletedResult } from '../../local/deletion'
 import type { RecentChain } from '../../local/recent'
@@ -73,7 +72,6 @@ export const createDeleteModel = (deps: DeleteDeps) => {
         const { session } = i18n.value
         switch (result.kind) {
             case 'marked':
-                bump('features.deleteSessions')
                 held.set(id, { chain, name, mark: result.mark, status: 'deleted' })
                 announcement.value = interpolateRaw(session.deleted, name)
                 publish()
