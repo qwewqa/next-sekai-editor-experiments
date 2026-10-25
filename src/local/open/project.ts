@@ -500,9 +500,10 @@ const unlinkedSession = (
 }
 
 /**
- * Resumes the open's imports no tab runs, from the bound handle, or ends them: what the
- * next load does after startup, and what a Save's wait for the chain's imports does for one that
- * nothing runs. It skips an import this tab runs and one whose lock another tab holds.
+ * Resumes the open's imports that no tab runs, or ends them: what the next load does after
+ * startup, and what a Save's or a Check's wait for the chain's imports does for one that nothing
+ * runs. An import this tab started reads the file the tab kept; another reads the bound handle.
+ * It skips an import this tab runs and one whose lock another tab holds.
  */
 export const resumeUnfinishedImports = (appVersion: string) => {
     const { open: deps } = context()

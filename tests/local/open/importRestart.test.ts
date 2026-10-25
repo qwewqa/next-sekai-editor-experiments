@@ -5,14 +5,15 @@ import { executePlan, planNxsp } from '../../../src/local/nxsp'
 import {
     isImporting,
     resumeImports,
+    resumeWhenStoring,
     startImport,
     whenImported,
     type ImportJob,
     type ImportOutcome,
 } from '../../../src/local/open/importLoop'
 import type { OpenStoreRequest } from '../../../src/local/open/importWrite'
-import type { OpenReadReply } from '../../../src/local/open/opened'
-import { createWorld, type World } from '../../../src/local/testing/world'
+import { openedFile, type OpenReadReply } from '../../../src/local/open/opened'
+import { createWorld } from '../../../src/local/testing/world'
 import type { WorkerContext } from '../../../src/local/worker/handlers'
 import { readHandle } from '../../../src/local/worker/handlers'
 import { openHandlers } from '../../../src/local/worker/openHandlers'
@@ -42,17 +43,24 @@ type When =
     | 'between'
     /** A storage failure: the call rejects, and the worker keeps its files. */
     | 'fails'
+    /** IndexedDB's own `TimeoutError` in the worker: no restart, and the worker keeps its files. */
+    | 'timesOut'
 
 type Fault = { method: string; n?: number; when: When }
-
-const ids = { chainId: 'chain-1', sessionId: 'session-1', docId: 'doc', lineageId: 'lineage' }
 
 const locks: LockService = {
     request: (_name, _options, callback) => callback(true),
     query: () => Promise.resolve({ held: [], pending: [] }),
 }
 
+/** A page and a fake worker; each setup's session and chain ids are its own, as the import state is module-wide. */
 const setup = async (seed: number) => {
+    const ids = {
+        chainId: `chain-${seed}`,
+        sessionId: `session-${seed}`,
+        docId: 'doc',
+        lineageId: 'lineage',
+    }
     const world = createWorld({ seed })
     const page = await openPage(world, world.tab('a'))
     const context: WorkerContext = { core: page.core, test: true, emit: () => undefined }
@@ -102,15 +110,17 @@ const setup = async (seed: number) => {
                     return run(method, arg)
                 case 'fails':
                     throw new Error('Storage failed (test)')
+                case 'timesOut':
+                    throw new RpcError('TimeoutError', 'The transaction timed out (test)')
             }
         }) as ImportJob['worker']['call'],
     }
-    return { world, page, open, worker, calls, faults, run }
+    return { ids, world, page, open, worker, calls, faults, run }
 }
 
 type Setup = Awaited<ReturnType<typeof setup>>
 
-const storeRequest = (id: string): OpenStoreRequest => ({
+const storeRequest = (id: string, ids: OpenStoreRequest['ids']): OpenStoreRequest => ({
     id,
     ids,
     chain: { name: 'Coconut (Master)', file: { name: 'coconut.nxsp', event: 'opened' } },
@@ -129,13 +139,13 @@ const storeRequest = (id: string): OpenStoreRequest => ({
 const opened = async (s: Setup, file: Blob, extra: Partial<ImportJob> = {}) => {
     const reply = (await s.worker.call('openRead', file)) as OpenReadReply
     if (reply.kind !== 'nxsp') throw new Error('not nxsp')
-    const stored = await s.worker.call('openStore', storeRequest(reply.id))
+    const stored = await s.worker.call('openStore', storeRequest(reply.id, s.ids))
     if (stored.kind !== 'stored') throw new Error('not stored')
     const job: ImportJob = {
         worker: s.worker,
         locks,
-        sessionId: ids.sessionId,
-        chainId: ids.chainId,
+        sessionId: s.ids.sessionId,
+        chainId: s.ids.chainId,
         id: reply.id,
         batches: stored.batches,
         source: {
@@ -154,17 +164,18 @@ const freshFile = async () => {
     return { ...chain, file: await executePlan(planNxsp(chain.input).plan, new Map()) }
 }
 
-const sessionRow = (world: World) => rows(world, 'sessions').get(ids.sessionId)
-const ownEntries = (world: World, sessionId = ids.sessionId) =>
-    [...rows(world, 'entries').values()]
+const sessionRow = (s: Setup) => rows(s.world, 'sessions').get(s.ids.sessionId)
+const ownEntries = (s: Setup, sessionId = s.ids.sessionId) =>
+    [...rows(s.world, 'entries').values()]
         .filter((row) => row.sessionId === sessionId)
         .sort((a, b) => (a.seq as number) - (b.seq as number))
 
 /** The whole import arrived: no `kept: false`, every row once, every state's records stored. */
-const assertWhole = (world: World, hashes: string[], sessionId = ids.sessionId) => {
+const assertWhole = (s: Setup, hashes: string[], sessionId = s.ids.sessionId) => {
+    const { world } = s
     const session = rows(world, 'sessions').get(sessionId)
     assert.equal(session?.importPending, undefined)
-    const entries = ownEntries(world, sessionId)
+    const entries = ownEntries(s, sessionId)
     assert.deepEqual(
         entries.map((row) => [row.seq, row.kept]),
         [1, 2, 3, 4, 5].map((seq) => [seq, true]),
@@ -181,7 +192,7 @@ for (const when of ['before', 'after'] as const)
         assert.ok(stored.batches > 0)
         s.faults.push({ method: 'openBatch', n: 0, when })
         assert.deepEqual(await startImport(job), { kind: 'done' })
-        assertWhole(s.world, hashes)
+        assertWhole(s, hashes)
         assert.ok(!s.calls.includes('openAbandon'))
         assert.equal(s.calls.filter((call) => call === 'openResume').length, 1)
     })
@@ -194,7 +205,7 @@ test('a batch that reaches a restarted worker runs the whole resumed plan, not t
     assert.equal(stored.batches, 2)
     s.faults.push({ method: 'openBatch', n: 1, when: 'between' })
     assert.deepEqual(await startImport(job), { kind: 'done' })
-    assertWhole(s.world, hashes)
+    assertWhole(s, hashes)
     assert.ok(!s.calls.includes('openAbandon'))
 })
 
@@ -204,7 +215,7 @@ test('a restart just after the last batch committed ends the import as done', as
     const { job, stored } = await opened(s, file)
     s.faults.push({ method: 'openBatch', n: stored.batches - 1, when: 'after' })
     assert.deepEqual(await startImport(job), { kind: 'done' })
-    assertWhole(s.world, hashes)
+    assertWhole(s, hashes)
     assert.ok(!s.calls.includes('openAbandon'))
 })
 
@@ -245,10 +256,10 @@ for (const fault of [
             unlinks.filter(([, first]) => first),
             [['doc-1', true]],
         )
-        const chain = rows(s.world, 'chains').get(ids.chainId)!
+        const chain = rows(s.world, 'chains').get(s.ids.chainId)!
         assert.equal(chain.docId, 'doc-1')
         assert.equal(toHex(chain.badChunks as Uint8Array), bad)
-        assert.equal(sessionRow(s.world)?.importPending, undefined)
+        assert.equal(sessionRow(s)?.importPending, undefined)
         assert.ok(!s.calls.includes('openAbandon'))
     })
 
@@ -260,8 +271,8 @@ test('restarts past the bound leave the import pending: nothing is abandoned', a
     assert.deepEqual(await startImport(job), { kind: 'failed' })
     assert.equal(s.calls.filter((call) => call === 'openResume').length, 2)
     assert.ok(!s.calls.includes('openAbandon'))
-    assert.equal(sessionRow(s.world)?.importPending, true)
-    assert.ok(ownEntries(s.world).every((row) => row.kept !== false))
+    assert.equal(sessionRow(s)?.importPending, true)
+    assert.ok(ownEntries(s).every((row) => row.kept !== false))
 })
 
 for (const [name, change] of [
@@ -281,8 +292,8 @@ for (const [name, change] of [
         s.faults.push({ method: 'openBatch', n: 0, when: 'before' })
         assert.deepEqual(await startImport({ ...job, source: change(job) }), { kind: 'stopped' })
         assert.ok(s.calls.includes('openAbandon'))
-        assert.equal(sessionRow(s.world)?.importPending, undefined)
-        assert.ok(ownEntries(s.world).some((row) => row.kept === false))
+        assert.equal(sessionRow(s)?.importPending, undefined)
+        assert.ok(ownEntries(s).some((row) => row.kept === false))
     })
 
 test('a failed import is resumed from the file this tab holds, never abandoned', async () => {
@@ -291,10 +302,10 @@ test('a failed import is resumed from the file this tab holds, never abandoned',
     const { job } = await opened(s, file)
     s.faults.push({ method: 'openBatch', n: 0, when: 'fails' })
     assert.deepEqual(await startImport(job), { kind: 'failed' })
-    assert.equal(sessionRow(s.world)?.importPending, true)
+    assert.equal(sessionRow(s)?.importPending, true)
     // A Save's or a Check's resume, in the same tab: no handle is bound.
     await resumeImports({ worker: s.worker, locks, appVersion: '0.6.0' })
-    assertWhole(s.world, hashes)
+    assertWhole(s, hashes)
     assert.ok(!s.calls.includes('openAbandon'))
     assert.ok(!s.calls.includes('readHandle'))
 })
@@ -306,8 +317,8 @@ test('the next load, with no handle and no file held, still ends the import', as
     await opened(s, file)
     await resumeImports({ worker: s.worker, locks, appVersion: '0.6.0' })
     assert.ok(s.calls.includes('openAbandon'))
-    assert.equal(sessionRow(s.world)?.importPending, undefined)
-    assert.ok(ownEntries(s.world).some((row) => row.kept === false))
+    assert.equal(sessionRow(s)?.importPending, undefined)
+    assert.ok(ownEntries(s).some((row) => row.kept === false))
 })
 
 test('a Save waiting for the import waits through its resume and never resumes it itself', async () => {
@@ -331,14 +342,14 @@ test('a Save waiting for the import waits through its resume and never resumes i
     const outcome: Promise<ImportOutcome> = startImport(job)
     const ended = await Promise.race([resuming.then(() => false), outcome.then(() => true)])
     assert.equal(ended, false, 'the import ended instead of resuming')
-    assert.equal(isImporting(ids.sessionId), true)
+    assert.equal(isImporting(s.ids.sessionId), true)
     let resumes = 0
     let importedWhenDone: unknown
     // The Save shows the import's progress once it waits on this tab's import.
     let followed!: () => void
     const following = new Promise<void>((resolve) => (followed = resolve))
     const waiting = waitForChainImports(
-        { worker: s.worker, session: { id: ids.sessionId } as never, chainId: ids.chainId },
+        { worker: s.worker, session: { id: s.ids.sessionId } as never, chainId: s.ids.chainId },
         {
             name: 'coconut.nxsp',
             ui: {
@@ -359,19 +370,19 @@ test('a Save waiting for the import waits through its resume and never resumes i
             return Promise.resolve()
         },
     ).then((result) => {
-        importedWhenDone = sessionRow(s.world)?.importPending
+        importedWhenDone = sessionRow(s)?.importPending
         return result
     })
     await following
-    assert.equal(isImporting(ids.sessionId), true)
+    assert.equal(isImporting(s.ids.sessionId), true)
     release()
     assert.equal(await waiting, 'done')
-    assert.deepEqual(await whenImported(ids.sessionId), { kind: 'none' })
+    assert.deepEqual(await whenImported(s.ids.sessionId), { kind: 'none' })
     assert.deepEqual(await outcome, { kind: 'done' })
     assert.equal(resumes, 0)
     // The Save went on only once the import had finished.
     assert.equal(importedWhenDone, undefined)
-    assertWhole(s.world, hashes)
+    assertWhole(s, hashes)
 })
 
 test('Replace’s kept version resumes after a restart', async () => {
@@ -388,13 +399,98 @@ test('Replace’s kept version resumes after a restart', async () => {
         file: picked,
         sourceName: 'coconut.nxsp',
         name: 'Coconut (replaced Oct 16)',
-        operations: storeRequest(read.id).operations,
+        operations: storeRequest(read.id, s.ids).operations,
         appVersion: '0.6.0',
     })
     assert.equal(kept, true)
     const session = [...rows(s.world, 'sessions').values()].find(
         (row) => row.origin === 'replaced',
     )!
-    assertWhole(s.world, hashes, session.id as string)
+    assertWhole(s, hashes, session.id as string)
+    assert.ok(!s.calls.includes('openAbandon'))
+})
+
+test('a worker’s own TimeoutError reads the file again and leaves no earlier copy in the worker', async () => {
+    const s = await setup(13)
+    const { file, hashes } = await freshFile()
+    const { job } = await opened(s, file)
+    s.faults.push({ method: 'openBatch', n: 0, when: 'timesOut' })
+    assert.deepEqual(await startImport(job), { kind: 'done' })
+    assertWhole(s, hashes)
+    assert.equal(openedFile(job.id), undefined)
+})
+
+/** The next load's resume of an import bound to a handle, whose run throws `error`. */
+const resumeFromHandle = async (error: Error) => {
+    const calls: string[] = []
+    const file = new File(['x'], 'a.nxsp', { lastModified: 0 })
+    const answers: Record<string, () => unknown> = {
+        openPendingImports: () => [{ sessionId: `handle-${error.name}`, chainId: 'c' }],
+        openImportTarget: () => ({
+            file: { name: 'a.nxsp', disk: { fingerprint: 'x', size: 1, lastModified: 0 } },
+        }),
+        readHandle: () => ({
+            getFile: () => Promise.resolve(file),
+            queryPermission: () => Promise.resolve('granted'),
+        }),
+        openResume: () => ({ kind: 'resumed', id: 'resumed', batches: 1 }),
+        openBatch: () => {
+            throw error
+        },
+        openDrop: () => true,
+        openAbandon: () => true,
+    }
+    const worker = {
+        call: (method: string) => {
+            calls.push(method)
+            const answer = answers[method]
+            if (!answer) throw new Error(`Unexpected call: ${method}`)
+            return Promise.resolve().then(answer)
+        },
+    } as unknown as ImportJob['worker']
+    await resumeImports({ worker, locks, appVersion: '0.6.0' })
+    return calls
+}
+
+test('a resumed run from a handle that fails the same way each time ends the import', async () => {
+    const calls = await resumeFromHandle(new RangeError('Array buffer allocation failed (test)'))
+    assert.ok(calls.includes('openAbandon'), calls.join())
+})
+
+test('a resumed run from a handle that meets a storage failure leaves the import pending', async () => {
+    const calls = await resumeFromHandle(new RpcError('StoragePausedError', 'Storing paused: full'))
+    assert.ok(!calls.includes('openAbandon'), calls.join())
+})
+
+test('once storing works again after a pause, this tab’s failed import runs again from its file', async () => {
+    const s = await setup(14)
+    const { file, hashes } = await freshFile()
+    const { job } = await opened(s, file)
+    resumeWhenStoring(
+        {
+            get status() {
+                return s.page.core.status
+            },
+            onStatus: (listener) => s.page.core.onStatus(listener),
+        },
+        { worker: s.worker, locks, appVersion: '0.6.0' },
+    )
+    // The browser is full for the chunks batch: storing pauses, and the import fails.
+    let full = true
+    s.world.memory.faults.put = (store) =>
+        store === 'chunks' && full
+            ? new DOMException('Full (test)', 'QuotaExceededError')
+            : undefined
+    assert.deepEqual(await startImport(job), { kind: 'failed' })
+    assert.equal(s.page.core.status.reason, 'full')
+    // Space is freed, and the next write stores: storing works again.
+    full = false
+    await s.page.tab.run(() =>
+        s.page.core.write(['meta'], (tx) => tx.put('meta', { key: 'test.after', value: 1 })),
+    )
+    assert.equal(s.page.core.status.reason, undefined)
+    for (let i = 0; i < 1000 && sessionRow(s)?.importPending; i++)
+        await new Promise((resolve) => setImmediate(resolve))
+    assertWhole(s, hashes)
     assert.ok(!s.calls.includes('openAbandon'))
 })

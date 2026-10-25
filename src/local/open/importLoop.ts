@@ -4,19 +4,21 @@ import type { DiskState, LockService } from '../../platform/types'
 import { zipFingerprint } from '../../zip/fingerprint'
 import { handleOf, readableWithoutPrompt } from '../handles'
 import { hasWebLocks, importLock } from '../locks'
+import { isStorageFailureName } from '../storageFailure'
 import { storedRead } from '../storedRead'
 import type { StorageWorker } from '../worker/client'
+import type { StorageStatus } from '../worker/core'
 import type { NotOpened } from '../worker/openHandlers'
 
 // The page's half of an open's background import: it holds `nse-import:<id>`
 // (exclusive) and runs the worker's batches one by one, checking the file's fingerprint before
 // each and after a hash failure. A change or a read error stops the import (the rows not
 // imported become `kept: false`, and the chain stays bound); a hash failure with the fingerprint
-// unchanged is damage, which unlinks the chain while the import goes on. A worker restart loses
-// the worker's copy of the file: the import reads it again and runs its plan from the start. Saves
-// and Check File and History… wait for it (`whenImported`). An import that failed is resumed from
-// the file this tab still holds; one no tab holds is resumed by the next load from the bound
-// handle, or ended.
+// unchanged is damage, which unlinks the chain while the import goes on. After a worker restart
+// the new worker does not have the file: the tab reads it again and runs the import's plan from
+// the start. Saves and Check File and History… wait for it (`whenImported`). An import of this tab
+// that failed runs again from the file the tab kept; an import that no tab runs is resumed from
+// the bound handle, or ended.
 
 /** How an import ended, for a Save that waited for it. */
 export type ImportOutcome =
@@ -26,7 +28,11 @@ export type ImportOutcome =
     | { kind: 'unlinked'; docId: string }
     /** The file changed or couldn't be read: the rest is `kept: false`, the chain still bound. */
     | { kind: 'stopped' }
-    /** Storage failed meanwhile; the next load resumes or ends it. */
+    /**
+     * Storage failed meanwhile, or the worker restarted too often: the import stays pending. A
+     * resume in this tab runs it again from the file the tab kept; otherwise one in any tab, or
+     * the next load, resumes it from the bound handle or ends it.
+     */
     | { kind: 'failed' }
     /** No import ran for that session in this tab. */
     | { kind: 'none' }
@@ -54,19 +60,22 @@ export type ImportJob = {
     newId?: () => string
     /** The chain unlinked: its new record, after the first damage found. */
     onUnlink?: (record: Record<string, unknown>, first: boolean) => void
-    /** The `docId` the chain unlinked as, kept for a later run of the same import. */
+    /** The new `docId` the chain took when it unlinked, kept for a later run of the same import. */
     unlinkedAs?: string
 }
 
 /** A batch's timeout: a chunks batch inflates and hashes up to 4 MB, on a slow phone too. */
 const BATCH_TIMEOUT_MS = 120_000
 
-/** How many times one run reads the file again after a restart before it gives up. */
+/** How many restarts one run reads the file again after; the next one ends the run. */
 const MAX_RESUMES = 2
 
 const running = new Map<string, Promise<ImportOutcome>>()
 
-/** Each import this tab started, until it ends other than `failed`: a resume here reads its file. */
+/**
+ * The imports this tab started, with their files. An entry is dropped when its import ends other
+ * than `failed`, so a resume in this tab can read the file of one that failed.
+ */
 const held = new Map<string, ImportJob>()
 
 /** How far an import has come, in batches: what a Save waiting for it shows. */
@@ -163,8 +172,9 @@ const unchanged = async (source: ImportSource, full: boolean) => {
 const NOT_OPENED: NotOpened = { kind: 'notOpened' }
 
 /**
- * A call that a restart cut off answers `fallback`: the new worker has lost the file. A
- * `TimeoutError` is the watchdog's, which restarts the worker.
+ * Awaits `call`. If a restart cut it off, returns `fallback`, because the new worker does not have
+ * the file. A `TimeoutError` comes from the watchdog, which restarts the worker, or rarely from
+ * IndexedDB in the worker; the file is read again either way.
  */
 const unlessRestarted = async <T, F>(call: Promise<T>, fallback: F): Promise<T | F> => {
     try {
@@ -190,18 +200,22 @@ const runBatches = async (job: ImportJob, reread = false): Promise<ImportOutcome
         report(sessionId, { done: batches, total: batches })
         return job.unlinkedAs ? { kind: 'unlinked', docId: job.unlinkedAs } : { kind: 'done' }
     }
-    /** Counts a restart; past the bound the import stays pending. */
+    /** Counts a restart. A third one throws, which leaves the import pending. */
     const restarted = () => {
         if (resumes === MAX_RESUMES)
-            throw new Error('The storage worker restarted too often during an import')
+            throw new Error(
+                `An import’s storage calls failed or reached a new storage worker ${MAX_RESUMES + 1} times. The import stays pending.`,
+            )
         resumes++
         recordDiagnostic(
             'error',
-            `An import read its file again after a storage worker restart (${resumes} of ${MAX_RESUMES})`,
+            `An import’s storage call failed or reached a new storage worker. The file is read again (retry ${resumes} of ${MAX_RESUMES}).`,
         )
     }
     /** Reads the file again in the worker; false when it changed or can't be read. */
     const readAgain = async (): Promise<boolean> => {
+        // The worker may still have the last copy (an IndexedDB `TimeoutError`, no restart).
+        await worker.call('openDrop', id).catch(() => undefined)
         for (;;) {
             const resumed = await unlessRestarted(
                 worker.call(
@@ -235,15 +249,16 @@ const runBatches = async (job: ImportJob, reread = false): Promise<ImportOutcome
                 NOT_OPENED,
             )
             if (outcome.kind === 'done') continue
-            // After a resume, only this run's own last batch, committed before the restart, ends
-            // the import: the lock keeps every other tab out.
+            // `gone` after a restart means this run's last batch committed before the restart cut
+            // off its reply. The import lock stops any other tab from ending the import.
             if (outcome.kind === 'gone') return resumes ? done() : { kind: 'stopped' }
             if (outcome.kind === 'readError') return await stop()
             if (outcome.kind === 'damaged') {
                 // Only a hash failure with the fingerprint unchanged is damage.
                 if (!(await unchanged(source, true))) return await stop()
                 unlinkAs ??= (job.newId ?? (() => crypto.randomUUID()))()
-                // No record: the worker lost the file (the chain can't go while the lock is held).
+                // No record means the worker lost the file. The chain cannot have been deleted, since
+                // a delete takes the import lock.
                 const record = await unlessRestarted(
                     worker.call('openUnlink', {
                         id,
@@ -261,8 +276,8 @@ const runBatches = async (job: ImportJob, reread = false): Promise<ImportOutcome
                     continue
                 }
             }
-            // A restarted worker lost the file: it is read again, and the new plan runs from the
-            // start, since it can differ from the first one. Every batch can run again.
+            // The new worker does not have the file: it is read again, and the new plan runs from
+            // its start, since it can differ from the first one. Every batch can run again.
             restarted()
             if (!(await readAgain())) return await stop()
             n = -1
@@ -311,6 +326,8 @@ export type ResumeDeps = Omit<
     ImportJob,
     'id' | 'batches' | 'source' | 'sessionId' | 'chainId' | 'onUnlink'
 > & {
+    /** Only the imports of this tab that failed, from the files the tab kept. */
+    heldOnly?: boolean
     /** A resumed import found damage: the session's chain unlinked. */
     onResumedUnlink?: (
         sessionId: string,
@@ -322,24 +339,26 @@ export type ResumeDeps = Omit<
 }
 
 /**
- * The resume of each session whose open's import no tab runs and whose import lock is free: from
- * the file this tab holds when this tab started it, else from the bound handle when it reads
- * without a prompt and still is the file opened; otherwise the rows whose states never arrived
- * become `kept: false`. The next load runs it after startup, so a stored handle is never read
- * during startup or recovery.
+ * Resumes each session whose open's import no tab runs and whose import lock is free. It reads
+ * the file this tab kept, if this tab started the import. Otherwise it reads the bound handle, if
+ * it can be read without a prompt and is still the file opened. If neither works, the rows whose
+ * states never arrived become `kept: false`. The next load runs it after startup, so a stored
+ * handle is never read during startup or recovery.
  */
 export const resumeImports = async (deps: ResumeDeps) => {
     const { worker, locks } = deps
     const listed = await storedRead(worker, 'openPendingImports', undefined)
     // A list that can't be read resumes nothing: every import stays pending for the next load.
     if (listed.storedRead === 'failed') return
-    // A file held for an import that ended elsewhere, or whose chain was deleted, is let go.
+    // The file kept for an import that ended elsewhere, or whose chain is marked for Delete or
+    // deleted, is dropped.
     const pending = new Set(listed.storedValue.map((each) => each.sessionId))
     for (const sessionId of held.keys())
         if (!pending.has(sessionId) && !running.has(sessionId)) held.delete(sessionId)
     for (const { sessionId, chainId } of listed.storedValue) {
         if (running.has(sessionId)) continue
         const own = held.get(sessionId)
+        if (deps.heldOnly && !own) continue
         const resume = async (): Promise<ImportOutcome> => {
             if (own) return runBatches(own, true)
             const read = await storedRead(worker, 'openImportTarget', chainId)
@@ -358,7 +377,7 @@ export const resumeImports = async (deps: ResumeDeps) => {
                 const name = typeof target.file?.name === 'string' ? target.file.name : file.name
                 const kept = { file, handle }
                 // The worker's id and batches come from reading the file again.
-                return runBatches(
+                const job = runBatches(
                     {
                         ...deps,
                         onUnlink: (record, first) => {
@@ -377,8 +396,16 @@ export const resumeImports = async (deps: ResumeDeps) => {
                     },
                     true,
                 )
+                try {
+                    return await job
+                } catch (error) {
+                    // A storage failure leaves the import pending. Any other error would come back
+                    // at every resume and keep the chain from being saved, so the import ends.
+                    if (error instanceof Error && isStorageFailureName(error.name)) throw error
+                    recordError(error)
+                }
             }
-            // Gone or unreadable: the import ends.
+            // Gone, unreadable or failing: the import ends.
             await worker.call('openAbandon', sessionId)
             return { kind: 'stopped' }
         }
@@ -392,4 +419,22 @@ export const resumeImports = async (deps: ResumeDeps) => {
             await track(sessionId, resume())
         })
     }
+}
+
+/**
+ * Once storing works again after a pause, runs this tab's failed imports again from the files the
+ * tab kept, so a reload does not end them first.
+ */
+export const resumeWhenStoring = (
+    worker: Pick<StorageWorker, 'onStatus' | 'status'>,
+    deps: ResumeDeps,
+) => {
+    const pausedIn = (status?: StorageStatus) =>
+        status?.mode === 'stored' && status.reason !== undefined
+    let paused = pausedIn(worker.status)
+    worker.onStatus((status) => {
+        if (paused && status.mode === 'stored' && !status.reason)
+            void resumeImports({ ...deps, heldOnly: true }).catch(recordError)
+        paused = pausedIn(status)
+    })
 }
