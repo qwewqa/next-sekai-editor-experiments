@@ -421,7 +421,11 @@ export const storeKept = async (keep: KeepVersion) => {
             chainId,
             id: keep.read.id,
             batches: stored.batches,
-            source: { file: keep.file },
+            source: {
+                file: keep.file,
+                ...(keep.read.disk ? { disk: keep.read.disk } : {}),
+                ...(revision ? { revisionId: revision.id } : {}),
+            },
             appVersion: keep.appVersion,
         })
         return outcome.kind === 'done'
