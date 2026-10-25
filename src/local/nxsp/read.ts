@@ -493,12 +493,15 @@ const readHistory = async (
     }
 }
 
+/** How much of a STORE `chunks.bin` one read takes: a chunk is a few kilobytes. */
+const CHUNK_WINDOW = 2 * 1024 * 1024
+
 /**
- * `chunks.bin`, read lazily: a STORE entry by slices of the file (its CRC is never read whole; each
- * chunk is verified by its hash instead), a DEFLATE one (an OS re-zip) inflated once, capped at its
- * declared size.
+ * `chunks.bin`, read lazily: a STORE entry by windows of the file (its CRC is never read whole;
+ * each chunk is verified by its hash instead), a DEFLATE one (an OS re-zip) inflated once, capped
+ * at its declared size.
  */
-const chunkAccess = (
+export const chunkAccess = (
     reader: ZipReader,
     entry: ZipEntry,
     index: ReadonlyMap<string, { offset: number; length: number }>,
@@ -506,11 +509,24 @@ const chunkAccess = (
 ): ChunkAccess => {
     let whole: Promise<Uint8Array> | undefined
     let file: Promise<Blob> | undefined
+    // The last window read: chunks are read mostly in file order, so most come from it.
+    let lastWindow: { start: number; bytes: Uint8Array } | undefined
     const range = async (offset: number, length: number) => {
         if (entry.method === 0) {
             if (entry.compressedSize !== entry.size) throw new ZipError('size', entry.name)
             file ??= reader.stored(entry)
-            return new Uint8Array(await (await file).slice(offset, offset + length).arrayBuffer())
+            const blob = await file
+            if (length > CHUNK_WINDOW)
+                return new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer())
+            let held = lastWindow
+            if (!held || offset < held.start || offset + length > held.start + held.bytes.length) {
+                const end = Math.min(blob.size, offset + CHUNK_WINDOW)
+                const bytes = new Uint8Array(await blob.slice(offset, end).arrayBuffer())
+                held = { start: offset, bytes }
+                lastWindow = held
+            }
+            // A copy: a view would keep the whole window, and would store it whole.
+            return held.bytes.slice(offset - held.start, offset - held.start + length)
         }
         whole ??= reader.read(entry, { maxSize: cap.chunksBin })
         return (await whole).slice(offset, offset + length)
