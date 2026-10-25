@@ -1,0 +1,1 @@
+{"bgmOffset":0,"entities":[{"archetype":"Initialization","data":[{"name":"initialLife","value":1000}]},{"archetype":"#BPM_CHANGE","data":[{"name":"#BEAT","value":0},{"name":"#BPM","value":150}]}]}
