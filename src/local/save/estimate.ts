@@ -104,12 +104,14 @@ const readMany = async (store: SaveStore, name: string, keys: readonly string[])
 
 /**
  * The estimate of a Save of a chain's session (its head unless given). `bgm` is the head's BGM hash
- * when the page knows it; otherwise the media rows' `kind` hint tells it. Undefined without the chain.
+ * when the page knows it; otherwise the media rows' `kind` hint tells it. `tick` reports progress
+ * during the pass over a long chain's rows, so the watchdog does not restart the worker. Undefined
+ * without the chain.
  */
 export const estimateSaveSize = async (
     store: SaveStore,
     chainId: string,
-    { sessionId, bgm: bgmHash }: { sessionId?: string; bgm?: string } = {},
+    { sessionId, bgm: bgmHash, tick }: { sessionId?: string; bgm?: string; tick?: () => void } = {},
 ): Promise<SaveSizeEstimate | undefined> => {
     const cut = await store.read(CUT_STORES, (tx) => readCut(tx, chainId, sessionId))
     if (!cut) return
@@ -128,7 +130,8 @@ export const estimateSaveSize = async (
     }
     const roots = new Set<string>()
     let manifest = 0
-    for (const { entry } of rows) {
+    for (const [i, { entry }] of rows.entries()) {
+        if (i % 500 === 499) tick?.()
         manifest += ESTIMATE.entryBytes + utf8Length(JSON.stringify(captureEntryDescription(entry)))
         if (entry.stack) manifest += utf8Length(JSON.stringify(entry.stack))
         if (entry.kept) roots.add(toHex(entry.snapshot))

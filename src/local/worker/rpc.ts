@@ -16,7 +16,7 @@ export type Handlers = Record<string, Handler>
 type Call = { id: number; method: string; arg: unknown }
 type Reply =
     | { id: number; ok: true; value: unknown }
-    | { id: number; ok: false; error: { name: string; message: string } }
+    | { id: number; ok: false; error: { name: string; message: string; cause?: string } }
 type Emitted = { event: string; data: unknown }
 
 const TRANSFER = Symbol('transfer')
@@ -33,7 +33,12 @@ const unmark = (value: unknown): [unknown, Transferable[]] =>
 
 /** An error from the other end, keeping its name (QuotaExceededError, StoragePausedError, …). */
 export class RpcError extends Error {
-    constructor(name: string, message: string) {
+    constructor(
+        name: string,
+        message: string,
+        /** The name of the error that caused it, such as the one that paused storing. */
+        readonly causeName?: string,
+    ) {
         super(message)
         this.name = name
     }
@@ -70,8 +75,18 @@ export const serve = (endpoint: Endpoint, handlers: Handlers) => {
                 reply = { id, ok: true, value }
                 list = transferList
             } catch (error) {
-                const { name, message } = error instanceof Error ? error : new Error(String(error))
-                reply = { id, ok: false, error: { name, message } }
+                const { name, message, cause } =
+                    error instanceof Error ? error : new Error(String(error))
+                const causeName = (cause as { name?: unknown } | undefined)?.name
+                reply = {
+                    id,
+                    ok: false,
+                    error: {
+                        name,
+                        message,
+                        ...(typeof causeName === 'string' ? { cause: causeName } : {}),
+                    },
+                }
             } finally {
                 progress.delete(id)
             }
@@ -133,7 +148,10 @@ export const connect = <H extends Handlers>(
         pending.delete(message.id)
         clearTimeout(call.timer)
         if (message.ok) call.resolve(message.value)
-        else call.reject(new RpcError(message.error.name, message.error.message))
+        else
+            call.reject(
+                new RpcError(message.error.name, message.error.message, message.error.cause),
+            )
     }
     return {
         call: (method, ...[arg, options]) =>
