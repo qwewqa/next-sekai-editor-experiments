@@ -385,6 +385,8 @@ const notice = (pattern) =>
     `[...document.querySelectorAll('.notification, .notification-pill')].some((n) => ${pattern}.test(n.textContent) && !A.includes(n))`
 // The app's modals are <dialog> elements; some menus and popovers use the role.
 const openDialogs = `[...document.querySelectorAll('dialog[open], [role=dialog]')]`
+/** The button "Preparing…" shows once the file is ready. */
+const preparedButton = `[...document.querySelectorAll('dialog[open]')].filter((d) => /Preparing/.test(d.textContent)).flatMap((d) => [...d.querySelectorAll('button')]).find((b) => /^(Save|Download)$/.test(b.textContent.trim()))`
 const noticesBefore = `[...document.querySelectorAll('.notification, .notification-pill')]`
 
 // ---- the actions
@@ -993,7 +995,9 @@ export const actions = {
         },
         spec: () => ({
             before: noticesBefore,
-            done: notice(/^(Saved to|Download started)/),
+            // Done when written, or when "Preparing…" offers its button: a build that outlasts the
+            // press waits for a second press, which is the user's, not the wait.
+            done: `${notice(/^(Saved to|Download started)/)} || ${preparedButton} !== undefined`,
             busy: `/Preparing/.test(document.body.textContent)`,
             marks: { preparing: `/Preparing/.test(document.body.textContent)` },
             timeout: 600_000,
@@ -1007,6 +1011,11 @@ export const actions = {
             } else await page.keyboard.press('p')
         },
         reset: async (page, cell, state) => {
+            const ready = page
+                .locator('dialog[open]')
+                .filter({ hasText: 'Preparing' })
+                .getByRole('button', { name: /^(Save|Download)$/ })
+            if (await ready.count()) await ready.click()
             const download = await Promise.race([state.download, sleep(3000)])
             if (download) {
                 const path = await download.path().catch(() => undefined)
