@@ -80,6 +80,19 @@ const lives = (page: Page) =>
         return { shown: history.state.value.initialLife, live: history.liveState.value.initialLife }
     })
 
+/** Pushes `count` steps, each raising the initial life by one. */
+const pushLives = (page: Page, count: number) =>
+    page.evaluate((count) => {
+        const { history, historySteps } = window.editorTest
+        for (let i = 0; i < count; i++) {
+            const life = history.state.value.initialLife
+            history.pushState(historySteps.futureInitialLife(life, life + 1, `Step ${i}`), {
+                ...history.state.value,
+                initialLife: life + 1,
+            })
+        }
+    }, count)
+
 /** Stores what the tab holds, so every entry can be read from storage. */
 const stored = (page: Page) =>
     page.evaluate(async () => {
@@ -1215,47 +1228,58 @@ test.describe('after a reload', () => {
         )
     })
 
-    // The real thing, 5,100 steps and a reload: slow, so only with NSE_LONG_SPECS set.
-    test('Undo past the stored part of a 5,000-step stack after a reload', async ({ page }) => {
-        test.skip(!process.env.NSE_LONG_SPECS, 'Takes about two minutes')
+    // The real thing, 1,100 steps and a reload: slow, so only with NSE_LONG_SPECS set.
+    test('Undo past the stored part of a 1,100-step stack after a reload', async ({ page }) => {
+        test.skip(!process.env.NSE_LONG_SPECS, 'Takes about half a minute')
         test.setTimeout(300_000)
-        // The stored stack keeps 5,000 slots: past them an undo after a reload has no state.
-        await page.evaluate(() => {
-            const { history } = window.editorTest
-            for (let i = 0; i < 5100; i++)
-                history.pushState(
-                    window.editorTest.historySteps.futureInitialLife(
-                        history.state.value.initialLife,
-                        history.state.value.initialLife + 1,
-                        `Step ${i}`,
-                    ),
-                    {
-                        ...history.state.value,
-                        initialLife: history.state.value.initialLife + 1,
-                    },
-                )
-        })
+        // The stored stack keeps 1,000 slots: past them an undo after a reload has no state.
+        await pushLives(page, 1100)
         await stored(page)
         await page.reload()
         await expect(page.locator('canvas.editor-chart')).toBeVisible()
         await waitForStartup(page)
         // The reloaded stack as storage restored it: the fixture would replace it.
-        await page.evaluate(async () => {
+        const undos = await page.evaluate(async () => {
             const url = performance
                 .getEntriesByType('resource')
                 .map((entry) => entry.name)
                 .find((name) => new URL(name).pathname === '/src/history/index.ts')
             const history = (await import(url ?? '')) as typeof import('../../src/history')
             // Undo as far as it goes: moves onto slots not loaded settle one after another.
-            while (history.canUndo.value) history.undoState()
+            let count = 0
+            for (; history.canUndo.value; count++) history.undoState()
             while (history.slotLoading.value)
                 await new Promise((resolve) => setTimeout(resolve, 50))
+            return count
         })
+        expect(undos).toBe(999)
         await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
         await page.keyboard.press('z')
         await expect(page.getByText('Earlier Timeline steps are in History').first()).toBeVisible()
         await page.getByRole('button', { name: 'Open History' }).click()
         await expect(surface(page, 'panel')).toBeVisible()
+    })
+})
+
+test.describe('the undo cap', () => {
+    test('Undo stops at the cap in the tab, and shows that earlier steps are in History', async ({
+        page,
+    }) => {
+        await pushLives(page, 1010)
+        const undos = await page.evaluate(() => {
+            const { history } = window.editorTest
+            let count = 0
+            for (; history.canUndo.value; count++) history.undoState()
+            return count
+        })
+        expect(undos).toBe(999)
+        await page.keyboard.press('z')
+        await expect(page.getByText('Earlier Timeline steps are in History').first()).toBeVisible()
+        await page.getByRole('button', { name: 'Open History' }).click()
+        await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        )
     })
 })
 

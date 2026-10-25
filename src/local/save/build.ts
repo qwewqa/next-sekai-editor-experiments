@@ -49,6 +49,7 @@ import { markDamaged } from './mark'
 import { planMediaItem, type HeldMedia, type MediaKind } from './media'
 import {
     bindingHasHistory,
+    capStack,
     carryStatus,
     chainRows,
     checkReadable,
@@ -263,27 +264,30 @@ const slotOf = (slot: { snapshot: string; step: UndoableStep }): ReplaySlot => (
     step: captureStep(slot.step),
 })
 
-/** The saved session's stack: the live one, else the stored window, else replay of its rows. */
+/**
+ * The saved session's stack, cut to the cap: the live one, else the stored window, else replay
+ * of its rows.
+ */
 const writeStack = (
     cut: ChainCut,
     rows: readonly ChainRow[],
     pending?: PendingInput,
 ): WriteStack | undefined => {
     if (pending?.stack)
-        return {
+        return capStack({
             base: pending.stack.base,
             slots: pending.stack.slots.map(slotOf),
             index: pending.stack.index,
-        }
+        })
     if (cut.stack?.slots)
-        return {
+        return capStack({
             base: cut.stack.window.base,
             slots: cut.stack.slots,
             index: cut.stack.window.index,
-        }
+        })
     try {
         const replayed = replay(rows.map(({ entry }) => entry))
-        return { base: 0, slots: [...replayed.slots], index: replayed.index }
+        return capStack({ base: 0, slots: [...replayed.slots], index: replayed.index })
     } catch (error) {
         if (!(error instanceof ReplayError)) throw error
         return
@@ -712,7 +716,10 @@ export const planSave = async (
                 // Sessions removed from the chain's middle: replay of the file gives another
                 // stack than the session's, and replay defines the stack.
                 console.warn('A Save’s undo stack is replay’s of its file', { chainId })
-                undoStack = cutStack({ base: 0, slots: [...file.slots], index: file.index }, held)
+                undoStack = cutStack(
+                    capStack({ base: 0, slots: [...file.slots], index: file.index }),
+                    held,
+                )
             }
         } else {
             // Replay can't follow the chronology (a session removed from its middle): the stack
