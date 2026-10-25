@@ -360,6 +360,45 @@ test('Storage shows what the browser holds, only when the estimate says both fig
     await expect(page.locator('[data-local-data-storage] [data-not-stored-line]')).toHaveCount(0)
 })
 
+test('Local Data shows the storage line and the total at once, from the read after startup', async ({
+    page,
+}) => {
+    // The first estimate answers; the ones after it wait for the spec.
+    await page.addInitScript(() => {
+        let calls = 0
+        let release = () => undefined as void
+        const gate = new Promise<void>((resolve) => (release = () => resolve()))
+        ;(window as unknown as { releaseEstimates: () => void }).releaseEstimates = release
+        StorageManager.prototype.estimate = async () => {
+            if (++calls > 1) await gate
+            return { usage: 84_000_000, quota: 2_100_000_000 }
+        }
+    })
+    errorsFail(page)
+    await load(page)
+    await expect
+        .poll(
+            () =>
+                page.evaluate(async () => {
+                    const { browserStorage } =
+                        (await import('/src/editor/settings/storageLine.ts')) as typeof import('../../src/editor/settings/storageLine')
+                    return browserStorage.value?.total?.usage
+                }),
+            { timeout: 15_000 },
+        )
+        .toBe(84_000_000)
+    await openLocalData(page)
+    // This visit's read is still waiting, so these come from the kept one.
+    await expect(page.locator('[data-storage-line]')).toBeVisible({ timeout: 2000 })
+    await expect(stored(page)).toHaveText('Stored in this browser: 84 MB of about 2.1 GB', {
+        timeout: 2000,
+    })
+    await page.evaluate(() => {
+        ;(window as unknown as { releaseEstimates: () => void }).releaseEstimates()
+    })
+    await expect(stored(page)).toBeVisible()
+})
+
 test('no figure is guessed: without a quota the total is left out', async ({ page }) => {
     await estimateOf(page, { usage: 84_000_000 })
     errorsFail(page)

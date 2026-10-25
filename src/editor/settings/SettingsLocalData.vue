@@ -28,7 +28,12 @@ import { confirmSwitch, notifyLeft } from '../switch'
 import { closeSettingsKey } from './closeSettings'
 import { canDeleteSessions, deleteSessionsRunning } from './deleteSessionsFlow'
 import SettingsSection from './SettingsSection.vue'
-import { readBrowserFacts, storageLineKey, storageUnavailable } from './storageLine'
+import {
+    browserStorage,
+    readBrowserStorage,
+    storageLineKey,
+    storageUnavailable,
+} from './storageLine'
 
 // Settings › Local Data: the storage line, the Storage subsection (what the
 // browser holds, why changes are not being stored, Delete Sessions…), Recovery (Open History, the
@@ -39,13 +44,13 @@ const strings = computed(() => i18n.value.settings.localData)
 const closeSettings = inject(closeSettingsKey, () => undefined)
 const safe = isSafeMode()
 
-// --- The storage line.
-const facts = ref<Awaited<ReturnType<typeof readBrowserFacts>>>()
-onMounted(async () => {
-    facts.value = await readBrowserFacts()
+// --- The storage line and the total. Both show at once from the last read, kept since startup, and
+// update in place when this visit's read lands; before any read has ended, they appear with it.
+onMounted(() => {
+    void readBrowserStorage()
 })
 const storageLine = computed(() => {
-    const known = facts.value
+    const known = browserStorage.value?.facts
     const status = storageStatus.value
     if (!known || !status) return
     return i18n.value.storage[
@@ -54,22 +59,8 @@ const storageLine = computed(() => {
 })
 
 // --- Storage: the total the browser holds, the not-stored line, Delete Sessions….
-const stored = ref<{ usage: number; quota: number }>()
-// Without both figures no number shows: a guess would be worse than none.
-const readTotal = async () => {
-    try {
-        const { usage, quota } = await navigator.storage.estimate()
-        stored.value =
-            usage !== undefined && quota !== undefined && Number.isFinite(usage) && quota > 0
-                ? { usage, quota }
-                : undefined
-    } catch {
-        stored.value = undefined
-    }
-}
-onMounted(readTotal)
 const storedText = computed(() => {
-    const total = stored.value
+    const total = browserStorage.value?.total
     // In memory nothing is stored here, whatever the browser holds for the origin.
     if (!total || !storageStatus.value || storageStatus.value.mode === 'memory') return
     return interpolateRaw(strings.value.stored, formatSize(total.usage), formatSize(total.quota))
@@ -243,7 +234,7 @@ const afterRowGone = () =>
 // --- Delete Sessions…: the command, as the History band and a bound key run it; the total is read again after.
 const deleteSessions = async () => {
     await runCommand(commands.deleteSessions)
-    await readTotal()
+    await readBrowserStorage()
 }
 
 // --- Export Raw Data…: everything stored, as stored, for reporting a problem.
