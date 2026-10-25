@@ -526,17 +526,21 @@ test('a Save records its outcome, and a chart with objects is counted once saved
     await pressSave(page)
     await submitSave(page, 'Tracked')
     await expect(notice(page).filter({ hasText: 'Saved to Tracked.nxsp' }).first()).toBeVisible()
-    // The chart is counted when the browser is idle.
+    // The Save has ended (the tally is no longer busy) and the client has counted the chart (the
+    // tally has none left to count): only then does the first hide carry it. A later hide would
+    // fall under the minute rule.
     await expect
         .poll(
-            async () => {
-                await hide(page)
-                return batches.flat().some((item) => item.payload.name === 'chart')
-            },
-            { timeout: 30_000 },
+            () =>
+                page.evaluate(async () => {
+                    const tally =
+                        (await import('/src/analytics/tally.ts')) as typeof import('../../src/analytics/tally')
+                    return !tally.isBusy() && !tally.hasCharts()
+                }),
+            { timeout: 60_000 },
         )
         .toBe(true)
-    await hide(page)
+    await firstSend(page, batches)
     const sent = [...batches.flat(), ...(await leave(page)).flat()]
     const data = (name: string) => sent.find((item) => item.payload.name === name)?.payload.data
     expect(data('save')).toMatchObject({
