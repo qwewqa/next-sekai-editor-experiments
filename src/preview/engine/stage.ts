@@ -45,6 +45,7 @@ export type StageProps = {
     width: number
     pivotLane: number
     division: Transition<{ size: number; parity: number }>
+    laneColor: Transition<number>
     judgeLineColor: Transition<number>
     judgeLineStyle: Transition<number>
     leftBorderStyle: Transition<number>
@@ -142,6 +143,7 @@ export const getStageProps = (
         width: 0,
         pivotLane: 0,
         division: { start: { size: 0, parity: 0 }, end: { size: 0, parity: 0 }, progress: 0 },
+        laneColor: { start: 0, end: 0, progress: 0 },
         judgeLineColor: { start: 0, end: 0, progress: 0 },
         judgeLineStyle: { start: 0, end: 0, progress: 0 },
         leftBorderStyle: { start: 0, end: 0, progress: 0 },
@@ -208,6 +210,11 @@ export const getStageProps = (
 
     const [styleA, styleB, styleProgress] = queryEvents(stage.styles, t, rightLimit)
     if (styleA) {
+        props.laneColor = {
+            start: styleA.laneColor,
+            end: styleA.laneColor,
+            progress: 0,
+        }
         props.judgeLineColor = {
             start: styleA.judgeLineColor,
             end: styleA.judgeLineColor,
@@ -235,6 +242,8 @@ export const getStageProps = (
         props.divisionLineAlpha = styleA.divisionLineAlpha
         if (styleB) {
             const p = styleProgress
+            props.laneColor.end = styleB.laneColor
+            props.laneColor.progress = p
             props.judgeLineColor.end = styleB.judgeLineColor
             props.judgeLineColor.progress = p
             props.judgeLineStyle.end = styleB.judgeLineStyle
@@ -258,6 +267,11 @@ export const getStageProps = (
             )
         }
     } else if (styleB) {
+        props.laneColor = {
+            start: styleB.laneColor,
+            end: styleB.laneColor,
+            progress: 0,
+        }
         props.judgeLineColor = {
             start: styleB.judgeLineColor,
             end: styleB.judgeLineColor,
@@ -432,9 +446,38 @@ const blendBorderLayout = (start: Quad, end: Quad, progress: number): Quad => {
     return result
 }
 
-const borderBlendAlpha = (alpha: number, progress: number) => {
-    const remaining = 1 - clamp(alpha * Math.max(0, progress), 0, 1)
-    return remaining > 0 ? clamp((alpha * Math.max(0, 1 - progress)) / remaining, 0, 1) : 0
+// The lane background's body alpha in the skins that have colored lanes.
+export const LANE_BACKGROUND_ALPHA = 0.4
+
+// The alphas of two sprites drawn on the same quad, B over A, so that the pair shows `alpha` in
+// all and B's share is `progress`. A sprite body with alpha `body` is composited as "over":
+// B at alpha * t and A at alpha * (1 - t) / (1 - body * alpha * t).
+export const crossfadeAlphas = (alpha: number, progress: number, body = 1): [number, number] => {
+    const a = clamp(alpha, 0, 1)
+    const t = clamp(progress, 0, 1)
+    const denominator = 1 - body * a * t
+    return [denominator > 0 ? (a * (1 - t)) / denominator : 0, a * t]
+}
+
+// Draws A once when both are the same sprite, else the compensated pair.
+export const drawCrossfade = (
+    draw: Draw,
+    spriteA: Sprite | undefined,
+    spriteB: Sprite | undefined,
+    quad: Quad,
+    zA: ZKey,
+    zB: ZKey,
+    alpha: number,
+    progress: number,
+    body = 1,
+) => {
+    if (spriteA === spriteB) {
+        draw(spriteA, quad, zA, clampAlpha(alpha))
+        return
+    }
+    const [alphaA, alphaB] = crossfadeAlphas(alpha, progress, body)
+    if (alphaA > 0) draw(spriteA, quad, zA, alphaA)
+    if (alphaB > 0) draw(spriteB, quad, zB, alphaB)
 }
 
 const clampAlpha = (alpha: number) => clamp(alpha, 0, 1)
@@ -456,6 +499,7 @@ export const drawStaticStage = (context: PreviewFrameContext, draw: Draw, skin: 
         width: 6,
         pivotLane: 0,
         division: { start: { size: 2, parity: 0 }, end: { size: 2, parity: 0 }, progress: 0 },
+        laneColor: { start: 0, end: 0, progress: 0 },
         judgeLineColor: { start: 5, end: 5, progress: 0 },
         judgeLineStyle: { start: 0, end: 0, progress: 0 },
         leftBorderStyle: { start: 0, end: 0, progress: 0 },
@@ -501,6 +545,7 @@ export const drawDynamicStage = (
         width,
         pivotLane,
         division,
+        laneColor,
         judgeLineColor,
         judgeLineStyle,
         leftBorderStyle: originalLeftBorderStyle,
@@ -513,14 +558,12 @@ export const drawDynamicStage = (
 
     const place = (q: Quad) => transformQuadAffine(transform, q)
 
-    const spritesSame = judgeLineColor.start === judgeLineColor.end
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const spritesA = skin.judgments[judgeLineColor.start] ?? skin.judgments[0]!
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const spritesB = skin.judgments[judgeLineColor.end] ?? skin.judgments[0]!
-    const pSprites = spritesSame ? 0 : judgeLineColor.progress
-    const wSpritesStart = Math.max(0, 1 - pSprites)
-    const wSpritesEnd = Math.max(0, pSprites)
+    // B's share of a judgment line color change.
+    const pSprites = judgeLineColor.progress
     const wDivStart = Math.max(0, 1 - division.progress)
     const wDivEnd = Math.max(0, division.progress)
 
@@ -675,9 +718,11 @@ export const drawDynamicStage = (
                 context,
                 place(layoutJudgmentDivider(pos)),
             )
+            // The center and the edge are a compensated pair, so each divider shows `alpha`.
             const edgeWeight = width > 0 ? Math.abs(pos - lane) / width : 0
-            draw(sprites.center, divLayout, zLo, clampAlpha(alpha))
-            draw(sprites.edge, divLayout, zHi, clampAlpha(alpha * edgeWeight))
+            const [centerAlpha, edgeAlpha] = crossfadeAlphas(alpha, edgeWeight)
+            draw(sprites.center, divLayout, zLo, centerAlpha)
+            draw(sprites.edge, divLayout, zHi, edgeAlpha)
         }
     }
 
@@ -752,7 +797,12 @@ export const drawDynamicStage = (
         drawJudgmentBorder(sprites, style, false, rightJudgmentLayout, zKey, alpha)
     }
 
-    const drawGradient = (sprites: JudgmentSpriteSet, zKey: ZKey, alpha: number) => {
+    const drawGradient = (
+        sprites: JudgmentSpriteSet,
+        zGradient: ZKey,
+        zEdge: ZKey,
+        alpha: number,
+    ) => {
         const bottomL = place(
             perspectiveRect(context.layout, lJl, lane, 1 + nh, 1 + nh - nh / f, travel),
         )
@@ -765,53 +815,69 @@ export const drawDynamicStage = (
         const topR = place(
             perspectiveRect(context.layout, rJl, lane, 1 - nh, 1 - nh + nh / f, travel),
         )
-        const gradA = clampAlpha(alpha * (1 - fw))
-        const edgeA = clampAlpha(alpha * fw)
+        // Full Width swaps the gradient for the edge, as a compensated pair.
+        const [gradA, edgeA] = crossfadeAlphas(alpha, fw)
         if (gradA > 0) {
-            draw(sprites.gradient, bottomL, zKey, gradA)
-            draw(sprites.gradient, bottomR, zKey, gradA)
-            draw(sprites.gradient, topL, zKey, gradA)
-            draw(sprites.gradient, topR, zKey, gradA)
+            draw(sprites.gradient, bottomL, zGradient, gradA)
+            draw(sprites.gradient, bottomR, zGradient, gradA)
+            draw(sprites.gradient, topL, zGradient, gradA)
+            draw(sprites.gradient, topR, zGradient, gradA)
         }
         if (edgeA > 0) {
-            draw(sprites.edge, bottomL, zKey, edgeA)
-            draw(sprites.edge, bottomR, zKey, edgeA)
-            draw(sprites.edge, topL, zKey, edgeA)
-            draw(sprites.edge, topR, zKey, edgeA)
+            draw(sprites.edge, bottomL, zEdge, edgeA)
+            draw(sprites.edge, bottomR, zEdge, edgeA)
+            draw(sprites.edge, topL, zEdge, edgeA)
+            draw(sprites.edge, topR, zEdge, edgeA)
         }
     }
 
-    const drawSingleLine = (sprites: JudgmentSpriteSet, zKey: ZKey, alpha: number) => {
+    const drawSingleLine = (alpha: number) => {
         const halfThick = nh / f / 2
         const layout = place(
             perspectiveRect(context.layout, lJl, rJl, 1 - halfThick, 1 + halfThick, travel),
         )
-        draw(sprites.singleLine, layout, zKey, clampAlpha(alpha))
+        drawCrossfade(
+            draw,
+            spritesA.singleLine,
+            spritesB.singleLine,
+            layout,
+            z(15),
+            z(16),
+            alpha,
+            pSprites,
+        )
     }
 
     const la = laneAlpha * (1 - fw)
     if (la > 0) {
-        draw(
-            skin.laneBackground,
+        drawCrossfade(
+            draw,
+            skin.laneBackgrounds[laneColor.start],
+            skin.laneBackgrounds[laneColor.end],
             place(layoutStageLaneByEdges(context.layout, l, r)),
             z(0),
-            clampAlpha(la),
+            z(0.5),
+            la,
+            laneColor.progress,
+            LANE_BACKGROUND_ALPHA,
         )
 
         const pLeft = leftBorderStyle.progress
         if (leftBorderStyle.start === leftBorderStyle.end) {
             drawLeftBorder(leftBorderStyle.start, z(3), la)
         } else {
-            drawLeftBorder(leftBorderStyle.start, z(3), borderBlendAlpha(la, pLeft))
-            drawLeftBorder(leftBorderStyle.end, z(4), la * Math.max(0, pLeft))
+            const [alphaStart, alphaEnd] = crossfadeAlphas(la, pLeft)
+            drawLeftBorder(leftBorderStyle.start, z(3), alphaStart)
+            drawLeftBorder(leftBorderStyle.end, z(4), alphaEnd)
         }
 
         const pRight = rightBorderStyle.progress
         if (rightBorderStyle.start === rightBorderStyle.end) {
             drawRightBorder(rightBorderStyle.start, z(3), la)
         } else {
-            drawRightBorder(rightBorderStyle.start, z(3), borderBlendAlpha(la, pRight))
-            drawRightBorder(rightBorderStyle.end, z(4), la * Math.max(0, pRight))
+            const [alphaStart, alphaEnd] = crossfadeAlphas(la, pRight)
+            drawRightBorder(rightBorderStyle.start, z(3), alphaStart)
+            drawRightBorder(rightBorderStyle.end, z(4), alphaEnd)
         }
 
         const laDiv = la * props.divisionLineAlpha
@@ -849,144 +915,110 @@ export const drawDynamicStage = (
     const jaDec = jaBar * (1 - fw)
     const jaSingle = ja * wSingleLine
 
+    // A judgment line color change fades each part as a compensated pair: color A under color B,
+    // with A and B at `crossfadeAlphas(alpha, pSprites)`. A part whose sprites are the same in both
+    // colors is drawn once.
+    const sameSprites = (...keys: (keyof JudgmentSpriteSet)[]) =>
+        keys.every((key) => spritesA[key] === spritesB[key])
+
     if (jaBar > 0) {
         const bgLayout = place(perspectiveRect(context.layout, lJl, rJl, 1 - nh, 1 + nh, travel))
-        if (spritesSame) {
-            draw(spritesA.background, bgLayout, z(1), clampAlpha(jaBar))
-        } else {
-            draw(spritesA.background, bgLayout, z(1), clampAlpha(jaBar * wSpritesStart))
-            draw(spritesB.background, bgLayout, z(2), clampAlpha(jaBar * wSpritesEnd))
-        }
+        drawCrossfade(
+            draw,
+            spritesA.background,
+            spritesB.background,
+            bgLayout,
+            z(1),
+            z(2),
+            jaBar,
+            pSprites,
+        )
     }
-
-    const pLeft = leftBorderStyle.progress
-    const pRight = rightBorderStyle.progress
 
     const startHasHalfOffset = division.start.parity === 1 && division.start.size % 2 === 1
     const endHasHalfOffset = division.end.parity === 1 && division.end.size % 2 === 1
     const judgmentDividersSame = startHasHalfOffset === endHasHalfOffset
 
     if (jaDec > 0) {
-        if (judgmentDividersSame && spritesSame) {
-            drawJudgmentDividers(spritesA, startHasHalfOffset, pivotLane, z(5), z(6), jaDec)
-        } else if (judgmentDividersSame) {
-            drawJudgmentDividers(
-                spritesA,
-                startHasHalfOffset,
-                pivotLane,
-                z(5),
-                z(6),
-                jaDec * wSpritesStart,
-            )
-            drawJudgmentDividers(
-                spritesB,
-                startHasHalfOffset,
-                pivotLane,
-                z(9),
-                z(10),
-                jaDec * wSpritesEnd,
-            )
-        } else if (spritesSame) {
-            drawJudgmentDividers(
-                spritesA,
-                startHasHalfOffset,
-                pivotLane,
-                z(5),
-                z(6),
-                jaDec * wDivStart,
-            )
-            drawJudgmentDividers(spritesA, endHasHalfOffset, pivotLane, z(7), z(8), jaDec * wDivEnd)
+        const dividersSame = sameSprites('center', 'edge')
+        // One set of dividers in both colors: A in the first slots and B in the second.
+        const drawDividerColors = (
+            halfOffset: boolean,
+            alpha: number,
+            zLoA: number,
+            zLoB: number,
+        ) => {
+            if (dividersSame) {
+                drawJudgmentDividers(spritesA, halfOffset, pivotLane, z(zLoA), z(zLoA + 1), alpha)
+                return
+            }
+            const [alphaA, alphaB] = crossfadeAlphas(alpha, pSprites)
+            if (alphaA > 0)
+                drawJudgmentDividers(spritesA, halfOffset, pivotLane, z(zLoA), z(zLoA + 1), alphaA)
+            if (alphaB > 0)
+                drawJudgmentDividers(spritesB, halfOffset, pivotLane, z(zLoB), z(zLoB + 1), alphaB)
+        }
+
+        if (judgmentDividersSame) {
+            drawDividerColors(startHasHalfOffset, jaDec, 5, 9)
         } else {
-            const alphaAa = wSpritesStart * wDivStart
-            const alphaAb = wSpritesStart * wDivEnd
-            const alphaBa = wSpritesEnd * wDivStart
-            const alphaBb = wSpritesEnd * wDivEnd
-            if (alphaAa > 0)
-                drawJudgmentDividers(
-                    spritesA,
-                    startHasHalfOffset,
-                    pivotLane,
-                    z(5),
-                    z(6),
-                    jaDec * alphaAa,
-                )
-            if (alphaAb > 0)
-                drawJudgmentDividers(
-                    spritesA,
-                    endHasHalfOffset,
-                    pivotLane,
-                    z(7),
-                    z(8),
-                    jaDec * alphaAb,
-                )
-            if (alphaBa > 0)
-                drawJudgmentDividers(
-                    spritesB,
-                    startHasHalfOffset,
-                    pivotLane,
-                    z(9),
-                    z(10),
-                    jaDec * alphaBa,
-                )
-            if (alphaBb > 0)
-                drawJudgmentDividers(
-                    spritesB,
-                    endHasHalfOffset,
-                    pivotLane,
-                    z(11),
-                    z(12),
-                    jaDec * alphaBb,
-                )
+            // The two sets sit at different positions, so each fades linearly with the division.
+            if (wDivStart > 0) drawDividerColors(startHasHalfOffset, jaDec * wDivStart, 5, 9)
+            if (wDivEnd > 0) drawDividerColors(endHasHalfOffset, jaDec * wDivEnd, 7, 11)
         }
     }
 
     if (jaBar > 0) {
-        if (spritesSame) {
-            drawGradient(spritesA, z(13), jaBar)
+        if (sameSprites('gradient', 'edge')) {
+            drawGradient(spritesA, z(13), z(13.5), jaBar)
         } else {
-            drawGradient(spritesA, z(13), jaBar * wSpritesStart)
-            drawGradient(spritesB, z(14), jaBar * wSpritesEnd)
+            const [alphaA, alphaB] = crossfadeAlphas(jaBar, pSprites)
+            if (alphaA > 0) drawGradient(spritesA, z(13), z(13.5), alphaA)
+            if (alphaB > 0) drawGradient(spritesB, z(14), z(14.5), alphaB)
         }
     }
 
     if (jaDec > 0) {
-        if (spritesSame && leftBorderStyle.start === leftBorderStyle.end) {
-            drawLeftJudgmentBorder(spritesA, leftBorderStyle.start, z(5), jaDec)
-        } else {
-            const alphaAa = borderBlendAlpha(jaDec * wSpritesStart, pLeft)
-            const alphaAb = jaDec * wSpritesStart * Math.max(0, pLeft)
-            const alphaBa = borderBlendAlpha(jaDec * wSpritesEnd, pLeft)
-            const alphaBb = jaDec * wSpritesEnd * Math.max(0, pLeft)
-            if (alphaAa > 0) drawLeftJudgmentBorder(spritesA, leftBorderStyle.start, z(5), alphaAa)
-            if (alphaAb > 0) drawLeftJudgmentBorder(spritesA, leftBorderStyle.end, z(7), alphaAb)
-            if (alphaBa > 0) drawLeftJudgmentBorder(spritesB, leftBorderStyle.start, z(9), alphaBa)
-            if (alphaBb > 0) drawLeftJudgmentBorder(spritesB, leftBorderStyle.end, z(11), alphaBb)
+        const bordersSame = sameSprites('edgeLeft', 'edge')
+        // One side's border in both colors, each a pair of the start and end styles.
+        const drawBorderColors = (
+            style: Transition<number>,
+            drawSide: (
+                sprites: JudgmentSpriteSet,
+                style: number,
+                zKey: ZKey,
+                alpha: number,
+            ) => void,
+        ) => {
+            const drawStyles = (
+                sprites: JudgmentSpriteSet,
+                alpha: number,
+                zStart: number,
+                zEnd: number,
+            ) => {
+                if (style.start === style.end) {
+                    drawSide(sprites, style.start, z(zStart), alpha)
+                    return
+                }
+                const [alphaStart, alphaEnd] = crossfadeAlphas(alpha, style.progress)
+                drawSide(sprites, style.start, z(zStart), alphaStart)
+                drawSide(sprites, style.end, z(zEnd), alphaEnd)
+            }
+
+            if (bordersSame) {
+                drawStyles(spritesA, jaDec, 5, 7)
+                return
+            }
+            const [alphaA, alphaB] = crossfadeAlphas(jaDec, pSprites)
+            drawStyles(spritesA, alphaA, 5, 7)
+            drawStyles(spritesB, alphaB, 9, 11)
         }
 
-        if (spritesSame && rightBorderStyle.start === rightBorderStyle.end) {
-            drawRightJudgmentBorder(spritesA, rightBorderStyle.start, z(5), jaDec)
-        } else {
-            const alphaAa = borderBlendAlpha(jaDec * wSpritesStart, pRight)
-            const alphaAb = jaDec * wSpritesStart * Math.max(0, pRight)
-            const alphaBa = borderBlendAlpha(jaDec * wSpritesEnd, pRight)
-            const alphaBb = jaDec * wSpritesEnd * Math.max(0, pRight)
-            if (alphaAa > 0)
-                drawRightJudgmentBorder(spritesA, rightBorderStyle.start, z(5), alphaAa)
-            if (alphaAb > 0) drawRightJudgmentBorder(spritesA, rightBorderStyle.end, z(7), alphaAb)
-            if (alphaBa > 0)
-                drawRightJudgmentBorder(spritesB, rightBorderStyle.start, z(9), alphaBa)
-            if (alphaBb > 0) drawRightJudgmentBorder(spritesB, rightBorderStyle.end, z(11), alphaBb)
-        }
+        drawBorderColors(leftBorderStyle, drawLeftJudgmentBorder)
+        drawBorderColors(rightBorderStyle, drawRightJudgmentBorder)
     }
 
-    if (jaSingle > 0) {
-        if (spritesSame) {
-            drawSingleLine(spritesA, z(15), jaSingle)
-        } else {
-            drawSingleLine(spritesA, z(15), jaSingle * wSpritesStart)
-            drawSingleLine(spritesB, z(16), jaSingle * wSpritesEnd)
-        }
-    }
+    if (jaSingle > 0) drawSingleLine(jaSingle)
 }
 
 const drawFallbackStage = (

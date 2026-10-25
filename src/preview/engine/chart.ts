@@ -1,7 +1,7 @@
 import type { BorderStyle, JudgmentLineColor } from '../../chart/events/stage/style'
 import type { GroupId } from '../../chart/groups'
 import type { FlickDirection as ChartFlickDirection, ConnectorLayer } from '../../chart/note'
-import { guideColor } from '../../chart/noteStyle'
+import { guideColor, noteStyleValue } from '../../chart/noteStyle'
 import type { StageId } from '../../chart/stages'
 import { easeValues, type Ease } from '../../ease'
 import { onResetState } from '../../history/resetHooks'
@@ -339,6 +339,7 @@ export const createPreviewChartBuilder = () => {
                             .sort((a, b) => a.beat - b.beat)
                             .map((event): StageStyleEvent => ({
                                 time: toTime(event.beat),
+                                laneColor: noteStyleValue(event.laneColor),
                                 judgeLineColor: judgeLineColors[event.judgmentLineColor],
                                 judgeLineStyle: event.judgmentLineStyle === 'singleLine' ? 1 : 0,
                                 leftBorderStyle: borderStyles[event.leftBorderStyle],
