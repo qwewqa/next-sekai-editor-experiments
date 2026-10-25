@@ -176,12 +176,17 @@ export const usePreviewRendering = (
             if (!active || !nextRenderer) return
 
             try {
-                if (nextSkin && (nextRenderer !== uploadedRenderer || nextSkin !== uploadedSkin)) {
+                // A bitmap moved to the worker is detached, with no size, until it comes back or
+                // is decoded again.
+                if (
+                    nextSkin?.texture.width &&
+                    (nextRenderer !== uploadedRenderer || nextSkin !== uploadedSkin)
+                ) {
                     nextRenderer.setTexture(0, nextSkin.texture, nextSkin.interpolation)
                     uploadedSkin = nextSkin
                 }
                 if (
-                    nextParticle &&
+                    nextParticle?.texture.width &&
                     (nextRenderer !== uploadedRenderer || nextParticle !== uploadedParticle)
                 ) {
                     nextRenderer.setTexture(1, nextParticle.texture, nextParticle.interpolation)

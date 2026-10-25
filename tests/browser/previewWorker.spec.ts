@@ -214,8 +214,11 @@ for (const [label, flags, decodedAgain] of [
         await expect.poll(() => outlinePixels(page)).toBeGreaterThan(0)
         // The worker's canvases go once the main host has drawn.
         await expect(page.locator('.preview-viewport canvas')).toHaveCount(2)
+        await expect(page.locator('.preview')).not.toContainText('could not be started')
         // The atlases came back from a worker that answered, else they were decoded again.
-        expect(await page.evaluate(() => window.hostTest.decodes)).toBe(decodedAgain ? 4 : 2)
+        await expect
+            .poll(() => page.evaluate(() => window.hostTest.decodes))
+            .toBe(decodedAgain ? 4 : 2)
         const frames = await page.evaluate(() => window.hostTest.mainFrames)
         await page.evaluate(() => (window.editorTest.view.cursorTime = 3.4))
         await expect
