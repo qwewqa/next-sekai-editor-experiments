@@ -45,12 +45,14 @@ const profile = async (
         days = 1,
         dump = main,
         files,
-    }: { days?: number; dump?: DumpJson; files?: 'opfs' | 'download' } = {},
+        zip,
+    }: { days?: number; dump?: DumpJson; files?: 'opfs' | 'download'; zip?: Uint8Array } = {},
 ) =>
     seededContext(browser, dump, {
         start: afterDump(dump, days),
         files: files ?? (browserName === 'chromium' ? 'opfs' : 'download'),
         without: browserName === 'webkit' ? BLOB_STORES : [],
+        zip,
     })
 
 const row = (page: Page, chainId: string) =>
@@ -557,7 +559,7 @@ test('a newer build’s data stays: continuing A, Restore as a Copy, a Save that
     await context.close()
 })
 
-test('P needs a newer version: Restore Session says so, Save to File… is refused, its rows are untouched', async ({
+test('P needs a newer version: Restore Session says so, Save… is refused, its rows are untouched', async ({
     browser,
     browserName,
 }) => {
@@ -585,7 +587,7 @@ test('P needs a newer version: Restore Session says so, Save to File… is refus
     }
     const before = await own()
     await openRecent(page)
-    await rowAction(page, chains.P, 'Save to File…')
+    await rowAction(page, chains.P, 'Save…')
     await expect
         .poll(async () => (await notices(page)).some((text) => text.startsWith('Not saved')))
         .toBe(true)
@@ -630,7 +632,11 @@ test('raw-export.zip’s dump.json seeds a fresh profile whose Recent Sessions l
 }) => {
     // Catches a later build that cannot load the editor's own raw-data export (the storage-bug
     // guide's way to a user's work, docs/release/storage-bug.md).
-    const zip = await ZipReader.open(new Blob([readFileSync(join(webDir, 'raw-export.zip'))]))
+    // The seeder reads the ZIP itself: `dump.json` and each `blobs/<n>` entry its tags name. Private
+    // WebKit contexts refuse Blobs, which the ZIP's media rows need.
+    test.skip(browserName === 'webkit', 'a private WebKit context refuses the media Blobs')
+    const bytes = new Uint8Array(readFileSync(join(webDir, 'raw-export.zip')))
+    const zip = await ZipReader.open(new Blob([bytes]))
     const entry = zip.get('dump.json')!
     const dump = JSON.parse(
         new TextDecoder().decode(await zip.read(entry, { maxSize: 1 << 30 })),
@@ -638,7 +644,11 @@ test('raw-export.zip’s dump.json seeds a fresh profile whose Recent Sessions l
     const expected = valuesOf(dump, 'chains')
         .filter((chain) => chain.deleting === undefined)
         .map((chain) => chain.chainId as string)
-    const { context, clock } = await profile(browser, browserName, { dump, files: 'download' })
+    const { context, clock } = await profile(browser, browserName, {
+        dump,
+        files: 'download',
+        zip: bytes,
+    })
     const page = await visit(context, clock)
     await openRecent(page)
     const listed = await page

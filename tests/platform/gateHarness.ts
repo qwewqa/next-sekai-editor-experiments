@@ -15,7 +15,6 @@ export type Gate = {
     isWebKit: (win: object) => boolean
     message: (win: object) => string
     toRecoveryFile: (text: string) => GateFile
-    journalFile: (text: string) => (GateFile & { writtenAt?: number }) | undefined
     recoveryFiles: (storage: MemoryStorage) => GateFile[]
     run: (win: object) => boolean
 }

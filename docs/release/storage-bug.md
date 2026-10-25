@@ -1,6 +1,6 @@
 # When a release breaks storage
 
-The steps for the maintainer when a release stops users from reaching their stored work, and the reply to post. The rules behind it are in the release plan (Part 4 §4.9.3). Export Raw Data… is in every build from v0.6.0 on, and it reads the database without the editor's record decoder, so it works when Recent Sessions and Save to File… do not.
+The steps for the maintainer when a release stops users from reaching their stored work, and the reply to post. The rules behind it are in the release plan (Part 4 §4.9.3). Export Raw Data… is in every build from v0.6.0 on, and it reads the database without the editor's record decoder, so it works when Recent Sessions and Save… do not.
 
 ## 1. When to use it
 
@@ -35,15 +35,15 @@ Post this in the fix's release notes and in the issue thread. Replace `{version}
 
 ## 5. Loading a dump
 
-1. Unzip the ZIP. `dump.json` holds the data. Check its `format` (`nse-local-data-dump`), its `version` and its `appVersion`, the build that wrote it.
-2. Copy `dump.json` into the nse-next `samples/` folder (or the folder `NSE_SAMPLES_DIR` names) as `<case>.json`, for example `reporter-1.json`. Never copy it into the repository. Case names use letters, digits, `.`, `_` and `-`.
+1. Leave the ZIP as it is. Its first entry, `dump.json`, holds the rows and `localStorage`. Each media file is its own `blobs/<n>` entry, which a `$blobEntry` tag in `dump.json` names. To look at the data, check `dump.json`’s `format` (`nse-local-data-dump`), its `version` and its `appVersion`, the build that wrote it. A value JSON has no form for is tagged (`$num`, `$date`, `$typed`, `$other`). A media file the export could not read is `{"$blobUnreadable": true, "type", "size"}` in `dump.json`, with no `blobs/` entry. The seeder writes an empty media file of that type in its row, so it shows as not loaded or damaged.
+2. Copy the ZIP itself into the nse-next `samples/` folder (or the folder `NSE_SAMPLES_DIR` names) as `<case>.zip`, for example `reporter-1.zip`. Never copy it into the repository. Case names use letters, digits, `.`, `_` and `-`.
 3. Run `npm run dev` in a worktree at the broken release’s tag, to see what the user saw, or at the fix.
 4. Open a fresh browser profile. The seeder refuses a database that holds any chain or session. A dump holds no file handles (the seeder leaves its handle rows out), so the first Save of a chain asks where to write.
-5. Open `/?seedSample=<case>` on the dev server. The page seeds the profile and reloads with the user’s data. The dump’s `journal.*` keys are seeded too and replay on that first load, so the profile is written to. The console says `[seedSample] Seeded <case>; reloading.` A refusal says why, and the editor loads as usual.
+5. Open `/?seedSample=<case>.zip` on the dev server. The page seeds the profile and reloads with the user’s data. The dump’s `journal.*` keys are seeded too and replay on that first load, so the profile is written to. The console says `[seedSample] Seeded <case>.zip; reloading.` A refusal says why, and the editor loads as usual.
 
 ## 6. Getting the work out
 
-For each chain in History › Recent Sessions, open the row’s ⋯ menu and choose Save to File…. That writes the chain’s latest state to a file without opening it. To look at a chain first, choose Restore Session, then Save.
+For each chain in History › Recent Sessions, open the row’s ⋯ menu and choose Save…. That writes the chain’s latest state to a file without opening it. To look at a chain first, choose Restore Session, then Save.
 
 Work the editor could not read is under Settings › Local Data › Recovery: the unreadable recovered work and the journals of earlier visits, each with a Download button.
 
@@ -63,4 +63,4 @@ The steps above were tried on 2026-10-23, at commit `f2f4d8a8` (branch `release-
 - `/?seedSample=<case>` seeded the profile, the console said it was reloading, and the editor opened.
 - History › Recent Sessions listed six chains: `fixture` (the one the editor continued, 544 notes), `fork.nxsp`, `no-history.nxsp`, `fork` (not saved to a file), `no-media.nxsp` and `Untitled`.
 - Restore Session of `no-media.nxsp` opened it.
-- ⋯ › Save to File… on `fork.nxsp` opened the Save dialog (the profile has no handle for the file), and Save downloaded `fork (restored Nov 5).nxsp` (82.9 kB). The editor’s reader opens it fully.
+- ⋯ › Save… on `fork.nxsp` opened the Save dialog (the profile has no handle for the file), and Save downloaded `fork (restored Nov 5).nxsp` (82.9 kB). The editor’s reader opens it fully.

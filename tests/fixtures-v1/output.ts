@@ -5,7 +5,7 @@ import { decodeValue, readDump, type Dump, type DumpStore } from '../../src/loca
 import { compareKeys, normalizeKey } from '../../src/local/kv/keys'
 import type { Key } from '../../src/local/kv/types'
 import { DUMP_ENTRY } from '../../src/local/rawExport'
-import { buildZip, ZipReader } from '../../src/zip'
+import { buildZip, ZipReader, type ZipInput } from '../../src/zip'
 import type { Products } from './products'
 
 // The writer's last step: the dumps edited in the few ways the scenario names, the folders' README
@@ -138,7 +138,16 @@ export const retagRawExport = async (zip: Uint8Array) => {
     )
     tagHandles(dump)
     const data = new TextEncoder().encode(JSON.stringify(dump))
-    const built = await buildZip([{ name: DUMP_ENTRY, method: 'deflate', data }])
+    // Every `blobs/<n>` entry the dump's `$blobEntry` tags name, in order, as the export stores them.
+    const blobs: ZipInput[] = []
+    for (const each of reader.entries)
+        if (each.name.startsWith('blobs/') && !each.isDirectory)
+            blobs.push({
+                name: each.name,
+                method: 'store',
+                data: new Uint8Array(await reader.read(each, { maxSize: 1 << 30 })),
+            })
+    const built = await buildZip([{ name: DUMP_ENTRY, method: 'deflate', data }, ...blobs])
     return new Uint8Array(await built.arrayBuffer())
 }
 
@@ -174,7 +183,6 @@ export const webNames = [
     'raw-export.zip',
     'saving-marker-file.nxsp',
     'journal-unavailable.json',
-    'legacy-raw.json',
 ] as const
 
 const sums = (files: Map<string, Uint8Array | string>) =>
@@ -222,7 +230,6 @@ export const writeFixtures = (
         ['raw-export.zip', products.bytes('raw-export.zip')],
         ['saving-marker-file.nxsp', products.bytes('saving-marker-file.nxsp')],
         ['journal-unavailable.json', products.text('journal-unavailable.json')],
-        ['legacy-raw.json', products.text('legacy-raw.json')],
     ])
     for (const [dir, files, readme] of [
         [folders.nxsp, nxsp, readmes.nxsp],

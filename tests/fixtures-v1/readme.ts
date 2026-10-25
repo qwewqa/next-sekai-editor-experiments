@@ -16,7 +16,7 @@ contexts):
 
 | File | Made by | Holds |
 | --- | --- | --- |
-| \`full.nxsp\` | B: A6's file, opened in another browser and saved back in place | History over two devices' \`save\` entries; every entry kind but \`init\`; a row \`kept: false\`; one segment copied whole beside the head manifest; a carried \`completeFrom\`; the head's BGM, cover and preview with their bytes, earlier ones as metadata only; level info with a rating and a tag icon; group and stage folders; dynamic stages; notes at third lanes; elevation; a depth-1 kind node; unknown top-level and \`metadata\` keys |
+| \`full.nxsp\` | B: A6's file, opened in another browser and saved back in place | History over two devices' \`save\` entries; every entry kind but \`init\`; a row \`kept: false\`; one segment copied whole beside the head manifest; a carried \`completeFrom\`; the head's BGM, cover and preview with their bytes, earlier ones as metadata only; level info with a rating; group and stage folders; dynamic stages; notes at third lanes; elevation; a depth-1 kind node; unknown top-level and \`metadata\` keys |
 | \`kept-first.nxsp\` | B: the file on its disk replaced by A10's, then Save and the conflict dialog's Replace | \`revision.replaces\` names the revision the Replace wrote over; the base's \`completeFrom\` is carried |
 | \`carried.nxsp\` | D: \`full.nxsp\` opened in a browser without pickers, edited and saved (a download) | The base's \`completeFrom\`, carried |
 | \`not-carried.nxsp\` | D: a stored chunk only a row of \`full.nxsp\` needs goes bad, and the next Save finds it | \`completeFrom\` is its own revision; the damaged row \`kept: false\` |
@@ -38,14 +38,13 @@ frozen when v0.6.0 is tagged and never changed after it; every later build reads
 
 | File | Made by | Holds |
 | --- | --- | --- |
-| \`nse-local-data.json\` | Context A, step 13: the database and localStorage of a write-back browser after a week of use, dumped by \`dumpDatabase\` and \`dumpLocalStorage\` | Chains M (migrated from the old auto save), A (a file's chain with more than 500 entries), F (a fork, its file taken over), I (an imported level), N (deleted), P (a partial open) and Q (an import left pending), with every v1 store; a pending journal and a \`saving.*\` marker; chain P's binding with \`entry.inexact\` (an append after a recognised own Save); \`legacyRecovery\` in its v1 form. Newer-build data added by the script: \`zzFixtureChainField\` on A, \`zzFixtureEntryField\` and \`x.zzFixtureX\` on two of its entries, a later (continued) session of P with a \`continue\` entry and then one of the kind \`zzFixtureKind\` |
+| \`nse-local-data.json\` | Context A, step 13: the database and localStorage of a write-back browser after a week of use, dumped by \`dumpDatabase\` and \`dumpLocalStorage\` | Chains M (migrated from the old auto save), A (a file's chain with more than 500 entries), F (a fork, its file taken over), I (an imported level), N (deleted), P (a partial open) and Q (an import left pending), with every v1 store; a pending journal and a \`saving.*\` marker; chain P's binding with \`entry.inexact\` (an append after a recognised own Save). Newer-build data added by the script: \`zzFixtureChainField\` on A, \`zzFixtureEntryField\` and \`x.zzFixtureX\` on two of its entries, a later (continued) session of P with a \`continue\` entry and then one of the kind \`zzFixtureKind\` |
 | \`nse-local-data-download.json\` | Context D, at its end: a browser without pickers | A chain bound by a confirmed download (\`downloaded\`, \`confirmed\`) with \`badChunks\` |
 | \`raw-export.zip\` | Context A, step 12: Settings › Local Data › Recovery › Export Raw Data… | The ZIP the editor writes (\`dump.json\`), as the storage-bug guide loads it; its handle rows tagged as a Chromium export writes them |
 | \`saving-marker-file.nxsp\` | Context A, step 13: A's file as the last Save wrote it, whose binding was never recorded | The file the \`saving.*\` marker in \`nse-local-data.json\` names: its revision, a document device id derived from this browser's id, and a \`save\` entry last |
 | \`journal-unavailable.json\` | Context E: storage unavailable, one edit, the journal written after 10 seconds | A journal (\`keep\` 0), the raw value of its \`journal.*\` key |
-| \`legacy-raw.json\` | Context A, step 1: the old auto save the first load migrated | The raw level data a v0.5 build left in \`autoSave.levelData\` |
 
 Handles are tagged \`{ "$handle": "file", "name": … }\` in the dumps, as a real Chromium dump holds
 them (\`raw-export.zip\` is the editor's own output, rebuilt with its handle rows tagged the same way, since the run's override stands for a handle with a plain token). The pending
-journal and \`legacyRecovery\` in \`nse-local-data.json\` are the ordinary v1 forms of both values.
+journal in \`nse-local-data.json\` is the ordinary v1 form.
 `

@@ -14,7 +14,7 @@ import { readNxsp } from '../../src/local/nxsp'
 import { noteCountOf } from '../../src/local/records/records'
 import { nodeJsonFromRow, rootJsonFromRow } from '../../src/local/records/rows'
 import { decodeSnapshot } from '../../src/local/records/snapshot'
-import { seedDump } from '../../src/local/seed'
+import { seedDump, seedRawExport } from '../../src/local/seed'
 import { createWorld } from '../../src/local/testing/world'
 import { ZipReader } from '../../src/zip'
 import { FIXTURE_BUILDS, SUMS_DIGESTS } from './fixturesV1Pins'
@@ -41,7 +41,7 @@ test('every fixture matches its folder’s SHA256SUMS, and every file is listed'
     // test source (fixturesV1Pins.ts): an emptied folder written again cannot pass.
     for (const [dir, expected, folder] of [
         [nxspDir, 8, 'nxsp-v1'],
-        [webDir, 6, 'web-storage-v1'],
+        [webDir, 5, 'web-storage-v1'],
     ] as const) {
         assert.equal(sha256(readFileSync(join(dir, 'SHA256SUMS'))), SUMS_DIGESTS[folder], folder)
         const sums = readFileSync(join(dir, 'SHA256SUMS'), 'utf8')
@@ -102,8 +102,16 @@ test('readDump accepts both dumps and the raw export’s dump.json, and seedDump
         const world = createWorld()
         const tab = world.tab('a')
         const stored: Record<string, string> = {}
+        const storage = { setItem: (key: string, value: string) => void (stored[key] = value) }
+        // The raw export seeds through its ZIP, each `$blobEntry` read from its `blobs/<n>` entry.
         const result = await tab.run(() =>
-            seedDump(tab.kv, dump, { setItem: (key, value) => void (stored[key] = value) }),
+            name.startsWith('raw-export.zip')
+                ? seedRawExport(
+                      tab.kv,
+                      new Blob([readFileSync(join(webDir, 'raw-export.zip'))]),
+                      storage,
+                  )
+                : seedDump(tab.kv, dump, storage),
         )
         assert.deepEqual(result, { seeded: true }, name)
         assert.deepEqual(stored, dump.localStorage, name)
@@ -173,7 +181,6 @@ const observeHeader = (header: Rec, facts: Set<string>) => {
     }
     for (const tag of info[position('levelInfo', 'tags')] as Rec[]) {
         facts.add('tag')
-        facts.add(has(tag, 'tag', 'icon') ? 'tag.icon' : 'tag.noIcon')
     }
     if (header.length > position('header', 'bgm')) {
         const bgm = at('bgm') as Rec
@@ -350,8 +357,6 @@ const everything = [
     'levelInfo.preview.mediaRef',
     'levelInfo.preview.empty',
     'tag',
-    'tag.icon',
-    'tag.noIcon',
     'mediaRef',
     'bgm',
     'bgm.durationMs',
@@ -457,8 +462,6 @@ test('the eight files together hold every project.json key, entry kind and field
         for (const key of Object.keys((project.summary ?? {}) as object)) keys.add(`summary.${key}`)
         const metadata = (project.metadata ?? {}) as Record<string, unknown>
         for (const key of Object.keys(metadata)) keys.add(`metadata.${key}`)
-        for (const tag of (metadata.tags ?? []) as Record<string, unknown>[])
-            if ('icon' in tag) keys.add('metadata.tags.icon')
         for (const key of ['bgm', 'cover', 'preview'] as const) {
             const form = (key === 'bgm' ? project.bgm : metadata[key]) as
                 Record<string, unknown> | undefined
@@ -516,7 +519,6 @@ test('the eight files together hold every project.json key, entry kind and field
         'metadata.description',
         'metadata.rating',
         'metadata.tags',
-        'metadata.tags.icon',
         'metadata.cover',
         'metadata.preview',
         'bgm',
@@ -699,12 +701,8 @@ test('the main dump holds every stored row form of v1', async () => {
             keys.some((key) => key.startsWith(prefix)),
             prefix,
         )
-    for (const key of ['legacyRecovery', 'canary', 'deviceId', 'lastAppVersion'])
+    for (const key of ['canary', 'deviceId', 'lastAppVersion'])
         assert.ok(keys.includes(key), key)
-    assert.equal(
-        (JSON.parse(dump.localStorage['sonolus-next-sekai-editor.legacyRecovery']!) as Row).version,
-        1,
-    )
 
     // The newer-build data the script added: kept on a row, an entry of an unknown kind on a chain's later session.
     assert.ok(chains.some((chain) => chain.zzFixtureChainField === 'carried'))

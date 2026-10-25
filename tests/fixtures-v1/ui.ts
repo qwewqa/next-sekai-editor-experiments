@@ -292,7 +292,7 @@ export const openRecent = async (page: Page) => {
 export const recentRow = (page: Page, chainId: unknown) =>
     page.locator(`[data-sessions-row][data-chain="${String(chainId)}"]`)
 
-/** A Recent Sessions row's ⋯ menu item (Restore Session, Restore as a Copy, Save to File…, Delete). */
+/** A Recent Sessions row's ⋯ menu item (Restore Session, Restore as a Copy, Save…, Delete). */
 export const rowAction = async (tab: Tab, chainId: unknown, item: string) => {
     const { page } = tab
     await openRecent(page)

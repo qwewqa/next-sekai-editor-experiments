@@ -37,8 +37,7 @@ export const startChart = (): FixtureChart => {
     fixture.extras = {
         levelInfo: {
             ...levelInfo,
-            // An icon on the first tag, none on the second.
-            tags: [{ title: 'Icon tag', icon: 'star' }, { title: 'Tag' }],
+            tags: [{ title: 'First tag' }, { title: 'Tag' }],
             cover: undefined,
             preview: undefined,
         },

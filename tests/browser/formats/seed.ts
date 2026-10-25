@@ -94,13 +94,15 @@ export type SeedOptions = {
     files?: 'opfs' | 'download'
     /** Stores whose rows are left out of the seed. */
     without?: string[]
+    /** An Export Raw Data… ZIP to seed through `seedRawExport`, in place of the dump's JSON. */
+    zip?: Uint8Array
 }
 
 /** A context whose profile holds the dump (an empty one without), ready for the editor's first load. */
 export const seededContext = async (
     browser: Browser,
     json: DumpJson | undefined,
-    { start, files = 'download', without = [] }: SeedOptions,
+    { start, files = 'download', without = [], zip }: SeedOptions,
 ): Promise<{ context: BrowserContext; clock: SampleClock }> => {
     const context = await browser.newContext({ timezoneId: 'UTC', locale: 'en-US' })
     const clock = new SampleClock(context, start)
@@ -119,8 +121,8 @@ export const seededContext = async (
         },
         { files, prefix },
     )
-    if (!json) return { context, clock }
-    const dump = {
+    if (!json && !zip) return { context, clock }
+    const dump = json && {
         ...json,
         stores: json.stores.map((store) =>
             without.includes(store.name) ? { ...store, records: [] } : store,
@@ -128,15 +130,20 @@ export const seededContext = async (
     }
     const page = await context.newPage()
     await page.goto('/privacy/')
-    const result = await page.evaluate(async (dump) => {
+    const result = await page.evaluate(async ({ dump, zip }) => {
         const { seedDump } =
             (await import('/src/local/seed.ts')) as typeof import('../../../src/local/seed')
         const { readDump } =
             (await import('/src/local/dump.ts')) as typeof import('../../../src/local/dump')
         const { idbFactory } =
             (await import('/src/local/kv/idb.ts')) as typeof import('../../../src/local/kv/idb')
+        if (zip) {
+            const { seedRawExport } =
+                (await import('/src/local/seed.ts')) as typeof import('../../../src/local/seed')
+            return seedRawExport(idbFactory(indexedDB), new Blob([new Uint8Array(zip)]), localStorage)
+        }
         return seedDump(idbFactory(indexedDB), readDump(dump), localStorage)
-    }, dump)
+    }, { dump, zip: zip && [...zip] })
     expect(result).toEqual({ seeded: true })
     await page.close()
     return { context, clock }

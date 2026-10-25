@@ -104,15 +104,10 @@ export const stepA1 = async (browser: Browser, products: Products): Promise<{ a:
     await blank.close()
 
     const tab = await profile.visit()
-    // The legacy slot holds the old value unchanged, and the slot itself is gone.
-    const legacy = await tab.page.evaluate((prefix) => {
-        return {
-            legacy: localStorage.getItem(`${prefix}legacyRecovery`),
-            slot: localStorage.getItem(`${prefix}autoSave.levelData`),
-        }
-    }, prefix)
-    expect(legacy).toEqual({ legacy: oldAutoSave, slot: null })
-    products.put('legacy-raw.json', oldAutoSave)
+    // The first load migrated the old auto save, and the key is gone.
+    expect(
+        await tab.page.evaluate((prefix) => localStorage.getItem(`${prefix}autoSave.levelData`), prefix),
+    ).toBeNull()
     const sessions = await tab.stored('sessions')
     expect(sessions.map((row) => row.origin)).toEqual(['migrated'])
     const meta = await tab.stored('meta')
@@ -142,7 +137,7 @@ export const stepA2 = async ({ chains }: A, tab: Tab) => {
         zzTopLevel: { carried: true },
         metadata: { zzMeta: ['carried', 1] },
     })
-    expect(chain.summary).toMatchObject({ rating: 12, tags: ['Icon tag', 'Tag'] })
+    expect(chain.summary).toMatchObject({ rating: 12, tags: ['First tag', 'Tag'] })
     expect(await tab.stored('sessions')).toHaveLength(2)
 }
 
