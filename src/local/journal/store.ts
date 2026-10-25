@@ -9,13 +9,13 @@ import { trimOptionalJournalContext } from './format'
 /** One key's most characters (about 1 MB; coconut's journal is under 100 KB). */
 export const JOURNAL_KEY_LIMIT = 1024 * 1024
 /**
- * All `journal.*` keys together, and until the migration retires it today's auto save, which
+ * All `journal.*` keys together, and until the migration retires it the old auto save, which
  * leaves room for settings.
  */
 export const JOURNAL_TOTAL_LIMIT = 4 * 1024 * 1024
 
 const JOURNAL = 'journal.'
-/** Today's auto save (`autoSave.levelData`, `autoSave.unreadable`). */
+/** The old auto save (`autoSave.levelData`, `autoSave.unreadable`). */
 const AUTO_SAVE = 'autoSave.'
 const AUTO_SAVE_SLOT = 'autoSave.levelData'
 

@@ -162,7 +162,7 @@ export const journalsStep = async (context: RecoveryContext) => {
             size += found.from.length + found.text.length
         }
         if (context.keptForLocalData.length) unsavedInLocalData(context)
-        // Kept until opened, downloaded or discarded: say so before they crowd out today's.
+        // Kept until opened, downloaded or discarded: say so before they crowd out new journals.
         if (size >= JOURNAL_TOTAL_LIMIT / 2) context.events({ kind: 'journalsFull' })
         return
     }
@@ -256,7 +256,7 @@ export const parseAutoSaveSlot = (
             chart,
             offset: parsed.levelData.bgmOffset,
             ...(parsed.filename ? { filename: parsed.filename } : {}),
-            // Opened today with a warning when the revision change can matter.
+            // Opened with a warning when the revision change can matter.
             olderRevision: getRevisionWarning(getLevelDataRevision(entities), chart) === 'older',
         }
     } catch {

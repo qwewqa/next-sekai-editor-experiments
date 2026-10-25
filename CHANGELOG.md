@@ -6,7 +6,7 @@
 - **For Sonolus, use Export Level Data… (Shift+P).**
 - Later saves and exports write to the same file in Chrome and Edge on a computer, and in Chrome 132 or later on Android. Other browsers download a new file each time.
 - **When you open the editor, it continues where you left off,** as auto save did. The first time after this update, it continues from your old auto save. Work is stored in this browser as sessions. Save to keep your work.
-- **History (Shift+H)** has two tabs. Timeline lists each change; you can view the chart at any step and **Restore** it. Recent Sessions lists earlier sessions; select one to view or **Restore** it, or use its menu to Save… or Delete. Delete can be undone. Recent Sessions has a **Delete Sessions…** button (a trash can) to delete many sessions at once.
+- **History (Shift+H)** has two tabs. Timeline lists each change; you can view the chart at any step and **Restore** it. Recent Sessions lists earlier sessions; select one to view or **Restore Session**, or use its menu to Save… or Delete. Delete can be undone. Recent Sessions has a **Delete Sessions…** button (a trash can) to delete many sessions at once.
 - Undo goes back up to 1,000 steps, including after a reload. Earlier Timeline steps are in History.
 - When browser storage runs low, the editor deletes audio and covers used only by earlier Timeline steps. When it is full, new changes are not stored until you free space, for example with **Settings › Local Data › Delete Sessions…**
 - Except on iPhone and iPad, the editor asks first when you close the tab with unsaved changes, even after an export. To turn this off, use **Settings › Local Data › Ask Before Closing with Unsaved Changes**. Settings › Local Data replaces the Auto Save settings.

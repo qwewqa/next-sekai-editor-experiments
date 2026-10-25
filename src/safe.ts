@@ -2,7 +2,7 @@ import { WEB_MIGRATION_FLAGS } from './settings/migrationFlags'
 import { storageKey } from './storage'
 
 // Safe mode on the web (`?safe`): a blank editor over a read-only database that
-// writes nothing to localStorage but settings. It is imported ahead of everything that stores
+// writes nothing to localStorage but settings and the migration flags. It is imported ahead of everything that stores
 // (`launch.ts` imports it first), so the guard below is in place before any write.
 
 export const SAFE_PARAM = 'safe'
@@ -16,7 +16,7 @@ export const isSafeMode = () => safe
 
 const settingKeys = new Set<string>()
 
-/** The settings module names its keys: the only localStorage keys safe mode writes. */
+/** The settings module names its keys: the settings keys safe mode may write. */
 export const registerSettingKeys = (keys: Iterable<string>) => {
     for (const key of keys) settingKeys.add(storageKey(key))
 }

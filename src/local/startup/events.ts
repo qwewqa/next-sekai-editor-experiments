@@ -35,7 +35,7 @@ export type LoadEvent =
      * then) when it's the session that opened; otherwise it's kept as a session of its own.
      */
     | { kind: 'migrated'; name: ShownName; sessionId: string; opened: boolean }
-    /** The migrated auto save was made for an older engine revision: today's warning. */
+    /** The migrated auto save was made for an older engine revision: it opens with the revision warning. */
     | { kind: 'migratedRevision'; sessionId: string }
     /** "Recovered your last change to "{0}"." */
     | { kind: 'journalRecovered'; name: ShownName; sessionId: string }

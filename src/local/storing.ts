@@ -233,8 +233,8 @@ export const startStoring = (
     const writes: JournalWrite[] = []
     const instance = new Flusher({
         appVersion: appVersion().appVersion,
-        // An extraction runs a slice per idle period. The clock's frames bring one a frame, as
-        // before it could stop; with no frames, Chrome's idle periods come about 50 ms apart.
+        // Keep the app clock running during an extraction: it runs a slice per idle period, which
+        // comes every frame while frames run and about every 50 ms without them.
         runJob: (job, options) => {
             const release = keepClockWhile(() => true)
             return runSliced(job, options).finally(release)

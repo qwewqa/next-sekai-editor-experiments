@@ -100,7 +100,7 @@ CI runs these (`.github/workflows/check.yml`):
 - `npm run test:release`: the release scripts and the changelog format.
 - `npm run check:builtin-assets`, and `npm run build:native` then `npm run check:native-bundle`.
 
-A change under `infra/` also runs `.github/workflows/infra-check.yml`: `cfn-lint`, `infra/check_templates.py`, `shellcheck`, and a contract test of the real Umami and PostgreSQL images. Run the first three locally as `infra/README.md` shows.
+A change under `infra/` or to an infra workflow also runs `.github/workflows/infra-check.yml`: `cfn-lint`, `infra/check_templates.py`, `shellcheck`, and a contract test of the real Umami and PostgreSQL images. Run the first three locally as `infra/README.md` shows.
 
 Also:
 
@@ -139,7 +139,7 @@ Read this before you measure or optimize scrolling or playback:
 ## Releasing
 
 1. Add each user-visible change as a line under `## Unreleased` in `CHANGELOG.md`, in the commit that makes it. A line is `- `, an optional `(Web)` or `(Apps)`, then plain text with no contractions and ’ for apostrophes. `npm run test:release` checks the format.
-2. Once Check and Deploy Pages have passed for the commit on `main`, run `npm run release:tag -- X.Y.Z` there (`--commit <sha>` tags an earlier commit; `--edit` opens the notes first). It needs `gh`, signed in. It makes the annotated tag `vX.Y.Z` with the `## Unreleased` lines as its message, then the commit "Changelog for X.Y.Z". That commit moves those lines under `## X.Y.Z (date)` and sets the version in `package.json` and `package-lock.json`. It refuses a patch version (Z above 0) when a format version changed since the last tag.
+2. Once Check and Deploy Pages have passed for the commit on `main`, run `npm run release:tag -- X.Y.Z` there (`--commit <sha>` tags an earlier commit; `--edit` opens the notes first). It needs `gh`, signed in. It makes the annotated tag `vX.Y.Z` with the `## Unreleased` lines as its message, then the commit "Changelog for X.Y.Z". That commit moves those lines under `## X.Y.Z (date)` and sets the version in `package.json` and `package-lock.json`. It refuses a patch version (Z above 0) when a format version changed since the last tag. The release sends usage statistics only when the repository variables `ANALYTICS_ORIGIN` and `ANALYTICS_WEBSITE_PRODUCTION` are set before the tag (`docs/analytics.md`, “Build variables”).
 3. Run the push it prints, `git push --atomic origin main vX.Y.Z`. Pushing the tag is the release. Deploy Pages then runs Check, builds with `npm run build:release`, runs `npm run test:production` and `npm run check:release`, and deploys when the tag is the highest `v*` tag. A push to `main` deploys nothing. A pushed tag is never moved or deleted.
 4. For a fix while `main` holds unfinished work, make a branch from the last tag, commit the fix there and run the script on it. CI does not check that branch before the tag, so the script prints the local checks to run first. Merge the branch into `main` afterwards.
 5. After the deploy, check the live site: `PRODUCTION_TEST_URL=https://nse.qwewqa.dev npm run test:production`.
