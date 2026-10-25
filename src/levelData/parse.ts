@@ -1,10 +1,10 @@
 import type { LevelData } from '@sonolus/core'
-import Value from 'typebox/value'
+import { assert } from '../chart/parse/levelData/check'
 import { levelDataSchema } from './schema'
 
 export const parseLevelData = (data: unknown): LevelData => {
     restoreNullSegmentAlphas(data)
-    Value.Assert(levelDataSchema, data)
+    assert(levelDataSchema, data)
     return data
 }
 
