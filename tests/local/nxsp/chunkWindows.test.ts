@@ -6,7 +6,7 @@ import { rawZip } from '../../zip/rawZip'
 
 // A STORE `chunks.bin` is read in windows: each chunk's bytes must be the file's at its place,
 // whatever order the chunks are asked in, and a copy of its own, never a view of the window
-// (stored as it is, a view would store the whole window).
+// (a view, stored as it is, would write out the whole window).
 
 test('chunks read through windows are the file’s bytes at their places, each a copy', async () => {
     const size = 5 * 1024 * 1024 + 123
@@ -40,4 +40,42 @@ test('chunks read through windows are the file’s bytes at their places, each a
         assert.deepEqual(bytes, data.slice(offset, offset + length), key)
         assert.equal(bytes.buffer.byteLength, length, `${key} is a copy`)
     }
+})
+
+test('chunks asked for all at once read one window at most; chunks asked in order share windows', async (t) => {
+    const size = 6 * 1024 * 1024
+    const data = new Uint8Array(size).map((_, i) => (i * 40503) >>> 8)
+    const file = new Blob([rawZip([{ name: 'history/chunks.bin', data, method: 0 }])])
+    const reader = await ZipReader.open(file)
+    const entry = reader.get('history/chunks.bin')
+    assert.ok(entry)
+    const places: [number, number][] = []
+    for (let at = 0; at + 4000 <= size; at += 4000) places.push([at, 4000])
+    const index = new Map(places.map(([offset, length], i) => [`c${i}`, { offset, length }]))
+    const read: number[] = []
+    const slice = Blob.prototype.slice
+    t.mock.method(Blob.prototype, 'slice', function (this: Blob, start?: number, end?: number) {
+        // The entry's own Blob, a slice of the file, is not a read.
+        if (this === file) return slice.call(this, start, end)
+        read.push((end ?? this.size) - (start ?? 0))
+        return slice.call(this, start, end)
+    })
+
+    // Scattered and all at once, as the head's chunks are: never a window per chunk.
+    const scattered = [...index.keys()].filter((_, i) => i % 7 === 0).reverse()
+    const all = chunkAccess(reader, entry, index, NXSP_CAPS)
+    read.length = 0
+    const got = await Promise.all(scattered.map((key) => all.stored(key)))
+    got.forEach((bytes, i) => {
+        const { offset, length } = index.get(scattered[i] as string)!
+        assert.deepEqual(bytes, data.slice(offset, offset + length))
+    })
+    const asked = scattered.length * 4000
+    assert.ok(read.reduce((a, b) => a + b, 0) <= asked + 2 * 1024 * 1024, `${read.length} reads`)
+
+    // In file order, one at a time, as the import's batches are: one read a window.
+    const inOrder = chunkAccess(reader, entry, index, NXSP_CAPS)
+    read.length = 0
+    for (const key of index.keys()) await inOrder.stored(key)
+    assert.ok(read.length <= 5, `${read.length} reads`)
 })
