@@ -8,8 +8,8 @@ import { serve, type CallScope, type Endpoint, type Handlers } from '../../../sr
 // The page's watchdog over the storage worker: an unanswered call pings the worker for
 // that call's progress; one that has moved is slow, not hung, and is waited for, so a long write
 // is never cut off. One that makes no progress, whatever other calls do, or doesn't answer, is
-// restarted. The clock is mocked and moves 1 ms at a time, so a loaded machine cannot change what
-// a test sees: a real 60 ms timeout lets a stalled process miss a ping's answer.
+// restarted. The clock is mocked and advances 1 ms at a time. With real timers, a process stalled
+// for 60 ms on a loaded machine misses the reply to a ping, and the test fails.
 
 type Behaviour = { frozen: boolean }
 
@@ -67,7 +67,7 @@ afterEach(() => {
     mock.timers.reset()
 })
 
-/** Moves the clock 1 ms at a time, the continuations running between, until `promise` settles. */
+/** Advances the clock 1 ms at a time until `promise` settles. Callbacks run after each step. */
 const settled = async <T>(promise: Promise<T>): Promise<T> => {
     let done = false
     const end = () => {
@@ -75,7 +75,7 @@ const settled = async <T>(promise: Promise<T>): Promise<T> => {
     }
     void promise.then(end, end)
     for (let ms = 0; !done; ms++) {
-        assert.ok(ms < 60_000, 'still unsettled after 60 s')
+        assert.ok(ms < 60_000, 'the promise did not settle within 60 s of mocked time')
         mock.timers.tick(1)
         await new Promise((resolve) => setImmediate(resolve))
     }
@@ -137,14 +137,15 @@ test('a hung call is restarted within about its timeout while another call keeps
     const { call } = await start()
     const busy = call('slow', 1000).catch((error: unknown) => error)
     await assert.rejects(settled(call('stuck')), { name: 'TimeoutError' })
-    // The first ping already finds no progress: the timeout and one ping, not two timeouts.
+    // The first ping finds no progress, so the restart comes after one timeout and one ping.
     const sent = FakeWorker.created[0]?.sent ?? []
     const stuck = sent.find((message) => message.method === 'stuck')?.id
     assert.equal(
         sent.filter((message) => message.method === 'ping' && message.arg === stuck).length,
         1,
     )
-    // And before the busy call's 1000 ms are through: its progress kept nothing else alive.
+    // The restart also ends the busy call before its 1000 ms, so the busy call's progress does not
+    // keep the stuck call waiting.
     assert.equal(((await settled(busy)) as Error).name, 'WorkerRestartedError')
     await settled(sleep(20))
     assert.equal(FakeWorker.created.length, 2)

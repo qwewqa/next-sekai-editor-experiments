@@ -5,8 +5,8 @@ import { cells, runCell, type CellResult } from './matrix'
 
 // A matrix file: runs the cells of some paths, fails on any violation the known list does not
 // name, and states each known violation as a `todo` test that stays. The todo lists the cells
-// that show it and passes, so a passing run lists no failing tests; it fails, still only as a
-// todo, once no cell shows it, so the entry can go.
+// where the violation occurs and passes, so a passing run lists no failing tests. Once it occurs in
+// no cell, the todo fails. A failing todo does not fail the run, and the entry can be removed.
 
 export const defineMatrix = (pathIds: string[]) => {
     const results: CellResult[] = []
@@ -41,7 +41,7 @@ export const defineMatrix = (pathIds: string[]) => {
                         .map((v) => `${cell.id}: ${v.detail}`),
                 )
             for (const line of found) t.diagnostic(line)
-            assert.ok(found.length > 0, `no cell here shows ${known.id} any more`)
+            assert.ok(found.length > 0, `${known.id} no longer occurs in any cell here`)
         })
     }
 }
