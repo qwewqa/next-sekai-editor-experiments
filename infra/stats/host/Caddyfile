@@ -5,6 +5,17 @@
 	servers {
 		protocols h1 h2
 	}
+	# Caddy's own log (to stderr, then journald) records the request behind an error: a failed
+	# reverse_proxy while Umami is down, for example. Drop the visitor's address and headers from it.
+	log {
+		format filter {
+			wrap json
+			request>remote_ip delete
+			request>remote_port delete
+			request>client_ip delete
+			request>headers delete
+		}
+	}
 }
 
 {$STATS_HOSTNAME} {
