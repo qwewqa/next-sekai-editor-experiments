@@ -57,10 +57,10 @@ Send the files back privately, as a link by email. Then delete the user’s ZIP,
 
 ## 8. Tried once
 
-The steps above were tried on 2026-10-23, at commit `f2f4d8a8` (branch `release-fixtures`, after the Save change), with the dev server on port 5335, `NSE_SAMPLES_DIR` set to a scratch folder and a fresh Chromium profile, driven by a script.
+The steps above were tried on 2026-10-26, at commit `72311609` (branch `release-fixtures`), with the dev server on port 5597, `NSE_SAMPLES_DIR` set to a scratch folder and a fresh Chromium profile without the save picker, driven by a script.
 
-- `tests/fixtures/web-storage-v1/raw-export.zip` holds one entry, `dump.json` (1.8 MB): `format` `nse-local-data-dump`, `version` 1, `appVersion` `0.5.22+f2f4d8a8`, database `nse-local-data` version 1.
-- `/?seedSample=<case>` seeded the profile, the console said it was reloading, and the editor opened.
-- History › Recent Sessions listed six chains: `fixture` (the one the editor continued, 544 notes), `fork.nxsp`, `no-history.nxsp`, `fork` (not saved to a file), `no-media.nxsp` and `Untitled`.
+- `tests/fixtures/web-storage-v1/raw-export.zip` (411 kB) is `dump.json` (1.56 MB) followed by five `blobs/<n>` entries: `format` `nse-local-data-dump`, `version` 1, `appVersion` `0.5.22+0d503931`, database `nse-local-data` version 1.
+- The ZIP was copied unchanged to the scratch folder as `trial.zip`. `/?seedSample=trial.zip` seeded the profile, the console said `[seedSample] Seeded trial.zip; reloading.`, and the editor opened.
+- History › Recent Sessions listed six chains: `fixture` (the one the editor continued, 544 notes), `fork.nxsp` (542), `no-history.nxsp` (27), `fork` (not saved to a file, 2), `no-media.nxsp` (1) and `Untitled` (0).
 - Restore Session of `no-media.nxsp` opened it.
-- ⋯ › Save… on `fork.nxsp` opened the Save dialog (the profile has no handle for the file), and Save downloaded `fork (restored Nov 5).nxsp` (82.9 kB). The editor’s reader opens it fully.
+- ⋯ › Save… on `fork.nxsp` opened the Save Project File dialog (History 8 steps, 8.4 kB; BGM 48 kB; about 82.7 kB in all), and Save downloaded `fork (restored Nov 5).nxsp` (83,581 bytes). The editor’s reader opens it fully with an empty report and nine History entries (the eight steps and the Save).
