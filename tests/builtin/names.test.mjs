@@ -7,7 +7,7 @@ import { readFixture } from './helpers.mjs'
 
 test('the fixture names its engine commit and its list hash', () => {
     const fixture = readFixture()
-    assert.equal(fixture.engine.commit, 'pending')
+    assert.equal(fixture.engine.commit, 'ed2a1da')
     assert.deepEqual(fixture.counts, {
         spritesDeclared: 1351,
         sprites: 1340,

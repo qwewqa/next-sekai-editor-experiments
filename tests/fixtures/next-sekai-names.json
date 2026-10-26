@@ -1,7 +1,7 @@
 {
     "engine": {
         "repository": "sonolus-next-sekai-engine",
-        "commit": "pending"
+        "commit": "ed2a1da"
     },
     "counts": {
         "spritesDeclared": 1351,

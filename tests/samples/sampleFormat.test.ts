@@ -4,8 +4,12 @@ import { join, resolve } from 'node:path'
 import test from 'node:test'
 import { samplesDir } from '../../scripts/samples.mjs'
 import { decodeOperation } from '../../src/history/operations/registry'
+import { inflateStrict } from '../../src/local/chunkVerify'
 import { DB_VERSION } from '../../src/local/db'
 import { decodeValue, readDump } from '../../src/local/dump'
+import { toHex } from '../../src/local/hash'
+import { nodeJsonFromRow, rootJsonFromRow } from '../../src/local/records/rows'
+import { decodeSnapshot } from '../../src/local/records/snapshot'
 import { RECORDS_V, SESSION_V } from '../../src/local/records/version'
 import { seedDump } from '../../src/local/seed'
 import { createWorld } from '../../src/local/testing/world'
@@ -89,6 +93,39 @@ test(
             roots.every((row) => row.v === RECORDS_V),
             `A root is not at version ${RECORDS_V}. ${REGENERATE}`,
         )
+    },
+)
+
+test(
+    'every snapshot root in the long-history sample decodes with the current record schema',
+    { skip: !present },
+    () => {
+        const stores = readDump(load()).stores
+        const rows = (name: string) =>
+            new Map(
+                (stores.find((store) => store.name === name)?.records ?? []).map((record) => [
+                    toHex(new Uint8Array(decodeValue(record.key) as ArrayBuffer)),
+                    decodeValue(record.value) as never,
+                ]),
+            )
+        const nodes = rows('nodes') as Map<string, { t: string }>
+        const chunks = rows('chunks') as Map<string, { bytes: Uint8Array }>
+        const decoder = new TextDecoder()
+        const roots = [...nodes].filter(([, row]) => row.t === 'root')
+        assert.ok(roots.length > 0, 'The sample has no roots')
+        for (const [hex, row] of roots) {
+            try {
+                decodeSnapshot(rootJsonFromRow(row as never), {
+                    node: (hash) => nodeJsonFromRow(nodes.get(hash) as never),
+                    chunk: (hash) =>
+                        JSON.parse(decoder.decode(inflateStrict(chunks.get(hash)!.bytes))),
+                })
+            } catch (error) {
+                assert.fail(
+                    `The root ${hex} does not decode: ${(error as Error).message}. ${REGENERATE}`,
+                )
+            }
+        }
     },
 )
 
