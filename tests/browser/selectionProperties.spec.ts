@@ -270,7 +270,7 @@ test.describe('mixed values', () => {
     })
 
     test('a label beside its coverage never breaks inside a word', async ({ page }) => {
-        test.setTimeout(60_000)
+        test.slow()
         // Each dock width fits afresh; a word even a fraction too wide for its box breaks.
         const breaks = (locale: string) =>
             page.evaluate(async (locale) => {

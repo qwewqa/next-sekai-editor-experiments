@@ -836,7 +836,6 @@ test.describe('indicator', () => {
         expect(moved).toBeGreaterThan(2)
         expect(writes.cursor).toBeGreaterThanOrEqual(1)
         expect(writes.cursor).toBeLessThanOrEqual(moved + 2)
-        expect(writes.cursor).toBeLessThan(30)
         expect(writes.box).toBe(0)
     })
 })

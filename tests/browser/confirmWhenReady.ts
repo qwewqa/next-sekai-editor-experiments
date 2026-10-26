@@ -5,11 +5,12 @@ import { expect, type Locator, type Page } from '@playwright/test'
 // what the dialog does, never on a fixed time. `dialog` must name that one dialog for good; with
 // dialogs stacked, `.nth(i)` keeps pointing at the same one once it closes, where `.last()` would not.
 
+// What a press starts, such as a reload or a deletion, can take most of a minute on a CI runner.
 const untilHidden = (press: () => Promise<void>, dialog: Locator) =>
     expect(async () => {
         await press()
         await expect(dialog).toBeHidden({ timeout: 300 })
-    }).toPass({ timeout: 10_000 })
+    }).toPass({ timeout: process.env.CI ? 40_000 : 10_000 })
 
 /** Clicks (or taps) `button` until `dialog` has closed. */
 export const confirmWhenReady = (

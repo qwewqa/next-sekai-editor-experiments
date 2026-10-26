@@ -21,7 +21,10 @@ test.beforeEach(async ({ page }) => {
 /** Two lone notes at beat 2, centred on lanes -3 and 3. */
 const showNotes = (page: Page) =>
     page.evaluate(async () => {
-        const { fixtures, show, nextTick } = window.editorTest
+        const { fixtures, show, nextTick, settings } = window.editorTest
+        // A finger held still for half a second opens the context menu and ends the drag, which
+        // a loaded runner can leave between a gesture's events.
+        settings.touchLongPressContextMenu = false
         const template = fixtures.interaction.slides.flat()[0]!
         show(
             {
@@ -386,10 +389,12 @@ test('a quick scroll that leaves the pane follows the finger the whole way', asy
     const to = { x: from.x, y: pane.y - 60 }
     const before = await page.evaluate(() => window.editorTest.view.time)
     await press(page, 'touch', from, to, false)
-    const after = await page.evaluate(() => window.editorTest.view.time)
     const pps = await page.evaluate(() => window.editorTest.settings.pps)
+    // The view follows the finger a frame later, which a loaded runner draws late.
+    await expect
+        .poll(async () => (before - (await page.evaluate(() => window.editorTest.view.time))) * pps)
+        .toBeCloseTo(from.y - to.y, 0)
     await touch('touchEnd', [])
-    expect((before - after) * pps).toBeCloseTo(from.y - to.y, 0)
 })
 
 test.describe('quick scroll zone edge', () => {
@@ -400,6 +405,8 @@ test.describe('quick scroll zone edge', () => {
             settings.touchQuickScrollWidth = 200
             settings.dragToPanX = false
             settings.dragToPanY = false
+            // As in showNotes, a loaded runner must not turn a gesture into a long press.
+            settings.touchLongPressContextMenu = false
             const x = view.x + view.w - 200
             const lane = view.lane + ((x - view.x) / view.w - 0.5) * settings.width
             const template = fixtures.interaction.slides.flat()[0]!
@@ -434,7 +441,7 @@ test.describe('quick scroll zone edge', () => {
         const before = await notes(page)
         const time = await viewTime(page)
         await press(page, 'touch', { x: edge - 5, y }, { x: edge + 35, y: y - 30 })
-        expect(await notes(page)).not.toEqual(before)
+        await expect.poll(() => notes(page)).not.toEqual(before)
         expect(await viewTime(page)).toBe(time)
     })
 
@@ -443,7 +450,7 @@ test.describe('quick scroll zone edge', () => {
         const before = await notes(page)
         const time = await viewTime(page)
         await press(page, 'touch', { x: edge + 5, y }, { x: edge - 35, y: y - 30 })
+        await expect.poll(() => viewTime(page)).not.toBe(time)
         expect(await notes(page)).toEqual(before)
-        expect(await viewTime(page)).not.toBe(time)
     })
 })

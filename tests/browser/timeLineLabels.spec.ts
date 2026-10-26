@@ -470,11 +470,22 @@ test('hovering across a cursor line that ends clear of the labels redraws only t
     const { x, y } = await page.evaluate(() => window.editorTest.point(0, 10.5))
     // Warm the active-label state before counting.
     await page.mouse.move(x, y - 30)
+    // Until the chart has drawn nothing for 300 ms: a loaded runner draws the warm-up's frame late.
     await page.evaluate(
         () =>
-            new Promise<void>((resolve) =>
-                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-            ),
+            new Promise<void>((resolve) => {
+                let drawn = window.editorFrames.chart
+                let since = performance.now()
+                const check = () => {
+                    if (window.editorFrames.chart !== drawn) {
+                        drawn = window.editorFrames.chart
+                        since = performance.now()
+                    }
+                    if (performance.now() - since >= 300) resolve()
+                    else requestAnimationFrame(check)
+                }
+                requestAnimationFrame(check)
+            }),
     )
     await page.evaluate(() => (window.editorFrames = { chart: 0, overlay: 0 }))
     for (let dy = -27; dy <= 30; dy += 3) await page.mouse.move(x, y + dy)
@@ -553,7 +564,11 @@ test('in playback, the Basic cursor line keeps its ends as grid labels pass it',
         // From the start, after the frames at rest, which may meet a label.
         recorded.length = 0
         player.startOrStopPlayer()
+        // At least two seconds, and until enough frames are drawn, however slow the machine.
+        const end = performance.now() + 20000
         await new Promise((resolve) => setTimeout(resolve, 2000))
+        while (recorded.length <= 20 && performance.now() < end)
+            await new Promise((resolve) => setTimeout(resolve, 50))
         player.startOrStopPlayer()
         // Until the stop, before the next frame at rest.
         return [...recorded]

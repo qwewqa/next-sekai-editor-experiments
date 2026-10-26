@@ -366,6 +366,8 @@ const changed = async (page: Page, all?: string[], initial?: Baseline) => {
 test('Eraser and Note tool: the hover is what a tap removes or selects, and the add ghost what it adds', async ({
     page,
 }) => {
+    // Hundreds of points, each read and tapped through the page.
+    test.slow()
     await showStack(page)
     const initial = await baseline(page)
     const all = (await changed(page)).added
@@ -457,6 +459,7 @@ test('Eraser and Note tool: the hover is what a tap removes or selects, and the 
 })
 
 test('Elevation Editor: the hover is what a tap selects, cycling', async ({ page }) => {
+    test.slow()
     await page.evaluate(async () => {
         const { show, fixtures, settings, appImport } = window.editorTest
         const base = fixtures.interaction.slides[0]![0]!

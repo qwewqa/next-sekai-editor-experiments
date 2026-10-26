@@ -459,6 +459,21 @@ for (const scheme of schemes) {
             await expect
                 .poll(async () => (await paintOf(hovered, { pseudo: '::before' })).fill.a)
                 .toBeGreaterThan(0)
+            // The fills are read once their transitions have ended, not part-way.
+            await expect
+                .poll(() =>
+                    page.evaluate(
+                        () =>
+                            document
+                                .getAnimations()
+                                .filter(
+                                    (animation) =>
+                                        animation instanceof CSSTransition &&
+                                        animation.playState === 'running',
+                                ).length,
+                    ),
+                )
+                .toBe(0)
             const selected = await paintOf(current, { pseudo: '::before' })
             const hover = await paintOf(hovered, { pseudo: '::before' })
             const rest = await paintOf(row(page, 'Life 2'), { pseudo: '::before' })

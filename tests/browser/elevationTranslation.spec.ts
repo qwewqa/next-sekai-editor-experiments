@@ -388,6 +388,23 @@ for (const layout of ['basic', 'composed'] as const) {
                 },
                 { pane, lane },
             )
+        // The point once the panes have stopped resizing: opening the editor and the previous
+        // gesture's undo relayout both, and a click at a point from before that lands elsewhere.
+        const settledAt = async (pane: Pane, lane: number) => {
+            let last = await at(pane, lane)
+            for (let attempt = 0; attempt < 50; attempt++) {
+                await page.evaluate(
+                    () =>
+                        new Promise((resolve) =>
+                            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                        ),
+                )
+                const now = await at(pane, lane)
+                if (now.x === last.x && now.y === last.y) return now
+                last = now
+            }
+            return last
+        }
         // Displayed lanes of the stage 2 note.
         const stage2Note = () =>
             page.evaluate(async () => {
@@ -432,7 +449,7 @@ for (const layout of ['basic', 'composed'] as const) {
             (tool: string, lane: number, stageId?: number, shift = false) =>
             async (pane: Pane) => {
                 await setup(tool, stageId)
-                const point = await at(pane, lane)
+                const point = await settledAt(pane, lane)
                 await page.mouse.move(point.x - 2, point.y)
                 await page.mouse.move(point.x, point.y)
                 if (shift) await page.keyboard.down('Shift')
@@ -446,8 +463,8 @@ for (const layout of ['basic', 'composed'] as const) {
             async (pane: Pane) => {
                 await setup(tool, stageId)
                 const lane = await from()
-                const start = await at(pane, lane)
-                const end = await at(pane, lane + by)
+                const start = await settledAt(pane, lane)
+                const end = await settledAt(pane, lane + by)
                 await page.mouse.move(start.x, start.y)
                 await page.mouse.down()
                 await page.mouse.move(end.x, end.y, { steps: 6 })

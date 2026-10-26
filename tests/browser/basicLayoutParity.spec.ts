@@ -369,7 +369,7 @@ test('non-dynamic chart editing and pixels are identical in Basic and Composed',
     browser,
     baseURL,
 }) => {
-    test.setTimeout(90_000)
+    test.slow()
     await compare(
         browser,
         await exercise(browser, baseURL!, false, 'composed'),

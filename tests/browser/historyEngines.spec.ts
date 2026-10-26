@@ -336,7 +336,9 @@ test('a live entry arriving keeps the row under the pointer where it was', async
         .poll(() => list.evaluate((element) => element.scrollHeight))
         .toBeGreaterThan(height)
     await stableTop(page, title)
-    expect(Math.abs((await topOf(page, title)) - before)).toBeLessThanOrEqual(1)
+    await expect
+        .poll(async () => Math.abs((await topOf(page, title)) - before))
+        .toBeLessThanOrEqual(1)
 })
 
 test('Go To an older day shows its rows, with a gap row that fills without a jump', async ({
