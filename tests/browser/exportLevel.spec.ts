@@ -155,6 +155,57 @@ test('Export names a new chart LevelData, from an empty field with the placehold
     )
 })
 
+/** Opens the Save dialog, which stays open, and says if its Export line leads the body. */
+const saveLineLeads = (page: Page) =>
+    page.evaluate(async () => {
+        const { saveUi } = await window.editorTest.appImport<
+            typeof import('../../src/editor/save/dialogs')
+        >('/src/editor/save/dialogs.ts')
+        void saveUi.saveDialog({
+            kind: 'save',
+            name: 'Coconut',
+            lines: [],
+            history: { kind: 'available', ticked: true, locked: false },
+            bgm: { kind: 'none' },
+            peeking: false,
+            estimate: { load: () => Promise.resolve(undefined) },
+        })
+        let line: Element | null = null
+        for (let i = 0; i < 50 && !line; i++) {
+            line = document.querySelector('[data-save-export]')
+            if (!line) await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+        const leads = !!line?.querySelector('[data-severity="info"]')
+        return leads
+    })
+
+test('a finished Export makes the next Save dialog’s line plain; a cancelled one does not', async ({
+    page,
+}) => {
+    await start(page, opfs)
+    const flag = () =>
+        page.evaluate(() => localStorage.getItem('sonolus-next-sekai-editor.exportUsed'))
+    expect(await saveLineLeads(page)).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+
+    await openExport(page)
+    await dialog(page).getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    expect(await flag()).toBeNull()
+    expect(await saveLineLeads(page)).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+
+    await openExport(page)
+    await page.keyboard.press('Enter')
+    await expect(notice(page)).toHaveText('Exported to LevelData.nsld')
+    expect(await flag()).toBe('true')
+    expect(await saveLineLeads(page)).toBe(false)
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).toHaveCount(0)
+})
+
 test('Export suggests the displayed name: the title before the BGM’s', async ({ page }) => {
     await start(page, opfs)
     await page.evaluate(() => {
