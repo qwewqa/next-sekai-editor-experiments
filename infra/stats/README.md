@@ -19,7 +19,7 @@ Usage statistics for the web editor: a self-hosted [Umami](https://umami.is) on 
 | Patches      | Unattended security upgrades, rebooting at 04:00 UTC when needed                                                                                                                                                                                   |
 | Recovery     | EC2’s own recovery for a failed system check. In prod, one alarm reboots the instance after 5 minutes of failed instance checks and emails                                                                                                         |
 
-The host files reach the instance by commit. The stack’s `SourceCommit` parameter becomes the tag `nse:commit`, and `update.sh` downloads `host/*` at that commit from `raw.githubusercontent.com` (the repository is public). A deploy that changes only host files does not restart the instance. The user data runs once, at the instance’s first boot.
+The host files reach the instance by commit. The stack’s `SourceCommit` parameter becomes the tag `nse:commit`, and `update.sh` downloads `host/*` at that commit from `raw.githubusercontent.com` (the repository is public). A deploy that changes only host files does not restart the instance. `update.sh` stops Caddy and Umami before it dumps and starts them again in order: the database and Umami, then the trigger and `clean`, then Caddy. If a step fails, Caddy stays stopped, nothing is collected, and the deploy’s heartbeat check fails. Run the deploy again once the cause is fixed. The user data runs once, at the instance’s first boot.
 
 ## Deploy
 
@@ -80,14 +80,17 @@ dc() { docker compose --env-file images.env --env-file /data/secrets.env --env-f
     aws s3 presign s3://<bucket>/dumps/<file> --expires-in 900 --profile nse-prod
     # on the instance:
     mkdir -p /data/dumps && curl -fsSL -o /data/dumps/restore.dump '<link>'
-    dc stop umami
+    dc stop caddy umami
     dc exec -T db pg_restore -U umami -d umami --clean --if-exists --no-owner --single-transaction \
-      < /data/dumps/restore.dump && dc up -d umami && rm /data/dumps/restore.dump
+      < /data/dumps/restore.dump \
+      && dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -q -1 -f - < /opt/nse-stats/geo-trigger.sql \
+      && /opt/nse-stats/nightly.sh clean \
+      && dc up -d umami caddy && rm /data/dumps/restore.dump
     ```
 
-    A dump made before the trigger existed restores the table without it, and with the region and city it held. After restoring one, run `dc exec -T db psql -U umami -d umami -v ON_ERROR_STOP=1 -q -1 -f - < /opt/nse-stats/geo-trigger.sql`, then `/opt/nse-stats/nightly.sh clean`.
+    Caddy and Umami stay stopped until the trigger is installed and `clean` has succeeded, because a dump made before the trigger existed restores the table without it, and with the region and city it held.
 
-    The restore runs in one transaction. If it fails, the database is unchanged, Umami stays stopped and the dump stays in `/data/dumps`. Fix the cause (a full disk, for example) and run the restore again.
+    The restore runs in one transaction. If it fails, the database is unchanged, Caddy and Umami stay stopped and the dump stays in `/data/dumps`. Fix the cause (a full disk, for example) and run the restore again.
 
     CI tests that a dump restores into a fresh PostgreSQL with the same row counts.
 
