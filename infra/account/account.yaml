@@ -123,6 +123,7 @@ Resources:
                                 - cloudformation:ExecuteChangeSet
                                 - cloudformation:DeleteChangeSet
                                 - cloudformation:GetTemplate
+                                - cloudformation:GetTemplateSummary
                                 - cloudformation:UpdateTerminationProtection
                                 # deploy.sh passes the two tags with --tags.
                                 - cloudformation:TagResource
