@@ -559,7 +559,7 @@ test('a newer build’s data stays: continuing A, Restore as a Copy, a Save that
     await context.close()
 })
 
-test('P needs a newer version: Restore Session says so, Save… is refused, its rows are untouched', async ({
+test('P requires a newer version: Restore Session says so, Save… is refused, its rows are untouched', async ({
     browser,
     browserName,
 }) => {
@@ -595,7 +595,7 @@ test('P needs a newer version: Restore Session says so, Save… is refused, its 
     await expect
         .poll(async () =>
             (await notices(page)).some((text) =>
-                text.includes('needs a newer version of the editor'),
+                text.includes('requires a newer version of the editor'),
             ),
         )
         .toBe(true)
