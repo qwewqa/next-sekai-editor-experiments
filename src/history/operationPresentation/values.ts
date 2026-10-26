@@ -13,7 +13,7 @@ export const message = (
     template: string,
     ...values: (string | number)[]
 ) =>
-    pluralForm(context.locale, template, values[0]?.toString()).replace(
+    pluralForm(context.locale, template, values[0]).replace(
         /\{(\d+)\}/g,
         (placeholder, index: string) => {
             const value = values[Number(index)]

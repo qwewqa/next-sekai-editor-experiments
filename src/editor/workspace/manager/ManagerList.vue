@@ -95,7 +95,8 @@ const savedShownCount = computed(
     () => entries.value.filter(({ id }) => scope.value.isShownInAll(id)).length,
 )
 
-const label = (template: string, ...values: string[]) => interpolateRaw(template, ...values)
+const label = (template: string, ...values: (string | number)[]) =>
+    interpolateRaw(template, ...values)
 
 // Rows: entries and folders, told apart by kind.
 
@@ -757,18 +758,15 @@ const onBulkDelete = async (keyboard = false) => {
             (await showModal(ConfirmModal, {
                 title: () =>
                     folderIds.size
-                        ? label(
-                              strings.value.deleteSelectedFoldersTitle,
-                              formatCount(folderIds.size),
-                          )
+                        ? label(strings.value.deleteSelectedFoldersTitle, folderIds.size)
                         : strings.value.deleteSelectedTitle,
                 message: () =>
                     folderIds.size
                         ? label(
                               strings.value.deleteSelectedFoldersMessage,
-                              formatCount(folderIds.size),
-                              formatCount(ids.size),
-                              formatCount(objects),
+                              folderIds.size,
+                              ids.size,
+                              objects,
                           )
                         : label(
                               strings.value.deleteSelectedMessage,

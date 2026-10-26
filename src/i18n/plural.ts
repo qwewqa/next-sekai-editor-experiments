@@ -12,8 +12,11 @@ const pluralRules = (locale: string) => {
     return rule
 }
 
-/** Picks the singular or plural of "Moved {0} object|Moved {0} objects" by the count. */
-export const pluralForm = (locale: string, message: string, count: string | undefined) => {
+/**
+ * Picks the singular or plural of "Moved {0} object|Moved {0} objects" by the count. Give the
+ * count as a number: text such as "1.000" is a thousand in some locales and one in `Number`.
+ */
+export const pluralForm = (locale: string, message: string, count: number | string | undefined) => {
     const forms = message.split('|')
     if (forms.length < 2) return message
     const one = pluralRules(locale).select(Number(count)) === 'one'
